@@ -554,6 +554,195 @@ export function partyPosition(
   return ohne;
 }
 
+// ------------------------------------------------------------------ Nebel
+
+/**
+ * **Eine aufgedeckte Form** (REQ-139, `Map.reveal`). Alles in Anteilen der
+ * Karte; Kreis und Pinselstrich messen ihren Halbmesser `r` in Anteilen der
+ * **Breite** und tragen das Seitenverhältnis `ar` (Höhe durch Breite), mit
+ * dem sie gezogen wurden. Ohne `ar` wäre ein Kreis auf einer breiten Karte
+ * ein Ei, und der Server — der die Bildgrösse nicht kennt — könnte nicht
+ * sagen, ob ein Marker darin steht.
+ *
+ * - `rect` — aufgezogen (Werkzeug *Reveal*);
+ * - `circle` — ein Fleck;
+ * - `poly` — ein Sichtpolygon (der Prototyp deckt beim Ziehen damit auf);
+ * - `path` — ein **Pinselstrich**: die Fläche um einen Linienzug, `r` weit.
+ */
+export type RevealShape =
+  | { id: string; kind: 'rect'; x: number; y: number; w: number; h: number }
+  | { id: string; kind: 'circle'; x: number; y: number; r: number; ar: number }
+  | { id: string; kind: 'poly'; pts: Array<[number, number]> }
+  | { id: string; kind: 'path'; pts: Array<[number, number]>; r: number; ar: number };
+
+/** Ist auf dieser Karte der Nebel an? */
+export function fogOn(e: Entity): boolean {
+  return (e.components?.[MAP_COMPONENT] as { fog?: unknown } | undefined)?.fog === true;
+}
+
+function punkte(v: unknown): Array<[number, number]> {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((p) => {
+    if (!Array.isArray(p) || p.length < 2) return [];
+    const x = zahl(p[0], NaN);
+    const y = zahl(p[1], NaN);
+    return Number.isFinite(x) && Number.isFinite(y) ? [[x, y] as [number, number]] : [];
+  });
+}
+
+/** Eine Form aus `Map.reveal` gelesen; Unlesbares gibt `null`. */
+function formAus(x: unknown, i: number): RevealShape | null {
+  if (!x || typeof x !== 'object') return null;
+  const s = x as Record<string, unknown>;
+  const id = typeof s['id'] === 'string' && s['id'] ? s['id'] : `s-${i + 1}`;
+  const ar = zahl(s['ar'], 1) > 0 ? zahl(s['ar'], 1) : 1;
+  if (s['kind'] === 'circle') return { id, kind: 'circle', x: zahl(s['x'], 0), y: zahl(s['y'], 0), r: Math.max(0, zahl(s['r'], 0.05)), ar };
+  if (s['kind'] === 'poly') {
+    const pts = punkte(s['pts']);
+    return pts.length > 2 ? { id, kind: 'poly', pts } : null;
+  }
+  if (s['kind'] === 'path') {
+    const pts = punkte(s['pts']);
+    return pts.length ? { id, kind: 'path', pts, r: Math.max(0, zahl(s['r'], 0.03)), ar } : null;
+  }
+  /* Ein Rechteck darf mit negativer Breite stehen (von rechts nach links
+     gezogen) — gelesen wird es wie gezeichnet. */
+  const x0 = zahl(s['x'], 0);
+  const y0 = zahl(s['y'], 0);
+  const w = zahl(s['w'], 0);
+  const h = zahl(s['h'], 0);
+  return { id, kind: 'rect', x: Math.min(x0, x0 + w), y: Math.min(y0, y0 + h), w: Math.abs(w), h: Math.abs(h) };
+}
+
+/** Die aufgedeckten Formen, wie sie in `Map.reveal` stehen; Unlesbares fällt weg. */
+export function revealShapes(e: Entity): RevealShape[] {
+  return rohReveal(e).flatMap((x, i) => formAus(x, i) ?? []);
+}
+
+/** Abstand eines Punktes zu einer Strecke, alles in einem Raum mit gleichen Achsen. */
+function streckenAbstand(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const l = dx * dx + dy * dy;
+  const t = l ? zwischen(((px - ax) * dx + (py - ay) * dy) / l, 0, 1) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+/**
+ * Liegt der Punkt in der Form? Kreis und Strich rechnen in einem Raum, in
+ * dem ein Schritt nach unten so lang ist wie einer nach rechts (y mal `ar`).
+ */
+export function inShape(s: RevealShape, p: Pt): boolean {
+  if (s.kind === 'rect') return p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h;
+  if (s.kind === 'circle') return Math.hypot(p.x - s.x, (p.y - s.y) * s.ar) <= s.r;
+  if (s.kind === 'path') {
+    const [erster] = s.pts;
+    if (s.pts.length === 1) return Math.hypot(p.x - erster![0], (p.y - erster![1]) * s.ar) <= s.r;
+    for (let i = 1; i < s.pts.length; i++) {
+      const a = s.pts[i - 1]!;
+      const b = s.pts[i]!;
+      if (streckenAbstand(p.x, p.y * s.ar, a[0], a[1] * s.ar, b[0], b[1] * s.ar) <= s.r) return true;
+    }
+    return false;
+  }
+  let drin = false;
+  const q = s.pts;
+  for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
+    const [xi, yi] = q[i]!;
+    const [xj, yj] = q[j]!;
+    if (yi > p.y !== yj > p.y && p.x < ((xj - xi) * (p.y - yi)) / (yj - yi + 1e-12) + xi) drin = !drin;
+  }
+  return drin;
+}
+
+/** Sieht man diese Stelle durch den Nebel? Ohne Nebel jede. */
+export function isRevealed(e: Entity, p: Pt): boolean {
+  if (!fogOn(e)) return true;
+  return revealShapes(e).some((s) => inShape(s, p));
+}
+
+/** Liegt irgendein Teil des Rahmens im Aufgedeckten — die Mitte oder eine Ecke? */
+export function frameRevealed(e: Entity, f: Frame): boolean {
+  if (!fogOn(e)) return true;
+  const proben: Pt[] = [
+    { x: f.x + f.w / 2, y: f.y + f.h / 2 },
+    { x: f.x, y: f.y },
+    { x: f.x + f.w, y: f.y },
+    { x: f.x, y: f.y + f.h },
+    { x: f.x + f.w, y: f.y + f.h },
+  ];
+  return proben.some((p) => isRevealed(e, p));
+}
+
+const r4 = (v: number): number => Math.round(v * 10000) / 10000;
+
+function mitReveal(e: Entity, reveal: unknown[], fog?: boolean): Entity {
+  const karte: Record<string, unknown> = { ...((e.components?.[MAP_COMPONENT] ?? {}) as Record<string, unknown>), reveal };
+  if (fog !== undefined) karte['fog'] = fog;
+  return { ...e, components: { ...e.components, [MAP_COMPONENT]: karte } };
+}
+
+function rohReveal(e: Entity): unknown[] {
+  const roh = (e.components?.[MAP_COMPONENT] as { reveal?: unknown } | undefined)?.reveal;
+  return Array.isArray(roh) ? roh : [];
+}
+
+/**
+ * **Aufdecken** (REQ-139): eine Form dazu, gerundet auf vier Stellen. Wer
+ * aufdeckt, will Nebel — also schaltet es ihn ein, wie im Prototyp.
+ */
+export function revealArea(e: Entity, s: RevealShape): Entity {
+  let form: Record<string, unknown>;
+  if (s.kind === 'rect') form = { id: s.id, kind: 'rect', x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) };
+  else if (s.kind === 'circle') form = { id: s.id, kind: 'circle', x: r4(s.x), y: r4(s.y), r: r4(s.r), ar: r4(s.ar) };
+  else {
+    const pts = s.pts.map(([x, y]) => [r4(x), r4(y)]);
+    form = s.kind === 'poly' ? { id: s.id, kind: 'poly', pts } : { id: s.id, kind: 'path', pts, r: r4(s.r), ar: r4(s.ar) };
+  }
+  return mitReveal(e, [...rohReveal(e), form], true);
+}
+
+/** Die Mitte einer Form — danach fragt das Zudecken. */
+function mitteVon(s: RevealShape): Pt {
+  if (s.kind === 'rect') return { x: s.x + s.w / 2, y: s.y + s.h / 2 };
+  if (s.kind === 'circle') return { x: s.x, y: s.y };
+  const xs = s.pts.map((p) => p[0]);
+  const ys = s.pts.map((p) => p[1]);
+  return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+}
+
+/**
+ * **Zudecken** heisst: was mit seiner Mitte in diesem Kasten liegt, gilt
+ * nicht mehr als aufgedeckt (wie im Prototyp). Ein Loch in eine Form zu
+ * schneiden ginge auch, wäre aber eine Form, die niemand mehr von Hand
+ * versteht.
+ */
+export function coverArea(e: Entity, f: Frame): Entity {
+  const kasten: RevealShape = { id: '', kind: 'rect', x: f.x, y: f.y, w: f.w, h: f.h };
+  return mitReveal(
+    e,
+    rohReveal(e).filter((x, i) => {
+      const s = formAus(x, i);
+      return !s || !inShape(kasten, mitteVon(s));
+    }),
+  );
+}
+
+/** Alles auf: eine Form über die ganze Karte. Der Nebel bleibt an — zudecken geht weiter. */
+export function revealAll(e: Entity, id: string): Entity {
+  return mitReveal(e, [{ id, kind: 'rect', x: 0, y: 0, w: 1, h: 1 }], true);
+}
+
+/** Alles zu: keine Form mehr, Nebel an. */
+export function coverAll(e: Entity): Entity {
+  return mitReveal(e, [], true);
+}
+
+/** Nebel an oder aus, ohne das Aufgedeckte zu verlieren. */
+export function setFog(e: Entity, an: boolean): Entity {
+  return mitReveal(e, rohReveal(e), an);
+}
+
 // ------------------------------------------------------------ Zurückhalten
 
 /**
@@ -568,12 +757,27 @@ export function partyPosition(
  *   ist. Die Grösse der Karte nimmt die Seite dann vom ersten Blatt, das
  *   ihm bleibt.
  *
+ * - **Unter dem Nebel** (REQ-139): Marker, deren Punkt nicht aufgedeckt
+ *   ist. Ausgenommen sind die eigenen — das Gruppen-Token (`party`) und
+ *   was `keep` nennt (die Figuren der Gruppe): wer im Dunkeln steht, steht
+ *   trotzdem auf der Karte. Das Bild selbst geht ganz hinaus und wird im
+ *   Browser zugedeckt (E-041).
+ *
  * Gefragt wird beim Lesen (D8); gespeichert bleibt die Karte, wie sie ist.
  */
-export function redactMap(map: Entity, opts: { gm: boolean; sees: (id: EntityId) => boolean }): Entity {
+export function redactMap(
+  map: Entity,
+  opts: { gm: boolean; sees: (id: EntityId) => boolean; keep?: (id: EntityId) => boolean },
+): Entity {
   if (opts.gm || !isMap(map)) return map;
+  const nebel = fogOn(map);
   const relations = (map.relations ?? []).filter((r) => {
-    if (r.type === MARKER_RELATION) return !markerOf(r).hidden && opts.sees(r.to);
+    if (r.type === MARKER_RELATION) {
+      const m = markerOf(r);
+      if (m.hidden || !opts.sees(r.to)) return false;
+      if (!nebel || m.kind === 'party' || opts.keep?.(r.to)) return true;
+      return isRevealed(map, m);
+    }
     if (r.type === INSIDE_MAP_RELATION) return opts.sees(r.to);
     return true;
   });

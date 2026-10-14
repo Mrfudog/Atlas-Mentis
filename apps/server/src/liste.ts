@@ -270,6 +270,10 @@ export interface ListQuery {
   /** Diese Kantenarten gehen je Zeile mit (`rels`): wohin ein Board oder
    *  eine Sitzung gehört (`partOf`), ohne den Artikel ganz zu holen. */
   rel?: string[] | undefined;
+  /** Nur Artikel mit **allen** diesen Marken (T-119): jede Marke engt ein. */
+  tag?: string[] | undefined;
+  /** Diese Artikel nicht — am Server gesetzt, nie aus der Adresse (die Galerie: „unbenutzt"). */
+  exclude?: ReadonlySet<string> | undefined;
   /** `name` (Vorgabe), `type` oder eine Spalte `Typ.feld`; `-` davor kehrt um. */
   sort?: string | undefined;
   offset: number;
@@ -313,6 +317,8 @@ export interface ListResult {
     types: { type: string; label: string; area: string; count: number }[];
     layers: { id: string; name: string; count: number }[];
     fields: FieldFacet[];
+    /** Die Marken der Treffer, je Marke gezählt (T-119) — die gewählten stehen mit da. */
+    tags: { tag: string; count: number }[];
     /** Wie viele Teile von Statblöcken gerade ausgeblendet sind. */
     partsHidden: number;
   };
@@ -369,6 +375,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const ebenen = q.layer?.length ? new Set(q.layer) : null;
   const ohneEbenen = q.nolayer?.length ? new Set(q.nolayer) : null;
   const nurIds = q.ids?.length ? new Set(q.ids) : null;
+  const marken = q.tag?.length ? q.tag : null;
   const einTyp = q.type?.length === 1 ? q.type[0]! : undefined;
   const spalten = einTyp ? (idx.types.get(einTyp)?.columns ?? listColumns(idx.registry, einTyp)) : [];
   const filter = Object.entries(q.fields).filter(([ref]) => spalten.some((c) => c.ref === ref));
@@ -386,6 +393,8 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     if (q.area && z.area !== q.area) continue;
     if (ofSet && !idx.types.get(z.type)?.chain.some((t) => ofSet.has(t))) continue;
     if (such && !z.such.includes(such)) continue;
+    if (marken && !marken.every((t) => z.tags.includes(t))) continue;
+    if (q.exclude?.has(z.id)) continue;
     grund.push(z);
   }
 
@@ -535,6 +544,13 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   }
   typen.sort((a, b) => a.label.localeCompare(b.label, 'en'));
 
+  const markenZahl = new Map<string, number>();
+  for (const z of treffer) for (const t of z.tags) markenZahl.set(t, (markenZahl.get(t) ?? 0) + 1);
+  for (const t of marken ?? []) if (!markenZahl.has(t)) markenZahl.set(t, 0);
+  const tags = [...markenZahl.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag, 'en'));
+
   return {
     total: liste.length,
     offset,
@@ -579,6 +595,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
         .map(([id, count]) => ({ id, count, name: id === NO_LAYER ? 'No layer' : (idx.names.get(id) ?? id) }))
         .sort((a, b) => a.name.localeCompare(b.name, 'en')),
       fields,
+      tags,
       partsHidden,
     },
   };
@@ -630,6 +647,7 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     nolayer: liste(raw['nolayer']),
     ids: liste(raw['ids']),
     rel: liste(raw['rel']),
+    tag: liste(raw['tag']),
     parts: raw['parts'] === '1' || raw['parts'] === 'true',
     versions: raw['versions'] === '1' || raw['versions'] === 'true',
     sort: typeof raw['sort'] === 'string' && raw['sort'] ? raw['sort'] : undefined,

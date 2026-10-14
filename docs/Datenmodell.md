@@ -140,6 +140,7 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 | `area` | `world` · `story` · `rules` · `play` — geerbt. `story` ist, was nur die Kampagne betrifft (Kampagne, Sitzung, Szene, Auftrag); die Weltgeschichte (`World`, `Event`) steht unter `world` (bis 13.10. hiess `story` `history` und hielt beides) |
 | `units` | `imperial` · `metric` · `both`; überschreibt die Einstellung — geerbt |
 | `titles` | `Typ.feld` → eigene Beschriftung eines geerbten Feldes (`Time.until` → „Deadline" am Auftrag) — geerbt |
+| `targets` | `Typ.feld` → eigenes Ziel eines geerbten Feldes (`Image.image` an der Karte: Kartenbilder, T-119); ersetzt `target` des Feldes ganz — geerbt (`fieldTarget`) |
 | `views` | je Ansicht eine eigene Anordnung (Liste) oder eine Anpassung der geerbten (`{ adjust }`, T-110) — geerbt über `layoutFor` |
 
 ### 3.3 Vererbung
@@ -151,8 +152,8 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 - die **Kanten**, deren `from` oder `to` einen Typ der Kette nennt — eine
   Spielerfigur *ist* eine Kreatur,
 - die **Zieltypen** von Verweisfeldern (`target.interfaces`) ebenso,
-- `area`, `units`, `titles`, `views`: der nächste Typ in der Kette, der etwas
-  sagt, gewinnt.
+- `area`, `units`, `titles`, `targets`, `views`: der nächste Typ in der
+  Kette, der etwas sagt, gewinnt.
 
 Ein geerbtes Feld wird nicht einzeln ausgeblendet; wer es nicht will, nimmt
 den Typ nicht. Umbenannt wird es über `titles`.
@@ -663,6 +664,8 @@ der Artikelseite und Play › Map):
 | K5 | **Was neben einer Karte steht, ist eine Abfrage** (`GET /api/maps/:id/context`): die Karten darüber (Brotkrumen), die Unterkarten mit Rahmen (Gegenrichtung von `insideMap`), die Ziele der Marker (Name, Art, Bild) und die Gruppe (`partyPosition`). Gesiebt wie jede Liste. | `apps/server/src/karten.ts` |
 | K6 | **Was auf dem Tisch liegt, sagt die Sitzung** (`SessionState.activeMap`): Play nimmt die gewählte Sitzung, sonst die jüngste mit Karte (`Time.sort`, dann Nummer). Hineinzoomen unter Play ändert die Sitzung nicht (`?map=`). | `GET /api/play` |
 | K7 | **Marker setzen und verschieben schreibt die Kante** (`marker`), nichts sonst — durch `validateEntity` und `PUT`, wie ein Board. | `addMarker`, `moveMarker` |
+| K8 | **Nebel** (T-117, REQ-139): `Map.fog` schaltet ihn, `Map.reveal` hält die aufgedeckten Formen — `rect`, `circle`, `poly` und der Pinselstrich `path` (Linienzug mit Halbmesser `r`), alles in Anteilen; Kreis und Strich tragen das Seitenverhältnis `ar`, mit dem sie gezogen wurden, damit der Server ohne Bildgrösse prüfen kann. Zudecken nimmt die Formen weg, deren Mitte im Kasten liegt. Für Spielende hält `redactMap` die Marker unter dem Nebel zurück — ausser dem Gruppen-Token und den Figuren der Gruppe —, und der Kontext die Rahmen, von denen weder Mitte noch Ecke aufgedeckt ist. Das Bild geht ganz hinaus und wird im Browser zugedeckt (E-041). | `revealShapes`, `isRevealed`, `revealArea`, `coverArea`, `redactMap` |
+| K9 | **Die Spielersicht der Leitung** ist dieselbe Rechnung (`redactMap` mit `gm: false`) im Browser — eine Vorschau und keine Schranke; zurückgehalten wird am Server. | `nw-karte` |
 
 **Der Zug auf der Karte (D56, REQ-206–210; Grössen D58, REQ-224).** Gerechnet wird beim Lesen,
 gespeichert nur, was danach gilt:
@@ -1191,6 +1194,8 @@ flowchart LR
   NSC["Creature<br/>Image.image = e_7f…"] -->|Id| A["Asset (Artikel)<br/>backend app · ref 3fa9….png<br/>mime · width · height · bytes<br/>Visibility · Status"]
   A -->|ref| D[("AssetStore<br/>3f/3fa9….png<br/>3f/3fa9….png.thumb.webp")]
   B["GET /api/assets/e_7f…?v=3fa9…"] -->|articleVisible?| A
+  V["Asset (neue Fassung)<br/>kind token"] -->|variantOf| A
+  M["Map<br/>Image.image (targets: kind map)"] -->|Id| A
 ```
 
 | Nr | Regel | Wo |
@@ -1201,6 +1206,10 @@ flowchart LR
 | B4 | **Aus einem Artikel heraus** (`for`) übernimmt das Asset dessen `audience`, `revealedTo`, `hiddenFrom`, Stand und Ebene: das Bild eines verborgenen NSC ist nicht öffentlich. Ohne Status-Karte zählt der Artikel als fertig, das Bild auch; wer `ready` nicht setzen darf, bekommt `idea` (D74). Das Bild der eigenen Figur nennt ihr Spieler fertig (E-014 d). | `bilder.ts`, `anlegen` |
 | B5 | **Ausgeliefert wird nur, was sichtbar ist** (`GET /api/assets/:id`, `?size=thumb`): das Sieb über den Asset-Artikel; sonst 404. `private`; mit `?v=<hash>` für immer im Browser, ohne `ETag` und 304. | `bilder.ts` |
 | B6 | **Die Ablage ist eine Schnittstelle** (`AssetStore`): heute eine Dateiablage im Volume (`ASSET_DIR`, E-032 a), in Tests im Speicher. Ein Wechsel heisst Dateien umkopieren — kein Artikel ändert sich. | `assets.ts` |
+| B8 | **Die Klasse eines Bildes ist ein Wort** (`Asset.kind`: `image` · `map` · `token` · `prop`, Vorgabe `image`, T-119): ein allgemeines Bild (Porträt, Handout), ein Kartenbild, ein Token, ein Stück zum Platzieren (Möbel, Requisite, Stempel). **Keine Unterart**: keine der vier trägt ein eigenes Feld — die Grösse eines Tokens ist die seiner Kreatur, das Raster gehört der Karte. Braucht eine Klasse eigene Felder, wird sie eine Art, die von `Asset` erbt. | `fieldgroups.ts` |
+| B9 | **Wo eine Klasse angeboten wird, sagt das Feld**: `target.where` `{component: 'Asset', property: 'kind', value}` — `Image.image` allgemeine Bilder, `Statblock.token` Tokens, an der Karte über `Map.targets` Kartenbilder (`fieldTarget`, `offeredAssetKind`). Ein Vorschlag wie jedes `where`: die Eingabe zeigt die Klasse zuerst und die übrigen auf Wunsch; gespeichert ist ein Bild jeder Klasse gültig. Wer Tokens braucht (T-117), fragt `GET /api/list?type=Asset&f=Asset.kind:token`. | `assets.ts`, `bild.ts` |
+| B10 | **Wo ein Bild verwendet wird, ist eine Rückfrage** (`assetUses`, `GET /api/assets/:id/uses`): jeder Artikel, der die Id als ganzen Wert in einer Karte hält (in jeder Tiefe — Kartenblätter zählen) oder mit einer Kante auf das Asset zeigt; `variantOf` und `inLayer` zählen nicht. **Nur, was der Betrachter sieht**: die Verwender gehen durchs Sieb, ebenso `unused=1` in der Liste („von niemandem verwendet, den du siehst"). Je Bestandsstempel einmal gerechnet. | `assets.ts`, `bilder.ts` |
+| B11 | **Ersetzen auf zwei Wegen.** *Neue Fassung* (`POST /api/assets` mit `variantOf`): ein eigenes Asset mit `variantOf` auf das alte, mit dessen Klasse, Marken, Quelle, Sichtbarkeit, Stand und Ebene; die Verwender bleiben beim alten, bis man sie umstellt. *Quelle ersetzen* (`PUT /api/assets/:id/file`, gegen `revision`): derselbe Artikel bekommt `ref`, `mime` und Masse der neuen Datei, alle Verwender zeigen sofort das neue Bild (die Adresse trägt die Version); geschrieben wird mit den Regeln von `PUT /api/entities/:id` (`schreiben`), ersetzen darf, wer den Artikel schreibt. **Die alte Datei bleibt liegen** (Ereignis `asset.replaced` nennt sie) und kommt in die nächste Sicherung. | `bilder.ts`, `app.ts` |
 | B7 | **Gezeigt wird mit dem Element `image`**, und der Ort wählt die Grösse: in `overview` ein Daumennagel neben dem Namen in der Listenzeile (die Liste nennt das Asset nur, wenn der Betrachter es sieht — `rows[].image`), in `quick` die Vorschau, in `full` das ganze Bild. An einem Asset ist das Bild es selbst, sonst `Image.image` (`bildDes`). Ein Feld mit `format: 'asset'` steht in der Feldtabelle als Vorschau. Die Eingabe (`nw-bildwahl`) lädt hoch — Datei, Ziehen, Einfügen, Telefonkamera —, wählt ein vorhandenes Asset oder nimmt eine `https`-Adresse; hochgeladen wird sofort, das Feld hält danach die Id. Bestehende Anordnungen bekommen `image` über Migration 053. | `bild.ts`, `liste.ts`, `views.ts` |
 
 ---
@@ -1320,7 +1329,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Asset` | `Image` `Source` | `backend` `ref` `mime` `width` `height` `bytes` | — | — | — |
+| `Asset` | `Image` `Source` | `backend` `ref` `kind` `mime` `width` `height` `bytes` | — | — | overview |
 | `Chapter` | `Source` | `ordinal` | `partOf` `chapterOf` | `partOf` | — |
 | `Embed` | `BookPart` | `target` | `partOf` | — | — |
 | `Heading` | `BookPart` | `level` | `partOf` | — | — |

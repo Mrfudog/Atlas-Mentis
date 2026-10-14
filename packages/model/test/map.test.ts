@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   cellAt,
+  coverAll,
+  coverArea,
+  fogOn,
+  frameRevealed,
+  isRevealed,
+  revealAll,
+  revealArea,
+  revealShapes,
+  setFog,
   cellCentre,
   cellDistance,
   drawnSheets,
@@ -173,5 +182,62 @@ describe('redactMap', () => {
   it('moves a marker without touching its other props', () => {
     const m = moveMarker(e, 'offen', { x: 0.123456, y: 2 });
     expect(markersOf(m)[0]!.rel.props).toMatchObject({ x: 0.1235, y: 1 });
+  });
+});
+
+describe('fog of war (REQ-139)', () => {
+  const nebel = (reveal: unknown[], fog = true) =>
+    karte('n', { fog, reveal }, [
+      marker('licht', 'npc-1', { x: 0.1, y: 0.1 }),
+      marker('dunkel', 'npc-2', { x: 0.8, y: 0.8 }),
+      marker('gruppe', 'party-1', { x: 0.9, y: 0.9, kind: 'party' }),
+      marker('figur', 'pc-1', { x: 0.7, y: 0.9 }),
+    ]);
+  it('reads every shape kind and tests points against it', () => {
+    const e = nebel([
+      { id: 'r', kind: 'rect', x: 0.2, y: 0.2, w: -0.1, h: -0.1 },
+      { id: 'c', kind: 'circle', x: 0.5, y: 0.5, r: 0.1, ar: 0.5 },
+      { id: 'p', kind: 'path', pts: [[0, 1], [1, 1]], r: 0.02, ar: 1 },
+      { id: 'q', kind: 'poly', pts: [[0.6, 0], [0.7, 0], [0.7, 0.1]] },
+      { id: 'kaputt', kind: 'poly', pts: [[0, 0]] },
+    ]);
+    const formen = revealShapes(e);
+    expect(formen.map((s) => s.kind)).toEqual(['rect', 'circle', 'path', 'poly']);
+    expect(formen[0]).toMatchObject({ x: 0.1, y: 0.1, w: 0.1, h: 0.1 });
+    expect(isRevealed(e, { x: 0.15, y: 0.15 })).toBe(true);
+    /* ar 0.5: die Karte ist halb so hoch wie breit, also reicht der Kreis
+       in y doppelt so weit (in Anteilen). */
+    expect(isRevealed(e, { x: 0.5, y: 0.68 })).toBe(true);
+    expect(isRevealed(e, { x: 0.68, y: 0.5 })).toBe(false);
+    expect(isRevealed(e, { x: 0.5, y: 0.99 })).toBe(true);
+    expect(isRevealed(e, { x: 0.69, y: 0.05 })).toBe(true);
+    expect(isRevealed(e, { x: 0.3, y: 0.3 })).toBe(false);
+    expect(isRevealed(nebel([], false), { x: 0.3, y: 0.3 })).toBe(true);
+  });
+  it('withholds markers under the fog from players, but not their own', () => {
+    const e = nebel([{ id: 'r', kind: 'rect', x: 0, y: 0, w: 0.5, h: 0.5 }]);
+    const r = redactMap(e, { gm: false, sees: () => true, keep: (id) => id === 'pc-1' });
+    expect(markersOf(r).map((m) => m.rel.id)).toEqual(['licht', 'gruppe', 'figur']);
+    expect(markersOf(redactMap(e, { gm: true, sees: () => true }))).toHaveLength(4);
+    expect(markersOf(redactMap(nebel([], false), { gm: false, sees: () => true }))).toHaveLength(4);
+  });
+  it('reveals, covers by centre, and keeps shapes when the fog is switched off', () => {
+    let e = karte('n');
+    e = revealArea(e, { id: 'a', kind: 'rect', x: 0.123456, y: 0, w: 0.2, h: 0.2 });
+    e = revealArea(e, { id: 'b', kind: 'path', pts: [[0.7, 0.7], [0.9, 0.9]], r: 0.05, ar: 0.75 });
+    expect(fogOn(e)).toBe(true);
+    expect((e.components['Map'] as { reveal: unknown[] }).reveal[0]).toMatchObject({ x: 0.1235 });
+    e = coverArea(e, { x: 0.6, y: 0.6, w: 0.4, h: 0.4 });
+    expect(revealShapes(e).map((s) => s.id)).toEqual(['a']);
+    e = setFog(e, false);
+    expect(fogOn(e)).toBe(false);
+    expect(revealShapes(e)).toHaveLength(1);
+    expect(revealShapes(revealAll(e, 'all'))).toEqual([{ id: 'all', kind: 'rect', x: 0, y: 0, w: 1, h: 1 }]);
+    expect(revealShapes(coverAll(e))).toEqual([]);
+  });
+  it('a frame counts as revealed when its centre or a corner is', () => {
+    const e = nebel([{ id: 'r', kind: 'rect', x: 0, y: 0, w: 0.5, h: 0.5 }]);
+    expect(frameRevealed(e, { x: 0.4, y: 0.4, w: 0.3, h: 0.3 })).toBe(true);
+    expect(frameRevealed(e, { x: 0.6, y: 0.6, w: 0.3, h: 0.3 })).toBe(false);
   });
 });

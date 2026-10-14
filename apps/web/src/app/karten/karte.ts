@@ -13,8 +13,11 @@ import type { ElementRef } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
   addMarker,
+  coverAll,
+  coverArea,
   drawnSheets,
   entityName,
+  fogOn,
   frameNear,
   gridGeometry,
   HEX_TILE_PATH,
@@ -26,9 +29,14 @@ import {
   measure,
   moveMarker,
   parentMapRelation,
+  redactMap,
+  revealAll,
+  revealArea,
+  revealShapes,
+  setFog,
   zoomStep,
 } from '@nw/model';
-import type { Entity, Frame, MapMarker, Pt, Size } from '@nw/model';
+import type { Entity, Frame, MapMarker, Pt, RevealShape, Size } from '@nw/model';
 import { Api, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -45,7 +53,23 @@ const RAD_PAUSE = 90;
 /** Ein Finger ist breiter als ein Mauszeiger: kleiner wird ein Marker nicht. */
 const MARKER_MIN = 26;
 
-type Werkzeug = 'keins' | 'messen' | 'setzen';
+type Werkzeug = 'keins' | 'messen' | 'setzen' | 'aufdecken' | 'pinsel' | 'zudecken';
+/** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
+const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
+/** Pinselbreiten in Feldern. */
+const PINSEL = [1, 2, 4, 8] as const;
+
+/** Eine aufgedeckte Form, fertig zum Zeichnen in `0 0 1 ar`. */
+interface NebelForm {
+  id: string;
+  tag: 'rect' | 'circle' | 'polygon' | 'polyline';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  r: number;
+  points: string;
+}
 
 interface Zeiger {
   x: number;
@@ -103,9 +127,41 @@ interface Zeiger {
             <button type="button" [class.an]="werkzeug() === 'setzen'" [attr.aria-pressed]="werkzeug() === 'setzen'" (click)="waehle('setzen')" title="Tap the map where the marker goes">
               Add marker
             </button>
+            <button type="button" [class.an]="nebelOffen()" [attr.aria-expanded]="nebelOffen()" (click)="nebelLeiste()" title="Fog of war: reveal and hide what the players see">
+              Fog
+            </button>
+            <button type="button" [class.an]="spielersicht()" [attr.aria-pressed]="spielersicht()" (click)="spielersicht.set(!spielersicht())" title="See the map as the players do">
+              Player view
+            </button>
           }
         </div>
       </div>
+
+      @if (nebelOffen() && darfSchreiben()) {
+        <div class="nebelleiste" role="toolbar" aria-label="Fog of war">
+          <label>
+            <input type="checkbox" [checked]="nebelAn()" (change)="nebelSchalten($any($event.target).checked)" />
+            Fog on
+          </label>
+          <button type="button" [class.an]="werkzeug() === 'aufdecken'" [attr.aria-pressed]="werkzeug() === 'aufdecken'" (click)="waehle('aufdecken')" title="Drag a rectangle to reveal it">Reveal</button>
+          <button type="button" [class.an]="werkzeug() === 'pinsel'" [attr.aria-pressed]="werkzeug() === 'pinsel'" (click)="waehle('pinsel')" title="Paint to reveal">Brush</button>
+          <label>
+            Width
+            <select (change)="pinsel.set(+$any($event.target).value)" aria-label="Brush width in squares">
+              @for (b of PINSEL; track b) {
+                <option [value]="b" [selected]="b === pinsel()">{{ b }} {{ b === 1 ? 'square' : 'squares' }}</option>
+              }
+            </select>
+          </label>
+          <button type="button" [class.an]="werkzeug() === 'zudecken'" [attr.aria-pressed]="werkzeug() === 'zudecken'" (click)="waehle('zudecken')" title="Drag a rectangle: what lies in it is covered again">Hide</button>
+          <label title="Moving a token on a fogged map reveals the way it went, as wide as the brush">
+            <input type="checkbox" [checked]="pfadAufdecken()" (change)="pfadAufdecken.set($any($event.target).checked)" />
+            Reveal along moves
+          </label>
+          <button type="button" (click)="allesAuf()">Reveal all</button>
+          <button type="button" (click)="allesZu()">Cover all</button>
+        </div>
+      }
 
       @if (blaetterOffen() && blaetter().length > 1) {
         <ul class="blaetter" aria-label="Layers">
@@ -203,6 +259,32 @@ interface Zeiger {
                 <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
               </a>
             }
+            @if (nebel(); as n) {
+              <svg class="nebel" [attr.viewBox]="'0 0 1 ' + n.ar" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <mask [attr.id]="nebelId">
+                    <rect x="0" y="0" width="1" [attr.height]="n.ar" fill="#fff" />
+                    @for (f of n.formen; track f.id) {
+                      @if (f.tag === 'rect') {
+                        <rect [attr.x]="f.x" [attr.y]="f.y" [attr.width]="f.w" [attr.height]="f.h" fill="#000" />
+                      } @else if (f.tag === 'circle') {
+                        <circle [attr.cx]="f.x" [attr.cy]="f.y" [attr.r]="f.r" fill="#000" />
+                      } @else if (f.tag === 'polygon') {
+                        <polygon [attr.points]="f.points" fill="#000" />
+                      } @else {
+                        <polyline [attr.points]="f.points" fill="none" stroke="#000" [attr.stroke-width]="f.r * 2" stroke-linecap="round" stroke-linejoin="round" />
+                      }
+                    }
+                  </mask>
+                </defs>
+                <rect class="nebelflaeche" x="0" y="0" width="1" [attr.height]="n.ar" [attr.fill-opacity]="n.deckt" [attr.mask]="'url(#' + nebelId + ')'" />
+              </svg>
+            } @else if (nebelOhneMass()) {
+              <div class="nebel ganz" aria-hidden="true"></div>
+            }
+            @if (vorschau(); as v) {
+              <div class="vorschau" [class.zu]="v.zu" [style.left.%]="v.x * 100" [style.top.%]="v.y * 100" [style.width.%]="v.w * 100" [style.height.%]="v.h * 100"></div>
+            }
             @if (messung(); as m) {
               <svg class="mess" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
                 <line [attr.x1]="m.a.x" [attr.y1]="m.a.y" [attr.x2]="m.b.x" [attr.y2]="m.b.y" vector-effect="non-scaling-stroke" />
@@ -267,7 +349,19 @@ interface Zeiger {
           {{ messung()?.text || 'Tap a start point, then an end point.' }}
         } @else if (werkzeug() === 'setzen') {
           {{ setzenBei() ? 'Pick the article below.' : 'Tap the map where the marker goes.' }}
+        } @else if (werkzeug() === 'aufdecken') {
+          Drag a rectangle to reveal it to the players.
+        } @else if (werkzeug() === 'pinsel') {
+          Paint over what the players may see.
+        } @else if (werkzeug() === 'zudecken') {
+          Drag a rectangle — what lies in it is covered again.
         } @else {
+          @if (spielersicht()) {
+            Player view ·
+          }
+          @if (nebelAn()) {
+            Fog of war ·
+          }
           @if (einst()?.scale; as sc) {
             1 square = {{ sc }}
           }
@@ -291,6 +385,9 @@ export class Karte {
   readonly gross = input(false);
 
   protected readonly MARKER_MIN = MARKER_MIN;
+  protected readonly PINSEL = PINSEL;
+  /** Je Karte eine eigene Maske — zwei Karten auf einer Seite teilen sonst eine. */
+  protected readonly nebelId = `nebel-${Math.random().toString(36).slice(2, 10)}`;
 
   private readonly bestand = inject(Bestand);
   private readonly api = inject(Api);
@@ -303,6 +400,10 @@ export class Karte {
   private readonly innen = viewChild<ElementRef<HTMLElement>>('innen');
 
   constructor() {
+    /* Geschrieben wird durch `validateEntity`, und das braucht das
+       Register. Unter Play lud es bis T-117 niemand — jedes Ziehen eines
+       Markers endete dort mit „The registry is not loaded". */
+    void this.bestand.load();
     effect(() => {
       const id = this.id();
       untracked(() => {
@@ -363,6 +464,18 @@ export class Karte {
   /** Solange ein Schreiben läuft, gilt der Entwurf — ein Marker springt sonst zurück. */
   private readonly entwurf = signal<Entity | null>(null);
   protected readonly karte = computed(() => this.entwurf() ?? this.gespeichert());
+  /**
+   * **Was gezeichnet wird.** Für Spielende hat der Server schon
+   * zurückgehalten (`redactMap`); die Leitung sieht mit „Player view"
+   * dasselbe, gerechnet mit derselben Funktion — als Vorschau, nicht als
+   * Schranke: was sie hier hat, durfte sie ohnehin.
+   */
+  protected readonly angezeigt = computed(() => {
+    const e = this.karte();
+    return e && this.spielersicht() ? redactMap(e, { gm: false, sees: () => true }) : e;
+  });
+  /** Leitet der Betrachter (er schreibt die Karte) und schaut nicht gerade als Spieler? */
+  private readonly alsLeitung = computed(() => this.darfSchreiben() && !this.spielersicht());
   protected readonly fehlt = computed(() => this.bestand.fehlt().has(this.id()));
   protected readonly name = computed(() => {
     const e = this.karte();
@@ -394,15 +507,15 @@ export class Karte {
   private readonly gezeigt = signal<Record<string, boolean>>({});
   protected readonly blaetterOffen = signal(false);
   protected readonly blaetter = computed(() => {
-    const e = this.karte();
-    return e ? drawnSheets(e, true, this.gezeigt()) : [];
+    const e = this.angezeigt();
+    return e ? drawnSheets(e, !this.spielersicht(), this.gezeigt()) : [];
   });
   /** Für die Leiste alle Blätter mit Bild, auch die ausgeschalteten. */
   protected readonly blaetterOben = computed(() => {
-    const e = this.karte();
+    const e = this.angezeigt();
     if (!e) return [];
     const an = this.gezeigt();
-    return drawnSheets(e, true, Object.fromEntries(Object.keys(an).map((k) => [k, true])))
+    return drawnSheets(e, !this.spielersicht(), Object.fromEntries(Object.keys(an).map((k) => [k, true])))
       .map((s) => ({ ...s, hidden: !(an[s.id] ?? s.visible) }))
       .reverse();
   });
@@ -561,7 +674,7 @@ export class Karte {
 
   protected readonly zug = signal<{ id: string; pt: Pt } | null>(null);
   protected readonly marker = computed(() => {
-    const e = this.karte();
+    const e = this.angezeigt();
     const s = this.einst();
     if (!e || !s) return [];
     const ziele = this.kontext()?.targets ?? {};
@@ -614,13 +727,13 @@ export class Karte {
   }
 
   private nachZug = false;
-  private griff: { id: string; sx: number; sy: number; zieht: boolean; pointer: number } | null = null;
+  private griff: { id: string; sx: number; sy: number; zieht: boolean; pointer: number; von: Pt } | null = null;
 
   protected greifen(ev: PointerEvent, m: MapMarker): void {
     ev.stopPropagation();
     this.nachZug = false;
     if (!this.darfSchreiben() || this.werkzeug() !== 'keins' || ev.button !== 0) return;
-    this.griff = { id: m.rel.id, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId };
+    this.griff = { id: m.rel.id, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y } };
     (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId);
   }
 
@@ -646,7 +759,16 @@ export class Karte {
     if (!b || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
     this.zeiger.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     b.setPointerCapture?.(ev.pointerId);
+    /* Ein Formwerkzeug zieht mit einem Finger eine Form; zwei Finger
+       zoomen trotzdem. */
+    if (ZIEHT_FORM.has(this.werkzeug()) && this.zeiger.size === 1) {
+      const pt = this.punkt(ev);
+      if (pt) this.strich.set({ pointer: ev.pointerId, pts: [pt] });
+      this.schwenk = null;
+      return;
+    }
     if (this.zeiger.size === 2) {
+      this.strich.set(null);
       const [a, c] = [...this.zeiger.values()];
       this.kneifen = { d0: Math.hypot(a!.x - c!.x, a!.y - c!.y) || 1, z0: this.zoom() };
       this.kneifenZiel = this.zoom();
@@ -664,6 +786,23 @@ export class Karte {
       g.zieht = true;
       const pt = this.punkt(ev);
       if (pt) this.zug.set({ id: g.id, pt });
+      return;
+    }
+    const st = this.strich();
+    if (st && st.pointer === ev.pointerId) {
+      const pt = this.punkt(ev);
+      if (!pt) return;
+      if (this.werkzeug() !== 'pinsel') {
+        this.strich.set({ ...st, pts: [st.pts[0]!, pt] });
+        return;
+      }
+      /* Ein Punkt je halbem Halbmesser: genug für eine runde Spur, und
+         ein langer Strich bleibt eine kurze Liste. */
+      const letzter = st.pts.at(-1)!;
+      const r = this.pinselRadius();
+      if (Math.hypot(pt.x - letzter.x, (pt.y - letzter.y) * this.seitenverhaeltnis()) >= r / 2) {
+        this.strich.set({ ...st, pts: [...st.pts, pt] });
+      }
       return;
     }
     const b = this.buehne()?.nativeElement;
@@ -701,12 +840,25 @@ export class Karte {
       const z = this.zug();
       if (g.zieht && z) {
         this.nachZug = true;
-        void this.schreiben(moveMarker(this.karte()!, g.id, z.pt)).finally(() => this.zug.set(null));
+        let neu = moveMarker(this.karte()!, g.id, z.pt);
+        /* **Entlang des Weges aufdecken** (REQ-139): wer im Nebel geht,
+           sieht, wo er war — so breit wie der Pinsel. Wände rechnet die
+           Seite noch nicht (docs/Karten.md, „Was noch fehlt"). */
+        if (this.pfadAufdecken() && this.nebelAn()) {
+          neu = revealArea(neu, this.strichForm([g.von, z.pt]));
+        }
+        void this.schreiben(neu).finally(() => this.zug.set(null));
       }
       return;
     }
     const war = this.zeiger.size;
     this.zeiger.delete(ev.pointerId);
+    const st = this.strich();
+    if (st && st.pointer === ev.pointerId) {
+      this.strich.set(null);
+      this.formFertig(st.pts);
+      return;
+    }
     if (this.kneifen) {
       if (this.zeiger.size < 2) this.kneifenEnde();
       return;
@@ -718,6 +870,7 @@ export class Karte {
 
   protected abbrechen(ev: PointerEvent): void {
     this.zeiger.delete(ev.pointerId);
+    if (this.strich()?.pointer === ev.pointerId) this.strich.set(null);
     this.schwenk = null;
     if (this.griff?.pointer === ev.pointerId) {
       this.griff = null;
@@ -770,6 +923,7 @@ export class Karte {
     this.messB.set(null);
     this.messFest.set(false);
     this.setzenBei.set(null);
+    this.strich.set(null);
   }
 
   private antippen(ev: PointerEvent): void {
@@ -811,6 +965,124 @@ export class Karte {
     this.werkzeug.set('keins');
     void this.schreiben(addMarker(e, ziel.id, pt, `r-${crypto.randomUUID()}`));
   }
+
+  // ------------------------------------------------------------- Nebel
+
+  protected readonly spielersicht = signal(false);
+  protected readonly nebelOffen = signal(false);
+  protected readonly pinsel = signal<number>(2);
+  protected readonly pfadAufdecken = signal(false);
+  protected readonly nebelAn = computed(() => {
+    const e = this.karte();
+    return !!e && fogOn(e);
+  });
+  /** Was gerade gezogen wird: ein Rechteck (zwei Punkte) oder ein Pinselstrich. */
+  private readonly strich = signal<{ pointer: number; pts: Pt[] } | null>(null);
+
+  protected nebelLeiste(): void {
+    this.nebelOffen.set(!this.nebelOffen());
+    if (!this.nebelOffen() && ZIEHT_FORM.has(this.werkzeug())) this.waehle('keins');
+  }
+
+  /** Höhe durch Breite des Kartenbildes; ohne Mass 1. */
+  private readonly seitenverhaeltnis = computed(() => {
+    const n = this.nat();
+    return n && n.w > 0 ? n.h / n.w : 1;
+  });
+  /** Der Halbmesser des Pinsels in Anteilen der Breite. */
+  private readonly pinselRadius = computed(() => {
+    const n = this.nat();
+    const s = this.einst();
+    if (!n || !s) return 0.03;
+    return (this.pinsel() * s.gridSize) / 2 / n.w;
+  });
+
+  private strichForm(pts: Pt[]): RevealShape {
+    return {
+      id: `s-${crypto.randomUUID()}`,
+      kind: 'path',
+      pts: pts.map((p) => [p.x, p.y] as [number, number]),
+      r: this.pinselRadius(),
+      ar: this.seitenverhaeltnis(),
+    };
+  }
+
+  private kasten(a: Pt, b: Pt): Frame {
+    return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
+  }
+
+  /** Die Vorschau eines Rechtecks, solange es gezogen wird. */
+  protected readonly vorschau = computed(() => {
+    const st = this.strich();
+    const w = this.werkzeug();
+    if (!st || st.pts.length < 2 || w === 'pinsel') return null;
+    return { ...this.kasten(st.pts[0]!, st.pts[1]!), zu: w === 'zudecken' };
+  });
+
+  private formFertig(pts: Pt[]): void {
+    const e = this.karte();
+    if (!e || !pts.length) return;
+    const w = this.werkzeug();
+    if (w === 'pinsel') {
+      void this.schreiben(revealArea(e, this.strichForm(pts)));
+      return;
+    }
+    if (pts.length < 2) return;
+    const k = this.kasten(pts[0]!, pts[1]!);
+    /* Ein Antippen ist kein Rechteck. */
+    if (k.w < 0.005 && k.h < 0.005) return;
+    if (w === 'aufdecken') void this.schreiben(revealArea(e, { id: `s-${crypto.randomUUID()}`, kind: 'rect', ...k }));
+    else if (w === 'zudecken') void this.schreiben(coverArea(e, k));
+  }
+
+  protected nebelSchalten(an: boolean): void {
+    const e = this.karte();
+    if (e) void this.schreiben(setFog(e, an));
+  }
+  protected allesAuf(): void {
+    const e = this.karte();
+    if (e) void this.schreiben(revealAll(e, `s-${crypto.randomUUID()}`));
+  }
+  protected allesZu(): void {
+    const e = this.karte();
+    if (e && confirm('Cover the whole map? Everything revealed so far is covered again.')) void this.schreiben(coverAll(e));
+  }
+
+  private punkteText(pts: ReadonlyArray<readonly [number, number]>, ar: number): string {
+    /* Ein Strich aus einem Punkt ist ein Tupfer: zweimal derselbe Punkt,
+       sonst zeichnet die Linie nichts. */
+    const p = pts.length === 1 ? [pts[0]!, pts[0]!] : pts;
+    return p.map(([x, y]) => `${x},${y * ar}`).join(' ');
+  }
+
+  /**
+   * **Der Nebel** (REQ-139): zugedeckt ist alles, was keine aufgedeckte Form
+   * berührt. Gezeichnet in `0 0 1 ar`, damit ein Kreis rund bleibt. Die
+   * Leitung sieht durch (halb), Spielende und die Spielersicht nicht.
+   */
+  protected readonly nebel = computed(() => {
+    const e = this.angezeigt();
+    const n = this.nat();
+    if (!e || !fogOn(e) || !n) return null;
+    const ar = this.seitenverhaeltnis();
+    const formen: NebelForm[] = revealShapes(e).map((s) => {
+      const leer = { id: s.id, x: 0, y: 0, w: 0, h: 0, r: 0, points: '' };
+      if (s.kind === 'rect') return { ...leer, tag: 'rect', x: s.x, y: s.y * ar, w: s.w, h: s.h * ar };
+      if (s.kind === 'circle') return { ...leer, tag: 'circle', x: s.x, y: s.y * ar, r: s.r };
+      if (s.kind === 'poly') return { ...leer, tag: 'polygon', points: this.punkteText(s.pts, ar) };
+      return { ...leer, tag: 'polyline', r: s.r, points: this.punkteText(s.pts, ar) };
+    });
+    const st = this.strich();
+    if (st && this.werkzeug() === 'pinsel') {
+      formen.push({ id: '__strich', tag: 'polyline', x: 0, y: 0, w: 0, h: 0, r: this.pinselRadius(), points: this.punkteText(st.pts.map((p) => [p.x, p.y] as const), ar) });
+    }
+    return { ar, formen, deckt: this.alsLeitung() ? 0.5 : 1 };
+  });
+  /** Nebel, aber noch kein Mass: Spielende sehen bis dahin gar nichts. */
+  protected readonly nebelOhneMass = computed(() => {
+    const e = this.angezeigt();
+    return !!e && fogOn(e) && !this.nat() && !this.alsLeitung();
+  });
 
   // ------------------------------------------------------------ Schreiben
 

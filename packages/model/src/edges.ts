@@ -119,6 +119,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'images',
+    label: 'Image versions and uses',
+    area: 'versions',
+    does: 'finds where an image is shown — in a field, on a map sheet or through an edge — and makes a new version of an image that keeps its class, tags, visibility and layer',
+    uses: {
+      /* T-119: eine Fassung zeigt das Bild nicht, sie stammt davon ab. */
+      [M + 'assets.ts']: ['inLayer', 'variantOf'],
+      [S + 'bilder.ts']: ['inLayer', 'variantOf'],
+    },
+  },
+  {
     key: 'knowledge',
     label: 'Knowledge',
     area: 'visibility',

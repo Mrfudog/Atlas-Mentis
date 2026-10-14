@@ -295,6 +295,15 @@ export interface InterfaceDef {
    * Weg zum selben Satz.
    */
   titles?: Record<string, string>;
+  /**
+   * **Wohin ein geerbtes Feld hier zeigen soll** (T-119): `Typ.feld` →
+   * Ziel, aufgelöst die `extends`-Kette hoch wie `titles`. Eine Karte nennt
+   * `Image.image` und bietet dort Kartenbilder an, jeder andere Artikel
+   * allgemeine Bilder — derselbe Bestandteil, ein anderer Vorschlag.
+   * Ersetzt das `target` des Feldes ganz; wie dort gilt nur `interfaces`
+   * als Regel, `tags` und `where` schlagen vor.
+   */
+  targets?: Record<string, LinkTarget>;
 }
 
 /**

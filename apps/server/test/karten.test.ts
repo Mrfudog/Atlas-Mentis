@@ -55,6 +55,20 @@ const bestand: Entity[] = [
   art('keller', 'Map', 'Keller', { Visibility: { audience: 'gm' } }, [
     { id: 'in2', type: 'insideMap', to: 'stadt', props: { x: 0.1, y: 0.1, w: 0.1, h: 0.1 } },
   ]),
+  art('npc_dunkel', 'Creature', 'Ghul'),
+  art(
+    'gruft',
+    'Map',
+    'Gruft',
+    { Image: { image: 'as_gruft' }, Map: { fog: true, reveal: [{ id: 'r1', kind: 'rect', x: 0, y: 0, w: 0.5, h: 0.5 }] } },
+    [
+      { id: 'g1', type: 'marker', to: 'npc_offen', props: { x: 0.2, y: 0.2 } },
+      { id: 'g2', type: 'marker', to: 'npc_dunkel', props: { x: 0.8, y: 0.8 } },
+      { id: 'g3', type: 'marker', to: 'pc_1', props: { x: 0.9, y: 0.9 } },
+    ],
+  ),
+  art('kammer', 'Map', 'Kammer', {}, [{ id: 'in3', type: 'insideMap', to: 'gruft', props: { x: 0.7, y: 0.7, w: 0.1, h: 0.1 } }]),
+  art('nische', 'Map', 'Nische', {}, [{ id: 'in4', type: 'insideMap', to: 'gruft', props: { x: 0.1, y: 0.1, w: 0.1, h: 0.1 } }]),
   art('s_1', 'Session', 'Abend 1', { Time: { sort: 1 } }),
   art('s_2', 'Session', 'Abend 2', { Time: { sort: 2 }, SessionState: { activeMap: 'stadt' } }),
 ];
@@ -120,6 +134,22 @@ describe('/api/maps/:id/context', () => {
   it('is not found for a map the viewer cannot see', async () => {
     const { hole } = await aufbau();
     expect((await hole('Sela', '/api/maps/keller/context')).statusCode).toBe(404);
+  });
+});
+
+describe('fog of war (REQ-139)', () => {
+  it('withholds markers and frames under the fog from players, but not their own figure', async () => {
+    const { hole } = await aufbau();
+    const sela = (await hole('Sela', '/api/entities/gruft')).json() as Entity;
+    expect(marker(sela)).toEqual(['g1', 'g3']);
+    expect((sela.components['Map'] as { reveal: unknown[] }).reveal).toHaveLength(1);
+    const mira = (await hole('Mira', '/api/entities/gruft')).json() as Entity;
+    expect(marker(mira)).toEqual(['g1', 'g2', 'g3']);
+    const sp = (await hole('Sela', '/api/maps/gruft/context')).json();
+    expect(sp.children.map((c: { id: string }) => c.id)).toEqual(['nische']);
+    expect(sp.targets['npc_dunkel']).toBeUndefined();
+    const gm = (await hole('Mira', '/api/maps/gruft/context')).json();
+    expect(gm.children.map((c: { id: string }) => c.id)).toEqual(['kammer', 'nische']);
   });
 });
 

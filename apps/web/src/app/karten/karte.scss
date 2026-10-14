@@ -112,9 +112,12 @@ button {
   height: calc(100dvh - 12rem);
   min-height: 320px;
 }
+/* Kein `min-width: 100%`: unter Zoom 1 zöge es den Kasten auf die Breite
+   der Bühne, das Bild würde verzerrt, und Gitter und Marker (in Anteilen
+   des gerechneten Kastens) stünden daneben — docs/Karten.md, „Der Kasten
+   ist das Bild". */
 .innen {
   position: relative;
-  min-width: 100%;
 }
 .blatt {
   position: absolute;
@@ -275,4 +278,51 @@ button {
   .gross .buehne {
     height: calc(100dvh - 14rem);
   }
+}
+
+/* Der Nebel (REQ-139): über Bild, Gitter und Rahmen, unter den Markern.
+   Die Leitung sieht halb hindurch. */
+.nebel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.nebel.ganz {
+  background: #1d1a17;
+}
+.nebelflaeche {
+  fill: #1d1a17;
+}
+.nebelleiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.nebelleiste label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+}
+.nebelleiste button.an {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+.vorschau {
+  position: absolute;
+  border: 2px dashed var(--gold);
+  background: rgb(255 255 255 / 0.15);
+  pointer-events: none;
+}
+.vorschau.zu {
+  border-color: var(--ink);
+  background: rgb(0 0 0 / 0.25);
 }

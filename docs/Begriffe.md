@@ -370,6 +370,39 @@ Karte die Vorschau, auf der Seite das ganze Bild. Eine Spieleransicht gibt
 es auch hier nicht — wer das Asset nicht sehen darf, bekommt in der Liste
 kein Bild und an der Adresse nichts.
 
+### Klasse, Fassung, Quelle
+
+Ein Bild hat eine **Klasse** (`Asset.kind`, T-119): ein allgemeines Bild,
+ein Kartenbild, ein Token, ein Stück zum Platzieren. Sie sagt, wo das
+Bild angeboten wird — wer das Kartenbild wählt, sieht zuerst Karten, wer
+ein Token wählt, Tokens. Sie ist ein **Wort und keine Unterart**: eine
+Unterart lohnt sich erst, wenn sie eigene Felder trägt, und keine der vier
+tut es. Die Grösse eines Tokens ist die seiner Kreatur, das Raster gehört
+der Karte; ein Feld dafür am Bild wäre die zweite Stelle für dieselbe
+Sache.
+
+Woher die Maske weiss, welche Klasse ein Feld will, steht am Feld
+(`target.where`) — und an der Karte, die `Image.image` erbt, steht es am
+Typ (`targets`, wie `titles` für die Beschriftung). Eine Liste im Code
+(„Karten wollen Kartenbilder") wäre die Stelle, die beim nächsten Feld
+fehlt. Es bleibt ein **Vorschlag**: ein Porträt als Kartenhintergrund ist
+seltsam, aber nicht falsch.
+
+**Wo ein Bild verwendet wird**, steht nirgends — es ist die Gegenrichtung
+der Verweise, und die ist eine Abfrage. Sie zeigt nur, was man sehen
+darf: „wird noch an drei Orten gezeigt" verriete drei Artikel, auch ohne
+ihre Namen.
+
+Ein Bild **ersetzen** heisst zweierlei, und die Maske fragt:
+
+- **Neue Fassung**: ein zweites Asset mit `variantOf` auf das erste. Beide
+  bleiben, und wer das alte zeigt, zeigt es weiter — die Wache bekommt ein
+  Winterbild, die Sommerkarte bleibt am Sommerabend.
+- **Quelle ersetzen**: derselbe Artikel, eine neue Datei. Jeder Verwender
+  zeigt sofort das neue Bild, denn er hält die Id und nicht die Datei. Die
+  alte Datei bleibt liegen, bis die nächste Sicherung sie hat — ein
+  versehentlich ersetztes Bild ist so nicht verloren.
+
 ---
 
 ## Ansicht
