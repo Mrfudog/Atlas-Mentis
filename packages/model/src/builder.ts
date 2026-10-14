@@ -58,6 +58,10 @@ export function answeredKeys(character: Entity, byId: ReadonlyMap<EntityId, Enti
  * je als Schritt da, sondern gesammelt im Schritt `equipment` vor dem
  * Namen.
  *
+ * **Beim Aufstieg gibt es keine Startausrüstung** (T-162): eine
+ * Ausrüstungswahl der ersten Klasse, die mit Startgold offen blieb, ist
+ * dort kein Schritt — sie stand als „: equipment" mit rohen Verweisen da.
+ *
  * **Eine Möglichkeit allein ist kein Schritt** (T-107): erlaubt die
  * Kampagne keine Talente (`rules.feats`), bleibt von „Steigerung oder
  * Talent" die Steigerung, und es gilt die Vorgabe der Wahl.
@@ -68,12 +72,11 @@ export function builderSteps(
   opts: { levelUp?: boolean; done?: ReadonlySet<string>; rules?: ChoiceRules } = {},
 ): BuilderStep[] {
   const alle = choicesAtCharacter(draft, byId);
-  const ausruestung = !opts.levelUp;
   const einzig = (c: ChoiceAtCharacter) =>
     c.choice.kind === 'option' && !!c.picks && offeredOptions(c.choice, choicesOf(c.source.entity), opts.rules).length <= 1;
   const wahlen = alle
     .map((c, i) => ({ c, i }))
-    .filter(({ c }) => !c.fixed && !einzig(c) && !opts.done?.has(choiceKey(c)) && !(ausruestung && c.choice.kind === 'equipment'))
+    .filter(({ c }) => !c.fixed && !einzig(c) && !opts.done?.has(choiceKey(c)) && c.choice.kind !== 'equipment')
     .sort((a, z) => (RANG[a.c.source.via] ?? 9) - (RANG[z.c.source.via] ?? 9) || a.i - z.i)
     .map(({ c }): BuilderStep => ({ id: `choice:${choiceKey(c)}`, kind: 'choice', at: c }));
   if (opts.levelUp) return [{ id: 'level', kind: 'level' }, ...wahlen];
@@ -125,7 +128,7 @@ export function setClassLevel(draft: Entity, classId: EntityId, level: number): 
  * An einem gewährten Merkmal merkt sich die Antwort ihre Gewährung
  * (`props.by`, `props.level`, T-107).
  */
-export function answerChoice(draft: Entity, at: ChoiceAtCharacter, picks: string[]): Entity {
+export function answerChoice(draft: Entity, at: ChoiceAtCharacter, picks: string[], items?: readonly string[]): Entity {
   const quelle = at.source.entity.id;
   const grant = at.source.grant;
   const schluessel = choiceKey(at);
@@ -140,7 +143,13 @@ export function answerChoice(draft: Entity, at: ChoiceAtCharacter, picks: string
       id: kantenId(draft, 'chose'),
       type: 'chose',
       to: quelle,
-      props: { choice: at.choice.id, picks, ...(grant ? { by: grant.by, level: grant.level } : {}) },
+      props: {
+        choice: at.choice.id,
+        picks,
+        ...(grant ? { by: grant.by, level: grant.level } : {}),
+        /* Die Stücke der offenen Stellen (T-162); leer heisst keine. */
+        ...(items?.some(Boolean) ? { items: [...items] } : {}),
+      },
     });
   }
   if (at.choice.kind === 'subclass' && at.source.via === 'hasClass') {

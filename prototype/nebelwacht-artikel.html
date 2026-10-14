@@ -16145,7 +16145,11 @@ function renderHowto(v){
       "answers, one chose edge per choice. What the answers give — skills, "+
       "ability bonuses, feats — is worked out on read, so a change to the "+
       "class reaches every character, and an answer to a choice that is gone "+
-      "shows as orphaned. What an item changes on the character is a field "+
+      "shows as orphaned. A choice is titled by its source and its subject "+
+      "(Fighter · Skill proficiencies (choose 2)). An equipment option that "+
+      "names a kind instead of an item (two martial weapons of your choice) "+
+      "is an open slot: the answer fills it with item ids (chose.items), and "+
+      "only an ordinary item of that kind counts. What an item changes on the character is a field "+
       "too (Effects: target, kind, value, when — worn, attuned, carried); "+
       "it counts while the inventory edge says the item is worn or attuned, "+
       "and it is worked out on read, so taking the gauntlets off takes the "+
@@ -16177,7 +16181,10 @@ function renderHowto(v){
         "chose → Fighter     skills: Athletics, Perception\n"+
         "chose → Fighter     martial-archetype: Champion\n"+
         "chose → Hill Dwarf  tools: Smith's tools\n"+
-        "  → proficient (worked out on read): Athletics, Perception, Smith's tools\n":"")+
+        "  → proficient (worked out on read): Athletics, Perception, Smith's tools\n"+
+        "Fighter  equipment-2: (a) a martial weapon and a shield or (b) two martial weapons\n"+
+        "chose → Fighter     equipment-2: b · items: Longsword, Warhammer\n"+
+        "  → open slot (b): 2 × Weapon, category martial, ordinary → both fit\n":"")+
       (REG.interfaces.Effects?
         "Gauntlets of Ogre Power  effects: ability.str set 19  (attuned)\n"+
         "holds → Gauntlets  tier: worn, attuned: yes\n"+

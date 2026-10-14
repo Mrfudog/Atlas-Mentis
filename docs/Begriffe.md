@@ -1257,6 +1257,30 @@ Inventar entsteht. Danach ist die Ausrüstung **Inventar wie jedes andere**
 (`carries`, `holds`, `Inventory.copper`) — kein zweiter Ort, an dem „was
 sie hat" steht.
 
+**Eine offene Stelle wird gefüllt, nicht abgetippt** (T-162). „Two martial
+weapons of your choice" nennt keinen Gegenstand, sondern eine Sorte; der
+Assistent zeigte den Satz und liess es dabei, und ins Inventar kam nichts.
+Jetzt liest das Modell den Satz (`itemSlotIn` — die gesprochene Form und
+die des Importers, „one weapon martial of your choice") und macht daraus
+eine Stelle mit Zahl, Art und Sorte; die Figur wählt je Stück einen
+Gegenstand, und die Antwort merkt sich die Ids (`chose.props.items`). Ein
+Feld an der Möglichkeit wäre die zweite Stelle neben dem Satz gewesen, und
+jede eingelesene Klasse hätte es nachgetragen gebraucht. **Geprüft wird
+mit derselben Regel, mit der die Auswahl fragt** (`slotAccepts`):
+gewöhnlich, die Kategorie, Nah- oder Fernkampf — am Server, bevor etwas ins
+Inventar kommt. Eine Übungswahl, deren Satz eine Werkzeugsorte nennt („an
+artisan's tools", „three musical instruments"), zieht ebenso aus den
+Gegenständen dieser Sorte, statt aus jedem Gegenstand oder aus einem
+Freitext.
+
+**Eine Wahl heisst nach Quelle und Sache** (T-162): „Fighter · Skill
+proficiencies (choose 2)". Sie hiess „: equipment" — die Überschrift las
+`name`, und an einem eingelesenen Artikel steht der Name in `Identity`
+(`entityName`). Was eine Wahl anbietet, sind Artikel, und Artikel stehen
+**als Verweise** da wie überall: `nw-text` zeichnet `[[weapon-0008|greataxe]]`,
+ein Klick zeigt die Kurzansicht, Strg-Klick öffnet einen Reiter. Eine Art
+für Möglichkeiten, die nur der Assistent kennt, gäbe es dann zweimal.
+
 **Ein Merkmal, das allein in einem Absatz steht, ist eingebettet** (W6).
 5e.tools zieht Merkmale in andere hinein — der Battle Master beginnt mit
 einem Kopf, der „Student of War" und „Combat Superiority" enthält, und

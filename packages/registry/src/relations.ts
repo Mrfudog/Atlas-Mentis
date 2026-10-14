@@ -333,6 +333,10 @@ export const relations: Record<string, RelationDef> = {
    * An einem Merkmal, das mehrfach gewährt wird, sagen `by` und `level`,
    * zu welcher Kante `grants` die Antwort gehört (T-107, E-027): die
    * Attributssteigerung auf Stufe 4 und die auf 8 sind zwei Antworten.
+   *
+   * `items` füllt die offenen Stellen der gewählten Möglichkeit (T-162):
+   * „two martial weapons of your choice" sind zwei Artikel-Ids, der Reihe
+   * nach; geprüft wird beim Ausrüsten (`slotAccepts`).
    */
   chose: {
     type: 'chose',
@@ -349,6 +353,7 @@ export const relations: Record<string, RelationDef> = {
         picks: { type: 'array', items: { type: 'string' }, title: 'Picks' },
         by: { type: 'string', title: 'Granted by' },
         level: { type: 'number', min: 1, max: 20, title: 'At level' },
+        items: { type: 'array', items: { type: 'string' }, title: 'Items for open slots' },
       },
     },
   },
