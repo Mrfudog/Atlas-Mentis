@@ -79,7 +79,7 @@ export interface Stueck {
     | 'karte';
   text?: string;
   /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
-  bild?: { wert: string; caption: string; alt: string };
+  bild?: { wert: string; caption: string; alt: string; version?: string };
   zellen?: Zelle[];
   prosa?: Prosa[];
 }
@@ -243,7 +243,7 @@ export function anordnen(
     beschreibungZeigen?: boolean;
     rest: boolean;
     /** Das Bild des Artikels (`bildDes`, T-114) — fürs Element `image`. */
-    bild?: { wert: string; caption: string; alt: string } | null;
+    bild?: { wert: string; caption: string; alt: string; version?: string } | null;
   },
 ): Stueck[] {
   const felderDa = new Set<string>();

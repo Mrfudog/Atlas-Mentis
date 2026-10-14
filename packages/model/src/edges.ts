@@ -127,6 +127,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       /* T-119: eine Fassung zeigt das Bild nicht, sie stammt davon ab. */
       [M + 'assets.ts']: ['inLayer', 'variantOf'],
       [S + 'bilder.ts']: ['inLayer', 'variantOf'],
+      /* „Replace › as a new version" schickt das alte Bild mit. */
+      [W + 'kern/api.ts']: ['variantOf'],
     },
   },
   {

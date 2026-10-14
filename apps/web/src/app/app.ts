@@ -71,6 +71,7 @@ import { Live } from './kern/live';
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
+          <a routerLink="/images" routerLinkActive="an" ariaCurrentWhenActive="page">Images</a>
           @if (session.leitung()) {
             <a routerLink="/werkbank" routerLinkActive="an" ariaCurrentWhenActive="page">Workbench</a>
           }

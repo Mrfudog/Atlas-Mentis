@@ -23,7 +23,7 @@ const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source', 'Status', 'Tags'];
 interface Stueck {
   kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild';
   key: string;
-  bild?: { wert: string; caption: string; alt: string };
+  bild?: { wert: string; caption: string; alt: string; version?: string };
   text?: string;
   felder?: { ref: string; label: string; wert: string; lang: boolean }[];
   prosa?: { ref: string; key: string; label: string; wert: string }[];

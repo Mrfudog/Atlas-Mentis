@@ -71,6 +71,14 @@ export const routes: Routes = [
     loadComponent: () => import('./karten/play').then((m) => m.Play),
     title: 'Play · Atlas Mentis',
   },
+  /* Die Galerie (T-119): alle Bilder, die man sieht — gefiltert nach
+     Klasse, Marke, Ebene, „unused". Ein Bild selbst ist ein Artikel. */
+  {
+    path: 'images',
+    canActivate: [wache],
+    loadComponent: () => import('./bilder/galerie').then((m) => m.Galerie),
+    title: 'Images · Atlas Mentis',
+  },
   /* Werkbank (W9): Prüfungen und Massenänderungen. Die Wache lässt jeden
      Angemeldeten hinein; was er sieht, entscheidet der Server — die Seite
      sagt nur, wem sie etwas zeigt. */
