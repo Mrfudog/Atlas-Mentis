@@ -132,9 +132,9 @@ export const views: Record<string, ViewDef> = {
   /**
    * **Der Druck** (T-110, E-030 b): „Print" an der Artikelseite. Ein Blatt
    * A4 hat keine Seitenspalte und keine Knöpfe — also kein Bild, das eine
-   * Seite füllt, keine Kantenliste, keine Meinungen; dafür alles, was man am
-   * Tisch nachliest, und was kein Element nimmt, am Ende wie auf der
-   * Artikelseite. Eine Art passt es an wie jede Ansicht (`InterfaceDef.views`).
+   * Seite füllt, keine Kantenliste, keine Meinungen, kein Vorbereitungsstand;
+   * dafür alles, was man am Tisch nachliest. Eine Art passt es an wie jede
+   * Ansicht (`InterfaceDef.views`).
    */
   print: {
     label: 'Print',
@@ -145,13 +145,39 @@ export const views: Record<string, ViewDef> = {
     relations: false,
     bindings: true,
     image: false,
-    rest: true,
+    /* Kein Rest: die Feldtabelle nimmt schon alles — ausser dem
+       Vorbereitungsstand, der am Tisch nichts sagt (T-110 Schritt 7). Mit
+       Rest stünde er doch wieder am Ende. */
     layout: [
       { id: 'p-desc', el: 'description' },
-      { id: 'p-f', el: 'fields', fields: 'all' },
+      { id: 'p-f', el: 'fields', fields: 'all', except: ['Status'] },
       { id: 'p-b', el: 'prose', fields: 'all' },
       { id: 'p-parts', el: 'parts' },
       { id: 'p-c', el: 'composed' },
+    ],
+  },
+
+  /**
+   * **Ein Handzettel** (T-110 Schritt 7) — die erste eigene Ansicht: was man
+   * den Spielenden über einen Ort, eine Szene, eine Figur in die Hand gibt.
+   * Beschreibung, Absatz und Vorlesetext, keine Werte und keine Geheimnisse.
+   * Was eine Spielerin nicht sehen darf, hält der Server ohnehin zurück; der
+   * Handzettel lässt auch weg, was die Leitung beim Drucken für sich sieht.
+   * Gewählt beim Drucken und auf der Kachel.
+   */
+  handout: {
+    label: 'Handout',
+    order: 5,
+    fields: 'none',
+    description: true,
+    composed: false,
+    relations: false,
+    bindings: true,
+    image: true,
+    layout: [
+      { id: 'h-img', el: 'image' },
+      { id: 'h-desc', el: 'description' },
+      { id: 'h-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
     ],
   },
 };

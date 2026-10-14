@@ -122,8 +122,8 @@ describe('seed registry', () => {
      Sonderfällen mit einem Dropdown davor. Und **die Anordnung wohnt am
      Typ**: was für eine Artikelart eigen ist, steht bei ihr. */
   it('keeps the views to how much, and the arrangement at the type', () => {
-    /* Vier seit T-110: der Druck ist ein Ort wie die anderen drei. */
-    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'overview', 'print', 'quick']);
+    /* Vier, nach denen ein Ort fragt (seit T-110 mit dem Druck), und der Handzettel als erste eigene. */
+    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'handout', 'overview', 'print', 'quick']);
     const mitEigener = Object.keys(seedRegistry.interfaces).filter((n) => {
       const v = seedRegistry.interfaces[n]?.views?.['full'];
       return Array.isArray(v) && v.length;
