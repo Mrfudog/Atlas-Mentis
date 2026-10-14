@@ -621,7 +621,7 @@ export interface ItemBook {
 const ITEM_PLACED = new Set([
   'Item.itemType', 'Item.rarity', 'Item.attunement', 'Item.attunementNote', 'Item.appliesTo',
   'Item.charges', 'Item.recharge', 'Item.rechargeAmount', 'Item.bonusWeapon', 'Item.bonusAc',
-  'Item.bonusSpellAttack', 'Item.bonusSave', 'Item.copperPrice', 'Item.weight',
+  'Item.bonusSpellAttack', 'Item.bonusSave', 'Item.copperPrice', 'Item.priceNote', 'Item.weight',
   'Weapon.category', 'Weapon.damage', 'Weapon.damage2', 'Weapon.damageType', 'Weapon.range',
   'Weapon.ammoType', 'Armor.ac', 'Armor.armorType', 'Armor.strength', 'Armor.stealthDisadvantage',
 ]);
@@ -718,7 +718,11 @@ export function itemBook(
     }
     lines.push({ label: 'Charges', text: teile.join(', '), ref: 'Item.charges' });
   }
-  if (num(it['copperPrice']) !== null) lines.push({ label: 'Cost', text: coinText(num(it['copperPrice'])!), ref: 'Item.copperPrice' });
+  /* Ein geschätzter Preis sagt es dazu (T-139): „4,000 gp (estimated: DMG 2024 rare)". */
+  if (num(it['copperPrice']) !== null) {
+    const herkunft = str(it['priceNote']);
+    lines.push({ label: 'Cost', text: coinText(num(it['copperPrice'])!) + (herkunft ? ` (${herkunft})` : ''), ref: 'Item.copperPrice' });
+  }
   if (num(it['weight']) !== null) {
     lines.push({ label: 'Weight', text: fieldText(registry, props['weight'], num(it['weight']), mode), ref: 'Item.weight' });
   }
