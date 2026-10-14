@@ -5,6 +5,7 @@ import {
   answerChoice,
   builderSteps,
   choiceLabel,
+  choiceText,
   choiceTitle,
   choicesAtCharacter,
   choicesOf,
@@ -75,7 +76,7 @@ describe('Wahlen benennen (T-162)', () => {
       'Mistwarden · Starting equipment',
       'Mistwarden · Warden Style',
       'Lamplighter · Tool proficiencies',
-      'Lamplighter · Other proficiencies (choose 3)',
+      'Lamplighter · Tool proficiencies (choose 3)',
     ]);
   });
 
@@ -125,6 +126,7 @@ describe('Werkzeugwahl aus ihrer Sorte (T-162)', () => {
     expect(tools?.from).toEqual({ enumRef: ['Item'], where: { component: 'Item', property: 'itemType', value: ['artisan tools'] } });
     expect(andere?.from?.where?.value).toEqual(['instrument']);
     expect(andere?.count).toBe(3);
+    expect(choiceText(andere!)).toBe('three [[item-0009|musical instruments]] of your choice');
   });
 });
 

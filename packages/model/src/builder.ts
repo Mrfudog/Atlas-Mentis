@@ -14,6 +14,7 @@
  */
 
 import { answerKey, answersOf, choicesAtCharacter, choicesOf, offeredOptions, type ChoiceAtCharacter, type ChoiceRules } from './choices.js';
+import { optionSlots } from './equipment.js';
 import type { Entity, EntityId, Relation } from './types.js';
 
 export type BuilderStep =
@@ -86,7 +87,13 @@ export function builderSteps(
     { id: 'class', kind: 'pick', edge: 'hasClass', type: 'Class' },
     { id: 'abilities', kind: 'abilities' },
     ...wahlen,
-    { id: 'equipment', kind: 'equipment', choices: alle.filter((c) => c.choice.kind === 'equipment' && !c.fixed) },
+    /* Das Feste fragt nur, wenn es eine offene Stelle hat (T-162):
+       „one artisan's tools of your choice" in der Ausrüstung des Hintergrunds. */
+    {
+      id: 'equipment',
+      kind: 'equipment',
+      choices: alle.filter((c) => c.choice.kind === 'equipment' && (!c.fixed || (c.choice.from?.options ?? []).some((o) => optionSlots(o).length))),
+    },
     { id: 'details', kind: 'details' },
   ];
 }

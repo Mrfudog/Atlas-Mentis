@@ -278,7 +278,8 @@ export function fixedEquipmentLines(character: Entity, byId: ReadonlyMap<EntityI
     for (const z of festeZeilen(q.entity, q.art)) raus.push({ source: q.entity.id, text: plainEquipmentText(z), raw: z });
     for (const c of ausruestungswahlen(q.entity)) {
       const o = c.from?.options;
-      if (o?.length === 1 && (c.level ?? 1) <= 1 && (c.when !== 'multiclass')) raus.push({ source: q.entity.id, text: plainEquipmentText(o[0]!.label), raw: o[0]!.label });
+      /* Mit offener Stelle steht es als Wahl im Schritt (T-162). */
+      if (o?.length === 1 && (c.level ?? 1) <= 1 && c.when !== 'multiclass' && !optionSlots(o[0]!).length) raus.push({ source: q.entity.id, text: plainEquipmentText(o[0]!.label), raw: o[0]!.label });
     }
   }
   return raus;

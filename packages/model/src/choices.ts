@@ -479,6 +479,8 @@ export function choiceText(c: Choice): string {
     satz = `${b.map((x) => `+${x}`).join('/')}${b.length < n ? ` to ${n}` : ''} from ${f.values.join(', ')}${c.repeat ? ' (the same one more than once allowed)' : ''}`;
   } else if (f.values?.length) satz = `Choose ${n} from ${f.values.join(', ')}`;
   else if (f.interfaces?.length) satz = `Choose ${n} ${[...(f.tags ?? []), f.interfaces.join(' or ').toLowerCase()].join(' ')}`;
+  /* Eine Werkzeugwahl sagt in ihrer Notiz, aus welcher Sorte (T-162). */
+  else if (f.enumRef?.length && f.where && c.note) satz = c.note;
   else if (f.enumRef?.length) satz = `Choose ${n} from ${f.enumRef.join(', ')}`;
   else satz = c.note ?? `Choose ${n}`;
   const zusatz = [c.note && satz !== c.note ? c.note : '', c.when === 'start' ? 'first class only' : c.when === 'multiclass' ? 'when multiclassing' : '']
@@ -526,7 +528,9 @@ export function choiceLabel(c: Choice): string {
   const notiz = c.note?.trim() ?? '';
   const kurz = notiz && notiz.length <= 32 && !notiz.includes('[[') && !/^\d|\bof your choice\b|^also:/i.test(notiz) ? notiz : '';
   let name: string;
-  if (kind === 'proficiency') name = UEBUNG[basis] ?? (kurz || ausId(c.id) || SORTE['proficiency']!);
+  /* Eine Wahl aus Gegenständen ist eine Werkzeugwahl, wie auch immer ihre Id heisst. */
+  if (kind === 'proficiency' && c.from?.enumRef?.length === 1 && c.from.enumRef[0] === 'Item') name = UEBUNG['tools']!;
+  else if (kind === 'proficiency') name = UEBUNG[basis] ?? (kurz || ausId(c.id) || SORTE['proficiency']!);
   else if (kind === 'equipment') name = SORTE['equipment']!;
   else if (kind === 'subclass') name = ausId(c.id) || SORTE['subclass']!;
   else name = kurz || (kind === 'spell' && (c.count ?? 1) > 1 ? 'Spells' : SORTE[kind] ?? (ausId(c.id) || kind));
