@@ -536,6 +536,7 @@ try {
     const ordner = mkdtempSync(join(tmpdir(), 'durchstich-buch-'));
     const name = 'zzz_durchstich_ebene_je_buch.sql';
     const name088 = 'zzz_durchstich_ebenen_gruppen.sql';
+    const name094 = 'zzz_durchstich_ebenen_herausgeber.sql';
     const BUECHER = ['e5_book_phb', 'e5_book_xge', 'e5_book_scag'];
     const sicht = async () => {
       const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
@@ -629,10 +630,40 @@ try {
       pruefe('Gruppen von Ebenen: aus schlägt an', !ohne.je.get('camp_probe_c')?.has('e5_probe_r1') && ohne.je.get('camp_probe_c')?.has('e5_probe_r2'), '');
       const quellen = await (await get(admin, '/api/sources')).json();
       pruefe('Gruppen von Ebenen: Quellenkürzel erklärt', quellen.sources?.PHB === "Player's Handbook", JSON.stringify(quellen));
+
+      /* Herausgeber (T-094): jedes Buch hängt danach an „Official", keines
+         der drei an einer Blocklist-Kategorie; niemand verliert etwas. */
+      writeFileSync(join(ordner, name094), readFileSync(join(DIST, '..', 'migrations', '035_ebenen_herausgeber.sql'), 'utf8'));
+      const vor094 = await sicht();
+      await migrate(pool, { env: {} }, ordner);
+      const nach094 = await sicht();
+      const teil = (id) => (nach094.alle.get(id)?.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to);
+      pruefe(
+        'Herausgeber: jedes Buch hängt an Official, die Kategorie bleibt',
+        BUECHER.every((b) => teil(b).includes('e5_publisher_official')) && teil('e5_book_phb').includes('e5_group_core')
+          && nach094.alle.get('e5_publisher_official')?.components['Layer']?.groupBy === 'publisher'
+          && !nach094.alle.has('e5_publisher_partnered') && !nach094.alle.has('e5_group_comedy'),
+        BUECHER.map((b) => `${b}→${teil(b).join('+')}`).join(', '),
+      );
+      const verloren094 = [...vor094.je].flatMap(([k, ids]) => [...ids].filter((id) => !nach094.je.get(k)?.has(id)).map((id) => `${k}: ${id}`));
+      pruefe('Herausgeber: keine Kampagne verliert einen Artikel', verloren094.length === 0, verloren094.join(', '));
+      const z094 = (await (await get(admin, '/api/campaigns/camp_probe_c/layers')).json()).layers;
+      pruefe(
+        'Herausgeber: die Kampagnenseite nennt ihn, und eigene Ebenen sind Homebrew',
+        z094.some((l) => l.id === 'e5_book_phb' && l.publisher === 'Official') && z094.some((l) => l.id === 'e5_publisher_official' && l.groupBy === 'publisher')
+          && z094.some((l) => l.id === 'ly_probe_a' && l.publisher === 'Homebrew'),
+        JSON.stringify(z094.map((l) => [l.id, l.publisher, l.groupBy])),
+      );
+      const q094 = await (await get(admin, '/api/sources')).json();
+      pruefe('Herausgeber: je Kürzel genannt', q094.publishers?.PHB === 'Official', JSON.stringify(q094.publishers));
+      /* Ein zweiter Lauf hängt nichts doppelt. */
+      await pool.query('delete from schema_migrations where name = $1', [name094]);
+      await migrate(pool, { env: {} }, ordner);
+      pruefe('Herausgeber: ein zweiter Lauf hängt nichts doppelt', (await sicht()).alle.get('e5_book_phb')?.relations?.filter((r) => r.to === 'e5_publisher_official').length === 1, '');
     } finally {
       await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...BUECHER]]);
-      await pool.query("delete from entity where id like 'e5_group_%'");
-      await pool.query('delete from schema_migrations where name = any($1)', [[name, name088]]);
+      await pool.query("delete from entity where id like 'e5_group_%' or id like 'e5_publisher_%'");
+      await pool.query('delete from schema_migrations where name = any($1)', [[name, name088, name094]]);
       await pool.end();
       rmSync(ordner, { recursive: true, force: true });
     }

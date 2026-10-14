@@ -290,4 +290,24 @@ describe('import --layers', () => {
     expect((await runImport(repo, datei, { layers: true })).geschrieben).toBe(0);
     await expect(runImport(repo, datei, { layers: true, onlyNew: true })).rejects.toThrow(/allein/);
   });
+
+  it('hängt an den Herausgeber des Importers, ausser die Leitung hat einen eigenen gewählt (T-094)', async () => {
+    const verlag = (id: string, name: string, n: number): Entity => ({
+      id,
+      interfaces: ['Layer'],
+      name,
+      components: { Identity: { name, id: `layer-00${n}` }, Status: { status: 'ready' }, Layer: { kind: 'group', order: 0, groupBy: 'publisher' } },
+    });
+    const mitBuch = (partOf: string[]) => ({
+      ...buch({ kind: 'book', order: 0, abbreviation: 'ERLW' }),
+      relations: partOf.map((to) => ({ id: `e5_book_erlw~partOf-${to}`, type: 'partOf', to })),
+    });
+    const datei = { format: 'nebelwacht/1', entities: [verlag('e5_publisher_official', 'Official', 92), mitBuch(['e5_publisher_official'])] };
+    const repo = await mitKonto([mitBuch([])]);
+    await runImport(repo, datei, { layers: true });
+    expect(((await repo.getEntity('e5_book_erlw'))!.relations ?? []).map((x) => x.to)).toEqual(['e5_publisher_official']);
+    const eigen = await mitKonto([verlag('ly_dritte', 'Third party', 93), mitBuch(['ly_dritte'])]);
+    await runImport(eigen, datei, { layers: true });
+    expect(((await eigen.getEntity('e5_book_erlw'))!.relations ?? []).map((x) => x.to)).toEqual(['ly_dritte']);
+  });
 });

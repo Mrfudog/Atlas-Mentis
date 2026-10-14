@@ -30,6 +30,8 @@ import {
   groupMembers,
   isGroupLayer,
   layersInGroup,
+  groupingOf,
+  publisherOf,
   offLayers,
   resolvedStack,
   withOff,
@@ -247,6 +249,9 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         id: e.id,
         name: entityName(e),
         kind: wort('kind'),
+        /* Wer sie herausgibt, gerechnet (T-094, E10); bei einer Gruppe, wonach sie ordnet. */
+        publisher: publisherOf(alle, e),
+        ...(gruppe ? { groupBy: groupingOf(e) } : {}),
         /* Die Gruppen, an denen sie hängt, und bei einer Gruppe ihre Mitglieder (T-088). */
         groups: (e.relations ?? []).filter((r) => r.type === GROUP_RELATION && isGroupLayer(alle.get(r.to))).map((r) => r.to),
         ...(gruppe ? { members: mitglieder.get(e.id) ?? [] } : {}),
