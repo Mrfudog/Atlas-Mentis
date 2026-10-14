@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { Api, type ListenFrage, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { SpielerListe } from '../kern/spieler';
 
 /** Wo die Vorschläge herkommen: eine Suche am Server je Gruppe. */
 export interface Suchgruppe {
@@ -17,11 +18,13 @@ interface Vorschlag {
   art: string;
   /** Trägt eine der bevorzugten Marken (`target.tags`). */
   passt: boolean;
-  /**
-   * Was daneben stehen darf — gedacht für den Kontonamen bei einer
-   * Spielerfigur, sobald E-007 entschieden ist. Heute füllt es niemand.
-   */
+  /** Was daneben steht — der Name des Spielers an seiner Figur (T-100, E-007). */
   zusatz?: string;
+  /**
+   * **Ein Spieler steht für seine Figuren** (T-100, E-007): gewählt werden
+   * diese Ids, nicht das Konto — im Artikel steht ein Träger (REQ-199).
+   */
+  ids?: string[];
 }
 
 /**
@@ -61,7 +64,7 @@ interface Vorschlag {
         <input
           type="search"
           [attr.aria-label]="label()"
-          [placeholder]="frei() ? 'Search or type…' : 'Search an article…'"
+          [placeholder]="frei() ? 'Search or type…' : spieler() ? 'Character, party, faction or player…' : 'Search an article…'"
           [value]="suche()"
           (input)="tippen($any($event.target).value)"
           (focus)="offen.set(true)"
@@ -198,10 +201,13 @@ export class Mehrfach {
   readonly label = input<string>('Values');
   /** Diese Id wird nicht angeboten — ein Verweis auf sich selbst. */
   readonly ausser = input<string>('');
+  /** Auch Spieler anbieten (Sichtbarkeit, T-100): ein Spieler wählt seine Figuren. */
+  readonly spieler = input<boolean>(false);
   readonly werteChange = output<string[]>();
 
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
+  private readonly spielerListe = inject(SpielerListe);
 
   protected readonly suche = signal('');
   protected readonly offen = signal(false);
@@ -219,8 +225,27 @@ export class Mehrfach {
           .filter((w) => w.toLowerCase().includes(q))
           .map((w) => ({ wert: w, text: w, art: 'List', passt: false }))
       : [];
+    /* Ein Spieler, dessen Name passt, mit allen Figuren, die noch fehlen. */
+    const spieler: Vorschlag[] =
+      q && this.spieler()
+        ? this.spielerListe
+            .liste()
+            .filter((p) => p.name.toLowerCase().includes(q))
+            .flatMap((p) => {
+              const fehlen = p.actors.filter((a) => !schon.has(a.id));
+              return fehlen.length
+                ? [{ wert: `player:${p.name}`, text: p.name, art: 'Player', passt: true,
+                     ids: fehlen.map((a) => a.id), zusatz: fehlen.map((a) => a.name).join(', ') }]
+                : [];
+            })
+        : [];
+    const wem = this.spieler() ? this.spielerListe.vonFigur() : new Map<string, string>();
     const raus = new Map<string, Vorschlag>();
-    for (const v of [...fest, ...this.treffer()]) if (!schon.has(v.wert) && !raus.has(v.wert)) raus.set(v.wert, v);
+    for (const v of [...spieler, ...fest, ...this.treffer()]) {
+      if (schon.has(v.wert) || raus.has(v.wert)) continue;
+      const zusatz = v.zusatz ?? wem.get(v.wert);
+      raus.set(v.wert, zusatz ? { ...v, zusatz } : v);
+    }
     return [...raus.values()].sort((a, b) => Number(b.passt) - Number(a.passt));
   });
 
@@ -231,11 +256,18 @@ export class Mehrfach {
     inject(DestroyRef).onDestroy(() => {
       if (this.uhr) clearTimeout(this.uhr);
     });
+    /* Ausserhalb des Zeichnens: eine Anfrage setzt Signale (`Api.laufend`). */
+    queueMicrotask(() => {
+      if (this.spieler()) this.spielerListe.laden();
+    });
   }
 
   protected text(w: string): string {
     if (!this.verweise()) return w;
-    return this.namen().get(w) ?? this.bestand.name()(w) ?? w;
+    const name = this.namen().get(w) ?? this.bestand.name()(w) ?? this.spielerListe.figurName().get(w) ?? w;
+    /* Die Figur mit ihrem Spieler: „Rook (Sela)". */
+    const wer = this.spieler() ? this.spielerListe.vonFigur().get(w) : undefined;
+    return wer ? `${name} (${wer})` : name;
   }
 
   private typLabel(t: string): string {
@@ -288,6 +320,10 @@ export class Mehrfach {
   }
 
   protected dazu(v: Vorschlag): void {
+    if (v.ids) {
+      this.setze([...this.werte(), ...v.ids]);
+      return;
+    }
     if (this.verweise()) this.namen.update((m) => new Map(m).set(v.wert, v.text));
     this.setze([...this.werte(), v.wert]);
   }

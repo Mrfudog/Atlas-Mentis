@@ -730,6 +730,29 @@ einzelnen, zählt die stärkste Rolle irgendwo. **Vererbt wird nichts.** Wer
 durchfällt, bekommt in der Liste nichts und beim Einzelabruf 404. Die
 Verwaltung (`is_admin`) sieht alles.
 
+**Spieler und Gruppe in der Auswahl** (T-100, E-007). Die Maske bietet in
+`revealedTo` und `hiddenFrom` auch **Spieler** an — gespeichert werden ihre
+Figuren, nie das Konto (REQ-199): ein Spieler zu wählen heisst, die
+Figuren zu wählen, die er heute in der laufenden Kampagne führt
+(`GET /api/players`, ohne Konto-Id). Eine Figur, die er später bekommt,
+ist nicht mitgemeint; wer „alle Spieler" meint, nennt die Gruppe.
+**Jede Kampagne hat eine Gruppe**: beim Anlegen (`pt_<kampagne>`, in ihrer
+Ebene, `partyOf`), für ältere Migration 039. Bekommt ein Konto mit Rolle
+`player` eine Figur zugeteilt (Kampagnenseite oder Einladung), kommt sie
+in die erste Gruppe dieser Kampagne (`memberOfParty`, `inDieGruppe`) —
+ausser sie steht schon in einer, oder die Leitung sagt `party: false`.
+Danach ist es eine gewöhnliche Kante an der Figur und wird dort geändert.
+
+```mermaid
+flowchart LR
+  K[Kampagne] -->|beim Anlegen| P[Party pt_…]
+  P -- partyOf --> K
+  F[Figur] -- memberOfParty --> P
+  A[Konto, Rolle player] -. app_user_actor .-> F
+  V["revealedTo / hiddenFrom"] --> P
+  V --> F
+```
+
 **Der Vorbereitungsstand ist Teil der groben Frage** (REQ-237, D72): wer
 nicht `gm` oder `co-gm` der Kampagne ist, der der Artikel gehört, sieht nur
 Artikel mit `Status.status: ready` — **ein Artikel ohne Status-Karte oder
