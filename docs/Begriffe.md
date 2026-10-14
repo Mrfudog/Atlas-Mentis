@@ -856,6 +856,32 @@ beantwortet hat. Gespeichert werden die **Grundwerte** am Statblock; Boni
 aus Abstammung und Wahlen kommen beim Lesen dazu (`chosenResult`) — sonst
 erreichte „+2 statt +1" an der Abstammung keine bestehende Figur.
 
+**Was die neue Stufe bringt, steht beim Aufstieg da** (T-095). Ein
+Aufstieg, der nur die Zahl erhöht, lässt die Spielerin suchen, was sie
+jetzt kann. Die Merkmale stehen schon an der Klasse — `grants` mit der
+Stufe an der Kante —, also nennt der Aufstieg sie, und was davon fragt
+(Unterklasse, Kampfstil), ist ohnehin ein Schritt. **Eine Klasse ist ein
+Eintrag:** Klasse, Stufe, Unterklasse und die Antworten auf ihre Wahlen
+stehen am Artikel zusammen, weil sie zusammengehören; gespeichert bleiben
+sie, wie sie sind — die Kante `hasClass` und je Antwort eine Kante
+`chose` —, nur gezeigt wird eins. Eine zweite Stelle für die Stufe gibt
+es nicht.
+
+**Ein Wert der Reihe ist einmal da** (T-095). Die Standardreihe, ein Wurf
+und der Gruppenpool sind sechs Werte zum Verteilen, keine Auswahlliste je
+Attribut. Wer einen schon vergebenen Wert wählt, tauscht: das andere
+Attribut bekommt den bisherigen. So kann keine Verteilung doppelt werden,
+und niemand muss erst einen Wert freiräumen.
+
+**Eine Sprachwahl wählt aus den Sprachen** (T-095, REQ-251). Ältere Wahlen
+sagen nur „two standard languages of your choice"; daraus wurde ein
+Freitext, obwohl es die Sprachen als Artikel gibt. Gelesen wird so ein
+Satz als Wahl aus `Language` — gespeichert wird nichts dazu. Welche
+Sprachen an einem Tisch Sinn ergeben, sagt die Kampagne
+(`Campaign.languages`); leer heisst jede. Ein Feld mit Häkchen und keine
+Kante, weil Übungen Namen halten und die Maske für Namen aus einer Art
+schon Häkchen zeigt.
+
 **Ein Attributsverfahren ist ein Artikel** (E-016 a). Standardreihe,
 Punktekauf und Würfeln sind drei Formen derselben Frage, und die Leitung
 wollte eigene dazu erfinden — den Gruppenpool, bei dem alle dieselben sechs

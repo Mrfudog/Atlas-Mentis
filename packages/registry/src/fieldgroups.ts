@@ -2149,6 +2149,12 @@ export const fieldGroups = {
           enum: ['gm', 'players'],
           default: 'gm',
         },
+        /* **Die Sprachen dieser Kampagne** (REQ-251, T-095): welche
+           Sprachen am Tisch sinnvoll oder möglich sind. Sprachwahlen im
+           Assistenten bieten nur diese an; leer heisst jede. Namen von
+           `Language`-Artikeln, wie eine Übung sie hält — die Art schlägt
+           vor, die Liste hält nicht (M6). */
+        languages: { type: 'array', items: { type: 'string' }, enumRef: ['Language'], title: 'Languages in play' },
       },
     },
   },

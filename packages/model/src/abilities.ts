@@ -177,3 +177,31 @@ export function assignmentProblem(
   }
   return null;
 }
+
+/**
+ * **Einen Wert vergeben, ohne zu doppeln** (T-095). Bei einer festen Reihe,
+ * einem eigenen Wurf und dem Gruppenpool steht jeder Wert genau einmal zur
+ * Verfügung. Ist der gewählte schon vergeben, **tauschen** die beiden
+ * Attribute: das andere bekommt den bisherigen Wert dieses (oder keinen).
+ * Eine Verteilung kann so nie doppelt werden, und niemand muss erst einen
+ * Wert freiräumen. Der Punktekauf tauscht nicht — dort darf ein Wert
+ * mehrfach stehen, es zählt nur das Budget.
+ */
+export function assignScore(
+  scores: Readonly<Record<string, number | undefined>>,
+  abilities: readonly string[],
+  ability: string,
+  value: number | undefined,
+  m: AbilityMethod,
+  pool?: readonly number[],
+): Record<string, number | undefined> {
+  const neu: Record<string, number | undefined> = { ...scores, [ability]: value };
+  if (value === undefined || m.method === 'pointBuy') return neu;
+  const vorrat = m.method === 'array' ? (m.scores ?? []) : (pool ?? []);
+  const verfuegbar = vorrat.filter((w) => w === value).length;
+  const andere = abilities.filter((a) => a !== ability && scores[a] === value);
+  if (andere.length < verfuegbar || !andere.length) return neu;
+  /* Ausgeschöpft: das erste Attribut, das den Wert hält, bekommt den alten. */
+  neu[andere[0]!] = scores[ability];
+  return neu;
+}
