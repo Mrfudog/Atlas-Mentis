@@ -22,12 +22,12 @@ export const ELEMENTE: { el: LayoutElementKind; label: string; was: string; draw
   { el: 'composed', label: 'Sections', was: 'What it is composed of (traits, actions …), per section.', drawn: true },
   { el: 'parts', label: 'Parts', was: 'The parts of a chapter or scene, in their order.', drawn: true },
   { el: 'relations', label: 'Relations', was: 'Its edges with their targets. The article page has them in its side column.', drawn: true },
-  { el: 'linked', label: 'Linked', was: 'The fields of what hangs on an asField edge (the statblock of a creature).', drawn: false },
+  { el: 'linked', label: 'Linked', was: 'The fields of what hangs on an asField edge (the statblock of a creature), editable in place; without one, Create and From a template.', drawn: true },
   { el: 'usedBy', label: 'Used by', was: 'Who composes this article, by creature type.', drawn: false },
   { el: 'standing', label: 'Standing', was: 'Who thinks what of whom.', drawn: false },
   { el: 'image', label: 'Image', was: 'The image of the article.', drawn: false },
   { el: 'sheet', label: 'Character sheet', was: 'The sheet of a creature.', drawn: false },
-  { el: 'inventory', label: 'Inventory', was: 'The containers and what they hold.', drawn: false },
+  { el: 'inventory', label: 'Inventory', was: 'The inventory it carries and what that holds, as a list (the grid comes later).', drawn: true },
   { el: 'tabs', label: 'Tabs', was: 'Named groups; a page shows them one after the other.', drawn: true },
 ];
 

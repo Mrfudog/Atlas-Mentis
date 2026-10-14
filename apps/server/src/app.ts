@@ -2706,11 +2706,45 @@ export function buildApp({
 
       const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
       known.set(id, type);
-      const issues = validateEntity(registry, entity, { knownTypes: known, stageOf: stageBases([...stand.alle, entity]) });
+      /* **Aus einer Vorlage angelegt** (T-125): eine Instanz nennt ihre
+         Vorlage mit `instanceOf`. Die muss es geben, sie muss von derselben
+         Art sein, und wer anlegt, muss sie sehen — sonst läse er über die
+         Instanz, was ihm verborgen ist. Geprüft wird aufgelöst, gespeichert
+         ausgedünnt wie beim Schreiben: die Vorgaben der Art stünden sonst
+         an der Instanz und verdeckten die Werte der Vorlage. */
+      let pruefling = entity;
+      let zuSchreiben = entity;
+      if (isInstance(entity)) {
+        const vorlageId = relations.find((r) => r.type === 'instanceOf')?.to ?? '';
+        const vorlage = stand.map.get(vorlageId);
+        const [sichtbar] = vorlage ? await sieve(request, [vorlage], stand.map) : [];
+        if (!vorlage || !sichtbar || primaryInterface(vorlage) !== type) {
+          return { code: 400, body: { error: 'Diese Vorlage gibt es nicht, oder sie ist von einer anderen Art.' } };
+        }
+        /* Die Vorgaben der Art gelten nicht: die Vorlage gibt, was fehlt,
+           und eine Vorgabe, die sie nicht trägt (`system`), stünde sonst
+           als Abweichung da. Bleiben Name, Nummer, Stand, Sichtbarkeit und
+           was ausdrücklich mitkam. */
+        const genannt = new Set(Object.keys((body?.fields ?? {}) as Record<string, unknown>));
+        const eigen: Record<string, Record<string, unknown>> = {};
+        for (const [t, karte] of Object.entries(components)) {
+          if (t === 'Identity' || t === STATUS_COMPONENT || t === 'Visibility') {
+            eigen[t] = karte;
+            continue;
+          }
+          for (const [k, v] of Object.entries(karte)) if (genannt.has(`${t}.${k}`)) (eigen[t] ??= {})[k] = v;
+        }
+        entity.components = eigen;
+        const alle = new Map(stand.map);
+        alle.set(id, entity);
+        pruefling = resolveInstance(alle, entity);
+        zuSchreiben = thinInstance(alle, entity);
+      }
+      const issues = validateEntity(registry, pruefling, { knownTypes: known, stageOf: stageBases([...stand.alle, entity]) });
       if (issues.length) {
         return { code: 422, body: { error: 'Validierung fehlgeschlagen', issues } };
       }
-      const stored = await repo.putEntity(entity);
+      const stored = await repo.putEntity(zuSchreiben);
       if (spielerin && user) {
         await repo.addAuthored(user.id, id);
         /* Eine Figur, die sie anlegt, führt sie auch (REQ-237). */

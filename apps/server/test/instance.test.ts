@@ -131,3 +131,41 @@ describe('an instance on the wire', () => {
     expect(await repo.getEntity('sb_wache')).toBeDefined();
   });
 });
+
+/* T-125: „aus einer Vorlage" an der Kreaturseite legt eine Instanz an. */
+describe('creating an instance from a template', () => {
+  it('stores no defaults over the template, and reads it through', async () => {
+    const { inject, repo } = await makeApp();
+    const res = await inject({
+      method: 'POST',
+      url: '/api/entities',
+      payload: {
+        type: 'Statblock',
+        name: 'w3',
+        relations: [
+          { type: 'instanceOf', to: 'sb_wache' },
+          { type: 'belongsTo', to: 'w1' },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const id = res.json().id as string;
+    const gespeichert = await repo.getEntity(id);
+    expect(gespeichert?.components?.['Statblock']).toBeUndefined();
+    const gelesen = (await inject({ method: 'GET', url: `/api/entities/${id}` })).json();
+    expect(gelesen.components.Statblock).toEqual({ ac: 16, hp: 11, speed: '30' });
+    expect(gelesen.fromTemplate.template).toBe('sb_wache');
+  });
+
+  it('refuses a template that is missing or of another kind', async () => {
+    const { inject } = await makeApp();
+    for (const to of ['gibt-es-nicht', 'w2']) {
+      const res = await inject({
+        method: 'POST',
+        url: '/api/entities',
+        payload: { type: 'Statblock', name: 'x', relations: [{ type: 'instanceOf', to }] },
+      });
+      expect(res.statusCode).toBe(400);
+    }
+  });
+});

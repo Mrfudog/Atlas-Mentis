@@ -76,12 +76,16 @@ export interface Stueck {
     | 'kanten'
     | 'handwerk'
     | 'bild'
-    | 'karte';
+    | 'karte'
+    | 'verlinkt';
   text?: string;
   /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
   bild?: { wert: string; caption: string; alt: string; version?: string };
   zellen?: Zelle[];
   prosa?: Prosa[];
+  /** `verlinkt`: nur diese Arten am anderen Ende, oder alle ausser diesen (T-125). */
+  nur?: string[];
+  ausser?: string[];
 }
 
 /** Reiter gibt es auf einem Blatt nicht: ihre Gruppen stehen nacheinander. */
@@ -329,8 +333,21 @@ export function anordnen(
       case 'relations':
         out.push({ id: el.id, art: 'kanten' });
         break;
+      /* Was über eine `asField`-Kante hängt (T-125): der Statblock einer
+         Kreatur, ihr Inventar — gezeichnet an ihrem Ort, mit Eingaben,
+         die in seinen Artikel schreiben. `except` nennt Arten am anderen
+         Ende; das Inventar hat an der Kreatur seinen eigenen Reiter. */
+      case 'linked':
+        out.push({ id: el.id, art: 'verlinkt', ausser: [...(el.except ?? [])] });
+        break;
+      /* Das Inventar (T-125, Darstellung): am Träger das über `carries`
+         getragene, an einem Inventar das, was es selbst hält. Das Raster
+         zum Ziehen kommt mit W4. */
+      case 'inventory':
+        out.push({ id: el.id, art: 'verlinkt', nur: ['Inventory'] });
+        break;
       default:
-        /* Bogen, Inventar, Board … zeichnet noch niemand (W4 und
+        /* Bogen, Board … zeichnet noch niemand (W4 und
            später). Was sie tragen, steht im Rest, wo die Ansicht ihn will. */
         break;
     }

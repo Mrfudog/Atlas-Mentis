@@ -114,7 +114,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     uses: {
       [M + 'instance.ts']: ['belongsTo', 'inLayer', 'instanceOf', 'overrides', 'variantOf'],
       [M + 'versions.ts']: ['inLayer', 'instanceOf', 'overrides', 'variantOf'],
-      [S + 'app.ts']: ['inLayer', 'overrides', 'variantOf'],
+      /* Anlegen aus einer Vorlage prüft die Vorlage und dünnt aus (T-125). */
+      [S + 'app.ts']: ['inLayer', 'instanceOf', 'overrides', 'variantOf'],
       [W + 'artikel/artikel.ts']: ['overrides'],
     },
   },
@@ -303,6 +304,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [W + 'artikel/blatt.ts']: ['inLayer'],
       /* Schnell anlegen schlägt die Ebene des Ausgangsartikels vor (T-131). */
       [W + 'artikel/schnell.ts']: ['inLayer'],
+      /* Was über eine asField-Kante hängt, am Ort des lesenden Artikels
+         (T-125): welche Kanten, sagt `linkedTypes`; genannt werden nur das
+         Inventar (`holds`), die Vorlage einer neuen Instanz und ihre Ebene. */
+      [W + 'artikel/verlinkt.ts']: ['holds', 'inLayer', 'instanceOf'],
     },
   },
 ];
