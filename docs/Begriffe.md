@@ -191,6 +191,10 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   sind drei Klicks für eine Zahl. Es steht **am Feld und nur dort**: am Typ
   war es ein Schalter für zwanzig Felder auf einmal, und an `Vitals` sind
   die Trefferpunkte ein Stand, die Zustandsliste aber ein Satz Häkchen,
+- ob es **nur in der Maske** steht (`editOnly`): ein Schlüssel, den man
+  setzt und niemand liest — `Time.sort` ordnet die Weltgeschichte, gelesen
+  wird „Mirtul 12, 1492 DR". In der Feldtabelle stand „Sortable value
+  14920512" an jedem Ereignis,
 - bei einem freien Wort, ob es **vorschlägt, was schon dasteht** (`suggest`)
   — für eine Sorte wie `Creature.kind` oder `Deity.pantheon`, damit sie nicht
   dreimal anders geschrieben wird, und **nicht** für einen Namen: der
@@ -1003,7 +1007,10 @@ Importer die Fassungen aus mehreren Büchern. Eine Überschreibung sagt es
 selbst und zählt immer.
 
 *Vergleichsebenen* sind Ebenen, die eine Kampagne nennt, ohne sie
-aufzuschalten (`activates` mit `mode: 'compare'`). Was sie bringen, steht
+aufzuschalten (`activates` mit `mode: 'compare'`) — auch eine **ganze
+Gruppe** wie „2024 rules" (T-143): ihre Bücher vergleichen sich, soweit
+keines davon ohnehin im Spiel ist, und ein Buch, das später in die Gruppe
+kommt, ist dabei, ohne dass jemand ein Häkchen setzt. Was sie bringen, steht
 in keiner Liste, ist an keinem Verweis und gehört der Kampagne nicht — es
 ist auf Wunsch sichtbar, für die Leitung und, wenn die Kampagne es sagt,
 für die Spielenden. Eine Fassung daraus **übernimmt** die Leitung als
@@ -1328,7 +1335,9 @@ Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
   solange die Instanz keine eigenen hat; ändert jemand die Liste, gehört sie
   ganz der Instanz. Was zur Vorlage **als Artikel** gehört — `inLayer`,
   `belongsTo`, `overrides`, `variantOf` — kommt nicht mit, ebenso wenig ihr
-  Name (`Identity`) und ihre Sichtbarkeit (`Visibility`).
+  Name (`Identity`), ihre Sichtbarkeit (`Visibility`) und ihr Inventar
+  (`carries`): zwei Rucksäcke aus einer Vorlage tragen nicht denselben
+  Inhalt.
 - **Eine Vorlage darf selbst eine Instanz sein** („Hauptmann" aus „Wache");
   gelesen wird die Kette hoch, ein Kreis bricht ab.
 - **Instanzen stehen an ihrer Kreatur und sonst nirgends** — nicht in
@@ -1342,6 +1351,20 @@ Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
   die Felder, die von dort kommen) — nur gelesen, nie gespeichert.
 
 Ein Statblock gehört damit **einer** Kreatur (`belongsTo` ist wieder `one`).
+
+**Ein Stück im Inventar ist eine Instanz** (T-150). Was eine Figur in die
+Hand bekommt — gekauft, erbeutet, gefertigt, geschenkt —, ist nicht der
+Gegenstand aus dem Buch, sondern ein Stück davon: ein eigener Artikel mit
+`instanceOf` auf den Gegenstand, der nur speichert, was abweicht. Rook
+graviert seinen Dolch, und der Dolch im Regelwerk bleibt, wie er ist; die
+Leitung korrigiert das Gewicht im Regelwerk, und jeder Dolch am Tisch, der
+das Gewicht nicht selbst trägt, wiegt danach richtig. Vorher zeigte das
+Inventar auf den Gegenstand selbst — wer ihn umbenannte, benannte ihn für
+alle um. Zehn gleiche Fackeln sind trotzdem ein Stapel und nicht zehn
+Artikel: ein neues Stück legt sich auf einen losen Stapel, der der Vorlage
+noch in allem folgt. Und ein Rezept, das „Eisenbarren" braucht, nimmt den
+gekauften Barren, denn gezählt wird nach dem Gegenstand, von dem das Stück
+eines ist.
 
 > **Nicht mehr:** für einen Tag durfte ein Statblock vielen gehören, und die
 > Seite warnte „shared by 30". Die Warnung beschrieb genau den Fall, den

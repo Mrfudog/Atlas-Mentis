@@ -2,6 +2,7 @@ import { Component, Injectable, computed, effect, inject, input, output, signal 
 import { primaryInterface, typeChain } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import { Api, ApiError, type ListenZeile } from '../kern/api';
+import { Ladeanzeige } from '../kern/ladeanzeige';
 
 /**
  * **Bilder zeigen und aufnehmen** (T-114, REQ-021).
@@ -76,16 +77,22 @@ export function bildDes(e: Entity, r: Registry): { wert: string; caption: string
 /** Ein Bild, aus einem Asset-Feld. `groesse: 'thumb'` holt die Vorschau (480 px). */
 @Component({
   selector: 'nw-bild',
+  imports: [Ladeanzeige],
   template: `
     @if (adresse(); as a) {
       @if (!istKaputt()) {
-        <figure class="bild" [class.klein]="groesse() === 'thumb'">
+        <figure class="bild" [class.klein]="groesse() === 'thumb'" [class.laedt]="laedt()">
+          <!-- Ein grosses Bild zeigt, dass es lädt (T-126); eine Vorschau
+               ist zu klein, als dass man darauf wartet. -->
+          @if (laedt()) {
+            <nw-ladeanzeige class="anzeige" />
+          }
           @if (gross(); as g) {
             <a [href]="g" target="_blank" rel="noopener" [attr.aria-label]="'Open image ' + (alt() || '')">
-              <img [src]="a" [alt]="alt() || caption() || ''" loading="lazy" decoding="async" (error)="nichtGeladen()" />
+              <img [src]="a" [alt]="alt() || caption() || ''" loading="lazy" decoding="async" (load)="istDa(a)" (error)="nichtGeladen()" />
             </a>
           } @else {
-            <img [src]="a" [alt]="alt() || caption() || ''" loading="lazy" decoding="async" (error)="nichtGeladen()" />
+            <img [src]="a" [alt]="alt() || caption() || ''" loading="lazy" decoding="async" (load)="istDa(a)" (error)="nichtGeladen()" />
           }
           @if (caption()) {
             <figcaption>{{ caption() }}</figcaption>
@@ -99,10 +106,20 @@ export function bildDes(e: Entity, r: Registry): { wert: string; caption: string
       display: block;
     }
     .bild {
+      position: relative;
       margin: 0;
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
+    }
+    /* Solange es lädt, hat das Bild keine Höhe — die Anzeige braucht eine. */
+    .bild.laedt {
+      min-height: 8rem;
+    }
+    .anzeige {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
     }
     img {
       display: block;
@@ -143,6 +160,14 @@ export class Bild {
   protected nichtGeladen(): void {
     this.fehlte.set(this.adresse());
   }
+  /* Welche Adresse schon da ist (T-126): ein neues Bild lädt wieder. */
+  private readonly da = signal<string | null>(null);
+  protected istDa(a: string): void {
+    this.da.set(a);
+  }
+  protected readonly laedt = computed(
+    () => this.groesse() === 'full' && !!this.adresse() && this.da() !== this.adresse() && !this.istKaputt(),
+  );
   protected readonly gross = computed(() => (this.oeffnen() ? bildAdresse(this.wert(), 'full', this.v()) : null));
 }
 

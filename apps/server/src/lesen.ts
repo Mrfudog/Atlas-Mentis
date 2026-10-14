@@ -202,6 +202,11 @@ export function registerLesen(
       layer: { id: l.id, name: entityName(l), kind: typeof layerKind === 'string' ? layerKind : '' },
       toc,
       position: merk && toc.some((z) => z.id === merk) ? merk : null,
+      /* Hat die Ebene gar keinen Buchtext, sagt die Seite das (T-126) —
+         statt „vielleicht nur für die Leitung" auch der Verwaltung, bei der
+         das nie der Grund ist. Verrät nichts: ob ein Buch eingelesen ist,
+         ist kein Geheimnis; was gesiebt wurde, bleibt ungesagt. */
+      ...(order.some((n) => n.toc !== false) ? {} : { empty: 'noText' as const }),
     };
   });
 

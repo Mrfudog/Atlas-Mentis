@@ -157,6 +157,12 @@ import { Bild, bildDes } from './bild';
       overflow-wrap: anywhere;
       color: var(--heading);
     }
+    /* Ein langer Einzeltext wie Prosa (T-126). */
+    .feld.lang dd {
+      font-family: var(--serif);
+      font-size: 1.05rem;
+      color: var(--ink);
+    }
     .feld.leer dd,
     .leer {
       color: var(--dim);

@@ -8,6 +8,9 @@ import { Live } from './kern/live';
 import { ALLE, Filtergruppen } from './kern/filtergruppen';
 import { Suche, tipptGerade } from './kern/suche';
 import { SucheComponent } from './suche/suche';
+import { Stapel } from './kern/stapel';
+import { StapelKnopf } from './verwaltung/stapel-knopf';
+import { Neues } from './kern/neues';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -35,9 +38,16 @@ import { SucheComponent } from './suche/suche';
  * Anmeldung — gerade dann, wenn man noch nicht weiss, wo man ist. Auf prod
  * und ohne `ATLAS_ENV` kein Band.
  *
+ * **Die laufende Kampagne** (T-143) steht unter der Marke, mit der Zahl der
+ * Ebenen im Spiel; ein Klick öffnet das Popup zum Einstellen (`nw-stapel`).
+ *
  * **Die Suche** (T-138) steht in der Kopfleiste und geht auf jeder Seite
  * mit Strg+K (⌘K) oder `/` auf — `/` nur, wenn gerade nicht in ein Feld
  * getippt wird. Am Telefon ist der Knopf ein Zeichen ohne Text.
+ *
+ * **What's new** (T-157) steht klein neben dem Namen, mit einem Punkt,
+ * solange es für dieses Konto Ungelesenes gibt — kein Bereich, sondern
+ * ein Hinweis; am Telefon nur das Zeichen.
  *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
@@ -45,7 +55,7 @@ import { SucheComponent } from './suche/suche';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -65,7 +75,12 @@ import { SucheComponent } from './suche/suche';
     }
     @if (session.stand() === 'bereit' && session.angemeldet()) {
       <header class="leiste">
-        <a routerLink="/" class="marke">Atlas Mentis</a>
+        <!-- Unter der Marke die laufende Kampagne und ihr Stapel, immer da
+             (T-143) — dort kostet sie keine Breite in der Leiste. -->
+        <div class="marke-ort">
+          <a routerLink="/" class="marke">Atlas Mentis</a>
+          <nw-stapel />
+        </div>
         <nav aria-label="Areas" class="bereiche">
           <a routerLink="/play" routerLinkActive="an" ariaCurrentWhenActive="page">Play</a>
           <a routerLink="/boards" routerLinkActive="an" ariaCurrentWhenActive="page">Boards</a>
@@ -137,6 +152,20 @@ import { SucheComponent } from './suche/suche';
           [attr.aria-label]="live.stand() === 'offen' ? 'Live' : 'Live reconnecting'"
           role="img"
         ></span>
+        <!-- Was neu ist (T-157): klein, mit Punkt, solange etwas ungelesen ist. -->
+        <a
+          class="neues"
+          routerLink="/whats-new"
+          routerLinkActive="an"
+          [attr.title]="neuTitel()"
+          [attr.aria-label]="neuTitel()"
+        >
+          <span aria-hidden="true" class="stern">✦</span>
+          <span class="neutext">What's new</span>
+          @if (neues.anzahl()) {
+            <span class="punkt" aria-hidden="true"></span>
+          }
+        </a>
         <a class="wer" routerLink="/account" title="Account and API tokens">
           <!-- In der Sicht eines Mitglieds bleibt hier, wer angemeldet ist (REQ-241). -->
           {{ session.viewAs()?.by?.name ?? session.user()?.name }}
@@ -249,7 +278,16 @@ import { SucheComponent } from './suche/suche';
       background: var(--bar);
       border-bottom: 3px solid var(--accent);
     }
+    /* Die Kampagnenzeile ist nie breiter als die Marke: ein langer Name
+       wird gekürzt, statt die Leiste umbrechen zu lassen (T-143). */
+    .marke-ort {
+      display: grid;
+      grid-template-columns: min-content;
+      justify-items: start;
+    }
     .marke {
+      white-space: nowrap;
+      line-height: 1.15;
       font-family: var(--caps);
       font-size: 1.4rem;
       font-weight: 700;
@@ -347,6 +385,25 @@ import { SucheComponent } from './suche/suche';
       border-color: var(--accent);
       background: var(--accent);
     }
+    .neues {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: var(--dim);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .neues:hover,
+    .neues.an {
+      color: var(--accent);
+    }
+    .punkt {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--accent);
+    }
     .wer {
       color: var(--dim);
       text-decoration: none;
@@ -423,10 +480,35 @@ import { SucheComponent } from './suche/suche';
       .bereiche a {
         white-space: nowrap;
       }
+      /* Marke, Live-Punkt, Konto und Abmelden bleiben **eine** Zeile
+         (T-126): seit dem Live-Punkt rutschte „Sign out" in eine zweite,
+         und der Kopf war 130 px hoch. Der Name gibt nach (Auslassung),
+         die Rolle steht auf der Kontoseite. Der Suchknopf (T-138) zeigt
+         hier nur die Lupe und wird mit „Sign out" kleiner. */
+      .marke {
+        font-size: 1.15rem;
+        white-space: nowrap;
+      }
+      .wer {
+        min-width: 0;
+        flex: 0 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .rolle {
+        display: none;
+      }
+      .leiste > button {
+        flex: none;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.85rem;
+      }
       .untermenue {
         padding: 0.3rem 1rem;
       }
-      .suchtext {
+      .suchtext,
+      .neutext {
         display: none;
       }
     }
@@ -444,9 +526,17 @@ export class App {
   protected readonly alle = ALLE;
   /** Welches Untermenü offen ist: der Weg der Seite. */
   protected readonly menue = signal<string | null>(null);
+  /** Die laufende Kampagne in der Leiste (T-143). */
+  private readonly stapel = inject(Stapel);
 
   protected readonly api = inject(Api);
   protected readonly suche = inject(Suche);
+  /** Was neu ist (T-157) — der Stand gehört zum Konto. */
+  protected readonly neues = inject(Neues);
+  protected readonly neuTitel = computed(() => {
+    const n = this.neues.anzahl();
+    return n ? `What's new: ${n} since your last visit` : "What's new";
+  });
   /** Der Live-Kanal (T-116) — hier geholt, damit er mit der Anmeldung steht. */
   protected readonly live = inject(Live);
   /** Ob gerade sichtbar gewartet wird: erst wenn eine Anfrage länger als
@@ -466,6 +556,10 @@ export class App {
         this.menue.set(null);
         if (wer) void this.gruppen.laden(true);
         else this.gruppen.vergessen();
+        if (wer) void this.stapel.laden();
+        else this.stapel.vergessen();
+        if (this.session.angemeldet()) void this.neues.laden();
+        else this.neues.vergessen();
       });
     });
     effect(() => {

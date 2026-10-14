@@ -105,7 +105,12 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Blatt A4, T-110), die **Suche** (`suche/`, Kopfleiste, Strg+K und `/`:
   Treffer beim Tippen aus `GET /api/search`, nach Nähe, Filter nach Art,
   Ebene, Herausgeber und Bereich, das „+" ist die Ansicht `search`;
-  T-138) und das Konto mit seinen API-Tokens (`konto/`); die
+  T-138), unter der Marke die **laufende Kampagne** mit der Zahl ihrer
+  Ebenen und dem Popup zum Einstellen (`verwaltung/stapel-knopf.ts`,
+  `kern/stapel.ts`: Ebenen, Gruppen, Vergleich auch einer ganzen Gruppe,
+  Wechsel der Kampagne für die Verwaltung; T-143), **What's new** (`neues/`,
+  `/whats-new`: Einträge aus `apps/web/src/whats-new.json`, gesehen je
+  Konto in `/api/me/prefs`, Punkt in der Kopfleiste; T-157) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
@@ -350,7 +355,12 @@ wiederkommen, werden sie neu geschrieben.
   vorher, was sie lasen (`detachInstance`), geht die Kreatur, geht ihre
   Instanz mit. Nicht vererbt werden `Identity`, `Visibility` und die
   Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`,
-  `overrides`, `variantOf`). Für einen Tag durfte ein Statblock vielen
+  `overrides`, `variantOf`), und das Inventar eines Stücks (`carries`).
+  **Ein Gegenstand im Inventar ist ein Stück** (T-150): gekauft, erbeutet,
+  gefertigt oder gegeben entsteht er als Instanz (`newInstance`,
+  `stueckWerkstatt`), ein loser Stapel derselben Vorlage wächst stattdessen
+  (`receivePiece`), und Material zählt nach dem Grundartikel
+  (`baseArticle`). Für einen Tag durfte ein Statblock vielen
   gehören („shared by 30") — dann war jede Änderung an einer Wache eine an
   allen.
 - **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
@@ -779,6 +789,14 @@ den Repo-Einstellungen „Automatically delete head branches"). Ein Pull Request
 geöffnet, wenn ein Feature ganz steht oder eine Version reif ist — den
 merged die Verwaltung, nicht Claude. Commits klein und je eine Sache;
 Nachricht deutsch, sagt **warum**.
+
+**What's new läuft mit** (T-157): jeder Pull Request mit einer
+sichtbaren Änderung ergänzt `apps/web/src/whats-new.json` — oben, ein,
+zwei Sätze auf Englisch, was man jetzt tun kann, mit Link an die Stelle.
+Nur Funktionen beschreiben, nie Kampagnen- oder Fremdinhalte (das Repo
+ist öffentlich). Form und Felder: [CONTRIBUTING.md › What's new
+ergänzen](CONTRIBUTING.md#whats-new-ergänzen). Die PR-Vorlage fragt
+danach.
 
 **Die Dokumentation läuft mit, immer.** Eine Modelländerung ohne
 nachgezogenes [docs/Datenmodell.md](docs/Datenmodell.md),

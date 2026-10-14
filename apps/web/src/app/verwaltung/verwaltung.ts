@@ -14,6 +14,7 @@ import {
   type TableRole,
 } from '../kern/api';
 import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
 import { KampagnenEbenenListe } from './ebenen';
 import { KampagnenGeschichteListe } from './geschichte';
 
@@ -305,7 +306,7 @@ const ROLLEN: { role: TableRole; text: string }[] = [
       </div>
 
       @if (m.campaign.exists) {
-        <nw-kampagnen-ebenen [kampagne]="m.campaign.id" (geschaltet)="geschichte.laden()" />
+        <nw-kampagnen-ebenen [kampagne]="m.campaign.id" (geschaltet)="geschichte.laden(); stapel.geaendert()" />
         <nw-kampagnen-geschichte #geschichte [kampagne]="m.campaign.id" />
       }
 
@@ -427,6 +428,8 @@ export class Verwaltung {
   private readonly session = inject(Session);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  /** Die Zahl der Ebenen in der Kopfleiste folgt dem Schalten hier (T-143). */
+  protected readonly stapel = inject(Stapel);
 
   protected readonly rollen = TABLE_ROLES;
   protected readonly rollenText = ROLLEN;

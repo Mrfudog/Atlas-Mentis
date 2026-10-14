@@ -172,6 +172,8 @@ describe('logging in', () => {
     const keks = cookieOf(angemeldet);
     const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });
     expect(me.json().user.name).toBe('Basil');
+    /* Seit wann es das Konto gibt — "What's new" zeigt ab dann (T-163). */
+    expect(me.json().user.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
     await app.inject({ method: 'POST', url: '/api/logout', headers: { cookie: keks } });
     const danach = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });

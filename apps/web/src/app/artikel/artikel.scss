@@ -139,6 +139,15 @@ h1 {
   overflow-wrap: anywhere;
   color: var(--heading);
 }
+/* Ein langer Einzeltext liest sich wie Prosa, nicht wie ein Wert (T-126):
+   Serifen, Textfarbe, Zeilenlänge der Abschnitte — in Akzentfarbe und
+   kleiner Schrift über die volle Breite war er kaum zu lesen. */
+.felder .feld.lang dd {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  color: var(--ink);
+  max-width: 68ch;
+}
 /* Von der Vorlage gelesen, nicht hier gesetzt. */
 .feld.geerbt dd {
   font-style: italic;

@@ -19,6 +19,6 @@ Epic: [[EP-09 Karten]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-137]] Overlays: query-driven highlights (faction locations, biomes, routes) | – | 4 | teils |
-| [[REQ-193]] Territory overlays rasterised onto the map grid from shapes (rect, circle, ellipse, polygon) | – | 4 | steht |
+| [[REQ-137]] Hervorhebungen nach Abfrage | Spielleitung | 4 | teils |
+| [[REQ-193]] Gebiete auf der Karte | Spielleitung | 4 | steht |
 <!-- stories:ende -->

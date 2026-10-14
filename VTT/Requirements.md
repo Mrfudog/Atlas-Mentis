@@ -35,8 +35,6 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | 5 | 19 | 154 | 1 steht · 18 offen |
 | **Zusammen** | **315** | **1139** | 166 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen |
 
-54 Stories tragen noch den alten Wortlaut und sind als Story zu formulieren.
-
 ## Register
 
 | ID | Story | Rolle | Feature | Prio | Aufwand | Status | Stand |
@@ -60,16 +58,16 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-017]] | Begriffe je Regelsystem auswerten | Spielleitung | [[F-046 Regelauswertung\|Regelauswertung]] | 4 | 5 | defined | offen |
 | [[REQ-018]] | Wirkungen von Regeln beschreiben | Spielleitung | [[F-046 Regelauswertung\|Regelauswertung]] | 1 | 2 | defined | offen |
 | [[REQ-019]] | Rohform jedes Imports aufbewahren | – | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 2 | dropped | verworfen |
-| [[REQ-020]] | SourceRef provenance: publication, page, optional file + page anchor | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 2 | done | steht |
-| [[REQ-021]] | Asset entity contract: backend app/nas/external, consumers resolve URLs via asset service | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 3 | done | steht |
-| [[REQ-022]] | Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 3 | 5 | defined | offen |
+| [[REQ-020]] | Quelle eines Artikels | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 2 | done | steht |
+| [[REQ-021]] | Dateien als Assets | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 3 | done | steht |
+| [[REQ-022]] | Vorschaubilder und Kacheln | Spieler | [[F-062 Asset-Ablage\|Asset-Ablage]] | 3 | 5 | defined | offen |
 | [[REQ-023]] | Status idea/planned/used/discarded | – | [[F-003 Feldformen & Aufzählungen\|Feldformen & Aufzählungen]] | 2 | 1 | dropped | ersetzt |
 | [[REQ-024]] | Weltdatum | Spielleitung | [[F-038 Kalender & Zeitleisten\|Kalender & Zeitleisten]] | 1 | 2 | done | steht |
 | [[REQ-025]] | Kalender der Welt | Spielleitung | [[F-038 Kalender & Zeitleisten\|Kalender & Zeitleisten]] | 3 | 5 | defined | offen |
 | [[REQ-026]] | Ansichten festlegen | Spielleitung | [[F-006 Ansichten & Anordnung\|Ansichten & Anordnung]] | 1 | 3 | done | steht |
 | [[REQ-027]] | Arten ohne Code anlegen | Spielleitung | [[F-002 Register\|Register]] | 4 | 13 | done | steht |
-| [[REQ-028]] | Full-text search across content | – | [[F-068 Suche\|Suche]] | 3 | 3 | in progress | teils |
-| [[REQ-029]] | Serializable schema / export (future file or git backing) | – | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 3 | 3 | done | steht |
+| [[REQ-028]] | Volltextsuche | Spieler | [[F-068 Suche\|Suche]] | 3 | 3 | in progress | teils |
+| [[REQ-029]] | Ausfuhr und Einfuhr | Verwaltung | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 3 | 3 | done | steht |
 | [[REQ-030]] | Ruf als gewichtete Marken | – | [[F-039 Beziehungen & Ruf\|Beziehungen & Ruf]] | 2 | 1 | dropped | ersetzt |
 | [[REQ-031]] | Anmelden mit Passwort | Spieler | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 1 | 2 | done | steht |
 | [[REQ-032]] | Anmeldung über Nextcloud/OIDC | – | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 4 | 5 | dropped | verworfen |
@@ -87,7 +85,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-044]] | Herkunft am Artikel sehen | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 5 | done | steht |
 | [[REQ-045]] | Ebenen-Aktionen am Artikel | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 3 | 8 | defined | offen |
 | [[REQ-046]] | Kreatur und Statblock getrennt | Spielleitung | [[F-020 Kreatur\|Kreatur]] | 1 | 3 | done | steht |
-| [[REQ-047]] | Import-first entry: 5e.tools JSON, Improved Initiative JSON, markdown paste from Obsidian | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 5 | dropped | verworfen |
+| [[REQ-047]] | Import von 5e.tools, Improved Initiative und Obsidian als Einstieg | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 5 | dropped | verworfen |
 | [[REQ-048]] | Kreatur schnell bearbeiten | Spielleitung | [[F-022 Schnellanlage\|Schnellanlage]] | 2 | 3 | done | steht |
 | [[REQ-049]] | Kreatur schnell anlegen | Spielleitung | [[F-022 Schnellanlage\|Schnellanlage]] | 2 | 2 | done | steht |
 | [[REQ-050]] | Kreatur auf einen Blick | Spielleitung | [[F-020 Kreatur\|Kreatur]] | 2 | 3 | done | steht |
@@ -130,7 +128,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-087]] | Kalendermodul | Spielleitung | [[F-038 Kalender & Zeitleisten\|Kalender & Zeitleisten]] | 5 | 13 | idea | offen |
 | [[REQ-088]] | Massenänderungen an Wissen und Rechten | Spielleitung | [[F-016 Werkbank\|Werkbank]] | 3 | 3 | in progress | teils |
 | [[REQ-089]] | Regeln als Artikel | Spielleitung | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 1 | 2 | done | steht |
-| [[REQ-090]] | Rule import from Obsidian markdown and 5e.tools data | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 3 | dropped | verworfen |
+| [[REQ-090]] | Regeln aus Obsidian und 5e.tools einlesen | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 3 | dropped | verworfen |
 | [[REQ-091]] | Regeln durchsuchen | Spieler | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 2 | 5 | done | steht |
 | [[REQ-092]] | Zauber als Artikel | Spieler | [[F-045 Zauber\|Zauber]] | 2 | 3 | defined | offen |
 | [[REQ-093]] | Regeln auswerten | Spielleitung | [[F-046 Regelauswertung\|Regelauswertung]] | 5 | 13 | idea | offen |
@@ -151,7 +149,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-108]] | Lore der Kampagne abweichen lassen | Spielleitung | [[F-005 Fassungen & Varianten\|Fassungen & Varianten]] | 3 | 3 | done | steht |
 | [[REQ-109]] | Lore-Texte von Spielenden | Spieler | [[F-027 Eigene Inhalte der Spielenden\|Eigene Inhalte der Spielenden]] | 3 | 3 | in progress | teils |
 | [[REQ-110]] | Illustrierte Bibliothek | Spieler | [[F-037 Bereich World\|Bereich World]] | 5 | 8 | idea | offen |
-| [[REQ-111]] | Boards: user-owned configurable views with tabs/pages and widgets; DM and player boards share the mechanism | – | [[F-067 Boards\|Boards]] | 2 | 8 | done | steht |
+| [[REQ-111]] | Boards | Spielleitung | [[F-067 Boards\|Boards]] | 2 | 8 | done | steht |
 | [[REQ-112]] | Widget mit mehreren offenen Artikeln | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 3 | dropped | ersetzt |
 | [[REQ-113]] | Notiz-Widget | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 2 | defined | offen |
 | [[REQ-114]] | Schnellanlage auf dem Schirm | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 3 | in progress | teils |
@@ -159,7 +157,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-116]] | Was gerade läuft, steht an der Sitzung | Spielleitung | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 2 | 8 | done | steht |
 | [[REQ-117]] | Wer am Sitzungszustand schreibt | Spielleitung | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 3 | 3 | done | steht |
 | [[REQ-118]] | Begegnung starten | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 3 | 5 | done | steht |
-| [[REQ-119]] | Player boards | – | [[F-067 Boards\|Boards]] | 3 | 3 | defined | offen |
+| [[REQ-119]] | Boards der Spielenden | Spieler | [[F-067 Boards\|Boards]] | 3 | 3 | defined | offen |
 | [[REQ-120]] | Spielprotokoll | Spielleitung | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 3 | 3 | in progress | teils |
 | [[REQ-121]] | Statistik | Spieler | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 4 | 3 | defined | offen |
 | [[REQ-122]] | Gruppe als Widget | Spielleitung | [[F-034 Party\|Party]] | 3 | 2 | done | steht |
@@ -170,48 +168,48 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-127]] | Eigene Klangtafel | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 5 | 13 | idea | offen |
 | [[REQ-128]] | Kampf aus Sicht der Spielenden | Spieler | [[F-051 Initiative\|Initiative]] | 3 | 3 | in progress | teils |
 | [[REQ-129]] | Fragen an einen Assistenten | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 5 | 8 | idea | offen |
-| [[REQ-130]] | Map entity: image asset, scale, grid config (size, offset, square/hex), link to Location | – | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 2 | done | steht |
-| [[REQ-131]] | Nested maps: parent + anchor region, zoom-through transitions world → region → city → district → battlemap | – | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 8 | done | steht |
-| [[REQ-132]] | Level lock: pin current map level while zooming | – | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 1 | defined | offen |
-| [[REQ-133]] | Static tokens: reference markers linked to entities (pin opens article) | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 3 | done | steht |
-| [[REQ-134]] | Static tokens: scenery / props as part of prepared map state | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 4 | 3 | done | steht |
-| [[REQ-135]] | Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 5 | in progress | teils |
-| [[REQ-136]] | Party and quest markers on region maps (campaign-scoped play tokens) | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 2 | done | steht |
-| [[REQ-137]] | Overlays: query-driven highlights (faction locations, biomes, routes) | – | [[F-059 Gebiete & Overlays\|Gebiete & Overlays]] | 4 | 5 | in progress | teils |
-| [[REQ-138]] | Map tiling for smooth zoom (derived asset) | – | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 4 | 5 | done | steht |
-| [[REQ-139]] | Fog of war | – | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 4 | 8 | done | steht |
-| [[REQ-140]] | Light & line of sight with walls | – | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 5 | 13 | done | steht |
-| [[REQ-141]] | Map effects & animations (conditions, weather) | – | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | offen |
-| [[REQ-142]] | Drawing, stamps, brushes, layers on maps | – | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | offen |
-| [[REQ-143]] | Map editor / full map creation | – | [[F-061 Karteneditor\|Karteneditor]] | 5 | 13 | idea | offen |
+| [[REQ-130]] | Karte mit Gitter und Massstab | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 2 | done | steht |
+| [[REQ-131]] | Unterkarten zum Hineinzoomen | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 8 | done | steht |
+| [[REQ-132]] | Kartenebene festhalten | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 1 | defined | offen |
+| [[REQ-133]] | Marker, die zu Artikeln führen | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 3 | done | steht |
+| [[REQ-134]] | Kulisse auf der Karte | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 4 | 3 | done | steht |
+| [[REQ-135]] | Tokens im Spiel | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 5 | in progress | teils |
+| [[REQ-136]] | Gruppe und Quests auf der Karte | Spieler | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 2 | done | steht |
+| [[REQ-137]] | Hervorhebungen nach Abfrage | Spielleitung | [[F-059 Gebiete & Overlays\|Gebiete & Overlays]] | 4 | 5 | in progress | teils |
+| [[REQ-138]] | Grosse Karten in Kacheln | Spieler | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 4 | 5 | done | steht |
+| [[REQ-139]] | Nebel | Spielleitung | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 4 | 8 | done | steht |
+| [[REQ-140]] | Licht und Sicht mit Wänden | Spielleitung | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 5 | 13 | done | steht |
+| [[REQ-141]] | Effekte auf der Karte | Spielleitung | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | offen |
+| [[REQ-142]] | Auf Karten zeichnen | Spielleitung | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | offen |
+| [[REQ-143]] | Karteneditor | Spielleitung | [[F-061 Karteneditor\|Karteneditor]] | 5 | 13 | idea | offen |
 | [[REQ-144]] | Initiative auf der Karte | Spieler | [[F-051 Initiative\|Initiative]] | 4 | 2 | done | steht |
-| [[REQ-145]] | Asset service implementation: app-managed storage (icons, portraits, thumbnails) | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 3 | in progress | teils |
-| [[REQ-146]] | NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15) | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 2 | 5 | defined | offen |
-| [[REQ-147]] | Image upload, portraits, icons | – | [[F-063 Bildverwaltung\|Bildverwaltung]] | 2 | 2 | in progress | teils |
-| [[REQ-148]] | External URL assets | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 3 | 1 | done | steht |
-| [[REQ-149]] | PDF viewer with page-anchor jump from SourceRef | – | [[F-066 PDF & OCR\|PDF & OCR]] | 4 | 5 | defined | offen |
-| [[REQ-150]] | Audio asset storage | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 5 | 2 | idea | offen |
-| [[REQ-151]] | 3D file viewer / repository | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 5 | 8 | idea | offen |
-| [[REQ-152]] | OCR / PDF import to structured content with editable raw output (MonsterBox-style) | – | [[F-066 PDF & OCR\|PDF & OCR]] | 5 | 13 | idea | offen |
-| [[REQ-153]] | German UI output with i18n-ready string handling | – | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 2 | 2 | dropped | ersetzt |
+| [[REQ-145]] | Ablage in der Seite | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 3 | in progress | teils |
+| [[REQ-146]] | Grosse Dateien auf dem NAS | Verwaltung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 2 | 5 | defined | offen |
+| [[REQ-147]] | Bilder hochladen | Spielleitung | [[F-063 Bildverwaltung\|Bildverwaltung]] | 2 | 2 | in progress | teils |
+| [[REQ-148]] | Bilder von aussen | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 3 | 1 | done | steht |
+| [[REQ-149]] | PDF mit Seitensprung | Spieler | [[F-066 PDF & OCR\|PDF & OCR]] | 4 | 5 | defined | offen |
+| [[REQ-150]] | Audio ablegen | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 5 | 2 | idea | offen |
+| [[REQ-151]] | 3D-Dateien | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 5 | 8 | idea | offen |
+| [[REQ-152]] | Texte aus PDF erkennen | Spielleitung | [[F-066 PDF & OCR\|PDF & OCR]] | 5 | 13 | idea | offen |
+| [[REQ-153]] | Deutsche Oberfläche | – | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 2 | 2 | dropped | ersetzt |
 | [[REQ-154]] | Ausrollen nach dev und prod | Verwaltung | [[F-017 Ausrollen & Sicherung\|Ausrollen & Sicherung]] | 1 | 3 | done | steht |
 | [[REQ-155]] | Sicherungen | Verwaltung | [[F-017 Ausrollen & Sicherung\|Ausrollen & Sicherung]] | 2 | 2 | done | steht |
 | [[REQ-156]] | Sichtbarkeit vererben | – | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 2 | dropped | verworfen |
-| [[REQ-157]] | Canvas boards: free positioning, scaling and arrangement of entity placements on a board (Figma/Canva-style), beyond the widget grid | – | [[F-067 Boards\|Boards]] | 2 | 8 | done | steht |
-| [[REQ-158]] | Placement rendering: each placement resolves to a facet/renderer via the display resolution; explicit per-placement override always wins | – | [[F-067 Boards\|Boards]] | 2 | 3 | done | steht |
-| [[REQ-159]] | Frames / viewpoint anchors: named canvas viewports (position, zoom depth, target facet, visible layers), persisted in the board config | – | [[F-067 Boards\|Boards]] | 3 | 3 | done | steht |
-| [[REQ-160]] | Anchor quick navigation: jump between anchors (list, hotkeys) — session notes → map → house rules without leaving the board | – | [[F-067 Boards\|Boards]] | 3 | 2 | in progress | teils |
-| [[REQ-161]] | Display resolution as priority system: entity profile proposes, board rules (per interface / attribute value) decide, user overrides; placement override wins; ties → board rule; works board-only | – | [[F-067 Boards\|Boards]] | 2 | 5 | done | steht |
-| [[REQ-162]] | Semantic zoom: zoom depth maps onto facets (compact list of weapon properties → full detail on zoom-in); anchors may store a target facet | – | [[F-067 Boards\|Boards]] | 4 | 5 | defined | offen |
+| [[REQ-157]] | Frei anordnen auf dem Board | Spielleitung | [[F-067 Boards\|Boards]] | 2 | 8 | done | steht |
+| [[REQ-158]] | Ansicht je Platzierung | Spielleitung | [[F-067 Boards\|Boards]] | 2 | 3 | done | steht |
+| [[REQ-159]] | Anker und Bereiche auf dem Board | Spielleitung | [[F-067 Boards\|Boards]] | 3 | 3 | done | steht |
+| [[REQ-160]] | Zwischen Ankern springen | Spielleitung | [[F-067 Boards\|Boards]] | 3 | 2 | in progress | teils |
+| [[REQ-161]] | Regeln für die Darstellung | Spielleitung | [[F-067 Boards\|Boards]] | 2 | 5 | done | steht |
+| [[REQ-162]] | Semantischer Zoom | Spielleitung | [[F-067 Boards\|Boards]] | 4 | 5 | defined | offen |
 | [[REQ-163]] | Bezeichner ohne Bedeutung | Spielleitung | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 1 | done | steht |
 | [[REQ-164]] | Darstellungsstufen als eigenes System | – | [[F-006 Ansichten & Anordnung\|Ansichten & Anordnung]] | 2 | 3 | dropped | ersetzt |
-| [[REQ-165]] | Board placements beyond content entities: assets (images, icons), geometric/mathematical shapes as inline canvas objects, and tool objects (interactive widgets such as creature creator or generators) on the canvas | – | [[F-067 Boards\|Boards]] | 2 | 3 | done | steht |
-| [[REQ-166]] | Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow | – | [[F-067 Boards\|Boards]] | 2 | 2 | in progress | teils |
-| [[REQ-167]] | Print & export outputs: item cards, creature cards, character sheets (PDF), maps (image/print) rendered from facets — the facet defines *what* appears, the medium (screen/print/pdf/image) *how*; card-sheet assembly (n cards per page) as export config | – | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 3 | 5 | defined | offen |
-| [[REQ-168]] | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | – | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 3 | 5 | done | steht |
-| [[REQ-169]] | Exploration state ladder per map feature (verborgen → entdeckt → erkundet) with cascade: exploring a node reveals its edges as discovered | – | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 3 | 3 | done | steht |
-| [[REQ-170]] | Travel resource cadence: consumables consumed every N nodes or watches, configurable per travel ruleset | – | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 4 | 2 | done | steht |
-| [[REQ-171]] | Per-node action budget: one action per character per node from a configurable list (sneak, craft, forage, rest) | – | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 4 | 3 | done | steht |
+| [[REQ-165]] | Bilder, Formen und Werkzeuge auf dem Board | Spielleitung | [[F-067 Boards\|Boards]] | 2 | 3 | done | steht |
+| [[REQ-166]] | Auf dem Board anlegen | Spielleitung | [[F-067 Boards\|Boards]] | 2 | 2 | in progress | teils |
+| [[REQ-167]] | Drucken | Spielleitung | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 3 | 5 | defined | offen |
+| [[REQ-168]] | Point-Crawl | Spielleitung | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 3 | 5 | done | steht |
+| [[REQ-169]] | Erkundungsstand | Spieler | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 3 | 3 | done | steht |
+| [[REQ-170]] | Vorräte auf Reisen | Spielleitung | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 4 | 2 | done | steht |
+| [[REQ-171]] | Aktionen je Knoten | Spieler | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 4 | 3 | done | steht |
 | [[REQ-172]] | Begegnungstabellen je Gebiet | Spielleitung | [[F-032 Begegnungen\|Begegnungen]] | 3 | 3 | done | steht |
 | [[REQ-173]] | Weltzustand zwischen Sitzungen | Spielleitung | [[F-032 Begegnungen\|Begegnungen]] | 4 | 3 | idea | offen |
 | [[REQ-174]] | Regeltexte mit Platzhaltern | Spielleitung | [[F-007 Verweise & Platzhalter\|Verweise & Platzhalter]] | 2 | 3 | done | steht |
@@ -233,9 +231,9 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-190]] | Schnellerfassung im Spiel | Spielleitung | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 3 | 2 | done | steht |
 | [[REQ-191]] | Nichts still überschreiben | Spielleitung | [[F-009 Verlauf & gleichzeitiges Schreiben\|Verlauf & gleichzeitiges Schreiben]] | 1 | 2 | done | steht |
 | [[REQ-192]] | Gleichzeitig bearbeiten ohne Verlust | Spielleitung | [[F-009 Verlauf & gleichzeitiges Schreiben\|Verlauf & gleichzeitiges Schreiben]] | 2 | 3 | done | steht |
-| [[REQ-193]] | Territory overlays rasterised onto the map grid from shapes (rect, circle, ellipse, polygon) | – | [[F-059 Gebiete & Overlays\|Gebiete & Overlays]] | 4 | 3 | done | steht |
+| [[REQ-193]] | Gebiete auf der Karte | Spielleitung | [[F-059 Gebiete & Overlays\|Gebiete & Overlays]] | 4 | 3 | done | steht |
 | [[REQ-194]] | Untere Leiste am Telefon wählen | Spieler | [[F-025 Spieleransicht & Telefon\|Spieleransicht & Telefon]] | 4 | 1 | idea | offen |
-| [[REQ-195]] | Statblock export back to Obsidian markdown, preserving `{VAR}` placeholders unresolved | – | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 4 | 2 | idea | offen |
+| [[REQ-195]] | Statblock nach Obsidian ausführen | Spielleitung | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 4 | 2 | idea | offen |
 | [[REQ-196]] | Sitzung aufnehmen | Spielleitung | [[F-036 Sitzungsmitschnitt\|Sitzungsmitschnitt]] | 4 | 5 | idea | offen |
 | [[REQ-197]] | Transkript und Recap-Entwurf | Spielleitung | [[F-036 Sitzungsmitschnitt\|Sitzungsmitschnitt]] | 4 | 8 | idea | offen |
 | [[REQ-198]] | Sprecher im Transkript | Spielleitung | [[F-036 Sitzungsmitschnitt\|Sitzungsmitschnitt]] | 5 | 5 | idea | offen |
@@ -246,11 +244,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 2 | done | steht |
 | [[REQ-204]] | Spielleiter-Schirm | Spielleitung | [[F-050 Spielleiter-Schirm\|Spielleiter-Schirm]] | 3 | 5 | idea | offen |
 | [[REQ-205]] | Ein Board je Geschichtsartikel | Spielleitung | [[F-050 Spielleiter-Schirm\|Spielleiter-Schirm]] | 3 | 3 | in progress | teils |
-| [[REQ-206]] | Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern | – | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 3 | done | steht |
-| [[REQ-207]] | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | – | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 2 | done | steht |
-| [[REQ-208]] | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | – | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 5 | in progress | teils |
-| [[REQ-209]] | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann entlang des Pfads Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | – | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 3 | 3 | done | steht |
-| [[REQ-210]] | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | – | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 3 | in progress | teils |
+| [[REQ-206]] | Bewegungsrechner | Spielleitung | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 3 | done | steht |
+| [[REQ-207]] | Pfad mit Wegpunkten | Spieler | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 2 | done | steht |
+| [[REQ-208]] | Zonen mit eigenen Regeln | Spielleitung | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 5 | in progress | teils |
+| [[REQ-209]] | Aufdecken von Hand oder entlang des Pfads | Spielleitung | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 3 | 3 | done | steht |
+| [[REQ-210]] | Karte und Initiative im Vollbild | Spielleitung | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 3 | in progress | teils |
 | [[REQ-211]] | Initiative wie Improved Initiative | Spielleitung | [[F-051 Initiative\|Initiative]] | 2 | 3 | done | steht |
 | [[REQ-212]] | Zustände und Notizen mit Dauer | Spielleitung | [[F-051 Initiative\|Initiative]] | 2 | 2 | done | steht |
 | [[REQ-213]] | Initiative der Spielenden | Spieler | [[F-051 Initiative\|Initiative]] | 3 | 2 | done | steht |
@@ -264,7 +262,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-221]] | Begegnungen bauen | Spielleitung | [[F-032 Begegnungen\|Begegnungen]] | 3 | 3 | idea | offen |
 | [[REQ-222]] | Stufenaufstieg mit Wahlen | Spieler | [[F-024 Charaktermanager\|Charaktermanager]] | 4 | 5 | idea | offen |
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 4 | 5 | idea | offen |
-| [[REQ-224]] | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 3 | done | steht |
+| [[REQ-224]] | Kreaturen nach Grösse auf der Karte | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 3 | done | steht |
 | [[REQ-225]] | Fallenlassen und Verstauen | Spieler | [[F-026 Inventar\|Inventar]] | 3 | 1 | done | steht |
 | [[REQ-226]] | Gegner erscheinen in Runde 1 erst in ihrem Zug | Spieler | [[F-051 Initiative\|Initiative]] | 3 | 1 | done | steht |
 | [[REQ-227]] | Masse im Fliesstext umrechnen | Spieler | [[F-049 Masse & Einheiten\|Masse & Einheiten]] | 3 | 2 | idea | offen |
@@ -273,22 +271,22 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-230]] | Register in der Seite bearbeiten | Spielleitung | [[F-002 Register\|Register]] | 2 | 5 | done | steht |
 | [[REQ-231]] | Klassen wie im Buch | Spieler | [[F-044 Klassen\|Klassen]] | 3 | 3 | done | steht |
 | [[REQ-232]] | Listen rechnet der Server | Spieler | [[F-019 Leistung & Laden\|Leistung & Laden]] | 2 | 5 | done | steht |
-| [[REQ-233]] | 5e.tools über eine Pipeline einlesen statt von Hand auf dem Server: dev von selbst, wenn sich der Importer ändert, prod nur von Hand; vorher eine Sicherung, ein Probelauf ist möglich, der Bericht steht im Lauf | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 3 | 3 | done | steht |
+| [[REQ-233]] | 5e.tools über eine Pipeline laden | Verwaltung | [[F-073 5e.tools-Import\|5e.tools-Import]] | 3 | 3 | done | steht |
 | [[REQ-234]] | API-Tokens für Werkzeuge | Verwaltung | [[F-015 API-Tokens & Werkzeugzugang\|API-Tokens & Werkzeugzugang]] | 3 | 2 | done | steht |
 | [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | Spielleitung | [[F-016 Werkbank\|Werkbank]] | 3 | 5 | done | steht |
 | [[REQ-236]] | Kampagne mit Dialog anlegen | Spielleitung | [[F-029 Kampagne\|Kampagne]] | 2 | 3 | defined | offen |
 | [[REQ-237]] | Spielende legen Artikel an, die Leitung gibt frei | Spieler | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 2 | 5 | done | steht |
 | [[REQ-238]] | Figur aus den Artikeln erstellen | Spieler | [[F-024 Charaktermanager\|Charaktermanager]] | 1 | 13 | done | steht |
-| [[REQ-239]] | Jedes Buch eine eigene Ebene (PHB, MM, DMG, XGE …), statt einer Ebene für alles aus 5e.tools; eine Kampagne schaltet die Bücher auf, die sie nutzt | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 3 | done | steht |
+| [[REQ-239]] | Jedes Buch eine Ebene | Spielleitung | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 3 | done | steht |
 | [[REQ-240]] | Abenteuer als eigene Ebene | Spielleitung | [[F-033 Abenteuer übernehmen\|Abenteuer übernehmen]] | 2 | 13 | done | steht |
 | [[REQ-241]] | Die Sicht eines Spielers einnehmen | Spielleitung | [[F-014 Sicht eines Spielers\|Sicht eines Spielers]] | 1 | 5 | done | steht |
 | [[REQ-242]] | Felder der eigenen Figur sperren | Spielleitung | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 3 | 5 | defined | offen |
-| [[REQ-243]] | Alle 5e.tools-Inhalte als eigene Ebenen, abschaltbar: 2024-Regeln, Unearthed Arcana, Fahrzeuge, Kartendecks, Bastionen — damit die Leitung Ebenen umschalten und Fassungen eines Artikels nebeneinander zeigen kann | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 8 | done | steht |
+| [[REQ-243]] | Alle Inhalte als abschaltbare Ebenen | Spielleitung | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 8 | done | steht |
 | [[REQ-244]] | Ebenen gruppieren | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | done | steht |
 | [[REQ-245]] | Ebenen beschreiben sich selbst | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 2 | done | steht |
 | [[REQ-246]] | Navigation ohne Einfrieren | Spieler | [[F-019 Leistung & Laden\|Leistung & Laden]] | 1 | 5 | done | steht |
 | [[REQ-247]] | Bücher lesen | Spieler | [[F-043 Bücher & Leseansicht\|Bücher & Leseansicht]] | 2 | 8 | done | steht |
-| [[REQ-248]] | Kurzansicht überall: wo ein Artikel genannt wird (auch Ebenen in Filtern, Chips, Listen), öffnet ein Klick bzw. Antippen ein Popup mit der Quick-Ansicht und einem Link zum Artikel; Brotkrumen für die Navigation | – | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 2 | 5 | done | steht |
+| [[REQ-248]] | Kurzansicht überall | Spieler | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 2 | 5 | done | steht |
 | [[REQ-249]] | Ebenen nach Herausgeber | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | in progress | teils |
 | [[REQ-250]] | Startausrüstung je Kampagne | Spielleitung | [[F-024 Charaktermanager\|Charaktermanager]] | 2 | 5 | done | steht |
 | [[REQ-251]] | Sprachen der Kampagne | Spielleitung | [[F-024 Charaktermanager\|Charaktermanager]] | 1 | 2 | done | steht |

@@ -212,6 +212,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `alwaysEdit` | steht immer als Eingabe da (`Vitals.hp`) |
 | `suggest` | ein freies Wort schlägt vor, was sichtbare Artikel darin tragen (`Creature.kind`) |
 | `readOnly` | ausgegeben, nicht eingetippt (`Identity.id`) |
+| `editOnly` | nur in der Maske, nie beim Lesen: ein Schlüssel zum Ordnen (`Time.sort`, T-126) |
 
 ### 4.2 Die Formen
 
@@ -223,7 +224,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `string` + `enum`/`enumRef` | Auswahl, ein Wort | `"idea"` | Auswahlliste |
 | `array` + `enumRef` | Auswahl, mehrere Wörter aus einer oder mehreren Zeilen, Arten oder Feldlisten; woher ein Wort kommt, sagt die Quelle (`enumSource`) | `["Stealth","Dwarvish","martial"]` | Chips mit × und Suche: die Werte der Listen und die Namen der Artikel jeder genannten Art (`enumWhere` engt ein); ein freies Wort nur, wo eine Art genannt ist (T-068) |
 | `string` + `suggest` | freies Wort mit Vorschlägen | `"npc"` | Text mit Liste |
-| `string` `date` | Weltdatum als Text; `Time.sort` daneben zum Ordnen | `"Mirtul 12, 1492 DR"` | Text |
+| `string` `date` | Weltdatum als Text; `Time.sort` daneben zum Ordnen (`editOnly`: nur in der Maske) | `"Mirtul 12, 1492 DR"` | Text |
 | `string` `color` | Farbe | `"#8a4b2a"` | Farbwähler |
 | `string` `link` + `target` | ein Artikel eines Zieltyps | Artikel-Id | Suche nach Name und Alias, nur im Zieltyp; `target.tags` zuerst; gelesen als Name mit Link |
 | `array` + `link` + `target` | mehrere Artikel eines Zieltyps; jeder Eintrag wird geprüft (`link_wrong_type`) | `[id, …]` | Chips mit × und Suche, nur im Zieltyp; gelesen als Namen mit Link (T-068) |
@@ -256,6 +257,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | F11 | **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10). Verweise nennen die Nummer, nicht den Namen (M11); Würfel sind `{{…}}`, Platzhalter `{VAR}` (M12). Siehe 4.4. |
 | F12 | **Die Zeile hält, die Art schlägt vor** (M6, D50). Nennt `enumRef` eine Artikelart, sind die Werte die Namen ihrer sichtbaren Artikel (Untertypen ja, Instanzen nein), und gespeichert wird der Name. Die Prüfung hält ein solches Feld **nicht** an der Liste fest (`enumHolds`): ein Name ist der heutige Stand, und eine Umbenennung machte eine gespeicherte Übung sonst rückwirkend falsch — dieselbe Regel wie bei `target.tags` (F4). Eine Liste mit Wörtern, die nur ein Wort sind (Waffengruppen), nennt das Feld, das sie trägt (`Weapon.category`), statt einer zweiten Zeile. **Wo ein Feld genau einen Artikel meint, ist es ein Verweis** (F13). |
 | F13 | **Ein Feld, das einen Artikel meint, hält seine Id** (`format: 'link'` mit `target`, T-078). Ein Name zeigt, solange niemand umbenennt, und von ihm kommt man nicht zum Artikel. `enumRef` auf eine Art bleibt, wo ein Feld Artikel **und** Wörter mischt (`Proficiencies.proficient` zieht aus Artikeln und aus `Weapon.category`). Umgestellt: `Statblock.conditionImmunities` → `Condition`, `Weapon.ammoType` → `Item`; die gespeicherten Namen schreibt `025_verweisfelder.sql` in Ids um, und was keinem Artikel eindeutig gehört, steht danach als Notiz (`Notes.note`, `condition-immunities` / `ammunition`). Seit T-099 (E-020, an den Artikeln auf dev entschieden) auch `Deity.domains` → `Subclass` („Knowledge" → „Knowledge Domain", `048_gottheit_domaenen.sql`, Notiz `domains`). **Wird ein Feld mit einem Namensfeld verglichen, bleibt es Name und bekommt die Auswahl** (F12): `Recipe.tool` zieht aus den Werkzeug-Artikeln (`enumRef: 'Item'`, `enumWhere` wie die Übungen), weil das Handwerk es gegen `Proficiencies.proficient` prüft. Welche Felder noch offen sind: [Verweisfelder.md](Verweisfelder.md). |
+| F14 | **Was nur ordnet, steht nur in der Maske** (`editOnly`): `Time.sort` und `untilSort` setzt man beim Bearbeiten, gelesen wird das Datum daneben. Eine Ansicht kann es nicht ausblenden — `hide` nimmt ein Feld aus einem Element, und der Rest der Artikelseite zeigte es wieder (T-126). |
 
 ### 4.4 Langer Text
 
@@ -723,9 +725,9 @@ beides zusammen (`resolveInstance`), Feld für Feld.
 |---|---|
 | V1 | **Gleich wie die Vorlage heisst: folgt der Vorlage.** Beim Speichern fällt weg, was gleich steht (`thinInstance`); den Wert der Vorlage eintragen oder das Feld leeren heisst, ihr wieder zu folgen. |
 | V2 | **Kanten nach Art:** die Aktionen der Vorlage (`composedOf`) kommen mit, solange die Instanz keine eigenen hat; eine geänderte Liste gehört ganz ihr. |
-| V3 | **Nicht vererbt:** `Identity`, `Visibility` und die Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`, `overrides`, `variantOf`). |
+| V3 | **Nicht vererbt:** `Identity`, `Visibility` und die Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`, `overrides`, `variantOf`) — dazu, was ein **Stück** trägt (`carries`, `PIECE_RELATIONS`, T-150): zwei Rucksäcke aus einer Vorlage haben nicht denselben Inhalt. Anders als `inLayer` ist `carries` eine Abweichung: ein Behälter mit eigenem Inhalt folgt der Vorlage nicht mehr (`followsTemplate`) und bildet keinen Stapel. |
 | V4 | **Eine Vorlage darf selbst Instanz sein**; gelesen wird die Kette hoch, ein Kreis bricht ab. |
-| V5 | **Instanzen stehen an ihrer Kreatur und sonst nirgends** — nicht in Listen, nicht als Verweisziel. |
+| V5 | **Instanzen stehen an ihrer Kreatur oder in ihrem Inventar und sonst nirgends** — nicht in Listen, nicht als Verweisziel. |
 | V6 | **Löschen nimmt nichts weg:** geht die Vorlage, bekommen die Instanzen vorher, was sie lasen (`detachInstance`); geht die Kreatur, geht ihre Instanz mit. |
 | V7 | Am Server kommt eine Instanz aufgelöst an, mit `fromTemplate` (Vorlage, geerbte Felder) — nur gelesen, nie gespeichert. |
 
@@ -738,9 +740,34 @@ Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 beim Kauf, T-133): `newInstance` legt den Artikel an — `instanceOf` auf den
 Grundartikel, `inLayer` in die Ebene der Kampagne, `Identity` mit dem Namen
 der Vorlage und einer neuen Nummer, `Status: ready`, sonst nichts. Eine
-Funktion für Kauf, Beute, Handwerk und Geschenke. `followsTemplate` sagt, ob
-eine Instanz in nichts abweicht — dann ist sie ein beliebiges Stück und
-darf einen Stapel bilden.
+Funktion für alle Wege, und eine fürs Einlegen (`receivePiece`): liegt ein
+loser Stapel desselben Grundartikels da, wächst er, sonst kommt eine neue
+`holds`-Kante auf das neue Stück. `followsTemplate` sagt, ob eine Instanz in
+nichts abweicht — dann ist sie ein beliebiges Stück und darf einen Stapel
+bilden. Am Server legt `stueckWerkstatt` (`apps/server/src/stueck.ts`) die
+Stücke einer Anfrage an und nimmt sie zurück, wenn das Inventar danach
+nicht geschrieben werden kann. Die Wege:
+
+| Weg | Wo |
+|---|---|
+| Kauf (T-133) | `POST /api/shops/:id/buy` |
+| Handwerk, der Ertrag bei Erfolg (T-128) | `abrechnen` in `handwerk.ts` |
+| Startausrüstung (T-096) | `POST /api/entities/:id/equipment` |
+| **Geben** — Beute, Geschenke, „Add an item" am Inventar | `POST /api/inventories/:id/give` (`{ item, qty }`): die Leitung der laufenden Kampagne in jedes Inventar, das sie sieht, sonst wer das Inventar schreibt; der Gegenstand muss sichtbar sein. Protokoll `inventory.given` |
+
+Wer ein Stück **weitergibt** (verschieben zwischen Figur, Gruppe und
+Behälter, `moveHeld`), gibt dieses Stück — eine Instanz einer Instanz
+entsteht nie. **Material zählt nach dem Grundartikel** (`baseArticle`): das
+Rezept braucht „Eisenbarren", der gekaufte Barren ist eine Instanz davon.
+Reservierte Stücke (T-134) bleiben gesperrt; die Reservierung steht an der
+Kante und nicht am Gegenstand.
+
+**Der Bestand vor T-150** (Migration 067): jede `holds`-Kante, die direkt auf
+einen Gegenstand zeigte, zeigt danach auf ein eigenes Stück — Name, Art und
+Sichtbarkeit des Gegenstands, eine neue Nummer, `ready`, in den Ebenen
+seines Inventars, verfasst von dem, der das Inventar verfasst hat. Menge,
+Lage und Reservierung bleiben an der Kante. Ein Behälter mit eigenem Inhalt
+und ein Ziel, das kein Gegenstand ist, bleiben und werden aufgezählt.
 
 ---
 
@@ -752,7 +779,7 @@ darf einen Stapel bilden.
 | Kante `partOf` (Layer → Layer) | die Ebene gehört zu dieser **Gruppe** (E-022 b, T-088); eine Ebene darf in mehreren sein, eine Gruppe in einer Gruppe |
 | Kante `inLayer` (`*` → Layer) | der Artikel liegt in dieser Ebene; `props.mode` `adds` (Vorgabe) oder `removes` |
 | Kante `activates` (Campaign → Layer, „Layers in play" / „In play in") | die Kampagne schaltet die Ebene auf; `props.order` ordnet, sonst `Layer.order`. Gepflegt auf der Kampagnenseite (Häkchen und Reihenfolge, `PUT /api/campaigns/:c/layers`) |
-| `activates` mit `props.mode: 'compare'` | **Vergleichsebene** (T-092, E-021 d): nicht im Spiel, ihre Fassungen stehen auf Wunsch an den Feldern und lassen sich übernehmen. Zählt nicht für `activeStack`, `campaignsOf`, `campaignsActivating` und die Ausfuhr. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/compare`) |
+| `activates` mit `props.mode: 'compare'` | **Vergleichsebene** (T-092, E-021 d): nicht im Spiel, ihre Fassungen stehen auf Wunsch an den Feldern und lassen sich übernehmen. Eine **Gruppe** zum Vergleich vergleicht ihre Mitglieder, verschachtelt, soweit sie nicht im Spiel sind (`playStack`, T-143). Zählt nicht für `activeStack`, `campaignsOf`, `campaignsActivating` und die Ausfuhr. Gepflegt auf der Kampagnenseite und im Popup der Kopfleiste (`PUT /api/campaigns/:c/compare`) |
 | `activates` mit `props.mode: 'off'` | **ausdrücklich aus** (T-088): die Ebene ist nicht im Spiel, auch wenn eine aufgeschaltete Gruppe sie brächte. Ohne Gruppe tut die Kante nichts. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/layers` mit `off`) |
 | `activates` mit `props.areas` / `props.types` | **was die Ebene bringt** (T-105, REQ-255): Bereiche (`area` der Art, geerbt) und einzelne Arten; ein Artikel passt, wenn seine Art genannt ist oder ihr Bereich. Ohne beide: alles. Gilt an aufgeschalteten Ebenen, an Gruppen (die Mitglieder tragen die Auswahl ihrer Gruppe, eine ausdrückliche Kante ihre eigene) und an Vergleichsebenen. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/layers/:layer/only`) |
 | Feld `Campaign.compareFor` | wer die Vergleichsebenen sieht: `gm` (Vorgabe — Verwaltung, `gm`, `co-gm`) oder `players` (jede Rolle am Tisch) |
