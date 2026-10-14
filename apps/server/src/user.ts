@@ -39,6 +39,7 @@ import {
 } from './auth.js';
 import type { Repository } from './repo.js';
 import { isTableRole } from '@nw/model';
+import { sorgeSpielerEbene } from './spielerebene.js';
 
 async function askPassword(prompt: string): Promise<string> {
   const fromEnv = process.env['NW_PASSWORD'];
@@ -220,6 +221,8 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       if (!isTableRole(rolle)) throw new Error('Rolle: gm | co-gm | player | spectator | none');
       roles[kampagne] = rolle;
       await repo.putUser({ ...existing, roles });
+      /* Wer mitspielt, bekommt seine Spielerebene (T-164). */
+      if (rolle === 'player') await sorgeSpielerEbene(repo, existing.id, kampagne);
       return `${name} ist in ${kampagne} jetzt ${rolle}.`;
     }
     /* **API-Tokens** (W9) — für ein Werkzeug, das auf dem Server keine

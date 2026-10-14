@@ -2501,7 +2501,9 @@ export const fieldGroups = {
         kind: {
           type: 'string',
           title: 'Kind',
-          enum: ['system', 'expansion', 'book', 'adventure', 'world', 'pack', 'campaign', 'overrides', 'group'],
+          /* `player`: die Spielerebene eines Kontos in einer Kampagne (T-164) —
+             Beschreibung wie jedes Wort hier; wessen sie ist, steht am Server. */
+          enum: ['system', 'expansion', 'book', 'adventure', 'world', 'pack', 'campaign', 'player', 'overrides', 'group'],
           default: 'pack',
         },
         order: { type: 'number', title: 'Specificity', default: 10 },

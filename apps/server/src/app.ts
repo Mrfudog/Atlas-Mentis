@@ -121,6 +121,7 @@ import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
+import { spielerEbenen, spielerEbeneVon, sorgeSpielerEbene } from './spielerebene.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
@@ -507,20 +508,53 @@ export function buildApp({
    */
   async function schreibEbenen(user: User | null, map: Map<string, Entity>): Promise<Set<string>> {
     if (!user || user.disabledAt) return new Set();
-    const raus = new Set<string>(user.layerIds ?? []);
+    const grants = await repo.layerGrants();
+    const spieler = spielerEbenen(grants);
+    const rolle = (c: string) => user.roles?.[c];
+    /* **Rolle weg, Ebene bleibt** (T-164): die Spielerebene schreibt ihr
+       Konto nur, solange es in ihrer Kampagne am Tisch mitspielt oder leitet. */
+    const raus = new Set<string>(
+      (user.layerIds ?? []).filter((l) => {
+        const s = spieler.get(l);
+        if (!s || s.userId !== user.id) return true;
+        const r = rolle(s.campaign);
+        return r === 'player' || r === 'gm' || r === 'co-gm';
+      }),
+    );
     const leitet = Object.entries(user.roles ?? {})
       .filter(([, r]) => r === 'gm' || r === 'co-gm')
       .map(([c]) => c);
     if (leitet.length) {
-      const eigene = await besessen();
+      const eigene = new Set(grants.filter((g) => g.owner).map((g) => g.layerId));
       for (const c of leitet) {
         const k = map.get(c);
         if (!k || primaryInterface(k) !== CAMPAIGN_TYPE) continue;
         const l = campaignLayer(map, k, eigene);
         if (l) raus.add(l.id);
+        /* Die Spielerebenen ihrer Runde schreibt die Leitung mit — wie sie
+           schreibt, was Spielende angelegt haben (D72, T-164). */
+        for (const [id, s] of spieler) if (s.campaign === c && map.has(id)) raus.add(id);
       }
     }
     return raus;
+  }
+
+  /**
+   * **Die Vorgabe-Schreibebene dieses Kontos in dieser Kampagne** (T-164,
+   * für T-161 die eine Stelle): wohin angelegt wird, wenn niemand eine
+   * Ebene nennt. Für `player` die eigene Spielerebene, solange die
+   * Kampagne sie aufschaltet, sonst wie bisher die Ebene der Kampagne;
+   * für alle anderen die erste Zielebene (die Leitung: die Ebene der
+   * Kampagne). `null`: hier legt dieses Konto nicht an.
+   */
+  async function vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+    if (!user || user.disabledAt || !kampagne) return null;
+    const ziele = await zielEbenen(user, map, kampagne);
+    if (user.roles?.[kampagne.id] === 'player' && !user.isAdmin) {
+      const eigene = spielerEbeneVon(await repo.layerGrants(), user.id, kampagne.id);
+      return ziele.find((l) => l.id === eigene) ?? (await kampagnenEbene(map, kampagne));
+    }
+    return ziele[0] ?? null;
   }
 
   /**
@@ -913,6 +947,8 @@ export function buildApp({
       if (invite.actorId && invite.campaignId && invite.role === 'player') {
         await inDieGruppe(repo, invite.campaignId, [invite.actorId]);
       }
+      /* … und seine Spielerebene (T-164). */
+      if (invite.campaignId && invite.role === 'player') await sorgeSpielerEbene(repo, id, invite.campaignId);
 
       /* Gleich angemeldet. Wer sich eben ein Passwort ausgedacht hat, soll
          es nicht sofort wieder eintippen müssen — und der Weg dahin ist
@@ -940,7 +976,7 @@ export function buildApp({
   /* Einladungen, Kampagnen, Mitglieder und Konten: `verwaltung.ts` (W3). */
   registerVerwaltung(app, { repo, viewerOf });
   /* Eigene Ebenen und wer darin schreibt: `ebenenrechte.ts` (T-098). */
-  registerEbenenrechte(app, { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene });
+  registerEbenenrechte(app, { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene, vorgabeEbene });
 
   app.post('/api/logout', async (request, reply) => {
     const token = request.cookies?.[COOKIE];
@@ -2802,12 +2838,17 @@ export function buildApp({
     /* Die Verwaltung schreibt ohnehin alles; eine Fassung legt sie in die
        Ebene der Kampagne oder in eine eigene, die im Spiel ist — etwa
        „AI generated prices" (T-139). */
+    /* **Keine Fassung in einer Spielerebene** (T-164): der Stapel gilt für
+       alle am Tisch, eine Überschreibung darin änderte den Artikel für alle. */
+    const spieler = spielerEbenen(await repo.layerGrants());
+    const ziele = async () =>
+      (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id) && !spieler.has(l.id));
     if (user.isAdmin) {
       if (!ebenen.length) return [];
-      return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));
+      return ziele();
     }
     if ((await ownedBy(user, map.values())).has(e.id)) return [];
-    return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));
+    return ziele();
   }
 
   /**
@@ -2917,10 +2958,13 @@ export function buildApp({
            Ebene, in der man schreibt, oder als Spielerin in die Runde — nie
            in ein geteiltes Regelwerk. */
         let ziel = ziele.find((l) => genannt.includes(l.id)) ?? (spielt ? null : (ziele[0] ?? null));
-        spielerin = !ziel;
-        if (spielerin) {
+        /* Als Spielerin in die Vorgabe: die eigene Spielerebene, sonst die
+           Ebene der Kampagne (T-164). Was dort liegt, hat sie angelegt. */
+        const vorgabe = spielt ? await vorgabeEbene(user, stand.map, kampagne) : null;
+        spielerin = !ziel || (spielt && ziel.id === vorgabe?.id);
+        if (!ziel) {
           if (!spielt) return { code: 403, body: { error: 'Anlegen darfst du hier nicht.' } };
-          ziel = await kampagnenEbene(stand.map, kampagne);
+          ziel = vorgabe;
         }
         for (let i = relations.length - 1; i >= 0; i -= 1) {
           if (relations[i]!.type === 'inLayer') relations.splice(i, 1);
@@ -3297,8 +3341,15 @@ export function buildApp({
        niemanden mehr da. Eine leere darf, wer darin schreibt. */
     const wer = await viewerOf(request);
     if (weg && wer && !wer.isAdmin && primaryInterface(weg) === 'Layer') {
-      const voll = [...alle.values()].some((e) => e.id !== weg.id && layersOf(e).includes(weg.id));
-      if (voll) return reply.code(409).send({ error: 'In dieser Ebene liegen Artikel; eine Ebene mit Inhalt löscht die Verwaltung.' });
+      const inhalt = [...alle.values()].filter((e) => e.id !== weg.id && layersOf(e).includes(weg.id));
+      /* Mit Aufzählung (T-164): wer löschen wollte, sieht, was darin liegt —
+         und kann es übernehmen (`POST /api/layers/:layer/takeover`). */
+      if (inhalt.length) {
+        return reply.code(409).send({
+          error: 'In dieser Ebene liegen Artikel; eine Ebene mit Inhalt löscht die Verwaltung.',
+          contents: inhalt.map((e) => ({ id: e.id, name: entityName(e), type: primaryInterface(e) })),
+        });
+      }
     }
     /* Reserviertes Material geht nicht mit; ein Auftrag gibt seines vorher frei (T-134). */
     if (weg) {
