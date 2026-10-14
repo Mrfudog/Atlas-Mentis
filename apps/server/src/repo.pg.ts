@@ -131,17 +131,18 @@ export class PgRepository implements Repository {
       } else if (part === 'relations') {
         await client.query('delete from relation_def');
         for (const [type, def] of Object.entries(value as Registry['relations'])) {
-          /* `facet` (T-174, Migration 073) nur, wo eine Kante es sagt — so
-             schreibt dieselbe Zeile auch in eine Datenbank vor 073. */
-          const mitFacette = def.facet !== undefined;
           await client.query(
-            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props,as_field,means,intended${mitFacette ? ',facet' : ''})
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12${mitFacette ? ',$13' : ''})`,
+            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props,as_field,means,intended)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
             [type, def.label, def.inverseLabel, def.from ?? ['*'], def.to ?? ['*'],
              def.owned ?? false, def.cardinality ?? 'many', def.section ?? null,
-             JSON.stringify(def.props ?? {}), def.asField ?? null, def.means ?? null, def.intended ?? null,
-             ...(mitFacette ? [JSON.stringify(def.facet)] : [])],
+             JSON.stringify(def.props ?? {}), def.asField ?? null, def.means ?? null, def.intended ?? null],
           );
+          /* `facet` (T-174, Migration 073) nur, wo eine Kante es sagt — so
+             schreibt dieselbe Zeile auch in eine Datenbank vor 073. */
+          if (def.facet !== undefined) {
+            await client.query('update relation_def set facet = $2 where type = $1', [type, JSON.stringify(def.facet)]);
+          }
         }
       } else if (part === 'views') {
         await client.query('delete from view_def');
