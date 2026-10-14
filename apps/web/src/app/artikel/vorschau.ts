@@ -127,6 +127,10 @@ interface Stueck {
         @if (!eingebettet()) {
           <div class="knoepfe">
             <a class="knopf pri" [routerLink]="e.interfaces[0] === 'Class' ? ['/classes', e.id] : ['/artikel', e.id]">Open article</a>
+            <!-- Eine Ebene liest man auch von hier (T-167): der Reiter „Read" am Artikel. -->
+            @if (e.interfaces[0] === 'Layer') {
+              <a class="knopf" [routerLink]="['/artikel', e.id]" [queryParams]="{ tab: 'read' }">Read</a>
+            }
           </div>
         }
       } @else if (bestand.fehlt().has(id())) {

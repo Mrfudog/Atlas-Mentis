@@ -74,6 +74,8 @@ import {
 import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
 import { Verlinkt } from './verlinkt';
+import { Lesen } from '../lesen/lesen';
+import { EbenenReiter } from './ebenen-reiter';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 
 /** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
@@ -144,6 +146,8 @@ interface Feld {
     BildPanel,
     Karte,
     Verlinkt,
+    Lesen,
+    EbenenReiter,
   ],
   template: `
     @if (artikel(); as e) {
@@ -168,6 +172,14 @@ interface Feld {
           <span aria-current="page">{{ name(e) }}</span>
         </nav>
 
+        <!-- Eine Ebene liest man an ihr selbst (T-167): der Reiter „Read" ist
+             dieselbe Leseansicht wie /read/:layer, auch vor dem Aufschalten. -->
+        @if (art(e) === 'Layer' && !bearbeitet()) {
+          <nw-ebenen-reiter [ebene]="e.id" [lesen]="leseReiter()" [ohneText]="!!leseZiel()?.empty" />
+        }
+        @if (leseReiter()) {
+          <nw-lesen [layer]="e.id" [eingebettet]="true" />
+        } @else {
         <div class="spalten">
           <main class="hauptspalte">
             <div class="werkzeugzeile">
@@ -187,10 +199,9 @@ interface Feld {
                 <!-- Die Leseansicht (T-091): an der Stelle im Buch, oder bei
                      einer Ebene von vorn. -->
                 @if (leseZiel(); as z) {
-                  @if (!bearbeitet()) {
-                    <a class="knopf" [routerLink]="['/read', z.layer]" [queryParams]="leseParams(z)">
-                      {{ art(e) === 'Layer' ? 'Read' : 'Read in book' }}
-                    </a>
+                  <!-- An der Ebene ist „Read" ein Reiter (T-167), oben. -->
+                  @if (!bearbeitet() && art(e) !== 'Layer') {
+                    <a class="knopf" [routerLink]="['/read', z.layer]" [queryParams]="leseParams(z)">Read in book</a>
                   }
                 }
                 <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
@@ -835,6 +846,7 @@ interface Feld {
             }
           </aside>
         </div>
+        }
       </div>
     } @else if (bestand.fehlt().has(id())) {
       <p class="fehler buch">No such article — or not one you may see.</p>
@@ -850,6 +862,8 @@ export class Artikel implements SchnellKontext {
   readonly edit = input<string | undefined>(undefined);
   /** `?from=<id>`: hierher kam man über „Open" aus einer Auswahl (T-131) — der Weg zurück. */
   readonly from = input<string | undefined>(undefined);
+  /** `?tab=read`: an einer Ebene der Reiter „Read" (T-167). */
+  readonly tab = input<string | undefined>(undefined);
 
   protected readonly bestand = inject(Bestand);
   private readonly quellen = inject(Quellen);
@@ -1425,6 +1439,10 @@ export class Artikel implements SchnellKontext {
 
   /** „Im Buch lesen" — der Server sagt es mit dem Artikel (`refs.reading`, T-091). */
   protected readonly leseZiel = computed(() => this.bestand.lesen().get(this.id()));
+  /** Steht an dieser Ebene der Reiter „Read" offen? Beim Bearbeiten nie. */
+  protected readonly leseReiter = computed(
+    () => this.tab() === 'read' && !this.bearbeitet() && !!this.artikel() && this.art(this.artikel()!) === 'Layer',
+  );
   protected leseParams(z: LeseZiel): Record<string, string> {
     return z.at ? { at: z.at } : z.page ? { page: z.page } : {};
   }
