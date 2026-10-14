@@ -193,6 +193,18 @@ export interface PropertySchema {
    * derselbe Artikel morgen anders.
    */
   readOnly?: boolean;
+  /**
+   * **Nur in der Maske, nie beim Lesen.** Ein Schlüssel, den jemand setzt,
+   * aber niemand liest: `Time.sort` ordnet die Weltgeschichte, „Mirtul 12"
+   * liest man. In der Feldtabelle stand „Sortable value 14920512" an
+   * jedem Ereignis (T-126) — eine Zahl, die nur dem Ordnen dient.
+   *
+   * Das ist nicht `readOnly` (das hat keine Eingabe) und keine
+   * Ansichtssache: ein `hide` an der Ansicht nähme das Feld aus einem
+   * Element, und der Rest der Artikelseite (`rest`) zeigte es wieder. Wer
+   * den Wert sehen will, sieht ihn beim Bearbeiten.
+   */
+  editOnly?: boolean;
 }
 
 /**
