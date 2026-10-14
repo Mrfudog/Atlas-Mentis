@@ -10,6 +10,7 @@ import { AusgeblendetHinweis } from '../kern/ausgeblendet';
 import { KurzLink } from '../kern/kurzansicht';
 import { Anlegen } from './anlegen';
 import { Vorschau } from './vorschau';
+import { Bild } from './bild';
 
 interface TypGruppe {
   label: string;
@@ -44,7 +45,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -233,6 +234,10 @@ const OFFEN = 8;
                 @for (z of liste()!.rows; track z.id) {
                   <tr [class.gewaehlt]="filter.vorschau() === z.id" (click)="zeile(z, $event)">
                     <td class="name">
+                      <!-- Das Vorschaubild, wenn die Übersicht der Art eines zeigt (T-114). -->
+                      @if (z.image) {
+                        <nw-bild class="daumen" [wert]="z.image" groesse="thumb" [oeffnen]="false" alt="" />
+                      }
                       <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
                       <!-- Am Telefon führt die Zeile gleich zum Artikel; die Karte
                            zeigt dieser Knopf (T-093). -->

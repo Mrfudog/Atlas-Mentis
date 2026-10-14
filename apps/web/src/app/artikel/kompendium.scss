@@ -161,6 +161,18 @@ td.name a:hover {
   color: var(--accent);
   text-decoration: underline;
 }
+/* Das Vorschaubild der Zeile (T-114): eine Zeile hoch, quadratisch beschnitten. */
+td.name .daumen {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.45rem;
+}
+td.name .daumen ::ng-deep img {
+  width: 2.2rem;
+  height: 2.2rem;
+  object-fit: cover;
+  border-radius: 4px;
+}
 .stand {
   margin-left: 0.4rem;
   font-size: 0.75rem;
