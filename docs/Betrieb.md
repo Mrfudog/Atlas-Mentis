@@ -506,6 +506,14 @@ die aufgeschaltete Gruppe „D&D 5e (2014)" sofort im Spiel wären. Ein
 Verweis auf einen Artikel, der nicht mitkommt, wird ein Verweis nach
 Namen. Probelauf: `dry-run` mit `confirm` = `neues`.
 
+**Nicht während eines Ausrollens einlesen.** Der Import läuft im
+App-Container; rollt in der Zeit ein Push auf `preprod` aus, startet der
+Container neu und der Import endet mit Code 137, mitten im Schreiben (so
+am 14.10. nach 8 506 von 29 547 Artikeln). Nichts ist kaputt — jeder
+Artikel wird für sich geschrieben —, und derselbe Lauf noch einmal bringt
+den Rest. Vorher unter Actions nachsehen, dass auf `preprod` keine CI
+läuft.
+
 **2024, Unearthed Arcana, Fahrzeuge, Decks, Bastionen** (T-087,
 REQ-243): seit T-087 bringt ein Lauf alles, jede Quelle in ihre Ebene —
 gut 29 000 Artikel mehr, je Ebene gezählt in
@@ -907,6 +915,45 @@ zusammengeführtes Doppel — ist nach dem nächsten Lauf wieder weg (das
 gelöschte Doppel steht wieder da). Was bleiben soll, gehört in den
 Importer (Doppel: `packages/import-5etools/src/doppel.ts`) oder als
 überschreibende Fassung in eine eigene Ebene.
+
+## Ein Regelwerk eines Drittverlags laden
+
+Für Bücher, die nicht aus 5e.tools kommen — das erste ist Kibbles’
+Compendium of Craft and Creation (T-122). **Der Inhalt kommt nie ins
+Repository**: das Repo ist öffentlich, das Buch gehört seinem Verlag.
+Im Repo steht nur der Einleser (`scripts/regelwerk.mjs`, der rechnende
+Teil in `scripts/regelwerk/plan.mjs`); das Paket mit dem Inhalt baut die
+Leitung oder eine Sitzung aus dem eigenen Exemplar, **ausserhalb** des
+Arbeitsbaums. Der Einleser verweigert eine Paketdatei im Repo.
+
+```bash
+node scripts/regelwerk.mjs ~/kibbles/paket.json --dry-run   # prüft gegen das Register von dev
+node scripts/regelwerk.mjs ~/kibbles/paket.json             # schreibt nach dev
+```
+
+- **Das Paket** (`atlas-regelwerk/1`, Aufbau im Kopf von `plan.mjs`):
+  die Ebene mit Kürzel, Autor, Erscheinen und Herausgeber-Gruppe, dazu
+  die Artikel in der Sprache des Registers — Art, Name, Felder als
+  `Typ.feld`, Kanten nach Schlüssel, nach Id oder beim Namen eines
+  Artikels, den der Server schon kennt (ein Werkzeug aus dem
+  Grundregelwerk; mehrdeutig oder fehlend wird gemeldet, nicht geraten).
+- **Rezepte bekommen ihre Blaupause:** eine Information ohne Felder über
+  `knowledge` — die lernt man (Datenmodell 9.5). `learnable: false`
+  lässt sie weg.
+- **Die Ebene** legt der Lauf über `POST /api/layers` an (das Konto
+  besitzt sie), Art `book`, Spezifität 20; fehlt die Herausgeber-Gruppe,
+  legt er sie an. **Aufgeschaltet wird nichts** — das tut die Leitung in
+  der Kampagne. Artikel stehen auf `ready`, wenn das Paket nichts sagt.
+- **Die Zustandsdatei** (`<paket>.state.json`, neben dem Paket) hält je
+  Schlüssel die Server-Id und Revision. Sie ist das Gedächtnis des Laufs:
+  was keine Kampagne aufschaltet, liest auch die Verwaltung nicht über die
+  API (`inPlay`). Mit ihr legt ein zweiter Lauf nichts doppelt an und
+  schreibt nur, was sich im Paket geändert hat; ein Artikel, den jemand
+  am Server geändert hat, wird übersprungen und gemeldet. Geht sie
+  verloren, legt der nächste Lauf alles neu an — dann vorher die alte
+  Ebene löschen.
+- **Nur dev.** Die Ausgabe nennt Schlüssel, Arten und Zahlen, nie Text
+  aus dem Paket, und darf ins Protokoll (`docs/Nachtarbeit/…`).
 
 ## Den Bestand von prod nach dev holen
 

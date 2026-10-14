@@ -22,7 +22,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { entityName } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import { Live, type ArtikelEreignis } from './live';
-import { Api, ApiError, type Bezuege, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
+import { Api, ApiError, type Bezuege, type Fertigungswerte, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
@@ -53,6 +53,9 @@ export class Bestand {
   private readonly _uebernahmeZiele = signal<ReadonlyMap<string, { id: string; name: string; type: string }[]>>(new Map());
   private readonly _fertig = signal<ReadonlyMap<string, string>>(new Map());
   private readonly _lesen = signal<ReadonlyMap<string, LeseZiel>>(new Map());
+  /** Womit an einem Rezept gefertigt wird (`refs.craft`, T-122). */
+  private readonly _fertigung = signal<ReadonlyMap<string, Fertigungswerte>>(new Map());
+  readonly fertigung = this._fertigung.asReadonly();
   /** Artikel aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
   private readonly _vergleich = signal<ReadonlySet<string>>(new Set());
   readonly vergleich = this._vergleich.asReadonly();
@@ -190,6 +193,12 @@ export class Bestand {
         this._lesen.update((m) => {
           const n = new Map(m);
           if (refs?.reading) n.set(id, refs.reading);
+          else n.delete(id);
+          return n;
+        });
+        this._fertigung.update((m) => {
+          const n = new Map(m);
+          if (refs?.craft) n.set(id, refs.craft);
           else n.delete(id);
           return n;
         });
