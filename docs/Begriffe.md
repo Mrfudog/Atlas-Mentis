@@ -317,6 +317,16 @@ Freigabe auf den falschen Artikel zeigen zu lassen.
 Das ist **nicht** `derived`: ein gerechneter Wert entsteht bei jedem Lesen
 neu (D8), eine ausgegebene Nummer muss stehen bleiben.
 
+**Zwischen zwei Installationen gehört die Nummer prod** (T-130). Jede
+Installation zählt für sich; legt dev `rule-0042` an und hat prod
+inzwischen eine andere `rule-0042`, sind es zwei Artikel mit derselben
+Nummer. Einer muss weichen, und es ist der auf dev: auf prod wird gespielt,
+dort stehen die Verweise, die zählen, und dev ist die Spielwiese, die sich
+nach prod richtet. Die **Id** dagegen ist zufällig und auf beiden Seiten
+dieselbe — an ihr erkennt die Übernahme, dass es derselbe Artikel ist. Das
+ist die eine Stelle, an der eine Nummer sich nach dem Anlegen noch ändert,
+und sie nimmt ihre Verweise (`[[rule-0042|…]]`) mit.
+
 ---
 
 ## Artikel

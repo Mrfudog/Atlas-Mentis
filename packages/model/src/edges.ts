@@ -281,6 +281,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'handover',
+    label: 'Transfer between installations',
+    area: 'transfer',
+    does: 'brings what belongs to an article along when it moves between dev and prod — its statblock, inventory and content, its parts, its template — and groups the preview by layer (T-130)',
+    uses: {
+      [M + 'uebernahme.ts']: ['belongsTo', 'carries', 'holds', 'inLayer', 'instanceOf', 'partOf'],
+      [S + 'uebernahme.ts']: ['inLayer'],
+    },
+  },
+  {
     key: 'display',
     label: 'Where it is from',
     area: 'display',
