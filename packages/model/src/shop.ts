@@ -283,6 +283,32 @@ const loseGleich = (item: EntityId, entities: ReadonlyMap<EntityId, Entity>) => 
 };
 
 /**
+ * **Ein Stück kommt ins Inventar** (T-150) — gekauft, erbeutet, gefertigt,
+ * geschenkt, eine Funktion für alle Wege: liegt ein loser Stapel desselben
+ * Grundartikels da (`loseGleich`), wächst er um `qty`; sonst kommt eine
+ * neue Kante `piece.edge` auf `piece.to`, und `created` sagt dem Aufrufer,
+ * dass er das Stück anlegen muss (`newInstance`). Ist `item` selbst schon
+ * ein Stück (eine Instanz, die jemand weitergibt), zeigt `piece.to` darauf
+ * und angelegt wird nichts — das entscheidet der Aufrufer, hier wird nur
+ * gestapelt. Das Inventar kommt neu zurück.
+ */
+export function receivePiece(
+  inventory: Entity,
+  item: EntityId,
+  qty: number,
+  piece: { edge: string; to: EntityId },
+  entities: ReadonlyMap<EntityId, Entity>,
+): { inventory: Entity; piece: EntityId; created: boolean } {
+  const n = stueck(qty);
+  const liste = inventory.relations ?? [];
+  const da = liste.find(loseGleich(item, entities));
+  const relations = da
+    ? liste.map((r) => (r === da ? { ...r, props: { ...(r.props ?? {}), qty: stueck(r.props?.['qty']) + n } } : r))
+    : [...liste, { id: piece.edge, type: 'holds', to: piece.to, props: { qty: n, tier: 'pack' } }];
+  return { inventory: { ...inventory, relations }, piece: da ? da.to : piece.to, created: !da };
+}
+
+/**
  * **Kaufen** (T-133): `qty` Stück der Ware `offer` — mit dem Preis, den
  * `shopWares` für diese Figur gerechnet hat (am Server, nie aus der
  * Maske). Die gezählte Menge an `sells` sinkt (leer bleibt unbegrenzt),
@@ -315,18 +341,14 @@ export function buyWare(
     offer.qty === undefined
       ? shop
       : { ...shop, relations: (shop.relations ?? []).map((r) => (r === kante ? { ...r, props: { ...(r.props ?? {}), qty: offer.qty! - n } } : r)) };
-  const liste = inventory.relations ?? [];
-  const da = liste.find(loseGleich(offer.item, entities));
-  const relations = da
-    ? liste.map((r) => (r === da ? { ...r, props: { ...(r.props ?? {}), qty: stueck(r.props?.['qty']) + n } } : r))
-    : [...liste, { id: piece.edge, type: 'holds', to: piece.to, props: { qty: n, tier: 'pack' } }];
+  const r = receivePiece(inventory, offer.item, n, piece, entities);
   return {
     shop: neuerLaden,
-    inventory: mitKupfer({ ...inventory, relations }, hat - total),
+    inventory: mitKupfer(r.inventory, hat - total),
     unit: offer.price,
     total,
-    piece: da ? da.to : piece.to,
-    created: !da,
+    piece: r.piece,
+    created: r.created,
   };
 }
 

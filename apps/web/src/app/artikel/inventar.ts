@@ -631,11 +631,20 @@ export class Inventar {
     await this.schreiben([{ ...inv, relations: (inv.relations ?? []).map((r) => (r.id === p.key ? reserve(r, null) : r)) }]);
   }
 
+  /** Ein Stück dazu: der Server legt es als Instanz des Gegenstands an (T-150) oder legt es auf einen losen Stapel. */
   protected async hinzu(item: string): Promise<void> {
-    if (!item) return;
+    if (!item || this.schreibt) return;
     const inv = this.inventar();
-    const kante = { id: `${inv.id}~holds-${Date.now().toString(36)}`, type: 'holds', to: item, props: { qty: 1, tier: 'pack' } };
-    await this.schreiben([{ ...inv, relations: [...(inv.relations ?? []), kante] }]);
+    this.schreibt = true;
+    this.hinweis.set(null);
+    try {
+      await this.api.give(inv.id, item, 1);
+      await this.bestand.oeffnen(inv.id, true, false);
+    } catch (error) {
+      this.hinweis.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.schreibt = false;
+    }
   }
 
   /** Zur Gruppe, zu einer Figur, in einen Behälter: erst das Ziel schreiben, dann die Quelle. */

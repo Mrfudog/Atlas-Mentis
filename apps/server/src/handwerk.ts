@@ -18,7 +18,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
-  addToInventory,
+  baseArticle,
   applyRoll,
   applySettlement,
   craftCheck,
@@ -51,6 +51,7 @@ import {
 } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
+import { stueckWerkstatt } from './stueck.js';
 
 const ORDER_TYPE = 'CraftingOrder';
 const PARTY_RELATION = 'memberOfParty';
@@ -249,9 +250,10 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
       const roheFigur = stand.map.get(f.id) ?? f;
       const stock = inventareVon(roheFigur, stand.map).flatMap((inv) =>
         (stand.map.get(inv)?.relations ?? [])
-          .filter((r) => r.type === 'holds' && items.has(r.to) && !r.props?.['reservedFor'])
+          /* Gezählt nach Grundartikel (T-150): der gekaufte Barren ist eine Instanz des Barrens. */
+          .filter((r) => r.type === 'holds' && items.has(baseArticle(stand.map, r.to)) && !r.props?.['reservedFor'])
           .map((r) => ({
-            item: r.to,
+            item: baseArticle(stand.map, r.to),
             inventory: inv,
             owner: namen.get(inv)?.name ?? '',
             edge: r.id,
@@ -335,8 +337,9 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     for (const m of wahl) {
       if (!erlaubt.has(m.inventory)) return reply.code(403).send({ error: 'Material nur aus dem Inventar der Figur und ihrer Gruppe.' });
       const kante = (stand.map.get(m.inventory)?.relations ?? []).find((r) => r.id === m.edge && r.type === 'holds');
-      if (!kante || !bed.some((b) => b.item === kante.to)) return reply.code(422).send({ error: 'Das braucht dieses Rezept nicht.' });
-      gewaehlt.set(kante.to, (gewaehlt.get(kante.to) ?? 0) + m.qty);
+      const grund = kante ? baseArticle(stand.map, kante.to) : '';
+      if (!kante || !bed.some((b) => b.item === grund)) return reply.code(422).send({ error: 'Das braucht dieses Rezept nicht.' });
+      gewaehlt.set(grund, (gewaehlt.get(grund) ?? 0) + m.qty);
     }
     const fehlt = bed.filter((b) => b.consumed && (gewaehlt.get(b.item) ?? 0) < b.qty);
     if (fehlt.length && !leitung) {
@@ -401,11 +404,11 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
    * Inventar der Figur (sonst ihrer Gruppe); beim Abbruch alles zurück;
    * beim Misserfolg nach der Regel.
    */
-  async function abrechnen(order: Entity, map: Map<string, Entity>, how: 'success' | Return): Promise<string | null> {
+  async function abrechnen(order: Entity, map: Map<string, Entity>, how: 'success' | Return, kampagne: Entity | null): Promise<string | null> {
     const a = auftrag(order, map);
     const bed = bedarf(a.aufgeloest, map);
     const stuecke = reserviert(order.id, map);
-    const ergebnis = settlePieces(stuecke, (item) => bed.find((b) => b.item === item)?.consumed ?? true, how);
+    const ergebnis = settlePieces(stuecke, (item) => bed.find((b) => b.item === baseArticle(map, item))?.consumed ?? true, how);
     const jeInventar = new Map<string, Map<string, number>>();
     for (const { piece, keep } of ergebnis) {
       const m = jeInventar.get(piece.inventory) ?? new Map<string, number>();
@@ -413,6 +416,11 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
       jeInventar.set(piece.inventory, m);
     }
     const neu = new Map<string, Entity>();
+    const werkstatt = stueckWerkstatt(
+      { repo, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene },
+      { alle: [...map.values()], map },
+      kampagne,
+    );
     for (const [inv, keep] of jeInventar) {
       const e = map.get(inv);
       if (e) neu.set(inv, applySettlement(e, keep));
@@ -422,11 +430,19 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
       const anzahl = Math.max(1, Number(a.aufgeloest.components?.[RECIPE_COMPONENT]?.['yieldCount']) || 1);
       const ziel = carriesOf(a.actor) ?? partiesOf(a.actor).map((p) => carriesOf(map.get(p))).find((x) => !!x) ?? null;
       const inv = ziel ? (neu.get(ziel) ?? map.get(ziel)) : undefined;
-      if (ertrag && inv) neu.set(inv.id, addToInventory(inv, ertrag.to, anzahl, neueKante(inv.id, 'holds')));
+      /* Der Ertrag entsteht als Instanz (T-150), wie ein gekauftes Stück. */
+      if (ertrag && inv) {
+        const r = await werkstatt.geben(inv, ertrag.to, anzahl);
+        if ('issues' in r) return r.issues.map((i) => i.message).join('; ');
+        neu.set(inv.id, r.inventory);
+      }
     }
     for (const inv of neu.values()) {
       const f = await schreib(inv);
-      if (f) return f;
+      if (f) {
+        await werkstatt.zuruecknehmen();
+        return f;
+      }
     }
     await repo.appendEvent('crafting.settled', order.id, { how, pieces: ergebnis.map((x) => ({ item: x.piece.item, qty: x.piece.qty, keep: x.keep })) });
     return null;
@@ -463,7 +479,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const wirkung = applyRoll({ progress: a.progress, outcome: a.outcome }, ergebnis, need, craftRulesOf(kampagne), a.aufgeloest.components?.[RECIPE_COMPONENT]?.['onFailure']);
     const rolls = [...a.rolls.filter((r) => r.result !== 'pending'), { ...probe, note: wirkung.note }];
     if (wirkung.settle) {
-      const f = await abrechnen(order, stand.map, wirkung.settle);
+      const f = await abrechnen(order, stand.map, wirkung.settle, kampagne);
       if (f) return f;
     }
     return setzeAuftrag(order, { progress: wirkung.progress, outcome: wirkung.outcome, rolls });
@@ -529,7 +545,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
   app.post<{ Params: { id: string } }>('/api/crafting/:id/abort', async (request, reply) => {
     const v = await vorbereiten(request);
     if (!v.ok) return reply.code(v.code).send({ error: v.error });
-    const f = (await abrechnen(v.order, v.stand.map, 'all')) ?? (await setzeAuftrag(v.order, { outcome: 'aborted' }));
+    const f = (await abrechnen(v.order, v.stand.map, 'all', v.kampagne)) ?? (await setzeAuftrag(v.order, { outcome: 'aborted' }));
     return f ? reply.code(422).send({ error: f }) : { ok: true };
   });
 
@@ -544,7 +560,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     if (!v.leitung) return reply.code(403).send({ error: 'Das entscheidet die Leitung.' });
     const r = String(request.body?.return ?? 'none');
     const how: Return = r === 'all' || r === 'half' ? r : 'none';
-    const f = (await abrechnen(v.order, v.stand.map, how)) ?? (await setzeAuftrag(v.order, { outcome: 'failed' }));
+    const f = (await abrechnen(v.order, v.stand.map, how, v.kampagne)) ?? (await setzeAuftrag(v.order, { outcome: 'failed' }));
     return f ? reply.code(422).send({ error: f }) : { ok: true };
   });
 }
