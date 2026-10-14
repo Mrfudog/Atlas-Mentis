@@ -46,6 +46,8 @@ import {
   activeLayerRanks,
   layerShort,
   layersOf,
+  resolvedStack,
+  isGroupLayer,
   versionsOf,
   LAYER_RELATION,
   OVERRIDES_RELATION,
@@ -76,6 +78,7 @@ import type { AtlasEnv } from './config.js';
 import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
+import { registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
@@ -90,6 +93,7 @@ import {
   tokenExpiry,
   hashPassword,
   hashToken,
+  inWritableLayers,
   mayWrite,
   newSessionToken,
   passwordProblem,
@@ -382,14 +386,83 @@ export function buildApp({
     await repo.appendEvent('view_as.start', von.id, { target: ziel.id, campaign: kampagne });
   }
 
-  /** Was ein Spieler schreiben darf: seine Figur und was an ihr hängt, und
-   *  was er selbst angelegt hat (REQ-237). Die Kante steht in den Daten,
-   *  also wird sie dort nachgesehen. */
+  /** **Die Ebenen, die einem Konto gehören** (T-098): keine davon ist die
+   *  Ebene einer Kampagne (`campaignLayer`), auch wenn nur eine sie
+   *  aufschaltet. */
+  async function besessen(): Promise<Set<string>> {
+    return new Set((await repo.layerGrants()).filter((g) => g.owner).map((g) => g.layerId));
+  }
+
+  /** **Die Ebene einer Kampagne** (T-098, E-001): die spezifischste
+   *  aufgeschaltete, die keine andere Kampagne aufschaltet und keinem Konto
+   *  gehört. Dorthin legen Spielende an, darin schreiben `gm` und `co-gm`. */
+  async function kampagnenEbene(map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+    return kampagne ? campaignLayer(map, kampagne, await besessen()) : null;
+  }
+
+  /** Leitet dieses Konto irgendwo (`gm`, `co-gm`)? */
+  const leitetIrgendwo = (user: User): boolean =>
+    Object.values(user.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
+
+  /**
+   * **In welchen Ebenen dieses Konto schreibt** (T-098, E-001): die, die
+   * es besitzt oder zugeteilt bekam (`app_user_layer`), und als `gm` oder
+   * `co-gm` die Ebene jeder Kampagne, die es leitet. Die Verwaltung schreibt
+   * ohnehin alles; hier stehen für sie nur ihre zugeteilten Ebenen.
+   */
+  async function schreibEbenen(user: User | null, map: Map<string, Entity>): Promise<Set<string>> {
+    if (!user || user.disabledAt) return new Set();
+    const raus = new Set<string>(user.layerIds ?? []);
+    const leitet = Object.entries(user.roles ?? {})
+      .filter(([, r]) => r === 'gm' || r === 'co-gm')
+      .map(([c]) => c);
+    if (leitet.length) {
+      const eigene = await besessen();
+      for (const c of leitet) {
+        const k = map.get(c);
+        if (!k || primaryInterface(k) !== CAMPAIGN_TYPE) continue;
+        const l = campaignLayer(map, k, eigene);
+        if (l) raus.add(l.id);
+      }
+    }
+    return raus;
+  }
+
+  /**
+   * **Wohin dieses Konto anlegt und Fassungen legt** (T-098): seine
+   * Schreibebenen, soweit sie in der laufenden Kampagne im Spiel sind —
+   * eine Fassung in einer Ebene, die nicht aufgeschaltet ist, gälte
+   * nirgends, und ein Artikel darin wäre für niemanden da. Zuerst die
+   * Ebene der Kampagne, dann von oben nach unten. Für die Verwaltung die
+   * Ebene der Kampagne und ihre zugeteilten.
+   */
+  async function zielEbenen(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity[]> {
+    if (!user || user.disabledAt || !kampagne) return [];
+    const schreibt = await schreibEbenen(user, map);
+    const eigene = await kampagnenEbene(map, kampagne);
+    if (user.isAdmin && eigene) schreibt.add(eigene.id);
+    if (!schreibt.size) return [];
+    const imSpiel = resolvedStack(map, kampagne)
+      .filter((l) => !isGroupLayer(l) && schreibt.has(l.id))
+      .reverse();
+    return [...imSpiel.filter((l) => l.id === eigene?.id), ...imSpiel.filter((l) => l.id !== eigene?.id)];
+  }
+
+  /** Was ein Konto schreiben darf: seine Figur und was an ihr hängt, was
+   *  es selbst angelegt hat (REQ-237), und was ganz in Ebenen liegt, in
+   *  denen es schreibt (T-098, `inWritableLayers`). Die Kante steht in den
+   *  Daten, also wird sie dort nachgesehen. */
   async function ownedBy(user: User, bestand?: Iterable<Entity>): Promise<Set<string>> {
     const figuren = new Set<string>(user.actorIds ?? []);
+    const mitEbenen = (user.layerIds?.length ?? 0) > 0 || leitetIrgendwo(user);
+    const liste = figuren.size || mitEbenen ? [...(bestand ?? (await repo.listEntities()))] : [];
     /* Dazu der Statblock der Figur (E-014 d: alle Felder und Kanten). */
-    const own = teileVon(figuren, figuren.size ? (bestand ?? (await repo.listEntities())) : [], OWNING_RELATIONS);
+    const own = teileVon(figuren, liste, OWNING_RELATIONS);
     for (const id of user.authoredIds ?? []) own.add(id);
+    if (mitEbenen) {
+      const ebenen = await schreibEbenen(user, new Map(liste.map((e) => [e.id, e])));
+      if (ebenen.size) for (const e of liste) if (inWritableLayers(e, ebenen)) own.add(e.id);
+    }
     return own;
   }
 
@@ -440,17 +513,20 @@ export function buildApp({
   }
 
   /**
-   * **Wer Artikel anlegt** (REQ-237, E-011, E-013): die Verwaltung, und wer
-   * in der laufenden Kampagne `player` ist — jede Art. Ob die Leitung
-   * anlegt, ist eine eigene Frage (E-001) und hier nicht entschieden.
+   * **Wer Artikel anlegt** (REQ-237, E-011, E-013, T-098): die Verwaltung,
+   * wer in der laufenden Kampagne `player` ist — jede Art, in die Ebene
+   * der Kampagne —, und wer in einer Ebene schreibt, die dort im Spiel ist
+   * (`zielEbenen`; die Leitung in der Ebene ihrer Kampagne, E-001). Eine
+   * eigene Ebene legt jedes Konto an (`POST /api/layers`).
    */
   async function mayCreate(user: User, alle?: Map<string, Entity>): Promise<boolean> {
     if (user.disabledAt) return false;
     if (user.isAdmin) return true;
-    if (!Object.values(user.roles ?? {}).includes('player')) return false;
     const map = alle ?? new Map((await repo.listEntities()).map((e) => [e.id, e]));
     const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
-    return !!kampagne && user.roles?.[kampagne.id] === 'player';
+    if (!kampagne) return false;
+    if (user.roles?.[kampagne.id] === 'player') return true;
+    return (await zielEbenen(user, map, kampagne)).length > 0;
   }
 
   /**
@@ -537,7 +613,8 @@ export function buildApp({
       const eigen = await ownedBy(user, bestand.values());
       /* Was Spielende angelegt haben, schreibt die Leitung ihrer Kampagne
          mit (REQ-237) — sonst zeigte die Maske ihr keinen Knopf, um es
-         `ready` zu setzen. Dieselbe Regel wie in der Wache. */
+         `ready` zu setzen. Dieselbe Regel wie in der Wache. Was in ihren
+         Ebenen liegt, bringt `ownedBy` schon mit (T-098). */
       if (Object.values(user.roles ?? {}).includes('gm')) {
         for (const id of await repo.authoredArticles()) {
           const e = bestand.get(id);
@@ -748,6 +825,8 @@ export function buildApp({
 
   /* Einladungen, Kampagnen, Mitglieder und Konten: `verwaltung.ts` (W3). */
   registerVerwaltung(app, { repo, viewerOf });
+  /* Eigene Ebenen und wer darin schreibt: `ebenenrechte.ts` (T-098). */
+  registerEbenenrechte(app, { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene });
 
   app.post('/api/logout', async (request, reply) => {
     const token = request.cookies?.[COOKIE];
@@ -848,6 +927,12 @@ export function buildApp({
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
 
+    /* Eigene Ebenen und wer darin schreibt (T-098): die Routen prüfen je
+       Ebene selbst (`ebenenrechte.ts`). */
+    if (url === '/api/layers' || url.startsWith('/api/layers/')) return;
+    /* „Edit" an einem fremden Artikel legt eine Fassung an (T-098): die
+       Route prüft die Zielebene selbst. */
+    if (/^\/api\/entities\/[^/]+\/adapt$/.test(url) && request.method === 'POST') return;
     /* Würfeln für die Attribute (E-016 a): die Route prüft die Rolle in
        der laufenden Kampagne selbst. */
     if (url === '/api/abilities/roll' && request.method === 'POST') return;
@@ -860,14 +945,15 @@ export function buildApp({
       if (await mayCreate(user)) return;
       return reply.code(403).send({ error: 'Anlegen darfst du hier nicht.' });
     }
-    /* Ein Spieler schreibt seine Figur und was an ihr hängt, und was er
-       selbst angelegt hat — und sonst nichts. */
+    /* Ein Konto schreibt seine Figur und was an ihr hängt, was es selbst
+       angelegt hat und was in seinen Ebenen liegt (T-098) — und sonst
+       nichts. */
     const id = url.startsWith('/api/entities/') ? decodeURIComponent(url.slice(14)) : '';
     if (id && mayWrite(user, await ownedBy(user), id)) return;
     /* **Die Leitung schreibt, was Spielende ihr vorlegen** (REQ-237): sonst
        könnte sie es nicht `ready` setzen. Nur Artikel, die jemand angelegt
-       hat, und nur als `gm` ihrer Kampagne (`maySetReady`) — was die
-       Leitung sonst schreibt, ist E-001 und hier nicht entschieden. */
+       hat, und nur als `gm` ihrer Kampagne (`maySetReady`) — auch wenn sie
+       nicht in der Ebene der Kampagne liegen. */
     if (id && request.method === 'PUT' && (await repo.authorsOf(id)).length) {
       const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
       const da = alle.get(id);
@@ -1193,11 +1279,13 @@ export function buildApp({
   ): Promise<ListIndex> {
     const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
     /* Die ausgenommenen Figuren gehören in den Schlüssel: wer eine Figur
-       zugeteilt bekommt, ändert keinen Artikel und damit keinen Stempel. */
+       zugeteilt bekommt, ändert keinen Artikel und damit keinen Stempel.
+       Ebenso die Ebenen, in denen er schreibt (T-098): was darin liegt,
+       sieht er in jedem Stand. */
     const wer =
       !user || user.isAdmin
         ? '*'
-        : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}|${[...(await ausgenommen(stand.map, registry))].sort().join(',')}`;
+        : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}|${[...(await ausgenommen(stand.map, registry))].sort().join(',')}|${(user.layerIds ?? []).join(',')}|${[...(await besessen())].sort().join(',')}`;
     const key = `${stand.stempel}|${stapel}|${registerStempel(registry)}|${wer}`;
     let lauf = indizes.get(key);
     if (lauf) {
@@ -1445,7 +1533,7 @@ export function buildApp({
       ? await sieve(request, roheFassungen, stand.map, undefined, 'versions')
       : [];
     const user = await viewerOf(request);
-    const eigene = kampagne && rechtAn(user, kampagne.id) === 'manage' ? campaignLayer(stand.map, kampagne) : null;
+    const eigene = kampagne && rechtAn(user, kampagne.id) === 'manage' ? await kampagnenEbene(stand.map, kampagne) : null;
     const vergleichsIds = new Set(compareLayers(stand.map, kampagne).map((l) => l.id));
     const imSpiel = activeLayerRanks(stand.map, kampagne);
     /* Übernommen ist eine Fassung, wenn eine Kopie in der Kampagnenebene
@@ -1527,7 +1615,7 @@ export function buildApp({
       if (!kampagne || kampagne.id !== c) {
         return reply.code(409).send({ error: 'Übernehmen geht nur in der laufenden Kampagne.' });
       }
-      const ebene = campaignLayer(stand.map, kampagne);
+      const ebene = await kampagnenEbene(stand.map, kampagne);
       if (!ebene) {
         return reply.code(409).send({ error: 'Diese Kampagne hat keine eigene Ebene, in die eine Überschreibung käme.' });
       }
@@ -1577,7 +1665,7 @@ export function buildApp({
     if (rechtAn(user, c) !== 'manage') return reply.code(403).send({ error: 'Rückgängig macht die Leitung.' });
     const stand = await roh();
     const kampagne = stand.map.get(c);
-    const ebene = kampagne ? campaignLayer(stand.map, kampagne) : null;
+    const ebene = kampagne ? await kampagnenEbene(stand.map, kampagne) : null;
     const kopie = stand.map.get(request.params.id);
     if (!kopie || !ebene || !istUebernahme(kopie, ebene.id)) {
       return reply.code(404).send({ error: 'Keine übernommene Fassung dieser Kampagne.' });
@@ -1813,20 +1901,46 @@ export function buildApp({
       ...(vergleich ? { compare: true } : {}),
       ...(reading ? { reading } : {}),
     };
-    /* Ob „Adapt" angeboten wird (E-018, T-082): dieselbe Frage wie die
-       Route, damit die Seite nichts anbietet, was der Server ablehnt. */
-    return { ...einer, refs: (await anpassbar(request, einer, stand.map)) ? { ...refs, adaptable: true } : refs };
+    /* Ob „Adapt" angeboten wird (E-018, T-082) und in welche Ebenen
+       (`adaptTo`, T-098): dieselbe Frage wie die Route, damit die Seite
+       nichts anbietet, was der Server ablehnt. Wer den Artikel nicht
+       schreibt, aber eine Zielebene hat, bekommt an „Edit" eine Fassung. */
+    const ziele = await anpassZiele(request, einer, stand.map);
+    return {
+      ...einer,
+      refs: ziele.length
+        ? { ...refs, adaptable: true, adaptTo: ziele.map((l) => ({ id: l.id, name: entityName(l) })) }
+        : refs,
+    };
   });
 
-  /** Lässt sich dieser Artikel für die laufende Kampagne anpassen? Die Regeln der Route `adapt`. */
-  async function anpassbar(request: FastifyRequest, e: Entity, map: Map<string, Entity>): Promise<boolean> {
+  /** Arten, von denen es keine Fassung gibt: eine Ebene ist der Ort, eine
+   *  Kampagne der Stapel selbst (T-098). */
+  const OHNE_FASSUNG = new Set(['Layer', CAMPAIGN_TYPE]);
+
+  /**
+   * **In welche Ebenen dieser Artikel angepasst werden kann** (E-018, T-082,
+   * T-098) — die Regeln der Route `adapt`. Die Verwaltung wie bisher in die
+   * Ebene der laufenden Kampagne, und nur aus einer anderen Ebene. Alle
+   * anderen in ihre Zielebenen (`zielEbenen`), wenn sie ihn nicht selbst
+   * schreiben — auch einen Artikel ohne Ebene: der gehört niemandem, und
+   * ändern heisst für alle ausser der Verwaltung, eine Fassung anzulegen.
+   */
+  async function anpassZiele(request: FastifyRequest, e: Entity, map: Map<string, Entity>): Promise<Entity[]> {
     const user = await viewerOf(request);
-    if (!user?.isAdmin) return false;
-    const ebenen = (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
-    if (!ebenen.length || (e.relations ?? []).some((r) => r.type === 'overrides')) return false;
+    if (!user || user.disabledAt) return [];
+    if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
+    if (OHNE_FASSUNG.has(primaryInterface(e))) return [];
     const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
-    const ebene = campaignLayer(map, kampagne);
-    return !!kampagne && !!ebene && !ebenen.includes(ebene.id) && inStack(map, e, kampagne);
+    if (!kampagne || !inStack(map, e, kampagne)) return [];
+    const ebenen = layersOf(e);
+    if (user.isAdmin) {
+      if (!ebenen.length) return [];
+      const ebene = await kampagnenEbene(map, kampagne);
+      return ebene && !ebenen.includes(ebene.id) ? [ebene] : [];
+    }
+    if ((await ownedBy(user, map.values())).has(e.id)) return [];
+    return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));
   }
 
   /**
@@ -1844,6 +1958,11 @@ export function buildApp({
    * (`campaignLayer`), steht auf `idea` oder `prepared` und gehört ihr:
    * vermerkt neben ihrem Konto (`app_user_article`), nicht im Artikel
    * (REQ-199). Eine Spielerfigur wird ihr gleich zugeteilt.
+   *
+   * Wer in einer Ebene schreibt, die in der laufenden Kampagne im Spiel ist
+   * (T-098, E-001 — die Leitung in der Ebene ihrer Kampagne), legt dort an:
+   * in der Ebene, die die Maske nennt, sonst in der ersten. Ob der Stand
+   * `ready` sein darf, sagt `maySetReady` wie beim Schreiben.
    */
   app.post<{ Body: { type?: unknown; name?: unknown; fields?: unknown; relations?: unknown } }>(
     '/api/entities',
@@ -1895,37 +2014,57 @@ export function buildApp({
           typeof (k as { to?: unknown }).to === 'string')
         .map((k, i) => ({ id: `${id}~${k.type}-${i + 1}`, type: k.type, to: k.to, props: k.props ?? {} }));
       const user = await viewerOf(request);
-      const spielerin = !!user && !user.isAdmin;
-      if (spielerin) {
-        /* Ein Stand muss da sein: ohne Status-Karte gilt ein Artikel als
-           fertig (`isReady`), und dann sähe jeder sofort, was eben erst
-           angelegt wurde. */
-        if (!kette.includes(STATUS_COMPONENT)) {
-          return reply.code(400).send({ error: `Diese Art trägt keinen Stand und bleibt bei der Leitung: ${type}` });
+      /* `spielerin`: legt als `player` in die Ebene der Kampagne an und
+         schreibt danach, was sie angelegt hat (REQ-237). Wer eine Zielebene
+         hat (T-098), legt dort an — die genannte, sonst die erste. */
+      let spielerin = false;
+      if (user && !user.isAdmin) {
+        const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+        const ziele = await zielEbenen(user, stand.map, kampagne);
+        const genannt = relations.filter((r) => r.type === 'inLayer').map((r) => r.to);
+        const spielt = !!kampagne && user.roles?.[kampagne.id] === 'player';
+        /* Die Ebene gibt der Server, nicht die Maske: angelegt wird in eine
+           Ebene, in der man schreibt, oder als Spielerin in die Runde — nie
+           in ein geteiltes Regelwerk. */
+        let ziel = ziele.find((l) => genannt.includes(l.id)) ?? (spielt ? null : (ziele[0] ?? null));
+        spielerin = !ziel;
+        if (spielerin) {
+          if (!spielt) return reply.code(403).send({ error: 'Anlegen darfst du hier nicht.' });
+          ziel = await kampagnenEbene(stand.map, kampagne);
         }
-        const karte = (components[STATUS_COMPONENT] ??= {});
-        const wert = karte['status'];
-        /* Die eigene Figur nennt ihr Spieler selbst fertig (E-014 d) — auch
-           den Statblock, den der Assistent gleich an sie hängt (T-080). */
+        for (let i = relations.length - 1; i >= 0; i -= 1) {
+          if (relations[i]!.type === 'inLayer') relations.splice(i, 1);
+        }
+        if (ziel) relations.push({ id: `${id}~inLayer-1`, type: 'inLayer', to: ziel.id, props: {} });
+
+        /* **`ready` setzt die Leitung** (REQ-237, E-011): wer es hier nicht
+           darf (`maySetReady` — `gm` der Kampagne, der die Ebene gehört),
+           legt unfertig an. Ein Stand muss dann da sein: ohne Status-Karte
+           gilt ein Artikel als fertig (`isReady`), und jeder sähe sofort,
+           was eben erst angelegt wurde. Die eigene Figur nennt ihr Spieler
+           selbst fertig (E-014 d) — auch den Statblock, den der Assistent
+           gleich an sie hängt (T-080). */
         const anEigener =
           relations.some((r) => r.type === 'belongsTo') &&
           (() => {
             const figur = eigeneFigur(user, stand.map, registry);
             return relations.every((r) => r.type !== 'belongsTo' || figur.has(r.to));
           })();
-        const darfFertig = kette.includes(PLAYER_CHARACTER) || anEigener;
-        if (wert === 'ready' && !darfFertig) {
-          return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
+        const darfFertig =
+          kette.includes(PLAYER_CHARACTER) ||
+          anEigener ||
+          (!spielerin && maySetReady(user, stand.map, { id, interfaces: [type], name, components, relations }));
+        /* Was eine Spielerin anlegt, trägt immer einen Stand — „ready" blieb
+           hier bis T-080 nicht stehen, auch an der eigenen Figur. */
+        if (spielerin || !darfFertig) {
+          if (!kette.includes(STATUS_COMPONENT)) {
+            return reply.code(400).send({ error: `Diese Art trägt keinen Stand und bleibt bei der Leitung: ${type}` });
+          }
+          const karte = (components[STATUS_COMPONENT] ??= {});
+          const wert = karte['status'];
+          if (wert === 'ready' && !darfFertig) return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
+          if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
         }
-        /* „ready" blieb hier bis T-080 nicht stehen, auch an der eigenen Figur. */
-        if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
-        /* Die Ebene gibt der Server, nicht die Maske: eine Spielerin legt
-           in ihre Runde an und nicht in ein geteiltes Regelwerk. */
-        for (let i = relations.length - 1; i >= 0; i -= 1) {
-          if (relations[i]!.type === 'inLayer') relations.splice(i, 1);
-        }
-        const ebene = campaignLayer(stand.map, currentCampaign(stand.map, registry.settings ?? null));
-        if (ebene) relations.push({ id: `${id}~inLayer-1`, type: 'inLayer', to: ebene.id, props: {} });
       }
       const entity: Entity = { id, interfaces: [type], name, components, relations };
 
@@ -1946,7 +2085,7 @@ export function buildApp({
           }
         }
       }
-      await repo.appendEvent('entity.created', id, { interfaces: [type], ...(spielerin && user ? { by: user.id } : {}) });
+      await repo.appendEvent('entity.created', id, { interfaces: [type], ...(user && !user.isAdmin ? { by: user.id } : {}) });
       return reply.code(201).send(stored);
     },
   );
@@ -2169,6 +2308,14 @@ export function buildApp({
   app.delete<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
     const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
     const weg = alle.get(request.params.id);
+    /* **Eine Ebene mit Inhalt löscht nur die Verwaltung** (T-098): ihre
+       Artikel stünden danach in keiner aufgeschalteten Ebene und wären für
+       niemanden mehr da. Eine leere darf, wer darin schreibt. */
+    const wer = await viewerOf(request);
+    if (weg && wer && !wer.isAdmin && primaryInterface(weg) === 'Layer') {
+      const voll = [...alle.values()].some((e) => e.id !== weg.id && layersOf(e).includes(weg.id));
+      if (voll) return reply.code(409).send({ error: 'In dieser Ebene liegen Artikel; eine Ebene mit Inhalt löscht die Verwaltung.' });
+    }
     if (weg) {
       /* Eine Vorlage nimmt beim Gehen nichts mit: ihre Instanzen bekommen
          vorher, was sie von ihr lasen. */
@@ -2192,6 +2339,10 @@ export function buildApp({
     await repo.dropReadyStand(request.params.id);
     const removed = await repo.deleteEntity(request.params.id);
     if (!removed) return reply.code(404).send({ error: 'Nicht gefunden' });
+    /* Wer in einer gelöschten Ebene schrieb, schreibt in nichts mehr. */
+    if (weg && primaryInterface(weg) === 'Layer') {
+      for (const g of await repo.layerGrants()) if (g.layerId === weg.id) await repo.revokeLayer(g.userId, g.layerId);
+    }
     await repo.appendEvent('entity.deleted', request.params.id, {});
     return { ok: true };
   });
@@ -2206,30 +2357,46 @@ export function buildApp({
    * zurück heisst, die Fassung zu löschen. Gibt es die Fassung schon,
    * kommt sie zurück und keine zweite.
    *
-   * Heute nur die Verwaltung: ob die Leitung Artikel anlegt, ist E-001 und
-   * offen. Der Vorfilter oben lässt ohnehin nur sie durch.
+   * **„Edit" an einem fremden Artikel ist dasselbe** (T-098, E-001): wer
+   * ihn nicht schreibt, aber eine Zielebene hat (`anpassZiele` — eigene
+   * oder zugeteilte Ebenen im Spiel, als Leitung die Ebene der Kampagne),
+   * bekommt die Fassung dort. Gibt es mehrere, nennt die Maske eine
+   * (`{ layer }`); ohne Angabe antwortet der Server 409 mit der Auswahl.
+   * Die Fassung schreibt danach, wer in ihrer Ebene schreibt.
    */
-  app.post<{ Params: { id: string } }>('/api/entities/:id/adapt', async (request, reply) => {
+  app.post<{ Params: { id: string }; Body: { layer?: unknown } | null }>('/api/entities/:id/adapt', async (request, reply) => {
     const user = await viewerOf(request);
-    if (!user?.isAdmin) return reply.code(403).send({ error: 'Anpassen darf heute die Verwaltung (E-001).' });
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
     const registry = await repo.getRegistry();
     const stand = await roh();
     const original = stand.map.get(request.params.id);
-    if (!original) return reply.code(404).send({ error: 'Nicht gefunden' });
+    /* Was dieser Betrachter nicht sieht, kann er auch nicht anpassen — auch
+       ein Original, das schon eine Fassung ersetzt, steht im Stapel. */
+    const gesehen = original ? (await sieve(request, [original], stand.map, undefined, 'versions')).length > 0 : false;
+    if (!original || !gesehen) return reply.code(404).send({ error: 'Nicht gefunden' });
     const kampagne = currentCampaign(stand.map, registry.settings ?? null);
-    const ebene = campaignLayer(stand.map, kampagne);
-    if (!kampagne || !ebene) {
-      return reply.code(409).send({ error: 'Die laufende Kampagne hat keine eigene Ebene, in der die Fassung liegen könnte.' });
-    }
-    const ebenenVon = (e: Entity) => (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
-    if (ebenenVon(original).includes(ebene.id)) {
-      return reply.code(409).send({ error: 'Das liegt schon in der Ebene der Kampagne — hier wird direkt bearbeitet.' });
-    }
-    if (!inStack(stand.map, original, kampagne)) {
+    const ziele = await anpassZiele(request, original, stand.map);
+    if (!kampagne || !ziele.length) {
+      if (!user.isAdmin) return reply.code(403).send({ error: 'Dafür hast du keine Ebene, in der du schreibst.' });
+      const ebene = await kampagnenEbene(stand.map, kampagne);
+      if (!kampagne || !ebene) {
+        return reply.code(409).send({ error: 'Die laufende Kampagne hat keine eigene Ebene, in der die Fassung liegen könnte.' });
+      }
+      if (layersOf(original).includes(ebene.id)) {
+        return reply.code(409).send({ error: 'Das liegt schon in der Ebene der Kampagne — hier wird direkt bearbeitet.' });
+      }
       return reply.code(409).send({ error: 'Seine Ebene ist in dieser Kampagne nicht aufgeschaltet.' });
     }
+    const gewuenscht = String(request.body?.layer ?? '');
+    const ebene = gewuenscht ? ziele.find((l) => l.id === gewuenscht) : ziele.length === 1 ? ziele[0] : undefined;
+    if (!ebene) {
+      return reply.code(409).send({
+        error: gewuenscht ? 'In diese Ebene geht keine Fassung von dir.' : 'In welche Ebene?',
+        layers: ziele.map((l) => ({ id: l.id, name: entityName(l) })),
+      });
+    }
     const schon = stand.alle.find(
-      (e) => ebenenVon(e).includes(ebene.id) && (e.relations ?? []).some((r) => r.type === 'overrides' && r.to === original.id),
+      (e) => layersOf(e).includes(ebene.id) && (e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION && r.to === original.id),
     );
     if (schon) return reply.code(200).send({ id: schon.id, created: false });
 
@@ -2243,7 +2410,7 @@ export function buildApp({
     const issues = validateEntity(registry, fassung, { knownTypes: known, stageOf: stageBases([...stand.alle, fassung]) });
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
     await repo.putEntity(fassung);
-    await repo.appendEvent('entity.created', id, { interfaces: fassung.interfaces, adapts: original.id, by: user.id });
+    await repo.appendEvent('entity.created', id, { interfaces: fassung.interfaces, adapts: original.id, layer: ebene.id, by: user.id });
     return reply.code(201).send({ id, created: true });
   });
 

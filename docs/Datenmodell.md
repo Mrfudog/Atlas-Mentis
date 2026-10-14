@@ -659,7 +659,7 @@ Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 | `activates` mit `props.mode: 'compare'` | **Vergleichsebene** (T-092, E-021 d): nicht im Spiel, ihre Fassungen stehen auf Wunsch an den Feldern und lassen sich übernehmen. Zählt nicht für `activeStack`, `campaignsOf`, `campaignsActivating` und die Ausfuhr. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/compare`) |
 | `activates` mit `props.mode: 'off'` | **ausdrücklich aus** (T-088): die Ebene ist nicht im Spiel, auch wenn eine aufgeschaltete Gruppe sie brächte. Ohne Gruppe tut die Kante nichts. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/layers` mit `off`) |
 | Feld `Campaign.compareFor` | wer die Vergleichsebenen sieht: `gm` (Vorgabe — Verwaltung, `gm`, `co-gm`) oder `players` (jede Rolle am Tisch) |
-| Kante `overrides` (`*` → `*`, one) | der neue Artikel gilt statt des alten, solange seine Ebene läuft. **So passt eine Kampagne ein Abenteuer an** (E-018 a, T-082): „Adapt" (`POST /api/entities/:id/adapt`, `adaptedVersion`) legt eine Fassung mit denselben Karten und Kanten in die Ebene der Kampagne (`campaignLayer`); zurück heisst, die Fassung zu löschen |
+| Kante `overrides` (`*` → `*`, one) | der neue Artikel gilt statt des alten, solange seine Ebene läuft. **So passt eine Kampagne ein Abenteuer an** (E-018 a, T-082): „Adapt" (`POST /api/entities/:id/adapt`, `adaptedVersion`) legt eine Fassung mit denselben Karten und Kanten in die Ebene der Kampagne (`campaignLayer`) — seit T-098 auch „Edit" an einem fremden Artikel, in eine Ebene, in der man schreibt (§ 9.4); zurück heisst, die Fassung zu löschen |
 | Kante `variantOf` (`*` → `*`, one) | eine Kopie mit Herkunft; sie ersetzt nichts |
 
 | | Regel |
@@ -825,8 +825,28 @@ Stand davor bleibt als Kopie (`entity_ready`, Migration 027) — jede
 `ready` (in der Maske oder per `POST /api/entities/:id/ready`), gilt der
 neue und die Kopie fällt weg; ändert `gm` selbst, fällt nichts zurück. Was
 wartet, listet `GET /api/unready` (Werkbank, „Not ready, by players"). Das
-Register schreiben die Verwaltung und `gm` der laufenden Kampagne. Was die
-Leitung sonst schreibt, ist offen (D69).
+Register schreiben die Verwaltung und `gm` der laufenden Kampagne.
+
+**Schreibrechte je Ebene** (T-098, E-001): jedes Konto schreibt, was
+**ganz** in Ebenen liegt, in denen es schreibt (`inWritableLayers`: jede
+Ebene, die den Artikel bringt, ohne `removes`) — ein Artikel, der auch im
+geteilten Regelwerk liegt, änderte sonst dort mit. In welchen Ebenen ein
+Konto schreibt, steht **neben dem Konto** (`app_user_layer`, Migration 035;
+`owner` heisst: besitzt sie und sagt, wer sonst darin schreibt), und dazu
+schreiben **`gm` und `co-gm` die Ebene ihrer Kampagne** aus ihrer Rolle.
+**Eine eigene Ebene legt jedes Konto an** (`POST /api/layers`) und besitzt
+sie; sie wirkt, sobald die Leitung sie aufschaltet. **Jede Kampagne hat
+ihre Ebene** (`campaignLayer`: die spezifischste aufgeschaltete, die keine
+andere Kampagne aufschaltet, keine Gruppe ist und **keinem Konto gehört** —
+die aufgeschaltete eigene Ebene einer Spielerin wird nicht zur
+Kampagnenebene); eine neue Kampagne bekommt sie beim Anlegen
+(`ly_<kampagne>`, `kind: 'campaign'`, Spezifität 100), eine ältere legt
+Migration 035 an. **Was nicht in den eigenen Ebenen liegt, ändert man als
+Fassung:** „Edit" an einem fremden Artikel — auch einem ohne Ebene, der
+bleibt bei der Verwaltung — legt über `POST /api/entities/:id/adapt` eine
+Fassung (E5) in eine eigene Ebene, die im Spiel ist (`zielEbenen`; bei
+mehreren `{ layer }`). `ready` bleibt bei `gm`: ändert die Mitleitung oder
+eine Spielerin in ihrer Ebene etwas Fertiges, fällt es zurück wie oben.
 
 ### 9.5 Handwerk: gelernt und gebunden (D55)
 
@@ -963,6 +983,7 @@ verschweigen.
 | Konten, Passwörter, Sitzungen, Einladungen, Fehlversuche | Server: `app_user`, `app_session`, `app_invite`, `login_attempt` | nein (REQ-199) |
 | welche Figuren ein Konto führt | `app_user_actor` | nein |
 | wer einen Artikel angelegt hat (D72) | `app_user_article` | nein |
+| wer in welcher Ebene schreibt, wer sie besitzt (T-098) | `app_user_layer` | nein |
 | der letzte fertige Stand eines zurückgefallenen Artikels (D74) | `entity_ready` | nein |
 | wo ein Konto in einem Buch stehen blieb (T-091) | `reading_position` (Konto, Ebene, Abschnitt) | nein |
 | wie jemand liest — Fassungen an den Feldern an/aus, welche Ebenen (T-092) | `app_user_pref` (Konto, Schlüssel, JSON) | nein |

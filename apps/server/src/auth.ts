@@ -22,7 +22,7 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
-import type { TableRole } from '@nw/model';
+import { LAYER_COMPONENT, layersOf, type Entity, type TableRole } from '@nw/model';
 
 /** Wie lange eine Sitzung ohne Wiedersehen gilt. Eine Woche: lange genug,
  *  dass niemand mitten in der Sitzung herausfliegt, kurz genug, dass ein
@@ -53,6 +53,16 @@ export interface User {
    *  wanderte beim Export mit (REQ-199). Gesetzt nur von der Ablage;
    *  `putUser` schreibt es nicht. */
   authoredIds?: string[] | undefined;
+  /** **Die Ebenen, die dieses Konto bearbeitet** (T-098, E-001): darin
+   *  schreibt es jeden Artikel und legt neue an. Steht am Server neben dem
+   *  Konto (`app_user_layer`), nicht an der Ebene — eine Konto-Id in einem
+   *  Artikel wanderte beim Export mit (REQ-199). Die Ebene der Kampagne
+   *  steht hier nicht: die schreiben `gm` und `co-gm` von selbst. Gesetzt
+   *  nur von der Ablage; `putUser` schreibt es nicht. */
+  layerIds?: string[] | undefined;
+  /** Davon die, die es **besitzt** — angelegt oder übertragen. Wer eine
+   *  Ebene besitzt, sagt, wer sonst darin schreibt. */
+  ownedLayerIds?: string[] | undefined;
   disabledAt?: string | undefined;
 }
 
@@ -152,19 +162,37 @@ export function sessionExpiry(from: Date = new Date()): Date {
 
 /**
  * Wer was darf. Die Regel ist absichtlich kurz, weil eine lange Regel
- * niemand mehr nachliest: die Spielleitung darf alles, ein Spieler darf
- * lesen und genau die Artikel schreiben, die seiner Figur gehören — und
- * die er selbst angelegt hat (REQ-237).
+ * niemand mehr nachliest: die Verwaltung darf alles, jedes andere Konto
+ * schreibt genau die Artikel, die seiner Figur gehören, die es selbst
+ * angelegt hat (REQ-237) — und die in Ebenen liegen, die es bearbeitet
+ * (T-098, E-001: eigene, zugeteilte und als `gm`/`co-gm` die Ebene der
+ * Kampagne; `inWritableLayers`).
  *
  * „Gehört" heisst: die Figur selbst, und was über eine Kante an ihr hängt —
  * ihr Inventar zum Beispiel. Die Kante steht in den Daten, also wird sie
  * dort nachgesehen und nicht hier behauptet. Was er angelegt hat, steht
- * neben dem Konto (`authoredIds`); `ownedIds` bringt beides mit.
+ * neben dem Konto (`authoredIds`); `ownedIds` bringt alles mit.
  */
 export function mayWrite(user: User | null, ownedIds: Set<string>, id: string): boolean {
   if (!user || user.disabledAt) return false;
   if (user.isAdmin) return true;
   return ownedIds.has(id);
+}
+
+/**
+ * **Liegt dieser Artikel ganz in Ebenen, die geschrieben werden dürfen?**
+ * (T-098, E-001) Jede Ebene, die ihn bringt (`layersOf`, ohne `removes`),
+ * muss darunter sein: ein Artikel, der auch in einem geteilten Regelwerk
+ * liegt, änderte sonst dort mit. Ohne Ebene liegt er in keiner fremden,
+ * aber auch in keiner eigenen — er bleibt bei der Verwaltung, und wer ihn
+ * ändern will, legt eine Fassung an. Eine Ebene selbst schreibt, wer
+ * darin schreibt.
+ */
+export function inWritableLayers(e: Entity, writable: ReadonlySet<string>): boolean {
+  if (!writable.size) return false;
+  if ((e.interfaces ?? [])[0] === LAYER_COMPONENT && writable.has(e.id)) return true;
+  const ebenen = layersOf(e);
+  return ebenen.length > 0 && ebenen.every((l) => writable.has(l));
 }
 
 // ------------------------------------------------------------ API-Tokens
@@ -209,8 +237,8 @@ export function tokenExpiry(days: unknown, from: Date = new Date()): Date {
 /**
  * **Leitung oder Verwaltung** — wer die Werkbank benutzen darf. Leitung
  * heisst `gm` oder `co-gm` in irgendeiner Kampagne; geschrieben wird
- * trotzdem nur, was `mayWrite` erlaubt (die Leitung schreibt heute noch
- * nicht, siehe Zugang.md › Was noch fehlt).
+ * trotzdem nur, was `mayWrite` erlaubt — für die Leitung die Artikel in
+ * den Ebenen, die sie bearbeitet (T-098).
  */
 export function isLeitung(user: User | null): boolean {
   if (!user || user.disabledAt) return false;

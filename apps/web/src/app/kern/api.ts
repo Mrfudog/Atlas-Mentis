@@ -116,6 +116,9 @@ export interface Bezuege {
   links: Record<string, { id: string; name: string }[]>;
   /** Lässt sich für die laufende Kampagne anpassen (E-018, T-082) — die Regeln der Route `adapt`. */
   adaptable?: boolean;
+  /** In welche Ebenen eine Fassung ginge (T-098): wer den Artikel nicht
+   *  schreibt, bekommt an „Edit" eine Fassung in einer davon. */
+  adaptTo?: { id: string; name: string }[];
   /**
    * **Ein älterer fertiger Stand gilt** (REQ-237, E-012): nur für wen den
    * Arbeitsstand sieht (Verfasserin, Leitung). `at` ist das Datum des
@@ -474,6 +477,29 @@ export interface Konto {
   self: boolean;
   actors: Figur[];
   roles: { campaign: string; name: string; role: TableRole }[];
+  /** In welchen Ebenen es schreibt (T-098), ohne die Ebenen der Kampagnen, die es leitet. */
+  layers?: { id: string; name: string | null; owner: boolean }[];
+}
+
+/** Wer in einer Ebene schreibt (T-098). */
+export interface EbenenSchreiber {
+  id: string;
+  name: string;
+  owner: boolean;
+}
+
+/** Eine Ebene, in der dieses Konto schreibt (T-098, `GET /api/layers/mine`). */
+export interface MeineEbene {
+  id: string;
+  name: string;
+  owner: boolean;
+  granted: boolean;
+  /** Als Leitung dieser Kampagnen (ihre Ebene). */
+  campaigns: { id: string; name: string; role: string }[];
+  /** In der laufenden Kampagne aufgeschaltet — erst dann wirkt, was darin liegt. */
+  inPlay: boolean;
+  /** Nur an einer Ebene, die man besitzt (oder als Verwaltung). */
+  editors?: EbenenSchreiber[];
 }
 
 /** Die Teile des Registers, die `PUT /api/registry/:part` nimmt. */
@@ -489,6 +515,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/campaigns')) return 'campaign';
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk')) return 'workbench';
   if (path.startsWith('/api/read')) return 'book';
+  if (path.startsWith('/api/layers')) return 'layers';
   return 'data';
 }
 
@@ -700,9 +727,30 @@ export class Api {
     return this.call<void>(`/api/read/${encodeURIComponent(layer)}/position`, { method: 'PUT', body: JSON.stringify({ id }) }, false);
   }
 
-  /** Eine Fassung in der Ebene der Kampagne, die das Original ersetzt (E-018, T-082). */
-  adapt(id: string): Promise<{ id: string; created: boolean }> {
-    return this.call(`/api/entities/${encodeURIComponent(id)}/adapt`, { method: 'POST' });
+  /** Eine Fassung, die das Original ersetzt (E-018, T-082) — in der Ebene der Kampagne oder, mit `layer`, in einer eigenen (T-098). */
+  adapt(id: string, layer?: string): Promise<{ id: string; created: boolean }> {
+    return this.call(`/api/entities/${encodeURIComponent(id)}/adapt`, {
+      method: 'POST',
+      body: JSON.stringify(layer ? { layer } : {}),
+    });
+  }
+
+  /* ------------------------------------------- Schreibrechte je Ebene (T-098) */
+
+  /** Die Ebenen, in denen ich schreibe. */
+  myLayers(): Promise<{ layers: MeineEbene[]; campaign: { id: string; name: string } | null }> {
+    return this.call('/api/layers/mine');
+  }
+  /** Eine eigene Ebene anlegen — sie gehört mir. */
+  createLayer(name: string): Promise<{ id: string; name: string }> {
+    return this.call('/api/layers', { method: 'POST', body: JSON.stringify({ name }) });
+  }
+  /** Jemanden in einer Ebene schreiben lassen: beim Namen, oder (Verwaltung) bei der Id. */
+  addLayerEditor(layer: string, wer: { name: string } | { user: string }): Promise<EbenenSchreiber> {
+    return this.call(`/api/layers/${encodeURIComponent(layer)}/editors`, { method: 'POST', body: JSON.stringify(wer) });
+  }
+  dropLayerEditor(layer: string, user: string): Promise<{ ok: true }> {
+    return this.call(`/api/layers/${encodeURIComponent(layer)}/editors/${encodeURIComponent(user)}`, { method: 'DELETE' });
   }
   /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
   deleteEntity(id: string): Promise<{ ok: true }> {
