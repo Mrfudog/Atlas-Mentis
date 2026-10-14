@@ -381,7 +381,10 @@ tut es mit einer Probemigration vor).
 Die Artikel aus 5e.tools stehen **je Buch in einer eigenen Ebene**
 (T-081, E-017): „Player's Handbook", „Monster Manual", „Curse of Strahd" …
 (`kind: book`, Id `e5_book_<kürzel>`, `inLayer` an jedem Artikel). Was kein
-Buch nennt (die Aktionsarten), liegt in der Systemebene „D&D 5e (2014)".
+Buch nennt (die Aktionsarten), liegt in „D&D 5e (2014) — no book given"
+(`e5_unsourced_2014`, unter Official). „D&D 5e (2014)" selbst ist seit
+T-109 eine **Gruppe** aller offiziellen 2014-Bücher: aufgeschaltet bringt
+sie alle, ein einzelnes Buch darin lässt sich abschalten.
 Eine Kampagne schaltet auf der Kampagnenseite die Bücher auf, die sie
 nutzt (Liste mit Häkchen, nach Grundregelwerk, Quellenbuch und Abenteuer
 gruppiert). **Ein Abenteuer** (`kind: adventure`, T-082) bringt dabei

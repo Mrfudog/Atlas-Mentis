@@ -537,6 +537,7 @@ try {
     const name = 'zzz_durchstich_ebene_je_buch.sql';
     const name088 = 'zzz_durchstich_ebenen_gruppen.sql';
     const name094 = 'zzz_durchstich_ebenen_herausgeber.sql';
+    const name109 = 'zzz_durchstich_ebene_2014_als_gruppe.sql';
     const BUECHER = ['e5_book_phb', 'e5_book_xge', 'e5_book_scag'];
     const sicht = async () => {
       const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
@@ -660,10 +661,68 @@ try {
       await pool.query('delete from schema_migrations where name = $1', [name094]);
       await migrate(pool, { env: {} }, ordner);
       pruefe('Herausgeber: ein zweiter Lauf hängt nichts doppelt', (await sicht()).alle.get('e5_book_phb')?.relations?.filter((r) => r.to === 'e5_publisher_official').length === 1, '');
+
+      /* „D&D 5e (2014)" als Gruppe (T-109): Runde C schaltet nur noch die
+         alte Ebene und die geteilte ly_probe_a auf — also ist die alte ihre
+         Ebene, und dort liegt eine eigene Sitzung. Danach: eine eigene
+         Kampagnenebene mit der Sitzung, die Aktionsart in „no book given",
+         die alte Ebene eine Gruppe der Bücher, und die Bücher, die vorher
+         nicht im Spiel waren, abgeschaltet. Niemand verliert etwas. */
+      const nurAlt = await fetch(`${BASE}/api/campaigns/camp_probe_c/layers`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' },
+        body: JSON.stringify({ layers: ['ly_probe_a', ALT], off: [] }),
+      });
+      pruefe('2014 als Gruppe: Runde C schaltet nur die alte Ebene auf', nurAlt.ok, `${nurAlt.status} ${await nurAlt.text()}`);
+      const sitzung = { id: 'st_probe_t109', name: 'Probe Session 0', interfaces: ['Session'], components: ident('Probe Session 0', 'session-0909'), relations: [{ id: 'st_probe_t109~in', type: 'inLayer', to: ALT, props: {} }] };
+      const rs = await put(admin, sitzung);
+      pruefe('2014 als Gruppe: eigene Sitzung in der alten Ebene', rs.ok, `${rs.status} ${await rs.text()}`);
+      writeFileSync(join(ordner, name109), readFileSync(join(DIST, '..', 'migrations', '043_ebene_2014_als_gruppe.sql'), 'utf8'));
+      const vor109 = await sicht();
+      const gemeldet109 = [];
+      const logAlt109 = console.log;
+      console.log = (...a) => gemeldet109.push(a.join(' '));
+      try {
+        await migrate(pool, { env: {} }, ordner);
+      } finally {
+        console.log = logAlt109;
+      }
+      const nach109 = await sicht();
+      const verloren109 = [...vor109.je].flatMap(([k, ids]) => [...ids].filter((id) => !nach109.je.get(k)?.has(id)).map((id) => `${k}: ${id}`));
+      const dazu109 = [...nach109.je].flatMap(([k, ids]) => [...ids].filter((id) => !vor109.je.get(k)?.has(id) && !/^(ly_camp_probe_c|e5_unsourced_2014)$/.test(id)).map((id) => `${k}: ${id}`));
+      pruefe('2014 als Gruppe: keine Kampagne verliert oder gewinnt einen Artikel', verloren109.length === 0 && dazu109.length === 0 && vor109.je.get('camp_probe_c')?.has('st_probe_t109'), [...verloren109, ...dazu109].join(', '));
+      const ziel109 = (id) => (nach109.alle.get(id)?.relations ?? []).find((r) => r.type === 'inLayer')?.to;
+      pruefe(
+        '2014 als Gruppe: die Sitzung in der neuen Kampagnenebene, die Aktionsart ohne Buch',
+        ziel109('st_probe_t109') === 'ly_camp_probe_c' && ziel109('e5_probe_a1') === 'e5_unsourced_2014',
+        `${ziel109('st_probe_t109')} ${ziel109('e5_probe_a1')}`,
+      );
+      const teil109 = (id) => (nach109.alle.get(id)?.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to);
+      pruefe(
+        '2014 als Gruppe: die alte Ebene ist eine Gruppe der Bücher und der Ebene ohne Buch',
+        nach109.alle.get(ALT)?.components['Layer']?.kind === 'group' && BUECHER.every((b) => teil109(b).includes(ALT))
+          && teil109('e5_unsourced_2014').includes(ALT) && teil109('e5_unsourced_2014').includes('e5_publisher_official'),
+        JSON.stringify(BUECHER.map((b) => teil109(b))),
+      );
+      const aus109 = (nach109.alle.get('camp_probe_c')?.relations ?? []).filter((r) => r.type === 'activates' && r.props?.mode === 'off').map((r) => r.to).sort();
+      pruefe('2014 als Gruppe: was vorher nicht im Spiel war, ist abgeschaltet', JSON.stringify(aus109) === JSON.stringify([...BUECHER].sort()), aus109.join(', '));
+      pruefe('2014 als Gruppe: gemeldet', gemeldet109.some((m) => /D&D 5e \(2014\) ist eine Gruppe/.test(m)), gemeldet109.join(' | '));
+      const z109 = (await (await get(admin, '/api/campaigns/camp_probe_c/layers')).json()).layers;
+      pruefe(
+        '2014 als Gruppe: Herausgeber — ohne Buch offiziell, die Kampagnenebene Homebrew, die Gruppe keiner',
+        z109.some((l) => l.id === 'e5_unsourced_2014' && l.publisher === 'Official') && z109.some((l) => l.id === 'ly_camp_probe_c' && l.publisher === 'Homebrew')
+          && z109.some((l) => l.id === ALT && l.publisher === '' && l.groupBy === 'category'),
+        JSON.stringify(z109.map((l) => [l.id, l.publisher])),
+      );
+      await pool.query('delete from schema_migrations where name = $1', [name109]);
+      await migrate(pool, { env: {} }, ordner);
+      const noch109 = await sicht();
+      pruefe('2014 als Gruppe: ein zweiter Lauf tut nichts',
+        !noch109.alle.has('ly_camp_probe_c_2') && ziel109('st_probe_t109') === (noch109.alle.get('st_probe_t109')?.relations ?? []).find((r) => r.type === 'inLayer')?.to
+          && (noch109.alle.get('camp_probe_c')?.relations ?? []).filter((r) => r.props?.mode === 'off').length === aus109.length, '');
     } finally {
-      await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...BUECHER]]);
+      await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...BUECHER, 'st_probe_t109', 'ly_camp_probe_c', 'e5_unsourced_2014']]);
       await pool.query("delete from entity where id like 'e5_group_%' or id like 'e5_publisher_%'");
-      await pool.query('delete from schema_migrations where name = any($1)', [[name, name088, name094]]);
+      await pool.query('delete from schema_migrations where name = any($1)', [[name, name088, name094, name109]]);
       await pool.end();
       rmSync(ordner, { recursive: true, force: true });
     }
