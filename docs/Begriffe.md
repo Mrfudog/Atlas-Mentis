@@ -446,6 +446,14 @@ Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine
 Zeile (Overview), höher eine Karte (Quick). Wer die Kachel grösser zieht,
 hat damit schon gewählt.
 
+Ein **Bereich** auf dem Board ist ein benanntes Rechteck, zu dem man über
+einen Reiter springt — „Conditions" oben links, „Kerzengasse" unten
+rechts. Er ist ein **Anker** mit Grösse und kein Behälter: welche Karten
+dazugehören, sagt ihre Lage, nicht eine Kante. Wer eine Karte
+hinausschiebt, hat sie damit herausgenommen; eine gespeicherte
+Zugehörigkeit müsste man dabei jedes Mal mitändern, und vergessen hiesse,
+dass sie im Bereich steht und woanders liegt.
+
 **Es gibt keine Spieleransicht.** Es gab einmal eine, und sie war die zweite
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird
 am Server (`redactEntity`): was bei einem Spieler ankommt, darf er sehen, und

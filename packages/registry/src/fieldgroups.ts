@@ -2053,6 +2053,9 @@ export const fieldGroups = {
    * und das ist kein Rückfall: ein Rechteck zeigt auf nichts. Ein Token zeigt
    * auf einen Artikel, deshalb ist es eine Kante; eine Linie, die zwei
    * Kästen umfasst, ist Zeichnung und gehört dem Board.
+   *
+   * Ein Anker ist `{ id, name, x, y, zoom? }`; mit `w` und `h` ist er ein
+   * **Bereich** (T-073), den die Seite als Reiter zeigt und einklappt.
    */
   BoardInfo: {
     schema: {
