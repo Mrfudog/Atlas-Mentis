@@ -111,6 +111,7 @@ import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, ty
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
+import { registerFiltergruppen } from './filtergruppen.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
@@ -1054,6 +1055,9 @@ export function buildApp({
     if (/^\/api\/entities\/[^/]+\/equipment$/.test(url) && request.method === 'POST') return;
     /* Das Handwerk (T-128): die Routen prüfen Figur, Rolle und Regel selbst. */
     if (url === '/api/crafting' || url.startsWith('/api/crafting/')) return;
+    /* Filtergruppen (T-137): eigene schreibt jedes Konto, die der
+       Kampagne die Leitung — die Routen prüfen beides selbst. */
+    if (url === '/api/filters' || url.startsWith('/api/filters/')) return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -2414,6 +2418,7 @@ export function buildApp({
   /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
   const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
+  registerFiltergruppen(app, { repo, viewerOf, roh });
   registerHandwerk(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene });
 
   /* **Der Live-Kanal** (T-116, REQ-116): `GET /api/live`, je Empfänger
