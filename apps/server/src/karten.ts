@@ -33,14 +33,17 @@ import {
   markersOf,
   PARTY_RELATION,
   partiesOf,
+  participantLabel,
   partyPosition,
   primaryInterface,
+  turnOf,
   type Entity,
   type Frame,
 } from '@nw/model';
 import type { Repository } from './repo.js';
 
 const SESSION_TYPE = 'Session';
+const ENCOUNTER_TYPE = 'Encounter';
 
 interface Stand {
   alle: Entity[];
@@ -68,6 +71,13 @@ export interface KartenKontext {
   children: { id: string; name: string; frame: Frame }[];
   targets: Record<string, MarkerZiel>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
+  /**
+   * Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist
+   * und wessen danach — als Id des Artikels, auf den die Marker zeigen.
+   */
+  turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
+  /** Nur für die Leitung: wer am Kampf teilnimmt, und ob er hier schon ein Token hat. */
+  combatants: { id: string; name: string; placed: boolean }[];
 }
 
 /** Das Bild eines Artikels: an einem Asset es selbst, sonst `Image.image`. */
@@ -104,7 +114,8 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     /* **Unter dem Nebel kein Rahmen** (REQ-139): eine Unterkarte im
        Verdeckten verriete, dass dort etwas ist. Es zählt, ob die Mitte
        oder eine Ecke aufgedeckt ist. */
-    const ohneNebel = !fogOn(karte) || (await leitet(request, roheKarte, stand.map));
+    const leitetKarte = await leitet(request, roheKarte, stand.map);
+    const ohneNebel = !fogOn(karte) || leitetKarte;
     const kinder = ohneNebel ? children : children.filter((k) => frameRevealed(karte, k.frame));
 
     /* Die Ziele der Marker — auf der Karte stehen nur noch die, die der
@@ -116,9 +127,25 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       zielIds.map((id) => stand.map.get(id)).filter((e): e is Entity => !!e),
       stand.map,
     );
+    /* **Das Tokenbild** (T-117, T-119): `Statblock.token` des Statblocks,
+       der der Kreatur gehört (`belongsTo`), gesiebt wie jeder Artikel —
+       eine Instanz kommt aufgelöst, mit dem Token ihrer Vorlage. Sonst
+       das Bild des Artikels, sonst zeichnet die Seite die Anfangsbuchstaben
+       des Namens, den der Server schickt (für Spielende der Deckname,
+       REQ-178). Ein Durchgang über den Bestand, nicht einer je Marker. */
+    const zielSet = new Set(ziele.map((z) => z.id));
+    const boegen = stand.alle.filter(
+      (e) => primaryInterface(e) === 'Statblock' && (e.relations ?? []).some((r) => r.type === 'belongsTo' && zielSet.has(r.to)),
+    );
+    const tokenVon = new Map<string, string>();
+    for (const sb of boegen.length ? await sieve(request, boegen, stand.map) : []) {
+      const t = (sb.components?.['Statblock'] as { token?: unknown } | undefined)?.token;
+      const wem = (boegen.find((b) => b.id === sb.id)?.relations ?? []).find((r) => r.type === 'belongsTo' && zielSet.has(r.to))?.to;
+      if (wem && typeof t === 'string' && t.trim() && !tokenVon.has(wem)) tokenVon.set(wem, t.trim());
+    }
     const targets: Record<string, MarkerZiel> = {};
     for (const z of ziele) {
-      const bild = bildVon(z);
+      const bild = tokenVon.get(z.id) ?? bildVon(z);
       targets[z.id] = { name: entityName(z), type: primaryInterface(z), ...(bild ? { image: bild } : {}) };
     }
 
@@ -143,7 +170,50 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         };
       }
     }
-    return { parents, children: kinder, targets, party } satisfies KartenKontext;
+    /* **Der Kampf auf dieser Karte** (REQ-144): die Begegnung, die eine
+       Sitzung gerade führt (`SessionState.activeEncounter`), sonst eine
+       laufende mit `onMap` hierher. */
+    let turn: KartenKontext['turn'] = null;
+    let combatants: KartenKontext['combatants'] = [];
+    const hierher = (e: Entity) => (e.relations ?? []).some((r) => r.type === 'onMap' && r.to === karte.id);
+    const laufend = (e: Entity) => Number((e.components?.['Encounter'] as { round?: unknown } | undefined)?.round) >= 1;
+    const gefuehrt = new Set(
+      stand.alle
+        .filter((e) => primaryInterface(e) === SESSION_TYPE)
+        .map((e) => (e.components?.['SessionState'] as { activeEncounter?: unknown } | undefined)?.activeEncounter)
+        .filter((x): x is string => typeof x === 'string'),
+    );
+    const kaempfe = stand.alle
+      .filter((e) => primaryInterface(e) === ENCOUNTER_TYPE && hierher(e))
+      .sort((a, b) => Number(gefuehrt.has(b.id)) - Number(gefuehrt.has(a.id)) || Number(laufend(b)) - Number(laufend(a)) || a.id.localeCompare(b.id));
+    const [kampfRoh] = kaempfe.filter((e) => gefuehrt.has(e.id) || laufend(e));
+    const [kampf] = kampfRoh ? await sieve(request, [kampfRoh], stand.map) : [];
+    if (kampfRoh && kampf) {
+      const gm = leitetKarte && (await leitet(request, kampfRoh, stand.map));
+      const { current, next } = turnOf(stand.map, kampfRoh);
+      /* Spielende bekommen nur, was ihre Reihe ohnehin zeigt (D53, D58):
+         den Laufenden, wenn er für sie dasteht (`current` an der gesiebten
+         Kante), und den Nächsten, wenn seine Kante für sie dasteht — und
+         beides nur, wenn ein Token davon auf ihrer Karte steht. Ein Ring
+         um ein Token, das sie ohnehin sehen, verrät keinen Namen. */
+      const gesiebt = new Map((kampf.relations ?? []).map((r) => [r.id, r]));
+      const aufKarte = new Set(markersOf(karte).map((m) => m.to));
+      const zeig = (r: typeof current, istDran: boolean): string | null => {
+        if (!r) return null;
+        if (gm) return r.to;
+        const g = gesiebt.get(r.id);
+        if (!g || (istDran && !(g.props as { current?: boolean } | undefined)?.current)) return null;
+        return aufKarte.has(r.to) ? r.to : null;
+      };
+      const runde = Number((kampfRoh.components?.['Encounter'] as { round?: unknown } | undefined)?.round) || 0;
+      turn = { encounter: kampf.id, name: entityName(kampf), round: runde, current: zeig(current, true), next: zeig(next, false) };
+      if (gm) {
+        combatants = (kampfRoh.relations ?? [])
+          .filter((r) => r.type === 'participates' && r.to)
+          .map((r) => ({ id: r.to, name: participantLabel(stand.map, r), placed: aufKarte.has(r.to) }));
+      }
+    }
+    return { parents, children: kinder, targets, party, turn, combatants } satisfies KartenKontext;
   });
 
   /**
