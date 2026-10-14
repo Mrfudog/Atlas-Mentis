@@ -1043,7 +1043,7 @@ try {
 
   /* ------------------------------------ Vorschaubild in der Übersicht (T-114) */
   {
-    /* Migration 051 setzt `image` vorne in die Übersicht — in die
+    /* Migration 052 setzt `image` vorne in die Übersicht — in die
        Grundanordnung und in die der Kreatur —, einmal, auch wenn sie
        zweimal läuft; eine Art ohne eigene Übersicht bleibt, wie sie ist. */
     const { migrate } = await import(join(DIST, 'migrate.js'));
@@ -1056,7 +1056,7 @@ try {
     try {
       await pool.query(`update view_def set config = jsonb_set(config, '{layout}', ${ohneBild("config->'layout'")}) where key = 'overview'`);
       await pool.query(`update interface_def set views = jsonb_set(views, '{overview}', ${ohneBild("views->'overview'")}) where name = 'Creature'`);
-      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '051_vorschaubild_in_der_uebersicht.sql'), 'utf8'));
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '052_vorschaubild_in_der_uebersicht.sql'), 'utf8'));
       await migrate(pool, { env: {} }, ordner);
       await pool.query('delete from schema_migrations where name = $1', [name]);
       await migrate(pool, { env: {} }, ordner);
