@@ -217,7 +217,8 @@ export class Board {
   /** Was eine Kachel zur Wahl stellt: jede Ansicht ausser der Artikelseite. */
   protected readonly ansichten = computed(() => {
     const r = this.bestand.registry();
-    return r ? viewKeys(r).filter((k) => k !== 'full') : [];
+    /* Die Artikelseite und der Druck sind Seiten, keine Kacheln; eigene Ansichten stehen zur Wahl (T-110). */
+    return r ? viewKeys(r).filter((k) => k !== 'full' && k !== 'print') : [];
   });
 
   /** Kampagne › Kapitel › Sitzung — und je Sprosse ihr Board, wenn sie eines hat. */

@@ -330,18 +330,36 @@ gespeichert werden konnte, bleibt in der Maske und lässt sich herunterladen.
 
 ## Ansicht
 
-Wie ein Artikel gezeichnet wird. Es gibt **drei**, und welche gilt, sagt der
-Ort und kein Schalter:
+Wie ein Artikel gezeichnet wird. Es gibt **vier**, nach denen ein Ort fragt,
+und welche gilt, sagt der Ort und kein Schalter:
 
 | Ansicht | Wo sie gilt | Was sie zeigt |
 |---|---|---|
 | **Overview** | Ein Verweis im Text, eine Listenzeile | Name und die Beschreibung — eine Handvoll Zeilen, wie ein Hover; die Felder darin sind die Spalten im Kompendium |
 | **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
+| **Print** | „Print" an der Artikelseite | Was auf ein Blatt A4 gehört — ohne Knöpfe und Seitenspalte |
 
-Einen Wähler „welche Ansicht hätten Sie gern" gibt es nicht. Ein Verweis ist
-ein Verweis, und eine Artikelseite ist eine Artikelseite — wer das jedes Mal
-sagen muss, sagt es irgendwann falsch.
+Einen Wähler „welche Ansicht hätten Sie gern" gibt es an diesen Orten
+nicht. Ein Verweis ist ein Verweis, und eine Artikelseite ist eine
+Artikelseite — wer das jedes Mal sagen muss, sagt es irgendwann falsch.
+
+**Eigene Ansichten** (T-110, E-030 b) gibt es trotzdem: „Handout",
+„Spielertisch" — im Register angelegt und dort gewählt, wo ohnehin gewählt
+wird: auf der Kachel und beim Drucken. Die Leitung wollte festlegen, was
+erscheint, ohne Code zu ändern; dass dafür niemand an jedem Ort wählen
+muss, hält die vier fest.
+
+**Was eine Ansicht zeigt, steht einmal, global** — eine Liste von
+Elementen, darin ganze Typen oder einzelne Felder —, und **ein Artikel
+zeigt davon, was er hat**. Eine Art, die anders aussehen soll, sagt nur
+die Abweichung (**angepasst**: dies dazu, das weg, umgestellt) oder, wenn
+sie wirklich anders aussieht, ihre **eigene Anordnung**. Die Anpassung ist
+der Normalfall, weil sie richtig bleibt, wenn die Ansicht sich ändert; eine
+Abschrift wäre am Tag der nächsten Änderung die Stelle, die beim Alten
+stehen blieb. Ob leere Felder mit „—" dastehen und ob Ungenanntes am Ende
+folgt, sagt die Ansicht: die Artikelseite und der Druck lassen nichts
+fallen, die Karte schon.
 
 Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
 und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
@@ -361,7 +379,7 @@ der Figur und die eigenen Entwürfe (E-019).
 
 **Die Anordnung wohnt am Typ.** Eine Kreatur ordnet ihre Full anders als ein
 Rezept, und das steht bei der Kreatur. Untertypen erben sie, bis einer etwas
-Eigenes sagt.
+Eigenes sagt — eine Anpassung erbt dabei weiter, was über ihr gilt.
 
 **Eine Listenzeile ist ein Verweis**, also Overview (W7). Darum sagt die
 Overview einer Art auch, welche Spalten das Kompendium für sie zeigt und

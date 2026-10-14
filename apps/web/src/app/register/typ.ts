@@ -1,11 +1,27 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { areaOf, articlesTaking, fieldTitle, layoutFor, linkedTypes, ownFields, relationsFrom, typeChain, typeList, viewKeys } from '@nw/model';
-import type { InterfaceDef, LayoutElement, Registry } from '@nw/model';
+import {
+  areaOf,
+  articlesTaking,
+  fieldTitle,
+  isAdjust,
+  layoutFor,
+  linkedTypes,
+  ownFields,
+  ownLayout,
+  relationsFrom,
+  typeChain,
+  typeList,
+  viewKeys,
+} from '@nw/model';
+import type { InterfaceDef, LayoutAdjust, LayoutElement, Registry, TypeLayout } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { BEREICHE } from '../kern/bereiche';
 import { RegisterArbeit, articles, carry, inPlayText } from './arbeit';
 import { RegFeld } from './feld';
+import { RegAnordnung } from './anordnung';
+import { RegAnpassung } from './anpassung';
+import { RegVorschau } from './vorschau';
 import {
   ancestorsOf,
   childrenOf,
@@ -43,7 +59,7 @@ interface Gruppe {
  */
 @Component({
   selector: 'nw-reg-typ',
-  imports: [RouterLink, RegFeld],
+  imports: [RouterLink, RegFeld, RegAnordnung, RegAnpassung, RegVorschau],
   template: `
     @if (def(); as d) {
       <div class="typkopf">
@@ -251,32 +267,48 @@ interface Gruppe {
         <section class="kasten" aria-label="Views">
           <h3>Views</h3>
           <p class="hint">
-            How an article of this type is drawn — <b>overview</b> in a link or list row, <b>quick</b> on a card,
-            <b>full</b> on its page. The arrangement lives at the type and is inherited until a type says its own.
+            How an article of this type is drawn in each view — <b>overview</b> in a link or list row, <b>quick</b> on a
+            card, <b>full</b> on its page, <b>print</b> on paper, and your own views. Every type shows what the view says
+            (Registry › Views) until it says otherwise: <b>adjusted</b> keeps the view and changes a little — new fields
+            of the view still come —, an <b>own arrangement</b> replaces it. Subtypes inherit either.
           </p>
           @for (v of ansichten(); track v.key) {
             <div class="ansicht">
               <div class="fhead">
                 <b>{{ v.label }}</b>
-                <span class="pill">{{ v.von === name() ? 'its own' : v.von ? 'from ' + label(v.von) : 'the view’s default' }}</span>
+                <span class="pill">{{ herkunft(v) }}</span>
                 <span class="dim">{{ v.kurz }}</span>
                 @if (darf()) {
-                  <button type="button" class="klein" (click)="ansichtBearbeiten(v.key, v.layout)">{{ entwurf()?.key === v.key ? 'Close' : 'Edit' }}</button>
-                  @if (v.von === name()) {
-                    <button type="button" class="klein" (click)="ansichtErben(v.key)">Inherit again</button>
-                  }
+                  <button type="button" class="klein" (click)="ansichtOeffnen(v.key)">{{ entwurf()?.key === v.key ? 'Close' : 'Edit' }}</button>
                 }
               </div>
               @if (entwurf()?.key === v.key) {
-                <textarea rows="10" aria-label="Arrangement as JSON" [value]="entwurf()!.text"
-                  (input)="entwurfText($any($event.target).value)"></textarea>
-                <p class="hint">
-                  A list of layout elements (<code>heading</code>, <code>fields</code> with <code>except</code>,
-                  <code>prose</code>, <code>sheet</code>, <code>tabs</code> …). Saving makes it this type’s own; the server
-                  checks it.
-                </p>
+                <div class="wahl">
+                  <label class="haken"><input type="radio" [name]="'modus-' + v.key" [checked]="modus() === 'view'" (change)="modusSetzen('view')" />
+                    As {{ v.von && v.von !== name() ? label(v.von) + ' shows it' : 'the view says' }}</label>
+                  <label class="haken"><input type="radio" [name]="'modus-' + v.key" [checked]="modus() === 'adjust'" (change)="modusSetzen('adjust')" />
+                    Adjusted for {{ label(name()) }}</label>
+                  <label class="haken"><input type="radio" [name]="'modus-' + v.key" [checked]="modus() === 'own'" (change)="modusSetzen('own')" />
+                    Its own arrangement</label>
+                </div>
+                @if (modus() === 'own') {
+                  <nw-reg-anordnung [layout]="eigeneListe()" [darf]="darf()" [typen]="kette()" (geaendert)="entwurfWert($event)" />
+                } @else if (modus() === 'adjust') {
+                  <nw-reg-anpassung [basis]="basis()" [adjust]="anpassung()" [darf]="darf()" [typen]="kette()"
+                    (geaendert)="entwurfWert({ adjust: $event })" />
+                } @else {
+                  <p class="hint">Nothing of its own: the arrangement comes from {{ v.von && v.von !== name() ? label(v.von) : 'the view' }}.</p>
+                }
+                <details>
+                  <summary>As JSON</summary>
+                  <textarea rows="8" aria-label="Arrangement as JSON" [value]="json()" (change)="jsonSetzen($any($event.target).value)"></textarea>
+                  <p class="hint">A list of layout elements, or <code>{{ '{' }} "adjust": {{ '{' }} … {{ '}' }} {{ '}' }}</code>. The server checks it.</p>
+                </details>
+                <h4>Preview</h4>
+                <nw-reg-vorschau [ansicht]="v.key" [register]="vorschauRegister()" [typ]="name()" />
                 <div class="knoepfe">
-                  <button type="button" class="pri" (click)="ansichtSpeichern(v.key)">Save arrangement</button>
+                  <button type="button" class="pri" [disabled]="arbeit.speichert()" (click)="ansichtSpeichern()">Save</button>
+                  <button type="button" (click)="entwurf.set(null)">Discard</button>
                 </div>
               }
             </div>
@@ -303,10 +335,11 @@ export class RegTyp {
   readonly darf = input(false);
 
   private readonly bestand = inject(Bestand);
-  private readonly arbeit = inject(RegisterArbeit);
+  protected readonly arbeit = inject(RegisterArbeit);
   protected readonly bereiche = BEREICHE;
   protected readonly feldOffen = signal<string | null>(null);
-  protected readonly entwurf = signal<{ key: string; text: string } | null>(null);
+  /** Der Entwurf einer Ansicht dieser Art: `null` heisst „wie die Ansicht" (T-110). */
+  protected readonly entwurf = signal<{ key: string; wert: TypeLayout | null } | null>(null);
 
   private readonly reg = computed(() => this.bestand.registry() as Registry | null);
   protected readonly def = computed(() => this.reg()?.interfaces[this.name()]);
@@ -390,8 +423,8 @@ export class RegTyp {
     const r = this.reg();
     if (!r) return [];
     return viewKeys(r).map((key) => {
-      const { layout, from } = layoutFor(r, key, this.name());
-      return { key, label: r.views[key]?.label ?? key, von: from, layout, kurz: kurzLayout(layout) };
+      const { layout, from, mode } = layoutFor(r, key, this.name());
+      return { key, label: r.views[key]?.label ?? key, von: from, mode, layout, kurz: kurzLayout(layout) };
     });
   });
 
@@ -593,37 +626,107 @@ export class RegTyp {
     });
   }
 
-  protected ansichtBearbeiten(key: string, layout: LayoutElement[]): void {
-    this.entwurf.update((e) => (e?.key === key ? null : { key, text: JSON.stringify(layout, null, 2) }));
+  /** Woher die Anordnung dieser Ansicht kommt, in einem Wort. */
+  protected herkunft(v: { von: string | null; mode: string }): string {
+    if (!v.von) return 'as the view says';
+    if (v.von === this.name()) return v.mode === 'adjusted' ? 'adjusted here' : 'its own';
+    return `from ${this.label(v.von)}${v.mode === 'adjusted' ? ' (adjusted)' : ''}`;
   }
-  protected entwurfText(text: string): void {
-    this.entwurf.update((e) => (e ? { ...e, text } : e));
+
+  /**
+   * Was geerbt würde, sagte diese Art nichts für die Ansicht — die
+   * Grundlage einer Anpassung (`layoutFor` ohne die eigene Zeile).
+   */
+  protected geerbt(key: string): LayoutElement[] {
+    const r = this.reg();
+    if (!r) return [];
+    const n = this.name();
+    const d = r.interfaces[n];
+    if (!d) return [];
+    const views = { ...(d.views ?? {}) };
+    delete views[key];
+    return layoutFor({ ...r, interfaces: { ...r.interfaces, [n]: { ...d, views } } }, key, n).layout;
   }
-  protected ansichtSpeichern(key: string): void {
+
+  /** Die Typen, deren Felder diese Art trägt — was „Add field" hier anbietet. */
+  protected readonly kette = computed(() => (this.reg() ? typeChain(this.reg()!, this.name()) : []));
+  /** Die Grundlage der offenen Anpassung. */
+  protected readonly basis = computed(() => {
+    const k = this.entwurf()?.key;
+    return k ? this.geerbt(k) : [];
+  });
+
+  protected ansichtOeffnen(key: string): void {
+    if (this.entwurf()?.key === key) {
+      this.entwurf.set(null);
+      return;
+    }
+    const eigen = this.def()?.views?.[key];
+    this.entwurf.set({ key, wert: ownLayout(eigen) ? structuredClone(eigen!) : null });
+  }
+  protected readonly modus = computed<'view' | 'adjust' | 'own'>(() => {
+    const w = this.entwurf()?.wert;
+    return !w ? 'view' : isAdjust(w) ? 'adjust' : 'own';
+  });
+  protected readonly anpassung = computed<LayoutAdjust>(() => {
+    const w = this.entwurf()?.wert;
+    return isAdjust(w) ? w.adjust : {};
+  });
+  protected readonly eigeneListe = computed<LayoutElement[]>(() => {
+    const w = this.entwurf()?.wert;
+    return Array.isArray(w) ? w : [];
+  });
+  protected readonly json = computed(() => JSON.stringify(this.entwurf()?.wert ?? null, null, 2));
+  /** Die Ansicht, wie sie mit dem Entwurf wäre — für die Vorschau. */
+  protected readonly vorschauRegister = computed<Registry | null>(() => {
+    const r = this.reg();
+    const e = this.entwurf();
+    const d = r?.interfaces[this.name()];
+    if (!r || !e || !d) return r;
+    const views = { ...(d.views ?? {}) };
+    if (e.wert && ownLayout(e.wert)) views[e.key] = e.wert;
+    else delete views[e.key];
+    return { ...r, interfaces: { ...r.interfaces, [this.name()]: { ...d, views } } };
+  });
+
+  /** Den Modus wechseln: eine eigene Liste beginnt als Abschrift dessen, was gerade gilt. */
+  protected modusSetzen(m: 'view' | 'adjust' | 'own'): void {
     const e = this.entwurf();
     if (!e) return;
-    let layout: unknown;
+    if (m === 'view') this.entwurf.set({ key: e.key, wert: null });
+    else if (m === 'adjust') this.entwurf.set({ key: e.key, wert: { adjust: isAdjust(e.wert) ? e.wert.adjust : {} } });
+    else {
+      const r = this.vorschauRegister();
+      this.entwurf.set({ key: e.key, wert: r ? structuredClone(layoutFor(r, e.key, this.name()).layout) : [] });
+    }
+  }
+  protected entwurfWert(wert: TypeLayout): void {
+    this.entwurf.update((e) => (e ? { ...e, wert } : e));
+  }
+  protected jsonSetzen(text: string): void {
+    let w: unknown;
     try {
-      layout = JSON.parse(e.text);
+      w = JSON.parse(text);
     } catch {
       this.arbeit.fehler.set('The arrangement is not valid JSON.');
       return;
     }
-    if (!Array.isArray(layout)) {
-      this.arbeit.fehler.set('An arrangement is a list of elements: [ … ].');
+    if (w !== null && !Array.isArray(w) && !isAdjust(w as TypeLayout)) {
+      this.arbeit.fehler.set('An arrangement is a list of elements [ … ] or { "adjust": { … } }.');
       return;
     }
-    void this.typAendern((d) => {
-      d.views = { ...(d.views ?? {}), [key]: layout as LayoutElement[] };
-    }).then((ok) => ok && this.entwurf.set(null));
+    this.entwurfWert(w as TypeLayout);
   }
-  protected ansichtErben(key: string): void {
+  protected ansichtSpeichern(): void {
+    const e = this.entwurf();
+    if (!e) return;
     void this.typAendern((d) => {
       const v = { ...(d.views ?? {}) };
-      delete v[key];
+      if (e.wert && ownLayout(e.wert)) v[e.key] = e.wert;
+      else delete v[e.key];
       if (Object.keys(v).length) d.views = v;
       else delete d.views;
-    });
+    }).then((ok) => ok && this.entwurf.set(null));
   }
 
   protected entfernen(): void {

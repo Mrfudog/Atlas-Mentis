@@ -11,7 +11,15 @@
  * registry is edited.
  */
 
-import type { LayoutElement, ObjectSchema, PropertySchema, Registry, ViewDef } from './types.js';
+import type {
+  LayoutAdjust,
+  LayoutElement,
+  ObjectSchema,
+  PropertySchema,
+  Registry,
+  TypeLayout,
+  ViewDef,
+} from './types.js';
 import { typeChain } from './entity.js';
 
 export const FALLBACK_VIEW: ViewDef = {
@@ -79,6 +87,78 @@ export function attachedDerived(
 }
 
 /**
+ * **Die Ansichten, die ein Ort wählt** (T-110, E-030 b): die Liste und der
+ * Verweis `overview`, Karte und Popup `quick`, die Artikelseite `full`,
+ * der Druck `print`. Sie lassen sich umbenennen und umbauen, aber nicht
+ * löschen — der Ort fragt nach ihnen. Eigene Ansichten daneben wählt man
+ * dort, wo gewählt wird (die Kachel auf dem Board, der Druck).
+ */
+export const PLACE_VIEWS = ['overview', 'quick', 'full', 'print'] as const;
+
+/** Eine Anpassung statt einer eigenen Anordnung? */
+export function isAdjust(x: TypeLayout | undefined | null): x is { adjust: LayoutAdjust } {
+  return !!x && !Array.isArray(x) && typeof x === 'object' && 'adjust' in x;
+}
+
+/** Sagt diese Art (selbst, nicht geerbt) etwas für diese Ansicht? */
+export function ownLayout(x: TypeLayout | undefined | null): boolean {
+  return Array.isArray(x) ? x.length > 0 : isAdjust(x);
+}
+
+/**
+ * **Nennt das Element dieses Feld?** — `fields` mit `Typ` oder `Typ.feld`,
+ * `all` nimmt alles, `except` nimmt wieder heraus. Fehlt `fields`, nimmt
+ * das Element alles (so stand es bei `prose` immer).
+ */
+export function elementTakes(el: LayoutElement, type: string, field: string): boolean {
+  if ((el.except ?? []).some((x) => x === type || x === `${type}.${field}`)) return false;
+  if (el.fields === undefined || el.fields === 'all') return true;
+  return el.fields.some((x) => x === type || x === `${type}.${field}`);
+}
+
+/**
+ * **Eine Anordnung anpassen** (`LayoutAdjust`). Die Eingabe bleibt, wie
+ * sie ist: die geerbte Anordnung gehört einem anderen Typ oder der Ansicht.
+ */
+export function applyAdjust(layout: readonly LayoutElement[], adjust: LayoutAdjust): LayoutElement[] {
+  const drop = new Set(adjust.drop ?? []);
+  const hide = adjust.hide ?? [];
+  const add = adjust.add ?? {};
+  const passe = (els: readonly LayoutElement[]): LayoutElement[] =>
+    els
+      .filter((el) => !drop.has(el.id))
+      .map((alt) => {
+        const el: LayoutElement = { ...alt };
+        if (el.tabs) el.tabs = el.tabs.map((t) => ({ ...t, layout: passe(t.layout) }));
+        if (el.el !== 'fields' && el.el !== 'prose') return el;
+        const dazu = add[el.id] ?? [];
+        if (dazu.length && el.fields !== 'all') {
+          el.fields = [...new Set([...(el.fields ?? []), ...dazu])];
+        }
+        /* Was dazukommt, ist nicht zugleich ausgenommen — sonst hiesse
+           „dazu" hier nichts, sobald die Ansicht es weglässt. */
+        if (dazu.length && el.except) el.except = el.except.filter((x) => !dazu.includes(x));
+        if (hide.length) {
+          if (Array.isArray(el.fields)) el.fields = el.fields.filter((x) => !hide.includes(x));
+          el.except = [...new Set([...(el.except ?? []), ...hide])];
+        }
+        return el;
+      });
+  const out = [...passe(layout), ...(adjust.extra ?? []).filter((x) => !drop.has(x.id))];
+  const order = adjust.order ?? [];
+  if (!order.length) return out;
+  const rang = (el: LayoutElement) => {
+    const i = order.indexOf(el.id);
+    return i < 0 ? order.length : i;
+  };
+  /* Stabil: Ungenanntes behält seine Reihenfolge, hinter dem Genannten. */
+  return out
+    .map((el, i) => ({ el, i }))
+    .sort((a, b) => rang(a.el) - rang(b.el) || a.i - b.i)
+    .map((x) => x.el);
+}
+
+/**
  * Welche Anordnung diese Ansicht für diese Artikelart zeichnet — **und aus
  * welcher Zeile sie kommt.**
  *
@@ -88,6 +168,10 @@ export function attachedDerived(
  * `Creature` auch NSC, Spielerfigur, Begleiter und Gefolge ab, ohne dass
  * eine davon sie wiederholt.
  *
+ * **Eine Anpassung** (`{ adjust }`, T-110) sucht weiter: ihre Grundlage ist,
+ * was die übrige Kette sagt, und am Ende die Ansicht. Mehrere Anpassungen
+ * die Kette hoch gelten alle, die allgemeinste zuerst.
+ *
  * Die Herkunft steht mit dabei, weil sie beim Bearbeiten der Unterschied
  * ist: wer die geerbte Anordnung ändert, ändert sie für alle — und das ist
  * der Sinn, aber eine Überraschung, wenn es nirgends steht.
@@ -96,12 +180,63 @@ export function layoutFor(
   registry: Pick<Registry, 'interfaces' | 'views'>,
   viewKey: string,
   type: string,
-): { layout: LayoutElement[]; from: string | null } {
+): { layout: LayoutElement[]; from: string | null; mode: 'view' | 'own' | 'adjusted' } {
+  const anpassungen: LayoutAdjust[] = [];
+  let from: string | null = null;
+  let basis: LayoutElement[] | null = null;
   for (const name of typeChain(registry, type)) {
     const eigen = registry.interfaces[name]?.views?.[viewKey];
-    if (Array.isArray(eigen) && eigen.length) return { layout: eigen, from: name };
+    if (Array.isArray(eigen) && eigen.length) {
+      basis = eigen;
+      from ??= name;
+      break;
+    }
+    if (isAdjust(eigen)) {
+      anpassungen.push(eigen.adjust);
+      from ??= name;
+    }
   }
-  return { layout: registry.views[viewKey]?.layout ?? [], from: null };
+  let layout = basis ?? registry.views[viewKey]?.layout ?? [];
+  for (const a of anpassungen.reverse()) layout = applyAdjust(layout, a);
+  const mode = anpassungen.length ? 'adjusted' : basis ? 'own' : 'view';
+  return { layout, from, mode };
+}
+
+/**
+ * **Was eine Art in dieser Ansicht zeigen kann** — je Element die Felder
+ * (`Typ.feld`), die es nimmt, in der Reihenfolge, in der die Art sie
+ * erklärt; was keines nimmt, unter `rest`. Was ein Artikel davon zeigt, ist
+ * die Schnittmenge mit dem, was er hat (T-110). Für die Maske im Register:
+ * „welche Felder stehen wo", ohne einen Artikel aufzumachen.
+ *
+ * Wie die Artikelseite: ein Feld steht im ersten Element, das es nimmt.
+ */
+export function viewFields(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  viewKey: string,
+  type: string,
+): { elements: { id: string; el: string; fields: string[] }[]; rest: string[] } {
+  const { layout } = layoutFor(registry, viewKey, type);
+  const alle: { comp: string; key: string; prose: boolean }[] = [];
+  for (const comp of typeChain(registry, type)) {
+    for (const [key, prop] of Object.entries(registry.interfaces[comp]?.schema?.properties ?? {})) {
+      alle.push({ comp, key, prose: !!(prop.many && prop.format === 'long') });
+    }
+  }
+  const flach = (els: readonly LayoutElement[]): LayoutElement[] =>
+    els.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]));
+  const vergeben = new Set<string>();
+  const elements: { id: string; el: string; fields: string[] }[] = [];
+  for (const el of flach(layout)) {
+    if (el.el !== 'fields' && el.el !== 'prose') continue;
+    const hier = alle
+      .filter((f) => f.prose === (el.el === 'prose'))
+      .map((f) => `${f.comp}.${f.key}`)
+      .filter((ref) => !vergeben.has(ref) && elementTakes(el, ref.split('.')[0]!, ref.split('.')[1]!));
+    hier.forEach((ref) => vergeben.add(ref));
+    elements.push({ id: el.id, el: el.el, fields: hier });
+  }
+  return { elements, rest: alle.map((f) => `${f.comp}.${f.key}`).filter((ref) => !vergeben.has(ref)) };
 }
 
 /**
@@ -138,10 +273,11 @@ export function listColumns(
     for (const name of el.fields) {
       const punkt = name.indexOf('.');
       if (punkt > 0) {
-        dazu(name.slice(0, punkt), name.slice(punkt + 1));
+        const [t, k] = [name.slice(0, punkt), name.slice(punkt + 1)];
+        if (elementTakes(el, t, k)) dazu(t, k);
       } else {
         for (const key of Object.keys(registry.interfaces[name]?.schema?.properties ?? {})) {
-          if (!(el.except ?? []).includes(`${name}.${key}`)) dazu(name, key);
+          if (elementTakes(el, name, key)) dazu(name, key);
         }
       }
     }

@@ -39,7 +39,7 @@ nennt den Bezeichner dazu.
 | **Einheit** (`UnitDef`) | Ein Mass und seine Umrechnung. | Registerteil `units` |
 | **Variable** (`VarDef`) | Ein `{PLATZHALTER}` mit Vorgabe. | Registerteil `vars` |
 | **Einstellung** | Ein Schlüssel und ein Wert je Kampagne, ohne Schema — ein Wort oder eine Zahl, nie eine Liste von Dingen, die eine Beschreibung bräuchten (F10). | Registerteil `settings` |
-| **Ansicht** (`ViewDef`) und **Anordnung** (`LayoutElement[]`) | Wie ein Artikel gezeichnet wird: drei Ansichten, je eine Grundanordnung; eine Art darf ihre eigene tragen. | Registerteil `views`; `InterfaceDef.views` |
+| **Ansicht** (`ViewDef`) und **Anordnung** (`LayoutElement[]`) | Wie ein Artikel gezeichnet wird: vier Ansichten, nach denen ein Ort fragt, und eigene; je eine Grundanordnung; eine Art darf sie anpassen oder ihre eigene tragen (T-110). | Registerteil `views`; `InterfaceDef.views` |
 
 ```mermaid
 flowchart LR
@@ -140,7 +140,7 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 | `area` | `world` · `story` · `rules` · `play` — geerbt. `story` ist, was nur die Kampagne betrifft (Kampagne, Sitzung, Szene, Auftrag); die Weltgeschichte (`World`, `Event`) steht unter `world` (bis 13.10. hiess `story` `history` und hielt beides) |
 | `units` | `imperial` · `metric` · `both`; überschreibt die Einstellung — geerbt |
 | `titles` | `Typ.feld` → eigene Beschriftung eines geerbten Feldes (`Time.until` → „Deadline" am Auftrag) — geerbt |
-| `views` | eigene Anordnung je Ansicht (`full`, `quick`, `overview`) — geerbt über `layoutFor` |
+| `views` | je Ansicht eine eigene Anordnung (Liste) oder eine Anpassung der geerbten (`{ adjust }`, T-110) — geerbt über `layoutFor` |
 
 ### 3.3 Vererbung
 
@@ -969,13 +969,65 @@ flowchart LR
 
 ## 10. Ansichten und Anordnung
 
-Drei Ansichten, und der Ort wählt sie:
+Vier Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
+E-030 b):
 
 | Ansicht | Wo | Zeigt |
 |---|---|---|
 | `overview` | ein Verweis, eine Listenzeile | Beschreibung und die Felder, die die Art dafür wählt — **die Spalten im Kompendium** |
-| `quick` | eine Kachel auf dem Board, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
+| `quick` | eine Kachel auf dem Board, die Vorschau, das Popup, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
 | `full` | die Artikelseite | alles |
+| `print` | „Print" an der Artikelseite: ein Blatt A4 (`/artikel/:id/print`) | Beschreibung, alle Felder, Prosa, Teile, Abschnitte — ohne Seitenspalte |
+| eigene | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt |
+
+**Ansichten sind Zeilen und werden im Register bearbeitet** (Register ›
+Views, T-110): anlegen (als Abschrift einer anderen), umbenennen, ordnen,
+löschen — die vier, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
+Ansicht eine **globale Anordnung**: Elemente in ihrer Reihenfolge, ein
+`fields`- oder `prose`-Element mit Einträgen „ganzer Typ" (`Spell` — ein
+neues Feld erscheint von selbst) oder „Typ.Feld" (`Spell.level` — bleibt
+genau das), gewählt mit „Add field". **Gezeigt wird die Schnittmenge**: was
+die Ansicht nimmt und der Artikel hat. Zwei Einstellungen sagen, was mit
+dem Übrigen geschieht:
+
+| Einstellung | Wirkung |
+|---|---|
+| `rest: true` | Was kein Element nimmt, steht am Ende. `full` und `print` ja — so geht auf der Seite kein Feld verloren, auch eines, das nur ein noch nicht gezeichnetes Element (Bogen) zeigen sollte; die Karte nein. |
+| `empty: 'show'` | Leere Felder stehen mit „—" da (ohne gerechnete und ohne Prosa). Vorgabe `hide`: ein Artikel zeigt, was er hat. |
+
+**Je Art überschreiben** (`InterfaceDef.views[ansicht]`, die
+`extends`-Kette hoch wie bisher):
+
+- **eine eigene Anordnung** (eine Liste) ersetzt, was darüber gilt;
+- **eine Anpassung** (`{ adjust: { drop, hide, add, extra, order } }`)
+  nimmt, was darüber gilt — die nächste Art der Kette, die etwas sagt,
+  sonst die Ansicht — und weicht ab: Elemente weglassen (`drop`, nach
+  `id`), Einträge nirgends zeigen (`hide`, wird zu `except`), Felder in
+  ein Element dazunehmen (`add`, Element-`id` → Einträge), Elemente nur
+  hier (`extra`), umsortieren (`order`, nach `id`). Mehrere Anpassungen die
+  Kette hoch gelten alle, die allgemeinste zuerst (`applyAdjust`,
+  `layoutFor` gibt `mode: 'view' | 'adjusted' | 'own'` mit).
+
+Eine Anpassung bleibt richtig, wenn die Ansicht sich ändert; eine Abschrift
+bliebe beim Alten. Darum ist sie die Vorgabe der Maske, und eine eigene
+Liste der Fall für eine Art, die wirklich anders aussieht (der Bogen der
+Kreatur). Im Register steht dazu eine **Vorschau an einem Beispielartikel**,
+gezeichnet aus dem Entwurf, und ohne Artikel, welches Feld der Art in
+welchem Element landet (`viewFields`).
+
+```mermaid
+flowchart LR
+  V["Ansicht: globale Anordnung"] --> A{"Art sagt etwas?<br/>(extends-Kette hoch)"}
+  A -- nein --> L["Anordnung der Ansicht"]
+  A -- "eigene Liste" --> E["eigene Anordnung"]
+  A -- "adjust" --> P["darüber Geltendes,<br/>angepasst"]
+  L & E & P --> Z["Zuteilung: Feld ins erste Element,<br/>das es nimmt (anordnen)"]
+  Z --> S["Schnittmenge mit dem Artikel<br/>+ empty / rest"]
+```
+
+Die Migration (050) änderte, was gezeichnet wird, nicht: `full` bekam
+`rest: true` — das tat die Artikelseite schon immer, nur stand es nirgends —,
+`print` kam dazu; die Anordnungen an den Arten bleiben Listen.
 
 **Eine Listenzeile ist `overview`** (W7): welche Spalten das Kompendium
 für eine Art zeigt und wonach es filtert, sagen die `fields`-Elemente ihrer
@@ -1010,8 +1062,11 @@ Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
 Ansicht, sondern ein anderes Konto in derselben Rechnung: mit `X-View-As`
 siebt der Server für die Leitung als dieses Mitglied, nur zum Lesen
-(siehe [Zugang.md](Zugang.md#die-sicht-eines-mitglieds-req-241-e-019-a)). Für `overview` und `quick` wählt eine Art **nach Gruppe**
-(ein Typname in `except`), nicht Feld für Feld.
+(siehe [Zugang.md](Zugang.md#die-sicht-eines-mitglieds-req-241-e-019-a)). Gewählt wird
+**zuerst nach Gruppe** (ein Typname in `fields` oder `except`) — ein ganzer
+Typ nimmt ein Feld, das morgen dazukommt, von selbst mit; ein einzelnes
+Feld (`Typ.feld`) ist richtig, wo genau dieses gemeint ist (die Spalten
+einer Listenzeile, der Grad auf der Karte), und bleibt dann genau das.
 
 **Die Anordnung wohnt am Typ** (`views.full` usw.) und ist eine geordnete
 Liste von Elementen; `layoutFor` läuft die Kette hoch, sonst gilt die
@@ -1037,10 +1092,12 @@ sind Zeilen, Darstellung ist Code.**
 | `statblock`, `spell`, `item` | **wie im Buch** (W2): Statblock wie im MM (Kopf kursiv, Kopfzeilen, sechs Werte in einer Reihe, Saves bis Challenge, Abschnitte aus `composedOf` je Aktionsart), Zauber wie im PHB (Casting Time, Range, Components, Duration, At Higher Levels), Gegenstand wie im DMG (Art, Seltenheit, Einstimmung kursiv; AC, Schaden, Preis, Gewicht). Jedes zeichnet **alle** Felder seiner Karten (`BOOK_CARDS`, `book.ts`), was keine Stelle im Buch hat als Zusatzzeile; die Feldtabelle derselben Anordnung nimmt diese Karten mit `except` heraus. Masse in der Einheit von `units` |
 | `tabs` | benannte Gruppen desselben Layouts |
 
-**Was kein Element zeichnet, steht am Ende.** Die Artikelseite der
-Oberfläche kennt noch nicht jedes Element (Bogen, Inventar, Karte …); ein
-Feld, das nur dort stünde, setzt sie unter die Anordnung, statt es zu
-verschweigen.
+**Was kein Element zeichnet, steht am Ende — wo die Ansicht `rest` sagt.**
+Die Artikelseite der Oberfläche kennt noch nicht jedes Element (Bogen,
+Inventar, Karte …); ein Feld, das nur dort stünde, setzt sie unter die
+Anordnung, statt es zu verschweigen. Zugeteilt wird an einer Stelle
+(`anordnen` in `apps/web/src/app/artikel/anordnung.ts`) für Artikelseite,
+Druck und Registervorschau.
 
 ---
 
