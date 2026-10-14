@@ -1004,6 +1004,11 @@ flowchart LR
   Die Artikelseite eines Rezepts zeigt das Ergebnis (Element `crafting`):
   am Tisch und je eigener Figur, mit dem, was nicht aus dem Rezept kommt —
   gerechnet am Server (`refs.craft`), nicht in der Maske.
+- **Fortschritt in Proben** (T-122): `Recipe.checks` sagt, wie viele
+  gelungene Proben die Arbeit braucht — Regelwerke wie Kibbles’ Compendium
+  zählen in Proben je Zeitabschnitt (zwei Stunden, eine Probe) statt in
+  Tagen. Ohne Angabe gilt eine Probe am Ende. Auf bestehenden Datenbanken
+  trägt Migration 059 das Feld nach.
 - **Ein Regelwerk mit Rezepten** (Kibbles’ Compendium, T-122) ist eine
   Ebene wie ein Buch: Rezepte, Materialien und Gegenstände sind Artikel
   darin, `needs`/`yields` verbinden sie, und jedes Rezept trägt eine
@@ -1311,7 +1316,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` | `composedOf` `affects` `grants` `hasProperty` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | — |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` | `composedOf` `affects` `grants` | overview |
-| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | full |
+| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | full |
 | `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` | `composedOf` `affects` `grants` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` | `composedOf` `affects` `grants` `loot` | — |
 | `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` | `composedOf` `affects` `casts` `grants` | quick, print, overview, full |

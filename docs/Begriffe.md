@@ -1437,6 +1437,11 @@ Rezept oder zum Werkzeug. Eine Kopie wäre eine zweite Fassung, die die
 nächste Korrektur am Original nicht mehr erreicht; eine Kante sagt nur, was
 anders ist, und das Besondere (Figur) schlägt das Allgemeine (Kampagne).
 
+Manche Regelwerke messen eine Arbeit nicht in Tagen, sondern in **Proben**:
+alle zwei Stunden eine, und erst wenn genug gelungen sind, ist das Stück
+fertig. Das Rezept sagt es mit `checks`; die Zeit (`time`) bleibt daneben
+stehen, weil sie liest, wer plant, und die Proben zählt, wer würfelt.
+
 ---
 
 ## Was ein Spieler von einer Karte bekommt
