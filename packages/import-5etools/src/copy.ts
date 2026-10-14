@@ -465,3 +465,56 @@ export function loeseKopien(
 
   return eintraege.map(loese);
 }
+
+/** Was eine Spielart von ihrem Eintrag als Fundstelle mitnimmt: dieselbe Buchseite. */
+const SPIELART_BEHAELT = { page: true, srd: true, srd52: true, basicRules: true, basicRules2024: true, legendaryGroup: true, environment: true, dragonCastingColor: true };
+
+/**
+ * **Die Spielarten ausschreiben** (`_versions`, T-084). 5e.tools führt an
+ * einem Eintrag Fassungen, die er selbst nicht als Eintrag hat: die Grung
+ * je Farbe, die Hexe im Zirkel, den Drachenblütigen je Farbe. Jede ist
+ * „wie der Eintrag, mit diesen Änderungen" — genau das, was `_copy` sagt.
+ * Also wird jede eine Kopie mit Verweis auf ihren Eintrag, und
+ * `loeseKopien` schreibt sie flach; `variantOf` zeigt danach auf ihn.
+ *
+ * `_abstract` mit `_implementations` ist eine Schablone: je Umsetzung
+ * werden ihre `{{Variablen}}` eingesetzt. Die Kopie trägt `SPIELART`,
+ * damit der Lauf sie als Nachtrag erkennt. Die einer Unterart bleiben
+ * weg (gezählt).
+ */
+export function spielarten(eintraege: Knoten[], merke: string, melde: KopieMelder = () => {}): Knoten[] {
+  const aus: Knoten[] = [];
+  for (const e of eintraege) {
+    aus.push(e);
+    /* Die Spielart einer Unterart ändert Merkmale ihres Volks („Breath
+       Weapon" des Drachenblütigen), die bei uns an der Abstammung stehen
+       und nicht an der Unterart — ausgeschrieben fände sie nichts. */
+    if (e['raceName'] !== undefined && e['_versions']) {
+      for (let i = 0; i < alsListe(e['_versions']).length; i++) melde('Spielart einer Unterart (ändert das Volk, nicht ausgeschrieben)');
+      continue;
+    }
+    for (const v of alsListe(e['_versions']) as Knoten[]) {
+      const fassungen: Knoten[] = v['_abstract']
+        ? (alsListe(v['_implementations']) as Knoten[]).map((imp) => {
+            const werte = (imp['_variables'] as Record<string, unknown> | undefined) ?? {};
+            const roh = JSON.stringify(v['_abstract']).replace(/\{\{(\w+)\}\}/g, (m, k: string) =>
+              werte[k] !== undefined ? JSON.stringify(String(werte[k])).slice(1, -1) : m,
+            );
+            const rest = { ...imp };
+            delete rest['_variables'];
+            return { ...(JSON.parse(roh) as Knoten), ...rest };
+          })
+        : [v];
+      for (const f of fassungen) {
+        const kopie: Knoten = { ...f, [merke]: true };
+        delete kopie['_mod'];
+        const meta: Knoten = { name: e['name'], source: e['source'], _preserve: SPIELART_BEHAELT };
+        if (f['_mod']) meta['_mod'] = f['_mod'];
+        kopie['_copy'] = meta;
+        kopie['_versions'] = null;
+        aus.push(kopie);
+      }
+    }
+  }
+  return aus;
+}

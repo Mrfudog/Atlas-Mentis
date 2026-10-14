@@ -393,9 +393,10 @@ laden](Betrieb.md#5etools-laden).
 Abweichend vom Abgleich: keine `ids.json` (§1: keine stabile Zuordnung
 über Läufe), keine Ebene je Buch, `overrides` entfällt (kein 2024).
 Offen: die Klassenlisten der Zauber (keine Kante von `Class` zu `Spell`),
-Schatztabellen (`hoard`, `individual`, `dragon`) und „This Is Your Life",
-Behälter (`containerCapacity` → `carries` ein Inventar), Spielarten in
-`_versions`, `entry`-Kanten aus Tabellenzeilen; die Ablage speichert
+Behälter (`containerCapacity` → `carries` ein Inventar),
+`entry`-Kanten aus Tabellenzeilen; Schatztabellen, „This Is Your Life",
+die Spielarten in `_versions` (ohne die der Unterarten) und die genannten
++N-Gegenstände kamen mit T-084 (Datenmodell R12); die Ablage speichert
 `enums` nicht (Prüfung am Server ohne Aufzählungszeilen); `listEntities`
 am Server lädt Artikel einzeln — bei 28 000 vor P6 ansehen; der
 Prüfaufbau des Prototyps (`pruefe.mjs`) erwartet den alten Bestand (M14).

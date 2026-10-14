@@ -183,7 +183,7 @@ auf die Modelländerungen in Abschnitt 3.
 | `item` | 2 512 | `Item` / `Weapon` / `Armor` | **anpassen** | **M4**: `tier`, Einstimmung (ja/nein + Bedingung), Ladungen und Aufladung, Boni (Waffe, RK, Zauberangriff, Rettungswurf), `itemType` als Aufzählungszeile aus `itemType`, `rarity` um `none`/`varies` ergänzt und englisch (E3), `weight` als Mass mit `unit: lb`, `attachedSpells` → `casts` vom Gegenstand; `baseItem` → `variantOf`; `containerCapacity` → der Gegenstand `carries` ein `Inventory` |
 | `baseitem` | 230 | `Weapon` / `Armor` / `Item` | **anpassen** | Waffe: `damage2` (vielseitig), Kategorie einfach/Kriegs-, Munitionsart, Eigenschaften über `hasProperty` → `Rule kind: property` (steht als Kante, fehlt als Aufzählungswert, **M1**); Rüstung: Stärkevoraussetzung, Heimlichkeit-Nachteil, `armorType` als Aufzählung (**M4**) |
 | `itemGroup` | 119 | `Item` + `variantOf` von den Mitgliedern | **steht** | „Armor of Resistance" mit sieben Ausprägungen: der Gruppenartikel und je Mitglied `variantOf` |
-| `magicvariant` | 230 | `Item` als Vorlage | **anpassen** | „+1 Weapon" gilt für *jede* Waffe; 5e.tools erzeugt „+1 Longsword" beim Lesen. Bei uns: die Variante ist ein Artikel mit `appliesTo` (Marken: weapon, armor, ammunition), und das konkrete Stück entsteht am Tisch als Instanz des Grundgegenstands (`instanceOf`, D82) — **M4** erweitert `instanceOf` auf `Item` |
+| `magicvariant` | 230 | `Item` als Vorlage | **anpassen** | „+1 Weapon" gilt für *jede* Waffe; 5e.tools erzeugt „+1 Longsword" beim Lesen. Bei uns: die Variante ist ein Artikel mit `appliesTo` (Marken: weapon, armor, ammunition), und das konkrete Stück entsteht am Tisch als Instanz des Grundgegenstands (`instanceOf`, D82) — **M4** erweitert `instanceOf` auf `Item`. Seit T-084 steht das Stück, das ein Text nennt („+1 shield"), als eigener Artikel da (`variantOf` auf den Grundgegenstand); alle Paare nicht |
 | `itemType` | 67 | Aufzählungszeile `ItemType` | **anpassen** | Kürzel → Name (`M` martial weapon, `HA` heavy armor, `WD` wand, `$` treasure …) (**M4**) |
 | `itemProperty` | 27 | `Rule kind: property` | **anpassen** | Aufzählungswert (**M1**); Vielseitig, Finesse, Leicht … stehen heute schon als Regeln im Bestand, nur mit `kind: feature` |
 | `itemMastery` | 8 | `ItemProperty` mit der Marke `mastery` | **steht** (T-087) | 2024: Waffenmeisterschaft; die Waffe zeigt mit `hasProperty` darauf wie auf eine Eigenschaft |
@@ -206,10 +206,10 @@ auf die Modelländerungen in Abschnitt 3.
 | `table` | 2 381 | `Table` | **anpassen** | **M8**: Spaltenbeschriftungen und Zeilen aus Zellen; heute hat `Table` nur `rows` als Einträge mit Gewicht. 2 368 davon kommen aus den Büchern (`generated/`), 13 stehen für sich |
 | `tableGroup` | 22 | `Table` + `partOf` | **steht** | mehrere Tabellen unter einem Titel |
 | `encounter` | 42 | `Table kind: encounter` | **steht** | Zufallsbegegnungen je Gelände und Stufe; `entry`-Kanten mit Gewicht |
-| `hoard`, `individual`, `magicItems`, `gems`, `artObjects`, `dragon`, `dragonMundaneItems` | 100 | `Table kind: loot`, geschachtelt | **steht** | `entry` erlaubt Tabelle → Tabelle (REQ-186); Münzen als Zeile mit Würfelausdruck |
+| `hoard`, `individual`, `magicItems`, `gems`, `artObjects`, `dragon`, `dragonMundaneItems` | 100 | `Table kind: loot`, geschachtelt | **steht** | Seit T-084: der verschachtelte Wurf als Verweis in der Zeile (`{{2d6}} × [[…\|10 gp Gemstones]]`), nicht als `entry` — eine Zeile nennt oft zwei Tabellen; Münzen im Text |
 | `name` | 10 | `Table kind: name` | **steht** | Namenstabellen je Volk |
 | `reward` | 278 | `Rule kind: reward` | **anpassen** | Segen, Charms, Epische Gaben, Frömmigkeit; Aufzählungswert und `rewardType` (**M1**) |
-| `cult` | 30 | `Faction kind: cult` | **anpassen** | `goal` fehlt an `Faction`; Kultisten → `features`, Signaturzauber → `casts` (**M7**) |
+| `cult` | 30 | `Faction kind: cult` | **steht** | `Faction.goal`; Kultisten im Text, Signaturzauber → `casts` (T-084) |
 | `boon` | 12 | `Rule kind: boon` | **anpassen** | Aufzählungwert (**M1**) |
 | `trap` | 37 | — | **fehlt** | Neue Art `Hazard` (**M7**): `kind` trap/hazard, `category` MECH/MAG/WTH/ENV/WLD, `rating` (Stufe und Gefahrgrad), Auslöser, Dauer, Wirkung, Gegenmassnahmen, Initiative. Auf der Karte über `marker` (steht) |
 | `hazard` | 73 | `Hazard` | **fehlt** | mit `trap` |

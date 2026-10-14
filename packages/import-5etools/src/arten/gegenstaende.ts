@@ -15,7 +15,8 @@ import { effectId } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
-import { liste, SCHADEN, zahl } from '../zuordnung.js';
+import type { Datenstand } from '../lesen.js';
+import { liste, SCHADEN, titel, zahl } from '../zuordnung.js';
 
 const ITEM_TYPE: Record<string, string> = {
   M: 'melee weapon', R: 'ranged weapon', A: 'ammunition', AF: 'ammunition', LA: 'light armor',
@@ -313,6 +314,103 @@ const gegenstand = (art: string): Zuordnung => ({
   },
 });
 
+// ------------------------------------------------- ausgeschriebene Varianten
+
+/** Was eine ausgeschriebene Variante vom Grundgegenstand nicht übernimmt: die Fundstelle und den Preis. */
+const NICHT_VOM_GRUND = ['name', 'source', 'page', 'srd', 'srd52', 'basicRules', 'basicRules2024', 'reprintedAs', 'referenceSources', 'value', 'entries', 'edition', 'hasFluffImages', 'hasFluff'];
+
+/** Alle Namen, die irgendwo als `{@item …}` stehen, klein, mit Quelle (Vorgabe DMG). */
+const genanntCache = new WeakMap<Datenstand, Set<string>>();
+function genannt(stand: Datenstand): Set<string> {
+  const schon = genanntCache.get(stand);
+  if (schon) return schon;
+  const namen = new Set<string>();
+  const sammle = (x: unknown) => {
+    for (const m of JSON.stringify(x).matchAll(/\{@item ([^}|]+)(?:\|([^}|]*))?/g)) {
+      namen.add(`${m[1]!.trim().toLowerCase()}|${(m[2] || 'dmg').trim().toLowerCase()}`);
+    }
+  };
+  for (const [art, l] of stand.arten) if (!art.endsWith('Fluff')) sammle(l);
+  for (const a of stand.abenteuer?.values() ?? []) sammle(a.daten);
+  for (const b of stand.buecher?.values() ?? []) sammle(b.daten);
+  genanntCache.set(stand, namen);
+  return namen;
+}
+
+/** Passt ein Wert aus `requires`/`excludes` zum Grundgegenstand? `type` mit Quelle wie 5e.tools: „LA|XPHB". */
+function passt(basis: Knoten, k: string, v: unknown): boolean {
+  const ist = basis[k];
+  const gleich = (a: unknown) => {
+    if (k === 'type') {
+      const [t = '', q = ''] = String(a).split('|');
+      const [bt = '', bq = ''] = String(ist ?? '').split('|');
+      return t.toLowerCase() === bt.toLowerCase() && (q || 'phb').toLowerCase() === (bq || 'phb').toLowerCase();
+    }
+    return typeof a === 'string' && typeof ist === 'string' ? a.toLowerCase() === ist.toLowerCase() : a === ist;
+  };
+  return Array.isArray(v) ? v.some(gleich) : gleich(v);
+}
+
+/** `{=baseName/l}`: der Wert, mit `/l` klein, `/u` gross, `/t` mit grossen Anfängen. */
+function fuelle(s: string, werte: Knoten): string {
+  return s.replace(/\{=(\w+)(?:\/(\w+))?\}/g, (m, k: string, f?: string) => {
+    if (werte[k] === undefined) return m;
+    const w = String(werte[k]);
+    return f === 'l' ? w.toLowerCase() : f === 'u' ? w.toUpperCase() : f === 't' ? titel(w) : w;
+  });
+}
+
+/**
+ * **Die ausgeschriebenen +N-Gegenstände** (T-084): „+1 shield", „+2
+ * leather armor" — eine magische Variante (`magicvariant`) an einem
+ * Grundgegenstand. 5e.tools rechnet alle Paare aus; hier nur die, die
+ * irgendein Text nennt (`genannt`) und die es nicht schon als Gegenstand
+ * gibt. Eine Variante aus dem DMG geht an die Grundgegenstände aus dem
+ * PHB, eine aus dem XDMG an die aus dem XPHB (die `requires` sagen es mit
+ * der Quelle am Typ). Der Artikel zeigt mit `variantOf` auf den
+ * Grundgegenstand, wie jeder Gegenstand mit `baseItem`.
+ */
+export function ausgeschrieben(stand: Datenstand): Knoten[] {
+  const namen = genannt(stand);
+  const gibt = new Set(
+    [...(stand.arten.get('item') ?? []), ...(stand.arten.get('baseitem') ?? []), ...(stand.arten.get('itemGroup') ?? [])].map(
+      (e) => `${String(e['name']).toLowerCase()}|${String(e['source']).toLowerCase()}`,
+    ),
+  );
+  const aus = new Map<string, Knoten>();
+  for (const v of stand.arten.get('magicvariant') ?? []) {
+    const i = (v['inherits'] as Knoten | undefined) ?? {};
+    const quelle = String(i['source'] ?? '');
+    const neu24 = /^x/i.test(quelle);
+    for (const basis of stand.arten.get('baseitem') ?? []) {
+      if (/^x/i.test(String(basis['source'] ?? '')) !== neu24) continue;
+      if (!liste(v['requires']).some((r) => Object.entries(r as Knoten).every(([k, w]) => passt(basis, k, w)))) continue;
+      const ex = (v['excludes'] as Knoten | undefined) ?? {};
+      if (Object.entries(ex).some(([k, w]) => passt(basis, k, w))) continue;
+      let grund = String(basis['name']);
+      if (i['nameRemove']) grund = grund.replace(String(i['nameRemove']), '');
+      const name = `${String(i['namePrefix'] ?? '')}${grund}${String(i['nameSuffix'] ?? '')}`.trim();
+      const schluessel = `${name.toLowerCase()}|${quelle.toLowerCase()}`;
+      if (!namen.has(schluessel) || gibt.has(schluessel) || aus.has(schluessel)) continue;
+      const e: Knoten = {};
+      for (const [k, w] of Object.entries(basis)) if (!NICHT_VOM_GRUND.includes(k)) e[k] = w;
+      for (const [k, w] of Object.entries(i)) if (!['namePrefix', 'nameSuffix', 'nameRemove', 'entries', 'reprintedAs', 'lootTables', 'classFeatures'].includes(k)) e[k] = w;
+      if (i['valueMult'] !== undefined && basis['value'] !== undefined) e['value'] = Number(basis['value']) * Number(i['valueMult']);
+      if (i['weightMult'] !== undefined && basis['weight'] !== undefined) e['weight'] = Number(basis['weight']) * Number(i['weightMult']);
+      delete e['valueMult'];
+      delete e['weightMult'];
+      const werte: Knoten = { ...e, baseName: basis['name'] };
+      e['name'] = name;
+      e['source'] = quelle;
+      e['baseItem'] = `${String(basis['name'])}|${String(basis['source'])}`;
+      e['entries'] = [...(JSON.parse(fuelle(JSON.stringify(liste(i['entries'])), werte)) as unknown[]), ...liste(basis['entries'])];
+      e['magicVariant'] = `${String(v['name'])}|${quelle}`;
+      aus.set(schluessel, e);
+    }
+  }
+  return [...aus.values()];
+}
+
 export const GEGENSTAENDE: Zuordnung[] = [
   gegenstand('baseitem'),
   gegenstand('item'),
@@ -348,6 +446,19 @@ export const GEGENSTAENDE: Zuordnung[] = [
           wb.notiz(`inherits.${k} nicht übernommen`);
         }
       }
+    },
+  },
+  {
+    ...gegenstand('specificVariant'),
+    vorbereiten: (_roh, stand) => ausgeschrieben(stand),
+    genutzt: [...GENUTZT_ITEM, 'magicVariant', 'valueExpression', 'valueRarity', 'otherSources'],
+    fuellen(wb, ent, e) {
+      gegenstand('specificVariant').fuellen(wb, ent, e);
+      /* Woher die Regel kommt: die allgemeine Variante („+1 Weapon"). */
+      const [n = '', q = ''] = String(e['magicVariant']).split('|');
+      const allgemein = wb.finde('item', [n, q]);
+      if (allgemein) wb.prosa(ent, `*The ${String(e['baseItem']).split('|')[0]!.toLowerCase()} form of [[${wb.nummer(allgemein)}|${allgemein.name}]].*`);
+      wb.marke(ent, 'magic variant');
     },
   },
   {

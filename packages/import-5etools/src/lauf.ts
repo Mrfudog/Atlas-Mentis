@@ -18,10 +18,11 @@ import { buch } from './arten/buch.js';
 import type { Knoten } from './copy.js';
 import { fassungen, herkunft, vereineGleiche } from './doppel.js';
 import { angriffeVereinen } from './arten/angriff.js';
-import { KOPIE_VON, loeseKopien } from './copy.js';
+import { KOPIE_VON, loeseKopien, spielarten } from './copy.js';
 import type { Auswahl, Datenstand, Quelle, Regelstand } from './lesen.js';
-import { ARTEN_WEG, ausschluss, ebeneQuelle, imGrundstand, quelleVon, regelstandDerQuelle, regelstandVon, STICHTAG_2024 } from './lesen.js';
+import { ARTEN_WEG, ausschluss, ebeneQuelle, imGrundstand, istNachtrag, SPIELART, quelleVon, regelstandDerQuelle, regelstandVon, STICHTAG_2024 } from './lesen.js';
 import { NEUES } from './arten/neu.js';
+import { SCHATZ } from './arten/schatz.js';
 import type { Bericht } from './werkbank.js';
 import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, ohneBuchEbeneId, Werkbank, zaehle } from './werkbank.js';
 import type { Zuordnung } from './zuordnung.js';
@@ -36,6 +37,7 @@ export const ZUORDNUNGEN: Zuordnung[] = [
   ...MONSTER,
   ...WELT,
   ...NEUES,
+  ...SCHATZ,
 ];
 
 /** Die Gruppe aller offiziellen 2014-Bücher (T-109, E-022 b). Bis T-109
@@ -199,8 +201,9 @@ function aufraeumen(e: Entity): void {
 }
 
 /**
- * **Ein Lauf in zwei Gängen** (T-087): erst der Grundstand allein, dann
- * alles mit dessen Nummern. Nur so schreibt ein Lauf mit 2024, UA und den
+ * **Ein Lauf in drei Gängen** (T-087, T-084): erst der Grundstand allein,
+ * dann was T-087 brachte, dann alles — jeder Gang mit den Nummern des
+ * vorigen, damit die Nachträge (`NACHTRAG_ARTEN`) hinten zählen. Nur so schreibt ein Lauf mit 2024, UA und den
  * neuen Arten den Grundstand mit denselben Ids, Nummern und Namen, wie ihn
  * einer ohne geschrieben hätte — die Peg-Id eines geteilten Merkmals hängt
  * an seinem Text, und der nennt Nummern. Anders steht danach nur Buch- und
@@ -209,7 +212,10 @@ function aufraeumen(e: Entity): void {
 export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registry = seedRegistry): Ergebnis {
   if (auswahl.nurGrundstand) return bauen(stand, auswahl, registry).ergebnis;
   const grund = bauen(stand, { ...auswahl, nurGrundstand: true }, registry, undefined, false);
-  return bauen(stand, auswahl, registry, grund.vergeben).ergebnis;
+  /* Dritter Gang (T-084): erst der Stand von T-087 mit dessen Nummern,
+     dann die Nachträge dahinter. */
+  const vorher = bauen(stand, { ...auswahl, ohneNachtrag: true }, registry, grund.vergeben, false);
+  return bauen(stand, auswahl, registry, vorher.vergeben).ergebnis;
 }
 
 function bauen(
@@ -313,9 +319,11 @@ function bauen(
   const nachKopie = new Map<string, Entity>();
   const pegs = new Set<string>(wb.entities.map((e) => e.id));
   for (const z of ZUORDNUNGEN) {
-    const roh = stand.arten.get(z.art) ?? [];
+    const roh0 = stand.arten.get(z.art) ?? [];
     const b = wb.artBericht(z.art);
-    b.gelesen += roh.length;
+    b.gelesen += roh0.length;
+    /* Die Spielarten (`_versions`) werden Kopien ihres Eintrags (T-084). */
+    const roh = spielarten(z.vorbereiten ? z.vorbereiten(roh0, stand) : roh0, SPIELART, (was) => wb.notiz(was, z.art));
     const gelöst = loeseKopien(roh, kopieSchluessel(z.art), (was) => wb.notiz(was, z.art), vorlagen);
     const vereint = new Map<string, Entity>();
     /* Die Kernbücher zuerst, dann nach Erscheinen: so trägt der Goblin aus
@@ -340,6 +348,8 @@ function bauen(
       if (q && !stand.quellen.has(q.toLowerCase())) zaehle(wb.bericht.fremdeQuellen, q);
       wb.stand = regelstandVon(e, stand);
       wb.grund = imGrundstand(e, z.art, stand);
+      wb.nachtrag = istNachtrag(e, z.art);
+      if (e[SPIELART]) wb.notiz('Spielart (_versions) ausgeschrieben', z.art);
       const typ = z.typ(e, wb);
       if (!typ) continue;
       /* Vereint wird nur innerhalb einer Teilung (T-087): ein 2024-Merkmal
@@ -390,6 +400,7 @@ function bauen(
     const st = wb.standJe.get(ent.id);
     wb.stand = st?.stand ?? '2014';
     wb.grund = st?.grund ?? true;
+    wb.nachtrag = st?.nachtrag ?? false;
     z.fuellen(wb, ent, e);
     /* Andere Namen, unter denen 5e.tools den Eintrag auch führt. */
     if (Array.isArray(e['alias']) && e['alias'].length) {
@@ -400,6 +411,7 @@ function bauen(
   }
 
   wb.grundSiehtAlles = true;
+  wb.nachtrag = false;
   /* Die Abenteuer (T-082, REQ-240): nach den Buchartikeln, damit jeder
      Verweis im Abenteuertext sein Ziel findet. Gesiebt wird wie jeder
      Eintrag — nach Quelle, 2024 bleibt draussen. */
