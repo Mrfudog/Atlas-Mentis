@@ -231,6 +231,36 @@ try {
     pruefe('ohne Revision wird nichts überschrieben', blind.status === 409, String(blind.status));
   }
 
+  /* REQ-192, am Repository und wiederholt: hält der Prozess den Bestand,
+     sperrte nur das eine Schreiben die Tabelle, und zwei gleichzeitige
+     liefen in einen Deadlock (40P01 → 500). Über HTTP trifft es nur
+     manchmal; hier mit gehaltenem Bestand jede Runde. */
+  {
+    const { PgRepository } = await import(join(DIST, 'repo.pg.js'));
+    const { RevisionConflict } = await import(join(DIST, 'repo.js'));
+    const { default: pg } = await import('pg');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const repo = new PgRepository(pool);
+    const id = 'dl_probe';
+    const art = { id, interfaces: ['Note'], components: {}, relations: [] };
+    const fremd = [];
+    try {
+      await repo.putEntity(art);
+      for (let i = 0; i < 20; i++) {
+        await repo.listEntities();
+        const rev = (await repo.getEntity(id)).revision;
+        const r = await Promise.allSettled([0, 1].map(() => repo.putEntity(art, { expectRevision: rev })));
+        const ok = r.filter((x) => x.status === 'fulfilled').length;
+        const abgewiesen = r.filter((x) => x.status === 'rejected' && x.reason instanceof RevisionConflict).length;
+        if (ok !== 1 || abgewiesen !== 1) fremd.push(r.map((x) => (x.status === 'fulfilled' ? 'ok' : (x.reason?.code ?? x.reason?.name))).join('/'));
+      }
+    } finally {
+      await repo.deleteEntity(id);
+      await pool.end();
+    }
+    pruefe('gleichzeitig mit gehaltenem Bestand: nie ein Deadlock, immer eines und ein Konflikt', fremd.length === 0, fremd.slice(0, 5).join(', '));
+  }
+
   /* Das Register speichern, während Artikel darauf zeigen — scheiterte
      einmal an einem Fremdschlüssel, den nur Postgres kennt. */
   const reg = await (await get(admin, '/api/registry')).json();

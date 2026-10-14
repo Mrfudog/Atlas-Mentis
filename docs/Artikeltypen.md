@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-14. 80 Schnittstellen, 63 Kantenarten.
+Stand 2026-10-14. 80 Schnittstellen, 64 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -58,6 +58,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `equips` → „equipped by"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
+- Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -411,6 +412,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `equips` → „equipped by"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
+- Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -469,6 +471,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `equips` → „equipped by"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
+- Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -764,6 +767,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `equips` → „equipped by"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
+- Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -887,7 +891,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `inventory` *grid | weight | slots*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*
+- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `inventory` *grid | weight | slots*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*
 
 **Geerbte Felder**
 
@@ -1072,6 +1076,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
+- `leftBehind` → Item — „left behind"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"

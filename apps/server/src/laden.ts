@@ -17,6 +17,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  arriveUnstowed,
   buyWare,
   currentCampaign,
   entityName,
@@ -182,7 +183,9 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
         /* Das Stück gehört zur eigenen Figur (D74): wer es kauft, darf es gravieren. */
         if (!user.isAdmin && !leitet) await repo.addAuthored(user.id, stueckId);
       }
-      const neu = r.shop === laden ? [r.inventory] : [r.shop, r.inventory];
+      /* Gekauft ist noch nicht eingepackt (T-140): das Neue liegt vor der Figur. */
+      const ankunft = arriveUnstowed(inventar, r.inventory, () => `${inventar.id}~holds-${randomUUID().slice(0, 8)}`);
+      const neu = r.shop === laden ? [ankunft] : [r.shop, ankunft];
       const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]), user);
       if (fehler) {
         /* Ohne Kauf kein Stück: was eben angelegt wurde, hält niemand. */

@@ -9,6 +9,13 @@
       "link": "/rules"
     },
     {
+      "id": "2026-10-14-not-stowed",
+      "date": "2026-10-14",
+      "title": "Loot lies in front of you until you stow it",
+      "text": "What a character buys, loots or is given first lies in a \"Not stowed\" area above the inventory grid: drag it into the grid (with mouse or finger), tap a cell, or press Stow. The campaign decides how long it may lie there; whatever is left at the end of the session (or when the table moves on) stays behind at the session, where anyone can pick it up again.",
+      "area": "Play"
+    },
+    {
       "id": "2026-10-14-player-layer",
       "date": "2026-10-14",
       "title": "Your own layer as a player",
