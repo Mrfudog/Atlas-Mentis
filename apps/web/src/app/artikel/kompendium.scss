@@ -336,3 +336,15 @@ tr.unter td {
   font-size: 0.9rem;
   border-top-style: dashed;
 }
+
+/* Der Info-Knopf einer Zeile (T-093) steht nur, wo die Zeile gleich zum
+   Artikel führt — daneben ist kein Platz für die Vorschau (`schmal()`). */
+.zeilen-info {
+  display: none;
+  margin-left: 0.35rem;
+}
+@media (max-width: 1100px) {
+  .zeilen-info {
+    display: inline-flex;
+  }
+}

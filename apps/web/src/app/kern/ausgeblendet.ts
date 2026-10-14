@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { KurzLink } from './kurzansicht';
 import { Api, type Ausgeblendet } from './api';
 
 /**
@@ -15,7 +16,7 @@ import { Api, type Ausgeblendet } from './api';
  */
 @Component({
   selector: 'nw-ausgeblendet',
-  imports: [RouterLink],
+  imports: [RouterLink, KurzLink],
   template: `
     @if (info(); as i) {
       <aside class="hinweis" role="note" [class.knapp]="knapp()">
@@ -27,7 +28,9 @@ import { Api, type Ausgeblendet } from './api';
         <ul>
           @for (l of i.layers; track l.id) {
             <li>
-              <span>{{ l.name }}</span> <span class="zahl">{{ zahl(l.count) }}</span>
+              <span>{{ l.name }}</span>
+              <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
+              <span class="zahl">{{ zahl(l.count) }}</span>
               @if (l.canActivate) {
                 <button type="button" [disabled]="laeuft()" (click)="aufschalten(i.campaign.id, l.id)">
                   Turn on
