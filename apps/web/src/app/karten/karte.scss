@@ -119,6 +119,13 @@ button {
 .innen {
   position: relative;
 }
+/* Die Ladeanzeige liegt über der leeren Bühne und fängt keine Geste (T-126). */
+.laedt {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
 .blatt {
   position: absolute;
   inset: 0;

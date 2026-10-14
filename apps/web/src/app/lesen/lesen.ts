@@ -8,6 +8,7 @@ import { Api, type LeseBuch, type LeseStueck, type LeseTreffer, type LeseZeile }
 import { Bestand } from '../kern/bestand';
 import { Text } from '../artikel/text';
 import { KurzLink } from '../kern/kurzansicht';
+import { Ladeanzeige } from '../kern/ladeanzeige';
 import { bloeckeVon, type Block } from '../kern/buchtext';
 import { bildAdresse } from '../artikel/bild';
 
@@ -51,7 +52,7 @@ interface Abschnitt {
  */
 @Component({
   selector: 'nw-lesen',
-  imports: [RouterLink, FormsModule, Text, KurzLink],
+  imports: [RouterLink, FormsModule, Text, KurzLink, Ladeanzeige],
   template: `
     <div class="leser">
       <div class="kopf">
@@ -126,10 +127,19 @@ interface Abschnitt {
 
           <main class="lesetext">
             @if (!b.toc.length) {
-              <p class="leer">
-                Nothing to read here. The text of this book may be for the GM only, or the book is not
-                turned on for the running campaign.
-              </p>
+              <!-- Der Grund, wo der Server ihn kennt (T-126): ohne eingelesenen
+                   Buchtext ist das der einzige, auch für die Verwaltung. -->
+              @if (b.empty === 'noText') {
+                <p class="leer">
+                  Nothing to read here yet: no text of this book has been imported — only its articles
+                  (spells, creatures, items …). Once its chapters are read in, they appear here.
+                </p>
+              } @else {
+                <p class="leer">
+                  Nothing to read here. The text of this book may be for the GM only, or the book is not
+                  turned on for the running campaign.
+                </p>
+              }
             }
             @for (a of abschnitte(); track a.id) {
               @if (a.teil) {
@@ -172,7 +182,13 @@ interface Abschnitt {
                 @for (k of a.karten; track k.id) {
                   <figure class="karte">
                     @if (k.bild) {
-                      <img [src]="k.bild" [alt]="k.name" loading="lazy" />
+                      <!-- Eine Karte ist gross; bis sie da ist, ein Kreis (T-126). -->
+                      <div class="kartenbild" [class.laedt]="!kartenDa().has(k.bild)">
+                        @if (!kartenDa().has(k.bild)) {
+                          <nw-ladeanzeige class="anzeige" label="Loading map …" />
+                        }
+                        <img [src]="k.bild" [alt]="k.name" loading="lazy" (load)="karteDa(k.bild)" (error)="karteDa(k.bild)" />
+                      </div>
                     }
                     <figcaption>
                       <a [routerLink]="['/artikel', k.id]" [nwQuick]="k.id">{{ k.name }}</a>
@@ -239,6 +255,11 @@ export class Lesen {
   protected readonly stueck = signal<LeseStueck | null>(null);
   protected readonly fehler = signal<string | null>(null);
   protected readonly laedt = signal(false);
+  /** Welche Kartenbilder da sind (T-126) — bis dahin dreht sich die Ladeanzeige. */
+  protected readonly kartenDa = signal<ReadonlySet<string>>(new Set());
+  protected karteDa(bild: string): void {
+    this.kartenDa.update((s) => new Set([...s, bild]));
+  }
   protected readonly aktuell = signal<string | null>(null);
   protected readonly tocOffen = signal(false);
   protected readonly treffer = signal<LeseTreffer[] | null>(null);

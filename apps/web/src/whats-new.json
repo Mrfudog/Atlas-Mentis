@@ -1,0 +1,314 @@
+{
+  "entries": [
+    {
+      "id": "2026-10-14-whats-new",
+      "date": "2026-10-14",
+      "title": "What's new",
+      "text": "This page: what changed on the site, newest first, with a link to the place. A dot next to \"What's new\" in the header says there is something you have not seen yet — on any device you sign in with.",
+      "area": "Navigation",
+      "link": "/whats-new"
+    },
+    {
+      "id": "2026-10-14-campaign-in-header",
+      "date": "2026-10-14",
+      "title": "Campaign and layers in the header",
+      "text": "Under the brand, the header shows the running campaign and how many layers are in play. A click opens a popup to switch layers and groups on or off and to compare them.",
+      "area": "Navigation"
+    },
+    {
+      "id": "2026-10-14-item-copies",
+      "date": "2026-10-14",
+      "title": "Every item given is its own copy",
+      "text": "Whatever a character receives — bought, looted, crafted, starting equipment, or given with \"Add an item\" on the inventory — is a copy of the item article: change one without touching the rest, while fixes to the article still reach every copy.",
+      "area": "Play"
+    },
+    {
+      "id": "2026-10-14-board-areas",
+      "date": "2026-10-14",
+      "title": "Board areas",
+      "text": "A board can be split into named areas that fold away and show up as tabs along the top. They work by touch on phones and tablets too.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-14-filter-groups",
+      "date": "2026-10-14",
+      "title": "Filter groups",
+      "text": "Save a filter as a group on a page and reach it as a sub-tab or from the ▾ next to the page in the header. The GM keeps the campaign's groups, everyone their own; a group can be the page's default.",
+      "area": "Navigation",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-14-search",
+      "date": "2026-10-14",
+      "title": "Search from anywhere",
+      "text": "Press Ctrl+K or / on any page: results appear while you type, closest first, and can be narrowed by type, layer, publisher and area. The \"+\" on a result shows more of it.",
+      "area": "Navigation"
+    },
+    {
+      "id": "2026-10-14-crafting",
+      "date": "2026-10-14",
+      "title": "Crafting at the recipe",
+      "text": "Start a crafting order from a recipe: its material stays reserved in the inventory of the character or party until the order is done. How crafting works is set per campaign.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-14-shops",
+      "date": "2026-10-14",
+      "title": "Shops: buy and sell",
+      "text": "A shop lists its goods with quantities, discounts and derived prices. Characters buy and sell there; what they buy becomes their own copy of the item.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-14-inventory",
+      "date": "2026-10-14",
+      "title": "Inventory",
+      "text": "Characters, parties and containers carry an inventory: a grid where items can be rotated, zones that say how fast you reach something, weight or slots as the campaign decides, coins, and moving items between them.",
+      "area": "Play"
+    },
+    {
+      "id": "2026-10-14-transfer",
+      "date": "2026-10-14",
+      "title": "Transfer between installations",
+      "text": "The workbench moves articles and registry rows between two installations with a preview, a list of conflicts and an undo.",
+      "area": "Workbench",
+      "link": "/werkbank"
+    },
+    {
+      "id": "2026-10-14-quick-create",
+      "date": "2026-10-14",
+      "title": "Create from a selection",
+      "text": "When the article you want to pick in a field does not exist yet, create it right there in a small popup — it is filled in at once.",
+      "area": "Articles"
+    },
+    {
+      "id": "2026-10-14-creature-statblock",
+      "date": "2026-10-14",
+      "title": "Creature and statblock",
+      "text": "A creature page shows its statblock. Without one it offers \"Create\" or \"From a template\" in its place.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-14-images",
+      "date": "2026-10-14",
+      "title": "Images",
+      "text": "Upload images and attach them to articles; they show in lists, cards and on the article page. The gallery filters by class, tag, layer and \"unused\", and an image's source can be replaced.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
+      "id": "2026-10-14-map",
+      "date": "2026-10-14",
+      "title": "Maps in Play",
+      "text": "Play › Map shows the session's map with grid, measuring, markers and sub-maps to zoom into. Fog of war, a player view, a turn indicator and token images came along.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-14-live",
+      "date": "2026-10-14",
+      "title": "Live updates",
+      "text": "Open articles follow changes made elsewhere without reloading. The dot in the header shows whether this device is listening.",
+      "area": "Navigation"
+    },
+    {
+      "id": "2026-10-14-views",
+      "date": "2026-10-14",
+      "title": "Views in the registry",
+      "text": "Define your own views in the registry and adjust each one per article type. Every article type can now print the way a book page looks, and there is a handout view.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-14-print",
+      "date": "2026-10-14",
+      "title": "Print an article",
+      "text": "\"Print\" on an article opens it on a single A4 sheet.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-14-edges-explained",
+      "date": "2026-10-14",
+      "title": "Edges explained",
+      "text": "The registry says what each kind of connection between articles means and what it does.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-14-layer-publishers",
+      "date": "2026-10-14",
+      "title": "Layers by publisher",
+      "text": "Layers are grouped by publisher and category. A layer's publisher is shown on its page and can be changed there.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-14-partial-layers",
+      "date": "2026-10-14",
+      "title": "Activate part of a layer",
+      "text": "A layer can be switched on for some areas or article types only.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-14-write-per-layer",
+      "date": "2026-10-14",
+      "title": "Your own layers",
+      "text": "Every account can create its own layer. GMs write the campaign's layer; editing something you cannot write saves your version in a layer of yours.",
+      "area": "Campaign",
+      "link": "/account"
+    },
+    {
+      "id": "2026-10-14-versions",
+      "date": "2026-10-14",
+      "title": "Versions at every field",
+      "text": "Where another version of an article says something different, its value stands next to the field, marked with its layer. Which layers are compared is up to you.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-14-reveal-to-players",
+      "date": "2026-10-14",
+      "title": "Reveal to players and the party",
+      "text": "\"Revealed to\" and \"Hidden from\" offer players and the party. Every campaign has its party, and characters join it when a player gets them.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-14-starting-equipment",
+      "date": "2026-10-14",
+      "title": "Starting equipment",
+      "text": "Character creation hands out starting equipment the way the campaign's rule says.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-14-character-creation",
+      "date": "2026-10-14",
+      "title": "Character creation and level up",
+      "text": "A step-by-step assistant builds a character from the class, ancestry and background articles: standard array, languages, choices, and the same assistant again for each level up.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-14-take-into-story",
+      "date": "2026-10-14",
+      "title": "Take chapters into your story",
+      "text": "Chapters, scenes and single text parts of an adventure can be taken into your own story — as your version, or used as they are.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
+      "id": "2026-10-14-item-effects",
+      "date": "2026-10-14",
+      "title": "Item effects",
+      "text": "Items carry effects that are calculated when an article is read, not typed in by hand.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-14-quick-view",
+      "date": "2026-10-14",
+      "title": "Quick view everywhere",
+      "text": "Click any named article to see its card in a popup; \"Open article\" takes you there. Breadcrumbs show where you are.",
+      "area": "Navigation"
+    },
+    {
+      "id": "2026-10-13-reading-view",
+      "date": "2026-10-13",
+      "title": "Reading view",
+      "text": "Read a layer like a book, with a table of contents, search inside it and your reading position kept per account.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
+      "id": "2026-10-13-view-as",
+      "date": "2026-10-13",
+      "title": "View as a member",
+      "text": "The GM can look at the campaign through a member's eyes, read only, from the campaign page.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-13-safe-saving",
+      "date": "2026-10-13",
+      "title": "Safe saving",
+      "text": "When two people change the same article, the second save merges instead of silently overwriting the first.",
+      "area": "Articles"
+    },
+    {
+      "id": "2026-10-13-export",
+      "date": "2026-10-13",
+      "title": "Export your campaign",
+      "text": "\"Export campaign\" saves the campaign as a file.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-13-link-fields",
+      "date": "2026-10-13",
+      "title": "Link fields as a selection",
+      "text": "Fields that point to another article offer only articles of the right type, show them as chips and link to them by name.",
+      "area": "Articles"
+    },
+    {
+      "id": "2026-10-13-players-create",
+      "date": "2026-10-13",
+      "title": "Players create articles",
+      "text": "Players of the campaign create and edit their own articles. Only the GM marks an article \"ready\", and players see what is ready — plus their own characters in any state.",
+      "area": "Campaign"
+    },
+    {
+      "id": "2026-10-13-workbench",
+      "date": "2026-10-13",
+      "title": "Workbench",
+      "text": "Checks over all articles and bulk changes with a preview and an undo, for GMs and admins. API tokens are created and revoked there too.",
+      "area": "Workbench",
+      "link": "/werkbank"
+    },
+    {
+      "id": "2026-10-13-boards",
+      "date": "2026-10-13",
+      "title": "Boards",
+      "text": "Every story article can have a board: a canvas with cards for the articles placed on it.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-13-registry",
+      "date": "2026-10-13",
+      "title": "Edit the registry",
+      "text": "Create and change article types, edges, lists and views in the registry. What a change would touch is counted first.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-13-classes",
+      "date": "2026-10-13",
+      "title": "Classes",
+      "text": "Each class shows its table, its features per level, and its subclasses side by side.",
+      "area": "Rules",
+      "link": "/classes"
+    },
+    {
+      "id": "2026-10-13-campaign-members",
+      "date": "2026-10-13",
+      "title": "Campaign members",
+      "text": "The campaign page manages members, their roles and invitations.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-13-book-style",
+      "date": "2026-10-13",
+      "title": "Articles like a book",
+      "text": "The new site: header with the areas, a compendium with filters in the sidebar, \"New article\", and articles laid out like a book page — statblocks, spells and items included, on the phone as well.",
+      "area": "Compendium",
+      "link": "/compendium"
+    }
+  ]
+}

@@ -75,6 +75,31 @@ describe('anordnen', () => {
     expect(genannt[0]!.zellen!.map((z) => z.ref)).toEqual(['Image.caption']);
   });
 
+  it('zeigt ein Feld mit editOnly nirgends, auch nicht leer oder im Rest (T-126)', () => {
+    const mitSort = {
+      ...reg,
+      interfaces: {
+        Spell: { ...reg.interfaces['Spell']!, extends: ['Time'] },
+        Time: {
+          name: 'Time',
+          schema: {
+            type: 'object',
+            properties: {
+              sort: { type: 'number', title: 'Sortable value', editOnly: true },
+              display: { type: 'string', format: 'date', title: 'Date' },
+            },
+          },
+        },
+      },
+    } as unknown as Registry;
+    const t: Entity = { ...e, components: { ...e.components, Time: { sort: 14920512, display: 'Mirtul 12' } } };
+    const z = feldZellen(mitSort, t, () => undefined);
+    expect(z.map((x) => x.ref)).toContain('Time.display');
+    expect(z.map((x) => x.ref)).not.toContain('Time.sort');
+    const leer: Entity = { ...e, components: { ...e.components, Time: {} } };
+    expect(mitLeeren(mitSort, leer, feldZellen(mitSort, leer, () => undefined)).map((x) => x.ref)).not.toContain('Time.sort');
+  });
+
   it('ein Feld steht im ersten Element, das es nimmt', () => {
     const zwei: LayoutElement[] = [
       { id: 'a', el: 'fields', fields: ['Spell'] },

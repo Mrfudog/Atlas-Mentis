@@ -1805,9 +1805,10 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        sort: { type: 'number', title: 'Sortable value' },
+        /* Zum Ordnen, nicht zum Lesen (`editOnly`, T-126). */
+        sort: { type: 'number', title: 'Sortable value', editOnly: true },
         display: { type: 'string', format: 'date', title: 'Date' },
-        untilSort: { type: 'number', title: 'Sortable value of the end' },
+        untilSort: { type: 'number', title: 'Sortable value of the end', editOnly: true },
         until: { type: 'string', format: 'date', title: 'Until' },
         /* `calendar` stand hier je Artikel — zwei Stellen für dieselbe
            Angabe neben der Einstellung, im Bestand nie anders als dort.

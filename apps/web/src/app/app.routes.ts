@@ -95,6 +95,13 @@ export const routes: Routes = [
     loadComponent: () => import('./konto/konto').then((m) => m.Konto),
     title: 'Account · Atlas Mentis',
   },
+  /* Was neu ist (T-157): erreichbar über die Kopfleiste, mit Punkt bei Neuem. */
+  {
+    path: 'whats-new',
+    canActivate: [wache],
+    loadComponent: () => import('./neues/neues').then((m) => m.NeuesSeite),
+    title: "What's new · Atlas Mentis",
+  },
   {
     path: 'classes',
     canActivate: [wache],
