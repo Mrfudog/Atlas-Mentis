@@ -795,6 +795,68 @@ try {
     }
   }
 
+  /* ------------------------------------ Gruppe je Kampagne (T-100) */
+  {
+    /* Eine neue Kampagne bringt ihre Gruppe mit, in ihrer Ebene; und
+       Migration 039 noch einmal unter einem Probenamen: Runde A und B
+       bekommen je eine, die Figur der Spielerin kommt in die von Runde A. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { PgRepository } = await import(join(DIST, 'repo.pg.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const repo = new PgRepository(pool);
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-gruppe-'));
+    const name = 'zzz_durchstich_gruppe_je_kampagne.sql';
+    const weg = [];
+    try {
+      const rK = await fetch(`${BASE}/api/campaigns`, {
+        method: 'POST', headers: { ...json, cookie: admin }, body: JSON.stringify({ name: 'Probe C' }),
+      });
+      const k = rK.ok ? await rK.json() : {};
+      if (k.id) weg.push(`pt_${k.id}`, k.id, `ly_${k.id}`);
+      const pt = k.id ? await repo.getEntity(`pt_${k.id}`) : null;
+      pruefe(
+        'Gruppe je Kampagne: eine neue Kampagne hat ihre Gruppe, in ihrer Ebene',
+        !!pt?.relations?.some((r) => r.type === 'partyOf' && r.to === k.id) &&
+          !!pt?.relations?.some((r) => r.type === 'inLayer' && r.to === `ly_${k.id}`),
+        `${rK.status} ${JSON.stringify(pt ?? k).slice(0, 300)}`,
+      );
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '039_gruppe_je_kampagne.sql'), 'utf8'));
+      weg.push('pt_camp_probe_a', 'pt_camp_probe_b');
+      await migrate(pool, { env: {} }, ordner);
+      const a = await repo.getEntity('pt_camp_probe_a');
+      const b = await repo.getEntity('pt_camp_probe_b');
+      pruefe(
+        'Gruppe je Kampagne: Migration legt sie für Runde A und B an',
+        !!a?.relations?.some((r) => r.type === 'partyOf' && r.to === 'camp_probe_a') && !!b && !(await repo.getEntity(`pt_pt_${k.id}`)),
+        JSON.stringify(a).slice(0, 300),
+      );
+      const figur = await repo.getEntity('pc_probe');
+      pruefe(
+        'Gruppe je Kampagne: die Figur der Spielerin steht in der Gruppe ihrer Runde',
+        (figur?.relations ?? []).filter((r) => r.type === 'memberOfParty').map((r) => r.to).join(',') === 'pt_camp_probe_a',
+        JSON.stringify(figur?.relations),
+      );
+      const leute = await (await get(await anmelden('probe-mit'), '/api/players')).json();
+      const ids = (await (await get(admin, '/api/users')).json()).map((u) => u.id);
+      pruefe(
+        'Gruppe je Kampagne: /api/players nennt die Spielerin mit ihrer Figur, ohne Konto-Id',
+        leute.players?.some((p) => p.name === 'probe-spiel' && p.actors.some((x) => x.id === 'pc_probe')) &&
+          ids.length > 0 && ids.every((id) => !JSON.stringify(leute).includes(id)),
+        JSON.stringify(leute).slice(0, 300),
+      );
+    } finally {
+      /* Die Kante an der Figur geht mit: sonst zeigte die Ausfuhr danach auf
+         eine Gruppe, die es nicht mehr gibt. */
+      await pool.query('delete from relation where from_id = any($1) or to_id = any($1)', [weg]);
+      await pool.query('delete from entity where id = any($1)', [weg]);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------------- Eigene Ausfuhr (T-077) */
   const ausfuhr = async (keks) => {
     const r = await get(keks, '/api/export?campaign=camp_probe_a');

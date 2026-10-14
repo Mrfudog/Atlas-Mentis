@@ -43,6 +43,7 @@ import {
   primaryInterface,
   seesUnfinished,
   tableRole,
+  partiesOf,
   STATUS_COMPONENT,
   classParts,
   currentCampaign,
@@ -90,6 +91,7 @@ import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
+import { inDieGruppe } from './gruppe.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -809,6 +811,11 @@ export function buildApp({
       });
       await repo.clearAttempts(fold, origin);
       await repo.appendEvent('register.ok', id, { invite: invite.label ?? null });
+      /* Eine Einladung mit Figur und Rolle `player` bringt die Figur in die
+         Gruppe der Kampagne (T-100, E-007) — wie das Zuteilen. */
+      if (invite.actorId && invite.campaignId && invite.role === 'player') {
+        await inDieGruppe(repo, invite.campaignId, [invite.actorId]);
+      }
 
       /* Gleich angemeldet. Wer sich eben ein Passwort ausgedacht hat, soll
          es nicht sofort wieder eintippen müssen — und der Weg dahin ist
@@ -1805,7 +1812,7 @@ export function buildApp({
       : null;
     const methods = allowedMethods(kampagne ?? undefined, stand.map).filter((m) => m.builtIn || sichtbar?.has(m.id));
     const gruppen = kampagne
-      ? stand.alle.filter((e) => e.relations?.some((r) => r.type === 'partyOf' && r.to === kampagne.id))
+      ? partiesOf(stand.map, kampagne.id)
       : [];
     const parties = (await sieve(request, gruppen, stand.map)).map((p) => ({
       id: p.id,
@@ -1819,6 +1826,40 @@ export function buildApp({
     }));
     return { kampagne, methods, parties };
   }
+
+  /**
+   * **Die Spieler der laufenden Kampagne, mit ihren Figuren** (T-100,
+   * E-007) — für „Revealed to" und „Hidden from". Wer einen Spieler wählt,
+   * wählt seine Figuren: gespeichert wird ein Träger, nie ein Konto
+   * (REQ-199). Die Antwort trägt darum keine Konto-Id, nur den Namen.
+   *
+   * Sehen dürfen es, wer an diesem Tisch sitzt, und die Verwaltung. Eine
+   * Figur, die der Betrachter nicht sieht, steht nicht dabei — ein Spieler
+   * ohne sichtbare Figur auch nicht: über ihn liesse sich nichts freigeben.
+   */
+  app.get('/api/players', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet' });
+    const stand = await roh();
+    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    if (!kampagne) return { campaign: null, players: [] };
+    const campaign = { id: kampagne.id, name: entityName(kampagne) };
+    if (!user.isAdmin && !user.roles?.[kampagne.id]) return { campaign, players: [] };
+    const konten = (await repo.listUsers()).filter((u) => !u.disabledAt && u.roles?.[kampagne.id] === 'player');
+    const figuren = konten.flatMap((u) => u.actorIds ?? []).map((id) => stand.map.get(id)).filter((e): e is Entity => !!e);
+    const sichtbar = new Map((await sieve(request, figuren, stand.map)).map((e) => [e.id, e]));
+    const players = konten
+      .map((u) => ({
+        name: u.name,
+        actors: (u.actorIds ?? []).flatMap((id) => {
+          const e = sichtbar.get(id);
+          return e ? [{ id, name: entityName(e) }] : [];
+        }),
+      }))
+      .filter((p) => p.actors.length)
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    return { campaign, players };
+  });
 
   /* Dazu die Sprachen der Kampagne (REQ-251, T-095): leer heisst jede. */
   app.get('/api/abilities', async (request) => {
