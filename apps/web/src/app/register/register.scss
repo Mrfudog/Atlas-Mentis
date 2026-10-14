@@ -372,6 +372,18 @@ button.weg {
 
 /* Am Telefon: die Liste über der Fläche und zugeklappt, sobald eine Zeile
    gewählt ist; Einstellungen untereinander. */
+/* Was eine Kante bedeutet und bewirkt (T-111) — gerechnet, nicht behauptet. */
+.wirkung h3 {
+  margin: 0.4rem 0 0.2rem;
+}
+.wirkung ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.pill.offen {
+  border-style: dashed;
+  color: var(--accent);
+}
 @media (max-width: 760px) {
   .seite {
     flex-direction: column;
