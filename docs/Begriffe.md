@@ -331,7 +331,7 @@ Ort und kein Schalter:
 | Ansicht | Wo sie gilt | Was sie zeigt |
 |---|---|---|
 | **Overview** | Ein Verweis im Text, eine Listenzeile | Name und die Beschreibung — eine Handvoll Zeilen, wie ein Hover; die Felder darin sind die Spalten im Kompendium |
-| **Quick** | Eine Karte auf dem Board, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
+| **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es nicht. Ein Verweis ist
@@ -365,6 +365,19 @@ Seltenheit beim Gegenstand. Eine Spaltenliste im Code wäre eine zweite
 Stelle, die am Tag der nächsten Art falsch ist; so bringt die neue Art ihre
 Spalten mit. Und weil die Vorschau neben der Liste eine Karte ist, zeigt
 sie Quick.
+
+**Die Kurzansicht** ist das deutsche Wort für Quick, kein zehntes Wort
+(T-093, REQ-248, 14.10.2026). Sie steht auch als **Popup**: wo ein Artikel
+genannt wird — ein Verweis im Text, eine Kante, eine Ebene im Filter oder
+in der Kampagnenliste, der Info-Knopf einer Listenzeile am Telefon —,
+öffnet ein Klick oder Antippen seine Karte mit „Open article", am Desktop
+auch das Ruhen des Zeigers. Ein Verweis zeigt im Text weiter seinen Namen
+(Overview); erst wer ihn anklickt, hat nach der Karte gefragt, und eine
+Karte ist Quick. So muss niemand die Seite verlassen, um zu sehen, wer
+Volo ist — und wer doch hin will, nimmt den Link in der Karte oder klickt
+mit Strg/⌘ wie auf jeden Link. Am Telefon ist das Popup ein Blatt von
+unten. Die Leseansicht hatte dafür eine eigene Spalte neben dem Text; sie
+ist im Popup aufgegangen, damit ein Verweis überall dasselbe tut.
 
 **Wie im Buch** (W2, 13.10.2026) ist darum auch eine Anordnung und kein
 Sonderfall: ein Statblock liest sich wie im Monster Manual, weil am Typ
