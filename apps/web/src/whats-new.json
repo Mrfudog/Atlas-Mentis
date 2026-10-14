@@ -9,6 +9,13 @@
       "link": "/whats-new"
     },
     {
+      "id": "2026-10-14-item-copies",
+      "date": "2026-10-14",
+      "title": "Every item given is its own copy",
+      "text": "Whatever a character receives — bought, looted, crafted, starting equipment, or given with \"Add an item\" on the inventory — is a copy of the item article: change one without touching the rest, while fixes to the article still reach every copy.",
+      "area": "Play"
+    },
+    {
       "id": "2026-10-14-board-areas",
       "date": "2026-10-14",
       "title": "Board areas",
