@@ -3,7 +3,7 @@
 Schritt 7 von T-110 (REQ-256, E-030 b): die Arten durchgehen und wenige
 sinnvolle Ansichten anlegen. Die Zeilen stehen in
 `packages/registry/src/ansichten.ts` (für eine leere Datenbank) und in
-`apps/server/migrations/051_ansichten_je_art.sql` (für dev und später
+`apps/server/migrations/052_ansichten_je_art.sql` (für dev und später
 prod — nur, wo eine Art für die Ansicht noch nichts sagt); ein Test hält
 beide gleich.
 

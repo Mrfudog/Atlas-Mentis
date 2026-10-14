@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import {
   BulkRequestSchema,
   EntitySchema,
@@ -102,6 +103,8 @@ import { registerLesen } from './lesen.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
+import { InMemoryAssetStore, type AssetStore } from './assets.js';
+import { registerBilder } from './bilder.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -203,6 +206,10 @@ export interface AppOptions {
   /** Solange gesetzt, liest der Server nach dem Start seinen Bestand vor
    *  (`index.ts`); `artikel` sagt, wie viele. Ungesetzt: er ist bereit. */
   anlauf?: () => { artikel: number } | null;
+  /** Die Ablage der Bilder (T-114); ungesetzt im Speicher — für Tests. */
+  assets?: AssetStore;
+  /** Wie gross ein Bild sein darf, in Bytes (`ASSET_MAX_MB`). */
+  assetMaxBytes?: number;
 }
 
 const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
@@ -219,10 +226,15 @@ export function buildApp({
   trustProxy = false,
   env = null,
   anlauf,
+  assets = new InMemoryAssetStore(),
+  assetMaxBytes = 40 * 1024 * 1024,
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
 
   void app.register(fastifyCookie);
+  /* Hochladen (T-114): eine Datei je Anfrage, und die Grenze gilt schon
+     beim Lesen — ein zu grosses Bild landet nie ganz im Speicher. */
+  void app.register(fastifyMultipart, { limits: { fileSize: assetMaxBytes, files: 1, fields: 10, fieldSize: 4096 } });
 
   /* **Wie lange eine Antwort brauchte** (T-086, REQ-246): als
      `Server-Timing` an jeder Antwort — die Entwicklerwerkzeuge des Browsers
@@ -973,8 +985,9 @@ export function buildApp({
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
     if (/^\/api\/entities\/[^/]+\/ready$/.test(url) && request.method === 'POST') return;
-    /* Anlegen: Spielende der laufenden Kampagne (REQ-237). */
-    if (url === '/api/entities' && request.method === 'POST') {
+    /* Anlegen: Spielende der laufenden Kampagne (REQ-237). Ein Bild
+       hochladen legt einen Asset-Artikel an (T-114) — dieselbe Frage. */
+    if ((url === '/api/entities' || url === '/api/assets') && request.method === 'POST') {
       if (await mayCreate(user)) return;
       return reply.code(403).send({ error: 'Anlegen darfst du hier nicht.' });
     }
@@ -2440,17 +2453,40 @@ export function buildApp({
    * in der Ebene, die die Maske nennt, sonst in der ersten. Ob der Stand
    * `ready` sein darf, sagt `maySetReady` wie beim Schreiben.
    */
-  app.post<{ Body: { type?: unknown; name?: unknown; fields?: unknown; relations?: unknown } }>(
-    '/api/entities',
-    async (request, reply) => {
-      const type = String(request.body?.type ?? '');
-      const name = String(request.body?.name ?? '').trim();
+  /** Was `POST /api/entities` bekommt — auch vom Hochladen eines Bildes (T-114). */
+  interface Anlage {
+    type?: unknown;
+    name?: unknown;
+    fields?: unknown;
+    relations?: unknown;
+  }
+
+  /**
+   * **Einen Artikel anlegen**, mit allen Regeln der Route: wer anlegt, in
+   * welche Ebene, mit welchem Stand, durch `validateEntity`. Eine Funktion
+   * und keine zweite Kopie, weil das Hochladen eines Bildes einen
+   * Asset-Artikel anlegt (T-114) — und dieselben Regeln an zwei Stellen
+   * laufen genau so lange gleich, bis eine sich ändert.
+   *
+   * `fuer`: der Artikel, aus dem heraus angelegt wird. Ist er die eigene
+   * Figur, darf der Stand `ready` bleiben (E-014 d). `zurueck`: ein
+   * `ready`, das man nicht setzen darf, fällt auf `idea` zurück, statt
+   * abgelehnt zu werden (D74) — das Bild übernimmt den Stand seines
+   * Artikels, und das darf das Hochladen nicht verhindern.
+   */
+  async function anlegen(
+    request: FastifyRequest,
+    body: Anlage | null | undefined,
+    optionen: { fuer?: string; zurueck?: boolean } = {},
+  ): Promise<{ code: number; body: unknown }> {
+      const type = String(body?.type ?? '');
+      const name = String(body?.name ?? '').trim();
       const registry = await repo.getRegistry();
       const def = registry.interfaces[type];
       if (!def || def.abstract) {
-        return reply.code(400).send({ error: `Diese Art lässt sich nicht anlegen: ${type || '—'}` });
+        return { code: 400, body: { error: `Diese Art lässt sich nicht anlegen: ${type || '—'}` } };
       }
-      if (!name) return reply.code(400).send({ error: 'Der Name fehlt.' });
+      if (!name) return { code: 400, body: { error: 'Der Name fehlt.' } };
 
       const stand = await roh();
       const kette = typeChain(registry, type);
@@ -2464,7 +2500,7 @@ export function buildApp({
         }
         if (Object.keys(karte).length || (schema.required ?? []).length) components[t] = karte;
       }
-      const extra = request.body?.fields;
+      const extra = body?.fields;
       if (extra && typeof extra === 'object') {
         for (const [ref, wert] of Object.entries(extra as Record<string, unknown>)) {
           const [t, k] = ref.split('.');
@@ -2483,7 +2519,7 @@ export function buildApp({
       while (stand.map.has(id)) id = neueId();
       /* Kanten gehen mit, wenn die Seite sie schon kennt — ein Board gehört
          gleich zu seiner Sitzung (`partOf`). Die Ids vergibt der Server. */
-      const kanten = Array.isArray(request.body?.relations) ? (request.body.relations as unknown[]) : [];
+      const kanten = Array.isArray(body?.relations) ? (body.relations as unknown[]) : [];
       const relations: NonNullable<Entity['relations']> = kanten
         .filter((k): k is { type: string; to: string; props?: Record<string, unknown> } =>
           !!k && typeof k === 'object' && typeof (k as { type?: unknown }).type === 'string' &&
@@ -2505,7 +2541,7 @@ export function buildApp({
         let ziel = ziele.find((l) => genannt.includes(l.id)) ?? (spielt ? null : (ziele[0] ?? null));
         spielerin = !ziel;
         if (spielerin) {
-          if (!spielt) return reply.code(403).send({ error: 'Anlegen darfst du hier nicht.' });
+          if (!spielt) return { code: 403, body: { error: 'Anlegen darfst du hier nicht.' } };
           ziel = await kampagnenEbene(stand.map, kampagne);
         }
         for (let i = relations.length - 1; i >= 0; i -= 1) {
@@ -2529,16 +2565,18 @@ export function buildApp({
         const darfFertig =
           kette.includes(PLAYER_CHARACTER) ||
           anEigener ||
+          /* Das Bild der eigenen Figur (T-114) sehen die Mitspielenden wie die Figur. */
+          (!!optionen.fuer && eigeneFigur(user, stand.map, registry).has(optionen.fuer)) ||
           (!spielerin && maySetReady(user, stand.map, { id, interfaces: [type], name, components, relations }));
         /* Was eine Spielerin anlegt, trägt immer einen Stand — „ready" blieb
            hier bis T-080 nicht stehen, auch an der eigenen Figur. */
         if (spielerin || !darfFertig) {
           if (!kette.includes(STATUS_COMPONENT)) {
-            return reply.code(400).send({ error: `Diese Art trägt keinen Stand und bleibt bei der Leitung: ${type}` });
+            return { code: 400, body: { error: `Diese Art trägt keinen Stand und bleibt bei der Leitung: ${type}` } };
           }
           const karte = (components[STATUS_COMPONENT] ??= {});
           const wert = karte['status'];
-          if (wert === 'ready' && !darfFertig) return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
+          if (wert === 'ready' && !darfFertig && !optionen.zurueck) return { code: 403, body: { error: '„ready" setzt die Leitung.' } };
           if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
         }
       }
@@ -2548,7 +2586,7 @@ export function buildApp({
       known.set(id, type);
       const issues = validateEntity(registry, entity, { knownTypes: known, stageOf: stageBases([...stand.alle, entity]) });
       if (issues.length) {
-        return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        return { code: 422, body: { error: 'Validierung fehlgeschlagen', issues } };
       }
       const stored = await repo.putEntity(entity);
       if (spielerin && user) {
@@ -2562,9 +2600,16 @@ export function buildApp({
         }
       }
       await repo.appendEvent('entity.created', id, { interfaces: [type], ...(user && !user.isAdmin ? { by: user.id } : {}) });
-      return reply.code(201).send(stored);
-    },
-  );
+      return { code: 201, body: stored };
+  }
+
+  app.post<{ Body: Anlage }>('/api/entities', async (request, reply) => {
+    const r = await anlegen(request, request.body);
+    return reply.code(r.code).send(r.body);
+  });
+
+  /* Bilder hochladen und ausliefern (T-114): `bilder.ts`. */
+  const bilder = registerBilder(app, { repo, store: assets, viewerOf, roh, sieve, geltend, anlegen });
 
   app.put<{ Params: { id: string }; Body: unknown }>(
     '/api/entities/:id',
@@ -2819,6 +2864,8 @@ export function buildApp({
     if (weg && primaryInterface(weg) === 'Layer') {
       for (const g of await repo.layerGrants()) if (g.layerId === weg.id) await repo.revokeLayer(g.userId, g.layerId);
     }
+    /* Ein Bild nimmt seine Datei mit, wenn kein anderes Asset sie nennt (T-114). */
+    if (weg) await bilder.aufraeumen(weg);
     await repo.appendEvent('entity.deleted', request.params.id, {});
     return { ok: true };
   });

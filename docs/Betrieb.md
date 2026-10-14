@@ -80,10 +80,13 @@ hätte. Gemerkt hätte man es beim ersten Aufsetzen hier.
 
 1. das neue Abbild holen — schlägt das fehl, läuft das alte unberührt weiter;
 2. die Datenbank sichern (`backups/<zeit>.dump`, die letzten 20 bleiben);
-3. das laufende Abbild als `previous-image` merken;
-4. `IMAGE=` in `.env` setzen und `docker compose up -d` — die Migrationen
+3. das Verzeichnis der Bilder anlegen und dem Benutzer `node` im Abbild
+   geben (`daten/bilder`, uid 1000) und neue Bilder nach `backups/bilder/`
+   holen (`bilder-sichern.sh`, [Bilder](#bilder));
+4. das laufende Abbild als `previous-image` merken;
+5. `IMAGE=` in `.env` setzen und `docker compose up -d` — die Migrationen
    laufen beim Start;
-5. warten, bis `/api/health` antwortet, sonst die letzten Logzeilen zeigen
+6. warten, bis `/api/health` antwortet, sonst die letzten Logzeilen zeigen
    und mit Fehler enden.
 
 ## Den Server einrichten — Schritt für Schritt (einmal)
@@ -242,6 +245,39 @@ nächtliche mehr da.
 
 Für die Kopie nach aussen eignet sich eine Hetzner Storage Box
 (`rsync -a /srv/atlas/prod/backups/ u…@u….your-storagebox.de:atlas/`).
+Sie nimmt `backups/bilder/` mit; **ohne `--delete`**, sonst ginge ein Bild,
+das am Tisch gelöscht wurde, auch draussen.
+
+### Bilder
+
+Hochgeladene Bilder (T-114) liegen als Dateien im Volume
+`daten/bilder/` der Umgebung (im Container `/data/assets`, `ASSET_DIR`;
+E-032 a), je zwei Zeichen ein Unterverzeichnis: `3f/3fa9….png` und die
+Vorschau `3f/3fa9….png.thumb.webp`. Der Name ist der Hash des Inhalts —
+**eine Datei ändert sich nie**, sie kommt dazu oder geht. Was darüber
+bekannt ist (Name, Sichtbarkeit, Grösse), steht im `Asset`-Artikel in der
+Datenbank; [Datenmodell › Bilder](Datenmodell.md#121-bilder-t-114-req-021-e-032).
+
+**Gesichert** werden sie von `bilder-sichern.sh`: neue Dateien nach
+`backups/bilder/` (ein harter Verweis, wo es geht, sonst eine Kopie), nie
+überschrieben, nie gelöscht. Es läuft vor jedem Ausrollen (`deploy.sh`) und
+nachts um 03:27 (Cron von `bootstrap.sh`). Ein am Tisch gelöschtes Bild
+bleibt also in `backups/bilder/`; wer dort Platz braucht, räumt von Hand —
+welche Dateien noch genannt sind, sagt die Ausfuhr (`files`).
+
+**Wie gross:** `ASSET_MAX_MB` in `.env` (Vorgabe 40) begrenzt ein einzelnes
+Bild; eine Karte ist 5–30 MB. Wie viel insgesamt liegt:
+`du -sh /srv/atlas/prod/daten/bilder`. Wird die Platte knapp, ein Hetzner
+Volume einhängen und `daten/bilder` dorthin verlegen (Dateien umkopieren,
+Pfad im Compose) — an den Artikeln ändert sich nichts.
+
+**Auf einem Server, der vor T-114 eingerichtet wurde**, fehlt der nächtliche
+Cron für die Bilder; `bootstrap.sh` noch einmal laufen lassen (ungefährlich,
+Passwörter bleiben) oder als `deploy` mit `crontab -e` diese Zeile dazu:
+
+```
+27 3 * * * cd /srv/atlas/prod && [ -x bilder-sichern.sh ] && ./bilder-sichern.sh >/dev/null
+```
 
 ### Die eigene Ausfuhr
 
@@ -296,6 +332,24 @@ docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB
 ./deploy.sh "$(cat previous-image)"
 ```
 
+### Die Bilder zurück
+
+Die Bilder brauchen beim Zurückgehen auf eine ältere Datenbank nichts:
+eine Datei, die ein älterer Stand nennt, liegt noch da, und eine, die er
+nicht mehr nennt, stört nicht. Fehlen sie ganz (neue Maschine, verlorene
+Platte), kommen sie aus der Sicherung — gleiche Namen, nichts
+überschrieben:
+
+```bash
+cd /srv/atlas/prod
+mkdir -p daten/bilder
+cp -R -n backups/bilder/. daten/bilder/        # oder: rsync -a u…@u….your-storagebox.de:atlas/bilder/ daten/bilder/
+./deploy.sh "$(sed -n 's/^IMAGE=//p' .env | tail -n 1)"   # gibt das Verzeichnis dem Benutzer node
+```
+
+Ob jede Datei da ist, die ein Artikel nennt: die Ausfuhr der Kampagne
+listet sie (`files`, je Asset `ref`), `ls daten/bilder/*/<ref>` findet sie.
+
 ## Was Daten löschen kann
 
 Diese Wege ersetzen oder löschen Bestand. Jeder hat einen Weg zurück —
@@ -309,6 +363,7 @@ dort wird ausprobiert, und was zählt, steht auf prod.
 | **Einlesen mit `--replace`** (`import.sh`, `import.js`) | **Alles**, was nicht in der Datei steht — auch die eigenen Kampagnenartikel. | ja, `backups/<zeit>-vor-import.dump` (nicht bei `--dry-run`) | wie [Zurück](#zurück), mit der Sicherung `…-vor-import.dump`; das Abbild bleibt, `deploy.sh` ist nicht nötig, nur `docker compose start app` |
 | **Einlesen mit `--replace-layer`** (Pipeline „5e.tools einlesen", Art `replace-layer`, verlangt `confirm=ersetzen`) | Was die Ebene der Datei bringt und in der Datei fehlt, **und eigene Änderungen an ihren Artikeln**. | ja, wie oben | wie oben |
 | **Massenänderung** (Werkbank › Bulk change, `POST /api/bulk`) | Felder, Marken, Kanten an vielen Artikeln; mit `merge` und `mode: delete` auch Artikel. | die alten Fassungen stehen im Lauf selbst | Werkbank › Undo (`POST /api/bulk/<id>/undo`). Wurde ein Artikel seither geändert, sagt es das (409) — mit `force` gewinnt die alte Fassung. |
+| **Ein Bild löschen** (Asset-Artikel löschen) | Die Datei, wenn kein anderes Asset sie nennt (T-114). | ja, `backups/bilder/` hält jede Datei, die vor dem letzten Ausrollen oder der letzten Nacht da war | die Datei aus `backups/bilder/` zurückkopieren, den Artikel aus der Datenbanksicherung oder der Ausfuhr |
 | **Wiederherstellen** einer Sicherung, auch [prod nach dev holen](#den-bestand-von-prod-nach-dev-holen) | Alles, was **nach** der Sicherung geschrieben wurde. Beim Holen von prod nach dev: der ganze Bestand von dev (die Konten bleiben). | nein — vorher von Hand sichern (unten) | die Sicherung, die man vorher gemacht hat |
 
 **Vor einem Wiederherstellen selbst sichern**, denn dort sichert kein
@@ -430,6 +485,29 @@ die es noch nicht gibt; eine Art, die jemand am Server angepasst hat,
 bleibt angepasst. Der Lauf sagt `Nur ergänzt: 120 neu, 23 880
 übersprungen (gibt es schon).` — beim zweiten Lauf mit derselben Datei
 also `0 neu`. Geprüft wird wie immer alles, bevor etwas geschrieben wird.
+**Die Nummern der neuen Artikel gleicht der Lauf an** (T-087): ein Verweis
+nennt die Nummer (`[[spell-0601|Fireball]]`), und ein Bestand aus einem
+älteren Lauf trägt für denselben Artikel oft eine andere. Eine Nummer, die
+im Bestand ein anderer trägt, wird eine neue, und jeder Verweis in den
+neuen Artikeln nennt die Nummer, die sein Ziel im Bestand trägt; der
+Bestand selbst bleibt. Die Zeile sagt `… davon mit angeglichener Nummer
+oder angeglichenen Verweisen`.
+
+**2024, Unearthed Arcana, Fahrzeuge, Decks, Bastionen** (T-087,
+REQ-243): seit T-087 bringt ein Lauf alles, jede Quelle in ihre Ebene —
+gut 29 000 Artikel mehr, je Ebene gezählt in
+[5etools-Bericht.md](5etools-Bericht.md). **Keine neue Ebene ist
+aufgeschaltet**, auch nicht über die Gruppe „D&D 5e (2014)": eine
+Kampagne ändert sich durch den Lauf nicht. Wer 2024 vergleichen will,
+trägt die Ebene (oder die Gruppe „2024 rules") auf der Kampagnenseite als
+Vergleichsebene ein (T-092); wer damit spielen will, schaltet sie auf.
+Neues in einer schon aufgeschalteten 2014-Ebene (die Schiffe aus Ghosts of
+Saltmarsh, das Tarokka-Deck aus Curse of Strahd) ist dagegen gleich da,
+wie jeder neue Artikel eines Buchs. Der Lauf braucht die **Migration
+`051_neue_arten_5etools.sql`**: sie trägt die Listenwerte `card`,
+`facility`, `upgrade` (`RuleKind`) und `deck` (`Table.kind`) an
+bestehenden Registerzeilen nach, die `only-new` sonst stehen liesse. Ohne
+2024: `node packages/import-5etools/dist/cli.js <data> --only-2014`.
 
 **Ein Modul ergänzen:** Pipeline mit `mode` = `only-new` und `sources` =
 dem Kürzel aus 5e.tools (z. B. `CoS`, oder `PHB,MM`); zuerst `dry-run`
@@ -834,6 +912,14 @@ rm /tmp/bestand.dump
 
 Die Konten auf dev bleiben dabei, wie sie sind.
 
+**Die Bilder** kommen nicht mit dem Dump — es sind Dateien. Ohne sie zeigt
+dev an jedem Bild der Produktion eine Lücke; mit ihnen (nur dazu, nichts
+überschrieben):
+
+```bash
+cp -R -n /srv/atlas/prod/daten/bilder/. /srv/atlas/dev/daten/bilder/
+```
+
 ## Wie schnell antwortet die Seite?
 
 Gemessen wird am Server, bei jeder Antwort (T-086, REQ-246). Das Ziel:
@@ -910,4 +996,5 @@ Bestand von einer Umgebung in die andere geholt, ohne ihre Konten.
 - **Alte Abbilder in GHCR** bleiben liegen. Bei einem Abbild je Push
   wächst das; aufräumen, wenn es stört.
 - **Die Kopie der Sicherung nach aussen** (Storage Box) steht hier nur als
-  Rezept; die nächtliche Sicherung selbst richtet `bootstrap.sh` ein.
+  Rezept; die nächtliche Sicherung selbst richtet `bootstrap.sh` ein — für
+  die Datenbank und die Bilder.

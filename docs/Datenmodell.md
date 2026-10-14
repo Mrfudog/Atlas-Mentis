@@ -400,7 +400,8 @@ gemeint: `worships`, `owes`, `livesIn`, `controls`, `describedIn`,
 **Die Messlatte:** eine Regelart wird ein eigener Typ, wenn ein Verweisfeld
 oder eine Kante sie *als Art* verlangt oder wenn sie eigene Felder trägt;
 sonst bleibt sie ein Wort in `Rule.kind` (Zeile `RuleKind`: `rule`,
-`travel`, `sense`, `reward`, `boon`, `option`). Unter `Rule` stehen
+`travel`, `sense`, `reward`, `boon`, `option`, seit T-087 `upgrade`,
+`facility`, `card`). Unter `Rule` stehen
 `Condition` (`Disease` erbt von ihr), `ActionType`, `Action`, `Feature`,
 `ItemProperty`, `Feat` und `Skill`.
 
@@ -416,6 +417,7 @@ sonst bleibt sie ein Wort in `Rule.kind` (Zeile `RuleKind`: `rule`,
 | R6 | **`overrides` zeigt nur auf eine Fassung derselben Art** (M9). **Je Buch eine Ebene** (`Layer.kind` `book`, Id `e5_book_<kürzel>`, T-081, E-017) hält den importierten Regelbestand dieses Buchs; was kein Buch nennt, liegt in der Systemebene „D&D 5e (2014)". Welche Seite, sagt `Source.publication` mit `page`, die Lizenzflagge `Source.srd`. | `validateEntity` (`overrides_other_type`) |
 | R9 | **Ein Abenteuer ist eine Ebene mit seiner Geschichte und seinem Text** (`Layer.kind` `adventure`, T-082, REQ-240; T-108, E-029): das Abenteuer eine `Story` mit `kind: adventure`; je Kapitel **ein `Arc` und ein `Chapter`** — der Arc (`partOf` das Abenteuer; E-026 — die Peg-Id rechnet der Importer weiter wie für eine Story) ist die Geschichte, das Chapter (`<Arc>_chapter`, `chapterOf` der Arc) die Lesestruktur; je Abschnitt eine `Scene` — auf Kapitelstufe `partOf` der Arc **und** mit Rang im Chapter, Räume („1. Cave Mouth") mit Rang in ihrer Szene. **Der Text sind Teile** (E14, R10): Absätze, Überschriften, Vorlesetexte (`ReadAloudText`), Verweise auf Statblöcke, mit Rang im Chapter oder in der Szene, an ihrer Stelle im Buch; Szenen tragen keinen eigenen Text mehr. Kreaturen, Gegenstände, Zauber im Text sind **Verweise** auf die Buchartikel; `{@area}` ein Verweis auf den Abschnitt. Je Karte (`imageType: map`) eine `Map` mit der Bildadresse bei 5e.tools (nicht im Repository), `mapOf` ihr Abschnitt; **eine Karte steht immer an einer Szene** — liegt sie im Text des Kapitels, bekommt sie ihre eigene (`<Karte>_scene`, `mode: exploration`, E-026), die als Teil an ihrer Stelle im Chapter steht. Nennt ein Abschnitt Kreaturen **mit Anzahl** („two goblins"), eine `Encounter` (`partOf` der Abschnitt, ohne Rang) mit einer `participates`-Kante je Teilnehmer auf den Statblock. Alles auf `audience: gm`. Ein Abenteuer in einem Quellenbuch (MOT, FRAiF) liegt in dessen Ebene. **Schon geladene Abenteuer** bekommen das von Migration 046: je Arc sein Chapter (dieselbe Id), die Szenen mit Rang, der Text von Arc und Szene als `ReadAloudText` (`<Artikel>_read<n>`) und ein `Paragraph` (`<Artikel>_text`) — gröber als ein Neuimport, nichts geht. **Teile kommen nur mit ihrem Ganzen:** `--only-new` legt in einem Kapitel oder einer Szene, die schon steht, keine Teile an. | `arten/abenteuer.ts`, `abenteuer.test.ts`, Durchstich |
 | R10 | **Ein Buch ist eine Ebene mit seinen Kapiteln** (T-108, E-028, E-029 a, REQ-247): jedes Buch aus 5e.tools (`book/`, auch ein Regelbuch) bringt je Kapitel der obersten Stufe ein `Chapter` (Name wie bei 5e.tools, „Chapter 9: Combat", `ordinal` „Chapter 9"; ohne Credits), darin seine Teile nach Rang (E14): eine Zeichenkette ein `Paragraph`, ein Kasten `kind: sidebar`, ein Zitat `quote`, eine Liste `list`, eine Tabelle `table`; ein benannter Abschnitt eine `Heading` bis zur dritten Stufe (darunter fett im Absatz); ein Vorlesetext ein `ReadAloudText`. **Was schon Artikel ist, wird ein `Embed`:** ein `statblock`-Eintrag (Monster, Zauber, Gegenstand), eine Tabelle mit dem Namen einer `Table` desselben Buchs, ein benannter Abschnitt mit dem Namen eines Artikels desselben Buchs (Zustand, Klasse, Abstammung, Aktion …). Die Peg-Id eines Teils ist aus seinem Ganzen und seinem Rang gerechnet. Bilder bleiben weg (E5). | `arten/buch.ts`, `teile.ts`, `buch.test.ts` |
+| R11 | **Was 5e.tools bis T-087 zurückhielt, ist keine eigene Art** (T-087, REQ-243, löst E4 des Arbeitsplans ab): ein **Fahrzeug** ist ein `Statblock` mit `creatureType` „vehicle (ship)" (Schiff, Spelljammer, Höllenmaschine, Luftschiff) — RK und TP aus dem Rumpf, die Attribute, die Immunitäten; Rumpf, Steuerung, Antrieb, Waffen, Besatzung, Laderaum und Tempo stehen als Text, weil heute nichts mit ihnen rechnet. Eine **Aufrüstung** eines Fahrzeugs, ein **Raum einer Bastion** (2024) und eine **Karte** sind eine `Rule` mit `kind` `upgrade`, `facility`, `card`; ein **Deck** ist eine `Table` mit `kind: 'deck'`, je Karte eine Kante `entry` mit ihrer Anzahl als Gewicht — eine Karte ziehen heisst auf ihm würfeln. Eine **Waffenmeisterschaft** (2024) ist eine `ItemProperty` mit der Marke `mastery`, und die Waffe zeigt mit `hasProperty` darauf wie auf „Finesse". Braucht eine davon eigene Felder, wird sie eine Zeile (T2). | `packages/import-5etools/src/arten/neu.ts` |
 
 Dazu aus M7 und M8: `Hazard` (Falle oder Gefahr, auf der Karte über
 `marker`), `Deity` (Anhänger über `worships` von Kreatur und Fraktion),
@@ -734,6 +736,7 @@ Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 | E12 | **Ein Teil eines Abenteuers in die eigene Geschichte holen** (T-097, E-026, REQ-252; `takenWith`, `rehang` in `stack.ts`): `POST /api/entities/:id/take {into}` macht aus einem Kapitel (`Arc`) oder einer Szene **samt allem darunter** — was über `partOf` oder `mapOf` daran hängt, in jeder Tiefe: Szenen, Räume, Begegnungen, Karten — Fassungen in der Ebene der laufenden Kampagne (`overrides`, wie E5; E-018 a). Die Teile hängen an den Fassungen ihrer Eltern, das Geholte selbst nur noch an `into`: der Kampagne oder einem ihrer Arcs (`refs.takeInto` sagt, welche). Eine Fassung, die es schon gibt, wird genommen und nur umgehängt — zweimal holen legt nichts doppelt an. Holen darf, wer in der Ebene der Kampagne schreibt: Verwaltung, `gm`, `co-gm` (T-098). Nicht dasselbe wie „Übernehmen" (E7, aus einer Vergleichsebene). **Ein Kapitel und ein einzelner Teil** (T-108, E-028): ein `Chapter` lässt sich wie ein Arc holen (mit allen Teilen und Szenen darunter), ein Teil (`ReadAloudText`, `Paragraph` …) einzeln — dann auch in eine eigene Szene der Kampagne; beide stehen im Ziel an der nächsten Stelle (`partOf.rank`, `nextRank`). **Verwenden statt holen** (`take {into, use: true}`): statt einer Fassung legt der Server einen `Embed` in der Kampagnenebene an, der aufs Original zeigt — eine Korrektur am Original erreicht ihn, ändern heisst, den Teil doch zu holen. Ein geholtes Kapitel macht die Kampagnenebene nicht zum Buch: `readingOrder` liest eine Ebene nur dann aus Kapiteln, wenn sie eigene hat (keine Fassung). |
 | E13 | **Teilweise aufschalten** (T-105, REQ-255; `filterOf`, `withFilter`, `resolvedEntries` in `stack.ts`): eine Kante `activates` darf mit `areas` und `types` sagen, was ihre Ebene bringt — aus einem Abenteuer nur Regeln und Gegenstände, nicht seine Orte, NSC und Begegnungen. **Was nicht passt, bringt die Ebene nicht, in keiner Rolle**: nicht als Artikel, nicht als Herausnahme (`removes`), nicht als Überschreibung. Der Bereich ist der der Art (`areaOf`, die `extends`-Kette hoch); die Arten werden genau genommen (ein `Weapon` ist nicht `Item`). Eine Gruppe gibt ihre Auswahl an alle Mitglieder weiter (E8), eine ausdrückliche Kante eines Mitglieds hat ihre eigene. Ein abgewählter Artikel zählt nicht als „nur nicht aufgeschaltet" (`unactivated`, T-069): die Ebene ist an, die Leitung hat ihn abgewählt. Gerechnet wird der Bereich einmal je Art und Anfrage (`playStack(…, registry)`, T-086); **ohne Register gilt die Bereichsauswahl nicht** (lieber zu viel als still ein ganzes Buch weg) — wer einen Stapel rechnet, gibt es mit. Die Kampagnenseite zeigt je Ebene und Gruppe „Brings: everything" zum Aufklappen, je Bereich ein Häkchen mit Zähler, darunter die Arten; sind alle an, schickt sie keine Auswahl, damit eine neue Art mitkommt. |
 | E14 | **Ein Buch besteht aus Kapiteln, ein Kapitel aus Teilen** (T-108, E-028, E-029; `partsIndex`, `isBookPart` in `packages/model/src/parts.ts`). `Chapter` ist die Lesestruktur eines Buchs oder Abenteuers (ohne Bereich); seine Teile sind eigene Artikel unter dem abstrakten `BookPart` — `Heading` (Text im Namen, `level`), `Paragraph` (`Prose.paragraph`, `kind`: text, list, table, sidebar, quote), `ReadAloudText` (`ReadAloud.readaloud`), `Embed` (`target`: ein Artikel, der für sich steht, etwa ein Monster aus dem Monster Manual — er bekommt keine Kante, die stünde in einer fremden Ebene) — und im Abenteuer Szenen, die selbst wieder Teile haben. **Die Reihenfolge steht an der Kante** (`partOf.props.rank`): derselbe Vorlesetext darf im Kapitel an dritter und in einem eigenen Arc an erster Stelle stehen; `partOf` ohne `rank` hängt etwas an (eine Begegnung an ihre Szene) und steht nicht im Fluss. **Ein Kapitel eines offiziellen Abenteuers gibt es zweimal und seine Teile einmal:** als `Chapter` zum Lesen und als `Arc` zum Spielen, verbunden über `chapterOf` (Chapter → Arc); beide zeigen auf dieselben Szenen. **Teile stehen in keiner Liste und sind kein Verweisziel nach Namen** (`isBookPart` in `linkFinder`, `linkCandidates`, der Liste und den Werten einer Art): ein Absatz heisst nach seinen ersten Worten (`partName`), eine Überschrift wie die Regel darunter; die Nummer bleibt ein Ziel. **Auf der Artikelseite** eines Kapitels, einer Szene oder eines Arcs zeichnet das Layout-Element `parts` (in der Grundanordnung `full`, Migration 047) die Teile wie im Buch (`GET /api/entities/:id/parts`; eine Fassung hat die Teile ihres Originals dazu); unter „Linked here" stehen sie nicht. Ein Textblock ist sonst ein Feld (F-Regeln) — Buchtext ist die Ausnahme, weil man einen Absatz einzeln wiederverwendet. |
+| E15 | **Jeder Regelstand kommt herein, jede Quelle in ihre Ebene, und keine neue ist aufgeschaltet** (T-087, REQ-243; löst E2 des Arbeitsplans ab — 2014 als Basis, der Rest weggesiebt). `Layer.version` sagt `2014`, `2024` oder `UA`; 2024-Bücher stehen in der Gruppe „2024 rules", Unearthed Arcana in „Unearthed Arcana". Ein Merkmal oder eine Unterklasse, die 5e.tools aus einem 2014-Buch an eine 2024-Klasse hängt, liegt in der Ebene der Klasse und heisst nach beiden („Champion (PHB, XPHB)"). **Die Grundfassung ist die des Grundstands** (E-021 d): der 2014-Fireball behält seinen Namen, die 2024-Fassung heisst „Fireball (XPHB)" und zeigt mit `variantOf` auf ihn (E6 zeigt sie am Feld). Die Gruppe „D&D 5e (2014)" hält nur, was vor T-087 hereinkam: eine 2014-Ebene, die nur Fahrzeuge oder Karten bringt, käme sonst über die Gruppe in jede Kampagne, die sie aufschaltet. | `packages/import-5etools/src/lesen.ts` (`regelstandVon`, `ebeneQuelle`, `imGrundstand`), `test/lauf.test.ts` |
 
 Offen und benannt: der Server kennt heute nur E3; E2 läuft im Prototyp
 (siehe [Durchgang.md](Durchgang.md), Abgleich). Mit einer zweiten Kampagne
@@ -1026,13 +1029,13 @@ flowchart LR
 ```
 
 **Die ersten Ansichten je Art** (T-110 Schritt 7, `ansichten.ts`,
-Migration 051, [Bericht](Nachtarbeit/T-110-Ansichten.md)): die Karte
+Migration 052, [Bericht](Nachtarbeit/T-110-Ansichten.md)): die Karte
 nimmt je Art die zwei, drei Werte, an denen man eine Sache erkennt (Zauber:
 Grad, Schule …; Gegenstand: Art, Seltenheit, Einstimmung), der Druck setzt
 Statblock, Zauber und Gegenstand wie im Buch obenan und lässt den
 Vorbereitungsstand weg, und **`handout`** ist die erste eigene Ansicht:
 Beschreibung, Absatz, Vorlesetext — ohne Werte und Geheimnisse. Alles
-Anpassungen; Migration 051 schreibt nur, wo eine Art noch nichts sagt.
+Anpassungen; Migration 052 schreibt nur, wo eine Art noch nichts sagt.
 
 Die Migration (050) änderte, was gezeichnet wird, nicht: `full` bekam
 `rest: true` — das tat die Artikelseite schon immer, nur stand es nirgends —,
@@ -1139,9 +1142,27 @@ Druck und Registervorschau.
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |
 | Einstellungen | Registerteil `settings` | ja |
-| Dateien | Asset-Ablage; der Artikel `Asset` trägt `backend`, `ref`, `mime`, Masse | der Artikel ja, die Bytes nein |
+| Dateien | Asset-Ablage (`AssetStore`, 12.1); der Artikel `Asset` trägt `backend`, `ref`, `mime`, Masse | der Artikel ja, die Bytes nein — die Ausfuhr nennt sie (`files`) |
 | Ereignisse | `event_log` | nein |
 | Augenblicke (Würfe, Zeigen) | der Raum-Kanal, nicht gespeichert | nein |
+
+### 12.1 Bilder (T-114, REQ-021, E-032)
+
+```mermaid
+flowchart LR
+  NSC["Creature<br/>Image.image = e_7f…"] -->|Id| A["Asset (Artikel)<br/>backend app · ref 3fa9….png<br/>mime · width · height · bytes<br/>Visibility · Status"]
+  A -->|ref| D[("AssetStore<br/>3f/3fa9….png<br/>3f/3fa9….png.thumb.webp")]
+  B["GET /api/assets/e_7f…?v=3fa9…"] -->|articleVisible?| A
+```
+
+| Nr | Regel | Wo |
+|---|---|---|
+| B1 | **Ein Bild ist ein Asset-Artikel und eine Datei.** Ein Feld mit `format: 'asset'` (`Image.image`, `token`, `background`) hält die **Id des Artikels**; die Datei kennt nur er (`Asset.ref`). Eine fremde Adresse ist ein Asset mit `backend: external` und der Adresse in `ref`. | `bilder.ts` |
+| B2 | **Die Datei heisst nach ihrem Inhalt:** `<sha256>.<endung>`, die Vorschau (480 px, WebP) `<…>.thumb.webp`. Dieselbe Datei liegt einmal da, auch wenn zwei Assets sie nennen; sie geht erst mit dem letzten. Ein `ref`, das nicht so aussieht, liest die Ablage nicht (`validKey`). | `assets.ts` |
+| B3 | **Hochladen legt den Artikel an** (`POST /api/assets`, multipart) — mit den Regeln von `POST /api/entities`: wer dort nicht anlegt, lädt nichts hoch; durch `validateEntity`. Angenommen werden JPEG, PNG, WebP, GIF, AVIF, geprüft am Inhalt; **kein SVG**. Ein Foto verliert sein EXIF (der Aufnahmeort) und wird aufgerichtet. Grenze `ASSET_MAX_MB` (40). | `bilder.ts` |
+| B4 | **Aus einem Artikel heraus** (`for`) übernimmt das Asset dessen `audience`, `revealedTo`, `hiddenFrom`, Stand und Ebene: das Bild eines verborgenen NSC ist nicht öffentlich. Ohne Status-Karte zählt der Artikel als fertig, das Bild auch; wer `ready` nicht setzen darf, bekommt `idea` (D74). Das Bild der eigenen Figur nennt ihr Spieler fertig (E-014 d). | `bilder.ts`, `anlegen` |
+| B5 | **Ausgeliefert wird nur, was sichtbar ist** (`GET /api/assets/:id`, `?size=thumb`): das Sieb über den Asset-Artikel; sonst 404. `private`; mit `?v=<hash>` für immer im Browser, ohne `ETag` und 304. | `bilder.ts` |
+| B6 | **Die Ablage ist eine Schnittstelle** (`AssetStore`): heute eine Dateiablage im Volume (`ASSET_DIR`, E-032 a), in Tests im Speicher. Ein Wechsel heisst Dateien umkopieren — kein Artikel ändert sich. | `assets.ts` |
 
 ---
 
@@ -1339,7 +1360,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Class.primaryAbility` `Class.spellAbility` `Subclass.spellAbility` `Disease.save` `Spell.save` `ZoneKind.save` `Statblock.spellAbility` `Recipe.ability` |
 | `DamageType` | 13: acid · bludgeoning · cold · fire … | `Ancestry.resistances` `Action.damageType` `Action.extraDamageType` `Spell.damageTypes` `Weapon.damageType` |
 | `DrawTime` | free action · bonus action · action · turn · round | `Inventory.zones` |
-| `RuleKind` | rule · travel · sense · reward · boon · option | `Rule.kind` |
+| `RuleKind` | 9: rule · travel · sense · reward … | `Rule.kind` |
 | `Size` | tiny · small · medium · large · huge · gargantuan | `Ancestry.size` `Statblock.size` |
 | `State` | idea · prepared · ready | `Status.status` |
 

@@ -47,7 +47,8 @@ function datenstand(): Datenstand {
     { name: 'Wolf', source: 'MM', cr: '1/4', dex: 15, trait: [{ name: 'Pack Tactics', entries: ['The wolf has advantage on an attack roll.'] }] },
     { name: 'Jackal', source: 'MM', cr: '0', dex: 15, trait: [{ name: 'Pack Tactics', entries: ['The jackal has advantage on an attack roll.'] }] },
     { name: 'Mage', source: 'MM', cr: '6', int: 17, spellcasting: [{ name: 'Spellcasting', type: 'spellcasting', ability: 'int', headerEntries: ['The mage is a 9th-level spellcaster.'], spells: { 3: { slots: 3, spells: ['{@spell fireball}'] } } }] },
-    { name: 'Goblin Warrior', source: 'XMM', cr: '1/4' },
+    { name: 'Goblin Warrior', source: 'XMM', cr: '1/4', dex: 15,
+      action: [{ name: 'Scimitar', entries: ['{@atk mw} {@hit 4} to hit, reach 5 ft., one target. {@h}5 ({@damage 1d6 + 2}) slashing damage.'] }] },
   );
   const asi = (level: number): Knoten => ({
     name: 'Ability Score Improvement', source: 'PHB', className: 'Fighter', classSource: 'PHB', level,
@@ -67,7 +68,19 @@ function datenstand(): Datenstand {
   add('subclass', { name: 'Knowledge Domain', shortName: 'Knowledge', source: 'PHB', className: 'Cleric', classSource: 'PHB' });
   add('deity', { name: 'Oghma', source: 'PHB', pantheon: 'Forgotten Realms', domains: ['Knowledge', 'Unknown'] });
   add('table', { name: 'Trinkets', source: 'PHB', colLabels: ['d6', 'Trinket'], rows: [['1-3', 'A {@item scimitar|phb}'], ['4-6', 'A button']] });
-  add('vehicle', { name: 'Galley', source: 'GoS' });
+  /* T-087: der 2024-Kämpfer mit gleichnamigem Merkmal, und der
+     2014-Champion, den 5e.tools ihm gibt. */
+  add('classFeature', { name: 'Second Wind', source: 'XPHB', className: 'Fighter', classSource: 'XPHB', level: 1, entries: ['Regain {@dice 1d10} hit points.'] });
+  add('class', { name: 'Fighter', source: 'XPHB', hd: { number: 1, faces: 10 }, proficiency: ['str', 'con'], classFeatures: ['Second Wind|Fighter|XPHB|1'] });
+  add('subclass', { name: 'Champion', shortName: 'Champion', source: 'PHB', className: 'Fighter', classSource: 'XPHB', subclassFeatures: [] });
+  add('spell', { name: 'Fireball', source: 'XPHB', level: 3, school: 'V', time: [{ number: 1, unit: 'action' }], entries: ['Like {@spell fireball|PHB}, but 2024.'] });
+  add('itemMastery', { name: 'Nick', source: 'XPHB', entries: ['An extra attack.'] });
+  add('baseitem', { name: 'Scimitar', source: 'XPHB', type: 'M|XPHB', weaponCategory: 'martial', dmg1: '1d6', dmgType: 'S', property: ['F', 'L'], mastery: ['Nick|XPHB'], weapon: true });
+  add('vehicle', { name: 'Galley', source: 'GoS', vehicleType: 'SHIP', terrain: ['sea'], capCrew: 80, hull: { ac: 15, hp: 500, dt: 20 }, str: 24, dex: 4, con: 20, int: 0, wis: 0, cha: 0 });
+  add('card', { name: 'Vizier', source: 'DMG', set: 'Deck of Many Things', entries: ['Answer a question.'] }, { name: 'Fool', source: 'DMG', set: 'Deck of Many Things', entries: ['Lose XP.'] });
+  add('deck', { name: 'Deck of Many Things', source: 'DMG', cards: ['Vizier|Deck of Many Things', { uid: 'Fool|Deck of Many Things', count: 2 }], entries: ['A deck of cards.'] });
+  add('facility', { name: 'Armory', source: 'XDMG', facilityType: 'special', level: 5, space: ['roomy'], hirelings: [{ exact: 1 }], orders: ['trade'], entries: ['Weapons.'] });
+  add('monster', { name: 'Chef', source: 'HFLotT', cr: '0' });
   return {
     arten,
     quellen: new Map([
@@ -75,6 +88,9 @@ function datenstand(): Datenstand {
       ['mm', { id: 'MM', name: 'Monster Manual', published: '2014-09-30', art: 'book' }],
       ['xphb', { id: 'XPHB', name: "Player's Handbook (2024)", published: '2024-09-17', art: 'book' }],
       ['xmm', { id: 'XMM', name: 'Monster Manual (2025)', published: '2025-02-18', art: 'book' }],
+      ['dmg', { id: 'DMG', name: "Dungeon Master's Guide", published: '2014-12-09', art: 'book' }],
+      ['xdmg', { id: 'XDMG', name: "Dungeon Master's Guide (2024)", published: '2024-11-12', art: 'book' }],
+      ['gos', { id: 'GoS', name: 'Ghosts of Saltmarsh', published: '2019-05-21', art: 'adventure' }],
     ]),
   };
 }
@@ -101,8 +117,10 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
       const in_ = (e.relations ?? []).filter((r) => r.type === 'inLayer');
       expect(in_, `${e.name}`).toHaveLength(1);
       const quelle = (e.components['Source'] as { publication?: string } | undefined)?.publication;
-      /* Mit Quelle in der Ebene ihres Buchs, ohne in der Systemebene. */
-      expect(in_[0]!.to, `${e.name}`).toBe(quelle ? buchEbeneId(quelle) : ebene.id);
+      /* Mit Quelle in der Ebene ihres Buchs, ohne in der Systemebene —
+         ausser sie hängt an einer Klasse eines anderen Regelstands (T-087). */
+      const zuKlasse = e.name.endsWith('(PHB, XPHB)') ? 'XPHB' : quelle;
+      expect(in_[0]!.to, `${e.name}`).toBe(zuKlasse ? buchEbeneId(zuKlasse) : ebene.id);
     }
     /* Keine Ebene steht selbst in einer Ebene, und keine Buchebene ist leer. */
     for (const l of ebenen.values()) {
@@ -190,11 +208,86 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     for (const e of es) for (const r of e.relations ?? []) expect(r.id.startsWith(`${e.id}~`)).toBe(true);
   });
 
-  it('lässt 2024 und Vehikel weg und zählt es', () => {
-    expect(es.some((e) => e.name === 'Goblin Warrior')).toBe(false);
-    expect(es.filter((e) => e.name === 'Blinded')).toHaveLength(1);
-    expect(bericht.arten.get('monster')?.ausgeschlossen.get('2024-Kernbuch')?.get('XMM')).toBe(1);
-    expect(bericht.arten.get('vehicle')?.notizen.get('weggelassen: später (E4)')).toBe(1);
+  it('lässt mit --only-2014 2024 und die neuen Arten weg und zählt es', () => {
+    const nur = lauf(datenstand(), { nurGrundstand: true });
+    expect(nur.datei.entities.some((e) => e.name === 'Goblin Warrior')).toBe(false);
+    expect(nur.datei.entities.filter((e) => e.name.startsWith('Blinded'))).toHaveLength(1);
+    expect(nur.bericht.arten.get('monster')?.ausgeschlossen.get('2024-Kernbuch')?.get('XMM')).toBe(1);
+    expect(nur.bericht.arten.get('vehicle')?.ausgeschlossen.get('neue Art (T-087)')?.get('GoS')).toBe(1);
+  });
+
+  it('schreibt den Grundstand mit 2024 Zeichen für Zeichen wie ohne (T-087)', () => {
+    const nur = lauf(datenstand(), { nurGrundstand: true }).datei.entities;
+    const alle = new Map(es.map((e) => [e.id, e]));
+    for (const e of nur) {
+      const da = alle.get(e.id);
+      expect(da, `${e.interfaces[0]} ${e.name}`).toBeDefined();
+      /* Gleich bis auf die Gruppe: die neuen Ebenen zählen dort mit. */
+      expect({ ...da!, relations: da!.relations?.filter((r) => r.type !== 'partOf') }).toEqual({ ...e, relations: e.relations?.filter((r) => r.type !== 'partOf') });
+    }
+  });
+
+  it('legt 2024 in eigene Ebenen, nicht aufgeschaltet und nicht in der 2014-Gruppe (T-087)', () => {
+    const xmm = finde(es, 'Layer', 'Monster Manual (2025)');
+    expect(xmm.components['Layer']).toMatchObject({ kind: 'book', version: '2024', abbreviation: 'XMM' });
+    const gruppen = (l: Entity) => (l.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to);
+    expect(gruppen(xmm)).toContain(gruppeEbeneId('2024'));
+    expect(gruppen(xmm)).not.toContain(finde(es, 'Layer', 'D&D 5e (2014)').id);
+    expect(gruppen(finde(es, 'Layer', "Player's Handbook"))).toContain(finde(es, 'Layer', 'D&D 5e (2014)').id);
+    /* Eine 2014-Ebene, die nur Neues bringt, ebensowenig. */
+    expect(gruppen(finde(es, 'Layer', 'Ghosts of Saltmarsh'))).not.toContain(finde(es, 'Layer', 'D&D 5e (2014)').id);
+    const krieger = finde(es, 'Statblock', 'Goblin Warrior');
+    expect(krieger.relations?.find((r) => r.type === 'inLayer')?.to).toBe(xmm.id);
+    expect(es.some((e) => e.interfaces[0] === 'Campaign' || (e.relations ?? []).some((r) => r.type === 'activates'))).toBe(false);
+  });
+
+  it('macht die 2024-Fassung zur Variante der von 2014 (E-021 d)', () => {
+    const alt = finde(es, 'Spell', 'Fireball');
+    const neu = finde(es, 'Spell', 'Fireball (XPHB)');
+    expect(alt.components['Source']).toMatchObject({ publication: 'PHB' });
+    expect(neu.relations?.find((r) => r.type === 'variantOf')?.to).toBe(alt.id);
+    expect(prosa(neu)).toContain(`[[${(alt.components['Identity'] as { id: string }).id}|`);
+    expect(finde(es, 'Condition', 'Blinded (XPHB)').relations?.find((r) => r.type === 'variantOf')?.to).toBe(finde(es, 'Condition', 'Blinded').id);
+  });
+
+  it('gibt dem 2024-Kämpfer seine eigenen Merkmale und legt den 2014-Champion zu ihm (T-087)', () => {
+    const k24 = finde(es, 'Class', 'Fighter (XPHB)');
+    const xphb = buchEbeneId('XPHB');
+    const ziele = (k24.relations ?? []).filter((r) => r.type === 'grants').map((r) => es.find((e) => e.id === r.to)!);
+    expect(ziele.map((z) => z.components['Source']?.['publication'])).toEqual(['XPHB']);
+    expect(ziele[0]!.relations?.find((r) => r.type === 'inLayer')?.to).toBe(xphb);
+    const champ = finde(es, 'Subclass', 'Champion (PHB, XPHB)');
+    expect(champ.relations?.find((r) => r.type === 'inLayer')?.to).toBe(xphb);
+    expect(champ.relations?.find((r) => r.type === 'subclassOf')?.to).toBe(k24.id);
+    expect(finde(es, 'Subclass', 'Champion').relations?.find((r) => r.type === 'subclassOf')?.to).toBe(finde(es, 'Class', 'Fighter').id);
+  });
+
+  it('teilt keinen Angriff zwischen Grundstand und 2024 (T-087)', () => {
+    const angriff = (name: string) => finde(es, 'Statblock', name).relations!.filter((r) => r.type === 'composedOf').map((r) => r.to);
+    expect(angriff('Goblin Warrior')).toHaveLength(1);
+    expect(angriff('Goblin')).not.toContain(angriff('Goblin Warrior')[0]);
+  });
+
+  it('nimmt Fahrzeuge, Decks, Bastionen und Meisterschaften herein (E4, T-087)', () => {
+    const galeere = finde(es, 'Statblock', 'Galley');
+    expect(galeere.components['Statblock']).toMatchObject({ creatureType: 'vehicle (ship)', ac: 15, hp: 500 });
+    expect(galeere.relations?.find((r) => r.type === 'inLayer')?.to).toBe(buchEbeneId('GoS'));
+    expect(prosa(galeere)).toContain('**Crew:** 80');
+    const deck = finde(es, 'Table', 'Deck of Many Things');
+    expect(deck.components['Table']).toMatchObject({ kind: 'deck', die: '1d3' });
+    const karten = (deck.relations ?? []).filter((r) => r.type === 'entry');
+    expect(karten.map((r) => [es.find((e) => e.id === r.to)!.name, r.props?.['weight']])).toEqual([['Vizier', undefined], ['Fool', 2]]);
+    expect(finde(es, 'Rule', 'Vizier').components['Rule']).toMatchObject({ kind: 'card' });
+    expect(finde(es, 'Rule', 'Armory').components['Rule']).toMatchObject({ kind: 'facility' });
+    expect(prosa(finde(es, 'Rule', 'Armory'))).toContain('Level 5');
+    const nick = finde(es, 'ItemProperty', 'Nick');
+    expect(nick.components['Tags']).toEqual({ tags: ['mastery'] });
+    expect(finde(es, 'Weapon', 'Scimitar (XPHB)').relations?.some((r) => r.type === 'hasProperty' && r.to === nick.id)).toBe(true);
+    expect(finde(es, 'Weapon', 'Scimitar').relations?.some((r) => r.to === nick.id)).toBe(false);
+  });
+
+  it('lässt Kochbücher weg (T-087)', () => {
+    expect(es.some((e) => e.name === 'Chef')).toBe(false);
   });
 
   it('besteht die Prüfung, auch als Ausschnitt für sich', () => {
@@ -298,8 +391,9 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
 
   it('schreibt einen Bericht mit Zahlen und Auslassungen', () => {
     const md = berichtMarkdown(bericht, { artikel: es.length });
-    expect(md).toContain('| `monster` | 6 |');
-    expect(md).toContain('XMM 1');
+    expect(md).toContain('| `monster` | 7 | 6 Statblock | 1 |');
+    expect(md).toContain('## Artikel je Ebene');
+    expect(md).toContain('| Monster Manual (2025) | `XMM` | book | 2024 |');
     expect(md).toContain('**monster:** `sizeNote` 2');
     expect(md).not.toContain('| `race` |');
   });

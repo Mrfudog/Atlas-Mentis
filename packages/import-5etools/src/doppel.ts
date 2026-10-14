@@ -27,6 +27,18 @@ import { zaehle } from './werkbank.js';
 
 type Karten = Record<string, Record<string, unknown>>;
 
+/**
+ * Was die Doppel über einen Artikel wissen müssen. `teilung` trennt den
+ * Grundstand vom Rest (T-087, `Werkbank.teilung`): leer heisst Grundstand.
+ * `kennung` ist das Buch, nach dem eine Fassung heisst — ihre Quelle, oder
+ * „PHB, XPHB", wenn sie in einer anderen Ebene liegt.
+ */
+export interface DoppelWissen {
+  nachdruck?: (e: Entity) => string[];
+  teilung?: (e: Entity) => string;
+  kennung?: (e: Entity) => string;
+}
+
 const nummerVon = (e: Entity) => String((e.components['Identity'] as { id?: string } | undefined)?.id ?? '');
 const quelleVon = (e: Entity) => String((e.components['Source'] as { publication?: string } | undefined)?.publication ?? '');
 
@@ -70,7 +82,7 @@ const VEREINBAR = ['Feature', 'Action'];
  * Fundstelle, an der der Text zuerst stand. Steht er irgendwo im SRD, ist
  * der Text SRD-Text.
  */
-export function vereineGleiche(entities: Entity[], bericht: Bericht): Entity[] {
+export function vereineGleiche(entities: Entity[], bericht: Bericht, teilung: (e: Entity) => string = () => ''): Entity[] {
   const erster = new Map<string, Entity>();
   const pegs = new Map<string, string>();
   const nummern = new Map<string, string>();
@@ -78,7 +90,10 @@ export function vereineGleiche(entities: Entity[], bericht: Bericht): Entity[] {
     const typ = e.interfaces[0] ?? '';
     if (!VEREINBAR.includes(typ)) continue;
     const { Identity: _i, Source: _s, ...rest } = e.components;
-    const schluessel = `${typ}\u0000${e.name}\u0000${JSON.stringify(rest)}`;
+    /* Nur innerhalb einer Teilung (T-087): ein 2024-Merkmal mit dem Text
+       des 2014-Merkmals gehört trotzdem in seine Ebene. */
+    const t = teilung(e);
+    const schluessel = `${t ? `${t}\u0000` : ''}${typ}\u0000${e.name}\u0000${JSON.stringify(rest)}`;
     const da = erster.get(schluessel);
     if (!da) {
       erster.set(schluessel, e);
@@ -102,8 +117,9 @@ const MIT_FASSUNGEN = new Set([
   'Rule', 'Deity', 'Hazard', 'Disease', 'Class', 'Subclass', 'Table', 'Condition',
 ]);
 
-/** Die Kernbücher: ihre Fassung gilt vor einer aus einem Settingbuch. */
-const KERN = ['PHB', 'DMG', 'MM'];
+/** Die Kernbücher: ihre Fassung gilt vor einer aus einem Settingbuch —
+ *  die von 2024 erst, wo keine von 2014 mitspielt (T-087). */
+const KERN = ['PHB', 'DMG', 'MM', 'XPHB', 'XDMG', 'XMM'];
 
 /**
  * Welche Fassung gilt. Drei Regeln, und die Reihenfolge ist die Regel:
@@ -144,8 +160,11 @@ export function fassungen(
   entities: Entity[],
   stand: Pick<Datenstand, 'quellen'>,
   bericht: Bericht,
-  nachdruck: (e: Entity) => string[] = () => [],
+  wissen: DoppelWissen = {},
 ): void {
+  const nachdruck = wissen.nachdruck ?? (() => []);
+  const kennung = wissen.kennung ?? quelleVon;
+  const teilung = wissen.teilung ?? (() => '');
   const gruppen = new Map<string, Entity[]>();
   for (const e of entities) {
     const typ = e.interfaces[0] ?? '';
@@ -156,11 +175,17 @@ export function fassungen(
     gruppen.set(k, g);
   }
   for (const gruppe of gruppen.values()) {
-    if (new Set(gruppe.map(quelleVon)).size < 2) continue;
-    const gilt = geltendeFassung(gruppe, stand, nachdruck);
+    if (new Set(gruppe.map(kennung)).size < 2) continue;
+    /* **Die Grundfassung ist die des Grundstands** (T-087, E-021 d): der
+       2014-Fireball behält seinen Namen, auch wenn 5e.tools ihn ins
+       2024-PHB nachgedruckt nennt. Sonst hiesse ein Artikel, den
+       Kampagnen schon nennen, auf einmal anders, und `[[Fireball]]` träfe
+       den, den niemand gemeint hat. */
+    const imGrund = gruppe.filter((e) => !teilung(e));
+    const gilt = geltendeFassung(imGrund.length ? imGrund : gruppe, stand, nachdruck);
     for (const e of gruppe) {
-      if (e === gilt || quelleVon(e) === quelleVon(gilt)) continue;
-      const name = `${e.name} (${quelleVon(e)})`;
+      if (e === gilt || kennung(e) === kennung(gilt)) continue;
+      const name = `${e.name} (${kennung(e)})`;
       e.name = name;
       (e.components['Identity'] as Record<string, unknown>)['name'] = name;
       /* Eine aufgelöste Kopie zeigt schon auf ihr Original — eine Kante
@@ -191,8 +216,10 @@ export function herkunft(
   entities: Entity[],
   stand: Pick<Datenstand, 'quellen'>,
   bericht: Bericht,
-  nachdruck: (e: Entity) => string[] = () => [],
+  wissen: DoppelWissen = {},
 ): void {
+  const nachdruck = wissen.nachdruck ?? (() => []);
+  const teilung = wissen.teilung ?? (() => '');
   const nachId = new Map(entities.map((e) => [e.id, e]));
   const volk = (name: string) => name.toLowerCase().replace(/\s*\(.*\)\s*$/, '').replace(/^half-/, '').split(/[\s-]+/).pop() ?? '';
   /* Volksmerkmale nach Name, mit den Völkern, die sie gewähren. */
@@ -220,7 +247,8 @@ export function herkunft(
     const kandidaten = volksmerkmale.get(m.name.toLowerCase());
     if (!kandidaten) continue;
     const typen = traeger.map((s) => String((s.components['Statblock'] as Record<string, unknown> | undefined)?.['creatureType'] ?? '').toLowerCase());
-    const passend = kandidaten.filter((f) => (voelkerVon.get(f.id) ?? []).some((v) => v && typen.some((t) => new RegExp(`\\b${v}\\b`).test(t))));
+    /* Nur aus derselben Teilung (T-087): der 2014-Ork hat seine Herkunft bei der 2014-Abstammung. */
+    const passend = kandidaten.filter((f) => teilung(f) === teilung(m) && (voelkerVon.get(f.id) ?? []).some((v) => v && typen.some((t) => new RegExp(`\\b${v}\\b`).test(t))));
     if (!passend.length) continue;
     const gilt = geltendeFassung(passend, stand, nachdruck);
     const liste = (m.relations ??= []);

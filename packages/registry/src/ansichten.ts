@@ -13,7 +13,7 @@ import type { LayoutElement, TypeLayout } from '@nw/model';
  *
  * Die Einträge werden in `index.ts` an ihre Art gehängt — die Anordnung
  * wohnt am Typ, im Register wie in der Datenbank; hier stehen sie nur
- * beieinander, weil Migration 051 dieselben Zeilen in bestehende
+ * beieinander, weil Migration 052 dieselben Zeilen in bestehende
  * Datenbanken bringt (nur, wo die Art für die Ansicht noch nichts sagt) und
  * ein Test prüft, dass beide gleich sind.
  *

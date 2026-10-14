@@ -544,10 +544,15 @@ const merkmal = (art: 'classFeature' | 'subclassFeature'): Zuordnung => ({
   tag: art,
   typ: () => 'Feature',
   name: (e) => String(e['name']),
+  /* Mit Klassen- und Unterklassenquelle zuerst (T-087): derselbe Name,
+     dieselbe Klasse und Stufe stehen 2014 und 2024 da. */
   schluessel: (e) =>
     art === 'classFeature'
-      ? [[e['name'], e['className'], e['level']]]
-      : [[e['name'], e['className'], e['subclassShortName'], e['level']]],
+      ? [[e['name'], e['className'], e['classSource'] ?? 'PHB', e['level']], [e['name'], e['className'], e['level']]]
+      : [
+          [e['name'], e['className'], e['classSource'] ?? 'PHB', e['subclassShortName'], e['subclassSource'] ?? 'PHB', e['level']],
+          [e['name'], e['className'], e['subclassShortName'], e['level']],
+        ],
   herkunft: (e) => `${String(e['className'])}|${String(e['subclassShortName'] ?? '')}|${String(e['level'])}`,
   /* Dasselbe Merkmal derselben (Unter-)Klasse mit demselben Text auf
      mehreren Stufen ist eine Sache. */
@@ -654,7 +659,12 @@ export const CHARAKTERBAU: Zuordnung[] = [
     tag: 'subclass',
     typ: () => 'Subclass',
     name: (e) => String(e['name']),
-    schluessel: (e) => [[e['name'], e['className']], [e['shortName'], e['className']]],
+    schluessel: (e) => [
+      [e['name'], e['className'], e['classSource'] ?? 'PHB', e['source']],
+      [e['shortName'], e['className'], e['classSource'] ?? 'PHB', e['source']],
+      [e['name'], e['className']],
+      [e['shortName'], e['className']],
+    ],
     herkunft: (e) => String(e['className']),
     genutzt: [
       'name', 'shortName', 'className', 'classSource', 'subclassFeatures', 'casterProgression',

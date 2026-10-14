@@ -234,6 +234,39 @@ describe('pnpm --filter @nw/server run import', () => {
       expect((await repo.listEntities()).map((e) => e.id).sort()).toEqual(['alt', 'alt_text', 'e5_layer', 'neu', 'p3']);
     });
 
+    it('gleicht Nummern und Verweise neuer Artikel an den Bestand an (T-087)', async () => {
+      /* Der Bestand stammt aus einem älteren Lauf: Fireball trägt dort
+         spell-0007, die Datei zählt ihn als spell-0001 — und unter
+         spell-0002 steht im Bestand schon ein anderer Artikel. */
+      const zauber = (id: string, name: string, nummer: string, text?: string): Entity => ({
+        id, interfaces: ['Spell'], name,
+        components: { Identity: { name, id: nummer }, Status: { status: 'ready' }, ...(text ? { Prose: { paragraph: [{ id: 'text', value: text }] } } : {}) },
+        relations: [{ id: `${id}-inLayer`, type: 'inLayer', to: ebene.id }],
+      });
+      const repo = await mitKonto([ebene, zauber('fb', 'Fireball', 'spell-0007'), zauber('fremd', 'Eigener Zauber', 'spell-0002')]);
+      const datei = {
+        format: 'nebelwacht/1', registry: seedRegistry,
+        entities: [
+          ebene,
+          zauber('fb', 'Fireball', 'spell-0001'),
+          zauber('fb24', 'Fireball (XPHB)', 'spell-0002', 'Like [[spell-0001|Fireball]]; see [[spell-0003|Ice Storm (XPHB)]].'),
+          zauber('is24', 'Ice Storm (XPHB)', 'spell-0003', 'After [[spell-0002|Fireball (XPHB)]].'),
+        ],
+      };
+      const probe = await runImport(repo, structuredClone(datei), { onlyNew: true, dryRun: true });
+      expect(probe.text).toMatch(/2 davon mit angeglichener Nummer/);
+      const r = await runImport(repo, datei, { onlyNew: true });
+      expect(r).toMatchObject({ geschrieben: 2, angeglichen: 2 });
+      const fb24 = (await repo.getEntity('fb24'))!;
+      const is24 = (await repo.getEntity('is24'))!;
+      /* spell-0002 ist besetzt: der neue bekommt die nächste hinter allen. */
+      expect(fb24.components['Identity']).toMatchObject({ id: 'spell-0008' });
+      expect(is24.components['Identity']).toMatchObject({ id: 'spell-0003' });
+      expect((fb24.components['Prose'] as { paragraph: { value: string }[] }).paragraph[0]!.value).toBe('Like [[spell-0007|Fireball]]; see [[spell-0003|Ice Storm (XPHB)]].');
+      expect((is24.components['Prose'] as { paragraph: { value: string }[] }).paragraph[0]!.value).toBe('After [[spell-0008|Fireball (XPHB)]].');
+      expect((await repo.getEntity('fremd'))?.components['Identity']).toMatchObject({ id: 'spell-0002' });
+    });
+
     it('lässt eine angepasste Registerzeile stehen und nimmt nur fehlende dazu', async () => {
       const repo = await mitKonto();
       const { Spell: _weg, ...ohneSpell } = seedRegistry.interfaces;

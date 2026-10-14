@@ -2202,7 +2202,9 @@ export const fieldGroups = {
         kind: {
           type: 'string',
           title: 'Kind',
-          enum: ['loot', 'encounter', 'name', 'shop', 'event', 'generic'],
+          /* `deck` (T-087): ein Kartendeck — eine Karte ziehen heisst auf
+             ihm würfeln, je Karte ein `entry` mit ihrer Anzahl als Gewicht. */
+          enum: ['loot', 'encounter', 'name', 'shop', 'event', 'generic', 'deck'],
           default: 'generic',
         },
         die: { type: 'string', suggest: true, title: 'Die', default: '1d100' },
