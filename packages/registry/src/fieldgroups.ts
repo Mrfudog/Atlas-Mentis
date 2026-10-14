@@ -1243,7 +1243,15 @@ export const fieldGroups = {
         pantheon: { type: 'string', suggest: true, title: 'Pantheon' },
         title: { type: 'string', title: 'Title' },
         alignment: { type: 'string', suggest: true, title: 'Alignment' },
-        domains: { type: 'array', items: { type: 'string' }, title: 'Domains' },
+        /* **Die Domänen zeigen auf die Unterklassen** (E-020, T-099): auf
+           „Knowledge Domain“, nicht auf das Wort „Knowledge“. 777 von 778
+           Werten auf dev trafen genau eine Unterklasse, über ihren
+           Kurznamen; was keine trifft, steht als Notiz (`domains`). */
+        domains: {
+          type: 'array', format: 'link', title: 'Domains',
+          items: { type: 'string' },
+          target: { interfaces: ['Subclass'] },
+        },
         symbol: { type: 'string', title: 'Symbol' },
         province: { type: 'string', title: 'Province' },
         plane: { type: 'string', suggest: true, title: 'Plane' },
@@ -1979,7 +1987,13 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         trade: { type: 'string', suggest: true, title: 'Trade' },
-        tool: { type: 'string', suggest: true, title: 'Tool needed' },
+        /* **Das Werkzeug ist eines der Werkzeug-Artikel**, gespeichert
+           beim Namen (E-020, T-099) — wie die Werkzeugübung, mit der es
+           verglichen wird: wer am Rezept arbeitet, braucht Übung in genau
+           diesem Werkzeug, und `Proficiencies.proficient` hält Namen
+           (F12). Eine Id hier und ein Name dort wären zwei Formen einer
+           Frage. */
+        tool: { type: 'string', title: 'Tool needed', enumRef: 'Item', enumWhere: TOOLS_ONLY },
         /* Dieselbe Aufzählungszeile wie an der Fertigkeit. `titles` gibt
            ihr hier den Namen „Check", ohne dass es die Liste zweimal
            gäbe — eine Beschriftung ist kein zweites Feld. */

@@ -158,8 +158,12 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   Artikel, ist es ein Verweis und kein Name** (T-078): die
   Zustandsimmunitäten eines Statblocks hielten „Poisoned", und ein
   umbenannter Zustand liess sie auf nichts zeigen; jetzt halten sie die
-  Id, wie die Zustände an der Figur. Ein Name bleibt nur, wo ein Feld
-  Artikel und Wörter mischt (die Übungen),
+  Id, wie die Zustände an der Figur; ebenso die Domänen einer Gottheit,
+  die auf die Unterklasse „Knowledge Domain" zeigen (T-099). Ein Name
+  bleibt, wo ein Feld Artikel und Wörter mischt (die Übungen), und wo es
+  **mit** einem solchen Feld verglichen wird: das Werkzeug eines Rezepts
+  wählt man aus den Werkzeug-Artikeln, gespeichert wird aber der Name,
+  weil die Werkzeugübung ein Name ist,
 - bei einem **Mass** die Einheit, in der es dasteht (`unit`),
 - bei einer **Form** (`format: 'grid'`) ein Zeichen je Feld — und die Maske
   malt sie als Raster. `##.,##.` als Text sagt der Eingabe nicht, was dabei
