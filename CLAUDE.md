@@ -108,7 +108,9 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   T-138), unter der Marke die **laufende Kampagne** mit der Zahl ihrer
   Ebenen und dem Popup zum Einstellen (`verwaltung/stapel-knopf.ts`,
   `kern/stapel.ts`: Ebenen, Gruppen, Vergleich auch einer ganzen Gruppe,
-  Wechsel der Kampagne für die Verwaltung; T-143) und das Konto mit seinen API-Tokens (`konto/`); die
+  Wechsel der Kampagne für die Verwaltung; T-143), **What's new** (`neues/`,
+  `/whats-new`: Einträge aus `apps/web/src/whats-new.json`, gesehen je
+  Konto in `/api/me/prefs`, Punkt in der Kopfleiste; T-157) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
@@ -787,6 +789,14 @@ den Repo-Einstellungen „Automatically delete head branches"). Ein Pull Request
 geöffnet, wenn ein Feature ganz steht oder eine Version reif ist — den
 merged die Verwaltung, nicht Claude. Commits klein und je eine Sache;
 Nachricht deutsch, sagt **warum**.
+
+**What's new läuft mit** (T-157): jeder Pull Request mit einer
+sichtbaren Änderung ergänzt `apps/web/src/whats-new.json` — oben, ein,
+zwei Sätze auf Englisch, was man jetzt tun kann, mit Link an die Stelle.
+Nur Funktionen beschreiben, nie Kampagnen- oder Fremdinhalte (das Repo
+ist öffentlich). Form und Felder: [CONTRIBUTING.md › What's new
+ergänzen](CONTRIBUTING.md#whats-new-ergänzen). Die PR-Vorlage fragt
+danach.
 
 **Die Dokumentation läuft mit, immer.** Eine Modelländerung ohne
 nachgezogenes [docs/Datenmodell.md](docs/Datenmodell.md),
