@@ -1499,7 +1499,11 @@ Das Material **verlässt das Inventar nicht mehr**, es wird für den Auftrag
 **reserviert**. Gebunden ist es so wie beim Gang (es reicht nicht für
 zwei), aber es liegt sichtbar, wo es lag — im Gepäck der Figur oder in der
 Truhe der Gruppe —, und wer nachsieht, findet es dort mit dem Vermerk, für
-welchen Auftrag. Was bei einem Fehlschlag verloren geht, ist eine **Regel
+welchen Auftrag. **Die Sperre steht am Server** (T-134), nicht nur in der
+Maske: eine Sperre, die nur die Oberfläche kennt, umgeht jede Anfrage,
+die nicht durch die Oberfläche kommt, und das Material wäre zweimal
+verkauft. Frei wird es, wenn der Auftrag endet — oder die Leitung es
+sagt, denn am Tisch kommt es anders, als ein Auftrag es vorsieht. Was bei einem Fehlschlag verloren geht, ist eine **Regel
 des Tisches** (an der Kampagne, später in einem Regelmodul): manche
 Runden verlieren das Material, andere nur den Fortschritt, wieder andere
 entscheiden es jedes Mal. Ohne Einstellung gilt, was das Rezept sagt.

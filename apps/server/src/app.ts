@@ -111,6 +111,7 @@ import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, ty
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
+import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
@@ -2969,6 +2970,13 @@ export function buildApp({
     const steht = (await repo.getEntity(entity.id))?.revision ?? null;
     if (steht !== erwartet) return { konflikt: erwartet };
 
+    /* **Reservierte Stücke bleiben, wie sie sind** (T-134): verkaufen,
+       verschieben, verbrauchen, löschen geht erst, wenn der Auftrag
+       abgeschlossen oder abgebrochen ist — oder durch die Leitung. */
+    const gesperrt = await reservierteSperre(repo, await viewerOf(request), await repo.getEntity(entity.id), entity);
+    /* 423 und nicht 409: ein 409 heisst in der Maske „neu laden und zusammenführen". */
+    if (gesperrt) return { code: 423, body: { error: gesperrt } };
+
     /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
        `maySetReady` ist, macht aus einem unfertigen Artikel keinen
        fertigen — auch nicht, indem er die Status-Karte weglässt (ohne
@@ -3171,6 +3179,11 @@ export function buildApp({
     if (weg && wer && !wer.isAdmin && primaryInterface(weg) === 'Layer') {
       const voll = [...alle.values()].some((e) => e.id !== weg.id && layersOf(e).includes(weg.id));
       if (voll) return reply.code(409).send({ error: 'In dieser Ebene liegen Artikel; eine Ebene mit Inhalt löscht die Verwaltung.' });
+    }
+    /* Reserviertes Material geht nicht mit; ein Auftrag gibt seines vorher frei (T-134). */
+    if (weg) {
+      const gesperrt = await vorDemLoeschen(repo, wer, weg, alle);
+      if (gesperrt) return reply.code(423).send({ error: gesperrt });
     }
     if (weg) {
       /* Eine Vorlage nimmt beim Gehen nichts mit: ihre Instanzen bekommen

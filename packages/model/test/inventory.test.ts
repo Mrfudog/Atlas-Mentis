@@ -117,9 +117,9 @@ describe('Fallenlassen und Verstauen (REQ-225, D58)', () => {
 
 import {
   coins, containerShape, firstFreeSpot, fitsAt, pieceInShape, insideOf, inventoryRulesOf, itemShape, loadStage,
-  moveHeld, pieceZone, reserve, reservedFor, slotsUsed, totalWeight, turnGrid,
+  moveHeld, pieceZone, reservationBreaches, reserve, reservedFor, slotsUsed, totalWeight, turnGrid,
 } from '../src/inventory.js';
-import type { Entity } from '../src/types.js';
+import type { Entity, Relation } from '../src/types.js';
 
 describe('Das Raster (T-127)', () => {
   it('dreht eine Form im Uhrzeigersinn', () => {
@@ -209,5 +209,34 @@ describe('Verschieben und Reservieren (T-127, T-128)', () => {
     expect([...insideOf('sack', map)]).toEqual(['sackinv', 'beutelinv']);
     const b = inv('a', [{ id: 'h1', type: 'holds', to: 'sack' }]);
     expect(moveHeld(b, inv('beutelinv'), 'h1', { newId: 'n', inside: insideOf('sack', map) })).toEqual({ refused: 'cycle' });
+  });
+});
+
+describe('Die Sperre (T-134)', () => {
+  const vorher: Pick<Entity, 'relations'> = {
+    relations: [
+      { id: 'h1', type: 'holds', to: 'kraut', props: { qty: 2, tier: 'pack', reservedFor: 'o1' } },
+      { id: 'h2', type: 'holds', to: 'kraut', props: { qty: 3, tier: 'pack' } },
+    ],
+  };
+  const laeuft = (o: string) => o === 'o1';
+  const mit = (h1: Relation | null) => ({ relations: [...(h1 ? [h1] : []), vorher.relations![1]!] });
+
+  it('ein reserviertes Stück bleibt: weg, andere Menge oder frei gemacht sperrt', () => {
+    expect(reservationBreaches(vorher, mit(null), laeuft)).toEqual([{ edge: 'h1', item: 'kraut', order: 'o1', change: 'removed' }]);
+    expect(reservationBreaches(vorher, mit({ ...vorher.relations![0]!, props: { qty: 1, tier: 'pack', reservedFor: 'o1' } }), laeuft)[0]?.change).toBe('changed');
+    expect(reservationBreaches(vorher, mit({ ...vorher.relations![0]!, props: { qty: 2, tier: 'pack' } }), laeuft)[0]?.change).toBe('changed');
+    expect(reservationBreaches(vorher, null, laeuft)).toHaveLength(1);
+  });
+
+  it('umräumen im selben Behälter und das Freie ändern geht', () => {
+    const umgeraeumt = { ...vorher.relations![0]!, props: { qty: 2, tier: 'pack', reservedFor: 'o1', gx: 1, gy: 0, rot: 90 } };
+    expect(reservationBreaches(vorher, { relations: [umgeraeumt] }, laeuft)).toEqual([]);
+  });
+
+  it('eine Reservierung setzt keine Schreibung, und ohne laufenden Auftrag sperrt keine', () => {
+    const erfunden = { relations: [vorher.relations![0]!, { ...vorher.relations![1]!, props: { qty: 3, tier: 'pack', reservedFor: 'o1' } }] };
+    expect(reservationBreaches(vorher, erfunden, laeuft)).toEqual([{ edge: 'h2', item: 'kraut', order: 'o1', change: 'added' }]);
+    expect(reservationBreaches(vorher, null, () => false)).toEqual([]);
   });
 });
