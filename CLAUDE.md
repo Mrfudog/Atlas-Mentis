@@ -249,7 +249,8 @@ wiederkommen, werden sie neu geschrieben.
 - **Vier Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite, `print` auf dem Blatt hinter „Print" (T-110). **Eigene
-  Ansichten** legt man im Register an (Registry › Views, E-030 b); gewählt
+  Ansichten** legt man im Register an (Registry › Views, E-030 b; die
+  erste ist der Handzettel `handout`); gewählt
   werden sie nur, wo ohnehin gewählt wird — die Kachel und der Druck. Die
   vier, nach denen ein Ort fragt (`PLACE_VIEWS`), lassen sich umbauen, nicht
   löschen. **Die Kurzansicht** (`quick`) steht auch als Popup an
