@@ -809,7 +809,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `languages` *Language articles*
+- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*
 
 **Geerbte Felder**
 
@@ -1576,7 +1576,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Feature
 
-`Feature` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Feature` · erbt von `Rule` ← `Choices` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1585,6 +1585,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Choices`* — `choices` *array*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1608,6 +1609,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"

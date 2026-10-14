@@ -305,6 +305,10 @@ export const relations: Record<string, RelationDef> = {
    * (`chosenResult`, D8), also erreicht eine Änderung am Artikel jede
    * Figur. Eine Antwort, deren Wahl es nicht mehr gibt, ist verwaist und
    * bleibt stehen, bis jemand sie löscht.
+   *
+   * An einem Merkmal, das mehrfach gewährt wird, sagen `by` und `level`,
+   * zu welcher Kante `grants` die Antwort gehört (T-107, E-027): die
+   * Attributssteigerung auf Stufe 4 und die auf 8 sind zwei Antworten.
    */
   chose: {
     type: 'chose',
@@ -318,6 +322,8 @@ export const relations: Record<string, RelationDef> = {
       properties: {
         choice: { type: 'string', title: 'Choice' },
         picks: { type: 'array', items: { type: 'string' }, title: 'Picks' },
+        by: { type: 'string', title: 'Granted by' },
+        level: { type: 'number', min: 1, max: 20, title: 'At level' },
       },
     },
   },

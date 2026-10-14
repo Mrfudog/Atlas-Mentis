@@ -991,6 +991,23 @@ Sprachen an einem Tisch Sinn ergeben, sagt die Kampagne
 Kante, weil Übungen Namen halten und die Maske für Namen aus einer Art
 schon Häkchen zeigt.
 
+**Ein Merkmal, mehrfach gewährt, fragt jedes Mal** (T-107, E-027). Die
+Attributssteigerung ist ein Merkmal der Klasse wie jedes andere: ein
+Artikel, den der Kämpfer auf Stufe 4, 6, 8 … bekommt (`grants` mit
+`props.level`). Ihre Wahl steht am Merkmal — Steigerung oder Talent, +1
+auf zwei Attribute, dasselbe zweimal erlaubt —, und eine Änderung daran
+wirkt an jeder Klasse und jeder Figur. Damit sieben Gewährungen sieben
+Antworten tragen und nicht eine, merkt sich die Antwort, zu welcher Kante
+sie gehört (`chose` mit `props.by` und `props.level`). Die Alternative
+wäre eine Wahl je Stufe an der Klasse gewesen („asi-4", „asi-8") — dann
+stünde dieselbe Frage dreizehnmal da, und wer sie ändert, ändert sie
+dreizehnmal. Eine ältere Antwort ohne Stufe gilt für die erste Gewährung,
+also verliert keine Figur, was sie gewählt hat. Was nur ein Weg von zweien
+ist, sagt die Wahl selbst (`onlyIf`), und eine Vorgabe (`default`) zeigt
+die Attributspunkte sofort; erlaubt die Kampagne keine Talente
+(`Campaign.feats`), bleibt nur die Steigerung, und die Frage nach dem Weg
+entfällt.
+
 **Ein Attributsverfahren ist ein Artikel** (E-016 a). Standardreihe,
 Punktekauf und Würfeln sind drei Formen derselben Frage, und die Leitung
 wollte eigene dazu erfinden — den Gruppenpool, bei dem alle dieselben sechs

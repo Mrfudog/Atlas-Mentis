@@ -478,6 +478,40 @@ function gewaehrt(wb: Werkbank, ent: Entity, roh: unknown, tag: 'classFeature' |
   }
 }
 
+/**
+ * **Die Attributssteigerung fragt selbst** (T-107, E-027): +2 auf ein
+ * Attribut oder +1 auf zwei (dasselbe zweimal heisst +2), wahlweise ein
+ * Talent. Bei 5e.tools (2014) ist sie Text; die Wahl steht am Merkmal, und
+ * weil die Klasse es auf mehreren Stufen gewährt, antwortet die Figur je
+ * Stufe (`chose` mit `props.by`/`props.level`). Die 2024er-Klassen
+ * bringen das Talent je Stufe schon mit (`featProgression`) — ihr Merkmal
+ * sagt nichts von „by 2" und bekommt keine Wahl. Migration 042 schreibt
+ * dieselben Einträge an die vorhandenen Merkmale.
+ */
+export const ASI_WAHLEN: Choice[] = [
+  {
+    id: 'improvement',
+    kind: 'option',
+    from: { options: [{ key: 'asi', label: 'Increase ability scores' }, { key: 'feat', label: 'Take a feat instead' }] },
+    default: ['asi'],
+    note: 'Ability Score Improvement',
+  },
+  {
+    id: 'ability-scores',
+    kind: 'ability',
+    count: 2,
+    bonus: [1, 1],
+    repeat: true,
+    from: { values: [...ATTR] },
+    onlyIf: { choice: 'improvement', pick: 'asi' },
+    note: '+2 to one ability score or +1 to two',
+  },
+  { id: 'feat', kind: 'feat', count: 1, from: { interfaces: ['Feat'] }, onlyIf: { choice: 'improvement', pick: 'feat' }, note: 'Feat' },
+];
+
+/** Eine Attributssteigerung nach 2014: „increase one ability score of your choice by 2". */
+const ASI_TEXT = /increase one ability score of your choice by 2/i;
+
 const merkmal = (art: 'classFeature' | 'subclassFeature'): Zuordnung => ({
   art,
   tag: art,
@@ -502,6 +536,7 @@ const merkmal = (art: 'classFeature' | 'subclassFeature'): Zuordnung => ({
       text = text.replace(new RegExp(`\\b${String(e['level'])}(st|nd|rd|th) level`, 'g'), 'a level that grants this feature');
     }
     wb.prosa(ent, text);
+    if (ASI_TEXT.test(text) && !wb.karte(ent, 'Choices')['choices']) wb.karte(ent, 'Choices')['choices'] = structuredClone(ASI_WAHLEN);
   },
 });
 
