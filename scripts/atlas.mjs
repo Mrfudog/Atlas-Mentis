@@ -13,7 +13,10 @@
  *   node scripts/atlas.mjs undo <id> [--dry-run] [--force]
  *
  * Liest `ATLAS_URL` (Vorgabe https://dev.ttrpg.fuchsbau.io) und
- * `ATLAS_DEV_TOKEN` (ein API-Token, `atm_…` — Zugang.md › API-Tokens). Ohne
+ * `ATLAS_DEV_TOKEN` (ein API-Token, `atm_…` — Zugang.md › API-Tokens).
+ * Fehlt das Token, geht die Anfrage ohne eigenen Authorization-Kopf hinaus:
+ * in einer Cloud-Sitzung mit Network secret setzt ihn der Proxy (T-106),
+ * und die Sitzung sieht das Token nie. Ohne
  * Abhängigkeiten: Node 22 und sonst nichts, damit es in jeder Sitzung
  * läuft, die das Repository hat.
  *
@@ -24,7 +27,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
-import { URLSearchParams } from 'node:url';
+import { URL, URLSearchParams } from 'node:url';
 
 /* Hinter einem Proxy (Cloud-Sitzung) nimmt Nodes fetch `HTTPS_PROXY` nur
    mit `NODE_USE_ENV_PROXY=1`, und das muss beim Start gesetzt sein — also
@@ -55,12 +58,15 @@ function stirb(text, code = 1) {
 }
 
 async function api(pfad, body, method) {
-  if (!TOKEN) stirb('ATLAS_DEV_TOKEN fehlt — ein API-Token des Kontos (docs/Betrieb.md › Werkzeugzugang).', 2);
   let res;
   try {
     res = await fetch(`${BASE}${pfad}`, {
       method: method ?? (body === undefined ? 'GET' : 'POST'),
-      headers: { authorization: `Bearer ${TOKEN}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
+      headers: {
+        /* Ohne Token keinen Kopf: den setzt dann der Proxy (Network secret, T-106). */
+        ...(TOKEN ? { authorization: `Bearer ${TOKEN}` } : {}),
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch (error) {
@@ -81,8 +87,15 @@ const zeige = (x) => console.log(JSON.stringify(x, null, 2));
 const pruefeAntwort = (r) => {
   if (r.ok) return r.json;
   if (flag('--json')) zeige(r.json);
-  stirb(`${r.status}: ${r.json?.error ?? 'Fehler'}${r.status === 401 ? ' — Token ungültig, abgelaufen oder widerrufen.' : ''}`);
+  stirb(`${r.status}: ${r.json?.error ?? 'Fehler'}${r.status === 401 ? ` — ${grund401()}` : ''}`);
 };
+
+/** Wer bei 401 was prüfen soll — hängt daran, woher das Token kam. */
+function grund401() {
+  if (TOKEN) return 'ATLAS_DEV_TOKEN ungültig, abgelaufen oder widerrufen.';
+  const host = new URL(BASE).host;
+  return `kein ATLAS_DEV_TOKEN gesetzt, und das Network secret für ${host} fehlt oder ist abgelaufen (docs/Betrieb.md › Werkzeugzugang).`;
+}
 
 /** Eine Massenänderung lesbar: Zahl, Beispiele, Ablehnungen. */
 function bericht(r) {
@@ -206,6 +219,6 @@ switch (cmd) {
   bulks                                die letzten Massenänderungen
   undo <id> [--dry-run] [--force]      eine zurücknehmen
 
-ATLAS_URL und ATLAS_DEV_TOKEN — docs/Betrieb.md › Werkzeugzugang.`);
+ATLAS_URL und ATLAS_DEV_TOKEN (oder ein Network secret am Proxy) — docs/Betrieb.md › Werkzeugzugang.`);
     if (cmd && cmd !== 'help') process.exit(2);
 }
