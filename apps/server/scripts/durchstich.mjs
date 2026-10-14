@@ -1014,6 +1014,32 @@ try {
     }
   }
 
+  /* ------------------------------------ Talente wirken Zauber (T-089) */
+  {
+    /* Migration 049 nimmt `Feat` an `casts` dazu — einmal, auch wenn sie
+       zweimal läuft —, und danach nimmt die Prüfung eine Kante vom Talent. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-talentzauber-'));
+    const name = 'zzz_durchstich_talente_wirken_zauber.sql';
+    try {
+      await pool.query(`update relation_def set from_ifaces = array_remove(from_ifaces, 'Feat') where type = 'casts'`);
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '049_talente_wirken_zauber.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await migrate(pool, { env: {} }, ordner);
+      const { rows } = await pool.query(`select from_ifaces from relation_def where type = 'casts'`);
+      const von = rows[0]?.from_ifaces ?? [];
+      pruefe('Talentzauber: casts nimmt Feat genau einmal', von.filter((x) => x === 'Feat').length === 1 && von.includes('Ancestry'), JSON.stringify(von));
+    } finally {
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------ Schreibrechte je Ebene (T-098) */
   {
     /* `app_user_layer` gibt es nur in Postgres: eine eigene Ebene anlegen,

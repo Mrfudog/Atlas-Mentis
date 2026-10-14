@@ -319,9 +319,17 @@ function ausruestung(wb: Werkbank, roh: unknown): string {
   return zeilen.join('\n');
 }
 
-/** `{choose: {from: [...]}}`-Zauberlisten (`additionalSpells`) als `casts`. */
-function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown): void {
+/**
+ * `{choose: {from: [...]}}`-Zauberlisten (`additionalSpells`) als `casts`.
+ *
+ * `nurWenn`: der Block ist eine von mehreren Möglichkeiten (Magic Initiate:
+ * Barden- oder Klerikerzauber …). Dann wird nichts fest angelegt — eine
+ * Kante gilt immer —, sondern jede Wahl hängt an der Möglichkeit, und die
+ * festen Zauber werden eine Wahl mit Vorgabe (T-089).
+ */
+function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown, nurWenn?: { choice: string; pick: string }): void {
   for (const block of liste(roh)) {
+    const fest: string[] = [];
     const b = block as Knoten;
     for (const modus of ['innate', 'known', 'prepared', 'expanded'] as const) {
       const nachStufe = b[modus] as Record<string, unknown> | undefined;
@@ -350,8 +358,20 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown): void {
                 level: ab && ab >= 1 && ab <= 20 ? ab : undefined,
                 count: Number((s as Knoten)['count'] ?? 1),
                 from: { interfaces: ['Spell'] },
+                ...(nurWenn ? { onlyIf: nurWenn } : {}),
                 note: [c.split('|').map((t) => t.replace('=', ' ').replace(/;/g, ' or ')).join(', '), uses].filter(Boolean).join(' · '),
               });
+            } else if (c && typeof c === 'object' && Array.isArray((c as Knoten)['from'])) {
+              /* `{choose: {from: ["hex", …], count: 2}}`: eine Wahl aus genannten Zaubern. */
+              const ziele = liste((c as Knoten)['from']).map((x) => wb.finde('spell', String(x).replace(/#c$/, '').split('|')));
+              wahl(wb, ent, 'spells', {
+                kind: 'spell',
+                count: Number((c as Knoten)['count'] ?? 1),
+                from: { interfaces: ['Spell'] },
+                ...(nurWenn ? { onlyIf: nurWenn } : {}),
+                note: [`one of ${liste((c as Knoten)['from']).map(String).join(', ')}`, uses].filter(Boolean).join(' · '),
+              });
+              for (const [i, z] of ziele.entries()) if (!z) wb.ctx.insLeere('spell', String(liste((c as Knoten)['from'])[i]));
             } else wb.notiz('Zauber ohne Wahl und ohne Namen (als Text belassen)');
             continue;
           }
@@ -361,12 +381,19 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown): void {
             wb.ctx.insLeere('spell', s);
             continue;
           }
+          if (nurWenn) {
+            fest.push(ziel.id);
+            continue;
+          }
           const props: Record<string, unknown> = { mode: modus === 'expanded' ? 'known' : modus };
           if (uses) props['uses'] = uses;
           if (ab && ab >= 1 && ab <= 20) props['fromLevel'] = ab;
           wb.kante(ent, 'casts', ziel.id, props);
         }
       }
+    }
+    if (nurWenn && fest.length) {
+      wahl(wb, ent, 'spells', { kind: 'spell', count: fest.length, from: { interfaces: ['Spell'] }, default: fest, onlyIf: nurWenn, note: 'given with this option' });
     }
   }
 }
@@ -765,10 +792,34 @@ export const CHARAKTERBAU: Zuordnung[] = [
         skill: e['skillProficiencies'], language: e['languageProficiencies'], tool: e['toolProficiencies'],
         weapon: e['weaponProficiencies'], armor: e['armorProficiencies'],
       });
+      talentZauber(wb, ent, e['additionalSpells']);
       wb.prosa(ent, wb.text(e['entries']));
     },
   },
 ];
+
+/**
+ * **Die Zauber eines Talents** (T-089): stand bis 14.10. in `genutzt` und
+ * wurde doch nie gelesen — Drow High Magic trug seine drei Zauber nur im
+ * Text. Ein Block wie bei einer Abstammung (`casts`); mehrere Blöcke sind
+ * Möglichkeiten (Magic Initiate: je Klasse eine Liste), also erst eine Wahl
+ * `option` und dahinter die Zauberwahlen dieser Möglichkeit.
+ */
+function talentZauber(wb: Werkbank, ent: Entity, roh: unknown): void {
+  const bloecke = liste(roh) as Knoten[];
+  if (bloecke.length <= 1) {
+    zusatzzauber(wb, ent, roh);
+    return;
+  }
+  const options = bloecke.map((b, i) => {
+    const label = typeof b['name'] === 'string' ? b['name'] : `Option ${i + 1}`;
+    return { key: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `option-${i + 1}`, label };
+  });
+  wahl(wb, ent, 'spell list', { kind: 'option', count: 1, from: { options } });
+  const ids = ((wb.karte(ent, 'Choices')['choices'] as Choice[] | undefined) ?? []).map((c) => c.id);
+  const choice = ids[ids.length - 1]!;
+  for (const [i, b] of bloecke.entries()) zusatzzauber(wb, ent, b, { choice, pick: options[i]!.key });
+}
 
 /* Die Abschnitte, die Felder sind und keine Merkmale. */
 const KEIN_MERKMAL = /^(age|alignment|size|speed|languages|ability score increase|ability score increases|creature type|subrace|subraces)$/i;
