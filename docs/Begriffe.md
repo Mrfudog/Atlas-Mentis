@@ -426,6 +426,7 @@ und welche gilt, sagt der Ort und kein Schalter:
 | **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 | **Print** | „Print" an der Artikelseite | Was auf ein Blatt A4 gehört — ohne Knöpfe und Seitenspalte |
+| **Search** | Das „+" an einem Treffer der übergreifenden Suche (T-138) | Was über Name, Art, Ebene und Herausgeber hinaus hilft, den richtigen Treffer zu erkennen — Bild, Beschreibung, ein, zwei Werte |
 
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es an diesen Orten
 nicht. Ein Verweis ist ein Verweis, und eine Artikelseite ist eine
@@ -437,7 +438,9 @@ Leitung wissen will) ist die erste, „Spielertisch" könnte die nächste
 sein — im Register angelegt und dort gewählt, wo ohnehin gewählt
 wird: auf der Kachel und beim Drucken. Die Leitung wollte festlegen, was
 erscheint, ohne Code zu ändern; dass dafür niemand an jedem Ort wählen
-muss, hält die vier fest.
+muss, hält die fünf fest. Das „+" der Suche ist darum **eine Ansicht und
+kein Sonderfall**: die Leitung stellt im Register ein, was ein
+aufgeklappter Treffer zeigt, wie bei jeder anderen.
 
 **Was eine Ansicht zeigt, steht einmal, global** — eine Liste von
 Elementen, darin ganze Typen oder einzelne Felder —, und **ein Artikel
@@ -1499,7 +1502,11 @@ Das Material **verlässt das Inventar nicht mehr**, es wird für den Auftrag
 **reserviert**. Gebunden ist es so wie beim Gang (es reicht nicht für
 zwei), aber es liegt sichtbar, wo es lag — im Gepäck der Figur oder in der
 Truhe der Gruppe —, und wer nachsieht, findet es dort mit dem Vermerk, für
-welchen Auftrag. Was bei einem Fehlschlag verloren geht, ist eine **Regel
+welchen Auftrag. **Die Sperre steht am Server** (T-134), nicht nur in der
+Maske: eine Sperre, die nur die Oberfläche kennt, umgeht jede Anfrage,
+die nicht durch die Oberfläche kommt, und das Material wäre zweimal
+verkauft. Frei wird es, wenn der Auftrag endet — oder die Leitung es
+sagt, denn am Tisch kommt es anders, als ein Auftrag es vorsieht. Was bei einem Fehlschlag verloren geht, ist eine **Regel
 des Tisches** (an der Kampagne, später in einem Regelmodul): manche
 Runden verlieren das Material, andere nur den Fortschritt, wieder andere
 entscheiden es jedes Mal. Ohne Einstellung gilt, was das Rezept sagt.

@@ -36,6 +36,7 @@ import {
 } from '@nw/model';
 import type { User } from './auth.js';
 import { RevisionConflict, type Repository } from './repo.js';
+import { reservierteSperre } from './reservierung.js';
 
 interface Stand {
   alle: Entity[];
@@ -108,8 +109,17 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
     return { user, stand, laden, figur, kampagne, leitet };
   }
 
-  /** Laden, dann Inventar — jeweils gegen die gelesene Revision. */
-  async function schreiben(neu: Entity[], alt: Map<string, Entity>): Promise<{ code: number; error: string; issues?: unknown } | null> {
+  /**
+   * Laden, dann Inventar — jeweils gegen die gelesene Revision. Vorher fragt
+   * die Sperre für reservierte Stücke (T-134), dieselbe wie an jedem `PUT`:
+   * `sellPiece` lässt Reserviertes schon liegen, aber die Regel steht an
+   * einer Stelle und nicht an jeder Route ein bisschen.
+   */
+  async function schreiben(neu: Entity[], alt: Map<string, Entity>, user: User): Promise<{ code: number; error: string; issues?: unknown } | null> {
+    for (const e of neu) {
+      const gesperrt = await reservierteSperre(repo, user, alt.get(e.id), e);
+      if (gesperrt) return { code: 409, error: gesperrt };
+    }
     try {
       for (const e of neu) {
         const r = await schreibeGeprueft(e, alt.get(e.id)?.revision ?? null);
@@ -166,7 +176,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
         if (!user.isAdmin && !leitet) await repo.addAuthored(user.id, stueckId);
       }
       const neu = r.shop === laden ? [r.inventory] : [r.shop, r.inventory];
-      const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]));
+      const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]), user);
       if (fehler) {
         /* Ohne Kauf kein Stück: was eben angelegt wurde, hält niemand. */
         if (angelegt) await repo.deleteEntity(angelegt);
@@ -216,7 +226,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
       const r = sellPiece(laden, inventar, String(request.body?.edge ?? ''), Number.isFinite(qty) ? qty : 1, stand.map);
       if ('refused' in r) return reply.code(409).send({ error: GRUND[r.refused], refused: r.refused });
       const neu = r.shop === laden ? [r.inventory] : [r.shop, r.inventory];
-      const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]));
+      const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]), user);
       if (fehler) return reply.code(fehler.code).send(fehler);
       const stueck = (inventar.relations ?? []).find((x) => x.id === String(request.body?.edge ?? ''))?.to;
       /* Eine beliebige Instanz, die niemand mehr hält, fällt weg (T-150) — der Laden zählt den Grundartikel. */

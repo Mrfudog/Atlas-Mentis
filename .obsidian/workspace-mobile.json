@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/Betrieb.md",
+                "file": "VTT/Areas.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Betrieb"
+              "title": "Areas"
             }
           }
         ]
@@ -177,6 +177,14 @@
   },
   "active": "0f563dc26f82184d",
   "lastOpenFiles": [
+    "apps/web/test/suche.test.ts",
+    "apps/web/src/app/suche/suche.ts",
+    "apps/web/src/app/suche",
+    "apps/web/src/app/kern/suche.ts",
+    "apps/server/test/suche.test.ts",
+    "apps/server/migrations/065_ansicht_suche.sql",
+    "VTT/Backbone Concept.md",
+    "docs/Betrieb.md",
     "docs/Architektur.md",
     "VTT/Umsetzung.md",
     "VTT/Features.md",
@@ -191,7 +199,6 @@
     "20_Decision_Log.md",
     "Obsidian/Start.md",
     "broken links output.md",
-    "VTT/Backbone Concept.md",
     "VTT/Data Definitions.md",
     "VTT/Decision Log.md",
     "VTT/Project Plan.md",

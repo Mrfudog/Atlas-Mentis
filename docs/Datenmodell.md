@@ -468,7 +468,7 @@ flowchart LR
 | G8 | **Fallenlassen und Verstauen haben feste Kosten, egal wohin** (D58, REQ-225): Einstellung `handActions` (`drop:free action, stow:bonus action`, Werte aus `DrawTime`; ein Wert ausserhalb der Leiter gilt nicht). **In der Hand** ist, was an `mainHand`/`offHand` liegt, oder ohne Platz `tier: held`. **Fallen gelassen** wird an Ort und Stelle: die `holds`-Kante bleibt, verliert Platz und Rasterlage und bekommt `tier: ground` — das Stück gehört der Figur weiter und hat keine Ziehstufe. **Verstaut** wird an einen freien Platz, der keine Hand ist, oder an die erste freie Stelle im Raster (`tier: pack`). Der Gurt ist eine freie Aktion (`slotDraw` `belt`). | Rechenwerk (`handActions`, `inHand`) |
 | G9 | **Wie eine Kampagne Inventar zählt, ist ein Wort an der Kampagne** (T-127): `Campaign.inventory` — `grid` (Raster nach Basils Blatt, Vorgabe), `weight` (Gewicht mit Tragestufen) oder `slots` (je Stapel ein Slot, ein Stapel fasst `Item.stackSize`; Fassung `Inventory.capacity`). Gelesen nur über `inventoryRulesOf`; wandert mit T-132 in ein Modul, dann ändert sich, wo diese Funktion nachsieht. **Gewicht** ist Menge × `Item.weight`, mit dem Inhalt der Behälter; die Stufen nach der Variante aus dem Spielerhandbuch: bis 5 × STÄ leicht, bis 10 × belastet, bis 15 × schwer (zugleich die Tragfähigkeit), darüber zu viel, je Grösse vervielfacht (`loadStage`, `sizeFactor`). Ohne Stärke keine Stufe. | `inventoryRulesOf`, `loadStage`, `slotsUsed` |
 | G10 | **Ein Stück wandert, indem seine `holds`-Kante wandert** (T-127): `moveHeld` nimmt sie aus dem einen Inventar und legt sie ins andere — Figur ↔ Gruppe, in einen Behälter, eine Stufe hinauf; weniger als der Stapel teilt ihn. **Die Lage bleibt zurück** (`gx`, `gy`, `rot`, `slot`: sie galt im alten Behälter), und liegt derselbe Gegenstand drüben lose im Fach, wächst dessen Stapel. Kein Ziel ist das Stück selbst oder was darin steckt (`insideOf`). Geschrieben wird erst das Ziel, dann die Quelle — bricht es dazwischen ab, liegt es doppelt und nicht nirgends. **Das Gruppeninventar** (`Party` `carries` `Inventory`, REQ-183) schreibt, wer am Tisch der Kampagne sitzt (nicht `spectator`); die Gruppe selbst nicht. **Ein Behälter in einem eigenen Inventar** ist mit dessen Inventar eigen (der Rucksack in Rooks Gepäck), der Gegenstand nicht. | `moveHeld`, `apps/server/test/inventar.test.ts` |
-| G11 | **Reserviert ist ein Stapel, nicht ein Gegenstand** (T-127, Schnittstelle für T-128): `holds.props.reservedFor` nennt den Artikel, der ihn braucht (ein Handwerksauftrag). Das Stück bleibt, wo es liegt, und gehört weiter der Figur; verschieben, teilen und herausnehmen geht nicht, bis die Reservierung fällt. An der Kante wie die Drehung. | `reservedFor`, `reserve`, `moveHeld` (`refused: 'reserved'`) |
+| G11 | **Reserviert ist ein Stapel, nicht ein Gegenstand** (T-127, Schnittstelle für T-128): `holds.props.reservedFor` nennt den Artikel, der ihn braucht (ein Handwerksauftrag). Das Stück bleibt, wo es liegt, und gehört weiter der Figur; verschieben, teilen und herausnehmen geht nicht, bis die Reservierung fällt — der Server prüft es (T-134). An der Kante wie die Drehung. | `reservedFor`, `reserve`, `moveHeld` (`refused: 'reserved'`), `reservationBreaches` |
 
 Offen: wie viele Ladungen ein Stück am Tisch noch hat (ein Stand am
 Gegenstand oder an `holds`).
@@ -1067,6 +1067,16 @@ flowchart LR
   Stapel wird geteilt (`reserveIn`). Reserviert wandert nichts. Das löst
   in der Seite das Binden in `crafting.props.put` (D55) ab — gebunden ist
   es so wie dort, aber es bleibt sichtbar, wo es liegt.
+- **Gesperrt wird am Server** (T-134, `reservationBreaches`): ein `PUT`
+  oder `DELETE`, das ein reserviertes Stück eines **laufenden** Auftrags
+  wegnimmt, ändert (Menge, Gegenstand, Reservierung) oder eine
+  Reservierung erfindet, bekommt 423 mit „reserved for crafting order …".
+  Umräumen im selben Behälter (Raster, Platz, Drehung, Griffweite) geht.
+  Frei wird es durch Abschluss oder Abbruch, durch die Leitung (Knopf
+  „Release" im Inventar) oder indem der Auftrag gelöscht wird — dann wie
+  ein Abbruch. Ein Inventar mit Reserviertem und ein Gegenstand, der
+  irgendwo reserviert liegt, lassen sich nicht löschen. Laden (T-133) und
+  Übernahme (T-130) fragen dieselbe Funktion (`reservierteSperre`).
 - **Fortschritt** (`orderNeed`): nennt das Rezept `checks`, zählt jede
   gelungene Probe eins; sonst zählen Arbeitstage, und am Ende entscheidet
   eine Probe. Die Probe rechnet gegen den SG aus `craftCheck` (mit den
@@ -1179,8 +1189,8 @@ flowchart LR
 
 ## 10. Ansichten und Anordnung
 
-Vier Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
-E-030 b):
+Fünf Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
+E-030 b; `search` seit T-138):
 
 | Ansicht | Wo | Zeigt |
 |---|---|---|
@@ -1188,11 +1198,12 @@ E-030 b):
 | `quick` | eine Kachel auf dem Board, die Vorschau, das Popup, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
 | `full` | die Artikelseite | alles |
 | `print` | „Print" an der Artikelseite: ein Blatt A4 (`/artikel/:id/print`) | Beschreibung, alle Felder ausser dem Vorbereitungsstand, Prosa, Teile, Abschnitte — ohne Seitenspalte; Statblock, Zauber, Gegenstand wie im Buch |
+| `search` | das „+" an einem Treffer der übergreifenden Suche (T-138) | Bild, Beschreibung und die Felder, die die Art dafür wählt; Art, Ebene und Herausgeber stehen in der Trefferzeile, sie sind keine Felder |
 | eigene, z. B. `handout` | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt — der Handzettel: Beschreibung, Absatz, Vorlesetext |
 
 **Ansichten sind Zeilen und werden im Register bearbeitet** (Register ›
 Views, T-110): anlegen (als Abschrift einer anderen), umbenennen, ordnen,
-löschen — die vier, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
+löschen — die fünf, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
 Ansicht eine **globale Anordnung**: Elemente in ihrer Reihenfolge, ein
 `fields`- oder `prose`-Element mit Einträgen „ganzer Typ" (`Spell` — ein
 neues Feld erscheint von selbst) oder „Typ.Feld" (`Spell.level` — bleibt
