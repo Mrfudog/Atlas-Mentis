@@ -53,6 +53,7 @@ import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Laden } from './laden';
+import { Liegengelassen } from './liegen';
 import { Werkstatt } from './werkstatt';
 import { Abschnitte } from './abschnitte';
 import { Fluss } from './fluss';
@@ -131,7 +132,7 @@ interface Feld {
     Statblock,
     Zauber,
     Gegenstand,
-    Laden, Werkstatt,
+    Laden, Liegengelassen, Werkstatt,
     Abschnitte,
     Fluss,
     FassungsKasten,
@@ -628,6 +629,9 @@ interface Feld {
                     @if (ladenwaren(); as lw) {
                       <nw-laden [waren]="lw" [id]="e.id" />
                     }
+                  }
+                  @case ('liegen') {
+                    <nw-liegengelassen [sitzung]="e" />
                   }
                   @case ('fluss') {
                     <nw-fluss [besitzer]="e" />

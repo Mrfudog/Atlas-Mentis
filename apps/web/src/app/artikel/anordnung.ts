@@ -78,6 +78,7 @@ export interface Stueck {
     | 'laden'
     | 'bild'
     | 'karte'
+    | 'liegen'
     | 'verlinkt';
   text?: string;
   /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
@@ -307,6 +308,12 @@ export function anordnen(
            Werkbank selbst — als lose Felder stünden sie doppelt da. */
         felderDa.add('CraftingOrder');
         out.push({ id: el.id, art: 'handwerk' });
+        break;
+      /* Was an der Sitzung läuft (`live`): bisher zeichnet die Seite davon
+         das Liegengelassene und „End session" (T-140); Szene, Kampf und
+         Karte stehen in den Feldern, bis Play sie übernimmt. */
+      case 'live':
+        out.push({ id: el.id, art: 'liegen' });
         break;
       /* Die Waren eines Ladens (T-129): gerechnet am Server (`refs.shop`). */
       case 'wares':
