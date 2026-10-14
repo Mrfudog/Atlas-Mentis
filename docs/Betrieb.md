@@ -78,16 +78,54 @@ hätte. Gemerkt hätte man es beim ersten Aufsetzen hier.
 
 **`deploy/deploy.sh`** tut auf dem Server, in dieser Reihenfolge:
 
+0. prüfen, ob es schreiben darf: das Verzeichnis der Umgebung und jedes
+   unter `backups/` — sonst bricht es ab, bevor es etwas tut
+   ([Ausrollen schlägt fehl](#ausrollen-schlägt-fehl));
 1. das neue Abbild holen — schlägt das fehl, läuft das alte unberührt weiter;
 2. die Datenbank sichern (`backups/<zeit>.dump`, die letzten 20 bleiben);
 3. das Verzeichnis der Bilder anlegen und dem Benutzer `node` im Abbild
    geben (`daten/bilder`, uid 1000) und neue Bilder nach `backups/bilder/`
-   holen (`bilder-sichern.sh`, [Bilder](#bilder));
+   holen (`bilder-sichern.sh`, [Bilder](#bilder)) — gehört `daten/bilder`
+   danach nicht uid 1000, bricht es ab;
 4. das laufende Abbild als `previous-image` merken;
 5. `IMAGE=` in `.env` setzen und `docker compose up -d` — die Migrationen
    laufen beim Start;
 6. warten, bis `/api/health` antwortet, sonst die letzten Logzeilen zeigen
    und mit Fehler enden.
+
+## Ausrollen schlägt fehl
+
+**`… ist für deploy nicht schreibbar (gehört root:root)`** — `deploy.sh`
+läuft als `deploy` und schreibt ins Verzeichnis der Umgebung (`.env`,
+`previous-image`) und nach `backups/` (die Sicherung vor dem Wechsel, die
+Bilder in `backups/bilder/`, nachts `backups/nacht/`). Gehört eines davon
+jemand anderem, bricht es **vor** dem Holen ab, und das laufende Abbild
+bleibt unberührt (T-074). Die Meldung nennt den Befehl; als root auf dem
+Server, für prod:
+
+```sh
+sudo chown -R deploy:deploy /srv/atlas/prod/backups && sudo chmod -R u+rwX /srv/atlas/prod/backups
+```
+
+Danach den Lauf in GitHub neu starten (*Re-run failed jobs*). Für das
+Verzeichnis der Umgebung selbst **ohne** `-R`: darunter liegt `daten/db`,
+und das gehört Postgres im Container.
+
+So geschah es am 13.10. auf prod: `cannot create backups/<zeit>.dump:
+Permission denied`. `bootstrap.sh` hatte `backups/nacht` mit `install -d`
+angelegt, und `install` gibt nur dem letzten Verzeichnis den Eigentümer —
+`backups/` selbst gehörte root. Beim ersten Ausrollen lief noch keine
+Datenbank, also wurde nichts gesichert, und es fiel nicht auf.
+`bootstrap.sh` legt jede Stufe jetzt einzeln an; ein zweiter Lauf
+(ungefährlich, Passwörter bleiben) setzt auf einem bestehenden Server den
+Eigentümer von `backups/` zurecht, nicht aber den von Verzeichnissen
+darunter — dafür der Befehl oben.
+
+**`daten/bilder gehört …, nicht 1000`** — die Bilder schreibt der Server
+als Benutzer `node` (uid 1000) im Abbild. `deploy.sh` setzt das selbst
+(mit dem Abbild, ohne sudo); hält es nicht, etwa weil `daten/` auf einer
+Platte liegt, die keine Eigentümer kennt, steht der Befehl in der Meldung:
+`sudo chown 1000:1000 /srv/atlas/prod/daten/bilder`.
 
 ## Den Server einrichten — Schritt für Schritt (einmal)
 

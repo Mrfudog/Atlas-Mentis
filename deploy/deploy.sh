@@ -17,6 +17,31 @@ KEEP="${KEEP_BACKUPS:-20}"
 [ -f .env ] || { echo ".env fehlt — siehe docs/Betrieb.md" >&2; exit 1; }
 [ -f compose.yml ] || { echo "compose.yml fehlt" >&2; exit 1; }
 
+# Schreiben dürfen, bevor etwas geschieht (T-074). Am 13.10. brach prod erst
+# nach dem Holen mit „cannot create backups/….dump: Permission denied“ ab —
+# backups/ gehörte root. Gefragt wird hier, mit einer Meldung, die den
+# Befehl gleich nennt. Geprüft wird jedes Verzeichnis darunter, denn
+# bilder-sichern.sh legt in backups/bilder/ Unterverzeichnisse an und der
+# nächtliche Cron schreibt nach backups/nacht/.
+nicht_schreibbar() {
+  echo "$1 ist für $(id -un) nicht schreibbar (gehört $(stat -c '%U:%G' "$1")). Einmal auf dem Server:" >&2
+  echo "  sudo chown ${2:+$2 }$(id -un):$(id -gn) $3 && sudo chmod ${2:+$2 }u+rwX $3" >&2
+  echo "Siehe docs/Betrieb.md › Ausrollen schlägt fehl." >&2
+  exit 1
+}
+# Das Verzeichnis selbst ohne -R: darunter liegt daten/db, und das gehört
+# Postgres im Container.
+[ -w . ] || nicht_schreibbar "$PWD" "" "$PWD"
+if [ -d backups ]; then
+  fremd="$(find backups -type d ! -writable -print -quit)"
+  [ -z "$fremd" ] || nicht_schreibbar "$fremd" -R "$PWD/backups"
+  # -w sagt, was die Rechte erlauben; eine Probedatei, ob es auch geht
+  # (nur lesbar eingehängt, voll).
+  probe="backups/.probe-$$"
+  { : > "$probe"; } 2>/dev/null || nicht_schreibbar backups -R "$PWD/backups"
+  rm -f "$probe"
+fi
+
 # Ein kurzlebiger Zugang aus CI, wenn das Paket privat ist. Er gilt nur so
 # lange wie der Lauf, der ihn mitbringt; auf dem Server bleibt nichts liegen.
 if [ -n "${GHCR_TOKEN:-}" ]; then
@@ -43,6 +68,13 @@ fi
 # Bind-Mount als root an; darum hier, mit dem Abbild selbst, ohne sudo.
 docker run --rm --user 0 --entrypoint sh -v "$PWD/daten:/d" "$IMAGE" \
   -c 'mkdir -p /d/bilder && chown 1000:1000 /d/bilder'
+# Und nachsehen, ob es gehalten hat: gehört daten/bilder nicht uid 1000,
+# kann der Server kein Bild ablegen, und das merkt erst, wer hochlädt.
+[ "$(stat -c %u daten/bilder)" = 1000 ] || {
+  echo "daten/bilder gehört $(stat -c '%u:%g' daten/bilder), nicht 1000 (node im Abbild):" >&2
+  echo "  sudo chown 1000:1000 $PWD/daten/bilder" >&2
+  exit 1
+}
 [ -x ./bilder-sichern.sh ] && ./bilder-sichern.sh
 
 # Das laufende Abbild merken, damit „zurück" ein Befehl ist und keine Suche.
