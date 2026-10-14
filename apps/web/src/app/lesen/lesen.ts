@@ -7,7 +7,7 @@ import type { VarScopes } from '@nw/model';
 import { Api, type LeseBuch, type LeseStueck, type LeseTreffer, type LeseZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Text } from '../artikel/text';
-import { Vorschau } from '../artikel/vorschau';
+import { KurzLink } from '../kern/kurzansicht';
 
 /** Was ein Abschnitt als Text zeigt, in dieser Reihenfolge; der Rest der Prosafelder danach. */
 const ZUERST = ['ReadAloud.readaloud', 'Description.description', 'Prose.paragraph'];
@@ -45,9 +45,10 @@ interface Abschnitt {
  * Links das Inhaltsverzeichnis (am Telefon ausklappbar) mit der Suche im
  * Buch, rechts ein Kapitel am Stück: Vorlesetext und Leitungstext als
  * Kasten, Tabellen wie im Text, Karten als Bild, Begegnungen mit ihren
- * Teilnehmern. **Ein Verweis im Text öffnet die Vorschau** (`quick`)
- * neben dem Text, statt die Seite zu verlassen; mit gedrückter Taste geht
- * er wie überall auf die Artikelseite.
+ * Teilnehmern. **Ein Verweis im Text öffnet die Kurzansicht** (`quick`)
+ * als Popup am Verweis, statt die Seite zu verlassen — dieselbe wie
+ * überall (`nw-kurzpopup`, T-093); mit gedrückter Taste geht er wie
+ * überall auf die Artikelseite.
  *
  * **Der Lesestand gehört dem Konto**, nicht dem Browser: gemerkt wird der
  * Abschnitt oben am Bildschirm, und wer wiederkommt, liest dort weiter
@@ -57,15 +58,24 @@ interface Abschnitt {
  */
 @Component({
   selector: 'nw-lesen',
-  imports: [RouterLink, FormsModule, Text, Vorschau],
+  imports: [RouterLink, FormsModule, Text, KurzLink],
   template: `
-    <div class="leser" [class.mit-vorschau]="!!vorschau()">
+    <div class="leser">
       <div class="kopf">
         <nav aria-label="Breadcrumb" class="brot">
           <a routerLink="/campaign">Campaign</a>
           <span aria-hidden="true">›</span>
           @if (buch(); as b) {
-            <a [routerLink]="['/artikel', b.layer.id]">{{ b.layer.name }}</a>
+            <a [routerLink]="['/artikel', b.layer.id]" [nwQuick]="b.layer.id">{{ b.layer.name }}</a>
+            <!-- Kapitel › Abschnitt (T-093): wo man gerade liest. -->
+            @for (z of pfad(); track z.id; let letzte = $last) {
+              <span aria-hidden="true">›</span>
+              @if (letzte) {
+                <span aria-current="location">{{ z.name }}</span>
+              } @else {
+                <a [href]="'#s-' + z.id" (click)="$event.preventDefault(); gehe(z.id)">{{ z.name }}</a>
+              }
+            }
           } @else {
             <span>Book</span>
           }
@@ -151,7 +161,7 @@ interface Abschnitt {
                       <img [src]="k.bild" [alt]="k.name" loading="lazy" />
                     }
                     <figcaption>
-                      <a [routerLink]="['/artikel', k.id]">{{ k.name }}</a>
+                      <a [routerLink]="['/artikel', k.id]" [nwQuick]="k.id">{{ k.name }}</a>
                       @if (k.text) {
                         <span class="dim"> · {{ k.text }}</span>
                       }
@@ -161,7 +171,7 @@ interface Abschnitt {
                 @for (k of a.kaempfe; track k.id) {
                   <div class="kampf">
                     <span class="leg">Encounter</span>
-                    <a [routerLink]="['/artikel', k.id]">{{ k.name }}</a>
+                    <a [routerLink]="['/artikel', k.id]" [nwQuick]="k.id">{{ k.name }}</a>
                     @if (k.wer.length) {
                       <span class="dim"> — {{ k.wer.join(', ') }}</span>
                     }
@@ -189,11 +199,6 @@ interface Abschnitt {
             }
           </main>
 
-          @if (vorschau(); as v) {
-            <div class="vorschau-ort">
-              <nw-vorschau [id]="v" (zu)="vorschau.set(null)" />
-            </div>
-          }
         </div>
       } @else if (!fehler()) {
         <p class="dim leer">Loading…</p>
@@ -221,7 +226,6 @@ export class Lesen {
   protected readonly laedt = signal(false);
   protected readonly aktuell = signal<string | null>(null);
   protected readonly tocOffen = signal(false);
-  protected readonly vorschau = signal<string | null>(null);
   protected readonly treffer = signal<LeseTreffer[] | null>(null);
   protected frage = '';
   protected readonly scopes: VarScopes = {};
@@ -243,12 +247,8 @@ export class Lesen {
     });
     const scroll = () => this.nachScroll();
     window.addEventListener('scroll', scroll, { passive: true });
-    /* Im Einfangen, damit der `routerLink` des Verweises nicht zuerst geht. */
-    const fang = (ev: MouseEvent) => this.verweis(ev);
-    this.host.nativeElement.addEventListener('click', fang, true);
     inject(DestroyRef).onDestroy(() => {
       window.removeEventListener('scroll', scroll);
-      this.host.nativeElement.removeEventListener('click', fang, true);
       clearTimeout(this.merkUhr);
     });
   }
@@ -310,6 +310,23 @@ export class Lesen {
           })),
       };
     });
+  });
+
+  /**
+   * Der Brotkrumenpfad hinter dem Buch (T-093, REQ-248): die Einträge des
+   * Verzeichnisses über dem Abschnitt, der oben steht — Kapitel ›
+   * Abschnitt. Die Titelseite (Tiefe 0) ist das Buch selbst und steht
+   * schon davor.
+   */
+  protected readonly pfad = computed<LeseZeile[]>(() => {
+    const toc = this.buch()?.toc ?? [];
+    const i = toc.findIndex((z) => z.id === this.aktuell());
+    if (i < 0) return [];
+    const raus: LeseZeile[] = [toc[i]!];
+    for (let j = i - 1; j >= 0 && raus[0]!.depth > 1; j--) {
+      if (toc[j]!.depth < raus[0]!.depth) raus.unshift(toc[j]!);
+    }
+    return raus.filter((z) => z.depth > 0);
   });
 
   /** Die Stücke in Lesereihenfolge, je mit dem ersten Eintrag, der es nennt. */
@@ -431,22 +448,6 @@ export class Lesen {
     } catch (x) {
       this.fehler.set(x instanceof Error ? x.message : String(x));
     }
-  }
-
-  /**
-   * Ein Verweis im Text öffnet die Vorschau daneben. Gefangen wird vor dem
-   * `routerLink` des Verweises (im Einfangen am Wirt, `constructor`): mit
-   * Strg, ⌘, Shift oder der mittleren Taste geht er wie überall.
-   */
-  private verweis(ev: MouseEvent): void {
-    if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
-    const a = (ev.target as HTMLElement | null)?.closest?.('a');
-    if (!a || a.classList.contains('direkt') || !a.closest('nw-text')) return;
-    const m = /^\/artikel\/([^/?#]+)/.exec(a.getAttribute('href') ?? '');
-    if (!m) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    this.vorschau.set(decodeURIComponent(m[1]!));
   }
 }
 
