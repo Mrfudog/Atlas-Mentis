@@ -302,6 +302,11 @@ h1 {
   font-size: 0.85rem;
   width: 100%;
 }
+.maske input[readonly] {
+  background: transparent;
+  border-style: dashed;
+  color: var(--dim);
+}
 .maske input[type='checkbox'] {
   align-self: flex-start;
   width: 1rem;
@@ -337,6 +342,15 @@ h1 {
   border-radius: 4px;
   padding: 0.5rem 0.6rem;
   margin: 0.4rem 0;
+}
+/* Auf dem Telefon passt Art, Ziel und × nicht in eine Zeile: das Ziel
+   bricht um, statt die Seite seitlich scrollen zu lassen (T-090). */
+.kantenmaske .bkopf {
+  flex-wrap: wrap;
+}
+.kantenmaske .bkopf nw-wahl {
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 .kantenmaske .bkopf select {
   flex: 1;
