@@ -5,10 +5,11 @@ import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
 
-/* Der Fertigungsauftrag (T-128): starten mit Material aus Figur und
-   Gruppe (reserviert), Proben, Bestätigung durch die Leitung, Erfolg
-   verbraucht, Abbruch gibt frei, Misserfolg nach der Regel der Kampagne.
-   Erfundene Artikel, kein Buchinhalt. */
+/* Der Fertigungsauftrag (T-128, T-165): starten mit Material aus Figur
+   und Gruppe (reserviert), Proben als Kreise, Bestätigung durch die
+   Leitung, Abschluss verbraucht und liefert, Abbruch gibt frei,
+   Misserfolg nach der Regel der Kampagne — angewandt beim Klick,
+   abgerechnet beim Abschluss. Erfundene Artikel, kein Buchinhalt. */
 
 const PW = 'nebel-wacht-am-tor';
 const ident = (name: string, id: string) => ({ Identity: { name, id, aliases: [] as string[] } });
@@ -23,7 +24,7 @@ function bestand(kampagne: Record<string, unknown> = {}): Entity[] {
     art('moerser', 'Item', 'Mortar', 'item-0002'),
     art('trank', 'Item', 'Draught', 'item-0003'),
     art('salbe', 'Recipe', 'Draught recipe', 'recipe-0001', {
-      components: { Recipe: { dc: 12, checks: 2, yieldCount: 2, onFailure: 'halfLost' } },
+      components: { Recipe: { dc: 12, checks: 2, yieldCount: 2, onFailure: 'All materials are lost.' } },
       relations: [
         { id: 's~1', type: 'needs', to: 'kraut', props: { qty: 3 } },
         { id: 's~2', type: 'needs', to: 'moerser', props: { qty: 1, consumed: false } },
@@ -61,6 +62,7 @@ async function aufbauen(kampagne: Record<string, unknown> = {}) {
 }
 
 const post = (wer: string, url: string, payload: unknown = {}) => app.inject({ method: 'POST', url, payload: payload as object, headers: { cookie: cookies[wer] ?? '' } });
+const put = (wer: string, url: string, payload: unknown = {}) => app.inject({ method: 'PUT', url, payload: payload as object, headers: { cookie: cookies[wer] ?? '' } });
 const get = (wer: string, url: string) => app.inject({ method: 'GET', url, headers: { cookie: cookies[wer] ?? '' } });
 const holdsVon = async (inv: string) => ((await repo.getEntity(inv))?.relations ?? []).filter((r) => r.type === 'holds');
 
@@ -87,7 +89,10 @@ describe('Fertigungsauftrag (T-128)', () => {
     expect(r.statusCode).toBe(200);
     const sicht = r.json();
     expect(sicht.kind).toBe('recipe');
-    expect(sicht.rules).toEqual({ failure: 'recipe', critSuccess: 'asSuccess', critFailure: 'asFailure', confirm: 'gm' });
+    expect(sicht.rules).toMatchObject({ failure: 'halfLost', critSuccess: 'asSuccess', critFailure: 'asFailure', confirm: 'gm', campaign: { id: 'k' } });
+    expect(sicht.rules.sentences[0]).toBe('On a failed check: the work fails and half the materials are lost.');
+    // Was die Quelle sagt, steht da — und gilt nicht (T-165).
+    expect(sicht.recipe.sourceFailure).toBe('All materials are lost.');
     expect(sicht.actors).toHaveLength(1);
     expect(sicht.actors[0]).toMatchObject({ id: 'f', learned: true });
     expect(sicht.actors[0].stock.map((s: { owner: string; qty: number }) => `${s.owner}:${s.qty}`).sort()).toEqual(['Ash:1', 'Ash:5', 'Band:1']);
@@ -110,8 +115,10 @@ describe('Fertigungsauftrag (T-128)', () => {
 
     const sicht = (await get('s', `/api/crafting/${id}`)).json();
     expect(sicht.order).toMatchObject({ unit: 'checks', needed: 2, progress: 0, outcome: 'open', check: { dc: 12 } });
+    // Je nötige Probe ein leerer Kreis.
+    expect(sicht.order.circles.map((c: { mark: unknown; open: boolean }) => [c.mark, c.open])).toEqual([[null, true], [null, true]]);
     expect(sicht.order.reserved).toHaveLength(3);
-    expect(sicht.order.may).toMatchObject({ roll: true, abort: true, confirm: false, fail: false });
+    expect(sicht.order.may).toMatchObject({ mark: true, roll: true, abort: true, confirm: false, fail: false, finish: false });
   });
 
   it('ein ungelerntes Rezept startet die Spielerin nicht, und fehlendes Material auch nicht', async () => {
@@ -121,19 +128,25 @@ describe('Fertigungsauftrag (T-128)', () => {
     expect(r.json().error).toContain('Moonleaf');
   });
 
-  it('Proben: die Spielerin würfelt, die Leitung bestätigt; Erfolg verbraucht und liefert', async () => {
+  it('Proben: die Spielerin würfelt, die Leitung bestätigt; der Abschluss verbraucht und liefert', async () => {
     const id = await starten();
     const p = await post('s', `/api/crafting/${id}/roll`, { total: 15 });
     expect(p.json()).toMatchObject({ pending: true, result: 'success' });
-    expect((await get('s', `/api/crafting/${id}`)).json().order.may.roll).toBe(false);
+    const wartet = (await get('s', `/api/crafting/${id}`)).json().order;
+    expect(wartet.circles[0]).toMatchObject({ mark: 'success', pending: true, total: 15, dc: 12 });
+    expect(wartet).toMatchObject({ progress: 0, waiting: 1 });
     expect((await post('s', `/api/crafting/${id}/confirm`, {})).statusCode).toBe(403);
     expect((await post('l', `/api/crafting/${id}/confirm`, {})).statusCode).toBe(200);
     expect((await get('l', `/api/crafting/${id}`)).json().order).toMatchObject({ progress: 1, outcome: 'open' });
 
     await post('l', `/api/crafting/${id}/roll`, { total: 13 });
     const o = (await get('l', `/api/crafting/${id}`)).json().order;
-    expect(o).toMatchObject({ progress: 2, outcome: 'succeeded' });
-    expect(o.rolls).toHaveLength(2);
+    // Entschieden, aber noch nicht abgerechnet: das Material ist weiter reserviert.
+    expect(o).toMatchObject({ progress: 2, outcome: 'open', result: 'succeeded', settle: 'success', may: { finish: true, roll: false } });
+    expect(o.circles).toHaveLength(2);
+    expect((await holdsVon('inv-f')).some((h) => h.props?.['reservedFor'] === id)).toBe(true);
+    expect((await post('s', `/api/crafting/${id}/finish`)).statusCode).toBe(200);
+    expect((await get('l', `/api/crafting/${id}`)).json().order.outcome).toBe('succeeded');
     const f = await holdsVon('inv-f');
     // Kraut verbraucht, Mörser zurück (nicht verbraucht), zwei Tränke dazu.
     expect(f.some((h) => h.props?.['reservedFor'])).toBe(false);
@@ -149,6 +162,7 @@ describe('Fertigungsauftrag (T-128)', () => {
     expect(await holdsVon('inv-g')).toEqual([]);
     // Danach ist er abgeschlossen.
     expect((await post('l', `/api/crafting/${id}/roll`, { total: 20 })).statusCode).toBe(409);
+    expect((await put('l', `/api/crafting/${id}/checks/0`, { mark: null })).statusCode).toBe(409);
   });
 
   it('ein gekauftes Stück (Instanz) zählt als Material seines Grundartikels (T-150)', async () => {
@@ -180,9 +194,15 @@ describe('Fertigungsauftrag (T-128)', () => {
     expect((await get('s', `/api/crafting/${id}`)).json().order.outcome).toBe('aborted');
   });
 
-  it('Misserfolg nach der Vorgabe: dem Rezept folgen (halfLost: die abgerundete Hälfte zurück)', async () => {
+  it('Misserfolg nach der Vorgabe der Kampagne, nicht des Rezepts (halfLost: die abgerundete Hälfte zurück)', async () => {
     const id = await starten();
     await post('l', `/api/crafting/${id}/roll`, { total: 5 });
+    const o = (await get('l', `/api/crafting/${id}`)).json().order;
+    expect(o).toMatchObject({ outcome: 'open', result: 'failed', settle: 'half' });
+    // Angewandt, aber noch nicht verbucht: je Stück, was verloren ginge.
+    expect(o.reserved.map((r: { item: string; qty: number; lost: number }) => `${r.item}:${r.qty}-${r.lost}`).sort()).toEqual(['kraut:1-1', 'kraut:2-1', 'moerser:1-0']);
+    expect(o.lines).toEqual([{ index: 0, note: 'Failure — the work fails, half the materials are lost.' }]);
+    expect((await post('l', `/api/crafting/${id}/finish`)).statusCode).toBe(200);
     expect((await get('l', `/api/crafting/${id}`)).json().order.outcome).toBe('failed');
     const kraut = (await holdsVon('inv-f')).filter((h) => h.to === 'kraut').reduce((n, h) => n + Number(h.props?.['qty']), 0);
     // 3 frei, von den 2 reservierten 1 zurück; aus der Truhe (1) nichts.
@@ -195,7 +215,10 @@ describe('Fertigungsauftrag (T-128)', () => {
     const id = await starten();
     const r = await post('s', `/api/crafting/${id}/roll`, { total: 5 });
     expect(r.json()).toMatchObject({ pending: false, result: 'failure' });
-    expect((await get('s', `/api/crafting/${id}`)).json().order).toMatchObject({ progress: 0, outcome: 'open' });
+    const o = (await get('s', `/api/crafting/${id}`)).json().order;
+    expect(o).toMatchObject({ progress: 0, outcome: 'open', result: 'open' });
+    // Der Fehlschlag zählt nicht: zwei Kreise fehlen weiter.
+    expect(o.circles.map((c: { mark: unknown }) => c.mark)).toEqual(['failure', null, null]);
     expect((await holdsVon('inv-f')).filter((h) => h.props?.['reservedFor'] === id)).toHaveLength(2);
   });
 
@@ -205,10 +228,72 @@ describe('Fertigungsauftrag (T-128)', () => {
     await post('l', `/api/crafting/${id}/roll`, { total: 5 });
     expect((await get('l', `/api/crafting/${id}`)).json().order).toMatchObject({ outcome: 'open', may: { fail: true } });
     await post('l', `/api/crafting/${id}/roll`, { total: 9, nat: 1 });
+    expect((await get('l', `/api/crafting/${id}`)).json().order).toMatchObject({ result: 'failed', settle: 'none' });
+    expect((await post('l', `/api/crafting/${id}/finish`)).statusCode).toBe(200);
     expect((await get('l', `/api/crafting/${id}`)).json().order.outcome).toBe('failed');
     // Kraut weg, der Mörser kommt zurück.
     const f = await holdsVon('inv-f');
     expect(f.filter((h) => h.to === 'kraut').reduce((n, h) => n + Number(h.props?.['qty']), 0)).toBe(3);
     expect(f.find((h) => h.to === 'moerser')?.props).toEqual({ qty: 1, tier: 'pack' });
+  });
+
+  it('Kreise per Klick: ✓, ✗, leer — ein ✗ wendet die Regel an, Zurückklicken nimmt sie zurück', async () => {
+    await aufbauen({ craftConfirm: 'player' });
+    const id = await starten();
+    const sicht = async () => (await get('s', `/api/crafting/${id}`)).json().order;
+    expect((await put('s', `/api/crafting/${id}/checks/0`, { mark: 'success' })).statusCode).toBe(200);
+    expect(await sicht()).toMatchObject({ progress: 1, result: 'open' });
+    expect((await put('s', `/api/crafting/${id}/checks/0`, { mark: 'failure' })).json()).toMatchObject({ outcome: 'failed' });
+    const gescheitert = await sicht();
+    expect(gescheitert).toMatchObject({ progress: 0, result: 'failed', settle: 'half', may: { finish: true } });
+    // Nach dem Ende keine leeren Kreise mehr.
+    expect(gescheitert.circles).toHaveLength(1);
+    // Zurück auf leer: die Regel ist zurückgenommen, nichts verbucht.
+    expect((await put('s', `/api/crafting/${id}/checks/0`, { mark: null })).json()).toMatchObject({ outcome: 'open' });
+    const zurueck = await sicht();
+    expect(zurueck).toMatchObject({ progress: 0, result: 'open', settle: null });
+    expect(zurueck.circles.map((c: { mark: unknown }) => c.mark)).toEqual([null, null]);
+    expect((await holdsVon('inv-f')).filter((h) => h.props?.['reservedFor'] === id)).toHaveLength(2);
+    // Unsinn und ein Kreis, den es nicht gibt.
+    expect((await put('s', `/api/crafting/${id}/checks/0`, { mark: 'critSuccess' })).statusCode).toBe(400);
+    expect((await put('s', `/api/crafting/${id}/checks/7`, { mark: 'success' })).statusCode).toBe(409);
+    expect((await post('s', `/api/crafting/${id}/finish`)).statusCode).toBe(409);
+    // Ein fremdes Konto setzt keinen Kreis.
+    await repo.putUser({ id: 'u_x', name: 'gast', passwordHash: await hashPassword(PW), isAdmin: false, actorIds: [], roles: { k: 'player' } });
+    cookies['x'] = await anmelden('gast');
+    expect((await put('x', `/api/crafting/${id}/checks/0`, { mark: 'success' })).statusCode).toBe(403);
+  });
+
+  it('ein Kreis der Spielerin wartet auf die Leitung, verwerfen leert ihn', async () => {
+    const id = await starten();
+    await put('s', `/api/crafting/${id}/checks/0`, { mark: 'success' });
+    expect((await get('l', `/api/crafting/${id}`)).json().order).toMatchObject({ progress: 0, waiting: 1, may: { confirm: true } });
+    expect((await post('l', `/api/crafting/${id}/confirm`, { accept: false })).statusCode).toBe(200);
+    const o = (await get('l', `/api/crafting/${id}`)).json().order;
+    expect(o).toMatchObject({ waiting: 0, progress: 0 });
+    expect(o.circles.map((c: { mark: unknown }) => c.mark)).toEqual([null, null]);
+  });
+
+  it('nach Tagen: erst arbeiten, dann ein Kreis; Fortschritt verloren heisst neue Tage', async () => {
+    await aufbauen({ craftFailure: 'progressLost', craftConfirm: 'player' });
+    const r = (await repo.getEntity('salbe'))!;
+    await repo.putEntity({ ...r, components: { ...r.components, Recipe: { dc: 12, days: 2 } } });
+    const id = await starten();
+    const sicht = async () => (await get('s', `/api/crafting/${id}`)).json().order;
+    expect(await sicht()).toMatchObject({ unit: 'days', daysLeft: 2, may: { work: true, roll: false } });
+    expect((await sicht()).circles).toEqual([expect.objectContaining({ mark: null, open: false })]);
+    expect((await put('s', `/api/crafting/${id}/checks/0`, { mark: 'success' })).statusCode).toBe(409);
+    await post('s', `/api/crafting/${id}/work`, { days: 2 });
+    expect(await sicht()).toMatchObject({ daysLeft: 0, progress: 2, may: { work: false, roll: true } });
+    await put('s', `/api/crafting/${id}/checks/0`, { mark: 'failure' });
+    expect(await sicht()).toMatchObject({ daysLeft: 2, progress: 0, result: 'open', may: { work: true } });
+    await post('s', `/api/crafting/${id}/work`, { days: 5 });
+    await put('s', `/api/crafting/${id}/checks/1`, { mark: 'success' });
+    expect(await sicht()).toMatchObject({ result: 'succeeded', settle: 'success' });
+    // Den ✗ zurücknehmen: kein Verlust mehr, die Tage reichen, der ✓ entscheidet allein.
+    await put('s', `/api/crafting/${id}/checks/0`, { mark: null });
+    const o = await sicht();
+    expect(o.circles[0]).toMatchObject({ mark: null, ignored: false });
+    expect(o).toMatchObject({ result: 'succeeded', lines: [{ index: 1, note: 'Success — the work is done.' }] });
   });
 });

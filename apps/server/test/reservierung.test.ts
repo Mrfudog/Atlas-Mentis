@@ -23,7 +23,7 @@ function bestand(kampagne: Record<string, unknown> = {}): Entity[] {
     art('moerser', 'Item', 'Mortar', 'item-0002'),
     art('trank', 'Item', 'Draught', 'item-0003'),
     art('salbe', 'Recipe', 'Draught recipe', 'recipe-0001', {
-      components: { Recipe: { dc: 12, checks: 2, yieldCount: 2, onFailure: 'halfLost' } },
+      components: { Recipe: { dc: 12, checks: 2, yieldCount: 2, onFailure: 'Half the materials are lost.' } },
       relations: [
         { id: 's~1', type: 'needs', to: 'kraut', props: { qty: 3 } },
         { id: 's~2', type: 'needs', to: 'moerser', props: { qty: 1, consumed: false } },

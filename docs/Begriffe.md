@@ -1559,7 +1559,23 @@ verkauft. Frei wird es, wenn der Auftrag endet — oder die Leitung es
 sagt, denn am Tisch kommt es anders, als ein Auftrag es vorsieht. Was bei einem Fehlschlag verloren geht, ist eine **Regel
 des Tisches** (an der Kampagne, später in einem Regelmodul): manche
 Runden verlieren das Material, andere nur den Fortschritt, wieder andere
-entscheiden es jedes Mal. Ohne Einstellung gilt, was das Rezept sagt.
+entscheiden es jedes Mal. **Und nur des Tisches** (T-165): das Rezept
+sagt, was seine Quelle vorschlägt, als Text, und es gilt nicht. Bis dahin
+konnte die Kampagne „dem Rezept folgen", und dann galt am Tisch für jedes
+Rezept etwas anderes, ohne dass man es am Auftrag sah. Jetzt steht am
+Rezept und am Auftrag ein Kasten mit den Regeln der Kampagne, ein Satz je
+Regel, und der Link dorthin, wo die Leitung sie ändert.
+
+Eine Probe am Auftrag ist ein **Kreis**, den man anklickt: einmal ✓,
+zweimal ✗, dreimal leer. Am Tisch wird gewürfelt und gesagt „geschafft"
+oder „daneben" — eine Summe einzutippen ist dort ein Umweg, und ein
+falscher Klick muss sich zurücknehmen lassen. Darum **speichert der
+Auftrag die Kreise und rechnet, was sie bewirken** (D8): ein ✗ wendet die
+Regel sofort an — der Fortschritt fällt, am reservierten Material steht,
+was verloren ginge —, und wer zurückklickt, nimmt es zurück. Gespeichert
+wäre die Wirkung eine zweite Stelle, die beim Zurückklicken jemand
+rückgängig machen müsste. **Endgültig wird es beim Abschluss**: erst dann
+wird abgerechnet und der Ertrag ins Inventar gelegt.
 
 ---
 

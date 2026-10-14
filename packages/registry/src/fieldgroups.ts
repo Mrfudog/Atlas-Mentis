@@ -2061,14 +2061,13 @@ export const fieldGroups = {
            Angabe gilt eine Probe am Ende, wie bisher. */
         checks: { type: 'number', title: 'Crafting checks', min: 1 },
         yieldCount: { type: 'number', title: 'Yield', default: 1 },
-        /* Was beim Misslingen passiert, gehört ins Rezept: sonst entscheidet
-           es jedes Mal die Laune am Tisch, und das merkt sich niemand. */
-        onFailure: {
-          type: 'string',
-          title: 'On a failure',
-          enum: ['materialsLost', 'halfLost', 'nothingLost'],
-          default: 'halfLost',
-        },
+        /* **Was die Quelle beim Misslingen vorgibt** — als Text, und es
+           gilt nicht (T-165): was ein Misserfolg kostet, ist eine Regel
+           des Tisches und steht an der Kampagne (`Campaign.craftFailure`).
+           Bis T-165 war es eine Auswahl, die über die Kampagnenregel
+           `recipe` galt; zwei Stellen für eine Regel hiessen, dass am Tisch
+           niemand wusste, welche zählt. */
+        onFailure: { type: 'string', title: 'Source: on a failure' },
       },
     },
   },
@@ -2085,7 +2084,9 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        progress: { type: 'number', title: 'Progress', min: 0, default: 0, readOnly: true },
+        /* Gearbeitete Tage (Rezepte in Tagen). Der Fortschritt in Proben
+           wird aus `checks` gerechnet und nicht gespeichert (T-165, D8). */
+        progress: { type: 'number', title: 'Days worked', min: 0, default: 0, readOnly: true },
         outcome: {
           type: 'string',
           title: 'Outcome',
@@ -2094,9 +2095,13 @@ export const fieldGroups = {
           readOnly: true,
         },
         started: { type: 'string', title: 'Started', readOnly: true },
-        /* Je Probe `{ total, nat, dc, result, by, at, note }`; `result:
-           'pending'` wartet auf die Leitung (`Campaign.craftConfirm`). */
-        rolls: { type: 'array', title: 'Rolls', items: { type: 'object' }, readOnly: true },
+        /* **Die Proben als Kreise** (T-165): je Kreis `{ mark, by, at,
+           total?, nat?, dc?, pending? }` oder `null` (leer); `mark` ist
+           `success`, `failure`, `critSuccess` oder `critFailure`. Was sie
+           bewirken, rechnet `tallyChecks` beim Lesen; `pending` wartet auf
+           die Leitung (`Campaign.craftConfirm`). Löste `rolls` ab
+           (Migration 071). */
+        checks: { type: 'array', title: 'Checks', items: { type: 'object' }, readOnly: true },
       },
     },
   },
@@ -2444,16 +2449,17 @@ export const fieldGroups = {
           enum: ['grid', 'weight', 'slots'],
           default: 'grid',
         },
-        /* **Die Regeln des Handwerks** (T-128): was eine misslungene Probe
-           tut, was eine natürliche 20 und 1, und ob eine Probe der
+        /* **Die Regeln des Handwerks** (T-128, T-165): was eine misslungene
+           Probe tut, was eine natürliche 20 und 1, und ob eine Probe der
            Spielenden erst mit der Leitung gilt. Gelesen über
-           `craftRulesOf`; wandert mit T-132 in ein Modul. `recipe` folgt
-           `Recipe.onFailure`, also der Quelle. */
+           `craftRulesOf`; wandert mit T-132 in ein Modul. **Nur hier** —
+           das Rezept nennt die Vorgabe seiner Quelle als Text, und sie
+           gilt nicht; die Auswahl `recipe` gibt es seit T-165 nicht mehr. */
         craftFailure: {
           type: 'string',
           title: 'Crafting: on a failed check',
-          enum: ['recipe', 'noProgress', 'progressLost', 'materialsLost', 'halfLost', 'nothingLost', 'custom'],
-          default: 'recipe',
+          enum: ['noProgress', 'progressLost', 'materialsLost', 'halfLost', 'nothingLost', 'custom'],
+          default: 'halfLost',
         },
         craftCritSuccess: {
           type: 'string',
