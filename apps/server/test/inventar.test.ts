@@ -53,6 +53,7 @@ describe('inventory of the running campaign', () => {
     expect(res.json()).toEqual({
       campaign: { id: 'camp_a', name: 'Runde A' },
       rules: 'weight',
+      stowing: 'anytime',
       parties: [{ id: 'pt_a', name: 'Runde A party', inventory: 'inv_pt', members: [{ id: 'pc_rook', name: 'Rook', inventory: null }] }],
     });
   });

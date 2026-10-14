@@ -15,6 +15,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  arriveUnstowed,
   currentCampaign,
   entityName,
   isInstance,
@@ -151,11 +152,13 @@ export function registerGeben(app: FastifyInstance, deps: GebenDeps): void {
       const werkstatt = stueckWerkstatt(deps, stand, kampagne);
       const r = await werkstatt.geben(inventar, item.id, qty, leitet ? null : user.id);
       if ('issues' in r) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: r.issues });
-      const gesperrt = await reservierteSperre(repo, user, inventar, r.inventory);
+      /* Beute und Geschenke liegen erst vor der Figur (T-140): verstaut wird am Tisch. */
+      const ankunft = arriveUnstowed(inventar, r.inventory, () => `${inventar.id}~holds-${randomUUID().slice(0, 8)}`);
+      const gesperrt = await reservierteSperre(repo, user, inventar, ankunft);
       let fehler: { code: number; body: unknown } | null = gesperrt ? { code: 423, body: { error: gesperrt } } : null;
       if (!fehler) {
         try {
-          const w = await deps.schreibeGeprueft(r.inventory, inventar.revision ?? null);
+          const w = await deps.schreibeGeprueft(ankunft, inventar.revision ?? null);
           if ('issues' in w) fehler = { code: 422, body: { error: 'Validierung fehlgeschlagen', issues: w.issues } };
         } catch (e) {
           if (!(e instanceof RevisionConflict)) throw e;

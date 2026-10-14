@@ -47,6 +47,8 @@ import {
   tableRole,
   partiesOf,
   inventoryRulesOf,
+  stowingRuleOf,
+  tableMovedOn,
   STATUS_COMPONENT,
   classParts,
   currentCampaign,
@@ -116,6 +118,7 @@ import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
 import { registerFiltergruppen } from './filtergruppen.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
+import { liegenlassen, registerLiegen } from './liegen.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
@@ -1102,6 +1105,8 @@ export function buildApp({
     if (url === '/api/filters' || url.startsWith('/api/filters/')) return;
     /* Kaufen und Verkaufen (T-133): die Route prüft die Figur selbst (`laden.ts`). */
     if (/^\/api\/shops\/[^/]+\/(buy|sell)$/.test(url) && request.method === 'POST') return;
+    /* Sitzungsende und Aufheben (T-140): die Routen prüfen Rolle und Zielinventar selbst (`liegen.ts`). */
+    if (/^\/api\/sessions\/[^/]+\/(end|pick-up)$/.test(url) && request.method === 'POST') return;
     /* Geben (T-150): die Route fragt `mayWrite` am Inventar selbst (`stueck.ts`). */
     if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
@@ -2287,6 +2292,8 @@ export function buildApp({
     return {
       campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null,
       rules: inventoryRulesOf(kampagne),
+      /* Wie lange Unverstautes liegen darf (T-140). */
+      stowing: stowingRuleOf(kampagne),
       parties: gruppen.map((p) => ({
         id: p.id,
         name: entityName(p),
@@ -2582,6 +2589,18 @@ export function buildApp({
   registerHandwerk(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene });
   /* Kaufen und Verkaufen im Laden (T-133): der Preis am Server, gegen die gelesene Revision. */
   registerLaden(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet), kampagnenEbene });
+  /* Liegengelassen (T-140): Sitzungsende und Aufheben. */
+  registerLiegen(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve,
+    schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet),
+    darfSchreiben: async (request, id) => {
+      const user = await viewerOf(request);
+      return !!user && mayWrite(user, await ownedBy(user), id);
+    },
+  });
   /* Geben (T-150): Beute, Geschenke, was die Leitung austeilt — als Instanz. */
   registerGeben(app, {
     repo,
@@ -3150,7 +3169,8 @@ export function buildApp({
        geprüft, damit nichts anderes geschieht (der fertige Stand unten),
        und beim Schreiben noch einmal, gesperrt (`putEntity`). */
     const erwartet = entity.revision ?? null;
-    const steht = (await repo.getEntity(entity.id))?.revision ?? null;
+    const vorherRoh = await repo.getEntity(entity.id);
+    const steht = vorherRoh?.revision ?? null;
     if (steht !== erwartet) return { konflikt: erwartet };
 
     /* **Reservierte Stücke bleiben, wie sie sind** (T-134): verkaufen,
@@ -3214,6 +3234,17 @@ export function buildApp({
       cards: Object.keys(entity.components ?? {}),
       ...(zurueck ? { fellBack: true } : {}),
     });
+    /* **Der Tisch zieht weiter** (T-140): wechselt an der Sitzung Szene,
+       Kampf oder Karte und gilt `immediately`, bleibt liegen, was nicht
+       verstaut ist. Nach dem Schreiben — die Sitzung steht dann schon. */
+    if (vorherRoh && tableMovedOn(vorherRoh, entity) && typeChain(registry, primaryInterface(entity)).includes('Session')) {
+      const kampagne = currentCampaign(new Map((await repo.listEntities()).map((e) => [e.id, e])), registry.settings ?? null);
+      if (kampagne && stowingRuleOf(kampagne) === 'immediately') {
+        await liegenlassen({ repo, roh, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet) }, entity.id, kampagne, 'movedOn');
+        const frisch = await repo.getEntity(entity.id);
+        if (frisch) return { code: 200, body: frisch };
+      }
+    }
     return { code: 200, body: ergebnis.stored };
   }
 

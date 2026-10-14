@@ -244,6 +244,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'leftBehind',
+    label: 'Left behind',
+    area: 'play',
+    does: 'marks what arrives in an inventory as not stowed yet; by the campaign’s rule, what is still unstowed when the session ends (or the table moves on) leaves the party’s and characters’ inventories and is kept at the session, from where it can be picked up again',
+    uses: {
+      [M + 'stowing.ts']: ['holds', 'leftBehind'],
+      [S + 'liegen.ts']: ['holds', 'leftBehind', 'memberOfParty'],
+      [W + 'artikel/liegen.ts']: ['leftBehind'],
+    },
+  },
+  {
     key: 'classes',
     label: 'Class pages',
     area: 'character',

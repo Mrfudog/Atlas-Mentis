@@ -2444,6 +2444,17 @@ export const fieldGroups = {
           enum: ['grid', 'weight', 'slots'],
           default: 'grid',
         },
+        /* **Wie lange Unverstautes liegen darf** (T-140): beliebig lange,
+           bis die Sitzung endet, oder bis der Tisch weiterzieht (Szene,
+           Kampf oder Karte der Sitzung wechseln). Danach bleibt es als
+           `leftBehind` an der Sitzung. Gelesen über `stowingRuleOf`;
+           wandert mit T-132 in ein Modul. */
+        stowing: {
+          type: 'string',
+          title: 'Unstowed items',
+          enum: ['anytime', 'bySessionEnd', 'immediately'],
+          default: 'anytime',
+        },
         /* **Die Regeln des Handwerks** (T-128): was eine misslungene Probe
            tut, was eine natürliche 20 und 1, und ob eine Probe der
            Spielenden erst mit der Leitung gilt. Gelesen über
