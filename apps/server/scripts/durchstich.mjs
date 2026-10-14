@@ -1041,6 +1041,37 @@ try {
     }
   }
 
+  /* ------------------------------------ Vorschaubild in der Übersicht (T-114) */
+  {
+    /* Migration 053 setzt `image` vorne in die Übersicht — in die
+       Grundanordnung und in die der Kreatur —, einmal, auch wenn sie
+       zweimal läuft; eine Art ohne eigene Übersicht bleibt, wie sie ist. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-vorschaubild-'));
+    const name = 'zzz_durchstich_vorschaubild.sql';
+    const ohneBild = (pfad) => `(select coalesce(jsonb_agg(x), '[]'::jsonb) from jsonb_array_elements(${pfad}) x where x->>'el' <> 'image')`;
+    try {
+      await pool.query(`update view_def set config = jsonb_set(config, '{layout}', ${ohneBild("config->'layout'")}) where key = 'overview'`);
+      await pool.query(`update interface_def set views = jsonb_set(views, '{overview}', ${ohneBild("views->'overview'")}) where name = 'Creature'`);
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '053_vorschaubild_in_der_uebersicht.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await migrate(pool, { env: {} }, ordner);
+      const v = (await pool.query(`select jsonb_path_query_array(config, '$.layout[*].el') as els from view_def where key = 'overview'`)).rows[0]?.els ?? [];
+      const c = (await pool.query(`select jsonb_path_query_array(views, '$.overview[*].el') as els from interface_def where name = 'Creature'`)).rows[0]?.els ?? [];
+      pruefe('Vorschaubild: image steht einmal vorne in der Übersicht und in der der Kreatur',
+        v[0] === 'image' && v.filter((x) => x === 'image').length === 1 && c[0] === 'image' && c.filter((x) => x === 'image').length === 1,
+        JSON.stringify({ v, c }));
+    } finally {
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------ Talente wirken Zauber (T-089) */
   {
     /* Migration 049 nimmt `Feat` an `casts` dazu — einmal, auch wenn sie

@@ -15,13 +15,15 @@ import type { Entity, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { QuelleText } from '../kern/quellen';
 import { Text } from './text';
+import { Bild, bildDes } from './bild';
 
 /** Was die Seitenspalte und die Überschrift schon sagen. */
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source', 'Status', 'Tags'];
 
 interface Stueck {
-  kind: 'text' | 'felder' | 'prosa' | 'teile';
+  kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild';
   key: string;
+  bild?: { wert: string; caption: string; alt: string };
   text?: string;
   felder?: { ref: string; label: string; wert: string; lang: boolean }[];
   prosa?: { ref: string; key: string; label: string; wert: string }[];
@@ -43,7 +45,7 @@ interface Stueck {
  */
 @Component({
   selector: 'nw-vorschau',
-  imports: [RouterLink, Text, QuelleText, KurzLink],
+  imports: [RouterLink, Text, QuelleText, KurzLink, Bild],
   template: `
     <aside class="vorschau" aria-label="Preview">
       <div class="vkopf">
@@ -65,6 +67,9 @@ interface Stueck {
           @switch (s.kind) {
             @case ('text') {
               <nw-text [text]="s.text!" [scopes]="scopes()" />
+            }
+            @case ('bild') {
+              <nw-bild [wert]="s.bild!.wert" groesse="thumb" [caption]="s.bild!.caption" [alt]="s.bild!.alt || name(e)" />
             }
             @case ('felder') {
               <dl>
@@ -276,7 +281,11 @@ export class Vorschau {
     const leer = view?.empty === 'show';
     const genommen = new Set<string>();
     for (const el of flach(layoutFor(r, 'quick', typ).layout)) {
-      if (el.el === 'description') {
+      if (el.el === 'image') {
+        /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
+        const bild = bildDes(e, r);
+        if (bild) raus.push({ kind: 'bild', key: el.id, bild });
+      } else if (el.el === 'description') {
         const d = (e.components?.['Description'] as { description?: string } | undefined)?.description;
         if (d) raus.push({ kind: 'text', key: el.id, text: d });
       } else if (el.el === 'fields') {
@@ -318,6 +327,8 @@ export class Vorschau {
         const fehlt = wert === undefined || wert === null || wert === '';
         if ((fehlt && !leer) || prop.derived) continue;
         if (comp === 'Description' && key === 'description') continue;
+        /* Das Bild zeichnet das Element `image`, nicht die Feldliste. */
+        if (prop.format === 'asset' || comp === 'Image') continue;
         if (prop.many && prop.format === 'long') continue;
         if (!nimmt(comp, key)) continue;
         genommen.add(`${comp}.${key}`);

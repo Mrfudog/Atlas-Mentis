@@ -364,6 +364,12 @@ Die Datei heisst nach ihrem Inhalt (`<sha256>.png`). Dasselbe Bild zweimal
 hochgeladen liegt einmal da, eine Datei ändert sich nie, und darum darf der
 Browser sie behalten, solange er nach diesem Namen fragt.
 
+Gezeigt wird ein Bild mit dem Block **`image`**, und wie gross, sagt der
+Ort und nicht ein Wähler: in der Listenzeile ein Daumennagel, auf der
+Karte die Vorschau, auf der Seite das ganze Bild. Eine Spieleransicht gibt
+es auch hier nicht — wer das Asset nicht sehen darf, bekommt in der Liste
+kein Bild und an der Adresse nichts.
+
 ---
 
 ## Ansicht

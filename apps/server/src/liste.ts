@@ -31,13 +31,14 @@ import {
   isBookPart,
   isInstance,
   LAYER_RELATION,
+  layoutFor,
   listColumns,
   primaryInterface,
   tagsOf,
   typeChain,
   versionGroups,
 } from '@nw/model';
-import type { Entity, PropertySchema, Registry } from '@nw/model';
+import type { Entity, LayoutElement, PropertySchema, Registry } from '@nw/model';
 
 /** Ein Artikel ohne Ebenenkante steht in der Liste unter „keine Ebene". */
 export const NO_LAYER = '∅';
@@ -66,6 +67,8 @@ interface IndexZeile {
   users: number;
   /** Die Werte der Spalten, Verweise schon als Namen. */
   cols: Record<string, unknown>;
+  /** Das Vorschaubild (T-114): die Asset-Id oder Adresse — nur, wenn `overview` ein Bild zeigt. */
+  image?: string;
   tags: string[];
   /** Die Kanten des Artikels (geteilt, nicht kopiert) — für `rel=`. */
   relations: NonNullable<Entity['relations']>;
@@ -81,7 +84,7 @@ export interface ListIndex {
   /** Id → Name, für alles, was dieser Betrachter sieht. */
   names: Map<string, string>;
   /** Je Art: Beschriftung, Bereich, `extends`-Kette und Spalten. */
-  types: Map<string, { label: string; area: string; chain: string[]; columns: Spalte[] }>;
+  types: Map<string, { label: string; area: string; chain: string[]; columns: Spalte[]; bild: boolean }>;
   registry: Registry;
 }
 
@@ -129,6 +132,7 @@ export function buildListIndex(
         area: areaOf(registry, typ),
         chain: typeChain(registry, typ),
         columns: listColumns(registry, typ),
+        bild: zeigtBild(registry, typ),
       };
       types.set(typ, t);
     }
@@ -176,6 +180,7 @@ export function buildListIndex(
         .toLowerCase(),
       users: nutzer.get(e.id)?.size ?? 0,
       cols,
+      ...(art.bild ? bildVon(e, art.chain, names) : {}),
       tags: tagsOf(e),
       relations: e.relations ?? [],
       ...(fassungen.has(e.id) ? { fassung: fassungen.get(e.id)! } : {}),
@@ -199,7 +204,7 @@ export function listProjection(registry: Registry): (e: Entity) => Entity {
     const typ = primaryInterface(e);
     let karten = je.get(typ);
     if (!karten) {
-      karten = [...new Set(['Identity', 'Source', 'Status', 'Tags', ...listColumns(registry, typ).map((c) => c.type)])];
+      karten = [...new Set(['Identity', 'Source', 'Status', 'Tags', ...(zeigtBild(registry, typ) ? ['Image', 'Asset'] : []), ...listColumns(registry, typ).map((c) => c.type)])];
       je.set(typ, karten);
     }
     const components: Entity['components'] = {};
@@ -209,6 +214,28 @@ export function listProjection(registry: Registry): (e: Entity) => Entity {
     }
     return { ...e, components };
   };
+}
+
+/** Zeigt `overview` dieser Art ein Bild (Element `image`, T-114)? Das Register sagt es, nicht der Code. */
+function zeigtBild(registry: Registry, typ: string): boolean {
+  const flach = (l: LayoutElement[]): LayoutElement[] => l.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]));
+  return flach(layoutFor(registry, 'overview', typ).layout).some((el) => el.el === 'image');
+}
+
+/**
+ * **Das Vorschaubild einer Zeile** (T-114): an einem Asset das Asset
+ * selbst, sonst `Image.image`. Ein Asset, das der Betrachter nicht sieht
+ * (es steht nicht in `names`), bleibt weg — die Zeile zeigte sonst ein
+ * Bild, das der Server dann verweigert.
+ */
+function bildVon(e: Entity, kette: string[], names: Map<string, string>): { image?: string } {
+  const asset = e.components?.['Asset'] as { ref?: unknown } | undefined;
+  if (kette.includes('Asset') && typeof asset?.ref === 'string' && asset.ref) return { image: e.id };
+  const wert = (e.components?.['Image'] as { image?: unknown } | undefined)?.image;
+  if (typeof wert !== 'string' || !wert.trim()) return {};
+  const w = wert.trim();
+  if (/^https?:\/\//i.test(w)) return { image: w };
+  return names.has(w) ? { image: w } : {};
 }
 
 // ------------------------------------------------------------------ Abfrage
@@ -275,6 +302,8 @@ export interface ListResult {
     status: string;
     users?: number;
     cols: Record<string, unknown>;
+    /** Das Vorschaubild (T-114). */
+    image?: string;
     tags?: string[];
     rels?: Record<string, string[]>;
     /** Die übrigen Fassungen dieser Sache (T-092, mit `versions=1`). */
@@ -524,6 +553,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       status: z.status,
       ...(z.users ? { users: z.users } : {}),
       cols: z.cols,
+      ...(z.image ? { image: z.image } : {}),
       ...(z.tags.length ? { tags: z.tags } : {}),
       ...(unter.has(z.id)
         ? {

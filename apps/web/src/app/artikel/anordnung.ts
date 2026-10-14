@@ -45,6 +45,8 @@ export interface Zelle {
   leer?: boolean;
   /** Leer, und die Ansicht zeigt leere Felder (`ViewDef.empty: 'show'`, T-110). */
   fehlt?: boolean;
+  /** Ein Bildfeld (`format: 'asset'`, T-114): gezeichnet als Vorschau, nicht als Id. */
+  bild?: string;
 }
 
 export interface Prosa {
@@ -71,8 +73,11 @@ export interface Stueck {
     | 'fluss'
     | 'ueberschrift'
     | 'absatz'
-    | 'kanten';
+    | 'kanten'
+    | 'bild';
   text?: string;
+  /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
+  bild?: { wert: string; caption: string; alt: string };
   zellen?: Zelle[];
   prosa?: Prosa[];
 }
@@ -141,6 +146,7 @@ export function feldZellen(r: Registry, e: Entity, name: (id: string) => string 
       const links = schema?.format === 'link' ? verweisZiele(wert, name) : undefined;
       out.push({
         ...(links?.length ? { links } : {}),
+        ...(schema?.format === 'asset' && typeof wert === 'string' ? { bild: wert } : {}),
         ref: `${comp}.${prop}`,
         comp,
         prop,
@@ -230,7 +236,13 @@ export function anordnen(
   layout: readonly LayoutElement[],
   zellen: readonly Zelle[],
   prosa: readonly Prosa[],
-  opt: { beschreibung: string | null; beschreibungZeigen?: boolean; rest: boolean },
+  opt: {
+    beschreibung: string | null;
+    beschreibungZeigen?: boolean;
+    rest: boolean;
+    /** Das Bild des Artikels (`bildDes`, T-114) — fürs Element `image`. */
+    bild?: { wert: string; caption: string; alt: string } | null;
+  },
 ): Stueck[] {
   const felderDa = new Set<string>();
   const prosaDa = new Set<string>();
@@ -281,6 +293,12 @@ export function anordnen(
         break;
       case 'heading':
         if (el.text) out.push({ id: el.id, art: 'ueberschrift', text: el.text });
+        break;
+      /* Das Bild des Artikels (T-114): `Image.image`, und an einem Asset
+         die eigene Datei. Seine Felder stehen dann nicht noch einmal da. */
+      case 'image':
+        ['Image.image', 'Image.caption', 'Image.alt'].forEach((x) => felderDa.add(x));
+        if (opt.bild) out.push({ id: el.id, art: 'bild', bild: opt.bild });
         break;
       case 'text':
         if (el.text) out.push({ id: el.id, art: 'absatz', text: el.text });

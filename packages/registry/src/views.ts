@@ -49,13 +49,17 @@ export const views: Record<string, ViewDef> = {
     composed: false,
     relations: false,
     bindings: false,
-    image: false,
+    image: true,
     /* **Eine Übersicht ist ein Satz.** Die Feldtabelle steht trotzdem hier,
        mit leerer Auswahl: so lässt sich je Artikelart **eine** Gruppe
        dazunehmen — die Art einer Kreatur, die Seltenheit eines
        Gegenstands —, ohne dass aus dem Verweis eine Tabelle wird. Leer
        heisst leer: solange niemand etwas ankreuzt, steht dort nur der Satz. */
+    /* Das Bild ist hier eine **Vorschau** neben dem Namen (T-114) — in
+       einer Listenzeile ein Daumennagel, im Satz nichts. Wer an einer Art
+       keine will, nimmt das Element an ihr weg. */
     layout: [
+      { id: 'ov-img', el: 'image' },
       { id: 'ov-desc', el: 'description' },
       { id: 'ov-f', el: 'fields', fields: [] },
     ],

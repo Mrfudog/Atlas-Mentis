@@ -484,3 +484,11 @@ p.leer {
   font-style: italic;
   color: var(--dim);
 }
+
+/* Das Bild des Artikels (T-114): ganz oben, so breit wie der Text, nie höher als der Schirm. */
+.hauptbild {
+  margin: 0.5rem 0 0.75rem;
+}
+.feldbild {
+  max-width: 12rem;
+}

@@ -21,7 +21,8 @@ export type Eingabe =
   | 'json'
   | 'verweis'
   | 'verweise'
-  | 'mehrfach';
+  | 'mehrfach'
+  | 'bild';
 
 export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   if (!p) return 'text';
@@ -46,6 +47,8 @@ export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   /* Ein Verweisfeld hält eine Artikel-Id; gewählt wird über die Suche der
      Liste (`nw-wahl`, W7), nicht durch Abtippen einer Id. */
   if (p.format === 'link') return 'verweis';
+  /* Ein Bild wird hochgeladen oder gewählt, nicht als Id getippt (T-114). */
+  if (p.format === 'asset') return 'bild';
   if ((Array.isArray(p.enum) && p.enum.length) || p.enumRef) return 'auswahl';
   if (p.type === 'boolean') return 'jaNein';
   if (p.type === 'number' || p.type === 'integer') return 'zahl';
