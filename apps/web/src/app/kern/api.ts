@@ -1101,6 +1101,10 @@ export interface KartenKontext {
   children: { id: string; name: string; frame: { x: number; y: number; w: number; h: number } }[];
   targets: Record<string, { name: string; type: string; image?: string }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
+  /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
+  turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
+  /** Nur für die Leitung: die Teilnehmer, und ob sie hier schon ein Token haben. */
+  combatants: { id: string; name: string; placed: boolean }[];
 }
 
 /** Was auf dem Tisch liegt (`GET /api/play`, T-115). */
