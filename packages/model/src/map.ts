@@ -15,6 +15,7 @@
 
 import type { Pt } from './sight.js';
 import type { Entity, EntityId, Relation } from './types.js';
+import { initiativeOrder, PARTICIPATES, type ParticipantProps } from './initiative.js';
 
 export const MAP_TYPE = 'Map';
 /** Die Karte, die `MapInfo` trägt — benannt nach der Art, die die Felder erklärt. */
@@ -228,6 +229,72 @@ export function addMarker(map: Entity, to: EntityId, at: Pt, id: string, kind: M
     ...map,
     relations: [...(map.relations ?? []), { id, type: MARKER_RELATION, to, props: { x: r4(at.x), y: r4(at.y), kind } }],
   };
+}
+
+// ------------------------------------------------------------ Spiel-Tokens
+
+/**
+ * **Teilnehmer auf die Karte** (T-117, REQ-135): je Artikel, der noch kein
+ * Token hier hat, ein Marker `kind: 'play'`, in einem Block um `centre`,
+ * ein Feld (`step`, in Anteilen der Breite) auseinander. Was schon steht,
+ * bleibt stehen — zweimal „Place combatants" setzt niemanden doppelt.
+ * Wie lange ein Spiel-Token lebt, ist E-039; bis dahin liegt es an der
+ * Karte wie jeder Marker.
+ */
+export function placeTokens(
+  map: Entity,
+  targets: readonly EntityId[],
+  centre: Pt,
+  step: number,
+  ar: number,
+  idFor: (to: EntityId) => string,
+): Entity {
+  const da = new Set(markersOf(map).map((m) => m.to));
+  const neu = [...new Set(targets)].filter((t) => t && !da.has(t));
+  if (!neu.length) return map;
+  const spalten = Math.ceil(Math.sqrt(neu.length));
+  const zeilen = Math.ceil(neu.length / spalten);
+  const dy = step / (ar > 0 ? ar : 1);
+  let e = map;
+  neu.forEach((to, i) => {
+    const x = centre.x + ((i % spalten) - (spalten - 1) / 2) * step;
+    const y = centre.y + (Math.floor(i / spalten) - (zeilen - 1) / 2) * dy;
+    e = addMarker(e, to, { x, y }, idFor(to), 'play');
+  });
+  return e;
+}
+
+/** Die Spiel-Tokens weg (nach dem Kampf); Vorbereitetes und die Gruppe bleiben. */
+export function clearPlayTokens(map: Entity): Entity {
+  return { ...map, relations: (map.relations ?? []).filter((r) => r.type !== MARKER_RELATION || markerOf(r).kind !== 'play') };
+}
+
+/**
+ * **Wer dran ist und wer danach** (REQ-144): die Artikel hinter dem
+ * laufenden und dem nächsten Teilnehmer, aus der Reihe, wie die Leitung
+ * sie sieht (`initiativeOrder`, `Encounter.turn`). Vor Runde 1 niemand.
+ * Was davon an Spielende geht, entscheidet der Server (`/api/maps/:id/context`).
+ */
+export function turnOf(
+  entities: ReadonlyMap<EntityId, Entity>,
+  encounter: Entity,
+): { current?: Relation; next?: Relation } {
+  const k = (encounter.components?.['Encounter'] ?? {}) as { round?: unknown; turn?: unknown };
+  if (!(Number(k.round) >= 1)) return {};
+  const order = initiativeOrder(entities, (encounter.relations ?? []).filter((r) => r.type === PARTICIPATES && r.to));
+  if (!order.length) return {};
+  const i = Math.min(order.length - 1, Math.max(0, Number(k.turn) || 0));
+  const current = order[i];
+  const next = order.length > 1 ? order[(i + 1) % order.length] : undefined;
+  return { ...(current ? { current } : {}), ...(next ? { next } : {}) };
+}
+
+/** Der Tischname eines Teilnehmers für die Leitung — die Angabe an der Kante, sonst der Name. */
+export function participantLabel(entities: ReadonlyMap<EntityId, Entity>, r: Relation): string {
+  const p = (r.props ?? {}) as ParticipantProps;
+  if (p.label) return p.label;
+  const t = entities.get(r.to);
+  return ((t?.components?.['Identity'] as { name?: string } | undefined)?.name ?? t?.name) || '?';
 }
 
 // ------------------------------------------------------------- Unterkarten

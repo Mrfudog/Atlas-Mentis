@@ -243,6 +243,29 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   Leitung, ohne versteckte Marker — dieselbe Rechnung (`redactMap`), im
   Browser, als Vorschau.
 
+## Tokens im Spiel und wer dran ist (T-117)
+
+- **Teilnehmer auf die Karte** (REQ-135): läuft auf dieser Karte ein Kampf
+  (die Begegnung, die die Sitzung führt, oder eine laufende mit `onMap`),
+  setzt *Place combatants* jeden Teilnehmer ohne Token als Marker
+  `kind: play` in die Mitte des Ausschnitts, ein Feld auseinander; die
+  Leitung zieht sie an ihren Platz. *Clear play tokens* räumt nach dem
+  Kampf auf — Vorbereitetes und die Gruppe bleiben. Wie lange ein
+  Spiel-Token lebt (Sitzung, Kampagne, Begegnung), ist E-039.
+- **Live:** ein Zug ist eine Änderung der Karte und geht über den
+  Live-Kanal an jedes Gerät, gesiebt je Empfänger.
+- **Wer dran ist** (REQ-144): ein goldener Ring um das Token des
+  Laufenden, ein gestrichelter um das des Nächsten, und in der Zeile
+  darunter „Round 2 · Ghoul’s turn · next: Rook". Spielende sehen den
+  Ring nur, wo ihre Initiative-Reihe den Teilnehmer zeigt (D53, D58) —
+  ein Gegner, dessen Zug noch nicht kam, ist auch nicht „next".
+- **Token ohne Bild:** die Anfangsbuchstaben des Namens, den der Server
+  schickt — für Spielende ist das der Deckname, solange der Name nicht
+  freigegeben ist (REQ-178, `redactEntity`). Tokenbilder aus Assets der
+  Klasse „Token" kommen mit T-119.
+- **Spielende ziehen die eigene Figur** noch nicht — wer es erlaubt und
+  wo das steht, ist E-040.
+
 ## Was noch fehlt
 
 - **Licht, Sperren und Zonen** in der Seite (REQ-140, 193, 208) — der
@@ -252,3 +275,5 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
 - **Kacheln** für grosse Karten (REQ-138, `Map.tiles`).
 - **Bewegung**, die `mapBarriers` auch auswertet.
 - **Mehrere Tokens auf einmal** verschieben.
+- **Spielende ziehen die eigene Figur** (E-040), **Lebensdauer** der
+  Spiel-Tokens (E-039).
