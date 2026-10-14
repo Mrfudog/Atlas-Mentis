@@ -1485,6 +1485,25 @@ alle zwei Stunden eine, und erst wenn genug gelungen sind, ist das Stück
 fertig. Das Rezept sagt es mit `checks`; die Zeit (`time`) bleibt daneben
 stehen, weil sie liest, wer plant, und die Proben zählt, wer würfelt.
 
+In der Seite ist ein laufendes Handwerk ein **Auftrag** (T-128), und der
+ist eine **Instanz des Rezepts**: dasselbe, was eine Wache für ihren
+Statblock ist. Er liest beim Rezept, was dort steht, und hält selbst, was
+nur ihm gehört — wie weit er ist, wie er ausging, welche Proben fielen.
+Weicht ein Auftrag ab (die Leitung setzt den SG für diesen einen höher),
+steht nur das am Auftrag; eine Korrektur am Rezept erreicht jeden anderen.
+Eine Instanz des **Endprodukts** wäre die schlechtere Wahl gewesen: drei
+Tränke sind ein Stapel im Inventar, und was im Inventar liegt, ist ein
+Verweisziel — eine Instanz ist keines.
+
+Das Material **verlässt das Inventar nicht mehr**, es wird für den Auftrag
+**reserviert**. Gebunden ist es so wie beim Gang (es reicht nicht für
+zwei), aber es liegt sichtbar, wo es lag — im Gepäck der Figur oder in der
+Truhe der Gruppe —, und wer nachsieht, findet es dort mit dem Vermerk, für
+welchen Auftrag. Was bei einem Fehlschlag verloren geht, ist eine **Regel
+des Tisches** (an der Kampagne, später in einem Regelmodul): manche
+Runden verlieren das Material, andere nur den Fortschritt, wieder andere
+entscheiden es jedes Mal. Ohne Einstellung gilt, was das Rezept sagt.
+
 ---
 
 ## Laden, Ware und Rabatt

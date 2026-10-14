@@ -2066,6 +2066,34 @@ export const fieldGroups = {
   },
 
   /**
+   * **Ein Fertigungsauftrag** (T-128): was am Auftrag selbst steht und nicht
+   * am Rezept, dessen Instanz er ist. Fortschritt in der Einheit des Rezepts
+   * (gelungene Proben oder Arbeitstage, `orderNeed`), der Ausgang und die
+   * Proben mit ihrem Ergebnis. Geschrieben wird nur über die Routen des
+   * Handwerks — ein Ausgang, den jemand in der Maske tippt, hätte kein
+   * Material abgerechnet.
+   */
+  CraftingOrderInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        progress: { type: 'number', title: 'Progress', min: 0, default: 0, readOnly: true },
+        outcome: {
+          type: 'string',
+          title: 'Outcome',
+          enum: ['open', 'succeeded', 'failed', 'aborted'],
+          default: 'open',
+          readOnly: true,
+        },
+        started: { type: 'string', title: 'Started', readOnly: true },
+        /* Je Probe `{ total, nat, dc, result, by, at, note }`; `result:
+           'pending'` wartet auf die Leitung (`Campaign.craftConfirm`). */
+        rolls: { type: 'array', title: 'Rolls', items: { type: 'object' }, readOnly: true },
+      },
+    },
+  },
+
+  /**
    * Boards (REQ-111, 157 bis 166). Eine Leinwand, auf der Artikel frei
    * liegen.
    *
@@ -2407,6 +2435,35 @@ export const fieldGroups = {
           title: 'Inventory rules',
           enum: ['grid', 'weight', 'slots'],
           default: 'grid',
+        },
+        /* **Die Regeln des Handwerks** (T-128): was eine misslungene Probe
+           tut, was eine natürliche 20 und 1, und ob eine Probe der
+           Spielenden erst mit der Leitung gilt. Gelesen über
+           `craftRulesOf`; wandert mit T-132 in ein Modul. `recipe` folgt
+           `Recipe.onFailure`, also der Quelle. */
+        craftFailure: {
+          type: 'string',
+          title: 'Crafting: on a failed check',
+          enum: ['recipe', 'noProgress', 'progressLost', 'materialsLost', 'halfLost', 'nothingLost', 'custom'],
+          default: 'recipe',
+        },
+        craftCritSuccess: {
+          type: 'string',
+          title: 'Crafting: on a natural 20',
+          enum: ['asSuccess', 'double'],
+          default: 'asSuccess',
+        },
+        craftCritFailure: {
+          type: 'string',
+          title: 'Crafting: on a natural 1',
+          enum: ['asFailure', 'progressLost', 'materialsLost'],
+          default: 'asFailure',
+        },
+        craftConfirm: {
+          type: 'string',
+          title: 'Crafting: player checks count',
+          enum: ['gm', 'player'],
+          default: 'gm',
         },
       },
     },

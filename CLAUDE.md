@@ -93,7 +93,11 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   **Inventar** (`artikel/inventar.ts`, an Figur, Gruppe und Behälter:
   Raster mit Drehen und Zonen, Gewicht oder Slots nach `Campaign.inventory`,
   Münzen, Verschieben zwischen Figur, Gruppe und Behälter; Logik in
-  `packages/model/src/inventory.ts`, T-127), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
+  `packages/model/src/inventory.ts`, T-127), die **Werkbank am Rezept**
+  (`artikel/werkstatt.ts`, Routen in `apps/server/src/handwerk.ts`: ein
+  Fertigungsauftrag ist eine Instanz des Rezepts, das Material bleibt
+  reserviert im Inventar von Figur und Gruppe, die Regeln stehen an der
+  Kampagne; T-128), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
   Ebene als Buch mit Inhaltsverzeichnis, Suche und Lesestand je Konto,
   T-091), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
   Blatt A4, T-110) und das Konto mit seinen API-Tokens (`konto/`); die

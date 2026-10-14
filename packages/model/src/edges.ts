@@ -172,6 +172,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'craftingOrder',
+    label: 'Crafting order',
+    area: 'character',
+    does: 'runs a crafting order — an instance of a recipe: who crafts it, which materials in the crafter’s and the party’s inventory are reserved for it, the checks, and on the end what is used up, what comes back and what the recipe yields',
+    uses: {
+      [M + 'crafting.ts']: ['crafting', 'holds', 'knowledge'],
+      [S + 'handwerk.ts']: ['carries', 'crafting', 'holds', 'inLayer', 'instanceOf', 'memberOfParty', 'needs', 'partyOf', 'yields'],
+    },
+  },
+  {
     key: 'shopPrice',
     label: 'Shop prices',
     area: 'character',

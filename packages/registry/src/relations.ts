@@ -965,7 +965,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'needs',
     inverseLabel: 'used in',
     means: 'A recipe needs an item, in a quantity; the item lists the recipes that use it.',
-    intended: 'Check at the workbench: crafting should require and, where consumed, use up the needed items from the crafter’s inventory.',
     from: ['Recipe'],
     to: ['Item'],
     props: {
@@ -984,7 +983,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'yields',
     inverseLabel: 'made by',
     means: 'A recipe yields one item; the item lists the recipe that makes it.',
-    intended: 'Deliver at the workbench: a finished crafting should put the item into the crafter’s inventory.',
     from: ['Recipe'],
     to: ['Item'],
     cardinality: 'one',
@@ -1309,16 +1307,19 @@ export const relations: Record<string, RelationDef> = {
    * nachliest. Erlaubt ist es am Statblock und am Gegenstand (M4): das
    * +1-Langschwert am Tisch ist eine Instanz des Langschwerts, die nur
    * `bonusWeapon` und `rarity` selbst trägt. **Eine Instanz ist von
-   * derselben Art wie ihre Vorlage** (`same`): ein Statblock liest keinen
-   * Gegenstand. Eine weitere Art kommt in `from` dazu und braucht keine
-   * Codeänderung.
+   * derselben Art wie ihre Vorlage** (`same`) **oder von einem Untertyp**:
+   * ein Statblock liest keinen Gegenstand, ein Fertigungsauftrag aber sein
+   * Rezept (T-128) — er *ist* eines, mit Fortschritt dazu. Eine weitere
+   * Art kommt in `from` dazu und braucht keine Codeänderung.
    */
   instanceOf: {
     type: 'instanceOf',
     label: 'instance of',
     inverseLabel: 'instances',
-    means: 'A statblock or item is an instance of a template and stores only what differs; the template lists its instances.',
-    from: ['Statblock', 'Item'],
+    means: 'A statblock, item or crafting order is an instance of a template and stores only what differs; the template lists its instances.',
+    /* Ein Fertigungsauftrag ist eine Instanz seines Rezepts (T-128) —
+       `same` nimmt die Obertypen mit: ein Auftrag *ist* ein Rezept. */
+    from: ['Statblock', 'Item', 'CraftingOrder'],
     to: ['same'],
     cardinality: 'one',
   },
@@ -1359,29 +1360,24 @@ export const relations: Record<string, RelationDef> = {
   // ------------------------------------------------- Beziehungen
 
   /**
-   * Ein laufender Handwerksgang (REQ-184). Er hängt an beiden Enden — an
-   * dem, der arbeitet, und an dem Rezept — also steht er an einer Kante,
-   * wie die Tragestufe im Inventar. Kein Artikel: ein Gang ist vorbei, wenn
-   * er vorbei ist, und ein Artikel, den man anschliessend löscht, war
-   * keiner.
+   * **Wer fertigt** (REQ-184). In der Seite zeigt die Kante auf einen
+   * **Fertigungsauftrag** (T-128) — eine Instanz des Rezepts, die
+   * Fortschritt, Ausgang und Proben hält (`CraftingOrder`); ein Auftrag
+   * *ist* ein Rezept, darum reicht `to: ['Recipe']`. Das Material bleibt
+   * im Inventar und ist für den Auftrag reserviert
+   * (`holds.props.reservedFor`, T-127): sichtbar, unbeweglich, bei Erfolg
+   * verbraucht, beim Abbruch frei, beim Misserfolg nach
+   * `Campaign.craftFailure` (Vorgabe: `Recipe.onFailure`).
    *
-   * `put` ist das Stück, an dem alles hängt: **das Material wird beim
-   * Start gebunden** (REQ-219, D55). Was das Rezept braucht und dabei ist,
-   * verlässt das Inventar und steht hier — auch, was nicht verbraucht wird,
-   * denn gebunden heisst: nicht zugleich für etwas anderes da. Bis D52 ging
-   * nichts hinein, und angehängt wurde unterwegs (Aufgabe #34); das bleibt
-   * für Material, das erst später dazukommt, und ein Gang aus der Zeit davor
-   * ist dieselbe Kante mit weniger in `put`. Tage lassen sich von Anfang an
-   * arbeiten; fertig wird es nicht, bevor alles drin ist.
-   *
-   * Was am Ende zurückkommt: was nicht verbraucht wird, immer; das Übrige
-   * beim Misslingen und beim Abbruch nach `Recipe.onFailure`.
+   * Die Eigenschaften `day`, `days`, `put` und `rolls` an der Kante sind
+   * die Form des Prototyps (D55: ein Gang ohne Artikel, das Material in
+   * `put`); die Seite liest und schreibt sie nicht.
    */
   crafting: {
     type: 'crafting',
     label: 'working on',
     inverseLabel: 'worked on by',
-    means: 'A creature or party is working on a recipe, with days and rolls so far; the recipe lists who works on it.',
+    means: 'A creature or party works on a crafting order (an instance of a recipe, with progress and rolls); the order lists who works on it.',
     from: ['Creature', 'PlayerCharacter', 'Party'],
     to: ['Recipe'],
     props: {
