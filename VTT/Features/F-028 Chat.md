@@ -19,7 +19,7 @@ Epic: [[EP-04 Spielererlebnis]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-200]] Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung | – | 3 | offen |
-| [[REQ-201]] Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle | – | 3 | offen |
-| [[REQ-202]] Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit | – | 2 | offen |
+| [[REQ-200]] Chat mit der Leitung und unter Spielenden | Spieler | 3 | offen |
+| [[REQ-201]] Aus dem Chat wird Inhalt | Spielleitung | 3 | offen |
+| [[REQ-202]] Chats bleiben privat | Spieler | 2 | offen |
 <!-- stories:ende -->

@@ -19,7 +19,7 @@ Epic: [[EP-04 Spielererlebnis]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-072]] Player notes as owned documents | – | 2 | offen |
-| [[REQ-083]] Player-created quests and personal goals | – | 3 | offen |
-| [[REQ-109]] Player-authored ContentBlocks with per-view block-type whitelist | – | 3 | teils |
+| [[REQ-072]] Eigene Notizen | Spieler | 2 | offen |
+| [[REQ-083]] Eigene Quests und Ziele | Spieler | 3 | offen |
+| [[REQ-109]] Lore-Texte von Spielenden | Spieler | 3 | teils |
 <!-- stories:ende -->

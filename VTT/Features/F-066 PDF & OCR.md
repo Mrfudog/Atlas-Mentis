@@ -19,6 +19,6 @@ Epic: [[EP-10 Medien & Assets]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-149]] PDF viewer with page-anchor jump from SourceRef | – | 4 | offen |
-| [[REQ-152]] OCR / PDF import to structured content with editable raw output (MonsterBox-style) | – | 5 | offen |
+| [[REQ-149]] PDF mit Seitensprung | Spieler | 4 | offen |
+| [[REQ-152]] Texte aus PDF erkennen | Spielleitung | 5 | offen |
 <!-- stories:ende -->

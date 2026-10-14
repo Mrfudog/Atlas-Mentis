@@ -19,8 +19,8 @@ Epic: [[EP-08 Live-Spiel]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-116]] Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session | – | 2 | steht |
-| [[REQ-117]] Stewardship: write permission on a state object per user, GM override configurable | – | 3 | steht |
-| [[REQ-120]] Play log: persist state events (actor, target, delta) | – | 3 | teils |
-| [[REQ-121]] Statistics widget: kills, damage per character, monsters faced, records | – | 4 | offen |
+| [[REQ-116]] Was gerade läuft, steht an der Sitzung | Spielleitung | 2 | steht |
+| [[REQ-117]] Wer am Sitzungszustand schreibt | Spielleitung | 3 | steht |
+| [[REQ-120]] Spielprotokoll | Spielleitung | 3 | teils |
+| [[REQ-121]] Statistik | Spieler | 4 | offen |
 <!-- stories:ende -->

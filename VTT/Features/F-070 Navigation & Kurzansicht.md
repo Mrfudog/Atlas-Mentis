@@ -19,7 +19,7 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-248]] Kurzansicht überall: wo ein Artikel genannt wird (auch Ebenen in Filtern, Chips, Listen), öffnet ein Klick bzw. Antippen ein Popup mit der Quick-Ansicht und einem Link zum Artikel; Brotkrumen für die Navigation | – | 2 | steht |
+| [[REQ-248]] Kurzansicht überall | Spieler | 2 | steht |
 | [[REQ-305]] Kampagne und Ebene immer sichtbar | Spielleitung | 2 | offen |
 | [[REQ-315]] Globale Kopfleiste | Spieler | 1 | steht |
 <!-- stories:ende -->

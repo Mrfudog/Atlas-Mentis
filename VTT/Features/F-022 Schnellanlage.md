@@ -19,6 +19,6 @@ Epic: [[EP-03 Kreaturen & Figuren]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-048]] Minimal edit form for core creature fields | – | 2 | steht |
-| [[REQ-049]] Quick add: name-only NPC or statblock-only mob in one field | – | 2 | steht |
+| [[REQ-048]] Kreatur schnell bearbeiten | Spielleitung | 2 | steht |
+| [[REQ-049]] Kreatur schnell anlegen | Spielleitung | 2 | steht |
 <!-- stories:ende -->

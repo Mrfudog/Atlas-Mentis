@@ -19,10 +19,10 @@ Epic: [[EP-03 Kreaturen & Figuren]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-051]] Quick changes: HP, temp HP, conditions, rest, inspiration | – | 2 | steht |
-| [[REQ-063]] Character sheet: General tab (HP, temp, hit dice, death saves, AC, conditions, resources, rest) | – | 2 | steht |
-| [[REQ-066]] Character sheet: Combat tab (initiative, actions, companions) | – | 3 | steht |
-| [[REQ-067]] Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) | – | 3 | offen |
-| [[REQ-068]] Character sheet: Freeplay tab | – | 4 | offen |
-| [[REQ-073]] Custom / reorderable sheet layout | – | 4 | ersetzt |
+| [[REQ-051]] Schnelle Änderungen am Bogen | Spieler | 2 | steht |
+| [[REQ-063]] Charakterbogen: Allgemein | Spieler | 2 | steht |
+| [[REQ-066]] Charakterbogen: Kampf | Spieler | 3 | steht |
+| [[REQ-067]] Charakterbogen: Zauber | Spieler | 3 | offen |
+| [[REQ-068]] Charakterbogen: Freispiel | Spieler | 4 | offen |
+| [[REQ-073]] Eigene Anordnung des Bogens je Nutzer | – | 4 | ersetzt |
 <!-- stories:ende -->

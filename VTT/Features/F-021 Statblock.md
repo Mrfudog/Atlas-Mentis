@@ -19,11 +19,11 @@ Epic: [[EP-03 Kreaturen & Figuren]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-052]] Detailed statblock viewer | – | 3 | steht |
-| [[REQ-053]] Statblock as composition of RuleElement references (traits, feats, actions) | – | 2 | steht |
-| [[REQ-054]] Fightingtype field (MCDM roles) on statblock | – | 2 | steht |
-| [[REQ-055]] Inline trait reuse & variant creation while typing | – | 3 | offen |
-| [[REQ-058]] Monster scaling | – | 5 | offen |
-| [[REQ-062]] Multi-system statblock extension point (system reference on composition) | – | 5 | offen |
+| [[REQ-052]] Statblock lesen wie im Buch | Spielleitung | 3 | steht |
+| [[REQ-053]] Statblock aus Regeln zusammensetzen | Spielleitung | 2 | steht |
+| [[REQ-054]] Kampfrolle am Statblock | Spielleitung | 2 | steht |
+| [[REQ-055]] Merkmale beim Tippen wiederverwenden | Spielleitung | 3 | offen |
+| [[REQ-058]] Monster skalieren | Spielleitung | 5 | offen |
+| [[REQ-062]] Statblöcke anderer Regelsysteme | Spielleitung | 5 | offen |
 | [[REQ-272]] Statblock als Instanz einer Vorlage | Spielleitung | 1 | steht |
 <!-- stories:ende -->

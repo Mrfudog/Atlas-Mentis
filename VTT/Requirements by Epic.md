@@ -251,10 +251,10 @@ Die Artikelart Creature mit kind, Beziehungen, Begleitern. — [[F-020 Kreatur]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-046]] | Creature / Statblock split with PC and NPC specializations | – | 1 | 3 | steht |
-| [[REQ-050]] | Simple creature viewer: social / description / combat sections | – | 2 | 3 | steht |
-| [[REQ-060]] | Companions / summons as regular creatures via companionOf + overrides | – | 3 | 2 | teils |
-| [[REQ-105]] | NPC directory as filtered view over creatures with relations | – | 3 | 2 | steht |
+| [[REQ-046]] | Kreatur und Statblock getrennt | Spielleitung | 1 | 3 | steht |
+| [[REQ-050]] | Kreatur auf einen Blick | Spielleitung | 2 | 3 | steht |
+| [[REQ-060]] | Begleiter und Beschwörungen | Spieler | 3 | 2 | teils |
+| [[REQ-105]] | NSC-Verzeichnis | Spielleitung | 3 | 2 | steht |
 
 ### F-021 Statblock
 
@@ -263,12 +263,12 @@ Die Zahlen einer Kreatur, aus Regeln zusammengesetzt; Vorlage und Instanz. — [
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-272]] | Statblock als Instanz einer Vorlage | Spielleitung | 1 | 3 | steht |
-| [[REQ-053]] | Statblock as composition of RuleElement references (traits, feats, actions) | – | 2 | 5 | steht |
-| [[REQ-054]] | Fightingtype field (MCDM roles) on statblock | – | 2 | 1 | steht |
-| [[REQ-052]] | Detailed statblock viewer | – | 3 | 3 | steht |
-| [[REQ-055]] | Inline trait reuse & variant creation while typing | – | 3 | 3 | offen |
-| [[REQ-058]] | Monster scaling | – | 5 | 5 | offen |
-| [[REQ-062]] | Multi-system statblock extension point (system reference on composition) | – | 5 | 8 | offen |
+| [[REQ-053]] | Statblock aus Regeln zusammensetzen | Spielleitung | 2 | 5 | steht |
+| [[REQ-054]] | Kampfrolle am Statblock | Spielleitung | 2 | 1 | steht |
+| [[REQ-052]] | Statblock lesen wie im Buch | Spielleitung | 3 | 3 | steht |
+| [[REQ-055]] | Merkmale beim Tippen wiederverwenden | Spielleitung | 3 | 3 | offen |
+| [[REQ-058]] | Monster skalieren | Spielleitung | 5 | 5 | offen |
+| [[REQ-062]] | Statblöcke anderer Regelsysteme | Spielleitung | 5 | 8 | offen |
 
 ### F-022 Schnellanlage
 
@@ -276,8 +276,8 @@ Kreatur und Statblock in einem Schritt anlegen. — [[F-022 Schnellanlage]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-048]] | Minimal edit form for core creature fields | – | 2 | 3 | steht |
-| [[REQ-049]] | Quick add: name-only NPC or statblock-only mob in one field | – | 2 | 2 | steht |
+| [[REQ-048]] | Kreatur schnell bearbeiten | Spielleitung | 2 | 3 | steht |
+| [[REQ-049]] | Kreatur schnell anlegen | Spielleitung | 2 | 2 | steht |
 
 ### F-023 Charakterbogen
 
@@ -285,12 +285,12 @@ Der Bogen einer Figur: Allgemein, Kampf, Zauber, Freispiel, schnelle Änderungen
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-051]] | Quick changes: HP, temp HP, conditions, rest, inspiration | – | 2 | 3 | steht |
-| [[REQ-063]] | Character sheet: General tab (HP, temp, hit dice, death saves, AC, conditions, resources, rest) | – | 2 | 5 | steht |
-| [[REQ-066]] | Character sheet: Combat tab (initiative, actions, companions) | – | 3 | 5 | steht |
-| [[REQ-067]] | Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) | – | 3 | 5 | offen |
-| [[REQ-068]] | Character sheet: Freeplay tab | – | 4 | 3 | offen |
-| [[REQ-073]] | Custom / reorderable sheet layout | – | 4 | 5 | ersetzt |
+| [[REQ-051]] | Schnelle Änderungen am Bogen | Spieler | 2 | 3 | steht |
+| [[REQ-063]] | Charakterbogen: Allgemein | Spieler | 2 | 5 | steht |
+| [[REQ-066]] | Charakterbogen: Kampf | Spieler | 3 | 5 | steht |
+| [[REQ-067]] | Charakterbogen: Zauber | Spieler | 3 | 5 | offen |
+| [[REQ-068]] | Charakterbogen: Freispiel | Spieler | 4 | 3 | offen |
+| [[REQ-073]] | Eigene Anordnung des Bogens je Nutzer | – | 4 | 5 | ersetzt |
 
 ### F-024 Charaktermanager
 
@@ -298,14 +298,14 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-238]] | Charaktererstellung aus den Artikeln: Klasse, Herkunft (Ancestry) und Hintergrund wählen und ihre Entscheidungen treffen; Schritte und Wahlmöglichkeiten kommen aus den Artikeln, nicht aus Code — eine Änderung am Artikel wirkt sofort | – | 1 | 13 | steht |
-| [[REQ-251]] | Sprachen der Kampagne: die Kampagne nennt die sinnvollen/möglichen Sprachen; Sprachwahlen in der Charaktererstellung bieten genau diese an | – | 1 | 2 | steht |
-| [[REQ-250]] | Startausrüstung je Kampagne einstellbar: nach Regeln (Klasse/Hintergrund), Gold (fest oder gewürfelt) oder frei mit eigenen Grenzen (Goldbudget, höchstens N magische Gegenstände je Seltenheit u. ä.) | – | 2 | 5 | steht |
+| [[REQ-238]] | Figur aus den Artikeln erstellen | Spieler | 1 | 13 | steht |
+| [[REQ-251]] | Sprachen der Kampagne | Spielleitung | 1 | 2 | steht |
+| [[REQ-250]] | Startausrüstung je Kampagne | Spielleitung | 2 | 5 | steht |
 | [[REQ-273]] | Eigene Verfahren für Attributswerte | Spielleitung | 2 | 2 | steht |
 | [[REQ-274]] | Charakter- und Kampagnenmanager jederzeit aufrufen | Spieler | 3 | 5 | offen |
-| [[REQ-056]] | Creature builder with suggestions (origin + fightingtype filter, grants applied via effects) | – | 4 | 13 | offen |
-| [[REQ-057]] | Point-buy ability setting | – | 4 | 2 | offen |
-| [[REQ-222]] | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | – | 4 | 5 | offen |
+| [[REQ-056]] | Kreaturen-Baukasten | Spielleitung | 4 | 13 | offen |
+| [[REQ-057]] | Punktekauf für Attribute | Spieler | 4 | 2 | offen |
+| [[REQ-222]] | Stufenaufstieg mit Wahlen | Spieler | 4 | 5 | offen |
 
 ## EP-04 Spielererlebnis
 
@@ -317,10 +317,10 @@ Die Seite aus Sicht der Spielenden, auch am Telefon. — [[F-025 Spieleransicht 
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-069]] | Phone-first responsive layout for all player-facing views | – | 1 | 3 | teils |
+| [[REQ-069]] | Am Telefon spielen | Spieler | 1 | 3 | teils |
 | [[REQ-311]] | Spieleransicht mit der eigenen Figur im Fokus | Spieler | 2 | 5 | teils |
-| [[REQ-074]] | Quicklinks: campaign, quests, party, session | – | 3 | 1 | teils |
-| [[REQ-194]] | Mobile navigation: the user chooses which entries occupy the phone bottom bar | – | 4 | 1 | offen |
+| [[REQ-074]] | Schnellzugriffe | Spieler | 3 | 1 | teils |
+| [[REQ-194]] | Untere Leiste am Telefon wählen | Spieler | 4 | 1 | offen |
 
 ### F-026 Inventar
 
@@ -328,15 +328,15 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-064]] | Inventory as list: coins / attuned / worn / carried / stored / deeds | – | 2 | 3 | steht |
+| [[REQ-064]] | Inventar als Liste | Spieler | 2 | 3 | steht |
 | [[REQ-275]] | Erhaltene Gegenstände als Instanz | Spieler | 2 | 3 | teils |
-| [[REQ-183]] | Party-owned inventory as a shared container distinct from character inventories | – | 3 | 2 | steht |
-| [[REQ-215]] | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | – | 3 | 2 | steht |
-| [[REQ-216]] | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | – | 3 | 2 | steht |
-| [[REQ-217]] | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | – | 3 | 2 | steht |
-| [[REQ-225]] | Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion | – | 3 | 1 | steht |
-| [[REQ-065]] | Tile-based visual inventory (alternative view over same data) | – | 4 | 8 | steht |
-| [[REQ-214]] | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | – | 4 | 2 | steht |
+| [[REQ-183]] | Gruppeninventar | Spieler | 3 | 2 | steht |
+| [[REQ-215]] | Tragraster aus Grösse und Stärke | Spieler | 3 | 2 | steht |
+| [[REQ-216]] | Behälter in Behältern | Spieler | 3 | 2 | steht |
+| [[REQ-217]] | Ziehen am Bogen | Spieler | 3 | 2 | steht |
+| [[REQ-225]] | Fallenlassen und Verstauen | Spieler | 3 | 1 | steht |
+| [[REQ-065]] | Inventar als Raster | Spieler | 4 | 8 | steht |
+| [[REQ-214]] | Ausrüstungsfigur | Spieler | 4 | 2 | steht |
 | [[REQ-276]] | Unverstaute Gegenstände gelten als liegengelassen | Spielleitung | 4 | 2 | offen |
 | [[REQ-277]] | Gegenstände mit Form spiegeln | Spieler | 4 | 1 | offen |
 
@@ -346,9 +346,9 @@ Notizen, Ziele, Lore-Artikel, die Spielende selbst anlegen. — [[F-027 Eigene I
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-072]] | Player notes as owned documents | – | 2 | 2 | offen |
-| [[REQ-083]] | Player-created quests and personal goals | – | 3 | 1 | offen |
-| [[REQ-109]] | Player-authored ContentBlocks with per-view block-type whitelist | – | 3 | 3 | teils |
+| [[REQ-072]] | Eigene Notizen | Spieler | 2 | 2 | offen |
+| [[REQ-083]] | Eigene Quests und Ziele | Spieler | 3 | 1 | offen |
+| [[REQ-109]] | Lore-Texte von Spielenden | Spieler | 3 | 3 | teils |
 
 ### F-028 Chat
 
@@ -356,9 +356,9 @@ Fäden zwischen Leitung und Spielenden, daraus Kampagneninhalt. — [[F-028 Chat
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-202]] | Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit | – | 2 | 2 | offen |
-| [[REQ-200]] | Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung | – | 3 | 5 | offen |
-| [[REQ-201]] | Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle | – | 3 | 3 | offen |
+| [[REQ-202]] | Chats bleiben privat | Spieler | 2 | 2 | offen |
+| [[REQ-200]] | Chat mit der Leitung und unter Spielenden | Spieler | 3 | 5 | offen |
+| [[REQ-201]] | Aus dem Chat wird Inhalt | Spielleitung | 3 | 3 | offen |
 
 ## EP-05 Kampagne & Sitzungen
 
@@ -370,10 +370,10 @@ Die Kampagne als Wurzel: Einstellungen, Kampagnenwerte, Anlegen mit Dialog, Bere
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-075]] | Campaign as root NarrativeContainer with attached CampaignSettings, WorldDate, KnowledgeState | – | 1 | 3 | steht |
+| [[REQ-075]] | Die Kampagne als Wurzel | Spielleitung | 1 | 3 | steht |
 | [[REQ-278]] | Bereiche als eigene Seiten | Spielleitung | 1 | 2 | steht |
-| [[REQ-043]] | Campaign configuration store: key-value, each area interprets its keys | – | 2 | 2 | steht |
-| [[REQ-236]] | Kampagne anlegen mit Dialog: Name, aufgeschaltete Ebenen (Liste mit Häkchen und Reihenfolge, vorhandene vorausgewählt), eigene Kampagnenebene, Leitung | – | 2 | 3 | offen |
+| [[REQ-043]] | Einstellungen der Kampagne | Spielleitung | 2 | 2 | steht |
+| [[REQ-236]] | Kampagne mit Dialog anlegen | Spielleitung | 2 | 3 | offen |
 | [[REQ-279]] | Kampagnenwerte pflegen und in Texten nutzen | Spielleitung | 2 | 2 | teils |
 
 ### F-030 Bereich Story
@@ -382,10 +382,10 @@ Arcs, Kapitel, Quests, Szenen, Fäden — die Geschichte der Kampagne. — [[F-0
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-076]] | NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | – | 1 | 3 | steht |
-| [[REQ-080]] | Readaloud blocks unlocking for players after session (time/event-based grant) | – | 3 | 2 | offen |
-| [[REQ-082]] | Quests with tasks, rewards, restrictions; player-facing quest board with gated GM parts | – | 3 | 3 | steht |
-| [[REQ-180]] | Narrative seeds: planted threads with category (Backstory · Geheimnis · Faden · Idee · Versprechen · Konsequenz) and status (offen · gepflanzt · aufgegangen · verworfen), bound to a character and the session planted in | – | 3 | 3 | offen |
+| [[REQ-076]] | Geschichte gliedern | Spielleitung | 1 | 3 | steht |
+| [[REQ-080]] | Vorlesetexte nach der Sitzung freigeben | Spielleitung | 3 | 2 | offen |
+| [[REQ-082]] | Quests mit Aufgaben und Lohn | Spielleitung | 3 | 3 | steht |
+| [[REQ-180]] | Gepflanzte Fäden | Spielleitung | 3 | 3 | offen |
 
 ### F-031 Sitzungen & Vorbereitung
 
@@ -393,14 +393,14 @@ Sitzungen, Vorbereitungsseite, Unfertiges und Todos, Schnellerfassung, Sitzungsa
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-077]] | Session documents with planned vs occurred encounters and reports | – | 2 | 3 | steht |
-| [[REQ-078]] | Session prep cockpit: container view aggregating scenes, quests, storylines, encounters, notes | – | 2 | 5 | steht |
-| [[REQ-079]] | DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap | – | 2 | 3 | teils |
+| [[REQ-077]] | Sitzungen mit Geplantem und Geschehenem | Spielleitung | 2 | 3 | steht |
+| [[REQ-078]] | Vorbereitungsseite | Spielleitung | 2 | 5 | steht |
+| [[REQ-079]] | Schnelle Aktionen in der Sitzung | Spielleitung | 2 | 3 | teils |
 | [[REQ-282]] | Sitzungsansicht für das Spiel | Spielleitung | 2 | 3 | offen |
-| [[REQ-084]] | Ideas inbox per campaign/player and clean vs planning view toggle | – | 3 | 3 | steht |
-| [[REQ-188]] | Cross-type "unfinished" overview: everything at status idea/planned across all interfaces, with jump-to and bulk status change | – | 3 | 2 | steht |
-| [[REQ-189]] | Aggregated todo list across containers and entities (campaign, arc, session, quest, NPC) | – | 3 | 2 | steht |
-| [[REQ-190]] | Quick capture during play: one field that files a seed, todo or idea against the current session without leaving the view | – | 3 | 2 | steht |
+| [[REQ-084]] | Ideen und Unfertiges | Spielleitung | 3 | 3 | steht |
+| [[REQ-188]] | Übersicht über alles Unfertige | Spielleitung | 3 | 2 | steht |
+| [[REQ-189]] | Gesammelte Todos | Spielleitung | 3 | 2 | steht |
+| [[REQ-190]] | Schnellerfassung im Spiel | Spielleitung | 3 | 2 | steht |
 | [[REQ-280]] | Umschalter Vorbereitung und Spiel | Spielleitung | 4 | 2 | offen |
 
 ### F-032 Begegnungen
@@ -409,10 +409,10 @@ Begegnungen bauen und vorbereiten, Begegnungstabellen, Weltzustand zwischen Sitz
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-085]] | Encounter entity: links notes, maps, NPCs, loot tables; attachable to any container level; dice-table semantics | – | 2 | 3 | steht |
-| [[REQ-172]] | Weighted encounter tables per region, with per-location type constraints and safety states that restrict the pool | – | 3 | 3 | steht |
-| [[REQ-221]] | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | – | 3 | 3 | offen |
-| [[REQ-173]] | World-state decay between sessions: roll to degrade secured locations, weighted by adjacency to faction territory | – | 4 | 3 | offen |
+| [[REQ-085]] | Begegnungen | Spielleitung | 2 | 3 | steht |
+| [[REQ-172]] | Begegnungstabellen je Gebiet | Spielleitung | 3 | 3 | steht |
+| [[REQ-221]] | Begegnungen bauen | Spielleitung | 3 | 3 | offen |
+| [[REQ-173]] | Weltzustand zwischen Sitzungen | Spielleitung | 4 | 3 | offen |
 
 ### F-033 Abenteuer übernehmen
 
@@ -420,8 +420,8 @@ Vorgefertigte Abenteuer als Ebene, Kapitel und Szenen in die eigene Geschichte h
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-240]] | Vorgefertigte Abenteuer aus 5e.tools: je Abenteuer eine Ebene mit Kapiteln, Abschnitten, Begegnungen, Karten und NSC als Artikeln; die Leitung übernimmt sie in die eigene Geschichte und passt sie an, ohne das Original zu verlieren | – | 2 | 13 | steht |
-| [[REQ-252]] | Abenteuer modular: Kapitel als Arcs, Begegnungen und Karten als eigene Szenen; einzelne Vorlesetexte oder ganze Kapitel in die eigene Kampagne übernehmen | – | 2 | 5 | steht |
+| [[REQ-240]] | Abenteuer als eigene Ebene | Spielleitung | 2 | 13 | steht |
+| [[REQ-252]] | Abenteuer modular übernehmen | Spielleitung | 2 | 5 | steht |
 
 ### F-034 Party
 
@@ -430,8 +430,8 @@ Die Figurengruppe einer Kampagne mit ihrer Übersicht. — [[F-034 Party]]
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-281]] | Eine Party je Kampagne | Spielleitung | 1 | 2 | steht |
-| [[REQ-086]] | Party view: passive perception, feats, inventory overview | – | 3 | 3 | teils |
-| [[REQ-122]] | Widget: party overview | – | 3 | 2 | steht |
+| [[REQ-086]] | Gruppenübersicht | Spielleitung | 3 | 3 | teils |
+| [[REQ-122]] | Gruppe als Widget | Spielleitung | 3 | 2 | steht |
 
 ### F-035 Ladebildschirm-Board
 
@@ -447,9 +447,9 @@ Audio aufnehmen, transkribieren, Recap-Entwurf. — [[F-036 Sitzungsmitschnitt]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-196]] | Sitzungsmitschnitt: Audio einer Sitzung aufnehmen oder eine fertige Aufnahme anhängen, als Asset am Sitzungs-Container, mit Startzeit und Kapitelmarken | – | 4 | 5 | offen |
-| [[REQ-197]] | Transkription und Recap-Entwurf: Mitschnitt transkribieren, am Sitzungsverlauf ausrichten und daraus einen Recap-Entwurf erzeugen, den die SL bearbeitet | – | 4 | 8 | offen |
-| [[REQ-198]] | Sprecherzuordnung im Transkript: Abschnitte einer Figur oder der SL zuordnen, damit „was hat meine Figur mitbekommen“ beantwortbar wird | – | 5 | 5 | offen |
+| [[REQ-196]] | Sitzung aufnehmen | Spielleitung | 4 | 5 | offen |
+| [[REQ-197]] | Transkript und Recap-Entwurf | Spielleitung | 4 | 8 | offen |
+| [[REQ-198]] | Sprecher im Transkript | Spielleitung | 5 | 5 | offen |
 
 ## EP-06 Welt & Lore
 
@@ -461,11 +461,11 @@ Orte, Fraktionen, Gottheiten, Lore-Artikel, Welt als Ebene, Kampagnenabweichunge
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-101]] | Lore articles: categories, composed of ContentBlocks | – | 2 | 3 | steht |
-| [[REQ-103]] | Locations: hierarchy via parent, type, biome | – | 2 | 2 | steht |
-| [[REQ-104]] | Factions: type/subtype taxonomy, relations | – | 2 | 2 | steht |
-| [[REQ-107]] | Pantheons / deities as article subtype | – | 4 | 1 | offen |
-| [[REQ-110]] | Bibliothek von Tan'Jit: illustrated navigation presentation layer over articles | – | 5 | 8 | offen |
+| [[REQ-101]] | Lore-Artikel | Spielleitung | 2 | 3 | steht |
+| [[REQ-103]] | Orte mit Hierarchie | Spielleitung | 2 | 2 | steht |
+| [[REQ-104]] | Fraktionen | Spielleitung | 2 | 2 | steht |
+| [[REQ-107]] | Gottheiten und Pantheons | Spielleitung | 4 | 1 | offen |
+| [[REQ-110]] | Illustrierte Bibliothek | Spieler | 5 | 8 | offen |
 
 ### F-038 Kalender & Zeitleisten
 
@@ -473,11 +473,11 @@ Weltdatum, Kalender an der Welt, Zeitleisten der Weltgeschichte und der Kampagne
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-024]] | WorldDate property type: canonical sortable value + display string + CalendarSystem reference | – | 1 | 2 | steht |
-| [[REQ-025]] | CalendarSystem definition: months, eras, moons, configurable per world/system | – | 3 | 5 | offen |
-| [[REQ-106]] | Events & timelines sorted by WorldDate | – | 3 | 3 | steht |
-| [[REQ-220]] | Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | – | 3 | 3 | steht |
-| [[REQ-087]] | Calendar module: months, moons, holidays, time-of-day widget with triggers, lore coupling | – | 5 | 13 | offen |
+| [[REQ-024]] | Weltdatum | Spielleitung | 1 | 2 | steht |
+| [[REQ-025]] | Kalender der Welt | Spielleitung | 3 | 5 | offen |
+| [[REQ-106]] | Ereignisse und Zeitleisten | Spielleitung | 3 | 3 | steht |
+| [[REQ-220]] | Zeitleisten der Weltgeschichte | Spielleitung | 3 | 3 | steht |
+| [[REQ-087]] | Kalendermodul | Spielleitung | 5 | 13 | offen |
 
 ### F-039 Beziehungen & Ruf
 
@@ -485,9 +485,9 @@ Beziehungen als Kanten mit Marken. — [[F-039 Beziehungen & Ruf]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-030]] | Reputation hooks: weighted tags on relations, propagation rule slot reserved | – | 2 | 1 | ersetzt |
-| [[REQ-061]] | Creature relations (creature ↔ creature / faction) with relation type | – | 2 | 2 | steht |
-| [[REQ-081]] | Reputation & relationship system: interaction tags propagate NPC → faction → city with renown thresholds and status | – | 4 | 8 | ersetzt |
+| [[REQ-030]] | Ruf als gewichtete Marken | – | 2 | 1 | ersetzt |
+| [[REQ-061]] | Beziehungen zwischen Figuren | Spielleitung | 2 | 2 | steht |
+| [[REQ-081]] | Ruf, der sich ausbreitet | – | 4 | 8 | ersetzt |
 
 ### F-040 Läden & Wirtschaft
 
@@ -497,7 +497,7 @@ Läden mit Waren und Preisen, Fraktionspreise, andere Währungen. — [[F-040 L�
 |---|---|---|---|---|---|
 | [[REQ-284]] | Läden mit Waren und Preisen | Spielleitung | 2 | 3 | steht |
 | [[REQ-285]] | Fraktionspreise | Spielleitung | 3 | 2 | teils |
-| [[REQ-185]] | Non-coin economies: barter and alternative currency ladders per region | – | 5 | 2 | offen |
+| [[REQ-185]] | Andere Währungen und Tausch | Spielleitung | 5 | 2 | offen |
 
 ### F-041 Namensgenerator
 
@@ -505,7 +505,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-254]] | Namensgenerator: Namen für NSC, Orte usw. erzeugen (z. B. aus den Namenstabellen der Abstammungen/Kulturen), übernehmbar beim Anlegen | – | 4 | 3 | offen |
+| [[REQ-254]] | Namensgenerator | Spielleitung | 4 | 3 | offen |
 
 ## EP-07 Regeln & Nachschlagen
 
@@ -517,12 +517,12 @@ Regelartikel, Nachschlagen in Sekunden, Merkzettel, Zustände. — [[F-042 Berei
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-089]] | RuleElement reference objects: structured text, tags, optional effects/constraints, rawContent | – | 1 | 2 | steht |
-| [[REQ-091]] | Rules browser: filtered, grouped, searchable, with layer origin in scope sidebar | – | 2 | 5 | steht |
-| [[REQ-094]] | Entity ↔ rule attachment as layer-scoped relation | – | 2 | 3 | steht |
-| [[REQ-098]] | Sub-5-second rule lookup during play | – | 2 | 2 | steht |
+| [[REQ-089]] | Regeln als Artikel | Spielleitung | 1 | 2 | steht |
+| [[REQ-091]] | Regeln durchsuchen | Spieler | 2 | 5 | steht |
+| [[REQ-094]] | Regeln an Artikel hängen | Spielleitung | 2 | 3 | steht |
+| [[REQ-098]] | Regel in Sekunden | Spieler | 2 | 2 | steht |
 | [[REQ-313]] | Zustände als Artikel | Spielleitung | 2 | 3 | teils |
-| [[REQ-099]] | Pinnable rules: bookmark object (user + context + rule) | – | 3 | 1 | steht |
+| [[REQ-099]] | Regeln anheften | Spieler | 3 | 1 | steht |
 
 ### F-043 Bücher & Leseansicht
 
@@ -530,7 +530,7 @@ Eine Ebene als Buch lesen, Kapitel aus Teilen. — [[F-043 Bücher & Leseansicht
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-247]] | Leseansicht für Bücher und Abenteuer: eine Ebene als Buch lesen — Inhaltsverzeichnis, Kapitel in Reihenfolge, eingebettete Artikel (Zauber, Monster, Tabellen) als Verweise bzw. Karten, Lesestand gemerkt | – | 2 | 8 | steht |
+| [[REQ-247]] | Bücher lesen | Spieler | 2 | 8 | steht |
 
 ### F-044 Klassen
 
@@ -538,7 +538,7 @@ Klassenansicht mit Stufentabelle und Unterklassen. — [[F-044 Klassen]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-231]] | Klassenansicht wie 5e.tools: Stufentabelle (Übungsbonus, Merkmale, Spalten der Klasse und gewählter Unterklassen), Merkmale je Stufe ausgeschrieben, optionale Merkmale und Varianten zuschaltbar, Unterklassen nach Name und Quelle filtern und mehrere nebeneinander vergleichen (am Telefon untereinander) | – | 3 | 3 | steht |
+| [[REQ-231]] | Klassen wie im Buch | Spieler | 3 | 3 | steht |
 
 ### F-045 Zauber
 
@@ -546,8 +546,8 @@ Zauber als Artikel, Zauberlisten. — [[F-045 Zauber]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-092]] | Spell entities with layer-scoped attached rule sets (5e 2014 / 2024 / homebrew) | – | 2 | 3 | offen |
-| [[REQ-097]] | Spell lists as relations (class ↔ spell) | – | 3 | 2 | offen |
+| [[REQ-092]] | Zauber als Artikel | Spieler | 2 | 3 | offen |
+| [[REQ-097]] | Zauberlisten | Spieler | 3 | 2 | offen |
 
 ### F-046 Regelauswertung
 
@@ -555,12 +555,12 @@ Effekte, Bedingungen und Wechselwirkungen von Regeln auswerten. — [[F-046 Rege
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-018]] | Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types | – | 1 | 2 | offen |
-| [[REQ-017]] | Term engine bindings: system-specific semantic evaluation of rule terms | – | 4 | 5 | offen |
-| [[REQ-095]] | Effects interpreter for grants (first consumer: creature builder) | – | 4 | 8 | offen |
+| [[REQ-018]] | Wirkungen von Regeln beschreiben | Spielleitung | 1 | 2 | offen |
+| [[REQ-017]] | Begriffe je Regelsystem auswerten | Spielleitung | 4 | 5 | offen |
+| [[REQ-095]] | Gewährtes anwenden | Spieler | 4 | 8 | offen |
 | [[REQ-290]] | Wechselwirkungen von Regeln auswerten | Spielleitung | 4 | 8 | offen |
-| [[REQ-093]] | Rule engine per system evaluating rules against entity data (constraints, terms) | – | 5 | 13 | offen |
-| [[REQ-096]] | Constraint interpreter (first consumer: settlement / building validation) | – | 5 | 8 | offen |
+| [[REQ-093]] | Regeln auswerten | Spielleitung | 5 | 13 | offen |
+| [[REQ-096]] | Einschränkungen prüfen | Spielleitung | 5 | 8 | offen |
 
 ### F-047 Handwerk
 
@@ -568,9 +568,9 @@ Rezepte, Material, Fortschritt, Blaupausen lernen. — [[F-047 Handwerk]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-218]] | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | – | 3 | 2 | steht |
-| [[REQ-219]] | Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure` | – | 3 | 2 | steht |
-| [[REQ-184]] | Crafting: recipes with material inputs, skill checks and DC, time, and output; consumption on completion | – | 4 | 5 | steht |
+| [[REQ-218]] | Blaupausen lernen | Spieler | 3 | 2 | steht |
+| [[REQ-219]] | Material beim Start binden | Spieler | 3 | 2 | steht |
+| [[REQ-184]] | Handwerk mit Rezepten | Spieler | 4 | 5 | steht |
 
 ### F-048 Regelsysteme & Module
 
@@ -580,7 +580,7 @@ Regelsysteme als Behälter mit Optionen je Kampagne; Homebrew-Regeln; Rahmen wie
 |---|---|---|---|---|---|
 | [[REQ-287]] | Regelsysteme als Behälter mit Optionen | Spielleitung | 2 | 8 | offen |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | 3 | 3 | offen |
-| [[REQ-223]] | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | – | 4 | 5 | offen |
+| [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | 5 | offen |
 
 ### F-049 Masse & Einheiten
 
@@ -588,7 +588,7 @@ Masse beim Lesen umrechnen, auch im Fliesstext. — [[F-049 Masse & Einheiten]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-227]] | Masse im Fliesstext umrechnen: Fuss und Meilen in Regeltexten („within 120 feet“) nach der Einstellung `units` zeigen, beim Lesen gerechnet, gespeichert bleibt der Wortlaut | – | 3 | 2 | offen |
+| [[REQ-227]] | Masse im Fliesstext umrechnen | Spieler | 3 | 2 | offen |
 
 ## EP-08 Live-Spiel
 
@@ -600,9 +600,9 @@ Bereich Play: der Schirm mit seinen Boards über mehrere Fenster, Tischanzeige. 
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-187]] | Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts | – | 3 | 2 | offen |
-| [[REQ-204]] | Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar | – | 3 | 5 | offen |
-| [[REQ-205]] | Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards | – | 3 | 3 | teils |
+| [[REQ-187]] | Tischanzeige | Spielleitung | 3 | 2 | offen |
+| [[REQ-204]] | Spielleiter-Schirm | Spielleitung | 3 | 5 | offen |
+| [[REQ-205]] | Ein Board je Geschichtsartikel | Spielleitung | 3 | 3 | teils |
 
 ### F-051 Initiative
 
@@ -610,13 +610,13 @@ Initiative für Leitung und Spielende, Zustände mit Dauer, Anzeige auf der Kart
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-115]] | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | – | 2 | 5 | steht |
-| [[REQ-211]] | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | – | 2 | 3 | steht |
-| [[REQ-212]] | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | – | 2 | 2 | steht |
-| [[REQ-128]] | Combat player view: own initiative, conditions, health comments | – | 3 | 3 | teils |
-| [[REQ-213]] | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | – | 3 | 2 | steht |
-| [[REQ-226]] | In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | – | 3 | 1 | steht |
-| [[REQ-144]] | Initiative indicator on battlemap (current / next) | – | 4 | 2 | steht |
+| [[REQ-115]] | Initiative | Spielleitung | 2 | 5 | steht |
+| [[REQ-211]] | Initiative wie Improved Initiative | Spielleitung | 2 | 3 | steht |
+| [[REQ-212]] | Zustände und Notizen mit Dauer | Spielleitung | 2 | 2 | steht |
+| [[REQ-128]] | Kampf aus Sicht der Spielenden | Spieler | 3 | 3 | teils |
+| [[REQ-213]] | Initiative der Spielenden | Spieler | 3 | 2 | steht |
+| [[REQ-226]] | Gegner erscheinen in Runde 1 erst in ihrem Zug | Spieler | 3 | 1 | steht |
+| [[REQ-144]] | Initiative auf der Karte | Spieler | 4 | 2 | steht |
 
 ### F-052 Sitzungszustand & Live-Kanal
 
@@ -624,10 +624,10 @@ Was gerade läuft, steht an der Sitzung und kommt live zu allen; Protokoll und S
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-116]] | Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session | – | 2 | 8 | steht |
-| [[REQ-117]] | Stewardship: write permission on a state object per user, GM override configurable | – | 3 | 3 | steht |
-| [[REQ-120]] | Play log: persist state events (actor, target, delta) | – | 3 | 3 | teils |
-| [[REQ-121]] | Statistics widget: kills, damage per character, monsters faced, records | – | 4 | 3 | offen |
+| [[REQ-116]] | Was gerade läuft, steht an der Sitzung | Spielleitung | 2 | 8 | steht |
+| [[REQ-117]] | Wer am Sitzungszustand schreibt | Spielleitung | 3 | 3 | steht |
+| [[REQ-120]] | Spielprotokoll | Spielleitung | 3 | 3 | teils |
+| [[REQ-121]] | Statistik | Spieler | 4 | 3 | offen |
 
 ### F-053 Würfel
 
@@ -635,8 +635,8 @@ Würfeln für sich und für alle, mit Protokoll. — [[F-053 Würfel]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-070]] | Local dice roller (selector, modifiers, results) | – | 2 | 2 | steht |
-| [[REQ-071]] | Shared rolls & roll log per session | – | 4 | 3 | steht |
+| [[REQ-070]] | Würfeln | Spieler | 2 | 2 | steht |
+| [[REQ-071]] | Würfe für alle | Spieler | 4 | 3 | steht |
 
 ### F-054 Werkzeuge am Tisch
 
@@ -644,18 +644,18 @@ Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. — 
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-112]] | Widget: reference box holding multiple open articles with inner tabs | – | 2 | 3 | ersetzt |
-| [[REQ-113]] | Widget: notes | – | 2 | 2 | offen |
-| [[REQ-114]] | Widget: quick-create (creates entries in the campaign layer inline) | – | 2 | 3 | teils |
+| [[REQ-112]] | Widget mit mehreren offenen Artikeln | – | 2 | 3 | ersetzt |
+| [[REQ-113]] | Notiz-Widget | Spielleitung | 2 | 2 | offen |
+| [[REQ-114]] | Schnellanlage auf dem Schirm | Spielleitung | 2 | 3 | teils |
 | [[REQ-292]] | Neuen Artikel aus einer Auswahl anlegen | Spielleitung | 2 | 2 | teils |
-| [[REQ-118]] | Widget: encounter runner — instantiate participants, roll random entries, raw statblocks trackable | – | 3 | 5 | steht |
-| [[REQ-123]] | Widget: timers | – | 3 | 1 | offen |
-| [[REQ-124]] | Widget: quest board | – | 3 | 2 | steht |
-| [[REQ-125]] | Widget: random tables & generators (names, shops, loot, cities) | – | 3 | 5 | steht |
-| [[REQ-186]] | Nested loot tables: a table entry may reference another table, with cycle protection | – | 3 | 2 | steht |
-| [[REQ-126]] | Widget: sound — embed/link external tool, native now-playing state only | – | 4 | 2 | teils |
-| [[REQ-127]] | Native soundboard / music engine | – | 5 | 13 | offen |
-| [[REQ-129]] | Chatbot: rules Q&A, facts, quick edit | – | 5 | 8 | offen |
+| [[REQ-118]] | Begegnung starten | Spielleitung | 3 | 5 | steht |
+| [[REQ-123]] | Timer | Spielleitung | 3 | 1 | offen |
+| [[REQ-124]] | Auftragsbrett als Widget | Spieler | 3 | 2 | steht |
+| [[REQ-125]] | Zufallstabellen | Spielleitung | 3 | 5 | steht |
+| [[REQ-186]] | Verschachtelte Tabellen | Spielleitung | 3 | 2 | steht |
+| [[REQ-126]] | Musik einbinden | Spielleitung | 4 | 2 | teils |
+| [[REQ-127]] | Eigene Klangtafel | Spielleitung | 5 | 13 | offen |
+| [[REQ-129]] | Fragen an einen Assistenten | Spielleitung | 5 | 8 | offen |
 
 ## EP-09 Karten
 
@@ -667,11 +667,11 @@ Karte mit Bild, Gitter, Massstab; Unterkarten zum Hineinzoomen. — [[F-055 Kart
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-130]] | Map entity: image asset, scale, grid config (size, offset, square/hex), link to Location | – | 3 | 2 | steht |
-| [[REQ-131]] | Nested maps: parent + anchor region, zoom-through transitions world → region → city → district → battlemap | – | 3 | 8 | steht |
-| [[REQ-132]] | Level lock: pin current map level while zooming | – | 3 | 1 | offen |
+| [[REQ-130]] | Karte mit Gitter und Massstab | Spielleitung | 3 | 2 | steht |
+| [[REQ-131]] | Unterkarten zum Hineinzoomen | Spielleitung | 3 | 8 | steht |
+| [[REQ-132]] | Kartenebene festhalten | Spielleitung | 3 | 1 | offen |
 | [[REQ-293]] | Ladeanzeige für Kartenbilder | Spielleitung | 3 | 1 | steht |
-| [[REQ-138]] | Map tiling for smooth zoom (derived asset) | – | 4 | 5 | steht |
+| [[REQ-138]] | Grosse Karten in Kacheln | Spieler | 4 | 5 | steht |
 
 ### F-056 Tokens & Marker
 
@@ -679,12 +679,12 @@ Marker, Kulisse, Spiel-Tokens, Gruppen-Token, Grösse. — [[F-056 Tokens & Mark
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-133]] | Static tokens: reference markers linked to entities (pin opens article) | – | 3 | 3 | steht |
-| [[REQ-135]] | Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) | – | 3 | 5 | teils |
-| [[REQ-136]] | Party and quest markers on region maps (campaign-scoped play tokens) | – | 3 | 2 | steht |
-| [[REQ-224]] | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | – | 3 | 3 | steht |
+| [[REQ-133]] | Marker, die zu Artikeln führen | Spielleitung | 3 | 3 | steht |
+| [[REQ-135]] | Tokens im Spiel | Spielleitung | 3 | 5 | teils |
+| [[REQ-136]] | Gruppe und Quests auf der Karte | Spieler | 3 | 2 | steht |
+| [[REQ-224]] | Kreaturen nach Grösse auf der Karte | Spielleitung | 3 | 3 | steht |
 | [[REQ-294]] | Token ohne Bild zeigt den Anfangsbuchstaben | Spielleitung | 3 | 1 | teils |
-| [[REQ-134]] | Static tokens: scenery / props as part of prepared map state | – | 4 | 3 | steht |
+| [[REQ-134]] | Kulisse auf der Karte | Spielleitung | 4 | 3 | steht |
 
 ### F-057 Nebel, Licht & Sicht
 
@@ -692,9 +692,9 @@ Aufdecken, Licht und Sichtlinien. — [[F-057 Nebel, Licht & Sicht]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-209]] | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann entlang des Pfads Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | – | 3 | 3 | steht |
-| [[REQ-139]] | Fog of war | – | 4 | 8 | steht |
-| [[REQ-140]] | Light & line of sight with walls | – | 5 | 13 | steht |
+| [[REQ-209]] | Aufdecken von Hand oder entlang des Pfads | Spielleitung | 3 | 3 | steht |
+| [[REQ-139]] | Nebel | Spielleitung | 4 | 8 | steht |
+| [[REQ-140]] | Licht und Sicht mit Wänden | Spielleitung | 5 | 13 | steht |
 
 ### F-058 Bewegung & Zonen
 
@@ -703,10 +703,10 @@ Bewegungsrechner, Pfad, Zonen, Vollbild und eigene Tokens bewegen. — [[F-058 B
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-312]] | Eigenes Token bewegen | Spieler | 2 | 3 | teils |
-| [[REQ-206]] | Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern | – | 3 | 3 | steht |
-| [[REQ-207]] | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | – | 3 | 2 | steht |
-| [[REQ-208]] | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | – | 3 | 5 | teils |
-| [[REQ-210]] | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | – | 3 | 3 | teils |
+| [[REQ-206]] | Bewegungsrechner | Spielleitung | 3 | 3 | steht |
+| [[REQ-207]] | Pfad mit Wegpunkten | Spieler | 3 | 2 | steht |
+| [[REQ-208]] | Zonen mit eigenen Regeln | Spielleitung | 3 | 5 | teils |
+| [[REQ-210]] | Karte und Initiative im Vollbild | Spielleitung | 3 | 3 | teils |
 
 ### F-059 Gebiete & Overlays
 
@@ -714,8 +714,8 @@ Gebiete und Hervorhebungen auf der Karte. — [[F-059 Gebiete & Overlays]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-137]] | Overlays: query-driven highlights (faction locations, biomes, routes) | – | 4 | 5 | teils |
-| [[REQ-193]] | Territory overlays rasterised onto the map grid from shapes (rect, circle, ellipse, polygon) | – | 4 | 3 | steht |
+| [[REQ-137]] | Hervorhebungen nach Abfrage | Spielleitung | 4 | 5 | teils |
+| [[REQ-193]] | Gebiete auf der Karte | Spielleitung | 4 | 3 | steht |
 
 ### F-060 Reisen & Erkundung
 
@@ -723,10 +723,10 @@ Point-Crawl, Erkundungsstand, Vorräte und Aktionen je Knoten. — [[F-060 Reise
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-168]] | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | – | 3 | 5 | steht |
-| [[REQ-169]] | Exploration state ladder per map feature (verborgen → entdeckt → erkundet) with cascade: exploring a node reveals its edges as discovered | – | 3 | 3 | steht |
-| [[REQ-170]] | Travel resource cadence: consumables consumed every N nodes or watches, configurable per travel ruleset | – | 4 | 2 | steht |
-| [[REQ-171]] | Per-node action budget: one action per character per node from a configurable list (sneak, craft, forage, rest) | – | 4 | 3 | steht |
+| [[REQ-168]] | Point-Crawl | Spielleitung | 3 | 5 | steht |
+| [[REQ-169]] | Erkundungsstand | Spieler | 3 | 3 | steht |
+| [[REQ-170]] | Vorräte auf Reisen | Spielleitung | 4 | 2 | steht |
+| [[REQ-171]] | Aktionen je Knoten | Spieler | 4 | 3 | steht |
 
 ### F-061 Karteneditor
 
@@ -734,9 +734,9 @@ Zeichnen, Assets platzieren, Effekte. — [[F-061 Karteneditor]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-141]] | Map effects & animations (conditions, weather) | – | 5 | 8 | offen |
-| [[REQ-142]] | Drawing, stamps, brushes, layers on maps | – | 5 | 8 | offen |
-| [[REQ-143]] | Map editor / full map creation | – | 5 | 13 | offen |
+| [[REQ-141]] | Effekte auf der Karte | Spielleitung | 5 | 8 | offen |
+| [[REQ-142]] | Auf Karten zeichnen | Spielleitung | 5 | 8 | offen |
+| [[REQ-143]] | Karteneditor | Spielleitung | 5 | 13 | offen |
 
 ## EP-10 Medien & Assets
 
@@ -748,14 +748,14 @@ Wo Bilder und Dateien liegen und wie sie gefunden werden. — [[F-062 Asset-Abla
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-020]] | SourceRef provenance: publication, page, optional file + page anchor | – | 1 | 2 | steht |
-| [[REQ-021]] | Asset entity contract: backend app/nas/external, consumers resolve URLs via asset service | – | 1 | 3 | steht |
-| [[REQ-145]] | Asset service implementation: app-managed storage (icons, portraits, thumbnails) | – | 1 | 3 | teils |
-| [[REQ-146]] | NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15) | – | 2 | 5 | offen |
-| [[REQ-022]] | Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side | – | 3 | 5 | offen |
-| [[REQ-148]] | External URL assets | – | 3 | 1 | steht |
-| [[REQ-150]] | Audio asset storage | – | 5 | 2 | offen |
-| [[REQ-151]] | 3D file viewer / repository | – | 5 | 8 | offen |
+| [[REQ-020]] | Quelle eines Artikels | Spielleitung | 1 | 2 | steht |
+| [[REQ-021]] | Dateien als Assets | Spielleitung | 1 | 3 | steht |
+| [[REQ-145]] | Ablage in der Seite | Spielleitung | 1 | 3 | teils |
+| [[REQ-146]] | Grosse Dateien auf dem NAS | Verwaltung | 2 | 5 | offen |
+| [[REQ-022]] | Vorschaubilder und Kacheln | Spieler | 3 | 5 | offen |
+| [[REQ-148]] | Bilder von aussen | Spielleitung | 3 | 1 | steht |
+| [[REQ-150]] | Audio ablegen | Spielleitung | 5 | 2 | offen |
+| [[REQ-151]] | 3D-Dateien | Spielleitung | 5 | 8 | offen |
 
 ### F-063 Bildverwaltung
 
@@ -763,7 +763,7 @@ Hochladen, Übersicht, Bildklassen, Ersetzen, Import der Bilder. — [[F-063 Bil
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-147]] | Image upload, portraits, icons | – | 2 | 2 | teils |
+| [[REQ-147]] | Bilder hochladen | Spielleitung | 2 | 2 | teils |
 | [[REQ-295]] | Bild ersetzen als Fassung oder neue Quelle | Spielleitung | 3 | 2 | offen |
 | [[REQ-296]] | Bildklassen | Spielleitung | 3 | 2 | teils |
 | [[REQ-297]] | Bilder aus 5e.tools einlesen und verknüpfen | Spielleitung | 3 | 5 | offen |
@@ -782,9 +782,9 @@ Ein Artikel auf einem Blatt, Karten und Bögen drucken, Ausfuhr nach Markdown. �
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-029]] | Serializable schema / export (future file or git backing) | – | 3 | 3 | steht |
-| [[REQ-167]] | Print & export outputs: item cards, creature cards, character sheets (PDF), maps (image/print) rendered from facets — the facet defines *what* appears, the medium (screen/print/pdf/image) *how*; card-sheet assembly (n cards per page) as export config | – | 3 | 5 | offen |
-| [[REQ-195]] | Statblock export back to Obsidian markdown, preserving `{VAR}` placeholders unresolved | – | 4 | 2 | offen |
+| [[REQ-029]] | Ausfuhr und Einfuhr | Verwaltung | 3 | 3 | steht |
+| [[REQ-167]] | Drucken | Spielleitung | 3 | 5 | offen |
+| [[REQ-195]] | Statblock nach Obsidian ausführen | Spielleitung | 4 | 2 | offen |
 
 ### F-066 PDF & OCR
 
@@ -792,8 +792,8 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-149]] | PDF viewer with page-anchor jump from SourceRef | – | 4 | 5 | offen |
-| [[REQ-152]] | OCR / PDF import to structured content with editable raw output (MonsterBox-style) | – | 5 | 13 | offen |
+| [[REQ-149]] | PDF mit Seitensprung | Spieler | 4 | 5 | offen |
+| [[REQ-152]] | Texte aus PDF erkennen | Spielleitung | 5 | 13 | offen |
 
 ## EP-11 Oberfläche & Navigation
 
@@ -805,17 +805,17 @@ Leinwände mit Platzierungen, Ankern und Bereichen; Anlegen auf dem Board. — [
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-111]] | Boards: user-owned configurable views with tabs/pages and widgets; DM and player boards share the mechanism | – | 2 | 8 | steht |
-| [[REQ-157]] | Canvas boards: free positioning, scaling and arrangement of entity placements on a board (Figma/Canva-style), beyond the widget grid | – | 2 | 8 | steht |
-| [[REQ-158]] | Placement rendering: each placement resolves to a facet/renderer via the display resolution; explicit per-placement override always wins | – | 2 | 3 | steht |
-| [[REQ-161]] | Display resolution as priority system: entity profile proposes, board rules (per interface / attribute value) decide, user overrides; placement override wins; ties → board rule; works board-only | – | 2 | 5 | steht |
-| [[REQ-165]] | Board placements beyond content entities: assets (images, icons), geometric/mathematical shapes as inline canvas objects, and tool objects (interactive widgets such as creature creator or generators) on the canvas | – | 2 | 3 | steht |
-| [[REQ-166]] | Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow | – | 2 | 2 | teils |
-| [[REQ-119]] | Player boards | – | 3 | 3 | offen |
-| [[REQ-159]] | Frames / viewpoint anchors: named canvas viewports (position, zoom depth, target facet, visible layers), persisted in the board config | – | 3 | 3 | steht |
-| [[REQ-160]] | Anchor quick navigation: jump between anchors (list, hotkeys) — session notes → map → house rules without leaving the board | – | 3 | 2 | teils |
+| [[REQ-111]] | Boards | Spielleitung | 2 | 8 | steht |
+| [[REQ-157]] | Frei anordnen auf dem Board | Spielleitung | 2 | 8 | steht |
+| [[REQ-158]] | Ansicht je Platzierung | Spielleitung | 2 | 3 | steht |
+| [[REQ-161]] | Regeln für die Darstellung | Spielleitung | 2 | 5 | steht |
+| [[REQ-165]] | Bilder, Formen und Werkzeuge auf dem Board | Spielleitung | 2 | 3 | steht |
+| [[REQ-166]] | Auf dem Board anlegen | Spielleitung | 2 | 2 | teils |
+| [[REQ-119]] | Boards der Spielenden | Spieler | 3 | 3 | offen |
+| [[REQ-159]] | Anker und Bereiche auf dem Board | Spielleitung | 3 | 3 | steht |
+| [[REQ-160]] | Zwischen Ankern springen | Spielleitung | 3 | 2 | teils |
 | [[REQ-291]] | Leseansicht auf dem Board | Spielleitung | 3 | 3 | offen |
-| [[REQ-162]] | Semantic zoom: zoom depth maps onto facets (compact list of weapon properties → full detail on zoom-in); anchors may store a target facet | – | 4 | 5 | offen |
+| [[REQ-162]] | Semantischer Zoom | Spielleitung | 4 | 5 | offen |
 
 ### F-068 Suche
 
@@ -824,7 +824,7 @@ Leinwände mit Platzierungen, Ankern und Bereichen; Anlegen auf dem Board. — [
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-304]] | Übergreifende Suche beim Tippen | Spieler | 1 | 3 | steht |
-| [[REQ-028]] | Full-text search across content | – | 3 | 3 | teils |
+| [[REQ-028]] | Volltextsuche | Spieler | 3 | 3 | teils |
 
 ### F-069 Filter & Filtergruppen
 
@@ -842,7 +842,7 @@ Kopfleiste, Brotkrumen, Kurzansicht als Popup, Kampagne und Ebene sichtbar. — 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-315]] | Globale Kopfleiste | Spieler | 1 | 2 | steht |
-| [[REQ-248]] | Kurzansicht überall: wo ein Artikel genannt wird (auch Ebenen in Filtern, Chips, Listen), öffnet ein Klick bzw. Antippen ein Popup mit der Quick-Ansicht und einem Link zum Artikel; Brotkrumen für die Navigation | – | 2 | 5 | steht |
+| [[REQ-248]] | Kurzansicht überall | Spieler | 2 | 5 | steht |
 | [[REQ-305]] | Kampagne und Ebene immer sichtbar | Spielleitung | 2 | 2 | offen |
 
 ### F-071 Bearbeiten in der Ansicht
@@ -860,7 +860,7 @@ Pergament wie die Bücher, Lesbarkeit, Stilkonzept, Sprache der Oberfläche. —
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-153]] | German UI output with i18n-ready string handling | – | 2 | 2 | ersetzt |
+| [[REQ-153]] | Deutsche Oberfläche | – | 2 | 2 | ersetzt |
 | [[REQ-300]] | Gestaltung wie die Bücher | Spielleitung | 3 | 3 | teils |
 | [[REQ-306]] | Lesbarkeit im Feinschliff | Spieler | 3 | 2 | steht |
 | [[REQ-301]] | Stilkonzept in der Verwaltung anpassen | Verwaltung | 4 | 3 | offen |
@@ -875,11 +875,11 @@ Einmal einlesen, danach ergänzen; jede Quelle in ihre Ebene. — [[F-073 5e.too
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-047]] | Import-first entry: 5e.tools JSON, Improved Initiative JSON, markdown paste from Obsidian | – | 2 | 5 | verworfen |
-| [[REQ-090]] | Rule import from Obsidian markdown and 5e.tools data | – | 2 | 3 | verworfen |
-| [[REQ-239]] | Jedes Buch eine eigene Ebene (PHB, MM, DMG, XGE …), statt einer Ebene für alles aus 5e.tools; eine Kampagne schaltet die Bücher auf, die sie nutzt | – | 2 | 3 | steht |
-| [[REQ-243]] | Alle 5e.tools-Inhalte als eigene Ebenen, abschaltbar: 2024-Regeln, Unearthed Arcana, Fahrzeuge, Kartendecks, Bastionen — damit die Leitung Ebenen umschalten und Fassungen eines Artikels nebeneinander zeigen kann | – | 2 | 8 | steht |
-| [[REQ-233]] | 5e.tools über eine Pipeline einlesen statt von Hand auf dem Server: dev von selbst, wenn sich der Importer ändert, prod nur von Hand; vorher eine Sicherung, ein Probelauf ist möglich, der Bericht steht im Lauf | – | 3 | 3 | steht |
+| [[REQ-047]] | Import von 5e.tools, Improved Initiative und Obsidian als Einstieg | – | 2 | 5 | verworfen |
+| [[REQ-090]] | Regeln aus Obsidian und 5e.tools einlesen | – | 2 | 3 | verworfen |
+| [[REQ-239]] | Jedes Buch eine Ebene | Spielleitung | 2 | 3 | steht |
+| [[REQ-243]] | Alle Inhalte als abschaltbare Ebenen | Spielleitung | 2 | 8 | steht |
+| [[REQ-233]] | 5e.tools über eine Pipeline laden | Verwaltung | 3 | 3 | steht |
 
 ### F-074 Regelwerke anderer Verlage
 

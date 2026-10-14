@@ -19,7 +19,7 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-223]] Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | – | 4 | offen |
+| [[REQ-223]] Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | offen |
 | [[REQ-287]] Regelsysteme als Behälter mit Optionen | Spielleitung | 2 | offen |
 | [[REQ-289]] Homebrew-Regeln erfassen | Spielleitung | 3 | offen |
 <!-- stories:ende -->

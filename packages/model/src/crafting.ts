@@ -19,7 +19,7 @@
  */
 
 import { entityName } from './entity.js';
-import type { Entity, EntityId, Relation } from './types.js';
+import type { Entity, EntityId } from './types.js';
 
 export const CRAFTS_WITH = 'craftsWith';
 export const RECIPE_COMPONENT = 'Recipe';
@@ -353,21 +353,6 @@ export function applySettlement(inventory: Entity, keep: ReadonlyMap<string, num
     delete props['reservedFor'];
     return [{ ...r, props }];
   });
-  return { ...inventory, relations };
-}
-
-/**
- * **Den Ertrag ins Inventar legen** (T-128): `qty` Stück des Gegenstands,
- * auf einen losen Stapel desselben, wenn einer daliegt — wie beim
- * Verschieben (`moveHeld`).
- */
-export function addToInventory(inventory: Entity, item: EntityId, qty: number, newId: string): Entity {
-  const lose = (r: Relation) =>
-    r.type === 'holds' && r.to === item && !r.props?.['reservedFor'] && ['gx', 'gy', 'rot', 'slot'].every((k) => r.props?.[k] === undefined || r.props?.[k] === null);
-  const da = (inventory.relations ?? []).find(lose);
-  const relations = da
-    ? (inventory.relations ?? []).map((r) => (r === da ? { ...r, props: { ...(r.props ?? {}), qty: (Number(r.props?.['qty']) || 1) + qty } } : r))
-    : [...(inventory.relations ?? []), { id: newId, type: 'holds', to: item, props: { qty, tier: 'pack' } }];
   return { ...inventory, relations };
 }
 

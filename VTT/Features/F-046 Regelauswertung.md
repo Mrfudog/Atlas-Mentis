@@ -19,10 +19,10 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-017]] Term engine bindings: system-specific semantic evaluation of rule terms | – | 4 | offen |
-| [[REQ-018]] Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types | – | 1 | offen |
-| [[REQ-093]] Rule engine per system evaluating rules against entity data (constraints, terms) | – | 5 | offen |
-| [[REQ-095]] Effects interpreter for grants (first consumer: creature builder) | – | 4 | offen |
-| [[REQ-096]] Constraint interpreter (first consumer: settlement / building validation) | – | 5 | offen |
+| [[REQ-017]] Begriffe je Regelsystem auswerten | Spielleitung | 4 | offen |
+| [[REQ-018]] Wirkungen von Regeln beschreiben | Spielleitung | 1 | offen |
+| [[REQ-093]] Regeln auswerten | Spielleitung | 5 | offen |
+| [[REQ-095]] Gewährtes anwenden | Spieler | 4 | offen |
+| [[REQ-096]] Einschränkungen prüfen | Spielleitung | 5 | offen |
 | [[REQ-290]] Wechselwirkungen von Regeln auswerten | Spielleitung | 4 | offen |
 <!-- stories:ende -->

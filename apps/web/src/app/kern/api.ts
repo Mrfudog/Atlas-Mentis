@@ -1061,6 +1061,11 @@ export class Api {
     return this.call(`/api/crafting/${encodeURIComponent(id)}/${action}`, { method: 'POST', body: JSON.stringify(body) });
   }
   /** Im Laden kaufen (T-133): Ware und Menge; den Preis rechnet der Server. */
+  /** **Geben** (T-150): ein Stück ins Inventar, als Instanz des Gegenstands — Beute, Geschenk, Eigenes. */
+  give(inventory: string, item: string, qty = 1): Promise<{ item: { id: string; name: string }; piece: string; qty: number; created: boolean }> {
+    return this.call(`/api/inventories/${encodeURIComponent(inventory)}/give`, { method: 'POST', body: JSON.stringify({ item, qty }) });
+  }
+
   buy(shop: string, actor: string, edge: string, qty: number): Promise<Handel> {
     return this.call(`/api/shops/${encodeURIComponent(shop)}/buy`, { method: 'POST', body: JSON.stringify({ actor, edge, qty }) });
   }

@@ -19,7 +19,7 @@ Epic: [[EP-06 Welt & Lore]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-030]] Reputation hooks: weighted tags on relations, propagation rule slot reserved | – | 2 | ersetzt |
-| [[REQ-061]] Creature relations (creature ↔ creature / faction) with relation type | – | 2 | steht |
-| [[REQ-081]] Reputation & relationship system: interaction tags propagate NPC → faction → city with renown thresholds and status | – | 4 | ersetzt |
+| [[REQ-030]] Ruf als gewichtete Marken | – | 2 | ersetzt |
+| [[REQ-061]] Beziehungen zwischen Figuren | Spielleitung | 2 | steht |
+| [[REQ-081]] Ruf, der sich ausbreitet | – | 4 | ersetzt |
 <!-- stories:ende -->

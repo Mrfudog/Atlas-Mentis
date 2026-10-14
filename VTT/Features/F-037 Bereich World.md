@@ -19,9 +19,9 @@ Epic: [[EP-06 Welt & Lore]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-101]] Lore articles: categories, composed of ContentBlocks | – | 2 | steht |
-| [[REQ-103]] Locations: hierarchy via parent, type, biome | – | 2 | steht |
-| [[REQ-104]] Factions: type/subtype taxonomy, relations | – | 2 | steht |
-| [[REQ-107]] Pantheons / deities as article subtype | – | 4 | offen |
-| [[REQ-110]] Bibliothek von Tan'Jit: illustrated navigation presentation layer over articles | – | 5 | offen |
+| [[REQ-101]] Lore-Artikel | Spielleitung | 2 | steht |
+| [[REQ-103]] Orte mit Hierarchie | Spielleitung | 2 | steht |
+| [[REQ-104]] Fraktionen | Spielleitung | 2 | steht |
+| [[REQ-107]] Gottheiten und Pantheons | Spielleitung | 4 | offen |
+| [[REQ-110]] Illustrierte Bibliothek | Spieler | 5 | offen |
 <!-- stories:ende -->

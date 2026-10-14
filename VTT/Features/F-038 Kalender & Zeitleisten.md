@@ -19,9 +19,9 @@ Epic: [[EP-06 Welt & Lore]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-024]] WorldDate property type: canonical sortable value + display string + CalendarSystem reference | – | 1 | steht |
-| [[REQ-025]] CalendarSystem definition: months, eras, moons, configurable per world/system | – | 3 | offen |
-| [[REQ-087]] Calendar module: months, moons, holidays, time-of-day widget with triggers, lore coupling | – | 5 | offen |
-| [[REQ-106]] Events & timelines sorted by WorldDate | – | 3 | steht |
-| [[REQ-220]] Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | – | 3 | steht |
+| [[REQ-024]] Weltdatum | Spielleitung | 1 | steht |
+| [[REQ-025]] Kalender der Welt | Spielleitung | 3 | offen |
+| [[REQ-087]] Kalendermodul | Spielleitung | 5 | offen |
+| [[REQ-106]] Ereignisse und Zeitleisten | Spielleitung | 3 | steht |
+| [[REQ-220]] Zeitleisten der Weltgeschichte | Spielleitung | 3 | steht |
 <!-- stories:ende -->
