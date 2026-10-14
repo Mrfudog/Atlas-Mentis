@@ -44,6 +44,7 @@ Ebene (Datenmodell, E2a).
 
 Lesend von aussen, mit einem API-Token ([Werkzeugzugang](#werkzeugzugang)):
 `curl -s -H "Authorization: Bearer $ATLAS_DEV_TOKEN" "$ATLAS_URL/api/list?limit=1"`
+(in einer Cloud-Sitzung mit Network secret ohne `-H`)
 — das Feld `unactivated` nennt Kampagne, Ebenen und Zahlen; fehlt es,
 blendet keine Ebene etwas aus.
 
@@ -625,6 +626,19 @@ Angemeldet wird mit einem **API-Token** eines eigenen Kontos
 prod: dort gibt es dieses Konto nicht, und das Skript zeigt ohne Angabe
 auf dev.
 
+Das Token kommt auf einem von **zwei Wegen** in die Sitzung (Schritt 3):
+
+- **Weg A — Umgebungsvariable** `ATLAS_DEV_TOKEN`: das Skript setzt
+  `Authorization: Bearer …` selbst. Geht überall, auch lokal; die Sitzung
+  kann das Token aber lesen.
+- **Weg B — Network secret** (seit 14.10.2026, T-106, so eingerichtet): der
+  Proxy der Cloud-Umgebung hängt den Kopf an jede Anfrage an
+  `dev.ttrpg.fuchsbau.io`. Die Sitzung sieht das Token nie, und der Host
+  ist damit auch unter „Trusted" erreichbar. Das Skript braucht dann
+  **kein** `ATLAS_DEV_TOKEN` und sendet ohne eigenen Kopf. Ein Kopf, den
+  die Sitzung doch mitschickt, wird vom Proxy ersetzt — mit Weg B gilt
+  immer das Secret.
+
 ### Einrichten (einmal, die Leitung)
 
 **1. Das Konto auf dev anlegen** — als `deploy` auf dem Server:
@@ -662,11 +676,12 @@ Titel der Sitzung das Menü der Cloud-Umgebung → **Edit**
 | Einstellung | Wert |
 | --- | --- |
 | **Network access** | Stufe „Limited" (in älteren Apps „Custom") und unter **Allowed domains** `dev.ttrpg.fuchsbau.io` eintragen. Den Haken **Allow package managers** stehen lassen — sonst geht `pnpm install` nicht mehr. |
-| **Environment variables** | `ATLAS_DEV_TOKEN=atm_…` (das Token aus Schritt 2) |
+| **Network secret** (Weg B) | Host `dev.ttrpg.fuchsbau.io`, Header `Authorization`, Wert `Bearer atm_…` (das Token aus Schritt 2). Damit ist der Host auch ohne Eintrag unter „Allowed domains" erreichbar. |
+| **Environment variables** (Weg A, statt B) | `ATLAS_DEV_TOKEN=atm_…` (das Token aus Schritt 2) |
 | | `ATLAS_URL=https://dev.ttrpg.fuchsbau.io` (optional — das ist die Vorgabe des Skripts) |
 
-Speichern. Eine **neue** Sitzung bekommt die Einstellungen; eine laufende
-nicht. Das Token gehört in die Einstellungen der Umgebung und **nie** in
+Einer der beiden Wege reicht. Speichern. Eine **neue** Sitzung bekommt die
+Einstellungen; eine laufende nicht. Das Token gehört in die Einstellungen der Umgebung und **nie** in
 einen Chat, eine Datei im Repository oder eine Issue.
 
 **4. Prüfen** — in einer neuen Sitzung:
@@ -676,9 +691,18 @@ node scripts/atlas.mjs me        # "name": "werkbank", "token": { "scope": "writ
 node scripts/atlas.mjs checks    # die Zahlen je Prüfung
 ```
 
+Ohne Skript, mit Weg B: `curl -s https://dev.ttrpg.fuchsbau.io/api/me` —
+ohne eigenen Kopf, und die Antwort nennt das Konto. Am 14.10.2026 kam so
+`werkbank` (Verwaltung) mit dem Token `claude-cloud` (`write`, bis
+12.11.2026) zurück.
+
 `403` beim Verbinden (`CONNECT tunnel failed`) heisst: die Domain ist in
-Schritt 3 nicht freigegeben. `401` heisst: Token falsch, abgelaufen oder
-widerrufen.
+Schritt 3 nicht freigegeben. `401` heisst mit Weg A: Token falsch,
+abgelaufen oder widerrufen; mit Weg B: das Network secret fehlt, nennt
+einen anderen Host, oder Header-Name (`Authorization`) oder Präfix
+(`Bearer `) stimmen nicht — das Skript sagt, welcher Weg gemeint ist.
+Läuft das Token ab, ein neues ausgeben (Schritt 2) und das Secret in den
+Einstellungen ersetzen.
 
 **Widerrufen**, wenn ein Token irgendwo liegt, wo es nicht hingehört:
 

@@ -271,3 +271,120 @@ export function versionDiff(registry: Pick<Registry, 'interfaces'>, base: Entity
   }
   return { fields, relations };
 }
+
+// ------------------------------------------------------------ Abschnitte
+
+/**
+ * **Ein Abschnitt eines langen Textes** (T-103): was unter einer
+ * Überschrift steht, bis zur nächsten. Der Text vor der ersten Überschrift
+ * ist der Abschnitt mit dem leeren Schlüssel.
+ */
+export interface TextSection {
+  /** Die Überschrift klein, bei Wiederholung mit `#2`, `#3` … — so finden sich die Abschnitte zweier Fassungen. */
+  key: string;
+  heading: string;
+  /** Der Abschnitt samt Überschriftzeile — so, wie er gezeichnet wird. */
+  text: string;
+  /** Der Abschnitt ohne Überschriftzeile. */
+  body: string;
+}
+
+/* Dieselbe Überschrift wie in `parseMarkdown` (M10), damit beide dieselben Abschnitte sehen. */
+const UEBERSCHRIFT = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
+
+/**
+ * **Den Text nach Überschriften teilen** (T-103). Ein langer Text aus
+ * 5e.tools ist „## Age … ## Size … ## Languages …"; wer zwei Fassungen als
+ * Ganzes vergleicht, hängt die abweichende an das Ende — bei Aasimar stand
+ * so die andere Grösse unter „Languages". Abschnitt für Abschnitt steht
+ * sie unter „Size".
+ */
+export function textSections(text: string): TextSection[] {
+  const out: TextSection[] = [];
+  const gezaehlt = new Map<string, number>();
+  let heading = '';
+  let kopf: string | null = null;
+  let zeilen: string[] = [];
+  const schliesse = () => {
+    const body = zeilen.join('\n').trim();
+    if (kopf === null && !body) return;
+    const grund = heading.trim().toLowerCase();
+    const n = (gezaehlt.get(grund) ?? 0) + 1;
+    gezaehlt.set(grund, n);
+    out.push({
+      key: n > 1 ? `${grund}#${n}` : grund,
+      heading,
+      text: kopf === null ? body : body ? `${kopf}\n\n${body}` : kopf,
+      body,
+    });
+  };
+  for (const zeile of String(text ?? '').split('\n')) {
+    const h = /^ {0,3}\S/.test(zeile) ? UEBERSCHRIFT.exec(zeile.trim()) : null;
+    if (h) {
+      schliesse();
+      heading = h[2] ?? '';
+      kopf = zeile.trim();
+      zeilen = [];
+    } else zeilen.push(zeile);
+  }
+  schliesse();
+  return out;
+}
+
+/** Was eine Fassung in einem Abschnitt (oder einer Zeile) anders sagt. */
+export interface SectionVersion {
+  key: string;
+  heading: string;
+  /** Der Abschnitt der anderen Fassung ohne Überschrift; `undefined` heisst: dort fehlt er. */
+  value: string | undefined;
+  /** Nur die andere Fassung hat diesen Abschnitt. */
+  onlyThere: boolean;
+}
+
+const gleichText = (a: string, b: string) => a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim();
+
+/**
+ * **Zwei lange Texte Abschnitt für Abschnitt** (T-103): je Abschnitt, der
+ * abweicht, was die andere Fassung dort sagt; Abschnitte, die nur sie hat,
+ * in ihrer Reihenfolge am Ende. Gleiches fällt weg, Leerraum zählt nicht.
+ */
+export function sectionDiff(base: string, other: string): SectionVersion[] {
+  const a = textSections(base);
+  const b = textSections(other);
+  const dort = new Map(b.map((s) => [s.key, s]));
+  const hier = new Set(a.map((s) => s.key));
+  const out: SectionVersion[] = [];
+  for (const s of a) {
+    const o = dort.get(s.key);
+    if (!o) out.push({ key: s.key, heading: s.heading, value: undefined, onlyThere: false });
+    else if (!gleichText(s.body, o.body)) out.push({ key: s.key, heading: s.heading, value: o.body, onlyThere: false });
+  }
+  for (const o of b) if (!hier.has(o.key)) out.push({ key: o.key, heading: o.heading, value: o.body, onlyThere: true });
+  return out;
+}
+
+/**
+ * **Zwei Zeilenlisten Zeile für Zeile** (T-103) — die Zeilen eines
+ * Statblocks, Zaubers oder Gegenstands, wie das Buch-Element sie zeichnet
+ * (`statblockBook` …). Verglichen wird nach Beschriftung, also das, was
+ * dasteht, und nicht die Karte darunter: so steht die andere Fassung an
+ * der Zeile, an der sie gelesen wird.
+ */
+export function linesDiff(
+  base: readonly { label: string; text: string }[],
+  other: readonly { label: string; text: string }[],
+): SectionVersion[] {
+  const key = (l: string) => l.trim().toLowerCase();
+  const dort = new Map(other.map((z) => [key(z.label), z]));
+  const hier = new Set(base.map((z) => key(z.label)));
+  const out: SectionVersion[] = [];
+  for (const z of base) {
+    const o = dort.get(key(z.label));
+    if (!o || !o.text) out.push({ key: key(z.label), heading: z.label, value: undefined, onlyThere: false });
+    else if (!gleichText(z.text, o.text)) out.push({ key: key(z.label), heading: z.label, value: o.text, onlyThere: false });
+  }
+  for (const o of other) {
+    if (!hier.has(key(o.label)) && o.text) out.push({ key: key(o.label), heading: o.label, value: o.text, onlyThere: true });
+  }
+  return out;
+}
