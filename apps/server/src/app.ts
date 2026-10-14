@@ -116,6 +116,7 @@ import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
 import { registerFiltergruppen } from './filtergruppen.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
+import { registerGeben, stueckWerkstatt } from './stueck.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
@@ -1065,6 +1066,8 @@ export function buildApp({
     if (url === '/api/filters' || url.startsWith('/api/filters/')) return;
     /* Kaufen und Verkaufen (T-133): die Route prüft die Figur selbst (`laden.ts`). */
     if (/^\/api\/shops\/[^/]+\/(buy|sell)$/.test(url) && request.method === 'POST') return;
+    /* Geben (T-150): die Route fragt `mayWrite` am Inventar selbst (`stueck.ts`). */
+    if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -2435,25 +2438,40 @@ export function buildApp({
         kupfer = budget !== undefined ? budget - pruefung.spent : 0;
       }
 
-      /* Das Inventar: das vorhandene, sonst ein neues in den Ebenen der Figur. */
-      const holds = items.map((i, n) => ({ type: 'holds', to: i.id, props: { qty: i.qty, tier: 'pack' } as Record<string, unknown>, n }));
+      /* Das Inventar: das vorhandene, sonst ein neues in den Ebenen der Figur.
+         Jeder Gegenstand kommt als Instanz (T-150, `stueckWerkstatt`). */
+      const werkstatt = stueckWerkstatt({ repo, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet), kampagnenEbene }, stand, kampagne);
+      const autor = leitet ? null : user.id;
+      const einlegen = async (inv: Entity): Promise<Entity | { issues: ReturnType<typeof validateEntity> }> => {
+        let jetzt = inv;
+        for (const i of items) {
+          const r = await werkstatt.geben(jetzt, i.id, i.qty, autor);
+          if ('issues' in r) return r;
+          jetzt = r.inventory;
+        }
+        return jetzt;
+      };
       let invId = inventar?.id;
       if (inventar) {
-        const relations = [
-          ...(inventar.relations ?? []),
-          ...holds.map((h) => ({ id: `${inventar.id}~holds-${randomUUID().slice(0, 8)}`, type: h.type, to: h.to, props: h.props })),
-        ];
+        const gefuellt = await einlegen(inventar);
+        if ('issues' in gefuellt) {
+          await werkstatt.zuruecknehmen();
+          return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: gefuellt.issues });
+        }
         const alt = Number(inventar.components?.['Inventory']?.['copper']) || 0;
-        const components = { ...(inventar.components ?? {}), Inventory: { ...(inventar.components?.['Inventory'] ?? {}), copper: alt + kupfer } };
-        const ergebnis = await schreibeGeprueft({ ...inventar, components, relations });
-        if ('issues' in ergebnis) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
+        const components = { ...(gefuellt.components ?? {}), Inventory: { ...(gefuellt.components?.['Inventory'] ?? {}), copper: alt + kupfer } };
+        const ergebnis = await schreibeGeprueft({ ...gefuellt, components });
+        if ('issues' in ergebnis) {
+          await werkstatt.zuruecknehmen();
+          return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
+        }
       } else {
         const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
         let id = neueId();
         while (stand.map.has(id)) id = neueId();
         invId = id;
         const name = `${entityName(figur)}'s inventory`;
-        const neu: Entity = {
+        const leer: Entity = {
           id,
           interfaces: ['Inventory'],
           name,
@@ -2463,15 +2481,23 @@ export function buildApp({
             /* Teil der eigenen Figur (E-014 d): fertig wie sie. */
             [STATUS_COMPONENT]: { status: 'ready' },
           },
-          relations: [
-            ...(figur.relations ?? []).filter((r) => r.type === 'inLayer').map((r, n) => ({ id: `${id}~inLayer-${n + 1}`, type: 'inLayer', to: r.to, props: {} })),
-            ...holds.map((h) => ({ id: `${id}~holds-${h.n + 1}`, type: h.type, to: h.to, props: h.props })),
-          ],
+          relations: (figur.relations ?? [])
+            .filter((r) => r.type === 'inLayer')
+            .map((r, n) => ({ id: `${id}~inLayer-${n + 1}`, type: 'inLayer', to: r.to, props: {} })),
         };
+        const neu = await einlegen(leer);
+        if ('issues' in neu) {
+          await werkstatt.zuruecknehmen();
+          return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: neu.issues });
+        }
         const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
         known.set(id, 'Inventory');
+        for (const s of werkstatt.angelegt) known.set(s, werkstatt.bestand.get(s)?.interfaces?.[0] ?? '');
         const issues = validateEntity(registry, neu, { knownTypes: known, stageOf: stageBases([...stand.alle, neu]) });
-        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        if (issues.length) {
+          await werkstatt.zuruecknehmen();
+          return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        }
         await repo.putEntity(neu);
         if (!user.isAdmin && (user.authoredIds ?? []).includes(figur.id)) await repo.addAuthored(user.id, id);
         const ergebnis = await schreibeGeprueft({
@@ -2501,6 +2527,25 @@ export function buildApp({
   registerHandwerk(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene });
   /* Kaufen und Verkaufen im Laden (T-133): der Preis am Server, gegen die gelesene Revision. */
   registerLaden(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet), kampagnenEbene });
+  /* Geben (T-150): Beute, Geschenke, was die Leitung austeilt — als Instanz. */
+  registerGeben(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve,
+    schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet),
+    kampagnenEbene,
+    /* Wie am `PUT`: was das Konto schreibt, und als Leitung, was Spielende ihr vorlegen (D72). */
+    darfSchreiben: async (request, id) => {
+      const user = await viewerOf(request);
+      if (!user) return false;
+      if (mayWrite(user, await ownedBy(user), id)) return true;
+      if (!(await repo.authorsOf(id)).length) return false;
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const da = alle.get(id);
+      return !!da && maySetReady(user, alle, da);
+    },
+  });
 
   /* **Der Live-Kanal** (T-116, REQ-116): `GET /api/live`, je Empfänger
      gesiebt mit `sieveFuer` — dieselbe Rechnung wie jede Route. */
