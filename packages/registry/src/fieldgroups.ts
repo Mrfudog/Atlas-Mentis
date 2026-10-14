@@ -1345,6 +1345,13 @@ export const fieldGroups = {
            Unterscheidung, die dort jemand sorgfältig gemacht hat. */
         availability: { type: 'string', suggest: true, title: 'Purchase rarity' },
         copperPrice: { type: 'number', title: 'Price in copper' },
+        /* **Woher der Preis kommt** (T-139, E-046): leer heisst Listenpreis
+           der Quelle; sonst ein Satz wie „estimated: DMG 2024 rare" oder
+           „derived: base price + 100 gp (silvered)". Ein geschätzter Preis
+           sieht sonst aus wie einer aus dem Buch, und wer ihn später
+           ersetzen will, findet ihn nicht. Ein Satz und keine Aufzählung:
+           die Regel, nach der geschätzt wird, entscheidet die Leitung. */
+        priceNote: { type: 'string', title: 'Price basis' },
         /* Leer, solange das Hausregel-Inventar nicht läuft: dort sagt
            die Stapelgrösse, wie viele auf ein Feld gehen. Kein totes Feld,
            sondern ein Feld eines Moduls. */

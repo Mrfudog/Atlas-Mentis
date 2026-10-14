@@ -1100,6 +1100,14 @@ flowchart LR
   `price` (in Kupfer, statt `Item.copperPrice`), `mod` (nur diese Ware),
   `available`. Wer ihn hält, steht an `shopkeeper`; eine Fraktion, die ihn
   kontrolliert, an ihrer Kante `controls`.
+- **Ein Preis sagt, woher er kommt** (T-139, E-046): `Item.copperPrice`
+  in Kupfer, daneben `Item.priceNote`. Leer heisst Listenpreis der
+  Quelle; sonst steht da, wie gerechnet oder geschätzt wurde —
+  „derived: base price + 100 gp" (der Importer rechnet so die
+  `valueExpression` einer Variante am Grundgegenstand), „estimated: DMG
+  2024 rare". Der Buchstil zeigt es hinter dem Preis. Ein Satz und keine
+  Aufzählung: nach welcher Regel geschätzt wird, entscheidet die Leitung,
+  und ein geschätzter Preis soll sich finden und ersetzen lassen.
 - **Ein Abschlag ist ein Wort**: `−10 gp`, `+5 sp`, `−10 %`
   (`parsePriceMod`). Ohne Einheit ist er keiner; was sich nicht lesen
   lässt, zählt 0 und steht als `invalid` in der Herkunft.
@@ -1449,7 +1457,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `controls` `discount` `regards` | `memberOf` `discount` `questGiver` `features` `knownBy` `regards` | quick |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | quick, overview |
-| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, overview, full |
+| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `priceNote` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, overview, full |
 | `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, full |
