@@ -416,7 +416,10 @@ interface Feld {
                         <input type="text" [(ngModel)]="f.wert" [name]="f.ref" placeholder="one, two, three" />
                       }
                       @default {
-                        <input type="text" [(ngModel)]="f.wert" [name]="f.ref" />
+                        <!-- Ein ausgegebenes Feld (\`readOnly\`, der Bezeichner) bleibt, wie es
+                             ist: es wird beim Anlegen vergeben und danach nicht geändert. -->
+                        <input type="text" [(ngModel)]="f.wert" [name]="f.ref" [readOnly]="!!f.schema?.readOnly"
+                               [attr.title]="f.schema?.readOnly ? 'Issued when the article was created; it does not change.' : null" />
                       }
                     }
                     <!-- Was die anderen Fassungen hier sagen (T-103), auch beim Bearbeiten. -->
