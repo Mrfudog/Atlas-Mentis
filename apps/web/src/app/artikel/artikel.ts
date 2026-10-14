@@ -26,6 +26,7 @@ import {
 import type { Entity, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError, type Fassungen, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
 import {
   anzeigeWert,
@@ -52,6 +53,10 @@ import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
+/** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
+const PART_RELATION = 'partOf';
+/** So viele Glieder höchstens im Brotkrumenpfad. */
+const PFAD_TIEFE = 8;
 
 interface Zelle {
   ref: string;
@@ -135,7 +140,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte, FassungsKasten],
+  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte, FassungsKasten, KurzLink],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -145,8 +150,13 @@ interface Feld {
           <a [routerLink]="'/' + (bereich() || 'compendium')" [queryParams]="{ type: art(e) }">{{
             typLabel(art(e))
           }}</a>
+          <!-- Ebene und übergeordnete Artikel (T-093): wo der Artikel steht. -->
+          @for (p of pfad(); track p.id) {
+            <span aria-hidden="true">›</span>
+            <a [routerLink]="['/artikel', p.id]">{{ p.name }}</a>
+          }
           <span aria-hidden="true">›</span>
-          <span>{{ name(e) }}</span>
+          <span aria-current="page">{{ name(e) }}</span>
         </nav>
 
         <div class="spalten">
@@ -501,7 +511,7 @@ interface Feld {
                               @for (l of z.links; track $index) {
                                 @if (!$first) {<ng-container>, </ng-container>}
                                 @if (l.ziel) {
-                                  <a [routerLink]="['/artikel', l.ziel]">{{ l.text }}</a>
+                                  <a [routerLink]="['/artikel', l.ziel]" [nwQuick]="l.ziel">{{ l.text }}</a>
                                 } @else {
                                   <span class="weg">{{ l.text }}</span>
                                 }
@@ -598,7 +608,7 @@ interface Feld {
                     <li>
                       <span class="rl">{{ k.label }}</span>
                       @if (k.ziel) {
-                        <a [routerLink]="['/artikel', k.ziel]">{{ k.text }}</a>
+                        <a [routerLink]="['/artikel', k.ziel]" [nwQuick]="k.ziel">{{ k.text }}</a>
                       } @else {
                         <span class="weg">{{ k.text }}</span>
                       }
@@ -627,7 +637,7 @@ interface Feld {
                   @for (r of rueckbezuege(); track r.id) {
                     <li>
                       <span class="rl">{{ r.label }}</span>
-                      <a [routerLink]="['/artikel', r.ziel]">{{ r.text }}</a>
+                      <a [routerLink]="['/artikel', r.ziel]" [nwQuick]="r.ziel">{{ r.text }}</a>
                     </li>
                   }
                 </ul>
@@ -643,7 +653,7 @@ interface Feld {
                     @for (l of z.links; track $index) {
                       @if (!$first) {<ng-container>, </ng-container>}
                       @if (l.ziel) {
-                        <a [routerLink]="['/artikel', l.ziel]">{{ l.text }}</a>
+                        <a [routerLink]="['/artikel', l.ziel]" [nwQuick]="l.ziel">{{ l.text }}</a>
                       } @else {
                         <span class="weg">{{ l.text }}</span>
                       }
@@ -698,6 +708,11 @@ export class Artikel {
        der nächste geholt. */
     effect(() => {
       void this.bestand.oeffnen(this.id());
+    });
+    /* Die `partOf`-Kette für den Brotkrumenpfad, Glied für Glied (T-093). */
+    effect(() => {
+      const offen = this.kette().offen;
+      if (offen) void untracked(() => this.bestand.holen([offen]));
     });
     /* **Die Fassungen** (T-092) kommen je Artikel, neben ihm: eine
        Anfrage, und der Vergleich rechnet hier. Namen der Kantenziele, die
@@ -791,6 +806,40 @@ export class Artikel {
     return e && r ? areaOf(r, primaryInterface(e)) : '';
   });
   protected readonly bereichName = computed(() => bereichLabel(this.bereich()) ?? 'Compendium');
+
+  /**
+   * Der Brotkrumenpfad zwischen Art und Artikel (T-093, REQ-248): die
+   * Ebene, die ihn bringt, dann die `partOf`-Kette von oben nach unten —
+   * Abenteuer › Kapitel › Raum. Was der Betrachter nicht sehen darf, kommt
+   * ohne Namen und beendet die Kette dort; ein Kreis läuft nicht endlos.
+   */
+  private readonly kette = computed<{ glieder: { id: string; name: string }[]; offen: string | null }>(() => {
+    const e = this.artikel();
+    if (!e) return { glieder: [], offen: null };
+    const name = this.bestand.name();
+    const voll = this.bestand.voll();
+    const fehlt = this.bestand.fehlt();
+    const glieder: { id: string; name: string }[] = [];
+    const gesehen = new Set([e.id]);
+    let jetzt: Entity | undefined = e;
+    let offen: string | null = null;
+    while (jetzt && glieder.length < PFAD_TIEFE) {
+      const hoch: string | undefined = jetzt.relations?.find((r) => r.type === PART_RELATION)?.to;
+      if (!hoch || gesehen.has(hoch)) break;
+      gesehen.add(hoch);
+      jetzt = voll.get(hoch);
+      /* Noch nicht geholt: `holen` bringt es samt Namen und `partOf`. */
+      if (!jetzt && !fehlt.has(hoch)) offen = hoch;
+      const n = name(hoch);
+      if (!n) break;
+      glieder.unshift({ id: hoch, name: n });
+    }
+    const ebene = e.relations?.find((r) => r.type === LAYER_RELATION)?.to;
+    const ebenenName = ebene ? name(ebene) : undefined;
+    if (ebene && ebenenName && !gesehen.has(ebene)) glieder.unshift({ id: ebene, name: ebenenName });
+    return { glieder, offen };
+  });
+  protected readonly pfad = computed(() => this.kette().glieder);
 
   /** Art · Nummer · Ebenen — die Zeile über dem Blatt. */
   protected readonly meta = computed(() => {

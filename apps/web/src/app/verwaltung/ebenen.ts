@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { KurzLink } from '../kern/kurzansicht';
 import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 
@@ -51,7 +52,7 @@ interface Gruppe {
  */
 @Component({
   selector: 'nw-kampagnen-ebenen',
-  imports: [RouterLink, NgTemplateOutlet],
+  imports: [RouterLink, NgTemplateOutlet, KurzLink],
   template: `
     <section class="kasten" aria-label="Layers in play">
       <h2>Layers in play</h2>
@@ -74,6 +75,8 @@ interface Gruppe {
                   (change)="umschalten(l)"
                 />
                 <span class="name">{{ l.name }}</span>
+                <!-- Die Karte der Ebene (T-093) — der Name setzt das Häkchen, der Knopf nicht. -->
+                <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
               </label>
               @if (l.readable && l.active) {
                 <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
@@ -167,6 +170,7 @@ interface Gruppe {
                 (change)="gruppeSchalten(g.ebene)"
               />
               <span class="gname">{{ g.ebene.name }}</span>
+              <button type="button" class="quick-info" [nwQuick]="g.ebene.id" [attr.aria-label]="'Quick view of ' + g.ebene.name">i</button>
               <span class="dim">{{ g.an }} of {{ g.gesamt }} on</span>
               @if (g.ebene.about.description) {
                 <span class="beschreibung">{{ g.ebene.about.description }}</span>
@@ -194,6 +198,7 @@ interface Gruppe {
                 (change)="buchSchalten(l)"
               />
               <span class="name">{{ l.name }}</span>
+              <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
             </label>
             @if (l.readable && l.inPlay) {
               <a class="lesen" [routerLink]="['/read', l.id]">Read</a>

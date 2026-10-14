@@ -125,3 +125,30 @@ a.knopf {
   text-decoration: none;
   white-space: nowrap;
 }
+
+/* Der Info-Knopf der Kurzansicht (T-093): wo ein Name schon etwas anderes
+   tut — ein Häkchen setzt, eine Zeile wählt —, öffnet dieser kleine Knopf
+   daneben die Karte des Artikels. Klein, aber am Telefon antippbar. */
+button.quick-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+button.quick-info:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

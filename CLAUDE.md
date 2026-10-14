@@ -219,8 +219,11 @@ wiederkommen, werden sie neu geschrieben.
   und die laufende Kampagne ist eine globale Einstellung.
 - **Drei Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
-  Artikelseite. Einen Wähler gibt es nicht — ein Verweis ist ein Verweis,
-  und wer das jedes Mal sagen muss, sagt es irgendwann falsch; nur die
+  Artikelseite. **Die Kurzansicht** (`quick`) steht auch als Popup an
+  jedem genannten Artikel (`nwQuick`, `nw-kurzpopup`, T-093): ein Klick
+  zeigt die Karte, „Open article" führt hin. Einen Wähler gibt es nicht —
+  ein Verweis ist ein Verweis, und wer das jedes Mal sagen muss, sagt es
+  irgendwann falsch; nur die
   Kachel auf dem Board wählt, weil dort die Grösse eine Frage an die Kachel
   ist. **Es gibt keine Spieleransicht:** zurückgehalten wird am Server
   (`redactEntity`), und wer weniger sehen darf, sieht dieselbe Ansicht mit
