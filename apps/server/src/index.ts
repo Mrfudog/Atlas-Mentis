@@ -7,6 +7,7 @@ import { PgRepository } from './repo.pg.js';
 import { seedRegistryInto } from './seed.js';
 import { migrate } from './migrate.js';
 import { FileAssetStore } from './assets.js';
+import { DateiSicherung, gegenstelleAus } from './uebernahme.js';
 
 const config = loadConfig();
 const repo = new PgRepository(getPool());
@@ -26,6 +27,10 @@ const app = buildApp({
   env: config.env,
   assets,
   assetMaxBytes: config.assetMaxBytes,
+  /* Die Übernahme dev ↔ prod (T-130): Gegenstelle, Annahme, Sicherung. */
+  transferPeer: gegenstelleAus(config.peerUrl ?? undefined, config.peerToken ?? undefined),
+  transferAccept: config.transferAccept,
+  sicherung: config.backupDir ? new DateiSicherung(config.backupDir) : null,
 });
 
 async function main(): Promise<void> {

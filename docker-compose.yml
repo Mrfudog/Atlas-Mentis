@@ -44,7 +44,15 @@ services:
       # Grösser als ASSET_MAX_MB nimmt der Server nichts an (Vorgabe 40).
       ASSET_DIR: /data/assets
       ASSET_MAX_MB: ${ASSET_MAX_MB:-40}
-    # Gehört dem Benutzer node (uid 1000) im Abbild; deploy.sh legt es an.
-    volumes: ["./daten/bilder:/data/assets"]
+      # Die Übernahme dev ↔ prod (T-130, docs/Betrieb.md › Übernahme): die
+      # Gegenstelle und ihr Token stehen in .env, nie im Repository; prod
+      # nimmt nur mit ATLAS_TRANSFER_ACCEPT=1 an. Die Sicherung vor jedem
+      # Schreiben liegt in backups/uebernahme/.
+      ATLAS_PEER_URL: ${ATLAS_PEER_URL:-}
+      ATLAS_PEER_TOKEN: ${ATLAS_PEER_TOKEN:-}
+      ATLAS_TRANSFER_ACCEPT: ${ATLAS_TRANSFER_ACCEPT:-}
+      ATLAS_BACKUP_DIR: /data/backups
+    # Gehören dem Benutzer node (uid 1000) im Abbild; deploy.sh legt sie an.
+    volumes: ["./daten/bilder:/data/assets", "./backups/uebernahme:/data/backups"]
     # Nur auf loopback veröffentlicht: davor steht der Reverse Proxy.
     ports: ["127.0.0.1:${APP_PORT:-8080}:8080"]

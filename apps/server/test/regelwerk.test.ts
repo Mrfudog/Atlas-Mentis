@@ -55,6 +55,14 @@ let tokenKlar = '';
 beforeEach(async () => {
   repo = new InMemoryRepository(seedRegistry, [kit]);
   app = buildApp({ repo });
+  /* Wie ein Neustart beim Ausrollen: die erste Anlage bekommt 503. */
+  let einmal = true;
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.method === 'POST' && request.url === '/api/entities' && einmal) {
+      einmal = false;
+      return reply.code(503).send({ error: 'Service Unavailable' });
+    }
+  });
   await repo.putUser({ id: 'u_w', name: 'werkbank', passwordHash: await hashPassword(PW), isAdmin: true, actorIds: [], roles: {} });
   const login = await app.inject({ method: 'POST', url: '/api/login', payload: { name: 'werkbank', password: PW } });
   const cookie = `nw_session=${login.cookies.find((c) => c.name === 'nw_session')?.value ?? ''}`;
@@ -109,7 +117,9 @@ describe('Regelwerk einlesen über die API (T-122)', () => {
     expect((await repo.listEntities()).length).toBe(1);
 
     const erst = await einlesen(datei);
+    expect(erst.stdout).toMatch(/dev antwortet 503 — neuer Versuch/);
     expect(erst.stdout).toMatch(/Angelegt: 5/);
+    expect(readFileSync(`${datei}.state.json.journal`, 'utf8')).toBe('');
     const alle = await repo.listEntities();
     const nach = (name: string) => alle.find((e) => e.name === name)!;
     const ebene = nach('Test Crafting Book');

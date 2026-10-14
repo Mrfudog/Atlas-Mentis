@@ -28,7 +28,7 @@
  * Network secret der Cloud-Sitzung (Betrieb.md › Werkzeugzugang).
  */
 
-import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath, URL, URLSearchParams } from 'node:url';
@@ -68,15 +68,37 @@ if (pfad === REPO || pfad.startsWith(REPO + sep)) {
 const zustandPfad = resolve(option('--state') ?? `${pfad}.state.json`);
 if (zustandPfad.startsWith(REPO + sep)) stirb('Die Zustandsdatei gehört ebenfalls ausserhalb des Repositorys.');
 
+/* **Ein Neustart von dev hält den Lauf nicht an.** Ein Lauf dauert eine
+   Stunde, und in der Zeit rollt preprod gern einmal aus: dann antwortet
+   der Proxy mit 502/503, und die Anfrage hat den Server nie erreicht.
+   Solche Antworten und Netzfehler werden mit wachsender Pause wiederholt;
+   alles andere (auch 504 — da weiss man nicht, ob geschrieben wurde) hält
+   den Lauf an. */
+const warte = (ms) => new Promise((r) => setTimeout(r, ms));
 async function api(p, body, method) {
-  const res = await fetch(`${BASE}${p}`, {
-    method: method ?? (body === undefined ? 'GET' : 'POST'),
-    headers: {
-      ...(TOKEN ? { authorization: `Bearer ${TOKEN}` } : {}),
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  let res;
+  for (let versuch = 0; ; versuch += 1) {
+    try {
+      res = await fetch(`${BASE}${p}`, {
+        method: method ?? (body === undefined ? 'GET' : 'POST'),
+        headers: {
+          ...(TOKEN ? { authorization: `Bearer ${TOKEN}` } : {}),
+          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    } catch (error) {
+      if (versuch >= 8) throw error;
+      await warte(Math.min(60_000, 2_000 * 2 ** versuch));
+      continue;
+    }
+    if ((res.status === 502 || res.status === 503) && versuch < 8) {
+      console.log(`  dev antwortet ${res.status} — neuer Versuch`);
+      await warte(Math.min(60_000, 2_000 * 2 ** versuch));
+      continue;
+    }
+    break;
+  }
   const text = await res.text();
   let json = null;
   try {
@@ -114,13 +136,26 @@ for (const z of externalTargets(artikel)) {
 if (unklar.length) console.log(`Nicht aufgelöst (die Kante bleibt weg):\n  ${unklar.join('\n  ')}`);
 
 const zustand = existsSync(zustandPfad) ? JSON.parse(readFileSync(zustandPfad, 'utf8')) : { layer: null, articles: {} };
+/* Das Journal: je angelegtem Artikel eine Zeile, sofort geschrieben. Bricht
+   der Lauf zwischen zwei Sicherungen ab, weiss der nächste trotzdem, was
+   schon steht — sonst legte er es ein zweites Mal an. */
+const journalPfad = `${zustandPfad}.journal`;
+if (existsSync(journalPfad)) {
+  for (const zeile of readFileSync(journalPfad, 'utf8').split('\n').filter(Boolean)) {
+    const j = JSON.parse(zeile);
+    zustand.articles[j.key] = { id: j.id, revision: j.revision, entity: j.entity };
+  }
+}
 const neu = artikel.filter((a) => !zustand.articles[a.key]).length;
 console.log(`Zustand: ${Object.keys(zustand.articles).length} bekannt, ${neu} neu anzulegen.`);
 if (flag('--dry-run')) {
   console.log('Probelauf: nichts geschrieben.');
   process.exit(0);
 }
-const sichere = () => writeFileSync(zustandPfad, JSON.stringify(zustand, null, 2));
+const sichere = () => {
+  writeFileSync(zustandPfad, JSON.stringify(zustand, null, 2));
+  writeFileSync(journalPfad, '');
+};
 
 /* ---- die Ebene und ihre Herausgeber-Gruppe ---- */
 async function ebene(name, karte, vorhandeneId) {
@@ -169,6 +204,7 @@ for (const a0 of artikel) {
   );
   ids.set(a.key, r.id);
   zustand.articles[a.key] = { id: r.id, revision: r.revision ?? null, entity: r };
+  appendFileSync(journalPfad, JSON.stringify({ key: a.key, id: r.id, revision: r.revision ?? null, entity: r }) + '\n');
   angelegt += 1;
   if (angelegt % 25 === 0) {
     sichere();

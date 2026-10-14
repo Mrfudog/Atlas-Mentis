@@ -41,8 +41,9 @@ fi
 # Die Bilder (T-114): das Verzeichnis gehört dem Benutzer node im Abbild
 # (uid 1000), sonst startet der Server nicht. Docker legt einen fehlenden
 # Bind-Mount als root an; darum hier, mit dem Abbild selbst, ohne sudo.
-docker run --rm --user 0 --entrypoint sh -v "$PWD/daten:/d" "$IMAGE" \
-  -c 'mkdir -p /d/bilder && chown 1000:1000 /d/bilder'
+# Ebenso die Sicherungen vor einer Übernahme (T-130, backups/uebernahme).
+docker run --rm --user 0 --entrypoint sh -v "$PWD/daten:/d" -v "$PWD/backups:/b" "$IMAGE" \
+  -c 'mkdir -p /d/bilder /b/uebernahme && chown 1000:1000 /d/bilder /b/uebernahme'
 [ -x ./bilder-sichern.sh ] && ./bilder-sichern.sh
 
 # Das laufende Abbild merken, damit „zurück" ein Befehl ist und keine Suche.

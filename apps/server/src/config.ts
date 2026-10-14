@@ -12,6 +12,17 @@ export interface Config {
   assetDir: string;
   /** Wie gross ein Bild sein darf, in Bytes (`ASSET_MAX_MB`, Vorgabe 40). */
   assetMaxBytes: number;
+  /**
+   * **Die Gegenstelle der Übernahme** (T-130): Adresse und API-Token der
+   * anderen Installation (`ATLAS_PEER_URL`, `ATLAS_PEER_TOKEN`). Nur am
+   * Server — das Token geht nie an den Browser. Ungesetzt: keine.
+   */
+  peerUrl: string | null;
+  peerToken: string | null;
+  /** Nimmt diese Installation Übernahmen an? Nur `ATLAS_TRANSFER_ACCEPT=1` (oder `true`). */
+  transferAccept: boolean;
+  /** Wohin die Sicherung vor einer Übernahme geht (`ATLAS_BACKUP_DIR`); ungesetzt: keine. */
+  backupDir: string | null;
 }
 
 export type AtlasEnv = 'dev' | 'prod';
@@ -51,5 +62,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     assetDir: env['ASSET_DIR']?.trim() || join(process.cwd(), 'daten', 'bilder'),
     /* Eine Karte ist 5–30 MB (E-032); darüber ist es meist ein Versehen. */
     assetMaxBytes: Math.max(1, Number(env['ASSET_MAX_MB']) || 40) * 1024 * 1024,
+    peerUrl: env['ATLAS_PEER_URL']?.trim() || null,
+    peerToken: env['ATLAS_PEER_TOKEN']?.trim() || null,
+    transferAccept: ['1', 'true'].includes(env['ATLAS_TRANSFER_ACCEPT']?.trim().toLowerCase() ?? ''),
+    backupDir: env['ATLAS_BACKUP_DIR']?.trim() || null,
   };
 }

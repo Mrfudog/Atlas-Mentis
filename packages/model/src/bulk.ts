@@ -40,6 +40,8 @@ const SelectSchema = z.object({
   where: z.array(ConditionSchema).optional(),
 });
 export type BulkSelect = z.infer<typeof SelectSchema>;
+/** Dieselbe Auswahl für die Übernahme (T-130). */
+export const BulkSelectSchema = SelectSchema;
 
 const OpSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('set'), field: z.string().min(1), value: z.unknown() }),
@@ -319,7 +321,8 @@ export function repoint(
   nummern: ReadonlyMap<string, string>,
 ): Map<string, Entity> {
   const raus = new Map<string, Entity>();
-  if (!pegs.size) return raus;
+  /* Nur Nummern umhängen geht auch (T-130: prod vergibt eine neue). */
+  if (!pegs.size && !nummern.size) return raus;
   const flucht = (s: string) => s.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
   const alle = new Map<string, string>([...nummern, ...pegs]);
   const muster = new RegExp(`\\[\\[(${[...alle.keys()].map(flucht).join('|')})(?=[|\\]])`, 'g');
