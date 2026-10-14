@@ -1261,6 +1261,14 @@ export function buildApp({
     return stapel;
   }
 
+  /**
+   * Welche Artikel das Sieb überhaupt fragt. `{ preview }` (T-167): was im
+   * Stapel steht und dazu, was nur fehlt, weil eine dieser Ebenen nicht
+   * aufgeschaltet ist — die Vorschau eines Buchs vor dem Aufschalten.
+   * Sichtbarkeit und Wissen gelten danach wie immer.
+   */
+  type Stapelfrage = 'inPlay' | 'unactivated' | 'versions' | 'compare' | { preview: ReadonlySet<string> };
+
   async function sieve(
     request: FastifyRequest,
     entities: Entity[],
@@ -1276,7 +1284,7 @@ export function buildApp({
     /* `'versions'` (T-092): die Fassungen eines Artikels — was im Stapel
        steht, auch überschrieben, und was eine Vergleichsebene bringt, wenn
        dieser Betrachter Vergleichsebenen sehen darf (`siehtVergleich`). */
-    stapel: 'inPlay' | 'unactivated' | 'versions' | 'compare' = 'inPlay',
+    stapel: Stapelfrage = 'inPlay',
   ): Promise<Entity[]> {
     return sieveFuer(await viewerOf(request), entities, bestand, schmal, stapel);
   }
@@ -1289,7 +1297,7 @@ export function buildApp({
     entities: Entity[],
     bestand?: Entity[] | Map<string, Entity>,
     schmal?: (e: Entity) => Entity,
-    stapel: 'inPlay' | 'unactivated' | 'versions' | 'compare' = 'inPlay',
+    stapel: Stapelfrage = 'inPlay',
   ): Promise<Entity[]> {
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
@@ -1312,7 +1320,9 @@ export function buildApp({
     const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
     entities = entities
       .filter((e) =>
-        stapel === 'inPlay'
+        typeof stapel === 'object'
+          ? sicht.inPlay(e) || sicht.unactivated(e).some((l) => stapel.preview.has(l))
+          : stapel === 'inPlay'
           ? sicht.inPlay(e)
           : stapel === 'versions'
             ? sicht.inStack(e) || (vergleich && sicht.inCompare(e))
@@ -2556,7 +2566,16 @@ export function buildApp({
   );
 
   /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
-  const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
+  const { leseZiel } = registerLesen(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve: (request, entities, bestand, vorschau) =>
+      sieve(request, entities, bestand, undefined, vorschau?.size ? { preview: vorschau } : 'inPlay'),
+    geltend,
+    bezuegeVon,
+    aufgeschaltet: async (map) => new Set(activeLayerRanks(map, kampagneIn(map, (await repo.getRegistry()).settings ?? null)).keys()),
+  });
   /* Filtergruppen je Seite (T-137): die der Kampagne und die eigenen. */
   registerFiltergruppen(app, { repo, viewerOf, roh });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */

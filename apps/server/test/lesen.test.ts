@@ -129,8 +129,11 @@ describe('reading a layer as a book (T-091)', () => {
     const k = (await rufe('Sela', 'GET', `/api/read/${BUCH}/unit/st_k2`)).json();
     expect(k.sections.map((s: { id: string }) => s.id)).toEqual(['sc_offen']);
     expect((await rufe('Sela', 'GET', `/api/read/${BUCH}/unit/st_k1`)).json().sections).toEqual([]);
-    /* Nicht aufgeschaltet heisst: nicht da, auch für die Verwaltung. */
-    expect((await rufe('Admin', 'GET', '/api/read/ly_aus')).json().toc).toEqual([]);
+    /* Nicht aufgeschaltet heisst für Spielende: nicht da (T-167 unten). */
+    const aus = (await rufe('Sela', 'GET', '/api/read/ly_aus')).json();
+    expect(aus.toc).toEqual([]);
+    expect(aus).toMatchObject({ inactive: true });
+    expect(aus.preview).toBeUndefined();
     expect((await rufe('Admin', 'GET', '/api/read/camp_a')).statusCode).toBe(404);
   });
 
@@ -140,7 +143,7 @@ describe('reading a layer as a book (T-091)', () => {
     expect(leer.toc).toEqual([]);
     expect(leer.empty).toBe('noText');
     /* Gesiebt oder nicht aufgeschaltet ist etwas anderes, und das bleibt ungesagt. */
-    expect((await rufe('Admin', 'GET', '/api/read/ly_aus')).json().empty).toBeUndefined();
+    expect((await rufe('Sela', 'GET', '/api/read/ly_aus')).json().empty).toBeUndefined();
     expect((await rufe('Sela', 'GET', `/api/read/${BUCH}`)).json().empty).toBeUndefined();
   });
 
@@ -199,7 +202,59 @@ describe('reading a layer as a book (T-091)', () => {
     const { rufe } = await aufbau();
     expect((await rufe('Basil', 'GET', '/api/entities/sc_mund')).json().refs.reading).toEqual({ layer: BUCH, at: 'sc_mund' });
     expect((await rufe('Basil', 'GET', '/api/entities/cr_frosch')).json().refs.reading).toEqual({ layer: BUCH, page: '9' });
-    /* Eine Ebene ohne Text führt nirgends hin. */
+    /* Eine Kampagne ohne Text führt nirgends hin. */
     expect((await rufe('Basil', 'GET', '/api/entities/camp_a')).json().refs.reading).toBeUndefined();
+    /* Eine Ebene immer — ohne Text ausgegraut (T-167). */
+    expect((await rufe('Basil', 'GET', '/api/entities/ly_phb')).json().refs.reading).toEqual({ layer: 'ly_phb', empty: true });
+    expect((await rufe('Basil', 'GET', `/api/entities/${BUCH}`)).json().refs.reading).toEqual({ layer: BUCH });
+  });
+});
+
+describe('reading a layer before it is turned on (T-167)', () => {
+  it('lets the GM and the administration preview it, sieved as always', async () => {
+    const { rufe } = await aufbau();
+    for (const wer of ['Admin', 'Basil']) {
+      const r = (await rufe(wer, 'GET', '/api/read/ly_aus')).json();
+      expect(r).toMatchObject({ inactive: true, preview: true });
+      const k = (await rufe(wer, 'GET', `/api/read/ly_aus/unit/sc_fremd`)).json();
+      expect(k.sections.map((x: { id: string }) => x.id)).toEqual(['sc_fremd']);
+      expect((await rufe(wer, 'GET', '/api/read/ly_aus/search?q=not')).json().hits.map((h: { id: string }) => h.id)).toEqual(['sc_fremd']);
+    }
+    /* Aufgeschaltet ist keine Vorschau. */
+    const an = (await rufe('Basil', 'GET', `/api/read/${BUCH}`)).json();
+    expect(an.inactive).toBeUndefined();
+    expect(an.preview).toBeUndefined();
+  });
+
+  it('lets players preview only a layer that says audience public', async () => {
+    const { repo, rufe } = await aufbau();
+    expect((await rufe('Sela', 'GET', '/api/read/ly_aus/unit/sc_fremd')).json().sections).toEqual([]);
+    const l = (await repo.getEntity('ly_aus'))!;
+    await repo.putEntity({ ...l, components: { ...l.components, Visibility: { audience: 'public' } } });
+    const r = (await rufe('Sela', 'GET', '/api/read/ly_aus')).json();
+    expect(r).toMatchObject({ inactive: true, preview: true });
+    expect((await rufe('Sela', 'GET', '/api/read/ly_aus/unit/sc_fremd')).json().sections.map((x: { id: string }) => x.id)).toEqual(['sc_fremd']);
+  });
+
+  it('reads a group as a shelf of its books, greyed where there is no text', async () => {
+    const { repo, rufe } = await aufbau();
+    await repo.putEntity({
+      id: 'ly_regal', name: 'Shelf', interfaces: ['Layer'],
+      components: { ...ident('Shelf', 'layer-0009'), Layer: { kind: 'group', order: 0 } }, relations: [],
+    });
+    for (const id of [BUCH, 'ly_phb']) {
+      const l = (await repo.getEntity(id))!;
+      await repo.putEntity({ ...l, relations: [...(l.relations ?? []), kante(id, 'partOf', 'ly_regal')] });
+    }
+    const r = (await rufe('Basil', 'GET', '/api/read/ly_regal')).json();
+    expect(r.toc).toEqual([]);
+    expect(r.empty).toBeUndefined();
+    expect(r.shelf).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: BUCH, hasText: true, active: true }),
+        expect.objectContaining({ id: 'ly_phb', hasText: false, active: false }),
+      ]),
+    );
+    expect(r.shelf).toHaveLength(2);
   });
 });
