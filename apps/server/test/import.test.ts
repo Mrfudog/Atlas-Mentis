@@ -215,6 +215,25 @@ describe('pnpm --filter @nw/server run import', () => {
       expect((await repo.getEntity('a'))?.name).toBe('A, geändert');
     });
 
+    it('legt Teile nur mit ihrem Ganzen an: steht das Kapitel schon, bleiben seine Teile, wie sie sind (T-108)', async () => {
+      const kapitel = (id: string): Entity => ({
+        id, interfaces: ['Chapter'], name: id, components: { Identity: { name: id, id: `chapter-${id}` } },
+        relations: [{ id: `${id}-inLayer`, type: 'inLayer', to: ebene.id }],
+      });
+      const absatz = (id: string, ganzes: string, rank: number): Entity => ({
+        id, interfaces: ['Paragraph'], name: id,
+        components: { Identity: { name: id, id: `paragraph-${id}` }, Prose: { paragraph: [{ id: 'text', value: id }] } },
+        relations: [{ id: `${id}-inLayer`, type: 'inLayer', to: ebene.id }, { id: `${id}-partOf`, type: 'partOf', to: ganzes, props: { rank } }],
+      });
+      /* Das alte Kapitel trägt schon seinen Text (aus der Migration), das neue nicht. */
+      const repo = await mitKonto([ebene, kapitel('alt'), absatz('alt_text', 'alt', 1)]);
+      const mehr = { ...datei, entities: [ebene, kapitel('alt'), absatz('p1', 'alt', 1), absatz('p2', 'alt', 2), kapitel('neu'), absatz('p3', 'neu', 1)] };
+      const r = await runImport(repo, mehr, { onlyNew: true });
+      expect(r).toMatchObject({ geschrieben: 2, uebersprungen: 4 });
+      expect(r.text).toMatch(/davon 2 Teile, deren Kapitel oder Szene schon steht/);
+      expect((await repo.listEntities()).map((e) => e.id).sort()).toEqual(['alt', 'alt_text', 'e5_layer', 'neu', 'p3']);
+    });
+
     it('lässt eine angepasste Registerzeile stehen und nimmt nur fehlende dazu', async () => {
       const repo = await mitKonto();
       const { Spell: _weg, ...ohneSpell } = seedRegistry.interfaces;

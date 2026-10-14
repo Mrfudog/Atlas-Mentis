@@ -6,6 +6,7 @@ import type { Datenstand } from '../src/lesen.js';
 import { lauf } from '../src/lauf.js';
 import { kreaturenMitAnzahl } from '../src/arten/abenteuer.js';
 import { buchEbeneId } from '../src/werkbank.js';
+import { readingOrder } from '@nw/model';
 
 /**
  * Ein erfundenes Abenteuer in der Form von 5e.tools (T-082) — keine Daten
@@ -80,6 +81,14 @@ const kanten = (e: Entity, typ: string) => (e.relations ?? []).filter((r) => r.t
 describe('Abenteuer als Ebene (T-082)', () => {
   const { datei, bericht } = lauf(datenstand());
   const es = datei.entities;
+  /** Die Teile eines Ganzen nach Rang (T-108). */
+  const teileVon = (ganzes: Entity) =>
+    es
+      .map((e) => ({ e, r: kanten(e, 'partOf').find((r) => r.to === ganzes.id && r.props?.['rank'] !== undefined) }))
+      .filter((x) => x.r)
+      .sort((a, b) => Number(a.r!.props!['rank']) - Number(b.r!.props!['rank']))
+      .map((x) => x.e);
+  const text = (e: Entity) => (e.components['Prose'] as { paragraph: { value: string }[] }).paragraph[0]!.value;
   const ebene = es.find((e) => e.id === buchEbeneId('TST'))!;
 
   it('legt je Abenteuer eine Ebene mit kind adventure an', () => {
@@ -99,12 +108,17 @@ describe('Abenteuer als Ebene (T-082)', () => {
     expect(es.some((e) => art(e) === 'Story' && e.name === 'Chapter 1: The Reed Caves')).toBe(false);
     expect(kanten(kapitel, 'partOf').map((r) => r.to)).toEqual([ganz.id]);
     const hoehle = finde(es, 'Scene', 'Reed Cave');
-    expect(kanten(hoehle, 'partOf').map((r) => r.to)).toEqual([kapitel.id]);
-    /* Räume werden eigene Szenen, „General Features" bleibt Text der Höhle. */
+    /* Die Szene gehört dem Arc (Geschichte) und steht mit Rang im Chapter (Lesen, E-029). */
+    const buchKapitel = es.find((e) => art(e) === 'Chapter' && e.name === 'Chapter 1: The Reed Caves')!;
+    expect(kanten(hoehle, 'partOf').map((r) => [r.to, r.props?.['rank'] ?? null])).toEqual([[kapitel.id, null], [buchKapitel.id, 3]]);
+    /* Räume werden eigene Szenen, mit Rang in ihrer Höhle; „General Features" ist eine Überschrift darin. */
     const mund = finde(es, 'Scene', '1. Mouth');
     expect(kanten(mund, 'partOf').map((r) => r.to)).toEqual([hoehle.id]);
-    expect(es.some((e) => e.name === 'General Features')).toBe(false);
-    expect(JSON.stringify(hoehle.components['Prose'])).toContain('Wet walls.');
+    expect(es.some((e) => art(e) === 'Scene' && e.name === 'General Features')).toBe(false);
+    expect(teileVon(hoehle).map((e) => `${art(e)} ${art(e) === 'Paragraph' ? text(e) : e.name}`)).toEqual([
+      'Paragraph Muddy.', 'Heading General Features', 'Paragraph Wet walls.', 'Scene 1. Mouth', 'Scene 2. Den',
+    ]);
+    expect(hoehle.components['Prose']).toBeUndefined();
     /* Alles liegt in der Ebene des Abenteuers, und die Leitung sieht es. */
     for (const e of [ganz, kapitel, hoehle, mund]) {
       expect(kanten(e, 'inLayer').map((r) => r.to)).toEqual([ebene.id]);
@@ -117,15 +131,36 @@ describe('Abenteuer als Ebene (T-082)', () => {
     expect(bericht.arten.get('adventureData')!.notizen.get('Kapitel weggelassen: Credits')).toBe(1);
   });
 
-  it('trennt Vorlesetext und Prosa; Kreaturen, Zauber und Abschnitte werden Verweise', () => {
+  it('Vorlesetext und Absätze werden Teile der Szene; Kreaturen, Zauber und Abschnitte werden Verweise', () => {
     const mund = finde(es, 'Scene', '1. Mouth');
-    expect(mund.components['ReadAloud']).toEqual({ readaloud: [{ id: 'read', value: 'Water drips from the reeds.' }] });
-    const text = (mund.components['Prose'] as { paragraph: { value: string }[] }).paragraph[0]!.value;
+    const [vor, absatz] = teileVon(mund);
+    expect(art(vor!)).toBe('ReadAloudText');
+    expect(vor!.components['ReadAloud']).toEqual({ readaloud: [{ id: 'read', value: 'Water drips from the reeds.' }] });
+    expect(vor!.components['Visibility']).toEqual({ audience: 'gm' });
+    const t = text(absatz!);
     const nr = (e: Entity) => (e.components['Identity'] as { id: string }).id;
-    expect(text).toContain(`[[${nr(finde(es, 'Statblock', 'Goblin'))}|goblins]]`);
-    expect(text).toContain(`[[${nr(finde(es, 'Spell', 'Sleep'))}|sleep]]`);
-    expect(text).toContain(`[[${nr(finde(es, 'Scene', '2. Den'))}|2]]`);
-    expect(text).not.toContain('Water drips');
+    expect(t).toContain(`[[${nr(finde(es, 'Statblock', 'Goblin'))}|goblins]]`);
+    expect(t).toContain(`[[${nr(finde(es, 'Spell', 'Sleep'))}|sleep]]`);
+    expect(t).toContain(`[[${nr(finde(es, 'Scene', '2. Den'))}|2]]`);
+    expect(mund.components['ReadAloud']).toBeUndefined();
+  });
+
+  it('jedes Kapitel ist Chapter und Arc über denselben Szenen (E-029)', () => {
+    const arc = finde(es, 'Arc', 'Chapter 1: The Reed Caves');
+    const chapter = es.find((e) => art(e) === 'Chapter' && e.name === 'Chapter 1: The Reed Caves')!;
+    expect(chapter.id).toBe(`${arc.id}_chapter`);
+    expect(chapter.components['Chapter']).toEqual({ ordinal: 'Chapter 1' });
+    expect(kanten(chapter, 'chapterOf').map((r) => r.to)).toEqual([arc.id]);
+    /* Kapiteltext, die Kartenszene und die Höhle stehen im Chapter, in der Reihenfolge des Buchs. */
+    expect(teileVon(chapter).map((e) => `${art(e)} ${art(e) === 'Paragraph' ? text(e) : e.name}`)).toEqual([
+      'Paragraph A short chapter.', 'Scene The Marsh', 'Scene Reed Cave',
+    ]);
+    /* Die Szenen sind dieselben Artikel, die der Arc trägt. */
+    const imArc = es.filter((e) => kanten(e, 'partOf').some((r) => r.to === arc.id)).map((e) => e.name);
+    expect(imArc).toEqual(['Reed Cave', 'The Marsh']);
+    /* Die Leseansicht liest das Abenteuer aus seinen Chapters. */
+    const o = readingOrder(es, ebene.id).filter((n) => n.toc !== false).map((n) => es.find((e) => e.id === n.id)!.name);
+    expect(o).toEqual(['Introduction', 'Background', 'Chapter 1: The Reed Caves', 'The Marsh', 'Reed Cave', 'General Features', '1. Mouth', '2. Den']);
   });
 
   it('macht aus Kreaturen mit Anzahl eine Begegnung mit je einer Kante pro Teilnehmer', () => {
@@ -158,7 +193,7 @@ describe('Abenteuer als Ebene (T-082)', () => {
     const szene = finde(es, 'Scene', 'The Marsh');
     expect(szene.id).toBe(`${karte.id}_scene`);
     expect(szene.components['Scene']).toEqual({ mode: 'exploration' });
-    expect(kanten(szene, 'partOf').map((r) => r.to)).toEqual([kapitel.id]);
+    expect(kanten(szene, 'partOf').map((r) => r.to)).toEqual([kapitel.id, `${kapitel.id}_chapter`]);
     expect(kanten(karte, 'mapOf').map((r) => r.to)).toEqual([szene.id]);
     expect(szene.components['Visibility']).toEqual({ audience: 'gm' });
   });

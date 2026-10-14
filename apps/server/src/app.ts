@@ -1093,6 +1093,16 @@ export function buildApp({
     return fuer === 'players' && !!user.roles?.[kampagne.id];
   }
 
+  const stapelJe = new WeakMap<Map<string, Entity>, { key: string; stapel: ReturnType<typeof playStack> }>();
+  function stapelFuer(roh: Map<string, Entity>, kampagne: Entity | null, registry: Registry): ReturnType<typeof playStack> {
+    const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
+    const da = stapelJe.get(roh);
+    if (da?.key === key) return da.stapel;
+    const stapel = playStack(roh, kampagne, registry);
+    stapelJe.set(roh, { key, stapel });
+    return stapel;
+  }
+
   async function sieve(
     request: FastifyRequest,
     entities: Entity[],
@@ -1125,8 +1135,10 @@ export function buildApp({
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
     const kampagne = currentCampaign(roh, registry.settings ?? null);
-    /* Einmal je Aufruf gerechnet, nicht je Artikel (T-086). */
-    const sicht = playStack(roh, kampagne, registry);
+    /* Einmal je Bestand und Register gerechnet, nicht je Aufruf (T-086,
+       T-108): mit hunderttausend Teilen kostet der Stapel eine Sekunde,
+       und die Leseansicht siebt je Anfrage zwei- oder dreimal. */
+    const sicht = stapelFuer(roh, kampagne, registry);
     const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
     entities = entities
       .filter((e) =>

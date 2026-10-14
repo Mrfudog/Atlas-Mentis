@@ -908,6 +908,85 @@ try {
     }
   }
 
+  /* ------------------------------------ Abenteuerkapitel als Teile (T-108) */
+  {
+    /* Migration 046 an einem geladenen Abenteuer im Stand von T-097: ein
+       Arc mit Text, eine Szene mit Vorlesetext und Raum. Danach gibt es
+       das Chapter, der Text steht in Teilen, und die Leseansicht liest das
+       Kapitel mit Szene und Raum in Reihenfolge. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { PgRepository } = await import(join(DIST, 'repo.pg.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const repo = new PgRepository(pool);
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-abenteuer-teile-'));
+    const name = 'zzz_durchstich_abenteuer_kapitel.sql';
+    const L = 'e5_book_t108adv';
+    const inL = (id) => ({ id: `${id}~in`, type: 'inLayer', to: L, props: {} });
+    const gm = { Visibility: { audience: 'gm' } };
+    const probe = [
+      { id: L, name: 'Probe Adventure T108', interfaces: ['Layer'], components: { ...ident('Probe Adventure T108', 'layer-0981'), Layer: { kind: 'adventure', order: 0 } }, relations: [] },
+      { id: 'e5_probe_t108_arc', name: 'Chapter 1: Probe', interfaces: ['Arc'], components: { ...ident('Chapter 1: Probe', 'arc-0981'), ...gm, Prose: { paragraph: [{ id: 'text', value: 'The chapter begins.' }] } }, relations: [inL('e5_probe_t108_arc')] },
+      { id: 'e5_probe_t108_sz', name: 'Probe Cave', interfaces: ['Scene'], components: { ...ident('Probe Cave', 'scene-0981'), ...gm, Prose: { paragraph: [{ id: 'text', value: 'A [[scene-0982|room]] lies ahead.' }] }, ReadAloud: { readaloud: [{ id: 'read', value: 'Water drips.' }] } }, relations: [inL('e5_probe_t108_sz'), { id: 'e5_probe_t108_sz~p', type: 'partOf', to: 'e5_probe_t108_arc', props: {} }] },
+      { id: 'e5_probe_t108_raum', name: '1. Probe Room', interfaces: ['Scene'], components: { ...ident('1. Probe Room', 'scene-0982'), ...gm }, relations: [inL('e5_probe_t108_raum'), { id: 'e5_probe_t108_raum~p', type: 'partOf', to: 'e5_probe_t108_sz', props: {} }] },
+    ];
+    const neu = ['e5_probe_t108_arc_chapter', 'e5_probe_t108_arc_text', 'e5_probe_t108_sz_text', 'e5_probe_t108_sz_read1'];
+    let stapel = null;
+    try {
+      for (const e of probe) {
+        const r = await put(admin, e);
+        pruefe(`Abenteuer als Teile: ${e.id}`, r.ok, `${r.status} ${await r.text()}`);
+      }
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '046_abenteuer_kapitel.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      const kap = await repo.getEntity('e5_probe_t108_arc_chapter');
+      pruefe('Abenteuer als Teile: das Chapter steht neben dem Arc',
+        kap?.interfaces?.[0] === 'Chapter' && kap.components['Identity']?.name === 'Chapter 1: Probe' && kap.components['Chapter']?.ordinal === 'Chapter 1'
+          && kap.relations?.some((r) => r.type === 'chapterOf' && r.to === 'e5_probe_t108_arc') && kap.components['Visibility']?.audience === 'gm',
+        JSON.stringify(kap));
+      const arc = await repo.getEntity('e5_probe_t108_arc');
+      const sz = await repo.getEntity('e5_probe_t108_sz');
+      const raum = await repo.getEntity('e5_probe_t108_raum');
+      const text = await repo.getEntity('e5_probe_t108_sz_text');
+      const vor = await repo.getEntity('e5_probe_t108_sz_read1');
+      pruefe('Abenteuer als Teile: der Text zieht um und geht nicht',
+        !arc?.components['Prose'] && !sz?.components['Prose'] && !sz?.components['ReadAloud']
+          && text?.components['Prose']?.paragraph?.[0]?.value === 'A [[scene-0982|room]] lies ahead.'
+          && vor?.components['ReadAloud']?.readaloud?.[0]?.value === 'Water drips.',
+        JSON.stringify({ arc: arc?.components, sz: sz?.components, text: text?.components, vor: vor?.components }));
+      const rang = (e, an) => e?.relations?.find((r) => r.type === 'partOf' && r.to === an)?.props?.rank;
+      pruefe('Abenteuer als Teile: Vorlesetext vor dem Text, Raum danach; die Szene im Chapter',
+        rang(vor, 'e5_probe_t108_sz') === 1 && rang(text, 'e5_probe_t108_sz') === 2 && rang(raum, 'e5_probe_t108_sz') === 1001
+          && rang(sz, 'e5_probe_t108_arc_chapter') === 1001 && rang(await repo.getEntity('e5_probe_t108_arc_text'), 'e5_probe_t108_arc_chapter') === 1
+          && sz?.relations?.some((r) => r.type === 'partOf' && r.to === 'e5_probe_t108_arc'),
+        JSON.stringify({ sz: sz?.relations, raum: raum?.relations }));
+      /* Ein zweiter Lauf legt nichts doppelt an. */
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await migrate(pool, { env: {} }, ordner);
+      const { rows } = await pool.query(`select count(*)::int as n from entity where id like 'e5\\_probe\\_t108\\_%'`);
+      pruefe('Abenteuer als Teile: ein zweiter Lauf ändert nichts', rows[0].n === probe.length - 1 + neu.length, String(rows[0].n));
+      const k = await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json();
+      stapel = k.layers.filter((l) => l.active).map((l) => l.id);
+      await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: [L, ...stapel] }),
+      });
+      const buch = await (await get(admin, `/api/read/${L}`)).json();
+      pruefe('Abenteuer als Teile: die Leseansicht liest Chapter, Szene und Raum',
+        JSON.stringify((buch.toc ?? []).map((z) => z.id)) === '["e5_probe_t108_arc_chapter","e5_probe_t108_sz","e5_probe_t108_raum"]', JSON.stringify(buch.toc));
+    } finally {
+      if (stapel) {
+        await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
+          method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: stapel }),
+        });
+      }
+      await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...neu]]);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------ Schreibrechte je Ebene (T-098) */
   {
     /* `app_user_layer` gibt es nur in Postgres: eine eigene Ebene anlegen,

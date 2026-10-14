@@ -394,7 +394,20 @@ Text** (T-108): je Kapitel ein `Chapter` mit seinen Teilen (Überschriften,
 Absätze, Kästen, Verweise auf Zauber, Monster, Tabellen, die schon
 Artikel sind) — zu lesen unter „Read" an der Ebene. Ein Lauf `only-new`
 legt die Kapitel bestehender Buchebenen dazu an, ohne einen Artikel
-anzufassen (gut 23 000 Teile für die 2014er Bücher). Die Karten sind Adressen
+anzufassen (gut 29 000 Teile für die 2014er Bücher). **Ein Abenteuer**
+ist seit T-108 zweimal da: je Kapitel ein Arc (Geschichte) und ein
+Chapter (Lesen) über denselben Szenen, sein Text als Teile. Schon geladene
+Abenteuer stellt die **Migration `046_abenteuer_kapitel.sql`** beim Start
+um (gemessen an allen 2014er Abenteuern: 589 Kapitel, gut 14 600 Teile,
+rund 45 Sekunden Start): der Text von Arc und Szene zieht in einen
+`Paragraph` und je Vorlesetext ein `ReadAloudText`, nichts geht. Feiner
+zerlegt (je Absatz ein Teil, Vorlesetexte an ihrer Stelle) wird ein
+Abenteuer nur, wenn es neu geladen wird — **ein Teil kommt nur mit seinem
+Ganzen**: `only-new` legt in einem Kapitel oder einer Szene, die schon
+steht, keine Teile dazu und sagt, wie viele es übersprang. Ein frischer
+Bestand aus 5e.tools hat damit gut 150 000 Artikel (ein Lauf `only-new`
+über einen bestehenden mit 33 000 legt rund 29 000 dazu, gemessen 150 s).
+Die Karten sind Adressen
 auf die Bilder bei 5e.tools — die Bilder selbst liegen nicht bei uns. Ein
 einzelnes Abenteuer ergänzt man mit `sources` (z. B. `LMoP`), `only-new`
 wie immer. Eingelesen wird über eine **Pipeline**; die

@@ -4,7 +4,7 @@ Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etool
 
 - Datenstand: 5etools-src 8c026b8 2026-10-08
 - Aufruf: `node packages/import-5etools/dist/cli.js <data> --out <datei> --bericht <datei>`
-- **56’250 Artikel**, alle durch `validateEntity` mit `knownTypes`
+- **151’724 Artikel**, alle durch `validateEntity` mit `knownTypes`
 - Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): 1’669 Aktionen und Merkmale stehen an mehr als einem Statblock; 11’560 Doppel wurden dadurch nicht angelegt
 - Gleiche Merkmale an verschiedenen Trägern (`doppel.ts`): 528 Artikel mit einem gleichen vereint (528 Feature)
 - Fassungen aus mehreren Büchern (`doppel.ts`): 635 Artikel sind Variante der geltenden Fassung und tragen ihr Buch im Namen (301 Statblock, 171 Deity, 49 Ancestry, 44 Language, 29 Table, 27 Rule, 7 Item, 4 Weapon, 2 Armor, 1 Hazard)
@@ -21,25 +21,25 @@ Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etool
 | `Arc` | 589 |
 | `Armor` | 76 |
 | `Background` | 101 |
-| `Chapter` | 290 |
+| `Chapter` | 879 |
 | `Class` | 16 |
 | `Condition` | 23 |
 | `Deity` | 494 |
 | `Disease` | 22 |
-| `Embed` | 3’489 |
+| `Embed` | 6’601 |
 | `Encounter` | 2’160 |
 | `Faction` | 30 |
 | `Feat` | 108 |
 | `Feature` | 5’459 |
 | `Hazard` | 57 |
-| `Heading` | 4’365 |
+| `Heading` | 23’247 |
 | `Item` | 1’638 |
 | `ItemProperty` | 14 |
 | `Language` | 150 |
 | `Layer` | 153 |
 | `Map` | 791 |
-| `Paragraph` | 15’213 |
-| `ReadAloudText` | 99 |
+| `Paragraph` | 81’506 |
+| `ReadAloudText` | 6’697 |
 | `Rule` | 624 |
 | `Scene` | 7’565 |
 | `Skill` | 18 |
@@ -58,13 +58,13 @@ Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etool
 | --- | ---: | ---: | ---: | --- |
 | `action` | 48 | 30 Action | 18 | — |
 | `adventure` | 101 | — | — | `weggelassen: Abenteuer-Metadaten: Name und Erscheinen der Ebene (T-082); der Text kommt aus adventure/` 101 |
-| `adventureData` | 101 | 80 Story, 589 Arc, 7’565 Scene, 2’160 Encounter, 791 Map | 21 | `Kapitel weggelassen: Credits` 78 |
+| `adventureData` | 101 | 80 Story, 589 Arc, 589 Chapter, 7’565 Scene, 60’781 Paragraph, 18’882 Heading, 6’579 ReadAloudText, 791 Map, 2’884 Embed, 2’160 Encounter | 21 | `Kapitel weggelassen: Credits` 78 |
 | `artObjects` | 10 | 5 Table | 5 | — |
 | `background` | 171 | 101 Background | 70 | `Wahl mit Werten ohne Artikel (als Notiz an der Wahl)` 14, `Talente mit Alternativen (erste übernommen)` 2 |
 | `backgroundFluff` | 170 | — | — | — |
 | `baseitem` | 230 | 56 Item, 54 Weapon, 14 Armor | 106 | — |
 | `book` | 66 | — | — | `weggelassen: Buch-Metadaten: eine Systemebene statt einer je Buch (Arbeitsplan §1)` 66 |
-| `bookData` | 66 | 290 Chapter, 15’213 Paragraph, 4’365 Heading, 3’489 Embed, 99 ReadAloudText | 16 | `Bild im Buchtext (weggelassen, E5)` 1’659, `Kapitel weggelassen: Credits` 41 |
+| `bookData` | 66 | 290 Chapter, 20’725 Paragraph, 4’365 Heading, 3’717 Embed, 118 ReadAloudText | 16 | `Bild im Buchtext (weggelassen, E5)` 2’063, `Kapitel weggelassen: Credits` 41 |
 | `boon` | 12 | 12 Rule | — | — |
 | `card` | 765 | — | — | `weggelassen: später (E4)` 765 |
 | `charoption` | 44 | 44 Rule | — | — |
@@ -191,19 +191,19 @@ Marken, deren Ziel nicht hereinkam — meist ein Eintrag aus einer ausgeschlosse
 | `@action` | 1 | 1 | `Magic\|XPHB` 1 |
 | `@card` | 372 | 199 | `Dragon\|Deck of Many More Things` 5, `Balance\|Deck of Many More Things` 4, `Comet\|Deck of Many More Things` 4, `Donjon\|Deck of Many More Things` 4, `Euryale\|Deck of Many More Things` 4, … (194 weitere) |
 | `@condition` | 1 | 1 | `Bluerot\|GoS` 1 |
-| `@creature` | 340 | 169 | `Scions of Giants' Gods\|BGG` 6, `` 3, `Giants\|MM` 3, `Kobolds\|VGM` 3, `Yuan-ti\|VGM` 3, … (164 weitere) |
-| `@deck` | 132 | 29 | `tarokka deck\|CoS` 16, `Tarokka Deck\|CoS` 15, `Elder Runes Deck\|WDMM` 14, `Secrets Deck\|WDMM` 12, `Fragments of Suffering\|CRCotN` 6, … (24 weitere) |
+| `@creature` | 353 | 169 | `Scions of Giants' Gods\|BGG` 12, `Giants\|MM` 4, `Kobolds\|VGM` 4, `Yuan-ti\|VGM` 4, `` 3, … (164 weitere) |
+| `@deck` | 138 | 29 | `Elder Runes Deck\|WDMM` 15, `tarokka deck\|CoS` 15, `Tarokka Deck\|CoS` 15, `Secrets Deck\|WDMM` 13, `Fragments of Suffering\|CRCotN` 7, … (24 weitere) |
 | `@deity` | 10 | 5 | `Bahgtru\|VGM` 2, `Ilneval\|VGM` 2, `Luthic\|VGM` 2, `Shargaas\|VGM` 2, `Yurtrus\|VGM` 2 |
-| `@item` | 551 | 249 | `+1 shield` 19, `+1 dagger` 17, `+1 longsword` 17, `+1 shortsword` 14, `+1 battleaxe` 11, … (244 weitere) |
+| `@item` | 547 | 250 | `+1 shield` 19, `+1 dagger` 17, `+1 longsword` 17, `+1 shortsword` 14, `+1 battleaxe` 11, … (245 weitere) |
 | `@race` | 27 | 9 | `Elf (Kaladesh; Bishatar and Tirahar)\|PSK` 3, `Elf (Kaladesh; Vahadar)\|PSK` 3, `Elf (Zendikar; Joraga Nation)\|PSZ` 3, `Elf (Zendikar; Mul Daya Nation)\|PSZ` 3, `Elf (Zendikar; Tajuru Nation)\|PSZ` 3, … (4 weitere) |
-| `@recipe` | 643 | 357 | `Purple Grapemash No. 3\|HFFotM` 18, `Elverquisst\|HFFotM` 6, `Ruby Cordial\|HFFotM` 5, `Ale and cheese pastry\|HFLotT` 4, `Boar Hock Soup\|HFFotM` 4, … (352 weitere) |
+| `@recipe` | 633 | 357 | `Purple Grapemash No. 3\|HFFotM` 18, `Elverquisst\|HFFotM` 6, `Ruby Cordial\|HFFotM` 5, `Boar Hock Soup\|HFFotM` 4, `Cat's Cradle\|PaF` 4, … (352 weitere) |
 | `@spell` | 21 | 20 | `hex/curse#x` 2, `aarakocra armor` 1, `aarakocra armor\|` 1, `aarakocra hand` 1, `aarakocra hand\|` 1, … (15 weitere) |
 | `@table` | 18 | 4 | `Treasure Hoard: Challenge 0—4\|DMG` 5, `Treasure Hoard: Challenge 11—16\|DMG` 5, `Treasure Hoard: Challenge 5—10\|DMG` 5, `Treasure Hoard: Challenge 17+\|DMG` 3 |
 | `@trap` | 1 | 1 | `quicksand\|dmg` 1 |
 | `@variantrule` | 5 | 5 | `Armor Class\|XPHB` 1, `Heroic Inspiration\|XPHB` 1, `Long Rest\|XPHB` 1, `Short Rest\|XPHB` 1, `Temporary Hit Points\|XPHB` 1 |
-| `@vehicle` | 293 | 69 | `battle balloon\|AI` 26, `Warship\|` 16, `Demon Grinder\|BGDIA` 14, `rowboat` 13, `Venatrix\|VEoR` 13, … (64 weitere) |
-| `@vehupgrade` | 43 | 31 | `Gilded Death Armor\|BGDIA` 3, `Infernal Screamer\|BGDIA` 3, `Acidic Bile Sprayer\|BGDIA` 2, `Arcane Artillery\|GoS` 2, `Canian Armor\|BGDIA` 2, … (26 weitere) |
+| `@vehicle` | 289 | 69 | `battle balloon\|AI` 26, `Warship\|` 16, `Demon Grinder\|BGDIA` 13, `rowboat` 13, `Venatrix\|VEoR` 13, … (64 weitere) |
+| `@vehupgrade` | 50 | 31 | `Acidic Bile Sprayer\|BGDIA` 3, `Canian Armor\|BGDIA` 3, `Flamethrower\|BGDIA` 3, `Gilded Death Armor\|BGDIA` 3, `Infernal Screamer\|BGDIA` 3, … (26 weitere) |
 
 ## Unbekannte Eintragsarten und Marken
 
-- `Eintrag image (weggelassen)` 636, `Eintrag wrapper (weggelassen)` 68, `@5etoolsImg` 28, `Eintrag gallery (weggelassen)` 20, `@ability` 9, `@5etoolsAudio` 1, `@savingThrow` 1
+- `Eintrag image (weggelassen)` 289, `Eintrag wrapper (weggelassen)` 68, `@5etoolsImg` 28, `@ability` 8, `@5etoolsAudio` 1, `@savingThrow` 1

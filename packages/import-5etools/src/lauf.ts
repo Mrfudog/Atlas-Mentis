@@ -413,7 +413,9 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
      verschiedenen Trägern werden einer, Fassungen aus mehreren Büchern
      Varianten der geltenden (Entscheidung 12.10.2026). */
   const entities = vereineGleiche(wb.entities, wb.bericht);
-  wb.entities.splice(0, wb.entities.length, ...entities);
+  /* Ohne Spread: über hunderttausend Argumente sprengen den Stapel (T-108). */
+  wb.entities.length = 0;
+  for (const e of entities) wb.entities.push(e);
   for (const [t, n] of wb.bericht.vereint) zaehle(wb.bericht.typen, t, -n);
   /* Eine Buchebene, deren Einträge alle in andere aufgingen, bringt nichts. */
   const belegt = new Set(wb.entities.flatMap((e) => (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to)));

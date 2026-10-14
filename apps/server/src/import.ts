@@ -57,6 +57,8 @@ import {
   validateEntity,
   groupingOf,
   PUBLISHER_GROUPING,
+  isBookPart,
+  partRank,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
@@ -175,7 +177,15 @@ export async function runImport(
      er noch nicht kennt, sonst der Bestand und die Datei darüber. */
   const bestand = await repo.listEntities();
   const bestandIds = new Set(bestand.map((e) => e.id));
-  const neu = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id)) : ausDatei;
+  /* **Ein Teil kommt nur mit seinem Ganzen** (T-108): steht ein Kapitel
+     oder eine Szene schon, gehört, was darin steht, der Leitung (oder der
+     Migration 046, die den Text schon geladener Abenteuer zu Teilen
+     machte) — ein Lauf legte sonst neben ihren Teilen eine zweite Fassung
+     desselben Texts an. */
+  const ganzesSchonDa = (e: Entity): boolean =>
+    isBookPart(e) && (e.relations ?? []).some((r) => partRank(r) !== undefined && bestandIds.has(r.to));
+  const neu = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && !ganzesSchonDa(e)) : ausDatei;
+  const teileMitGanzem = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && ganzesSchonDa(e)).length : 0;
   const uebersprungen = ausDatei.length - neu.length;
   const ids = new Set(neu.map((e) => e.id));
   let weg: Entity[] = [];
@@ -249,7 +259,7 @@ export async function runImport(
 
   if (optionen.dryRun) {
     const zeilen = [optionen.onlyNew
-      ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon).`
+      ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).`
       : `Probelauf, nichts geschrieben${ebenenText ? ` — ${ebenenText}` : ''}: ${zuSchreiben.length} Artikel würden geschrieben, ${weg.length} gelöscht${weg.length ? ` (${jeArt(weg)})` : ''}.`];
     if (geloest.length) zeilen.push(`${geloest.length} Instanzen würden von ihrer Vorlage gelöst: ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
     if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'würden ins Leere zeigen'));
@@ -285,7 +295,7 @@ export async function runImport(
     if (weg.length) verwaist.push(`${u.name}: ${weg.join(', ')}`);
   }
   const zeilen = [optionen.onlyNew
-    ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon).`
+    ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).`
     : `${ebenenText ? `${ebenenText}: ` : ''}${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht (${jeArt(weg)})` : ''}.`];
   if (geloest.length) zeilen.push(`${geloest.length} Instanzen von ihrer gelöschten Vorlage gelöst (sie tragen jetzt, was sie lasen): ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
   if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'zeigen jetzt ins Leere'));
