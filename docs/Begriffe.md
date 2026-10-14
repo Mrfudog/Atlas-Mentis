@@ -1523,6 +1523,20 @@ wen es zurückgelegt ist (`holds.props.reservedFor`), und solange wandert es
 nicht. An der Kante und nicht am Gegenstand, wie die Drehung: zurückgelegt
 sind *diese drei Barren hier*, nicht Eisenbarren überhaupt.
 
+**Was ankommt, ist noch nicht eingepackt** (T-140). Wer im Laden eine
+Laterne kauft oder in der Gruft ein Schwert findet, hat es zuerst vor sich
+liegen — in der Hand, am Boden, auf dem Tresen —, und wohin es kommt, ist
+eine Entscheidung am Tisch: im Raster ist Platz knapp. Darum trägt die
+Kante `unstowed`, bis jemand es verstaut, und nicht der Gegenstand: *dieser*
+Stapel liegt noch da. Wie streng das ist, ist Spielweise und darum ein Wort
+an der Kampagne (`Campaign.stowing`): beliebig lange, bis zum Ende der
+Sitzung, oder nur, bis der Tisch weiterzieht. Was dann noch daliegt, ist
+**liegengelassen** — nicht gelöscht, sondern dort, wo man es liess: an der
+Sitzung, als Kante `leftBehind` mit dem Inventar, aus dem es kam. Wer
+zurückgeht, hebt es auf und hat es wieder vor sich. Eine Löschung wäre
+endgültig gewesen, und „wir gehen zurück und holen es" ist ein Satz, der
+am Tisch fällt.
+
 ---
 
 ## Blaupause und Gang

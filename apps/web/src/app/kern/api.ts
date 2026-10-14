@@ -177,6 +177,8 @@ export interface Rueckbezug {
 export interface InventarLage {
   campaign: { id: string; name: string } | null;
   rules: 'grid' | 'weight' | 'slots';
+  /** Wie lange Unverstautes liegen darf (T-140); fehlt es, beliebig lange. */
+  stowing?: 'anytime' | 'bySessionEnd' | 'immediately';
   parties: {
     id: string;
     name: string;
@@ -1092,6 +1094,14 @@ export class Api {
 
   buy(shop: string, actor: string, edge: string, qty: number): Promise<Handel> {
     return this.call(`/api/shops/${encodeURIComponent(shop)}/buy`, { method: 'POST', body: JSON.stringify({ actor, edge, qty }) });
+  }
+  /** Die Sitzung beenden (T-140): je nach Kampagne bleibt Unverstautes liegen. */
+  endSession(id: string): Promise<{ rule: string; left: { inventory: string; edge: string; item: string; qty: number }[] }> {
+    return this.call(`/api/sessions/${encodeURIComponent(id)}/end`, { method: 'POST', body: '{}' });
+  }
+  /** Liegengelassenes aufheben (T-140): in ein Inventar, das man schreibt. */
+  pickUp(session: string, edge: string, inventory: string): Promise<{ item: string; qty: number; inventory: string }> {
+    return this.call(`/api/sessions/${encodeURIComponent(session)}/pick-up`, { method: 'POST', body: JSON.stringify({ edge, inventory }) });
   }
   /** Dem Laden verkaufen (T-133): ein Stapel aus dem Inventar der Figur. */
   sell(shop: string, actor: string, inventory: string, edge: string, qty: number): Promise<Handel> {

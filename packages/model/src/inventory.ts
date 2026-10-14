@@ -508,7 +508,8 @@ export function reservationBreaches(
   const nachher = new Map((after?.relations ?? []).filter((r) => r.type === 'holds').map((r) => [r.id, r]));
   const ohneLage = (r: Relation) => {
     const p: Record<string, unknown> = { ...(r.props ?? {}) };
-    for (const k of [...LAGE, 'tier']) delete p[k];
+    /* Verstauen (T-140) ist umräumen: `unstowed` darf fallen. */
+    for (const k of [...LAGE, 'tier', 'unstowed']) delete p[k];
     return JSON.stringify(Object.keys(p).sort().map((k) => [k, p[k]]));
   };
   const raus: ReservationBreach[] = [];
@@ -541,12 +542,17 @@ export type MoveRefusal = 'missing' | 'reserved' | 'same' | 'cycle';
  * Nein sagt es, wenn das Stück reserviert ist, das Ziel dasselbe ist, oder
  * wenn das Ziel in dem Stück selbst steckt (`inside`: die Inventare, die
  * dieser Gegenstand trägt, und was darin liegt) — ein Rucksack in sich selbst.
+ *
+ * Unverstautes (T-140, `holds.props.unstowed`) bleibt unverstaut, wenn es
+ * nur den Träger wechselt — der Gruppe gegeben, ist es noch nicht
+ * eingepackt. In einen **Behälter** gelegt ist es verstaut (`stow`), und
+ * gestapelt wird nur auf einen Stapel im selben Zustand.
  */
 export function moveHeld(
   from: Entity,
   to: Entity,
   edgeId: string,
-  opts: { qty?: number; newId: string; inside?: ReadonlySet<EntityId> },
+  opts: { qty?: number; newId: string; inside?: ReadonlySet<EntityId>; stow?: boolean },
 ): { from: Entity; to: Entity } | { refused: MoveRefusal } {
   if (from.id === to.id) return { refused: 'same' };
   const kante = (from.relations ?? []).find((r) => r.id === edgeId && r.type === 'holds');
@@ -562,8 +568,11 @@ export function moveHeld(
   const props: Record<string, unknown> = { ...(kante.props ?? {}), qty: n };
   for (const k of LAGE) delete props[k];
   if (props['tier'] !== 'stored') props['tier'] = 'pack';
+  if (opts.stow) delete props['unstowed'];
+  const offen = props['unstowed'] === true;
   const lose = (r: Relation) =>
-    r.type === 'holds' && r.to === kante.to && !reservedFor(r) && LAGE.every((k) => r.props?.[k] === undefined || r.props?.[k] === null);
+    r.type === 'holds' && r.to === kante.to && !reservedFor(r) && (r.props?.['unstowed'] === true) === offen &&
+    LAGE.every((k) => r.props?.[k] === undefined || r.props?.[k] === null);
   const ziel = to.relations ?? [];
   const da = ziel.find(lose);
   const neu = da

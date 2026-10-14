@@ -688,6 +688,37 @@ export const relations: Record<string, RelationDef> = {
            liegt; verschieben lässt es sich nicht, bis die Reservierung fällt
            (`reservedFor`, `moveHeld`). */
         reservedFor: { type: 'string', format: 'link', target: { interfaces: ['Identity'] }, title: 'Reserved for' },
+        /* **Noch nicht verstaut** (T-140): gekauft, erbeutet, geschenkt —
+           liegt vor der Figur und noch nicht in ihren Sachen. Verstaut ist
+           es im Raster, an einem Platz, in einem Behälter. Wie lange es so
+           liegen darf, sagt `Campaign.stowing`; danach steht es als
+           `leftBehind` an der Sitzung. */
+        unstowed: { type: 'boolean', title: 'Not stowed yet' },
+      },
+    },
+  },
+
+  /**
+   * **Liegengelassen** (T-140): was bis zum Sitzungsende (oder bis der
+   * Tisch weiterzog) nicht verstaut war, bleibt an der Sitzung zurück —
+   * nicht gelöscht, nur nicht mehr im Inventar. Die Kante steht an der
+   * Sitzung, weil dort der Ort ist, an dem es liegt; `from` nennt das
+   * Inventar, aus dem es kam. Aufheben nimmt die Kante weg und legt den
+   * Stapel unverstaut zurück (`pickUp`).
+   */
+  leftBehind: {
+    type: 'leftBehind',
+    label: 'left behind',
+    inverseLabel: 'left behind at',
+    means: 'A session keeps what was not stowed in time, with quantity and the inventory it came from; the item lists where it was left behind.',
+    from: ['Session'],
+    to: ['Item'],
+    props: {
+      type: 'object',
+      properties: {
+        qty: { type: 'number', min: 1, title: 'Quantity' },
+        from: { type: 'string', format: 'link', target: { interfaces: ['Inventory'] }, title: 'Left by' },
+        at: { type: 'string', title: 'When' },
       },
     },
   },
