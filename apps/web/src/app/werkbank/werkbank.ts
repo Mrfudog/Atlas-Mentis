@@ -14,6 +14,7 @@ import {
   type Wartend,
 } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { ApiTokens } from '../konto/api-tokens';
 import { Session } from '../kern/session';
 import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formular } from './auftrag';
 
@@ -32,7 +33,7 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
  */
 @Component({
   selector: 'nw-werkbank',
-  imports: [FormsModule, RouterLink],
+  imports: [ApiTokens, FormsModule, RouterLink],
   template: `
     <div class="seite">
       <header class="kopf">
@@ -445,6 +446,10 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
             }
           </ul>
         </section>
+
+        <!-- T-112: das Token für eine Claude-Sitzung entsteht hier, wo die
+             Leitung mit der Werkbank arbeitet — es ist trotzdem ihr eigenes. -->
+        <nw-api-tokens kennung="werkbank-tokens" />
       }
     </div>
   `,

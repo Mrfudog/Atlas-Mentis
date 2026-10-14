@@ -896,8 +896,9 @@ export class Api {
   tokens(): Promise<TokenZeile[]> {
     return this.call<TokenZeile[]>('/api/tokens');
   }
-  createToken(name: string, scope: 'read' | 'write', days: number): Promise<TokenZeile> {
-    return this.call<TokenZeile>('/api/tokens', { method: 'POST', body: JSON.stringify({ name, scope, days }) });
+  /** `expiresAt` als Tag (`2026-11-13`) — gilt bis zu dessen Ende (T-112). */
+  createToken(name: string, scope: 'read' | 'write', expiresAt: string): Promise<TokenZeile> {
+    return this.call<TokenZeile>('/api/tokens', { method: 'POST', body: JSON.stringify({ name, scope, expiresAt }) });
   }
   dropToken(id: string): Promise<{ ok: true }> {
     return this.call(`/api/tokens/${encodeURIComponent(id)}`, { method: 'DELETE' });
