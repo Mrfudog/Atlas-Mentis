@@ -953,7 +953,13 @@ node scripts/regelwerk.mjs ~/kibbles/paket.json             # schreibt nach dev
   schreibt nur, was sich im Paket geändert hat; ein Artikel, den jemand
   am Server geändert hat, wird übersprungen und gemeldet. Geht sie
   verloren, legt der nächste Lauf alles neu an — dann vorher die alte
-  Ebene löschen.
+  Ebene löschen. Daneben liegt ein **Journal** (`….state.json.journal`):
+  je angelegtem Artikel eine Zeile, sofort geschrieben, damit ein
+  Abbruch mitten im Lauf nichts doppelt anlegen lässt.
+- **Rollt dev während des Laufs aus**, antwortet der Proxy kurz mit
+  502/503; der Lauf wartet und versucht es wieder (bis acht Mal, mit
+  wachsender Pause). Andere Fehler, auch 504, halten ihn an — dann den
+  Lauf einfach erneut starten.
 - **Nur dev.** Die Ausgabe nennt Schlüssel, Arten und Zahlen, nie Text
   aus dem Paket, und darf ins Protokoll (`docs/Nachtarbeit/…`).
 
