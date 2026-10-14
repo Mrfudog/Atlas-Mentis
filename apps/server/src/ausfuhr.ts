@@ -37,6 +37,13 @@
  * Leitung (`gmFields`) sind ihre. Eine Sicherung, der die Geheimnisse
  * fehlen, wäre keine.
  *
+ * **Die Bilder stehen als Liste darin** (`files`, T-114), nicht als
+ * Dateien: je Asset der Ablageschlüssel, die Grösse und der Medientyp. Die
+ * Dateien selbst liegen in der Sicherung des Servers (`daten/bilder`,
+ * `backups/bilder`); eine JSON-Datei mit dreissig Karten zu je 20 MB wäre
+ * keine, die jemand herunterlädt. Mit der Liste lässt sich prüfen, ob nach
+ * dem Zurückspielen jede Datei da ist.
+ *
  * **Gespeichert, nicht gelesen:** eine Instanz geht so hinaus, wie sie
  * liegt (nur, was abweicht), nicht aufgelöst — sonst schriebe die Einfuhr
  * jedes Feld der Vorlage in sie hinein.
@@ -69,6 +76,31 @@ export interface Ausfuhr {
   layers: 'campaign' | 'all';
   registry: Registry & { components: Registry['interfaces'] };
   entities: Entity[];
+  /** Die Dateien der Bilder in dieser Ausfuhr (T-114) — nur genannt. */
+  files: AusfuhrDatei[];
+}
+
+export interface AusfuhrDatei {
+  asset: string;
+  ref: string;
+  mime?: string;
+  bytes?: number;
+}
+
+/** Die Bilder unter diesen Artikeln, die in der Ablage liegen (`backend: app`). */
+function dateienVon(entities: Entity[]): AusfuhrDatei[] {
+  const raus: AusfuhrDatei[] = [];
+  for (const e of entities) {
+    const a = e.components?.['Asset'] as { backend?: unknown; ref?: unknown; mime?: unknown; bytes?: unknown } | undefined;
+    if (!a || typeof a.ref !== 'string' || (a.backend ?? 'app') !== 'app') continue;
+    raus.push({
+      asset: e.id,
+      ref: a.ref,
+      ...(typeof a.mime === 'string' ? { mime: a.mime } : {}),
+      ...(typeof a.bytes === 'number' ? { bytes: a.bytes } : {}),
+    });
+  }
+  return raus;
 }
 
 const art = (e: Entity): string => (e.interfaces ?? [])[0] ?? '';
@@ -135,6 +167,7 @@ export function kampagnenAusfuhr(
        des Prototyps noch liest — wie in der Datei aus 5e.tools. */
     registry: { ...registry, components: registry.interfaces },
     entities,
+    files: dateienVon(entities),
   };
 }
 

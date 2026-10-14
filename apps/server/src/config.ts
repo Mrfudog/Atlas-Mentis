@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+
 export interface Config {
   port: number;
   host: string;
@@ -6,6 +8,10 @@ export interface Config {
   trustProxy: boolean | string;
   /** Welche Umgebung das ist (`ATLAS_ENV`); ungesetzt: keine Angabe. */
   env: AtlasEnv | null;
+  /** Wo die Bilder liegen (`ASSET_DIR`, T-114, E-032 a). */
+  assetDir: string;
+  /** Wie gross ein Bild sein darf, in Bytes (`ASSET_MAX_MB`, Vorgabe 40). */
+  assetMaxBytes: number;
 }
 
 export type AtlasEnv = 'dev' | 'prod';
@@ -40,5 +46,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       env['DATABASE_URL'] ?? 'postgres://nebelwacht:nebelwacht@localhost:5432/nebelwacht',
     trustProxy: trustProxy(env['TRUST_PROXY']),
     env: atlasEnv(env['ATLAS_ENV']),
+    /* Im Container ein Volume (`/data/assets`, compose); lokal neben dem
+       Arbeitsverzeichnis, damit `pnpm dev:server` ohne Einstellung läuft. */
+    assetDir: env['ASSET_DIR']?.trim() || join(process.cwd(), 'daten', 'bilder'),
+    /* Eine Karte ist 5–30 MB (E-032); darüber ist es meist ein Versehen. */
+    assetMaxBytes: Math.max(1, Number(env['ASSET_MAX_MB']) || 40) * 1024 * 1024,
   };
 }
