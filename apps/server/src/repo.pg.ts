@@ -45,6 +45,8 @@ export class PgRepository implements Repository {
         views: (r['views'] as InterfaceDef['views']) ?? undefined,
         /* Wie ein geerbtes Feld an dieser Art heisst. */
         titles: (r['titles'] as InterfaceDef['titles']) ?? undefined,
+        /* Wohin ein geerbtes Feld an dieser Art zeigt (T-119). */
+        targets: (r['targets'] as InterfaceDef['targets']) ?? undefined,
       };
     }
     for (const r of relations.rows) {
@@ -114,13 +116,14 @@ export class PgRepository implements Repository {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,schema,area,views,units,titles)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            `insert into interface_def(name,label,abstract,extends,schema,area,views,units,titles,targets)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
             [name, def.label ?? null, def.abstract ?? false,
              def.extends ?? [],
              def.schema ? JSON.stringify(def.schema) : null,
              def.area ?? null, def.views ? JSON.stringify(def.views) : null,
-             def.units ?? null, def.titles ? JSON.stringify(def.titles) : null],
+             def.units ?? null, def.titles ? JSON.stringify(def.titles) : null,
+             def.targets ? JSON.stringify(def.targets) : null],
           );
         }
       } else if (part === 'relations') {

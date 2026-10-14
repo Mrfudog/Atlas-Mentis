@@ -16,7 +16,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { primaryInterface, typeChain, type Entity } from '@nw/model';
+import { assetUses, entityName, primaryInterface, tagsOf, typeChain, type AssetUse, type Entity } from '@nw/model';
 import type { Repository } from './repo.js';
 import type { User } from './auth.js';
 import { KeinBild, aufbereiten, mimeOf, thumbKey, validKey, versionOf, type AssetStore } from './assets.js';
@@ -26,6 +26,7 @@ const ASSET_TYPE = 'Asset';
 interface Stand {
   alle: Entity[];
   map: Map<string, Entity>;
+  stempel: string;
 }
 
 export interface BilderDeps {
@@ -40,6 +41,10 @@ export interface BilderDeps {
     body: { type: string; name: string; fields: Record<string, unknown>; relations: { type: string; to: string }[] },
     optionen: { fuer?: string; zurueck?: boolean },
   ) => Promise<{ code: number; body: unknown }>;
+  /** Schreiben mit den Regeln von `PUT /api/entities/:id` (T-119: „Quelle ersetzen"). */
+  schreiben: (request: FastifyRequest, entity: Entity) => Promise<{ code: number; body: unknown } | { konflikt: number | null }>;
+  /** Darf dieses Konto den Artikel schreiben? (dieselbe Frage wie die Wache vor `PUT`) */
+  darfSchreiben: (request: FastifyRequest, id: string) => Promise<boolean>;
 }
 
 interface AssetInfo {
@@ -55,8 +60,66 @@ export function assetUrl(id: string, ref: string, thumb = false): string {
   return `/api/assets/${encodeURIComponent(id)}?v=${versionOf(ref)}${thumb ? '&size=thumb' : ''}`;
 }
 
-export function registerBilder(app: FastifyInstance, deps: BilderDeps): { aufraeumen: (e: Entity) => Promise<void> } {
-  const { repo, store, viewerOf, roh, sieve, geltend, anlegen } = deps;
+/** Ein hochgeladenes Formular: die Datei und die Textfelder davor. */
+type Formular = { datei: Buffer; dateiname: string; felder: Record<string, string> } | { code: number; body: unknown };
+
+async function formularLesen(request: FastifyRequest): Promise<Formular> {
+  if (!request.isMultipart()) return { code: 400, body: { error: 'Erwartet: multipart/form-data mit einem Feld `file`.' } };
+  let datei: Buffer | null = null;
+  let dateiname = '';
+  const felder: Record<string, string> = {};
+  try {
+    for await (const teil of request.parts()) {
+      if (teil.type === 'file') {
+        if (teil.fieldname !== 'file' || datei) {
+          await teil.toBuffer();
+          continue;
+        }
+        datei = await teil.toBuffer();
+        dateiname = teil.filename ?? '';
+      } else if (typeof teil.value === 'string') {
+        felder[teil.fieldname] = teil.value;
+      }
+    }
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === 'FST_REQ_FILE_TOO_LARGE') return { code: 413, body: { error: 'Das Bild ist zu gross.', code: 'too_large' } };
+    throw error;
+  }
+  if (!datei?.length) return { code: 400, body: { error: 'Kein Bild im Feld `file`.' } };
+  return { datei, dateiname, felder };
+}
+
+export interface Bilder {
+  aufraeumen: (e: Entity) => Promise<void>;
+  /** Wo jedes Asset verwendet wird — ungesiebt, je Bestandsstempel einmal gerechnet (T-119). */
+  verwendung: () => Promise<Map<string, AssetUse[]>>;
+}
+
+export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
+  const { repo, store, viewerOf, roh, sieve, geltend, anlegen, schreiben, darfSchreiben } = deps;
+
+  const istAsset = async (e: Entity | undefined): Promise<boolean> =>
+    !!e && typeChain(await repo.getRegistry(), primaryInterface(e)).includes(ASSET_TYPE);
+
+  /* **Wo ein Bild verwendet wird** (T-119) — eine Rückfrage über den ganzen
+     Bestand, darum je Stempel einmal. Gesiebt wird beim Fragenden. */
+  let gezaehlt: { stempel: string; lauf: Promise<Map<string, AssetUse[]>> } | null = null;
+  async function verwendung(): Promise<Map<string, AssetUse[]>> {
+    const stand = await roh();
+    if (gezaehlt?.stempel !== stand.stempel) {
+      const lauf = (async () => {
+        const registry = await repo.getRegistry();
+        const ids = new Set(stand.alle.filter((e) => typeChain(registry, primaryInterface(e)).includes(ASSET_TYPE)).map((e) => e.id));
+        return assetUses(stand.alle, ids);
+      })();
+      gezaehlt = { stempel: stand.stempel, lauf };
+      lauf.catch(() => {
+        if (gezaehlt?.lauf === lauf) gezaehlt = null;
+      });
+    }
+    return gezaehlt.lauf;
+  }
 
   /** Liegt die Datei unter `ref` noch an einem anderen Asset? Sonst geht sie. */
   async function frei(ref: string, ausser?: string): Promise<void> {
@@ -81,31 +144,9 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): { aufrae
   app.post('/api/assets', async (request, reply) => {
     const user = await viewerOf(request);
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
-    if (!request.isMultipart()) return reply.code(400).send({ error: 'Erwartet: multipart/form-data mit einem Feld `file`.' });
-    let datei: Buffer | null = null;
-    let dateiname = '';
-    const felder: Record<string, string> = {};
-    try {
-      for await (const teil of request.parts()) {
-        if (teil.type === 'file') {
-          if (teil.fieldname !== 'file' || datei) {
-            await teil.toBuffer();
-            continue;
-          }
-          datei = await teil.toBuffer();
-          dateiname = teil.filename ?? '';
-        } else if (typeof teil.value === 'string') {
-          felder[teil.fieldname] = teil.value;
-        }
-      }
-    } catch (error) {
-      const code = (error as { code?: string }).code;
-      if (code === 'FST_REQ_FILE_TOO_LARGE') {
-        return reply.code(413).send({ error: 'Das Bild ist zu gross.', code: 'too_large' });
-      }
-      throw error;
-    }
-    if (!datei?.length) return reply.code(400).send({ error: 'Kein Bild im Feld `file`.' });
+    const form = await formularLesen(request);
+    if ('code' in form) return reply.code(form.code).send(form.body);
+    const { datei, dateiname, felder } = form;
 
     const stand = await roh();
     const fuerId = (felder['for'] ?? '').trim();
@@ -114,6 +155,18 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): { aufrae
       const da = stand.map.get(fuerId);
       fuer = da ? (await sieve(request, [da], stand.map))[0] : undefined;
       if (!fuer) return reply.code(404).send({ error: 'Den Artikel gibt es nicht.' });
+    }
+    /* **Eine neue Fassung eines Bildes** (T-119, „Replace › as a new
+       version"): ein eigenes Asset mit `variantOf` auf das alte. Beide
+       bleiben; wer das alte zeigt, zeigt es weiter, bis man ihn umstellt.
+       Die Fassung übernimmt, was man über das Bild schon gesagt hat —
+       Klasse, Marken, Quelle, Sichtbarkeit, Ebene —, aber nicht die Datei. */
+    const vonId = (felder['variantOf'] ?? '').trim();
+    let von: Entity | undefined;
+    if (vonId) {
+      const da = stand.map.get(vonId);
+      von = da && (await istAsset(da)) ? (await sieve(request, [da], stand.map))[0] : undefined;
+      if (!von) return reply.code(404).send({ error: 'Das Bild gibt es nicht.' });
     }
 
     let bild;
@@ -134,10 +187,29 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): { aufrae
       'Asset.height': bild.height,
       'Asset.bytes': bild.bytes,
     };
+    const kind = (felder['kind'] ?? '').trim();
+    if (kind) fields['Asset.kind'] = kind;
     const alt = (felder['alt'] ?? '').trim();
     if (alt) fields['Image.alt'] = alt;
     const relations: { type: string; to: string }[] = [];
-    if (fuer) {
+    if (von) {
+      const roh_ = stand.map.get(von.id)!;
+      const k = roh_.components ?? {};
+      const asset = (k['Asset'] ?? {}) as Record<string, unknown>;
+      if (!kind && typeof asset['kind'] === 'string') fields['Asset.kind'] = asset['kind'];
+      for (const karte of ['Visibility', 'Source', 'Image']) {
+        for (const [f, w] of Object.entries((k[karte] ?? {}) as Record<string, unknown>)) {
+          if (karte === 'Image' && f === 'image') continue;
+          if (fields[`${karte}.${f}`] === undefined && w !== undefined && w !== null && w !== '') fields[`${karte}.${f}`] = w;
+        }
+      }
+      const marken = tagsOf(roh_);
+      if (marken.length) fields['Tags.tags'] = marken;
+      const st = (k['Status'] as { status?: unknown } | undefined)?.status;
+      fields['Status.status'] = typeof st === 'string' ? st : 'ready';
+      for (const r of roh_.relations ?? []) if (r.type === 'inLayer') relations.push({ type: 'inLayer', to: r.to });
+      relations.push({ type: 'variantOf', to: von.id });
+    } else if (fuer) {
       const sicht = (fuer.components?.['Visibility'] ?? {}) as Record<string, unknown>;
       for (const k of ['audience', 'revealedTo', 'hiddenFrom']) {
         const w = sicht[k];
@@ -155,10 +227,15 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): { aufrae
     }
     const name =
       (felder['name'] ?? '').trim() ||
+      (von ? `${entityName(von)} (new version)` : '') ||
       dateiname.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() ||
       (fuer ? `${fuer.name ?? 'Image'} (image)` : 'Image');
 
-    const r = await anlegen(request, { type: ASSET_TYPE, name, fields, relations }, fuerId ? { fuer: fuerId, zurueck: true } : {});
+    const r = await anlegen(
+      request,
+      { type: ASSET_TYPE, name, fields, relations },
+      fuerId ? { fuer: fuerId, zurueck: true } : von ? { zurueck: true } : {},
+    );
     if (r.code !== 201) {
       await frei(bild.ref);
       return reply.code(r.code).send(r.body);
@@ -220,7 +297,102 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): { aufrae
       .send(datei.body);
   });
 
+  /**
+   * **Quelle ersetzen** (T-119, `PUT /api/assets/:id/file`, multipart wie
+   * das Hochladen): derselbe Artikel, eine neue Datei. Alle Verwender
+   * zeigen sofort das neue Bild — sie halten die Id des Artikels, nicht die
+   * Datei, und die Adresse trägt die Version (`?v=`), also lädt der Browser
+   * neu. **Die alte Datei bleibt liegen**: abrufbar über ihre Ablage und in
+   * der nächsten Sicherung; das Ereignis `asset.replaced` nennt sie.
+   * Geschrieben wird mit den Regeln von `PUT` (`schreiben`), gegen die
+   * Revision im Feld `revision` — wer ein Bild ersetzt, das sich seit dem
+   * Lesen geändert hat, bekommt 409 wie überall.
+   */
+  app.put<{ Params: { id: string } }>('/api/assets/:id/file', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    const stand = await roh();
+    const da = stand.map.get(request.params.id);
+    const [gesehen] = da && (await istAsset(da)) ? await sieve(request, [da], stand.map) : [];
+    if (!da || !gesehen) return reply.code(404).send({ error: 'Nicht gefunden' });
+    if (!(await darfSchreiben(request, da.id))) return reply.code(403).send({ error: 'Das gehört dir nicht.' });
+    const form = await formularLesen(request);
+    if ('code' in form) return reply.code(form.code).send(form.body);
+    let bild;
+    try {
+      bild = await aufbereiten(form.datei);
+    } catch (error) {
+      if (error instanceof KeinBild) return reply.code(415).send({ error: error.message, code: 'not_an_image' });
+      throw error;
+    }
+    const alt = infoVon(da);
+    if (alt.ref === bild.ref) return reply.code(200).send({ ...da, url: assetUrl(da.id, bild.ref), thumb: assetUrl(da.id, bild.ref, true) });
+    await store.put(bild.ref, bild.data);
+    await store.put(bild.thumb, bild.thumbData);
+    const rev = Number(form.felder['revision']);
+    const neu: Entity = {
+      ...da,
+      ...(form.felder['revision'] !== undefined ? { revision: Number.isFinite(rev) ? rev : null } : {}),
+      components: {
+        ...(da.components ?? {}),
+        [ASSET_TYPE]: {
+          ...((da.components?.[ASSET_TYPE] ?? {}) as Record<string, unknown>),
+          backend: 'app',
+          ref: bild.ref,
+          mime: bild.mime,
+          width: bild.width,
+          height: bild.height,
+          bytes: bild.bytes,
+        },
+      },
+    } as Entity;
+    const r = await schreiben(request, neu);
+    if ('konflikt' in r || r.code !== 200) {
+      /* Die neue Datei nennt niemand — sie geht wieder. */
+      await frei(bild.ref);
+      if ('konflikt' in r) return reply.code(409).send({ error: 'Das Bild wurde seit dem Lesen anderswo geändert.', code: 'conflict' });
+      return reply.code(r.code).send(r.body);
+    }
+    await repo.appendEvent('asset.replaced', da.id, { from: alt.ref ?? null, to: bild.ref, bytes: bild.bytes, by: user.id });
+    const stored = r.body as Entity;
+    return reply.code(200).send({ ...stored, url: assetUrl(da.id, bild.ref), thumb: assetUrl(da.id, bild.ref, true) });
+  });
+
+  /**
+   * **Wo ein Bild verwendet wird** (T-119, `GET /api/assets/:id/uses`):
+   * die Artikel, die es zeigen — **nur die, die dieser Betrachter sieht**.
+   * „Wird noch an drei Orten gezeigt" verriete sonst drei Artikel, auch
+   * ohne ihre Namen. Dazu die Fassungen (`variantOf`) in beide Richtungen.
+   */
+  app.get<{ Params: { id: string } }>('/api/assets/:id/uses', async (request, reply) => {
+    const stand = await roh();
+    const da = stand.map.get(request.params.id);
+    const [gesehen] = da && (await istAsset(da)) ? await sieve(request, [da], stand.map) : [];
+    if (!da || !gesehen) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const uses = (await verwendung()).get(da.id) ?? [];
+    const kandidaten = new Map<string, Entity>();
+    for (const u of uses) {
+      const e = stand.map.get(u.id);
+      if (e) kandidaten.set(e.id, e);
+    }
+    const varianten = stand.alle.filter((e) => e.id !== da.id && (e.relations ?? []).some((r) => r.type === 'variantOf' && r.to === da.id));
+    for (const e of varianten) kandidaten.set(e.id, e);
+    const original = (da.relations ?? []).find((r) => r.type === 'variantOf')?.to;
+    if (original && stand.map.has(original)) kandidaten.set(original, stand.map.get(original)!);
+    const sichtbar = new Map((await sieve(request, [...kandidaten.values()], stand.map)).map((e) => [e.id, e]));
+    const zeile = (id: string) => {
+      const e = sichtbar.get(id)!;
+      return { id, name: entityName(e), type: primaryInterface(e) };
+    };
+    return {
+      uses: uses.filter((u) => sichtbar.has(u.id)).map((u) => ({ ...zeile(u.id), via: u.via })),
+      variants: varianten.filter((e) => sichtbar.has(e.id)).map((e) => zeile(e.id)),
+      variantOf: original && sichtbar.has(original) ? zeile(original) : null,
+    };
+  });
+
   return {
+    verwendung,
     /** Nach dem Löschen eines Asset-Artikels: die Datei geht, wenn kein anderer sie nennt. */
     aufraeumen: async (e: Entity) => {
       const info = infoVon(e);

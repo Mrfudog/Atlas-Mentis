@@ -2422,7 +2422,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*
+- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `kind` *image | map | token | prop*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*
 
 **Geerbte Felder**
 
