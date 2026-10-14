@@ -144,7 +144,7 @@ export function hpWord(hp: number | undefined, max: number | undefined): HpWord 
   return 'unhurt';
 }
 
-type Lookup = Map<EntityId, Entity>;
+type Lookup = ReadonlyMap<EntityId, Entity>;
 
 /** Der Statblock einer Kreatur (`belongsTo`), oder sie selbst, wenn sie einer ist. */
 function statblockFor(entities: Lookup, e: Entity): Entity | null {
