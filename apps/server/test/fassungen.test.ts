@@ -124,6 +124,9 @@ describe('the versions of an article (T-092)', () => {
     expect(v24).toMatchObject({ compare: true, play: false, adoptable: true, layers: ['e5_book_xphb'] });
     expect(gm.versions.find((v) => v.entity.id === 'fx')).toMatchObject({ compare: false, play: true, adoptable: false });
     expect(gm.layers.find((l) => l.id === 'e5_book_xphb')).toMatchObject({ short: 'XPHB', compare: true, play: false });
+    /* Der Platz im Stapel steht an den Ebenen im Spiel (T-173), nicht an Vergleichsebenen. */
+    expect(gm.layers.find((l) => l.id === 'e5_book_xphb')?.rank).toBeUndefined();
+    expect(gm.layers.find((l) => l.id === 'e5_book_xge')?.rank).toBeGreaterThan(0);
     /* Die Fassung lässt sich öffnen, mit dem Hinweis. */
     const offen = (await rufe('Basil', 'GET', '/api/entities/f24')).json();
     expect(offen.refs.compare).toBe(true);

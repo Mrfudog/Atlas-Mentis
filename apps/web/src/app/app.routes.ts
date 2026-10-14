@@ -150,6 +150,13 @@ export const routes: Routes = [
     loadComponent: () => import('./lesen/lesen').then((m) => m.Lesen),
     title: 'Read · Atlas Mentis',
   },
+  /* Fassungen nebeneinander (T-173): links der Artikel, rechts die Fassung. */
+  {
+    path: 'artikel/:id/compare/:other',
+    canActivate: [wache],
+    loadComponent: () => import('./artikel/vergleich').then((m) => m.FassungsVergleich),
+    title: 'Compare · Atlas Mentis',
+  },
   {
     path: 'artikel/:id/print',
     canActivate: [wache],

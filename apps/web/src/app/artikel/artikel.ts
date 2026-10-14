@@ -62,6 +62,7 @@ import { Herausgeber } from './herausgeber';
 import {
   abweichungen,
   AbwMarken,
+  FassungsAbzeichen,
   FassungsKasten,
   FassungsLesart,
   prosaVergleich,
@@ -138,6 +139,7 @@ interface Feld {
     Abschnitte,
     Fluss,
     FassungsKasten,
+    FassungsAbzeichen,
     AbwMarken,
     KurzLink,
     Herausgeber,
@@ -326,6 +328,10 @@ interface Feld {
                 <h1>{{ name(e) }}</h1>
                 @if (untertitel(); as u) {
                   <p class="untertitel">{{ u }}</p>
+                }
+                <!-- Fassungen auf einen Blick (T-173): oben, auch am Telefon. -->
+                @if (!bearbeitet()) {
+                  <nw-fassungs-abzeichen [basis]="e" [fassungen]="fassungen()" />
                 }
               </div>
               <!-- Ein Buch-Element setzt seine kursive Zeile unter den Namen
@@ -787,7 +793,7 @@ interface Feld {
                 </ul>
               </section>
             }
-            <nw-fassungen [artikel]="e.id" [fassungen]="fassungen()" (gewechselt)="gewechselt($event)" />
+            <nw-fassungen [artikel]="e.id" [basis]="e" [fassungen]="fassungen()" (gewechselt)="gewechselt($event)" />
             <!-- Ein Bild (T-119): wo es gezeigt wird, seine Fassungen, „Replace image". -->
             @if (istBild(e)) {
               <nw-bildpanel [artikel]="e" (gewechselt)="gewechselt($event)" />

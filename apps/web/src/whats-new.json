@@ -9,6 +9,14 @@
       "link": "/account"
     },
     {
+      "id": "2026-10-15-compare-versions",
+      "date": "2026-10-15",
+      "title": "See at a glance where versions differ",
+      "text": "An article with other versions now shows a badge under its name (\"2 versions · differs in tier\"), and each version in the Versions box says in one sentence what it changes, or that only the source differs. A value the other version leaves out reads \"not set\" instead of a blank. Compare puts both versions side by side, every field and edge, with long texts compared line by line.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-14-crafting-circles",
       "date": "2026-10-14",
       "title": "Crafting checks are circles you click",

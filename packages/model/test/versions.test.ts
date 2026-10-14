@@ -14,15 +14,19 @@ import {
   withStack,
 } from '../src/stack.js';
 import {
+  compareRows,
   layerShort,
+  lineDiff,
   linesDiff,
   sameThing,
   sectionDiff,
   textSections,
   versionDiff,
+  versionInPlay,
   versionGroups,
   versionName,
   versionsOf,
+  versionSummary,
 } from '../src/versions.js';
 import { campaignsOf } from '../src/visibility.js';
 
@@ -199,5 +203,71 @@ describe('sections of a long text (T-103)', () => {
       { key: 'armor class', heading: 'Armor Class', value: '15 (leather armor)', onlyThere: false },
       { key: 'senses', heading: 'Senses', value: 'darkvision 60 ft.', onlyThere: true },
     ]);
+  });
+});
+
+/* T-173: „Bei +1 Waffe sehe ich den Unterschied der Versionen nirgends."
+   Der einzige Unterschied war ein Feld, das die andere Fassung nicht setzt. */
+describe('versions side by side (T-173)', () => {
+  const reg = {
+    interfaces: {
+      Item: { name: 'Item', schema: { type: 'object' as const, properties: { tier: { type: 'string' as const, title: 'Tier' }, text: { type: 'string' as const, format: 'long' } } } },
+    },
+    relations: { availableTo: { name: 'availableTo', label: 'available to', from: ['*'], to: ['*'], cardinality: 'many' } },
+  } as unknown as Registry;
+  const DMG = ebene('e5_book_dmg', "Dungeon Master's Guide");
+  const XDMG = ebene('e5_book_xdmg', "Dungeon Master's Guide (2024)");
+  const ding = (id: string, name: string, buch: string, seite: string, ly: string, felder: Record<string, unknown>, rel: Entity['relations'] = []): Entity => ({
+    id,
+    name,
+    interfaces: ['Item'],
+    components: { Identity: { name, id: `item-${id}`, aliases: [] }, Source: { publication: buch, page: seite }, Item: felder },
+    relations: [{ id: `${id}_in`, type: 'inLayer', to: ly, props: {} }, ...rel],
+  });
+  const alt = ding('w14', '+1 Weapon', 'DMG', '213', DMG.id, { tier: 'major', text: 'You have a +1 bonus.' });
+  const neu = ding('w24', '+1 Weapon (XDMG)', 'XDMG', '324', XDMG.id, { text: 'You have a +1 bonus.' }, [
+    { id: 'v', type: 'variantOf', to: 'w14', props: {} },
+  ]);
+
+  it('names a field the other version leaves empty', () => {
+    const s = versionSummary(reg, alt, neu);
+    expect(s).toEqual({ same: false, fields: ['Tier'], relations: [], notThere: ['Tier'], source: 'XDMG p. 324' });
+  });
+
+  it('says when only the source differs', () => {
+    const gleich = { ...neu, components: { ...neu.components, Item: { tier: 'major', text: 'You have a +1 bonus.' } } };
+    expect(versionSummary(reg, alt, gleich)).toEqual({ same: true, fields: [], relations: [], notThere: [], source: 'XDMG p. 324' });
+  });
+
+  it('lists every field, same ones too', () => {
+    const z = compareRows(reg, alt, neu);
+    const nach = Object.fromEntries(z.fields.map((f) => [f.ref, [f.state, f.meta]]));
+    expect(nach['Item.tier']).toEqual(['onlyLeft', false]);
+    expect(nach['Item.text']).toEqual(['same', false]);
+    expect(nach['Source.page']).toEqual(['changed', true]);
+    expect(z.relations.find((r) => r.type === 'variantOf')).toMatchObject({ state: 'onlyRight', right: ['w14'] });
+    expect(z.relations.find((r) => r.type === 'inLayer')?.state).toBe('changed');
+  });
+
+  it('picks the version from the topmost layer in play', () => {
+    const ranks = new Map([
+      [DMG.id, 1],
+      [XDMG.id, 2],
+    ]);
+    expect(versionInPlay([alt, neu], ranks)?.entity.id).toBe('w24');
+    expect(versionInPlay([alt, neu], new Map([[DMG.id, 1]]))?.entity.id).toBe('w14');
+    expect(versionInPlay([alt, neu], new Map())).toBeNull();
+  });
+
+  it('diffs lines like git', () => {
+    expect(lineDiff('a\nb\nc', 'a\nx\nc')).toEqual([
+      { op: 'same', text: 'a' },
+      { op: 'del', text: 'b' },
+      { op: 'add', text: 'x' },
+      { op: 'same', text: 'c' },
+    ]);
+    expect(lineDiff('a\nb', 'a\nb\nc').map((l) => l.op)).toEqual(['same', 'same', 'add']);
+    expect(lineDiff('', 'x').map((l) => l.op)).toEqual(['del', 'add']);
+    expect(lineDiff('same  ', 'same')).toEqual([{ op: 'same', text: 'same  ' }]);
   });
 });

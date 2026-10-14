@@ -2015,6 +2015,9 @@ export function buildApp({
         short: layerShort(l),
         compare: vergleichsIds.has(l.id),
         play: imSpiel.has(l.id),
+        /* Der Platz im Stapel (T-173): die Fassung aus der obersten Ebene
+           steht in Listen und Verweisen — die Seite sagt, welche das ist. */
+        ...(imSpiel.has(l.id) ? { rank: imSpiel.get(l.id) } : {}),
       })),
       versions,
       ...(kampagne ? { campaign: { id: kampagne.id, name: entityName(kampagne) } } : {}),
