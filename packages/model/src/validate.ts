@@ -16,6 +16,12 @@ import type { Entity, LayoutElement, ObjectSchema, Registry } from './types.js';
 
 const propertyType = z.enum(['string', 'number', 'integer', 'boolean', 'array', 'object']);
 
+/* Was ein Feld oder eine Kante zur Facette sagt (T-174). */
+const facetHint = z.union([
+  z.literal(false),
+  z.object({ label: z.string().optional(), order: z.number().optional() }),
+]);
+
 /* Worauf ein Verweisfeld zeigen darf. Die Art ist die Regel, die Marken
    und der Feldwert sind Vorschläge für die Maske. */
 const linkTargetSchema = z.object({
@@ -48,6 +54,7 @@ const propertySchema = z
     suggest: z.boolean().optional(),
     many: z.boolean().optional(),
     readOnly: z.boolean().optional(),
+    facet: facetHint.optional(),
     default: z.unknown().optional(),
     /* Die Form eines Eintrags in einem `many`-Feld (REQ-238). Rekursiv,
        weil ein Eintrag Felder hat und jedes davon ein Feld ist. */
@@ -153,6 +160,7 @@ export const RelationDefSchema = z.object({
   asField: z.enum(['from', 'to']).optional(),
   section: z.string().optional(),
   props: objectSchema.optional(),
+  facet: facetHint.optional(),
 });
 
 export const ViewDefSchema = z.object({

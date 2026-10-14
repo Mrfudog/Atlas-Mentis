@@ -64,6 +64,8 @@ export class PgRepository implements Repository {
         /* Was sie bedeutet und bewirken soll (T-111, Migration 045). */
         means: (r['means'] as string | null) ?? undefined,
         intended: (r['intended'] as string | null) ?? undefined,
+        /* Als Filter in der Liste (T-174): `false` oder `{label, order}`. */
+        ...(r['facet'] !== null && r['facet'] !== undefined ? { facet: r['facet'] as RelationDef['facet'] } : {}),
         /* Was die Kante selbst trägt — geschrieben wurde es immer, gelesen
            bis zur Migration 022 nie. Ein leeres Schema ist keines. */
         props: Object.keys((r['props'] as { properties?: object } | null)?.properties ?? {}).length
@@ -129,12 +131,16 @@ export class PgRepository implements Repository {
       } else if (part === 'relations') {
         await client.query('delete from relation_def');
         for (const [type, def] of Object.entries(value as Registry['relations'])) {
+          /* `facet` (T-174, Migration 073) nur, wo eine Kante es sagt — so
+             schreibt dieselbe Zeile auch in eine Datenbank vor 073. */
+          const mitFacette = def.facet !== undefined;
           await client.query(
-            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props,as_field,means,intended)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props,as_field,means,intended${mitFacette ? ',facet' : ''})
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12${mitFacette ? ',$13' : ''})`,
             [type, def.label, def.inverseLabel, def.from ?? ['*'], def.to ?? ['*'],
              def.owned ?? false, def.cardinality ?? 'many', def.section ?? null,
-             JSON.stringify(def.props ?? {}), def.asField ?? null, def.means ?? null, def.intended ?? null],
+             JSON.stringify(def.props ?? {}), def.asField ?? null, def.means ?? null, def.intended ?? null,
+             ...(mitFacette ? [JSON.stringify(def.facet)] : [])],
           );
         }
       } else if (part === 'views') {

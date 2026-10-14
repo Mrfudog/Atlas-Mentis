@@ -42,3 +42,4 @@ export * from './assets.js';
 export * from './uebernahme.js';
 export * from './registerabgleich.js';
 export * from './stowing.js';
+export * from './facets.js';

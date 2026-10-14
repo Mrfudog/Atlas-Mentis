@@ -213,6 +213,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `suggest` | ein freies Wort schlägt vor, was sichtbare Artikel darin tragen (`Creature.kind`) |
 | `readOnly` | ausgegeben, nicht eingetippt (`Identity.id`) |
 | `editOnly` | nur in der Maske, nie beim Lesen: ein Schlüssel zum Ordnen (`Time.sort`, T-126) |
+| `facet` | als Filter in der Liste (T-174): `false` nimmt das Feld aus den Facetten, `{label, order}` benennt oder ordnet es (F15) |
 
 ### 4.2 Die Formen
 
@@ -257,6 +258,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | F11 | **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10). Verweise nennen die Nummer, nicht den Namen (M11); Würfel sind `{{…}}`, Platzhalter `{VAR}` (M12). Siehe 4.4. |
 | F12 | **Die Zeile hält, die Art schlägt vor** (M6, D50). Nennt `enumRef` eine Artikelart, sind die Werte die Namen ihrer sichtbaren Artikel (Untertypen ja, Instanzen nein), und gespeichert wird der Name. Die Prüfung hält ein solches Feld **nicht** an der Liste fest (`enumHolds`): ein Name ist der heutige Stand, und eine Umbenennung machte eine gespeicherte Übung sonst rückwirkend falsch — dieselbe Regel wie bei `target.tags` (F4). Eine Liste mit Wörtern, die nur ein Wort sind (Waffengruppen), nennt das Feld, das sie trägt (`Weapon.category`), statt einer zweiten Zeile. **Wo ein Feld genau einen Artikel meint, ist es ein Verweis** (F13). |
 | F13 | **Ein Feld, das einen Artikel meint, hält seine Id** (`format: 'link'` mit `target`, T-078). Ein Name zeigt, solange niemand umbenennt, und von ihm kommt man nicht zum Artikel. `enumRef` auf eine Art bleibt, wo ein Feld Artikel **und** Wörter mischt (`Proficiencies.proficient` zieht aus Artikeln und aus `Weapon.category`). Umgestellt: `Statblock.conditionImmunities` → `Condition`, `Weapon.ammoType` → `Item`; die gespeicherten Namen schreibt `025_verweisfelder.sql` in Ids um, und was keinem Artikel eindeutig gehört, steht danach als Notiz (`Notes.note`, `condition-immunities` / `ammunition`). Seit T-099 (E-020, an den Artikeln auf dev entschieden) auch `Deity.domains` → `Subclass` („Knowledge" → „Knowledge Domain", `048_gottheit_domaenen.sql`, Notiz `domains`). **Wird ein Feld mit einem Namensfeld verglichen, bleibt es Name und bekommt die Auswahl** (F12): `Recipe.tool` zieht aus den Werkzeug-Artikeln (`enumRef: 'Item'`, `enumWhere` wie die Übungen), weil das Handwerk es gegen `Proficiencies.proficient` prüft. Welche Felder noch offen sind: [Verweisfelder.md](Verweisfelder.md). |
+| F15 | **Wonach eine Liste filtert, sagt das Register** (T-174, `facetsFor` in `packages/model/src/facets.ts`). Aus der Form des Felds: Aufzählung (`enum`, `enumRef`, auch mehrere Zeilen) → Häkchen, Schalter → ja/nein (ohne Wert zählt „nein"), Zahl → Spanne, Verweis mit Zieltyp → Artikelwahl, freies Wort mit `suggest` → Häkchen über das, was dasteht; ein freier Text, den die Übersicht als Spalte zeigt, wird eine Spanne, wenn fast alles darin Zahl ist (der Herausforderungsgrad). Dazu jede Kante mit einer genannten Art am anderen Ende, in beide Richtungen (`out.grants` „grants", `in.grants` „granted by") — nicht mit `*`, `same`, `asField`, `section` und nicht `inLayer`. Gerechnet wird am Server über den gesiebten Bestand: Zahlen und Werte nur aus Artikeln, die das Konto sieht; UND zwischen Facetten, ODER innerhalb; jede Facette zählt ohne ihren eigenen Filter. Was die Ableitung falsch trifft, sagt `facet` am Feld oder an der Kante — eine Zeile, **keine Liste je Art im Code**. |
 | F14 | **Was nur ordnet, steht nur in der Maske** (`editOnly`): `Time.sort` und `untilSort` setzt man beim Bearbeiten, gelesen wird das Datum daneben. Eine Ansicht kann es nicht ausblenden — `hide` nimmt ein Feld aus einem Element, und der Rest der Artikelseite zeigte es wieder (T-126). |
 
 ### 4.4 Langer Text
@@ -310,6 +312,7 @@ Codeblöcke, Bilder, Fussnoten — kein Text, der hierher kommt, braucht sie.
 | `owned` | das Ziel soll mit dem Artikel gehen (`knowledge`) — **heute von keinem Auswerter gelesen** (T-111) |
 | `means` | was die Kante bedeutet, ein Satz in beide Richtungen (T-111) |
 | `intended` | was sie bewirken **soll**, solange kein Auswerter sie liest — die Oberfläche sagt dann „not evaluated yet" |
+| `facet` | als Filter in der Liste, beide Richtungen (T-174, F15): `false` nimmt sie heraus, `{label, order}` benennt oder ordnet sie |
 
 ### 5.2 Regeln für Kanten
 

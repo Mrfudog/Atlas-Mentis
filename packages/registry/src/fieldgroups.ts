@@ -273,6 +273,8 @@ export const fieldGroups = {
           title: 'Revealed to',
           items: { type: 'string' },
           target: { interfaces: ['Creature', 'Party', 'Faction'] },
+          /* Wem etwas gezeigt wird, ist kein Filter für die Liste (T-174). */
+          facet: false,
         },
         hiddenFrom: {
           type: 'array',
@@ -280,6 +282,8 @@ export const fieldGroups = {
           title: 'Hidden from',
           items: { type: 'string' },
           target: { interfaces: ['Creature', 'Party', 'Faction'] },
+          /* Wem etwas gezeigt wird, ist kein Filter für die Liste (T-174). */
+          facet: false,
         },
       },
     },
@@ -487,7 +491,7 @@ export const fieldGroups = {
         /* Ob der Name dieser Regel im Fliesstext erkannt werden darf
            (REQ-175). Ein falscher Treffer kostet mehr Vertrauen, als zehn
            richtige einbringen — deshalb lässt er sich hier abschalten. */
-        autolink: { type: 'boolean', title: 'Spot it in prose', default: true },
+        autolink: { type: 'boolean', title: 'Spot it in prose', default: true, facet: false },
       },
     },
   },
