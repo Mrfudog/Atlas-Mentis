@@ -10,6 +10,8 @@ import { Api } from './api';
 export class Quellen {
   private readonly api = inject(Api);
   private readonly karte = signal<Record<string, string>>({});
+  /** Kürzel → Herausgeber (T-094). */
+  private readonly verlage = signal<Record<string, string>>({});
   private geladen: Promise<void> | null = null;
 
   constructor() {
@@ -23,17 +25,27 @@ export class Quellen {
     return this.karte()[kuerzel] ?? '';
   }
 
-  /** „XGE p. 12" → `{ kuerzel: 'XGE', rest: ' p. 12', titel }`; ohne bekanntes Kürzel nur `rest`. */
-  zerlege(text: string): { kuerzel: string; rest: string; titel: string } {
+  /** Wer das Buch zu einem Kürzel herausgibt (T-094), oder leer. */
+  herausgeber(kuerzel: string): string {
+    return this.verlage()[kuerzel] ?? '';
+  }
+
+  /** „XGE p. 12" → `{ kuerzel: 'XGE', rest: ' p. 12', titel, verlag }`; ohne bekanntes Kürzel nur `rest`. */
+  zerlege(text: string): { kuerzel: string; rest: string; titel: string; verlag: string } {
     const m = /^([A-Za-z][A-Za-z0-9-]*)(.*)$/s.exec(text.trim());
     const titel = m ? this.titel(m[1]!) : '';
-    return m && titel ? { kuerzel: m[1]!, rest: m[2]!, titel } : { kuerzel: '', rest: text, titel: '' };
+    return m && titel
+      ? { kuerzel: m[1]!, rest: m[2]!, titel, verlag: this.herausgeber(m[1]!) }
+      : { kuerzel: '', rest: text, titel: '', verlag: '' };
   }
 
   private laden(): void {
     this.geladen ??= this.api
       .sources()
-      .then((r) => this.karte.set(r.sources ?? {}))
+      .then((r) => {
+        this.karte.set(r.sources ?? {});
+        this.verlage.set(r.publishers ?? {});
+      })
       .catch(() => {
         /* Ohne Liste steht das Kürzel, wie es ist. */
         this.geladen = null;
@@ -44,8 +56,8 @@ export class Quellen {
 /**
  * **Ein Quellenkürzel, das sich erklärt** (T-088): `XGE p. 12` mit dem
  * vollen Titel beim Darüberfahren (`title`) und — weil ein Telefon kein
- * Darüberfahren kennt — beim Antippen als Zeile darunter. Ein unbekanntes
- * Kürzel steht, wie es ist.
+ * Darüberfahren kennt — beim Antippen als Zeile darunter. Dahinter der
+ * Herausgeber als Marke (T-094). Ein unbekanntes Kürzel steht, wie es ist.
  */
 @Component({
   selector: 'nw-quelle',
@@ -62,6 +74,9 @@ export class Quellen {
           (keydown.enter)="umschalten($event)"
           >{{ t.kuerzel }}</abbr
         >{{ t.rest }}
+        @if (t.verlag) {
+          <span class="verlag" [title]="'Publisher: ' + t.verlag">{{ t.verlag }}</span>
+        }
         @if (offen()) {
           <span class="titel" role="note">{{ t.titel }}</span>
         }
@@ -75,6 +90,19 @@ export class Quellen {
       text-decoration: underline dotted;
       text-underline-offset: 2px;
       cursor: help;
+    }
+    /* Der Herausgeber als Marke (T-094): offizielles D&D, Partner, Homebrew auf einen Blick. */
+    .verlag {
+      display: inline-block;
+      margin-left: 0.35em;
+      padding: 0 0.4em;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 0.78em;
+      font-style: normal;
+      line-height: 1.5;
+      white-space: nowrap;
+      vertical-align: baseline;
     }
     .titel {
       display: block;

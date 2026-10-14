@@ -444,6 +444,19 @@ Supplements legte, die aber ein Setting ist, wechselt dabei. Kein Artikel,
 keine Registerzeile, keine Kampagne wird angefasst; was die Leitung an
 einer Ebene geändert hat, bleibt.
 
+**Herausgeber und Blocklist-Kategorien** (T-094, Migration
+`037_ebenen_herausgeber.sql`): beim Start legt der Server die
+Herausgeber-Gruppen „Official" und „Partnered" (`e5_publisher_*`,
+`groupBy: 'publisher'`) und die Kategorien „Non-standard", „Comedy" und
+„Outside the Forgotten Realms" an — wieder nur, wo ein Buch hineingehört —
+und hängt jede Buchebene ein. Welches Buch wohin, steht in
+[5etools-Abgleich › Herausgeber](5etools-Abgleich.md#herausgeber-und-blocklist-kategorien-t-094).
+Ein Lauf mit `mode` = `layers` tut dasselbe aus der 5e.tools-Datei und ist
+danach nur nötig, wenn 5e.tools neue Bücher bringt. Hat die Leitung ein
+Buch an einen **eigenen** Herausgeber gehängt (eine eigene Gruppe mit
+`groupBy: 'publisher'`, etwa „Third party"), bleibt es dort; an die
+Gruppen des Importers hängt `layers` es nach der Datei zurück.
+
 **Wann `replace-layer`:** nur, wenn die Ebene wirklich neu geladen werden
 soll — etwa weil der Importer etwas an *bestehenden* Artikeln anders
 schreibt und das überall ankommen soll. **Was es kostet:** jeder Artikel
@@ -491,7 +504,7 @@ nennt sie ausdrücklich.
 | --- | --- |
 | *Use workflow from* | `preprod` für dev, `main` für prod — die Zweigregel der Environments verlangt es, ein Lauf vom falschen Zweig bricht gleich ab |
 | `environment` | `dev` oder `prod` |
-| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen anlegen, Beschreibung nachtragen, kein Artikel (T-088) |
+| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094) |
 | `sources` | nur diese Quellen, z. B. `PHB,MM` oder ein Modulkürzel; leer heisst alles |
 | `confirm` | `ersetzen` für `replace-layer`, sonst leer |
 | `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |

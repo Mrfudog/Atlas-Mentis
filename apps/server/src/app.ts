@@ -24,6 +24,7 @@ import {
   storedKey,
   CAMPAIGN_TYPE,
   allowedMethods,
+  campaignLanguages,
   partyPool,
   rollAbilityScores,
   articleVisible,
@@ -71,6 +72,7 @@ import {
   linkCandidates,
   nextId,
   typeChain,
+  publisherOf,
 } from '@nw/model';
 import type { BulkChange, Entity, Registry } from '@nw/model';
 import { RevisionConflict } from './repo.js';
@@ -1339,14 +1341,18 @@ export function buildApp({
   app.get('/api/sources', async (request) => {
     const [stand, idx] = await Promise.all([roh(), indexFor(request)]);
     const out: Record<string, string> = {};
+    /* Je Kürzel auch der Herausgeber (T-094) — die Marke in Listen und Vorschau. */
+    const verlag: Record<string, string> = {};
     for (const e of stand.map.values()) {
       if ((e.interfaces ?? [])[0] !== 'Layer') continue;
       const k = (e.components?.['Layer'] as { abbreviation?: unknown } | undefined)?.abbreviation;
       const name = idx.names.get(e.id);
       if (typeof k !== 'string' || !k.trim() || !name) continue;
-      out[k.trim()] ??= name;
+      if (out[k.trim()] !== undefined) continue;
+      out[k.trim()] = name;
+      verlag[k.trim()] = publisherOf(stand.map, e);
     }
-    return { sources: out };
+    return { sources: out, publishers: verlag };
   });
 
   /**
@@ -1844,9 +1850,15 @@ export function buildApp({
     return { campaign, players };
   });
 
+  /* Dazu die Sprachen der Kampagne (REQ-251, T-095): leer heisst jede. */
   app.get('/api/abilities', async (request) => {
     const { kampagne, methods, parties } = await verfahren(request);
-    return { campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null, methods, parties };
+    return {
+      campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null,
+      methods,
+      parties,
+      languages: campaignLanguages(kampagne ?? undefined),
+    };
   });
 
   /**

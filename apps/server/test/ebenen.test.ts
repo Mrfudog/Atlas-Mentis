@@ -211,6 +211,25 @@ describe('the campaign page switches layers on', () => {
     expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: [], off: 'e5_book_mm' })).statusCode).toBe(400);
   });
 
+  it('names the publisher of every layer and what a group sorts by (T-094)', async () => {
+    const { rufe, repo } = await mitGruppen();
+    await repo.putEntity({
+      ...ebene('e5_publisher_official', 'Official', 11, 0),
+      components: { ...ident('Official', 'layer-0011'), Layer: { kind: 'group', order: 0, groupBy: 'publisher' } },
+    });
+    const phb = (await repo.getEntity('e5_book_phb'))!;
+    await repo.putEntity({ ...phb, relations: [...(phb.relations ?? []), { id: 'e5_book_phb~pub', type: 'partOf', to: 'e5_publisher_official', props: {} }] });
+    const l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
+    expect(zeile(l, 'e5_book_phb')).toMatchObject({ publisher: 'Official', groups: ['e5_group_core', 'e5_publisher_official'] });
+    expect(zeile(l, 'e5_publisher_official')).toMatchObject({ groupBy: 'publisher', publisher: '', members: ['e5_book_phb'] });
+    expect(zeile(l, 'e5_group_core')).toMatchObject({ groupBy: 'category' });
+    /* Ohne Herausgeber-Gruppe: eigener Inhalt. */
+    expect(zeile(l, 'e5_book_mm')).toMatchObject({ publisher: 'Homebrew' });
+    expect(zeile(l, 'ly_a')).toMatchObject({ publisher: 'Homebrew' });
+    const q = (await rufe('Sela', 'GET', '/api/sources')).json();
+    expect(q.publishers).toMatchObject({ PLA: 'Official', MON: 'Homebrew' });
+  });
+
   it('explains every source abbreviation the viewer may see (T-088)', async () => {
     const { rufe } = await mitGruppen();
     const q = (await rufe('Sela', 'GET', '/api/sources')).json();

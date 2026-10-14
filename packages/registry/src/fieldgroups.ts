@@ -890,6 +890,58 @@ export const fieldGroups = {
   },
 
   /**
+   * **Was ein Artikel an der Figur verändert** (REQ-238, REQ-063, E-025 a):
+   * je Eintrag eine Wirkung — welches Ziel (`target`), welche Art (`op`),
+   * welcher Wert (`value`), unter welcher Bedingung (`when`). Handschuhe
+   * der Ogerstärke sind `{target: 'ability.str', op: 'set', value: 19}`,
+   * ein Feuerring `{target: 'resist', op: 'grant', value: 'fire'}`.
+   *
+   * Dieselbe Form wie `Choices`, damit Gegenstand, Klasse, Abstammung und
+   * Talent eine Rechnung teilen (`effectsAt`, beim Lesen, D8): abgelegte
+   * Handschuhe nehmen die 19 sofort wieder weg. Eine neue Wirkungsart ist
+   * ein neuer `target`-Wert und kein neues Feld — darum ist `target` frei.
+   *
+   * `op`: `add` zählt dazu, `set` setzt (bei Attributen nur, wenn es höher
+   * ist; beim kritischen Treffer gilt die kleinste Schwelle), `grant`
+   * gewährt ein Wort (Resistenz, Immunität). `when`: `worn` (getragen oder
+   * in der Hand), `attuned` (eingestimmt **und** getragen), `carried`
+   * (irgendwo dabei, nicht zu Hause und nicht am Boden), `self` (eine
+   * Eigenschaft des Gegenstands selbst, die keiner Figur zugerechnet
+   * wird: der Waffenbonus, das Fassungsvermögen). Ohne Angabe: eingestimmt,
+   * wenn der Gegenstand Einstimmung verlangt, sonst getragen.
+   */
+  Effects: {
+    schema: {
+      type: 'object',
+      properties: {
+        effects: {
+          type: 'array',
+          many: true,
+          title: 'Effects',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id', 'target', 'op'],
+            properties: {
+              id: { type: 'string', title: 'Id' },
+              /* `ability.str`, `ac`, `speed.walk`, `speed.*`, `spellSaveDc`,
+                 `spellAttack`, `save`, `save.dex`, `resist`, `immune`,
+                 `vulnerable`, `conditionImmune`, `critThreshold`, `carry`,
+                 `capacity`, `weapon` — frei, siehe `EFFECT_TARGETS`. */
+              target: { type: 'string', title: 'Target' },
+              op: { type: 'string', title: 'Operation', enum: ['add', 'set', 'grant'] },
+              /* Eine Zahl (19, +1, 10) oder ein Wort (`fire`, `walk`). */
+              value: { type: 'string', title: 'Value' },
+              when: { type: 'string', title: 'Applies when', enum: ['worn', 'attuned', 'carried', 'self'] },
+              note: { type: 'string', title: 'Note' },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  /**
    * **Eine Klasse (M3).** Was sie festlegt: Trefferwürfel, Hauptattribut,
    * Startausrüstung, die Voraussetzung für den Mehrklassen-Einstieg, wie
    * sie zaubert und wie ihre Unterklassen heissen. Rettungswürfe und
@@ -2153,6 +2205,12 @@ export const fieldGroups = {
           enum: ['gm', 'players'],
           default: 'gm',
         },
+        /* **Die Sprachen dieser Kampagne** (REQ-251, T-095): welche
+           Sprachen am Tisch sinnvoll oder möglich sind. Sprachwahlen im
+           Assistenten bieten nur diese an; leer heisst jede. Namen von
+           `Language`-Artikeln, wie eine Übung sie hält — die Art schlägt
+           vor, die Liste hält nicht (M6). */
+        languages: { type: 'array', items: { type: 'string' }, enumRef: ['Language'], title: 'Languages in play' },
       },
     },
   },
@@ -2168,6 +2226,11 @@ export const fieldGroups = {
    * `kind: 'group'` (E-022 b): die Ebene enthält andere Ebenen, die mit
    * `partOf` an ihr hängen; schaltet eine Kampagne sie auf, sind alle
    * Mitglieder im Spiel.
+   *
+   * `groupBy` an einer Gruppe (T-094): `publisher` heisst, sie ordnet nach
+   * Herausgeber (Official, Partnered …), sonst nach Kategorie. Der
+   * Herausgeber einer Ebene ist die Herausgeber-Gruppe, an der sie hängt,
+   * und wird gerechnet (`publisherOf`), nicht gespeichert.
    */
   LayerInfo: {
     schema: {
@@ -2186,6 +2249,7 @@ export const fieldGroups = {
         version: { type: 'string', title: 'Rules version' },
         levels: { type: 'string', title: 'Levels' },
         storyline: { type: 'string', title: 'Storyline', suggest: true },
+        groupBy: { type: 'string', title: 'Groups by', enum: ['category', 'publisher'] },
       },
     },
   },

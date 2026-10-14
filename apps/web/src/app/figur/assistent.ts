@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   answerChoice,
   answersOf,
+  assignScore,
   assignmentProblem,
   builderSteps,
   choiceKey,
@@ -10,6 +11,7 @@ import {
   choicesAtCharacter,
   chosenResult,
   enumOptions,
+  gainedFeatures,
   pointBuyRange,
   pointBuySpent,
   pruneAnswers,
@@ -193,7 +195,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                             <select [attr.aria-label]="a" (change)="setzeWert(a, $any($event.target).value)">
                               <option value="" [selected]="werte()[a] === undefined">—</option>
                               @for (w of wahlwerte(); track $index) {
-                                <option [value]="w" [selected]="werte()[a] === w">{{ w }}</option>
+                                <option [value]="w" [selected]="werte()[a] === w">{{ w }}{{ vergeben(a, w) }}</option>
                               }
                             </select>
                           </td>
@@ -203,6 +205,9 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                       }
                     </tbody>
                   </table>
+                  @if (m.method !== 'pointBuy') {
+                    <p class="dim">Each score is used once; picking one that is taken swaps the two.</p>
+                  }
                   @if (attributsproblem(); as p) {
                     <p class="dim">{{ p }}</p>
                   }
@@ -222,6 +227,26 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                     </li>
                   }
                 </ul>
+                @if (aufstiegKlasse()) {
+                  <h3>New at level {{ neueStufe() }}</h3>
+                  @if (neueMerkmale().length) {
+                    <ul class="neu">
+                      @for (f of neueMerkmale(); track f.id) {
+                        <li>
+                          <a [routerLink]="['/artikel', f.id]" target="_blank">{{ f.name }}</a>
+                          @if (f.von) {
+                            <span class="dim">— {{ f.von }}</span>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="dim">No new features at this level.</p>
+                  }
+                  @if (schritte().length > 1) {
+                    <p class="dim">Next: {{ schritte().length - 1 }} choice{{ schritte().length === 2 ? '' : 's' }} to make.</p>
+                  }
+                }
               }
 
               @case ('choice') {
@@ -448,6 +473,19 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
     .wurf {
       margin: 0.5rem 0;
     }
+    h3 {
+      margin: 1rem 0 0.4rem;
+      font-family: var(--caps);
+      font-size: 1.1rem;
+      color: var(--heading);
+    }
+    .neu {
+      margin: 0.25rem 0 0.5rem;
+      padding-left: 1.2rem;
+    }
+    .neu li {
+      margin: 0.2rem 0;
+    }
     .knoepfe {
       display: flex;
       flex-wrap: wrap;
@@ -523,6 +561,8 @@ export class Assistent {
   protected readonly gruppe = signal('');
   protected readonly eigenerWurf = signal<RolledScores | null>(null);
   protected readonly werte = signal<Partial<Record<string, number>>>({});
+  /** Die Sprachen der Kampagne (REQ-251); leer heisst jede. */
+  private readonly sprachen = signal<string[]>([]);
   private readonly geladenVerfahren = signal(false);
 
   protected readonly bereit = computed(
@@ -586,6 +626,20 @@ export class Assistent {
       .map((r) => ({ id: r.to, name: this.quellen().get(r.to)?.name ?? r.to, stufe: Number(r.props?.['level']) || 1 }));
   });
   protected readonly aufstiegKlasse = signal('');
+  protected readonly neueStufe = computed(
+    () => Number(this.entwurf().relations?.find((r) => r.type === 'hasClass' && r.to === this.aufstiegKlasse())?.props?.['level']) || 1,
+  );
+  /** Was die neue Stufe bringt (T-095): die Merkmale von Klasse und Unterklasse genau auf ihr. */
+  protected readonly neueMerkmale = computed(() => {
+    const q = this.quellen();
+    const k = this.aufstiegKlasse();
+    if (!k) return [];
+    return gainedFeatures(this.entwurf(), q, k).map((f) => ({
+      id: f.id,
+      name: q.get(f.id)?.name ?? this.bestand.name()(f.id) ?? f.id,
+      von: f.source === k ? '' : (q.get(f.source)?.name ?? ''),
+    }));
+  });
 
   /** Was beim Speichern noch offen bleibt — es bleibt an der Figur offen (`pendingChoices`). */
   protected readonly offenGelassen = computed(() =>
@@ -613,6 +667,7 @@ export class Assistent {
       .then((r) => {
         this.methoden.set(r.methods);
         this.gruppen.set(r.parties);
+        this.sprachen.set(r.languages ?? []);
         if (r.methods.length === 1) this.methode.set(r.methods[0]!);
         if (r.parties.length === 1) this.gruppe.set(r.parties[0]!.id);
       })
@@ -695,11 +750,15 @@ export class Assistent {
         if (f.edge) rows = rows.filter((z) => z.rels?.[f.edge!.type]?.includes(f.edge!.to));
         /* Die Marken schlagen vor (wie `LinkTarget.tags`): finden sie nichts, gilt die ganze Art. */
         const markiert = f.tags?.length ? rows.filter((z) => z.tags?.some((t) => f.tags!.includes(t))) : rows;
-        liste = (markiert.length ? markiert : rows).map((z) => ({ wert: z.id, label: z.name, hinweis: z.source.split(' p. ')[0] ?? '' }));
+        liste = this.nurSprachenDerKampagne(f.interfaces, markiert.length ? markiert : rows).map((z) => ({
+          wert: z.id,
+          label: z.name,
+          hinweis: z.source.split(' p. ')[0] ?? '',
+        }));
       } else if (f.enumRef?.length) {
         const reg = this.bestand.registry();
         const arten = f.enumRef.filter((r) => !!reg?.interfaces[r]);
-        const namen = arten.length ? (await this.zeilen(arten)).map((z) => z.name) : [];
+        const namen = arten.length ? this.nurSprachenDerKampagne(arten, await this.zeilen(arten)).map((z) => z.name) : [];
         const zeilen = reg ? (enumOptions(reg, { enumRef: f.enumRef.filter((r) => !arten.includes(r)) }) ?? []) : [];
         liste = [...new Set([...zeilen, ...namen])].sort((a, z) => a.localeCompare(z, 'en')).map((v) => ({ wert: v, label: v }));
       }
@@ -711,6 +770,17 @@ export class Assistent {
       this.problem.set((e as Error).message);
     }
     this.moeglichkeiten.update((m) => ({ ...m, [s.id]: liste }));
+  }
+
+  /**
+   * **Die Sprachen der Kampagne** (REQ-251): zieht eine Wahl aus den
+   * `Language`-Artikeln und nennt die Kampagne Sprachen, stehen nur diese
+   * zur Wahl. Andere Arten derselben Wahl bleiben, wie sie sind.
+   */
+  private nurSprachenDerKampagne(arten: string[], rows: ListenZeile[]): ListenZeile[] {
+    const erlaubt = new Set(this.sprachen().map((n) => n.toLowerCase()));
+    if (!erlaubt.size || !arten.includes('Language')) return rows;
+    return rows.filter((z) => z.type !== 'Language' || erlaubt.has(z.name.toLowerCase()));
   }
 
   protected titel(s: BuilderStep): string {
@@ -790,8 +860,23 @@ export class Assistent {
     this.werte.set(Object.fromEntries(this.attribute().map((a) => [a, tief])));
   }
 
+  /**
+   * Einen Wert setzen — bei Reihe und Pool **tauschend** (T-095): jeder
+   * Wert ist genau einmal zu vergeben, und wer einen vergebenen wählt,
+   * gibt dem anderen Attribut seinen bisherigen.
+   */
   protected setzeWert(a: string, roh: string): void {
-    this.werte.update((w) => ({ ...w, [a]: roh === '' ? undefined : Number(roh) }));
+    const m = this.methode();
+    const wert = roh === '' ? undefined : Number(roh);
+    if (!m) return;
+    this.werte.update((w) => assignScore(w, this.attribute(), a, wert, m, this.vorrat()?.values));
+  }
+
+  /** Wer einen Wert schon hält — die Auswahl sagt es, damit der Tausch keine Überraschung ist. */
+  protected vergeben(a: string, w: number): string {
+    if (this.methode()?.method === 'pointBuy') return '';
+    const bei = this.attribute().filter((x) => x !== a && this.werte()[x] === w);
+    return bei.length ? ` (${bei.map((x) => x.toUpperCase()).join(', ')})` : '';
   }
 
   protected async wuerfeln(m: AbilityMethod): Promise<void> {
@@ -857,6 +942,9 @@ export class Assistent {
       if (this.aufstieg()) {
         const { updatedAt: _u, ...rest } = e as Entity & { updatedAt?: unknown };
         await this.api.putEntity(rest);
+        /* Neu holen: die Seite der Figur läse sonst den Stand von vor dem
+           Aufstieg aus dem Bestand und zeigte die alte Stufe (T-095). */
+        await this.bestand.oeffnen(e.id, true);
         await this.router.navigate(['/artikel', e.id]);
         return;
       }

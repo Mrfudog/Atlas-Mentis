@@ -789,6 +789,17 @@ und wo ein Kürzel steht, zeigt die Seite den Titel beim Darüberfahren und
 auf dem Telefon beim Antippen. Was eine Ebene enthält, wird gezählt, wenn
 man fragt — gespeichert wäre es nach dem ersten neuen Artikel falsch (D8).
 
+**Der Herausgeber ist eine Gruppe, kein Feld** (T-094, REQ-249). Die
+Leitung will offizielles D&D auf einen Blick von Partner-Inhalten,
+Drittanbietern und Homebrew unterscheiden. Ein Feld `Layer.publisher` hätte
+die Marke getragen — aber „alle offiziellen Bücher an" wäre dann wieder
+eine Kante je Buch gewesen, und neben einer Gruppe „Partnered" stünde ein
+Feld, das etwas anderes sagen kann. Also ist ein Herausgeber eine Gruppe wie
+eine Kategorie (E-022 b), sie sagt mit `groupBy: 'publisher'`, in welche
+Ansicht sie gehört, und die Marke an einer Ebene wird aus ihr gerechnet.
+Was in keiner Herausgeber-Gruppe steht, ist **Homebrew**: eigener Inhalt
+braucht keinen Verlag, um als eigener erkannt zu werden.
+
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die
 > Regel „ohne Ebene gehört er der Kampagne und ist immer da" (siehe
@@ -881,6 +892,20 @@ durchgezählte beim Umsortieren still zur falschen Wahl gehörte. **Eine
 Wahl ohne Spielraum ist beantwortet**: „+1 auf Con" an einem Talent ist
 eine Wahl aus einem Wert und fragt niemanden.
 
+**Ein Gegenstand wirkt, solange er getragen wird — und keinen Augenblick
+länger** (REQ-063, E-025 a). Handschuhe der Ogerstärke setzen STR auf 19;
+stünde die 19 im Statblock, wäre sie nach dem Ablegen noch da, und wer
+vorher 20 hatte, hätte plötzlich weniger. Also steht die Wirkung am
+Gegenstand (`Effects.effects`: Ziel, Art, Wert, Bedingung), der Zustand
+an der Inventarkante (`holds.tier`, `slot`, `attuned`), und was beides
+ergibt, rechnet `effectsAt` beim Lesen (D8). Es ist dieselbe Form wie die
+Wahlen — ein Eintrag mit `id` aus dem Text —, damit Klasse, Talent und
+Gegenstand eine Rechnung teilen und eine neue Wirkungsart ein Eintrag ist
+und kein neues Feld. Je Wirkung ein eigenes Feld (`abilitySet`,
+`resist`, `speedBonus` …) wäre einfacher zu lesen gewesen, aber jede
+neue Art hätte Feld und Code gebraucht. Die alten `bonusAc` & Co. bleiben
+stehen und zählen beim Lesen mit.
+
 **Der Assistent zählt keine Schritte auf, er liest sie** (T-080). Fest ist
 nur, was das Modell selbst vorgibt: drei Kanten (Abstammung, Hintergrund,
 Klasse), sechs Werte, ein Name. Dazwischen steht je offene Wahl der
@@ -893,6 +918,32 @@ gespeicherte Figur mit einer Stufe mehr, und es fehlt, was sie schon
 beantwortet hat. Gespeichert werden die **Grundwerte** am Statblock; Boni
 aus Abstammung und Wahlen kommen beim Lesen dazu (`chosenResult`) — sonst
 erreichte „+2 statt +1" an der Abstammung keine bestehende Figur.
+
+**Was die neue Stufe bringt, steht beim Aufstieg da** (T-095). Ein
+Aufstieg, der nur die Zahl erhöht, lässt die Spielerin suchen, was sie
+jetzt kann. Die Merkmale stehen schon an der Klasse — `grants` mit der
+Stufe an der Kante —, also nennt der Aufstieg sie, und was davon fragt
+(Unterklasse, Kampfstil), ist ohnehin ein Schritt. **Eine Klasse ist ein
+Eintrag:** Klasse, Stufe, Unterklasse und die Antworten auf ihre Wahlen
+stehen am Artikel zusammen, weil sie zusammengehören; gespeichert bleiben
+sie, wie sie sind — die Kante `hasClass` und je Antwort eine Kante
+`chose` —, nur gezeigt wird eins. Eine zweite Stelle für die Stufe gibt
+es nicht.
+
+**Ein Wert der Reihe ist einmal da** (T-095). Die Standardreihe, ein Wurf
+und der Gruppenpool sind sechs Werte zum Verteilen, keine Auswahlliste je
+Attribut. Wer einen schon vergebenen Wert wählt, tauscht: das andere
+Attribut bekommt den bisherigen. So kann keine Verteilung doppelt werden,
+und niemand muss erst einen Wert freiräumen.
+
+**Eine Sprachwahl wählt aus den Sprachen** (T-095, REQ-251). Ältere Wahlen
+sagen nur „two standard languages of your choice"; daraus wurde ein
+Freitext, obwohl es die Sprachen als Artikel gibt. Gelesen wird so ein
+Satz als Wahl aus `Language` — gespeichert wird nichts dazu. Welche
+Sprachen an einem Tisch Sinn ergeben, sagt die Kampagne
+(`Campaign.languages`); leer heisst jede. Ein Feld mit Häkchen und keine
+Kante, weil Übungen Namen halten und die Maske für Namen aus einer Art
+schon Häkchen zeigt.
 
 **Ein Attributsverfahren ist ein Artikel** (E-016 a). Standardreihe,
 Punktekauf und Würfeln sind drei Formen derselben Frage, und die Leitung

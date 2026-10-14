@@ -125,3 +125,46 @@ export function pruneAnswers(draft: Entity, byId: ReadonlyMap<EntityId, Entity>)
   );
   return rel.length === (draft.relations ?? []).length ? draft : pruneAnswers({ ...draft, relations: rel }, byId);
 }
+
+/** Ein Merkmal, das eine Stufe bringt: der Artikel und wer es gewährt. */
+export interface GainedFeature {
+  id: EntityId;
+  /** Die Klasse oder Unterklasse, die es gewährt (`grants` mit `props.level`). */
+  source: EntityId;
+  level: number;
+}
+
+/**
+ * **Was die neue Stufe einer Klasse bringt** (T-095): die Merkmale, die die
+ * Klasse und ihre Unterklasse genau auf dieser Stufe gewähren (`grants` mit
+ * `props.level`, D50). Gerechnet aus den Artikeln wie die Wahlen — ein
+ * Merkmal, das die Leitung einer Klasse dazulegt, steht beim nächsten
+ * Aufstieg hier. Was davon selbst fragt (Fighting Style), steht ohnehin als
+ * Schritt da (`choiceSources`).
+ */
+export function gainedFeatures(draft: Entity, byId: ReadonlyMap<EntityId, Entity>, classId: EntityId): GainedFeature[] {
+  const kante = (draft.relations ?? []).find((r) => r.type === 'hasClass' && r.to === classId);
+  if (!kante) return [];
+  const stufe = Number(kante.props?.['level']) || 1;
+  const quellen = [classId, ...(typeof kante.props?.['subclass'] === 'string' ? [kante.props['subclass']] : [])];
+  const raus: GainedFeature[] = [];
+  for (const q of quellen) {
+    for (const r of byId.get(q)?.relations ?? []) {
+      if (r.type !== 'grants' || (Number(r.props?.['level']) || 1) !== stufe) continue;
+      if (!raus.some((f) => f.id === r.to)) raus.push({ id: r.to, source: q, level: stufe });
+    }
+  }
+  return raus;
+}
+
+/**
+ * **Die Sprachen der Kampagne** (REQ-251, T-095): `Campaign.languages`
+ * nennt, welche Sprachen an diesem Tisch sinnvoll oder möglich sind — die
+ * Namen von `Language`-Artikeln, wie eine Übung sie hält. Eine Sprachwahl
+ * im Assistenten bietet dann nur diese an. Leer heisst: jede Sprache, die
+ * im Stapel liegt.
+ */
+export function campaignLanguages(campaign: Entity | undefined): string[] {
+  const roh = campaign?.components?.['Campaign']?.['languages'];
+  return Array.isArray(roh) ? [...new Set(roh.filter((x): x is string => typeof x === 'string' && !!x.trim()))] : [];
+}

@@ -27,11 +27,11 @@ const pool: Entity = {
   },
   relations: [],
 };
-const runde = (methoden: string[]): Entity => ({
+const runde = (methoden: string[], sprachen?: string[]): Entity => ({
   id: 'camp_nebel',
   interfaces: ['Campaign'],
   name: 'Nebelwacht',
-  components: { Identity: ident('1', 'Nebelwacht', 'Campaign') },
+  components: { Identity: ident('1', 'Nebelwacht', 'Campaign'), ...(sprachen ? { Campaign: { languages: sprachen } } : {}) },
   relations: methoden.map((m, i) => ({ id: `am${i}`, type: 'allowsMethod', to: m, props: {} })),
 });
 const gruppe: Entity = {
@@ -42,10 +42,10 @@ const gruppe: Entity = {
   relations: [{ id: 'po', type: 'partyOf', to: 'camp_nebel', props: {} }],
 };
 
-async function aufbau(methoden: string[]) {
+async function aufbau(methoden: string[], sprachen?: string[]) {
   const repo = new InMemoryRepository(
     { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_nebel' } },
-    [pool, runde(methoden), gruppe],
+    [pool, runde(methoden, sprachen), gruppe],
   );
   const app = buildApp({ repo });
   for (const [name, role] of [['Mira', 'gm'], ['Sela', 'player'], ['Tom', 'player'], ['Gast', 'spectator']] as const) {
@@ -72,6 +72,15 @@ describe('ability score methods and the party pool (E-016 a)', () => {
     const res = (await als('Sela', 'GET', '/api/abilities')).json() as { methods: { id: string }[]; parties: { id: string }[] };
     expect(res.methods.map((m) => m.id)).toEqual(['standard-array', 'point-buy']);
     expect(res.parties.map((p) => p.id)).toEqual(['party_1']);
+  });
+
+  it('names the languages of the campaign, none meaning every one (REQ-251, T-095)', async () => {
+    const offen = (await (await aufbau([])).als('Sela', 'GET', '/api/abilities')).json() as { languages: string[] };
+    expect(offen.languages).toEqual([]);
+    const eng = (await (await aufbau([], ['Common', 'Elvish', 'Common'])).als('Sela', 'GET', '/api/abilities')).json() as {
+      languages: string[];
+    };
+    expect(eng.languages).toEqual(['Common', 'Elvish']);
   });
 
   it('rolls the party pool once, logs it, and only the GM rolls it again', async () => {

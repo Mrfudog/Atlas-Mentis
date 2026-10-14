@@ -33,6 +33,7 @@
  *    eine Gruppe sie brächte — aus schlägt an.
  */
 
+import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
 import { ACTIVATES_RELATION, CAMPAIGN_TYPE, LAYER_RELATION } from './visibility.js';
 
@@ -81,6 +82,38 @@ const layerKarte = (e: Entity | undefined): Record<string, unknown> =>
 /** Ist diese Ebene eine Gruppe (E-022 b)? Beschreibung wie jedes `kind` — aber eine, die etwas enthält. */
 export const isGroupLayer = (e: Entity | undefined): boolean =>
   (e?.interfaces ?? [])[0] === LAYER_COMPONENT && layerKarte(e)['kind'] === GROUP_KIND;
+
+/**
+ * **Wonach eine Gruppe ordnet** (T-094): `publisher` — wer das Buch
+ * herausgibt (Official, Partnered, Third party, Homebrew) — oder, ohne
+ * Angabe, `category` (Core rules, Settings, Adventures …). Beides sind
+ * Gruppen nach E-022 b, und ein Buch steht in beiden; die Angabe sagt nur,
+ * in welcher Ansicht der Kampagnenseite die Gruppe steht. Für den Stapel
+ * zählt sie nicht.
+ */
+export const PUBLISHER_GROUPING = 'publisher';
+export const CATEGORY_GROUPING = 'category';
+export const groupingOf = (e: Entity | undefined): 'publisher' | 'category' =>
+  layerKarte(e)['groupBy'] === PUBLISHER_GROUPING ? PUBLISHER_GROUPING : CATEGORY_GROUPING;
+
+/** Was eine Ebene ist, die in keiner Herausgeber-Gruppe steht: eigener Inhalt (T-094). */
+export const HOMEBREW = 'Homebrew';
+
+/**
+ * **Der Herausgeber einer Ebene** (T-094, REQ-249) — gerechnet, nicht
+ * gespeichert (D8): die Namen der Herausgeber-Gruppen, an denen sie mit
+ * `partOf` hängt, sonst „Homebrew". Eine Gruppe hat keinen. Ein zweites
+ * Feld `publisher` neben der Gruppe wäre die zweite Stelle, die beim
+ * ersten Umhängen falsch steht.
+ */
+export function publisherOf(entities: Map<EntityId, Entity>, layer: Entity | undefined): string {
+  if (!layer || isGroupLayer(layer)) return '';
+  const namen = kanten(layer, GROUP_RELATION)
+    .map((r) => entities.get(r.to))
+    .filter((g): g is Entity => isGroupLayer(g) && groupingOf(g) === PUBLISHER_GROUPING)
+    .map((g) => entityName(g));
+  return namen.length ? [...new Set(namen)].join(' / ') : HOMEBREW;
+}
 
 /**
  * **Die Mitglieder jeder Gruppe**, einmal gerechnet (T-088): Gruppen-Id →

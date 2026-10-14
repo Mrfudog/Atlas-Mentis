@@ -4,8 +4,12 @@ import {
   abilityMethodOf,
   allowedMethods,
   answerChoice,
+  assignScore,
   assignmentProblem,
   builderSteps,
+  campaignLanguages,
+  choicesOf,
+  gainedFeatures,
   partyPool,
   pointBuySpent,
   pruneAnswers,
@@ -88,6 +92,82 @@ describe('the character builder reads its steps from the articles (T-080)', () =
     pc = answerChoice(pc, st.at, ['sub-1']);
     expect(pc.relations?.find((r) => r.type === 'hasClass')?.props?.['subclass']).toBe('sub-1');
     expect(builderSteps(pc, bestand, { levelUp: true, done }).map((s) => s.id)).toContain('choice:sub-1#style');
+  });
+});
+
+describe('the fixes after the first test on dev (T-095)', () => {
+  const ab = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+  const [reihe, kauf] = DEFAULT_ABILITY_METHODS;
+
+  it('gives every score of the standard array once: a taken score swaps', () => {
+    let s: Record<string, number | undefined> = {};
+    s = assignScore(s, ab, 'str', 15, reihe!);
+    s = assignScore(s, ab, 'dex', 14, reihe!);
+    /* 15 ist vergeben: DEX nimmt sie, STR bekommt die 14. */
+    s = assignScore(s, ab, 'dex', 15, reihe!);
+    expect([s['str'], s['dex']]).toEqual([14, 15]);
+    /* Wer noch keinen Wert hatte, nimmt ihn, und der andere wird leer. */
+    s = assignScore(s, ab, 'con', 15, reihe!);
+    expect([s['dex'], s['con']]).toEqual([undefined, 15]);
+    for (const [a, w] of [['str', 15], ['dex', 14], ['con', 13], ['int', 12], ['wis', 10], ['cha', 8]] as const) s = assignScore(s, ab, a, w, reihe!);
+    expect(assignmentProblem(s, ab, reihe!)).toBeNull();
+    expect(new Set(Object.values(s)).size).toBe(6);
+  });
+
+  it('swaps in a rolled pool only when a value is used up, and never in point buy', () => {
+    const m = abilityMethodOf(art('m', 'AbilityMethod', { AbilityMethod: { method: 'roll', dice: '4d6kh3', scope: 'party' } }))!;
+    const pool = [12, 12, 15, 10, 9, 8];
+    let s: Record<string, number | undefined> = { str: 12 };
+    s = assignScore(s, ab, 'dex', 12, m, pool);
+    expect([s['str'], s['dex']]).toEqual([12, 12]);
+    s = assignScore(s, ab, 'con', 12, m, pool);
+    expect([s['str'], s['dex'], s['con']]).toEqual([undefined, 12, 12]);
+    const k = assignScore({ str: 13 }, ab, 'dex', 13, kauf!);
+    expect([k['str'], k['dex']]).toEqual([13, 13]);
+  });
+
+  it('reads a language choice without a list as a choice from the languages', () => {
+    const alt = art('bg', 'Background', {
+      Choices: {
+        choices: [
+          { id: 'proficiencies', kind: 'proficiency', note: '2 any standard languages of your choice' },
+          { id: 'languages', kind: 'proficiency', count: 1, note: 'one exotic language' },
+          { id: 'tools', kind: 'proficiency', note: 'one tool of your choice' },
+          { id: 'skills', kind: 'proficiency', from: { values: ['Arcana'] } },
+        ],
+      },
+    });
+    const [a, b, c, d] = choicesOf(alt);
+    expect(a).toMatchObject({ from: { enumRef: ['Language'] }, count: 2 });
+    expect(b).toMatchObject({ from: { enumRef: ['Language'] }, count: 1 });
+    expect(c?.from).toBeUndefined();
+    expect(d?.from).toEqual({ values: ['Arcana'] });
+    expect(choicesOf(art('x', 'Background', { Choices: { choices: [{ id: 'languages', kind: 'proficiency', note: 'two standard languages' }] } }))[0]?.count).toBe(2);
+  });
+
+  it('names the languages of the campaign, nothing meaning every one (REQ-251)', () => {
+    expect(campaignLanguages(art('c', 'Campaign'))).toEqual([]);
+    expect(campaignLanguages(art('c', 'Campaign', { Campaign: { languages: ['Common', 'Elvish', 'Common', ''] } }))).toEqual(['Common', 'Elvish']);
+  });
+
+  it('names what the new level brings: the features of class and subclass at exactly that level', () => {
+    const klasse = art('k', 'Class', {}, [
+      { id: 'g1', type: 'grants', to: 'rage', props: { level: 1 } },
+      { id: 'g2', type: 'grants', to: 'reckless', props: { level: 2 } },
+      { id: 'g3', type: 'grants', to: 'danger', props: { level: 2 } },
+      { id: 'g4', type: 'grants', to: 'path', props: { level: 3 } },
+    ]);
+    const pfad = art('s', 'Subclass', {}, [{ id: 'g5', type: 'grants', to: 'frenzy', props: { level: 3 } }]);
+    const byId = new Map([klasse, pfad].map((e) => [e.id, e]));
+    let pc = setClassLevel(setPick(leer, 'hasClass', 'k'), 'k', 2);
+    expect(gainedFeatures(pc, byId, 'k').map((f) => f.id)).toEqual(['reckless', 'danger']);
+    pc = setClassLevel(pc, 'k', 3);
+    pc = { ...pc, relations: pc.relations!.map((r) => (r.type === 'hasClass' ? { ...r, props: { ...r.props, subclass: 's' } } : r)) };
+    expect(gainedFeatures(pc, byId, 'k')).toEqual([
+      { id: 'path', source: 'k', level: 3 },
+      { id: 'frenzy', source: 's', level: 3 },
+    ]);
+    expect(gainedFeatures(pc, byId, 'nicht-da')).toEqual([]);
   });
 });
 

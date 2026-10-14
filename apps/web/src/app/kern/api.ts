@@ -253,6 +253,10 @@ export interface KampagnenEbene {
   id: string;
   name: string;
   kind: string;
+  /** Wer sie herausgibt (T-094): der Name ihrer Herausgeber-Gruppe, sonst „Homebrew"; bei einer Gruppe leer. */
+  publisher: string;
+  /** Bei einer Gruppe, wonach sie ordnet (T-094). */
+  groupBy?: 'category' | 'publisher';
   /** Die Gruppen, an denen die Ebene mit `partOf` hängt (T-088, E-022 b). */
   groups: string[];
   /** Bei einer Gruppe ihre Mitglieder, nach Erscheinen. */
@@ -692,11 +696,13 @@ export class Api {
       body: JSON.stringify({ type, name, fields, relations }),
     });
   }
-  /** Die Attributsverfahren der laufenden Kampagne und ihre Gruppen (E-016 a). */
+  /** Die Attributsverfahren der laufenden Kampagne, ihre Gruppen (E-016 a) und ihre Sprachen (REQ-251). */
   abilities(): Promise<{
     campaign: { id: string; name: string } | null;
     methods: AbilityMethod[];
     parties: { id: string; name: string; pools: Record<string, RolledScores & { at?: string }> }[];
+    /** Die Sprachen der Kampagne (REQ-251); leer heisst jede. */
+    languages?: string[];
   }> {
     return this.call('/api/abilities');
   }
@@ -916,9 +922,9 @@ export class Api {
       body: JSON.stringify(off ? { layers, off } : { layers }),
     });
   }
-  /** Quellenkürzel → voller Titel (T-088). */
-  sources(): Promise<{ sources: Record<string, string> }> {
-    return this.call<{ sources: Record<string, string> }>('/api/sources');
+  /** Quellenkürzel → voller Titel (T-088) und → Herausgeber (T-094). */
+  sources(): Promise<{ sources: Record<string, string>; publishers?: Record<string, string> }> {
+    return this.call<{ sources: Record<string, string>; publishers?: Record<string, string> }>('/api/sources');
   }
   /** Die Vergleichsebenen und wer sie sieht (T-092); was fehlt, bleibt, wie es ist. */
   setCampaignCompare(
