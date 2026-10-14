@@ -1,10 +1,12 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { Api } from './kern/api';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Session } from './kern/session';
 import { BEREICHE } from './kern/bereiche';
 import { KurzPopup } from './artikel/kurzpopup';
 import { Live } from './kern/live';
+import { Suche, tipptGerade } from './kern/suche';
+import { SucheComponent } from './suche/suche';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -32,13 +34,17 @@ import { Live } from './kern/live';
  * Anmeldung — gerade dann, wenn man noch nicht weiss, wo man ist. Auf prod
  * und ohne `ATLAS_ENV` kein Band.
  *
+ * **Die Suche** (T-138) steht in der Kopfleiste und geht auf jeder Seite
+ * mit Strg+K (⌘K) oder `/` auf — `/` nur, wenn gerade nicht in ein Feld
+ * getippt wird. Am Telefon ist der Knopf ein Zeichen ohne Text.
+ *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
  * später den Namen, sieht nach einem Fehler aus, auch wenn keiner vorliegt.
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -85,6 +91,17 @@ import { Live } from './kern/live';
             >
           }
         </nav>
+        <button
+          type="button"
+          class="suchknopf"
+          (click)="suche.oeffnen()"
+          aria-label="Search"
+          aria-keyshortcuts="Control+K /"
+          title="Search (Ctrl+K or /)"
+        >
+          <span aria-hidden="true" class="lupe">⌕</span>
+          <span class="suchtext">Search</span>
+        </button>
         <!-- Ob dieses Gerät mithört (T-116): ein Punkt, kein Text — am Tisch
              fällt auf, wenn er hohl wird. -->
         <span
@@ -127,6 +144,10 @@ import { Live } from './kern/live';
       }
     </div>
     <router-outlet />
+    <!-- Die übergreifende Suche, eine für alle Seiten (T-138). -->
+    @if (session.angemeldet()) {
+      <nw-suche />
+    }
     <!-- Die Kurzansicht eines genannten Artikels, eine für alle Seiten (T-093). -->
     <nw-kurzpopup />
   `,
@@ -206,8 +227,26 @@ import { Live } from './kern/live';
       background: var(--chip);
       font-weight: 700;
     }
-    .live {
+    .suchknopf {
       margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.6rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--dim);
+    }
+    .suchknopf:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .lupe {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .live {
       width: 0.55rem;
       height: 0.55rem;
       flex: none;
@@ -294,6 +333,9 @@ import { Live } from './kern/live';
       .bereiche a {
         white-space: nowrap;
       }
+      .suchtext {
+        display: none;
+      }
     }
   `,
 })
@@ -306,6 +348,7 @@ export class App {
   protected readonly bereiche = BEREICHE.filter((b) => b.weg !== 'play');
 
   protected readonly api = inject(Api);
+  protected readonly suche = inject(Suche);
   /** Der Live-Kanal (T-116) — hier geholt, damit er mit der Anmeldung steht. */
   protected readonly live = inject(Live);
   /** Ob gerade sichtbar gewartet wird: erst wenn eine Anfrage länger als
@@ -323,6 +366,17 @@ export class App {
       if (!laeuft) this.wartet.set(false);
       else if (!this.wartet()) this.uhr = setTimeout(() => this.wartet.set(true), 300);
     });
+  }
+
+  /** Strg+K (⌘K) überall, `/` ausserhalb von Feldern: die Suche auf (T-138). */
+  @HostListener('document:keydown', ['$event'])
+  protected tasten(ev: KeyboardEvent): void {
+    if (!this.session.angemeldet() || ev.defaultPrevented) return;
+    const strgK = (ev.ctrlKey || ev.metaKey) && !ev.altKey && ev.key.toLowerCase() === 'k';
+    const schraeg = ev.key === '/' && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !tipptGerade(ev.target);
+    if (!strgK && !schraeg) return;
+    ev.preventDefault();
+    this.suche.oeffnen();
   }
 
   protected neuLaden(): void {

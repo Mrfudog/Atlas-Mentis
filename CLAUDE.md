@@ -100,7 +100,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Kampagne; T-128), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
   Ebene als Buch mit Inhaltsverzeichnis, Suche und Lesestand je Konto,
   T-091), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
-  Blatt A4, T-110) und das Konto mit seinen API-Tokens (`konto/`); die
+  Blatt A4, T-110), die **Suche** (`suche/`, Kopfleiste, Strg+K und `/`:
+  Treffer beim Tippen aus `GET /api/search`, nach Nähe, Filter nach Art,
+  Ebene, Herausgeber und Bereich, das „+" ist die Ansicht `search`;
+  T-138) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
