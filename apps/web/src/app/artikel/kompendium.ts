@@ -1,5 +1,6 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { plainText } from '@nw/model';
 import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api';
 import { QuelleText } from '../kern/quellen';
 import { Bestand } from '../kern/bestand';
@@ -504,9 +505,12 @@ export class Kompendium {
   protected zelle(wert: unknown, art: string): string {
     if (wert === undefined || wert === null) return '';
     if (art === 'bool' || typeof wert === 'boolean') return wert ? '✓' : '';
-    if (Array.isArray(wert)) return wert.join(', ');
+    /* Ein Verweis im Text (`[[feat-0088|Initiate of High Sorcery]]`, M11)
+       steht in der Zelle als sein Name, ein Würfel als Ausdruck — die
+       Spalte ist Text und kein Markdown (T-090). */
+    if (Array.isArray(wert)) return wert.map((w) => (typeof w === 'string' ? plainText(w) : String(w))).join(', ');
     if (typeof wert === 'object') return JSON.stringify(wert);
-    return String(wert);
+    return typeof wert === 'string' ? plainText(wert) : String(wert);
   }
 
   protected offeneWerte<T>(ref: string, werte: T[]): T[] {
