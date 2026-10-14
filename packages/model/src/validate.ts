@@ -97,6 +97,15 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   }),
 );
 
+/* Eine Anpassung je Art (T-110): alles nach `id` bzw. Eintrag. */
+const LayoutAdjustSchema = z.object({
+  drop: z.array(z.string()).optional(),
+  hide: z.array(z.string()).optional(),
+  add: z.record(z.string(), z.array(z.string())).optional(),
+  extra: z.array(LayoutElementSchema).optional(),
+  order: z.array(z.string()).optional(),
+});
+
 export const InterfaceDefSchema = z.object({
   name: z.string(),
   label: z.string().optional(),
@@ -104,7 +113,7 @@ export const InterfaceDefSchema = z.object({
   extends: z.array(z.string()).optional(),
   schema: objectSchema.optional(),
   area: z.enum(['world', 'story', 'rules', 'play']).optional(),
-  views: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
+  views: z.record(z.string(), z.union([z.array(LayoutElementSchema), z.object({ adjust: LayoutAdjustSchema })])).optional(),
   units: z.enum(['imperial', 'metric', 'both']).optional(),
   /* `Typ.feld` → Beschriftung. Eine Beschriftung und keine Feldliste. */
   titles: z.record(z.string(), z.string()).optional(),
@@ -153,6 +162,8 @@ export const ViewDefSchema = z.object({
   bindings: z.boolean().optional(),
   image: z.boolean().optional(),
   layout: z.array(LayoutElementSchema).optional(),
+  rest: z.boolean().optional(),
+  empty: z.enum(['hide', 'show']).optional(),
 });
 
 export const RegistrySchema = z.object({

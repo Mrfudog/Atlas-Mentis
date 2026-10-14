@@ -117,14 +117,17 @@ describe('seed registry', () => {
     expect(seedRegistry.views['player']).toBeUndefined();
   });
 
-  /* Drei Ansichten, nicht einundzwanzig. Vierzehn der alten gab es für
+  /* Vier Ansichten, nicht einundzwanzig. Vierzehn der alten gab es für
      genau eine Artikelart — das ist keine Auswahl, sondern eine Liste von
      Sonderfällen mit einem Dropdown davor. Und **die Anordnung wohnt am
      Typ**: was für eine Artikelart eigen ist, steht bei ihr. */
   it('keeps the views to how much, and the arrangement at the type', () => {
-    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'overview', 'quick']);
-    const mitEigener = Object.keys(seedRegistry.interfaces)
-      .filter((n) => seedRegistry.interfaces[n]?.views?.['full']?.length);
+    /* Vier seit T-110: der Druck ist ein Ort wie die anderen drei. */
+    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'overview', 'print', 'quick']);
+    const mitEigener = Object.keys(seedRegistry.interfaces).filter((n) => {
+      const v = seedRegistry.interfaces[n]?.views?.['full'];
+      return Array.isArray(v) && v.length;
+    });
     expect(mitEigener).toContain('Creature');
     expect(mitEigener).toContain('Map');
     /* Und nichts liegt mehr an der Ansicht: eine Anordnung dort wäre die

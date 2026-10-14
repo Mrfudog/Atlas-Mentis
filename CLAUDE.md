@@ -77,13 +77,14 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   seiner Kantenziele und Verweise in `refs`) stehen, dazu die Boards
   (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten),
   die Klassen (`klassen/`), das Register (`/registry`: Typen, Kanten,
-  Listen anlegen und ändern — Verwaltung und Leitung der laufenden
+  Listen und Ansichten anlegen und ändern — Verwaltung und Leitung der laufenden
   Kampagne; gezählt wird vorher über `/api/registry/usage`), die
   **Werkbank** für Leitung und Verwaltung (`werkbank/`: Prüfungen aus
   `checks.ts`, Massenänderungen aus `bulk.ts` mit Vorschau und
   Rückgängig, W9), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
   Ebene als Buch mit Inhaltsverzeichnis, Suche und Lesestand je Konto,
-  T-091) und das Konto mit seinen API-Tokens (`konto/`); die
+  T-091), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
+  Blatt A4, T-110) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Karte, Initiative und Spiel
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
@@ -241,9 +242,13 @@ wiederkommen, werden sie neu geschrieben.
   (`zielEbenen`, `POST /api/entities/:id/adapt`). `ready` bleibt bei `gm`;
   was einer ändert, der es nicht setzen darf, fällt zurück (D74). Dazu
   schreibt `gm` weiter, was Spielende angelegt haben (D72).
-- **Drei Ansichten, und der Ort wählt sie.** `overview` steht in einem
+- **Vier Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
-  Artikelseite. **Die Kurzansicht** (`quick`) steht auch als Popup an
+  Artikelseite, `print` auf dem Blatt hinter „Print" (T-110). **Eigene
+  Ansichten** legt man im Register an (Registry › Views, E-030 b); gewählt
+  werden sie nur, wo ohnehin gewählt wird — die Kachel und der Druck. Die
+  vier, nach denen ein Ort fragt (`PLACE_VIEWS`), lassen sich umbauen, nicht
+  löschen. **Die Kurzansicht** (`quick`) steht auch als Popup an
   jedem genannten Artikel (`nwQuick`, `nw-kurzpopup`, T-093): ein Klick
   zeigt die Karte, „Open article" führt hin. Einen Wähler gibt es nicht —
   ein Verweis ist ein Verweis, und wer das jedes Mal sagen muss, sagt es
@@ -257,7 +262,13 @@ wiederkommen, werden sie neu geschrieben.
   dass jemand etwas auswählt. Untertypen erben sie (`layoutFor` läuft die
   `extends`-Kette hoch); sagt keiner etwas, gilt die Grundanordnung der
   Ansicht. Eine Stufe für genau einen Typ wäre ein Sonderfall mit einem
-  Dropdown davor.
+  Dropdown davor. **Zwei Formen** (T-110): eine eigene Liste ersetzt, eine
+  **Anpassung** (`{ adjust: { drop, hide, add, extra, order } }`) nimmt, was
+  darüber gilt, und sagt nur die Abweichung — sie bleibt richtig, wenn die
+  Ansicht sich ändert, und ist darum der Normalfall. Gezeigt wird die
+  Schnittmenge aus Ansicht und Artikel; leere Felder (`empty`) und
+  Ungenanntes am Ende (`rest`) sagt die Ansicht. Zugeteilt wird einmal
+  (`anordnen`), für Artikelseite, Druck und Registervorschau.
 - **Ein Typ darf ein geerbtes Feld umbenennen** (`InterfaceDef.titles`,
   `Typ.feld` → Beschriftung, die `extends`-Kette hoch geerbt wie `area`).
   `Time.until` heisst an einem Auftrag „Deadline" und an einem Ereignis
@@ -472,12 +483,14 @@ wiederkommen, werden sie neu geschrieben.
   eine Art, die von zweien erbt, hing unter einer davon und unter der
   anderen nicht. In der Leiste stehen nur Arten **mit Bereich**: nach
   `Tags` zu filtern hiesse, nach „hat Marken" zu filtern.
-- **In einer Ansicht wird nach Gruppe gewählt, nicht Feld für Feld.**
-  `full` zeigt alles — was dort fehlt, zeichnet ein anderer Block derselben
-  Seite (der Bogen), und das ist eine Sache der Anordnung und keine Wahl je
-  Art. Für `overview` und `quick` schaltet ein Klick eine ganze Gruppe
-  (`except: ['Vitals']`, ein Typname). Eine ausgeschriebene Feldliste wäre
-  am Tag des nächsten Feldes unvollständig, und niemand merkte es.
+- **In einer Ansicht wird zuerst nach Gruppe gewählt.** `full` zeigt
+  alles — was dort fehlt, zeichnet ein anderer Block derselben Seite (der
+  Bogen), und das ist eine Sache der Anordnung und keine Wahl je Art. Ein
+  ganzer Typ (`Spell`, `except: ['Vitals']`) nimmt das Feld von morgen mit;
+  eine ausgeschriebene Feldliste wäre an dem Tag unvollständig, und niemand
+  merkte es. Ein einzelnes Feld (`Typ.feld`, „Add field" im Register) ist
+  richtig, wo genau dieses gemeint ist — die Spalten einer Listenzeile, der
+  Grad auf der Karte — und bleibt dann genau das; die Maske sagt es dazu.
 - **Was gilt, steht in [docs/Datenmodell.md](docs/Datenmodell.md).** Die
   Regeln (A, T, F, K, E, V), die Feldformen, die Kantenfamilien, und unter
   „Das Register heute" die erzeugte Übersicht aller Arten und Kanten
