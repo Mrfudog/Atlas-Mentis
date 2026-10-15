@@ -14,6 +14,8 @@ nur CI.
 
 ![Was auf dem Server läuft](../Bilder/Server.excalidraw.svg)
 
+![Die Oberfläche](../Bilder/Oberflaeche.excalidraw.svg)
+
 ## Wo welcher Code liegt
 
 | Ort | Was | Erklärt in |

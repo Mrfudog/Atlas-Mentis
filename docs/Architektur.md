@@ -1,6 +1,6 @@
 # Architektur
 
-Stand 2026-10-12 (preprod nach P5); Bild §1 als Zeichnung 2026-10-15. Zeigt, **was läuft** (Container),
+Stand 2026-10-12 (preprod nach P5); Bilder §1 und §6 als Zeichnung 2026-10-15. Zeigt, **was läuft** (Container),
 **womit** (Frameworks), **wo es liegt** (Repo) und **wie der Code
 zusammenhängt** (Pakete, Server, Oberfläche). Das Datenmodell selbst —
 Typen, Felder, Kanten — steht in [Datenmodell.md](Datenmodell.md);
@@ -379,49 +379,10 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 
 ## 6. Die Oberfläche
 
-```mermaid
-flowchart TB
-  subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /registry · /classes · /classes/:id]
-    wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
-    subgraph seiten[Seiten, lazy geladen]
-      login[login/login.ts]
-      liste[artikel/kompendium.ts<br/>Kompendium und Bereiche]
-      vorschau[artikel/vorschau.ts<br/>Vorschau quick]
-      anlegen[artikel/anlegen.ts<br/>New article]
-      wahl[artikel/wahl.ts<br/>Artikel suchen und wählen]
-      artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
-      felder[artikel/felder.ts<br/>Felder aus dem Register]
-      text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
-      buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
-      register[register/register.ts<br/>Typen · Kanten · Listen]
-      regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
-      verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
-      klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
-    end
-    subgraph kern[kern/ · Dienste]
-      api[api.ts<br/>HttpClient → /api]
-      bestand[bestand.ts<br/>Register + geöffnete Artikel als Signal]
-      session[session.ts<br/>wer ist angemeldet]
-    end
-  end
-  model[["@nw/model<br/>views · calc · book · markdown · inline"]]
-  router --> wache --> session
-  router --> login & liste & artikel & verwaltung & register & klassen
-  verwaltung --> api
-  register --> regtyp --> bestand
-  artikel --> felder & text & buch
-  buch --> text
-  liste --> vorschau & anlegen
-  artikel & anlegen --> wahl --> api
-  liste --> api
-  vorschau & artikel --> bestand --> api
-  klassen --> text
-  klassen -->|"GET /api/classes/:id"| api
-  login --> session --> api
-  felder & text & buch --> model
-  api -->|"/api · im Dev über proxy.conf.json"| srv[Fastify]
-```
+![Die Oberfläche](Bilder/Oberflaeche.excalidraw.svg)
+
+Gezeichnet in [Bilder/Oberflaeche.excalidraw.md](Bilder/Oberflaeche.excalidraw.md). Die Routen stehen in
+`apps/web/src/app/app.routes.ts`; je Ordner ein Bereich, lazy geladen.
 
 **Gezeichnet wird aus dem Register, nicht aus einer Vorlage je Art.**
 `felder.ts` liest die Felder einer Art aus dem Register und das Modell

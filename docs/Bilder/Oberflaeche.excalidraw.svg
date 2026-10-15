@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 1300 735" width="1300" height="735" font-family="Helvetica, Arial, sans-serif">
+<!-- Die Oberfläche (Architektur §6) — erzeugt von scripts/excalidraw.mjs; nach einer Änderung in Obsidian schreibt das Plugin diese Datei neu -->
+<defs><marker id="spitze" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#495057"/></marker></defs>
+<rect x="-20" y="-20" width="1300" height="735" fill="#ffffff"/>
+<rect x="0" y="0" width="980" height="640" rx="0" fill="none" stroke="#868e96" stroke-dasharray="6 4"/>
+
+<rect x="10" y="150" width="960" height="340" rx="0" fill="none" stroke="#868e96" stroke-dasharray="6 4"/>
+
+<rect x="10" y="505" width="960" height="125" rx="0" fill="none" stroke="#868e96" stroke-dasharray="6 4"/>
+
+<rect x="20" y="50" width="260" height="70" rx="8" fill="#fff3bf" stroke="#e67700"/>
+
+<rect x="320" y="53" width="200" height="64" rx="8" fill="#fff3bf" stroke="#e67700"/>
+
+<rect x="20" y="190" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="260" y="190" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="500" y="190" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="740" y="190" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="20" y="290" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="260" y="290" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="500" y="290" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="740" y="290" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="20" y="390" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="260" y="390" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="500" y="390" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="740" y="390" width="220" height="74" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="804" y="540" width="176" height="70" rx="8" fill="#d3f9d8" stroke="#2f9e44"/>
+
+<rect x="608" y="540" width="176" height="70" rx="8" fill="#d3f9d8" stroke="#2f9e44"/>
+
+<rect x="20" y="540" width="176" height="70" rx="8" fill="#d3f9d8" stroke="#2f9e44"/>
+
+<rect x="412" y="540" width="176" height="70" rx="8" fill="#d3f9d8" stroke="#2f9e44"/>
+
+<rect x="216" y="540" width="176" height="70" rx="8" fill="#d3f9d8" stroke="#2f9e44"/>
+
+<rect x="1020" y="50" width="230" height="96" rx="8" fill="#e5dbff" stroke="#6741d9"/>
+
+<rect x="1060" y="540" width="200" height="70" rx="8" fill="#f1f3f5" stroke="#495057"/>
+
+<line x1="280" y1="85" x2="320" y2="85" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="784" y1="575" x2="804" y2="575" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="980" y1="575" x2="1060" y2="575" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+
+
+<rect x="1001.7" y="566.9" width="36.6" height="16.3" fill="#ffffff"/>
+<text x="10" y="20" font-size="14" text-anchor="start" fill="#868e96">apps/web · Angular, Standalone, Signals</text>
+<text x="20" y="170" font-size="14" text-anchor="start" fill="#868e96">Seiten, lazy geladen (apps/web/src/app/…)</text>
+<text x="20" y="525" font-size="14" text-anchor="start" fill="#868e96">kern/ · Dienste</text>
+<text x="150" y="70.6" font-size="16" text-anchor="middle" fill="#1e1e1e">app.routes.ts</text>
+<text x="150" y="90.6" font-size="16" text-anchor="middle" fill="#1e1e1e">/compendium · /world · /story</text>
+<text x="150" y="110.6" font-size="16" text-anchor="middle" fill="#1e1e1e">/rules · /play · /artikel/:id …</text>
+<text x="420" y="80.6" font-size="16" text-anchor="middle" fill="#1e1e1e">kern/wache.ts</text>
+<text x="420" y="100.6" font-size="16" text-anchor="middle" fill="#1e1e1e">angemeldet?</text>
+<text x="130" y="212.6" font-size="16" text-anchor="middle" fill="#1e1e1e">artikel/</text>
+<text x="130" y="232.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Kompendium, Artikel, Anlegen,</text>
+<text x="130" y="252.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Inventar, Werkstatt, Druck</text>
+<text x="370" y="222.6" font-size="16" text-anchor="middle" fill="#1e1e1e">boards/</text>
+<text x="370" y="242.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Boards je Geschichtsartikel</text>
+<text x="610" y="222.6" font-size="16" text-anchor="middle" fill="#1e1e1e">karten/</text>
+<text x="610" y="242.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Karte, Play › Map</text>
+<text x="850" y="222.6" font-size="16" text-anchor="middle" fill="#1e1e1e">klassen/</text>
+<text x="850" y="242.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Klassen, Merkmale</text>
+<text x="130" y="322.6" font-size="16" text-anchor="middle" fill="#1e1e1e">lesen/</text>
+<text x="130" y="342.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Leseansicht /read/:layer</text>
+<text x="370" y="322.6" font-size="16" text-anchor="middle" fill="#1e1e1e">suche/</text>
+<text x="370" y="342.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Strg+K, Treffer beim Tippen</text>
+<text x="610" y="312.6" font-size="16" text-anchor="middle" fill="#1e1e1e">register/</text>
+<text x="610" y="332.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Typen, Kanten, Listen,</text>
+<text x="610" y="352.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Ansichten</text>
+<text x="850" y="312.6" font-size="16" text-anchor="middle" fill="#1e1e1e">werkbank/</text>
+<text x="850" y="332.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Prüfungen, Massenänderungen,</text>
+<text x="850" y="352.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Übernahme</text>
+<text x="130" y="412.6" font-size="16" text-anchor="middle" fill="#1e1e1e">verwaltung/</text>
+<text x="130" y="432.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Kampagne, Mitglieder,</text>
+<text x="130" y="452.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Ebenen</text>
+<text x="370" y="422.6" font-size="16" text-anchor="middle" fill="#1e1e1e">konto/</text>
+<text x="370" y="442.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Konto, Ebenen, API-Tokens</text>
+<text x="610" y="422.6" font-size="16" text-anchor="middle" fill="#1e1e1e">figur/</text>
+<text x="610" y="442.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Charakterassistent</text>
+<text x="850" y="432.6" font-size="16" text-anchor="middle" fill="#1e1e1e">login/ · neues/ · bilder/</text>
+<text x="892" y="570.6" font-size="16" text-anchor="middle" fill="#1e1e1e">api.ts</text>
+<text x="892" y="590.6" font-size="16" text-anchor="middle" fill="#1e1e1e">HttpClient → /api</text>
+<text x="696" y="560.6" font-size="16" text-anchor="middle" fill="#1e1e1e">bestand.ts</text>
+<text x="696" y="580.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Register + geöffnete</text>
+<text x="696" y="600.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Artikel (W7)</text>
+<text x="108" y="570.6" font-size="16" text-anchor="middle" fill="#1e1e1e">session.ts</text>
+<text x="108" y="590.6" font-size="16" text-anchor="middle" fill="#1e1e1e">wer ist angemeldet</text>
+<text x="500" y="570.6" font-size="16" text-anchor="middle" fill="#1e1e1e">live.ts</text>
+<text x="500" y="590.6" font-size="16" text-anchor="middle" fill="#1e1e1e">GET /api/live (T-116)</text>
+<text x="304" y="570.6" font-size="16" text-anchor="middle" fill="#1e1e1e">stapel.ts</text>
+<text x="304" y="590.6" font-size="16" text-anchor="middle" fill="#1e1e1e">laufende Kampagne</text>
+<text x="1135" y="73.6" font-size="16" text-anchor="middle" fill="#1e1e1e">@nw/model</text>
+<text x="1135" y="93.6" font-size="16" text-anchor="middle" fill="#1e1e1e">views · calc · book ·</text>
+<text x="1135" y="113.6" font-size="16" text-anchor="middle" fill="#1e1e1e">markdown · inline · map</text>
+<text x="1135" y="133.6" font-size="16" text-anchor="middle" fill="#1e1e1e">jede Seite zeichnet damit</text>
+<text x="1160" y="570.6" font-size="16" text-anchor="middle" fill="#1e1e1e">apps/server</text>
+<text x="1160" y="590.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Fastify</text>
+<text x="1020" y="579.6" font-size="13" text-anchor="middle" fill="#495057">/api</text>
+<text x="0" y="674" font-size="14" text-anchor="start" fill="#1e1e1e">Gezeichnet wird aus dem Register über @nw/model, nicht aus einer Vorlage je Art; die Oberfläche hält keinen Bestand (W7)</text>
+<text x="0" y="691.5" font-size="14" text-anchor="start" fill="#1e1e1e">und zeigt, was der Server gesiebt geschickt hat.</text>
+</svg>

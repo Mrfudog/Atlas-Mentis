@@ -825,27 +825,9 @@ Artikel an jemanden geht; das Wissen sagt, welche Felder darin.
 
 ### 9.1 Sichtbarkeit (`Visibility`, `articleVisible`)
 
-```mermaid
-flowchart TD
-  S{"läuft der Artikel<br/>im Stapel?"} -- nein --> N0["unsichtbar"]
-  S -- ja --> O{"eigener Artikel?<br/>(angelegt oder schreibbar)"}
-  O -- ja --> J
-  O -- nein --> F{"fertig?<br/>Status ready oder ohne"}
-  F -- nein --> FG{"gm oder co-gm der<br/>Kampagne, der er gehört?"}
-  FG -- nein --> N3["unsichtbar"]
-  FG -- ja --> GM
-  F -- ja --> GM{"Leitung der Kampagne,<br/>der er gehört?"}
-  GM -- ja --> J["sichtbar"]
-  GM -- nein --> H{"hiddenFrom nennt<br/>einen Träger?"}
-  H -- ja --> N1["unsichtbar"]
-  H -- nein --> R{"revealedTo nennt<br/>einen Träger?"}
-  R -- ja --> J
-  R -- nein --> A{"audience ≤ Rolle<br/>am Tisch?"}
-  A -- "public" --> J
-  A -- "campaign · players · gm" --> RO{"Rolle in der<br/>Kampagne der Ebene"}
-  RO -- reicht --> J
-  RO -- "reicht nicht" --> N2["unsichtbar"]
-```
+![Sichtbarkeit: articleVisible](Bilder/Sichtbarkeit.excalidraw.svg)
+
+Gezeichnet in [Bilder/Sichtbarkeit.excalidraw.md](Bilder/Sichtbarkeit.excalidraw.md) — wer die Regel ändert, ändert die Zeichnung im selben Commit.
 
 Träger eines Betrachters: seine Figuren, deren `Party` (`memberOfParty`)
 und deren `Faction` (`memberOf`) — einen Schritt weit.

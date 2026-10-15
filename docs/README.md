@@ -103,12 +103,12 @@ von Hand ändern.
 Was diese Bestandsaufnahme gefunden hat und nicht in diesem Schritt erledigt
 ist — als Folgeaufgabe im Projektbrett:
 
-- **Grosse Mermaid-Bilder** als Zeichnung: in
-  [Datenmodell.md](Datenmodell.md) das Bild der Bausteine (§1), der
-  Sichtbarkeit (§9) und der Übersicht in §12; in
-  [Architektur.md](Architektur.md) „Vom Push bis zum Server“, „Der
-  Server“ und „Die Oberfläche“; in [Regelsysteme.md](Regelsysteme.md) das
-  erste. Das Bild in Architektur §1 ist schon eine Zeichnung
-  ([Bilder/Server.excalidraw.svg](Bilder/Server.excalidraw.svg)).
-- **Die Definitionen aus der Ernte** mit [Begriffe.md](Begriffe.md)
-  abgleichen (T-156, Teil 4).
+- **Mermaid-Bilder an der Grenze** (elf, zwölf Knoten), die bei ihrer
+  nächsten Änderung eine Zeichnung werden: [Datenmodell §1](Datenmodell.md#1-die-bausteine)
+  und [§5.7](Datenmodell.md#57-statblock-charakterbau-und-übungen-aus-artikeln-m5-m3-m6),
+  das erste Bild in [Regelsysteme.md](Regelsysteme.md). Schon Zeichnungen:
+  Architektur §1 und §6, Datenmodell §9.1.
+- **Zwei Begriffe warten auf die Leitung:** ob Feldformen Registerzeilen
+  werden (E-060) und ob ein Geheimnis ein eigener Artikel sein darf
+  (E-061). Die übrigen Definitionen der Ernte stehen abgeglichen in
+  [Begriffe.md › Ein Wort, mehrere Sachen](Begriffe.md#ein-wort-mehrere-sachen).
