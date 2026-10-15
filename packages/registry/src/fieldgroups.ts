@@ -2730,6 +2730,15 @@ export const fieldGroups = {
           description: 'On a fogged map, a move uncovers the way the token went. A map may say otherwise.',
           default: false,
         },
+        /* **Türen** (T-118): öffnen Spielende eine Tür in Reichweite ihrer
+           Figur selbst, oder nur die Leitung. Verschlossene bleiben zu. */
+        doors: {
+          type: 'string',
+          title: 'Doors',
+          description: 'Who opens and closes doors on the map: players at a door next to their character, or only the GM. Locked doors stay shut either way.',
+          enum: ['players', 'gm'],
+          default: 'players',
+        },
       },
     },
   },

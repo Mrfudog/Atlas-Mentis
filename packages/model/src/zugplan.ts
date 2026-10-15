@@ -20,6 +20,7 @@ import { averageOf, attackNumbers, type AttackNumbers } from './attack.js';
 import { cellAt, cellCentre, type GridGeometry, type MapMarker } from './map.js';
 import { cellKey, cheapestPath, reachable, type Cell, type MoveGrid } from './movement.js';
 import type { Pt } from './sight.js';
+import { wallBlocks, type MapWall } from './walls.js';
 
 /** Was ein Schritt kostet. `free` kostet nichts (ein Wort, eine Tür öffnen). */
 export type PlanCost = 'action' | 'bonus' | 'reaction' | 'free';
@@ -355,17 +356,21 @@ export function planText(steps: readonly PlanStep[]): string {
 /**
  * Das Bewegungsraster einer Karte für den Plan (nur Quadrate): so viele
  * Spalten und Zeilen, wie das Bild trägt; die Felder der **anderen**
- * Tokens sind besetzt. Wände kennt die Karte der Seite noch nicht
- * (docs/Karten.md) — sie kommen hier dazu, wenn es sie gibt.
+ * Tokens sind besetzt, und was den Schritt hält (`Map.walls`, T-118),
+ * steht als Wand im Raster.
  */
-export function planGrid(geo: GridGeometry, markers: readonly MapMarker[], selfRel: string): MoveGrid | null {
+export function planGrid(geo: GridGeometry, markers: readonly MapMarker[], selfRel: string, walls: readonly MapWall[] = []): MoveGrid | null {
   if (geo.shape !== 'square') return null;
   const cols = Math.max(1, Math.floor((geo.w - geo.ox) / geo.size));
   const rows = Math.max(1, Math.floor((geo.h - geo.oy) / geo.size));
   const blocked = markers
     .filter((m) => m.rel.id !== selfRel && m.kind !== 'scenery' && !m.hidden)
     .map((m) => cellKey(cellAt(geo, m)));
-  return { cols, rows, walls: [], blocked, square: 5 };
+  /* Die Sperren, die den Schritt halten (T-118), in Feldeinheiten. */
+  const fx = (x: number) => (x * geo.w - geo.ox) / geo.size;
+  const fy = (y: number) => (y * geo.h - geo.oy) / geo.size;
+  const segs = walls.filter((w) => wallBlocks(w).move).map((w) => ({ x1: fx(w.x1), y1: fy(w.y1), x2: fx(w.x2), y2: fy(w.y2) }));
+  return { cols, rows, walls: segs, blocked, square: 5 };
 }
 
 /** Das Feld eines Tokens, ins Raster geklemmt. */

@@ -16091,6 +16091,24 @@ function renderHowto(v){
     "may override it with Map.revealOnMove): a move uncovers its way two "+
     "squares wide, for the character that moved; movement is spent either "+
     "way, and without it the GM reveals afterwards."));
+  /* Sperren, Türen, Sichtlinie (T-118): steht nur auf der Seite. */
+  v.appendChild(el("div",{class:"rsec",text:"Walls, doors and line of sight"}));
+  v.appendChild(el("p",{class:"hint"},
+    "Map.walls is one list, and each entry says its kind: wall, door, "+
+    "secret, window, chasm (obstacle) or invisible, with x1/y1/x2/y2 in "+
+    "fractions of the map and, on a door, state open, closed or locked. "+
+    "What a kind blocks — movement, sight, light — is data (WALL_KINDS), "+
+    "not a list per kind; an open door blocks nothing. The server sends "+
+    "players only the walls at the edge of what they have revealed, a "+
+    "closed secret door as a plain wall and a locked door as closed "+
+    "(redactWalls). A move blocked by a wall is refused for players; the "+
+    "turn plan routes around walls. With walls on the map, a move reveals "+
+    "the sight polygon from where the token went (revealAlong), and "+
+    "POST /api/maps/:id/door opens a door — a player only next to their "+
+    "own token, if Campaign.doors says 'players' — and reveals what the "+
+    "party members who see the door now see through it. Example: Rook "+
+    "stands at a closed door; opening it uncovers the hall behind it up to "+
+    "the far wall, for Rook, and the goblin standing there appears."));
   /* Würfe im Protokoll (T-172): steht nur auf der Seite, der Prototyp würfelt weiter selbst. */
   v.appendChild(el("div",{class:"rsec",text:"A roll lands in the article's log"}));
   v.appendChild(el("p",{class:"hint"},
