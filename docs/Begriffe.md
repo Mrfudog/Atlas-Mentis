@@ -1233,6 +1233,27 @@ selben Bereich steht wie ein Ort. Was nicht passt, bringt die Ebene in
 keiner Rolle — auch nicht als Überschreibung: eine Hausregel, die nur
 überschreibt, ohne da zu sein, wäre eine unsichtbare Änderung.
 
+**Eine Regel für viele Quellen, eine Freigabe für einen Artikel** (T-187).
+Die Leitung will aus fast jedem Abenteuer dasselbe — die Regeln, die
+Gegenstände, die Zauber, nicht die Geschichte — und musste das je Buch
+sagen. Eine Liste an der Kampagne „für Ebenen der Art adventure" hätte
+`Layer.kind` zur Regel gemacht, und das Wort ist Beschreibung (E3). Die
+Kategorie steht aber schon als **Gruppe** da („Adventures"), also hängt
+die Regel an der Gruppe: eine Kante `layerRule` von der Kampagne, mit
+denselben `areas`/`types` wie eine Auswahl. Sie gilt nur, wo nichts
+anderes etwas sagt — die Auswahl am Buch und die einer aufgeschalteten
+Gruppe sind ausdrücklicher —, und ein Buch lässt sich ausnehmen
+(`exempt`). Eine eigene Kante und kein weiterer `mode` an `activates`,
+weil eine Regel nichts aufschaltet: jede Stelle, die `activates` liest,
+müsste sonst lernen, sie zu übergehen.
+
+Ebenso der Extra-Inhalt: aus einem Buch, das nur zum Vergleich da ist,
+will die Leitung *einen* Gegenstand. Das Buch aufzuschalten brächte alles,
+eine Kopie (Übernehmen, E7) eine zweite Sache. Also eine Kante `enables`
+von der Kampagne an den Artikel: er ist im Spiel, sein Buch nicht. Er
+steht unter jeder aufgeschalteten Ebene — was die Kampagne selbst sagt,
+schlägt eine Einzelfreigabe —, und zurück geht es an derselben Stelle.
+
 **Eine Ebene erklärt ihr Kürzel.** „XGE" steht an jedem Artikel aus
 Xanathar's Guide; wer das Buch nicht kennt, liest drei Buchstaben. Darum
 trägt die Ebene ihr Kürzel (`Layer.abbreviation`) neben dem vollen Titel,

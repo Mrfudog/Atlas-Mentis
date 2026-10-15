@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-15. 80 Schnittstellen, 64 Kantenarten.
+Stand 2026-10-15. 80 Schnittstellen, 66 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -69,6 +69,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -110,6 +111,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -175,6 +177,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
@@ -225,6 +228,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -271,6 +275,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -323,6 +328,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
@@ -366,6 +372,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -423,6 +430,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -482,6 +490,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -534,6 +543,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
@@ -588,6 +598,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Place — `route` → „reached from"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -659,6 +670,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
@@ -722,6 +734,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Place — `route` → „reached from"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -780,6 +793,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -822,6 +836,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `inWorld` → „campaigns"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -883,6 +898,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -928,6 +944,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `inLayer` → Layer — „from"
 - `inWorld` → World — „in the world"
 - `activates` → Layer — „Layers in play"
+- `layerRule` → Layer — „Type rule for"
+- `enables` → * — „Extra content"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
@@ -944,6 +962,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -991,6 +1010,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1048,6 +1068,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1104,6 +1125,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1158,6 +1180,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1213,6 +1236,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1260,6 +1284,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1307,6 +1332,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1364,6 +1390,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1419,6 +1446,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1475,6 +1503,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1524,6 +1553,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1574,6 +1604,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1622,6 +1653,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1673,6 +1705,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1722,6 +1755,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1767,6 +1801,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1808,6 +1843,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1856,6 +1892,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1893,6 +1930,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1940,6 +1978,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1985,6 +2024,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | PlayerCharacter | Party — `crafting` → „worked on by"
@@ -2032,6 +2072,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2080,6 +2121,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2128,6 +2170,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2181,6 +2224,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -2237,6 +2281,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2280,6 +2325,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Place | Story | Encounter | Class | Subclass | Ancestry | Background — `tableFor` → „used at"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2328,6 +2374,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2375,6 +2422,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2422,6 +2470,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -2473,6 +2522,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2522,6 +2572,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story — `onMap` → „fights here"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2557,6 +2608,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2598,6 +2650,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2633,6 +2686,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2675,6 +2729,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2705,6 +2760,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2734,6 +2790,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2763,6 +2820,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2792,6 +2850,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2831,6 +2890,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2860,6 +2920,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2899,6 +2960,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2928,6 +2990,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2957,6 +3020,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3000,6 +3064,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - * — `inLayer` → „brings"
 - Campaign — `activates` → „In play in"
+- Campaign — `layerRule` → „Type rule in"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3029,6 +3095,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3058,6 +3125,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3098,6 +3166,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3127,6 +3196,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3156,6 +3226,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3185,6 +3256,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3221,6 +3293,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3250,6 +3323,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3279,6 +3353,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3308,6 +3383,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3337,6 +3413,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3366,6 +3443,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3395,6 +3473,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3424,6 +3503,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3453,6 +3533,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3482,6 +3563,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3511,6 +3593,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
