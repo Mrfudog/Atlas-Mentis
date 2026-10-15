@@ -38,6 +38,7 @@ export * from './merge.js';
 export * from './parts.js';
 export * from './edges.js';
 export * from './map.js';
+export * from './kartenseite.js';
 export * from './crafting.js';
 export * from './shop.js';
 export * from './assets.js';

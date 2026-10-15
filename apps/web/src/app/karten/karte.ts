@@ -29,6 +29,7 @@ import {
   MAP_ZOOM_MIN,
   mapSettings,
   markersOf,
+  markerByTarget,
   measure,
   moveMarker,
   parentMapRelation,
@@ -61,6 +62,7 @@ import { BoardSuche } from '../boards/suche';
 import { Ladeanzeige } from '../kern/ladeanzeige';
 import { tipptGerade } from '../kern/suche';
 import { nebelBreite, nebelMalen, type NebelForm } from './nebel';
+import { KartenSeitenleiste, ZIEH_TYP } from './seitenleiste';
 
 /**
  * **Was der Zugplan auf der Karte zeigt** (T-198). Die Karte rechnet
@@ -165,7 +167,7 @@ interface Zeiger {
  */
 @Component({
   selector: 'nw-karte',
-  imports: [RouterLink, BoardSuche, Ladeanzeige],
+  imports: [RouterLink, BoardSuche, Ladeanzeige, KartenSeitenleiste],
   template: `
     <div class="karte" [class.gross]="gross()" [class.voll]="vollbild()" [class.ersatz]="ersatzVollbild()">
       <div class="leiste">
@@ -204,6 +206,9 @@ interface Zeiger {
               </label>
             }
           }
+          <button type="button" [class.an]="seiteOffen()" [attr.aria-expanded]="seiteOffen()" (click)="seiteUm()" title="Party and encounters beside the map">
+            <span aria-hidden="true">☰</span> Table
+          </button>
           <button type="button" class="vollbild" [class.an]="vollbild()" [attr.aria-pressed]="vollbild()" (click)="vollbildUm()" [title]="vollbild() ? 'Leave fullscreen (Esc)' : 'Fullscreen (Shift+F)'">
             <span aria-hidden="true">{{ vollbild() ? '⤡' : '⤢' }}</span>
             {{ vollbild() ? 'Exit fullscreen' : 'Fullscreen' }}
@@ -320,6 +325,8 @@ interface Zeiger {
               (pointerup)="hoch($event)"
               (pointercancel)="abbrechen($event)"
               (keydown)="taste($event)"
+              (dragover)="ueberBuehne($event)"
+              (drop)="fallen($event)"
             >
               <!-- Bis das Kartenbild da ist (T-126): ein Kreis statt einer leeren
                    Fläche. Gemessen ist es, sobald es geladen hat (nat). -->
@@ -486,6 +493,18 @@ interface Zeiger {
             </div>
           }
         </div>
+        @if (seiteOffen()) {
+          <nw-kartenseite
+            class="seite"
+            [karte]="id()"
+            [sitzung]="sitzung()"
+            [aufKarte]="aufKarte()"
+            [schreibt]="darfSchreiben() && !spielersicht()"
+            (zentrieren)="zentrieren($event)"
+            (setzen)="einenSetzen($event)"
+            (alleSetzen)="blockSetzen($event)"
+          />
+        }
       </div>
 
       <p class="stand" role="status">
@@ -502,7 +521,7 @@ interface Zeiger {
         } @else if (werkzeug() === 'messen') {
           {{ messung()?.text || 'Tap a start point, then an end point.' }}
         } @else if (werkzeug() === 'setzen') {
-          {{ setzenBei() ? 'Pick the article below.' : 'Tap the map where the marker goes.' }}
+          {{ setzenZiel() ? 'Tap the map where ' + setzenName() + ' goes.' : setzenBei() ? 'Pick the article below.' : 'Tap the map where the marker goes.' }}
         } @else if (werkzeug() === 'aufdecken') {
           Drag a rectangle to reveal it to the players.
         } @else if (werkzeug() === 'pinsel') {
@@ -544,6 +563,8 @@ export class Karte {
   readonly id = input.required<string>();
   /** Wohin ein Schritt hinein oder hinaus führt: zur Artikelseite der Karte oder in Play. */
   readonly ort = input<'artikel' | 'play'>('artikel');
+  /** Die Sitzung am Tisch (Play) — ihre Begegnungen stehen in der Seitenleiste (T-203). */
+  readonly sitzung = input<string | null>(null);
   /** Unter Play füllt die Karte den Schirm. */
   readonly gross = input(false);
   /** Der Zugplan (T-198): solange er dasteht, wählt ein Antippen Weg oder Ziel. */
@@ -1295,6 +1316,7 @@ export class Karte {
     this.messB.set(null);
     this.messFest.set(false);
     this.setzenBei.set(null);
+    this.setzenZiel.set(null);
     this.strich.set(null);
   }
 
@@ -1317,7 +1339,9 @@ export class Karte {
         this.messFest.set(true);
       }
     } else if (this.werkzeug() === 'setzen') {
-      this.setzenBei.set(pt);
+      const ziel = this.setzenZiel();
+      if (ziel) this.spielTokenSetzen(ziel, pt);
+      else this.setzenBei.set(pt);
     }
   }
 
@@ -1465,15 +1489,76 @@ export class Karte {
    * ihren Platz.
    */
   protected teilnehmerSetzen(): void {
+    this.blockSetzen(this.offeneTeilnehmer().map((c) => c.id));
+  }
+
+  /** Ein Block Spiel-Tokens in der Mitte des Ausschnitts — aus dem Kampf oder der Seitenleiste (T-203). */
+  protected blockSetzen(ids: readonly string[]): void {
     const e = this.karte();
     const s = this.einst();
     const n = this.nat();
-    if (!e || !s) return;
+    if (!e || !s || !ids.length) return;
     const sicht = this.sichtbar();
     const mitte = sicht ? { x: sicht.x + Math.min(sicht.w, 1) / 2, y: sicht.y + Math.min(sicht.h, 1) / 2 } : { x: 0.5, y: 0.5 };
     const schritt = n ? s.gridSize / n.w : 0.05;
-    const ids = this.offeneTeilnehmer().map((c) => c.id);
     void this.schreiben(placeTokens(e, ids, mitte, schritt, this.seitenverhaeltnis(), () => `r-${crypto.randomUUID()}`));
+  }
+
+  // -------------------------------------------------------- Seitenleiste
+
+  /** Offen oder zu, für diesen Schirm; ohne Wahl unter Play offen, auf der Artikelseite zu. */
+  private readonly seiteWahl = signal<boolean | null>(null);
+  protected readonly seiteOffen = computed(() => this.seiteWahl() ?? this.ort() === 'play');
+  protected seiteUm(): void {
+    this.seiteWahl.set(!this.seiteOffen());
+  }
+  /** Je Ziel sein erster Marker hier — für „zentrieren“ und was schon steht. */
+  private readonly markerJeZiel = computed(() => {
+    const e = this.angezeigt();
+    return e ? markerByTarget(e) : new Map<string, { rel: string; x: number; y: number }>();
+  });
+  protected readonly aufKarte = computed<ReadonlySet<string>>(() => new Set(this.markerJeZiel().keys()));
+
+  /** Die Karte so schieben, dass das Token in der Mitte steht. */
+  protected zentrieren(id: string): void {
+    const m = this.markerJeZiel().get(id);
+    const b = this.buehne()?.nativeElement;
+    const h = this.hoehe();
+    if (!m || !b || !h) return;
+    b.scrollLeft = m.x * this.breite() - b.clientWidth / 2;
+    b.scrollTop = m.y * h - b.clientHeight / 2;
+  }
+
+  /** Wen „Place“ gerade setzt: das nächste Antippen stellt ihn hin. */
+  protected readonly setzenZiel = signal<string | null>(null);
+  protected readonly setzenName = signal('');
+  protected einenSetzen(z: { id: string; name: string }): void {
+    this.aktiv.set('tokens');
+    this.waehle('keins');
+    this.werkzeug.set('setzen');
+    this.setzenZiel.set(z.id);
+    this.setzenName.set(z.name);
+  }
+  private spielTokenSetzen(id: string, pt: Pt): void {
+    const e = this.karte();
+    this.setzenZiel.set(null);
+    this.werkzeug.set('keins');
+    if (e) void this.schreiben(addMarker(e, id, pt, `r-${crypto.randomUUID()}`, 'play'));
+  }
+
+  /** Aus der Seitenleiste aufs Feld gezogen (HTML-Ziehen; am Telefon „Place“). */
+  protected ueberBuehne(ev: DragEvent): void {
+    if (this.darfSchreiben() && ev.dataTransfer?.types.includes(ZIEH_TYP)) {
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'copy';
+    }
+  }
+  protected fallen(ev: DragEvent): void {
+    const id = ev.dataTransfer?.getData(ZIEH_TYP);
+    if (!id || !this.darfSchreiben()) return;
+    ev.preventDefault();
+    const pt = this.punkt(ev);
+    if (pt && !this.aufKarte().has(id)) this.spielTokenSetzen(id, pt);
   }
 
   protected spielTokensWeg(): void {

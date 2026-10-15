@@ -227,6 +227,17 @@ Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
   (`.vollbild-ziel`), damit der Zugplan dabei bleibt; auf der
   Artikelseite die Karte allein. Ohne Fullscreen API (iPhone) legt sich
   die Karte über die Seite; Esc verlässt beides.
+- **Die Seitenleiste** („Table“, unter Play offen, auf der Artikelseite
+  zu; `seitenleiste.ts`, `GET /api/maps/:id/side`): die Figuren der Gruppe
+  der laufenden Kampagne mit Trefferpunkten (Stand an der Figur, Maximum
+  am Statblock) und Zuständen — ◎ zentriert die Karte auf ihr Token,
+  „Place“ oder Ziehen der Zeile aufs Feld setzt ein Spiel-Token. Für die
+  Leitung darunter die Begegnungen der Sitzung (`?session=`, sonst die,
+  die diese Karte auf dem Tisch hat): was über `partOf` unter ihr hängt,
+  die geführte und die auf dieser Karte, mit „Place n“ für die noch
+  fehlenden Teilnehmer. Gerechnet in `packages/model/src/kartenseite.ts`
+  über **gesiebte** Artikel — ein zurückgehaltenes Maximum fehlt hier wie
+  am Bogen.
 
 ## Karten finden und anlegen (T-202)
 

@@ -9,6 +9,14 @@
       "link": "/campaign"
     },
     {
+      "id": "2026-10-15-map-side-bar",
+      "date": "2026-10-15",
+      "title": "The party and the session's encounters beside the map",
+      "text": "Table beside the map lists the party with hit points and conditions; centre the map on a token, or place a character by button or by dragging it onto the map. The GM also sees the encounters of the session and places their combatants.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-trades-and-tools",
       "date": "2026-10-15",
       "title": "Trades show their recipes and materials; tools and characters show what they can craft",
