@@ -238,6 +238,12 @@ Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
   fehlenden Teilnehmer. Gerechnet in `packages/model/src/kartenseite.ts`
   über **gesiebte** Artikel — ein zurückgehaltenes Maximum fehlt hier wie
   am Bogen.
+- **Vorplatzieren und Beginnen** (Datenmodell K15): an einer Begegnung,
+  die nicht läuft, „Prepare n“ — die Teilnehmer stehen blass und
+  gestrichelt auf der Karte, nur die Leitung sieht sie, und können an
+  ihren Platz gezogen werden. „▶ Start“ würfelt die Initiative, deckt sie
+  auf und lässt die Sitzung die Begegnung führen; Ring und Zugplan folgen
+  von selbst.
 
 ## Karten finden und anlegen (T-202)
 

@@ -924,6 +924,11 @@ export const relations: Record<string, RelationDef> = {
            auf der nächsten unter Laub. */
         hidden: { type: 'boolean', title: 'Hidden from players' },
         stealth: { type: 'number', title: 'Stealth (to notice)' },
+        /* Vorplatziert (T-203): das Token steht für diese Begegnung bereit,
+           versteckt, bis „Start encounter" sie beginnt und es aufdeckt. An
+           der Kante, weil dieselbe Kreatur auf einer anderen Karte für eine
+           andere Begegnung stehen kann. */
+        encounter: { type: 'string', format: 'link', target: { interfaces: ['Encounter'] }, title: 'Prepared for encounter' },
       },
     },
   },

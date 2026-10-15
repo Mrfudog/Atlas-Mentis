@@ -503,6 +503,7 @@ interface Zeiger {
             (zentrieren)="zentrieren($event)"
             (setzen)="einenSetzen($event)"
             (alleSetzen)="blockSetzen($event)"
+            (vorbereiten)="blockSetzen($event.ids, $event.encounter)"
           />
         }
       </div>
@@ -992,7 +993,7 @@ export class Karte {
            ein Ring mehr — und gestrichelt der Nächste. */
         dran: !!zug?.current && m.to === zug.current,
         naechster: !!zug?.next && m.to === zug.next && m.to !== zug.current,
-        titel: [name, m.note, m.hidden ? 'hidden from the players' : '', zug?.current === m.to ? 'their turn' : zug?.next === m.to ? 'next' : '']
+        titel: [name, m.note, m.prepared ? 'prepared for an encounter — hidden until it starts' : m.hidden ? 'hidden from the players' : '', zug?.current === m.to ? 'their turn' : zug?.next === m.to ? 'next' : '']
           .filter(Boolean)
           .join(' — '),
         selbst: !!plan && plan.rel === m.rel.id,
@@ -1493,7 +1494,7 @@ export class Karte {
   }
 
   /** Ein Block Spiel-Tokens in der Mitte des Ausschnitts — aus dem Kampf oder der Seitenleiste (T-203). */
-  protected blockSetzen(ids: readonly string[]): void {
+  protected blockSetzen(ids: readonly string[], vorbereiten?: string): void {
     const e = this.karte();
     const s = this.einst();
     const n = this.nat();
@@ -1501,7 +1502,7 @@ export class Karte {
     const sicht = this.sichtbar();
     const mitte = sicht ? { x: sicht.x + Math.min(sicht.w, 1) / 2, y: sicht.y + Math.min(sicht.h, 1) / 2 } : { x: 0.5, y: 0.5 };
     const schritt = n ? s.gridSize / n.w : 0.05;
-    void this.schreiben(placeTokens(e, ids, mitte, schritt, this.seitenverhaeltnis(), () => `r-${crypto.randomUUID()}`));
+    void this.schreiben(placeTokens(e, ids, mitte, schritt, this.seitenverhaeltnis(), () => `r-${crypto.randomUUID()}`, vorbereiten));
   }
 
   // -------------------------------------------------------- Seitenleiste
