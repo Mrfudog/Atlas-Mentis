@@ -1,5 +1,7 @@
 # Web-Arbeitsplan: die Oberfläche in `apps/web` nachziehen
 
+↑ [Technik](Themen/Technik.md) · [Einstieg](README.md) · Plan: welche Pakete stehen, sagt das Projektbrett.
+
 **Seit D59 (13.10.) wird nur noch die Seite weiterentwickelt; der Prototyp
 ist die Vorlage für den Port.** Aufgaben und Prioritäten stehen auf dem
 Projektbrett (W1–W9 und die Port-Aufgaben „Prototyp → Web: …"); dieser Plan

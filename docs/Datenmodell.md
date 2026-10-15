@@ -533,6 +533,8 @@ flowchart LR
   S[Statblock-Instanz] -- belongsTo --> C
   S -- instanceOf --> V[Statblock-Vorlage]
   E -. "ac, hpMax: participantStats" .-> S
+```
+
 ### 5.9 Zeitleisten und Spuren (D57, REQ-220)
 
 ```mermaid
@@ -809,6 +811,7 @@ und ein Ziel, das kein Gegenstand ist, bleiben und werden aufgezählt.
 | E13 | **Teilweise aufschalten** (T-105, REQ-255; `filterOf`, `withFilter`, `resolvedEntries` in `stack.ts`): eine Kante `activates` darf mit `areas` und `types` sagen, was ihre Ebene bringt — aus einem Abenteuer nur Regeln und Gegenstände, nicht seine Orte, NSC und Begegnungen. **Was nicht passt, bringt die Ebene nicht, in keiner Rolle**: nicht als Artikel, nicht als Herausnahme (`removes`), nicht als Überschreibung. Der Bereich ist der der Art (`areaOf`, die `extends`-Kette hoch); die Arten werden genau genommen (ein `Weapon` ist nicht `Item`). Eine Gruppe gibt ihre Auswahl an alle Mitglieder weiter (E8), eine ausdrückliche Kante eines Mitglieds hat ihre eigene. Ein abgewählter Artikel zählt nicht als „nur nicht aufgeschaltet" (`unactivated`, T-069): die Ebene ist an, die Leitung hat ihn abgewählt. Gerechnet wird der Bereich einmal je Art und Anfrage (`playStack(…, registry)`, T-086); **ohne Register gilt die Bereichsauswahl nicht** (lieber zu viel als still ein ganzes Buch weg) — wer einen Stapel rechnet, gibt es mit. Die Kampagnenseite zeigt je Ebene und Gruppe „Brings: everything" zum Aufklappen, je Bereich ein Häkchen mit Zähler, darunter die Arten; sind alle an, schickt sie keine Auswahl, damit eine neue Art mitkommt. |
 | E14 | **Ein Buch besteht aus Kapiteln, ein Kapitel aus Teilen** (T-108, E-028, E-029; `partsIndex`, `isBookPart` in `packages/model/src/parts.ts`). `Chapter` ist die Lesestruktur eines Buchs oder Abenteuers (ohne Bereich); seine Teile sind eigene Artikel unter dem abstrakten `BookPart` — `Heading` (Text im Namen, `level`), `Paragraph` (`Prose.paragraph`, `kind`: text, list, table, sidebar, quote), `ReadAloudText` (`ReadAloud.readaloud`), `Embed` (`target`: ein Artikel, der für sich steht, etwa ein Monster aus dem Monster Manual — er bekommt keine Kante, die stünde in einer fremden Ebene) — und im Abenteuer Szenen, die selbst wieder Teile haben. **Die Reihenfolge steht an der Kante** (`partOf.props.rank`): derselbe Vorlesetext darf im Kapitel an dritter und in einem eigenen Arc an erster Stelle stehen; `partOf` ohne `rank` hängt etwas an (eine Begegnung an ihre Szene) und steht nicht im Fluss. **Ein Kapitel eines offiziellen Abenteuers gibt es zweimal und seine Teile einmal:** als `Chapter` zum Lesen und als `Arc` zum Spielen, verbunden über `chapterOf` (Chapter → Arc); beide zeigen auf dieselben Szenen. **Teile stehen in keiner Liste und sind kein Verweisziel nach Namen** (`isBookPart` in `linkFinder`, `linkCandidates`, der Liste und den Werten einer Art): ein Absatz heisst nach seinen ersten Worten (`partName`), eine Überschrift wie die Regel darunter; die Nummer bleibt ein Ziel. **Auf der Artikelseite** eines Kapitels, einer Szene oder eines Arcs zeichnet das Layout-Element `parts` (in der Grundanordnung `full`, Migration 047) die Teile wie im Buch (`GET /api/entities/:id/parts`; eine Fassung hat die Teile ihres Originals dazu); unter „Linked here" stehen sie nicht. Ein Textblock ist sonst ein Feld (F-Regeln) — Buchtext ist die Ausnahme, weil man einen Absatz einzeln wiederverwendet. |
 | E15 | **Jeder Regelstand kommt herein, jede Quelle in ihre Ebene, und keine neue ist aufgeschaltet** (T-087, REQ-243; löst E2 des Arbeitsplans ab — 2014 als Basis, der Rest weggesiebt). `Layer.version` sagt `2014`, `2024` oder `UA`; 2024-Bücher stehen in der Gruppe „2024 rules", Unearthed Arcana in „Unearthed Arcana". Ein Merkmal oder eine Unterklasse, die 5e.tools aus einem 2014-Buch an eine 2024-Klasse hängt, liegt in der Ebene der Klasse und heisst nach beiden („Champion (PHB, XPHB)"). **Die Grundfassung ist die des Grundstands** (E-021 d): der 2014-Fireball behält seinen Namen, die 2024-Fassung heisst „Fireball (XPHB)" und zeigt mit `variantOf` auf ihn (E6 zeigt sie am Feld). Die Gruppe „D&D 5e (2014)" hält nur, was vor T-087 hereinkam: eine 2014-Ebene, die nur Fahrzeuge oder Karten bringt, käme sonst über die Gruppe in jede Kampagne, die sie aufschaltet. | `packages/import-5etools/src/lesen.ts` (`regelstandVon`, `ebeneQuelle`, `imGrundstand`), `test/lauf.test.ts` |
+| E16 | **Ein Ort aus einem Buch ist ein `Place` neben seinem Text** (T-175; `packages/import-5etools/src/orte.ts`). Der Importer legt zu jedem Abschnitt, der einen Ort beschreibt, einen `Place` in der Ebene des Buchs an: im Abenteuer ein Raum mit Schlüssel („K1. Front Courtyard" → `kind: 'Raum'`) und ein Abschnitt mit eigener Karte (benannt nach dem Kartentitel: „Areas of the Village" mit „Map 3.1: Village of Barovia" → „Village of Barovia"; zwei Karten derselben Gegend sind ein Ort), überall ein Abschnitt, dessen erster Satz ihn als Ort nennt („X is a walled city …", das Ortswort als Hauptwort, die Art daraus). **Erfunden wird nichts:** ein Ortswort, das nicht der Abschnitt selbst ist, und eine Liste von Räumen ohne Karte zählen als Kandidat im Bericht; die Räume einer solchen Liste liegen im Ort der Karte daneben. Ein Abschnitt tiefer als Stufe 3 hat keine Überschrift — sein Ort zeigt auf den Absatz, der mit seinem Namen beginnt. Der Ort trägt Name, `kind`, Quelle mit Seite (`Place` nimmt `Source`, Migration 075) und zeigt mit **`describedIn` auf den Abschnitt**, der ihn beschreibt (Überschrift oder Szene — `describedIn` nimmt dafür `Story` und `BookPart` als Ziel); die Leseansicht zeigt ihn dort als Verweis. Hierarchie über `partOf` (Raum → Burg → Gegend), im Abenteuer `happensAt` von der Szene und `mapOf` von ihrer Karte. `arrival` bleibt leer: der Vorlesetext steht im Abschnitt, und eine Kopie liefe auseinander. Die Peg-Id hängt an der des Abschnitts, `--only-new` legt keinen Ort zweimal an. |
 
 Offen und benannt: der Server kennt heute nur E3; E2 läuft im Prototyp
 (siehe [Durchgang.md](Durchgang.md), Abgleich). Mit einer zweiten Kampagne
@@ -823,27 +826,9 @@ Artikel an jemanden geht; das Wissen sagt, welche Felder darin.
 
 ### 9.1 Sichtbarkeit (`Visibility`, `articleVisible`)
 
-```mermaid
-flowchart TD
-  S{"läuft der Artikel<br/>im Stapel?"} -- nein --> N0["unsichtbar"]
-  S -- ja --> O{"eigener Artikel?<br/>(angelegt oder schreibbar)"}
-  O -- ja --> J
-  O -- nein --> F{"fertig?<br/>Status ready oder ohne"}
-  F -- nein --> FG{"gm oder co-gm der<br/>Kampagne, der er gehört?"}
-  FG -- nein --> N3["unsichtbar"]
-  FG -- ja --> GM
-  F -- ja --> GM{"Leitung der Kampagne,<br/>der er gehört?"}
-  GM -- ja --> J["sichtbar"]
-  GM -- nein --> H{"hiddenFrom nennt<br/>einen Träger?"}
-  H -- ja --> N1["unsichtbar"]
-  H -- nein --> R{"revealedTo nennt<br/>einen Träger?"}
-  R -- ja --> J
-  R -- nein --> A{"audience ≤ Rolle<br/>am Tisch?"}
-  A -- "public" --> J
-  A -- "campaign · players · gm" --> RO{"Rolle in der<br/>Kampagne der Ebene"}
-  RO -- reicht --> J
-  RO -- "reicht nicht" --> N2["unsichtbar"]
-```
+![Sichtbarkeit: articleVisible](Bilder/Sichtbarkeit.excalidraw.svg)
+
+Gezeichnet in [Bilder/Sichtbarkeit.excalidraw.md](Bilder/Sichtbarkeit.excalidraw.md) — wer die Regel ändert, ändert die Zeichnung im selben Commit.
 
 Träger eines Betrachters: seine Figuren, deren `Party` (`memberOfParty`)
 und deren `Faction` (`memberOf`) — einen Schritt weit.
@@ -1557,7 +1542,8 @@ Druck und Registervorschau.
 | Dateien | Asset-Ablage (`AssetStore`, 12.1); der Artikel `Asset` trägt `backend`, `ref`, `mime`, Masse | der Artikel ja, die Bytes nein — die Ausfuhr nennt sie (`files`) |
 | Ereignisse | `event_log` | nein |
 | der Stand der letzten Übernahme je Gegenstelle (T-130) | `transfer_base` (Gegenstelle, Peg-Id oder `registry:<teil>:<name>`, JSON) | nein |
-| Augenblicke (Würfe, Zeigen) | der Raum-Kanal, nicht gespeichert | nein |
+| Würfe auf einem Artikel (T-172) | `event_log`, `name: 'roll'`, `subject` der Artikel (12.3) | nein |
+| Augenblicke (Zeigen) | der Raum-Kanal, nicht gespeichert | nein |
 
 ### 12.1 Bilder (T-114, REQ-021, E-032)
 
@@ -1584,6 +1570,35 @@ flowchart LR
 | B11 | **Ersetzen auf zwei Wegen.** *Neue Fassung* (`POST /api/assets` mit `variantOf`): ein eigenes Asset mit `variantOf` auf das alte, mit dessen Klasse, Marken, Quelle, Sichtbarkeit, Stand und Ebene; die Verwender bleiben beim alten, bis man sie umstellt. *Quelle ersetzen* (`PUT /api/assets/:id/file`, gegen `revision`): derselbe Artikel bekommt `ref`, `mime` und Masse der neuen Datei, alle Verwender zeigen sofort das neue Bild (die Adresse trägt die Version); geschrieben wird mit den Regeln von `PUT /api/entities/:id` (`schreiben`), ersetzen darf, wer den Artikel schreibt. **Die alte Datei bleibt liegen** (Ereignis `asset.replaced` nennt sie) und kommt in die nächste Sicherung. | `bilder.ts`, `app.ts` |
 | B12 | **Die Galerie** (`/images`, Kopfleiste „Images"): alle Bilder, die der Betrachter sieht, als Raster — gefiltert nach Klasse (`f=Asset.kind:…`), Marken (`tag=a,b`, jede engt ein; `facets.tags` zählt), Ebene, „Unused" und Suche, über dieselbe Liste wie das Kompendium (`/api/list`). Ein Klick zeigt die Kurzansicht, „Open article" das Bild als Artikel; dort stehen „Used in" (B10), seine Fassungen und „Replace image" mit der Frage *neue Fassung* oder *Quelle* (B11). Mehrfachauswahl setzt und nimmt Marken über die Massenänderung (`/api/bulk`, die Leitung, mit Rückgängig). Die Bildeingabe (`nw-bildwahl`) zeigt beim Wählen Vorschaubilder der angebotenen Klasse (B9), auf Wunsch alle, und gibt einem neuen Bild diese Klasse. Nach „Quelle ersetzen" fragt jedes Bild mit dieser Id auf der Seite nach der neuen Version (`BildStand`, `?v=`). | `bilder/galerie.ts`, `bilder/bildpanel.ts`, `bild.ts` |
 | B7 | **Gezeigt wird mit dem Element `image`**, und der Ort wählt die Grösse: in `overview` ein Daumennagel neben dem Namen in der Listenzeile (die Liste nennt das Asset nur, wenn der Betrachter es sieht — `rows[].image`), in `quick` die Vorschau, in `full` das ganze Bild. An einem Asset ist das Bild es selbst, sonst `Image.image` (`bildDes`). Ein Feld mit `format: 'asset'` steht in der Feldtabelle als Vorschau. Die Eingabe (`nw-bildwahl`) lädt hoch — Datei, Ziehen, Einfügen, Telefonkamera —, wählt ein vorhandenes Asset oder nimmt eine `https`-Adresse; hochgeladen wird sofort, das Feld hält danach die Id. Bestehende Anordnungen bekommen `image` über Migration 053. | `bild.ts`, `liste.ts`, `views.ts` |
+
+### 12.3 Würfe im Protokoll (T-172, REQ-070)
+
+Gewürfelt wird **am Server** (`POST /api/rolls`), nicht im Browser: das
+Log stimmt, und niemand würfelt nach, was er nicht mag. Ein Wurf ist ein
+Eintrag im Protokoll — kein neues Speicherfach — mit dem Artikel, auf dem
+gewürfelt wurde, als `subject`. Die Oberfläche zeigt das Ergebnis aus der
+Antwort; der Tisch bekommt den Eintrag über den Live-Kanal (`roll`).
+
+```mermaid
+flowchart LR
+  K["Würfelknopf {{+4}}<br/>auf dem Statblock"] -->|"POST /api/rolls<br/>{expr, subject, label, mode}"| S["Server würfelt<br/>(crypto)"]
+  S --> E[("event_log<br/>name roll · subject sb_wolf<br/>payload: expr, rolls, total, nat, by, actor, campaign, session, hidden")]
+  S -->|"Live: roll"| T["Geräte am Tisch<br/>(rollVisible je Empfänger)"]
+  E -->|"GET /api/rolls?subject=cr_wolf"| L["Log an der Kreatur:<br/>ihre Würfe + die ihres Statblocks"]
+```
+
+| Nr | Regel | Wo |
+|---|---|---|
+| W1 | **Ein Wurf ist ein Eintrag `roll`** im `event_log`, `subject` der Artikel. `payload` (`RollPayload`): `expr` (mit Vorteil umgeschrieben, `asked` der Ausdruck davor), `rolls` (die einzelnen Würfel und festen Glieder), `modifier`, `total`, `mode` (`adv`/`dis`), `nat` und `crit` (`crit`/`fumble`, nur bei genau einem gezählten W20), `label`, `by` (Konto, Name), `actor` (die Figur), `campaign`, `session`, `hidden`, `entered` (am Tisch gewürfelt und eingetragen, die Handwerksprobe). | `packages/model/src/rolls.ts`, `apps/server/src/wuerfe.ts` |
+| W2 | **Vorteil** schreibt den ersten W20 zu `2d20kh1` (Nachteil `kl1`, `withAdvantage`); Schaden bleibt, wie er ist. | `dice.ts` |
+| W3 | **Die Figur** ist die genannte, wenn sie dem Konto gehört, sonst der Artikel selbst oder die Figur seines Statblocks, sonst die einzige des Kontos. **Die Sitzung** ist die genannte (Play), am Sitzungsartikel er selbst, sonst die am Tisch (`tischSitzung`: die jüngste, an der Karte, Kampf oder Szene läuft). | `wuerfe.ts` |
+| W4 | **Das Log eines Artikels** (`GET /api/rolls`): neueste zuerst, seitenweise, nach Person und Sitzung filterbar. An einer Kreatur auch die Würfe auf ihrem Statblock (`belongsTo` hoch), an einer Sitzung alle, die während ihr fielen (`payload.session`). Gelesen werden die letzten 1000 Einträge. | `wuerfe.ts` |
+| W5 | **Sichtbarkeit** (`rollVisible`): wer den Artikel nicht sieht (`articleVisible` über das Sieb), sieht seine Würfe nicht. Danach sieht ihn, wer gewürfelt hat, die Leitung der Kampagne des Wurfs jeden, einen verdeckten (`hidden`) sonst niemand, alle übrigen mit einer Rolle an diesem Tisch. Verdeckt würfelt nur die Leitung; `Campaign.playerRolls: 'gm'` macht jeden Wurf der Spielenden verdeckt — festgehalten beim Wurf, ein späteres Umstellen deckt nichts auf. Der Live-Kanal siebt mit derselben Rechnung. | `rolls.ts`, `live.ts` |
+| W6 | **Würfe sind Spielgeschehen, kein Inhalt:** sie stehen in keiner Ausfuhr und keiner Übertragung dev→prod. Das Protokoll ist append-only; ein gelöschter Artikel lässt seine Würfe stehen („deleted article"). | — |
+
+Offen: Proben und Rettungswürfe aus dem Bogen, Tabellenwürfe und
+Initiative würfeln noch nicht hierüber — es gibt sie in der Seite noch
+nicht als Knöpfe; wer sie baut, nimmt `POST /api/rolls`.
 
 ### 12.2 Übernahme zwischen Installationen (T-130, REQ-155)
 
@@ -1651,7 +1666,7 @@ Stand 2026-10-15: 56 Artikelarten, 24 Grundtypen, 64 Kantenarten, 6 Aufzählungs
 | `Prose` | `paragraph` | 26 |
 | `ReadAloud` | `readaloud` | 7 |
 | `Secrets` | `secret` | 15 |
-| `Source` | `publication` `page` `anchor` `url` `srd` | 12 |
+| `Source` | `publication` `page` `anchor` `url` `srd` | 13 |
 | `Status` | `status` | 23 |
 | `Tactics` | `tactics` | `Statblock` `Scene` `Encounter` |
 | `Tags` | `tags` | 26 |
@@ -1681,7 +1696,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `priceNote` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, overview, full |
 | `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | full |
-| `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, full |
+| `Place` | `Image` `Lore` `ReadAloud` `Secrets` `Source` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, full |
 | `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | — |
 | `Shop` | `Place` | `priceMod` | `partOf` `sells` `discount` `shopkeeper` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
 | `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, overview |
@@ -1691,12 +1706,12 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | — |
-| `Campaign` | `Story` | `compareFor` `languages` `feats` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `partyOf` `mapOf` | full |
+| `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | — |
+| `Campaign` | `Story` | `compareFor` `languages` `feats` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `playerRolls` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, full |
-| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | quick |
-| `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | full |
-| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | — |
+| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
+| `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
+| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | — |
 
 **Rules**
 
@@ -1742,11 +1757,11 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Asset` | `Image` `Source` | `backend` `ref` `kind` `mime` `width` `height` `bytes` | — | — | overview |
 | `Chapter` | `Source` | `ordinal` | `partOf` `chapterOf` | `partOf` | — |
-| `Embed` | `BookPart` | `target` | `partOf` | — | — |
-| `Heading` | `BookPart` | `level` | `partOf` | — | — |
+| `Embed` | `BookPart` | `target` | `partOf` | `describedIn` | — |
+| `Heading` | `BookPart` | `level` | `partOf` | `describedIn` | — |
 | `Layer` | — | `kind` `order` `abbreviation` `published` `author` `version` `levels` `storyline` `groupBy` | `partOf` | `partOf` `inLayer` `activates` | — |
-| `Paragraph` | `BookPart` | `kind` | `partOf` | — | — |
-| `ReadAloudText` | `BookPart` `ReadAloud` | — | `partOf` | — | — |
+| `Paragraph` | `BookPart` | `kind` | `partOf` | `describedIn` | — |
+| `ReadAloudText` | `BookPart` `ReadAloud` | — | `partOf` | `describedIn` | — |
 
 ### Kanten
 
@@ -1766,7 +1781,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `controls` | Faction → Place |  | — | — |
 | `crafting` | Creature \| PlayerCharacter \| Party → Recipe |  | — | `day` `days` `put` `rolls` |
 | `craftsWith` | Campaign \| Party \| Creature → Recipe \| Item |  | — | `tool` `ability` `dc` `note` |
-| `describedIn` | * → Article |  | — | — |
+| `describedIn` | * → Article \| Story \| BookPart |  | — | — |
 | `discount` | Shop \| Faction \| Creature → Creature \| Party \| Faction |  | — | `mod` `rank` `note` |
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
 | `equips` | Statblock → Item |  | — | — |

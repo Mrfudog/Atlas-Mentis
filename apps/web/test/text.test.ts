@@ -8,6 +8,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
+import { Api } from '../src/app/kern/api';
+import { WurfZiel } from '../src/app/kern/wurfziel';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { Text } from '../src/app/artikel/text';
@@ -17,6 +19,7 @@ import { Bestand } from '../src/app/kern/bestand';
 /* Die Prüfumgebung übersetzt JIT, und JIT kennt `input()` nicht — `setInput`
    scheitert mit NG0303. Also wird das Signal vor dem ersten Zeichnen
    ersetzt; die Komponente liest es ohnehin nur als Funktion. */
+const wurfAnfrage = vi.fn();
 function erzeuge(text: string, mehr: Record<string, unknown> = {}) {
   const fixture = TestBed.createComponent(Text);
   Object.assign(fixture.componentInstance, {
@@ -36,6 +39,9 @@ describe('nw-text', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        /* Gewürfelt wird am Server (T-172); hier antwortet er fest. */
+        { provide: Api, useValue: { roll: wurfAnfrage } },
+        WurfZiel,
         {
           provide: Bestand,
           /* Die Treffer rechnet der Server (`refs.links`, W7); hier stehen
@@ -101,14 +107,16 @@ describe('nw-text', () => {
     expect(el.querySelector('.tot')?.getAttribute('title')).toContain('Ambiguous');
   });
 
-  it('rolls a dice expression on click and shows the result', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    const fixture = erzeuge('Schaden {{1d6+2}}');
+  it('rolls at the server on click, names the article and shows the result', async () => {
+    wurfAnfrage.mockResolvedValue({ expr: '1d6+2', total: 6, rolls: [{ d: 6, v: 4, vz: 1 }, { flat: 2 }] });
+    const fixture = erzeuge('Schaden {{1d6+2}}', { vorspann: signal('Bite.') });
+    TestBed.inject(WurfZiel).id.set('cr1');
     const el = fixture.nativeElement as HTMLElement;
     (el.querySelector('button.wurf') as HTMLButtonElement).click();
+    await fixture.whenStable();
     fixture.detectChanges();
+    expect(wurfAnfrage).toHaveBeenCalledWith(expect.objectContaining({ expr: '1d6+2', subject: 'cr1', label: 'Bite.' }));
     expect(el.querySelector('output')?.textContent?.trim()).toBe('6 (4 +2)');
-    vi.restoreAllMocks();
   });
 
   /* W2: eine Kopfzeile des Statblocks ist ein Satzteil, kein Absatz — und

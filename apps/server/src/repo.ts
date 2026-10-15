@@ -59,6 +59,13 @@ export interface EventFilter {
   /** Ohne `payload.changes` — die alten Fassungen einer Massenänderung
    *  sind gross, und eine Liste braucht sie nicht. */
   light?: boolean;
+  /** Eines dieser Subjekte — **oder** `payload[key] = value`, wenn
+   *  `orPayload` dasteht (T-172: die Würfe einer Sitzung sind die auf ihr
+   *  und die, die während ihr fielen). */
+  subjects?: string[];
+  orPayload?: { key: string; value: string };
+  /** So viele der Neusten überspringen — zum Weiterblättern. */
+  offset?: number;
 }
 
 /** **Der letzte fertige Stand** eines Artikels (REQ-237, E-012): eine Kopie,
@@ -316,8 +323,14 @@ export class InMemoryRepository implements Repository {
   async listEvents(filter: EventFilter): Promise<StoredEvent[]> {
     return this.events
       .filter((e) => (!filter.name || e.name === filter.name) && (!filter.subject || e.subject === filter.subject))
+      .filter((e) => {
+        if (!filter.subjects) return true;
+        if (e.subject && filter.subjects.includes(e.subject)) return true;
+        const p = filter.orPayload;
+        return !!p && (e.payload as Record<string, unknown> | null)?.[p.key] === p.value;
+      })
       .reverse()
-      .slice(0, filter.limit ?? 50)
+      .slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50))
       .map((e) => {
         const kopie = structuredClone(e);
         if (filter.light && kopie.payload && typeof kopie.payload === 'object') {

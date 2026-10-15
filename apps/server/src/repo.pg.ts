@@ -441,8 +441,17 @@ export class PgRepository implements Repository {
       `select id, name, subject, at, ${filter.light ? "payload - 'changes' as payload" : 'payload'}
          from event_log
         where ($1::text is null or name = $1) and ($2::text is null or subject = $2)
-        order by at desc limit $3`,
-      [filter.name ?? null, filter.subject ?? null, filter.limit ?? 50],
+          and ($4::text[] is null or subject = any($4) or ($5::text is not null and payload->>$5 = $6))
+        order by at desc limit $3 offset $7`,
+      [
+        filter.name ?? null,
+        filter.subject ?? null,
+        filter.limit ?? 50,
+        filter.subjects ?? null,
+        filter.orPayload?.key ?? null,
+        filter.orPayload?.value ?? null,
+        filter.offset ?? 0,
+      ],
     );
     return rows.map((r) => PgRepository.toEvent(r));
   }

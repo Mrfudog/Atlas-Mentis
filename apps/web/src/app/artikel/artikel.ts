@@ -79,6 +79,8 @@ import { Verlinkt } from './verlinkt';
 import { Lesen } from '../lesen/lesen';
 import { EbenenReiter } from './ebenen-reiter';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
+import { Wuerfe } from './wuerfe';
+import { WurfZiel } from '../kern/wurfziel';
 
 /** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
 const PART_RELATION = 'partOf';
@@ -126,7 +128,7 @@ interface Feld {
   selector: 'nw-artikel',
   /* Schnell anlegen aus einer Auswahl (T-131): der Artikel schlägt Ebene
      und Sichtbarkeit vor und sichert vor „Open" seinen Entwurf. */
-  providers: [{ provide: SCHNELL_KONTEXT, useExisting: forwardRef(() => Artikel) }],
+  providers: [{ provide: SCHNELL_KONTEXT, useExisting: forwardRef(() => Artikel) }, WurfZiel],
   imports: [
     RouterLink,
     FormsModule,
@@ -151,6 +153,7 @@ interface Feld {
     Verlinkt,
     Lesen,
     EbenenReiter,
+    Wuerfe,
   ],
   template: `
     @if (artikel(); as e) {
@@ -829,6 +832,8 @@ interface Feld {
                 </ul>
               </section>
             }
+            <!-- Die Würfe auf diesem Artikel (T-172). -->
+            <nw-wuerfe class="kasten" [artikel]="e.id" />
             <section class="kasten">
               <h2>Who can see this</h2>
               <div class="zeile"><span>Audience</span><strong>{{ sicht().audience }}</strong></div>
@@ -895,6 +900,7 @@ export class Artikel implements SchnellKontext {
   protected readonly session = inject(Session);
   private readonly lesart = inject(FassungsLesart);
   private readonly router = inject(Router);
+  private readonly wurfZiel = inject(WurfZiel);
 
   constructor() {
     void this.bestand.load();
@@ -904,6 +910,8 @@ export class Artikel implements SchnellKontext {
     effect(() => {
       void this.bestand.oeffnen(this.id());
     });
+    /* Würfelknöpfe auf dieser Seite würfeln auf diesen Artikel (T-172). */
+    effect(() => this.wurfZiel.id.set(this.id()));
     /* Die `partOf`-Kette für den Brotkrumenpfad, Glied für Glied (T-093). */
     effect(() => {
       const offen = this.kette().offen;

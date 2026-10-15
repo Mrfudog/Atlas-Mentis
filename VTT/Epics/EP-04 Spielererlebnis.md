@@ -4,6 +4,10 @@ title: "Spielererlebnis"
 typ: "epic"
 umfang: "Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene Inhalte, Inventar, Chat."
 frueher: "Player Experience"
+arten: ["Inventory", "Item", "PlayerCharacter"]
+kanten: ["carries", "holds", "leftBehind"]
+code: ["packages/model/src/inventory.ts", "packages/model/src/slots.ts", "packages/model/src/stowing.ts", "apps/web/src/app/artikel/inventar.ts", "apps/server/src/stueck.ts", "apps/server/src/spielerebene.ts", "apps/web/src/app/kern/spieler.ts"]
+doku: ["docs/Zugang.md", "docs/Spieltisch.md"]
 tags: ["vtt", "epic"]
 ---
 # EP-04 Spielererlebnis
@@ -19,6 +23,20 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | [[F-026 Inventar]] — Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, Gruppeninventar, Gegenstände als Instanz. | 11 | 28 | 8 steht · 1 teils · 2 offen |
 | [[F-027 Eigene Inhalte der Spielenden]] — Notizen, Ziele, Lore-Artikel, die Spielende selbst anlegen. | 3 | 6 | 1 teils · 2 offen |
 | [[F-028 Chat]] — Fäden zwischen Leitung und Spielenden, daraus Kampagneninhalt. | 3 | 10 | 3 offen |
+
+### Wo es wohnt
+
+**Arten:** [Inventory](../../docs/Artikeltypen.md#inventory), [Item](../../docs/Artikeltypen.md#item), `PlayerCharacter`
+
+**Kanten:** `carries`, `holds`, `leftBehind`
+
+**Code:** `packages/model/src/inventory.ts`, `packages/model/src/slots.ts`, `packages/model/src/stowing.ts`, `apps/web/src/app/artikel/inventar.ts`, `apps/server/src/stueck.ts`, `apps/server/src/spielerebene.ts`, `apps/web/src/app/kern/spieler.ts`
+
+**Erklärt in:** [Zugang.md](../../docs/Zugang.md), [Spieltisch.md](../../docs/Spieltisch.md)
+
+**Offen mit Prio 1–3:** [[REQ-069]] Am Telefon spielen (teils) · [[REQ-072]] Eigene Notizen (offen) · [[REQ-074]] Schnellzugriffe (teils) · [[REQ-083]] Eigene Quests und Ziele (offen) · [[REQ-109]] Lore-Texte von Spielenden (teils) · [[REQ-200]] Chat mit der Leitung und unter Spielenden (offen) · [[REQ-201]] Aus dem Chat wird Inhalt (offen) · [[REQ-202]] Chats bleiben privat (offen) · [[REQ-275]] Erhaltene Gegenstände als Instanz (teils) · [[REQ-311]] Spieleransicht mit der eigenen Figur im Fokus (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
 
 ## Aus dem früheren Funktionsbereich

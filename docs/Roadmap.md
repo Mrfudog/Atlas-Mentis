@@ -1,7 +1,17 @@
 # Nebelwacht — Fahrplan
 
+↑ [Produkt](Themen/Produkt.md) · [Einstieg](README.md)
+
 Stand 2026-09-19. Sammelt alles, was seit dem Artikel-Prototyp angefragt wurde,
 und ordnet es. Offene Entscheidungen stehen am Schluss.
+
+> **Herkunft, nicht Stand (2026-10-15, T-156).** Dieser Fahrplan ordnete die
+> Arbeit bis zum Spieltisch im Prototyp; Etappe A, B und D stehen, und die
+> Punkte unter „Als Nächstes“ sind grösstenteils gebaut (Zugang,
+> Live-Kanal, Bereiche, 5e.tools, UI-Runde). Offene Arbeit steht seither im
+> Projektbrett (Aufgaben `T-nnn` an Stories), was gefordert ist und was
+> davon steht in [Anforderungen.md](Anforderungen.md). Die Abschnitte hier
+> bleiben, weil sie erklären, warum die Reihenfolge so war.
 
 ---
 

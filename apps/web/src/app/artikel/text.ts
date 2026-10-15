@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 import {
   parseInline,
   parseMarkdown,
-  rollDice,
   rollText,
 } from '@nw/model';
 import type { Block, Segment, VarScopes } from '@nw/model';
+import { Api } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { WurfZiel } from '../kern/wurfziel';
 import { KurzLink } from '../kern/kurzansicht';
 
 /** Ein Segment, wie die Vorlage es braucht: der Verweis schon aufgelöst. */
@@ -27,7 +28,9 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
  * Ein Klick zeigt die Kurzansicht des Ziels (T-093); mit Strg, ⌘ oder der
  * mittleren Taste geht er wie jeder Link auf die Artikelseite.
  * Ein Würfelausdruck ist ein Knopf, und das Ergebnis steht daneben
- * (REQ-070): wer den Wurf nicht sieht, glaubt ihn nicht.
+ * (REQ-070): wer den Wurf nicht sieht, glaubt ihn nicht. **Gewürfelt wird
+ * am Server** (T-172): der Wurf steht im Log des Artikels, auf dem er
+ * fiel (`WurfZiel`), und der Tisch sieht ihn.
  */
 @Component({
   selector: 'nw-text',
@@ -100,7 +103,7 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
     <!-- Eng gesetzt und mit Absicht: jeder Zeilenumbruch hier würde ein
          Leerzeichen vor „leather armor" und in „( 2d6 )" setzen. -->
     <ng-template #zeile let-text>
-      @for (s of stuecke(text); track $index) {<span [class.b]="s.bold" [class.i]="s.italic">@switch (s.kind) {@case ('link') {@if (s.ziel) {<a [routerLink]="['/artikel', s.ziel]" [nwQuick]="s.ziel" [attr.title]="s.titel">{{ s.text }}</a>} @else {<span class="tot" [attr.title]="s.titel">{{ s.text }}</span>}}@case ('var') {<span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>}@case ('dice') {<button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr)">{{ s.text }}</button>@if (wuerfe()[s.schluessel]; as w) {<output class="ergebnis">{{ w }}</output>}}@default {<ng-container>{{ s.text }}</ng-container>}}</span>}
+      @for (s of stuecke(text); track $index) {<span [class.b]="s.bold" [class.i]="s.italic">@switch (s.kind) {@case ('link') {@if (s.ziel) {<a [routerLink]="['/artikel', s.ziel]" [nwQuick]="s.ziel" [attr.title]="s.titel">{{ s.text }}</a>} @else {<span class="tot" [attr.title]="s.titel">{{ s.text }}</span>}}@case ('var') {<span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>}@case ('dice') {<button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr, $event)">{{ s.text }}</button>@if (wuerfe()[s.schluessel]; as w) {<output class="ergebnis" [class.krit]="w.krit === 'crit'" [class.patzer]="w.krit === 'fumble'" [attr.title]="w.titel">{{ w.text }}</output>}}@default {<ng-container>{{ s.text }}</ng-container>}}</span>}
     </ng-template>
 
     <ng-template #vorspannT>
@@ -218,6 +221,12 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
       margin-left: 0.3rem;
       font-weight: 600;
     }
+    .ergebnis.krit {
+      color: var(--ok, #2e7d32);
+    }
+    .ergebnis.patzer {
+      color: var(--warn);
+    }
   `,
 })
 export class Text {
@@ -231,11 +240,13 @@ export class Text {
   readonly vorspannZiel = input('');
 
   private readonly bestand = inject(Bestand);
+  private readonly api = inject(Api);
+  private readonly ziel = inject(WurfZiel, { optional: true });
 
   protected readonly bloeckeVon = computed<Block[]>(() => parseMarkdown(this.text()));
 
   /** Je Würfelknopf das letzte Ergebnis; ein neuer Wurf ersetzt es. */
-  protected readonly wuerfe = signal<Record<string, string>>({});
+  protected readonly wuerfe = signal<Record<string, { text: string; krit?: 'crit' | 'fumble' | undefined; titel?: string }>>({});
 
   protected stuecke(text: string): Stueck[] {
     /* Die Treffer jedes `[[ziel]]` rechnet der Server beim Ausliefern des
@@ -264,8 +275,30 @@ export class Text {
     });
   }
 
-  protected wirf(schluessel: string, expr: string): void {
-    const r = rollDice(expr);
-    this.wuerfe.update((w) => ({ ...w, [schluessel]: rollText(r) }));
+  /**
+   * Würfeln am Server (T-172). Mit Shift Vorteil, mit Alt Nachteil — für
+   * einen Wurf auf den W20; sonst bleibt der Ausdruck, wie er dasteht.
+   * Die Beschriftung ist der Name des Merkmals (`vorspann`), wenn es einen
+   * gibt.
+   */
+  protected async wirf(schluessel: string, expr: string, ev?: MouseEvent): Promise<void> {
+    const mode = ev?.shiftKey ? 'adv' : ev?.altKey ? 'dis' : undefined;
+    this.wuerfe.update((w) => ({ ...w, [schluessel]: { text: '…' } }));
+    try {
+      const r = await this.api.roll({
+        expr,
+        subject: this.ziel?.id() ?? undefined,
+        session: this.ziel?.sitzung() ?? undefined,
+        hidden: this.ziel?.verdeckt() || undefined,
+        label: this.vorspann() || undefined,
+        mode,
+      });
+      const titel = [r.mode === 'adv' ? 'Advantage' : r.mode === 'dis' ? 'Disadvantage' : '', r.hidden ? 'Hidden from the table' : '', 'Saved in the rolls log']
+        .filter(Boolean)
+        .join(' · ');
+      this.wuerfe.update((w) => ({ ...w, [schluessel]: { text: rollText(r), krit: r.crit, titel } }));
+    } catch (e) {
+      this.wuerfe.update((w) => ({ ...w, [schluessel]: { text: '?', titel: (e as Error).message } }));
+    }
   }
 }

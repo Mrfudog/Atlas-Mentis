@@ -1,5 +1,7 @@
 # Felder, die Verweise sein sollten (T-078)
 
+↑ [Modell](Themen/Modell.md) · [Einstieg](README.md)
+
 Die Leitung (13.10.2026): „Es gibt noch viele Felder, die nicht richtig sind
 und nicht den notwendigen Verweis machen.“ T-068 macht jedes Feld, das im
 Register als Verweis erklärt ist (`format: 'link'` mit `target`), zur

@@ -18,6 +18,7 @@
 
 import { DestroyRef, Injectable, InjectionToken, effect, inject, signal } from '@angular/core';
 import { Session } from './session';
+import type { RollEntry } from '@nw/model';
 
 /** Ein Artikel hat sich geändert (`changed`) oder ist für diesen Betrachter
  *  nicht mehr da (`gone` — verborgen oder gelöscht). Eine Kante gehört zu
@@ -65,7 +66,7 @@ export function sseTransport(url = '/api/live'): LiveTransport {
     let pause = 1000;
     let uhr: ReturnType<typeof setTimeout> | null = null;
     let zu = false;
-    const NAMEN = ['hello', 'entity', 'gone', 'session', 'registry', 'reset'];
+    const NAMEN = ['hello', 'entity', 'gone', 'session', 'registry', 'reset', 'roll'];
 
     const oeffne = (): void => {
       if (zu) return;
@@ -137,6 +138,7 @@ export class Live {
   private readonly artikelHoerer: Hoerer<ArtikelEreignis> = new Set();
   private readonly sitzungsHoerer: Hoerer<SitzungsZustand> = new Set();
   private readonly neuHoerer: Hoerer<'reset' | 'registry'> = new Set();
+  private readonly wurfHoerer: Hoerer<RollEntry> = new Set();
   private schliessen: (() => void) | null = null;
 
   constructor() {
@@ -156,6 +158,10 @@ export class Live {
   /** Auf den Sitzungszustand hören (`activeMap`, `activeEncounter` …). */
   onSitzung(fn: (z: SitzungsZustand) => void): () => void {
     return anmelden(this.sitzungsHoerer, fn);
+  }
+  /** Auf Würfe hören (T-172) — nur die, die dieser Betrachter sieht. */
+  onWurf(fn: (w: RollEntry) => void): () => void {
+    return anmelden(this.wurfHoerer, fn);
   }
   /** Alles neu (`reset`: zu viel auf einmal, oder etwas verpasst) oder das Register. */
   onNeu(fn: (was: 'reset' | 'registry') => void): () => void {
@@ -202,6 +208,9 @@ export class Live {
         rufe(this.sitzungsHoerer, z);
         break;
       }
+      case 'roll':
+        if (id) rufe(this.wurfHoerer, d as unknown as RollEntry);
+        break;
       case 'reset':
       case 'registry':
         rufe(this.neuHoerer, name);

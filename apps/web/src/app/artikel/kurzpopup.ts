@@ -12,6 +12,7 @@ import {
 import { NavigationStart, Router } from '@angular/router';
 import { Kurzansicht } from '../kern/kurzansicht';
 import { Vorschau } from './vorschau';
+import { WurfZiel } from '../kern/wurfziel';
 
 /** Breite des Popups am Desktop; darunter wird es ein Blatt von unten. */
 const BREITE = 380;
@@ -36,6 +37,8 @@ const SCHMAL = '(max-width: 640px)';
 @Component({
   selector: 'nw-kurzpopup',
   imports: [Vorschau],
+  /* Ein Würfel in der Kurzansicht würfelt auf ihren Artikel (T-172). */
+  providers: [WurfZiel],
   template: `
     @if (kurz.offen(); as o) {
       @if (schmal()) {
@@ -125,6 +128,8 @@ export class KurzPopup {
   });
 
   constructor() {
+    const ziel = inject(WurfZiel);
+    effect(() => ziel.id.set(this.kurz.offen()?.id ?? null));
     const ab = inject(DestroyRef);
     const router = inject(Router);
     const sub = router.events.subscribe((ev) => {

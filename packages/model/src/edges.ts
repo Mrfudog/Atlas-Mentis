@@ -167,6 +167,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'rollLog',
+    label: 'Rolls log',
+    area: 'character',
+    does: 'shows a creature’s rolls together with the rolls on its statblock, and credits a roll on a statblock to the character it belongs to (T-172)',
+    uses: {
+      [S + 'wuerfe.ts']: ['belongsTo'],
+    },
+  },
+  {
     key: 'craftCheck',
     label: 'Crafting check',
     area: 'character',
@@ -302,11 +311,11 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'reading',
     label: 'Reading view',
     area: 'reading',
-    does: 'reads a layer as a book — chapters and their parts in rank order, maps and fights in place',
+    does: 'reads a layer as a book — chapters and their parts in rank order, maps, fights and the places a section describes in place (T-175)',
     uses: {
       [M + 'reading.ts']: ['inLayer', 'overrides', 'partOf'],
       [M + 'parts.ts']: ['partOf'],
-      [S + 'lesen.ts']: ['chapterOf', 'inLayer', 'mapOf', 'overrides', 'partOf'],
+      [S + 'lesen.ts']: ['chapterOf', 'describedIn', 'inLayer', 'mapOf', 'overrides', 'partOf'],
       [W + 'lesen/lesen.ts']: ['participates'],
       [W + 'artikel/artikel.ts']: ['partOf'],
     },

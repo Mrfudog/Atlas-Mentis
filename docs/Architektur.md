@@ -1,6 +1,8 @@
 # Architektur
 
-Stand 2026-10-12 (preprod nach P5). Zeigt, **was läuft** (Container),
+↑ [Technik](Themen/Technik.md) · [Einstieg](README.md)
+
+Stand 2026-10-12 (preprod nach P5); Bilder §1 und §6 als Zeichnung 2026-10-15. Zeigt, **was läuft** (Container),
 **womit** (Frameworks), **wo es liegt** (Repo) und **wie der Code
 zusammenhängt** (Pakete, Server, Oberfläche). Das Datenmodell selbst —
 Typen, Felder, Kanten — steht in [Datenmodell.md](Datenmodell.md);
@@ -14,33 +16,9 @@ Eine Hetzner-Maschine, fünf Container. `prod` und `dev` sind vollständig
 getrennt: eigenes Abbild, eigene Datenbank, eigenes Volume. Der einzige
 Container mit offenem Port nach aussen ist Caddy.
 
-```mermaid
-flowchart TB
-  user([Browser<br/>Spielleitung, Spielende])
-  subgraph host["Hetzner CPX22 · Ubuntu 24.04 · Docker"]
-    direction TB
-    subgraph proxy["/srv/atlas/proxy"]
-      caddy[caddy:2-alpine<br/>Reverse Proxy, TLS über Let's Encrypt<br/>network_mode: host · Ports 80, 443]
-    end
-    subgraph prod["/srv/atlas/prod · Zweig main"]
-      appP[app<br/>ghcr.io/mrfudog/atlas-mentis:main-‹sha›<br/>Node 22 · Fastify + Angular-Build<br/>127.0.0.1:8080]
-      dbP[(db<br/>postgres:17-alpine<br/>./daten/db)]
-    end
-    subgraph dev["/srv/atlas/dev · Zweig preprod"]
-      appD[app<br/>ghcr.io/mrfudog/atlas-mentis:preprod-‹sha›<br/>127.0.0.1:8081]
-      dbD[(db<br/>postgres:17-alpine<br/>./daten/db-preprod)]
-    end
-    cron[cron 03:17<br/>pg_dump je Wochentag]
-  end
-  user -- https://atlas.‹domain› --> caddy
-  user -- https://dev.atlas.‹domain› --> caddy
-  caddy -- 127.0.0.1:8080 --> appP
-  caddy -->|"127.0.0.1:8081 · noindex"| appD
-  appP -- DATABASE_URL --> dbP
-  appD -- DATABASE_URL --> dbD
-  cron -.-> dbP
-  cron -.-> dbD
-```
+![Was auf dem Server läuft](Bilder/Server.excalidraw.svg)
+
+Gezeichnet in [Bilder/Server.excalidraw.md](Bilder/Server.excalidraw.md).
 
 | Container | Abbild | Aufgabe | Daten |
 |---|---|---|---|
@@ -403,49 +381,10 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 
 ## 6. Die Oberfläche
 
-```mermaid
-flowchart TB
-  subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /registry · /classes · /classes/:id]
-    wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
-    subgraph seiten[Seiten, lazy geladen]
-      login[login/login.ts]
-      liste[artikel/kompendium.ts<br/>Kompendium und Bereiche]
-      vorschau[artikel/vorschau.ts<br/>Vorschau quick]
-      anlegen[artikel/anlegen.ts<br/>New article]
-      wahl[artikel/wahl.ts<br/>Artikel suchen und wählen]
-      artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
-      felder[artikel/felder.ts<br/>Felder aus dem Register]
-      text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
-      buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
-      register[register/register.ts<br/>Typen · Kanten · Listen]
-      regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
-      verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
-      klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
-    end
-    subgraph kern[kern/ · Dienste]
-      api[api.ts<br/>HttpClient → /api]
-      bestand[bestand.ts<br/>Register + geöffnete Artikel als Signal]
-      session[session.ts<br/>wer ist angemeldet]
-    end
-  end
-  model[["@nw/model<br/>views · calc · book · markdown · inline"]]
-  router --> wache --> session
-  router --> login & liste & artikel & verwaltung & register & klassen
-  verwaltung --> api
-  register --> regtyp --> bestand
-  artikel --> felder & text & buch
-  buch --> text
-  liste --> vorschau & anlegen
-  artikel & anlegen --> wahl --> api
-  liste --> api
-  vorschau & artikel --> bestand --> api
-  klassen --> text
-  klassen -->|"GET /api/classes/:id"| api
-  login --> session --> api
-  felder & text & buch --> model
-  api -->|"/api · im Dev über proxy.conf.json"| srv[Fastify]
-```
+![Die Oberfläche](Bilder/Oberflaeche.excalidraw.svg)
+
+Gezeichnet in [Bilder/Oberflaeche.excalidraw.md](Bilder/Oberflaeche.excalidraw.md). Die Routen stehen in
+`apps/web/src/app/app.routes.ts`; je Ordner ein Bereich, lazy geladen.
 
 **Gezeichnet wird aus dem Register, nicht aus einer Vorlage je Art.**
 `felder.ts` liest die Felder einer Art aus dem Register und das Modell

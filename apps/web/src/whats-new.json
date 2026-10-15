@@ -10,6 +10,23 @@
       "query": { "type": "Creature" }
     },
     {
+      "id": "2026-10-15-rolls-log",
+      "date": "2026-10-15",
+      "title": "Every roll is kept in the article's log",
+      "text": "Dice buttons now roll on the server, and each roll is saved under Rolls on the article it was rolled on — a creature shows its statblock's rolls too, a session every roll made during it. Filter by who rolled or by session, Shift-click for advantage, Alt-click for disadvantage. The GM can roll hidden, and a campaign can show player rolls to the GM only (Player rolls visible to).",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-places-from-books",
+      "date": "2026-10-15",
+      "title": "Places from books and adventures",
+      "text": "Imported books and adventures now bring their places: keyed rooms, sections with their own map, and sections that describe a city, realm or building become Place articles in the book's layer, nested inside each other, linked to their scenes and maps. In the reading view a section shows the place it describes, one click away.",
+      "area": "World",
+      "link": "/world",
+      "query": { "type": "Place" }
+    },
+    {
       "id": "2026-10-15-list-filters",
       "date": "2026-10-15",
       "title": "Filter lists by everything a type has",

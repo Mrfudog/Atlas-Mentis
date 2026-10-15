@@ -1,5 +1,7 @@
 # Karten: Zeichenebenen, Sperren, Unterkarten
 
+↑ [Technik](Themen/Technik.md) · [Einstieg](README.md)
+
 Stand 2026-09-20. REQ-130 bis 140 und REQ-193 aus
 [`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 

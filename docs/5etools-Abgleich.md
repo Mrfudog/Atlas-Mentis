@@ -1,5 +1,7 @@
 # Abgleich mit 5e.tools
 
+↑ [Inhalte](Themen/Inhalte.md) · [Einstieg](README.md)
+
 Stand 2026-10-08. Quelle: [`5etools-mirror-3/5etools-src`](https://github.com/5etools-mirror-3/5etools-src),
 Verzeichnis `data/`, Stand b906158 (2026-09-23). Gezählt wurde mit einem
 Skript über alle JSON-Dateien; die Zahlen unten sind gemessen, nicht

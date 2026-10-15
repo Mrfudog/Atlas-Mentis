@@ -70,6 +70,16 @@ export interface TeileOptionen {
   bild?: (b: Knoten, ganzes: Entity) => Entity | undefined;
   /** Bericht-Art (`bookData`, `adventureData`). */
   art: string;
+  /**
+   * Orte (T-175): ist dieser benannte Abschnitt ein Ort, legt die Funktion
+   * ihn an (Peg aus `herkunft`) und gibt ihn zurück; was darunter steht,
+   * liegt dann in ihm. `eltern` ist der Ort, in dem der Abschnitt steht.
+   * `describedIn` setzt das Zerlegen: die Überschrift, oder tiefer der
+   * erste Teil des Abschnitts (der Absatz mit dem fetten Namen).
+   */
+  ort?: (k: Knoten, herkunft: string, eltern: Entity | undefined) => Entity | undefined;
+  /** Der Ort einer Szene, damit die Orte in ihrem Text in ihm liegen. */
+  ortVon?: (szene: Entity) => Entity | undefined;
 }
 
 /** Was das Zerlegen eines Ganzen ergab — für Tests und den Bericht. */
@@ -84,8 +94,10 @@ const name = (e: Knoten): string => (typeof e['name'] === 'string' ? e['name'].t
  * `stufe` die Überschriftenstufe des Ganzen (das Kapitel ist 1). Gibt die
  * angelegten Teile in Reihenfolge zurück.
  */
-export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stufe: number, o: TeileOptionen, seite?: unknown): Entity[] {
+export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stufe: number, o: TeileOptionen, seite?: unknown, eltern?: Entity): Entity[] {
   const raus: Entity[] = [];
+  /** Der Ort, in dem der Text gerade steht (T-175). */
+  let hierOrt = eltern;
   const b = wb.artBericht(o.art);
   let rang = 0;
 
@@ -185,7 +197,7 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
             wb.kante(sz, 'partOf', ganzes.id, { rank: rang });
             /* In der Szene beginnen die Stufen von vorn: sie ist ein Ganzes
                wie ein Kapitel, und ihre Überschriften stehen unter ihr. */
-            raus.push(sz, ...legeTeileAn(wb, sz, kinder, 1, o, hier));
+            raus.push(sz, ...legeTeileAn(wb, sz, kinder, 1, o, hier, o.ortVon?.(sz) ?? hierOrt));
             break;
           }
           const da = schonDa(n);
@@ -200,15 +212,31 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
                bliebe als `[[…]]` im Inhaltsverzeichnis stehen. */
             const h = teil('Heading', partName(inline(n, o.ctx), 200), hier);
             wb.feld(h, 'Heading', 'level', tiefe + 1);
+            const vorher = hierOrt;
+            const ort = o.ort?.(k, `place|${h.id}`, hierOrt);
+            if (ort) {
+              wb.kante(ort, 'describedIn', h.id);
+              hierOrt = ort;
+            }
             gehe(kinder, tiefe + 1, hier);
+            hierOrt = vorher;
           } else {
             /* Tiefer: kein eigener Teil für den Namen, aber was darin
                steht, wird weiter zerlegt — ein Vorlesetext und eine Karte
                bleiben eigene Teile. */
             ohneText(hier);
+            /* Ein Ort hier (ein Eintrag im Gazetteer) zeigt auf den Absatz,
+               der mit seinem Namen beginnt — er ist der erste Teil danach. */
+            const vorher = hierOrt;
+            const ab = raus.length;
+            const ort = o.ort?.(k, `place|deep|${ganzes.id}|${rang + 1}`, hierOrt);
+            if (ort) hierOrt = ort;
             titel = inline(n, o.ctx).trim().replace(/[.:]$/, '');
             gehe(kinder, tiefe + 1, hier);
             ohneText(hier);
+            const erster = raus[ab];
+            if (ort && erster) wb.kante(ort, 'describedIn', erster.id);
+            hierOrt = vorher;
           }
           break;
         }
