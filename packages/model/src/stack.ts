@@ -825,6 +825,97 @@ export function playStack(
   };
 }
 
+/** Ein Treffer zwischen zwei Ebenen (T-188): wie oft, und ob als Fassung oder als Herausnahme. */
+export interface StackClash {
+  /** Die andere Ebene; `''` heisst: Artikel ohne Ebene. */
+  layer: EntityId;
+  how: 'version' | 'removal';
+  n: number;
+}
+
+/** Was eine Ebene im Stapel gegen andere ausrichtet (T-188). */
+export interface StackOutcome {
+  /** Sie gewinnt: ihre Fassung gilt über Artikeln dieser Ebene, oder ihre Herausnahme nimmt sie weg. */
+  wins: StackClash[];
+  /** Sie verliert: ihre Fassung oder Herausnahme gilt nicht, weil diese Ebene höher steht. */
+  loses: StackClash[];
+}
+
+/**
+ * **Was die Reihenfolge bewirkt** (T-188): je aufgeschaltete Ebene, über
+ * welche andere sie gewinnt und gegen welche sie verliert — gezählt in
+ * Artikeln. Dieselben Regeln wie `playStack`, einmal über den Bestand:
+ *
+ *  - Eine **Fassung** (`overrides`) aus einer Ebene im Spiel ersetzt ihr
+ *    Original, wo dieses auch steht — „overrides 12 articles of PHB".
+ *    Gibt es mehrere Fassungen im Spiel, gilt die aus der höchsten Ebene;
+ *    die übrigen verlieren gegen sie. Nur hier entscheidet die
+ *    Reihenfolge, wer gilt.
+ *  - Eine **Herausnahme** (`inLayer` mit `mode: 'removes'`) gilt, wenn
+ *    sie höher steht als jede Ebene, die den Artikel bringt; sonst verliert
+ *    sie gegen die höchste davon.
+ *
+ * Treffer innerhalb derselben Ebene zählen nicht. Eine Einzelfreigabe
+ * (`enables`) ist keine Ebene und steht nicht da.
+ */
+export function stackOutcomes(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): Map<EntityId, StackOutcome> {
+  const out = new Map<EntityId, StackOutcome>();
+  if (!campaign) return out;
+  const { zaehlt, frei } = sicht(entities, campaign, registry);
+  /* Die höchste Ebene, aus der dieser Artikel kommt (nicht herausnehmend), mit Rang. */
+  const oben = (e: Entity, modus: 'bringt' | 'removes'): { layer: EntityId; rang: number } | null => {
+    let best: { layer: EntityId; rang: number } | null = null;
+    for (const r of kanten(e, LAYER_RELATION)) {
+      const weg = (r.props as { mode?: unknown } | undefined)?.mode === 'removes';
+      if (weg !== (modus === 'removes')) continue;
+      const x = zaehlt(e, r.to);
+      if (x && (!best || x > best.rang)) best = { layer: r.to, rang: x };
+    }
+    return best;
+  };
+  const zaehle = (von: EntityId, seite: 'wins' | 'loses', gegen: EntityId, how: StackClash['how']) => {
+    if (von === gegen) return;
+    const o = out.get(von) ?? out.set(von, { wins: [], loses: [] }).get(von)!;
+    const t = o[seite].find((x) => x.layer === gegen && x.how === how);
+    if (t) t.n += 1;
+    else o[seite].push({ layer: gegen, how, n: 1 });
+  };
+  /* Fassungen: je Original die Bewerber im Spiel. */
+  const bewerber = new Map<EntityId, { layer: EntityId; rang: number }[]>();
+  for (const o of entities.values()) {
+    const ziele = kanten(o, OVERRIDES_RELATION);
+    if (ziele.length) {
+      const von = oben(o, 'bringt');
+      if (von) for (const r of ziele) (bewerber.get(r.to) ?? bewerber.set(r.to, []).get(r.to)!).push(von);
+    }
+    /* Herausnahmen: gilt die höchste, oder schlägt sie eine Ebene, die bringt? */
+    const weg = oben(o, 'removes');
+    if (!weg) continue;
+    const bringt = oben(o, 'bringt');
+    if (!bringt) continue;
+    if (weg.rang > bringt.rang) zaehle(weg.layer, 'wins', bringt.layer, 'removal');
+    else zaehle(weg.layer, 'loses', bringt.layer, 'removal');
+  }
+  for (const [ziel, liste] of bewerber) {
+    const original = entities.get(ziel);
+    if (!original) continue;
+    /* Das Original muss da sein, sonst ersetzt die Fassung nichts. */
+    if (!stapelFrage(original, zaehlt, frei)) continue;
+    const sieger = liste.reduce((a, b) => (b.rang > a.rang ? b : a));
+    zaehle(sieger.layer, 'wins', oben(original, 'bringt')?.layer ?? '', 'version');
+    for (const x of liste) if (x !== sieger) zaehle(x.layer, 'loses', sieger.layer, 'version');
+  }
+  for (const o of out.values()) {
+    o.wins.sort((a, b) => b.n - a.n);
+    o.loses.sort((a, b) => b.n - a.n);
+  }
+  return out;
+}
+
 /**
  * **Die Ebene, die dieser Kampagne gehört** (REQ-237): die spezifischste
  * aufgeschaltete Ebene, die keine andere Kampagne aufschaltet. Dorthin legt

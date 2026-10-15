@@ -617,11 +617,21 @@ export interface KampagnenEbene {
   ruleFrom?: { id: string; name: string; only: { areas?: string[]; types?: string[] } | null };
   /** Von den Typ-Regeln ausgenommen (T-187). */
   exempt?: boolean;
+  /** Was die Reihenfolge bewirkt (T-188): über wen sie gewinnt, gegen wen sie verliert — in Artikeln. */
+  wins?: Stapeltreffer[];
+  loses?: Stapeltreffer[];
   /** Die anderen Kampagnen, die sie aufschalten. */
   alsoIn: string[];
   canActivate: boolean;
   /** Hat Text, den die Leseansicht zeigt (T-091). */
   readable?: boolean;
+}
+/** Ein Treffer zwischen zwei Ebenen (T-188): `layer` leer heisst Artikel ohne Ebene. */
+export interface Stapeltreffer {
+  layer: string;
+  name: string;
+  how: 'version' | 'removal';
+  n: number;
 }
 /** Ein Geschichtsartikel auf der Kampagnenseite (`GET /api/campaigns/:c/story`, T-082). */
 export interface GeschichtsZeile {
