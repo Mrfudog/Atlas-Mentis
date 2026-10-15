@@ -149,6 +149,15 @@ describe('uploading an image creates an Asset article and a file', () => {
     expect((res.json() as Entity).name).toBe('karte der kueste');
   });
 
+  it('keeps class and origin a loader names (T-144)', async () => {
+    const { hoch } = await aufbau();
+    const res = await hoch('Mira', { name: 'Goblin (token)', kind: 'token', publication: 'MM', anchor: '5etools-img:bestiary/tokens/MM/Goblin.webp' }, { name: 'Goblin.png', type: 'image/png', data: await png(40, 40) });
+    expect(res.statusCode).toBe(201);
+    const a = res.json() as Entity;
+    expect(a.components['Asset']).toMatchObject({ kind: 'token' });
+    expect(a.components['Source']).toEqual({ publication: 'MM', anchor: '5etools-img:bestiary/tokens/MM/Goblin.webp' });
+  });
+
   it('refuses what is not an image — by content, not by what the browser claims', async () => {
     const { hoch, store } = await aufbau();
     const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');

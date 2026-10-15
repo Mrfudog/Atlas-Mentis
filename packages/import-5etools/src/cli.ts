@@ -3,12 +3,17 @@
  *
  *   node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md]
  *                    [--srd] [--sources PHB,MM] [--types Place] [--only-2014] [--sample [verzeichnis]]
+ *                    [--images plan.json]
  *
  * `--types Place` gibt nur Artikel dieser Arten (und die Ebenen) aus — zum
  * Nachtragen einer neuen Art mit `only-new` (T-175, `auswahl.ts`).
  *
  * `--only-2014` nimmt nur den Grundstand, wie vor T-087: ohne 2024, UA,
  * Fahrzeuge, Decks, Bastionen und Waffenmeisterschaften.
+ *
+ * `--images plan.json` schreibt den Bildplan (T-144, `bilder.ts`): welches
+ * Bild aus `5etools-img` an welchen Artikel gehört. Hochgeladen und
+ * verknüpft wird mit `scripts/bilder-5etools.mjs`.
  *
  * Ohne `--out` schreibt er nur den Bericht. `--sample` schreibt einen
  * kleinen Ausschnitt als `<verzeichnis>/<id>.json` — Vorgabe ist der
@@ -22,6 +27,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { nurArten } from './auswahl.js';
 import { berichtMarkdown } from './bericht.js';
+import { planZahlen } from './bilder.js';
 import { ausschnitt, lauf, PROBE, Prueffehler } from './lauf.js';
 import { lies } from './lesen.js';
 
@@ -35,7 +41,7 @@ const wert = (flag: string): string | undefined => {
 };
 const pfad = args[0] && !args[0].startsWith('--') ? args[0] : undefined;
 if (!pfad) {
-  console.error('node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md] [--srd] [--sources PHB,MM] [--types Place] [--only-2014] [--sample [verzeichnis]]');
+  console.error('node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md] [--srd] [--sources PHB,MM] [--types Place] [--only-2014] [--sample [verzeichnis]] [--images plan.json]');
   process.exit(2);
 }
 
@@ -74,9 +80,16 @@ try {
   if (berichtPfad !== undefined) {
     const ziel = resolve(berichtPfad || 'bericht-5etools.md');
     /* Die Pfade gehören dem, der den Lauf macht; im Bericht stehen Platzhalter. */
-    const aufruf = ['node packages/import-5etools/dist/cli.js', '<data>', ...args.slice(1).map((a, i, alle) => (i > 0 && ['--out', '--bericht', '--sample'].includes(alle[i - 1]!) && !a.startsWith('--') ? '<datei>' : a))].join(' ');
+    const aufruf = ['node packages/import-5etools/dist/cli.js', '<data>', ...args.slice(1).map((a, i, alle) => (i > 0 && ['--out', '--bericht', '--sample', '--images'].includes(alle[i - 1]!) && !a.startsWith('--') ? '<datei>' : a))].join(' ');
     writeFileSync(ziel, berichtMarkdown(bericht, { stand: stand(daten), aufruf, artikel: datei.entities.length }));
     console.log(`Bericht: ${ziel}`);
+  }
+  const bilderPfad = wert('--images');
+  if (bilderPfad && gelaufen.bilder) {
+    const z = planZahlen(gelaufen.bilder);
+    mkdirSync(dirname(resolve(bilderPfad)), { recursive: true });
+    writeFileSync(resolve(bilderPfad), JSON.stringify(gelaufen.bilder));
+    console.log(`Bildplan: ${z.eintraege} Bilder (${z.dateien} Dateien; ${Object.entries(z.jeKlasse).map(([k, n]) => `${k} ${n}`).join(', ')}), ${z.verknuepft} verknüpft → ${resolve(bilderPfad)}`);
   }
   const sample = wert('--sample');
   if (sample !== undefined) {

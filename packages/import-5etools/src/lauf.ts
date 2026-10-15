@@ -26,6 +26,8 @@ import { SCHATZ } from './arten/schatz.js';
 import type { Bericht } from './werkbank.js';
 import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, ohneBuchEbeneId, Werkbank, zaehle } from './werkbank.js';
 import type { Zuordnung } from './zuordnung.js';
+import type { Bildplan } from './bilder.js';
+import { bildplan } from './bilder.js';
 
 /** Die Reihenfolge aus Abgleich §4.2 — jede spätere Art zeigt auf frühere. */
 export const ZUORDNUNGEN: Zuordnung[] = [
@@ -174,6 +176,8 @@ export interface Ergebnis {
     additions?: string[];
   };
   bericht: Bericht;
+  /** Welches Bild aus 5e.tools an welchen Artikel gehört (T-144) — nicht in der Ausfuhrdatei, Bilder gehen über die API. */
+  bilder?: Bildplan;
 }
 
 /** Der Text einer Buchebene: was sie ist, in einem Satz (T-088). */
@@ -317,6 +321,8 @@ function bauen(
 
   /* 2. Erster Gang: jeder Eintrag bekommt seinen Artikel und seine Nummer. */
   const zuFuellen: [Zuordnung, Entity, Knoten][] = [];
+  /* Was einen Artikel bekam, mit seinem 5e.tools-Eintrag — für den Bildplan (T-144). */
+  const angelegt: [string, Knoten, Entity][] = [];
   /* Je Art: Kopierschlüssel → Artikel, damit eine aufgelöste Kopie ihr
      Original findet (`variantOf`, Abgleich §4.2 Schritt 3). */
   const nachKopie = new Map<string, Entity>();
@@ -386,6 +392,7 @@ function bauen(
           .filter(Boolean);
         if (nachdruck.length) wb.nachdrucke.set(neu.id, nachdruck);
         zuFuellen.push([z, ent, e]);
+        angelegt.push([z.art, e, ent]);
         zaehle(b.artikel, typ);
       } else {
         wb.notiz('mit gleichlautendem Eintrag vereint', z.art);
@@ -636,6 +643,7 @@ function bauen(
         ...(auswahl.nurGrundstand ? {} : { additions: neuzugaenge(wb) }),
       },
       bericht: wb.bericht,
+      bilder: bildplan(registry, stand, angelegt, wb.entities),
     },
     vergeben: wb.vergeben,
   };

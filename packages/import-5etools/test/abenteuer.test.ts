@@ -234,3 +234,17 @@ describe('kreaturenMitAnzahl', () => {
     ]);
   });
 });
+
+describe('the image plan of an adventure (T-144)', () => {
+  it('names each map that only has an address, to be replaced by the image', () => {
+    const { datei, bilder } = lauf(datenstand());
+    const karten = bilder!.eintraege.filter((b) => b.klasse === 'map');
+    expect(karten.map((b) => b.pfad).sort()).toEqual(['adventure/TST/Marsh.webp', 'adventure/TST/Reed Cave.webp']);
+    for (const b of karten) {
+      const map = datei.entities.find((e) => e.id === b.ziel)!;
+      expect(map.interfaces[0]).toBe('Map');
+      expect(b.feld).toBe('Image.image');
+      expect((map.components['Image'] as { image: string }).image).toBe(b.ersetzt);
+    }
+  });
+});

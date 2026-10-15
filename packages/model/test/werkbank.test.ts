@@ -123,6 +123,7 @@ describe('bulk', () => {
     expect(BulkRequestSchema.safeParse({ select: {}, ops: [{ op: 'set', field: 'Statblock.combatRole', value: 'Brute' }] }).success).toBe(true);
     expect(BulkRequestSchema.safeParse({ select: {}, ops: [] }).success).toBe(false);
     expect(BulkRequestSchema.safeParse({ select: {}, ops: [{ op: 'explode' }] }).success).toBe(false);
+    expect(BulkRequestSchema.safeParse({ select: {}, ops: [{ op: 'set', field: 'Statblock.token', values: { s1: 'as_1' } }] }).success).toBe(true);
   });
 
   it('selects by type and a name condition, case-insensitive', () => {
@@ -142,6 +143,27 @@ describe('bulk', () => {
     expect(plan.changes[0]!.after!.components['Statblock']!['combatRole']).toBe('Brute');
     expect(plan.changes[0]!.summary).toEqual(['Statblock.combatRole: — → "Brute"']);
     expect(storedKey(ogre)).toBe(vorher);
+  });
+
+  it('sets a value per article and leaves out who is not named (T-144)', () => {
+    const plan = planBulk(seedRegistry, raw, ['s1', 's2', 's3'], [
+      { op: 'set', field: 'Statblock.token', values: { s1: 'as_1', 'statblock-0003': 'as_3' } },
+    ]);
+    expect(plan.changes.map((c) => [c.id, c.after!.components['Statblock']!['token']])).toEqual([
+      ['s1', 'as_1'],
+      ['s3', 'as_3'],
+    ]);
+  });
+
+  it('refuses a set without value or values', () => {
+    const plan = planBulk(seedRegistry, raw, ['s1'], [{ op: 'set', field: 'Statblock.ac' }]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped.map((p) => p.reason)).toEqual(['Statblock.ac: set needs a value or values']);
+  });
+
+  it('with ifEmpty keeps what is already there', () => {
+    const plan = planBulk(seedRegistry, raw, ['s1', 's3'], [{ op: 'set', field: 'Statblock.ac', value: '15', ifEmpty: true }]);
+    expect(plan.changes.map((c) => c.id)).toEqual(['s3']);
   });
 
   it('changes nothing where nothing changes', () => {
