@@ -3,6 +3,7 @@ import { EDGE_AREAS, edgeEffects, typeList } from '@nw/model';
 import type { RelationDef } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit } from './arbeit';
+import { RegFacette } from './facette';
 
 /**
  * **Eine Kantenart** — gespeichert in einer Richtung; die Gegenrichtung ist
@@ -15,6 +16,7 @@ import { RegisterArbeit } from './arbeit';
  */
 @Component({
   selector: 'nw-reg-kante',
+  imports: [RegFacette],
   template: `
     @if (def(); as d) {
       <div class="typkopf">
@@ -123,6 +125,7 @@ import { RegisterArbeit } from './arbeit';
           The other end’s fields are drawn and edited there as if they were its own — a creature’s statblock. Only for an
           edge to exactly one type, and only where the article would be incomplete without it.
         </p>
+        <nw-reg-facette [hint]="d.facet" [darf]="darf()" [feld]="false" (aendern)="setzen({ facet: $event })" />
         @if (props().length) {
           <p class="hint">Properties on the edge: {{ props().join(', ') }}.</p>
         }

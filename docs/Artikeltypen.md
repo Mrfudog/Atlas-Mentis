@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-15. 83 Schnittstellen, 67 Kantenarten.
+Stand 2026-10-15. 83 Schnittstellen, 68 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -1483,6 +1483,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `spellList` → Spell — „spell list"
 - `grants` → Rule — „grants"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2216,6 +2217,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
 - Statblock | PlayerCharacter | Item | Subclass | Ancestry | Feat | Faction | Rule — `casts` → „cast by"
+- Class | Subclass — `spellList` → „on the spell list of"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2313,6 +2315,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `spellList` → Spell — „spell list"
 - `subclassOf` → Class — „subclass of"
 - `grants` → Rule — „grants"
 - `describedIn` → Article | Story | BookPart — „described in"

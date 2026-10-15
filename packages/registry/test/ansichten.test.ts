@@ -13,7 +13,7 @@ import { seedRegistry, typeViews } from '../src/index.js';
 const migration = (n: string) => readFileSync(new URL(`../../../apps/server/migrations/${n}.sql`, import.meta.url), 'utf8');
 const sql = migration('052_ansichten_je_art');
 /* Migrationen, die eine Zeile aus 052 später nachziehen — die letzte gilt. */
-const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '093_quelleninhalt'].map(migration);
+const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '094_quelleninhalt'].map(migration);
 
 const zeilen = (text: string) =>
   [...text.matchAll(/\('(\w+)', '(\w+)', '(\{.*?\})'::jsonb\)/g)].map((m) => [m[1]!, m[2]!, JSON.parse(m[3]!)] as const);

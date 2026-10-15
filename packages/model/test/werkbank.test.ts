@@ -193,6 +193,28 @@ describe('bulk', () => {
     expect(plan.changes[0]!.after!.relations!.map((r) => r.id)).toEqual(['s2~composedOf-1', 's2~composedOf-2']);
   });
 
+  it('adds edges with targets of their own per article (T-212)', () => {
+    const plan = planBulk(seedRegistry, raw, ['s1', 's2', 's3'], [
+      {
+        op: 'addRelation',
+        type: 'composedOf',
+        targets: { s1: ['feature-0003', 'f2'], 'statblock-0002': [{ to: 'f3', props: { note: 'only here' } }], s4: ['f1'] },
+      },
+    ]);
+    const nach = new Map(plan.changes.map((c) => [c.id, c.after!.relations]));
+    /* Was schon steht, kommt nicht doppelt; wer fehlt, bleibt unberührt. */
+    expect(nach.get('s1')).toEqual([
+      { id: 's1~composedOf-1', type: 'composedOf', to: 'f2' },
+      { id: 's1~composedOf-2', type: 'composedOf', to: 'f3' },
+    ]);
+    expect(nach.get('s2')!.at(-1)).toEqual({ id: 's2~composedOf-2', type: 'composedOf', to: 'f3', props: { note: 'only here' } });
+    expect(nach.has('s3')).toBe(false);
+    const fehlt = planBulk(seedRegistry, raw, ['s3'], [{ op: 'addRelation', type: 'composedOf', targets: { s3: ['nowhere'] } }]);
+    expect(fehlt.skipped.map((x) => x.reason)).toEqual(['composedOf → nowhere: no such article']);
+    const beides = planBulk(seedRegistry, raw, ['s3'], [{ op: 'addRelation', type: 'composedOf' }]);
+    expect(beides.skipped[0]?.reason).toMatch(/either to or targets/);
+  });
+
   it('merges identical features as variants', () => {
     const plan = planBulk(seedRegistry, raw, ['f1', 'f2', 'f3'], [{ op: 'merge', mode: 'variant', by: 'content' }]);
     expect(plan.changes.map((c) => c.id)).toEqual(['f2']);

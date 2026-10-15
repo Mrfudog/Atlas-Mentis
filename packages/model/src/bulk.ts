@@ -58,11 +58,21 @@ const OpSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('unset'), field: z.string().min(1) }),
   z.object({ op: z.literal('addTag'), tag: z.string().min(1) }),
   z.object({ op: z.literal('removeTag'), tag: z.string().min(1) }),
+  /** `targets` (T-212): je Artikel eigene Ziele, nach Peg-Id oder Nummer —
+   *  ein Ziel ist eine Id oder `{to, props}`; wer darin fehlt, bleibt
+   *  unberührt. So geht eine Zauberliste je Klasse in **eine** Änderung,
+   *  statt einer je Klasse. */
   z.object({
     op: z.literal('addRelation'),
     type: z.string().min(1),
-    to: z.string().min(1),
+    to: z.string().min(1).optional(),
     props: z.record(z.string(), z.unknown()).optional(),
+    targets: z
+      .record(
+        z.string(),
+        z.array(z.union([z.string().min(1), z.object({ to: z.string().min(1), props: z.record(z.string(), z.unknown()).optional() })])),
+      )
+      .optional(),
   }),
   z.object({ op: z.literal('removeRelation'), type: z.string().min(1), to: z.string().optional() }),
   /** Je ausgewähltem Artikel einen neuen anlegen, an den er über `relation`
@@ -622,22 +632,33 @@ export function planBulk(
             setTags(neu, tagsOf(neu).filter((t) => t.toLowerCase() !== op.tag.trim().toLowerCase()));
             break;
           case 'addRelation': {
-            const to = peg(op.to);
-            if (!to) {
-              problem(e, `${op.type} → ${op.to}: no such article`);
+            if (!op.to === !op.targets) {
+              problem(e, `${op.type}: addRelation needs either to or targets`);
               break;
             }
-            if ((neu.relations ?? []).some((r) => r.type === op.type && r.to === to)) break;
-            if (registry.relations[op.type]?.cardinality === 'one' && (neu.relations ?? []).some((r) => r.type === op.type)) {
-              problem(e, `already has a ${op.type}`);
-              break;
+            const eigen = op.targets
+              ? (Object.hasOwn(op.targets, e.id) ? op.targets[e.id] : Object.hasOwn(op.targets, articleId(e)) ? op.targets[articleId(e)] : undefined) ?? []
+              : [{ to: op.to!, props: op.props }];
+            for (const t of eigen) {
+              const ziel = typeof t === 'string' ? t : t.to;
+              const props = typeof t === 'string' ? op.props : t.props ?? op.props;
+              const to = peg(ziel);
+              if (!to) {
+                problem(e, `${op.type} → ${ziel}: no such article`);
+                continue;
+              }
+              if ((neu.relations ?? []).some((r) => r.type === op.type && r.to === to)) continue;
+              if (registry.relations[op.type]?.cardinality === 'one' && (neu.relations ?? []).some((r) => r.type === op.type)) {
+                problem(e, `already has a ${op.type}`);
+                continue;
+              }
+              (neu.relations ??= []).push({
+                id: neueKantenId(neu, op.type, vergeben),
+                type: op.type,
+                to,
+                ...(props ? { props } : {}),
+              });
             }
-            (neu.relations ??= []).push({
-              id: neueKantenId(neu, op.type, vergeben),
-              type: op.type,
-              to,
-              ...(op.props ? { props: op.props } : {}),
-            });
             break;
           }
           case 'removeRelation': {

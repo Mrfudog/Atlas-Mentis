@@ -278,9 +278,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'usableBy',
     label: 'Usable by a character',
     area: 'character',
-    does: 'checks a prerequisite (feat, attunement, multiclassing) against a character — class levels, ancestry with its base, the statblock’s scores and proficiencies, spellcasting, what it was granted or chose (T-180)',
+    does: 'checks a prerequisite (feat, attunement, multiclassing) against a character — class levels, ancestry with its base, the statblock’s scores and proficiencies, spellcasting, what it was granted or chose (T-180) — and whether a spell is on the list of one of its classes, up to the level it casts there (T-212)',
     uses: {
-      [M + 'requirements.ts']: ['belongsTo', 'grants', 'hasAncestry', 'hasClass'],
+      [M + 'requirements.ts']: ['belongsTo', 'grants', 'hasAncestry', 'hasClass', 'spellList'],
+      [S + 'liste.ts']: ['spellList'],
       [S + 'app.ts']: ['belongsTo', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
     },
   },

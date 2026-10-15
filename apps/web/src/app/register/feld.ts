@@ -4,6 +4,7 @@ import { articlesTaking, enumHolds, enumOptions, typeList } from '@nw/model';
 import type { PropertySchema, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit, articles, carry } from './arbeit';
+import { RegFacette } from './facette';
 import {
   FIELD_KINDS,
   enumRefs,
@@ -34,7 +35,7 @@ import {
  */
 @Component({
   selector: 'nw-reg-feld',
-  imports: [RouterLink],
+  imports: [RouterLink, RegFacette],
   template: `
     @if (p(); as p) {
       <div class="einst">
@@ -155,6 +156,8 @@ import {
             <b>Only in the edit form</b> keeps a value off every page, card and print — for a key that orders
             and that nobody reads, like the sortable value next to a date.
           </p>
+          <!-- Die Facette einstellbar (T-212): sonst nur aus der Form abgeleitet. -->
+          <nw-reg-facette [hint]="p.facet" [darf]="darf()" [feld]="true" (aendern)="setzen({ facet: $event })" />
         }
 
         @if (art() === 'text' && !p.format) {
