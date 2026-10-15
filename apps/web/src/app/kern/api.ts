@@ -1340,6 +1340,11 @@ export class Api {
   mapContext(id: string): Promise<KartenKontext> {
     return this.call<KartenKontext>(`/api/maps/${encodeURIComponent(id)}/context`);
   }
+  /** Die Seitenleiste der Karte (T-203): Gruppe, und für die Leitung die Begegnungen der Sitzung. */
+  mapSide(id: string, session?: string | null): Promise<KartenSeite> {
+    const q = session ? `?session=${encodeURIComponent(session)}` : '';
+    return this.call<KartenSeite>(`/api/maps/${encodeURIComponent(id)}/side${q}`);
+  }
   /** Was die Aktionsleiste auf dieser Karte braucht (T-198). */
   turnPlan(map: string, actor?: string | null): Promise<ZugLage> {
     return this.call<ZugLage>(`/api/maps/${encodeURIComponent(map)}/turn-plan${actor ? `?actor=${encodeURIComponent(actor)}` : ''}`);
@@ -1842,6 +1847,29 @@ export interface KartenKontext {
   own?: string[];
   /** Offene Zugvorschläge: für die Leitung alle, für Spielende die eigenen (T-204). */
   proposals?: { plan: string; actor: string; actorName: string; by: string; to: { x: number; y: number } }[];
+}
+
+/** Die Seitenleiste der Karte (`GET /api/maps/:id/side`, T-203). */
+export interface KartenSeite {
+  party: { id: string; name: string } | null;
+  figures: {
+    id: string;
+    name: string;
+    hp: number | null;
+    hpMax: number | null;
+    hpTemp: number | null;
+    conditions: { id: string; name: string }[];
+  }[];
+  session: { id: string; name: string } | null;
+  encounters: {
+    id: string;
+    name: string;
+    phase: string;
+    round: number;
+    here: boolean;
+    active: boolean;
+    participants: { id: string; name: string }[];
+  }[];
 }
 
 /** Was auf dem Tisch liegt (`GET /api/play`, T-115). */

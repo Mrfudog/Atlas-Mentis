@@ -40,7 +40,12 @@ import {
   sessionState,
   turnOf,
   mapRulesOf,
+  partyMembers,
+  sessionEncounters,
+  sideFigure,
   type Entity,
+  type SideEncounter,
+  type SideFigure,
   type Frame,
   type MapRules,
   type PlanStep,
@@ -100,6 +105,15 @@ export interface KartenKontext {
   proposals: ZugVorschlag[];
   /** Nur für die Leitung: wer am Kampf teilnimmt, und ob er hier schon ein Token hat. */
   combatants: { id: string; name: string; placed: boolean }[];
+}
+
+/** Die Seitenleiste der Karte (T-203): die Gruppe, und für die Leitung die Begegnungen der Sitzung. */
+export interface KartenSeite {
+  party: { id: string; name: string } | null;
+  figures: SideFigure[];
+  session: { id: string; name: string } | null;
+  /** Nur für die Leitung; sonst leer. */
+  encounters: SideEncounter[];
 }
 
 /** Das Bild eines Artikels: an einem Asset es selbst, sonst `Image.image`. */
@@ -238,6 +252,76 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         return { plan: p.plan, actor: p.actor, actorName: p.actorName, by: p.by.name, to: s.to! };
       });
     return { parents, children: kinder, targets, party, turn, combatants, rules, own, proposals } satisfies KartenKontext;
+  });
+
+  /**
+   * **Die Seitenleiste der Karte** (T-203): die Figuren der Gruppe der
+   * laufenden Kampagne mit Trefferpunkten und Zuständen, und für die
+   * Leitung die Begegnungen der Sitzung (`?session=`, sonst die jüngste,
+   * die diese Karte auf dem Tisch hat). Gerechnet über gesiebte Artikel:
+   * was der Betrachter nicht wissen darf (ein Maximum am Statblock, ein
+   * Zustand), fehlt hier wie überall.
+   */
+  app.get<{ Params: { id: string }; Querystring: { session?: string } }>('/api/maps/:id/side', async (request, reply) => {
+    const stand = await roh();
+    const gefunden = stand.map.get(request.params.id);
+    if (!gefunden || !isMap(gefunden)) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const [karte] = await sieve(request, [gefunden], stand.map);
+    if (!karte) return reply.code(404).send({ error: 'Nicht gefunden' });
+
+    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const gruppeRoh = kampagne ? partiesOf(stand.map, kampagne.id)[0] : undefined;
+    const [gruppe] = gruppeRoh ? await sieve(request, [gruppeRoh], stand.map) : [];
+    let figures: SideFigure[] = [];
+    if (gruppe) {
+      /* Figuren, ihre Statblöcke, deren Vorlagen und die Zustände — einmal gesiebt. */
+      const mitglieder = partyMembers(stand.map, gruppe.id);
+      const ids = new Set(mitglieder.map((m) => m.id));
+      const boegen = stand.alle.filter((e) => primaryInterface(e) === 'Statblock' && (e.relations ?? []).some((r) => r.type === 'belongsTo' && ids.has(r.to)));
+      const vorlagen = boegen.flatMap((b) => (b.relations ?? []).filter((r) => r.type === 'instanceOf').map((r) => stand.map.get(r.to)));
+      const zustaende = mitglieder.flatMap((m) => {
+        const c = (m.components?.['Vitals'] as { conditions?: unknown } | undefined)?.conditions;
+        return Array.isArray(c) ? c.map((id) => stand.map.get(String(id))) : [];
+      });
+      const roheListe = [...new Set([...mitglieder, ...boegen, ...vorlagen, ...zustaende].filter((e): e is Entity => !!e))];
+      const gesiebt = new Map((await sieve(request, roheListe, stand.map)).map((e) => [e.id, e]));
+      figures = mitglieder.flatMap((m) => {
+        const g = gesiebt.get(m.id);
+        return g ? [sideFigure(gesiebt, g)] : [];
+      });
+    }
+
+    let encounters: SideEncounter[] = [];
+    let session: KartenSeite['session'] = null;
+    if (await leitet(request, gefunden, stand.map)) {
+      const sitzungen = await sieve(request, stand.alle.filter((e) => primaryInterface(e) === SESSION_TYPE), stand.map);
+      const zeit = (e: Entity) => {
+        const t = Number((e.components?.['Time'] as { sort?: unknown } | undefined)?.sort);
+        return Number.isFinite(t) ? t : Number.NEGATIVE_INFINITY;
+      };
+      const sitzung =
+        sitzungen.find((e) => e.id === request.query.session) ??
+        sitzungen
+          .filter((e) => (sessionState(e) as { activeMap?: unknown }).activeMap === karte.id)
+          .sort((a, b) => zeit(b) - zeit(a) || b.id.localeCompare(a.id))[0] ??
+        null;
+      session = sitzung ? { id: sitzung.id, name: entityName(sitzung) } : null;
+      const begegnungen = await sieve(request, stand.alle.filter((e) => primaryInterface(e) === 'Encounter'), stand.map);
+      /* Eine Begegnung, die der Betrachter nicht sieht, fällt weg; die
+         übrigen roh, wie die Teilnehmer im Kartenkontext — die Leitung
+         bekommt die ganze Liste, die Reihe für Spielende siebt
+         `redactParticipants`. */
+      const sieht = new Set(begegnungen.map((e) => e.id));
+      const bestand = new Map(stand.map);
+      for (const e of stand.alle) if (primaryInterface(e) === 'Encounter' && !sieht.has(e.id)) bestand.delete(e.id);
+      encounters = sessionEncounters(bestand, sitzung, karte.id);
+    }
+    return {
+      party: gruppe ? { id: gruppe.id, name: entityName(gruppe) } : null,
+      figures,
+      session,
+      encounters,
+    } satisfies KartenSeite;
   });
 
   /**
