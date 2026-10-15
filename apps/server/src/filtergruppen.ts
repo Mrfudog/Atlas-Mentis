@@ -13,11 +13,16 @@
  * Was eine Gruppe festhält, ist zweierlei (`SavedFilter`):
  *
  * - **was den Reiter ausmacht** — Arten (`of`, mit Untertypen), ohne Arten
- *   (`notype`), Marken, Stand, nur diese Ebenen. Das geht als Grenze an
- *   `/api/list` und lässt sich in der Seitenleiste nicht abwählen;
- * - **womit er anfängt** — Suche und abgewählte Ebenen. Das setzt die
- *   Seitenleiste beim Betreten, danach gehört der Filter der Seite
- *   (CLAUDE.md, „Der Filter gehört der Seite").
+ *   (`notype`), Marken, Stand. Das geht als Grenze an `/api/list` und
+ *   lässt sich in der Seitenleiste nicht abwählen;
+ * - **womit er anfängt** — Suche und Facetten. Das setzt die Seitenleiste
+ *   beim Betreten, danach gehört der Filter der Seite (CLAUDE.md, „Der
+ *   Filter gehört der Seite").
+ *
+ * **Ebenen trägt eine Gruppe nicht mehr** (T-186): welche gelten, sagt der
+ * globale Stand in der Kopfleiste, und Auswahlen davon speichert man dort
+ * (`ebenensets.ts`). Was alte Gruppen an `layer`/`nolayer` trugen, hat
+ * Migration 079 nach `list_filter_ebenen_alt` gelegt; hier fällt es weg.
  *
  * Gesiebt wird hier nichts: eine Gruppe nennt Arten und Marken, keine
  * Artikel, und die Liste dahinter siebt wie jede andere.
@@ -40,15 +45,13 @@ export interface SavedFilter {
   notype?: string[];
   tag?: string[];
   status?: string[];
-  layer?: string[];
-  nolayer?: string[];
   q?: string;
   /** Die Facetten (T-174): `Typ.feld:a|b`, `Typ.feld:1..3`, `in.grants:<id>`. */
   f?: string[];
 }
 
 /* `f`: die Facetten (T-174), in der Form der Adresse. */
-const LISTEN = ["of", "notype", "tag", "status", "layer", "nolayer", "f"] as const;
+const LISTEN = ["of", "notype", "tag", "status", "f"] as const;
 /** Eine Seite heisst wie ihr Weg (`world`, `compendium`); welche es gibt, sagt die Oberfläche. */
 const SEITE = /^[a-z][a-z0-9-]{0,31}$/;
 
