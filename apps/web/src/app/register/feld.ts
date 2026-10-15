@@ -81,6 +81,18 @@ import {
         </label>
         <p class="hint">What the field is called wherever it is drawn. A type may rename it for itself.</p>
 
+        <!-- T-195: was das Feld meint, gezeigt in „+ Add field“. -->
+        <label class="f">
+          <span>Description</span>
+          <textarea
+            rows="2"
+            [value]="p.description ?? ''"
+            [disabled]="!darf()"
+            (change)="setzen({ description: wert($event) || undefined })"
+          ></textarea>
+        </label>
+        <p class="hint">One sentence on what the field means — shown when someone adds it while editing an article.</p>
+
         <label class="f">
           <span>Holds</span>
           <select [disabled]="!darf()" (change)="artWechseln($any($event.target))">
@@ -119,6 +131,17 @@ import {
           <p class="hint">
             <b>Always an input</b> shows the input without pressing Edit — for a value set mid-turn, like hit
             points. Who may not write still sees the value.
+          </p>
+          <label class="f">
+            <span>In the edit form</span>
+            <select [disabled]="!darf()" (change)="schalter('prominent', $any($event.target).value === '1')">
+              <option value="" [selected]="!p.prominent">when required or filled</option>
+              <option value="1" [selected]="!!p.prominent">always, even empty</option>
+            </select>
+          </label>
+          <p class="hint">
+            The edit form shows required fields and fields with a value; the rest are under <b>+ Add field</b>.
+            <b>Always, even empty</b> keeps a field one fills on almost every article in view.
           </p>
           <!-- Ein Schlüssel zum Ordnen liest niemand (T-126, editOnly). -->
           <label class="f">
@@ -439,7 +462,7 @@ export class RegFeld {
       return p;
     });
   }
-  protected schalter(k: 'alwaysEdit' | 'editOnly' | 'suggest', an: boolean): void {
+  protected schalter(k: 'alwaysEdit' | 'editOnly' | 'suggest' | 'prominent', an: boolean): void {
     void this.setzen({ [k]: an ? true : undefined });
   }
 
