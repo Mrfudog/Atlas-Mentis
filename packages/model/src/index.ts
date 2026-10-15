@@ -40,6 +40,7 @@ export * from './map.js';
 export * from './crafting.js';
 export * from './shop.js';
 export * from './assets.js';
+export * from './maplist.js';
 export * from './uebernahme.js';
 export * from './registerabgleich.js';
 export * from './stowing.js';

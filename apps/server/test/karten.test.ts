@@ -204,3 +204,32 @@ describe('/api/play', () => {
     expect(gewaehlt).toMatchObject({ session: 's_1', map: null });
   });
 });
+
+/* Karten finden (T-202): die Liste unter Play › Maps und wo eine Karte vorkommt. */
+describe('/api/maps', () => {
+  it('lists the maps as a tree, as far as the viewer sees them', async () => {
+    const { hole } = await aufbau();
+    const gm = (await hole('Mira', '/api/maps')).json() as { maps: { id: string; depth: number; parent: string | null; image: string; layers: { name: string }[] }[] };
+    expect(gm.maps.map((m) => [m.id, m.depth])).toEqual([
+      ['gruft', 0],
+      ['kammer', 1],
+      ['nische', 1],
+      ['welt', 0],
+      ['stadt', 1],
+      ['keller', 2],
+    ]);
+    expect(gm.maps.find((m) => m.id === 'stadt')).toMatchObject({ parent: 'welt', image: 'as_stadt', layers: [{ name: 'Nebel' }] });
+    const sp = (await hole('Sela', '/api/maps')).json() as { maps: { id: string }[] };
+    expect(sp.maps.map((m) => m.id)).not.toContain('keller');
+  });
+
+  it('says where a map is used — sessions and fights the viewer sees', async () => {
+    const { hole } = await aufbau();
+    const stadt = (await hole('Mira', '/api/maps/stadt/uses')).json();
+    expect(stadt.uses).toEqual([{ id: 's_2', name: 'Abend 2', type: 'Session', via: 'SessionState.activeMap' }]);
+    const gruft = (await hole('Mira', '/api/maps/gruft/uses')).json();
+    expect(gruft.uses).toEqual([{ id: 'enc_gruft', name: 'Ghule', type: 'Encounter', via: 'onMap' }]);
+    expect((await hole('Sela', '/api/maps/keller/uses')).statusCode).toBe(404);
+    expect((await hole('Mira', '/api/maps/npc_offen/uses')).statusCode).toBe(404);
+  });
+});
