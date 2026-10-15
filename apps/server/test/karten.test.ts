@@ -245,3 +245,32 @@ describe('/api/maps', () => {
     expect((await hole('Mira', '/api/maps/npc_offen/uses')).statusCode).toBe(404);
   });
 });
+
+describe('the side bar of a map (T-203)', () => {
+  it('lists the party for everyone and the encounters of the session only for the GM', async () => {
+    const { hole } = await aufbau();
+    const mira = (await hole('Mira', '/api/maps/gruft/side?session=s_2')).json() as {
+      party: { id: string } | null;
+      figures: { id: string; name: string }[];
+      session: { id: string } | null;
+      encounters: { id: string; here: boolean; participants: { id: string }[] }[];
+    };
+    expect(mira.party?.id).toBe('pt_1');
+    expect(mira.figures.map((f) => f.name)).toEqual(['Rook']);
+    expect(mira.session?.id).toBe('s_2');
+    expect(mira.encounters.map((e) => e.id)).toEqual(['enc_gruft']);
+    expect(mira.encounters[0]).toMatchObject({ here: true });
+    expect(mira.encounters[0]!.participants.map((p) => p.id)).toEqual(['pc_1', 'npc_dunkel', 'npc_wache']);
+    const sela = (await hole('Sela', '/api/maps/gruft/side')).json() as typeof mira;
+    expect(sela.figures.map((f) => f.name)).toEqual(['Rook']);
+    expect(sela.encounters).toEqual([]);
+    expect(sela.session).toBeNull();
+  });
+
+  it('picks the session that has this map on the table when none is named', async () => {
+    const { hole } = await aufbau();
+    const mira = (await hole('Mira', '/api/maps/stadt/side')).json() as { session: { id: string } | null };
+    expect(mira.session?.id).toBe('s_2');
+    expect((await hole('Mira', '/api/maps/nix/side')).statusCode).toBe(404);
+  });
+});

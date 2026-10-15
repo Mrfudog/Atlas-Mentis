@@ -147,7 +147,7 @@ export function hpWord(hp: number | undefined, max: number | undefined): HpWord 
 type Lookup = ReadonlyMap<EntityId, Entity>;
 
 /** Der Statblock einer Kreatur (`belongsTo`), oder sie selbst, wenn sie einer ist. */
-function statblockFor(entities: Lookup, e: Entity): Entity | null {
+export function statblockFor(entities: Lookup, e: Entity): Entity | null {
   if (e.interfaces?.[0] === 'Statblock') return e;
   for (const o of entities.values()) {
     if (o.interfaces?.[0] !== 'Statblock') continue;
