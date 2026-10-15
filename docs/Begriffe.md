@@ -1655,6 +1655,18 @@ an genau einer Stelle (`inventoryRulesOf`): wenn die Regelsysteme Behälter
 werden (T-132), wandert das Wort in ein Modul, und nur diese Funktion sieht
 woanders nach.
 
+**Eine Regeloption sucht man an der Kampagne, nicht im Feld** (T-190).
+Wie gezählt, gehandwerkt und gewürfelt wird, stand als Felder ohne
+Ordnung am Kampagnenartikel und als Einstellungen, die niemand sah — es
+gab sie, und gefunden hat sie keiner. Der Reiter „Rules & options" ordnet
+sie nach Sorte und sagt je Option, was sie tut. **Eine Variante ist ein
+Regelartikel**, den man lesen kann: der importierte, wenn das Regelwerk
+einen hat („Encumbrance"), sonst einer, den die Leitung unter dem Namen
+der Variante schreibt — ein Satz im Code erklärt, ein Artikel lässt sich
+nachlesen, ändern und am Tisch zeigen. Gefunden wird er nach Namen und
+nicht über eine Kante: ein Regelwerk, das morgen eingelesen wird, bringt
+seine Erklärung mit, ohne dass jemand sie anhängt.
+
 **Geben heisst, die Kante umzuhängen.** Wer der Gruppe ein Seil gibt,
 nimmt die `holds`-Kante aus dem eigenen Inventar und legt sie in das der
 Gruppe. Die Lage im Raster bleibt zurück — sie war die im alten Behälter —,

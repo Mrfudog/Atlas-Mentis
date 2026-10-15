@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, TurnPlan } from '@nw/model';
+import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1172,6 +1172,10 @@ export class Api {
     feats?: boolean;
   }> {
     return this.call('/api/abilities');
+  }
+  /** Die Regeloptionen einer Kampagne, nach Sorte, mit ihren Regelartikeln (T-190). */
+  campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[] }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(id)}/rules`);
   }
   /** Regelset und Gruppen der laufenden Kampagne, mit den Inventaren, zwischen denen Sachen wandern (T-127). */
   inventory(): Promise<InventarLage> {

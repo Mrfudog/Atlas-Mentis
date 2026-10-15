@@ -219,6 +219,15 @@ Für jeden Weg gleich gebaut, hier für c:
    Werkzeug**. Das Handwerksmodul sagt, welche Regeln gelten (Grundregeln,
    Kibbles, eigene) — das ist eine andere Frage.
 
+## 3a. Schon gebaut: die Seite (T-190)
+
+Unabhängig vom Entscheid steht seit T-190 der Reiter **„Rules & options"**
+an der Kampagne: alle Optionen aus 1.2 nach Sorte, je Option ein Satz und
+je Variante ihr Regelartikel (Datenmodell.md › 10.1). Die Sorten sind die
+Modulsorten von Weg c; die Seite liest über `ruleOptionsOf`, und mit dem
+Modul ändert sich nur, wohin diese Funktion schaut. Dieselbe Ansicht an
+der System-Ebene („was dieses System anbietet") kommt mit dem Modulrahmen.
+
 ## 4. Empfehlung
 
 **c, in Schritten — Schritt 1 als Nächstes, Schritt 2 erst bei Bedarf.** (Dieser PR baut noch nichts davon; er legt die Wahl vor.)

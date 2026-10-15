@@ -495,6 +495,13 @@ export type LayoutElementKind =
    * hängt, zeichnet es nichts.
    */
   | 'parts'
+  /**
+   * **Die Regeloptionen** (T-190): nimmt die Felder, die `fields` nennt (an
+   * der Kampagne ihre eigenen, `['Campaign']`), aus der Feldtabelle und
+   * verweist auf den Reiter „Rules & options", wo sie nach Sorte und
+   * erklärt stehen. Auf einem Blatt ohne Reiter stehen sie als Felder.
+   */
+  | 'rules'
   | 'tabs';
 
 /**
