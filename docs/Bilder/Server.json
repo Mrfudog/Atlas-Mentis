@@ -1,0 +1,136 @@
+{
+ "titel": "Was auf dem Server läuft (Architektur §1)",
+ "rahmen": [
+  {
+   "x": 0,
+   "y": 120,
+   "w": 900,
+   "h": 520,
+   "text": "Hetzner CPX22 · Ubuntu 24.04 · Docker"
+  },
+  {
+   "x": 330,
+   "y": 160,
+   "w": 240,
+   "h": 110,
+   "text": "/srv/atlas/proxy"
+  },
+  {
+   "x": 20,
+   "y": 310,
+   "w": 370,
+   "h": 300,
+   "text": "/srv/atlas/prod · Zweig main"
+  },
+  {
+   "x": 510,
+   "y": 310,
+   "w": 370,
+   "h": 300,
+   "text": "/srv/atlas/dev · Zweig preprod"
+  }
+ ],
+ "kaesten": [
+  {
+   "id": "user",
+   "x": 330,
+   "y": 0,
+   "w": 240,
+   "h": 70,
+   "text": "Browser\nSpielleitung, Spielende",
+   "form": "ellipse",
+   "farbe": "weiss"
+  },
+  {
+   "id": "caddy",
+   "x": 345,
+   "y": 190,
+   "w": 210,
+   "h": 70,
+   "text": "caddy:2-alpine\nTLS (Let's Encrypt)\nPorts 80, 443",
+   "farbe": "gelb"
+  },
+  {
+   "id": "appP",
+   "x": 40,
+   "y": 350,
+   "w": 330,
+   "h": 90,
+   "text": "app · ghcr.io/…/atlas-mentis:main-‹sha›\nNode 22 · Fastify + Angular-Build\n127.0.0.1:8080",
+   "farbe": "blau"
+  },
+  {
+   "id": "dbP",
+   "x": 105,
+   "y": 500,
+   "w": 200,
+   "h": 70,
+   "text": "db · postgres:17-alpine\n./daten/db",
+   "farbe": "gruen"
+  },
+  {
+   "id": "appD",
+   "x": 530,
+   "y": 350,
+   "w": 330,
+   "h": 90,
+   "text": "app · ghcr.io/…/atlas-mentis:preprod-‹sha›\n127.0.0.1:8081 · noindex",
+   "farbe": "blau"
+  },
+  {
+   "id": "dbD",
+   "x": 595,
+   "y": 500,
+   "w": 200,
+   "h": 70,
+   "text": "db · postgres:17-alpine\n./daten/db-preprod",
+   "farbe": "gruen"
+  },
+  {
+   "id": "cron",
+   "x": 400,
+   "y": 520,
+   "w": 100,
+   "h": 60,
+   "text": "cron 03:17\npg_dump",
+   "farbe": "grau"
+  }
+ ],
+ "pfeile": [
+  {
+   "von": "user",
+   "nach": "caddy",
+   "text": "atlas.‹domain›\ndev.atlas.‹domain›"
+  },
+  {
+   "von": "caddy",
+   "nach": "appP",
+   "text": "127.0.0.1:8080"
+  },
+  {
+   "von": "caddy",
+   "nach": "appD",
+   "text": "127.0.0.1:8081"
+  },
+  {
+   "von": "appP",
+   "nach": "dbP",
+   "text": "DATABASE_URL"
+  },
+  {
+   "von": "appD",
+   "nach": "dbD",
+   "text": "DATABASE_URL"
+  },
+  {
+   "von": "cron",
+   "nach": "dbP",
+   "gestrichelt": true
+  },
+  {
+   "von": "cron",
+   "nach": "dbD",
+   "gestrichelt": true
+  }
+ ]
+}

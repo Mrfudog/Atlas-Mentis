@@ -1,0 +1,209 @@
+{
+ "titel": "Das Modell auf einen Blick",
+ "kaesten": [
+  {
+   "id": "typ",
+   "x": 20,
+   "y": 50,
+   "w": 220,
+   "h": 60,
+   "text": "Typ · InterfaceDef\nextends, area, views",
+   "farbe": "blau"
+  },
+  {
+   "id": "feld",
+   "x": 20,
+   "y": 150,
+   "w": 230,
+   "h": 60,
+   "text": "Feld · PropertySchema\nForm, enumRef, unit, target",
+   "farbe": "blau"
+  },
+  {
+   "id": "kart",
+   "x": 20,
+   "y": 250,
+   "w": 220,
+   "h": 60,
+   "text": "Kantenart · RelationDef\nfrom, to, asField",
+   "farbe": "blau"
+  },
+  {
+   "id": "enum",
+   "x": 20,
+   "y": 350,
+   "w": 220,
+   "h": 60,
+   "text": "Aufzählung · Einheit\nVariable · Einstellung",
+   "farbe": "blau"
+  },
+  {
+   "id": "view",
+   "x": 20,
+   "y": 450,
+   "w": 230,
+   "h": 60,
+   "text": "Ansicht + Anordnung\nfünf Orte und eigene",
+   "farbe": "blau"
+  },
+  {
+   "id": "art",
+   "x": 320,
+   "y": 50,
+   "w": 220,
+   "h": 60,
+   "text": "Artikel (Peg)\nid · interfaces",
+   "farbe": "gelb"
+  },
+  {
+   "id": "karte",
+   "x": 320,
+   "y": 150,
+   "w": 220,
+   "h": 60,
+   "text": "Karte je Typ\ncomponents[Typ]",
+   "farbe": "gelb"
+  },
+  {
+   "id": "kante",
+   "x": 320,
+   "y": 250,
+   "w": 220,
+   "h": 60,
+   "text": "Kante\nnur vorwärts gespeichert",
+   "farbe": "gelb"
+  },
+  {
+   "id": "ebene",
+   "x": 320,
+   "y": 350,
+   "w": 220,
+   "h": 60,
+   "text": "Ebene · Stapel\ninLayer, activates, partOf",
+   "farbe": "gelb"
+  },
+  {
+   "id": "s1",
+   "x": 640,
+   "y": 50,
+   "w": 260,
+   "h": 60,
+   "text": "1. Steht er im Stapel?\ninPlay (stack.ts)",
+   "farbe": "gruen"
+  },
+  {
+   "id": "s2",
+   "x": 640,
+   "y": 150,
+   "w": 260,
+   "h": 60,
+   "text": "2. Darf er an dich?\narticleVisible",
+   "farbe": "gruen"
+  },
+  {
+   "id": "s3",
+   "x": 640,
+   "y": 250,
+   "w": 260,
+   "h": 60,
+   "text": "3. Welche Felder?\nredactEntity",
+   "farbe": "gruen"
+  },
+  {
+   "id": "s4",
+   "x": 640,
+   "y": 350,
+   "w": 260,
+   "h": 60,
+   "text": "4. Vorlage darunter, Werte rechnen\nresolveInstance · calc.ts",
+   "farbe": "gruen"
+  },
+  {
+   "id": "s5",
+   "x": 640,
+   "y": 450,
+   "w": 260,
+   "h": 60,
+   "text": "5. Zeichnen\nanordnen · Layout-Elemente",
+   "farbe": "gruen"
+  }
+ ],
+ "pfeile": [
+  {
+   "von": "typ",
+   "nach": "feld",
+   "text": "erklärt"
+  },
+  {
+   "von": "art",
+   "nach": "karte"
+  },
+  {
+   "von": "karte",
+   "nach": "typ",
+   "text": "Werte der Felder"
+  },
+  {
+   "von": "kante",
+   "nach": "kart",
+   "text": "Art"
+  },
+  {
+   "von": "art",
+   "nach": "s1",
+   "text": "gelesen"
+  },
+  {
+   "von": "s1",
+   "nach": "s2"
+  },
+  {
+   "von": "s2",
+   "nach": "s3"
+  },
+  {
+   "von": "s3",
+   "nach": "s4"
+  },
+  {
+   "von": "s4",
+   "nach": "s5"
+  },
+  {
+   "von": "view",
+   "nach": "s5"
+  }
+ ],
+ "rahmen": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 270,
+   "h": 530,
+   "text": "Register — Zeilen, nicht Code"
+  },
+  {
+   "x": 300,
+   "y": 0,
+   "w": 260,
+   "h": 430,
+   "text": "Bestand — die Artikel"
+  },
+  {
+   "x": 620,
+   "y": 0,
+   "w": 300,
+   "h": 530,
+   "text": "Lesen — die Reihenfolge ist die Regel"
+  }
+ ],
+ "texte": [
+  {
+   "x": 0,
+   "y": 550,
+   "w": 900,
+   "groesse": 14,
+   "text": "Karte, Kante und Ebene gehören zum Artikel; die Kante liegt nur an ihrem Ausgang. Geschrieben wird durch validateEntity;\nabgeleitete Werte und Masse werden beim Lesen gerechnet, nie gespeichert (D8)."
+  }
+ ]
+}
