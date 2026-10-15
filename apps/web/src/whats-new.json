@@ -4,9 +4,17 @@
       "id": "2026-10-15-map-walls-doors",
       "date": "2026-10-15",
       "title": "Walls, doors and windows on the map — and fog that follows line of sight",
-      "text": "Under Walls in the map tool bar, draw walls, doors, secret doors, windows and obstacles; the lines snap to the grid. Tap a door to open it — players can open one next to their token — and moves and opened doors reveal what the characters can see, up to the next wall.",
+      "text": "Draw walls, doors, windows and obstacles under Walls in the map tool bar. Tap a door to open it — players too, next to their token — and moves and opened doors reveal what the characters see.",
       "area": "Play",
       "link": "/play"
+    },
+    {
+      "id": "2026-10-15-crafting-choose-materials",
+      "date": "2026-10-15",
+      "title": "Choose materials when crafting starts, with substitutes",
+      "text": "On a recipe, Start crafting now asks which pieces from the character's and the party's inventory to use, and says why a piece does not fit. A recipe may ask for a material group (say, any reagent of at least uncommon rarity) instead of one item, and a campaign can allow substitution rules, such as one material type standing in for another, under Rules & options.",
+      "area": "Rules",
+      "link": "/rules"
     },
     {
       "id": "2026-10-15-type-rules-and-extra-content",

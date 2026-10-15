@@ -98,6 +98,8 @@ import { Session } from '../kern/session';
                       </div>
                       <p class="was">{{ m.does }}</p>
                     </li>
+                  } @empty {
+                    <li class="hint">None — add one to the campaign with “{{ o.relation }}”.</li>
                   }
                 </ul>
               } @else if (o.value?.length && o.scope === 'installation') {

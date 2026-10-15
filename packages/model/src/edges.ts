@@ -197,6 +197,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'craftMaterials',
+    label: 'Crafting materials',
+    area: 'character',
+    does: 'decides which pieces a crafter may use for a recipe’s material when crafting starts — the item it names, any piece of a material group whose type, rarity and tags fit, or a substitute by a rule the campaign plays — and says why a piece does not fit (T-197)',
+    uses: {
+      [M + 'substitutes.ts']: ['allowsSubstitution'],
+    },
+  },
+  {
     key: 'craftOverview',
     label: 'Crafting overview',
     area: 'display',
@@ -248,10 +257,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'ruleOptions',
     label: 'Rules & options of a campaign',
     area: 'character',
-    does: 'shows, per sort, the options a campaign plays by — among them the ability and equipment methods it allows (T-190)',
+    does: 'shows, per sort, the options a campaign plays by — among them the ability and equipment methods and the material substitutions it allows (T-190, T-197)',
     uses: {
-      [M + 'ruleOptions.ts']: ['allowsEquipment', 'allowsMethod'],
-      [S + 'regeloptionen.ts']: ['allowsEquipment', 'allowsMethod'],
+      [M + 'ruleOptions.ts']: ['allowsEquipment', 'allowsMethod', 'allowsSubstitution'],
+      [S + 'regeloptionen.ts']: ['allowsEquipment', 'allowsMethod', 'allowsSubstitution'],
     },
   },
   {

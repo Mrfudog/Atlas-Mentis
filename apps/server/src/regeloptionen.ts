@@ -26,6 +26,8 @@ export interface RegeloptionenDeps {
 }
 
 const RULE_TYPE = 'Rule';
+/* Kanten auf Artikel, die eine Option tragen — Verfahren und Ersatzregeln (T-197). */
+const VERFAHREN = new Set(['allowsMethod', 'allowsEquipment', 'allowsSubstitution']);
 
 export function registerRegeloptionen(app: FastifyInstance, deps: RegeloptionenDeps): void {
   const { repo, roh, sieve } = deps;
@@ -55,12 +57,12 @@ export function registerRegeloptionen(app: FastifyInstance, deps: RegeloptionenD
 
     /* Die gewählten Verfahren: was dieser Betrachter nicht sieht, fehlt auch hier. */
     const ziele = (kampagne.relations ?? [])
-      .filter((r) => r.type === 'allowsMethod' || r.type === 'allowsEquipment')
+      .filter((r) => VERFAHREN.has(r.type))
       .map((r) => stand.map.get(r.to))
       .filter((e): e is Entity => !!e);
     const verfahren = await sieve(request, ziele, stand.map);
     const byId = new Map(verfahren.map((e) => [e.id, e]));
-    const gesiebt: Entity = { ...kampagne, relations: (kampagne.relations ?? []).filter((r) => (r.type !== 'allowsMethod' && r.type !== 'allowsEquipment') || byId.has(r.to)) };
+    const gesiebt: Entity = { ...kampagne, relations: (kampagne.relations ?? []).filter((r) => !VERFAHREN.has(r.type) || byId.has(r.to)) };
 
     return {
       campaign: { id: kampagne.id, name: entityName(kampagne) },

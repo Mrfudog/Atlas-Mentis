@@ -2180,6 +2180,86 @@ export const fieldGroups = {
   },
 
   /**
+   * **Ein Material nach Eigenschaft** (T-197): „ein Reagenz, mindestens
+   * ungewöhnlich" statt eines festen Gegenstands. Ein Rezept nennt die
+   * Gruppe über dieselbe `needs`-Kante wie einen Gegenstand; welche Stücke
+   * passen, rechnet `materialFit` aus den Feldern des Stücks
+   * (`Material.materialType`, `Item.rarity`, Marken, Name). Eine Liste der
+   * Mitglieder gäbe es nur, wenn jemand sie nachführt — die Eigenschaften
+   * stehen am Stück ohnehin. Was leer ist, schränkt nicht ein.
+   */
+  MaterialGroupInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        materialTypes: {
+          type: 'array',
+          title: 'Material types',
+          items: { type: 'string' },
+          description: 'Any of these material types fits (Material › Material type), e.g. reagent. Empty: any.',
+        },
+        rarityMin: { type: 'string', title: 'Rarity at least', enumRef: 'Item.rarity', description: 'The least rarity a piece must have.' },
+        rarityMax: { type: 'string', title: 'Rarity at most', enumRef: 'Item.rarity', description: 'The highest rarity a piece may have.' },
+        tags: {
+          type: 'array',
+          title: 'Tagged',
+          items: { type: 'string' },
+          description: 'A piece must carry one of these tags. Empty: no tag needed.',
+        },
+        items: {
+          type: 'array',
+          title: 'Or one of these items',
+          items: { type: 'string' },
+          enumRef: 'Item',
+          description: 'Items that always fit, by name — next to whatever the properties above admit.',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Eine Ersatzregel** (T-197): welche Materialien für welche einspringen
+   * dürfen — eine Zusatzregel eines Regelwerks („Pflanzen statt
+   * Reagenzien") oder des Tisches. Sie gilt, wo die Kampagne sie nennt
+   * (`allowsSubstitution`, Seite „Rules & options"); sonst zählt nur, was
+   * das Rezept nennt. Der Text der Regel steht in der Beschreibung, die
+   * Felder sagen, was die Rechnung prüft (`materialFit`).
+   */
+  SubstitutionInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        replaces: {
+          type: 'array',
+          title: 'Stands in for',
+          items: { type: 'string' },
+          description: 'The material types this rule replaces (Material › Material type), e.g. reagent.',
+        },
+        with: {
+          type: 'array',
+          title: 'Material types that may stand in',
+          items: { type: 'string' },
+          description: 'Pieces of these material types may be used instead, e.g. plant.',
+        },
+        withTags: {
+          type: 'array',
+          title: 'Or items tagged',
+          items: { type: 'string' },
+          description: 'Pieces with one of these tags may be used instead, too.',
+        },
+        rarity: {
+          type: 'string',
+          title: 'Rarity',
+          enum: ['same', 'atLeast', 'any'],
+          default: 'same',
+          description: 'same: the substitute has the rarity the recipe asks for; atLeast: that or rarer; any: rarity does not matter.',
+        },
+        ratio: { type: 'number', title: 'Pieces per material', min: 1, default: 1, description: 'How many substitutes replace one of the original.' },
+      },
+    },
+  },
+
+  /**
    * **Ein Fertigungsauftrag** (T-128): was am Auftrag selbst steht und nicht
    * am Rezept, dessen Instanz er ist. Fortschritt in der Einheit des Rezepts
    * (gelungene Proben oder Arbeitstage, `orderNeed`), der Ausgang und die
