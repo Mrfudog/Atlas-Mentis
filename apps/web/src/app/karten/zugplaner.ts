@@ -1,5 +1,5 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { expectedDamage, planBudget, planText, type PlanStep, type PlanTile, type TurnPlan } from '@nw/model';
+import { expectedDamage, planBudget, planText, type PlanStep, type PlanTile, type Size, type TurnPlan } from '@nw/model';
 import { Api, type ZugLage } from '../kern/api';
 import { Live } from '../kern/live';
 import type { Planung, PlanTipp } from './karte';
@@ -63,6 +63,18 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
             }
           </header>
 
+          <!-- Gelegenheitsangriff (Runde 2): wer reagieren darf, wird gefragt — auch bei zugeklappter Leiste. -->
+          @for (p of fragen(); track p.plan) {
+            <div class="frage" role="alertdialog" [attr.aria-label]="'Opportunity attack by ' + p.pending!.reactorName">
+              <b>Opportunity attack?</b>
+              {{ p.actorName }} leaves the reach of {{ p.pending!.reactorName }}.
+              <span class="knoepfe">
+                <button type="button" class="primaer" [disabled]="sendet()" (click)="reagieren(p, true)">Attack</button>
+                <button type="button" [disabled]="sendet()" (click)="reagieren(p, false)">Let go</button>
+              </span>
+            </div>
+          }
+
           @if (offen()) {
             <!-- Die Leitung sieht zuerst, was auf sie wartet. -->
             @if (l.leitet && l.plans.length) {
@@ -110,6 +122,9 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
                     @if (vorschauVon(s); as v) {
                       <small>{{ v }}</small>
                     }
+                    @for (w of warnungVon(s); track w) {
+                      <small class="warnung">⚠ {{ w }}</small>
+                    }
                     <span class="knoepfe">
                       <button type="button" [disabled]="i === 0" (click)="schieben(i, -1)" [attr.aria-label]="'Earlier: ' + schrittText(s)">←</button>
                       <button type="button" [disabled]="i === schritte().length - 1" (click)="schieben(i, 1)" [attr.aria-label]="'Later: ' + schrittText(s)">→</button>
@@ -130,6 +145,8 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
                   <button type="button" class="klein" (click)="abwaehlen()">Cancel</button>
                 } @else if (budget().problems.length) {
                   <span class="fehler">{{ budget().problems.join(' ') }}</span>
+                } @else if (warnungen().length) {
+                  <span class="warnung">⚠ {{ warnungen().length === 1 ? 'This turn provokes an opportunity attack' : 'This turn provokes ' + warnungen().length + ' opportunity attacks' }} — Disengage first to avoid it.</span>
                 } @else if (fehler(); as f) {
                   <span class="fehler">{{ f }}</span>
                 } @else if (meinPlan(); as p) {
@@ -436,6 +453,31 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
     .leitung li.p-rejected {
       opacity: 0.6;
     }
+    .leitung li.p-reacting {
+      border-color: rgb(200, 120, 20);
+    }
+    .warnung {
+      color: rgb(170, 95, 10);
+    }
+    .frage {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.3rem 0.6rem;
+      margin: 0.4rem 0;
+      padding: 0.45rem 0.6rem;
+      border: 2px solid rgb(200, 120, 20);
+      border-radius: 0.4rem;
+      background: rgb(200 120 20 / 0.1);
+    }
+    .frage .knoepfe {
+      display: flex;
+      gap: 0.5rem;
+      margin-left: auto;
+    }
+    .frage button {
+      min-height: 36px;
+    }
     .leitung .knoepfe {
       display: flex;
       gap: 0.5rem;
@@ -541,7 +583,9 @@ export class Zugplaner {
   // ------------------------------------------------------------- Rechnung
 
   protected readonly tempo = computed(() => this.lage()?.actor?.speed ?? 30);
-  protected readonly budget = computed(() => planBudget(this.schritte(), this.tempo()));
+  /** Die Reaktion ist weg (ein Gelegenheitsangriff seit dem eigenen letzten Zug) — die Leiste zeigt es. */
+  private readonly reaktionWeg = computed(() => this.lage()?.actor?.reaction === false);
+  protected readonly budget = computed(() => planBudget(this.schritte(), this.tempo(), { reactionSpent: this.reaktionWeg() }));
   protected readonly tempoAnteil = computed(() => {
     const max = Math.max(this.tempo(), this.budget().left.movement, 1);
     return Math.max(0, Math.min(100, (this.budget().left.movement / max) * 100));
@@ -552,7 +596,7 @@ export class Zugplaner {
       key,
       left: l[key],
       zeichen: KOSTEN[key]!.zeichen,
-      title: `${KOSTEN[key]!.wort}: ${l[key] > 0 ? 'available' : 'used'}`,
+      title: `${KOSTEN[key]!.wort}: ${l[key] > 0 ? 'available' : key === 'reaction' && this.reaktionWeg() ? 'used until your next turn' : 'used'}`,
     }));
   });
 
@@ -562,7 +606,23 @@ export class Zugplaner {
     const a = l?.actor?.id;
     return (a && l?.plans.find((p) => p.actor === a)) || null;
   });
-  protected readonly offeneZuege = computed(() => (this.lage()?.plans ?? []).filter((p) => p.state === 'planned'));
+  protected readonly offeneZuege = computed(() => (this.lage()?.plans ?? []).filter((p) => p.state === 'planned' || (p.state === 'reacting' && p.canAnswer)));
+  /** Die Züge, die auf eine Antwort dieses Betrachters warten (Gelegenheitsangriff). */
+  protected readonly fragen = computed(() => (this.lage()?.plans ?? []).filter((p) => p.state === 'reacting' && p.canAnswer && p.pending));
+
+  /**
+   * **Die Gelegenheitsangriffe des Entwurfs**, wie die Karte sie rechnet
+   * (`opportunityAttacks`) — sie kennt die Felder, der Planer nicht. Je
+   * Schritt die Namen.
+   */
+  readonly warnungen = signal<readonly { step: string; reactorName: string }[]>([]);
+  protected warnungVon(s: PlanStep): string[] {
+    return this.warnungen()
+      .filter((w) => w.step === s.id)
+      .map((w) => `provokes an opportunity attack from ${w.reactorName}`);
+  }
+  /** Die Bildgrösse der Karte, vom letzten Antippen — der Server rechnet damit die Felder. */
+  private nat: Size | null = null;
   private eingereicht: string | null = null;
 
   /** Was die Karte zeigen soll (`nw-karte [planung]`). */
@@ -587,6 +647,8 @@ export class Zugplaner {
       range: t?.longRange ?? t?.range ?? null,
       labels,
       paths: wege,
+      steps: this.schritte(),
+      threats: l.threats ?? [],
     };
   });
 
@@ -627,11 +689,13 @@ export class Zugplaner {
   }
 
   protected zustand(p: TurnPlan): string {
+    if (p.state === 'reacting') return `waiting: opportunity attack by ${p.pending?.reactorName ?? '?'}?`;
     return p.state === 'planned' ? 'waiting for you' : p.state === 'confirmed' ? `confirmed by ${p.decidedBy?.name ?? 'GM'}` : 'rejected';
   }
 
   protected planStand(p: TurnPlan): string {
     if (p.state === 'planned') return 'Sent — waiting for the GM to confirm.';
+    if (p.state === 'reacting') return `Moving — ${p.pending?.reactorName ?? 'someone'} may take an opportunity attack.`;
     if (p.state === 'rejected') return `The GM rejected your last turn${p.note ? `: “${p.note}”` : '.'}`;
     return `Last turn: ${(p.results ?? []).map((r) => r.text).join(' · ') || 'done'}`;
   }
@@ -662,6 +726,7 @@ export class Zugplaner {
   /** Ein Antippen auf der Karte (`nw-karte (planTipp)`). */
   tipp(e: PlanTipp): void {
     if (e.kind === 'cell' && this.modus() === 'move') {
+      this.nat = e.nat;
       this.dazu({ id: neueId(), kind: 'move', path: e.path, feet: e.feet, to: e.to });
       /* Weiter bewegen, solange Tempo da ist — wie in BG3 ein Klick je Ziel. */
       if (this.budget().left.movement <= 0) this.modus.set('idle');
@@ -745,9 +810,24 @@ export class Zugplaner {
         actor: l.actor.id,
         steps: this.schritte(),
         ...(mein?.state === 'planned' ? { plan: mein.plan } : {}),
+        ...(this.nat ? { nat: this.nat } : {}),
       });
       this.eingereicht = p.plan;
       this.abwaehlen();
+      await this.holen(this.karte(), this.gewaehlteFigur());
+    } catch (e) {
+      this.fehler.set((e as Error).message);
+    } finally {
+      this.sendet.set(false);
+    }
+  }
+
+  /** Die Antwort auf die Frage „Opportunity attack?" — am Server gewürfelt. */
+  protected async reagieren(p: TurnPlan, angreifen: boolean): Promise<void> {
+    if (this.sendet()) return;
+    this.sendet.set(true);
+    try {
+      await this.api.reactTurnPlan(this.karte(), p.plan, angreifen);
       await this.holen(this.karte(), this.gewaehlteFigur());
     } catch (e) {
       this.fehler.set((e as Error).message);

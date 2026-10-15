@@ -426,3 +426,21 @@ button {
     min-height: 260px;
   }
 }
+
+/* Gelegenheitsangriff (T-198, Runde 2): ein ⚠ am Feld, an dem der Weg die
+   Reichweite eines Gegners verlässt. Ausgeschrieben steht er in der
+   Zugfolge; hier nur das Zeichen, damit das Feld antippbar bleibt. */
+.gelegenheit {
+  position: absolute;
+  transform: translate(-50%, -110%);
+  min-width: 1.4rem;
+  padding: 0 0.2rem;
+  border-radius: 4px;
+  background: rgb(200 120 20);
+  color: #fff;
+  font-size: 0.85rem;
+  text-align: center;
+  line-height: 1.4rem;
+  /* Ein Antippen gehört dem Feld darunter (der nächste Weg). */
+  pointer-events: none;
+}

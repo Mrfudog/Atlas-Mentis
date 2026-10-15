@@ -57,7 +57,7 @@ import { Zugplaner } from './zugplaner';
       } @else if (karteId(); as id) {
         <!-- Der Zugplan (T-198): die Leiste sagt der Karte, was sie zeigt,
              und die Karte meldet zurück, was angetippt wurde. -->
-        <nw-karte [id]="id" ort="play" [gross]="true" [planung]="zp.planung()" (planTipp)="zp.tipp($event)" />
+        <nw-karte [id]="id" ort="play" [gross]="true" [planung]="zp.planung()" (planTipp)="zp.tipp($event)" (planWarnungen)="zp.warnungen.set($event)" />
         <nw-zugplaner #zp [karte]="id" />
       } @else {
         <section class="ohne">

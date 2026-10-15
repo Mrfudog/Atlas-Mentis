@@ -1262,8 +1262,18 @@ export class Api {
     return this.call<ZugLage>(`/api/maps/${encodeURIComponent(map)}/turn-plan${actor ? `?actor=${encodeURIComponent(actor)}` : ''}`);
   }
   /** Einen Zug einreichen — oder einen eingereichten ersetzen (`plan`). */
-  submitTurnPlan(map: string, body: { actor: string; steps: PlanStep[]; plan?: string }): Promise<TurnPlan & { text: string }> {
+  submitTurnPlan(
+    map: string,
+    body: { actor: string; steps: PlanStep[]; plan?: string; nat?: { w: number; h: number } },
+  ): Promise<TurnPlan & { text: string }> {
     return this.call(`/api/maps/${encodeURIComponent(map)}/turn-plan`, { method: 'POST', body: JSON.stringify(body) });
+  }
+  /** Die Antwort auf einen Gelegenheitsangriff (T-198, Runde 2). */
+  reactTurnPlan(map: string, plan: string, attack: boolean): Promise<TurnPlan> {
+    return this.call(`/api/maps/${encodeURIComponent(map)}/turn-plan/${encodeURIComponent(plan)}/react`, {
+      method: 'POST',
+      body: JSON.stringify({ attack }),
+    });
   }
   /** Die Leitung bestätigt oder lehnt ab; bestätigt wird gewürfelt (T-172). */
   decideTurnPlan(map: string, plan: string, decision: 'confirm' | 'reject', note?: string): Promise<TurnPlan> {
@@ -1690,11 +1700,17 @@ export class Api {
 export interface ZugLage {
   leitet: boolean;
   actors: { id: string; name: string; own: boolean; rel: string | null }[];
-  actor: { id: string; name: string; speed: number; rel: string | null } | null;
+  /** `reaction`: hat die Figur ihre Reaktion (Runde 2: verbraucht bis zum eigenen nächsten Zug)? */
+  actor: { id: string; name: string; speed: number; rel: string | null; reaction: boolean } | null;
+  /** Läuft auf der Karte eine Begegnung? Dann zieht nur der Plan. */
+  encounter: { id: string } | null;
   tiles: PlanTile[];
   /** `chances`: Trefferchance in Prozent je Angriffskachel; `ac` nur für die Leitung. */
   targets: { id: string; name: string; type: string; chances: Record<string, number>; ac?: number }[];
-  plans: (TurnPlan & { at: string })[];
+  /** Wer die Figur bedroht: Token (`rel`) der Gegenseite und seine Reichweite in Fuss. */
+  threats: { id: string; name: string; rel: string; reach: number }[];
+  /** `canAnswer`: dieser Betrachter beantwortet die offene Reaktionsfrage. */
+  plans: (TurnPlan & { at: string; canAnswer?: boolean })[];
 }
 
 /** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */
