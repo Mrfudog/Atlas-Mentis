@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-builder-effects",
+      "date": "2026-10-15",
+      "title": "The character builder shows what each option brings",
+      "text": "Open “Effects” on an ancestry, background or class to see what it brings — a sub-ancestry includes its base — or tick “Compare” on up to four. Variants sit under their base, your pick's own choices appear right below it, and your draft is kept, so opening an article no longer loses it.",
+      "area": "World",
+      "link": "/characters/new"
+    },
+    {
       "id": "2026-10-15-origin-views",
       "date": "2026-10-15",
       "title": "Ancestries and backgrounds read like the class view",

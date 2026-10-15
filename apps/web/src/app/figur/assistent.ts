@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
@@ -35,7 +36,10 @@ import {
   setClassLevel,
   setPick,
   type AbilityMethod,
+  optionEffects,
   type BuilderStep,
+  type Choice,
+  type OptionEffects,
   type ChoiceAtCharacter,
   type Entity,
   type EquipmentMethod,
@@ -58,7 +62,38 @@ interface Moeglichkeit {
   hinweis?: string;
   /** Der Artikel dahinter, für die Kurzansicht (T-162). */
   id?: string;
+  /** Die Grundart einer Spielart (`subraceOf`, T-193). */
+  basis?: string;
 }
+
+/** Was eine Möglichkeit bringt, samt den Namen ihrer Merkmale (T-193). */
+interface Wirkung {
+  entity: Entity;
+  effects: OptionEffects;
+  namen: Record<string, string>;
+}
+
+type WahlSchritt = Extract<BuilderStep, { kind: 'choice' }>;
+
+/** Der Entwurf am Server je Konto (T-193): wer einen Artikel öffnet, verliert nichts. */
+const ENTWURF = 'characterDraft';
+interface GespeicherterEntwurf {
+  v: 1;
+  at: string;
+  relations: Entity['relations'];
+  name: string;
+  werte: Partial<Record<string, number>>;
+  methode?: string;
+  gruppe: string;
+  eigenerWurf: RolledScores | null;
+  ausrMethode?: string;
+  goldWurf: (GoldRoll & { event: string }) | null;
+  korb: Purchase[];
+  index: number;
+  spaeter: string[];
+}
+
+const ATTR = (a: string) => a.toUpperCase();
 
 /** Eine offene Stelle einer gewählten Möglichkeit, mit ihrem Platz in `items` (T-162). */
 interface Stelle {
@@ -110,7 +145,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
  */
 @Component({
   selector: 'nw-assistent',
-  imports: [RouterLink, KurzLink, Text],
+  imports: [RouterLink, KurzLink, Text, NgTemplateOutlet],
   template: `
     <div class="buch">
       <nav aria-label="Breadcrumb" class="brot">
@@ -131,6 +166,12 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
       } @else if (!bereit()) {
         <p class="dim">Loading…</p>
       } @else {
+        @if (wiederhergestellt()) {
+          <p class="entwurf" role="status">
+            Your draft from {{ wiederhergestellt() }} is back.
+            <button type="button" class="leise" (click)="neuBeginnen()">Start over</button>
+          </p>
+        }
         <ol class="leiste" aria-label="Steps">
           @for (s of schritte(); track s.id; let i = $index) {
             <li>
@@ -138,9 +179,11 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                 type="button"
                 [class.jetzt]="i === index()"
                 [class.erledigt]="erledigt(s)"
+                [class.offen]="liegtOffen(s)"
+                [attr.title]="liegtOffen(s) ? 'Left for later' : null"
                 [attr.aria-current]="i === index() ? 'step' : null"
                 [disabled]="i > erreichbar()"
-                (click)="index.set(i)"
+                (click)="geheZu(i)"
               >
                 {{ titel(s) }}
               </button>
@@ -156,24 +199,69 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
               @case ('pick') {
                 @if (kandidaten()[s.type]; as liste) {
                   @if (liste.length > 8) {
-                    <input class="suche" type="search" placeholder="Filter…" [value]="filter()" (input)="filter.set($any($event.target).value)" />
+                    <input class="suche" type="search" placeholder="Filter…" [value]="filterVon(s.id)" (input)="filtere(s.id, $any($event.target).value)" />
                   }
-                  <ul class="karten" role="radiogroup">
-                    @for (m of gefiltert(liste); track m.wert) {
-                      <li>
-                        <label [class.an]="gewaehlt(s) === m.wert">
-                          <input type="radio" [name]="s.id" [checked]="gewaehlt(s) === m.wert" (change)="waehle(s, m.wert)" />
-                          <span class="name">{{ m.label }}</span>
-                          @if (m.hinweis) {
-                            <span class="dim">{{ m.hinweis }}</span>
+                  <!-- Spielarten unter ihrer Grundart (T-193), wie D&D Beyond: zugeklappt, bis man sie braucht. -->
+                  <ul class="karten" role="radiogroup" [attr.aria-label]="titel(s)">
+                    @for (g of gruppiert(s, liste); track g.m.wert) {
+                      <li [class.gruppe]="g.varianten.length">
+                        <ng-container *ngTemplateOutlet="karte; context: { $implicit: g.m, s: s }" />
+                        @if (g.varianten.length) {
+                          <button
+                            type="button"
+                            class="aufklapp"
+                            [attr.aria-expanded]="gruppeOffen(s, g)"
+                            (click)="schalteGruppe(g.m.wert)"
+                          >
+                            {{ gruppeOffen(s, g) ? '▾' : '▸' }} {{ g.varianten.length }} variant{{ g.varianten.length === 1 ? '' : 's' }}
+                          </button>
+                          @if (gruppeOffen(s, g)) {
+                            <ul class="karten varianten-liste">
+                              @for (v of g.varianten; track v.wert) {
+                                <li><ng-container *ngTemplateOutlet="karte; context: { $implicit: v, s: s }" /></li>
+                              }
+                            </ul>
                           }
-                        </label>
-                        <button type="button" class="quick-info" [nwQuick]="m.wert" [attr.aria-label]="'Quick view of ' + m.label">i</button>
+                        }
                       </li>
                     } @empty {
                       <li class="dim">Nothing ready to choose here yet.</li>
                     }
                   </ul>
+                  @if (vergleichVon(s.id); as ids) {
+                    <section class="vergleich" aria-label="Compare">
+                      <h3>
+                        Compare
+                        <button type="button" class="leise" (click)="leereVergleich(s.id)">Clear</button>
+                      </h3>
+                      @if (ids.length < 2) {
+                        <p class="dim">Tick “Compare” on up to four options to see them side by side.</p>
+                      } @else {
+                        <div class="vergleich-rahmen">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th></th>
+                                @for (id of ids; track id) {
+                                  <th scope="col">{{ nameVon(wirkungen()[id]?.entity) || id }}</th>
+                                }
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (z of vergleichsZeilen(ids); track z.label) {
+                                <tr>
+                                  <th scope="row">{{ z.label }}</th>
+                                  @for (w of z.werte; track $index) {
+                                    <td>{{ w || '—' }}</td>
+                                  }
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      }
+                    </section>
+                  }
                   <!-- „Mehr dazu" (T-166): die gewählte Klasse, Herkunft oder der Hintergrund in seiner Ansicht. -->
                   @if (gewaehlt(s); as w) {
                     @if (['Class', 'Ancestry', 'Background'].includes(s.type)) {
@@ -181,6 +269,17 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                         <a [routerLink]="ansicht(s.type, w)" target="_blank">More about this {{ s.type === 'Class' ? 'class' : s.type.toLowerCase() }} ↗</a>
                       </p>
                     }
+                  }
+                  <!-- Was die Wahl selbst fragt, steht gleich darunter (T-193): Barbar › Fertigkeiten. -->
+                  @if (s.nested?.length) {
+                    <div class="verschachtelt" id="wahl-verschachtelt">
+                      @for (w of wahlSchritte(s.nested!); track w.id) {
+                        <section class="unterwahl" [attr.data-offen]="fertigSchritt(w) ? null : ''" [attr.aria-label]="titel(w)">
+                          <h3>{{ titel(w) }}</h3>
+                          <ng-container *ngTemplateOutlet="wahlKoerper; context: { $implicit: w }" />
+                        </section>
+                      }
+                    </div>
                   }
                 } @else {
                   <p class="dim">Loading…</p>
@@ -300,78 +399,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
               }
 
               @case ('choice') {
-                <p><nw-text [text]="wahlsatz(s.at)" inline /><span class="dim">&nbsp;— from {{ herkunft(s.at) }}</span></p>
-                @if (moeglichkeiten()[s.id]; as liste) {
-                  @if (liste.length) {
-                    @if (liste.length > 8) {
-                      <input class="suche" type="search" placeholder="Filter…" [value]="filter()" (input)="filter.set($any($event.target).value)" />
-                    }
-                    <p class="dim">{{ antwort(s).length }} of {{ s.at.choice.count ?? 1 }} chosen</p>
-                    @if (s.at.choice.repeat) {
-                      <!-- Derselbe Wert mehrmals (T-107): +1 zweimal auf dasselbe ist +2. -->
-                      <ul class="karten">
-                        @for (m of gefiltert(liste); track m.wert) {
-                          <li>
-                            <div class="mehrfach" [class.an]="anzahl(s, m.wert) > 0">
-                              <span class="name"><nw-text [text]="m.label" inline /></span>
-                              @if (m.hinweis) {
-                                <span class="dim">{{ m.hinweis }}</span>
-                              }
-                              <span class="zaehler">
-                                <button type="button" [attr.aria-label]="'Less ' + m.label" [disabled]="!anzahl(s, m.wert)" (click)="weniger(s, m.wert)">−</button>
-                                <output [attr.aria-label]="m.label + ' chosen'">{{ anzahl(s, m.wert) }}</output>
-                                <button
-                                  type="button"
-                                  [attr.aria-label]="'More ' + m.label"
-                                  [disabled]="antwort(s).length >= (s.at.choice.count ?? 1)"
-                                  (click)="mehr(s, m.wert)"
-                                >
-                                  +
-                                </button>
-                              </span>
-                            </div>
-                          </li>
-                        }
-                      </ul>
-                    } @else {
-                    <ul class="karten">
-                      @for (m of gefiltert(liste); track m.wert) {
-                        <li>
-                          <label [class.an]="antwort(s).includes(m.wert)">
-                            <input
-                              [type]="(s.at.choice.count ?? 1) > 1 ? 'checkbox' : 'radio'"
-                              [name]="s.id"
-                              [checked]="antwort(s).includes(m.wert)"
-                              [disabled]="!antwort(s).includes(m.wert) && (s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)"
-                              (change)="kreuze(s, m.wert)"
-                            />
-                            <span class="name"><nw-text [text]="m.label" inline /></span>
-                            @if (m.hinweis) {
-                              <span class="dim">{{ m.hinweis }}</span>
-                            }
-                          </label>
-                          @if (m.id) {
-                            <button type="button" class="quick-info" [nwQuick]="m.id" [attr.aria-label]="'Quick view of ' + m.label">i</button>
-                          }
-                        </li>
-                      }
-                    </ul>
-                    }
-                  } @else {
-                    <!-- Eine freie Wahl: die Notiz sagt, was gemeint ist. -->
-                    <label class="zeile">
-                      <span>Your choice</span>
-                      <input
-                        type="text"
-                        [value]="antwort(s).join(', ')"
-                        (change)="frei(s, $any($event.target).value)"
-                        placeholder="Separate several with commas"
-                      />
-                    </label>
-                  }
-                } @else {
-                  <p class="dim">Loading…</p>
-                }
+                <ng-container *ngTemplateOutlet="wahlKoerper; context: { $implicit: s }" />
               }
 
               @case ('equipment') {
@@ -540,6 +568,14 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
             @if (problem(); as f) {
               <p class="fehler" role="alert">{{ f }}</p>
             }
+            <!-- Ein Schritt, der nicht fertig ist (T-193): bleiben oder auf später legen. -->
+            @if (warnung(); as w) {
+              <div class="warnung" role="alertdialog" aria-label="Step not finished">
+                <p>{{ w }}</p>
+                <button type="button" (click)="bleiben()">Stay</button>
+                <button type="button" class="pri" (click)="spaeterSchritt(s)">Decide later</button>
+              </div>
+            }
             <div class="knoepfe">
               <button type="button" [disabled]="index() === 0" (click)="zurueck()">Back</button>
               @if (s.kind === 'choice') {
@@ -550,13 +586,148 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                   {{ speichert() ? 'Saving…' : aufstieg() ? 'Level up' : 'Create character' }}
                 </button>
               } @else {
-                <button type="button" class="pri" [disabled]="!fertigSchritt(s)" (click)="weiter()">Next</button>
+                <button type="button" class="pri" (click)="weiterPruefen(s)">Next</button>
               }
             </div>
           </section>
         }
       }
     </div>
+
+    <!-- Eine Karte einer Grundwahl, mit Auswirkungen und Vergleich (T-193). -->
+    <ng-template #karte let-m let-s="s">
+      <div class="karte" [class.an]="gewaehlt(s) === m.wert">
+        <label>
+          <input type="radio" [name]="s.id" [checked]="gewaehlt(s) === m.wert" (change)="waehle(s, m.wert)" />
+          <span class="name">{{ m.label }}</span>
+          @if (m.hinweis) {
+            <span class="dim">{{ m.hinweis }}</span>
+          }
+        </label>
+        <button type="button" class="quick-info" [nwQuick]="m.wert" [attr.aria-label]="'Quick view of ' + m.label">i</button>
+        <div class="kartenfuss">
+          <button type="button" class="leise" [attr.aria-expanded]="aufgeklappt().has(m.wert)" (click)="klappe(m.wert)">
+            {{ aufgeklappt().has(m.wert) ? '▾' : '▸' }} Effects
+          </button>
+          <label class="vergleichen">
+            <input
+              type="checkbox"
+              [checked]="(vergleichVon(s.id) ?? []).includes(m.wert)"
+              [disabled]="!(vergleichVon(s.id) ?? []).includes(m.wert) && (vergleichVon(s.id)?.length ?? 0) >= 4"
+              (change)="vergleiche(s.id, m.wert)"
+            />
+            Compare
+          </label>
+        </div>
+        @if (aufgeklappt().has(m.wert)) {
+          @if (wirkungen()[m.wert]; as w) {
+            <dl class="wirkung">
+              @for (z of wirkungsZeilen(w); track z.label) {
+                <dt>{{ z.label }}</dt>
+                <dd>{{ z.wert }}</dd>
+              }
+              @if (w.effects.features.length) {
+                <dt>Features</dt>
+                <dd>
+                  @for (f of w.effects.features; track f.id) {
+                    <a [routerLink]="['/artikel', f.id]" [nwQuick]="f.id">{{ w.namen[f.id] || 'feature' }}</a>@if (!$last) {<span>, </span>}
+                  }
+                </dd>
+              }
+              @if (w.effects.choices.length) {
+                <dt>You choose</dt>
+                <dd>
+                  @for (c of w.effects.choices; track c.by + c.choice.id) {
+                    <nw-text [text]="wahlText(c.choice)" inline />@if (!$last) {<span>; </span>}
+                  }
+                </dd>
+              }
+              @if (w.effects.line.length > 1) {
+                <dd class="dim herkunft">Includes {{ grundarten(w) }}.</dd>
+              }
+            </dl>
+          } @else {
+            <p class="dim">Loading…</p>
+          }
+        }
+      </div>
+    </ng-template>
+
+    <!-- Eine Wahl — als Schritt oder in der Grundwahl, die sie stellt (T-193). -->
+    <ng-template #wahlKoerper let-s>
+      <p><nw-text [text]="wahlsatz(s.at)" inline /><span class="dim">&nbsp;— from {{ herkunft(s.at) }}</span></p>
+                @if (moeglichkeiten()[s.id]; as liste) {
+                  @if (liste.length) {
+                    @if (liste.length > 8) {
+                      <input class="suche" type="search" placeholder="Filter…" [value]="filterVon(s.id)" (input)="filtere(s.id, $any($event.target).value)" />
+                    }
+                    <p class="dim">{{ antwort(s).length }} of {{ s.at.choice.count ?? 1 }} chosen</p>
+                    @if (s.at.choice.repeat) {
+                      <!-- Derselbe Wert mehrmals (T-107): +1 zweimal auf dasselbe ist +2. -->
+                      <ul class="karten">
+                        @for (m of gefiltert(liste, s.id); track m.wert) {
+                          <li>
+                            <div class="mehrfach" [class.an]="anzahl(s, m.wert) > 0">
+                              <span class="name"><nw-text [text]="m.label" inline /></span>
+                              @if (m.hinweis) {
+                                <span class="dim">{{ m.hinweis }}</span>
+                              }
+                              <span class="zaehler">
+                                <button type="button" [attr.aria-label]="'Less ' + m.label" [disabled]="!anzahl(s, m.wert)" (click)="weniger(s, m.wert)">−</button>
+                                <output [attr.aria-label]="m.label + ' chosen'">{{ anzahl(s, m.wert) }}</output>
+                                <button
+                                  type="button"
+                                  [attr.aria-label]="'More ' + m.label"
+                                  [disabled]="antwort(s).length >= (s.at.choice.count ?? 1)"
+                                  (click)="mehr(s, m.wert)"
+                                >
+                                  +
+                                </button>
+                              </span>
+                            </div>
+                          </li>
+                        }
+                      </ul>
+                    } @else {
+                    <ul class="karten">
+                      @for (m of gefiltert(liste, s.id); track m.wert) {
+                        <li>
+                          <label [class.an]="antwort(s).includes(m.wert)">
+                            <input
+                              [type]="(s.at.choice.count ?? 1) > 1 ? 'checkbox' : 'radio'"
+                              [name]="s.id"
+                              [checked]="antwort(s).includes(m.wert)"
+                              [disabled]="!antwort(s).includes(m.wert) && (s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)"
+                              (change)="kreuze(s, m.wert)"
+                            />
+                            <span class="name"><nw-text [text]="m.label" inline /></span>
+                            @if (m.hinweis) {
+                              <span class="dim">{{ m.hinweis }}</span>
+                            }
+                          </label>
+                          @if (m.id) {
+                            <button type="button" class="quick-info" [nwQuick]="m.id" [attr.aria-label]="'Quick view of ' + m.label">i</button>
+                          }
+                        </li>
+                      }
+                    </ul>
+                    }
+                  } @else {
+                    <!-- Eine freie Wahl: die Notiz sagt, was gemeint ist. -->
+                    <label class="zeile">
+                      <span>Your choice</span>
+                      <input
+                        type="text"
+                        [value]="antwort(s).join(', ')"
+                        (change)="frei(s, $any($event.target).value)"
+                        placeholder="Separate several with commas"
+                      />
+                    </label>
+                  }
+                } @else {
+                  <p class="dim">Loading…</p>
+                }
+    </ng-template>
   `,
   styles: `
     .buch {
@@ -659,6 +830,151 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
     }
     .varianten {
       grid-template-columns: 1fr;
+    }
+    /* Die Karte einer Grundwahl (T-193): Name, Info, Auswirkungen, Vergleich. */
+    .karte {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+    .karte.an {
+      border-color: var(--accent);
+      background: var(--hover);
+    }
+    .karten .karte > label {
+      border: 0;
+      background: none;
+      padding-right: 2.6rem;
+    }
+    .karte > .quick-info {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.55rem;
+    }
+    .kartenfuss {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0 0.75rem 0.4rem;
+      font-size: 0.85rem;
+    }
+    .karten .kartenfuss label.vergleichen {
+      min-height: 32px;
+      padding: 0;
+      border: 0;
+      background: none;
+      gap: 0.3rem;
+      align-items: center;
+    }
+    button.leise {
+      min-height: 32px;
+      padding: 0 0.4rem;
+      border: 0;
+      background: none;
+      color: var(--accent);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .wirkung {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 0.15rem 0.6rem;
+      margin: 0;
+      padding: 0.2rem 0.75rem 0.6rem;
+      font-size: 0.88rem;
+    }
+    .wirkung dt {
+      color: var(--dim);
+    }
+    .wirkung dd {
+      margin: 0;
+    }
+    .wirkung .herkunft {
+      grid-column: 1 / -1;
+    }
+    /* Eine Grundart mit Spielarten nimmt die ganze Breite, damit die Spielarten darunter Platz haben. */
+    .karten > li.gruppe {
+      grid-column: 1 / -1;
+    }
+    .aufklapp {
+      min-height: 32px;
+      margin: 0.25rem 0 0;
+      padding: 0 0.5rem;
+      border: 0;
+      background: none;
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .varianten-liste {
+      margin: 0.25rem 0 0.5rem 1.2rem;
+    }
+    .vergleich {
+      margin: 1rem 0;
+    }
+    .vergleich h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .vergleich-rahmen {
+      overflow-x: auto;
+    }
+    .vergleich table {
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      min-width: 100%;
+    }
+    .vergleich th,
+    .vergleich td {
+      padding: 0.3rem 0.5rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    .vergleich thead th {
+      font-family: var(--caps);
+      color: var(--heading);
+    }
+    .verschachtelt {
+      margin-top: 1rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+    .unterwahl {
+      border-left: 3px solid var(--gold);
+      padding-left: 0.75rem;
+    }
+    .unterwahl h3 {
+      margin-top: 0;
+    }
+    .warnung {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--warn);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+    .warnung p {
+      flex: 1 1 14rem;
+      margin: 0;
+    }
+    .warnung button {
+      min-height: 44px;
+      padding: 0 1rem;
+    }
+    .leiste button.offen {
+      border-style: dashed;
+      border-color: var(--warn);
+    }
+    .entwurf {
+      margin: 0 0 0.75rem;
     }
     .varianten label {
       flex-wrap: nowrap;
@@ -860,14 +1176,32 @@ export class Assistent {
   private readonly quellen = signal<ReadonlyMap<string, Entity>>(new Map());
   private readonly gefragt = new Set<string>();
   protected readonly index = signal(0);
-  protected readonly filter = signal('');
+  /** Der Filter je Liste — eine Wahl in der Klassenwahl hat ihren eigenen (T-193). */
+  private readonly filterJe = signal<Record<string, string>>({});
   protected readonly problem = signal<string | null>(null);
   protected readonly ladefehler = signal<string | null>(null);
   protected readonly speichert = signal(false);
   protected readonly wuerfelt = signal(false);
   protected readonly name = signal('');
-  /** Welche Wahlen jemand ausdrücklich auf später gelegt hat. */
-  private readonly spaeterGelegt = signal<ReadonlySet<string>>(new Set());
+  /** Welche Wahlen und Schritte jemand ausdrücklich auf später gelegt hat. */
+  protected readonly spaeterGelegt = signal<ReadonlySet<string>>(new Set());
+  /** Die Warnung vor einem unfertigen Schritt (T-193). */
+  protected readonly warnung = signal<string | null>(null);
+
+  /** Auswirkungen je Möglichkeit, geholt beim Aufklappen oder Vergleichen (T-193). */
+  protected readonly wirkungen = signal<Partial<Record<string, Wirkung>>>({});
+  private readonly wirkungGefragt = new Set<string>();
+  protected readonly aufgeklappt = signal<ReadonlySet<string>>(new Set());
+  /** Was nebeneinandersteht — je Schritt, eine Herkunft neben einer Klasse sagt nichts. */
+  protected readonly vergleich = signal<Partial<Record<string, string[]>>>({});
+  private readonly offeneGruppen = signal<ReadonlySet<string>>(new Set());
+
+  /** Wann der Entwurf zurückkam — für den Hinweis mit „Start over". */
+  protected readonly wiederhergestellt = signal<string | null>(null);
+  /** Erst nach dem Wiederherstellen wird gespeichert, sonst überschriebe der leere Anfang den Entwurf. */
+  private readonly entwurfGeladen = signal(false);
+  private entwurfFertig = false;
+  private speicherUhr: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly kandidaten = signal<Partial<Record<string, Moeglichkeit[]>>>({});
   protected readonly moeglichkeiten = signal<Partial<Record<string, Moeglichkeit[]>>>({});
@@ -940,6 +1274,7 @@ export class Assistent {
       levelUp: this.aufstieg(),
       done: this.beantwortet(),
       rules: { feats: this.talente() },
+      nest: true,
     }),
   );
   protected readonly schritt = computed(() => this.schritte()[Math.min(this.index(), this.schritte().length - 1)]);
@@ -947,7 +1282,7 @@ export class Assistent {
   /** Bis wohin man springen darf: bis zum ersten Schritt, der noch fehlt. */
   protected readonly erreichbar = computed(() => {
     const l = this.schritte();
-    const i = l.findIndex((s) => !this.fertigSchritt(s));
+    const i = l.findIndex((s) => !this.fertigSchritt(s) && !this.spaeterGelegt().has(s.id));
     return i < 0 ? l.length - 1 : i;
   });
 
@@ -1006,11 +1341,15 @@ export class Assistent {
   });
 
   /** Was beim Speichern noch offen bleibt — es bleibt an der Figur offen (`pendingChoices`). */
-  protected readonly offenGelassen = computed(() =>
-    this.schritte()
-      .filter((s): s is Extract<BuilderStep, { kind: 'choice' }> => s.kind === 'choice' && !s.at.picks)
-      .map((s) => `${choiceTitle(s.at)}: ${plainEquipmentText(choiceText(s.at.choice))}`),
-  );
+  protected readonly offenGelassen = computed(() => [
+    ...this.schritte()
+      .flatMap((s): ChoiceAtCharacter[] => (s.kind === 'choice' ? [s.at] : s.kind === 'pick' ? (s.nested ?? []) : []))
+      .filter((c) => !c.picks)
+      .map((c) => `${choiceTitle(c)}: ${plainEquipmentText(choiceText(c.choice))}`),
+    ...this.schritte()
+      .filter((s) => s.kind !== 'choice' && this.liegtOffen(s))
+      .map((s) => this.titel(s)),
+  ]);
 
   /** Die Auswahllisten der offenen Stellen (T-162), je Sorte einmal geladen. */
   protected readonly stellenListen = signal<Partial<Record<string, { id: string; name: string }[]>>>({});
@@ -1031,7 +1370,7 @@ export class Assistent {
         })
         .catch((e: Error) => this.ladefehler.set(e.message));
     }
-    this.api
+    const verfahren = this.api
       .abilities()
       .then((r) => {
         this.methoden.set(r.methods);
@@ -1045,14 +1384,35 @@ export class Assistent {
       .finally(() => this.geladenVerfahren.set(true));
     /* Beim Aufstieg gibt es keine Startausrüstung. */
     if (!id) {
-      this.api
+      const ausr = this.api
         .equipmentMethods()
         .then((r) => {
           this.ausrMethoden.set(r.methods);
           if (r.methods.length === 1) this.ausrMethode.set(r.methods[0]!);
         })
         .catch((e: Error) => this.ladefehler.set(e.message));
+      /* Der Entwurf vom letzten Mal (T-193), sobald die Verfahren da sind, die er nennt. */
+      void Promise.all([this.api.prefs().catch(() => ({}) as Record<string, unknown>), verfahren, ausr]).then(([p]) => {
+        this.stelleWiederHer(p[ENTWURF]);
+        this.entwurfGeladen.set(true);
+      });
+
+      /* Gemerkt wird am Server, kurz nach der letzten Änderung. */
+      effect(() => {
+        const d = this.entwurfZumSpeichern();
+        if (!this.entwurfGeladen() || this.entwurfFertig) return;
+        clearTimeout(this.speicherUhr);
+        this.speicherUhr = setTimeout(() => {
+          if (!this.entwurfFertig) void this.api.setPref(ENTWURF, d).catch(() => undefined);
+        }, 800);
+      });
     }
+
+    /* Ein anderer Schritt nimmt die Warnung des alten mit. */
+    effect(() => {
+      this.index();
+      untracked(() => this.warnung.set(null));
+    });
 
     /* **Was der Entwurf nennt, kommt ganz** — und was eine Quelle gewährt
        (`grants`), denn auch ein Merkmal kann fragen (Fighting Style). */
@@ -1067,7 +1427,8 @@ export class Assistent {
       for (const c of choicesAtCharacter(e, q)) {
         if (ARTIKEL.has(String(c.choice.kind)) || c.choice.from?.interfaces?.length) for (const p of c.picks ?? []) ids.add(p);
       }
-      for (const x of q.values()) for (const r of x.relations ?? []) if (r.type === 'grants') ids.add(r.to);
+      /* Die Grundart einer Unterart fragt mit (T-193, `ancestryLine`). */
+      for (const x of q.values()) for (const r of x.relations ?? []) if (r.type === 'grants' || r.type === 'subraceOf') ids.add(r.to);
       const fehlt = [...ids].filter((i) => !q.has(i) && !this.gefragt.has(i));
       if (!fehlt.length) return;
       for (const i of fehlt) this.gefragt.add(i);
@@ -1093,13 +1454,14 @@ export class Assistent {
       const s = this.schritt();
       if (!s) return;
       untracked(() => {
-        this.filter.set('');
         this.problem.set(null);
         if (s.kind === 'pick') void this.ladeKandidaten(s.type);
         if (s.kind === 'choice') void this.ladeMoeglichkeiten(s);
+        /* Die Wahlen in der Grundwahl laden wie ein eigener Schritt (T-193). */
+        if (s.kind === 'pick') for (const w of this.wahlSchritte(s.nested ?? [])) void this.ladeMoeglichkeiten(w);
         /* Die Verweisziele in Möglichkeiten und Sätzen (`refs.links`) kommen
            mit dem Artikel — `nw-text` liest sie aus dem Bestand (T-162). */
-        const quellen = s.kind === 'choice' ? [s.at] : s.kind === 'equipment' ? s.choices : [];
+        const quellen = s.kind === 'choice' ? [s.at] : s.kind === 'equipment' ? s.choices : s.kind === 'pick' ? (s.nested ?? []) : [];
         for (const c of quellen) void this.bestand.oeffnen(c.source.entity.id, false, false);
         if (s.kind === 'equipment') for (const z of fixedEquipmentLines(this.entwurf(), this.quellen())) void this.bestand.oeffnen(z.source, false, false);
       });
@@ -1229,8 +1591,15 @@ export class Assistent {
   private async ladeKandidaten(typ: string): Promise<void> {
     if (this.kandidaten()[typ]) return;
     try {
-      const rows = await this.zeilen([typ]);
-      this.kandidaten.update((k) => ({ ...k, [typ]: rows.map((z) => ({ wert: z.id, label: z.name, hinweis: z.source.split(' p. ')[0] ?? '' })) }));
+      /* Mit der Grundart einer Spielart, für die Gruppen (T-193). */
+      const rows = await this.zeilen([typ], typ === 'Class' ? undefined : 'subraceOf');
+      this.kandidaten.update((k) => ({
+        ...k,
+        [typ]: rows.map((z) => {
+          const basis = z.rels?.['subraceOf']?.[0];
+          return { wert: z.id, label: z.name, hinweis: z.source.split(' p. ')[0] ?? '', ...(basis ? { basis } : {}) };
+        }),
+      }));
     } catch (e) {
       this.problem.set((e as Error).message);
     }
@@ -1333,9 +1702,17 @@ export class Assistent {
     return `${m.count} × ${m.dice ?? '?'}${m.scope === 'party' ? ', once for the party' : ''}`;
   }
 
-  protected gefiltert(liste: Moeglichkeit[]): Moeglichkeit[] {
-    const q = this.filter().trim().toLowerCase();
+  protected gefiltert(liste: Moeglichkeit[], id: string): Moeglichkeit[] {
+    const q = this.filterVon(id).trim().toLowerCase();
     return q ? liste.filter((m) => m.label.toLowerCase().includes(q)) : liste;
+  }
+
+  protected filterVon(id: string): string {
+    return this.filterJe()[id] ?? '';
+  }
+
+  protected filtere(id: string, q: string): void {
+    this.filterJe.update((m) => ({ ...m, [id]: q }));
   }
 
   protected gewaehlt(s: Extract<BuilderStep, { kind: 'pick' }>): string | undefined {
@@ -1344,6 +1721,7 @@ export class Assistent {
 
   protected waehle(s: Extract<BuilderStep, { kind: 'pick' }>, id: string): void {
     this.entwurf.update((e) => pruneAnswers(setPick(e, s.edge, id), this.quellen()));
+    this.springe();
   }
 
   protected antwort(s: Extract<BuilderStep, { kind: 'choice' }>): string[] {
@@ -1391,6 +1769,7 @@ export class Assistent {
       return m;
     });
     this.entwurf.update((e) => pruneAnswers(answerChoice(e, s.at, picks), this.quellen()));
+    if (picks.length >= (s.at.choice.count ?? 1)) this.springe();
   }
 
   protected spaeter(s: Extract<BuilderStep, { kind: 'choice' }>): void {
@@ -1459,7 +1838,7 @@ export class Assistent {
   protected fertigSchritt(s: BuilderStep): boolean {
     switch (s.kind) {
       case 'pick':
-        return !!this.entwurf().relations?.some((r) => r.type === s.edge);
+        return !!this.entwurf().relations?.some((r) => r.type === s.edge) && this.wahlSchritte(s.nested ?? []).every((w) => this.fertigSchritt(w));
       case 'abilities':
         return !this.attributsproblem();
       case 'level':
@@ -1480,6 +1859,275 @@ export class Assistent {
 
   protected weiter(): void {
     this.index.update((i) => Math.min(i + 1, this.schritte().length - 1));
+    if (typeof window !== 'undefined') window.scrollTo?.({ top: 0 });
+  }
+
+  protected geheZu(i: number): void {
+    this.index.set(i);
+  }
+
+  // ---------------------------------------------------------- Unfertige Schritte (T-193)
+
+  /**
+   * **Was an diesem Schritt noch fehlt**, als Satz — `null`, wenn nichts.
+   * Ein Punktekauf mit Punkten übrig ist fertig und fragt trotzdem: wer
+   * weiterklickt, hat sie vielleicht nur übersehen.
+   */
+  protected hinweis(s: BuilderStep): string | null {
+    switch (s.kind) {
+      case 'pick': {
+        if (!this.entwurf().relations?.some((r) => r.type === s.edge)) return `No ${s.type === 'Class' ? 'class' : s.type.toLowerCase()} chosen yet.`;
+        const offen = this.wahlSchritte(s.nested ?? []).filter((w) => !this.fertigSchritt(w));
+        return offen.length ? `Not every choice is made yet: ${offen.map((w) => this.titel(w)).join('; ')}.` : null;
+      }
+      case 'abilities': {
+        const p = this.attributsproblem();
+        if (p) return p;
+        const m = this.methode();
+        const n = this.ausgegeben();
+        if (m?.method === 'pointBuy' && m.budget !== undefined && n !== null && n < m.budget) return `Not all points spent — ${n} of ${m.budget}.`;
+        return null;
+      }
+      case 'choice': {
+        if (this.fertigSchritt(s)) return null;
+        const fehlt = (s.at.choice.count ?? 1) - (s.at.picks?.length ?? 0);
+        return `${fehlt} still to choose.`;
+      }
+      case 'equipment':
+        return this.fertigSchritt(s) ? null : (this.ausrMethode() ? this.pruefung().problem : null) || 'Not every equipment choice is made yet.';
+      case 'level':
+        return this.fertigSchritt(s) ? null : 'Choose the class that gains a level.';
+      case 'details':
+        return this.fertigSchritt(s) ? null : 'Give the character a name.';
+    }
+  }
+
+  /** Auf später gelegt und noch nicht nachgeholt — so steht der Schritt in der Leiste. */
+  protected liegtOffen(s: BuilderStep): boolean {
+    return this.spaeterGelegt().has(s.id) && !!this.hinweis(s);
+  }
+
+  protected weiterPruefen(s: BuilderStep): void {
+    const h = this.spaeterGelegt().has(s.id) ? null : this.hinweis(s);
+    if (h) this.warnung.set(h);
+    else this.weiter();
+  }
+
+  protected bleiben(): void {
+    this.warnung.set(null);
+  }
+
+  protected spaeterSchritt(s: BuilderStep): void {
+    this.spaeterGelegt.update((l) => new Set([...l, s.id]));
+    this.warnung.set(null);
+    this.weiter();
+  }
+
+  /**
+   * **Zum nächsten offenen Punkt** (T-193): nach einer Wahl die erste
+   * Wahl darunter, die noch fehlt, sonst „Next". Gezeichnet wird erst
+   * danach — und was die Wahl öffnet, kommt mit ihrem Artikel.
+   */
+  private springe(): void {
+    if (typeof document === 'undefined') return;
+    setTimeout(() => {
+      const ziel = document.querySelector<HTMLElement>('.blatt [data-offen]') ?? document.querySelector<HTMLElement>('.blatt .knoepfe .pri');
+      ziel?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }, 350);
+  }
+
+  // ---------------------------------------------------------- Auswirkungen und Vergleich (T-193)
+
+  /** Die Wahlen einer Grundwahl als Schritte — dieselbe Form, dieselben Listen. */
+  protected wahlSchritte(nested: readonly ChoiceAtCharacter[]): WahlSchritt[] {
+    return nested.map((at) => ({ id: `choice:${choiceKey(at)}`, kind: 'choice', at }));
+  }
+
+  /** Spielarten unter ihrer Grundart; ein Filter zeigt die Gruppe, in der etwas passt. */
+  protected gruppiert(s: Extract<BuilderStep, { kind: 'pick' }>, liste: Moeglichkeit[]): { m: Moeglichkeit; varianten: Moeglichkeit[] }[] {
+    const da = new Set(liste.map((m) => m.wert));
+    const passt = new Set(this.gefiltert(liste, s.id).map((m) => m.wert));
+    const kinder = new Map<string, Moeglichkeit[]>();
+    for (const m of liste) if (m.basis && da.has(m.basis) && m.basis !== m.wert) kinder.set(m.basis, [...(kinder.get(m.basis) ?? []), m]);
+    return liste
+      .filter((m) => !m.basis || !da.has(m.basis) || m.basis === m.wert)
+      .map((m) => ({ m, varianten: (kinder.get(m.wert) ?? []).filter((v) => passt.has(v.wert) || passt.has(m.wert)) }))
+      .filter((g) => passt.has(g.m.wert) || g.varianten.length);
+  }
+
+  protected gruppeOffen(s: Extract<BuilderStep, { kind: 'pick' }>, g: { m: Moeglichkeit; varianten: Moeglichkeit[] }): boolean {
+    const w = this.gewaehlt(s);
+    return this.offeneGruppen().has(g.m.wert) || !!this.filterVon(s.id).trim() || g.varianten.some((v) => v.wert === w);
+  }
+
+  protected schalteGruppe(id: string): void {
+    this.offeneGruppen.update((l) => {
+      const m = new Set(l);
+      if (!m.delete(id)) m.add(id);
+      return m;
+    });
+  }
+
+  protected klappe(id: string): void {
+    this.aufgeklappt.update((l) => {
+      const m = new Set(l);
+      if (!m.delete(id)) m.add(id);
+      return m;
+    });
+    void this.ladeWirkung(id);
+  }
+
+  protected vergleichVon(schritt: string): string[] | null {
+    const l = this.vergleich()[schritt];
+    return l?.length ? l : null;
+  }
+
+  protected vergleiche(schritt: string, id: string): void {
+    this.vergleich.update((v) => {
+      const l = v[schritt] ?? [];
+      return { ...v, [schritt]: l.includes(id) ? l.filter((x) => x !== id) : l.length >= 4 ? l : [...l, id] };
+    });
+    void this.ladeWirkung(id);
+  }
+
+  protected leereVergleich(schritt: string): void {
+    this.vergleich.update((v) => ({ ...v, [schritt]: [] }));
+  }
+
+  /**
+   * Die Möglichkeit ganz, samt ihrer Grundarten — die Namen ihrer Merkmale
+   * kommen in `refs.names` mit; gerechnet wird `optionEffects`.
+   */
+  private async ladeWirkung(id: string): Promise<void> {
+    if (this.wirkungGefragt.has(id)) return;
+    this.wirkungGefragt.add(id);
+    try {
+      const byId = new Map<string, Entity>();
+      const namen: Record<string, string> = {};
+      let jetzt: string | undefined = id;
+      while (jetzt && !byId.has(jetzt) && byId.size < 4) {
+        const { refs, ...e } = await this.api.entity(jetzt);
+        byId.set(e.id, e);
+        Object.assign(namen, refs?.names ?? {});
+        jetzt = e.relations?.find((r) => r.type === 'subraceOf')?.to;
+      }
+      const effects = optionEffects(id, byId);
+      if (effects) this.wirkungen.update((w) => ({ ...w, [id]: { entity: byId.get(id)!, effects, namen } }));
+    } catch (e) {
+      this.wirkungGefragt.delete(id);
+      this.problem.set((e as Error).message);
+    }
+  }
+
+  private bonusText(b: Record<string, number>): string {
+    return Object.entries(b)
+      .filter(([, n]) => n)
+      .map(([a, n]) => `${ATTR(a)} ${n > 0 ? '+' : ''}${n}`)
+      .join(', ');
+  }
+
+  /** Die Auswirkungen als Zeilen — leere fallen weg. */
+  protected wirkungsZeilen(w: Wirkung): { label: string; wert: string }[] {
+    const e = w.effects;
+    return [
+      { label: 'Ability scores', wert: this.bonusText(e.abilityBonus) },
+      { label: 'Ability choice', wert: e.abilityNote ?? '' },
+      { label: 'Size', wert: e.size.join(' or ') },
+      { label: 'Speed', wert: e.speed ?? '' },
+      { label: 'Darkvision', wert: e.darkvision ? `${e.darkvision} ft.` : '' },
+      { label: 'Creature type', wert: e.creatureType ?? '' },
+      { label: 'Resistances', wert: e.resistances.join(', ') },
+      { label: 'Hit die', wert: e.hitDie ? `d${e.hitDie}` : '' },
+      { label: 'Primary ability', wert: e.primaryAbility.map(ATTR).join(', ') },
+      { label: 'Saving throws', wert: e.saves.map(ATTR).join(', ') },
+      { label: 'Proficiencies', wert: e.proficient.join(', ') },
+      { label: 'Expertise', wert: e.expertise.join(', ') },
+    ].filter((z) => z.wert);
+  }
+
+  protected wahlText(c: Choice): string {
+    return choiceText(c);
+  }
+
+  protected grundarten(w: Wirkung): string {
+    return w.effects.line
+      .slice(1)
+      .map((id) => w.namen[id] || id)
+      .join(', ');
+  }
+
+  /** Nebeneinander: jede Zeile, die bei einer der Möglichkeiten etwas sagt. */
+  protected vergleichsZeilen(ids: string[]): { label: string; werte: string[] }[] {
+    const ws = ids.map((id) => this.wirkungen()[id]);
+    const zeilen = ws.map((w) =>
+      w
+        ? [
+            ...this.wirkungsZeilen(w),
+            { label: 'Features', wert: w.effects.features.map((f) => w.namen[f.id] || '').filter(Boolean).join(', ') },
+            { label: 'You choose', wert: w.effects.choices.map((c) => plainEquipmentText(choiceText(c.choice))).join('; ') },
+          ]
+        : [],
+    );
+    /* In der Reihenfolge der Auswirkungen, nicht der ersten Spalte. */
+    const reihe = ['Ability scores', 'Ability choice', 'Size', 'Speed', 'Darkvision', 'Creature type', 'Resistances', 'Hit die', 'Primary ability', 'Saving throws', 'Proficiencies', 'Expertise', 'Features', 'You choose'];
+    const labels = [...new Set(zeilen.flatMap((z) => z.filter((x) => x.wert).map((x) => x.label)))].sort((a, z) => reihe.indexOf(a) - reihe.indexOf(z));
+    return labels.map((label) => ({ label, werte: zeilen.map((z) => z.find((x) => x.label === label)?.wert ?? '') }));
+  }
+
+  // ---------------------------------------------------------- Der Entwurf am Server (T-193)
+
+  private readonly entwurfZumSpeichern = computed((): GespeicherterEntwurf | null => {
+    const e = this.entwurf();
+    const leer = !(e.relations ?? []).length && !this.name().trim();
+    if (leer) return null;
+    return {
+      v: 1,
+      at: new Date().toISOString(),
+      relations: e.relations ?? [],
+      name: this.name(),
+      werte: this.werte(),
+      ...(this.methode() ? { methode: this.methode()!.id } : {}),
+      gruppe: this.gruppe(),
+      eigenerWurf: this.eigenerWurf(),
+      ...(this.ausrMethode() ? { ausrMethode: this.ausrMethode()!.id } : {}),
+      goldWurf: this.goldWurf(),
+      korb: this.korb(),
+      index: this.index(),
+      spaeter: [...this.spaeterGelegt()],
+    };
+  });
+
+  private stelleWiederHer(roh: unknown): void {
+    const d = roh as GespeicherterEntwurf | null | undefined;
+    if (!d || d.v !== 1 || !Array.isArray(d.relations)) return;
+    this.entwurf.set({ ...LEER, relations: d.relations });
+    this.name.set(d.name ?? '');
+    const m = this.methoden().find((x) => x.id === d.methode);
+    if (m) this.methode.set(m);
+    this.werte.set(d.werte ?? {});
+    if (typeof d.gruppe === 'string') this.gruppe.set(d.gruppe);
+    this.eigenerWurf.set(d.eigenerWurf ?? null);
+    const a = this.ausrMethoden().find((x) => x.id === d.ausrMethode);
+    if (a) this.ausrMethode.set(a);
+    this.goldWurf.set(d.goldWurf ?? null);
+    this.korb.set(Array.isArray(d.korb) ? d.korb : []);
+    this.spaeterGelegt.set(new Set(Array.isArray(d.spaeter) ? d.spaeter : []));
+    this.index.set(Math.max(0, Number(d.index) || 0));
+    this.wiederhergestellt.set(new Date(d.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }));
+  }
+
+  protected neuBeginnen(): void {
+    this.entwurf.set(LEER);
+    this.name.set('');
+    this.werte.set({});
+    this.eigenerWurf.set(null);
+    this.goldWurf.set(null);
+    this.korb.set([]);
+    this.spaeterGelegt.set(new Set());
+    this.vergleich.set({});
+    this.index.set(0);
+    this.wiederhergestellt.set(null);
+    void this.api.setPref(ENTWURF, null).catch(() => undefined);
   }
 
   protected zurueck(): void {
@@ -1606,7 +2254,8 @@ export class Assistent {
         if (this.gruppe()) kanten.push({ type: 'memberOfParty', to: this.gruppe(), props: {} });
         /* Die Figur gehört dem Spieler (E-014 d): gleich fertig. */
         const figur = await this.api.createEntity('PlayerCharacter', name, { 'Status.status': 'ready' }, kanten);
-        const werte = Object.fromEntries(this.attribute().map((a) => [`Abilities.${a}`, this.werte()[a]]));
+        /* Auf später gelegte Werte bleiben leer (T-193). */
+        const werte = Object.fromEntries(this.attribute().flatMap((a) => (this.werte()[a] === undefined ? [] : [[`Abilities.${a}`, this.werte()[a]]])));
         await this.api.createEntity('Statblock', name, { ...werte, 'Status.status': 'ready' }, [{ type: 'belongsTo', to: figur.id }]);
         figurId = figur.id;
         this.angelegt.set(figurId);
@@ -1615,7 +2264,12 @@ export class Assistent {
       }
       /* Die Startausrüstung prüft und schreibt der Server (T-096). */
       const m = this.ausrMethode();
-      if (m) await this.api.applyEquipment(figurId, m.id, m.method === 'rules' ? [] : this.korb(), this.goldWurf()?.event);
+      /* Auf später gelegt (T-193): die Ausrüstung folgt auf der Seite der Figur. */
+      const ausrSpaeter = this.schritte().some((x) => x.kind === 'equipment' && this.liegtOffen(x));
+      if (m && !ausrSpaeter) await this.api.applyEquipment(figurId, m.id, m.method === 'rules' ? [] : this.korb(), this.goldWurf()?.event);
+      this.entwurfFertig = true;
+      clearTimeout(this.speicherUhr);
+      await this.api.setPref(ENTWURF, null).catch(() => undefined);
       await this.router.navigate(['/artikel', figurId], { queryParams: { edit: 1 } });
     } catch (error) {
       if (error instanceof ApiError) {
