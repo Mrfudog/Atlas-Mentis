@@ -12,7 +12,8 @@ import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import type { Registry } from '@nw/model';
 import { Wahl } from '../src/app/artikel/wahl';
-import { Api } from '../src/app/kern/api';
+import { Api, type KartenZeile } from '../src/app/kern/api';
+import { kartenGefiltert } from '../src/app/karten/karten';
 import { Bestand } from '../src/app/kern/bestand';
 import { Session } from '../src/app/kern/session';
 
@@ -93,5 +94,40 @@ describe('Map on the table › images of class map (T-202)', () => {
     const { el } = await tippe(['Scene'], 'harb');
     expect(api.list).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'Asset' }));
     expect(el.querySelectorAll('.bild').length).toBe(0);
+  });
+});
+
+describe('Play › Maps › filter (T-202)', () => {
+  const z = (id: string, depth: number, parent: string | null, extra: Partial<KartenZeile> = {}): KartenZeile => ({
+    id,
+    name: id,
+    image: '',
+    kind: 'region',
+    tags: [],
+    layers: [],
+    depth,
+    parent,
+    ...extra,
+  });
+  const zeilen = [
+    z('World', 0, null, { layers: [{ id: 'L1', name: 'Campaign' }] }),
+    z('Region', 1, 'World', { tags: ['north'] }),
+    z('Harbour', 2, 'Region', { layers: [{ id: 'L2', name: 'Book' }] }),
+    z('Abbey', 0, null),
+  ];
+  it('keeps the maps above a hit, marked as path, so the indentation holds', () => {
+    expect(kartenGefiltert(zeilen, 'harb', '', '').map((x) => [x.zeile.id, x.treffer])).toEqual([
+      ['World', false],
+      ['Region', false],
+      ['Harbour', true],
+    ]);
+  });
+  it('filters by layer and by tag', () => {
+    expect(kartenGefiltert(zeilen, '', 'L1', '').map((x) => x.zeile.id)).toEqual(['World']);
+    expect(kartenGefiltert(zeilen, '', '', 'north').map((x) => [x.zeile.id, x.treffer])).toEqual([
+      ['World', false],
+      ['Region', true],
+    ]);
+    expect(kartenGefiltert(zeilen, '', '', '').length).toBe(4);
   });
 });

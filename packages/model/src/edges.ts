@@ -327,6 +327,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'mapList',
+    label: 'Map list',
+    area: 'play',
+    does: 'lists the maps under Play › Maps with their sub-maps indented and their layers, and says on a map where it is used — sessions, scenes and fights on it, and what it depicts (T-202)',
+    uses: {
+      [M + 'maplist.ts']: ['insideMap', 'mapOf', 'marker'],
+      [S + 'kartenliste.ts']: ['inLayer'],
+      [W + 'karten/kartenpanel.ts']: ['mapOf', 'onMap'],
+    },
+  },
+  {
     key: 'turnplan',
     label: 'Turn planner',
     area: 'play',

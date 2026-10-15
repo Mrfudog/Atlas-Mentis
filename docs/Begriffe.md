@@ -432,6 +432,18 @@ Typ (`targets`, wie `titles` für die Beschriftung). Eine Liste im Code
 fehlt. Es bleibt ein **Vorschlag**: ein Porträt als Kartenhintergrund ist
 seltsam, aber nicht falsch.
 
+**Ein Kartenbild ist noch keine Karte** (T-202). Die Karte ist ein
+Artikel mit Raster, Blättern, Marken und Nebel; das Bild ist nur ihr
+unterstes Blatt. Wer ein Kartenbild hochlädt, sucht es trotzdem dort, wo
+eine Karte verlangt wird — unter „Map on the table“ an der Sitzung. Also
+bietet eine Auswahl, die eine Art verlangt, deren Bild eine Klasse
+anbietet, auch Bilder dieser Klasse an, und wer eines wählt, legt daraus
+den Artikel an (`imageBecomes`, `fromImage`, `mapFromImage`). Welche Klasse
+zu welcher Art wird, liest sich aus denselben `targets` wie oben — keine
+Liste im Code. Dass es zwei Dinge bleiben, ist Absicht: dasselbe Bild darf
+zwei Karten tragen, eine mit Raster für den Kampf und eine ohne für die
+Reise.
+
 **Wo ein Bild verwendet wird**, steht nirgends — es ist die Gegenrichtung
 der Verweise, und die ist eine Abfrage. Sie zeigt nur, was man sehen
 darf: „wird noch an drei Orten gezeigt" verriete drei Artikel, auch ohne

@@ -214,6 +214,20 @@ Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
   Stelle und setzt neue mit „Add marker" — beides schreibt nur die Kante.
   Gitter, Massstab und Blätter stellt sie in den Feldern der Karte ein.
 
+## Karten finden und anlegen (T-202)
+
+Karten haben einen festen Ort: **Play › Maps** (`/maps`) listet jede
+Karte, die man sieht, mit Vorschaubild, Unterkarten eingerückt unter ihrer
+Karte, gefiltert nach Ebene, Marke und Namen. „New map“ nimmt ein
+Kartenbild (hochladen oder wählen) und legt daraus die Karte an — Name aus
+dem Bild, Ebene die Schreibebene (`mapFromImage`). Ohne Karten steht dort
+gleich die Kurz-Hilfe: *A map is an image with a grid.*
+
+An der Sitzung bietet „Map on the table“ neben Karten auch **Kartenbilder**
+an; wer eines wählt, bekommt die Karte dazu, und die liegt dann auf dem
+Tisch. Auf der Artikelseite einer Karte steht, in welchen Sitzungen,
+Szenen und Kämpfen sie vorkommt („Used in“).
+
 ## Nebel in der Seite (T-117)
 
 **Zugedeckt ist alles, was keine aufgedeckte Form berührt** — wie im

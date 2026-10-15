@@ -84,6 +84,8 @@ import { Neues } from './kern/neues';
         </div>
         <nav aria-label="Areas" class="bereiche">
           <a routerLink="/play" routerLinkActive="an" ariaCurrentWhenActive="page">Play</a>
+          <!-- Karten haben einen festen Ort (T-202). -->
+          <a routerLink="/maps" routerLinkActive="an" ariaCurrentWhenActive="page">Maps</a>
           <a routerLink="/boards" routerLinkActive="an" ariaCurrentWhenActive="page">Boards</a>
           @for (b of bereiche; track b.weg) {
             <a [routerLink]="'/' + b.weg" routerLinkActive="an" ariaCurrentWhenActive="page">{{

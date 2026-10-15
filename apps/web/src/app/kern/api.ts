@@ -1283,6 +1283,14 @@ export class Api {
   play(session?: string): Promise<Tisch> {
     return this.call<Tisch>(`/api/play${session ? `?session=${encodeURIComponent(session)}` : ''}`);
   }
+  /** Alle Karten, die man sieht, als Baum (T-202). */
+  maps(): Promise<{ maps: KartenZeile[] }> {
+    return this.call('/api/maps');
+  }
+  /** Sitzungen, Szenen und Kämpfe, in denen eine Karte vorkommt (T-202). */
+  mapUses(id: string): Promise<{ uses: KartenVerwendung[] }> {
+    return this.call(`/api/maps/${encodeURIComponent(id)}/uses`);
+  }
   backlinks(id: string): Promise<Rueckbezug[]> {
     return this.call<Rueckbezug[]>(`/api/entities/${encodeURIComponent(id)}/backlinks`);
   }
@@ -1723,6 +1731,26 @@ export interface Tisch {
   session: string | null;
   map: string | null;
   maps: { id: string; name: string }[];
+}
+
+/** Eine Zeile der Kartenliste (`GET /api/maps`, T-202): als Baum, mit Bild, Marken und Ebenen. */
+export interface KartenZeile {
+  id: string;
+  name: string;
+  image: string;
+  kind: string;
+  tags: string[];
+  layers: { id: string; name: string }[];
+  depth: number;
+  parent: string | null;
+}
+
+/** Wo eine Karte vorkommt (`GET /api/maps/:id/uses`, T-202). */
+export interface KartenVerwendung {
+  id: string;
+  name: string;
+  type: string;
+  via: string;
 }
 
 /** Ein Wurf, wie die Oberfläche ihn schickt (T-172). */

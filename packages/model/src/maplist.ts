@@ -33,7 +33,7 @@ export function imageBecomes(
   const raus: { type: string; kind: string }[] = [];
   for (const type of types) {
     if (!registry.interfaces[type]) continue;
-    const kind = offeredAssetKind(fieldTarget(registry, type, { type: 'Image', key: 'image', prop: {} }));
+    const kind = offeredAssetKind(fieldTarget(registry, type, { type: 'Image', key: 'image', prop: { type: 'string' } }));
     if (kind) raus.push({ type, kind });
   }
   return raus;
