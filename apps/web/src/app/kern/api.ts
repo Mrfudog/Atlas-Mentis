@@ -575,6 +575,21 @@ export interface Liste {
   /** Was fehlt, weil die laufende Kampagne seine Ebene nicht aufschaltet
    *  (T-069) — mit denselben Filtern gezählt; fehlt, wenn nichts fehlt. */
   unactivated?: Ausgeblendet;
+  /** Mit `compare` (T-213): was nur eine Vergleichsebene bringt — eigener Block, eigene Zahl. */
+  compare?: Vergleichsblock<ListenZeile>;
+}
+
+/**
+ * **Artikel aus Vergleichsebenen** (T-213) unter dem Blatt des Spiels —
+ * dieselben Filter, nicht mitgezählt. `canEnable`: die Leitung holt einen
+ * mit „Enable" einzeln ins Spiel (`setEnabled`).
+ */
+export interface Vergleichsblock<Z> {
+  total: number;
+  offset: number;
+  limit: number;
+  rows: (Z & { notInPlay: true })[];
+  canEnable: { campaign: string } | null;
 }
 
 /** „Usable by <Figur>" (T-180): was der Server ausblendet und was er nicht prüfen konnte. */
@@ -761,6 +776,8 @@ export interface Suchergebnis {
     fields?: Facette[];
     usable?: Brauchbar;
   };
+  /** Mit `compare` (T-213): Treffer aus Vergleichsebenen, für sich. */
+  compare?: Vergleichsblock<Suchergebnis['rows'][number]>;
 }
 
 export interface SuchFrage {
@@ -775,6 +792,8 @@ export interface SuchFrage {
   f?: string[];
   /** Nur, was diese Figur erfüllt (T-180). */
   usable?: string;
+  /** Auch Treffer aus Vergleichsebenen (T-213). */
+  compare?: boolean;
 }
 
 export interface ListenFrage {
@@ -808,6 +827,8 @@ export interface ListenFrage {
   allLayers?: boolean | undefined;
   /** Nur, was diese Figur erfüllt (T-180); Unprüfbares bleibt, markiert. */
   usable?: string | undefined;
+  /** Auch die Artikel der Vergleichsebenen, als eigener Block (T-213). */
+  compare?: boolean | undefined;
 }
 
 /**
@@ -953,6 +974,8 @@ export interface LaufendeKampagne {
   may: Recht;
   /** Wie viele Ebenen im Spiel sind (Gruppen aufgelöst). */
   layers: number;
+  /** Wie viele Vergleichsebenen dieses Konto sieht (T-213) — ohne eine kein Schalter. */
+  compare?: number;
 }
 export interface Kampagnen {
   campaigns: KampagneKurz[];
@@ -1267,6 +1290,7 @@ export class Api {
     if (frage.limit) p.set('limit', String(frage.limit));
     for (const f of frage.f ?? []) p.append('f', f);
     if (frage.usable) p.set('usable', frage.usable);
+    if (frage.compare) p.set('compare', '1');
     return this.call<Suchergebnis>(`/api/search?${p.toString()}`, init, false);
   }
   /** `[[Name]]` → `[[nummer|Name]]`, wo genau ein Artikel so heisst (M11). */
