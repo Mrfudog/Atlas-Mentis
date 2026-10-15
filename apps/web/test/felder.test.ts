@@ -14,10 +14,12 @@ import {
   anzeigeWert,
   ausEingabe,
   eingabeArt,
+  hatWert,
   inEingabe,
   inListe,
   kantenAusEntwurf,
   sindZeilen,
+  stehtDa,
   suchgruppen,
   tabelleAlsText,
   verweisZiele,
@@ -275,5 +277,45 @@ describe('verweisZiele', () => {
     expect(inListe(undefined)).toEqual([]);
     expect(inListe('')).toEqual([]);
     expect(inListe('e_1')).toEqual(['e_1']);
+  });
+});
+
+/* T-195: die Maske zeigt Pflicht, Befülltes und was das Register vorn will. */
+describe('stehtDa', () => {
+  const p = (x: Record<string, unknown> = {}) => ({ type: 'string' as const, ...x });
+  it('shows required, filled, prominent and alwaysEdit fields', () => {
+    expect(stehtDa(p(), undefined, true)).toBe(true);
+    expect(stehtDa(p(), 'Volo', false)).toBe(true);
+    expect(stehtDa(p({ prominent: true }), undefined, false)).toBe(true);
+    expect(stehtDa(p({ alwaysEdit: true }), undefined, false)).toBe(true);
+  });
+  it('leaves an empty optional field to “Add field”', () => {
+    expect(stehtDa(p(), undefined, false)).toBe(false);
+    expect(stehtDa(p(), '', false)).toBe(false);
+    expect(stehtDa(p(), [], false)).toBe(false);
+    expect(stehtDa(p(), {}, false)).toBe(false);
+    expect(stehtDa(p(), false, false)).toBe(false);
+  });
+  it('does not count the default as a value', () => {
+    expect(stehtDa(p({ default: 'public' }), 'public', false)).toBe(false);
+    expect(stehtDa({ type: 'number', default: 0 }, 0, false)).toBe(false);
+    expect(stehtDa({ type: 'number', default: 0 }, 2, false)).toBe(true);
+  });
+  it('counts a zero as a value', () => {
+    expect(hatWert(0)).toBe(true);
+    expect(hatWert(['x'])).toBe(true);
+    expect(hatWert({ a: 1 })).toBe(true);
+  });
+  it('keeps the description in view and explains the shared fields', () => {
+    const d = seedRegistry.interfaces.Description?.schema?.properties['description'];
+    expect(d?.prominent).toBe(true);
+    expect(seedRegistry.interfaces.Status?.schema?.properties['status']?.prominent).toBe(true);
+    for (const t of ['Identity', 'Tags', 'Visibility', 'Image', 'Source']) {
+      const props = seedRegistry.interfaces[t]?.schema?.properties ?? {};
+      for (const [k, f] of Object.entries(props)) {
+        if (f.readOnly || k === 'name') continue;
+        expect(f.description, `${t}.${k}`).toBeTruthy();
+      }
+    }
   });
 });
