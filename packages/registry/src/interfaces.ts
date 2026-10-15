@@ -1237,9 +1237,19 @@ export const interfaces: Record<string, InterfaceDef> = {
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
       overview: [{ id: 'e-ov', el: 'fields', fields: ['Encounter.kind', 'Encounter.phase'] }],
+      /* Anzeige je Art (T-184): die Initiative bei einem Kampf, bei
+         Teilnehmenden oder wenn die Art nicht gesagt ist — so stand sie
+         vor T-178 an jeder Begegnung; die übrigen Gruppen nur bei ihrer
+         Art. Was ein ausgelassenes Element gezeichnet hätte, nehmen
+         `e-f` und `e-b`. */
       full: [
-        { id: 'e-init', el: 'initiative' },
+        { id: 'e-init', el: 'initiative', when: { field: 'Encounter.kind', has: ['combat'], empty: true, relation: 'participates' } },
         { id: 'e-desc', el: 'description' },
+        { id: 'e-read', el: 'prose', fields: ['ReadAloud.readaloud'], when: { field: 'Encounter.kind', has: ['story', 'social', 'exploration'] } },
+        { id: 'e-puzzle', el: 'fields', fields: ['Encounter.solution'], when: { field: 'Encounter.kind', has: ['puzzle'] } },
+        { id: 'e-hints', el: 'prose', fields: ['Encounter.hint'], when: { field: 'Encounter.kind', has: ['puzzle'] } },
+        { id: 'e-social', el: 'fields', fields: ['Encounter.goal'], when: { field: 'Encounter.kind', has: ['social'] } },
+        { id: 'e-yield', el: 'fields', fields: ['Encounter.check'], when: { field: 'Encounter.kind', has: ['resource', 'exploration', 'hazard', 'trap'] } },
         { id: 'e-f', el: 'fields', fields: 'all' },
         { id: 'e-b', el: 'prose', fields: 'all' },
       ],

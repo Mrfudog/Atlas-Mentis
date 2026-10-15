@@ -169,7 +169,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Shop — `shopkeeper` → „keeps shop"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
+- Story | Encounter — `features` → „appears in"
 - Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -321,7 +321,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Shop | Faction | Creature — `discount` → „discount from"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
+- Story | Encounter — `features` → „appears in"
 - Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -367,6 +367,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Quest — `questAbout` → „concerned by"
+- Story | Encounter — `features` → „appears in"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -662,7 +663,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Shop — `shopkeeper` → „keeps shop"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
+- Story | Encounter — `features` → „appears in"
 - Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -877,7 +878,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
@@ -935,7 +936,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `craftsWith` → Recipe | Item — „crafts with"
 - `onMap` → Map — „fought on"
@@ -1047,7 +1048,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
@@ -1104,7 +1105,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `describedIn` → Article | Story | BookPart — „described in"
 - `leftBehind` → Item — „left behind"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
@@ -1159,7 +1160,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
@@ -2219,7 +2220,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
+- Story | Encounter — `features` → „appears in"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -2534,7 +2535,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *EncounterKind: combat | social | puzzle | exploration | hazard | trap | resource | story*, `xpBudget` *number*, `phase` *planned | running | done | skipped*, `round` *number*, `turn` *number*, `surprise` *string*
+- `kind` *EncounterKind: combat | social | puzzle | exploration | hazard | trap | resource | story*, `xpBudget` *number*, `phase` *planned | running | done | skipped*, `round` *number*, `turn` *number*, `surprise` *string*, `solution` *long*, `hint` *long*, `goal` *long*, `check` *string*
 
 **Geerbte Felder**
 
@@ -2555,6 +2556,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `participates` → Creature | Statblock | Party — „in the fight"
 - `onMap` → Map — „fought on"
@@ -2576,7 +2578,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `fields`, `prose`
+**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `prose`, `fields`, `prose`, `fields`, `fields`, `fields`, `prose`
 
 ### Map
 

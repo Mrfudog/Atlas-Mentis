@@ -1915,6 +1915,8 @@ export interface KartenSeite {
     name: string;
     phase: string;
     round: number;
+    /** `Encounter.kind` (T-184); leer: nicht gesagt. */
+    kind: string[];
     here: boolean;
     active: boolean;
     participants: { id: string; name: string }[];

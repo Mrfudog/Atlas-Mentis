@@ -2278,6 +2278,24 @@ export const fieldGroups = {
         round: { type: 'number', title: 'Round', default: 0 },
         turn: { type: 'number', title: 'Turn', default: 0 },
         surprise: { type: 'string', title: 'Surprise' },
+        /* Felder je Art (T-184): sie stehen an der Begegnung selbst und
+           nicht an einer Art je Sorte — ein Gespräch kippt in einen Kampf,
+           und ein Rätsel kann eine Falle sein. Die Anordnung zeigt sie nur
+           bei ihrer Art (`when`); befüllt stehen sie sonst unten in der
+           Tabelle. Wer beteiligt ist (Kreaturen, eine Falle als `Hazard`),
+           sagt die Kante `features`, die Haltung `regards` an der Kreatur;
+           was zu holen ist, `loot` und `tableFor`. */
+        /* Rätsel: die Lösung gehört der Leitung (`gmFields`), die
+           Hinweise ebenso — je Eintrag freigebbar über eine Information
+           (`Encounter.hint#id`), einer nach dem anderen. */
+        solution: { type: 'string', format: 'long', title: 'Solution', description: 'How the puzzle is solved. Only the GM sees it.' },
+        hint: { type: 'string', format: 'long', many: true, title: 'Hints', description: 'One clue per entry; each can be revealed on its own through an information.' },
+        /* Gespräch: worauf es hinausläuft — was die Gegenseite will oder
+           was die Gruppe erreichen kann. */
+        goal: { type: 'string', format: 'long', title: 'Goal', description: 'What the other side wants, or what the party can achieve.' },
+        /* Ressource (und wer will, jede andere Art): die Probe, die über
+           den Ertrag entscheidet — „DC 13 Survival, 1d4 rations". */
+        check: { type: 'string', title: 'Check', description: 'The check that decides the yield, e.g. DC 13 Survival.' },
       },
     },
   },

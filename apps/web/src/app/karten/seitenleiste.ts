@@ -68,6 +68,10 @@ export const ZIEH_TYP = 'text/x-nw-artikel';
               <span class="marke">{{ e.round > 0 ? 'Round ' + e.round : e.phase }}</span>
             </div>
             <p class="dim">
+              <!-- Die Art (T-184): ein Rätsel oder Gespräch hat keine Kämpfer, die man setzen müsste. -->
+              @if (e.kind.length) {
+                <span class="art">{{ e.kind.join(', ') }}</span> ·
+              }
               {{ gesetzt(e) }} of {{ e.participants.length }} on this map
               @if (!e.here) {
                 · fought elsewhere
