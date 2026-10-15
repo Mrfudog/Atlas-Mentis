@@ -59,6 +59,7 @@ async function aufbau() {
       art('p_markt', 'Place', 'Der Markt'),
       art('p_geheim', 'Place', 'Die Gruft', { Visibility: { audience: 'gm' } }),
       art('m_gang', 'Map', 'Der Gang'),
+      art('m_geheim', 'Map', 'Der Geheimgang', { Visibility: { audience: 'gm' } }),
       art('s_eins', 'Session', 'Sitzung 1'),
     ],
   );
@@ -193,6 +194,18 @@ describe('live channel (T-116)', () => {
     await mira.warte((e) => e.some((x) => x.data['id'] === 'p_geheim'));
     await ruhe();
     expect(sela.ereignisse.some((x) => JSON.stringify(x).includes('p_geheim'))).toBe(false);
+  });
+
+  it('tells about a turn plan only who sees its map (T-198)', async () => {
+    const { geraet, feed, ruhe } = await aufbau();
+    const mira = await geraet('Mira');
+    const sela = await geraet('Sela');
+    feed.publish({ kind: 'plan', id: 'm_gang' });
+    feed.publish({ kind: 'plan', id: 'm_geheim' });
+    await sela.warte((e) => e.some((x) => x.event === 'plan' && x.data['id'] === 'm_gang'));
+    await mira.warte((e) => e.some((x) => x.event === 'plan' && x.data['id'] === 'm_geheim'));
+    await ruhe();
+    expect(sela.ereignisse.some((x) => x.event === 'plan' && x.data['id'] === 'm_geheim')).toBe(false);
   });
 
   it('says `gone` when an article the player saw is hidden or deleted', async () => {
