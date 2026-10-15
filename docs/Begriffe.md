@@ -523,8 +523,16 @@ einer Marke. Sie gehört nicht ins Register: wie jemand seine Listen
 schneidet, ist keine Regel, und eine eigene Gruppe trägt eine Konto-Id, die
 in keinem Artikel stehen darf. Getrennt bleibt, was eine Gruppe **ist**
 (Arten, Marken, Stand — die Grenze des Reiters) und womit sie **anfängt**
-(Suche, Ebenen — danach gehört der Filter der Seite): sonst liesse sich in
+(Suche, Facetten — danach gehört der Filter der Seite): sonst liesse sich in
 „Places" eine Suche nicht mehr löschen, ohne die Gruppe zu ändern.
+
+**Ebenen wählt man an einer Stelle** (T-186, 15.10.2026). Bis dahin hatte
+jede Listenseite ihre Ebenen-Häkchen *neben* dem Stand der Kampagne in der
+Kopfleiste — zwei Antworten auf „was ist da?", und die Seite gewann, ohne
+es zu sagen. Jetzt folgt die Seite dem Stand, und wer zwischen Ständen
+wechselt, speichert ihn als **Ebenenauswahl** im Popup. Eine Auswahl ist
+kein Filter, der über dem Stand liegt, sondern der Stand selbst unter einem
+Namen: laden heisst schalten, für alle am Tisch.
 
 **Die Kurzansicht** ist das deutsche Wort für Quick, kein zehntes Wort
 (T-093, REQ-248, 14.10.2026). Sie steht auch als **Popup**: wo ein Artikel

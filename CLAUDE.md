@@ -112,7 +112,8 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   T-138), unter der Marke die **laufende Kampagne** mit der Zahl ihrer
   Ebenen und dem Popup zum Einstellen (`verwaltung/stapel-knopf.ts`,
   `kern/stapel.ts`: Ebenen, Gruppen, Vergleich auch einer ganzen Gruppe,
-  Wechsel der Kampagne für die Verwaltung; T-143), **What's new** (`neues/`,
+  Wechsel der Kampagne für die Verwaltung; T-143; gespeicherte
+  Ebenenauswahlen, T-186), **What's new** (`neues/`,
   `/whats-new`: Einträge aus `apps/web/src/whats-new.json`, gesehen je
   Konto in `/api/me/prefs`, Punkt in der Kopfleiste; T-157) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
@@ -695,8 +696,18 @@ wiederkommen, werden sie neu geschrieben.
   Kampagne pflegt die Leitung, eigene jedes Konto (`list_filter`, nicht im
   Artikel). **Die Vorgabe einer Seite ist eine Gruppe mit `default`** —
   „World ohne Items" ist ein Eintrag, keine Liste im Code. Ein Reiter ist
-  eine eigene Seite: er fängt mit Suche und Ebenen seiner Gruppe an, danach
-  gehört der Filter wieder ihm.
+  eine eigene Seite: er fängt mit Suche und Facetten seiner Gruppe an,
+  danach gehört der Filter wieder ihm.
+  **Die Ebenen gehören nicht der Seite** (T-186): World, Story, Rules und
+  Compendium haben keinen eigenen Ebenenfilter — sie folgen dem Stand der
+  laufenden Kampagne (Kopfleiste), und „Change layers“ führt dorthin. Eine
+  Filtergruppe trägt darum kein `layer`/`nolayer` mehr (Migration 079 legt
+  alte Angaben nach `list_filter_ebenen_alt`). **Ebenenauswahlen speichert
+  das Popup** („Saved selections“, `ebenensets.ts`, `/api/me/layer-sets`):
+  je Konto, wahlweise nur für eine Kampagne, in der Einstellung
+  `layerSets`; Laden schreibt den Stapel über `PUT /api/campaigns/:c/layers`
+  und darf darum nur, wer dort schaltet. Zwei Ebenenfilter — einer je
+  Seite, einer global — waren zwei Antworten auf dieselbe Frage.
 - **Das Diagramm zeichnet sich selbst.** Auf „How it works" steht ein
   Kasten je Artikelart und eine Linie je Kantenart (gestrichelt: die
   Vererbung), angeordnet nach Bereich — aus dem laufenden Register
