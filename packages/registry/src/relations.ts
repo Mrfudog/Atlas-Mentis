@@ -1344,8 +1344,47 @@ export const relations: Record<string, RelationDef> = {
            Bereiche (`area` der Art) und einzelne Arten. Ohne beide: alles. */
         areas: { type: 'array', items: { type: 'string' }, title: 'Areas' },
         types: { type: 'array', items: { type: 'string' }, title: 'Types' },
+        /* Von den Typ-Regeln ausgenommen (T-187): die Ebene bringt alles,
+           auch wenn eine Regel ihrer Gruppe weniger sagt. */
+        exempt: { type: 'boolean', title: 'Exempt from type rules' },
       },
     },
+  },
+
+  /**
+   * **Typ-Regel über viele Quellen** (T-187): was jede Ebene einer Gruppe
+   * bringt, wo sie im Spiel ist und selbst nichts sagt — „aus allen
+   * Abenteuern nur Regeln, Gegenstände und Zauber", einmal gesetzt statt je
+   * Buch. Die eigene Auswahl an `activates` schlägt sie.
+   */
+  layerRule: {
+    type: 'layerRule',
+    label: 'Type rule for',
+    inverseLabel: 'Type rule in',
+    means: 'A campaign says what every layer in a group brings when that layer says nothing itself; the group lists the campaigns with such a rule.',
+    from: ['Campaign'],
+    to: ['Layer'],
+    props: {
+      type: 'object',
+      properties: {
+        areas: { type: 'array', items: { type: 'string' }, title: 'Areas' },
+        types: { type: 'array', items: { type: 'string' }, title: 'Types' },
+      },
+    },
+  },
+
+  /**
+   * **Einzelne Artikel freigeben** (T-187): Extra-Inhalt aus einer Ebene,
+   * die nicht im Spiel ist — der Artikel ist es trotzdem. Rückgängig an
+   * derselben Stelle; die Fassungen (Vergleich) bleiben, wie sie sind.
+   */
+  enables: {
+    type: 'enables',
+    label: 'Extra content',
+    inverseLabel: 'Enabled in',
+    means: 'A campaign puts a single article in play although its layer is not; the article lists the campaigns that enabled it.',
+    from: ['Campaign'],
+    to: ['*'],
   },
 
   /**

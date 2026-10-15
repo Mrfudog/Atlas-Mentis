@@ -223,6 +223,10 @@ export interface Bezuege {
   reading?: LeseZiel;
   /** Eine Fassung aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
   compare?: boolean;
+  /** Die Leitung kann ihn einzeln in die laufende Kampagne holen (T-187) … */
+  enable?: { campaign: string };
+  /** … oder hat es getan: zurück an derselben Stelle. */
+  enabled?: { campaign: string };
   /** Womit an einem Rezept gefertigt wird (T-122): am Tisch und je eigener Figur. */
   craft?: Fertigungswerte;
   /** Was ein Laden führt, und zu welchem Preis (T-129). */
@@ -607,6 +611,12 @@ export interface KampagnenEbene {
   compare?: boolean;
   /** Was sie bringt (T-105): Bereiche und Arten an ihrer eigenen Kante; fehlt es, alles. */
   only?: { areas?: string[]; types?: string[] };
+  /** An einer Gruppe: ihre Typ-Regel für jede Ebene darin (T-187). */
+  rule?: { areas?: string[]; types?: string[] };
+  /** Die Typ-Regel, die für diese Ebene gilt, und von welcher Gruppe (T-187). */
+  ruleFrom?: { id: string; name: string; only: { areas?: string[]; types?: string[] } | null };
+  /** Von den Typ-Regeln ausgenommen (T-187). */
+  exempt?: boolean;
   /** Die anderen Kampagnen, die sie aufschalten. */
   alsoIn: string[];
   canActivate: boolean;
@@ -635,6 +645,17 @@ export interface KampagnenEbenen {
   layers: KampagnenEbene[];
   /** Wer die Vergleichsebenen sieht (T-092). */
   compareFor?: 'gm' | 'players';
+  /** Einzeln freigegebene Artikel (T-187). */
+  extra?: ExtraInhalt[];
+}
+/** Ein einzeln freigegebener Artikel (T-187): im Spiel, sein Buch nicht. */
+export interface ExtraInhalt {
+  id: string;
+  name: string;
+  type: string;
+  layers: string[];
+  /** Eine Herausnahme aus dem Stapel schlägt die Freigabe. */
+  inPlay: boolean;
 }
 
 /**
@@ -1786,6 +1807,30 @@ export class Api {
       `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(layer)}/only`,
       { method: 'PUT', body: JSON.stringify(only ?? {}) },
     );
+  }
+  /** Von den Typ-Regeln ausnehmen oder wieder folgen (T-187). */
+  setLayerExempt(campaign: string, layer: string, exempt: boolean): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(layer)}/only`,
+      { method: 'PUT', body: JSON.stringify({ exempt }) },
+    );
+  }
+  /** Die Typ-Regel einer Gruppe (T-187); `null` nimmt sie weg. */
+  setLayerRule(
+    campaign: string,
+    group: string,
+    rule: { areas?: string[]; types?: string[] } | null,
+  ): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/rules/${encodeURIComponent(group)}`,
+      { method: 'PUT', body: JSON.stringify(rule ?? {}) },
+    );
+  }
+  /** Einen Artikel einzeln freigeben oder zurücknehmen (T-187). */
+  setEnabled(campaign: string, id: string, on: boolean): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/enabled/${encodeURIComponent(id)}`, {
+      method: on ? 'PUT' : 'DELETE',
+    });
   }
   /** Die laufende Kampagne wechseln — nur die Verwaltung (T-143). */
   setCurrentCampaign(id: string): Promise<{ ok: true; current: string }> {

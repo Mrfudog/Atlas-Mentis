@@ -29,6 +29,8 @@ const ZULETZT = new Map<string, { daten: KampagnenEbenen; offen: Set<string> | n
 /** Die Bereiche in der Reihenfolge der Kopfleiste; andere danach, ohne Bereich zuletzt (T-105). */
 const BEREICHE = ['world', 'story', 'rules', 'play'];
 type Auswahl = { areas?: string[]; types?: string[] };
+/** Was eine Auswahl schreibt (T-187): was die Ebene bringt, oder die Typ-Regel einer Gruppe. */
+type Ziel = 'only' | 'rule';
 /** Ein Bereich in der Auswahl einer Ebene (T-105), mit seinen Arten und Zählern. */
 interface AuswahlBereich {
   area: string;
@@ -444,45 +446,77 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
             <details class="auswahl" [open]="offen().has('only:' + l.id)" (toggle)="merke('only:' + l.id, $event)">
               <summary>
                 <span class="dim">Brings:</span> <span class="was">{{ auswahlText(l) }}</span>
-              </summary>
-              <div class="bereiche" role="group" [attr.aria-label]="'What ' + l.name + ' brings'">
-                @for (b of auswahl(l); track b.area) {
-                  <div class="bereich">
-                    <label class="haken">
-                      <input
-                        type="checkbox"
-                        [checked]="b.an"
-                        [indeterminate]="b.teils"
-                        [disabled]="d.may !== 'manage' || laeuft()"
-                        (change)="bereichSchalten(l, b.area)"
-                      />
-                      <span>{{ b.label }}</span>
-                      <span class="dim">{{ zahl(b.n) }}</span>
-                    </label>
-                    <details class="arten">
-                      <summary class="dim">by type</summary>
-                      <ul>
-                        @for (a of b.arten; track a.type) {
-                          <li>
-                            <label class="haken">
-                              <input
-                                type="checkbox"
-                                [checked]="a.an"
-                                [disabled]="d.may !== 'manage' || laeuft()"
-                                (change)="artSchalten(l, a.type)"
-                              />
-                              <span>{{ a.label }}</span>
-                              <span class="dim">{{ zahl(a.n) }}</span>
-                            </label>
-                          </li>
-                        }
-                      </ul>
-                    </details>
-                  </div>
+                <!-- Woher die Auswahl kommt (T-187): die Typ-Regel einer Gruppe, oder ausgenommen. -->
+                @if (!l.only && l.ruleFrom) {
+                  <span class="dim regelher">· rule of {{ l.ruleFrom.name }}</span>
+                } @else if (l.exempt) {
+                  <span class="dim regelher">· exempt from type rules</span>
                 }
-              </div>
+              </summary>
+              @if (d.may === 'manage' && !l.only && (l.ruleFrom || l.exempt)) {
+                <p class="regelknopf">
+                  @if (l.exempt) {
+                    <button type="button" class="klein" [disabled]="laeuft()" (click)="ausnehmen(l, false)">Follow the type rule</button>
+                  } @else {
+                    <button type="button" class="klein" [disabled]="laeuft()" (click)="ausnehmen(l, true)">Bring everything anyway</button>
+                    <span class="dim">A tick below sets this layer’s own choice; it wins over the rule.</span>
+                  }
+                </p>
+              }
+              <ng-container [ngTemplateOutlet]="bereicheTpl" [ngTemplateOutletContext]="{ $implicit: l, ziel: 'only' }" />
             </details>
           }
+          <!-- Die Typ-Regel einer Gruppe (T-187): gilt für jede Ebene darin, die selbst nichts sagt. -->
+          @if (l.kind === 'group' && hatInhalt(l) && (d.may === 'manage' || l.rule)) {
+            <details class="auswahl regel" [open]="offen().has('rule:' + l.id)" (toggle)="merke('rule:' + l.id, $event)">
+              <summary>
+                <span class="dim">Type rule for its layers:</span> <span class="was">{{ auswahlText(l, 'rule') }}</span>
+              </summary>
+              <p class="fuss">
+                Every layer in {{ l.name }} that is in play and says nothing itself brings only what you tick
+                here — say, the rules, items and spells of every adventure, not their story.
+              </p>
+              <ng-container [ngTemplateOutlet]="bereicheTpl" [ngTemplateOutletContext]="{ $implicit: l, ziel: 'rule' }" />
+            </details>
+          }
+        </ng-template>
+        <ng-template #bereicheTpl let-l let-ziel="ziel">
+          <div class="bereiche" role="group" [attr.aria-label]="(ziel === 'rule' ? 'Type rule of ' : 'What ') + l.name + (ziel === 'rule' ? '' : ' brings')">
+            @for (b of auswahl(l, ziel); track b.area) {
+              <div class="bereich">
+                <label class="haken">
+                  <input
+                    type="checkbox"
+                    [checked]="b.an"
+                    [indeterminate]="b.teils"
+                    [disabled]="d.may !== 'manage' || laeuft()"
+                    (change)="bereichSchalten(l, b.area, ziel)"
+                  />
+                  <span>{{ b.label }}</span>
+                  <span class="dim">{{ zahl(b.n) }}</span>
+                </label>
+                <details class="arten">
+                  <summary class="dim">by type</summary>
+                  <ul>
+                    @for (a of b.arten; track a.type) {
+                      <li>
+                        <label class="haken">
+                          <input
+                            type="checkbox"
+                            [checked]="a.an"
+                            [disabled]="d.may !== 'manage' || laeuft()"
+                            (change)="artSchalten(l, a.type, ziel)"
+                          />
+                          <span>{{ a.label }}</span>
+                          <span class="dim">{{ zahl(a.n) }}</span>
+                        </label>
+                      </li>
+                    }
+                  </ul>
+                </details>
+              </div>
+            }
+          </div>
         </ng-template>
         <h3>Compare layers</h3>
         <p class="fuss">
@@ -503,6 +537,30 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
           />
           <span>Players see the compare layers too</span>
         </label>
+        <!-- Einzeln freigegeben (T-187): Extra-Inhalt aus Ebenen, die nicht im Spiel sind. -->
+        <h3>Extra content</h3>
+        <p class="fuss">
+          Single articles in play although their layer is not — enable one on its page when it comes from a
+          compare layer.
+        </p>
+        @if (d.extra?.length) {
+          <ul class="extra">
+            @for (x of d.extra; track x.id) {
+              <li>
+                <a [routerLink]="['/artikel', x.id]" [nwQuick]="x.id">{{ x.name }}</a>
+                <span class="dim">{{ artName(x.type) }} · {{ x.layers.join(', ') }}</span>
+                @if (!x.inPlay) {
+                  <span class="dim">· removed by a layer in play</span>
+                }
+                @if (d.may === 'manage') {
+                  <button type="button" class="klein" [disabled]="laeuft()" [attr.aria-label]="'Disable ' + x.name" (click)="zuruecknehmen(x.id)">Disable</button>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="dim">None yet.</p>
+        }
         @if (d.may === 'see') {
           <p class="fuss">A co-GM sees the layers; the GM turns them on.</p>
         }
@@ -798,6 +856,30 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
     .arten[open] > summary::before {
       content: '▾';
     }
+    .auswahl .regelher {
+      font-size: 0.85em;
+    }
+    .regelknopf {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.5rem;
+      margin: 0.3rem 0;
+    }
+    .extra {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .extra li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
     .auswahl .was {
       font-weight: 600;
       overflow-wrap: anywhere;
@@ -1062,13 +1144,22 @@ export class KampagnenEbenenListe {
     return a ? a[0]!.toUpperCase() + a.slice(1) : 'Other';
   }
 
-  private artName(t: string): string {
+  protected artName(t: string): string {
     return this.bestand.registry()?.interfaces[t]?.label ?? t;
   }
 
+  /**
+   * Die Auswahl, die gerade gilt (T-105, T-187): an einer Ebene die eigene,
+   * sonst die Typ-Regel ihrer Gruppe; an einer Gruppe als Regel ihre Regel.
+   */
+  private wirksam(l: KampagnenEbene, ziel: Ziel): Auswahl | null {
+    if (ziel === 'rule') return l.rule ?? null;
+    return l.only ?? (l.exempt ? null : (l.ruleFrom?.only ?? null));
+  }
+
   /** Die Bereiche und Arten einer Ebene mit Zählern und Häkchen (T-105). */
-  protected auswahl(l: KampagnenEbene): AuswahlBereich[] {
-    const f = l.only ?? null;
+  protected auswahl(l: KampagnenEbene, ziel: Ziel = 'only'): AuswahlBereich[] {
+    const f = this.wirksam(l, ziel);
     const je = new Map<string, AuswahlBereich>();
     for (const [t, n] of Object.entries(this.inhalt(l))) {
       const a = this.bereichVon(t);
@@ -1089,17 +1180,17 @@ export class KampagnenEbenenListe {
   }
 
   /** „everything", „Rules, Item" oder „nothing" (T-105). */
-  protected auswahlText(l: KampagnenEbene): string {
-    const f = l.only;
-    if (!f) return 'everything';
+  protected auswahlText(l: KampagnenEbene, ziel: Ziel = 'only'): string {
+    const f = this.wirksam(l, ziel);
+    if (!f) return ziel === 'rule' ? 'none — each layer brings everything' : 'everything';
     const teile = [...(f.areas ?? []).map((a) => this.bereichName(a)), ...(f.types ?? []).map((t) => this.artName(t))];
     return teile.length ? teile.join(', ') : 'nothing';
   }
 
   /** Die Auswahl als Häkchen je Art — der Ausgangspunkt jeder Änderung. */
-  private haken(l: KampagnenEbene): Map<string, { area: string; an: boolean }> {
+  private haken(l: KampagnenEbene, ziel: Ziel): Map<string, { area: string; an: boolean }> {
     const out = new Map<string, { area: string; an: boolean }>();
-    for (const b of this.auswahl(l)) for (const a of b.arten) out.set(a.type, { area: b.area, an: a.an });
+    for (const b of this.auswahl(l, ziel)) for (const a of b.arten) out.set(a.type, { area: b.area, an: a.an });
     return out;
   }
 
@@ -1117,27 +1208,49 @@ export class KampagnenEbenenListe {
     return { areas, ...(types.length ? { types } : {}) };
   }
 
-  protected bereichSchalten(l: KampagnenEbene, area: string): void {
-    const h = this.haken(l);
+  protected bereichSchalten(l: KampagnenEbene, area: string, ziel: Ziel = 'only'): void {
+    const h = this.haken(l, ziel);
     const imBereich = [...h.values()].filter((x) => x.area === area);
     const an = !imBereich.every((x) => x.an);
     for (const x of imBereich) x.an = an;
-    void this.auswahlSchreiben(l, this.auswahlAus(h));
+    void this.auswahlSchreiben(l, this.auswahlAus(h), ziel);
   }
 
-  protected artSchalten(l: KampagnenEbene, type: string): void {
-    const h = this.haken(l);
+  protected artSchalten(l: KampagnenEbene, type: string, ziel: Ziel = 'only'): void {
+    const h = this.haken(l, ziel);
     const x = h.get(type);
     if (!x) return;
     x.an = !x.an;
-    void this.auswahlSchreiben(l, this.auswahlAus(h));
+    void this.auswahlSchreiben(l, this.auswahlAus(h), ziel);
   }
 
-  private async auswahlSchreiben(l: KampagnenEbene, only: Auswahl | null): Promise<void> {
+  /** Von der Typ-Regel ausnehmen oder ihr wieder folgen (T-187). */
+  protected ausnehmen(l: KampagnenEbene, exempt: boolean): void {
+    void this.aendern(() => this.api.setLayerExempt(this.kampagne(), l.id, exempt));
+  }
+
+  /** Einen freigegebenen Artikel zurücknehmen (T-187). */
+  protected zuruecknehmen(id: string): void {
+    void this.aendern(() => this.api.setEnabled(this.kampagne(), id, false));
+  }
+
+  private async aendern(tu: () => Promise<{ state?: KampagnenEbenen | null }>): Promise<void> {
+    this.laeuft.set(true);
+    try {
+      await this.uebernehmen(this.kampagne(), await tu());
+      this.geschaltet.emit();
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  private async auswahlSchreiben(l: KampagnenEbene, only: Auswahl | null, ziel: Ziel = 'only'): Promise<void> {
     const c = this.kampagne();
     this.laeuft.set(true);
     try {
-      await this.uebernehmen(c, await this.api.setLayerOnly(c, l.id, only));
+      await this.uebernehmen(c, await (ziel === 'rule' ? this.api.setLayerRule(c, l.id, only) : this.api.setLayerOnly(c, l.id, only)));
       this.geschaltet.emit();
     } catch (error) {
       this.fehler.set(error instanceof Error ? error.message : String(error));

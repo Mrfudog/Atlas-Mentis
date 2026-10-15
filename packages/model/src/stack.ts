@@ -39,6 +39,10 @@
  *    Gegenstände, nicht die Orte. Eine Gruppe gibt ihre Auswahl an ihre
  *    Mitglieder weiter; die ausdrückliche Kante eines Mitglieds hat ihre
  *    eigene.
+ *  - **Typ-Regeln** (T-187): `layerRule` an eine Gruppe sagt dasselbe für
+ *    jede Ebene darin, die selbst nichts sagt — einmal für alle Abenteuer.
+ *  - **Einzelne Artikel** (T-187): `enables` an einen Artikel bringt ihn
+ *    ins Spiel, auch wenn seine Ebene es nicht ist.
  */
 
 import { entityName } from './entity.js';
@@ -68,6 +72,29 @@ export const GROUP_KIND = 'group';
 export const OFF_MODE = 'off';
 /** Die Kante, mit der eine Ebene an ihrer Gruppe hängt (E-022 b). */
 export const GROUP_RELATION = 'partOf';
+/**
+ * **Typ-Regel über viele Quellen** (T-187): eine Kante `layerRule` von der
+ * Kampagne an eine Gruppe mit `props.areas`/`props.types` sagt, was jede
+ * Ebene in dieser Gruppe bringt, wo sie im Spiel ist und selbst nichts
+ * sagt — „aus allen Abenteuern nur Regeln, Gegenstände und Zauber". Die
+ * eigene Auswahl an der Kante `activates` schlägt sie, ebenso die Auswahl
+ * einer aufgeschalteten Gruppe; `activates.props.exempt` nimmt eine Ebene
+ * ausdrücklich aus („alles, trotz Regel"). Eine eigene Kante und kein
+ * weiterer `mode` an `activates`: eine Regel schaltet nichts auf, und jede
+ * Stelle, die `activates` liest, bliebe sonst eine, die es vergisst.
+ */
+export const RULE_RELATION = 'layerRule';
+/**
+ * **Einzelne Artikel freigeben** (T-187): eine Kante `enables` von der
+ * Kampagne an einen Artikel bringt genau ihn ins Spiel, auch wenn seine
+ * Ebene es nicht ist — Extra-Inhalt aus einer Vergleichsebene, ohne das
+ * ganze Buch. Er zählt mit einem Rang unter jeder aufgeschalteten Ebene
+ * (`PICK_RANK`): eine Herausnahme aus dem Stapel schlägt ihn, und eine
+ * Fassung aus einer aufgeschalteten Ebene gilt vor ihm.
+ */
+export const ENABLES_RELATION = 'enables';
+export const PICK_RANK = 0.5;
+
 /** Die Einstellung, die sagt, welche Kampagne läuft. */
 export const CAMPAIGN_SETTING = 'campaign';
 
@@ -108,6 +135,69 @@ export function filterOf(r: { props?: unknown } | undefined): LayerFilter | null
   const types = woerter(p?.types);
   if (!areas && !types) return null;
   return { ...(areas ? { areas } : {}), ...(types ? { types } : {}) };
+}
+
+/** Nimmt diese Kante `activates` ihre Ebene von den Typ-Regeln aus (T-187)? */
+export const isExemptEdge = (r: { props?: unknown } | undefined): boolean =>
+  (r?.props as { exempt?: unknown } | undefined)?.exempt === true;
+
+/** Die Typ-Regeln einer Kampagne (T-187): Gruppe → Auswahl. */
+export function layerRules(campaign: Entity | null): Map<EntityId, LayerFilter> {
+  const out = new Map<EntityId, LayerFilter>();
+  for (const r of kanten(campaign ?? undefined, RULE_RELATION)) {
+    const f = filterOf(r);
+    if (f) out.set(r.to, f);
+  }
+  return out;
+}
+
+/** Die einzeln freigegebenen Artikel einer Kampagne (T-187). */
+export function enabledArticles(campaign: Entity | null): Set<EntityId> {
+  return new Set(kanten(campaign ?? undefined, ENABLES_RELATION).map((r) => r.to));
+}
+
+/** Zwei Auswahlen zusammen: was eine von beiden bringt. */
+const vereinigt = (a: LayerFilter, b: LayerFilter): LayerFilter => {
+  const areas = [...new Set([...(a.areas ?? []), ...(b.areas ?? [])])];
+  const types = [...new Set([...(a.types ?? []), ...(b.types ?? [])])];
+  return { ...(a.areas || b.areas ? { areas } : {}), ...(a.types || b.types ? { types } : {}) };
+};
+
+/**
+ * **Welche Regel für diese Ebene gilt** (T-187): die der nächsten Gruppe
+ * darüber, die eine hat — „Adventures" vor „Official", wenn ein Abenteuer
+ * in beiden steckt. Gibt es auf derselben Höhe mehrere, gelten sie
+ * zusammen. `null`: keine.
+ */
+export function ruleFor(
+  layerId: EntityId,
+  rules: ReadonlyMap<EntityId, LayerFilter>,
+  parents: ReadonlyMap<EntityId, readonly EntityId[]>,
+): { group: EntityId; filter: LayerFilter } | null {
+  if (!rules.size) return null;
+  const gesehen = new Set<EntityId>([layerId]);
+  let ebene = [...(parents.get(layerId) ?? [])];
+  while (ebene.length) {
+    const treffer = ebene.filter((g) => rules.has(g));
+    if (treffer.length) {
+      return { group: treffer[0]!, filter: treffer.slice(1).reduce((f, g) => vereinigt(f, rules.get(g)!), rules.get(treffer[0]!)!) };
+    }
+    const weiter: EntityId[] = [];
+    for (const g of ebene) {
+      if (gesehen.has(g)) continue;
+      gesehen.add(g);
+      for (const p of parents.get(g) ?? []) if (!gesehen.has(p)) weiter.push(p);
+    }
+    ebene = weiter;
+  }
+  return null;
+}
+
+/** Je Ebene ihre Gruppen — die Umkehrung von `groupMembers`. */
+export function groupParents(members: ReadonlyMap<EntityId, readonly EntityId[]>): Map<EntityId, EntityId[]> {
+  const out = new Map<EntityId, EntityId[]>();
+  for (const [g, ms] of members) for (const m of ms) (out.get(m) ?? out.set(m, []).get(m)!).push(g);
+  return out;
 }
 
 /** Der Bereich einer Art, je Art einmal gerechnet (`areaOf` läuft die Kette hoch). */
@@ -301,6 +391,8 @@ export interface StackEntry {
   order: number;
   /** Was sie bringt (T-105); `null` heisst alles. */
   filter: LayerFilter | null;
+  /** Von den Typ-Regeln ausgenommen (T-187). */
+  exempt: boolean;
 }
 
 /**
@@ -320,7 +412,7 @@ export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | 
     const order =
       anKante != null && Number.isFinite(Number(anKante)) ? Number(anKante)
         : Number.isFinite(Number(amLayer)) && amLayer != null ? Number(amLayer) : 10;
-    out.push({ layer, order, filter: filterOf(r) });
+    out.push({ layer, order, filter: filterOf(r), exempt: isExemptEdge(r) });
   }
   return out.sort((a, b) => a.order - b.order);
 }
@@ -345,24 +437,35 @@ export function resolvedStack(
   return resolvedEntries(entities, campaign, members).map((x) => x.layer);
 }
 
+/** Ein Eintrag des aufgelösten Stapels: die Ebene, was sie bringt, und — gilt eine Typ-Regel — von welcher Gruppe (T-187). */
+export interface ResolvedEntry {
+  layer: Entity;
+  filter: LayerFilter | null;
+  ruleFrom?: EntityId;
+}
+
 /**
  * Wie `resolvedStack`, mit der Auswahl je Ebene (T-105): ein Mitglied
  * trägt die seiner Gruppe, eine ausdrücklich aufgeschaltete Ebene ihre
- * eigene.
+ * eigene. Wer so keine hat und nicht ausgenommen ist, trägt die
+ * Typ-Regel seiner nächsten Gruppe (T-187).
  */
 export function resolvedEntries(
   entities: Map<EntityId, Entity>,
   campaign: Entity | null,
   members?: Map<EntityId, EntityId[]>,
-): { layer: Entity; filter: LayerFilter | null }[] {
+): ResolvedEntry[] {
   const stapel = activeStack(entities, campaign);
   if (!stapel.length) return [];
   const aus = offLayers(campaign);
   const ausdruecklich = new Set(stapel.map((x) => x.layer.id));
-  const gruppen = stapel.some((x) => isGroupLayer(x.layer)) ? (members ?? groupMembers(entities)) : new Map<EntityId, EntityId[]>();
+  const ausgenommen = new Set(stapel.filter((x) => x.exempt).map((x) => x.layer.id));
+  const regeln = layerRules(campaign);
+  const gruppen =
+    regeln.size || stapel.some((x) => isGroupLayer(x.layer)) ? (members ?? groupMembers(entities)) : new Map<EntityId, EntityId[]>();
   /* Eine Map behält die Einfügereihenfolge; wer später (höher) noch
      einmal kommt, wird ans Ende gesetzt. */
-  const rang = new Map<EntityId, { layer: Entity; filter: LayerFilter | null }>();
+  const rang = new Map<EntityId, ResolvedEntry>();
   const setze = (e: Entity, filter: LayerFilter | null) => {
     rang.delete(e.id);
     rang.set(e.id, { layer: e, filter });
@@ -387,7 +490,15 @@ export function resolvedEntries(
     };
     lauf(layer.id);
   }
-  return [...rang.values()];
+  const out = [...rang.values()];
+  if (!regeln.size) return out;
+  /* Die Typ-Regeln (T-187): nur, wo nichts anderes etwas sagt. */
+  const eltern = groupParents(gruppen);
+  return out.map((x) => {
+    if (x.filter || ausgenommen.has(x.layer.id) || isGroupLayer(x.layer)) return x;
+    const r = ruleFor(x.layer.id, regeln, eltern);
+    return r ? { ...x, filter: r.filter, ruleFrom: r.group } : x;
+  });
 }
 
 /**
@@ -447,7 +558,15 @@ function sicht(
   entities: Map<EntityId, Entity>,
   campaign: Entity | null,
   registry: Pick<Registry, 'interfaces'> | undefined,
-): { rang: Map<EntityId, number>; filter: Map<EntityId, LayerFilter | null>; zaehlt: (e: Entity, layer: EntityId) => number } {
+): {
+  rang: Map<EntityId, number>;
+  filter: Map<EntityId, LayerFilter | null>;
+  zaehlt: (e: Entity, layer: EntityId) => number;
+  /** Einzeln freigegeben (T-187). */
+  frei: Set<EntityId>;
+  /** Der höchste Rang, mit dem dieser Artikel etwas bringt — seine Ebenen oder die Freigabe. */
+  bringt: (e: Entity) => number;
+} {
   const eintraege = resolvedEntries(entities, campaign);
   const rang = new Map<EntityId, number>();
   const filter = new Map<EntityId, LayerFilter | null>();
@@ -461,7 +580,29 @@ function sicht(
     if (!x) return 0;
     return passt(filter.get(layer), e, bereich) ? x : 0;
   };
-  return { rang, filter, zaehlt };
+  const frei = enabledArticles(campaign);
+  const bringt = (e: Entity): number =>
+    Math.max(frei.has(e.id) ? PICK_RANK : 0, ...kanten(e, LAYER_RELATION).map((x) => zaehlt(e, x.to)));
+  return { rang, filter, zaehlt, frei, bringt };
+}
+
+/**
+ * Ist der Artikel im Stapel, nach den Rängen seiner Ebenenkanten? Eine
+ * Freigabe (T-187) zählt als Bringen mit `PICK_RANK` — unter jeder
+ * aufgeschalteten Ebene, also schlägt eine Herausnahme sie.
+ */
+function stapelFrage(entity: Entity, zaehlt: (e: Entity, layer: EntityId) => number, frei: ReadonlySet<EntityId>): boolean {
+  const ebenen = kanten(entity, LAYER_RELATION);
+  if (!ebenen.length) return true;
+  let addAt = frei.has(entity.id) ? PICK_RANK : 0;
+  let remAt = 0;
+  for (const r of ebenen) {
+    const x = zaehlt(entity, r.to);
+    if (!x) continue;
+    if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') remAt = Math.max(remAt, x);
+    else addAt = Math.max(addAt, x);
+  }
+  return addAt > remAt;
 }
 
 /**
@@ -476,20 +617,10 @@ export function inStack(
   campaign: Entity | null,
   registry?: Pick<Registry, 'interfaces'>,
 ): boolean {
-  const ebenen = kanten(entity, LAYER_RELATION);
-  if (!ebenen.length) return true;
+  if (!kanten(entity, LAYER_RELATION).length) return true;
   if (!campaign) return true;
-  const { zaehlt } = sicht(entities, campaign, registry);
-  let addAt = 0;
-  let remAt = 0;
-  for (const r of ebenen) {
-    const x = zaehlt(entity, r.to);
-    if (!x) continue;
-    if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') remAt = Math.max(remAt, x);
-    else addAt = Math.max(addAt, x);
-  }
-  if (!addAt && !remAt) return false;
-  return addAt > remAt;
+  const { zaehlt, frei } = sicht(entities, campaign, registry);
+  return stapelFrage(entity, zaehlt, frei);
 }
 
 /**
@@ -517,12 +648,12 @@ export function overriderOf(
   if (!campaign) return null;
   /* Ohne Kandidaten keine Rechnung: die Sicht liest alle Gruppen. */
   if (index && !index.get(id)?.length) return null;
-  const { zaehlt } = sicht(entities, campaign, registry);
+  const { bringt } = sicht(entities, campaign, registry);
   let best: Entity | null = null;
   let bestRang = -1;
   for (const o of index ? (index.get(id) ?? []) : entities.values()) {
     if (!kanten(o, OVERRIDES_RELATION).some((r) => r.to === id)) continue;
-    const r2 = Math.max(0, ...kanten(o, LAYER_RELATION).map((x) => zaehlt(o, x.to)));
+    const r2 = bringt(o);
     if (!r2) continue; /* Überschreibung ohne aufgeschaltete Ebene zählt nicht */
     if (r2 > bestRang) {
       bestRang = r2;
@@ -579,6 +710,8 @@ export interface PlayStack {
   inCompare(entity: Entity): boolean;
   /** Der höchste Rang einer aufgeschalteten Ebene, die ihn bringt; 0 heisst keine. */
   rank(entity: Entity): number;
+  /** Einzeln freigegeben (T-187): im Spiel, ohne dass seine Ebene es ist. */
+  enabled(entity: Entity): boolean;
   /** Wie `unactivatedLayers`. */
   unactivated(entity: Entity): EntityId[];
   /**
@@ -610,9 +743,17 @@ export function playStack(
   registry?: Pick<Registry, 'interfaces'>,
 ): PlayStack {
   if (!campaign) {
-    return { inPlay: () => true, inStack: () => true, inCompare: () => false, rank: () => 0, unactivated: () => [], resolve: (e) => e };
+    return {
+      inPlay: () => true,
+      inStack: () => true,
+      inCompare: () => false,
+      rank: () => 0,
+      enabled: () => false,
+      unactivated: () => [],
+      resolve: (e) => e,
+    };
   }
-  const { rang, zaehlt } = sicht(entities, campaign, registry);
+  const { rang, zaehlt, frei, bringt } = sicht(entities, campaign, registry);
   const bereich = bereichVon(registry);
   const vergleichAuswahl = compareFilters(campaign);
   const vergleich = new Map<EntityId, LayerFilter | null>(
@@ -630,22 +771,10 @@ export function playStack(
   for (const o of entities.values()) {
     const ziele = kanten(o, OVERRIDES_RELATION);
     if (!ziele.length) continue;
-    if (!kanten(o, LAYER_RELATION).some((x) => zaehlt(o, x.to) > 0)) continue;
+    if (!bringt(o)) continue;
     for (const r of ziele) ueberschrieben.add(r.to);
   }
-  const imStapel = (entity: Entity): boolean => {
-    const ebenen = kanten(entity, LAYER_RELATION);
-    if (!ebenen.length) return true;
-    let addAt = 0;
-    let remAt = 0;
-    for (const r of ebenen) {
-      const x = zaehlt(entity, r.to);
-      if (!x) continue;
-      if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') remAt = Math.max(remAt, x);
-      else addAt = Math.max(addAt, x);
-    }
-    return addAt > remAt;
-  };
+  const imStapel = (entity: Entity): boolean => stapelFrage(entity, zaehlt, frei);
   return {
     inPlay: (entity) => imStapel(entity) && !ueberschrieben.has(entity.id),
     inStack: imStapel,
@@ -657,8 +786,9 @@ export function playStack(
           (r.props as { mode?: unknown } | undefined)?.mode !== 'removes' &&
           passt(vergleich.get(r.to), entity, bereich),
       ),
+    enabled: (entity) => frei.has(entity.id) && !kanten(entity, LAYER_RELATION).some((r) => zaehlt(entity, r.to) > 0),
     rank: (entity) => {
-      let best = 0;
+      let best = frei.has(entity.id) ? PICK_RANK : 0;
       for (const r of kanten(entity, LAYER_RELATION)) {
         if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
         best = Math.max(best, zaehlt(entity, r.to));
@@ -667,7 +797,7 @@ export function playStack(
     },
     unactivated: (entity) => {
       const ebenen = kanten(entity, LAYER_RELATION);
-      if (!ebenen.length || ebenen.some((r) => rang.has(r.to))) return [];
+      if (!ebenen.length || frei.has(entity.id) || ebenen.some((r) => rang.has(r.to))) return [];
       const bringen = ebenen.filter((r) => (r.props as { mode?: unknown } | undefined)?.mode !== 'removes');
       return [...new Set(bringen.map((r) => r.to))];
     },
@@ -680,7 +810,7 @@ export function playStack(
         let best: Entity | null = null;
         let bestRang = 0;
         for (const o of index.get(at.id) ?? []) {
-          const r2 = Math.max(0, ...kanten(o, LAYER_RELATION).map((x) => zaehlt(o, x.to)));
+          const r2 = bringt(o);
           if (r2 > bestRang) {
             bestRang = r2;
             best = o;
@@ -863,6 +993,47 @@ export function withFilter(campaign: Entity, layerId: EntityId, filter: LayerFil
   return {
     ...campaign,
     relations: (campaign.relations ?? []).map((r) => (r === kante ? { ...r, props } : r)),
+  };
+}
+
+/**
+ * **Eine Typ-Regel setzen** (T-187): an der Kante `layerRule` zur Gruppe.
+ * `null` nimmt sie weg; eine Regel „alles" gibt es nicht — das ist keine.
+ */
+export function withRule(campaign: Entity, groupId: EntityId, filter: LayerFilter | null): Entity {
+  const alt = kanten(campaign, RULE_RELATION).find((r) => r.to === groupId);
+  const rest = (campaign.relations ?? []).filter((r) => !(r.type === RULE_RELATION && r.to === groupId));
+  if (!filter) return { ...campaign, relations: rest };
+  const props = {
+    ...(filter.areas ? { areas: [...new Set(filter.areas)] } : {}),
+    ...(filter.types ? { types: [...new Set(filter.types)] } : {}),
+  };
+  return {
+    ...campaign,
+    relations: [...rest, { id: alt?.id ?? `${RULE_RELATION}-${groupId}`, type: RULE_RELATION, to: groupId, props }],
+  };
+}
+
+/**
+ * **Eine Ebene von den Typ-Regeln ausnehmen** (T-187): `exempt` an ihrer
+ * Kante `activates` — „aus diesem Abenteuer doch alles". Ohne eigene
+ * Kante `null`, wie `withFilter`.
+ */
+export function withExempt(campaign: Entity, layerId: EntityId, on: boolean): Entity | null {
+  const kante = aufschalten(campaign).find((r) => r.to === layerId);
+  if (!kante) return null;
+  const { exempt: _e, ...rest } = (kante.props ?? {}) as Record<string, unknown>;
+  const props = on ? { ...rest, exempt: true } : rest;
+  return { ...campaign, relations: (campaign.relations ?? []).map((r) => (r === kante ? { ...r, props } : r)) };
+}
+
+/** **Einen Artikel freigeben oder zurücknehmen** (T-187): die Kante `enables`. */
+export function withEnabled(campaign: Entity, articleId: EntityId, on: boolean): Entity {
+  const rest = (campaign.relations ?? []).filter((r) => !(r.type === ENABLES_RELATION && r.to === articleId));
+  if (!on) return { ...campaign, relations: rest };
+  return {
+    ...campaign,
+    relations: [...rest, { id: `${ENABLES_RELATION}-${articleId}`, type: ENABLES_RELATION, to: articleId, props: {} }],
   };
 }
 

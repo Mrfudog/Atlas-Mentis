@@ -44,6 +44,15 @@ import {
   playStack,
   filterOf,
   withFilter,
+  withRule,
+  withExempt,
+  withEnabled,
+  layerRules,
+  enabledArticles,
+  resolvedEntries,
+  isGroupLayer as istGruppe,
+  type LayerFilter,
+  type Registry,
   areaOf,
   ACTIVATES_RELATION,
   READING_TYPES,
@@ -63,6 +72,28 @@ import { sorgeSpielerEbene } from './spielerebene.js';
 import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
 import { inDieGruppe, neueGruppe } from './gruppe.js';
 import { eigeneEbenen } from './ebenenrechte.js';
+
+/**
+ * **Eine Auswahl aus dem Körper lesen** (T-105, T-187): `{ areas?, types? }`,
+ * beide leer oder fehlend heisst `null` (alles bzw. keine Regel). Bereiche
+ * sind die `area` der Arten, Arten die Typen des Registers; Unbekanntes ist
+ * ein Fehler, denn ein Tippfehler nähme still ein ganzes Buch heraus.
+ */
+function auswahlLesen(body: { areas?: unknown; types?: unknown } | undefined, registry: Registry): LayerFilter | null | string {
+  const liste = (x: unknown, name: string): string[] | undefined | string => {
+    if (x === undefined || x === null) return undefined;
+    if (!Array.isArray(x) || !x.every((y) => typeof y === 'string')) return `${name}: eine Liste von Wörtern.`;
+    return x as string[];
+  };
+  const areas = liste(body?.areas, 'areas');
+  const types = liste(body?.types, 'types');
+  if (typeof areas === 'string') return areas;
+  if (typeof types === 'string') return types;
+  const bereiche = new Set(Object.keys(registry.interfaces).map((t) => areaOf(registry, t)).filter(Boolean));
+  const fremd = [...(areas ?? []).filter((a) => !bereiche.has(a)), ...(types ?? []).filter((t) => !registry.interfaces[t])];
+  if (fremd.length) return `Unbekannt: ${fremd.join(', ')}`;
+  return areas === undefined && types === undefined ? null : { ...(areas ? { areas } : {}), ...(types ? { types } : {}) };
+}
 
 /** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
 export type Recht = 'manage' | 'see' | null;
@@ -375,6 +406,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         .filter((r) => r.type === ACTIVATES_RELATION && (r.props as { mode?: unknown } | undefined)?.mode !== 'off')
         .map((r) => [r.to, filterOf(r)] as const),
     );
+    /* Typ-Regeln (T-187): je Gruppe ihre, je Ebene die, die für sie gilt. */
+    const regeln = layerRules(kampagne);
+    const regelVon = new Map(
+      resolvedEntries(alle, kampagne, mitglieder)
+        .filter((x) => x.ruleFrom)
+        .map((x) => [x.layer.id, { id: x.ruleFrom!, name: entityName(alle.get(x.ruleFrom!)), only: x.filter }] as const),
+    );
+    const ausgenommen = new Set(activeStack(alle, kampagne).filter((x) => x.exempt).map((x) => x.layer.id));
     const zeile = (e: Entity) => {
       const andere = campaignsActivating(alle, e.id, aktiv)
         .filter((k) => k !== c)
@@ -414,6 +453,10 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         /* Was sie bringt (T-105): die Auswahl an ihrer eigenen Kante; ohne
            Kante (nur über eine Gruppe) gilt die der Gruppe. */
         ...(auswahl.get(e.id) ? { only: auswahl.get(e.id)! } : {}),
+        /* Die Typ-Regel dieser Gruppe (T-187) und die, die für diese Ebene gilt. */
+        ...(regeln.get(e.id) ? { rule: regeln.get(e.id)! } : {}),
+        ...(regelVon.get(e.id) ? { ruleFrom: regelVon.get(e.id)! } : {}),
+        ...(ausgenommen.has(e.id) ? { exempt: true } : {}),
         alsoIn: andere,
         canActivate: mayActivate(user, alle, e.id, c, mitglieder, aktiv),
       };
@@ -424,10 +467,28 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       .map(zeile)
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
     const compareFor = (kampagne.components?.[CAMPAIGN_TYPE] as { compareFor?: unknown } | undefined)?.compareFor;
+    /* Einzeln freigegeben (T-187): Name, Art, Ebenen — und ob er gerade
+       wirklich im Spiel ist (eine Herausnahme schlägt die Freigabe). */
+    const frei = [...enabledArticles(kampagne)];
+    const sicht = frei.length ? playStack(alle, kampagne, await repo.getRegistry()) : null;
+    const extra = frei
+      .map((id) => alle.get(id))
+      .filter((e): e is Entity => !!e)
+      .map((e) => ({
+        id: e.id,
+        name: entityName(e),
+        type: (e.interfaces ?? [])[0] ?? '',
+        layers: (e.relations ?? [])
+          .filter((r) => r.type === LAYER_RELATION && (r.props as { mode?: unknown } | undefined)?.mode !== 'removes')
+          .map((r) => entityName(alle.get(r.to))),
+        inPlay: sicht!.inPlay(e),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
     return {
       campaign: { id: c, name: entityName(kampagne) },
       may: recht,
       layers: [...an, ...aus],
+      extra,
       /* Wer die Vergleichsebenen sieht (T-092): `gm` (Vorgabe) oder `players`. */
       compareFor: compareFor === 'players' ? ('players' as const) : ('gm' as const),
     };
@@ -540,7 +601,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
    * `area` der Arten im Register, Arten seine Typen; Unbekanntes lehnt die
    * Route ab, denn ein Tippfehler nähme still ein ganzes Buch heraus.
    */
-  app.put<{ Params: { c: string; layer: string }; Body: { areas?: unknown; types?: unknown } }>(
+  app.put<{ Params: { c: string; layer: string }; Body: { areas?: unknown; types?: unknown; exempt?: unknown } }>(
     '/api/campaigns/:c/layers/:layer/only',
     async (request, reply) => {
       const user = await viewerOf(request);
@@ -554,30 +615,103 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
       }
       const registry = await repo.getRegistry();
-      const liste = (x: unknown, name: string): string[] | undefined | string => {
-        if (x === undefined || x === null) return undefined;
-        if (!Array.isArray(x) || !x.every((y) => typeof y === 'string')) return `${name}: eine Liste von Wörtern.`;
-        return x as string[];
-      };
-      const areas = liste(request.body?.areas, 'areas');
-      const types = liste(request.body?.types, 'types');
-      if (typeof areas === 'string') return nein(reply, 400, areas);
-      if (typeof types === 'string') return nein(reply, 400, types);
-      const bereiche = new Set(Object.keys(registry.interfaces).map((t) => areaOf(registry, t)).filter(Boolean));
-      const fremd = [...(areas ?? []).filter((a) => !bereiche.has(a)), ...(types ?? []).filter((t) => !registry.interfaces[t])];
-      if (fremd.length) return nein(reply, 400, `Unbekannt: ${fremd.join(', ')}`);
-      const filter = areas === undefined && types === undefined ? null : { ...(areas ? { areas } : {}), ...(types ? { types } : {}) };
-      const geschrieben = withFilter(kampagne, request.params.layer, filter);
+      const filter = auswahlLesen(request.body, registry);
+      if (typeof filter === 'string') return nein(reply, 400, filter);
+      let geschrieben = withFilter(kampagne, request.params.layer, filter);
       if (!geschrieben) {
         return nein(reply, 409, 'Diese Ebene schaltet die Kampagne nicht selbst auf; sie bringt, was ihre Gruppe bringt.');
+      }
+      /* Von den Typ-Regeln ausnehmen (T-187): „alles, trotz Regel". */
+      const exempt = request.body?.exempt;
+      if (exempt !== undefined) {
+        if (typeof exempt !== 'boolean') return nein(reply, 400, 'exempt: ja oder nein.');
+        geschrieben = withExempt(geschrieben, request.params.layer, exempt) ?? geschrieben;
       }
       const issues = validateEntity(registry, geschrieben, {});
       if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       await repo.putEntity(geschrieben);
-      await repo.appendEvent('campaign.layers', c, { layer: request.params.layer, only: filter, by: user.id });
+      await repo.appendEvent('campaign.layers', c, {
+        layer: request.params.layer,
+        only: filter,
+        ...(exempt !== undefined ? { exempt } : {}),
+        by: user.id,
+      });
       return { ok: true, only: filter, state: await ebenenSicht(user, c, recht) };
     },
   );
+
+  /**
+   * **Eine Typ-Regel setzen** (T-187): `{ areas?, types? }` für jede Ebene
+   * der Gruppe `:group`, die selbst nichts sagt — einmal statt je Quelle.
+   * Leer heisst: keine Regel. Rechte wie am Stapel.
+   */
+  app.put<{ Params: { c: string; group: string }; Body: { areas?: unknown; types?: unknown } }>(
+    '/api/campaigns/:c/rules/:group',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Typ-Regeln setzt die Leitung; ein Mitleiter sieht sie nur.');
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      }
+      if (!istGruppe(alle.get(request.params.group))) return nein(reply, 400, 'Eine Typ-Regel gilt für eine Gruppe von Ebenen.');
+      const registry = await repo.getRegistry();
+      const filter = auswahlLesen(request.body, registry);
+      if (typeof filter === 'string') return nein(reply, 400, filter);
+      const geschrieben = withRule(kampagne, request.params.group, filter);
+      const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+      const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.rules', c, { group: request.params.group, only: filter, by: user.id });
+      return { ok: true, rule: filter, state: await ebenenSicht(user, c, recht) };
+    },
+  );
+
+  /**
+   * **Einen Artikel freigeben** (T-187): `PUT` bringt ihn ins Spiel, auch
+   * wenn seine Ebene es nicht ist (Kante `enables`), `DELETE` nimmt das
+   * zurück. Freigegeben wird nur, was eine Ebene hat und nicht schon im
+   * Stapel steht — ein Artikel ohne Ebene ist immer da. Nur die Leitung
+   * der laufenden Kampagne, wie „Übernehmen".
+   */
+  const freigabe = (on: boolean) => async (request: FastifyRequest<{ Params: { c: string; id: string } }>, reply: FastifyReply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    const recht = rechtAn(user, c);
+    if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+    if (recht !== 'manage') return nein(reply, 403, 'Freigeben darf die Leitung; ein Mitleiter sieht es nur.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = alle.get(c);
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    }
+    const ziel = alle.get(request.params.id);
+    if (!ziel) return nein(reply, 404, 'Nicht gefunden');
+    const registry = await repo.getRegistry();
+    if (on) {
+      if (!(ziel.relations ?? []).some((r) => r.type === LAYER_RELATION)) {
+        return nein(reply, 409, 'Ein Artikel ohne Ebene ist ohnehin im Spiel.');
+      }
+      if (enabledArticles(kampagne).has(ziel.id)) return { ok: true, state: await ebenenSicht(user, c, recht) };
+      if (playStack(alle, kampagne, registry).inStack(ziel)) return nein(reply, 409, 'Dieser Artikel ist schon im Spiel.');
+    } else if (!enabledArticles(kampagne).has(ziel.id)) {
+      return nein(reply, 404, 'Dieser Artikel ist in dieser Kampagne nicht freigegeben.');
+    }
+    const geschrieben = withEnabled(kampagne, ziel.id, on);
+    const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+    const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(geschrieben);
+    await repo.appendEvent(on ? 'campaign.enabled' : 'campaign.disabled', c, { article: ziel.id, by: user.id });
+    return { ok: true, enabled: on, state: await ebenenSicht(user, c, recht) };
+  };
+  app.put<{ Params: { c: string; id: string } }>('/api/campaigns/:c/enabled/:id', freigabe(true));
+  app.delete<{ Params: { c: string; id: string } }>('/api/campaigns/:c/enabled/:id', freigabe(false));
 
   /**
    * **Die Vergleichsebenen schreiben** (T-092, E-021 d): `{ layers, players? }`

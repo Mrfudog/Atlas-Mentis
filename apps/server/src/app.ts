@@ -63,6 +63,7 @@ import {
   playStack,
   compareLayers,
   shownLayers,
+  enabledArticles,
   activeLayerRanks,
   layerShort,
   layersOf,
@@ -2139,6 +2140,26 @@ export function buildApp({
     };
   });
 
+  /**
+   * **Einzeln freigeben am Artikel** (T-187): ein Artikel aus einer
+   * Vergleichsebene bekommt `refs.enable` — die Leitung holt ihn mit einem
+   * Klick als Extra-Inhalt ins Spiel —, ein freigegebener `refs.enabled`,
+   * damit dieselbe Stelle es zurücknimmt. Nur für die Leitung der
+   * laufenden Kampagne; alle anderen sehen ihn wie jeden Artikel.
+   */
+  async function freigabeAm(
+    request: FastifyRequest,
+    entity: Entity,
+    map: Map<string, Entity>,
+    vergleich: boolean,
+  ): Promise<{ enable?: { campaign: string }; enabled?: { campaign: string } } | null> {
+    const registry = await repo.getRegistry();
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    if (!kampagne || rechtAn(await viewerOf(request), kampagne.id) !== 'manage') return null;
+    if (enabledArticles(kampagne).has(entity.id)) return { enabled: { campaign: kampagne.id } };
+    return vergleich ? { enable: { campaign: kampagne.id } } : null;
+  }
+
   /** Ist dieser Artikel eine übernommene Fassung in dieser Ebene (T-092)? */
   function istUebernahme(e: Entity, ebene: string): boolean {
     const rs = e.relations ?? [];
@@ -2885,7 +2906,9 @@ export function buildApp({
     const ziele = await anpassZiele(request, einer, stand.map);
     /* „Take into campaign" (E-026): wohin es gehängt werden kann. */
     const nehmen = await uebernahmeZiele(request, einer, stand.map);
-    const mitNehmen = nehmen.length ? { ...refs, takeInto: nehmen.map((x) => ({ id: x.id, name: entityName(x), type: primaryInterface(x) })) } : refs;
+    const mitNehmen0 = nehmen.length ? { ...refs, takeInto: nehmen.map((x) => ({ id: x.id, name: entityName(x), type: primaryInterface(x) })) } : refs;
+    const freigabe = await freigabeAm(request, entity, stand.map, vergleich);
+    const mitNehmen = freigabe ? { ...mitNehmen0, ...freigabe } : mitNehmen0;
     return {
       ...einer,
       refs: ziele.length

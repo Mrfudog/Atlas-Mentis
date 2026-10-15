@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-type-rules-and-extra-content",
+      "date": "2026-10-15",
+      "title": "One type rule for a whole group of books, and single articles as extra content",
+      "text": "On the campaign page, open a group such as Adventures and set a type rule — say, only rules, items and spells — and it applies to every book in that group you put in play, unless a book sets its own choice or is exempted. An article from a compare layer can now be enabled on its own page: it is in play, its book is not, and the campaign page lists it under Extra content.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-15-map-prepare-encounter",
       "date": "2026-10-15",
       "title": "Prepare an encounter on the map, then start it",
