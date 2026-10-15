@@ -2104,7 +2104,12 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        trade: { type: 'string', suggest: true, title: 'Trade' },
+        /* **Der Beruf ist einer der `Trade`-Artikel**, gespeichert beim
+           Namen (T-196) — wie das Werkzeug. Die Art schlägt vor, sie hält
+           nicht (`enumHolds`): ein Rezept aus einem Regelwerk darf einen
+           Beruf nennen, den hier noch niemand angelegt hat. Ein Beruf
+           findet seine Rezepte auch über seine Aliasse. */
+        trade: { type: 'string', suggest: true, title: 'Trade', enumRef: 'Trade' },
         /* **Das Werkzeug ist eines der Werkzeug-Artikel**, gespeichert
            beim Namen (E-020, T-099) — wie die Werkzeugübung, mit der es
            verglichen wird: wer am Rezept arbeitet, braucht Übung in genau
@@ -2139,6 +2144,32 @@ export const fieldGroups = {
            `recipe` galt; zwei Stellen für eine Regel hiessen, dass am Tisch
            niemand wusste, welche zählt. */
         onFailure: { type: 'string', title: 'Source: on a failure' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Beruf** (T-196): Schmieden, Alchemie, Verzauberung. Er ist eine
+   * Regel mit eigenem Text (die Beschreibung aus dem Regelwerk), und er
+   * sagt, **mit welchen Werkzeugen** man ihn ausübt — gespeichert beim
+   * Namen wie `Recipe.tool` und die Werkzeugübung, mit der beides
+   * verglichen wird. Seine Rezepte nennen ihn (`Recipe.trade`); eine Liste
+   * der Rezepte am Beruf wäre die zweite Stelle, die beim nächsten Rezept
+   * veraltet. Ein Werkzeug zeigt so, was man damit fertigt: die Rezepte,
+   * die es selbst nennen, und die seiner Berufe.
+   */
+  TradeInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        tools: {
+          type: 'array',
+          title: 'Tools',
+          items: { type: 'string' },
+          enumRef: 'Item',
+          enumWhere: TOOLS_ONLY,
+          description: 'The tools this trade is practised with. A tool lists the recipes of its trades.',
+        },
       },
     },
   },

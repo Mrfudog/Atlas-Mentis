@@ -1086,6 +1086,7 @@ flowchart TB
 ```mermaid
 flowchart LR
   R["Recipe<br/>trade · tool · onFailure"] -- "knowledge" --> I["Information"]
+  R -. "trade (Name)" .-> B["Trade<br/>tools"]
   I -- "knownBy" --> F["Creature | Party"]
   R -- "needs · qty · consumed" --> M["Item"]
   F -- "crafting · day · days · put" --> R
@@ -1134,6 +1135,25 @@ flowchart LR
   Die Artikelseite eines Rezepts zeigt das Ergebnis (Element `crafting`):
   am Tisch und je eigener Figur, mit dem, was nicht aus dem Rezept kommt —
   gerechnet am Server (`refs.craft`), nicht in der Maske.
+- **Beruf, Werkzeug, Figur: was man womit fertigt** (T-196). Ein Beruf
+  ist eine Art `Trade` (erbt von `Rule`: Text, Quelle, Marken) mit seinen
+  Werkzeugen (`Trade.tools`, beim Namen wie `Recipe.tool`). Das Rezept
+  nennt seinen Beruf (`Recipe.trade`, `enumRef: 'Trade'` — schlägt vor,
+  hält nicht); gefunden wird er über Name **und Aliasse**. Eine Liste der
+  Rezepte am Beruf gibt es nicht — sie wäre die zweite Stelle, die beim
+  nächsten Rezept veraltet. Gerechnet wird in beide Richtungen
+  (`recipesOfTrade`, `tradesOfTool`, `recipesOfTool` in `crafting.ts`):
+  **womit ein Rezept gefertigt wird**, sagt sein eigenes Werkzeug, sonst
+  die Werkzeuge seines Berufs (`recipeTools`) — das Rezept ist
+  spezifischer. Das Element `crafting` zeichnet am Beruf die Übersicht
+  (Werkzeuge, Rezepte mit Probe, Dauer, Ertrag und Seltenheit, das
+  Material nach Zahl der Rezepte), an einem Werkzeug „Can craft", an einer
+  Figur je Werkzeug, in dem ihr Statblock geübt ist, dasselbe mit
+  **gelernt/nicht gelernt** (nur für Leitung und Führende). Gerechnet am
+  Server aus dem **Gesiebten** (`GET /api/crafting/:id`, `kind: trade |
+  tool | actor | none`): was eine Information zurückhält, steht nicht da,
+  und was nicht im Stapel steht, auch nicht. Filter (Suche, Seltenheit,
+  gelernt) sind die der Seite.
 - **Fortschritt in Proben** (T-122): `Recipe.checks` sagt, wie viele
   gelungene Proben die Arbeit braucht — Regelwerke wie Kibbles’ Compendium
   zählen in Proben je Zeitabschnitt (zwei Stunden, eine Probe) statt in
@@ -1741,7 +1761,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-15: 56 Artikelarten, 24 Grundtypen, 64 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-15: 57 Artikelarten, 24 Grundtypen, 64 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -1836,6 +1856,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `carryExtra*` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | print, overview, quick, full |
 | `Subclass` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `subclassOf` `grants` `tableFor` | `composedOf` `affects` `chose` `grants` | overview |
 | `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | overview, full |
+| `Trade` | `Rule` | `tools` | `affects` `casts` | `composedOf` `affects` `grants` | quick, full |
 | `ZoneKind` | `Rule` | `moveCost` `light` `obscured` `hiddenUntil` `damage` `damageType` `save` `saveDC` `condition` `trigger` | `affects` `casts` | `composedOf` `affects` `grants` `zone` | — |
 
 **Play**

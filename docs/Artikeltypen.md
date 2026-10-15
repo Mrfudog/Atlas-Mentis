@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-15. 80 Schnittstellen, 64 Kantenarten.
+Stand 2026-10-15. 81 Schnittstellen, 64 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -73,7 +73,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `crafting`, `usedBy`, `standing`, `relations`
 
 ### Article
 
@@ -427,7 +427,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `crafting`, `usedBy`, `standing`, `relations`
 
 ### Material
 
@@ -486,7 +486,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `crafting`, `usedBy`, `standing`, `relations`
 
 ### Party
 
@@ -784,7 +784,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `crafting`, `usedBy`, `standing`, `relations`
 
 ### World
 
@@ -1167,7 +1167,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Rules
 
-*Woran man sich hält.* — 24 Arten.
+*Woran man sich hält.* — 25 Arten.
 
 ### Ability score method
 
@@ -1951,7 +1951,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `trade` *string*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `checks` *1…∞*, `yieldCount` *number*, `onFailure` *string*
+- `trade` *Trade articles*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `checks` *1…∞*, `yieldCount` *number*, `onFailure` *string*
 
 **Geerbte Felder**
 
@@ -2285,6 +2285,53 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `Table`): `table`, `description`, `fields` (ohne Table.rows), `prose`
 
+### Trade
+
+`Trade` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `tools` *Item articles*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Trade (angepasst)`): `image`, `description`, `crafting`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
 ### Zone kind
 
 `ZoneKind` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
@@ -2390,7 +2437,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Recipe`* — `trade` *string*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `checks` *1…∞*, `yieldCount` *number*, `onFailure` *string*
+- *`Recipe`* — `trade` *Trade articles*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `checks` *1…∞*, `yieldCount` *number*, `onFailure` *string*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
