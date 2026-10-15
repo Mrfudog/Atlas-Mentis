@@ -23,7 +23,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 171 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen — 318 Stories in 77 Features und 12 Epics.
+Zusammen: 172 steht · 47 teils · 83 offen · 10 ersetzt · 6 verworfen — 318 Stories in 77 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -33,7 +33,7 @@ Zusammen: 171 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen — 318
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 21 | 8 steht · 5 teils · 8 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 23 | 10 steht · 1 teils · 12 offen |
+| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 23 | 11 steht · 1 teils · 11 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 18 | 4 steht · 3 teils · 11 offen |
@@ -538,7 +538,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-097 Zauberlisten (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme als Behälter mit Optionen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils)
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme als Behälter mit Optionen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -570,7 +570,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-092]] | Zauber als Artikel | 2 | **offen** | keine Art für Zauber — Abgleich A9 |
-| [[REQ-097]] | Zauberlisten | 3 | **offen** | braucht REQ-092 |
+| [[REQ-097]] | Zauberlisten | 3 | **steht** | Kante spellList (Class, Subclass → Spell) aus 5e.tools, Facette am Zauber, usable by — T-212, Datenmodell Z7 |
 
 ### F-046 Regelauswertung
 
@@ -983,7 +983,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-083]]** (3, offen, Spielererlebnis) — Eigene Quests und Ziele — *Spieler schreiben nur ihre Figur*
 - **[[REQ-086]]** (3, teils, Kampagne & Sitzungen) — Gruppenübersicht — *Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung*
 - **[[REQ-088]]** (3, teils, Zugang & Betrieb) — Massenänderungen an Wissen und Rechten — *Massenbearbeitung ohne Wissen*
-- **[[REQ-097]]** (3, offen, Regeln & Nachschlagen) — Zauberlisten — *braucht REQ-092*
 - **[[REQ-109]]** (3, teils, Spielererlebnis) — Lore-Texte von Spielenden — *Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041)*
 - **[[REQ-119]]** (3, offen, Oberfläche & Navigation) — Boards der Spielenden
 - **[[REQ-120]]** (3, teils, Live-Spiel) — Spielprotokoll — *Würfe im Protokoll; Zustandsereignisse nicht gespeichert*

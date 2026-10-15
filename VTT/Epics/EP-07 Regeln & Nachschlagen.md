@@ -22,7 +22,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | [[F-042 Bereich Rules & Kompendium]] — Regelartikel, Nachschlagen in Sekunden, Merkzettel, Zustände. | 6 | 16 | 5 steht · 1 teils |
 | [[F-043 Bücher & Leseansicht]] — Eine Ebene als Buch lesen, Kapitel aus Teilen. | 1 | 8 | 1 steht |
 | [[F-044 Klassen]] — Klassenansicht mit Stufentabelle und Unterklassen. | 1 | 3 | 1 steht |
-| [[F-045 Zauber]] — Zauber als Artikel, Zauberlisten. | 2 | 5 | 2 offen |
+| [[F-045 Zauber]] — Zauber als Artikel, Zauberlisten. | 2 | 5 | 1 steht · 1 offen |
 | [[F-046 Regelauswertung]] — Effekte, Bedingungen und Wechselwirkungen von Regeln auswerten. | 6 | 44 | 6 offen |
 | [[F-047 Handwerk]] — Rezepte, Material, Fortschritt, Blaupausen lernen. | 3 | 9 | 3 steht |
 | [[F-048 Regelsysteme & Module]] — Regelsysteme als Behälter mit Optionen je Kampagne; Homebrew-Regeln; Rahmen wie Taverne. | 3 | 16 | 3 offen |
@@ -38,7 +38,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../../docs/Regelsysteme.md), [Datenmodell.md](../../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** [[REQ-018]] Wirkungen von Regeln beschreiben (offen) · [[REQ-092]] Zauber als Artikel (offen) · [[REQ-097]] Zauberlisten (offen) · [[REQ-227]] Masse im Fliesstext umrechnen (offen) · [[REQ-287]] Regelsysteme als Behälter mit Optionen (offen) · [[REQ-289]] Homebrew-Regeln erfassen (offen) · [[REQ-313]] Zustände als Artikel (teils)
+**Offen mit Prio 1–3:** [[REQ-018]] Wirkungen von Regeln beschreiben (offen) · [[REQ-092]] Zauber als Artikel (offen) · [[REQ-227]] Masse im Fliesstext umrechnen (offen) · [[REQ-287]] Regelsysteme als Behälter mit Optionen (offen) · [[REQ-289]] Homebrew-Regeln erfassen (offen) · [[REQ-313]] Zustände als Artikel (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->

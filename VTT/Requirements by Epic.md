@@ -510,7 +510,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-23 Stories · 103 Punkte · 10 steht · 1 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
+23 Stories · 103 Punkte · 11 steht · 1 teils · 11 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -548,7 +548,7 @@ Zauber als Artikel, Zauberlisten. — [[F-045 Zauber]]
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-092]] | Zauber als Artikel | Spieler | 2 | 3 | offen |
-| [[REQ-097]] | Zauberlisten | Spieler | 3 | 2 | offen |
+| [[REQ-097]] | Zauberlisten | Spieler | 3 | 2 | steht |
 
 ### F-046 Regelauswertung
 

@@ -15,10 +15,10 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-2 Stories · 5 Punkte · 2 offen
+2 Stories · 5 Punkte · 1 steht · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-092]] Zauber als Artikel | Spieler | 2 | offen |
-| [[REQ-097]] Zauberlisten | Spieler | 3 | offen |
+| [[REQ-097]] Zauberlisten | Spieler | 3 | steht |
 <!-- stories:ende -->
