@@ -51,6 +51,7 @@ import {
   tableMovedOn,
   STATUS_COMPONENT,
   classParts,
+  originParts,
   currentCampaign,
   inStack,
   adaptedVersion,
@@ -2229,6 +2230,35 @@ export function buildApp({
     return {
       class: nach.get(teile.klass),
       subclasses: nimm(teile.subclasses),
+      tables: nimm(teile.tables),
+      features: nimm(teile.features),
+    };
+  });
+
+  /**
+   * **Eine Herkunft oder ein Hintergrund samt allem, was die Ansicht
+   * braucht** (T-166) — gebaut wie `/api/classes/:id`: der Artikel, seine
+   * Spielarten, Tabellen und Merkmale in einer Antwort, gesiebt wie
+   * überall und danach auf dem Gesiebten noch einmal gesammelt.
+   */
+  app.get<{ Params: { id: string } }>('/api/origins/:id', async (request, reply) => {
+    const alle = await repo.listEntities();
+    const roh = originParts(alle, request.params.id);
+    if (!roh) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const byId = new Map(alle.map((e) => [e.id, e]));
+    const ids = [roh.origin, ...roh.variants, ...roh.tables, ...roh.features];
+    const gesiebt = await sieve(
+      request,
+      ids.map((i) => byId.get(i)).filter((e): e is Entity => !!e),
+      alle,
+    );
+    const teile = originParts(gesiebt, request.params.id);
+    if (!teile) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const nach = new Map(gesiebt.map((e) => [e.id, e]));
+    const nimm = (l: string[]) => l.map((i) => nach.get(i)).filter((e): e is Entity => !!e);
+    return {
+      origin: nach.get(teile.origin),
+      variants: nimm(teile.variants),
       tables: nimm(teile.tables),
       features: nimm(teile.features),
     };

@@ -271,8 +271,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     area: 'character',
     does: 'builds a class page — features by level, subclasses, the class table',
     uses: {
-      [M + 'classes.ts']: ['grants', 'subclassOf', 'tableFor'],
+      [M + 'classes.ts']: ['grants', 'subclassOf', 'subraceOf', 'tableFor'],
       [W + 'klassen/klasse.ts']: ['tableFor'],
+    },
+  },
+  {
+    key: 'origins',
+    label: 'Ancestry and background pages',
+    area: 'character',
+    does: 'builds an ancestry or background page — traits, variants to compare, dice tables (T-166)',
+    uses: {
+      [W + 'klassen/herkuenfte.ts']: ['subraceOf'],
     },
   },
   {

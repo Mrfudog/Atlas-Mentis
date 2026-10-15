@@ -1140,3 +1140,64 @@ describe('the class view', () => {
     expect((await holt('Basil', 'gibt-es-nicht')).statusCode).toBe(404);
   });
 });
+
+describe('GET /api/origins/:id (T-166)', () => {
+  const merkmal = (id: string, name: string): Entity => ({
+    id,
+    interfaces: ['Feature'],
+    name,
+    components: { Identity: { name, id: `feature-${id}`, aliases: [] }, Status: { status: 'ready' } },
+  });
+  const art = (id: string, typ: string, name: string, rel: Entity['relations'], verborgen = false): Entity => ({
+    id,
+    interfaces: [typ],
+    name,
+    components: {
+      Identity: { name, id, aliases: [] },
+      Status: { status: 'ready' },
+      ...(verborgen ? { Visibility: { audience: 'gm' } } : {}),
+    },
+    relations: rel,
+  });
+  const bestand = [
+    art('pc_rook', 'PlayerCharacter', 'Rook', []),
+    art('a_moos', 'Ancestry', 'Mossling', [{ id: 'g1', type: 'grants', to: 'f_haut' }]),
+    art('a_tief', 'Ancestry', 'Mossling (Deep)', [
+      { id: 'g2', type: 'subraceOf', to: 'a_moos' },
+      { id: 'g3', type: 'grants', to: 'f_wurzel' },
+    ]),
+    art('a_geh', 'Ancestry', 'Mossling (Hidden)', [
+      { id: 'g4', type: 'subraceOf', to: 'a_moos' },
+      { id: 'g5', type: 'grants', to: 'f_still' },
+    ], true),
+    merkmal('f_haut', 'Mossy Skin'),
+    merkmal('f_wurzel', 'Root Step'),
+    merkmal('f_still', 'Quiet Spores'),
+  ];
+  async function holt(wer: string, id = 'a_moos') {
+    const repo = new InMemoryRepository(seedRegistry, bestand);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Basil', { admin: true });
+    await addUser(repo, 'Sela', { actorId: 'pc_rook' });
+    const keks = cookieOf(await login(app, wer));
+    return app.inject({ method: 'GET', url: `/api/origins/${id}`, headers: { cookie: keks } });
+  }
+  const namen = (l: Entity[]) => l.map((e) => e.name).sort();
+
+  it('sends the ancestry with its variants and their features', async () => {
+    const b = (await holt('Basil')).json() as { origin: Entity; variants: Entity[]; features: Entity[] };
+    expect(b.origin.name).toBe('Mossling');
+    expect(namen(b.variants)).toEqual(['Mossling (Deep)', 'Mossling (Hidden)']);
+    expect(namen(b.features)).toEqual(['Mossy Skin', 'Quiet Spores', 'Root Step']);
+  });
+
+  it('keeps a hidden variant and what only it grants away from a player', async () => {
+    const b = (await holt('Sela')).json() as { variants: Entity[]; features: Entity[] };
+    expect(namen(b.variants)).toEqual(['Mossling (Deep)']);
+    expect(namen(b.features)).not.toContain('Quiet Spores');
+  });
+
+  it('404s what is not an ancestry or background', async () => {
+    expect((await holt('Basil', 'f_haut')).statusCode).toBe(404);
+  });
+});

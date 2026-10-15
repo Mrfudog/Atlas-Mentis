@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-origin-views",
+      "date": "2026-10-15",
+      "title": "Ancestries and backgrounds read like the class view",
+      "text": "Rules › Ancestries and Rules › Backgrounds list them with filters for source, size, creature type and rules version. Each page shows its traits written out and its choices with links; an ancestry lists its variants to switch between and compare, a background its tables as dice tables. The character builder links there with “More about this …”.",
+      "area": "Rules",
+      "link": "/ancestries"
+    },
+    {
       "id": "2026-10-15-encounter-kinds",
       "date": "2026-10-15",
       "title": "Encounters have a kind",

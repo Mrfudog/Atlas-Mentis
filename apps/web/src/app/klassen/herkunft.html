@@ -1,0 +1,144 @@
+@if (haupt(); as h) {
+  <div class="buch">
+    <nav aria-label="Breadcrumb" class="brot">
+      <a routerLink="/rules">Rules</a>
+      <span aria-hidden="true">›</span>
+      <a [routerLink]="liste().weg">{{ liste().liste }}</a>
+      <span aria-hidden="true">›</span>
+      <span>{{ name() }}</span>
+    </nav>
+
+    <article class="blatt">
+      <div class="titelzeile">
+        <div>
+          <h1>{{ name() }}</h1>
+          @if (untertitel()) {
+            <p class="untertitel">{{ untertitel() }}</p>
+          }
+        </div>
+        <a class="knopf" [routerLink]="['/artikel', h.id]">Article</a>
+      </div>
+      <div class="linie" aria-hidden="true"></div>
+
+      @if (eckdaten().length) {
+        <dl class="eckdaten">
+          @for (z of eckdaten(); track $index) {
+            <dt>{{ z.label }}</dt>
+            <dd>
+              @if (z.lang) {
+                <nw-text [text]="z.wert" [scopes]="scopes()" />
+              } @else {
+                {{ z.wert }}
+              }
+            </dd>
+          }
+        </dl>
+      }
+
+      <!-- Die Spielarten (Unterarten): umschalten und vergleichen -->
+      @if (spielarten().length) {
+        <section class="leiste" aria-labelledby="spielart-titel">
+          <div class="leistenkopf">
+            <h2 id="spielart-titel">Variants</h2>
+          </div>
+          <div class="unterliste" role="group" aria-label="Choose variants to show and compare">
+            @for (u of spielarten(); track u.e.id) {
+              <button
+                type="button"
+                class="unter"
+                [class.an]="gewaehltIds().has(u.e.id)"
+                [attr.aria-pressed]="gewaehltIds().has(u.e.id)"
+                (click)="umschalten(u.e.id)"
+              >
+                @if (nummer().has(u.e.id)) {
+                  <span class="nr" [class]="'u' + (nummer().get(u.e.id)! % 6)" aria-hidden="true">{{
+                    nummer().get(u.e.id)! + 1
+                  }}</span>
+                }
+                {{ u.name }} <span class="quelle" [title]="quellTitel(u.quelle)">{{ u.quelle }}</span>
+              </button>
+            }
+          </div>
+          <div class="auswahlzeile">
+            <span class="dim">
+              @switch (gewaehlt().length) {
+                @case (0) {
+                  Pick one to read it, two or more to compare them.
+                }
+                @case (1) {
+                  One shown — pick another to compare.
+                }
+                @default {
+                  Comparing {{ gewaehlt().length }}.
+                }
+              }
+            </span>
+            <button type="button" (click)="keine()" [disabled]="!gewaehlt().length">Clear</button>
+          </div>
+        </section>
+      }
+
+      @if (merkmale().length) {
+        <h2>Traits</h2>
+        <section class="stufe-abschnitt">
+          @for (f of merkmale(); track f.id) {
+            <nw-merkmal [merkmal]="f" [index]="index()" [scopes]="scopes()" [zeigeOptional]="true" />
+          }
+        </section>
+      }
+
+      @if (gewaehlt().length) {
+        <h2>{{ gewaehlt().length > 1 ? 'Variants compared' : gewaehlt()[0]!.name }}</h2>
+        <div class="vergleich" [style.--spalten]="gewaehlt().length">
+          @for (x of gewaehlt(); track x.e.id) {
+            <div class="spalte" [class]="'u' + (nummer().get(x.e.id)! % 6)">
+              <div class="spaltenkopf">
+                <span class="nr" aria-hidden="true">{{ nummer().get(x.e.id)! + 1 }}</span>
+                <a [routerLink]="['/artikel', x.e.id]">{{ x.name }}</a>
+                <span class="quelle" [title]="quellTitel(x.quelle)">{{ x.quelle }}</span>
+              </div>
+              @if (x.eckdaten.length) {
+                <dl class="eckdaten">
+                  @for (z of x.eckdaten; track $index) {
+                    <dt>{{ z.label }}</dt>
+                    <dd>
+                      @if (z.lang) {
+                        <nw-text [text]="z.wert" [scopes]="scopes()" />
+                      } @else {
+                        {{ z.wert }}
+                      }
+                    </dd>
+                  }
+                </dl>
+              }
+              @for (f of x.merkmale; track f.id) {
+                <nw-merkmal
+                  [merkmal]="f"
+                  [index]="index()"
+                  [scopes]="scopes()"
+                  [zeigeOptional]="true"
+                  [ohneName]="nameVon(f) === x.name"
+                />
+              } @empty {
+                <p class="dim nichts">No traits of its own.</p>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @for (t of tabellen(); track t.id) {
+        @if (t.text) {
+          <h2>{{ t.name }}</h2>
+          <nw-text [text]="t.text" [scopes]="scopes()" />
+        }
+      }
+    </article>
+  </div>
+} @else if (fehlt()) {
+  <p class="fehler buch">Nothing here — or not one you may see.</p>
+} @else if (fehler(); as f) {
+  <p class="fehler buch" role="alert">{{ f }}</p>
+} @else {
+  <p class="leer buch">Loading…</p>
+}

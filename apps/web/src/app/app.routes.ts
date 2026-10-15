@@ -114,6 +114,33 @@ export const routes: Routes = [
     loadComponent: () => import('./klassen/klasse').then((m) => m.Klasse),
     title: 'Class · Atlas Mentis',
   },
+  /* Herkünfte und Hintergründe wie die Klassen (T-166): eine Liste, eine Seite. */
+  {
+    path: 'ancestries',
+    canActivate: [wache],
+    data: { art: 'Ancestry' },
+    loadComponent: () => import('./klassen/herkuenfte').then((m) => m.Herkuenfte),
+    title: 'Ancestries · Atlas Mentis',
+  },
+  {
+    path: 'ancestries/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/herkunft').then((m) => m.Herkunft),
+    title: 'Ancestry · Atlas Mentis',
+  },
+  {
+    path: 'backgrounds',
+    canActivate: [wache],
+    data: { art: 'Background' },
+    loadComponent: () => import('./klassen/herkuenfte').then((m) => m.Herkuenfte),
+    title: 'Backgrounds · Atlas Mentis',
+  },
+  {
+    path: 'backgrounds/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/herkunft').then((m) => m.Herkunft),
+    title: 'Background · Atlas Mentis',
+  },
   /* Der Assistent für Figuren (T-080): seine Schritte kommen aus den
      Artikeln. Der Stufenaufstieg ist derselbe Assistent an einer Figur. */
   {

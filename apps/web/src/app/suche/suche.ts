@@ -5,6 +5,7 @@ import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { Kurzansicht } from '../kern/kurzansicht';
 import { Suche, type SuchFilter } from '../kern/suche';
 import { Vorschau } from '../artikel/vorschau';
+import { ansichtWeg } from '../klassen/ansicht-weg';
 
 type Treffer = Suchergebnis['rows'][number];
 
@@ -543,9 +544,9 @@ export class SucheComponent {
     return bereichLabel(weg);
   }
 
-  /** Wohin ein Treffer führt: eine Klasse auf ihre Seite, alles andere auf die Artikelseite. */
+  /** Wohin ein Treffer führt: Klasse, Herkunft, Hintergrund auf ihre Seite, alles andere auf die Artikelseite. */
   protected weg(id: string, typ: string): string[] {
-    return typ === 'Class' ? ['/classes', id] : ['/artikel', id];
+    return ansichtWeg(typ, id);
   }
 
   protected tippen(ev: Event): void {

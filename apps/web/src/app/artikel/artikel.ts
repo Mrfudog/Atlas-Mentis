@@ -81,6 +81,7 @@ import { EbenenReiter } from './ebenen-reiter';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 import { Wuerfe } from './wuerfe';
 import { WurfZiel } from '../kern/wurfziel';
+import { ansichtWeg } from '../klassen/ansicht-weg';
 
 /** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
 const PART_RELATION = 'partOf';
@@ -193,6 +194,9 @@ interface Feld {
               <div class="werkzeuge">
                 @if (art(e) === 'Class' && !bearbeitet()) {
                   <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
+                }
+                @if ((art(e) === 'Ancestry' || art(e) === 'Background') && !bearbeitet()) {
+                  <a class="knopf" [routerLink]="ansicht(e)">{{ art(e) }} view</a>
                 }
                 <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
                 @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
@@ -1098,6 +1102,10 @@ export class Artikel implements SchnellKontext {
   }
   protected art(e: Entity): string {
     return primaryInterface(e);
+  }
+  /** Die Ansicht einer Herkunft oder eines Hintergrunds (T-166). */
+  protected ansicht(e: Entity): string[] {
+    return ansichtWeg(primaryInterface(e), e.id);
   }
 
   /**
