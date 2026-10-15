@@ -112,6 +112,20 @@ export function rechtAn(user: User | null, campaignId: string): Recht {
 }
 
 /**
+ * **Wer die Vergleichsebenen sieht** (T-092, E-021 d): die Verwaltung,
+ * die Leitung der laufenden Kampagne (`gm`, `co-gm`) und — wenn die
+ * Kampagne es sagt (`Campaign.compareFor: 'players'`) — wer am Tisch
+ * sitzt. Vorgabe ist nur die Leitung.
+ */
+export function siehtVergleich(user: User | null, kampagne: Entity | null): boolean {
+  if (!kampagne) return false;
+  if (!user) return true;
+  if (rechtAn(user, kampagne.id)) return true;
+  const fuer = (kampagne.components?.[CAMPAIGN_TYPE] as { compareFor?: unknown } | undefined)?.compareFor;
+  return fuer === 'players' && !!user.roles?.[kampagne.id];
+}
+
+/**
  * **Darf dieses Konto die Ebene in dieser Kampagne aufschalten?** (T-069)
  * Die Verwaltung immer. Die Leitung, solange die Ebene nicht genau einer
  * **anderen** Kampagne gehört: eine Ebene, die genau eine Kampagne
@@ -216,6 +230,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (!user) return nein(reply, 401, 'Nicht angemeldet.');
     const da = await kampagnen();
     const laufend = currentCampaign(da, (await repo.getRegistry()).settings ?? null);
+    const alleJetzt = laufend ? await bestandAls(await repo.version()) : new Map<string, Entity>();
     const ids = new Set<string>(user.isAdmin ? da.keys() : []);
     for (const [c, r] of Object.entries(user.roles ?? {})) if (r === 'gm' || r === 'co-gm') ids.add(c);
     return {
@@ -245,7 +260,10 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
             role: user.roles?.[laufend.id] ?? null,
             may: rechtAn(user, laufend.id),
             /* Wie viele Ebenen Inhalt bringen — Gruppen aufgelöst, ohne sie selbst. */
-            layers: resolvedStack(await bestandAls(await repo.version()), laufend).filter((l) => !isGroupLayer(l)).length,
+            layers: resolvedStack(alleJetzt, laufend).filter((l) => !isGroupLayer(l)).length,
+            /* Wie viele Vergleichsebenen dieser Betrachter sieht (T-213) —
+               ohne eine gibt es den Schalter „Show comparison" nicht. */
+            compare: siehtVergleich(user, laufend) ? compareLayers(alleJetzt, laufend).length : 0,
           }
         : null,
     };
