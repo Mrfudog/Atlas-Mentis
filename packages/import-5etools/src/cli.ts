@@ -3,7 +3,7 @@
  *
  *   node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md]
  *                    [--srd] [--sources PHB,MM] [--types Place] [--only-2014] [--sample [verzeichnis]]
- *                    [--images plan.json]
+ *                    [--images plan.json] [--spell-lists plan.json]
  *
  * `--types Place` gibt nur Artikel dieser Arten (und die Ebenen) aus — zum
  * Nachtragen einer neuen Art mit `only-new` (T-175, `auswahl.ts`).
@@ -14,6 +14,10 @@
  * `--images plan.json` schreibt den Bildplan (T-144, `bilder.ts`): welches
  * Bild aus `5etools-img` an welchen Artikel gehört. Hochgeladen und
  * verknüpft wird mit `scripts/bilder-5etools.mjs`.
+ *
+ * `--spell-lists plan.json` schreibt die Zauberlisten je Klasse (T-212,
+ * `arten/zauberlisten.ts`) — auf einen Server, der die Klassen schon hat,
+ * bringt sie `scripts/zauberlisten-5etools.mjs` als Massenänderung.
  *
  * Ohne `--out` schreibt er nur den Bericht. `--sample` schreibt einen
  * kleinen Ausschnitt als `<verzeichnis>/<id>.json` — Vorgabe ist der
@@ -41,7 +45,7 @@ const wert = (flag: string): string | undefined => {
 };
 const pfad = args[0] && !args[0].startsWith('--') ? args[0] : undefined;
 if (!pfad) {
-  console.error('node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md] [--srd] [--sources PHB,MM] [--types Place] [--only-2014] [--sample [verzeichnis]] [--images plan.json]');
+  console.error('node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md] [--srd] [--sources PHB,MM] [--types Place] [--only-2014] [--sample [verzeichnis]] [--images plan.json] [--spell-lists plan.json]');
   process.exit(2);
 }
 
@@ -80,7 +84,7 @@ try {
   if (berichtPfad !== undefined) {
     const ziel = resolve(berichtPfad || 'bericht-5etools.md');
     /* Die Pfade gehören dem, der den Lauf macht; im Bericht stehen Platzhalter. */
-    const aufruf = ['node packages/import-5etools/dist/cli.js', '<data>', ...args.slice(1).map((a, i, alle) => (i > 0 && ['--out', '--bericht', '--sample', '--images'].includes(alle[i - 1]!) && !a.startsWith('--') ? '<datei>' : a))].join(' ');
+    const aufruf = ['node packages/import-5etools/dist/cli.js', '<data>', ...args.slice(1).map((a, i, alle) => (i > 0 && ['--out', '--bericht', '--sample', '--images', '--spell-lists'].includes(alle[i - 1]!) && !a.startsWith('--') ? '<datei>' : a))].join(' ');
     writeFileSync(ziel, berichtMarkdown(bericht, { stand: stand(daten), aufruf, artikel: datei.entities.length }));
     console.log(`Bericht: ${ziel}`);
   }
@@ -90,6 +94,14 @@ try {
     mkdirSync(dirname(resolve(bilderPfad)), { recursive: true });
     writeFileSync(resolve(bilderPfad), JSON.stringify(gelaufen.bilder));
     console.log(`Bildplan: ${z.eintraege} Bilder (${z.dateien} Dateien; ${Object.entries(z.jeKlasse).map(([k, n]) => `${k} ${n}`).join(', ')}), ${z.verknuepft} verknüpft → ${resolve(bilderPfad)}`);
+  }
+  const listenPfad = wert('--spell-lists');
+  if (listenPfad && gelaufen.zauberlisten) {
+    const p = gelaufen.zauberlisten;
+    mkdirSync(dirname(resolve(listenPfad)), { recursive: true });
+    writeFileSync(resolve(listenPfad), JSON.stringify(p));
+    const kanten = p.listen.reduce((n, l) => n + l.zauber.length, 0);
+    console.log(`Zauberlisten: ${p.listen.length} Klassen und Unterklassen, ${kanten} Kanten → ${resolve(listenPfad)}`);
   }
   const sample = wert('--sample');
   if (sample !== undefined) {

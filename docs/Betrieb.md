@@ -876,6 +876,27 @@ noch Journal kommen ins Repository. Zurück: `atlas.mjs undo <id>` nimmt die
 Verknüpfung zurück; die Bilder selbst löscht eine Massenänderung `delete`
 mit `select.where` auf `Source.anchor` (`startsWith 5etools-img:`).
 
+### Zauberlisten aus 5e.tools (T-212)
+
+Welche Klasse und Unterklasse welchen Zauber auf ihrer Liste hat, ist die
+Kante `spellList` an der Klasse. Ein frischer Lauf bringt sie mit; auf
+einem Server, der die Klassen schon hat, legt `--only-new` keine Kante an
+einen bestehenden Artikel. Dafür schreibt der Einleser einen Plan, und ein
+Skript macht daraus **eine** Massenänderung (`addRelation` mit `targets`):
+
+```bash
+node packages/import-5etools/dist/cli.js ~/5etools-src/data --spell-lists ~/5e/zauberlisten.json
+node scripts/zauberlisten-5etools.mjs ~/5e/zauberlisten.json --only class-0012 --check --out ~/5e/probe.json   # erst eine Klasse
+node scripts/atlas.mjs bulk --dry-run ~/5e/probe.json && node scripts/atlas.mjs bulk ~/5e/probe.json
+node scripts/zauberlisten-5etools.mjs ~/5e/zauberlisten.json --except class-0012 --check --out ~/5e/rest.json  # dann der Rest
+```
+
+`--check` fragt dev je Ziel, ob es den Artikel gibt, und lässt fehlende
+weg (ein neuerer Datenstand kennt Zauber, die dev noch nicht hat). Eine
+Kante, die schon steht, kommt nicht doppelt; Zurück wie jede
+Massenänderung (`atlas.mjs undo <id>`). Plan und Auftrag gehören nicht ins
+Repository.
+
 ### Was beim Einlesen gilt
 
 Geprüft wird alles, **bevor** etwas geschrieben wird — jeder Artikel gegen
