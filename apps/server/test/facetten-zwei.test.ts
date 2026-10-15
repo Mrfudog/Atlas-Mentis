@@ -132,3 +132,35 @@ describe('facets in the global search (T-180)', () => {
     expect(namen(u)).not.toContain('Grappler');
   });
 });
+
+describe('spell lists and usable by (T-212)', () => {
+  const zauber = (id: string, name: string, level: number) => art(id, 'Spell', name, { level });
+  const mitListen = (): Entity[] =>
+    bestand().map((e) =>
+      e.id === 'wiz'
+        ? { ...e, components: { ...e.components, Class: { casterProgression: 'full' } }, relations: [
+            { id: 'wiz~l1', type: 'spellList', to: 'sp1', props: {} },
+            { id: 'wiz~l2', type: 'spellList', to: 'sp2', props: {} },
+            { id: 'wiz~l3', type: 'spellList', to: 'sp3', props: {} },
+          ] }
+        : e.id === 'clr'
+          ? { ...e, relations: [{ id: 'clr~l1', type: 'spellList', to: 'sp4', props: {} }] }
+          : e,
+    ).concat([zauber('sp1', 'Fire Bolt', 0), zauber('sp2', 'Misty Step', 2), zauber('sp3', 'Fireball', 3), zauber('sp4', 'Bless', 1), zauber('sp5', 'Wish (no list)', 9)]);
+
+  it('keeps the spells on the lists of the character’s classes, up to the level it casts', async () => {
+    const { get } = await makeApp(mitListen());
+    /* Ein Magier der Stufe 4 wirkt Grad 2 — Fireball nicht, Bless steht auf keiner seiner Listen. */
+    const r = await get('/api/list?type=Spell&usable=mira');
+    expect(namen(r).sort()).toEqual(['Fire Bolt', 'Misty Step', 'Wish (no list)']);
+    expect(r.facets.usable).toMatchObject({ hidden: 2 });
+  });
+
+  it('filters by the class spell list, first among the spell facets', async () => {
+    const { get } = await makeApp(mitListen());
+    const r = await get('/api/list?type=Spell');
+    expect(r.facets.fields[0]).toMatchObject({ ref: 'in.spellList', label: 'Class spell list' });
+    const nurKleriker = await get('/api/list?type=Spell&f=in.spellList:clr');
+    expect(namen(nurKleriker)).toEqual(['Bless']);
+  });
+});

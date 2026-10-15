@@ -47,6 +47,7 @@ import {
   requirementContext,
   requirementKeys,
   requirementLabel,
+  spellListRequirement,
   tagsOf,
   typeChain,
   versionGroups,
@@ -270,6 +271,12 @@ function facettenWerte(
     }
     if (w.length) raus[f.ref] = [...new Set(w)];
   }
+  /* **Die Zauberliste** (T-212): ein Zauber auf der Liste einer Klasse
+     oder Unterklasse, die dieser Betrachter sieht, mit seinem Grad — so
+     prüft „usable by", ob die Figur ihn dort wirken kann. */
+  const listen = (ein.get(e.id) ?? []).filter((r) => r.type === 'spellList').map((r) => r.from);
+  const grad = (e.components?.['Spell'] as { level?: unknown } | undefined)?.level;
+  if (listen.length && typeof grad === 'number') reqs.push(spellListRequirement(listen, grad));
   return reqs.length ? { fv: raus, req: allOf(reqs) } : { fv: raus };
 }
 

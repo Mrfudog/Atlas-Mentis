@@ -5,7 +5,16 @@
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
 import { effectKeys, effectLabel, facetsFor } from '../src/facets.js';
-import { meetsRequirement, parseRequirement, requirementKeys, requirementLabel, type CharacterProfile } from '../src/requirements.js';
+import {
+  characterProfile,
+  maxSpellLevel,
+  meetsRequirement,
+  parseRequirement,
+  requirementKeys,
+  requirementLabel,
+  spellListRequirement,
+  type CharacterProfile,
+} from '../src/requirements.js';
 import type { Entity } from '../src/types.js';
 
 const ctx = { classes: new Set(['wizard', 'cleric', 'paladin', 'fighter']), ancestries: new Set(['elf', 'half-elf', 'dwarf']) };
@@ -19,6 +28,7 @@ const profil = (p: Partial<CharacterProfile> = {}): CharacterProfile => ({
   abilities: { str: 8, int: 16 },
   proficient: ['light'],
   spellcasting: true,
+  casting: [{ id: 'wiz', max: 2 }],
   has: [],
   ...p,
 });
@@ -98,5 +108,56 @@ describe('effects and requirements in facetsFor', () => {
     expect(effectKeys(e)).toEqual(['resist:fire', 'set:ability.str', 'add:ac']);
     expect(effectLabel('set:ability.str')).toBe('Sets Strength');
     expect(effectLabel('conditionImmune:poisoned')).toBe('Condition immunity: poisoned');
+  });
+});
+
+describe('spell lists (T-212)', () => {
+  it('knows the highest spell level per class level', () => {
+    expect([1, 2, 3, 5, 17, 20].map((l) => maxSpellLevel('full', l))).toEqual([1, 1, 2, 3, 9, 9]);
+    expect([1, 2, 5, 9, 17].map((l) => maxSpellLevel('half', l))).toEqual([0, 1, 2, 3, 5]);
+    expect([2, 3, 7, 13, 19].map((l) => maxSpellLevel('third', l))).toEqual([0, 1, 2, 3, 4]);
+    expect([1, 3, 9, 11].map((l) => maxSpellLevel('pact', l))).toEqual([1, 2, 5, 5]);
+    expect([1, 5, 17].map((l) => maxSpellLevel('artificer', l))).toEqual([1, 2, 5]);
+    expect(maxSpellLevel(undefined, 10)).toBe(-1);
+  });
+
+  it('checks a spell against the lists of the character’s classes', () => {
+    const r = (level: number) => spellListRequirement(['wiz', 'sorc'], level);
+    expect(meetsRequirement(r(2), profil())).toBe('yes');
+    expect(meetsRequirement(r(3), profil())).toBe('no');
+    expect(meetsRequirement(spellListRequirement(['clr'], 1), profil())).toBe('no');
+    /* Ohne bekannte Klasse unbekannt, nicht „nein". */
+    expect(meetsRequirement(r(1), profil({ casting: [] }))).toBe('unknown');
+    /* Ohne Liste keine Voraussetzung. */
+    expect(spellListRequirement([], 1)).toEqual([]);
+    expect(requirementLabel(requirementKeys(r(0))[0]!)).toBe('On a class list (cantrip)');
+  });
+
+  it('reads the caster progression from the class card, the subclass casting for the class', () => {
+    const e = (id: string, type: string, card: Record<string, unknown> = {}, relations: Entity['relations'] = []): Entity => ({
+      id,
+      interfaces: [type],
+      name: id,
+      components: { Identity: { name: id }, [type]: card },
+      relations,
+    });
+    const byId = new Map(
+      [
+        e('wiz', 'Class', { casterProgression: 'full' }),
+        e('ftr', 'Class'),
+        e('ek', 'Subclass', { casterProgression: 'third' }),
+        e('mira', 'PlayerCharacter', {}, [
+          { id: 'k1', type: 'hasClass', to: 'wiz', props: { level: 3 } },
+          { id: 'k2', type: 'hasClass', to: 'ftr', props: { level: 7, subclass: 'ek' } },
+        ]),
+      ].map((x) => [x.id, x]),
+    );
+    const p = characterProfile(byId.get('mira')!, byId);
+    expect(p.spellcasting).toBe(true);
+    expect(p.casting).toEqual([
+      { id: 'wiz', max: 2 },
+      { id: 'ftr', max: 2 },
+      { id: 'ek', max: 2 },
+    ]);
   });
 });

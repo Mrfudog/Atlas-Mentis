@@ -180,6 +180,36 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /**
+   * **Die Zauberliste einer Klasse** (T-212): welche Zauber ein Magier, ein
+   * Kleriker, ein Hexenmeister mit Paktgeber lernen oder vorbereiten
+   * *darf* — nicht, was er wirkt (das ist `casts`), und nicht, was er
+   * bekommt (das wäre `grants`: dessen Ziele bringen ihre Wirkungen ohne
+   * Bedingung an die Figur, `effectsAt`). Von der Unterklasse die
+   * erweiterte Liste (Paktgeber, Eldritch Knight). `optional` sind die
+   * Ergänzungen aus Tasha's (`classVariant` bei 5e.tools), die eine Kampagne
+   * erlaubt oder nicht.
+   *
+   * „Usable by <Figur>" liest sie: ein Zauber auf der Liste einer Klasse der
+   * Figur, bis zu dem Grad, den sie dort wirkt (`spellListRequirement`).
+   */
+  spellList: {
+    type: 'spellList',
+    label: 'spell list',
+    inverseLabel: 'on the spell list of',
+    means: 'A class or subclass has a spell on its spell list; the spell lists the classes that may learn it.',
+    from: ['Class', 'Subclass'],
+    to: ['Spell'],
+    /* Am Zauber die erste Frage: welche Klasse ihn hat (T-212). */
+    facet: { label: 'Class spell list', order: 0 },
+    props: {
+      type: 'object',
+      properties: {
+        optional: { type: 'boolean', title: 'Optional (expanded list)' },
+      },
+    },
+  },
+
+  /**
    * **Was ein Statblock in der Hand hat** (M5): der Goblin führt Krummsäbel
    * und Kurzbogen. Ein Verweis auf den Gegenstand aus dem Buch und kein
    * Inventar — das hat eine Figur am Tisch (`carries`), nicht eine Vorlage.
