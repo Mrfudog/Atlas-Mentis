@@ -22,6 +22,8 @@ export interface NebelForm {
   h: number;
   r: number;
   pts: ReadonlyArray<readonly [number, number]>;
+  /** Nur ein Polygon: es gilt nur, soweit es auch in diesem liegt (T-216, `within`). */
+  clip?: ReadonlyArray<readonly [number, number]>;
 }
 
 /** Was vom 2D-Kontext gebraucht wird — so prüfbar ohne Browser. */
@@ -42,6 +44,28 @@ export interface NebelKontext {
   closePath(): void;
   fill(): void;
   stroke(): void;
+  save(): void;
+  restore(): void;
+  clip(): void;
+}
+
+type Pfad = ReadonlyArray<readonly [number, number]>;
+
+function pfad(ctx: NebelKontext, pts: Pfad, s: number): void {
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x * s, y * s) : ctx.moveTo(x * s, y * s)));
+  ctx.closePath();
+}
+
+/** Ein Polygon füllen, nur innerhalb von `klammer` (die Schnittmenge, ohne sie auszurechnen). */
+function geklammert(ctx: NebelKontext, pts: Pfad, klammer: Pfad, s: number): void {
+  ctx.save();
+  ctx.beginPath();
+  pfad(ctx, klammer, s);
+  ctx.clip();
+  ctx.beginPath();
+  pfad(ctx, pts, s);
+  ctx.fill();
+  ctx.restore();
 }
 
 /** Die Farbe des Nebels — dieselbe wie `.nebel.ganz` in karte.scss. */
@@ -79,6 +103,10 @@ export function nebelMalen(ctx: NebelKontext, breite: number, hoehe: number, for
       ctx.fillRect(f.x * s, f.y * s, f.w * s, f.h * s);
       continue;
     }
+    if (f.tag === 'polygon' && f.clip && f.clip.length > 2) {
+      geklammert(ctx, f.pts, f.clip, s);
+      continue;
+    }
     ctx.beginPath();
     if (f.tag === 'circle') {
       ctx.arc(f.x * s, f.y * s, f.r * s, 0, Math.PI * 2);
@@ -102,5 +130,48 @@ export function nebelMalen(ctx: NebelKontext, breite: number, hoehe: number, for
       ctx.stroke();
     }
   }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/** Die Farbe der Dunkelheit (T-216) — kälter als der Nebel, damit man beides auseinanderhält. */
+export const DUNKEL_FARBE = '#05070d';
+
+/** Was aus einer Schicht herausgeschnitten wird: Polygone (`0 0 1 ar`, y schon mal `ar`) und wie viel. */
+export interface Schnitt {
+  formen: ReadonlyArray<Pfad>;
+  /** Polygone, die nur innerhalb ihrer Klammer gelten (Licht, soweit die Figur hineinsieht). */
+  geklammert?: ReadonlyArray<{ pts: Pfad; clip: Pfad }>;
+  /** 1 schneidet ganz heraus, 0,5 lässt die Hälfte stehen. */
+  staerke: number;
+}
+
+/**
+ * **Eine Schicht aus Polygonen** (T-216): Dunkelheit, aus der die Lichter
+ * schneiden, oder die gedämpfte laufende Sicht, aus der heraus geschnitten
+ * wird, was die Figur gerade sieht. Alle Polygone eines Schnitts stehen in
+ * **einem** Pfad und werden einmal gefüllt — zwei überlappende Dämmerlichter
+ * sind zusammen Dämmerlicht und nicht hell.
+ */
+export function schichtMalen(ctx: NebelKontext, breite: number, hoehe: number, farbe: string, deckt: number, schnitte: readonly Schnitt[]): void {
+  const s = breite;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0, 0, breite, hoehe);
+  ctx.globalAlpha = deckt;
+  ctx.fillStyle = farbe;
+  ctx.fillRect(0, 0, breite, hoehe);
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = '#000';
+  for (const sn of schnitte) {
+    const formen = sn.formen.filter((f) => f.length > 2);
+    if (!(sn.staerke > 0)) continue;
+    ctx.globalAlpha = Math.min(1, sn.staerke);
+    if (formen.length) {
+      ctx.beginPath();
+      for (const f of formen) pfad(ctx, f, s);
+      ctx.fill();
+    }
+    for (const g of sn.geklammert ?? []) if (g.pts.length > 2 && g.clip.length > 2) geklammert(ctx, g.pts, g.clip, s);
+  }
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }

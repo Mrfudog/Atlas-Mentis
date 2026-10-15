@@ -125,8 +125,8 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   (`hilfe/`, das „?“ der Kopfleiste: Texte aus `apps/web/src/help.json` je
   Route und die What's-new-Einträge mit Link auf die Seite; jede Route hat
   einen Text oder steht unter `without`, T-205) und das Konto mit seinen API-Tokens (`konto/`); die
-  Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
-  noch nicht;
+  Oberfläche hält **keinen Bestand** (W7). Licht und Dunkelsicht mit
+  `packages/model/src/lighting.ts` (T-216);
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der

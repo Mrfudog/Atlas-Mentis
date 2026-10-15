@@ -1965,6 +1965,8 @@ export interface KartenKontext {
   own?: string[];
   /** Offene Zugvorschläge: für die Leitung alle, für Spielende die eigenen (T-204). */
   proposals?: { plan: string; actor: string; actorName: string; by: string; to: { x: number; y: number } }[];
+  /** Dunkelsicht in Fuss je Figur, deren Sicht die Seite zeichnet (T-216). Fehlt bei einem älteren Server. */
+  darkvision?: Record<string, number>;
 }
 
 /** Die Seitenleiste der Karte (`GET /api/maps/:id/side`, T-203). */

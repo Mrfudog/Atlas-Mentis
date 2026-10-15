@@ -46,7 +46,15 @@
         {
           "heading": "Line of sight",
           "text": [
-            "With walls on a map, moves (if they reveal) and opened doors uncover what the characters see, up to the next wall. Without walls a move reveals a strip two squares wide; without a moving token, the GM reveals by hand. Light and darkvision do not count yet."
+            "With walls on a map, moves (if they reveal) and opened doors uncover what the characters see, up to the next wall. Without walls a move reveals a strip two squares wide; without a moving token, the GM reveals by hand."
+          ]
+        },
+        {
+          "heading": "Light and darkvision",
+          "text": [
+            "Fog › Lighting sets the map bright, dim or dark. Light source: set bright and dim light in squares, then tap a token or marker — it sheds that light, blocked by walls but not by windows. 0 and 0 takes the light away.",
+            "In the dark, a character sees only what its darkvision reaches (from Senses on its statblock) and the lights it can see; moves and opened doors reveal just that. Players see darkness over the map with lights and their darkvision cut out.",
+            "On a fogged map, players see brightly what their character sees right now, and what was revealed before dimmed."
           ]
         },
         {
