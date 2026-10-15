@@ -7,7 +7,7 @@
  *
  * Die Sorten sind dieselben, die T-132 als Module baut (`inventory`,
  * `crafting`, `abilities`, `equipment`, `character`, `travel`, `units`,
- * dazu `table` für das, was keine Spielregel, aber Tischregel ist). Kommt
+ * `map` (T-204), dazu `table` für das, was keine Spielregel, aber Tischregel ist). Kommt
  * das Modul, ändert sich nur, **woher** `ruleOptionsOf` den Wert nimmt —
  * die Seite bleibt.
  *
@@ -27,10 +27,11 @@ import { craftRulesOf } from './crafting.js';
 import { allowedEquipmentMethods, type EquipmentMethod } from './equipment.js';
 import { hitPointRuleOf } from './hitpoints.js';
 import { inventoryRulesOf } from './inventory.js';
+import { mapRulesOf } from './map.js';
 import { stowingRuleOf } from './stowing.js';
 import type { Entity, EntityId } from './types.js';
 
-export type RuleSortKey = 'inventory' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'table';
+export type RuleSortKey = 'inventory' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'map' | 'table';
 
 export interface RuleSortDef {
   key: RuleSortKey;
@@ -47,6 +48,7 @@ export const RULE_SORTS: readonly RuleSortDef[] = [
   { key: 'crafting', label: 'Crafting', does: 'What a crafting check does when it succeeds, fails or rolls a natural 20 or 1.' },
   { key: 'travel', label: 'Travel', does: 'What travel costs in food, light and watches.' },
   { key: 'units', label: 'Units', does: 'In which measures distances and weights are shown.' },
+  { key: 'map', label: 'On the map', does: 'What the fog of war hides from whom, and how tokens move outside an encounter.' },
   { key: 'table', label: 'At the table', does: 'Who sees what during play.' },
 ];
 
@@ -237,6 +239,44 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     source: { settings: ['units'] },
   },
   {
+    /* Die Karte am Tisch (T-204), gelesen über `mapRulesOf`. */
+    key: 'fog',
+    sort: 'map',
+    label: 'Fog of war',
+    does: 'Who shares what is revealed on a fogged map. The GM always sees everything.',
+    source: { field: 'fog' },
+    variants: [
+      { key: 'party', label: 'Shared by the party', does: 'Whatever is revealed, every player sees.' },
+      {
+        key: 'player',
+        label: 'Per character',
+        does: 'Each character sees what it revealed itself, what its party revealed, and what the GM revealed for everyone. The GM sees all of it, or picks a character.',
+      },
+    ],
+  },
+  {
+    key: 'moves',
+    sort: 'map',
+    label: 'Player moves',
+    does: 'How players move their own tokens outside an encounter. In an encounter, the turn plan applies.',
+    source: { field: 'moves' },
+    variants: [
+      { key: 'free', label: 'Free', does: 'A player drags their own token, and it moves.' },
+      { key: 'confirm', label: 'GM confirms', does: 'A dragged token leaves a dashed proposal; it moves once the GM confirms it.' },
+    ],
+  },
+  {
+    key: 'revealOnMove',
+    sort: 'map',
+    label: 'Moves reveal the way',
+    does: 'Whether a move on a fogged map uncovers the way the token went, two squares wide. A map may say otherwise.',
+    source: { field: 'revealOnMove' },
+    variants: [
+      { key: 'true', label: 'Yes', does: 'Moving uncovers the way at once — for the character that moved, if fog is per character.' },
+      { key: 'false', label: 'No', does: 'Moving uncovers nothing; the GM reveals afterwards. Movement is spent either way.' },
+    ],
+  },
+  {
     key: 'playerRolls',
     sort: 'table',
     label: 'Player rolls visible to',
@@ -369,6 +409,12 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return craftRulesOf(campaign).confirm;
     case 'hitPoints':
       return hitPointRuleOf(campaign ?? undefined);
+    case 'fog':
+      return mapRulesOf(campaign).fog;
+    case 'moves':
+      return mapRulesOf(campaign).moves;
+    case 'revealOnMove':
+      return mapRulesOf(campaign).revealOnMove;
     default: {
       const roh = campaign?.components?.['Campaign']?.[feld];
       /* Die übrigen Vorgaben stehen am Register (`CampaignInfo`): Talente ja, Würfe für den Tisch. */

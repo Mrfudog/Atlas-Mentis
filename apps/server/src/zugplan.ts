@@ -48,8 +48,13 @@ import {
   encounterOnMap,
   gridGeometry,
   initiativeOrder,
+  feetBetween,
+  mapRulesOf,
   mapSettings,
   movedTokens,
+  moveRevealRadius,
+  revealArea,
+  fogOn,
   opportunityAttacks,
   PARTICIPATES,
   PARTY_RELATION,
@@ -159,7 +164,7 @@ function rkVon(stand: Stand, e: Entity): number | null {
 }
 
 /** Je Plan-Id der jüngste Eintrag, neueste zuerst. */
-async function plaeneDerKarte(repo: Repository, karte: string): Promise<(TurnPlan & { at: string })[]> {
+export async function plaeneDerKarte(repo: Repository, karte: string): Promise<(TurnPlan & { at: string })[]> {
   const roh = await repo.listEvents({ name: TURNPLAN_EVENT, subject: karte, limit: FENSTER });
   const je = new Map<string, TurnPlan & { at: string }>();
   for (const ev of roh) {
@@ -260,9 +265,38 @@ export function zugSperre(user: User | null, alle: Entity[], vorher: Entity | un
   if (!user || !vorher || !isMap(vorher) || !isMap(nachher)) return null;
   if (leitetTisch(user, kampagne)) return null;
   const kampf = encounterOnMap(alle, nachher.id);
-  if (!kampf) return null;
+  if (!kampf) {
+    /* **Ausserhalb eines Kampfes sagt es die Kampagne** (T-204): bei
+       `moves: 'confirm'` zieht eine Spielerin ihre Figur nicht selbst,
+       auch wenn sie die Karte schreiben darf — ihr Zug ist ein Vorschlag
+       (`POST /api/maps/:id/move`). */
+    const k = kampagne ? alle.find((e) => e.id === kampagne) : undefined;
+    if (mapRulesOf(k).moves !== 'confirm') return null;
+    if (!movedTokens(vorher, nachher, new Set(user.actorIds ?? [])).some((id) => (user.actorIds ?? []).includes(id))) return null;
+    return 'Moves wait for the GM to confirm them.';
+  }
   if (!movedTokens(vorher, nachher, participantIds(kampf)).length) return null;
   return 'During an encounter, tokens move through the turn plan.';
+}
+
+/**
+ * **Den Weg eines Zuges aufdecken** (T-204, REQ-139): ein Pinselstrich
+ * entlang der Felder (sonst vom Token zum Ziel), zwei Felder breit, mit
+ * `for` auf die Figur — gilt der Nebel je Figur, sieht ihn nur sie (und
+ * ihre Gruppe).
+ */
+export function wegAufdecken(karte: Entity, figur: string, s: { path: { x: number; y: number }[]; to?: { x: number; y: number } }, von: { x: number; y: number }, nat: { w: number; h: number }): Entity {
+  const einst = mapSettings(karte);
+  const geo = s.path.length > 1 ? gridGeometry(einst, nat) : null;
+  const pts = geo ? s.path.map((c) => cellPoint(geo, c)) : [von, ...(s.to ? [s.to] : [])];
+  return revealArea(karte, {
+    id: `s-${randomUUID()}`,
+    kind: 'path',
+    pts: pts.map((p) => [p.x, p.y] as [number, number]),
+    r: moveRevealRadius(einst, nat),
+    ar: nat.w > 0 ? nat.h / nat.w : 1,
+    for: figur,
+  });
 }
 
 export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
@@ -408,6 +442,72 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     },
   );
 
+  /**
+   * **Die eigene Figur ziehen** (T-204, `POST /api/maps/:id/move`
+   * `{rel, to, nat?, path?, feet?}`): ausserhalb eines Kampfes, auch wenn
+   * die Karte nicht schreibt, wer sie führt. Die Kampagne sagt, wie
+   * (`mapRulesOf`): `free` zieht sofort, `confirm` legt einen Vorschlag als
+   * Zugplan mit einem Schritt an — die Leitung bestätigt ihn wie jeden
+   * (`decide`). Aufgedeckt wird, wenn die Regel es sagt, beim Ziehen
+   * bzw. beim Bestätigen. Im Kampf gilt der Zugplan (423).
+   */
+  app.post<{ Params: { id: string }; Body: { rel?: unknown; to?: unknown; nat?: unknown; path?: unknown; feet?: unknown } | null }>(
+    '/api/maps/:id/move',
+    async (request, reply) => {
+      const l = await lage(request, request.params.id);
+      if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
+      const { user, stand, roheKarte, karte, kampagne, leitet } = l;
+      const b = request.body ?? {};
+      const marker = markersOf(roheKarte).find((m) => m.rel.id === b.rel);
+      if (!marker || !markersOf(karte).some((m) => m.rel.id === marker.rel.id)) return reply.code(404).send({ error: 'Das Token gibt es hier nicht.' });
+      if (!leitet && !(user.actorIds ?? []).includes(marker.to)) return reply.code(403).send({ error: 'Ziehen darf, wer die Figur führt.' });
+      if (!leitet && encounterOnMap(stand.alle, roheKarte.id)) return reply.code(423).send({ error: 'During an encounter, tokens move through the turn plan.' });
+      const roh = (b.to ?? {}) as { x?: unknown; y?: unknown };
+      const tx = Number(roh.x);
+      const ty = Number(roh.y);
+      if (!Number.isFinite(tx) || !Number.isFinite(ty)) return reply.code(422).send({ error: 'to: {x, y} in Anteilen der Karte' });
+      const to = { x: Math.min(1, Math.max(0, tx)), y: Math.min(1, Math.max(0, ty)) };
+      const nat = cleanNat(b.nat);
+      const figur = stand.map.get(marker.to);
+      /* Ohne Felder vom Browser: die Gerade, in Fuss gemessen, wenn die Karte ein Gitter hat. */
+      const einst = mapSettings(roheKarte);
+      const geo = nat ? gridGeometry(einst, nat) : null;
+      const gerade = geo ? Math.round(feetBetween(geo, marker, to)) : 0;
+      const schritt = cleanStep({ id: 's1', kind: 'move', path: b.path, feet: b.feet, to }, 0) ?? { id: 's1', kind: 'move' as const, path: [], feet: gerade, to };
+      if (schritt.kind !== 'move') return reply.code(422).send({ error: 'Kein Zug' });
+      const regeln = mapRulesOf(kampagne, roheKarte);
+
+      if (!leitet && regeln.moves === 'confirm') {
+        /* Ein offener Vorschlag derselben Figur, der nur zieht, wird ersetzt —
+           ein Zugplan mit Aktionen bleibt, wie er ist. */
+        const alt = (await plaeneDerKarte(repo, roheKarte.id)).find(
+          (p) => p.actor === marker.to && p.state === 'planned' && p.steps.every((x) => x.kind === 'move'),
+        );
+        const plan: TurnPlan = {
+          plan: alt?.plan ?? `tp-${randomUUID().slice(0, 12)}`,
+          map: roheKarte.id,
+          actor: marker.to,
+          actorName: figur ? entityName(figur) : marker.to,
+          by: { id: user.id, name: user.name },
+          steps: [schritt],
+          state: 'planned',
+          campaign: kampagne?.id ?? null,
+          session: tischSitzung(stand.alle)?.id ?? null,
+          ...(nat ? { nat } : {}),
+        };
+        await repo.appendEvent(TURNPLAN_EVENT, roheKarte.id, plan);
+        feed.publish({ kind: 'plan', id: roheKarte.id });
+        return reply.code(202).send({ proposal: { ...plan, text: planText(plan.steps) } });
+      }
+
+      let neu = moveMarker(roheKarte, marker.rel.id, to);
+      if (regeln.revealOnMove && fogOn(roheKarte) && nat) neu = wegAufdecken(neu, marker.to, schritt, marker, nat);
+      const r = await schreibeGeprueft(neu);
+      if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
+      return { moved: marker.rel.id, to };
+    },
+  );
+
   /** Ein Wurf am Server ins Log (T-172), für `wer`, geworfen von `von`. */
   async function wurf(
     wer: Entity,
@@ -495,6 +595,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const gefragt = new Set(plan.asked ?? []);
     const results: PlanResult[] = [...(plan.results ?? [])];
     let karte = roheKarte;
+    const aufdecken = fogOn(roheKarte) && mapRulesOf(kampagne, roheKarte).revealOnMove;
     const rel = markersOf(karte).find((m) => m.to === figur.id)?.rel.id;
     const schreiben = async () => {
       if (karte === roheKarte) return null;
@@ -514,7 +615,13 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
           if (f) return f;
           return { plan: { ...rest, state: 'reacting', pending: p, done: i, asked: [...gefragt], results } };
         }
-        if (rel && s.to) karte = moveMarker(karte, rel, s.to);
+        if (rel && s.to) {
+          const von = markersOf(karte).find((m) => m.rel.id === rel);
+          karte = moveMarker(karte, rel, s.to);
+          /* **Aufdecken beim Zug** (T-204): der Weg, so wie er ging — die
+             Felder, sonst die Gerade —, für die Figur, die ihn ging. */
+          if (aufdecken && plan.nat && von) karte = wegAufdecken(karte, figur.id, s, von, plan.nat);
+        }
         results.push({ step: s.id, text: `Moved ${s.feet} ft.` });
         continue;
       }

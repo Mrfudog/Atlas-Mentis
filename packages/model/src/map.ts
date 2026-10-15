@@ -682,11 +682,21 @@ export function partyPosition(
  * - `poly` — ein Sichtpolygon (der Prototyp deckt beim Ziehen damit auf);
  * - `path` — ein **Pinselstrich**: die Fläche um einen Linienzug, `r` weit.
  */
-export type RevealShape =
+export type RevealShape = (
   | { id: string; kind: 'rect'; x: number; y: number; w: number; h: number }
   | { id: string; kind: 'circle'; x: number; y: number; r: number; ar: number }
   | { id: string; kind: 'poly'; pts: Array<[number, number]> }
-  | { id: string; kind: 'path'; pts: Array<[number, number]>; r: number; ar: number };
+  | { id: string; kind: 'path'; pts: Array<[number, number]>; r: number; ar: number }
+) & {
+  /**
+   * **Für wen aufgedeckt** (T-204): die Figur (oder Gruppe), die es
+   * gesehen hat. Ohne Angabe sieht es jeder. Zählt nur, wenn die Kampagne
+   * den Nebel je Figur führt (`Campaign.fog: 'player'`); je Gruppe sieht
+   * jeder alles — die Angabe bleibt trotzdem stehen, damit ein späteres
+   * Umstellen weiss, wer was gesehen hat.
+   */
+  for?: EntityId;
+};
 
 /** Ist auf dieser Karte der Nebel an? */
 export function fogOn(e: Entity): boolean {
@@ -709,14 +719,15 @@ function formAus(x: unknown, i: number): RevealShape | null {
   const s = x as Record<string, unknown>;
   const id = typeof s['id'] === 'string' && s['id'] ? s['id'] : `s-${i + 1}`;
   const ar = zahl(s['ar'], 1) > 0 ? zahl(s['ar'], 1) : 1;
-  if (s['kind'] === 'circle') return { id, kind: 'circle', x: zahl(s['x'], 0), y: zahl(s['y'], 0), r: Math.max(0, zahl(s['r'], 0.05)), ar };
+  const wem = typeof s['for'] === 'string' && s['for'] ? { for: s['for'] } : {};
+  if (s['kind'] === 'circle') return { id, kind: 'circle', x: zahl(s['x'], 0), y: zahl(s['y'], 0), r: Math.max(0, zahl(s['r'], 0.05)), ar, ...wem };
   if (s['kind'] === 'poly') {
     const pts = punkte(s['pts']);
-    return pts.length > 2 ? { id, kind: 'poly', pts } : null;
+    return pts.length > 2 ? { id, kind: 'poly', pts, ...wem } : null;
   }
   if (s['kind'] === 'path') {
     const pts = punkte(s['pts']);
-    return pts.length ? { id, kind: 'path', pts, r: Math.max(0, zahl(s['r'], 0.03)), ar } : null;
+    return pts.length ? { id, kind: 'path', pts, r: Math.max(0, zahl(s['r'], 0.03)), ar, ...wem } : null;
   }
   /* Ein Rechteck darf mit negativer Breite stehen (von rechts nach links
      gezogen) — gelesen wird es wie gezeichnet. */
@@ -724,7 +735,7 @@ function formAus(x: unknown, i: number): RevealShape | null {
   const y0 = zahl(s['y'], 0);
   const w = zahl(s['w'], 0);
   const h = zahl(s['h'], 0);
-  return { id, kind: 'rect', x: Math.min(x0, x0 + w), y: Math.min(y0, y0 + h), w: Math.abs(w), h: Math.abs(h) };
+  return { id, kind: 'rect', x: Math.min(x0, x0 + w), y: Math.min(y0, y0 + h), w: Math.abs(w), h: Math.abs(h), ...wem };
 }
 
 /** Die aufgedeckten Formen, wie sie in `Map.reveal` stehen; Unlesbares fällt weg. */
@@ -812,6 +823,7 @@ export function revealArea(e: Entity, s: RevealShape): Entity {
     const pts = s.pts.map(([x, y]) => [r4(x), r4(y)]);
     form = s.kind === 'poly' ? { id: s.id, kind: 'poly', pts } : { id: s.id, kind: 'path', pts, r: r4(s.r), ar: r4(s.ar) };
   }
+  if (s.for) form['for'] = s.for;
   return mitReveal(e, [...rohReveal(e), form], true);
 }
 
@@ -856,6 +868,57 @@ export function setFog(e: Entity, an: boolean): Entity {
   return mitReveal(e, rohReveal(e), an);
 }
 
+// ------------------------------------------------------- Regeln am Tisch
+
+/** Wie der Nebel gilt (T-204, `Campaign.fog`): für die ganze Gruppe gleich, oder je Figur. */
+export type FogMode = 'party' | 'player';
+/** Wie Spielende ausserhalb eines Kampfes ziehen (T-204, `Campaign.moves`). */
+export type MoveMode = 'free' | 'confirm';
+
+export interface MapRules {
+  fog: FogMode;
+  moves: MoveMode;
+  /** Deckt ein Zug den Weg auf? Die Karte darf es überschreiben (`Map.revealOnMove`). */
+  revealOnMove: boolean;
+}
+
+/**
+ * **Die Kartenregeln einer Kampagne** (T-204, Regeloptionen T-190): Nebel
+ * je Gruppe oder je Figur, Züge frei oder mit Bestätigung, Aufdecken beim
+ * Zug. Ohne Angabe gilt, was vorher galt: ein Nebel für alle, frei ziehen,
+ * nicht aufdecken. `revealOnMove` an der Karte schlägt die Kampagne.
+ */
+export function mapRulesOf(campaign: Entity | null | undefined, map?: Entity | null): MapRules {
+  const k = (campaign?.components?.['Campaign'] ?? {}) as Record<string, unknown>;
+  const eigen = (map?.components?.[MAP_COMPONENT] as { revealOnMove?: unknown } | undefined)?.revealOnMove;
+  return {
+    fog: k['fog'] === 'player' ? 'player' : 'party',
+    moves: k['moves'] === 'confirm' ? 'confirm' : 'free',
+    revealOnMove: typeof eigen === 'boolean' ? eigen : k['revealOnMove'] === true,
+  };
+}
+
+/** Wie breit ein Zug aufdeckt, in Anteilen der Breite: zwei Felder (wie der Pinsel vorgegeben). */
+export function moveRevealRadius(settings: MapSettings, nat: Size): number {
+  return nat.w > 0 ? settings.gridSize / nat.w : 0.03;
+}
+
+/**
+ * **Was eine Figur aufgedeckt sieht** (T-204): ohne `for` jeder, mit `for`
+ * nur, wem es gilt (`own`) — aber nur, wenn der Nebel je Figur gilt. Die
+ * Leitung bekommt alles (die Vereinigung); fragt sie für eine Figur, rechnet
+ * die Seite dasselbe mit deren Id.
+ */
+export function revealFor(map: Entity, fog: FogMode, own: (id: EntityId) => boolean): Entity {
+  if (fog !== 'player') return map;
+  const roh = rohReveal(map);
+  const bleibt = roh.filter((x, i) => {
+    const s = formAus(x, i);
+    return !s || !s.for || own(s.for);
+  });
+  return bleibt.length === roh.length ? map : mitReveal(map, bleibt);
+}
+
 // ------------------------------------------------------------ Zurückhalten
 
 /**
@@ -871,7 +934,8 @@ export function setFog(e: Entity, an: boolean): Entity {
  *   ihm bleibt.
  *
  * - **Unter dem Nebel** (REQ-139): Marker, deren Punkt nicht aufgedeckt
- *   ist. Ausgenommen sind die eigenen — das Gruppen-Token (`party`) und
+ *   ist. Gilt der Nebel je Figur (T-204), zählt nur, was der Betrachter
+ *   aufgedeckt sieht (`revealFor`), und nur das geht hinaus. Ausgenommen sind die eigenen — das Gruppen-Token (`party`) und
  *   was `keep` nennt (die Figuren der Gruppe): wer im Dunkeln steht, steht
  *   trotzdem auf der Karte. Das Bild selbst geht ganz hinaus und wird im
  *   Browser zugedeckt (E-041).
@@ -880,9 +944,17 @@ export function setFog(e: Entity, an: boolean): Entity {
  */
 export function redactMap(
   map: Entity,
-  opts: { gm: boolean; sees: (id: EntityId) => boolean; keep?: (id: EntityId) => boolean },
+  opts: {
+    gm: boolean;
+    sees: (id: EntityId) => boolean;
+    keep?: (id: EntityId) => boolean;
+    /** Nebel je Figur (T-204): dann zählen nur Formen ohne `for` und die, für die `own` ja sagt. */
+    fog?: FogMode;
+    own?: (id: EntityId) => boolean;
+  },
 ): Entity {
   if (opts.gm || !isMap(map)) return map;
+  map = revealFor(map, opts.fog ?? 'party', opts.own ?? (() => false));
   const nebel = fogOn(map);
   const relations = (map.relations ?? []).filter((r) => {
     if (r.type === MARKER_RELATION) {

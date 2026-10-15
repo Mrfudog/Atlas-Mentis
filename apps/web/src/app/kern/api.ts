@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, AssetMeta, Entity, EquipmentMethod, GoldRoll, HitPointRule, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
+import type { AbilityMethod, AssetMeta, Entity, EquipmentMethod, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1300,6 +1300,16 @@ export class Api {
       body: JSON.stringify({ decision, ...(note ? { note } : {}) }),
     });
   }
+  /**
+   * **Die eigene Figur ziehen** (T-204): `free` zieht sofort (`moved`),
+   * `confirm` legt einen Vorschlag an (`proposal`), den die Leitung bestätigt.
+   */
+  moveToken(
+    map: string,
+    body: { rel: string; to: { x: number; y: number }; nat?: { w: number; h: number }; path?: { x: number; y: number }[]; feet?: number },
+  ): Promise<{ moved?: string; proposal?: TurnPlan }> {
+    return this.call(`/api/maps/${encodeURIComponent(map)}/move`, { method: 'POST', body: JSON.stringify(body) });
+  }
   /** Welche Karte auf dem Tisch liegt (`SessionState.activeMap`, T-115). */
   play(session?: string): Promise<Tisch> {
     return this.call<Tisch>(`/api/play${session ? `?session=${encodeURIComponent(session)}` : ''}`);
@@ -1761,6 +1771,12 @@ export interface KartenKontext {
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
   /** Nur für die Leitung: die Teilnehmer, und ob sie hier schon ein Token haben. */
   combatants: { id: string; name: string; placed: boolean }[];
+  /** Die Kartenregeln der Kampagne (T-204). Fehlt bei einem älteren Server. */
+  rules?: MapRules;
+  /** Die eigenen Figuren mit Token hier — die darf der Betrachter ziehen (T-204). */
+  own?: string[];
+  /** Offene Zugvorschläge: für die Leitung alle, für Spielende die eigenen (T-204). */
+  proposals?: { plan: string; actor: string; actorName: string; by: string; to: { x: number; y: number } }[];
 }
 
 /** Was auf dem Tisch liegt (`GET /api/play`, T-115). */

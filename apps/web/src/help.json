@@ -19,10 +19,17 @@
           ]
         },
         {
+          "heading": "Moving your token",
+          "text": [
+            "Outside an encounter, drag your own character's token. Depending on the campaign it moves at once, or it leaves a dashed proposal that the GM confirms (✓) or rejects (✗). During an encounter, your token moves through the turn plan."
+          ]
+        },
+        {
           "heading": "Fog of war",
           "text": [
             "Fog is revealed by the GM, not by creatures. You do not need to place a creature: open Fog, switch “Fog on”, then reveal by hand — Reveal drags a rectangle, Brush paints (choose the width), Hide covers an area again, Reveal all and Cover all do the whole map.",
-            "With “Reveal along moves”, moving a token on a fogged map reveals the way it went, as wide as the brush."
+            "“Reveal along moves” says whether moving a token on a fogged map reveals the way it went: the campaign sets the default under Rules & options › On the map, and each map may say on or off.",
+            "If the campaign keeps fog per character, choose under “For” whom you reveal for; “Player view” then shows what that character sees. Without a choice, what you reveal is for everyone."
           ]
         },
         {

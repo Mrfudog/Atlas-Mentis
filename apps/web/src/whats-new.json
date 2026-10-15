@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-map-table-rules",
+      "date": "2026-10-15",
+      "title": "Fog per character, moves the GM confirms, and reveal along moves as a campaign rule",
+      "text": "Rules & options › On the map: one fog for the party or one per character, players move their tokens freely outside encounters or propose moves the GM confirms on the map, and whether moves reveal the way (a map may override it). With fog per character, “For” picks whom you reveal for and whose view Player view shows.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-fog-player-view",
       "date": "2026-10-15",
       "title": "Fog of war shows what is revealed in every browser",

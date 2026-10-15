@@ -245,8 +245,32 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   mit seiner Mitte im Kasten liegt, dazu *Reveal all* und *Cover all*.
   Ein Finger zieht die Form, zwei zoomen weiter.
 - **Entlang des Weges** (*Reveal along moves*): wer ein Token im Nebel
-  zieht, deckt den Weg auf, so breit wie der Pinsel. Wände rechnet die
-  Seite dabei noch nicht — der Prototyp nimmt das Sichtpolygon.
+  zieht, deckt den Weg auf — die Leitung so breit wie der Pinsel, ein Zug
+  über den Server zwei Felder breit, `for` die gezogene Figur. **Ob, sagt
+  die Kampagne** (`Campaign.revealOnMove`, T-204); die Karte darf es
+  überschreiben (`Map.revealOnMove`, die Wahl in der Nebelleiste: campaign
+  / on / off). Die Bewegung zählt in beiden Fällen; ohne Aufdecken deckt
+  die Leitung nachher auf. Wände rechnet die Seite dabei noch nicht — der
+  Prototyp nimmt das Sichtpolygon.
+- **Je Gruppe oder je Figur** (`Campaign.fog`, T-204): je Gruppe sieht
+  jede Spielerin alles Aufgedeckte. Je Figur darf eine Form `for` nennen —
+  eine Figur oder eine Gruppe —, und dann sehen sie nur diese, ihre
+  Gruppe und die Leitung; was die Leitung ohne Wahl aufdeckt, gilt allen.
+  In der Kopfleiste der Karte wählt die Leitung unter *For*, für wen sie
+  aufdeckt und wessen Sicht *Player view* zeigt; ohne *Player view* sieht
+  sie die Vereinigung.
+- **Züge der Spielenden** (`Campaign.moves`, T-204): ausserhalb eines
+  Kampfes zieht eine Spielerin ihre eigene Figur, auch wenn sie die Karte
+  nicht schreibt (`POST /api/maps/:id/move`). `free` zieht sofort,
+  `confirm` legt einen Vorschlag an — gestrichelt vom Token zum Ziel, mit
+  ✓ und ✗ für die Leitung, gespeichert als Zugplan mit einem Schritt
+  (T-198), live über den Kanal. Im Kampf gilt ohnehin der Zugplan.
+- **Gezeichnet auf einer Leinwand** (T-204): der Nebel war ein
+  SVG-Rechteck mit `mask="url(#…)"`; unter `<base href="/">` löst nicht
+  jeder Browser den Verweis gegen das eigene Dokument auf, und dann deckte
+  das Rechteck alles zu — die Spielersicht war schwarz, auch das
+  Aufgedeckte. Jetzt deckt eine Leinwand alles zu und schneidet die
+  Formen heraus (`karten/nebel.ts`).
 - **Zurückgehalten wird am Server** (`redactMap`): Marker unter dem Nebel
   gehen nicht an Spielende, ausser dem Gruppen-Token und den Figuren der
   Gruppe — wer im Dunkeln steht, steht trotzdem auf der Karte. Rahmen von

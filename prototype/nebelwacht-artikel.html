@@ -16072,6 +16072,25 @@ function renderHowto(v){
     "is still unstowed leaves the inventory and stays at the session as a "+
     "leftBehind edge, with its quantity and where it came from — nothing is "+
     "deleted, and whoever goes back picks it up, unstowed again."));
+  /* Nebel je Figur, Züge, Aufdecken beim Zug (T-204): steht nur auf der Seite. */
+  v.appendChild(el("div",{class:"rsec",text:"Fog per party or per character, and how players move"}));
+  v.appendChild(el("p",{class:"hint"},
+    "On the site the campaign says how the map behaves at the table "+
+    "(Rules & options › On the map). Campaign.fog: 'party' — everything "+
+    "revealed is seen by every player — or 'player': a revealed shape may "+
+    "name whom it is for (Map.reveal[].for, a character or a party), and "+
+    "then only that character, its party and the GM see it; a shape without "+
+    "'for' is for everyone. The server sends each player only the shapes "+
+    "they see and drops the markers under the rest (redactMap with "+
+    "revealFor). Example: Rook reveals a corridor, Mira stands at the other "+
+    "end — Rook's player sees the corridor and the goblin in it, Mira's "+
+    "player sees neither. Campaign.moves: outside an encounter a player "+
+    "drags their own token freely ('free') or leaves a dashed proposal the "+
+    "GM confirms ('confirm'), stored as a one-step turn plan; in an "+
+    "encounter the turn plan applies anyway. Campaign.revealOnMove (a map "+
+    "may override it with Map.revealOnMove): a move uncovers its way two "+
+    "squares wide, for the character that moved; movement is spent either "+
+    "way, and without it the GM reveals afterwards."));
   /* Würfe im Protokoll (T-172): steht nur auf der Seite, der Prototyp würfelt weiter selbst. */
   v.appendChild(el("div",{class:"rsec",text:"A roll lands in the article's log"}));
   v.appendChild(el("p",{class:"hint"},
