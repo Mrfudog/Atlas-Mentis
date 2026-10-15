@@ -197,6 +197,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'craftOverview',
+    label: 'Crafting overview',
+    area: 'display',
+    does: 'shows what can be made: a trade lists its recipes and the materials they need, a tool the recipes of its trades, a character the recipes of the tools it is proficient in — learned or not (T-196)',
+    uses: {
+      [M + 'crafting.ts']: ['needs'],
+      [S + 'handwerk.ts']: ['belongsTo', 'instanceOf', 'needs', 'yields'],
+    },
+  },
+  {
     key: 'shopPrice',
     label: 'Shop prices',
     area: 'character',
@@ -449,6 +459,7 @@ export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [W + 'register/typ.ts']: ['carries', 'holds'],
   [W + 'register/arbeit.ts']: ['carries'],
   [W + 'artikel/anordnung.ts']: ['crafting'],
+  [W + 'register/anordnung.ts']: ['crafting'],
   /* Die Sorte „crafting" der Regeloptionen (T-190), wie das Modul in T-132 heissen wird. */
   [M + 'ruleOptions.ts']: ['crafting'],
   /* Die Herkunft eines Preisschritts heisst wie die Kante, aus der er kommt (T-129). */

@@ -23,7 +23,7 @@ import { Zugplaner } from './zugplaner';
   /* Würfe auf diesem Schirm gehören zur Sitzung am Tisch (T-172). */
   providers: [WurfZiel],
   template: `
-    <div class="seite" [class.mit-plan]="!!zp()?.planung()">
+    <div class="seite vollbild-ziel" [class.mit-plan]="!!zp()?.planung()">
       <header class="kopf">
         <h1>Play</h1>
         @if (tisch(); as t) {
@@ -117,6 +117,15 @@ import { Zugplaner } from './zugplaner';
     }
     .leer {
       color: var(--dim);
+    }
+    /* Vollbild der Karte (T-203): die ganze Seite, damit der Zugplan dabei bleibt — ohne Kopf. */
+    .seite:fullscreen {
+      background: var(--bg);
+      overflow: auto;
+      padding: 0.5rem 0.75rem;
+    }
+    .seite:fullscreen .kopf {
+      display: none;
     }
     @media (max-width: 640px) {
       .seite {

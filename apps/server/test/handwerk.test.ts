@@ -297,3 +297,49 @@ describe('Fertigungsauftrag (T-128)', () => {
     expect(o).toMatchObject({ result: 'succeeded', lines: [{ index: 1, note: 'Success — the work is done.' }] });
   });
 });
+
+describe('Handwerksübersicht (T-196)', () => {
+  beforeEach(async () => {
+    await aufbauen();
+    const zusatz: Entity[] = [
+      art('beruf', 'Trade', 'Herbalism', 'trade-0001', { components: { Trade: { tools: ['Herb Kit'] } } }),
+      art('kit', 'Item', 'Herb Kit', 'item-0010', { components: { Item: { itemType: 'tool' } } }),
+      art('sb', 'Statblock', 'Ash', 'statblock-0001', {
+        components: { Proficiencies: { proficient: ['Herb Kit'] } },
+        relations: [{ id: 'sb~1', type: 'belongsTo', to: 'f' }],
+      }),
+    ];
+    for (const e of zusatz) await repo.putEntity(e);
+    for (const id of ['salbe', 'geheim']) {
+      const r = (await repo.getEntity(id))!;
+      await repo.putEntity({ ...r, components: { ...r.components, Recipe: { ...(r.components['Recipe'] ?? {}), trade: 'Herbalism' } } });
+    }
+  });
+
+  it('der Beruf zeigt Werkzeuge, Rezepte und Material', async () => {
+    const res = await get('l', '/api/crafting/beruf');
+    expect(res.statusCode).toBe(200);
+    const s = res.json();
+    expect(s.kind).toBe('trade');
+    expect(s.trade.tools).toEqual([{ name: 'Herb Kit', id: 'kit' }]);
+    expect(s.recipes.map((r: { id: string }) => r.id)).toEqual(['salbe', 'geheim']);
+    expect(s.recipes[0]).toMatchObject({ dc: 12, checks: 2, tools: ['Herb Kit'], yields: { id: 'trank', name: 'Draught' } });
+    expect(s.materials[0]).toMatchObject({ item: 'kraut', name: 'Moonleaf', recipes: 2, qty: 4 });
+  });
+
+  it('ein Werkzeug zeigt, was man damit fertigt; ein anderer Gegenstand nichts', async () => {
+    const w = (await get('l', '/api/crafting/kit')).json();
+    expect(w.kind).toBe('tool');
+    expect(w.trades).toEqual([{ id: 'beruf', name: 'Herbalism' }]);
+    expect(w.recipes).toHaveLength(2);
+    expect((await get('l', '/api/crafting/kraut')).json()).toEqual({ kind: 'none' });
+  });
+
+  it('die Figur sieht je geübtem Werkzeug ihre Rezepte, gelernt oder nicht', async () => {
+    const s = (await get('s', '/api/crafting/f')).json();
+    expect(s.kind).toBe('actor');
+    expect(s.tools).toHaveLength(1);
+    const gelernt = Object.fromEntries(s.tools[0].recipes.map((r: { id: string; learned?: boolean }) => [r.id, r.learned]));
+    expect(gelernt).toEqual({ salbe: true, geheim: false });
+  });
+});

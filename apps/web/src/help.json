@@ -14,7 +14,9 @@
         {
           "heading": "Tools",
           "text": [
-            "Measure: tap two points. Add marker (GM): tap where it goes; a marker opens its quick view. Place combatants puts the creatures of the running encounter on the map, Clear play tokens removes them again — prepared markers and the party stay.",
+            "The tool bar on the left holds the tools in groups: Select (S), Tokens (T), Measure (M) and Fog (F). Pick a group and its tools appear above the map; pick it again, or press Esc, to go back to Select. « hides the tool names, » shows them again.",
+            "Select: drag a marker to move it, tap it for its quick view. Measure: tap two points. Tokens (GM): Add marker — tap where it goes; Place combatants puts the creatures of the running encounter on the map, Clear play tokens removes them again — prepared markers and the party stay.",
+            "Fullscreen (or Shift+F) gives the map the whole screen; Esc leaves it.",
             "Player view (GM) shows the map as the players see it: fogged parts covered, hidden markers left out."
           ]
         },
@@ -27,7 +29,7 @@
         {
           "heading": "Fog of war",
           "text": [
-            "Fog is revealed by the GM, not by creatures. You do not need to place a creature: open Fog, switch “Fog on”, then reveal by hand — Reveal drags a rectangle, Brush paints (choose the width), Hide covers an area again, Reveal all and Cover all do the whole map.",
+            "Fog is revealed by the GM, not by creatures. You do not need to place a creature: pick Fog in the tool bar, switch “Fog on”, then reveal by hand — Reveal drags a rectangle, Brush paints (choose the width), Hide covers an area again, Reveal all and Cover all do the whole map.",
             "“Reveal along moves” says whether moving a token on a fogged map reveals the way it went: the campaign sets the default under Rules & options › On the map, and each map may say on or off.",
             "If the campaign keeps fog per character, choose under “For” whom you reveal for; “Player view” then shows what that character sees. Without a choice, what you reveal is for everyone."
           ]

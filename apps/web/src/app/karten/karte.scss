@@ -28,16 +28,112 @@
 .brot b {
   color: var(--ink);
 }
-.werkzeuge {
+.ansicht {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
 }
-.werkzeuge button.an {
+.ansicht button.an,
+.werkzeugleiste button.an,
+.unterleiste button.an {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--surface);
+}
+.vollbild span {
+  margin-right: 0.2rem;
+}
+
+/* Die Werkzeugleiste (T-203): senkrecht links, Gruppen untereinander; die
+   aktive zeigt ihre Unterwerkzeuge in der Zeile über der Bühne. */
+.flaeche {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+.werkzeugleiste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  flex: none;
+}
+.werkzeugleiste button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: flex-start;
+  min-height: 40px;
+  padding: 0 0.6rem;
+  text-align: left;
+}
+.werkzeugleiste .sym {
+  display: inline-block;
+  width: 1.2rem;
+  text-align: center;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.werkzeugleiste .einklappen {
+  justify-content: center;
+  color: var(--dim);
+}
+.flaeche.zu .werkzeugleiste .txt {
+  display: none;
+}
+.flaeche.zu .werkzeugleiste button {
+  justify-content: center;
+  padding: 0;
+  width: 40px;
+}
+.spalte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.unterleiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.unterleiste label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+}
+
+/* Vollbild (T-203): die Bühne nimmt, was bleibt. Ohne Fullscreen API legt
+   sich die Karte über die Seite (`.ersatz`). */
+.karte.voll {
+  background: var(--bg);
+}
+.karte.voll .spalte .buehne {
+  height: calc(100dvh - 7.5rem);
+}
+.karte.ersatz {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  padding: 0.5rem;
+  overflow: auto;
+}
+:host:fullscreen .karte {
+  padding: 0.5rem;
+  height: 100dvh;
+  box-sizing: border-box;
 }
 .zoom {
   display: inline-flex;
@@ -300,27 +396,6 @@ button {
 .nebel.ganz {
   background: #1d1a17;
 }
-.nebelleiste {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem 0.75rem;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-}
-.nebelleiste label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 32px;
-}
-.nebelleiste button.an {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--surface);
-}
 .vorschau {
   position: absolute;
   border: 2px dashed var(--gold);
@@ -466,4 +541,25 @@ button {
   line-height: 1.4rem;
   /* Ein Antippen gehört dem Feld darunter (der nächste Weg). */
   pointer-events: none;
+}
+
+/* Am Telefon liegt die Werkzeugleiste waagrecht über der Bühne (T-203). */
+@media (max-width: 640px) {
+  .flaeche {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .werkzeugleiste {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .werkzeugleiste .einklappen {
+    display: none;
+  }
+  .werkzeugleiste .txt {
+    font-size: 0.85rem;
+  }
+  .karte.voll .spalte .buehne {
+    height: calc(100dvh - 11rem);
+  }
 }

@@ -213,6 +213,20 @@ Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
 - **Die Leitung** (und wer die Karte schreibt) zieht Marker an eine neue
   Stelle und setzt neue mit „Add marker" — beides schreibt nur die Kante.
   Gitter, Massstab und Blätter stellt sie in den Feldern der Karte ein.
+- **Die Werkzeugleiste** (T-203, nach dem
+  [Vergleich mit anderen VTTs](vorschlaege/Karten-VTT-Vergleich.md)):
+  links senkrecht, am Telefon waagrecht über der Bühne. Gruppen Auswahl
+  (S), Tokens (T, Leitung), Messen (M) und Nebel (F, Leitung); die aktive
+  Gruppe zeigt ihre Unterwerkzeuge in einer Zeile über der Karte, noch
+  einmal wählen oder Esc führt zurück zur Auswahl. Wände (T-118), Notizen
+  und Zeichnen sind in `GRUPPEN` vorgesehen und stehen erst mit ihrem
+  Werkzeug da. Die Tasten gelten unter Play, im Vollbild oder mit dem
+  Fokus in der Karte, nie beim Tippen. Über der Bühne bleibt, was die
+  Sicht einstellt: Zoom, Blätter, Spielersicht, „For“, Vollbild.
+- **Vollbild** (Umschalt+F): unter Play geht die ganze Seite ins Vollbild
+  (`.vollbild-ziel`), damit der Zugplan dabei bleibt; auf der
+  Artikelseite die Karte allein. Ohne Fullscreen API (iPhone) legt sich
+  die Karte über die Seite; Esc verlässt beides.
 
 ## Karten finden und anlegen (T-202)
 
