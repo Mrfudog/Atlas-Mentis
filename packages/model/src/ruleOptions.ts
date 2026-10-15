@@ -25,6 +25,7 @@
 import { allowedMethods, type AbilityMethod } from './abilities.js';
 import { craftRulesOf } from './crafting.js';
 import { allowedEquipmentMethods, type EquipmentMethod } from './equipment.js';
+import { hitPointRuleOf } from './hitpoints.js';
 import { inventoryRulesOf } from './inventory.js';
 import { stowingRuleOf } from './stowing.js';
 import type { Entity, EntityId } from './types.js';
@@ -109,6 +110,19 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     variants: [
       { key: 'true', label: 'Allowed', does: 'Where a class grants an ability score improvement, a feat may be taken instead.', rules: ['Feats'] },
       { key: 'false', label: 'Not allowed', does: 'Ability score improvements stay improvements; the builder does not offer feats.' },
+    ],
+  },
+  {
+    /* Trefferpunkte ab Stufe 2 (T-194): die Kampagne sagt, was der Assistent anbietet. */
+    key: 'hitPoints',
+    sort: 'character',
+    label: 'Hit points per level',
+    does: 'How a level beyond the first adds hit points in the character builder.',
+    source: { field: 'hitPoints' },
+    variants: [
+      { key: 'either', label: 'Roll or average', does: 'Each player chooses per level: roll the hit die or take its average.', rules: ['Hit Points'] },
+      { key: 'average', label: 'Average', does: 'Every level adds the average of the hit die; nobody rolls.', rules: ['Hit Points'] },
+      { key: 'roll', label: 'Roll', does: 'Every level rolls the hit die.', rules: ['Hit Points'] },
     ],
   },
   {
@@ -353,6 +367,8 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return craftRulesOf(campaign).critFailure;
     case 'craftConfirm':
       return craftRulesOf(campaign).confirm;
+    case 'hitPoints':
+      return hitPointRuleOf(campaign ?? undefined);
     default: {
       const roh = campaign?.components?.['Campaign']?.[feld];
       /* Die übrigen Vorgaben stehen am Register (`CampaignInfo`): Talente ja, Würfe für den Tisch. */

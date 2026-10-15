@@ -28,6 +28,7 @@ export * from './abilities.js';
 export * from './equipment.js';
 export * from './slots.js';
 export * from './builder.js';
+export * from './hitpoints.js';
 export * from './board.js';
 export * from './checks.js';
 export * from './bulk.js';

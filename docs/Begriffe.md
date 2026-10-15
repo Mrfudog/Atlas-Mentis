@@ -587,6 +587,20 @@ Sonderfall: ein Statblock liest sich wie im Monster Manual, weil am Typ
 Namen „Statblock" fragt. Eine eigene Art, die von `Statblock` erbt, liest
 sich ebenso; eine, die etwas anderes will, sagt es an sich.
 
+**Die Kennzahlen** (T-206, 15.10.2026) folgen derselben Regel an einem
+anderen Ort: die Kurzansicht eines Statblocks war der ganze Bogen und damit
+länger als alles daneben. Am Tisch braucht man in einem Blick AC, HP,
+Bewegung, Initiative, passive Wahrnehmung und CR — also steht an
+`Statblock` für `quick` das Element `stats`, und an `Creature` dasselbe,
+gelesen über `belongsTo` mit ihrem Stand (HP jetzt/Maximum, Zustände). Dass
+es ein Element ist und keine Feldliste in der Ansicht, hat denselben Grund
+wie beim Bogen: zwei der sechs Zahlen sind gerechnet, und sie stammen aus
+drei Karten. Ein Obertyp „Kampfkennzahlen" hätte dafür `ac`, `hp`, `speed`
+und `cr` aus der Karte `Statblock` in eine eigene verschieben müssen — eine
+Wanderung jedes Statblocks für eine Frage der Darstellung. So gilt:
+`overview` < `quick` < `full` — Herausforderung und Art im Verweis, die
+Kennzahlen auf der Karte, der Bogen auf der Seite.
+
 ---
 
 ## Block
@@ -1287,6 +1301,13 @@ Volksmerkmal der Orks.
 **Die Stufe der Figur wird gerechnet** — die Summe der Klassenkanten
 (`sum(hasClass.level)`), und der Übungsbonus aus ihr. Eingetippt wäre sie
 die dritte Stelle neben den Kanten und nach dem ersten Aufstieg falsch.
+
+**Die Trefferpunkte einer Stufe stehen an der Kante zur Klasse**
+(`hasClass.props.hp`, T-194), dort, wo die Stufe steht. Gespeichert wird,
+was der Würfel brachte, nicht das Maximum samt KON: wer später KON ändert,
+rechnet neu und würfelt nicht noch einmal — und ein Würfelwurf, den man
+wiederholen kann, ist keiner. Das Maximum am Statblock schreibt der
+Assistent daraus; es ist der Wert, den jeder Bogen liest.
 
 **Was eine Klasse gewährt, ist eine Kante, und die Stufe steht an ihr**
 (`grants`, `props.level`). „Ability Score Improvement" kommt beim Kämpfer

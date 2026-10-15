@@ -220,9 +220,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'builder',
     label: 'Character builder and sheet',
     area: 'character',
-    does: 'builds a character — class levels, ancestry (with the base of a sub-ancestry), background, the choices they ask, the effects of each option, ability and equipment methods — and shows the answers by their class',
+    does: 'builds a character — class levels, ancestry (with the base of a sub-ancestry), background, the choices they ask, the effects of each option, ability and equipment methods, the hit points each class level brought (T-194) — and shows the answers by their class',
     uses: {
       [M + 'builder.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [M + 'hitpoints.ts']: ['hasClass'],
       [M + 'choices.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       [M + 'abilities.ts']: ['abilityPool', 'allowsMethod'],
       [M + 'equipment.ts']: ['allowsEquipment', 'hasBackground', 'hasClass'],
