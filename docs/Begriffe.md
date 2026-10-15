@@ -1296,6 +1296,19 @@ von der Kampagne an den Artikel: er ist im Spiel, sein Buch nicht. Er
 steht unter jeder aufgeschalteten Ebene — was die Kampagne selbst sagt,
 schlägt eine Einzelfreigabe —, und zurück geht es an derselben Stelle.
 
+Gefunden wird so ein Gegenstand in der Liste (T-213): ein Schalter im
+Popup der Kopfleiste, „Show comparison articles in lists", hängt unter
+Kompendium, Bereiche und Suche, was **nur** eine Vergleichsebene bringt —
+markiert „not in play", mit „Enable" für die Leitung. Ein **eigener
+Block** und kein Merkmal zwischen den Zeilen: im selben Index zählten
+Facetten und Summen, was nicht im Spiel ist, und die Liste sagte über das
+Spiel etwas Falsches. Und nur, was **keine Fassung im Spiel** hat: eine
+andere Fassung des Langschwerts ist ein Vergleich von Varianten, den die
+Artikelseite zeigt, kein Extra-Inhalt. Der Schalter ist aus, bis man ihn
+einschaltet, und wird je Browser gemerkt — er ändert, was man sieht, nicht
+was gilt; die Regel der Leitung (T-207) bleibt: was nicht eingeschaltet
+ist, steht nicht da, ausser man fragt danach.
+
 **Was eine Quelle bringt, steht an ihr** (T-189, 15.10.2026). Die
 Leitung wollte am Buch sehen, welche Artikel es hinzufügt, und dort auch
 wählen — bis zum einzelnen Artikel. Ein Baum Art → Artikel (Element
@@ -1304,7 +1317,8 @@ schreiben die Kanten, die die Kampagnenseite schreibt (`activates`,
 `activates.props.types`, `enables`). Zwei Stellen für dieselbe Wahl liefen
 beim ersten Klick auseinander. Was mit der Ebene kommt, steht darum
 angehakt und gesperrt da: eine Kante, die einen einzelnen Artikel aus
-einer Ebene im Spiel nimmt, gibt es nicht, und der Baum erfindet keine.
+einer Ebene im Spiel nimmt, gibt es nicht, und der Baum erfindet keine
+(E-073).
 
 **Eine Ebene erklärt ihr Kürzel.** „XGE" steht an jedem Artikel aus
 Xanathar's Guide; wer das Buch nicht kennt, liest drei Buchstaben. Darum

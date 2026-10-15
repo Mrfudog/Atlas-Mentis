@@ -118,6 +118,16 @@ import { KampagnenEbenenListe } from './ebenen';
               <p class="fuss">Saved for your account in this campaign, on every device. Create dialogs can still pick another layer.</p>
             </fieldset>
           }
+          @if ((k.compare ?? 0) > 0) {
+            <!-- Vergleich in Listen (T-213): nur, wer Vergleichsebenen sieht. -->
+            <label class="option vergleich">
+              <input type="checkbox" [checked]="stapel.vergleich()" (change)="stapel.vergleichSetzen($any($event.target).checked)" />
+              <span>
+                Show comparison articles in lists
+                <small>Compendium, areas and search also list what only a comparison layer brings, marked “not in play”.</small>
+              </span>
+            </label>
+          }
           @if (k.may) {
             <!-- Erst beim Öffnen geladen (T-188): die Liste ist gross, und die Kopfleiste steht im Grundpaket mit seinem Budget. -->
             @defer {
@@ -223,6 +233,9 @@ import { KampagnenEbenenListe } from './ebenen';
     }
     .option input {
       margin-top: 0.25rem;
+    }
+    .vergleich {
+      margin: 0.6rem 0;
     }
     .option small {
       display: block;

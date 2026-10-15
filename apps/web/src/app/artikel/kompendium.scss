@@ -475,3 +475,19 @@ tr.unter td {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* Was nur eine Vergleichsebene bringt (T-213): abgesetzt, blasser — es ist nicht im Spiel. */
+tr.vergleich-kopf th {
+  padding-top: 1rem;
+  border-bottom: 1px dashed var(--line);
+  color: var(--dim);
+  font-family: var(--caps);
+  font-weight: 400;
+  text-align: left;
+}
+tr.nicht-im-spiel td {
+  border-top-style: dashed;
+}
+tr.nicht-im-spiel td.name > a {
+  color: var(--dim);
+}

@@ -9,6 +9,14 @@
       "link": "/campaign"
     },
     {
+      "id": "2026-10-15-compare-in-lists",
+      "date": "2026-10-15",
+      "title": "List articles from comparison layers, and enable them in one click",
+      "text": "In the campaign popup, Show comparison articles in lists adds what only a comparison layer brings to the compendium, the areas and the search — marked not in play, below the articles in play. The GM enables one with Enable, and it joins the campaign as extra content.",
+      "area": "Compendium",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-15-layer-order",
       "date": "2026-10-15",
       "title": "See and drag the order of the layers in play",
