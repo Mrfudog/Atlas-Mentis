@@ -79,7 +79,7 @@ const TREFFER = 30;
       @if (mehr() > 0) {
         <p class="leer">{{ mehr() }} more — narrow the search or pick a type.</p>
       }
-      <nw-ausgeblendet [info]="ausgeblendet()" [knapp]="true" (geaendert)="fragen()" />
+      <nw-ausgeblendet [info]="ausgeblendet()" [knapp]="true" />
     }
     @if (schnell(); as name) {
       <nw-schnell
