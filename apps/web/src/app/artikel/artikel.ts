@@ -82,12 +82,13 @@ import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
 import { Verlinkt } from './verlinkt';
 import { Lesen } from '../lesen/lesen';
-import { EbenenReiter, KampagnenReiter } from './ebenen-reiter';
+import { KampagnenReiter } from './ebenen-reiter';
+import { Klasse } from '../klassen/klasse';
+import { Herkunft } from '../klassen/herkunft';
 import { Regeloptionen } from './regeloptionen';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 import { Wuerfe } from './wuerfe';
 import { WurfZiel } from '../kern/wurfziel';
-import { ansichtWeg } from '../klassen/ansicht-weg';
 
 /** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
 const PART_RELATION = 'partOf';
@@ -166,7 +167,8 @@ interface Feld {
     Karte,
     Verlinkt,
     Lesen,
-    EbenenReiter,
+    Klasse,
+    Herkunft,
     KampagnenReiter,
     Regeloptionen,
     Wuerfe,
@@ -194,19 +196,12 @@ interface Feld {
           <span aria-current="page">{{ name(e) }}</span>
         </nav>
 
-        <!-- Eine Ebene liest man an ihr selbst (T-167): der Reiter „Read" ist
-             dieselbe Leseansicht wie /read/:layer, auch vor dem Aufschalten. -->
-        @if (art(e) === 'Layer' && !bearbeitet()) {
-          <nw-ebenen-reiter [ebene]="e.id" [lesen]="leseReiter()" [ohneText]="!!leseZiel()?.empty" />
-        }
         <!-- Die Regeloptionen einer Kampagne (T-190): ein eigener Reiter,
              nach Sorte gruppiert, mit dem Regelartikel je Variante. -->
         @if (art(e) === 'Campaign' && !bearbeitet()) {
           <nw-kampagnen-reiter [kampagne]="e.id" [regeln]="regelReiter()" />
         }
-        @if (leseReiter()) {
-          <nw-lesen [layer]="e.id" [eingebettet]="true" />
-        } @else if (regelReiter()) {
+        @if (regelReiter()) {
           <nw-regeloptionen [kampagne]="e.id" [darfSchreiben]="session.isAdmin() || darfSchreiben()" />
         } @else {
         <div class="spalten">
@@ -214,12 +209,6 @@ interface Feld {
             <div class="werkzeugzeile">
               <span class="meta">{{ meta() }}</span>
               <div class="werkzeuge">
-                @if (art(e) === 'Class' && !bearbeitet()) {
-                  <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
-                }
-                @if ((art(e) === 'Ancestry' || art(e) === 'Background') && !bearbeitet()) {
-                  <a class="knopf" [routerLink]="ansicht(e)">{{ art(e) }} view</a>
-                }
                 <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
                 @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
                   <a class="knopf" [routerLink]="['/characters', e.id, 'level-up']">Level up</a>
@@ -228,12 +217,11 @@ interface Feld {
                 @if (!bearbeitet()) {
                   <a class="knopf" [routerLink]="['/artikel', e.id, 'print']">Print</a>
                 }
-                <!-- Die Leseansicht (T-091): an der Stelle im Buch, oder bei
-                     einer Ebene von vorn. -->
+                <!-- Die Leseansicht (T-091): an der Stelle im Buch — auf der
+                     Seite der Ebene, wo das Buch als Element steht (T-191). -->
                 @if (leseZiel(); as z) {
-                  <!-- An der Ebene ist „Read" ein Reiter (T-167), oben. -->
                   @if (!bearbeitet() && art(e) !== 'Layer') {
-                    <a class="knopf" [routerLink]="['/read', z.layer]" [queryParams]="leseParams(z)">Read in book</a>
+                    <a class="knopf" [routerLink]="['/artikel', z.layer]" [queryParams]="leseParams(z)">Read in book</a>
                   }
                 }
                 <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
@@ -752,6 +740,13 @@ interface Feld {
                   @case ('fluss') {
                     <nw-fluss [besitzer]="e" />
                   }
+                  <!-- Die Übersichten (T-191): früher /classes/:id und /ancestries/:id. -->
+                  @case ('klasse') {
+                    <nw-klasse [id]="e.id" [eingebettet]="true" [sub]="sub()" [opt]="opt()" />
+                  }
+                  @case ('herkunft') {
+                    <nw-herkunft [id]="e.id" [eingebettet]="true" [sub]="sub()" />
+                  }
                   @case ('ueberschrift') {
                     <h2>{{ st.text }}</h2>
                   }
@@ -942,7 +937,7 @@ interface Feld {
                   <a [href]="q.url" target="_blank" rel="noopener">{{ q.text }}</a>
                 } @else if (leseZiel(); as z) {
                   <!-- „XGE p. 12" springt an die Stelle im Buch (T-091). -->
-                  <a [routerLink]="['/read', z.layer]" [queryParams]="leseParams(z)">{{ q.text }}</a>
+                  <a [routerLink]="['/artikel', z.layer]" [queryParams]="leseParams(z)">{{ q.text }}</a>
                 } @else {
                   <span>{{ q.text }}</span>
                 }
@@ -957,6 +952,14 @@ interface Feld {
             }
           </aside>
         </div>
+        <!-- Die Leseansicht (T-091, T-191): das Element „reader" braucht die
+             ganze Breite — Inhaltsverzeichnis links, Kapitel rechts — und
+             steht darum unter Haupt- und Seitenspalte. -->
+        @if (leser()) {
+          <section id="lesen" class="lesen" aria-label="Read">
+            <nw-lesen [layer]="e.id" [eingebettet]="true" [at]="at()" [page]="page()" [springen]="tab() === 'read'" />
+          </section>
+        }
         }
       </div>
     } @else if (bestand.fehlt().has(id())) {
@@ -974,8 +977,14 @@ export class Artikel implements SchnellKontext {
   readonly edit = input<string | undefined>(undefined);
   /** `?from=<id>`: hierher kam man über „Open" aus einer Auswahl (T-131) — der Weg zurück. */
   readonly from = input<string | undefined>(undefined);
-  /** `?tab=read`: an einer Ebene der Reiter „Read" (T-167). */
+  /** `?tab=read`: zur Leseansicht springen (T-167; seit T-191 ein Element), `?tab=rules` an der Kampagne. */
   readonly tab = input<string | undefined>(undefined);
+  /** `?at=`, `?page=`: die Stelle im Buch (T-091) — an einer Ebene mit Element `reader`. */
+  readonly at = input<string | undefined>(undefined);
+  readonly page = input<string | undefined>(undefined);
+  /** `?sub=`, `?opt=`: die gewählten Unterklassen oder Spielarten der Übersicht (T-191). */
+  readonly sub = input<string | undefined>(undefined);
+  readonly opt = input<string | undefined>(undefined);
 
   protected readonly bestand = inject(Bestand);
   private readonly stapel = inject(Stapel);
@@ -1181,10 +1190,6 @@ export class Artikel implements SchnellKontext {
   }
   protected art(e: Entity): string {
     return primaryInterface(e);
-  }
-  /** Die Ansicht einer Herkunft oder eines Hintergrunds (T-166). */
-  protected ansicht(e: Entity): string[] {
-    return ansichtWeg(primaryInterface(e), e.id);
   }
 
   /**
@@ -1487,6 +1492,9 @@ export class Artikel implements SchnellKontext {
       for (const z of st.zellen ?? []) gezeigt.add(z.ref);
       for (const b of st.prosa ?? []) gezeigt.add(`${b.type}.${b.key}`);
       if (st.art === 'beschreibung') gezeigt.add('Description.description');
+      if (st.art === 'klasse' || st.art === 'herkunft') {
+        for (const k of BOOK_CARDS[st.art === 'klasse' ? 'classOverview' : 'originOverview'] ?? []) karten.add(k);
+      }
       if (st.art === 'statblock' || st.art === 'spell' || st.art === 'item') {
         for (const k of BOOK_CARDS[st.art] ?? []) karten.add(k);
         if (st.art === 'spell') ['Description.description', 'Prose.paragraph'].forEach((x) => gezeigt.add(x));
@@ -1609,10 +1617,8 @@ export class Artikel implements SchnellKontext {
 
   /** „Im Buch lesen" — der Server sagt es mit dem Artikel (`refs.reading`, T-091). */
   protected readonly leseZiel = computed(() => this.bestand.lesen().get(this.id()));
-  /** Steht an dieser Ebene der Reiter „Read" offen? Beim Bearbeiten nie. */
-  protected readonly leseReiter = computed(
-    () => this.tab() === 'read' && !this.bearbeitet() && !!this.artikel() && this.art(this.artikel()!) === 'Layer',
-  );
+  /** Nennt die Anordnung das Element `reader` (T-191)? Beim Bearbeiten nie. */
+  protected readonly leser = computed(() => !this.bearbeitet() && this.stuecke().some((st) => st.art === 'leser'));
   /** Steht an dieser Kampagne der Reiter „Rules & options" offen (T-190)? Beim Bearbeiten nie. */
   protected readonly regelReiter = computed(
     () => this.tab() === 'rules' && !this.bearbeitet() && !!this.artikel() && this.art(this.artikel()!) === 'Campaign',
