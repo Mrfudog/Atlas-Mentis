@@ -841,6 +841,41 @@ Lokal gegen die eigene Datenbank: `pnpm --filter @nw/server run import
 import` ist ein eingebauter Befehl von pnpm und liefe sonst statt des
 Skripts.
 
+### Bilder aus 5e.tools (T-144)
+
+Die Ausfuhrdatei bringt **keine Bilder** (E5): Bilder sind Dateien und
+gehen über `POST /api/assets` in die Ablage, nicht durch eine JSON-Datei.
+Dafür rechnet derselbe Lauf einen **Bildplan** — welches Bild aus
+`5etools-img` an welchen Artikel gehört, mit denselben Peg-Ids
+(`packages/import-5etools/src/bilder.ts`): der Token einer Kreatur an
+`Statblock.token` (Klasse `token`), das erste Bild des Begleittexts an
+`Image.image` (Klasse `image`; die übrigen nur in die Galerie), die Karte
+eines Abenteuers, die als Adresse dasteht, an `Image.image` ihrer `Map`
+(Klasse `map`). Bilder im Buchtext (als Teile der Leseansicht) stehen noch
+nicht im Plan.
+
+```bash
+# 1. Plan (der Lauf wie zum Einlesen, nur mit --images)
+node packages/import-5etools/dist/cli.js <5etools-src/data> --images bildplan.json
+# 2. Vorschau: Dateien, Grösse, welche Artikel es auf dev gibt
+node scripts/bilder-5etools.mjs bildplan.json --img <5etools-img> --only MM --targets
+# 3. Hochladen (Journal in bilder-lauf/journal.jsonl; abbrechen und neu starten geht)
+node scripts/bilder-5etools.mjs bildplan.json --img <5etools-img> --only MM --write
+# 4. Verknüpfen: eine Massenänderung je 1000 Artikel, mit Undo
+node scripts/atlas.mjs bulk --dry-run bilder-lauf/verknuepfen-1.json
+node scripts/atlas.mjs bulk bilder-lauf/verknuepfen-1.json
+```
+
+Jedes Bild wird **aus seinem Artikel heraus** hochgeladen (`for`): es
+liegt in dessen Ebene und übernimmt dessen Sichtbarkeit und Stand, mit
+Klasse und Herkunft (`Source.publication`, `Source.anchor:
+5etools-img:<pfad>`). Verknüpft wird nur, wo noch nichts steht
+(`ifEmpty`) — ein Token, den jemand selbst gewählt hat, bleibt; eine
+Karte, die ihre Adresse zeigt, bekommt das Bild. Weder Bilder noch Plan
+noch Journal kommen ins Repository. Zurück: `atlas.mjs undo <id>` nimmt die
+Verknüpfung zurück; die Bilder selbst löscht eine Massenänderung `delete`
+mit `select.where` auf `Source.anchor` (`startsWith 5etools-img:`).
+
 ### Was beim Einlesen gilt
 
 Geprüft wird alles, **bevor** etwas geschrieben wird — jeder Artikel gegen
@@ -1012,7 +1047,7 @@ gezielt zusammen: `checks duplicates` zeigt Gruppe und Ähnlichkeit, dann
 | `select.tag` | eine Marke |
 | `select.ids` | Peg-Ids oder Nummern |
 | `select.where` | `[{ field, op, value }]`, alle müssen gelten. `field`: `name`, `id` (Nummer), `type` oder `Karte.feld` (`Statblock.cr`). `op`: `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in` (Liste), `matches` (Regex), `empty`, `notEmpty` — gross/klein egal |
-| `ops` | `set` / `unset` (`field`, `value`), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein; `addLinked` (T-169: `type`, `relation`, `fields` als `{ "Karte.feld": wert }`, `copy` als Liste von Karten, `stripBracket`) legt je ausgewähltem Artikel einen neuen an — gleicher Name (ohne Klammer am Ende mit `stripBracket`), dieselben Ebenen, Peg-Id `<peg>-<art>` wie beim Importer — und bindet den ausgewählten über `relation` an ihn; hat er schon eine solche Kante (`one`), wird er übersprungen; Undo löscht die angelegten wieder; `delete` (T-176) löscht die Auswahl mit ihren Teilen, entfernt Kanten von aussen darauf und löst Instanzen einer gehenden Vorlage — steht ebenfalls allein |
+| `ops` | `set` / `unset` (`field`, `value`; T-144: statt `value` auch `values` — je Artikel ein eigener Wert nach Peg-Id oder Nummer, wer fehlt, bleibt unberührt —, und `ifEmpty`: nur wo das Feld leer ist), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein; `addLinked` (T-169: `type`, `relation`, `fields` als `{ "Karte.feld": wert }`, `copy` als Liste von Karten, `stripBracket`) legt je ausgewähltem Artikel einen neuen an — gleicher Name (ohne Klammer am Ende mit `stripBracket`), dieselben Ebenen, Peg-Id `<peg>-<art>` wie beim Importer — und bindet den ausgewählten über `relation` an ihn; hat er schon eine solche Kante (`one`), wird er übersprungen; Undo löscht die angelegten wieder; `delete` (T-176) löscht die Auswahl mit ihren Teilen, entfernt Kanten von aussen darauf und löst Instanzen einer gehenden Vorlage — steht ebenfalls allein |
 | `confirmDelete` | löscht ein Lauf mehr als einen Artikel, die Zahl aus der Vorschau (`--confirm-delete N`) |
 | `skipRejected` | schreiben, was besteht, und die Abgelehnten liegen lassen (nie beim Löschen) |
 
