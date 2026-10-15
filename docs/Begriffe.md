@@ -192,6 +192,15 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   sind drei Klicks für eine Zahl. Es steht **am Feld und nur dort**: am Typ
   war es ein Schalter für zwanzig Felder auf einmal, und an `Vitals` sind
   die Trefferpunkte ein Stand, die Zustandsliste aber ein Satz Häkchen,
+- ob es beim Bearbeiten **auch leer dasteht** (`prominent`, T-195). Die
+  Maske zeigt Pflichtfelder und Felder mit Wert; die übrigen holt man über
+  „+ Add field“, denn vierzig leere Eingaben verstecken die fünf, um die
+  es geht; ein Wert, der nur die Vorgabe ist, zählt nicht. Die
+  Beschreibung, die man fast immer ausfüllt, und den Stand, der über die
+  Sichtbarkeit entscheidet, soll man dafür nicht erst suchen,
+- **was es meint** (`description`): ein Satz, gezeigt in der Auswahl
+  „+ Add field“. Die Beschriftung sagt, wie ein Feld heisst; wer es zum
+  ersten Mal hinzufügt, will wissen, wofür,
 - ob es **nur in der Maske** steht (`editOnly`): ein Schlüssel, den man
   setzt und niemand liest — `Time.sort` ordnet die Weltgeschichte, gelesen
   wird „Mirtul 12, 1492 DR". In der Feldtabelle stand „Sortable value

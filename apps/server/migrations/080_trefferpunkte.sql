@@ -12,7 +12,7 @@ update interface_def
    set schema = jsonb_set(
      schema::jsonb,
      '{properties,hitPoints}',
-     '{"type":"string","title":"Hit points per level","enum":["either","average","roll"],"default":"either"}'::jsonb
+     '{"type":"string","title":"Hit points per level","description":"How a level beyond the first adds hit points in the character builder: roll the hit die, take its average, or either.","enum":["either","average","roll"],"default":"either"}'::jsonb
    )::json
  where name = 'Campaign'
    and jsonb_typeof(schema::jsonb -> 'properties') = 'object'

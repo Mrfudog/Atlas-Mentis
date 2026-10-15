@@ -45,12 +45,21 @@ export const fieldGroups = {
            still falsch wurde. Eine Nummer sagt nichts und bleibt deshalb
            richtig; wie der Artikel heisst, steht daneben. */
         id: { type: 'string', title: 'ID', readOnly: true },
-        aliases: { type: 'array', title: 'Aliases', items: { type: 'string' } },
+        aliases: {
+          type: 'array',
+          title: 'Aliases',
+          items: { type: 'string' },
+          description: 'Other names this is known by; search and links find it under each.',
+        },
         /* Der Deckname (REQ-178): was ein Spieler sieht, solange der echte
            Name von einer Information beansprucht wird, die er nicht kennt.
            Ohne ihn stünde dort der echte Name oder gar nichts — beides
            macht partielle Enthüllung unspielbar. */
-        cover: { type: 'string', title: 'Cover name' },
+        cover: {
+          type: 'string',
+          title: 'Cover name',
+          description: 'The name players see while the real name is a secret they have not learned.',
+        },
       },
     },
   },
@@ -58,7 +67,17 @@ export const fieldGroups = {
   Description: {
     schema: {
       type: 'object',
-      properties: { description: { type: 'string', format: 'long', title: 'Description' } },
+      properties: {
+        /* Steht beim Bearbeiten auch leer da (T-195): das Feld, das man an
+           fast jedem Artikel ausfüllt, soll man nicht erst hinzufügen. */
+        description: {
+          type: 'string',
+          format: 'long',
+          title: 'Description',
+          prominent: true,
+          description: 'What this is, in a few sentences.',
+        },
+      },
     },
   },
 
@@ -76,7 +95,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        tags: { type: 'array', format: 'tags', title: 'Tags', items: { type: 'string' } },
+        tags: {
+          type: 'array',
+          format: 'tags',
+          title: 'Tags',
+          items: { type: 'string' },
+          description: 'Free labels to group and filter articles by.',
+        },
       },
     },
   },
@@ -101,6 +126,10 @@ export const fieldGroups = {
           title: 'Status',
           enumRef: 'State',
           default: 'idea',
+          /* Steht beim Bearbeiten da, auch auf der Vorgabe (T-195): der
+             Stand entscheidet, ob Spielende den Artikel sehen (D72). */
+          prominent: true,
+          description: 'How far the preparation is: idea, prepared or ready. Players see only what is ready.',
         },
       },
     },
@@ -253,6 +282,7 @@ export const fieldGroups = {
           title: 'Audience',
           enum: ['public', 'campaign', 'players', 'gm'],
           default: 'public',
+          description: 'Who may see this at all: everyone, the campaign, its players or the GM.',
         },
         /* Ausdrücklich freigegeben, ausdrücklich verborgen — an **Träger**
            und nicht an Konten: eine Figur, eine Gruppe, eine Fraktion, ein
@@ -271,6 +301,7 @@ export const fieldGroups = {
           type: 'array',
           format: 'link',
           title: 'Revealed to',
+          description: 'Characters, parties or factions that see this even where the audience would not let them.',
           items: { type: 'string' },
           target: { interfaces: ['Creature', 'Party', 'Faction'] },
           /* Wem etwas gezeigt wird, ist kein Filter für die Liste (T-174). */
@@ -280,6 +311,7 @@ export const fieldGroups = {
           type: 'array',
           format: 'link',
           title: 'Hidden from',
+          description: 'Characters, parties or factions that never see this, whatever else says so.',
           items: { type: 'string' },
           target: { interfaces: ['Creature', 'Party', 'Faction'] },
           /* Wem etwas gezeigt wird, ist kein Filter für die Liste (T-174). */
@@ -305,16 +337,33 @@ export const fieldGroups = {
         /* Angeboten werden zuerst allgemeine Bilder (T-119); eine Karte
            engt auf Kartenbilder ein (`Map.targets`). Ein Vorschlag, keine
            Regel: die Klasse ist der heutige Stand des Bildes. */
-        image: { type: 'string', format: 'asset', title: 'Image', target: { where: { component: 'Asset', property: 'kind', value: 'image' } } },
-        caption: { type: 'string', title: 'Caption' },
-        alt: { type: 'string', title: 'Alt text' },
+        image: {
+          type: 'string',
+          format: 'asset',
+          title: 'Image',
+          target: { where: { component: 'Asset', property: 'kind', value: 'image' } },
+          description: 'A picture shown on the article and its card.',
+        },
+        caption: { type: 'string', title: 'Caption', description: 'A line under the picture.' },
+        alt: {
+          type: 'string',
+          title: 'Alt text',
+          description: 'Describes the picture for screen readers and when it does not load.',
+        },
       },
     },
   },
 
   /** Entity-level defaults for {VAR} placeholders (REQ-174). */
   Vars: {
-    schema: { type: 'object', properties: { bindings: { type: 'object', title: 'Bindings' } } },
+    schema: { type: 'object', properties: {
+        bindings: {
+          type: 'object',
+          title: 'Bindings',
+          description: 'Values for the {VAR} placeholders in this article’s texts.',
+        },
+      },
+    },
   },
 
   CreatureInfo: {
@@ -1780,14 +1829,23 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        publication: { type: 'string', suggest: true, title: 'Publication' },
-        page: { type: 'string', title: 'Page' },
-        anchor: { type: 'string', title: 'Anchor' },
-        url: { type: 'string', title: 'URL' },
+        publication: {
+          type: 'string',
+          suggest: true,
+          title: 'Publication',
+          description: 'The book or source this comes from.',
+        },
+        page: { type: 'string', title: 'Page', description: 'The page in that publication.' },
+        anchor: { type: 'string', title: 'Anchor', description: 'A section of the source, to link to.' },
+        url: { type: 'string', title: 'URL', description: 'A web address for the source.' },
         /* Die Lizenzflagge (E1, M9): steht der Inhalt im frei lizenzierten
            SRD? Eine spätere Demo zeigt nur das, und die Seite selbst ist
            nicht öffentlich. */
-        srd: { type: 'boolean', title: 'In the SRD' },
+        srd: {
+          type: 'boolean',
+          title: 'In the SRD',
+          description: 'Part of the freely licensed System Reference Document.',
+        },
       },
     },
   },
@@ -2455,6 +2513,7 @@ export const fieldGroups = {
         hitPoints: {
           type: 'string',
           title: 'Hit points per level',
+          description: 'How a level beyond the first adds hit points in the character builder: roll the hit die, take its average, or either.',
           enum: ['either', 'average', 'roll'],
           default: 'either',
         },

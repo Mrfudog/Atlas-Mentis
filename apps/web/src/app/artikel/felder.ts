@@ -259,3 +259,28 @@ export function tabelleAlsText(spalten: unknown, zeilen: Tabellenzeile[]): strin
     ...zeilen.map((z) => zeile(z.cells.map(zelle))),
   ].join('\n');
 }
+
+/** Steht in diesem Wert etwas? Ein leeres Wort, eine leere Liste, ein
+ *  leeres Objekt und ein nicht gesetztes Häkchen zählen nicht. */
+export function hatWert(wert: unknown): boolean {
+  if (wert === null || wert === undefined || wert === '' || wert === false) return false;
+  if (Array.isArray(wert)) return wert.length > 0;
+  if (typeof wert === 'object') return Object.keys(wert).length > 0;
+  return true;
+}
+
+/**
+ * **Steht das Feld beim Bearbeiten gleich da** (T-195)? Pflichtfelder,
+ * Felder mit Wert und die, die das Register vorn haben will (`prominent`,
+ * `alwaysEdit`). Alles andere bleibt erreichbar, über „+ Add field“ — eine
+ * Maske mit vierzig leeren Eingaben versteckt die fünf, um die es geht.
+ *
+ * **Die Vorgabe ist kein Wert**: was beim Anlegen aus `default` kam
+ * (`deathFail: 0`, `audience: public`), hat niemand eingetragen. Zählte
+ * es, stünden an jeder neuen Kreatur drei Nullen da.
+ */
+export function stehtDa(p: PropertySchema | undefined, wert: unknown, pflicht: boolean): boolean {
+  if (pflicht || p?.prominent || p?.alwaysEdit) return true;
+  if (p?.default !== undefined && JSON.stringify(p.default) === JSON.stringify(wert)) return false;
+  return hatWert(wert);
+}
