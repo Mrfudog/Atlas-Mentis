@@ -119,20 +119,18 @@ describe('the lists say what a layer that is off hides', () => {
     const { rufe } = await aufbau();
     const admin = (await rufe('Admin', 'GET', '/api/list?type=Rule')).json();
     expect(namen(admin)).toEqual(['r_a', 'r_frei']);
+    /* Eine Zahl, keine Ebenen (T-207): welche, steht an der Kampagne. */
     expect(admin.unactivated).toEqual({
       campaign: { id: 'camp_a', name: 'Aus Nebel wacht' },
       total: 4,
-      layers: [
-        { id: 'ly_5e', name: 'D&D 5e (2014)', count: 3, canActivate: true },
-        { id: 'ly_b', name: 'Runde B', count: 1, canActivate: true },
-      ],
+      canManage: true,
     });
-    /* Die Leitung schaltet 5e.tools auf, nicht die Ebene der anderen Runde. */
     const basil = (await rufe('Basil', 'GET', '/api/list?type=Rule')).json();
-    expect(basil.unactivated.layers.map((l: { canActivate: boolean }) => l.canActivate)).toEqual([true, false]);
+    expect(basil.unactivated.canManage).toBe(true);
+    expect((await rufe('Mira', 'GET', '/api/list?type=Rule')).json().unactivated.canManage).toBe(false);
     const sela = (await rufe('Sela', 'GET', '/api/list?type=Rule')).json();
     expect(sela.unactivated.total).toBe(4);
-    expect(sela.unactivated.layers.every((l: { canActivate: boolean }) => !l.canActivate)).toBe(true);
+    expect(sela.unactivated.canManage).toBe(false);
   });
 
   it('follows the filters of the page and stays away from a lookup by ids', async () => {
@@ -141,6 +139,66 @@ describe('the lists say what a layer that is off hides', () => {
     expect(such.unactivated.total).toBe(1);
     expect((await rufe('Admin', 'GET', '/api/list?q=nichts-dergleichen')).json().unactivated).toBeUndefined();
     expect((await rufe('Admin', 'GET', '/api/list?ids=r_a')).json().unactivated).toBeUndefined();
+  });
+});
+
+describe('what is not in play is not named (T-207)', () => {
+  /* Ein Artikel in der Kampagnenebene und im nicht aufgeschalteten 5e.tools. */
+  async function mitZweien() {
+    const a = await aufbau();
+    const r = regel('r_beide', 7, 'ly_a');
+    r.relations!.push({ id: 'r_beide_5e', type: 'inLayer', to: 'ly_5e', props: {} });
+    await a.repo.putEntity(r);
+    return a;
+  }
+
+  it('lists only layers the campaign puts in play — for every account, the admin included', async () => {
+    const { rufe } = await mitZweien();
+    for (const wer of ['Admin', 'Basil', 'Sela']) {
+      const l = (await rufe(wer, 'GET', '/api/list?type=Layer')).json();
+      expect(namen(l)).toEqual(['ly_a']);
+    }
+    const alle = (await rufe('Basil', 'GET', '/api/list')).json();
+    expect(alle.facets.layers.map((x: { id: string }) => x.id)).not.toContain('ly_5e');
+    const beide = alle.rows.find((z: { id: string }) => z.id === 'r_beide');
+    expect(beide.layers).toEqual(['Runde A']);
+  });
+
+  it('keeps every layer for the workbench, but only for admin and GM', async () => {
+    const { rufe } = await mitZweien();
+    expect(namen((await rufe('Admin', 'GET', '/api/list?type=Layer&allLayers=1')).json())).toEqual(['ly_5e', 'ly_a', 'ly_b']);
+    expect(namen((await rufe('Mira', 'GET', '/api/list?type=Layer&allLayers=1')).json())).toEqual(['ly_5e', 'ly_a', 'ly_b']);
+    expect(namen((await rufe('Sela', 'GET', '/api/list?type=Layer&allLayers=1')).json())).toEqual(['ly_a']);
+  });
+
+  it('finds no layer that is off in the search, the sources or the facets', async () => {
+    const { rufe, repo } = await mitZweien();
+    for (const id of ['ly_5e', 'ly_a']) {
+      const l = (await repo.getEntity(id))!;
+      await repo.putEntity({ ...l, components: { ...l.components, Layer: { ...(l.components!['Layer'] as object), abbreviation: id === 'ly_5e' ? 'PHB' : 'RA' } } });
+    }
+    const such = (await rufe('Basil', 'GET', '/api/search?q=r')).json();
+    expect(such.facets.layers.map((x: { id: string }) => x.id)).not.toContain('ly_5e');
+    expect(such.rows.find((z: { id: string }) => z.id === 'r_beide').layers).toEqual(['Runde A']);
+    expect((await rufe('Basil', 'GET', '/api/search?q=D%26D')).json().rows).toEqual([]);
+    expect(Object.keys((await rufe('Basil', 'GET', '/api/sources')).json().sources)).toEqual(['RA']);
+  });
+
+  it('names only layers in play at the article and its versions', async () => {
+    const { rufe } = await mitZweien();
+    const e = (await rufe('Basil', 'GET', '/api/entities/r_beide')).json();
+    expect(e.refs.names).toEqual({ ly_a: 'Runde A' });
+    const v = (await rufe('Basil', 'GET', '/api/entities/r_beide/versions')).json();
+    expect(v.layers.map((x: { id: string }) => x.id)).toEqual(['ly_a']);
+  });
+
+  it('names a compare layer to whom sees compare layers', async () => {
+    const { rufe } = await mitZweien();
+    expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/compare', { layers: ['ly_5e'] })).statusCode).toBe(200);
+    expect(namen((await rufe('Basil', 'GET', '/api/list?type=Layer')).json())).toEqual(['ly_5e', 'ly_a']);
+    expect((await rufe('Basil', 'GET', '/api/entities/r_beide')).json().refs.names).toEqual({ ly_a: 'Runde A', ly_5e: 'D&D 5e (2014)' });
+    /* Die Spielenden sehen Vergleichsebenen nur, wenn die Kampagne es sagt. */
+    expect(namen((await rufe('Sela', 'GET', '/api/list?type=Layer')).json())).toEqual(['ly_a']);
   });
 });
 
@@ -306,6 +364,9 @@ describe('the campaign page switches layers on', () => {
        Homebrew ist nur, was ein Konto oder eine Kampagne hier anlegte. */
     expect(zeile(l, 'e5_book_mm')).toMatchObject({ publisher: 'Unassigned', publisherWhy: 'Not part of any publisher group.' });
     expect(zeile(l, 'ly_a')).toMatchObject({ publisher: 'Homebrew' });
+    /* Kürzel nur aus Ebenen im Spiel (T-207): erst aufgeschaltet stehen sie da. */
+    expect((await rufe('Sela', 'GET', '/api/sources')).json().publishers).toEqual({});
+    await rufe('Basil', 'POST', '/api/campaigns/camp_a/layers/e5_group_core');
     const q = (await rufe('Sela', 'GET', '/api/sources')).json();
     expect(q.publishers).toMatchObject({ PLA: 'Official', MON: 'Unassigned' });
   });
@@ -334,6 +395,7 @@ describe('the campaign page switches layers on', () => {
 
   it('explains every source abbreviation the viewer may see (T-088)', async () => {
     const { rufe } = await mitGruppen();
+    expect((await rufe('Basil', 'POST', '/api/campaigns/camp_a/layers/e5_group_core')).statusCode).toBe(200);
     const q = (await rufe('Sela', 'GET', '/api/sources')).json();
     expect(q.sources).toMatchObject({ PLA: "Player's Handbook", MON: 'Monster Manual' });
   });
@@ -351,7 +413,7 @@ describe('the campaign page switches layers on', () => {
     ]);
     const liste = (await rufe('Basil', 'GET', '/api/list?type=Rule')).json();
     expect(namen(liste)).toEqual(['r_5e_1', 'r_5e_2', 'r_5e_3', 'r_a', 'r_frei']);
-    expect(liste.unactivated.layers.map((l: { id: string }) => l.id)).toEqual(['ly_b']);
+    expect(liste.unactivated.total).toBe(1);
   });
 
   it('writes the whole stack in order, and only who manages', async () => {

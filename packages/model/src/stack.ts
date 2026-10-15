@@ -406,6 +406,26 @@ export function compareLayers(entities: Map<EntityId, Entity>, campaign: Entity 
     .filter((e): e is Entity => !!e);
 }
 
+/**
+ * **Welche Ebenen überhaupt genannt werden** (T-207): was die Kampagne
+ * aufschaltet, samt Gruppen und ihren Mitgliedern (`resolvedStack`), und —
+ * wer sie sehen darf — ihre Vergleichsebenen. Eine Ebene, die nicht
+ * aufgeschaltet ist, erscheint weder als Artikel noch als Fassung,
+ * Filteroption oder Zählung; ein- und ausgeschaltet wird an der Kampagne.
+ * `null` ohne Kampagne: dann gibt es keinen Stapel, und alles steht da.
+ */
+export function shownLayers(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity | null,
+  withCompare: boolean,
+  members?: Map<EntityId, EntityId[]>,
+): Set<EntityId> | null {
+  if (!campaign) return null;
+  const ids = new Set(resolvedStack(entities, campaign, members).map((l) => l.id));
+  if (withCompare) for (const l of compareLayers(entities, campaign)) ids.add(l.id);
+  return ids;
+}
+
 /** Die Auswahl je Vergleichsebene (T-105), wie an ihrer Kante. */
 function compareFilters(campaign: Entity | null): Map<EntityId, LayerFilter | null> {
   return new Map(kanten(campaign ?? undefined, ACTIVATES_RELATION).filter(isCompareEdge).map((r) => [r.to, filterOf(r)]));

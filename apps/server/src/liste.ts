@@ -106,7 +106,13 @@ export function buildListIndex(
   visible: Entity[],
   /** Der Rang der obersten Spielebene je Artikel (`playStack().rank`). */
   rank: (e: Entity) => number = () => 0,
+  /** **Die Ebenen, die genannt werden** (T-207, `shownLayers`): eine andere
+   *  steht weder als Zeile noch als Name, Facette oder Ebene einer Zeile da.
+   *  `null`: alle. */
+  shown: ReadonlySet<string> | null = null,
 ): ListIndex {
+  const genannt = (e: Entity) => !shown || primaryInterface(e) !== 'Layer' || shown.has(e.id);
+  visible = shown ? visible.filter(genannt) : visible;
   /* Fassungen derselben Sache (T-092): einmal über das Gesiebte. */
   const fassungen = versionGroups(visible);
   const names = new Map<string, string>();
@@ -192,7 +198,9 @@ export function buildListIndex(
       sortName: name.toLowerCase(),
       type,
       area: art.area,
-      layers: (e.relations ?? []).filter((r) => r.type === LAYER_RELATION).map((r) => r.to),
+      layers: (e.relations ?? [])
+        .filter((r) => r.type === LAYER_RELATION && (!shown || shown.has(r.to)))
+        .map((r) => r.to),
       source: [quelle?.publication, quelle?.page ? `p. ${quelle.page}` : ''].filter(Boolean).join(' '),
       status: String((e.components?.['Status'] as { status?: unknown } | undefined)?.status ?? ''),
       such: [name, ...aliases, typeof ident.cover === 'string' ? ident.cover : '', articleId(e), e.id]
