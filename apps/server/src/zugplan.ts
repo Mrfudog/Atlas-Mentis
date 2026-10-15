@@ -52,8 +52,9 @@ import {
   mapRulesOf,
   mapSettings,
   movedTokens,
-  moveRevealRadius,
-  revealArea,
+  revealAlong,
+  mapWalls,
+  wallsClear,
   fogOn,
   opportunityAttacks,
   PARTICIPATES,
@@ -280,23 +281,17 @@ export function zugSperre(user: User | null, alle: Entity[], vorher: Entity | un
 }
 
 /**
- * **Den Weg eines Zuges aufdecken** (T-204, REQ-139): ein Pinselstrich
- * entlang der Felder (sonst vom Token zum Ziel), zwei Felder breit, mit
- * `for` auf die Figur — gilt der Nebel je Figur, sieht ihn nur sie (und
- * ihre Gruppe).
+ * **Den Weg eines Zuges aufdecken** (T-204, REQ-139): entlang der Felder
+ * (sonst vom Token zum Ziel), mit `for` auf die Figur — gilt der Nebel je
+ * Figur, sieht ihn nur sie (und ihre Gruppe). Hält auf der Karte etwas den
+ * Blick, deckt jeder Punkt auf, was man von dort sieht (T-118,
+ * `revealAlong`); sonst ein Pinselstrich zwei Felder breit.
  */
 export function wegAufdecken(karte: Entity, figur: string, s: { path: { x: number; y: number }[]; to?: { x: number; y: number } }, von: { x: number; y: number }, nat: { w: number; h: number }): Entity {
   const einst = mapSettings(karte);
   const geo = s.path.length > 1 ? gridGeometry(einst, nat) : null;
   const pts = geo ? s.path.map((c) => cellPoint(geo, c)) : [von, ...(s.to ? [s.to] : [])];
-  return revealArea(karte, {
-    id: `s-${randomUUID()}`,
-    kind: 'path',
-    pts: pts.map((p) => [p.x, p.y] as [number, number]),
-    r: moveRevealRadius(einst, nat),
-    ar: nat.w > 0 ? nat.h / nat.w : 1,
-    for: figur,
-  });
+  return revealAlong(karte, pts, nat, () => `s-${randomUUID()}`, figur);
 }
 
 export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
@@ -476,6 +471,18 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const schritt = cleanStep({ id: 's1', kind: 'move', path: b.path, feet: b.feet, to }, 0) ?? { id: 's1', kind: 'move' as const, path: [], feet: gerade, to };
       if (schritt.kind !== 'move') return reply.code(422).send({ error: 'Kein Zug' });
       const regeln = mapRulesOf(kampagne, roheKarte);
+      /* **Was den Schritt hält, hält ihn** (T-118): eine Wand, eine
+         geschlossene Tür, ein Fenster, ein Abgrund zwischen Token und Ziel.
+         Geprüft wird der Weg, den der Zug nimmt — die Felder, sonst die
+         Gerade. Die Leitung zieht weiter durch alles. */
+      if (!leitet) {
+        const ar = nat && nat.w > 0 ? nat.h / nat.w : 1;
+        const sperren = mapWalls(roheKarte);
+        const punkte = geo && schritt.path.length > 1 ? schritt.path.map((c) => cellPoint(geo, c)) : [{ x: marker.x, y: marker.y }, to];
+        for (let i = 1; i < punkte.length; i++) {
+          if (!wallsClear(sperren, punkte[i - 1]!, punkte[i]!, ar, 'move')) return reply.code(422).send({ error: 'A wall is in the way.' });
+        }
+      }
 
       if (!leitet && regeln.moves === 'confirm') {
         /* Ein offener Vorschlag derselben Figur, der nur zieht, wird ersetzt —

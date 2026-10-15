@@ -52,38 +52,76 @@ echten Stapel tut es `redactEntity`, bevor es losgeschickt wird.
 
 ## Sperren: Wand, Tür, Fenster, Abgrund
 
-Eine Liste, zwei Fragen. `Map.walls` hiess einmal „Sichtblocker“ und
-war es auch — jede Linie hielt den Blick. Jetzt trägt jede Linie ihre Art:
+Eine Liste, drei Fragen. `Map.walls` hiess einmal „Sichtblocker“ und
+war es auch — jede Linie hielt den Blick. Jetzt trägt jede Linie ihre Art
+(T-118, `packages/model/src/walls.ts`):
 
-| Art | Blick | Schritt |
-|---|---|---|
-| `wall` | hält | hält |
-| `door`, zu | hält | hält |
-| `door`, offen | lässt durch | lässt durch |
-| `window` | lässt durch | hält |
-| `chasm` | lässt durch | hält |
+| Art (`kind`) | in der Leiste | Schritt | Blick | Licht |
+|---|---|---|---|---|
+| `wall` | Wall | hält | hält | hält |
+| `door`, zu oder verschlossen | Door | hält | hält | hält |
+| `door`, offen | Door | — | — | — |
+| `secret` | Secret door | wie eine Tür; für Spielende eine Wand, bis sie offen ist | | |
+| `window` | Window | hält | — | — |
+| `chasm` | Obstacle | hält | — | — |
+| `invisible` | Invisible wall | hält | — | — |
 
-Die Art steht **an der Sperre** (`kind`) und nicht in vier Listen, die
+Die Art steht **an der Sperre** (`kind`) und nicht in Listen, die
 dasselbe meinen: wer eine Tür zur Wand macht, ändert ein Feld und nicht den
-Ort des Eintrags. Eine Linie ohne `kind` ist eine Wand — was vor den Sorten
-gezeichnet wurde, bleibt, was es war.
+Ort des Eintrags. Was eine Art hält, ist eine Zeile in `WALL_KINDS`, und
+jede Rechnung fragt die Zeile (`wallBlocks`). Eine Linie ohne `kind` ist
+eine Wand — was vor den Sorten gezeichnet wurde, bleibt, was es war; der
+alte Schalter `open: true` des Prototyps wird als `state: 'open'` gelesen.
 
-Ausgewertet wird das an zwei Stellen: `mapWalls` gibt, was den Blick hält,
-und füttert damit das Sichtbarkeitspolygon; `mapBarriers` gibt, was den
-Schritt hält. Die Bewegung rechnet noch niemand — es gibt kein Zugsystem.
-Die Abfrage steht trotzdem, weil eine Tür, die man erst beim Bewegungssystem
-als Tür erfasst, bis dahin als Wand gezeichnet wird und die Karte zweimal
-gebaut werden muss.
+```json
+{ "id": "w-1", "kind": "door", "x1": 0.5, "y1": 0.4, "x2": 0.5, "y2": 0.5, "state": "closed" }
+```
 
-**Gezeichnet werden die Sperren bei jedem Licht**, nicht nur im Dunkeln.
-Wer eine Battlemap baut, baut sie am hellen Tag; wären die Wände nur im
-Finstern zu sehen, müsste man zum Bauen das Licht ausmachen. Zu sehen sind
-sie nur für die Leitung — für alle anderen sind sie der Grund, warum es
-dahinter dunkel ist, und sonst nichts.
+**Gezeichnet werden die Sperren bei jedem Licht**, nicht nur im Dunkeln —
+für die Leitung, nach Art gefärbt; was nur den Schritt hält, gestrichelt.
+Spielende sehen keine Linien, nur die **Türen** als Knopf an ihrer Mitte.
+Der Server schickt ihnen nur die Sperren am Rand des Aufgedeckten, eine
+geschlossene Geheimtür als Wand und eine verschlossene als zu
+(`redactWalls`) — dass sie klemmt, merkt man beim Versuch.
 
-Am Werkzeug: **ziehen baut, klicken schaltet.** Ein Klick neben eine Tür
-macht sie auf oder zu. Eine Tür, die man nur über ein Menü aufbekommt,
-bleibt am Tisch zu.
+Am Werkzeug (Gruppe *Walls*, W): **Draw** tippt Punkt um Punkt, rastet an
+den Gitterecken ein, Enter oder derselbe Punkt noch einmal beendet; **Set
+kind** macht eine angetippte Sperre zur gewählten Art, **Lock** schliesst
+eine Tür ab oder auf, **Erase** nimmt eine weg. Geöffnet wird in der
+Auswahl: ein Klick auf die Tür. Eine Tür, die man nur über ein Menü
+aufbekommt, bleibt am Tisch zu.
+
+### Türen am Tisch
+
+`POST /api/maps/:id/door` `{wall, state, nat}` schaltet eine Tür. Die
+Leitung schaltet jede in jeden Zustand. Spielende öffnen und schliessen,
+wenn die Kampagne es sagt (`Campaign.doors: 'players'`, Vorgabe), eine Tür,
+die ihre Karte als Tür trägt, mit einer eigenen Figur höchstens
+anderthalb Felder davon.
+
+### Sichtlinie
+
+Das **Sichtpolygon** (`visionPolygon`) rechnet von einem Punkt aus, bis die
+nächste Sperre den Blick hält — mit Strahlen auf jede Ecke einer Strecke
+(knapp davor, genau, knapp dahinter) in einem Raum mit gleichen Achsen.
+Aufgedeckt wird damit:
+
+- **beim Zug** (wenn `revealOnMove` gilt): von den Punkten des Weges aus,
+  höchstens sechs, der letzte immer (`revealAlong`) — als Form `poly` mit
+  `for` auf die Figur. Ohne Sperren auf der Karte bleibt es der
+  Pinselstrich zwei Felder breit: ohne Wand reichte der Blick über die
+  ganze Karte.
+- **beim Öffnen einer Tür**: für jede Figur der Gruppe, die die Tür sieht,
+  was sie jetzt dahinter sieht (`tuerAufdecken`).
+
+Ohne Token, das zieht, deckt nichts von selbst auf — dann deckt die
+Leitung von Hand auf. **Licht und Dunkelsicht** zählen noch nicht: der
+Blick reicht bis zur nächsten Wand. Das kommt mit `marker.light/dim`
+(REQ-140) als eigener Schritt; die Spalte *Licht* steht schon da.
+
+Ein Zug einer Spielerin durch eine Sperre, die den Schritt hält, wird
+abgelehnt („A wall is in the way.“); der Zugplan rechnet dieselben Sperren
+als Wände (`planGrid`). Die Leitung zieht weiter durch alles.
 
 ---
 
@@ -411,12 +449,12 @@ abziehen, Initiative und „wer ist dran" als Bedingung, Hex-Raster, Wände
 
 ## Was noch fehlt
 
-- **Licht, Sperren und Zonen** in der Seite (REQ-140, 193, 208) — der
-  Prototyp kann sie, die Seite zeichnet sie noch nicht.
+- **Licht und Zonen** in der Seite (REQ-140, 193, 208) — der Prototyp
+  kann sie, die Seite zeichnet sie noch nicht. Sperren und Sichtlinie
+  stehen seit T-118.
 - **Rahmen aufziehen** und Marker einstellen (Art, Grösse, Drehung,
   versteckt) mit der Maus; heute über die Kanten im Bearbeiten.
 - **Kacheln** für grosse Karten (REQ-138, `Map.tiles`).
-- **Bewegung**, die `mapBarriers` auch auswertet.
 - **Mehrere Tokens auf einmal** verschieben.
 - **Spielende ziehen die eigene Figur** (E-040), **Lebensdauer** der
   Spiel-Tokens (E-039).

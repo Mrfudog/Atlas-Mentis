@@ -286,6 +286,18 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
+    /* Türen auf der Karte (T-118), gelesen über `mapRulesOf`. */
+    key: 'doors',
+    sort: 'map',
+    label: 'Doors',
+    does: 'Who opens and closes doors on the map. Locked doors stay shut for players either way; the GM opens everything.',
+    source: { field: 'doors' },
+    variants: [
+      { key: 'players', label: 'Players', does: 'A player taps a door next to their own token to open or close it.' },
+      { key: 'gm', label: 'GM only', does: 'Only the GM opens and closes doors.' },
+    ],
+  },
+  {
     key: 'playerRolls',
     sort: 'table',
     label: 'Player rolls visible to',
@@ -424,6 +436,8 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return mapRulesOf(campaign).moves;
     case 'revealOnMove':
       return mapRulesOf(campaign).revealOnMove;
+    case 'doors':
+      return mapRulesOf(campaign).doors;
     default: {
       const roh = campaign?.components?.['Campaign']?.[feld];
       /* Die übrigen Vorgaben stehen am Register (`CampaignInfo`): Talente ja, Würfe für den Tisch. */

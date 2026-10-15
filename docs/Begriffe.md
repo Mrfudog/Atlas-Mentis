@@ -466,6 +466,22 @@ wer was gesehen hat. Ob ein Zug aufdeckt, steht an der Kampagne und darf
 an einer Karte anders stehen — das Häkchen an der Karte war ein Zustand
 im Browser, der beim Neuladen vergass, was die Leitung wollte.
 
+**Was eine Sperre hält, ist eine Zeile und keine Liste je Art** (T-118).
+Eine Wand hält Schritt, Blick und Licht, ein Fenster nur den Schritt, eine
+offene Tür nichts. Das steht in `WALL_KINDS` je Art als drei Häkchen —
+Bewegung, Sicht, Licht — und jede Rechnung fragt die Häkchen, nicht das
+Wort: das Sichtpolygon nimmt, was die Sicht hält, der Zugplan, was den
+Schritt hält. Eine neue Art (ein Vorhang, der nur die Sicht hält) ist
+dann eine Zeile, und keine Abfrage muss sie kennen. Die **Geheimtür** ist
+eine Tür, die der Server den Spielenden als Wand schickt, bis sie offen
+ist — nicht eine Wand mit einem Vermerk, den die Seite verbergen müsste.
+
+**Aufgedeckt wird, was man sieht, und gespeichert, was man gesehen hat.**
+Das Sichtpolygon wird beim Zug gerechnet und als Form in `Map.reveal`
+geschrieben; es gibt keine zweite Liste „gerade sichtbar“. Was eine Figur
+einmal gesehen hat, bleibt aufgedeckt — so wie am Tisch ein Raum, den man
+verlassen hat, nicht wieder aus der Erinnerung fällt.
+
 **Wo ein Bild verwendet wird**, steht nirgends — es ist die Gegenrichtung
 der Verweise, und die ist eine Abfrage. Sie zeigt nur, was man sehen
 darf: „wird noch an drei Orten gezeigt" verriete drei Artikel, auch ohne

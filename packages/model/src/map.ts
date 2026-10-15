@@ -16,6 +16,7 @@
 import type { Pt } from './sight.js';
 import type { Entity, EntityId, Relation } from './types.js';
 import { initiativeOrder, PARTICIPATES, type ParticipantProps } from './initiative.js';
+import { hasSightWalls, mapWalls, redactWalls, sightPolygon } from './walls.js';
 
 export const MAP_TYPE = 'Map';
 /** Die Karte, die `MapInfo` trägt — benannt nach der Art, die die Felder erklärt. */
@@ -912,19 +913,22 @@ export function setFog(e: Entity, an: boolean): Entity {
 export type FogMode = 'party' | 'player';
 /** Wie Spielende ausserhalb eines Kampfes ziehen (T-204, `Campaign.moves`). */
 export type MoveMode = 'free' | 'confirm';
+/** Wer Türen öffnet (T-118, `Campaign.doors`): Spielende an ihrer Figur, oder nur die Leitung. */
+export type DoorMode = 'players' | 'gm';
 
 export interface MapRules {
   fog: FogMode;
   moves: MoveMode;
   /** Deckt ein Zug den Weg auf? Die Karte darf es überschreiben (`Map.revealOnMove`). */
   revealOnMove: boolean;
+  doors: DoorMode;
 }
 
 /**
  * **Die Kartenregeln einer Kampagne** (T-204, Regeloptionen T-190): Nebel
  * je Gruppe oder je Figur, Züge frei oder mit Bestätigung, Aufdecken beim
- * Zug. Ohne Angabe gilt, was vorher galt: ein Nebel für alle, frei ziehen,
- * nicht aufdecken. `revealOnMove` an der Karte schlägt die Kampagne.
+ * Zug, wer Türen öffnet (T-118). Ohne Angabe gilt, was vorher galt: ein
+ * Nebel für alle, frei ziehen, nicht aufdecken; Türen öffnen Spielende. `revealOnMove` an der Karte schlägt die Kampagne.
  */
 export function mapRulesOf(campaign: Entity | null | undefined, map?: Entity | null): MapRules {
   const k = (campaign?.components?.['Campaign'] ?? {}) as Record<string, unknown>;
@@ -933,12 +937,51 @@ export function mapRulesOf(campaign: Entity | null | undefined, map?: Entity | n
     fog: k['fog'] === 'player' ? 'player' : 'party',
     moves: k['moves'] === 'confirm' ? 'confirm' : 'free',
     revealOnMove: typeof eigen === 'boolean' ? eigen : k['revealOnMove'] === true,
+    doors: k['doors'] === 'gm' ? 'gm' : 'players',
   };
 }
 
 /** Wie breit ein Zug aufdeckt, in Anteilen der Breite: zwei Felder (wie der Pinsel vorgegeben). */
 export function moveRevealRadius(settings: MapSettings, nat: Size): number {
   return nat.w > 0 ? settings.gridSize / nat.w : 0.03;
+}
+
+/**
+ * **Aufdecken nach Sichtlinie** (T-118): was man von `from` aus sieht, bis
+ * eine Sperre den Blick hält — als Form `poly`, mit `for` auf die Figur.
+ */
+export function sightReveal(map: Entity, from: Pt, nat: Size, id: string, fuer?: EntityId | null): Entity {
+  const ar = nat.w > 0 ? nat.h / nat.w : 1;
+  const pts = sightPolygon(mapWalls(map), from, ar);
+  if (pts.length < 3) return map;
+  return revealArea(map, { id, kind: 'poly', pts, ...(fuer ? { for: fuer } : {}) });
+}
+
+/**
+ * **Einen Weg aufdecken** (T-204, T-118): hält auf der Karte etwas den
+ * Blick, deckt jeder Punkt des Weges auf, was man von dort sieht
+ * (`sightReveal`) — höchstens sechs Punkte, der letzte immer, damit ein
+ * langer Gang nicht hundert Polygone in `Map.reveal` schreibt. Ohne
+ * Sperren bleibt es der Pinselstrich zwei Felder breit: ohne Wand reichte
+ * der Blick über die ganze Karte, und ein Schritt deckte alles auf.
+ */
+export function revealAlong(map: Entity, pts: readonly Pt[], nat: Size, newId: () => string, fuer?: EntityId | null): Entity {
+  if (!pts.length) return map;
+  if (!hasSightWalls(map)) {
+    return revealArea(map, {
+      id: newId(),
+      kind: 'path',
+      pts: pts.map((p) => [p.x, p.y] as [number, number]),
+      r: moveRevealRadius(mapSettings(map), nat),
+      ar: nat.w > 0 ? nat.h / nat.w : 1,
+      ...(fuer ? { for: fuer } : {}),
+    });
+  }
+  const schritt = Math.max(1, Math.ceil((pts.length - 1) / 5));
+  const proben = pts.filter((_, i) => i % schritt === 0 || i === pts.length - 1);
+  let neu = map;
+  for (const p of proben) neu = sightReveal(neu, p, nat, newId(), fuer);
+  return neu;
 }
 
 /**
@@ -977,6 +1020,8 @@ export function revealFor(map: Entity, fog: FogMode, own: (id: EntityId) => bool
  *   was `keep` nennt (die Figuren der Gruppe): wer im Dunkeln steht, steht
  *   trotzdem auf der Karte. Das Bild selbst geht ganz hinaus und wird im
  *   Browser zugedeckt (E-041).
+ * - **Die Sperren** (T-118): nur, was am Aufgedeckten liegt; eine
+ *   geschlossene Geheimtür ist eine Wand (`redactWalls`).
  *
  * Gefragt wird beim Lesen (D8); gespeichert bleibt die Karte, wie sie ist.
  */
@@ -1004,6 +1049,8 @@ export function redactMap(
     if (r.type === INSIDE_MAP_RELATION) return opts.sees(r.to);
     return true;
   });
+  /* Die Sperren (T-118): nur, was am Aufgedeckten liegt — `redactWalls`. */
+  map = redactWalls(map, (p) => nebel && !isRevealed(map, p));
   const components = { ...map.components };
   const karte = components[MAP_COMPONENT] as Record<string, unknown> | undefined;
   if (karte && Array.isArray(karte['sheets'])) {

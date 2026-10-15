@@ -1438,6 +1438,14 @@ export class Api {
   ): Promise<{ moved?: string; proposal?: TurnPlan }> {
     return this.call(`/api/maps/${encodeURIComponent(map)}/move`, { method: 'POST', body: JSON.stringify(body) });
   }
+  /**
+   * **Eine Tür schalten** (T-118): die Leitung jede, Spielende eine neben
+   * ihrer Figur, wenn die Kampagne es erlaubt. Der Server deckt auf, was
+   * man durch die offene Tür sieht.
+   */
+  door(map: string, body: { wall: string; state: 'open' | 'closed' | 'locked'; nat?: { w: number; h: number } }): Promise<{ wall: string; state: string }> {
+    return this.call(`/api/maps/${encodeURIComponent(map)}/door`, { method: 'POST', body: JSON.stringify(body) });
+  }
   /** Welche Karte auf dem Tisch liegt (`SessionState.activeMap`, T-115). */
   play(session?: string): Promise<Tisch> {
     return this.call<Tisch>(`/api/play${session ? `?session=${encodeURIComponent(session)}` : ''}`);
