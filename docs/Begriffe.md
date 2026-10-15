@@ -1122,6 +1122,19 @@ an** (`activates` mit `mode: 'off'`). Eigentum folgt der Gruppe nicht — wem
 eine Ebene gehört, sagt weiter nur, wer sie selbst aufschaltet; sonst
 machte eine geteilte Gruppe eine Kampagnenebene still gemeinsam.
 
+**Das Häkchen der Gruppe schaltet alles darin** (T-185, `groupSwitched`).
+Zuerst nahm „Gruppe aus" nur die Kante der Gruppe weg; Bücher, die einzeln
+aufgeschaltet oder abgeschaltet waren, blieben es. Die Leitung schaltete
+eine Gruppe aus und hatte danach wieder ihre alte Teilwahl, und „Core
+rules" mit drei einzeln aufgeschalteten Büchern zeigte „teilweise", weil
+das Häkchen die Kante der Gruppe las und nicht, was im Spiel ist. Jetzt
+liest das Häkchen den Stand der Bücher, und ein Klick macht ihn eindeutig:
+an heisst die Gruppe und keine Abschaltung darin, aus heisst keine Kante
+mehr darin — und wo eine andere Gruppe ein Buch trotzdem brächte, eine
+Abschaltung. „Aus" hiesse sonst „nur nicht über diese Gruppe", und das ist
+nicht, was ein leeres Häkchen sagt. Eine Teilwahl gibt es weiter, über die
+Häkchen am Buch.
+
 **Eine Ebene darf nur einen Teil bringen** (T-105, REQ-255). Die Leitung
 will aus einem Abenteuer die Gegenstände und Regeln, nicht dessen Orte, NSC
 und Begegnungen — die gehören in eine andere Geschichte. Die Artikel aus

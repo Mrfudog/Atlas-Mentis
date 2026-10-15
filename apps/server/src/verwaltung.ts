@@ -37,6 +37,7 @@ import {
   offLayers,
   resolvedStack,
   withOff,
+  groupSwitched,
   GROUP_RELATION,
   campaignsOf,
   currentCampaign,
@@ -437,8 +438,8 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   async function stapelSchreiben(
     request: FastifyRequest<{ Params: { c: string } }>,
     reply: FastifyReply,
-    neu: (alle: Map<string, Entity>, kampagne: Entity) => string[] | string,
-    abgeschaltet?: string[],
+    neu: (alle: Map<string, Entity>, kampagne: Entity) => string[] | string | { layers: string[]; off: string[] },
+    abgeschaltetVorgabe?: string[],
   ): Promise<unknown> {
     const user = await viewerOf(request);
     const c = request.params.c;
@@ -450,8 +451,10 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
       return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
     }
-    const ids = neu(alle, kampagne);
-    if (typeof ids === 'string') return nein(reply, 400, ids);
+    const roh = neu(alle, kampagne);
+    if (typeof roh === 'string') return nein(reply, 400, roh);
+    const ids = Array.isArray(roh) ? roh : roh.layers;
+    const abgeschaltet = Array.isArray(roh) ? abgeschaltetVorgabe : roh.off;
     const vorher = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
     const mitglieder = groupMembers(alle);
     const aktiv = activatingIndex(alle);
@@ -512,6 +515,21 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const bei = stapel.findIndex((x) => spez(x.layer) > eigene);
       ids.splice(bei < 0 ? ids.length : bei, 0, id);
       return ids;
+    }),
+  );
+
+  /**
+   * **Eine ganze Gruppe an oder aus** (T-185): `{ on }`. Alles darin geht
+   * mit, auch Bücher, die einzeln aufgeschaltet oder abgeschaltet waren —
+   * keine alte Teilwahl kommt zurück (`groupSwitched`).
+   */
+  app.put<{ Params: { c: string; layer: string }; Body: { on?: unknown } }>('/api/campaigns/:c/layers/:layer/group', (request, reply) =>
+    stapelSchreiben(request, reply, (alle, kampagne) => {
+      const on = request.body?.on;
+      if (typeof on !== 'boolean') return 'on: true oder false.';
+      const g = alle.get(request.params.layer);
+      if (!isGroupLayer(g)) return 'Keine Gruppe.';
+      return groupSwitched(alle, kampagne, g!.id, on);
     }),
   );
 
