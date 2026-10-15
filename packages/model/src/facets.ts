@@ -20,11 +20,17 @@
  * die eigene Art (`same`: Vorlage, Fassung).
  */
 
+import { EFFECT_TARGETS, effectsOf } from './effects.js';
 import { fieldTitle, fieldsOf, typeChain, type TypedField } from './entity.js';
 import type { Entity, PropertySchema, RelationDef, Registry } from './types.js';
 import { LAYER_RELATION } from './visibility.js';
 
-export type FacetKind = 'enum' | 'bool' | 'range' | 'link' | 'auto';
+/**
+ * `effect` und `requirement` (T-180) sind Häkchen über abgeleitete Wörter:
+ * die Wirkungen eines Artikels (`effectKeys`) und die Bedingungen einer
+ * Voraussetzung (`requirementKeys`) — gesagt mit `facet: {as}` am Feld.
+ */
+export type FacetKind = 'enum' | 'bool' | 'range' | 'link' | 'auto' | 'effect' | 'requirement';
 
 export interface FacetDef {
   /** `Typ.feld` für ein Feld, `out.kante` / `in.kante` für eine Kante. */
@@ -86,7 +92,7 @@ export function facetsFor(
     const hint = f.prop.facet;
     if (hint === false) continue;
     const ref = `${f.type}.${f.key}`;
-    const kind = feldArt(f.prop, spalten.has(ref));
+    const kind = (hint && hint.as) || feldArt(f.prop, spalten.has(ref));
     if (!kind) continue;
     raus.push({
       ref,
@@ -153,6 +159,40 @@ export function facetNumber(v: unknown): number {
 }
 
 /**
+ * **Die Wirkungen als Wörter** (T-180): ein gewährtes Wort mit seinem Ziel
+ * (`resist:fire`, `conditionImmune:poisoned`), eine Zahl nur das Ziel und
+ * die Art (`add:ac`, `set:ability.str`) — „gibt einen Bonus auf die RK"
+ * ist die Frage, nicht „+1 oder +2".
+ */
+export function effectKeys(e: Entity): string[] {
+  const raus = new Set<string>();
+  for (const x of effectsOf(e)) {
+    if (x.op === 'grant') {
+      const w = String(x.value ?? '').trim().toLowerCase();
+      if (w) raus.add(`${x.target}:${w}`);
+    } else raus.add(`${x.op}:${x.target}`);
+  }
+  return [...raus];
+}
+
+const WIRKUNG: Record<string, string> = {
+  resist: 'Resistance',
+  immune: 'Immunity',
+  vulnerable: 'Vulnerability',
+  conditionImmune: 'Condition immunity',
+  prof: 'Proficiency',
+};
+
+/** Die Beschriftung eines Werts aus `effectKeys`. */
+export function effectLabel(key: string): string {
+  const [a, ...rest] = key.split(':');
+  const b = rest.join(':');
+  if (a === 'add') return `Bonus: ${EFFECT_TARGETS[b] ?? b}`;
+  if (a === 'set') return `Sets ${EFFECT_TARGETS[b] ?? b}`;
+  return `${WIRKUNG[a!] ?? EFFECT_TARGETS[a!] ?? a}: ${b}`;
+}
+
+/**
  * Die Werte eines Artikels für eine **Feld**-Facette, als Wörter. Ein
  * Schalter ohne Wert zählt als „nein": ein Zauber ohne Häkchen bei
  * Konzentration braucht keine. Kanten rechnet der Aufrufer, denn die
@@ -160,6 +200,7 @@ export function facetNumber(v: unknown): number {
  */
 export function facetFieldValues(def: FacetDef, e: Pick<Entity, 'components'>): string[] {
   if (!def.field) return [];
+  if (def.kind === 'effect') return effectKeys(e as Entity);
   const v = (e.components?.[def.field.type] as Record<string, unknown> | undefined)?.[def.field.key];
   if (def.kind === 'bool') return [v === true ? 'true' : 'false'];
   if (v === undefined || v === null || v === '') return [];

@@ -9,6 +9,14 @@
       "link": "/rules"
     },
     {
+      "id": "2026-10-15-usable-by",
+      "date": "2026-10-15",
+      "title": "Filter by prerequisite and effect, and show what a character can use",
+      "text": "Feats, items and classes filter by their prerequisite (level, ability score, spellcasting, proficiency, class, ancestry) and items and feats by their effects (resistance, bonus to AC …). “Usable by” in the sidebar keeps what a character meets; what can’t be checked stays, marked “?”. The search filters the same way once one type is picked.",
+      "area": "Rules",
+      "link": "/rules?type=Feat"
+    },
+    {
       "id": "2026-10-15-map-table-rules",
       "date": "2026-10-15",
       "title": "Fog per character, moves the GM confirms, and reveal along moves as a campaign rule",

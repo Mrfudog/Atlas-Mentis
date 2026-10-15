@@ -26,7 +26,9 @@ import {
   assetMeta,
   type AssetMeta,
   areaOf,
+  allOf,
   commonFacets,
+  effectLabel,
   facetFieldValues,
   facetNumber,
   facetsFor,
@@ -39,12 +41,17 @@ import {
   LAYER_RELATION,
   layoutFor,
   listColumns,
+  meetsRequirement,
+  parseRequirement,
   primaryInterface,
+  requirementContext,
+  requirementKeys,
+  requirementLabel,
   tagsOf,
   typeChain,
   versionGroups,
 } from '@nw/model';
-import type { Entity, FacetDef, LayoutElement, PropertySchema, Registry } from '@nw/model';
+import type { CharacterProfile, Entity, FacetDef, LayoutElement, PropertySchema, Registry, Requirement, RequirementContext } from '@nw/model';
 
 /** Ein Artikel ohne Ebenenkante steht in der Liste unter „keine Ebene". */
 export const NO_LAYER = '∅';
@@ -80,6 +87,8 @@ interface IndexZeile {
   tags: string[];
   /** Die Werte je Facette seiner Art (T-174): Wörter, Zahlen als Text, Ids. */
   fv: Record<string, string[]>;
+  /** Seine Voraussetzung in prüfbarer Form (T-180), wenn seine Art eine nennt. */
+  req?: Requirement;
   /** Die Kanten des Artikels (geteilt, nicht kopiert) — für `rel=`. */
   relations: NonNullable<Entity['relations']>;
   /** Die Gruppe seiner Fassungen (T-092), wenn er welche hat. */
@@ -124,6 +133,9 @@ export function buildListIndex(
   /* **Kanten von drüben** (T-174): die Gegenrichtung ist eine Abfrage —
      einmal über das Gesiebte, also zählt nur, wessen Quelle man sieht. */
   const ein = new Map<string, { type: string; from: string }[]>();
+  /* Die Namen, gegen die eine Voraussetzung gelesen wird (T-180): nur, was
+     dieser Betrachter sieht. */
+  const ctx = requirementContext(visible);
   for (const e of visible) {
     names.set(e.id, entityName(e));
     typeOf.set(e.id, primaryInterface(e));
@@ -216,7 +228,7 @@ export function buildListIndex(
       ...(art.bild ? bildVon(e, art.chain, names) : {}),
       ...(art.chain.includes('Asset') ? { asset: assetMeta(e) } : {}),
       tags: tagsOf(e),
-      fv: facettenWerte(art.facets, e, names, ein),
+      ...facettenWerte(art.facets, e, names, ein, ctx),
       relations: e.relations ?? [],
       ...(fassungen.has(e.id) ? { fassung: fassungen.get(e.id)! } : {}),
       rang: rank(e),
@@ -237,11 +249,19 @@ function facettenWerte(
   e: Entity,
   names: Map<string, string>,
   ein: Map<string, { type: string; from: string }[]>,
-): Record<string, string[]> {
+  ctx: RequirementContext,
+): { fv: Record<string, string[]>; req?: Requirement } {
   const raus: Record<string, string[]> = {};
+  const reqs: Requirement[] = [];
   for (const f of facets) {
     let w: string[];
-    if (f.relation?.dir === 'out') {
+    if (f.kind === 'requirement' && f.field) {
+      /* Eine Voraussetzung (T-180): der Satz zerlegt; jedes Feld gilt. */
+      const text = (e.components?.[f.field.type] as Record<string, unknown> | undefined)?.[f.field.key];
+      const r = parseRequirement(typeof text === 'string' ? text : '', ctx);
+      reqs.push(r);
+      w = requirementKeys(r);
+    } else if (f.relation?.dir === 'out') {
       w = (e.relations ?? []).filter((r) => r.type === f.relation!.type && names.has(r.to)).map((r) => r.to);
     } else if (f.relation?.dir === 'in') {
       w = (ein.get(e.id) ?? []).filter((r) => r.type === f.relation!.type).map((r) => r.from);
@@ -250,7 +270,7 @@ function facettenWerte(
     }
     if (w.length) raus[f.ref] = [...new Set(w)];
   }
-  return raus;
+  return reqs.length ? { fv: raus, req: allOf(reqs) } : { fv: raus };
 }
 
 /**
@@ -354,6 +374,10 @@ export interface ListQuery {
   limit: number;
   /** `Typ.feld` → Werte oder Spanne. */
   fields: Record<string, FieldFilter>;
+  /** **Nur, was diese Figur erfüllt** (T-180): am Server aus `usable=<id>`
+   *  gerechnet, mit dem, was der Betrachter an ihr sieht. Unbekanntes
+   *  bleibt in der Liste und ist markiert. */
+  usable?: CharacterProfile | undefined;
 }
 
 export interface ListColumn {
@@ -376,8 +400,9 @@ export type FieldFacet =
       ref: string;
       label: string;
       kind: 'enum';
-      /** `bool` ja/nein, `link` eine Artikelwahl — gezeichnet wie Häkchen. */
-      of?: 'bool' | 'link';
+      /** `bool` ja/nein, `link` eine Artikelwahl — gezeichnet wie Häkchen;
+       *  `requirement` eine Voraussetzung (T-180): daneben steht „usable by". */
+      of?: 'bool' | 'link' | 'requirement';
       options: FacetOption[];
       /** Wie viele Werte über die gezeigten hinaus Treffer haben. */
       more?: number;
@@ -409,6 +434,8 @@ export interface ListResult {
     rels?: Record<string, string[]>;
     /** Die übrigen Fassungen dieser Sache (T-092, mit `versions=1`). */
     versions?: { id: string; name: string; layers: string[]; source: string }[];
+    /** Mit `usable`: die Voraussetzung lässt sich nicht prüfen (T-180). */
+    usable?: 'unknown';
   }[];
   facets: {
     types: { type: string; label: string; area: string; count: number }[];
@@ -418,6 +445,9 @@ export interface ListResult {
     tags: { tag: string; count: number }[];
     /** Wie viele Teile von Statblöcken gerade ausgeblendet sind. */
     partsHidden: number;
+    /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt
+     *  und wie viele unbekannt in der Liste bleiben. */
+    usable?: { id: string; name: string; hidden: number; unknown: number };
   };
 }
 
@@ -511,8 +541,11 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     return !ohneEbenen || !ls.every((l) => ohneEbenen.has(l));
   };
 
-  /* Was für jede Facette gilt: Bereich, Auswahl-Arten, Suche. */
+  /* Was für jede Facette gilt: Bereich, Auswahl-Arten, Suche — und die
+     Figur, für die gesucht wird (T-180). */
   const grund: IndexZeile[] = [];
+  let nichtErfuellt = 0;
+  const unbekannt = new Set<string>();
   for (const z of idx.rows) {
     if (nurIds && !nurIds.has(z.id)) continue;
     if (q.area && z.area !== q.area) continue;
@@ -522,6 +555,14 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     if (such && !z.such.includes(such)) continue;
     if (marken && !marken.every((t) => z.tags.includes(t))) continue;
     if (q.exclude?.has(z.id)) continue;
+    if (q.usable && z.req) {
+      const v = meetsRequirement(z.req, q.usable);
+      if (v === 'no') {
+        if (!typSet || typSet.has(z.type)) nichtErfuellt += 1;
+        continue;
+      }
+      if (v === 'unknown') unbekannt.add(z.id);
+    }
     grund.push(z);
   }
 
@@ -658,6 +699,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       ...(z.image ? { image: z.image } : {}),
       ...(z.asset ? { asset: z.asset } : {}),
       ...(z.tags.length ? { tags: z.tags } : {}),
+      ...(unbekannt.has(z.id) ? { usable: 'unknown' as const } : {}),
       ...(unter.has(z.id)
         ? {
             versions: unter.get(z.id)!.map((v) => ({
@@ -684,6 +726,9 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       fields,
       tags,
       partsHidden,
+      ...(q.usable
+        ? { usable: { id: q.usable.id, name: q.usable.name, hidden: nichtErfuellt, unknown: treffer.filter((z) => unbekannt.has(z.id)).length } }
+        : {}),
     },
   };
 }
@@ -762,10 +807,17 @@ function facetteZaehlen(idx: ListIndex, def: FacetDef, basis: IndexZeile[], gewa
     if (!options.length || (alle === 1 && options[0]!.count === basis.length && !werte.length)) return null;
     return { ref, label, kind: 'enum', of: 'link', options, ...(alle > WAHL ? { more: alle - WAHL } : {}) };
   }
-  /* Eine Aufzählung oder Sorte. */
-  const reihe = def.field ? (enumOptions(idx.registry, def.field.prop) ?? []) : [];
+  /* Eine Aufzählung oder Sorte — oder abgeleitete Wörter (T-180), die
+     ihre Beschriftung mitbringen. */
+  const reihe = def.field && def.kind === 'enum' ? (enumOptions(idx.registry, def.field.prop) ?? []) : [];
+  const beschriftung =
+    def.kind === 'effect'
+      ? effectLabel
+      : def.kind === 'requirement'
+        ? (v: string) => requirementLabel(v, (id) => idx.names.get(id))
+        : null;
   const options: FacetOption[] = [...zahl.entries()]
-    .map(([value, count]) => ({ value, count }))
+    .map(([value, count]) => (beschriftung ? { value, count, label: beschriftung(value) } : { value, count }))
     .sort((a, b) => {
       const ia = reihe.indexOf(a.value);
       const ib = reihe.indexOf(b.value);
@@ -773,9 +825,9 @@ function facetteZaehlen(idx: ListIndex, def: FacetDef, basis: IndexZeile[], gewa
       return b.count - a.count || a.value.localeCompare(b.value, 'en');
     });
   /* Gewählte Werte bleiben stehen, auch wenn gerade nichts sie trägt. */
-  for (const v of werte) if (!options.some((o) => o.value === v)) options.push({ value: v, count: 0 });
+  for (const v of werte) if (!options.some((o) => o.value === v)) options.push(beschriftung ? { value: v, count: 0, label: beschriftung(v) } : { value: v, count: 0 });
   if (!options.length || (options.length === 1 && options[0]!.count === basis.length && !werte.length)) return null;
-  return { ref, label, kind: 'enum', options };
+  return { ref, label, kind: 'enum', ...(def.kind === 'requirement' ? { of: 'requirement' as const } : {}), options };
 }
 
 function typLabel(idx: ListIndex, typ: string | undefined): string {
@@ -856,6 +908,7 @@ export interface SearchRow {
   publishers: string[];
   source: string;
   image?: string;
+  usable?: 'unknown';
 }
 
 export interface SearchResult {
@@ -868,6 +921,9 @@ export interface SearchResult {
     types: ListResult['facets']['types'];
     layers: ListResult['facets']['layers'];
     publishers: { name: string; count: number }[];
+    /** Die Facetten der gewählten Art (T-180): dieselben wie im Kompendium. */
+    fields: FieldFacet[];
+    usable?: ListResult['facets']['usable'];
   };
 }
 
@@ -930,11 +986,14 @@ export function search(
         publishers: [...new Set(ids.map(verlagVon).filter(Boolean))],
         source: z.source,
         ...(z.image ? { image: z.image } : {}),
+        ...(z.usable ? { usable: z.usable } : {}),
       };
     }),
     facets: {
       types: roh.facets.types,
       layers: ohne.facets.layers,
+      fields: roh.facets.fields,
+      ...(roh.facets.usable ? { usable: roh.facets.usable } : {}),
       publishers: [...verlage.entries()]
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'en')),

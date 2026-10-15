@@ -524,7 +524,8 @@ export type Facette =
       ref: string;
       label: string;
       kind: 'enum';
-      of?: 'bool' | 'link';
+      /** `requirement` (T-180): eine Voraussetzung — daneben steht „usable by". */
+      of?: 'bool' | 'link' | 'requirement';
       options: { value: string; count: number; label?: string; group?: string }[];
       more?: number;
     }
@@ -545,10 +546,20 @@ export interface Liste {
     /** Die Marken der Treffer, gezählt (T-119). */
     tags?: { tag: string; count: number }[];
     partsHidden: number;
+    /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt, wie viele unprüfbar bleiben. */
+    usable?: Brauchbar;
   };
   /** Was fehlt, weil die laufende Kampagne seine Ebene nicht aufschaltet
    *  (T-069) — mit denselben Filtern gezählt; fehlt, wenn nichts fehlt. */
   unactivated?: Ausgeblendet;
+}
+
+/** „Usable by <Figur>" (T-180): was der Server ausblendet und was er nicht prüfen konnte. */
+export interface Brauchbar {
+  id: string;
+  name: string;
+  hidden: number;
+  unknown: number;
 }
 
 export interface Ausgeblendet {
@@ -668,6 +679,8 @@ export interface ListenZeile {
   rels?: Record<string, string[]>;
   /** Die übrigen Fassungen derselben Sache (T-092, mit `versions`). */
   versions?: { id: string; name: string; layers: string[]; source: string }[];
+  /** Mit `usable` (T-180): die Voraussetzung liess sich nicht prüfen. */
+  usable?: 'unknown';
 }
 
 /** Was die Liste gefragt wird. Leere Angaben fallen weg. */
@@ -687,11 +700,16 @@ export interface Suchergebnis {
     publishers: string[];
     source: string;
     image?: string;
+    /** Mit `usable` (T-180): die Voraussetzung liess sich nicht prüfen. */
+    usable?: 'unknown';
   }[];
   facets: {
     types: { type: string; label: string; area: string; count: number }[];
     layers: { id: string; name: string; count: number }[];
     publishers: { name: string; count: number }[];
+    /** Die Facetten der einen gewählten Art (T-180) — dieselben wie im Kompendium. */
+    fields?: Facette[];
+    usable?: Brauchbar;
   };
 }
 
@@ -703,6 +721,10 @@ export interface SuchFrage {
   area?: string;
   offset?: number;
   limit?: number;
+  /** Facetten der gewählten Art (T-180): `Typ.feld:Wert|Wert` oder `Typ.feld:1..3`. */
+  f?: string[];
+  /** Nur, was diese Figur erfüllt (T-180). */
+  usable?: string;
 }
 
 export interface ListenFrage {
@@ -734,6 +756,8 @@ export interface ListenFrage {
   unused?: boolean | undefined;
   /** Auch Ebenen, die die Kampagne nicht aufschaltet (T-207) — nur die Werkbank; der Server gibt sie Verwaltung und Leitung. */
   allLayers?: boolean | undefined;
+  /** Nur, was diese Figur erfüllt (T-180); Unprüfbares bleibt, markiert. */
+  usable?: string | undefined;
 }
 
 /**
@@ -1191,6 +1215,8 @@ export class Api {
     if (frage.area) p.set('area', frage.area);
     if (frage.offset) p.set('offset', String(frage.offset));
     if (frage.limit) p.set('limit', String(frage.limit));
+    for (const f of frage.f ?? []) p.append('f', f);
+    if (frage.usable) p.set('usable', frage.usable);
     return this.call<Suchergebnis>(`/api/search?${p.toString()}`, init, false);
   }
   /** `[[Name]]` → `[[nummer|Name]]`, wo genau ein Artikel so heisst (M11). */

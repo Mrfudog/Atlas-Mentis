@@ -264,6 +264,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'usableBy',
+    label: 'Usable by a character',
+    area: 'character',
+    does: 'checks a prerequisite (feat, attunement, multiclassing) against a character — class levels, ancestry with its base, the statblock’s scores and proficiencies, spellcasting, what it was granted or chose (T-180)',
+    uses: {
+      [M + 'requirements.ts']: ['belongsTo', 'grants', 'hasAncestry', 'hasClass'],
+      [S + 'app.ts']: ['belongsTo', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
+    },
+  },
+  {
     key: 'inventory',
     label: 'Inventory',
     area: 'character',
