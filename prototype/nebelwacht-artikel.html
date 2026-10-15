@@ -16179,7 +16179,11 @@ function renderHowto(v){
       "(Fighter · Skill proficiencies (choose 2)). An equipment option that "+
       "names a kind instead of an item (two martial weapons of your choice) "+
       "is an open slot: the answer fills it with item ids (chose.items), and "+
-      "only an ordinary item of that kind counts. What an item changes on the character is a field "+
+      "only an ordinary item of that kind counts. A sub-ancestry brings its "+
+      "base (subraceOf): High Elf holds only what high elves have on top, and "+
+      "the Elf's +2 Dexterity, darkvision and its choices count for the "+
+      "character as well; the builder shows these effects of each option, "+
+      "worked out the same way. What an item changes on the character is a field "+
       "too (Effects: target, kind, value, when — worn, attuned, carried); "+
       "it counts while the inventory edge says the item is worn or attuned, "+
       "and it is worked out on read, so taking the gauntlets off takes the "+
@@ -16212,6 +16216,8 @@ function renderHowto(v){
         "chose → Fighter     martial-archetype: Champion\n"+
         "chose → Hill Dwarf  tools: Smith's tools\n"+
         "  → proficient (worked out on read): Athletics, Perception, Smith's tools\n"+
+        "Hill Dwarf  wis +1 · subraceOf → Dwarf  con +2, speed 25, darkvision 60\n"+
+        "  → ability bonus (worked out on read): CON +2, WIS +1\n"+
         "Fighter  equipment-2: (a) a martial weapon and a shield or (b) two martial weapons\n"+
         "chose → Fighter     equipment-2: b · items: Longsword, Warhammer\n"+
         "  → open slot (b): 2 × Weapon, category martial, ordinary → both fit\n":"")+

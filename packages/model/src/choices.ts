@@ -267,7 +267,12 @@ export function choiceSources(character: Entity, byId: ReadonlyMap<EntityId, Ent
       dazu(r.to, l, 'hasClass', ersteKlasse);
       dazu(r.props?.['subclass'], l, 'subclass');
       ersteKlasse = false;
-    } else if (r.type === 'hasAncestry' || r.type === 'hasBackground') dazu(r.to, gesamt, r.type);
+    } else if (r.type === 'hasAncestry') {
+      /* Eine Unterart bringt ihre Grundart mit (T-193): „Elf (High)" trägt
+         nur, was die Hochelfen anders haben — Dex +2, Darkvision und Trance
+         stehen am Elf (`subraceOf`, C4). */
+      for (const id of ancestryLine(r.to, byId)) dazu(id, gesamt, r.type);
+    } else if (r.type === 'hasBackground') dazu(r.to, gesamt, r.type);
   }
   /* Was eine Quelle fest gewährt oder die Figur gewählt hat und selbst
      fragt — bis nichts Neues mehr dazukommt. */
@@ -283,6 +288,21 @@ export function choiceSources(character: Entity, byId: ReadonlyMap<EntityId, Ent
       if (a.source !== q.entity.id) continue;
       for (const p of a.picks) if (choicesOf(byId.get(p)).length) dazu(p, gesamt, 'chose');
     }
+  }
+  return raus;
+}
+
+/**
+ * **Eine Herkunft und ihre Grundarten** (T-193): der Artikel, dann der, auf
+ * den er mit `subraceOf` zeigt, und so weiter — die Unterart zuerst. Fehlt
+ * ein Glied in `byId` oder schliesst sich ein Kreis, endet die Reihe dort.
+ */
+export function ancestryLine(id: EntityId, byId: ReadonlyMap<EntityId, Entity>): EntityId[] {
+  const raus: EntityId[] = [];
+  let jetzt: EntityId | undefined = id;
+  while (jetzt && !raus.includes(jetzt) && byId.has(jetzt) && raus.length < 4) {
+    raus.push(jetzt);
+    jetzt = byId.get(jetzt)!.relations?.find((r) => r.type === 'subraceOf')?.to;
   }
   return raus;
 }
