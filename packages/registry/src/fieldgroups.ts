@@ -1960,7 +1960,9 @@ export const fieldGroups = {
         },
         fog: { type: 'boolean', title: 'Fog of war', default: false },
         /* Eine Form darf `for` tragen (T-204): die Figur, die es gesehen
-           hat — zählt, wenn die Kampagne den Nebel je Figur führt. */
+           hat — zählt, wenn die Kampagne den Nebel je Figur führt. Ein
+           `poly` darf `within` tragen (T-216): es gilt nur, soweit es auch
+           in diesem Polygon liegt — Licht, soweit die Figur hineinsieht. */
         reveal: { type: 'array', title: 'Uncovered areas', items: { type: 'object' } },
         /* **Aufdecken beim Zug, an dieser Karte** (T-204): leer heisst, es
            gilt die Kampagne (`Campaign.revealOnMove`). */

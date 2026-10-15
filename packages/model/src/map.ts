@@ -724,7 +724,19 @@ export function partyPosition(
 export type RevealShape = (
   | { id: string; kind: 'rect'; x: number; y: number; w: number; h: number }
   | { id: string; kind: 'circle'; x: number; y: number; r: number; ar: number }
-  | { id: string; kind: 'poly'; pts: Array<[number, number]> }
+  | {
+      id: string;
+      kind: 'poly';
+      pts: Array<[number, number]>;
+      /**
+       * **Nur, soweit es auch in diesem Polygon liegt** (T-216): die
+       * beleuchtete Fläche eines Lichts, so weit die Figur hineinsieht —
+       * durch eine Tür in einen Raum, dessen Laterne sie nicht sieht. Die
+       * Schnittmenge zweier Polygone wird nicht ausgerechnet, sondern so
+       * gespeichert und beim Zeichnen geklammert.
+       */
+      within?: Array<[number, number]>;
+    }
   | { id: string; kind: 'path'; pts: Array<[number, number]>; r: number; ar: number }
 ) & {
   /**
@@ -762,7 +774,8 @@ function formAus(x: unknown, i: number): RevealShape | null {
   if (s['kind'] === 'circle') return { id, kind: 'circle', x: zahl(s['x'], 0), y: zahl(s['y'], 0), r: Math.max(0, zahl(s['r'], 0.05)), ar, ...wem };
   if (s['kind'] === 'poly') {
     const pts = punkte(s['pts']);
-    return pts.length > 2 ? { id, kind: 'poly', pts, ...wem } : null;
+    const within = punkte(s['within']);
+    return pts.length > 2 ? { id, kind: 'poly', pts, ...(within.length > 2 ? { within } : {}), ...wem } : null;
   }
   if (s['kind'] === 'path') {
     const pts = punkte(s['pts']);
@@ -808,8 +821,12 @@ export function inShape(s: RevealShape, p: Pt): boolean {
     }
     return false;
   }
+  return inPolygon(s.pts, p) && (!s.within || inPolygon(s.within, p));
+}
+
+/** Liegt der Punkt im Polygon (gerade/ungerade)? */
+export function inPolygon(q: ReadonlyArray<readonly [number, number]>, p: Pt): boolean {
   let drin = false;
-  const q = s.pts;
   for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
     const [xi, yi] = q[i]!;
     const [xj, yj] = q[j]!;
@@ -860,7 +877,10 @@ export function revealArea(e: Entity, s: RevealShape): Entity {
   else if (s.kind === 'circle') form = { id: s.id, kind: 'circle', x: r4(s.x), y: r4(s.y), r: r4(s.r), ar: r4(s.ar) };
   else {
     const pts = s.pts.map(([x, y]) => [r4(x), r4(y)]);
-    form = s.kind === 'poly' ? { id: s.id, kind: 'poly', pts } : { id: s.id, kind: 'path', pts, r: r4(s.r), ar: r4(s.ar) };
+    form =
+      s.kind === 'poly'
+        ? { id: s.id, kind: 'poly', pts, ...(s.within ? { within: s.within.map(([x, y]) => [r4(x), r4(y)]) } : {}) }
+        : { id: s.id, kind: 'path', pts, r: r4(s.r), ar: r4(s.ar) };
   }
   if (s.for) form['for'] = s.for;
   return mitReveal(e, [...rohReveal(e), form], true);
