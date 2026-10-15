@@ -538,3 +538,10 @@ p.leer {
     color: var(--dim);
   }
 }
+
+/* Der Verweis auf die Regeloptionen (T-190). */
+.regelhinweis {
+  margin: 0.6rem 0;
+  color: var(--dim);
+  font-size: 0.95rem;
+}

@@ -79,6 +79,7 @@ export interface Stueck {
     | 'bild'
     | 'karte'
     | 'liegen'
+    | 'regeln'
     | 'verlinkt';
   text?: string;
   /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
@@ -326,6 +327,15 @@ export function anordnen(
       case 'parts':
         out.push({ id: el.id, art: 'fluss' });
         break;
+      /* Die Regeloptionen (T-190): die genannten Felder stehen unter dem
+         Reiter „Rules & options"; hier nur der Verweis dorthin. Die Zellen
+         reiten mit, damit ein Blatt ohne Reiter sie als Felder zeichnet. */
+      case 'rules': {
+        const hier = el.fields?.length ? zellen.filter((z) => !da(z.comp, z.prop) && elementTakes(el, z.comp, z.prop)) : [];
+        hier.forEach((z) => felderDa.add(z.ref));
+        out.push({ id: el.id, art: 'regeln', zellen: hier });
+        break;
+      }
       case 'heading':
         if (el.text) out.push({ id: el.id, art: 'ueberschrift', text: el.text });
         break;

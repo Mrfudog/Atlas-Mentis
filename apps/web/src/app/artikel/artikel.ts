@@ -77,7 +77,8 @@ import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
 import { Verlinkt } from './verlinkt';
 import { Lesen } from '../lesen/lesen';
-import { EbenenReiter } from './ebenen-reiter';
+import { EbenenReiter, KampagnenReiter } from './ebenen-reiter';
+import { Regeloptionen } from './regeloptionen';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 import { Wuerfe } from './wuerfe';
 import { WurfZiel } from '../kern/wurfziel';
@@ -154,6 +155,8 @@ interface Feld {
     Verlinkt,
     Lesen,
     EbenenReiter,
+    KampagnenReiter,
+    Regeloptionen,
     Wuerfe,
   ],
   template: `
@@ -184,8 +187,15 @@ interface Feld {
         @if (art(e) === 'Layer' && !bearbeitet()) {
           <nw-ebenen-reiter [ebene]="e.id" [lesen]="leseReiter()" [ohneText]="!!leseZiel()?.empty" />
         }
+        <!-- Die Regeloptionen einer Kampagne (T-190): ein eigener Reiter,
+             nach Sorte gruppiert, mit dem Regelartikel je Variante. -->
+        @if (art(e) === 'Campaign' && !bearbeitet()) {
+          <nw-kampagnen-reiter [kampagne]="e.id" [regeln]="regelReiter()" />
+        }
         @if (leseReiter()) {
           <nw-lesen [layer]="e.id" [eingebettet]="true" />
+        } @else if (regelReiter()) {
+          <nw-regeloptionen [kampagne]="e.id" [darfSchreiben]="session.isAdmin() || darfSchreiben()" />
         } @else {
         <div class="spalten">
           <main class="hauptspalte">
@@ -647,6 +657,13 @@ interface Feld {
                   }
                   @case ('teile') {
                     <nw-abschnitte [besitzer]="e" />
+                  }
+                  @case ('regeln') {
+                    <!-- T-190: die Regeloptionen stehen nach Sorte und erklärt unter dem Reiter. -->
+                    <p class="regelhinweis">
+                      How this campaign plays — ability scores, equipment, inventory, crafting and more — stands under
+                      <a [routerLink]="['/artikel', e.id]" [queryParams]="{ tab: 'rules' }">Rules &amp; options</a>.
+                    </p>
                   }
                   @case ('handwerk') {
                     @if (fertigung(); as fw) {
@@ -1483,6 +1500,10 @@ export class Artikel implements SchnellKontext {
   /** Steht an dieser Ebene der Reiter „Read" offen? Beim Bearbeiten nie. */
   protected readonly leseReiter = computed(
     () => this.tab() === 'read' && !this.bearbeitet() && !!this.artikel() && this.art(this.artikel()!) === 'Layer',
+  );
+  /** Steht an dieser Kampagne der Reiter „Rules & options" offen (T-190)? Beim Bearbeiten nie. */
+  protected readonly regelReiter = computed(
+    () => this.tab() === 'rules' && !this.bearbeitet() && !!this.artikel() && this.art(this.artikel()!) === 'Campaign',
   );
   protected leseParams(z: LeseZiel): Record<string, string> {
     return z.at ? { at: z.at } : z.page ? { page: z.page } : {};
