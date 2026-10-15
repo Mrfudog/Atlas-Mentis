@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-places-from-books",
+      "date": "2026-10-15",
+      "title": "Places from books and adventures",
+      "text": "Imported books and adventures now bring their places: keyed rooms, sections with their own map, and sections that describe a city, realm or building become Place articles in the book's layer, nested inside each other, linked to their scenes and maps. In the reading view a section shows the place it describes, one click away.",
+      "area": "World",
+      "link": "/world",
+      "query": { "type": "Place" }
+    },
+    {
       "id": "2026-10-15-list-filters",
       "date": "2026-10-15",
       "title": "Filter lists by everything a type has",
