@@ -2494,6 +2494,16 @@ export const fieldGroups = {
           enum: ['gm', 'player'],
           default: 'gm',
         },
+        /* **Wer die Würfe der Spielenden sieht** (T-172): der Tisch oder
+           nur die Leitung (dann ist jeder Wurf einer Spielerin verdeckt,
+           wie ein verdeckter der Leitung). Gilt ab dem Wurf — ein späteres
+           Umstellen deckt nichts auf. */
+        playerRolls: {
+          type: 'string',
+          title: 'Player rolls visible to',
+          enum: ['table', 'gm'],
+          default: 'table',
+        },
       },
     },
   },

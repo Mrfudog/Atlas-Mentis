@@ -1807,6 +1807,24 @@ und an jedem Schritt gilt dieselbe Prüfung wie von Hand.
 
 ---
 
+## Wurf und Log
+
+Ein **Wurf** (Roll) ist, was ein Würfelknopf auslöst; das **Log** (Rolls)
+eines Artikels sind die Würfe, die auf ihm fielen. Das Log ist kein Feld
+und keine Kante: es steht im **Protokoll** (`event_log`), wo auch steht,
+wer was geschrieben hat — append-only, also lässt sich ein Wurf weder
+ändern noch still verschwinden lassen (T-172). Der Grund, ihn dort und
+nicht am Artikel zu halten: ein Artikel ist Inhalt und wandert mit der
+Ausfuhr und von dev nach prod; ein Wurf ist Spielgeschehen eines Abends
+und gehört dem Tisch, an dem er fiel.
+
+Gewürfelt wird am **Server**. Würfelte der Browser und meldete das
+Ergebnis, stünde im Log, was der Browser meldet — und wer nicht mag, was
+er sieht, lädt neu. **Verdeckt** (hidden) heisst: nur die Leitung und wer
+gewürfelt hat sehen Eintrag und Ergebnis; es ist dieselbe Stufe für den
+verdeckten Wurf der Leitung und für jeden Spielerwurf unter
+`Campaign.playerRolls: 'gm'`.
+
 ## Epic, Feature, Story — Wörter der Planung
 
 Keine Wörter des Modells, sondern der Anforderungen (T-154): eine **Story**

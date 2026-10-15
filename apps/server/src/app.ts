@@ -118,6 +118,7 @@ import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, se
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
+import { registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
 import { registerFiltergruppen } from './filtergruppen.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
@@ -1129,6 +1130,8 @@ export function buildApp({
     /* Würfeln für die Attribute (E-016 a): die Route prüft die Rolle in
        der laufenden Kampagne selbst. */
     if (url === '/api/abilities/roll' && request.method === 'POST') return;
+    /* Würfe auf einem Artikel (T-172): die Route prüft Rolle und Artikel selbst (`wuerfe.ts`). */
+    if (url === '/api/rolls' && request.method === 'POST') return;
     /* Die Startausrüstung (T-096): die Routen prüfen Rolle und Figur selbst. */
     if (url === '/api/equipment/roll' && request.method === 'POST') return;
     if (/^\/api\/entities\/[^/]+\/equipment$/.test(url) && request.method === 'POST') return;
@@ -2625,7 +2628,18 @@ export function buildApp({
   /* Filtergruppen je Seite (T-137): die der Kampagne und die eigenen. */
   registerFiltergruppen(app, { repo, viewerOf, roh });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
-  registerHandwerk(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene });
+  registerHandwerk(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve,
+    schreibeGeprueft: (e) => schreibeGeprueft(e),
+    kampagnenEbene,
+    wurf: async (subject, payload) =>
+      wurfEintragen({ repo, feed: live }, subject, { ...payload, session: tischSitzung((await roh()).alle)?.id ?? null }),
+  });
+  /* Würfe auf einem Artikel (T-172): am Server gewürfelt, im Protokoll, im Log des Artikels. */
+  registerWuerfe(app, { repo, feed: live, viewerOf, roh, sieve });
   /* Kaufen und Verkaufen im Laden (T-133): der Preis am Server, gegen die gelesene Revision. */
   registerLaden(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet), kampagnenEbene });
   /* Liegengelassen (T-140): Sitzungsende und Aufheben. */

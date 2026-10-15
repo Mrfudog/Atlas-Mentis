@@ -20,8 +20,8 @@
 
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { primaryInterface } from '@nw/model';
-import type { Entity, Registry } from '@nw/model';
+import { primaryInterface, rollVisible } from '@nw/model';
+import type { Entity, Registry, RollEntry } from '@nw/model';
 import type { PutOptions, Repository } from './repo.js';
 import type { User } from './auth.js';
 
@@ -39,6 +39,8 @@ export type LiveEintrag =
       before?: Entity | undefined;
     }
   | { seq: number; kind: 'registry'; id: string }
+  /** Ein Wurf (T-172): der Eintrag selbst, gesiebt wie `GET /api/rolls`. */
+  | { seq: number; kind: 'roll'; id: string; entry: RollEntry }
   /** Zu viel auf einmal (eine Einfuhr, eine Massenänderung): alles neu. */
   | { seq: number; kind: 'reset'; id: '' };
 
@@ -127,7 +129,7 @@ export class LocalChangeFeed implements ChangeFeed {
     }
     const artikel = [...je.values()].filter((m) => m.kind === 'entity').length;
     const meldungen: LiveMeldung[] = artikel > this.flood
-      ? [{ kind: 'reset', id: '' }, ...[...je.values()].filter((m) => m.kind === 'registry')]
+      ? [{ kind: 'reset', id: '' }, ...[...je.values()].filter((m) => m.kind !== 'entity')]
       : [...je.values()];
     const buendel = meldungen.map((m) => ({ ...m, seq: ++this.seq }) as LiveEintrag);
     this.ring.push(...buendel);
@@ -255,7 +257,9 @@ interface Strom {
  * - `session` `{id, activeMap, activeEncounter, activeScene, nowPlaying}` —
  *   eine Sitzung, aus dem gesiebten Artikel;
  * - `gone` `{id}` — er war für ihn da und ist jetzt verborgen oder gelöscht;
- * - `registry` `{part}` — eine Registerzeile; `reset` — alles neu laden.
+ * - `registry` `{part}` — eine Registerzeile; `reset` — alles neu laden;
+ * - `roll` — ein Wurf (T-172), der Eintrag, wenn dieser Empfänger ihn
+ *   sieht (`rollVisible`, mit dem Artikel des Wurfs gesiebt).
  *
  * Was ein Empfänger nicht sieht, bekommt er nicht — auch nicht als Id.
  */
@@ -319,9 +323,15 @@ export function registerLive(
         for (const b of vorher) alt.set(b.id, b);
         sah = new Set((await deps.sieveFuer(user, vorher, alt)).map((e) => e.id));
       }
+      /* Würfe: wer den Artikel des Wurfs nicht sieht, sieht ihn nicht. */
+      const wurfArtikel = buendel.flatMap((e) => (e.kind === 'roll' && e.entry.subject ? (map.get(e.entry.subject) ?? []) : []));
+      const wurfSicht = new Set((wurfArtikel.length ? await deps.sieveFuer(user, wurfArtikel, map) : []).map((e) => e.id));
       for (const e of buendel) {
         const id = `${feed.boot}.${e.seq}`;
-        if (e.kind === 'reset') schreib(sseNachricht('reset', {}, id));
+        if (e.kind === 'roll') {
+          const s = e.entry.subject;
+          if (rollVisible(e.entry, user, s && map.has(s) ? wurfSicht.has(s) : null)) schreib(sseNachricht('roll', e.entry, id));
+        } else if (e.kind === 'reset') schreib(sseNachricht('reset', {}, id));
         else if (e.kind === 'registry') schreib(sseNachricht('registry', { part: e.id }, id));
         else if (sichtbar.has(e.id)) {
           const s = sichtbar.get(e.id)!;
