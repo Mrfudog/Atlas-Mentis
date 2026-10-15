@@ -26,8 +26,9 @@
  *    selbst, bekommt sie eine eigene Szene (`mode: 'exploration'`, `partOf`
  *    der Arc, mit Rang im Chapter);
  *  - je Abschnitt, der einen Ort beschreibt (ein Raum mit Schlüssel, ein
- *    Abschnitt mit Räumen oder eigener Karte, ein erster Satz „X is a
- *    village …"), ein `Place` (T-175, `orte.ts`): `describedIn` die Szene,
+ *    Abschnitt mit eigener Karte, ein erster Satz „X is a
+ *    village …"; benannt nach dem Titel der Karte), ein `Place` (T-175,
+ *    `orte.ts`): `describedIn` die Szene,
  *    die Szene `happensAt` ihn, `partOf` der Ort der umgebenden Szene, und
  *    die Karten der Szene `mapOf` auch ihn;
  *  - je Abschnitt, der Kreaturen mit Anzahl nennt („two {@creature
@@ -58,7 +59,7 @@
 import type { Entity } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Abenteuer } from '../lesen.js';
-import { hatKarte, hatRaeume as hatOrtRaeume, legeOrtAn, ortBefund, ortFuerUeberschrift, ortKandidat } from '../orte.js';
+import { hatRaeume as hatOrtRaeume, legeOrtAn, ortBefund, ortFuerUeberschrift, ortKandidat, ortsnameAusKarten } from '../orte.js';
 import { legeTeileAn } from '../teile.js';
 import type { TextKontext } from '../text.js';
 import { kapitelTitel } from './buch.js';
@@ -217,9 +218,13 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
   const ordnung = (Array.isArray(a.kopf['contents']) ? (a.kopf['contents'] as Knoten[]) : []);
   /** Der Ort je Szene (T-175). */
   const ortVon = new Map<string, Entity>();
+  /** Die Orte nach Name: zwei Karten derselben Gegend sind ein Ort. */
+  const ortNachName = new Map<string, Entity>();
   const abschnitte = (e: Knoten, arc: Entity, pfad: string[], elternOrt?: Entity): unknown[] => {
     const inhalt: unknown[] = [];
     const raeume = hatRaeume(e) || e['type'] === 'section';
+    /** Der letzte Ort aus einer Karte auf dieser Stufe (T-175). */
+    let nachbarOrt: Entity | undefined;
     for (const k of Array.isArray(e['entries']) ? (e['entries'] as unknown[]) : []) {
       /* Eigene Szenen werden: auf Kapitelstufe jeder benannte Abschnitt,
          darunter nur Räume und Unterkapitel. Der Rest ist Text. */
@@ -235,15 +240,26 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       if (typeof k['id'] === 'string') nachId.set(k['id'], szene);
       szeneVon.set(k, szene);
       /* Ist der Abschnitt ein Ort? Vor den Räumen darin, die in ihm liegen. */
-      const befund = ortBefund(name(k), k['entries'], { raeume: hatOrtRaeume(k['entries']), karte: hatKarte(k['entries']) });
+      const befund = ortBefund(name(k), k['entries'], { raeume: hatOrtRaeume(k['entries']), karte: ortsnameAusKarten(k['entries']) });
       let ort: Entity | undefined;
       if (befund.ort) {
-        ort = legeOrtAn(wb, name(k), { abschnitt: szene, eltern: elternOrt, befund, quelle, seite: k['page'], art: 'adventureData' });
-        gm(ort);
+        const ortName = befund.name ?? name(k);
+        const schon = befund.kind === 'Raum' ? undefined : ortNachName.get(ortName.toLowerCase());
+        if (schon) ort = schon;
+        else {
+          /* Ein Raum neben dem Ort seiner Karte liegt in ihm. */
+          const eltern = befund.kind === 'Raum' ? (elternOrt ?? nachbarOrt) : elternOrt;
+          ort = legeOrtAn(wb, ortName, { abschnitt: szene, eltern, befund, quelle, seite: k['page'], art: 'adventureData' });
+          gm(ort);
+          if (befund.kind !== 'Raum') ortNachName.set(ortName.toLowerCase(), ort);
+        }
+        if (befund.karte) nachbarOrt = ort;
         wb.kante(szene, 'happensAt', ort.id);
         ortVon.set(szene.id, ort);
       } else if (befund.kandidat) ortKandidat(wb, 'adventureData');
-      inhaltVon.set(szene, abschnitte(k, arc, [...pfad, name(k)], ort ?? elternOrt));
+      /* Eine Liste („Areas of Vallaki") ist kein Ort; ihre Räume liegen im
+         Ort ihres Nachbarn mit der Karte („Approaching the Town" → Vallaki). */
+      inhaltVon.set(szene, abschnitte(k, arc, [...pfad, name(k)], ort ?? elternOrt ?? nachbarOrt));
     }
     return inhalt;
   };
