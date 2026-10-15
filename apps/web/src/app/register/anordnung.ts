@@ -28,6 +28,7 @@ export const ELEMENTE: { el: LayoutElementKind; label: string; was: string; draw
   { el: 'image', label: 'Image', was: 'The image of the article.', drawn: false },
   { el: 'sheet', label: 'Character sheet', was: 'The sheet of a creature.', drawn: false },
   { el: 'inventory', label: 'Inventory', was: 'The inventory it carries and what that holds, as a list (the grid comes later).', drawn: true },
+  { el: 'rules', label: 'Rules & options', was: 'Takes the fields it names out of the field table and points to the Rules & options tab, where they stand grouped and explained (campaign).', drawn: true },
   { el: 'tabs', label: 'Tabs', was: 'Named groups; a page shows them one after the other.', drawn: true },
 ];
 

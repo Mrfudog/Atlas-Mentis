@@ -55,6 +55,17 @@ describe('anordnen', () => {
     expect(mit[1]!.zellen!.map((z) => z.ref)).toEqual(['Spell.school']);
   });
 
+  it('nimmt mit „rules" die genannten Felder aus Tabelle und Rest und trägt sie mit (T-190)', () => {
+    const layout: LayoutElement[] = [
+      { id: 'r', el: 'rules', fields: ['Spell.school'] },
+      { id: 'f', el: 'fields', fields: 'all' },
+    ];
+    const st = anordnen(layout, zellen, prosa, { beschreibung: null, rest: true });
+    expect(st.map((s) => [s.id, s.art])).toEqual([['r', 'regeln'], ['f', 'felder'], ['rest-p', 'prosa']]);
+    expect(st[0]!.zellen!.map((z) => z.ref)).toEqual(['Spell.school']);
+    expect(st[1]!.zellen!.map((z) => z.ref)).not.toContain('Spell.school');
+  });
+
   it('lässt Bildunterschrift und Alternativtext aus dem Rest, wenn kein Bild gezeichnet wird (T-090)', () => {
     const mitBild = {
       ...reg,

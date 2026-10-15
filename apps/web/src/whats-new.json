@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-rules-and-options",
+      "date": "2026-10-15",
+      "title": "A campaign shows the rules it plays by",
+      "text": "Open a campaign and switch to “Rules & options”: inventory, crafting, ability scores, starting equipment, feats, languages, travel and units, grouped, each with a sentence on what it does and the variant in use. Each variant links the rule article that explains it; where none exists yet, the GM can write one with a click.",
+      "area": "Story",
+      "link": "/story",
+      "query": { "type": "Campaign" }
+    },
+    {
       "id": "2026-10-15-only-layers-in-play",
       "date": "2026-10-15",
       "title": "Only the layers in play are shown",

@@ -947,7 +947,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Campaign`): `description`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
+**Gezeichnet** (aus `Campaign`): `description`, `rules`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
 
 ### Quest
 

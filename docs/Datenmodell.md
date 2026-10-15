@@ -1526,6 +1526,7 @@ sind Zeilen, Darstellung ist Code.**
 | `quests`, `timeline`, `prep`, `table`, `crawl` | Auftragsbrett, Zeitleiste, Vorbereitung, Tabelle, Punktreise |
 | `stack`, `members` | der Ebenenstapel, die Konten am Tisch |
 | `statblock`, `spell`, `item` | **wie im Buch** (W2): Statblock wie im MM (Kopf kursiv, Kopfzeilen, sechs Werte in einer Reihe, Saves bis Challenge, Abschnitte aus `composedOf` je Aktionsart), Zauber wie im PHB (Casting Time, Range, Components, Duration, At Higher Levels), Gegenstand wie im DMG (Art, Seltenheit, Einstimmung kursiv; AC, Schaden, Preis, Gewicht). Jedes zeichnet **alle** Felder seiner Karten (`BOOK_CARDS`, `book.ts`), was keine Stelle im Buch hat als Zusatzzeile; die Feldtabelle derselben Anordnung nimmt diese Karten mit `except` heraus. Masse in der Einheit von `units` |
+| `rules` | die Regeloptionen (T-190): nimmt die Felder, die `fields` nennt, aus der Feldtabelle und verweist auf den Reiter „Rules & options"; auf einem Blatt ohne Reiter stehen sie als Felder |
 | `tabs` | benannte Gruppen desselben Layouts |
 
 **Was kein Element zeichnet, steht am Ende — wo die Ansicht `rest` sagt.**
@@ -1534,6 +1535,46 @@ Inventar …; die Karte seit T-115); ein Feld, das nur dort stünde, setzt sie u
 Anordnung, statt es zu verschweigen. Zugeteilt wird an einer Stelle
 (`anordnen` in `apps/web/src/app/artikel/anordnung.ts`) für Artikelseite,
 Druck und Registervorschau.
+
+### 10.1 Die Regeloptionen einer Kampagne (T-190)
+
+Wonach eine Kampagne spielt, steht heute an drei Stellen: als **Feld an
+der Kampagne** (`Campaign.inventory`, `stowing`, `craft*`, `feats`,
+`languages`, `playerRolls`, `compareFor`), als **Kante auf ein Verfahren**
+(`allowsMethod` → `AbilityMethod`, `allowsEquipment` → `EquipmentMethod`)
+und als **Einstellung der Installation** (`units`, `travel*`, Basils Blatt).
+Der Reiter **„Rules & options"** an der Kampagne
+(`/artikel/:id?tab=rules`) zeigt alle drei **nach Sorte** — Ability scores,
+Starting equipment, Character options, Inventory, Crafting, Travel, Units,
+At the table; dieselben Sorten, die T-132 als Module baut —, je Option
+einen Satz, was sie bewirkt, und je Variante, welche gilt.
+
+- **Gerechnet am Server** (`GET /api/campaigns/:id/rules`,
+  `apps/server/src/regeloptionen.ts`) mit `ruleOptionsOf`
+  (`packages/model/src/ruleOptions.ts`). Jede Option liest über die
+  Funktion ihres Teilsystems (`inventoryRulesOf`, `craftRulesOf`,
+  `allowedMethods` …) — die Seite sagt nie etwas anderes, als gilt.
+- **Der Katalog** (`RULE_OPTIONS`) nennt je Option ihre Quelle, die
+  Varianten mit einem eigenen Satz und die Namen der Regelartikel, die sie
+  erklären. Ein Test hält ihn mit `CampaignInfo` zusammen: jedes Feld eine
+  Option, jeder Aufzählungswert eine Variante.
+- **Regelartikel nach Namen:** importierte heissen, wie das Regelwerk sie
+  nennt („Encumbrance"), eine eigene Erklärung `<Option>: <Variante>`
+  (`ownRuleName`). Genannt wird ein Artikel der Art `Rule` nur, wenn er im
+  Stapel steht und der Betrachter ihn sieht (E2, Sichtbarkeit) — sonst
+  bietet die Seite der Leitung „Write rule article" an: ein Regelartikel
+  mit diesem Namen und dem Satz der Seite, in der Schreibebene. Buchtext
+  steht im Code keiner.
+- **Geändert wird, wo es steht:** Felder und Kanten in der Maske der
+  Kampagne; die Einstellungen der Installation sind als
+  „installation-wide" markiert und gelten für jede Kampagne, bis T-132 sie
+  ins Modul holt. Auf der Artikelseite selbst nimmt das Layout-Element
+  `rules` (`fields: ['Campaign']`) die eigenen Felder der Kampagne aus der
+  Feldtabelle und verweist auf den Reiter — sie stünden dort ein zweites
+  Mal, ungeordnet; ein `except` an der Feldtabelle reichte nicht, weil der
+  Rest (`rest`) sie am Ende wieder hereinholte. Migration 081.
+- **Mit T-132** schaut `ruleOptionsOf` je Sorte ins gewählte Modul (ein
+  lesbarer Regelartikel); Route und Reiter bleiben.
 
 ---
 
