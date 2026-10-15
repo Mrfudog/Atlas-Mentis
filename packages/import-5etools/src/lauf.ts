@@ -755,6 +755,10 @@ function neuzugaenge(wb: Werkbank): string[] {
     raus.add(e.id);
     for (const r of e.relations ?? []) if (r.type === 'inLayer') ebene(r.to);
   }
+  /* Die Kreaturen benannter Statblöcke kamen erst mit T-169: auch die zu
+     einem Statblock des Grundstands sind neu, und `--additions` legt sie
+     an (die Kante am bestehenden Statblock zieht die Einfuhr nach). */
+  for (const id of wb.benannt) raus.add(id);
   return [...raus];
 }
 

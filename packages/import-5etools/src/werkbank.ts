@@ -470,6 +470,8 @@ export class Werkbank {
   readonly vereint = new Map<string, number>();
   /** Je legendärer Gruppe ihre Teile, für `composedOf` vom Statblock. */
   readonly legendaer = new Map<string, Entity[]>();
+  /** Die Kreaturen benannter Statblöcke (T-169) — Neuzugänge auch aus dem Grundstand. */
+  readonly benannt = new Set<string>();
 
   /** Begleittext je Art (`monsterFluff` …), nach `name|source`. */
   readonly fluffe = new Map<string, Map<string, Knoten>>();

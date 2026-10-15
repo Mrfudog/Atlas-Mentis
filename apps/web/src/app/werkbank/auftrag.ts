@@ -9,7 +9,9 @@
 
 import type { BulkOp, BulkRequest, ConditionOp } from '@nw/model';
 
-export type OpArt = BulkOp['op'];
+/* `addLinked` (T-169) gibt es nur über die API und `scripts/atlas.mjs`: es
+   legt Artikel an, und eine Maske dafür bräuchte Art, Kante und Karten. */
+export type OpArt = Exclude<BulkOp['op'], 'addLinked'>;
 
 export interface Bedingung {
   field: string;

@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-named-creatures",
+      "date": "2026-10-15",
+      "title": "Named creatures from the books are characters",
+      "text": "A named creature from an imported book or adventure now stands in World as a creature of its own, with its statblock attached, in the same layer. You can give it relationships, factions and a place on the map like any character you made yourself.",
+      "area": "World",
+      "link": "/world",
+      "query": { "type": "Creature" }
+    },
+    {
       "id": "2026-10-15-rolls-log",
       "date": "2026-10-15",
       "title": "Every roll is kept in the article's log",

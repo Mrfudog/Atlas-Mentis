@@ -246,3 +246,53 @@ describe('bulk delete (T-176)', () => {
     expect(BulkRequestSchema.safeParse({ select: { layer: 'ly' }, ops: [{ op: 'delete' }] }).success).toBe(true);
   });
 });
+
+/* T-169: zu jedem benannten Statblock seine Kreatur — erfundene Namen. */
+describe('addLinked', () => {
+  const ebene: Entity = { id: 'L1', interfaces: ['Layer'], name: 'Book', components: ident('Book', 'layer-0001'), relations: [] };
+  const benannt = statblock('sb1', 'statblock-0011', 'Morwen Ashgrove (Wraith Form)', { ac: 14 }, [
+    { id: 'sb1~inLayer-1', type: 'inLayer', to: 'L1' },
+  ]);
+  benannt.components['Source'] = { publication: 'XYZ', page: '12', srd: false };
+  benannt.components['Status'] = { status: 'ready' };
+  const kreatur: Entity = { id: 'c9', interfaces: ['Creature'], name: 'Tobin', components: ident('Tobin', 'creature-0007'), relations: [] };
+  const vergeben = statblock('sb2', 'statblock-0012', 'Tobin', { ac: 10 }, [{ id: 'sb2~belongsTo-1', type: 'belongsTo', to: 'c9' }]);
+  const raw = new Map([ebene, benannt, kreatur, vergeben].map((e) => [e.id, e] as const));
+  const op = {
+    op: 'addLinked' as const,
+    type: 'Creature',
+    relation: 'belongsTo',
+    fields: { 'Creature.kind': 'npc' },
+    copy: ['Source', 'Status'],
+    stripBracket: true,
+  };
+
+  it('legt die Kreatur in derselben Ebene an und hängt den Statblock an sie', () => {
+    expect(BulkRequestSchema.safeParse({ select: { tag: 'named' }, ops: [op] }).success).toBe(true);
+    const plan = planBulk(seedRegistry, raw, ['sb1'], [op, { op: 'addTag', tag: 'named' }]);
+    const neu = plan.changes.find((c) => c.before === null)!.after!;
+    expect(neu.id).toBe('sb1-creature');
+    expect(neu.name).toBe('Morwen Ashgrove');
+    expect(neu.components['Identity']).toEqual({ name: 'Morwen Ashgrove', id: 'creature-0008' });
+    expect(neu.components['Creature']).toEqual({ kind: 'npc' });
+    expect(neu.components['Source']).toEqual({ publication: 'XYZ', page: '12', srd: false });
+    expect(neu.relations).toEqual([{ id: 'sb1-creature~inLayer-1', type: 'inLayer', to: 'L1' }]);
+    const sb = plan.changes.find((c) => c.id === 'sb1')!.after!;
+    expect(sb.relations?.find((r) => r.type === 'belongsTo')?.to).toBe('sb1-creature');
+    expect(sb.components['Tags']).toEqual({ tags: ['named'] });
+  });
+
+  it('lässt einen Statblock, der schon einer Kreatur gehört, stehen', () => {
+    const plan = planBulk(seedRegistry, raw, ['sb2'], [op]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped[0]?.reason).toMatch(/already has a belongsTo \(Tobin/);
+  });
+
+  it('zählt die Nummern innerhalb eines Laufs weiter', () => {
+    const zweiter = statblock('sb3', 'statblock-0013', 'Ilse', {}, []);
+    const r2 = new Map([...raw, ['sb3', zweiter] as const]);
+    const plan = planBulk(seedRegistry, r2, ['sb1', 'sb3'], [op]);
+    const nummern = plan.changes.filter((c) => c.before === null).map((c) => (c.after!.components['Identity'] as { id: string }).id);
+    expect(nummern.sort()).toEqual(['creature-0008', 'creature-0009']);
+  });
+});

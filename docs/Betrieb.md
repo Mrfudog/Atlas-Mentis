@@ -592,6 +592,19 @@ die aufgeschaltete Gruppe „D&D 5e (2014)" sofort im Spiel wären. Ein
 Verweis auf einen Artikel, der nicht mitkommt, wird ein Verweis nach
 Namen. Probelauf: `dry-run` mit `confirm` = `neues`.
 
+**Ein neuer Teil an einem bestehenden Artikel** (T-169): seit T-169 bringt
+der Importer zu jedem benannten Statblock (`isNamedCreature`) eine
+`Creature`, und die Kante `belongsTo` steht am Statblock — der meist schon
+da ist. `only-new` hängt darum eine Kante, die sich an einem Ende wie ein
+Feld liest (`asField`: `belongsTo`, `carries`), von einem bestehenden
+Artikel auf einen neuen an den bestehenden an; sonst bleibt er, wie er
+ist. Hat er schon eine solche Kante (die Leitung hat dem Statblock selbst
+eine Kreatur gegeben), wird der neue Artikel nicht angelegt. Die Zeile
+sagt `… N bestehende Artikel bekommen eine Kante auf einen neuen
+(belongsTo). M neue nicht angelegt: ihr bestehender Artikel hat schon
+einen.` Die Kreaturen stehen in `additions`, auch die zu Statblöcken des
+Grundstands.
+
 **Nicht während eines Ausrollens einlesen.** Der Import läuft im
 App-Container; rollt in der Zeit ein Push auf `preprod` aus, startet der
 Container neu und der Import endet mit Code 137, mitten im Schreiben (so
@@ -989,7 +1002,7 @@ gezielt zusammen: `checks duplicates` zeigt Gruppe und Ähnlichkeit, dann
 | `select.tag` | eine Marke |
 | `select.ids` | Peg-Ids oder Nummern |
 | `select.where` | `[{ field, op, value }]`, alle müssen gelten. `field`: `name`, `id` (Nummer), `type` oder `Karte.feld` (`Statblock.cr`). `op`: `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in` (Liste), `matches` (Regex), `empty`, `notEmpty` — gross/klein egal |
-| `ops` | `set` / `unset` (`field`, `value`), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein; `delete` (T-176) löscht die Auswahl mit ihren Teilen, entfernt Kanten von aussen darauf und löst Instanzen einer gehenden Vorlage — steht ebenfalls allein |
+| `ops` | `set` / `unset` (`field`, `value`), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein; `addLinked` (T-169: `type`, `relation`, `fields` als `{ "Karte.feld": wert }`, `copy` als Liste von Karten, `stripBracket`) legt je ausgewähltem Artikel einen neuen an — gleicher Name (ohne Klammer am Ende mit `stripBracket`), dieselben Ebenen, Peg-Id `<peg>-<art>` wie beim Importer — und bindet den ausgewählten über `relation` an ihn; hat er schon eine solche Kante (`one`), wird er übersprungen; Undo löscht die angelegten wieder; `delete` (T-176) löscht die Auswahl mit ihren Teilen, entfernt Kanten von aussen darauf und löst Instanzen einer gehenden Vorlage — steht ebenfalls allein |
 | `confirmDelete` | löscht ein Lauf mehr als einen Artikel, die Zahl aus der Vorschau (`--confirm-delete N`) |
 | `skipRejected` | schreiben, was besteht, und die Abgelehnten liegen lassen (nie beim Löschen) |
 

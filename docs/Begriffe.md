@@ -1180,6 +1180,16 @@ Die Übungen standen bis P4 an der Kreatur; seither nimmt der Statblock
 ist, sagt `belongsTo`; gespeichert wird nur vorwärts, und „welchen Statblock
 hat Rook" ist der Rückbezug.
 
+**Eine benannte Kreatur aus einem Buch ist eine Figur** (T-169). Strahd
+oder Venomfang standen nach dem Einlesen nur als Statblock da — Zahlen
+ohne jemanden, dem sie gehören, und damit in keiner Beziehung, keiner
+Fraktion, auf keiner Karte. Der Importer legt darum zu jedem Statblock mit
+`isNamedCreature` eine `Creature` (`kind: npc`) in dieselbe Ebene, und der
+Statblock gehört ihr direkt über `belongsTo`: eine benannte Kreatur gibt es
+einmal, also keine Instanz. Eine Spielart (`_versions`) bekommt keine
+eigene. Was der Text sonst über sie sagt (Wohnort, Fraktion), kommt nicht
+geraten dazu.
+
 `Vitals` bleibt bei der Figur: das ist, was sich **während** der Sitzung
 ändert — Trefferpunkte jetzt, Zustände, Todesretter, verbrauchte
 Zauberplätze. Es gehört ihr und nicht ihrem Bogen.
