@@ -567,3 +567,103 @@ export function recipeLearned(
       return ganz && knowsInfo(info);
     });
 }
+
+// ------------------------------------------------------------ Berufe und Werkzeuge (T-196)
+
+/**
+ * **Was man womit fertigt** (T-196): ein Beruf (`Trade`) nennt seine
+ * Werkzeuge, ein Rezept seinen Beruf und vielleicht ein eigenes Werkzeug —
+ * alles beim Namen, wie die Werkzeugübung, mit der es verglichen wird.
+ * Daraus folgt in beide Richtungen, ohne dass eine Liste irgendwo zweimal
+ * steht: die Rezepte eines Berufs, die Berufe eines Werkzeugs und die
+ * Rezepte, die ein Werkzeug möglich macht.
+ */
+export const TRADE_COMPONENT = 'Trade';
+
+const klein = (v: unknown): string => text(v).toLowerCase();
+
+/** Name und Aliasse eines Berufs, klein — die Schlüssel, unter denen ein Rezept ihn nennt. */
+export function tradeKeys(trade: Entity): Set<string> {
+  const raus = new Set<string>();
+  const name = klein(entityName(trade));
+  if (name) raus.add(name);
+  const aliases = trade.components?.['Identity']?.['aliases'];
+  if (Array.isArray(aliases)) for (const a of aliases) if (klein(a)) raus.add(klein(a));
+  return raus;
+}
+
+/** Die Werkzeuge eines Berufs, beim Namen. */
+export function tradeTools(trade: Entity): string[] {
+  const t = trade.components?.[TRADE_COMPONENT]?.['tools'];
+  return Array.isArray(t) ? t.map(text).filter(Boolean) : [];
+}
+
+/** Der Beruf, den ein Rezept nennt, und sein eigenes Werkzeug. */
+export function recipeTrade(recipe: Entity): string {
+  return text(recipe.components?.[RECIPE_COMPONENT]?.['trade']);
+}
+export function recipeTool(recipe: Entity): string {
+  return text(recipe.components?.[RECIPE_COMPONENT]?.['tool']);
+}
+
+/** Die Rezepte eines Berufs: die ihn beim Namen oder Alias nennen. */
+export function recipesOfTrade(recipes: readonly Entity[], trade: Entity): Entity[] {
+  const keys = tradeKeys(trade);
+  return recipes.filter((r) => keys.has(recipeTrade(r).toLowerCase()));
+}
+
+/** Der Beruf eines Rezepts unter den gegebenen, oder keiner. */
+export function tradeOfRecipe(trades: readonly Entity[], recipe: Entity): Entity | null {
+  const name = recipeTrade(recipe).toLowerCase();
+  return name ? (trades.find((t) => tradeKeys(t).has(name)) ?? null) : null;
+}
+
+/**
+ * **Womit ein Rezept gefertigt wird:** nennt es selbst ein Werkzeug, dieses
+ * — das Rezept ist spezifischer als sein Beruf —, sonst die Werkzeuge
+ * seines Berufs. Abweichungen am Tisch (`craftsWith`) ändern die Probe
+ * einer Figur, nicht, was das Rezept verlangt.
+ */
+export function recipeTools(recipe: Entity, trades: readonly Entity[]): string[] {
+  const eigen = recipeTool(recipe);
+  if (eigen) return [eigen];
+  const beruf = tradeOfRecipe(trades, recipe);
+  return beruf ? tradeTools(beruf) : [];
+}
+
+/** Die Berufe, die mit diesem Werkzeug ausgeübt werden. */
+export function tradesOfTool(trades: readonly Entity[], tool: string): Entity[] {
+  const name = tool.trim().toLowerCase();
+  return name ? trades.filter((t) => tradeTools(t).some((w) => w.toLowerCase() === name)) : [];
+}
+
+/** Die Rezepte, die ein Werkzeug möglich macht (`recipeTools`). */
+export function recipesOfTool(recipes: readonly Entity[], trades: readonly Entity[], tool: string): Entity[] {
+  const name = tool.trim().toLowerCase();
+  if (!name) return [];
+  return recipes.filter((r) => recipeTools(r, trades).some((w) => w.toLowerCase() === name));
+}
+
+/** Ein Stoff, den die Rezepte brauchen: in wie vielen, und wie viel zusammen. */
+export interface TradeMaterial {
+  item: EntityId;
+  recipes: number;
+  qty: number;
+}
+
+/** Das Material einer Reihe von Rezepten (`needs`), nach Zahl der Rezepte. */
+export function materialsOf(recipes: readonly Entity[]): TradeMaterial[] {
+  const je = new Map<EntityId, TradeMaterial>();
+  for (const r of recipes) {
+    const gesehen = new Set<EntityId>();
+    for (const k of r.relations ?? []) {
+      if (k.type !== 'needs') continue;
+      const m = je.get(k.to) ?? { item: k.to, recipes: 0, qty: 0 };
+      if (!gesehen.has(k.to)) m.recipes += 1;
+      gesehen.add(k.to);
+      m.qty += Math.max(1, Number(k.props?.['qty']) || 1);
+      je.set(k.to, m);
+    }
+  }
+  return [...je.values()].sort((a, b) => b.recipes - a.recipes || b.qty - a.qty);
+}

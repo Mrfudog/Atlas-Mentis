@@ -738,6 +738,9 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'it-linked', el: 'linked' },
         { id: 'it-b', el: 'prose', fields: 'all' },
         { id: 'it-c', el: 'composed' },
+        /* Was man mit einem Werkzeug fertigt (T-196) — an jedem anderen
+           Gegenstand zeichnet das Element nichts. */
+        { id: 'it-craft', el: 'crafting' },
         { id: 'it-used', el: 'usedBy' },
         { id: 'it-stand', el: 'standing' },
         { id: 'it-r', el: 'relations' },
@@ -1146,6 +1149,28 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'rz-b', el: 'prose', fields: 'all' },
         { id: 'rz-r', el: 'relations' },
       ],
+    },
+  },
+
+  /**
+   * **Ein Beruf** (T-196) ist eine Regel: er trägt den Text des Regelwerks,
+   * Quelle und Marken wie jede, und dazu seine Werkzeuge. Seine Seite ist
+   * die Handwerksübersicht — Beschreibung, Rezepte mit SG und Zeit, die
+   * Materialien —, gezeichnet vom Element `crafting`, das am Rezept die
+   * Werkbank ist: ein Element, das am Server fragt, was hier zu zeigen ist.
+   */
+  Trade: {
+    name: 'Trade',
+    area: 'rules',
+    label: 'Trade',
+    extends: ['Rule'],
+    schema: merge(g.TradeInfo),
+    /* Als Anpassung: die Karte nennt die Werkzeuge, die Seite die
+       Übersicht unter Bild und Beschreibung (wie `uebersicht` in
+       ansichten.ts, nur mit der Art angelegt, Migration 087). */
+    views: {
+      quick: { adjust: { add: { 'q-f': ['Trade.tools'] } } },
+      full: { adjust: { extra: [{ id: 'l-crafting', el: 'crafting' }], order: ['l-img', 'l-desc', 'l-crafting'] } },
     },
   },
 
