@@ -119,7 +119,12 @@ import { KampagnenEbenenListe } from './ebenen';
             </fieldset>
           }
           @if (k.may) {
-            <nw-kampagnen-ebenen [kampagne]="k.id" [kompakt]="true" (geschaltet)="stapel.geaendert()" />
+            <!-- Erst beim Öffnen geladen (T-188): die Liste ist gross, und die Kopfleiste steht im Grundpaket mit seinem Budget. -->
+            @defer {
+              <nw-kampagnen-ebenen [kampagne]="k.id" [kompakt]="true" (geschaltet)="stapel.geaendert()" />
+            } @placeholder {
+              <p class="fuss">Loading the layers…</p>
+            }
           } @else {
             <p class="fuss">{{ zahlText() }} in play. The GM chooses which.</p>
           }
