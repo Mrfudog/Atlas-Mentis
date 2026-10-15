@@ -9,6 +9,7 @@ import { ALLE, Filtergruppen } from './kern/filtergruppen';
 import { Suche, tipptGerade } from './kern/suche';
 import { SucheComponent } from './suche/suche';
 import { Stapel } from './kern/stapel';
+import { Rueckweg } from './kern/rueckweg';
 import { StapelKnopf } from './verwaltung/stapel-knopf';
 import { Neues } from './kern/neues';
 
@@ -547,6 +548,8 @@ export class App {
   private uhr: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
+    /* Zurück an dieselbe Stelle einer Liste (T-185) — einmal geholt, hört er mit. */
+    inject(Rueckweg);
     void this.session.load();
     /* Die Gruppen gehören zum Konto und zur Kampagne: neu nach Anmelden,
        Abmelden und jedem Wechsel der Sicht (REQ-241). */
