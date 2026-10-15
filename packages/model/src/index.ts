@@ -45,3 +45,4 @@ export * from './registerabgleich.js';
 export * from './stowing.js';
 export * from './ruleOptions.js';
 export * from './facets.js';
+export * from './zugplan.js';

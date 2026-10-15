@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
   viewChild,
@@ -37,8 +38,16 @@ import {
   revealShapes,
   setFog,
   zoomStep,
+  cellAt,
+  cellPoint,
+  cellKey,
+  feetBetween,
+  planGrid,
+  planPath,
+  planReach,
+  tokenCell,
 } from '@nw/model';
-import type { Entity, Frame, MapMarker, Pt, RevealShape, Size } from '@nw/model';
+import type { Cell, Entity, Frame, MapMarker, Pt, RevealShape, Size } from '@nw/model';
 import { Api, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -48,6 +57,32 @@ import { bildAdresse } from '../artikel/bild';
 import { Brett, type Mangel } from '../boards/brett';
 import { BoardSuche } from '../boards/suche';
 import { Ladeanzeige } from '../kern/ladeanzeige';
+
+/**
+ * **Was der Zugplan auf der Karte zeigt** (T-198). Die Karte rechnet
+ * Raster, Reichweite und Weg selbst — sie kennt die Bildgrösse; der Planer
+ * sagt nur, wessen Token, wie viel Tempo übrig ist und was er gerade wählt.
+ */
+export interface Planung {
+  /** Die Markerkante der Figur, die plant. */
+  rel: string | null;
+  /** Wo der Plan das Token gerade hinstellt (Ende der letzten Bewegung); sonst das Token. */
+  from: Cell | null;
+  /** Übriges Tempo in Fuss. */
+  budget: number;
+  mode: 'move' | 'target' | 'idle';
+  /** Reichweite der gewählten Kachel in Fuss (Zielwahl). */
+  range: number | null;
+  /** Beschriftung je Artikel-Id am Token, etwa die Trefferchance. */
+  labels: Readonly<Record<string, string>>;
+  /** Die schon geplanten Wege. */
+  paths: readonly (readonly Cell[])[];
+}
+
+/** Was ein Antippen im Plan ergibt: ein Weg oder ein Ziel. */
+export type PlanTipp =
+  | { kind: 'cell'; path: Cell[]; feet: number; to: Pt }
+  | { kind: 'target'; id: string; name: string; feet: number | null };
 
 /** Ab so vielen Bildpunkten ist ein Druck ein Ziehen und kein Antippen. */
 const ZIEHEN_AB = 5;
@@ -309,6 +344,28 @@ interface Zeiger {
                 <span class="messwert" [style.left.%]="m.b.x * 100" [style.top.%]="m.b.y * 100">{{ m.text }}</span>
               }
             }
+            @if (planBild(); as pb) {
+              <svg class="plan" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                @for (c of pb.reach; track c.k) {
+                  <rect class="reich" [attr.x]="c.x" [attr.y]="c.y" [attr.width]="c.w" [attr.height]="c.h" />
+                }
+                @if (pb.ring; as r) {
+                  <ellipse class="ring" [attr.cx]="r.cx" [attr.cy]="r.cy" [attr.rx]="r.rx" [attr.ry]="r.ry" vector-effect="non-scaling-stroke" />
+                }
+                @for (w of pb.wege; track $index) {
+                  <polyline class="weg" [attr.points]="w" vector-effect="non-scaling-stroke" />
+                }
+                @if (pb.vorschau; as v) {
+                  <polyline class="weg vor" [attr.points]="v" vector-effect="non-scaling-stroke" />
+                }
+              </svg>
+              @if (pb.geist; as g) {
+                <span class="geist" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [style.width.px]="g.px" [style.height.px]="g.px"></span>
+              }
+              @if (pb.vorschauText; as t) {
+                <span class="messwert" [style.left.%]="t.x * 100" [style.top.%]="t.y * 100">{{ t.text }}</span>
+              }
+            }
             @if (gruppe(); as p) {
               <button
                 type="button"
@@ -334,6 +391,9 @@ interface Zeiger {
                 [class.dran]="m.dran"
                 [class.naechster]="m.naechster"
                 [class.zieht]="zug()?.id === m.rel.id"
+                [class.ziel]="m.ziel === true"
+                [class.fern]="m.ziel === false"
+                [class.selbst]="m.selbst"
                 [style.left.%]="m.x * 100"
                 [style.top.%]="m.y * 100"
                 [style.width.px]="m.px"
@@ -348,6 +408,9 @@ interface Zeiger {
                   <img [src]="m.bild" alt="" draggable="false" />
                 } @else {
                   <span>{{ kuerzel(m.name) }}</span>
+                }
+                @if (m.etikett) {
+                  <b class="etikett">{{ m.etikett }}</b>
                 }
               </button>
             }
@@ -404,6 +467,9 @@ export class Karte {
   readonly ort = input<'artikel' | 'play'>('artikel');
   /** Unter Play füllt die Karte den Schirm. */
   readonly gross = input(false);
+  /** Der Zugplan (T-198): solange er dasteht, wählt ein Antippen Weg oder Ziel. */
+  readonly planung = input<Planung | null>(null);
+  readonly planTipp = output<PlanTipp>();
 
   protected readonly MARKER_MIN = MARKER_MIN;
   protected readonly PINSEL = PINSEL;
@@ -704,6 +770,8 @@ export class Karte {
     const f = this.faktor();
     const z = this.zug();
     const max = this.breite() * 0.3;
+    const plan = this.planung();
+    const pr = this.planRaster();
     return markersOf(e).map((m: MapMarker) => {
       const ziel = ziele[m.to];
       const name = ziel?.name ?? this.bestand.name()(m.to) ?? '?';
@@ -723,6 +791,13 @@ export class Karte {
         titel: [name, m.note, m.hidden ? 'hidden from the players' : '', zug?.current === m.to ? 'their turn' : zug?.next === m.to ? 'next' : '']
           .filter(Boolean)
           .join(' — '),
+        selbst: !!plan && plan.rel === m.rel.id,
+        /* In der Zielwahl: in Reichweite (true), ausser Reichweite (false). */
+        ziel:
+          plan?.mode === 'target' && plan.rel !== m.rel.id && pr && plan.range !== null && m.kind !== 'scenery'
+            ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) <= plan.range
+            : null,
+        etikett: plan && plan.rel !== m.rel.id ? (plan.labels[m.to] ?? '') : '',
       };
     });
   });
@@ -746,6 +821,17 @@ export class Karte {
   protected kurzansicht(ev: MouseEvent, id: string): void {
     if (this.nachZug) {
       this.nachZug = false;
+      return;
+    }
+    /* Im Zugplan ist ein Token ein Ziel und keine Kurzansicht (T-198). */
+    const plan = this.planung();
+    /* Beim Bewegen ist ein Token im Weg und keine Kurzansicht. */
+    if (plan?.mode === 'move') return;
+    if (plan?.mode === 'target') {
+      const m = this.marker().find((x) => x.to === id && x.rel.id !== plan.rel);
+      if (!m) return;
+      const pr = this.planRaster();
+      this.planTipp.emit({ kind: 'target', id, name: m.name, feet: pr ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) : null });
       return;
     }
     if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
@@ -836,6 +922,10 @@ export class Karte {
     }
     const b = this.buehne()?.nativeElement;
     if (!b) return;
+    if (this.planung()?.mode === 'move' && ev.pointerType === 'mouse' && !this.zeiger.size) {
+      const pt = this.punkt(ev);
+      this.planZeiger.set(pt);
+    }
     if (this.werkzeug() === 'messen' && this.messA() && !this.messFest() && ev.pointerType === 'mouse') {
       const pt = this.punkt(ev);
       if (pt) this.messB.set(pt);
@@ -958,6 +1048,11 @@ export class Karte {
   private antippen(ev: PointerEvent): void {
     const pt = this.punkt(ev);
     if (!pt) return;
+    if (this.planung()?.mode === 'move') {
+      const w = this.wegZu(pt);
+      if (w) this.planTipp.emit({ kind: 'cell', ...w });
+      return;
+    }
     if (this.werkzeug() === 'messen') {
       if (!this.messA() || this.messFest()) {
         this.messA.set(pt);
@@ -981,6 +1076,82 @@ export class Karte {
     const s = this.einst();
     if (!a || !b || !s) return null;
     return { a, b, text: measure(s, this.nat(), a, b).text };
+  });
+
+  // ------------------------------------------------------------ Zugplan
+
+  /** Das Raster des Plans und wo das Token gerade steht (T-198); nur auf Quadraten. */
+  protected readonly planRaster = computed(() => {
+    const plan = this.planung();
+    const s = this.einst();
+    const e = this.angezeigt();
+    if (!plan || !s || !e) return null;
+    const geo = gridGeometry(s, this.nat());
+    if (!geo) return null;
+    const ms = markersOf(e);
+    const grid = planGrid(geo, ms, plan.rel ?? '');
+    if (!grid) return null;
+    const ich = ms.find((m) => m.rel.id === plan.rel);
+    const token = ich ? tokenCell(geo, grid, ich) : null;
+    const start = plan.from ?? token;
+    return start ? { geo, grid, start, token } : null;
+  });
+
+  /** Wohin das Tempo reicht, als Felder — einmal je Plan, nicht je Zeichnen. */
+  private readonly planReich = computed(() => {
+    const plan = this.planung();
+    const pr = this.planRaster();
+    if (!plan || plan.mode !== 'move' || !pr || plan.budget <= 0) return {} as Record<string, number>;
+    return planReach(pr.grid, pr.start, plan.budget);
+  });
+
+  private readonly planZeiger = signal<Pt | null>(null);
+
+  /** Der Weg zu einem Punkt, wenn er ins übrige Tempo passt. */
+  private wegZu(pt: Pt): { path: Cell[]; feet: number; to: Pt } | null {
+    const plan = this.planung();
+    const pr = this.planRaster();
+    if (!plan || !pr) return null;
+    const c = cellAt(pr.geo, pt);
+    if (!(cellKey(c) in this.planReich()) || (c.x === pr.start.x && c.y === pr.start.y)) return null;
+    const w = planPath(pr.grid, pr.start, c, plan.budget);
+    return w ? { ...w, to: cellPoint(pr.geo, c) } : null;
+  }
+
+  /** Was die Überlagerung zeichnet: Reichweite, Wege, Vorschau, Ring und das Token am Ende. */
+  protected readonly planBild = computed(() => {
+    const plan = this.planung();
+    const pr = this.planRaster();
+    if (!plan || !pr) return null;
+    const { geo } = pr;
+    const fw = geo.size / geo.w;
+    const fh = geo.size / geo.h;
+    const reach = Object.keys(this.planReich()).map((k) => {
+      const [x, y] = k.split(',').map(Number) as [number, number];
+      return { k, x: (geo.ox + x * geo.size) / geo.w, y: (geo.oy + y * geo.size) / geo.h, w: fw, h: fh };
+    });
+    const linie = (cells: readonly Cell[]) =>
+      cells
+        .map((c) => cellPoint(geo, c))
+        .map((p) => `${p.x},${p.y}`)
+        .join(' ');
+    const wege = plan.paths.filter((p) => p.length > 1).map(linie);
+    const z = plan.mode === 'move' ? this.planZeiger() : null;
+    const w = z ? this.wegZu(z) : null;
+    const mitte = cellPoint(geo, pr.start);
+    const ring =
+      plan.mode === 'target' && plan.range !== null
+        ? { cx: mitte.x, cy: mitte.y, rx: ((plan.range / 5 + 0.5) * geo.size) / geo.w, ry: ((plan.range / 5 + 0.5) * geo.size) / geo.h }
+        : null;
+    const verschoben = pr.token && (pr.token.x !== pr.start.x || pr.token.y !== pr.start.y);
+    return {
+      reach,
+      wege,
+      ring,
+      vorschau: w ? linie(w.path) : null,
+      vorschauText: w ? { x: w.to.x, y: w.to.y, text: `${w.feet} ft` } : null,
+      geist: verschoben ? { ...mitte, px: Math.max(MARKER_MIN, geo.size * this.faktor()) } : null,
+    };
   });
 
   protected readonly setzenBei = signal<Pt | null>(null);

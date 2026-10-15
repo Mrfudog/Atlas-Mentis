@@ -108,6 +108,18 @@ describe('Live', () => {
     live.verteile('entity', { id: 'x' });
     expect(artikel).toHaveLength(2);
   });
+
+  it('hands turn plans to whoever listens, as the map id (T-198)', () => {
+    stubFetch({});
+    const { transport } = speicherTransport();
+    TestBed.configureTestingModule({ providers: [{ provide: LIVE_TRANSPORT, useValue: transport }] });
+    const live = TestBed.inject(Live);
+    const karten: string[] = [];
+    live.onPlan((k) => karten.push(k));
+    live.verteile('plan', { id: 'm_gang' });
+    live.verteile('plan', {});
+    expect(karten).toEqual(['m_gang']);
+  });
 });
 
 describe('Bestand follows the live channel', () => {

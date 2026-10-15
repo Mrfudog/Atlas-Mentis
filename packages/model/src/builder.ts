@@ -13,12 +13,21 @@
  * dort ist der Entwurf die gespeicherte Figur mit einer Stufe mehr.
  */
 
-import { answerKey, answersOf, choicesAtCharacter, choicesOf, offeredOptions, type ChoiceAtCharacter, type ChoiceRules } from './choices.js';
+import { ancestryLine, answerKey, answersOf, choiceSources, choicesAtCharacter, choicesOf, offeredOptions, type Choice, type ChoiceAtCharacter, type ChoiceRules } from './choices.js';
 import { optionSlots } from './equipment.js';
 import type { Entity, EntityId, Relation } from './types.js';
 
+export type PickEdge = 'hasAncestry' | 'hasBackground' | 'hasClass';
+
 export type BuilderStep =
-  | { id: string; kind: 'pick'; edge: 'hasAncestry' | 'hasBackground' | 'hasClass'; type: 'Ancestry' | 'Background' | 'Class' }
+  | {
+      id: string;
+      kind: 'pick';
+      edge: PickEdge;
+      type: 'Ancestry' | 'Background' | 'Class';
+      /** Die Wahlen, die die gewählte Möglichkeit stellt — mit `nest` hier statt als eigene Schritte (T-193). */
+      nested?: ChoiceAtCharacter[];
+    }
   | { id: 'abilities'; kind: 'abilities' }
   | { id: 'level'; kind: 'level' }
   | { id: string; kind: 'choice'; at: ChoiceAtCharacter }
@@ -70,21 +79,30 @@ export function answeredKeys(character: Entity, byId: ReadonlyMap<EntityId, Enti
 export function builderSteps(
   draft: Entity,
   byId: ReadonlyMap<EntityId, Entity>,
-  opts: { levelUp?: boolean; done?: ReadonlySet<string>; rules?: ChoiceRules } = {},
+  opts: { levelUp?: boolean; done?: ReadonlySet<string>; rules?: ChoiceRules; nest?: boolean } = {},
 ): BuilderStep[] {
   const alle = choicesAtCharacter(draft, byId);
   const einzig = (c: ChoiceAtCharacter) =>
     c.choice.kind === 'option' && !!c.picks && offeredOptions(c.choice, choicesOf(c.source.entity), opts.rules).length <= 1;
-  const wahlen = alle
+  const wurzel = opts.nest && !opts.levelUp ? choiceRoots(draft, byId) : new Map<string, PickEdge>();
+  const offen = alle
     .map((c, i) => ({ c, i }))
     .filter(({ c }) => !c.fixed && !einzig(c) && !opts.done?.has(choiceKey(c)) && c.choice.kind !== 'equipment')
     .sort((a, z) => (RANG[a.c.source.via] ?? 9) - (RANG[z.c.source.via] ?? 9) || a.i - z.i)
-    .map(({ c }): BuilderStep => ({ id: `choice:${choiceKey(c)}`, kind: 'choice', at: c }));
+    .map(({ c }) => c);
+  const unter = (edge: PickEdge) => offen.filter((c) => wurzel.get(c.source.entity.id) === edge);
+  const wahlen = offen
+    .filter((c) => !wurzel.has(c.source.entity.id))
+    .map((c): BuilderStep => ({ id: `choice:${choiceKey(c)}`, kind: 'choice', at: c }));
   if (opts.levelUp) return [{ id: 'level', kind: 'level' }, ...wahlen];
+  const pick = (id: string, edge: PickEdge, type: 'Ancestry' | 'Background' | 'Class'): BuilderStep => {
+    const nested = unter(edge);
+    return { id, kind: 'pick', edge, type, ...(opts.nest ? { nested } : {}) };
+  };
   return [
-    { id: 'ancestry', kind: 'pick', edge: 'hasAncestry', type: 'Ancestry' },
-    { id: 'background', kind: 'pick', edge: 'hasBackground', type: 'Background' },
-    { id: 'class', kind: 'pick', edge: 'hasClass', type: 'Class' },
+    pick('ancestry', 'hasAncestry', 'Ancestry'),
+    pick('background', 'hasBackground', 'Background'),
+    pick('class', 'hasClass', 'Class'),
     { id: 'abilities', kind: 'abilities' },
     ...wahlen,
     /* Das Feste fragt nur, wenn es eine offene Stelle hat (T-162):
@@ -96,6 +114,110 @@ export function builderSteps(
     },
     { id: 'details', kind: 'details' },
   ];
+}
+
+/**
+ * **Zu welcher Grundwahl eine Quelle gehört** (T-193): Abstammung (samt
+ * Grundart), Hintergrund, Klasse — die Unterklasse und was eine davon
+ * gewährt, gehören mit. Was die Figur selbst gewählt hat (`chose`: ein
+ * Talent, das wieder fragt), gehört keiner und bleibt ein eigener Schritt.
+ */
+export function choiceRoots(draft: Entity, byId: ReadonlyMap<EntityId, Entity>): Map<EntityId, PickEdge> {
+  const raus = new Map<EntityId, PickEdge>();
+  for (const q of choiceSources(draft, byId)) {
+    const w: PickEdge | undefined =
+      q.via === 'hasAncestry' || q.via === 'hasBackground' || q.via === 'hasClass'
+        ? q.via
+        : q.via === 'subclass'
+          ? 'hasClass'
+          : q.via === 'grants' && q.grant
+            ? raus.get(q.grant.by)
+            : undefined;
+    if (w && !raus.has(q.entity.id)) raus.set(q.entity.id, w);
+  }
+  return raus;
+}
+
+/**
+ * **Was eine Möglichkeit bringt** (T-193): die Auswirkungen einer Herkunft,
+ * eines Hintergrunds oder einer Klasse auf Stufe 1, so wie der Assistent
+ * sie aufklappt und nebeneinanderstellt — gerechnet aus den Feldern und
+ * Kanten, nicht aus dem Text. Eine Unterart liest ihre Grundart mit
+ * (`ancestryLine`): Werte der Unterart gehen vor, Boni zählen zusammen,
+ * Listen werden vereinigt. `features` sind die gewährten Merkmale bis
+ * `level`, `choices` die Wahlen, die die Möglichkeit danach stellt (ohne
+ * Ausrüstung und ohne den Mehrklassen-Einstieg).
+ */
+export interface OptionEffects {
+  /** Die Möglichkeit, dann ihre Grundarten. */
+  line: EntityId[];
+  abilityBonus: Record<string, number>;
+  abilityNote?: string;
+  size: string[];
+  speed?: string;
+  darkvision?: number;
+  creatureType?: string;
+  resistances: string[];
+  hitDie?: number;
+  primaryAbility: string[];
+  saves: string[];
+  proficient: string[];
+  expertise: string[];
+  features: { id: EntityId; by: EntityId }[];
+  choices: { by: EntityId; choice: Choice }[];
+}
+
+const liste = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x) : typeof v === 'string' && v ? [v] : []);
+
+export function optionEffects(id: EntityId, byId: ReadonlyMap<EntityId, Entity>, level = 1): OptionEffects | null {
+  if (!byId.has(id)) return null;
+  const line = ancestryLine(id, byId);
+  const raus: OptionEffects = {
+    line,
+    abilityBonus: {},
+    size: [],
+    resistances: [],
+    primaryAbility: [],
+    saves: [],
+    proficient: [],
+    expertise: [],
+    features: [],
+    choices: [],
+  };
+  const dazu = (ziel: string[], v: unknown) => {
+    for (const x of liste(v)) if (!ziel.includes(x)) ziel.push(x);
+  };
+  for (const eid of line) {
+    const e = byId.get(eid)!;
+    const c = e.components ?? {};
+    const a = c['Ancestry'] ?? {};
+    const k = c['Class'] ?? {};
+    const p = c['Proficiencies'] ?? {};
+    const bonus = a['abilityBonus'];
+    if (bonus && typeof bonus === 'object') {
+      for (const [x, n] of Object.entries(bonus)) if (Number.isFinite(Number(n))) raus.abilityBonus[x] = (raus.abilityBonus[x] ?? 0) + Number(n);
+    }
+    if (typeof a['abilityNote'] === 'string' && a['abilityNote'] && !raus.abilityNote) raus.abilityNote = a['abilityNote'];
+    if (!raus.size.length) dazu(raus.size, a['size']);
+    if (raus.speed === undefined && typeof a['speed'] === 'string' && a['speed']) raus.speed = a['speed'];
+    if (raus.darkvision === undefined && typeof a['darkvision'] === 'number') raus.darkvision = a['darkvision'];
+    if (raus.creatureType === undefined && typeof a['creatureType'] === 'string' && a['creatureType']) raus.creatureType = a['creatureType'];
+    dazu(raus.resistances, a['resistances']);
+    if (raus.hitDie === undefined && typeof k['hitDie'] === 'number') raus.hitDie = k['hitDie'];
+    dazu(raus.primaryAbility, k['primaryAbility']);
+    dazu(raus.saves, p['saves']);
+    dazu(raus.proficient, p['proficient']);
+    dazu(raus.expertise, p['expertise']);
+    for (const r of e.relations ?? []) {
+      if (r.type !== 'grants' || (Number(r.props?.['level']) || 1) > level) continue;
+      if (!raus.features.some((f) => f.id === r.to)) raus.features.push({ id: r.to, by: eid });
+    }
+    for (const ch of choicesOf(e)) {
+      if ((ch.level ?? 1) > level || ch.when === 'multiclass' || ch.kind === 'equipment') continue;
+      raus.choices.push({ by: eid, choice: ch });
+    }
+  }
+  return raus;
 }
 
 let zaehler = 0;

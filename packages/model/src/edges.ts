@@ -220,14 +220,14 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'builder',
     label: 'Character builder and sheet',
     area: 'character',
-    does: 'builds a character — class levels, ancestry, background, the choices they ask, ability and equipment methods — and shows the answers by their class',
+    does: 'builds a character — class levels, ancestry (with the base of a sub-ancestry), background, the choices they ask, the effects of each option, ability and equipment methods — and shows the answers by their class',
     uses: {
       [M + 'builder.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
-      [M + 'choices.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [M + 'choices.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       [M + 'abilities.ts']: ['abilityPool', 'allowsMethod'],
       [M + 'equipment.ts']: ['allowsEquipment', 'hasBackground', 'hasClass'],
       [S + 'app.ts']: ['abilityPool', 'allowsEquipment', 'allowsMethod', 'carries', 'holds'],
-      [W + 'figur/assistent.ts']: ['belongsTo', 'chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [W + 'figur/assistent.ts']: ['belongsTo', 'chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       [W + 'artikel/klasseneintrag.ts']: ['chose', 'hasAncestry', 'hasBackground', 'hasClass'],
       [W + 'artikel/artikel.ts']: ['chose', 'hasClass'],
     },
@@ -324,6 +324,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [M + 'map.ts']: ['insideMap', 'mapOf', 'marker', 'participates'],
       [S + 'karten.ts']: ['belongsTo', 'insideMap', 'memberOfParty', 'onMap', 'participates'],
       [W + 'karten/karte.ts']: ['marker'],
+    },
+  },
+  {
+    key: 'turnplan',
+    label: 'Turn planner',
+    area: 'play',
+    does: 'builds the action bar of a creature on the map from the actions of its statblock, and moves its token when the GM confirms a planned turn (T-198)',
+    uses: {
+      [S + 'zugplan.ts']: ['belongsTo', 'composedOf'],
     },
   },
   {

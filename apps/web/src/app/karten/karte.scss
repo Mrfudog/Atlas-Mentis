@@ -345,3 +345,84 @@ button {
   outline: 2px dashed var(--gold);
   outline-offset: 3px;
 }
+
+/* Der Zugplan (T-198): erreichbare Felder, Wege, Reichweite, das Token am Ende. */
+.plan {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.plan .reich {
+  fill: rgba(70, 140, 200, 0.22);
+  stroke: rgba(70, 140, 200, 0.45);
+  stroke-width: 0.0006;
+}
+.plan .weg {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.plan .weg.vor {
+  stroke: rgb(40, 110, 180);
+  stroke-dasharray: 6 4;
+}
+.plan .ring {
+  fill: rgba(200, 140, 40, 0.08);
+  stroke: rgba(200, 140, 40, 0.8);
+  stroke-width: 2;
+  stroke-dasharray: 8 5;
+}
+.geist {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px dashed var(--accent);
+  background: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+.marker.selbst {
+  box-shadow: 0 0 0 3px rgb(40, 110, 180);
+}
+.marker.ziel {
+  box-shadow: 0 0 0 3px rgb(190, 50, 40);
+  cursor: crosshair;
+}
+.marker.fern {
+  opacity: 0.45;
+}
+.marker .etikett {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, 2px);
+  padding: 0 0.3rem;
+  border-radius: 0.6rem;
+  background: rgb(190, 50, 40);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.marker:has(.etikett) {
+  overflow: visible;
+}
+.marker:has(.etikett) img {
+  border-radius: 50%;
+}
+
+/* Mit der Aktionsleiste darunter (T-198) bleibt die Karte kleiner. */
+:host-context(.mit-plan) .gross .buehne {
+  height: calc(100dvh - 22rem);
+}
+@media (max-width: 640px) {
+  :host-context(.mit-plan) .gross .buehne {
+    height: 42dvh;
+    min-height: 260px;
+  }
+}

@@ -15,11 +15,12 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-3 Stories · 9 Punkte · 3 steht
+4 Stories · 11 Punkte · 4 steht
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-248]] Kurzansicht überall | Spieler | 2 | steht |
 | [[REQ-305]] Kampagne und Ebene immer sichtbar | Spielleitung | 2 | steht |
 | [[REQ-315]] Globale Kopfleiste | Spieler | 1 | steht |
+| [[REQ-317]] Zurück an dieselbe Stelle | Spielleitung | 1 | steht |
 <!-- stories:ende -->

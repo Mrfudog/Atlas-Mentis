@@ -91,7 +91,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Rückgängig, W9), die **Karte** (`karten/`: Element `map` und
   Play › Map unter `/play`, Blätter, Gitter, Messen, Marker mit
   Kurzansicht, Unterkarten zum Hineinzoomen, Gruppen-Token; Logik in
-  `packages/model/src/map.ts`, Zurückhalten mit `redactMap`, T-115), das
+  `packages/model/src/map.ts`, Zurückhalten mit `redactMap`, T-115; darunter
+  der **Zugplan** als Prototyp, `karten/zugplaner.ts`, Routen in
+  `apps/server/src/zugplan.ts`, Logik in `packages/model/src/zugplan.ts`:
+  Aktionsleiste, Zugfolge, Bestätigen durch die Leitung, T-198), das
   **Inventar** (`artikel/inventar.ts`, an Figur, Gruppe und Behälter:
   Raster mit Drehen und Zonen, Gewicht oder Slots nach `Campaign.inventory`,
   Münzen, Verschieben zwischen Figur, Gruppe und Behälter; Logik in
