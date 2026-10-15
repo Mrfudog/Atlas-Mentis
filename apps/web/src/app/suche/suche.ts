@@ -114,6 +114,23 @@ const KNOEPFE = 8;
                 </div>
               }
             }
+            <!-- Mit genau einer Art: ihre Facetten (T-180), dieselben wie im Kompendium. -->
+            @for (g of facetten(); track g.ref) {
+              <div class="reihe" role="group" [attr.aria-label]="g.label">
+                <span class="leg">{{ g.label }}</span>
+                @for (k of g.knoepfe; track k.value) {
+                  <button
+                    type="button"
+                    class="chip"
+                    [class.an]="k.an"
+                    [attr.aria-pressed]="k.an"
+                    (click)="feldUmschalten(g.ref, k.value)"
+                  >
+                    {{ k.label }} <span class="zahl">{{ k.count }}</span>
+                  </button>
+                }
+              </div>
+            }
           </div>
         }
 
@@ -464,6 +481,31 @@ export class SucheComponent {
   /** Welche Filterleiste alle Knöpfe zeigt. */
   protected readonly alle = signal<SuchFilter['kind'] | null>(null);
   protected readonly filterAn = computed(() => this.filter().length > 0 || this.bereich() !== null);
+  /** Die gewählten Werte je Facette der einen gewählten Art (T-180). */
+  protected readonly felder = signal<Readonly<Record<string, readonly string[]>>>({});
+  private readonly eineArt = computed(() => {
+    const typen = this.filter().filter((f) => f.kind === 'type');
+    return typen.length === 1 ? typen[0]!.value : null;
+  });
+  /** Die Häkchen-Facetten der gewählten Art als Chips; Spannen bleiben dem Kompendium. */
+  protected readonly facetten = computed(() => {
+    if (!this.eineArt()) return [];
+    const an = this.felder();
+    return (this.ergebnis()?.facets.fields ?? []).flatMap((f) =>
+      f.kind !== 'enum'
+        ? []
+        : [
+            {
+              ref: f.ref,
+              label: f.label,
+              knoepfe: [...f.options]
+                .sort((a, b) => Number(an[f.ref]?.includes(b.value) ?? false) - Number(an[f.ref]?.includes(a.value) ?? false))
+                .slice(0, KNOEPFE)
+                .map((o) => ({ value: o.value, label: o.label ?? o.value, count: o.count, an: !!an[f.ref]?.includes(o.value) })),
+            },
+          ],
+    );
+  });
 
   private uhr: ReturnType<typeof setTimeout> | undefined;
   private abbruch: AbortController | null = null;
@@ -576,6 +618,17 @@ export class SucheComponent {
       an ? l.filter((x) => x.kind !== f.kind || x.value !== f.value) : [...l, f],
     );
     if (!an) this.suche.gefiltert(f);
+    /* Eine andere Art hat andere Facetten. */
+    if (f.kind === 'type') this.felder.set({});
+    void this.fragen();
+  }
+
+  protected feldUmschalten(ref: string, wert: string): void {
+    this.felder.update((m) => {
+      const alt = m[ref] ?? [];
+      const neu = alt.includes(wert) ? alt.filter((x) => x !== wert) : [...alt, wert];
+      return { ...m, [ref]: neu };
+    });
     void this.fragen();
   }
 
@@ -612,6 +665,9 @@ export class SucheComponent {
           layer: nach('layer'),
           publisher: nach('publisher'),
           ...(this.bereich() ? { area: this.bereich()! } : {}),
+          ...(this.eineArt()
+            ? { f: Object.entries(this.felder()).filter(([, v]) => v.length).map(([r, v]) => `${r}:${v.join('|')}`) }
+            : {}),
           offset,
           limit: BLATT,
         },

@@ -1661,7 +1661,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Feat
 
-`Feat` · erbt von `Rule` ← `Choices` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Feat` · erbt von `Rule` ← `Choices` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1671,6 +1671,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
 - *`Choices`* — `choices` *array*
+- *`Effects`* — `effects` *array*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1713,7 +1714,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Feature
 
-`Feature` · erbt von `Rule` ← `Choices` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Feature` · erbt von `Rule` ← `Choices` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1723,6 +1724,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
 - *`Choices`* — `choices` *array*
+- *`Effects`* — `effects` *array*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*

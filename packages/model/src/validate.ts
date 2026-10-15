@@ -19,7 +19,7 @@ const propertyType = z.enum(['string', 'number', 'integer', 'boolean', 'array', 
 /* Was ein Feld oder eine Kante zur Facette sagt (T-174). */
 const facetHint = z.union([
   z.literal(false),
-  z.object({ label: z.string().optional(), order: z.number().optional() }),
+  z.object({ label: z.string().optional(), order: z.number().optional(), as: z.enum(['effect', 'requirement']).optional() }),
 ]);
 
 /* Worauf ein Verweisfeld zeigen darf. Die Art ist die Regel, die Marken

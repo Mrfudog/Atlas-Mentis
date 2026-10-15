@@ -834,7 +834,9 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        prerequisite: { type: 'string', title: 'Prerequisite' },
+        /* Ein Satz („level 4, STR 13"), als Facette zerlegt (T-180,
+           `parseRequirement`) — Grundlage für „usable by". */
+        prerequisite: { type: 'string', title: 'Prerequisite', facet: { as: 'requirement' } },
         repeatable: { type: 'boolean', title: 'May be taken again', default: false },
       },
     },
@@ -1012,6 +1014,8 @@ export const fieldGroups = {
           type: 'array',
           many: true,
           title: 'Effects',
+          /* Als Facette: Ziel und Art je Eintrag (T-180, `effectKeys`). */
+          facet: { as: 'effect' },
           items: { type: 'object' },
           entry: {
             type: 'object',
@@ -1065,7 +1069,7 @@ export const fieldGroups = {
            „Startgold" würfelt ihn, wenn es selbst keinen Betrag nennt. */
         startingGold: { type: 'string', title: 'Starting gold (gp)' },
         /* „STR 13 or DEX 13" — ein Satz; die Regel wertet niemand aus. */
-        multiclassRequirement: { type: 'string', title: 'Multiclass requirement' },
+        multiclassRequirement: { type: 'string', title: 'Multiclass requirement', facet: { as: 'requirement' } },
         /* Was beim Einstieg als zweite Klasse dazukommt — weniger als beim
            Start (der Kämpfer bringt dann keine schwere Rüstung). */
         multiclassProficient: {
@@ -1370,7 +1374,8 @@ export const fieldGroups = {
         tier: { type: 'string', title: 'Tier', enum: ['minor', 'major'] },
         attunement: { type: 'boolean', title: 'Requires attunement' },
         /* „by a wizard", „by a cleric or paladin" — ein Satz, keine Liste. */
-        attunementNote: { type: 'string', title: 'Attunement by' },
+        /* „by a cleric or paladin" — eine Voraussetzung wie am Talent (T-180). */
+        attunementNote: { type: 'string', title: 'Attunement by', facet: { as: 'requirement' } },
         /* **Ladungen sind die Festlegung**: wie viele der Stab hat, nicht
            wie viele noch übrig sind. Der Stand gehört dem Stück am Tisch
            und kommt mit dem Inventar dort (offen). */

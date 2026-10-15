@@ -261,6 +261,17 @@ Zauber gewährt die Klasse, und welche Klasse gewährt diesen Zauber. Die
 Gegenrichtung bleibt eine Abfrage (K1) — gezählt wird nur, wessen Quelle
 man sieht, also verrät ein verborgener Artikel auch hier nichts.
 
+Zwei Facetten **lesen** ihr Feld statt es nur abzuzählen (T-180): eine
+**Voraussetzung** („level 4, STR 13; or level 4, DEX 13") wird beim
+Rechnen in Bedingungen zerlegt, und **Wirkungen** werden zu Wörtern aus
+Ziel und Art („Resistance: fire", „Bonus: AC"). Der Satz bleibt der
+Satz — gespeichert wird keine zweite Form, die beim nächsten Bearbeiten
+nicht mehr stimmt. Darauf baut **„usable by"**: die Liste zeigt, was eine
+Figur erfüllt. Was der Zerleger nicht versteht („Dragonlance campaign"),
+ist **unbekannt und nicht „nein"**: es bleibt in der Liste und trägt ein
+„?" — still auszuschliessen hiesse, dass eine unvollständige Erkennung
+wie eine Regel wirkt.
+
 ### Eins oder mehrere
 
 Ein Feld mit `many` hält **mehrere** Werte, und jeder trägt eine Id:

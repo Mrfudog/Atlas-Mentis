@@ -115,6 +115,9 @@ import {
   SHOP_TYPE,
   type WareOffer,
   RECIPE_COMPONENT,
+  answersOf as antwortenVon,
+  characterProfile,
+  type CharacterProfile,
 } from '@nw/model';
 import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry } from '@nw/model';
 import { seedRegistry } from '@nw/registry';
@@ -1655,10 +1658,47 @@ export function buildApp({
    * Antwort `{ total, offset, limit, columns, rows, facets }`. Dieselbe
    * Route sucht für Auswahlen (Kantenziel, Verweis): `of=Art&q=…&limit=20`.
    */
+  /**
+   * **„Usable by <Figur>"** (T-180): die Figur, wie dieser Betrachter sie
+   * sieht — Figur, Statblock, Klassen, Herkunft und was sie gewähren gehen
+   * durch dasselbe Sieb wie jede Route. Was ihm verborgen ist, zählt als
+   * unbekannt; eine Figur, die er nicht sieht, gibt es nicht.
+   */
+  async function figurFuer(request: FastifyRequest, id: unknown): Promise<CharacterProfile | undefined> {
+    if (typeof id !== 'string' || !id) return undefined;
+    const stand = await roh();
+    const figur = stand.map.get(id);
+    if (!figur) return undefined;
+    const ids = new Set([id]);
+    const dazu = (x: unknown) => {
+      if (typeof x === 'string' && stand.map.has(x)) ids.add(x);
+    };
+    for (const r of figur.relations ?? []) {
+      if (r.type === 'hasClass') {
+        dazu(r.to);
+        dazu(r.props?.['subclass']);
+      } else if (r.type === 'hasAncestry' || r.type === 'hasBackground') dazu(r.to);
+    }
+    for (const a of antwortenVon(figur)) for (const p of a.picks) dazu(p);
+    /* Grundarten (`subraceOf`) und was die Quellen gewähren — zwei Schritte
+       reichen für Unterart → Art und Klasse → Merkmal. */
+    for (let i = 0; i < 2; i++) {
+      for (const x of [...ids]) {
+        for (const r of stand.map.get(x)?.relations ?? []) if (r.type === 'subraceOf' || r.type === 'grants') dazu(r.to);
+      }
+    }
+    for (const e of stand.alle) if ((e.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === id)) ids.add(e.id);
+    const gesehen = await sieve(request, [...ids].map((x) => stand.map.get(x)!), stand.map);
+    const byId = new Map(gesehen.map((e) => [e.id, e]));
+    const f = byId.get(id);
+    return f ? characterProfile(f, byId) : undefined;
+  }
+
   app.get('/api/list', async (request) => {
     const roh_ = request.query as Record<string, unknown>;
     const idx = await indexFor(request, 'inPlay', (roh_['allLayers'] === '1' || roh_['allLayers'] === 'true') && (await darfAlleEbenen(request)));
     const q = parseListQuery(roh_);
+    q.usable = await figurFuer(request, roh_['usable']);
     /* **Unbenutzte Bilder** (T-119, `unused=1`): was kein Artikel zeigt,
        **den dieser Betrachter sieht** — ein Bild, das nur ein verborgener
        NSC trägt, ist für die Spielerin unbenutzt, und „benutzt" verriete
@@ -1677,7 +1717,8 @@ export function buildApp({
   });
 
   /**
-   * **Die übergreifende Suche** (T-138): `GET /api/search?q=&type=&layer=&publisher=&area=&offset=&limit=`.
+   * **Die übergreifende Suche** (T-138): `GET /api/search?q=&type=&layer=&publisher=&area=&offset=&limit=&f=&usable=`.
+   * Mit einer gewählten Art filtern dieselben Facetten wie im Kompendium (`f`, T-180).
    * Derselbe gesiebte Index wie `/api/list` — was dieser Betrachter nicht
    * sieht, findet er nicht —, nach Nähe geordnet und mit einem Filter nach
    * Herausgeber. Beim Tippen fragt die Seite hier; ohne `q` antwortet sie
@@ -1689,8 +1730,9 @@ export function buildApp({
     const q = parseListQuery(roh_);
     q.limit = Math.min(q.limit, 50);
     const text = q.q?.trim() ?? '';
-    if (!text) return { q: '', total: 0, offset: 0, limit: q.limit, rows: [], facets: { types: [], layers: [], publishers: [] } };
+    if (!text) return { q: '', total: 0, offset: 0, limit: q.limit, rows: [], facets: { types: [], layers: [], publishers: [], fields: [] } };
     const [stand, idx] = await Promise.all([roh(), indexFor(request)]);
+    q.usable = await figurFuer(request, roh_['usable']);
     /* Herausgeber je Ebene, einmal je Stand (T-094, T-109). */
     let verlag = verlage.get(stand.map);
     if (!verlag) {
