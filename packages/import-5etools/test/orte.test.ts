@@ -3,7 +3,7 @@ import type { Entity } from '@nw/model';
 import type { Knoten } from '../src/copy.js';
 import type { Datenstand } from '../src/lesen.js';
 import { lauf } from '../src/lauf.js';
-import { hatKarte, klartext, ortAusText, ortBefund } from '../src/orte.js';
+import { kartenTitel, klartext, ortAusKarte, ortAusText, ortBefund } from '../src/orte.js';
 import { buchEbeneId } from '../src/werkbank.js';
 
 /**
@@ -21,8 +21,15 @@ function datenstand(): Datenstand {
         {
           type: 'entries', name: 'Kingdom of Velm', id: '001', page: 6,
           entries: [
-            'The Kingdom of Velm is a small realm of rivers and reeds.',
-            { type: 'entries', name: 'Ravensgate', id: '002', page: 7, entries: ['Ravensgate, a walled {@b city} on the Velm, trades in salt.'] },
+            'The Kingdom of Velm is a small kingdom of rivers and reeds.',
+            {
+              type: 'entries', name: 'Ravensgate', id: '002', page: 7,
+              entries: [
+                'Ravensgate, a walled {@b city} on the Velm, trades in salt.',
+                { type: 'entries', name: 'Saltmarket', entries: ['The Saltmarket is a noisy district by the docks.'] },
+              ],
+            },
+            { type: 'entries', name: 'Reedfolk', entries: ['The Reedfolk, a quiet river people, fish here.'] },
             { type: 'entries', name: 'Old Quarrel', id: '003', entries: ['Old Quarrel is a grudge between two families.'] },
           ],
         },
@@ -77,11 +84,27 @@ describe('Orte erkennen (T-175)', () => {
     expect(ortAusText('Old Quarrel', 'Old Quarrel is a grudge between families.')).toEqual({ ort: false });
   });
 
-  it('ein Raum mit Schlüssel ist ein Raum; ein Abschnitt mit Räumen oder Karte ein Ort ohne Art', () => {
+  it('ein Raum mit Schlüssel ist ein Raum; eine Karte benennt den Ort; Räume allein sind eine Liste', () => {
     expect(ortBefund('G1. Gate', [])).toEqual({ ort: true, kind: 'Raum' });
-    expect(ortBefund('Castle', ['Grey.'], { raeume: true })).toEqual({ ort: true });
-    expect(hatKarte([{ type: 'image', imageType: 'map' }])).toBe(true);
-    expect(hatKarte([{ type: 'entries', name: '1. Room', entries: [{ type: 'image', imageType: 'map' }] }])).toBe(false);
+    expect(ortBefund('1. Choose a Thing', [], { schluessel: false })).toEqual({ ort: false });
+    expect(ortBefund('Areas of the Village', ['Grey.'], { raeume: true })).toEqual({ ort: false, kandidat: true });
+    expect(ortBefund('Areas of the Village', ['Grey.'], { karte: 'Village of Grimm' })).toEqual({ ort: true, karte: true, name: 'Village of Grimm' });
+    expect(ortBefund('Grimm', ['Grey.'], { karte: 'Grimm' })).toEqual({ ort: true, karte: true });
+    expect(kartenTitel([{ type: 'image', imageType: 'map', title: 'A' }, { type: 'entries', name: '1. Room', entries: [{ type: 'image', imageType: 'map', title: 'B' }] }])).toEqual(['A']);
+  });
+
+  it('liest den Ortsnamen aus dem Kartentitel', () => {
+    expect(ortAusKarte('Map 5.1: Grimm (Area N)')).toBe('Grimm');
+    expect(ortAusKarte('Map 3.2: Old Mill (Area O) - Upper Floor')).toBe('Old Mill');
+    expect(ortAusKarte('Map 11: Cellars & Map 12: Crypts')).toBe('Cellars');
+    expect(ortAusKarte('Crypts (Battlemap; DM Version)')).toBe('Crypts');
+    expect(ortAusKarte('Map: Traps in Area K9')).toBeUndefined();
+  });
+
+  it('das Ortswort muss das Hauptwort sein', () => {
+    expect(ortAusText('Reedfolk', 'The Reedfolk, a quiet forest people, fish here.').ort).toBe(false);
+    expect(ortAusText('Velm', 'Velm is a forest of birches.')).toEqual({ ort: true, kind: 'Wildnis' });
+    expect(ortAusText('Thalos', 'Thalos is the realm of the sea god.')).toEqual({ ort: true });
   });
 
   it('nimmt Marken aus dem Text', () => {
@@ -104,12 +127,19 @@ describe('Orte aus Büchern und Abenteuern (T-175)', () => {
     expect(kanten(stadt, 'inLayer')).toEqual([buchEbeneId('TGZ')]);
     const ueberschrift = finde('Heading', 'Ravensgate')!;
     expect(kanten(stadt, 'describedIn')).toEqual([ueberschrift.id]);
+    /* Tiefer als Stufe 3 gibt es keine Überschrift: der Ort zeigt auf den Absatz mit seinem Namen. */
+    const markt = finde('Place', 'Saltmarket')!;
+    expect(markt.components['Place']).toEqual({ kind: 'Distrikt' });
+    expect(kanten(markt, 'partOf')).toEqual([stadt.id]);
+    const absatz = es.find((e) => e.id === kanten(markt, 'describedIn')[0])!;
+    expect(art(absatz)).toBe('Paragraph');
     expect(stadt.components['Source']).toMatchObject({ publication: 'TGZ', page: '7' });
   });
 
   it('legt nicht an, was kein Ort ist', () => {
     expect(finde('Place', 'Old Quarrel')).toBeUndefined();
     expect(finde('Place', 'Mother Ash')).toBeUndefined();
+    expect(finde('Place', 'Reedfolk')).toBeUndefined();
     expect(finde('Place', 'Gazetteer')).toBeUndefined();
   });
 
