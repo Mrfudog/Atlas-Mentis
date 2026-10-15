@@ -231,6 +231,26 @@ gehört, und gelten für jede Art, die ihn nimmt.
 Eine Umbenennung, die ein *Obertyp* gesetzt hat, steht dort lesbar und wird
 dort geändert, wo sie steht: sie gilt für jede Unterart mit.
 
+### Wonach eine Liste filtert
+
+Eine **Facette** ist ein Feld oder eine Kante, nach der sich die Liste
+einer Art filtern lässt — Grad, Schule, Komponenten und „granted by" an
+einem Zauber (T-174). Sie ist **kein neues Ding**, sondern eine Frage an
+das, was schon dasteht: eine Aufzählung lässt sich ankreuzen, eine Zahl
+eingrenzen, ein Verweis auf einen Artikel wählen. Darum steht keine Liste
+je Art im Code — eine neue Art bringt ihre Filter mit, und ein Feld, das
+morgen dazukommt, auch. Wo die Form lügt (ein Schalter, der nur der Maske
+dient), sagt es das Feld selbst: `facet: false`.
+
+Nicht zu verwechseln mit der alten „Facet" (oben): die hiess eine Ansicht
+und heisst heute so. Eine Facette **wählt Artikel aus**, eine Ansicht
+**zeigt Felder** — die erste fragt eine Liste, die zweite einen Artikel.
+
+Eine Kante filtert in **beide** Richtungen, weil man beide fragt: welche
+Zauber gewährt die Klasse, und welche Klasse gewährt diesen Zauber. Die
+Gegenrichtung bleibt eine Abfrage (K1) — gezählt wird nur, wessen Quelle
+man sieht, also verrät ein verborgener Artikel auch hier nichts.
+
 ### Eins oder mehrere
 
 Ein Feld mit `many` hält **mehrere** Werte, und jeder trägt eine Id:

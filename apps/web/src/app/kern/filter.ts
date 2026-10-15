@@ -17,6 +17,45 @@
 
 import { Injectable, signal } from '@angular/core';
 
+/** Ein Feldfilter: gewählte Werte (ODER) oder eine Spanne. */
+export type Feldfilter = { values?: string[]; min?: number; max?: number };
+
+/**
+ * Die Facetten als Adresse (T-174) — dieselbe Form, die der Server liest:
+ * `Typ.feld:a|b`, `Typ.feld:1..3`, `in.grants:<id>`. Sortiert, damit
+ * dieselbe Wahl dieselbe Adresse ist.
+ */
+export function feldfilterAlsF(felder: Readonly<Record<string, Feldfilter>>): string[] {
+  const f: string[] = [];
+  for (const [ref, w] of Object.entries(felder)) {
+    if (w.values?.length) f.push(`${ref}:${w.values.join('|')}`);
+    else if (w.min !== undefined || w.max !== undefined) f.push(`${ref}:${w.min ?? ''}..${w.max ?? ''}`);
+  }
+  return f.sort();
+}
+
+/** Zurück aus der Adresse; was keine Form hat, fällt weg. */
+export function feldfilterAusF(f: readonly string[] | string | undefined | null): Record<string, Feldfilter> {
+  const raus: Record<string, Feldfilter> = {};
+  for (const s of typeof f === 'string' ? [f] : (f ?? [])) {
+    const punkt = s.indexOf(':');
+    if (punkt <= 0) continue;
+    const ref = s.slice(0, punkt);
+    const rest = s.slice(punkt + 1);
+    const spanne = /^(-?[\d.]*)\.\.(-?[\d.]*)$/.exec(rest);
+    if (spanne) {
+      const w: Feldfilter = {};
+      if (spanne[1] && Number.isFinite(Number(spanne[1]))) w.min = Number(spanne[1]);
+      if (spanne[2] && Number.isFinite(Number(spanne[2]))) w.max = Number(spanne[2]);
+      if (w.min !== undefined || w.max !== undefined) raus[ref] = w;
+    } else {
+      const values = rest.split('|').filter(Boolean);
+      if (values.length) raus[ref] = { values };
+    }
+  }
+  return raus;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ListenFilter {
   private seite: string | null = null;
@@ -28,7 +67,7 @@ export class ListenFilter {
   /** Ausgeschlossene Ebenen — leer heisst: alle. Ein Häkchen weg nimmt eine heraus. */
   readonly ohneEbenen = signal<ReadonlySet<string>>(new Set());
   /** Feldfilter der gewählten Art: `Typ.feld` → gewählte Werte bzw. Spanne. */
-  readonly felder = signal<Readonly<Record<string, { values?: string[]; min?: number; max?: number }>>>({});
+  readonly felder = signal<Readonly<Record<string, Feldfilter>>>({});
   /** Teile von Statblöcken einblenden (W7). */
   readonly teile = signal(false);
   /** `name`, `type` oder `Typ.feld`; ein `-` davor kehrt um. Leer: nach Namen. */
@@ -53,15 +92,20 @@ export class ListenFilter {
   }
 
   /**
-   * **Womit eine Filtergruppe anfängt** (T-137): Suche und abgewählte
-   * Ebenen, einmal je Gruppe. Danach gehört der Filter wieder der Seite —
+   * **Womit eine Filtergruppe anfängt** (T-137): Suche, abgewählte
+   * Ebenen und Facetten, einmal je Gruppe. Danach gehört der Filter wieder der Seite —
    * zurück vom Artikel bleibt, was jemand seither geändert hat.
    */
-  saeen(schluessel: string, start: { q?: string | undefined; nolayer?: readonly string[] | undefined }): void {
+  saeen(
+    schluessel: string,
+    start: { q?: string | undefined; nolayer?: readonly string[] | undefined; f?: readonly string[] | undefined },
+  ): void {
     if (this.gesaet === schluessel) return;
     this.gesaet = schluessel;
     this.suche.set(start.q ?? '');
     this.ohneEbenen.set(new Set(start.nolayer ?? []));
+    /* Die Facetten einer Gruppe (T-174): „Wizard-Zauber bis Grad 3". */
+    this.felder.set(feldfilterAusF(start.f));
     this.blatt.set(0);
   }
 

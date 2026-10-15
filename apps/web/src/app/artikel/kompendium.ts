@@ -7,7 +7,7 @@ import { QuelleText } from '../kern/quellen';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
-import { ListenFilter } from '../kern/filter';
+import { ListenFilter, feldfilterAlsF, feldfilterAusF } from '../kern/filter';
 import { AusgeblendetHinweis } from '../kern/ausgeblendet';
 import { KurzLink } from '../kern/kurzansicht';
 import { ALLE, Filtergruppen } from '../kern/filtergruppen';
@@ -43,8 +43,9 @@ const OFFEN = 8;
  *
  * Ein Bereich (`world`, `story`, `rules`) ist das Kompendium, eingeschränkt
  * auf die Arten, deren `area` dorthin zeigt — das sagt der Server
- * (`areaOf`). Welche Spalten eine Art zeigt und wonach sie sich filtern
- * lässt, sagt ihre `overview` (`listColumns`); im Code steht nichts davon.
+ * (`areaOf`). Welche Spalten eine Art zeigt, sagt ihre `overview`
+ * (`listColumns`); wonach sie sich filtern lässt, sagen ihre Felder und
+ * Kanten (`facetsFor`, T-174). Im Code steht nichts davon.
  *
  * Der Server hat schon gesiebt; hier wird nichts zurückgehalten.
  */
@@ -92,9 +93,16 @@ const OFFEN = 8;
           }
         </fieldset>
 
-        @for (f of liste()?.facets?.fields ?? []; track f.ref) {
-          <fieldset>
-            <legend class="leg">{{ f.label }}</legend>
+        <!-- Facetten aus dem Register (T-174): jedes Feld und jede Kante der
+             Art, die etwas unterscheidet — aufklappbar, gewählte offen. -->
+        @for (f of liste()?.facets?.fields ?? []; track f.ref; let i = $index) {
+          <details class="facette" [open]="facetteOffen(f.ref, i)" (toggle)="facetteUmschalten(f.ref, $any($event.target).open)">
+            <summary class="leg">
+              {{ f.label }}
+              @if (filter.felder()[f.ref]; as w) {
+                <span class="gewaehlt">{{ w.values?.length ?? '·' }}</span>
+              }
+            </summary>
             @if (f.kind === 'enum') {
               @for (o of offeneWerte(f.ref, f.options); track o.value) {
                 <label class="haken">
@@ -103,13 +111,21 @@ const OFFEN = 8;
                     [checked]="gewaehlt(f.ref, o.value)"
                     (change)="wertUmschalten(f.ref, o.value)"
                   />
-                  {{ o.value }} <span class="zahl">{{ o.count }}</span>
+                  <span class="wert">{{ o.label ?? o.value }}
+                    @if (o.group && f.of === 'link') {
+                      <span class="art">{{ o.group }}</span>
+                    }
+                  </span>
+                  <span class="zahl">{{ o.count }}</span>
                 </label>
               }
               @if (f.options.length > OFFEN) {
                 <button type="button" class="mehr" (click)="aufklappen(f.ref)">
                   {{ aufgeklappt().has(f.ref) ? 'Fewer' : f.options.length - OFFEN + ' more' }}
                 </button>
+              }
+              @if (f.more && (aufgeklappt().has(f.ref) || f.options.length <= OFFEN)) {
+                <span class="leer">and {{ f.more }} more with fewer matches</span>
               }
             } @else {
               <div class="spanne">
@@ -132,7 +148,7 @@ const OFFEN = 8;
                 />
               </div>
             }
-          </fieldset>
+          </details>
         }
 
         @if (ebenen().length > 1) {
@@ -375,6 +391,8 @@ export class Kompendium {
   readonly type = input<string | undefined>(undefined);
   /** Die Filtergruppe aus der Adresse (`?view=<id>`, `?view=all`; T-137). */
   readonly view = input<string | undefined>(undefined);
+  /** Die Facetten aus der Adresse (`?f=Spell.school:evocation`, T-174) — ein geteilter Link zeigt dieselbe Wahl. */
+  readonly f = input<string | string[] | undefined>(undefined);
 
   protected readonly OFFEN = OFFEN;
   protected readonly bestand = inject(Bestand);
@@ -401,6 +419,10 @@ export class Kompendium {
   private lauf = 0;
   private uhr: ReturnType<typeof setTimeout> | null = null;
   private letzteSuche = '';
+  /** Was diese Seite zuletzt als `f` in die Adresse schrieb — das liest sie nicht als neue Wahl. */
+  private geschrieben = '';
+  /** Welche Facetten jemand auf- oder zugeklappt hat; sonst sind die ersten und die gewählten offen. */
+  private readonly facettenStand = signal<ReadonlyMap<string, boolean>>(new Map());
 
   constructor() {
     /* Das Register braucht die Seite nur für Beschriftungen und den
@@ -423,6 +445,37 @@ export class Kompendium {
       if (!this.gruppen.stand()) return;
       const g = this.gruppe();
       untracked(() => this.filter.saeen(g ? `${g.id}|${JSON.stringify(g.filter)}` : '-', g?.filter ?? {}));
+    });
+    /* **Die Facetten in der Adresse** (T-174). Eine Wahl, die in der
+       Adresse steht und nicht von hier kam, gilt — ein geteilter Link.
+       Läuft nach dem Säen der Gruppe, sonst nähme die Gruppe sie wieder. */
+    effect(() => {
+      if (!this.gruppen.stand()) return;
+      this.gruppe();
+      this.type();
+      const roh = this.f();
+      untracked(() => {
+        const aus = feldfilterAusF(roh);
+        const k = feldfilterAlsF(aus).join('\n');
+        if (!k || k === this.geschrieben || k === feldfilterAlsF(this.filter.felder()).join('\n')) return;
+        this.filter.felder.set(aus);
+        this.filter.blatt.set(0);
+      });
+    });
+    /* Und umgekehrt: jede Wahl steht in der Adresse, ohne einen Schritt
+       im Verlauf — zurück führt zur vorigen Seite, nicht zum vorigen Häkchen. */
+    effect(() => {
+      const f = feldfilterAlsF(this.filter.felder());
+      untracked(() => {
+        const k = f.join('\n');
+        if (k === feldfilterAlsF(feldfilterAusF(this.f())).join('\n')) return;
+        this.geschrieben = k;
+        void this.router.navigate([], {
+          queryParams: { f: f.length ? f : null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      });
     });
     /* Jede Änderung am Filter fragt den Server. Getippt wird mit einer
        kurzen Pause, sonst ginge je Buchstabe eine Anfrage hinaus. Erst
@@ -455,12 +508,7 @@ export class Kompendium {
 
   /** Was gefragt wird — aus Adresse und Filterzustand. */
   private readonly frage = computed<ListenFrage>(() => {
-    const felder = this.filter.felder();
-    const f: string[] = [];
-    for (const [ref, w] of Object.entries(felder)) {
-      if (w.values?.length) f.push(`${ref}:${w.values.join('|')}`);
-      else if (w.min !== undefined || w.max !== undefined) f.push(`${ref}:${w.min ?? ''}..${w.max ?? ''}`);
-    }
+    const f = feldfilterAlsF(this.filter.felder());
     const g = this.gruppe()?.filter ?? {};
     return {
       area: this.bereich(),
@@ -541,13 +589,15 @@ export class Kompendium {
 
   /** Was „Save as group" vorfüllt: der Blick, den die Seite gerade zeigt. */
   protected readonly vorlage = computed<GespeicherterFilter>(() => {
-    const { q: _alt, ...g } = this.gruppe()?.filter ?? {};
+    const { q: _alt, f: _altF, ...g } = this.gruppe()?.filter ?? {};
     const t = this.type();
     const q = this.filter.suche().trim();
+    const f = feldfilterAlsF(this.filter.felder());
     return {
       ...g,
       ...(t ? { of: [t] } : {}),
       ...(q ? { q } : {}),
+      ...(f.length ? { f } : {}),
       nolayer: [...this.filter.ohneEbenen()],
     };
   });
@@ -629,9 +679,13 @@ export class Kompendium {
   protected readonly feldChips = computed(() => {
     const spalten = this.liste()?.facets.fields ?? [];
     return Object.entries(this.filter.felder()).map(([ref, w]) => {
-      const label = spalten.find((s) => s.ref === ref)?.label ?? ref.split('.')[1] ?? ref;
+      const facette = spalten.find((s) => s.ref === ref);
+      const label = facette?.label ?? ref.split('.')[1] ?? ref;
+      /* Ein Artikel steht mit Namen da, ja/nein als Wort (T-174). */
+      const name = (v: string) =>
+        (facette?.kind === 'enum' ? facette.options.find((o) => o.value === v)?.label : undefined) ?? v;
       const text = w.values?.length
-        ? `${label}: ${w.values.join(', ')}`
+        ? `${label}: ${w.values.map(name).join(', ')}`
         : `${label} ${w.min ?? '…'}–${w.max ?? '…'}`;
       return { ref, text };
     });
@@ -648,6 +702,14 @@ export class Kompendium {
     return typeof wert === 'string' ? plainText(wert) : String(wert);
   }
 
+  /** Offen ist eine Facette, die jemand aufklappte, eine gewählte und die ersten vier. */
+  protected facetteOffen(ref: string, i: number): boolean {
+    return this.facettenStand().get(ref) ?? (!!this.filter.felder()[ref] || i < 4);
+  }
+  protected facetteUmschalten(ref: string, offen: boolean): void {
+    if (this.facettenStand().get(ref) === offen) return;
+    this.facettenStand.update((m) => new Map(m).set(ref, offen));
+  }
   protected offeneWerte<T>(ref: string, werte: T[]): T[] {
     return this.aufgeklappt().has(ref) ? werte : werte.slice(0, OFFEN);
   }

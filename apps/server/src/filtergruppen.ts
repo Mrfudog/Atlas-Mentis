@@ -43,9 +43,12 @@ export interface SavedFilter {
   layer?: string[];
   nolayer?: string[];
   q?: string;
+  /** Die Facetten (T-174): `Typ.feld:a|b`, `Typ.feld:1..3`, `in.grants:<id>`. */
+  f?: string[];
 }
 
-const LISTEN = ["of", "notype", "tag", "status", "layer", "nolayer"] as const;
+/* `f`: die Facetten (T-174), in der Form der Adresse. */
+const LISTEN = ["of", "notype", "tag", "status", "layer", "nolayer", "f"] as const;
 /** Eine Seite heisst wie ihr Weg (`world`, `compendium`); welche es gibt, sagt die Oberfläche. */
 const SEITE = /^[a-z][a-z0-9-]{0,31}$/;
 

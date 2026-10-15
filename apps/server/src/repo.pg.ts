@@ -64,6 +64,8 @@ export class PgRepository implements Repository {
         /* Was sie bedeutet und bewirken soll (T-111, Migration 045). */
         means: (r['means'] as string | null) ?? undefined,
         intended: (r['intended'] as string | null) ?? undefined,
+        /* Als Filter in der Liste (T-174): `false` oder `{label, order}`. */
+        ...(r['facet'] !== null && r['facet'] !== undefined ? { facet: r['facet'] as RelationDef['facet'] } : {}),
         /* Was die Kante selbst trägt — geschrieben wurde es immer, gelesen
            bis zur Migration 022 nie. Ein leeres Schema ist keines. */
         props: Object.keys((r['props'] as { properties?: object } | null)?.properties ?? {}).length
@@ -136,6 +138,11 @@ export class PgRepository implements Repository {
              def.owned ?? false, def.cardinality ?? 'many', def.section ?? null,
              JSON.stringify(def.props ?? {}), def.asField ?? null, def.means ?? null, def.intended ?? null],
           );
+          /* `facet` (T-174, Migration 074) nur, wo eine Kante es sagt — so
+             schreibt dieselbe Zeile auch in eine Datenbank vor 073. */
+          if (def.facet !== undefined) {
+            await client.query('update relation_def set facet = $2 where type = $1', [type, JSON.stringify(def.facet)]);
+          }
         }
       } else if (part === 'views') {
         await client.query('delete from view_def');

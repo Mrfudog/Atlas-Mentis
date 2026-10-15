@@ -476,6 +476,21 @@ export interface Wartend {
   canReady: boolean;
 }
 
+/**
+ * Eine Facette (T-174): Häkchen — Wörter, ja/nein (`of: 'bool'`) oder
+ * Artikel (`of: 'link'`, mit Name und Art) — oder eine Spanne.
+ */
+export type Facette =
+  | {
+      ref: string;
+      label: string;
+      kind: 'enum';
+      of?: 'bool' | 'link';
+      options: { value: string; count: number; label?: string; group?: string }[];
+      more?: number;
+    }
+  | { ref: string; label: string; kind: 'range'; min: number; max: number };
+
 /** Ein Blatt der Liste (`GET /api/list`) — die Form steht in `apps/server/src/liste.ts`. */
 export interface Liste {
   total: number;
@@ -486,10 +501,8 @@ export interface Liste {
   facets: {
     types: { type: string; label: string; area: string; count: number }[];
     layers: { id: string; name: string; count: number }[];
-    fields: (
-      | { ref: string; label: string; kind: 'enum'; options: { value: string; count: number }[] }
-      | { ref: string; label: string; kind: 'range'; min: number; max: number }
-    )[];
+    /** Die Facetten der gewählten Art, aus dem Register abgeleitet (T-174). */
+    fields: Facette[];
     /** Die Marken der Treffer, gezählt (T-119). */
     tags?: { tag: string; count: number }[];
     partsHidden: number;
@@ -670,6 +683,8 @@ export interface GespeicherterFilter {
   layer?: string[];
   nolayer?: string[];
   q?: string;
+  /** Die Facetten (T-174), wie in der Adresse: `Typ.feld:a|b`, `Typ.feld:1..3`, `in.grants:<id>`. */
+  f?: string[];
 }
 export interface Filtergruppe {
   id: string;

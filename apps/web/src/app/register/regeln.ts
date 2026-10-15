@@ -112,6 +112,7 @@ export function holds(registry: Pick<Registry, 'enums' | 'interfaces'>, p: Prope
   if (p.alwaysEdit) teile.push('always an input');
   if (p.editOnly) teile.push('edit form only');
   if (p.readOnly) teile.push('issued');
+  if (p.facet === false) teile.push('no list filter');
   return teile.join(' · ');
 }
 

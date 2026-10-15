@@ -205,7 +205,19 @@ export interface PropertySchema {
    * den Wert sehen will, sieht ihn beim Bearbeiten.
    */
   editOnly?: boolean;
+  /**
+   * **Als Filter in der Liste** (T-174). Die Facetten einer Art werden aus
+   * dem Register abgeleitet (`facetsFor`): eine Aufzählung wird zu Häkchen,
+   * ein Schalter zu ja/nein, eine Zahl zu einer Spanne, ein Verweis mit
+   * Zielart zu einer Artikelwahl. Wo die Ableitung daneben liegt, sagt es
+   * diese Angabe — `false` nimmt das Feld heraus, `{label, order}` benennt
+   * oder ordnet es. Eine Zeile am Feld und keine Liste je Art im Code.
+   */
+  facet?: FacetHint;
 }
+
+/** Was ein Feld oder eine Kante zur Facette sagt (T-174). */
+export type FacetHint = false | { label?: string; order?: number };
 
 /**
  * Wohin ein Verweisfeld zeigen darf. Drei Filter, alle freiwillig, mit UND
@@ -396,6 +408,12 @@ export interface RelationDef {
   /** When set, the edge renders as a composition section under this heading. */
   section?: string;
   props?: ObjectSchema;
+  /**
+   * **Als Filter in der Liste** (T-174), in beide Richtungen: von hier
+   * („grants") und von drüben („granted by"). `false` nimmt die Kante aus
+   * den Facetten, `{label, order}` benennt oder ordnet sie.
+   */
+  facet?: FacetHint;
 }
 
 /**

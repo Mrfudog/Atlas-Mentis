@@ -359,6 +359,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     uses: {
       [M + 'summary.ts']: ['inLayer', 'instanceOf', 'partOf'],
       [S + 'liste.ts']: ['inLayer'],
+      /* Die Facetten lassen die Ebenenkante aus — dafür steht „Where from“ (T-174). */
+      [M + 'facets.ts']: ['inLayer'],
       [W + 'artikel/artikel.ts']: ['inLayer'],
       /* Der Druck lässt die Ebene aus der Kantenliste — sie steht im Kopf (T-110). */
       [W + 'artikel/blatt.ts']: ['inLayer'],

@@ -24,6 +24,10 @@
 
 import {
   areaOf,
+  commonFacets,
+  facetFieldValues,
+  facetNumber,
+  facetsFor,
   articleId,
   entityName,
   enumOptions,
@@ -38,7 +42,7 @@ import {
   typeChain,
   versionGroups,
 } from '@nw/model';
-import type { Entity, LayoutElement, PropertySchema, Registry } from '@nw/model';
+import type { Entity, FacetDef, LayoutElement, PropertySchema, Registry } from '@nw/model';
 
 /** Ein Artikel ohne Ebenenkante steht in der Liste unter „keine Ebene". */
 export const NO_LAYER = '∅';
@@ -70,6 +74,8 @@ interface IndexZeile {
   /** Das Vorschaubild (T-114): die Asset-Id oder Adresse — nur, wenn `overview` ein Bild zeigt. */
   image?: string;
   tags: string[];
+  /** Die Werte je Facette seiner Art (T-174): Wörter, Zahlen als Text, Ids. */
+  fv: Record<string, string[]>;
   /** Die Kanten des Artikels (geteilt, nicht kopiert) — für `rel=`. */
   relations: NonNullable<Entity['relations']>;
   /** Die Gruppe seiner Fassungen (T-092), wenn er welche hat. */
@@ -84,7 +90,9 @@ export interface ListIndex {
   /** Id → Name, für alles, was dieser Betrachter sieht. */
   names: Map<string, string>;
   /** Je Art: Beschriftung, Bereich, `extends`-Kette und Spalten. */
-  types: Map<string, { label: string; area: string; chain: string[]; columns: Spalte[]; bild: boolean }>;
+  types: Map<string, { label: string; area: string; chain: string[]; columns: Spalte[]; bild: boolean; facets: FacetDef[] }>;
+  /** Id → Art, für die Gruppen einer Artikelwahl (T-174). */
+  typeOf: Map<string, string>;
   registry: Registry;
 }
 
@@ -102,7 +110,18 @@ export function buildListIndex(
   /* Fassungen derselben Sache (T-092): einmal über das Gesiebte. */
   const fassungen = versionGroups(visible);
   const names = new Map<string, string>();
-  for (const e of visible) names.set(e.id, entityName(e));
+  const typeOf = new Map<string, string>();
+  /* **Kanten von drüben** (T-174): die Gegenrichtung ist eine Abfrage —
+     einmal über das Gesiebte, also zählt nur, wessen Quelle man sieht. */
+  const ein = new Map<string, { type: string; from: string }[]>();
+  for (const e of visible) {
+    names.set(e.id, entityName(e));
+    typeOf.set(e.id, primaryInterface(e));
+    for (const r of e.relations ?? []) {
+      if (!r.to || r.type === LAYER_RELATION) continue;
+      (ein.get(r.to) ?? ein.set(r.to, []).get(r.to)!).push({ type: r.type, from: e.id });
+    }
+  }
 
   /* **Teile eines Statblocks** (W7): ein Merkmal, auf das genau ein Artikel
      über eine Abschnittskante zeigt, gehört zu diesem und steht nicht für
@@ -127,12 +146,14 @@ export function buildListIndex(
   const artVon = (typ: string) => {
     let t = types.get(typ);
     if (!t) {
+      const columns = listColumns(registry, typ);
       t = {
         label: registry.interfaces[typ]?.label ?? typ,
         area: areaOf(registry, typ),
         chain: typeChain(registry, typ),
-        columns: listColumns(registry, typ),
+        columns,
         bild: zeigtBild(registry, typ),
+        facets: facetsFor(registry, typ, columns.map((c) => c.ref)),
       };
       types.set(typ, t);
     }
@@ -182,13 +203,41 @@ export function buildListIndex(
       cols,
       ...(art.bild ? bildVon(e, art.chain, names) : {}),
       tags: tagsOf(e),
+      fv: facettenWerte(art.facets, e, names, ein),
       relations: e.relations ?? [],
       ...(fassungen.has(e.id) ? { fassung: fassungen.get(e.id)! } : {}),
       rang: rank(e),
     });
   }
   rows.sort((a, b) => (a.sortName < b.sortName ? -1 : a.sortName > b.sortName ? 1 : a.id < b.id ? -1 : 1));
-  return { rows, names, types, registry };
+  return { rows, names, types, typeOf, registry };
+}
+
+/**
+ * Die Werte eines Artikels je Facette (T-174). Eine Kante zählt nur, wenn
+ * ihr anderes Ende sichtbar ist (`names`) und die Art hat, die die Facette
+ * nennt — „granted by" am Zauber meint Klassen und Abstammungen, nicht
+ * jeden Artikel, der eine Kante `grants` trägt.
+ */
+function facettenWerte(
+  facets: FacetDef[],
+  e: Entity,
+  names: Map<string, string>,
+  ein: Map<string, { type: string; from: string }[]>,
+): Record<string, string[]> {
+  const raus: Record<string, string[]> = {};
+  for (const f of facets) {
+    let w: string[];
+    if (f.relation?.dir === 'out') {
+      w = (e.relations ?? []).filter((r) => r.type === f.relation!.type && names.has(r.to)).map((r) => r.to);
+    } else if (f.relation?.dir === 'in') {
+      w = (ein.get(e.id) ?? []).filter((r) => r.type === f.relation!.type).map((r) => r.from);
+    } else {
+      w = facetFieldValues(f, e);
+    }
+    if (w.length) raus[f.ref] = [...new Set(w)];
+  }
+  return raus;
 }
 
 /**
@@ -204,7 +253,10 @@ export function listProjection(registry: Registry): (e: Entity) => Entity {
     const typ = primaryInterface(e);
     let karten = je.get(typ);
     if (!karten) {
-      karten = [...new Set(['Identity', 'Source', 'Status', 'Tags', ...(zeigtBild(registry, typ) ? ['Image', 'Asset'] : []), ...listColumns(registry, typ).map((c) => c.type)])];
+      const spalten = listColumns(registry, typ);
+      /* Dazu die Karten der Facetten (T-174): gefiltert wird am Server. */
+      const facetten = facetsFor(registry, typ, spalten.map((c) => c.ref)).flatMap((f) => (f.field ? [f.field.type] : []));
+      karten = [...new Set(['Identity', 'Source', 'Status', 'Tags', ...(zeigtBild(registry, typ) ? ['Image', 'Asset'] : []), ...spalten.map((c) => c.type), ...facetten])];
       je.set(typ, karten);
     }
     const components: Entity['components'] = {};
@@ -297,9 +349,30 @@ export interface ListColumn {
   kind: 'number' | 'bool' | 'list' | 'text';
 }
 
+/** Ein Wert einer Facette: das Wort, die Zahl der Treffer — und für einen
+ *  Verweis oder eine Kante der Name des Artikels und seine Art (T-174). */
+export interface FacetOption {
+  value: string;
+  count: number;
+  label?: string;
+  group?: string;
+}
+
 export type FieldFacet =
-  | { ref: string; label: string; kind: 'enum'; options: { value: string; count: number }[] }
+  | {
+      ref: string;
+      label: string;
+      kind: 'enum';
+      /** `bool` ja/nein, `link` eine Artikelwahl — gezeichnet wie Häkchen. */
+      of?: 'bool' | 'link';
+      options: FacetOption[];
+      /** Wie viele Werte über die gezeigten hinaus Treffer haben. */
+      more?: number;
+    }
   | { ref: string; label: string; kind: 'range'; min: number; max: number };
+
+/** So viele Artikel stehen in einer Artikelwahl; der Rest zählt nur. */
+const WAHL = 40;
 
 export interface ListResult {
   total: number;
@@ -334,27 +407,21 @@ export interface ListResult {
 }
 
 /** Eine Zahl, auch aus „1/4" — so steht der Herausforderungsgrad da. */
-export function asNumber(v: unknown): number {
-  if (typeof v === 'number') return v;
-  if (typeof v !== 'string') return NaN;
-  const bruch = /^\s*(\d+)\s*\/\s*(\d+)\s*$/.exec(v);
-  if (bruch) return Number(bruch[1]) / Number(bruch[2]);
-  return /^\s*-?\d+(\.\d+)?\s*$/.test(v) ? Number(v) : NaN;
-}
+export const asNumber = facetNumber;
 
 function werteVon(v: unknown): string[] {
   if (v === undefined || v === null || v === '') return [];
   return Array.isArray(v) ? v.map(String) : [String(v)];
 }
 
+/** UND zwischen Facetten, ODER innerhalb: ein Wert genügt (T-174). */
 function trifft(z: IndexZeile, ref: string, f: FieldFilter): boolean {
-  const v = z.cols[ref];
+  const w = z.fv[ref] ?? werteVon(z.cols[ref]);
   if (f.values?.length) {
-    const w = werteVon(v);
     if (!w.some((x) => f.values!.includes(x))) return false;
   }
   if (f.min !== undefined || f.max !== undefined) {
-    const n = asNumber(v);
+    const n = w.length ? asNumber(w[0]) : NaN;
     if (Number.isNaN(n)) return false;
     if (f.min !== undefined && n < f.min) return false;
     if (f.max !== undefined && n > f.max) return false;
@@ -416,7 +483,12 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const marken = q.tag?.length ? q.tag : null;
   const einTyp = q.type?.length === 1 ? q.type[0]! : undefined;
   const spalten = einTyp ? (idx.types.get(einTyp)?.columns ?? listColumns(idx.registry, einTyp)) : [];
-  const filter = Object.entries(q.fields).filter(([ref]) => spalten.some((c) => c.ref === ref));
+  /* **Die Facetten** (T-174): die gewählten Arten, sonst die eine Art, die
+     eine Filtergruppe eingrenzt (`of`) — und davon, was alle haben. */
+  const facettenTypen = q.type?.length ? q.type : q.of?.length === 1 ? q.of : [];
+  const facetten = facettenDerArten(idx, facettenTypen);
+  const filter = Object.entries(q.fields).filter(([ref]) => facetten.some((f) => f.ref === ref));
+  const mitFeldern = filter.length > 0 || facetten.length > 0;
 
   const inEbene = (z: IndexZeile): boolean => {
     const ls = z.layers.length ? z.layers : [NO_LAYER];
@@ -451,7 +523,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   for (const z of grund) {
     const ebeneOk = inEbene(z);
     const typOk = !typSet || typSet.has(z.type);
-    const felder = !einTyp || felderOk(z);
+    const felder = !mitFeldern || felderOk(z);
     if (ebeneOk && felder && typOk && istTeil(z) && !teilOk(z)) partsHidden += 1;
     if (!teilOk(z)) continue;
     /* Die Arten zählen ohne die Art und ohne die Feldfilter: die gelten
@@ -465,54 +537,11 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     if (typOk && ebeneOk && felder) treffer.push(z);
   }
 
-  // Facetten der Felder — nur bei einer gewählten Art.
+  // Facetten — nur bei gewählten Arten.
   const fields: FieldFacet[] = [];
-  for (const c of spalten) {
-    const label = fieldTitle(idx.registry, einTyp, c);
-    const basis = getypt.filter((z) => felderOk(z, c.ref));
-    const auswahl = enumOptions(idx.registry, c.prop);
-    const hatListe = !!auswahl?.length || !!c.prop.enumRef;
-    if (hatListe) {
-      const zahl = new Map<string, number>();
-      for (const z of basis) for (const w of werteVon(z.cols[c.ref])) zahl.set(w, (zahl.get(w) ?? 0) + 1);
-      const reihe = auswahl ?? [];
-      const options = [...zahl.entries()]
-        .map(([value, count]) => ({ value, count }))
-        .sort((a, b) => {
-          const ia = reihe.indexOf(a.value);
-          const ib = reihe.indexOf(b.value);
-          if (ia >= 0 || ib >= 0) return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib);
-          return b.count - a.count || a.value.localeCompare(b.value, 'en');
-        });
-      /* Gewählte Werte bleiben stehen, auch wenn gerade nichts sie trägt. */
-      for (const v of q.fields[c.ref]?.values ?? []) {
-        if (!options.some((o) => o.value === v)) options.push({ value: v, count: 0 });
-      }
-      if (options.length) fields.push({ ref: c.ref, label, kind: 'enum', options });
-      continue;
-    }
-    /* Eine Spanne: eine Zahl — oder ein Text, der fast überall eine Zahl
-       ist (der Herausforderungsgrad steht als „1/4" da, und ein paar
-       Statblöcke sagen „Unknown"; die fallen beim Filtern heraus). */
-    if (c.prop.type === 'boolean' || c.prop.type === 'array' || c.prop.format === 'link') continue;
-    let min = Infinity;
-    let max = -Infinity;
-    let zahlen = 0;
-    let andere = 0;
-    for (const z of basis) {
-      const v = z.cols[c.ref];
-      if (v === undefined) continue;
-      const n = asNumber(v);
-      if (Number.isNaN(n)) {
-        andere += 1;
-        continue;
-      }
-      zahlen += 1;
-      if (n < min) min = n;
-      if (n > max) max = n;
-    }
-    const istZahl = c.prop.type === 'number' || c.prop.type === 'integer' || zahlen >= 9 * andere;
-    if (zahlen && istZahl && min < max) fields.push({ ref: c.ref, label, kind: 'range', min, max });
+  for (const def of facetten) {
+    const f = facetteZaehlen(idx, def, getypt.filter((z) => felderOk(z, def.ref)), q.fields[def.ref]);
+    if (f) fields.push(f);
   }
 
   // Sortieren — der Index liegt schon nach Namen.
@@ -641,6 +670,101 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       partsHidden,
     },
   };
+}
+
+/** Die Facetten der Arten, einmal je Index und Auswahl. */
+const facettenJe = new WeakMap<ListIndex, Map<string, FacetDef[]>>();
+function facettenDerArten(idx: ListIndex, typen: readonly string[]): FacetDef[] {
+  if (!typen.length) return [];
+  let m = facettenJe.get(idx);
+  if (!m) facettenJe.set(idx, (m = new Map()));
+  const k = [...typen].sort().join(',');
+  let f = m.get(k);
+  if (!f) {
+    f = typen.length === 1 && idx.types.get(typen[0]!)
+      ? idx.types.get(typen[0]!)!.facets
+      : commonFacets(idx.registry, typen, (t) => listColumns(idx.registry, t).map((c) => c.ref));
+    m.set(k, f);
+  }
+  return f;
+}
+
+/**
+ * Eine Facette über die Zeilen, die alle **anderen** Filter bestehen.
+ * Häkchen nach der Reihenfolge der Liste (Aufzählung) oder nach Zahl
+ * (Sorte, Artikel); eine Spanne aus dem, was dasteht. Eine Facette, die
+ * nichts unterscheidet — ein Wert, den jede Zeile trägt, und nichts
+ * gewählt —, fällt weg.
+ */
+function facetteZaehlen(idx: ListIndex, def: FacetDef, basis: IndexZeile[], gewaehlt: FieldFilter | undefined): FieldFacet | null {
+  const ref = def.ref;
+  const label = def.label;
+  if (def.kind === 'range' || def.kind === 'auto') {
+    /* Eine Spanne: eine Zahl — oder ein Text, der fast überall eine Zahl
+       ist (der Herausforderungsgrad steht als „1/4" da, und ein paar
+       Statblöcke sagen „Unknown"; die fallen beim Filtern heraus). */
+    let min = Infinity;
+    let max = -Infinity;
+    let zahlen = 0;
+    let andere = 0;
+    for (const z of basis) {
+      const v = z.fv[ref]?.[0];
+      if (v === undefined) continue;
+      const n = facetNumber(v);
+      if (Number.isNaN(n)) {
+        andere += 1;
+        continue;
+      }
+      zahlen += 1;
+      if (n < min) min = n;
+      if (n > max) max = n;
+    }
+    const istZahl = def.kind === 'range' || zahlen >= 9 * andere;
+    return zahlen && istZahl && min < max ? { ref, label, kind: 'range', min, max } : null;
+  }
+  const zahl = new Map<string, number>();
+  for (const z of basis) for (const w of z.fv[ref] ?? []) zahl.set(w, (zahl.get(w) ?? 0) + 1);
+  const werte = gewaehlt?.values ?? [];
+  if (def.kind === 'bool') {
+    const options: FacetOption[] = ['true', 'false']
+      .filter((v) => zahl.has(v) || werte.includes(v))
+      .map((v) => ({ value: v, count: zahl.get(v) ?? 0, label: v === 'true' ? 'Yes' : 'No' }));
+    if (options.length < 2 && !werte.length) return null;
+    return { ref, label, kind: 'enum', of: 'bool', options };
+  }
+  if (def.kind === 'link') {
+    let options: FacetOption[] = [...zahl.entries()]
+      .filter(([id]) => idx.names.has(id))
+      .map(([value, count]) => ({ value, count, label: idx.names.get(value)!, group: typLabel(idx, idx.typeOf.get(value)) }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'en'));
+    const alle = options.length;
+    options = options.slice(0, WAHL);
+    for (const v of werte) {
+      if (options.some((o) => o.value === v) || !idx.names.has(v)) continue;
+      options.push({ value: v, count: zahl.get(v) ?? 0, label: idx.names.get(v)!, group: typLabel(idx, idx.typeOf.get(v)) });
+    }
+    if (!options.length || (alle === 1 && options[0]!.count === basis.length && !werte.length)) return null;
+    return { ref, label, kind: 'enum', of: 'link', options, ...(alle > WAHL ? { more: alle - WAHL } : {}) };
+  }
+  /* Eine Aufzählung oder Sorte. */
+  const reihe = def.field ? (enumOptions(idx.registry, def.field.prop) ?? []) : [];
+  const options: FacetOption[] = [...zahl.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => {
+      const ia = reihe.indexOf(a.value);
+      const ib = reihe.indexOf(b.value);
+      if (ia >= 0 || ib >= 0) return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib);
+      return b.count - a.count || a.value.localeCompare(b.value, 'en');
+    });
+  /* Gewählte Werte bleiben stehen, auch wenn gerade nichts sie trägt. */
+  for (const v of werte) if (!options.some((o) => o.value === v)) options.push({ value: v, count: 0 });
+  if (!options.length || (options.length === 1 && options[0]!.count === basis.length && !werte.length)) return null;
+  return { ref, label, kind: 'enum', options };
+}
+
+function typLabel(idx: ListIndex, typ: string | undefined): string {
+  if (!typ) return '';
+  return idx.types.get(typ)?.label ?? idx.registry.interfaces[typ]?.label ?? typ;
 }
 
 /**
