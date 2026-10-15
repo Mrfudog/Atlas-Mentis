@@ -18,6 +18,7 @@ export const ELEMENTE: { el: LayoutElementKind; label: string; was: string; draw
   { el: 'text', label: 'Text', was: 'A line with your words.', drawn: true },
   { el: 'statblock', label: 'Statblock (as in the book)', was: 'Draws the statblock’s fields like the rulebook.', drawn: true },
   { el: 'spell', label: 'Spell (as in the book)', was: 'Draws the spell’s fields and text like the rulebook.', drawn: true },
+  { el: 'stats', label: 'Key numbers', was: 'AC, HP, speed, initiative, passive Perception and CR as one row of tiles; on a creature from its statblock, with its current HP and conditions.', drawn: true },
   { el: 'item', label: 'Item (as in the book)', was: 'Draws the item’s fields like the rulebook.', drawn: true },
   { el: 'composed', label: 'Sections', was: 'What it is composed of (traits, actions …), per section.', drawn: true },
   { el: 'parts', label: 'Parts', was: 'The parts of a chapter or scene, in their order.', drawn: true },

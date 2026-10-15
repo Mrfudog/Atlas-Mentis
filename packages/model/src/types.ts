@@ -489,6 +489,15 @@ export type LayoutElementKind =
   | 'spell'
   | 'item'
   /**
+   * **Die Kennzahlen** (T-206): Rüstungsklasse, Trefferpunkte, Bewegung,
+   * Initiative, passive Wahrnehmung, Herausforderung als eine Reihe
+   * Kacheln (`keyStats` in `book.ts`), dazu die Zustände einer Figur. An
+   * einem Statblock aus ihm selbst, an einer Kreatur aus dem Statblock, der
+   * über `belongsTo` an ihr hängt, mit ihrem Stand (`Vitals`). Der Ort ist
+   * die Kurzansicht: Karte, Popup, Token.
+   */
+  | 'stats'
+  /**
    * **Die Teile in ihrer Reihenfolge** (T-108, E14): was mit Rang an einem
    * Kapitel, einer Szene oder einem Arc hängt — Überschriften, Absätze,
    * Vorlesetexte, Verweise, Szenen —, gezeichnet wie im Buch. Wo nichts

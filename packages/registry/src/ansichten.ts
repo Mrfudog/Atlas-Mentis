@@ -15,7 +15,8 @@ import type { LayoutElement, TypeLayout } from '@nw/model';
  * wohnt am Typ, im Register wie in der Datenbank; hier stehen sie nur
  * beieinander, weil Migration 052 dieselben Zeilen in bestehende
  * Datenbanken bringt (nur, wo die Art für die Ansicht noch nichts sagt) und
- * ein Test prüft, dass beide gleich sind.
+ * ein Test prüft, dass beide gleich sind — samt den Migrationen, die eine
+ * Zeile später nachziehen (`Creature.quick`, T-206: Migration 083).
  *
  * Ausgewählt nach dem, was die Karte ohne Einheit lesbar zeigt: die Karte
  * druckt Rohwerte („60" ohne Fuss), also keine Masse; was gerechnet wird,
@@ -46,7 +47,17 @@ export const typeViews: Record<string, Record<string, TypeLayout>> = {
   Item: { quick: karte('Item.itemType', 'Item.rarity', 'Item.attunement'), print: buchDruck('item') },
   Weapon: { quick: karte('Weapon.category', 'Weapon.damage', 'Weapon.damageType') },
   Armor: { quick: karte('Armor.armorType', 'Armor.ac') },
-  Creature: { quick: karte('Creature.kind', 'Creature.species', 'Creature.role', 'Creature.attitude') },
+  /* Eine Kreatur zeigt auf der Karte die Kennzahlen ihres Statblocks und
+     ihren Stand (T-206), gleich unter dem Bild. */
+  Creature: {
+    quick: {
+      adjust: {
+        add: { 'q-f': ['Creature.kind', 'Creature.species', 'Creature.role', 'Creature.attitude'] },
+        extra: [{ id: 'c-q-stats', el: 'stats' }],
+        order: ['q-img', 'c-q-stats'],
+      },
+    },
+  },
   Place: { quick: karte('Place.kind', 'Place.environment') },
   Faction: { quick: karte('Faction.kind', 'Faction.goal') },
   Deity: { quick: karte('Deity.pantheon', 'Deity.alignment') },
