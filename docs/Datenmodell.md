@@ -533,6 +533,8 @@ flowchart LR
   S[Statblock-Instanz] -- belongsTo --> C
   S -- instanceOf --> V[Statblock-Vorlage]
   E -. "ac, hpMax: participantStats" .-> S
+```
+
 ### 5.9 Zeitleisten und Spuren (D57, REQ-220)
 
 ```mermaid
