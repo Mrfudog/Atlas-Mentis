@@ -1302,6 +1302,31 @@ beantwortet hat. Gespeichert werden die **Grundwerte** am Statblock; Boni
 aus Abstammung und Wahlen kommen beim Lesen dazu (`chosenResult`) — sonst
 erreichte „+2 statt +1" an der Abstammung keine bestehende Figur.
 
+**Eine Unterart bringt ihre Grundart mit** (T-193). „Elf (High)" trägt
+nur, was Hochelfen anders haben (INT +1, Langschwert); Dex +2, Darkvision
+und Trance stehen am Elf, auf den sie mit `subraceOf` zeigt. Bis T-193
+zählte an der Figur nur die Unterart — wer einen Hochelfen baute, hatte
+keinen Dex-Bonus, und Naga sah im Assistenten nur deshalb vollständig
+aus, weil sie keine Grundart hat. Die Grundart je Unterart abzuschreiben
+hiesse, dieselben Zahlen an fünf Stellen zu pflegen; also liest
+`choiceSources` die Reihe (`ancestryLine`) und jede Grundart zählt wie die
+Abstammung selbst, mit ihren Boni und ihren Wahlen.
+
+**Die Wahl zeigt, was sie bringt** (T-193). Wer zwischen Herkünften
+wählt, will wissen, was jede ändert — ohne jeden Artikel einzeln zu
+öffnen. `optionEffects` rechnet es aus denselben Feldern und Kanten wie
+die Figur (Boni, Grösse, Tempo, Sinne, Übungen, Merkmale bis Stufe 1, die
+Wahlen danach); aufgeklappt an jeder Karte und bis zu vier nebeneinander.
+Aus dem Text gelesen wäre es bei jeder Herkunft anders gewesen. **Was eine
+Wahl selbst fragt, steht in ihr** (`builderSteps` mit `nest`): die
+Fertigkeiten des Barbaren gleich unter der Klasse, nicht drei Schritte
+später, wo niemand mehr weiss, woher sie kamen. Ein gewähltes Talent, das
+wieder fragt, bleibt ein eigener Schritt — es gehört keiner Grundwahl.
+**Der Entwurf liegt am Server** (`characterDraft` in den Einstellungen
+des Kontos): wer einen Artikel öffnet oder das Gerät wechselt, findet ihn
+an derselben Stelle. Ein unfertiger Schritt hält niemanden fest, aber er
+fragt („Decide later" oder „Stay") und bleibt in der Leiste markiert.
+
 **Was die neue Stufe bringt, steht beim Aufstieg da** (T-095). Ein
 Aufstieg, der nur die Zahl erhöht, lässt die Spielerin suchen, was sie
 jetzt kann. Die Merkmale stehen schon an der Klasse — `grants` mit der
