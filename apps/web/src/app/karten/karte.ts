@@ -1,6 +1,8 @@
 import {
   Component,
   DestroyRef,
+  ElementRef,
+  HostListener,
   computed,
   effect,
   inject,
@@ -10,7 +12,6 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { ElementRef } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
   addMarker,
@@ -58,6 +59,7 @@ import { bildAdresse } from '../artikel/bild';
 import { Brett, type Mangel } from '../boards/brett';
 import { BoardSuche } from '../boards/suche';
 import { Ladeanzeige } from '../kern/ladeanzeige';
+import { tipptGerade } from '../kern/suche';
 import { nebelBreite, nebelMalen, type NebelForm } from './nebel';
 
 /**
@@ -105,6 +107,36 @@ const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** Pinselbreiten in Feldern. */
 const PINSEL = [1, 2, 4, 8] as const;
 
+/** Die Gruppen der Werkzeugleiste (T-203). */
+type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'nebel' | 'waende' | 'notizen' | 'zeichnen';
+interface GruppenDef {
+  key: Gruppe;
+  label: string;
+  title: string;
+  sym: string;
+  /** Das Tastenkürzel, ein Buchstabe. */
+  taste: string;
+  /** Nur wer die Karte schreibt. */
+  leitung?: boolean;
+  /** Vorgesehen, aber noch ohne Werkzeug — die Aufgabe, die es bringt. Steht nicht in der Leiste. */
+  spaeter?: string;
+}
+/**
+ * **Die Werkzeugleiste** nach dem Vergleich (docs/vorschlaege/Karten-VTT-Vergleich.md):
+ * Auswahl · Tokens · Messen · Nebel · Wände · Notizen · Zeichnen. Was noch
+ * kein Werkzeug hat, ist hier vorgesehen und steht nicht da („Was nicht
+ * gilt, steht nicht da").
+ */
+const GRUPPEN: readonly GruppenDef[] = [
+  { key: 'auswahl', label: 'Select', title: 'Select and move markers, open their quick view', sym: '↖', taste: 'S' },
+  { key: 'tokens', label: 'Tokens', title: 'Add markers, place combatants, clear play tokens', sym: '◉', taste: 'T', leitung: true },
+  { key: 'messen', label: 'Measure', title: 'Tap two points to measure', sym: '↔', taste: 'M' },
+  { key: 'nebel', label: 'Fog', title: 'Fog of war: reveal and hide what the players see', sym: '☁', taste: 'F', leitung: true },
+  { key: 'waende', label: 'Walls', title: 'Walls and doors', sym: '▥', taste: 'W', leitung: true, spaeter: 'T-118' },
+  { key: 'notizen', label: 'Notes', title: 'Notes on the map', sym: '✎', taste: 'N', leitung: true, spaeter: 'T-203' },
+  { key: 'zeichnen', label: 'Draw', title: 'Draw on the map', sym: '✐', taste: 'D', leitung: true, spaeter: '—' },
+];
+
 interface Zeiger {
   x: number;
   y: number;
@@ -135,7 +167,7 @@ interface Zeiger {
   selector: 'nw-karte',
   imports: [RouterLink, BoardSuche, Ladeanzeige],
   template: `
-    <div class="karte" [class.gross]="gross()">
+    <div class="karte" [class.gross]="gross()" [class.voll]="vollbild()" [class.ersatz]="ersatzVollbild()">
       <div class="leiste">
         <nav aria-label="Map breadcrumb" class="brot">
           @for (p of kontext()?.parents ?? []; track p.id) {
@@ -144,7 +176,8 @@ interface Zeiger {
           }
           <b>{{ name() }}</b>
         </nav>
-        <div class="werkzeuge">
+        <!-- Was die Sicht einstellt, nicht was die Karte ändert: Zoom, Blätter, Spielersicht, Vollbild. -->
+        <div class="ansicht">
           <span class="zoom" role="group" aria-label="Zoom">
             <button type="button" (click)="stufe(-1)" aria-label="Zoom out" title="Zoom out — past the edge leads to the map above">−</button>
             <span aria-live="polite">{{ prozent() }}%</span>
@@ -154,24 +187,7 @@ interface Zeiger {
           @if (blaetter().length > 1) {
             <button type="button" [attr.aria-expanded]="blaetterOffen()" (click)="blaetterOffen.set(!blaetterOffen())">Layers</button>
           }
-          <button type="button" [class.an]="werkzeug() === 'messen'" [attr.aria-pressed]="werkzeug() === 'messen'" (click)="waehle('messen')" title="Tap two points to measure">
-            Measure
-          </button>
           @if (darfSchreiben()) {
-            <button type="button" [class.an]="werkzeug() === 'setzen'" [attr.aria-pressed]="werkzeug() === 'setzen'" (click)="waehle('setzen')" title="Tap the map where the marker goes">
-              Add marker
-            </button>
-            @if (offeneTeilnehmer().length) {
-              <button type="button" (click)="teilnehmerSetzen()" [title]="'Put ' + offeneTeilnehmer().length + ' combatants of ' + (kontext()?.turn?.name ?? 'the fight') + ' on the map'">
-                Place combatants ({{ offeneTeilnehmer().length }})
-              </button>
-            }
-            @if (spielTokens()) {
-              <button type="button" (click)="spielTokensWeg()" title="Remove the tokens placed for play; prepared markers and the party stay">Clear play tokens</button>
-            }
-            <button type="button" [class.an]="nebelOffen()" [attr.aria-expanded]="nebelOffen()" (click)="nebelLeiste()" title="Fog of war: reveal and hide what the players see">
-              Fog
-            </button>
             <button type="button" [class.an]="spielersicht()" [attr.aria-pressed]="spielersicht()" (click)="spielersicht.set(!spielersicht())" title="See the map as the players do">
               Player view
             </button>
@@ -188,38 +204,12 @@ interface Zeiger {
               </label>
             }
           }
+          <button type="button" class="vollbild" [class.an]="vollbild()" [attr.aria-pressed]="vollbild()" (click)="vollbildUm()" [title]="vollbild() ? 'Leave fullscreen (Esc)' : 'Fullscreen (Shift+F)'">
+            <span aria-hidden="true">{{ vollbild() ? '⤡' : '⤢' }}</span>
+            {{ vollbild() ? 'Exit fullscreen' : 'Fullscreen' }}
+          </button>
         </div>
       </div>
-
-      @if (nebelOffen() && darfSchreiben()) {
-        <div class="nebelleiste" role="toolbar" aria-label="Fog of war">
-          <label>
-            <input type="checkbox" [checked]="nebelAn()" (change)="nebelSchalten($any($event.target).checked)" />
-            Fog on
-          </label>
-          <button type="button" [class.an]="werkzeug() === 'aufdecken'" [attr.aria-pressed]="werkzeug() === 'aufdecken'" (click)="waehle('aufdecken')" title="Drag a rectangle to reveal it">Reveal</button>
-          <button type="button" [class.an]="werkzeug() === 'pinsel'" [attr.aria-pressed]="werkzeug() === 'pinsel'" (click)="waehle('pinsel')" title="Paint to reveal">Brush</button>
-          <label>
-            Width
-            <select (change)="pinsel.set(+$any($event.target).value)" aria-label="Brush width in squares">
-              @for (b of PINSEL; track b) {
-                <option [value]="b" [selected]="b === pinsel()">{{ b }} {{ b === 1 ? 'square' : 'squares' }}</option>
-              }
-            </select>
-          </label>
-          <button type="button" [class.an]="werkzeug() === 'zudecken'" [attr.aria-pressed]="werkzeug() === 'zudecken'" (click)="waehle('zudecken')" title="Drag a rectangle: what lies in it is covered again">Hide</button>
-          <label title="Moving a token on a fogged map reveals the way it went. The campaign sets the default (Rules &amp; options); this map may say otherwise.">
-            Reveal along moves
-            <select (change)="pfadAufdeckenSetzen($any($event.target).value)" aria-label="Reveal along moves on this map">
-              <option value="" [selected]="pfadEigen() === null">campaign ({{ kampagneDecktAuf() ? 'on' : 'off' }})</option>
-              <option value="on" [selected]="pfadEigen() === true">on</option>
-              <option value="off" [selected]="pfadEigen() === false">off</option>
-            </select>
-          </label>
-          <button type="button" (click)="allesAuf()">Reveal all</button>
-          <button type="button" (click)="allesZu()">Cover all</button>
-        </div>
-      }
 
       @if (blaetterOffen() && blaetter().length > 1) {
         <ul class="blaetter" aria-label="Layers">
@@ -238,201 +228,265 @@ interface Zeiger {
         </ul>
       }
 
-      @if (werkzeug() === 'setzen' && setzenBei()) {
-        <div class="setzen">
-          <p>Which article does the marker stand for?</p>
-          <nw-board-suche [ohne]="schonDa()" (gewaehlt)="setzen($event)" />
-          <button type="button" (click)="setzenBei.set(null)">Cancel</button>
-        </div>
-      }
-
-      @if (!karte()) {
-        <p class="leer">{{ fehlt() ? 'This map is not here — gone, or not yours to see.' : 'Loading map…' }}</p>
-      } @else if (!grundbild()) {
-        <p class="leer">
-          This map has no image yet{{ darfSchreiben() ? ' — set one under Image in the fields below.' : '.' }}
-        </p>
-      } @else {
-        @if (bildFehlt()) {
-          <p class="leer" role="alert">The map image did not load — it may not be shared with you yet.</p>
-        }
-        <div
-          #buehne
-          class="buehne"
-          tabindex="0"
-          aria-label="Map — drag to move, wheel or two fingers to zoom"
-          [class.werkzeug]="werkzeug() !== 'keins'"
-          (wheel)="rad($event)"
-          (pointerdown)="runter($event)"
-          (pointermove)="bewegen($event)"
-          (pointerup)="hoch($event)"
-          (pointercancel)="abbrechen($event)"
-          (keydown)="taste($event)"
-        >
-          <!-- Bis das Kartenbild da ist (T-126): ein Kreis statt einer leeren
-               Fläche. Gemessen ist es, sobald es geladen hat (nat). -->
-          @if (!nat() && !bildFehlt()) {
-            <nw-ladeanzeige class="laedt" label="Loading map image …" />
+      <div class="flaeche" [class.zu]="leisteZu()">
+        <!-- **Die Werkzeugleiste** (T-203, docs/vorschlaege/Karten-VTT-Vergleich.md):
+             Gruppen statt verstreuter Knöpfe; die aktive zeigt ihre Unterwerkzeuge. -->
+        <div class="werkzeugleiste" role="toolbar" aria-label="Map tools" aria-orientation="vertical">
+          @for (g of gruppen(); track g.key) {
+            <button type="button" [class.an]="aktiv() === g.key" [attr.aria-pressed]="aktiv() === g.key" [attr.aria-label]="g.label" [title]="g.title + ' (' + g.taste + ')'" (click)="gruppeWaehlen(g.key)">
+              <span class="sym" aria-hidden="true">{{ g.sym }}</span>
+              <span class="txt">{{ g.label }}</span>
+            </button>
           }
-          <div
-            #innen
-            class="innen"
-            [class.gemessen]="hoehe() !== null"
-            [style.width.px]="breite()"
-            [style.height.px]="hoehe()"
-          >
-            @for (s of blaetter(); track s.id) {
-              @if (s.base) {
-                <img
-                  class="blatt grund"
-                  [src]="adresse(s.image)"
-                  [alt]="name()"
-                  [style.opacity]="s.hidden ? 0 : 1"
-                  draggable="false"
-                  (load)="geladen($event)"
-                  (error)="bildFehlt.set(true)"
-                />
-              } @else {
-                <img
-                  class="blatt"
-                  [src]="adresse(s.image)"
-                  alt=""
-                  [style.opacity]="s.opacity"
-                  draggable="false"
-                  (load)="ohneGrund() && geladen($event)"
-                />
-              }
-            }
-            @if (gitter(); as g) {
-              <div class="gitter" aria-hidden="true" [style.background-image]="g.bild" [style.background-size]="g.groesse" [style.background-position]="g.lage"></div>
-            }
-            @for (k of rahmen(); track k.id) {
-              <a
-                class="rahmen"
-                [class.nah]="k.nah"
-                [routerLink]="weg(k.id).link"
-                [queryParams]="weg(k.id).query"
-                [style.left.%]="k.frame.x * 100"
-                [style.top.%]="k.frame.y * 100"
-                [style.width.%]="k.frame.w * 100"
-                [style.height.%]="k.frame.h * 100"
-                [title]="k.nah ? 'Zoom in once more to enter ' + k.name : 'Enter ' + k.name"
-                (pointerdown)="$event.stopPropagation()"
-              >
-                <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
-              </a>
-            }
-            @if (nebel()) {
-              <!-- Eine Leinwand und keine SVG-Maske: \`url(#…)\` löst nicht jeder
-                   Browser unter \`<base href>\` auf (T-204, nebel.ts). -->
-              <canvas #nebelLeinwand class="nebel" aria-hidden="true"></canvas>
-            } @else if (nebelOhneMass()) {
-              <div class="nebel ganz" aria-hidden="true"></div>
-            }
-            @if (vorschau(); as v) {
-              <div class="vorschau" [class.zu]="v.zu" [style.left.%]="v.x * 100" [style.top.%]="v.y * 100" [style.width.%]="v.w * 100" [style.height.%]="v.h * 100"></div>
-            }
-            @if (messung(); as m) {
-              <svg class="mess" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-                <line [attr.x1]="m.a.x" [attr.y1]="m.a.y" [attr.x2]="m.b.x" [attr.y2]="m.b.y" vector-effect="non-scaling-stroke" />
-              </svg>
-              @if (m.text) {
-                <span class="messwert" [style.left.%]="m.b.x * 100" [style.top.%]="m.b.y * 100">{{ m.text }}</span>
-              }
-            }
-            @if (planBild(); as pb) {
-              <svg class="plan" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-                @for (c of pb.reach; track c.k) {
-                  <rect class="reich" [attr.x]="c.x" [attr.y]="c.y" [attr.width]="c.w" [attr.height]="c.h" />
-                }
-                @if (pb.ring; as r) {
-                  <ellipse class="ring" [attr.cx]="r.cx" [attr.cy]="r.cy" [attr.rx]="r.rx" [attr.ry]="r.ry" vector-effect="non-scaling-stroke" />
-                }
-                @for (w of pb.wege; track $index) {
-                  <polyline class="weg" [attr.points]="w" vector-effect="non-scaling-stroke" />
-                }
-                @if (pb.vorschau; as v) {
-                  <polyline class="weg vor" [attr.points]="v" vector-effect="non-scaling-stroke" />
-                }
-              </svg>
-              @if (pb.geist; as g) {
-                <span class="geist" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [style.width.px]="g.px" [style.height.px]="g.px"></span>
-              }
-              @if (pb.vorschauText; as t) {
-                <span class="messwert" [style.left.%]="t.x * 100" [style.top.%]="t.y * 100">{{ t.text }}</span>
-              }
-              @for (g of pb.warnungen; track g.k) {
-                <span class="gelegenheit" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [title]="g.text" role="note" [attr.aria-label]="g.text">⚠</span>
-              }
-            }
-            @if (vorschlaege().length) {
-              <!-- Zugvorschläge (T-204, Campaign.moves: confirm): gestrichelt vom Token zum Ziel. -->
-              <svg class="plan" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-                @for (v of vorschlaege(); track v.plan) {
-                  <line class="weg vorschlag" [attr.x1]="v.von.x" [attr.y1]="v.von.y" [attr.x2]="v.to.x" [attr.y2]="v.to.y" vector-effect="non-scaling-stroke" />
-                }
-              </svg>
-              @for (v of vorschlaege(); track v.plan) {
-                <span class="vorschlag-ziel" [style.left.%]="v.to.x * 100" [style.top.%]="v.to.y * 100" (pointerdown)="$event.stopPropagation()">
-                  <span class="geist" [title]="v.actorName + ' — proposed by ' + v.by"></span>
-                  @if (v.entscheiden) {
-                    <button type="button" class="klein" (click)="vorschlagEntscheiden(v.plan, 'confirm')" [attr.aria-label]="'Confirm the move of ' + v.actorName" title="Confirm the move">✓</button>
-                    <button type="button" class="klein" (click)="vorschlagEntscheiden(v.plan, 'reject')" [attr.aria-label]="'Reject the move of ' + v.actorName" title="Reject the move">✗</button>
-                  }
-                </span>
-              }
-            }
-            @if (gruppe(); as p) {
-              <button
-                type="button"
-                class="marker k-party abgeleitet"
-                [style.left.%]="p.x * 100"
-                [style.top.%]="p.y * 100"
-                [style.width.px]="MARKER_MIN + 6"
-                [style.height.px]="MARKER_MIN + 6"
-                [title]="p.name + ' — on ' + p.mapName"
-                [attr.aria-label]="p.name + ', on ' + p.mapName"
-                (pointerdown)="$event.stopPropagation()"
-                (click)="kurzansicht($event, p.id)"
-              >
-                <span>{{ kuerzel(p.name) }}</span>
-              </button>
-            }
-            @for (m of marker(); track m.rel.id) {
-              <button
-                type="button"
-                class="marker"
-                [class]="'k-' + m.kind"
-                [class.versteckt]="m.hidden"
-                [class.dran]="m.dran"
-                [class.naechster]="m.naechster"
-                [class.zieht]="zug()?.id === m.rel.id"
-                [class.ziel]="m.ziel === true"
-                [class.fern]="m.ziel === false"
-                [class.selbst]="m.selbst"
-                [style.left.%]="m.x * 100"
-                [style.top.%]="m.y * 100"
-                [style.width.px]="m.px"
-                [style.height.px]="m.kind === 'scenery' ? m.px * m.ratio : m.px"
-                [style.transform]="m.rot ? 'translate(-50%, -50%) rotate(' + m.rot + 'deg)' : null"
-                [title]="m.titel"
-                [attr.aria-label]="m.titel"
-                (pointerdown)="greifen($event, m)"
-                (click)="kurzansicht($event, m.to)"
-              >
-                @if (m.bild) {
-                  <img [src]="m.bild" alt="" draggable="false" />
-                } @else {
-                  <span>{{ kuerzel(m.name) }}</span>
-                }
-                @if (m.etikett) {
-                  <b class="etikett">{{ m.etikett }}</b>
-                }
-              </button>
-            }
-          </div>
+          <button type="button" class="einklappen" (click)="leisteZu.set(!leisteZu())" [attr.aria-expanded]="!leisteZu()" [attr.aria-label]="leisteZu() ? 'Show tool names' : 'Hide tool names'" [title]="leisteZu() ? 'Show tool names' : 'Hide tool names'">
+            <span aria-hidden="true">{{ leisteZu() ? '»' : '«' }}</span>
+          </button>
         </div>
-      }
+
+        <div class="spalte">
+          @if (aktiv() === 'tokens' && darfSchreiben()) {
+            <div class="unterleiste" role="toolbar" aria-label="Tokens">
+              <button type="button" [class.an]="werkzeug() === 'setzen'" [attr.aria-pressed]="werkzeug() === 'setzen'" (click)="waehle('setzen')" title="Tap the map where the marker goes">
+                Add marker
+              </button>
+              @if (offeneTeilnehmer().length) {
+                <button type="button" (click)="teilnehmerSetzen()" [title]="'Put ' + offeneTeilnehmer().length + ' combatants of ' + (kontext()?.turn?.name ?? 'the fight') + ' on the map'">
+                  Place combatants ({{ offeneTeilnehmer().length }})
+                </button>
+              }
+              @if (spielTokens()) {
+                <button type="button" (click)="spielTokensWeg()" title="Remove the tokens placed for play; prepared markers and the party stay">Clear play tokens</button>
+              }
+            </div>
+          }
+
+          @if (aktiv() === 'nebel' && darfSchreiben()) {
+            <div class="unterleiste" role="toolbar" aria-label="Fog of war">
+              <label>
+                <input type="checkbox" [checked]="nebelAn()" (change)="nebelSchalten($any($event.target).checked)" />
+                Fog on
+              </label>
+              <button type="button" [class.an]="werkzeug() === 'aufdecken'" [attr.aria-pressed]="werkzeug() === 'aufdecken'" (click)="waehle('aufdecken')" title="Drag a rectangle to reveal it">Reveal</button>
+              <button type="button" [class.an]="werkzeug() === 'pinsel'" [attr.aria-pressed]="werkzeug() === 'pinsel'" (click)="waehle('pinsel')" title="Paint to reveal">Brush</button>
+              <label>
+                Width
+                <select (change)="pinsel.set(+$any($event.target).value)" aria-label="Brush width in squares">
+                  @for (b of PINSEL; track b) {
+                    <option [value]="b" [selected]="b === pinsel()">{{ b }} {{ b === 1 ? 'square' : 'squares' }}</option>
+                  }
+                </select>
+              </label>
+              <button type="button" [class.an]="werkzeug() === 'zudecken'" [attr.aria-pressed]="werkzeug() === 'zudecken'" (click)="waehle('zudecken')" title="Drag a rectangle: what lies in it is covered again">Hide</button>
+              <label title="Moving a token on a fogged map reveals the way it went. The campaign sets the default (Rules &amp; options); this map may say otherwise.">
+                Reveal along moves
+                <select (change)="pfadAufdeckenSetzen($any($event.target).value)" aria-label="Reveal along moves on this map">
+                  <option value="" [selected]="pfadEigen() === null">campaign ({{ kampagneDecktAuf() ? 'on' : 'off' }})</option>
+                  <option value="on" [selected]="pfadEigen() === true">on</option>
+                  <option value="off" [selected]="pfadEigen() === false">off</option>
+                </select>
+              </label>
+              <button type="button" (click)="allesAuf()">Reveal all</button>
+              <button type="button" (click)="allesZu()">Cover all</button>
+            </div>
+          }
+
+          @if (werkzeug() === 'setzen' && setzenBei()) {
+            <div class="setzen">
+              <p>Which article does the marker stand for?</p>
+              <nw-board-suche [ohne]="schonDa()" (gewaehlt)="setzen($event)" />
+              <button type="button" (click)="setzenBei.set(null)">Cancel</button>
+            </div>
+          }
+
+          @if (!karte()) {
+            <p class="leer">{{ fehlt() ? 'This map is not here — gone, or not yours to see.' : 'Loading map…' }}</p>
+          } @else if (!grundbild()) {
+            <p class="leer">
+              This map has no image yet{{ darfSchreiben() ? ' — set one under Image in the fields below.' : '.' }}
+            </p>
+          } @else {
+            @if (bildFehlt()) {
+              <p class="leer" role="alert">The map image did not load — it may not be shared with you yet.</p>
+            }
+            <div
+              #buehne
+              class="buehne"
+              tabindex="0"
+              aria-label="Map — drag to move, wheel or two fingers to zoom"
+              [class.werkzeug]="werkzeug() !== 'keins'"
+              (wheel)="rad($event)"
+              (pointerdown)="runter($event)"
+              (pointermove)="bewegen($event)"
+              (pointerup)="hoch($event)"
+              (pointercancel)="abbrechen($event)"
+              (keydown)="taste($event)"
+            >
+              <!-- Bis das Kartenbild da ist (T-126): ein Kreis statt einer leeren
+                   Fläche. Gemessen ist es, sobald es geladen hat (nat). -->
+              @if (!nat() && !bildFehlt()) {
+                <nw-ladeanzeige class="laedt" label="Loading map image …" />
+              }
+              <div
+                #innen
+                class="innen"
+                [class.gemessen]="hoehe() !== null"
+                [style.width.px]="breite()"
+                [style.height.px]="hoehe()"
+              >
+                @for (s of blaetter(); track s.id) {
+                  @if (s.base) {
+                    <img
+                      class="blatt grund"
+                      [src]="adresse(s.image)"
+                      [alt]="name()"
+                      [style.opacity]="s.hidden ? 0 : 1"
+                      draggable="false"
+                      (load)="geladen($event)"
+                      (error)="bildFehlt.set(true)"
+                    />
+                  } @else {
+                    <img
+                      class="blatt"
+                      [src]="adresse(s.image)"
+                      alt=""
+                      [style.opacity]="s.opacity"
+                      draggable="false"
+                      (load)="ohneGrund() && geladen($event)"
+                    />
+                  }
+                }
+                @if (gitter(); as g) {
+                  <div class="gitter" aria-hidden="true" [style.background-image]="g.bild" [style.background-size]="g.groesse" [style.background-position]="g.lage"></div>
+                }
+                @for (k of rahmen(); track k.id) {
+                  <a
+                    class="rahmen"
+                    [class.nah]="k.nah"
+                    [routerLink]="weg(k.id).link"
+                    [queryParams]="weg(k.id).query"
+                    [style.left.%]="k.frame.x * 100"
+                    [style.top.%]="k.frame.y * 100"
+                    [style.width.%]="k.frame.w * 100"
+                    [style.height.%]="k.frame.h * 100"
+                    [title]="k.nah ? 'Zoom in once more to enter ' + k.name : 'Enter ' + k.name"
+                    (pointerdown)="$event.stopPropagation()"
+                  >
+                    <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
+                  </a>
+                }
+                @if (nebel()) {
+                  <!-- Eine Leinwand und keine SVG-Maske: \`url(#…)\` löst nicht jeder
+                       Browser unter \`<base href>\` auf (T-204, nebel.ts). -->
+                  <canvas #nebelLeinwand class="nebel" aria-hidden="true"></canvas>
+                } @else if (nebelOhneMass()) {
+                  <div class="nebel ganz" aria-hidden="true"></div>
+                }
+                @if (vorschau(); as v) {
+                  <div class="vorschau" [class.zu]="v.zu" [style.left.%]="v.x * 100" [style.top.%]="v.y * 100" [style.width.%]="v.w * 100" [style.height.%]="v.h * 100"></div>
+                }
+                @if (messung(); as m) {
+                  <svg class="mess" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                    <line [attr.x1]="m.a.x" [attr.y1]="m.a.y" [attr.x2]="m.b.x" [attr.y2]="m.b.y" vector-effect="non-scaling-stroke" />
+                  </svg>
+                  @if (m.text) {
+                    <span class="messwert" [style.left.%]="m.b.x * 100" [style.top.%]="m.b.y * 100">{{ m.text }}</span>
+                  }
+                }
+                @if (planBild(); as pb) {
+                  <svg class="plan" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                    @for (c of pb.reach; track c.k) {
+                      <rect class="reich" [attr.x]="c.x" [attr.y]="c.y" [attr.width]="c.w" [attr.height]="c.h" />
+                    }
+                    @if (pb.ring; as r) {
+                      <ellipse class="ring" [attr.cx]="r.cx" [attr.cy]="r.cy" [attr.rx]="r.rx" [attr.ry]="r.ry" vector-effect="non-scaling-stroke" />
+                    }
+                    @for (w of pb.wege; track $index) {
+                      <polyline class="weg" [attr.points]="w" vector-effect="non-scaling-stroke" />
+                    }
+                    @if (pb.vorschau; as v) {
+                      <polyline class="weg vor" [attr.points]="v" vector-effect="non-scaling-stroke" />
+                    }
+                  </svg>
+                  @if (pb.geist; as g) {
+                    <span class="geist" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [style.width.px]="g.px" [style.height.px]="g.px"></span>
+                  }
+                  @if (pb.vorschauText; as t) {
+                    <span class="messwert" [style.left.%]="t.x * 100" [style.top.%]="t.y * 100">{{ t.text }}</span>
+                  }
+                  @for (g of pb.warnungen; track g.k) {
+                    <span class="gelegenheit" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [title]="g.text" role="note" [attr.aria-label]="g.text">⚠</span>
+                  }
+                }
+                @if (vorschlaege().length) {
+                  <!-- Zugvorschläge (T-204, Campaign.moves: confirm): gestrichelt vom Token zum Ziel. -->
+                  <svg class="plan" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                    @for (v of vorschlaege(); track v.plan) {
+                      <line class="weg vorschlag" [attr.x1]="v.von.x" [attr.y1]="v.von.y" [attr.x2]="v.to.x" [attr.y2]="v.to.y" vector-effect="non-scaling-stroke" />
+                    }
+                  </svg>
+                  @for (v of vorschlaege(); track v.plan) {
+                    <span class="vorschlag-ziel" [style.left.%]="v.to.x * 100" [style.top.%]="v.to.y * 100" (pointerdown)="$event.stopPropagation()">
+                      <span class="geist" [title]="v.actorName + ' — proposed by ' + v.by"></span>
+                      @if (v.entscheiden) {
+                        <button type="button" class="klein" (click)="vorschlagEntscheiden(v.plan, 'confirm')" [attr.aria-label]="'Confirm the move of ' + v.actorName" title="Confirm the move">✓</button>
+                        <button type="button" class="klein" (click)="vorschlagEntscheiden(v.plan, 'reject')" [attr.aria-label]="'Reject the move of ' + v.actorName" title="Reject the move">✗</button>
+                      }
+                    </span>
+                  }
+                }
+                @if (gruppe(); as p) {
+                  <button
+                    type="button"
+                    class="marker k-party abgeleitet"
+                    [style.left.%]="p.x * 100"
+                    [style.top.%]="p.y * 100"
+                    [style.width.px]="MARKER_MIN + 6"
+                    [style.height.px]="MARKER_MIN + 6"
+                    [title]="p.name + ' — on ' + p.mapName"
+                    [attr.aria-label]="p.name + ', on ' + p.mapName"
+                    (pointerdown)="$event.stopPropagation()"
+                    (click)="kurzansicht($event, p.id)"
+                  >
+                    <span>{{ kuerzel(p.name) }}</span>
+                  </button>
+                }
+                @for (m of marker(); track m.rel.id) {
+                  <button
+                    type="button"
+                    class="marker"
+                    [class]="'k-' + m.kind"
+                    [class.versteckt]="m.hidden"
+                    [class.dran]="m.dran"
+                    [class.naechster]="m.naechster"
+                    [class.zieht]="zug()?.id === m.rel.id"
+                    [class.ziel]="m.ziel === true"
+                    [class.fern]="m.ziel === false"
+                    [class.selbst]="m.selbst"
+                    [style.left.%]="m.x * 100"
+                    [style.top.%]="m.y * 100"
+                    [style.width.px]="m.px"
+                    [style.height.px]="m.kind === 'scenery' ? m.px * m.ratio : m.px"
+                    [style.transform]="m.rot ? 'translate(-50%, -50%) rotate(' + m.rot + 'deg)' : null"
+                    [title]="m.titel"
+                    [attr.aria-label]="m.titel"
+                    (pointerdown)="greifen($event, m)"
+                    (click)="kurzansicht($event, m.to)"
+                  >
+                    @if (m.bild) {
+                      <img [src]="m.bild" alt="" draggable="false" />
+                    } @else {
+                      <span>{{ kuerzel(m.name) }}</span>
+                    }
+                    @if (m.etikett) {
+                      <b class="etikett">{{ m.etikett }}</b>
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
 
       <p class="stand" role="status">
         @if (speichert()) {
@@ -509,6 +563,7 @@ export class Karte {
   private readonly router = inject(Router);
   private readonly brett = inject(Brett);
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly buehne = viewChild<ElementRef<HTMLElement>>('buehne');
   private readonly innen = viewChild<ElementRef<HTMLElement>>('innen');
   private readonly nebelLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('nebelLeinwand');
@@ -591,7 +646,11 @@ export class Karte {
     const abPlan = inject(Live).onPlan((karte) => {
       if (karte === this.id()) void this.kontextHolen(karte);
     });
+    /* Das Vollbild verlässt man auch mit Esc des Browsers — gefragt wird darum das Dokument. */
+    const vollbildWechsel = () => this.echtesVollbild.set(!!document.fullscreenElement?.contains(this.host.nativeElement));
+    document.addEventListener('fullscreenchange', vollbildWechsel);
     inject(DestroyRef).onDestroy(() => {
+      document.removeEventListener('fullscreenchange', vollbildWechsel);
       ab();
       abPlan();
       this.kontextLauf += 1;
@@ -803,6 +862,40 @@ export class Karte {
     this.letztesRad = jetzt;
     const r = this.buehne()!.nativeElement.getBoundingClientRect();
     this.stufe(ev.deltaY < 0 ? 1 : -1, ev.clientX - r.left, ev.clientY - r.top);
+  }
+
+  // ------------------------------------------------------------ Vollbild
+
+  private readonly echtesVollbild = signal(false);
+  /** Ohne Fullscreen API (iPhone): die Karte legt sich über die Seite. */
+  protected readonly ersatzVollbild = signal(false);
+  protected readonly vollbild = computed(() => this.echtesVollbild() || this.ersatzVollbild());
+
+  /**
+   * **Vollbild** (T-203). Unter Play geht die ganze Seite ins Vollbild
+   * (`.vollbild-ziel`), damit der Zugplan dabei bleibt; auf der
+   * Artikelseite die Karte allein.
+   */
+  protected async vollbildUm(): Promise<void> {
+    if (this.ersatzVollbild()) {
+      this.ersatzVollbild.set(false);
+      return;
+    }
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => undefined);
+      return;
+    }
+    const host = this.host.nativeElement;
+    const ziel = host.closest<HTMLElement>('.vollbild-ziel') ?? host;
+    if (!document.fullscreenEnabled || typeof ziel.requestFullscreen !== 'function') {
+      this.ersatzVollbild.set(true);
+      return;
+    }
+    try {
+      await ziel.requestFullscreen();
+    } catch {
+      this.ersatzVollbild.set(true);
+    }
   }
 
   // ------------------------------------------------------------ Wege
@@ -1140,12 +1233,60 @@ export class Karte {
   protected taste(ev: KeyboardEvent): void {
     if (ev.key === '+' || ev.key === '=') this.stufe(1);
     else if (ev.key === '-') this.stufe(-1);
-    else if (ev.key === 'Escape') this.waehle('keins');
+    else if (ev.key === 'Escape') this.zurueck();
     else return;
     ev.preventDefault();
   }
 
+  /** Esc: erst das Unterwerkzeug, dann die Gruppe, dann der Vollbild-Ersatz. */
+  private zurueck(): void {
+    if (this.werkzeug() !== 'keins' && this.aktiv() !== 'messen') this.waehle('keins');
+    else if (this.aktiv() !== 'auswahl') this.gruppeWaehlen('auswahl');
+    else if (this.ersatzVollbild()) this.ersatzVollbild.set(false);
+  }
+
+  /**
+   * **Tastenkürzel** (T-203): ein Buchstabe je Gruppe, Umschalt+F für das
+   * Vollbild. Nur wo die Karte gemeint ist — unter Play, im Vollbild oder
+   * mit dem Fokus in ihr — und nie beim Tippen.
+   */
+  @HostListener('document:keydown', ['$event'])
+  protected kuerzelTaste(ev: KeyboardEvent): void {
+    if (ev.defaultPrevented || ev.ctrlKey || ev.metaKey || ev.altKey || tipptGerade(ev.target)) return;
+    const gemeint = this.ort() === 'play' || this.vollbild() || this.host.nativeElement.contains(document.activeElement);
+    if (!gemeint) return;
+    if (ev.key === 'Escape' && (this.aktiv() !== 'auswahl' || this.ersatzVollbild())) {
+      this.zurueck();
+      ev.preventDefault();
+      return;
+    }
+    if (ev.shiftKey && ev.key.toLowerCase() === 'f') {
+      void this.vollbildUm();
+      ev.preventDefault();
+      return;
+    }
+    if (ev.shiftKey || ev.key.length !== 1) return;
+    const g = this.gruppen().find((x) => x.taste.toLowerCase() === ev.key.toLowerCase());
+    if (!g) return;
+    this.gruppeWaehlen(g.key);
+    ev.preventDefault();
+  }
+
   // ------------------------------------------------------------ Werkzeuge
+
+  /** Die Gruppen, die dieser Betrachter in der Leiste hat. */
+  protected readonly gruppen = computed(() => GRUPPEN.filter((g) => !g.spaeter && (!g.leitung || this.darfSchreiben())));
+  protected readonly aktiv = signal<Gruppe>('auswahl');
+  /** Nur die Symbole: die Leiste schmal, mehr Karte. */
+  protected readonly leisteZu = signal(false);
+
+  /** Eine Gruppe wählen; dieselbe noch einmal führt zurück zur Auswahl. */
+  protected gruppeWaehlen(g: Gruppe): void {
+    const neu = this.aktiv() === g ? 'auswahl' : g;
+    this.aktiv.set(neu);
+    this.waehle('keins');
+    this.werkzeug.set(neu === 'messen' ? 'messen' : 'keins');
+  }
 
   protected readonly werkzeug = signal<Werkzeug>('keins');
   protected waehle(w: Werkzeug): void {
@@ -1343,7 +1484,6 @@ export class Karte {
   // ------------------------------------------------------------- Nebel
 
   protected readonly spielersicht = signal(false);
-  protected readonly nebelOffen = signal(false);
   protected readonly pinsel = signal<number>(2);
   /** `Map.revealOnMove` dieser Karte: an, aus, oder leer — dann gilt die Kampagne (T-204). */
   protected readonly pfadEigen = computed(() => {
@@ -1365,11 +1505,6 @@ export class Karte {
   });
   /** Was gerade gezogen wird: ein Rechteck (zwei Punkte) oder ein Pinselstrich. */
   private readonly strich = signal<{ pointer: number; pts: Pt[] } | null>(null);
-
-  protected nebelLeiste(): void {
-    this.nebelOffen.set(!this.nebelOffen());
-    if (!this.nebelOffen() && ZIEHT_FORM.has(this.werkzeug())) this.waehle('keins');
-  }
 
   /** Höhe durch Breite des Kartenbildes; ohne Mass 1. */
   private readonly seitenverhaeltnis = computed(() => {

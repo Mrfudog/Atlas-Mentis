@@ -62,7 +62,7 @@ interface Sprosse {
                   <a class="story" [routerLink]="['/artikel', s.e.id]">{{ s.name }}</a>
                   <span class="boards">
                     @for (b of s.boards; track b.id) {
-                      <a class="board" [routerLink]="['/boards', b.id]">{{ boardName(b, s.e) }}</a>
+                      <a class="board" [routerLink]="['/boards', b.id]" [title]="'Open the board ' + name(b)"><span aria-hidden="true">▦</span> {{ boardName(b, s.e) }}</a>
                     } @empty {
                       @if (darfAnlegen()) {
                         <button type="button" class="klein" (click)="neu(s.e)" [disabled]="legtAn()">
@@ -88,7 +88,7 @@ interface Sprosse {
               @for (b of andere(); track b.id) {
                 <li>
                   <span class="art">Board</span>
-                  <a class="board" [routerLink]="['/boards', b.id]">{{ name(b) }}</a>
+                  <a class="board" [routerLink]="['/boards', b.id]"><span aria-hidden="true">▦</span> {{ name(b) }}</a>
                 </li>
               }
             </ul>
@@ -171,8 +171,28 @@ interface Sprosse {
       gap: 0.5rem;
       margin-left: auto;
     }
+    /* Ein Board ist ein Knopf mit Symbol (T-203), kein loser fetter Link am Zeilenende. */
     .board {
-      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 32px;
+      padding: 0 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+    .board:hover,
+    .board:focus-visible {
+      background: var(--hover);
+      border-color: var(--accent);
+    }
+    .board span {
+      color: var(--accent);
     }
     button.klein {
       min-height: 32px;
