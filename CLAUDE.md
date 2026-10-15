@@ -115,7 +115,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Wechsel der Kampagne für die Verwaltung; T-143; gespeicherte
   Ebenenauswahlen, T-186), **What's new** (`neues/`,
   `/whats-new`: Einträge aus `apps/web/src/whats-new.json`, gesehen je
-  Konto in `/api/me/prefs`, Punkt in der Kopfleiste; T-157) und das Konto mit seinen API-Tokens (`konto/`); die
+  Konto in `/api/me/prefs`, Punkt in der Kopfleiste; T-157), die **Hilfe je Seite**
+  (`hilfe/`, das „?“ der Kopfleiste: Texte aus `apps/web/src/help.json` je
+  Route und die What's-new-Einträge mit Link auf die Seite; jede Route hat
+  einen Text oder steht unter `without`, T-205) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
