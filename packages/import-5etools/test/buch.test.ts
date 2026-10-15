@@ -117,6 +117,18 @@ describe('Bücher als Kapitel aus Teilen (T-108)', () => {
     expect(zweiter).toEqual(entities.filter((e) => ['Chapter', 'Paragraph', 'Heading', 'Embed'].includes(art(e))).map((e) => e.id));
   });
 
+  it('nennt den Buchtext eines 2014-Buchs als Neuzugang, seine Artikel nicht (T-145)', () => {
+    const { datei } = lauf(datenstand());
+    const neu = new Set(datei.additions);
+    const text = datei.entities.filter((e) => ['Chapter', 'Heading', 'Paragraph', 'ReadAloudText', 'Embed'].includes(art(e)));
+    expect(text.length).toBeGreaterThan(10);
+    for (const e of text) expect(neu.has(e.id), `${art(e)} ${e.name}`).toBe(true);
+    /* Was der Text einbettet, ist Grundstand und bleibt draussen. */
+    for (const t of ['Spell', 'Condition', 'Table']) {
+      for (const e of datei.entities.filter((x) => art(x) === t)) expect(neu.has(e.id), `${t} ${e.name}`).toBe(false);
+    }
+  });
+
   it('nennt ein Kapitel wie 5e.tools', () => {
     expect(kapitelTitel('Combat', { type: 'chapter', identifier: 9 })).toEqual({ titel: 'Chapter 9: Combat', ordinal: 'Chapter 9' });
     expect(kapitelTitel('Appendix A: Conditions', { type: 'appendix', identifier: 'A' })).toEqual({ titel: 'Appendix A: Conditions', ordinal: 'Appendix A' });
