@@ -1296,6 +1296,16 @@ von der Kampagne an den Artikel: er ist im Spiel, sein Buch nicht. Er
 steht unter jeder aufgeschalteten Ebene — was die Kampagne selbst sagt,
 schlägt eine Einzelfreigabe —, und zurück geht es an derselben Stelle.
 
+**Was eine Quelle bringt, steht an ihr** (T-189, 15.10.2026). Die
+Leitung wollte am Buch sehen, welche Artikel es hinzufügt, und dort auch
+wählen — bis zum einzelnen Artikel. Ein Baum Art → Artikel (Element
+`contents`) zeigt das, und seine Häkchen sind **keine eigene Wahl**: sie
+schreiben die Kanten, die die Kampagnenseite schreibt (`activates`,
+`activates.props.types`, `enables`). Zwei Stellen für dieselbe Wahl liefen
+beim ersten Klick auseinander. Was mit der Ebene kommt, steht darum
+angehakt und gesperrt da: eine Kante, die einen einzelnen Artikel aus
+einer Ebene im Spiel nimmt, gibt es nicht, und der Baum erfindet keine.
+
 **Eine Ebene erklärt ihr Kürzel.** „XGE" steht an jedem Artikel aus
 Xanathar's Guide; wer das Buch nicht kennt, liest drei Buchstaben. Darum
 trägt die Ebene ihr Kürzel (`Layer.abbreviation`) neben dem vollen Titel,

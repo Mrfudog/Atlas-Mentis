@@ -526,6 +526,13 @@ export type LayoutElementKind =
    */
   | 'reader'
   /**
+   * **Der Inhalt einer Quelle** (T-189): an einer Ebene ihre Artikel nach
+   * Art, jeder verlinkt, mit Häkchen, die die Wahl der laufenden Kampagne
+   * zeigen und ändern — Ebene an oder aus, welche Arten, einzelne Artikel
+   * (`activates`, `enables`, T-187); an einer Gruppe ihre Ebenen.
+   */
+  | 'contents'
+  /**
    * **Die Klassenübersicht** (W6, T-191): Eckdaten, die Stufentabelle, die
    * Unterklassen zum Wählen und Vergleichen, die Merkmale nach Stufe — wie
    * 5e.tools. Nimmt Übungen und Wahlen aus der Feldtabelle (`BOOK_CARDS`).
