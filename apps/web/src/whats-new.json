@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-gallery-badges-use-as",
+      "date": "2026-10-15",
+      "title": "Images show their size, their tags as badges, and become maps or tokens",
+      "text": "Each image in the gallery now names its resolution, aspect ratio, file size and format, and the layer it comes from. Tags stand as badges: remove one with ×, add one with “+ tag”, or tag a whole selection. “Use as…” turns an image into a map (with a grid suggested from its resolution), the token of a creature, or a prop — and links straight to the result.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
       "id": "2026-10-15-opportunity-attacks",
       "date": "2026-10-15",
       "title": "Opportunity attacks in the turn planner",

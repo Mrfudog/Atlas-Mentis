@@ -1170,6 +1170,9 @@ export function buildApp({
        `mayWrite` selbst — erst nach dem Sieb, damit ein fremdes Bild 404
        sagt und nicht 403. */
     if (/^\/api\/assets\/[^/]+\/file$/.test(url) && request.method === 'PUT') return;
+    /* Ein Bild als Karte, Token, Requisite (T-201): die Route fragt
+       `mayCreate` und `mayWrite` selbst, je nachdem, was sie tut. */
+    if (/^\/api\/assets\/[^/]+\/use$/.test(url) && request.method === 'POST') return;
     /* Ein Konto schreibt seine Figur und was an ihr hängt, was es selbst
        angelegt hat und was in seinen Ebenen liegt (T-098) — und sonst
        nichts. */
@@ -3256,6 +3259,10 @@ export function buildApp({
     darfSchreiben: async (request, id) => {
       const user = await viewerOf(request);
       return !!user && mayWrite(user, await ownedBy(user), id);
+    },
+    darfAnlegen: async (request) => {
+      const user = await viewerOf(request);
+      return !!user && (user.isAdmin || (await mayCreate(user)));
     },
   });
   /* Der Zugplan auf der Karte (T-198): planen, einreichen, bestätigen —

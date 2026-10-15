@@ -16,7 +16,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { assetUses, entityName, primaryInterface, tagsOf, typeChain, type AssetUse, type Entity } from '@nw/model';
+import { assetUses, entityName, mapFromImage, primaryInterface, tagsOf, typeChain, type AssetUse, type Entity } from '@nw/model';
 import type { Repository } from './repo.js';
 import type { User } from './auth.js';
 import { KeinBild, aufbereiten, mimeOf, thumbKey, validKey, versionOf, type AssetStore } from './assets.js';
@@ -45,6 +45,8 @@ export interface BilderDeps {
   schreiben: (request: FastifyRequest, entity: Entity) => Promise<{ code: number; body: unknown } | { konflikt: number | null }>;
   /** Darf dieses Konto den Artikel schreiben? (dieselbe Frage wie die Wache vor `PUT`) */
   darfSchreiben: (request: FastifyRequest, id: string) => Promise<boolean>;
+  /** Darf dieses Konto anlegen? (dieselbe Frage wie die Wache vor `POST /api/entities`) */
+  darfAnlegen: (request: FastifyRequest) => Promise<boolean>;
 }
 
 interface AssetInfo {
@@ -97,7 +99,7 @@ export interface Bilder {
 }
 
 export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
-  const { repo, store, viewerOf, roh, sieve, geltend, anlegen, schreiben, darfSchreiben } = deps;
+  const { repo, store, viewerOf, roh, sieve, geltend, anlegen, schreiben, darfSchreiben, darfAnlegen } = deps;
 
   const istAsset = async (e: Entity | undefined): Promise<boolean> =>
     !!e && typeChain(await repo.getRegistry(), primaryInterface(e)).includes(ASSET_TYPE);
@@ -389,6 +391,86 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
       variants: varianten.filter((e) => sichtbar.has(e.id)).map((e) => zeile(e.id)),
       variantOf: original && sichtbar.has(original) ? zeile(original) : null,
     };
+  });
+
+  /**
+   * **Ein Bild als Karte, Token oder Requisite verwenden** (T-201,
+   * `POST /api/assets/:id/use`, `{ as, for? }`): setzt die Klasse des
+   * Bildes — wenn man es schreibt; ein Bild aus einem geteilten Buch bleibt,
+   * wie es ist — und legt an oder hängt an, was dazugehört:
+   *
+   * - `map`: ein neuer `Map`-Artikel mit dem Bild und einem Gitter aus der
+   *   Auflösung (`mapFromImage`, dieselbe Rechnung wie beim Wählen in der
+   *   Sitzung, T-202), angelegt mit den Regeln von `POST /api/entities`;
+   * - `token`: das Token am Statblock der genannten Kreatur (`for`) —
+   *   die Zahlen und das Token wohnen am Statblock; ohne `for` nur die Klasse;
+   * - `prop`: nur die Klasse.
+   *
+   * Die Antwort nennt den Artikel, zu dem „Open" springt.
+   */
+  app.post<{ Params: { id: string }; Body: { as?: unknown; for?: unknown; name?: unknown } }>('/api/assets/:id/use', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    const als = String(request.body?.as ?? '');
+    if (!['map', 'token', 'prop'].includes(als)) return reply.code(400).send({ error: 'Erwartet: `as` ist map, token oder prop.' });
+    const stand = await roh();
+    const da = stand.map.get(request.params.id);
+    const [gesehen] = da && (await istAsset(da)) ? await sieve(request, [da], stand.map) : [];
+    if (!da || !gesehen) return reply.code(404).send({ error: 'Nicht gefunden' });
+
+    if (als === 'map' && !(await darfAnlegen(request))) return reply.code(403).send({ error: 'Anlegen darfst du hier nicht.' });
+    /* Das Ziel zuerst prüfen: wer ein Token an eine Kreatur ohne Statblock
+       hängen will, soll nicht nebenbei die Klasse geändert haben. */
+    let statblock: Entity | undefined;
+    const fuerId = String(request.body?.for ?? '').trim();
+    /* Ohne Kreatur ist ein Token nur eine Klasse — so klassifiziert eine Mehrfachauswahl. */
+    if (als === 'token' && fuerId) {
+      const fuerRoh = stand.map.get(fuerId);
+      const [fuer] = fuerRoh ? await sieve(request, [fuerRoh], stand.map) : [];
+      if (!fuer) return reply.code(404).send({ error: 'Die Kreatur gibt es nicht.' });
+      const registry = await repo.getRegistry();
+      statblock = typeChain(registry, primaryInterface(fuer)).includes('Statblock')
+        ? fuerRoh
+        : stand.alle.find(
+            (e) => primaryInterface(e) === 'Statblock' && (e.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === fuer.id),
+          );
+      if (!statblock) return reply.code(409).send({ error: 'Diese Kreatur hat noch keinen Statblock — das Token wohnt dort.', code: 'no_statblock' });
+      if (!(await darfSchreiben(request, statblock.id))) return reply.code(403).send({ error: 'Den Statblock schreibst du nicht.' });
+    }
+
+    /* Die Klasse: nur, wenn sie sich ändert und man das Bild schreibt. */
+    let klasse = false;
+    const info = (da.components?.[ASSET_TYPE] ?? {}) as Record<string, unknown>;
+    if ((info['kind'] ?? 'image') !== als && (await darfSchreiben(request, da.id))) {
+      const r = await schreiben(request, {
+        ...da,
+        components: { ...(da.components ?? {}), [ASSET_TYPE]: { ...info, kind: als } },
+      } as Entity);
+      if ('konflikt' in r) return reply.code(409).send({ error: 'Das Bild wurde gerade anderswo geändert.', code: 'conflict' });
+      if (r.code !== 200) return reply.code(r.code).send(r.body);
+      klasse = true;
+    }
+
+    if (als === 'map') {
+      const karte = mapFromImage(gesehen, typeof request.body?.name === 'string' ? request.body.name : undefined);
+      const r = await anlegen(request, { ...karte, relations: [] }, {});
+      if (r.code !== 201) return reply.code(r.code).send(r.body);
+      const neu = r.body as Entity;
+      return reply.code(201).send({ kind: klasse, open: { id: neu.id, name: entityName(neu), type: 'Map' } });
+    }
+    if (als === 'token' && statblock) {
+      const karte = (statblock.components?.['Statblock'] ?? {}) as Record<string, unknown>;
+      const r = await schreiben(request, {
+        ...statblock,
+        components: { ...(statblock.components ?? {}), Statblock: { ...karte, token: da.id } },
+      } as Entity);
+      if ('konflikt' in r) return reply.code(409).send({ error: 'Der Statblock wurde gerade anderswo geändert.', code: 'conflict' });
+      if (r.code !== 200) return reply.code(r.code).send(r.body);
+      const kreatur = (statblock.relations ?? []).find((x) => x.type === 'belongsTo')?.to ?? statblock.id;
+      const ziel = stand.map.get(kreatur) ?? statblock;
+      return reply.code(200).send({ kind: klasse, open: { id: ziel.id, name: entityName(ziel), type: primaryInterface(ziel) } });
+    }
+    return reply.code(200).send({ kind: klasse, open: null });
   });
 
   return {
