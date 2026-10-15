@@ -1175,6 +1175,32 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
+   * **Ein Material nach Eigenschaft** (T-197): ein Rezept braucht „ein
+   * Reagenz, mindestens ungewöhnlich" — die `needs`-Kante zeigt auf diese
+   * Gruppe statt auf einen Gegenstand. Eine Regel, kein Gegenstand: man
+   * trägt sie nicht, man erfüllt sie.
+   */
+  MaterialGroup: {
+    name: 'MaterialGroup',
+    area: 'rules',
+    label: 'Material group',
+    extends: ['Rule'],
+    schema: merge(g.MaterialGroupInfo),
+  },
+
+  /**
+   * **Eine Ersatzregel** (T-197): welche Materialien für welche einspringen
+   * dürfen. Gilt, wo die Kampagne sie nennt (`allowsSubstitution`).
+   */
+  Substitution: {
+    name: 'Substitution',
+    area: 'rules',
+    label: 'Material substitution',
+    extends: ['Rule'],
+    schema: merge(g.SubstitutionInfo),
+  },
+
+  /**
    * **Ein Fertigungsauftrag** (T-128) ist eine Instanz des Rezepts: er
    * erbt von `Recipe` und zeigt mit `instanceOf` auf das Rezept, liest dort
    * Werkzeug, SG, Zeit, Material und Ertrag und speichert nur, was abweicht

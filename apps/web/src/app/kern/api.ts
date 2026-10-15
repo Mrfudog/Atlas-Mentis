@@ -330,6 +330,24 @@ export interface HandwerkVorrat {
   edge: string;
   qty: number;
 }
+/**
+ * `GET /api/crafting/:id/materials?actor=` — die Materialwahl beim Start
+ * (T-197): je Bestandteil, was passt (auch als Ersatz), und was nicht, mit Grund.
+ */
+export interface HandwerkMaterialwahl {
+  actor: { id: string; name: string };
+  needs: {
+    key: string;
+    item: string;
+    name: string;
+    group: boolean;
+    qty: number;
+    consumed: boolean;
+    options: (HandwerkVorrat & { name: string; ratio: number; via?: { id: string; name: string } })[];
+    rejected: (HandwerkVorrat & { name: string; reason: string })[];
+  }[];
+  substitutions: { id: string; name: string; does: string }[];
+}
 export interface HandwerkAuftrag {
   id: string;
   name: string;
@@ -350,7 +368,8 @@ export interface HandwerkAuftrag {
   waiting: number;
   check: { tool: string; ability: string; dc: number };
   yields: { id: string; name: string; count: number } | null;
-  reserved: (HandwerkVorrat & { name: string; consumed: boolean; lost?: number })[];
+  /** `for`: der Bestandteil, für den ein Stück aus einer Gruppe oder als Ersatz steht (T-197). */
+  reserved: (HandwerkVorrat & { name: string; consumed: boolean; lost?: number; for?: string })[];
   /** Was die Quelle beim Misslingen sagt — gilt nicht. */
   sourceFailure: string;
   may: { mark: boolean; roll: boolean; work: boolean; confirm: boolean; finish: boolean; abort: boolean; fail: boolean };
@@ -402,7 +421,7 @@ export type Handwerk =
       rules: HandwerkRegeln;
       leitet: boolean;
       recipe: { id: string; name: string; unit: 'checks' | 'days'; needed: number; sourceFailure: string; yields: { id: string; name: string } | null };
-      needs: { item: string; name: string; qty: number; consumed: boolean }[];
+      needs: { key: string; item: string; name: string; group: boolean; qty: number; consumed: boolean }[];
       actors: { id: string; name: string; learned: boolean; check: { tool: string; ability: string; dc: number }; stock: HandwerkVorrat[] }[];
       orders: { id: string; name: string; actor: string; progress: number; outcome: string }[];
     };
@@ -1293,7 +1312,11 @@ export class Api {
     return this.call(`/api/crafting/${encodeURIComponent(id)}`);
   }
   /** Einen Fertigungsauftrag starten; das Material wird reserviert (T-128). */
-  startCrafting(recipe: string, actor: string, materials: { inventory: string; edge: string; qty: number }[]): Promise<{ id: string }> {
+  /** Was beim Start gewählt werden kann (T-197). */
+  craftingMaterials(recipe: string, actor: string): Promise<HandwerkMaterialwahl> {
+    return this.call(`/api/crafting/${encodeURIComponent(recipe)}/materials?actor=${encodeURIComponent(actor)}`);
+  }
+  startCrafting(recipe: string, actor: string, materials: { inventory: string; edge: string; qty: number; need?: string }[]): Promise<{ id: string }> {
     return this.call('/api/crafting', { method: 'POST', body: JSON.stringify({ recipe, actor, materials }) });
   }
   /** Am Auftrag: `roll`, `confirm`, `work`, `abort`, `fail` (T-128). */

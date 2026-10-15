@@ -1836,6 +1836,23 @@ das, was erst unterwegs dazukommt.
 Was beim Misslingen und beim Abbruch zurückkommt, sagt das Rezept
 (`onFailure`) — sonst entschiede es jedes Mal die Laune am Tisch.
 
+## Materialgruppe und Ersatz
+
+Ein Rezept nennt, was es braucht — oft einen bestimmten Gegenstand, manchmal
+nur eine **Eigenschaft**: „ein Reagenz, mindestens ungewöhnlich". Dafür gibt
+es die **Materialgruppe**: eine Regel, die sagt, welche Stücke passen, statt
+sie aufzuzählen. Eine Aufzählung stünde neben den Stücken und veraltete mit
+dem nächsten Fund; die Materialart und die Seltenheit stehen am Stück ohnehin.
+
+Ein **Ersatz** ist eine Regel des Tisches: „Pflanzen statt Reagenzien". Er
+ändert kein Rezept — eine Kopie jedes Rezepts mit Pflanzen wäre hundert
+Fassungen, die keine Korrektur am Original mehr erreicht —, sondern sagt
+einmal, welche Materialart für welche einspringt, und die Kampagne wählt, ob
+sie so spielt. Darum wird erst **beim Start** gewählt: was passt, hängt von
+der Figur, ihrem Inventar und den Regeln des Tisches ab, und das weiss das
+Rezept nicht. Was nicht passt, sagt seinen Grund — wer am Tisch ein Stück
+nicht nehmen darf, soll nicht raten müssen, warum.
+
 ## Beruf
 
 Ein **Beruf** (`Trade`) ist eine Regel mit Werkzeugen: Schmieden mit dem

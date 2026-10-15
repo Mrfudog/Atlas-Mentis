@@ -9,6 +9,14 @@
       "link": "/campaign"
     },
     {
+      "id": "2026-10-15-crafting-choose-materials",
+      "date": "2026-10-15",
+      "title": "Choose materials when crafting starts, with substitutes",
+      "text": "On a recipe, Start crafting now asks which pieces from the character's and the party's inventory to use, and says why a piece does not fit. A recipe may ask for a material group (say, any reagent of at least uncommon rarity) instead of one item, and a campaign can allow substitution rules, such as one material type standing in for another, under Rules & options.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
       "id": "2026-10-15-type-rules-and-extra-content",
       "date": "2026-10-15",
       "title": "One type rule for a whole group of books, and single articles as extra content",
