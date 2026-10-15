@@ -102,7 +102,9 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   (`artikel/werkstatt.ts`, Routen in `apps/server/src/handwerk.ts`: ein
   Fertigungsauftrag ist eine Instanz des Rezepts, das Material bleibt
   reserviert im Inventar von Figur und Gruppe, die Regeln stehen an der
-  Kampagne; T-128; dasselbe Element `crafting` ist am **Beruf** (`Trade`)
+  Kampagne; T-128; gewählt wird es erst beim Start, auch aus einer
+  Materialgruppe oder als Ersatz nach einer Regel der Kampagne,
+  `packages/model/src/substitutes.ts`, T-197; dasselbe Element `crafting` ist am **Beruf** (`Trade`)
   die Handwerksübersicht und an Werkzeug und Figur „Can craft",
   `artikel/handwerksuebersicht.ts`, T-196), die **Leseansicht** (`lesen/`: eine
   Ebene als Buch mit aufklappbarem Inhaltsverzeichnis, Suche und

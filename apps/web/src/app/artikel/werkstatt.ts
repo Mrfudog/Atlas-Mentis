@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { nextMark } from '@nw/model';
-import { Api, ApiError, type Handwerk, type HandwerkAuftrag, type HandwerkKreis, type HandwerkUebersicht } from '../kern/api';
+import { Api, ApiError, type Handwerk, type HandwerkAuftrag, type HandwerkKreis, type HandwerkMaterialwahl, type HandwerkUebersicht } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
 import { Handwerksuebersicht } from './handwerksuebersicht';
@@ -26,7 +26,8 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
 
 /**
  * **Die Werkbank** (T-128, REQ-184): am Rezept einen Auftrag starten — wer
- * fertigt, welches Material aus seinem Inventar und dem der Gruppe —, am
+ * fertigt, und erst beim Start, welches Material aus seinem Inventar und
+ * dem der Gruppe, auch aus einer Gruppe oder als Ersatz (T-197) —, am
  * Auftrag Fortschritt, Proben und Abschluss. Gerechnet und geprüft wird am
  * Server (`/api/crafting`); hier wird gewählt und gezeigt. Ändert sich der
  * Auftrag, ein Inventar oder das Rezept, fragt sie über den Live-Kanal neu.
@@ -72,27 +73,65 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
               }
               @if (s.needs.length) {
                 <ul class="material">
-                  @for (n of s.needs; track n.item) {
+                  @for (n of s.needs; track n.key) {
                     <li>
                       <span class="was">{{ n.qty }} × <a [routerLink]="['/artikel', n.item]" [nwQuick]="n.item">{{ n.name }}</a>
+                        @if (n.group) { <small class="marke">any that fits</small> }
                         @if (!n.consumed) { <small>(not used up)</small> }
-                        <small [class.fehlt]="gewaehlt(n.item) < n.qty">{{ gewaehlt(n.item) }} / {{ n.qty }} chosen</small>
                       </span>
-                      @for (v of vorrat(n.item); track v.edge) {
-                        <label class="quelle">
-                          {{ v.owner || 'inventory' }} ({{ v.qty }})
-                          <input type="number" min="0" [max]="v.qty" [value]="menge()[v.edge] ?? 0" (change)="setzeMenge(v.edge, $any($event.target).value, v.qty)" [attr.aria-label]="n.name + ' from ' + v.owner" />
-                        </label>
-                      } @empty {
-                        <small class="fehlt">none in {{ f.name }}’s or the party’s inventory</small>
-                      }
+                      @if (!n.group) { <small>{{ vorhanden(n.item) }} in {{ f.name }}’s or the party’s inventory</small> }
                     </li>
                   }
                 </ul>
               } @else {
-                <p class="hinweis">This recipe needs no materials (add a “needs” edge to an item).</p>
+                <p class="hinweis">This recipe needs no materials (add a “needs” edge to an item or a material group).</p>
               }
-              <button type="button" (click)="starten()" [disabled]="laeuft() || (!f.learned && !s.leitet)">Start crafting</button>
+              @if (wahl(); as w) {
+                <div class="wahl" role="group" aria-label="Choose materials">
+                  <h4>Choose materials for {{ w.actor.name }}</h4>
+                  @if (w.substitutions.length) {
+                    <p class="hinweis">Substitutions in play:
+                      @for (r of w.substitutions; track r.id) { <a [routerLink]="['/artikel', r.id]" [nwQuick]="r.id" [title]="r.does">{{ r.name }}</a>{{ $last ? '' : ', ' }} }
+                    </p>
+                  }
+                  @for (n of w.needs; track n.key) {
+                    <fieldset>
+                      <legend>{{ n.qty }} × {{ n.name }}
+                        <small [class.fehlt]="n.consumed && gedeckt(n.key) < n.qty">{{ zahl(gedeckt(n.key)) }} / {{ n.qty }} chosen</small>
+                      </legend>
+                      @for (o of n.options; track o.edge) {
+                        <label class="quelle">
+                          <span>{{ o.name }} <small>· {{ o.owner || 'inventory' }} ({{ o.qty }})</small>
+                            @if (o.via; as v) { <small class="ersatz">substitute — {{ v.name }}{{ o.ratio > 1 ? ', ' + o.ratio + ' for one' : '' }}</small> }
+                          </span>
+                          <input type="number" min="0" [max]="o.qty" [value]="anteil(n.key + '|' + o.edge)"
+                                 (change)="setzeMenge(n.key + '|' + o.edge, $any($event.target).value, o.qty)"
+                                 [attr.aria-label]="o.name + ' from ' + o.owner + ' for ' + n.name" />
+                        </label>
+                      } @empty {
+                        <small class="fehlt">Nothing in {{ w.actor.name }}’s or the party’s inventory fits.</small>
+                      }
+                      @if (n.rejected.length) {
+                        <details>
+                          <summary>{{ n.rejected.length }} piece{{ n.rejected.length === 1 ? '' : 's' }} that do not fit</summary>
+                          <ul class="abgelehnt">
+                            @for (x of n.rejected; track x.edge) {
+                              <li>{{ x.name }} <small>({{ x.owner }})</small> — {{ x.reason }}</li>
+                            }
+                          </ul>
+                        </details>
+                      }
+                    </fieldset>
+                  }
+                  <div class="zeile">
+                    <button type="button" class="abschluss" (click)="starten()" [disabled]="laeuft()">Reserve and start</button>
+                    <button type="button" (click)="wahl.set(null)" [disabled]="laeuft()">Cancel</button>
+                  </div>
+                  @if (s.leitet) { <p class="hinweis">As GM you may start with gaps.</p> }
+                </div>
+              } @else {
+                <button type="button" (click)="oeffneWahl()" [disabled]="laeuft() || (!f.learned && !s.leitet)">Start crafting…</button>
+              }
             }
           } @else {
             <p class="hinweis">No character of yours can craft here.</p>
@@ -155,7 +194,7 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
               Reserved:
               @for (r of o.reserved; track r.edge) {
                 <span>{{ r.qty }} × <a [routerLink]="['/artikel', r.item]" [nwQuick]="r.item">{{ r.name }}</a>
-                  <small>({{ r.owner }}{{ r.consumed ? '' : ', comes back' }})</small>
+                  <small>({{ r.owner }}{{ r.for ? ', for ' + r.for : '' }}{{ r.consumed ? '' : ', comes back' }})</small>
                   @if (r.lost !== undefined && r.consumed) {
                     <small class="verlust" [class.fehlt]="r.lost > 0">{{ r.lost > 0 ? r.lost + ' lost on finishing' : 'comes back on finishing' }}</small>
                   }
@@ -260,6 +299,16 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
     .was { flex: 1 1 14rem; min-width: 0; overflow-wrap: anywhere; }
     .was small { margin-left: .4rem; }
     .quelle input { width: 4rem; margin-left: .3rem; }
+    .wahl { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; margin: .6rem 0; }
+    .wahl fieldset { border: 0; border-bottom: 1px solid var(--rule); margin: 0; padding: .4rem 0; min-width: 0; }
+    .wahl legend { font-weight: 600; padding: 0; }
+    .wahl legend small { font-weight: normal; margin-left: .4rem; }
+    .wahl .quelle { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem 1rem; align-items: center; padding: .2rem 0; }
+    .wahl .quelle > span { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+    .ersatz { display: block; }
+    .marke { margin-left: .4rem; padding: 0 .3rem; border: 1px solid var(--rule); border-radius: .5rem; }
+    .abgelehnt { font-size: .9em; color: var(--dim); }
+    .abgelehnt li { padding: .1rem 0; overflow-wrap: anywhere; }
     .fehlt { color: var(--warn, #a33); }
     .fortschritt progress { width: min(12rem, 100%); vertical-align: middle; }
     .reserviert span { margin-right: .8rem; }
@@ -280,7 +329,9 @@ export class Werkstatt {
   protected readonly laeuft = signal(false);
   /** Wer fertigt (Figur-Id). */
   protected readonly wer = signal('');
-  /** Je Kante, wie viel davon reserviert werden soll. */
+  /** Die Materialwahl, offen nach „Start crafting…" (T-197). */
+  protected readonly wahl = signal<HandwerkMaterialwahl | null>(null);
+  /** Je Bestandteil und Kante (`need|edge`), wie viel davon reserviert werden soll. */
   protected readonly menge = signal<Record<string, number>>({});
   protected readonly summe = signal('');
   protected readonly nat = signal('');
@@ -330,7 +381,6 @@ export class Werkstatt {
       if (s.kind === 'recipe') {
         const da = s.actors.find((a) => a.id === this.wer()) ?? s.actors.find((a) => a.learned) ?? s.actors[0];
         if (da && da.id !== this.wer()) this.waehle(da.id);
-        else if (da) this.vorschlagen();
       }
     } catch (e) {
       if (n !== this.lauf) return;
@@ -342,48 +392,78 @@ export class Werkstatt {
 
   protected waehle(id: string): void {
     this.wer.set(id);
-    this.vorschlagen();
+    this.wahl.set(null);
   }
 
-  /** Was gebraucht wird, der Reihe nach aus dem Vorrat: zuerst das eigene Inventar, dann das der Gruppe. */
-  private vorschlagen(): void {
+  /** Wie viele Stücke des genannten Gegenstands frei da sind — ohne Gruppe und Ersatz; die zeigt erst die Wahl. */
+  protected vorhanden(item: string): number {
+    return (this.figur()?.stock ?? []).filter((v) => v.item === item).reduce((n, v) => n + v.qty, 0);
+  }
+
+  /**
+   * **„Start crafting…"** (T-197): erst jetzt fragt die Werkbank, welche
+   * Stücke passen — der genannte Gegenstand, Stücke einer Gruppe, Ersatz
+   * nach den Regeln der Kampagne. Vorgeschlagen wird nur das Genannte und
+   * die Gruppe, der Reihe nach; einen Ersatz wählt man selbst.
+   */
+  protected async oeffneWahl(): Promise<void> {
     const s = this.sicht();
     const f = this.figur();
     if (s?.kind !== 'recipe' || !f) return;
-    const m: Record<string, number> = {};
-    for (const n of s.needs) {
-      let rest = n.qty;
-      for (const v of f.stock.filter((x) => x.item === n.item)) {
-        const nimm = Math.min(rest, v.qty);
-        m[v.edge] = nimm;
-        rest -= nimm;
+    await this.schreibe(async () => {
+      const w = await this.api.craftingMaterials(s.recipe.id, f.id);
+      const m: Record<string, number> = {};
+      const vergeben = new Map<string, number>();
+      for (const n of w.needs) {
+        let rest = n.qty;
+        for (const o of n.options) {
+          if (o.via || rest <= 0) continue;
+          const frei = o.qty - (vergeben.get(o.edge) ?? 0);
+          const nimm = Math.min(rest, frei);
+          if (nimm <= 0) continue;
+          m[`${n.key}|${o.edge}`] = nimm;
+          vergeben.set(o.edge, (vergeben.get(o.edge) ?? 0) + nimm);
+          rest -= nimm;
+        }
       }
-    }
-    this.menge.set(m);
+      this.menge.set(m);
+      this.wahl.set(w);
+    });
   }
 
-  protected vorrat(item: string) {
-    return (this.figur()?.stock ?? []).filter((v) => v.item === item);
-  }
-
-  protected gewaehlt(item: string): number {
+  /** Gedeckt in Einheiten des Rezepts: ein Ersatz zählt nach seinem Verhältnis. */
+  protected gedeckt(need: string): number {
+    const n = this.wahl()?.needs.find((x) => x.key === need);
     const m = this.menge();
-    return this.vorrat(item).reduce((n, v) => n + (m[v.edge] ?? 0), 0);
+    return (n?.options ?? []).reduce((s, o) => s + (m[`${need}|${o.edge}`] ?? 0) / o.ratio, 0);
   }
 
-  protected setzeMenge(edge: string, wert: string, hoechstens: number): void {
+  protected anteil(key: string): number {
+    return this.menge()[key] ?? 0;
+  }
+
+  protected zahl(n: number): string {
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
+
+  protected setzeMenge(key: string, wert: string, hoechstens: number): void {
     const n = Math.max(0, Math.min(hoechstens, Math.trunc(Number(wert) || 0)));
-    this.menge.update((m) => ({ ...m, [edge]: n }));
+    this.menge.update((m) => ({ ...m, [key]: n }));
   }
 
   protected async starten(): Promise<void> {
     const s = this.sicht() as RezeptSicht | null;
-    const f = this.figur();
-    if (!s || !f) return;
+    const w = this.wahl();
+    if (!s || !w) return;
     const m = this.menge();
-    const materials = f.stock.filter((v) => (m[v.edge] ?? 0) > 0).map((v) => ({ inventory: v.inventory, edge: v.edge, qty: m[v.edge] ?? 0 }));
+    const materials = w.needs.flatMap((n) =>
+      n.options
+        .filter((o) => (m[`${n.key}|${o.edge}`] ?? 0) > 0)
+        .map((o) => ({ inventory: o.inventory, edge: o.edge, qty: m[`${n.key}|${o.edge}`] ?? 0, need: n.key })),
+    );
     await this.schreibe(async () => {
-      const { id } = await this.api.startCrafting(s.recipe.id, f.id, materials);
+      const { id } = await this.api.startCrafting(s.recipe.id, w.actor.id, materials);
+      this.wahl.set(null);
       await this.router.navigate(['/artikel', id]);
     });
   }
