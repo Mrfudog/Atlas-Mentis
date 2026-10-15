@@ -101,7 +101,7 @@ describe('Nebel je Gruppe oder je Figur (T-204)', () => {
   it('der Kontext nennt die Regeln und die eigenen Figuren', async () => {
     const { rufe } = await aufbau({ fog: 'player', moves: 'confirm', revealOnMove: true });
     const k = (await rufe('Sela', 'GET', '/api/maps/map_1/context')).json();
-    expect(k.rules).toEqual({ fog: 'player', moves: 'confirm', revealOnMove: true });
+    expect(k.rules).toEqual({ fog: 'player', moves: 'confirm', revealOnMove: true, doors: 'players' });
     expect(k.own).toEqual(['pc_rook']);
     expect(k.proposals).toEqual([]);
   });

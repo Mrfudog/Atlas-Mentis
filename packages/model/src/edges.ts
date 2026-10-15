@@ -373,6 +373,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'doors',
+    label: 'Doors',
+    area: 'play',
+    does: 'opens a door on the map when a player stands next to it, and reveals what the party members who see the door can now see through it (T-118)',
+    uses: {
+      [S + 'tueren.ts']: ['memberOfParty'],
+    },
+  },
+  {
     key: 'reading',
     label: 'Reading view',
     area: 'reading',
