@@ -95,6 +95,15 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),
     columns: z.number().optional(),
+    /* Anzeige je Art (T-184): nur, wenn der Artikel es sagt. */
+    when: z
+      .object({
+        field: z.string().optional(),
+        has: z.array(z.string()).optional(),
+        empty: z.boolean().optional(),
+        relation: z.string().optional(),
+      })
+      .optional(),
     tabs: z
       .array(
         z.object({

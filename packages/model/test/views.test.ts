@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   attachedDerived,
   componentVisible,
+  forArticle,
   resolveView,
   showField,
   viewKeys,
+  whenHolds,
 } from '../src/views.js';
-import type { ObjectSchema, Registry, ViewDef } from '../src/types.js';
+import type { LayoutElement, ObjectSchema, Registry, ViewDef } from '../src/types.js';
 
 const statblockInfo: ObjectSchema = {
   type: 'object',
@@ -197,5 +199,47 @@ describe('Anpassungen je Art (T-110)', () => {
     expect(elementTakes({ id: 'a', el: 'prose' }, 'X', 'y')).toBe(true);
     expect(elementTakes({ id: 'a', el: 'fields', fields: ['X'], except: ['X.y'] }, 'X', 'y')).toBe(false);
     expect(elementTakes({ id: 'a', el: 'fields', fields: ['X'], except: ['X.y'] }, 'X', 'z')).toBe(true);
+  });
+});
+
+/* Anzeige je Art (T-184): ein Element mit `when` steht nur an Artikeln,
+   auf die es zutrifft. */
+describe('whenHolds / forArticle', () => {
+  const init = { field: 'Encounter.kind', has: ['combat'], empty: true, relation: 'participates' };
+  const art = (kind: unknown, relations: { id: string; type: string; to: string }[] = []) => ({
+    components: kind === undefined ? {} : { Encounter: { kind } },
+    relations,
+  });
+
+  it('ohne Bedingung gilt das Element immer', () => {
+    expect(whenHolds(undefined, art(['puzzle']))).toBe(true);
+    expect(whenHolds({}, art(['puzzle']))).toBe(true);
+  });
+
+  it('liest mehrere Werte, einen Wert und „nicht gesagt“', () => {
+    expect(whenHolds(init, art(['social', 'combat']))).toBe(true);
+    expect(whenHolds(init, art(['puzzle']))).toBe(false);
+    expect(whenHolds(init, art(undefined))).toBe(true);
+    expect(whenHolds(init, art([]))).toBe(true);
+    expect(whenHolds({ field: 'Encounter.kind', has: ['puzzle'] }, art([]))).toBe(false);
+    expect(whenHolds({ field: 'Encounter.kind', has: ['puzzle'] }, art('puzzle'))).toBe(true);
+  });
+
+  it('eine Kante genügt: wer mitkämpft, hat eine Initiative', () => {
+    expect(whenHolds(init, art(['puzzle'], [{ id: 'r', type: 'participates', to: 'x' }]))).toBe(true);
+  });
+
+  it('nimmt auch in Reitern heraus und lässt die Eingabe stehen', () => {
+    const layout: LayoutElement[] = [
+      { id: 'i', el: 'initiative', when: init },
+      { id: 't', el: 'tabs', tabs: [{ id: 'a', label: 'A', layout: [{ id: 'p', el: 'fields', when: { field: 'Encounter.kind', has: ['puzzle'] } }] }] },
+      { id: 'f', el: 'fields', fields: 'all' },
+    ];
+    const raus = forArticle(layout, art(['social']));
+    expect(raus.map((x) => x.id)).toEqual(['t', 'f']);
+    expect(raus[0]!.tabs![0]!.layout).toEqual([]);
+    expect(layout[1]!.tabs![0]!.layout).toHaveLength(1);
+    expect(forArticle(layout, art(['puzzle'])).map((x) => x.id)).toEqual(['t', 'f']);
+    expect(forArticle(layout, art(['puzzle']))[0]!.tabs![0]!.layout).toHaveLength(1);
   });
 });

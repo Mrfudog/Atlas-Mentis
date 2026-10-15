@@ -586,6 +586,32 @@ export interface LayoutElement {
    * dem Spieltisch.
    */
   tabs?: LayoutTab[];
+  /**
+   * **Nur, wenn der Artikel es sagt** (T-184, REQ-085). Ein Element mit
+   * `when` steht nur an Artikeln, auf die es zutrifft — die Initiative an
+   * einer Begegnung, die ein Kampf ist, das Rätsel an einem Rätsel.
+   * Gelesen über `forArticle`; was ein ausgelassenes Element gezeichnet
+   * hätte, nimmt ein späteres Element (`fields: 'all'`), also verschwindet
+   * kein befülltes Feld.
+   */
+  when?: LayoutWhen;
+}
+
+/**
+ * **Wann ein Element gilt** (T-184). Es gilt, sobald **eine** der Angaben
+ * zutrifft: das Feld hält einen der Werte (`has`, ein Feld mit mehreren
+ * Werten wie `Encounter.kind` genauso wie eines mit einem), das Feld ist
+ * leer und `empty` sagt, dass leer zählt („nicht gesagt“ ist nicht
+ * „nein“), oder der Artikel trägt eine Kante dieser Art (`relation`).
+ * Eine Art ist eine Bedingung und keine eigene Zeile: ein Untertyp ohne
+ * eigene Felder ist ein Wort (CLAUDE.md).
+ */
+export interface LayoutWhen {
+  /** `Typ.feld`, gelesen an der Karte des Typs. */
+  field?: string;
+  has?: string[];
+  empty?: boolean;
+  relation?: string;
 }
 
 /**
