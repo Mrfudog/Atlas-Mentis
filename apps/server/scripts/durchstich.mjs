@@ -709,7 +709,9 @@ try {
       const ohne = await sicht();
       pruefe('Gruppen von Ebenen: aus schlägt an', !ohne.je.get('camp_probe_c')?.has('e5_probe_r1') && ohne.je.get('camp_probe_c')?.has('e5_probe_r2'), '');
       const quellen = await (await get(admin, '/api/sources')).json();
-      pruefe('Gruppen von Ebenen: Quellenkürzel erklärt', quellen.sources?.PHB === "Player's Handbook", JSON.stringify(quellen));
+      /* Was nicht aufgeschaltet ist, steht nicht da (T-207): das abgeschaltete
+         Buch erklärt kein Kürzel; welche Ebenen es gibt, sagt die Kampagnenseite. */
+      pruefe('Gruppen von Ebenen: ein abgeschaltetes Buch erklärt kein Kürzel', quellen.sources?.PHB === undefined, JSON.stringify(quellen));
 
       /* Herausgeber (T-094): jedes Buch hängt danach an „Official", keines
          der drei an einer Blocklist-Kategorie; niemand verliert etwas. */
@@ -735,7 +737,11 @@ try {
         JSON.stringify(z094.map((l) => [l.id, l.publisher, l.groupBy])),
       );
       const q094 = await (await get(admin, '/api/sources')).json();
-      pruefe('Herausgeber: je Kürzel genannt', q094.publishers?.PHB === 'Official', JSON.stringify(q094.publishers));
+      pruefe(
+        'Herausgeber: je genanntes Kürzel einer, und kein abgeschaltetes (T-207)',
+        Object.keys(q094.sources ?? {}).every((k) => typeof q094.publishers?.[k] === 'string') && q094.publishers?.PHB === undefined,
+        JSON.stringify(q094),
+      );
       /* Ein zweiter Lauf hängt nichts doppelt. */
       await pool.query('delete from schema_migrations where name = $1', [name094]);
       await migrate(pool, { env: {} }, ordner);
