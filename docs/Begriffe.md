@@ -895,6 +895,13 @@ Leitung sie nicht. Was eine Kampagne zeigt, ist ihre wichtigste
 Einstellung; sie steht jetzt auf der Kampagnenseite als Liste mit Häkchen
 und Reihenfolge, und die Listen sagen, was fehlt und warum (T-069).
 
+**Was nicht aufgeschaltet ist, steht nicht da** (T-207). Nach dem Einlesen
+nannte das Kompendium 177 Ebenen, die Hälfte davon in keiner Runde, und
+jede Liste zählte die abgeschalteten einzeln auf. Ein Buch, das die
+Kampagne nicht aufschaltet, ist für den Tisch nicht da — auch nicht als
+Name. Geschaltet wird an der Kampagne; die übrigen Seiten sagen nur, dass
+etwas fehlt, und führen dorthin.
+
 **Eine Spielerebene ist Herkunft, kein Versteck** (T-164). Was eine
 Spielerin anlegt, liegt in ihrer eigenen Ebene — „Mara · Nebelwacht" —, und
 die schaltet nur ihre Kampagne auf, also gehört sie wie die Kampagnenebene
