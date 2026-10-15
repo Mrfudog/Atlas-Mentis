@@ -45,7 +45,16 @@ export type BulkSelect = z.infer<typeof SelectSchema>;
 export const BulkSelectSchema = SelectSchema;
 
 const OpSchema = z.discriminatedUnion('op', [
-  z.object({ op: z.literal('set'), field: z.string().min(1), value: z.unknown() }),
+  /** `values` (T-144): je Artikel ein eigener Wert, nach Peg-Id oder
+   *  Nummer — wer darin fehlt, bleibt unberührt. `ifEmpty`: nur setzen, wo
+   *  das Feld noch leer ist; was jemand schon gewählt hat, gilt weiter. */
+  z.object({
+    op: z.literal('set'),
+    field: z.string().min(1),
+    value: z.unknown().optional(),
+    values: z.record(z.string(), z.unknown()).optional(),
+    ifEmpty: z.boolean().optional(),
+  }),
   z.object({ op: z.literal('unset'), field: z.string().min(1) }),
   z.object({ op: z.literal('addTag'), tag: z.string().min(1) }),
   z.object({ op: z.literal('removeTag'), tag: z.string().min(1) }),
@@ -239,6 +248,13 @@ function passend(registry: Pick<Registry, 'interfaces'>, karte: string, feld: st
   }
   if (prop.type === 'boolean' && (wert === 'true' || wert === 'false')) return wert === 'true';
   return wert;
+}
+
+/** Der Wert eines Feldes (`name` oder `Karte.feld`) am Artikel. */
+function feldwert(e: Entity, field: string): unknown {
+  if (field === 'name') return e.name;
+  const punkt = field.indexOf('.');
+  return (e.components[field.slice(0, punkt)] as Record<string, unknown> | undefined)?.[field.slice(punkt + 1)];
 }
 
 function setzeFeld(registry: Pick<Registry, 'interfaces'>, e: Entity, field: string, wert: unknown): void {
@@ -583,7 +599,20 @@ export function planBulk(
               problem(e, 'a name cannot be emptied');
               break;
             }
-            setzeFeld(registry, neu, feld, op.op === 'set' ? op.value : undefined);
+            let wert: unknown = undefined;
+            if (op.op === 'set') {
+              if (!op.values && !('value' in op)) {
+                problem(e, `${feld}: set needs a value or values`);
+                break;
+              }
+              if (op.values) {
+                const eigen = Object.hasOwn(op.values, e.id) ? op.values[e.id] : Object.hasOwn(op.values, articleId(e)) ? op.values[articleId(e)] : undefined;
+                if (eigen === undefined) break;
+                wert = eigen;
+              } else wert = op.value;
+              if (op.ifEmpty && !leer(feldwert(neu, feld))) break;
+            }
+            setzeFeld(registry, neu, feld, wert);
             break;
           }
           case 'addTag':

@@ -134,7 +134,8 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
   /**
    * **Hochladen** (`POST /api/assets`, multipart): ein Feld `file` und
    * davor wahlweise `name`, `for` (der Artikel, aus dem heraus
-   * hochgeladen wird), `alt`. Angenommen werden JPEG, PNG, WebP, GIF und
+   * hochgeladen wird), `alt`, `kind`, `publication` und `anchor` (die
+   * Herkunft, `Source`). Angenommen werden JPEG, PNG, WebP, GIF und
    * AVIF, geprüft am Inhalt; die Grösse begrenzt `ASSET_MAX_MB`.
    *
    * **Aus einem Artikel heraus übernimmt das Bild dessen Sichtbarkeit**
@@ -193,6 +194,12 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
     if (kind) fields['Asset.kind'] = kind;
     const alt = (felder['alt'] ?? '').trim();
     if (alt) fields['Image.alt'] = alt;
+    /* Woher das Bild stammt (T-144): ein Einleser nennt Buch und Pfad, damit
+       ein zweiter Lauf es wiederfindet und man es zurückverfolgen kann. */
+    const publication = (felder['publication'] ?? '').trim();
+    if (publication) fields['Source.publication'] = publication;
+    const anchor = (felder['anchor'] ?? '').trim();
+    if (anchor) fields['Source.anchor'] = anchor;
     const relations: { type: string; to: string }[] = [];
     if (von) {
       const roh_ = stand.map.get(von.id)!;
