@@ -55,6 +55,7 @@ import {
   type OrderOutcome,
   type ReservedPiece,
   type Return,
+  type RollPayload,
   type RollResult,
   type validateEntity,
 } from '@nw/model';
@@ -77,6 +78,8 @@ export interface HandwerkDeps {
   sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>) => Promise<Entity[]>;
   schreibeGeprueft: (entity: Entity) => Promise<{ stored: Entity } | { issues: ReturnType<typeof validateEntity> }>;
   kampagnenEbene: (map: Map<string, Entity>, kampagne: Entity | null) => Promise<Entity | null>;
+  /** Eine eingetragene Probe ins Log des Auftrags (T-172, `wurfEintragen`). */
+  wurf?: (subject: Entity, payload: RollPayload) => Promise<unknown>;
 }
 
 
@@ -570,6 +573,21 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const result = rollResult(total, dc, nat);
     const r = await setzeKreis(v, frei.index, { mark: result, total, ...(nat ? { nat } : {}), dc });
     if ('error' in r) return reply.code(r.code).send({ error: r.error });
+    /* Die Probe steht auch im Log des Auftrags (T-172) — am Tisch
+       gewürfelt und eingetragen (`entered`), nicht hier. */
+    await deps.wurf?.(v.order, {
+      expr: String(total),
+      total,
+      rolls: [{ flat: total }],
+      modifier: 0,
+      ...(nat ? { nat, crit: nat === 20 ? 'crit' : 'fumble' } : {}),
+      label: `Crafting check${dc !== undefined ? ` vs DC ${dc}` : ''}`,
+      by: { id: v.user.id, name: v.user.name },
+      ...(v.a.actor ? { actor: { id: v.a.actor.id, name: entityName(v.a.actor) } } : {}),
+      campaign: v.kampagne?.id ?? null,
+      session: null,
+      entered: true,
+    });
     return { pending: !v.leitung && v.rules.confirm === 'gm', result };
   });
 

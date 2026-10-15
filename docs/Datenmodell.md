@@ -1542,7 +1542,8 @@ Druck und Registervorschau.
 | Dateien | Asset-Ablage (`AssetStore`, 12.1); der Artikel `Asset` trägt `backend`, `ref`, `mime`, Masse | der Artikel ja, die Bytes nein — die Ausfuhr nennt sie (`files`) |
 | Ereignisse | `event_log` | nein |
 | der Stand der letzten Übernahme je Gegenstelle (T-130) | `transfer_base` (Gegenstelle, Peg-Id oder `registry:<teil>:<name>`, JSON) | nein |
-| Augenblicke (Würfe, Zeigen) | der Raum-Kanal, nicht gespeichert | nein |
+| Würfe auf einem Artikel (T-172) | `event_log`, `name: 'roll'`, `subject` der Artikel (12.3) | nein |
+| Augenblicke (Zeigen) | der Raum-Kanal, nicht gespeichert | nein |
 
 ### 12.1 Bilder (T-114, REQ-021, E-032)
 
@@ -1569,6 +1570,35 @@ flowchart LR
 | B11 | **Ersetzen auf zwei Wegen.** *Neue Fassung* (`POST /api/assets` mit `variantOf`): ein eigenes Asset mit `variantOf` auf das alte, mit dessen Klasse, Marken, Quelle, Sichtbarkeit, Stand und Ebene; die Verwender bleiben beim alten, bis man sie umstellt. *Quelle ersetzen* (`PUT /api/assets/:id/file`, gegen `revision`): derselbe Artikel bekommt `ref`, `mime` und Masse der neuen Datei, alle Verwender zeigen sofort das neue Bild (die Adresse trägt die Version); geschrieben wird mit den Regeln von `PUT /api/entities/:id` (`schreiben`), ersetzen darf, wer den Artikel schreibt. **Die alte Datei bleibt liegen** (Ereignis `asset.replaced` nennt sie) und kommt in die nächste Sicherung. | `bilder.ts`, `app.ts` |
 | B12 | **Die Galerie** (`/images`, Kopfleiste „Images"): alle Bilder, die der Betrachter sieht, als Raster — gefiltert nach Klasse (`f=Asset.kind:…`), Marken (`tag=a,b`, jede engt ein; `facets.tags` zählt), Ebene, „Unused" und Suche, über dieselbe Liste wie das Kompendium (`/api/list`). Ein Klick zeigt die Kurzansicht, „Open article" das Bild als Artikel; dort stehen „Used in" (B10), seine Fassungen und „Replace image" mit der Frage *neue Fassung* oder *Quelle* (B11). Mehrfachauswahl setzt und nimmt Marken über die Massenänderung (`/api/bulk`, die Leitung, mit Rückgängig). Die Bildeingabe (`nw-bildwahl`) zeigt beim Wählen Vorschaubilder der angebotenen Klasse (B9), auf Wunsch alle, und gibt einem neuen Bild diese Klasse. Nach „Quelle ersetzen" fragt jedes Bild mit dieser Id auf der Seite nach der neuen Version (`BildStand`, `?v=`). | `bilder/galerie.ts`, `bilder/bildpanel.ts`, `bild.ts` |
 | B7 | **Gezeigt wird mit dem Element `image`**, und der Ort wählt die Grösse: in `overview` ein Daumennagel neben dem Namen in der Listenzeile (die Liste nennt das Asset nur, wenn der Betrachter es sieht — `rows[].image`), in `quick` die Vorschau, in `full` das ganze Bild. An einem Asset ist das Bild es selbst, sonst `Image.image` (`bildDes`). Ein Feld mit `format: 'asset'` steht in der Feldtabelle als Vorschau. Die Eingabe (`nw-bildwahl`) lädt hoch — Datei, Ziehen, Einfügen, Telefonkamera —, wählt ein vorhandenes Asset oder nimmt eine `https`-Adresse; hochgeladen wird sofort, das Feld hält danach die Id. Bestehende Anordnungen bekommen `image` über Migration 053. | `bild.ts`, `liste.ts`, `views.ts` |
+
+### 12.3 Würfe im Protokoll (T-172, REQ-070)
+
+Gewürfelt wird **am Server** (`POST /api/rolls`), nicht im Browser: das
+Log stimmt, und niemand würfelt nach, was er nicht mag. Ein Wurf ist ein
+Eintrag im Protokoll — kein neues Speicherfach — mit dem Artikel, auf dem
+gewürfelt wurde, als `subject`. Die Oberfläche zeigt das Ergebnis aus der
+Antwort; der Tisch bekommt den Eintrag über den Live-Kanal (`roll`).
+
+```mermaid
+flowchart LR
+  K["Würfelknopf {{+4}}<br/>auf dem Statblock"] -->|"POST /api/rolls<br/>{expr, subject, label, mode}"| S["Server würfelt<br/>(crypto)"]
+  S --> E[("event_log<br/>name roll · subject sb_wolf<br/>payload: expr, rolls, total, nat, by, actor, campaign, session, hidden")]
+  S -->|"Live: roll"| T["Geräte am Tisch<br/>(rollVisible je Empfänger)"]
+  E -->|"GET /api/rolls?subject=cr_wolf"| L["Log an der Kreatur:<br/>ihre Würfe + die ihres Statblocks"]
+```
+
+| Nr | Regel | Wo |
+|---|---|---|
+| W1 | **Ein Wurf ist ein Eintrag `roll`** im `event_log`, `subject` der Artikel. `payload` (`RollPayload`): `expr` (mit Vorteil umgeschrieben, `asked` der Ausdruck davor), `rolls` (die einzelnen Würfel und festen Glieder), `modifier`, `total`, `mode` (`adv`/`dis`), `nat` und `crit` (`crit`/`fumble`, nur bei genau einem gezählten W20), `label`, `by` (Konto, Name), `actor` (die Figur), `campaign`, `session`, `hidden`, `entered` (am Tisch gewürfelt und eingetragen, die Handwerksprobe). | `packages/model/src/rolls.ts`, `apps/server/src/wuerfe.ts` |
+| W2 | **Vorteil** schreibt den ersten W20 zu `2d20kh1` (Nachteil `kl1`, `withAdvantage`); Schaden bleibt, wie er ist. | `dice.ts` |
+| W3 | **Die Figur** ist die genannte, wenn sie dem Konto gehört, sonst der Artikel selbst oder die Figur seines Statblocks, sonst die einzige des Kontos. **Die Sitzung** ist die genannte (Play), am Sitzungsartikel er selbst, sonst die am Tisch (`tischSitzung`: die jüngste, an der Karte, Kampf oder Szene läuft). | `wuerfe.ts` |
+| W4 | **Das Log eines Artikels** (`GET /api/rolls`): neueste zuerst, seitenweise, nach Person und Sitzung filterbar. An einer Kreatur auch die Würfe auf ihrem Statblock (`belongsTo` hoch), an einer Sitzung alle, die während ihr fielen (`payload.session`). Gelesen werden die letzten 1000 Einträge. | `wuerfe.ts` |
+| W5 | **Sichtbarkeit** (`rollVisible`): wer den Artikel nicht sieht (`articleVisible` über das Sieb), sieht seine Würfe nicht. Danach sieht ihn, wer gewürfelt hat, die Leitung der Kampagne des Wurfs jeden, einen verdeckten (`hidden`) sonst niemand, alle übrigen mit einer Rolle an diesem Tisch. Verdeckt würfelt nur die Leitung; `Campaign.playerRolls: 'gm'` macht jeden Wurf der Spielenden verdeckt — festgehalten beim Wurf, ein späteres Umstellen deckt nichts auf. Der Live-Kanal siebt mit derselben Rechnung. | `rolls.ts`, `live.ts` |
+| W6 | **Würfe sind Spielgeschehen, kein Inhalt:** sie stehen in keiner Ausfuhr und keiner Übertragung dev→prod. Das Protokoll ist append-only; ein gelöschter Artikel lässt seine Würfe stehen („deleted article"). | — |
+
+Offen: Proben und Rettungswürfe aus dem Bogen, Tabellenwürfe und
+Initiative würfeln noch nicht hierüber — es gibt sie in der Seite noch
+nicht als Knöpfe; wer sie baut, nimmt `POST /api/rolls`.
 
 ### 12.2 Übernahme zwischen Installationen (T-130, REQ-155)
 
@@ -1677,7 +1707,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | — |
-| `Campaign` | `Story` | `compareFor` `languages` `feats` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` | `compareFor` `languages` `feats` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `playerRolls` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |

@@ -4,6 +4,7 @@ export * from './views.js';
 export * from './inline.js';
 export * from './markdown.js';
 export * from './dice.js';
+export * from './rolls.js';
 export * from './entity.js';
 export * from './knowledge.js';
 export * from './visibility.js';
