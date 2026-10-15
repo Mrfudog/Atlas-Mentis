@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-layer-groups-back",
+      "date": "2026-10-15",
+      "title": "Layer groups switch as a whole, and Back returns to your place",
+      "text": "The tick on a layer group now turns every book in it on or off — no earlier selection comes back — and shows whether all, none or some of its books are in play. When you open an article from a list and go back, the page scrolls to where you were, with the same groups open.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-15-origin-views",
       "date": "2026-10-15",
       "title": "Ancestries and backgrounds read like the class view",
