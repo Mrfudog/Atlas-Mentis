@@ -51,8 +51,11 @@ async function aufbau() {
   const repo = new InMemoryRepository(registry, bestand());
   const live = new LocalChangeFeed({ flushMs: 1 });
   const app = buildApp({ repo, live });
-  const konto = async (name: string, roles: Record<string, 'gm' | 'player'>, actorIds: string[] = []) =>
-    repo.putUser({ id: randomUUID(), name, passwordHash: await hashPassword(PASSWORT), isAdmin: false, actorIds, roles });
+  const ids: Record<string, string> = {};
+  const konto = async (name: string, roles: Record<string, 'gm' | 'player'>, actorIds: string[] = []) => {
+    ids[name] = randomUUID();
+    await repo.putUser({ id: ids[name]!, name, passwordHash: await hashPassword(PASSWORT), isAdmin: false, actorIds, roles });
+  };
   await konto('Gwen', { camp_a: 'gm' });
   await konto('Sela', { camp_a: 'player' }, ['pc_rook']);
   await konto('Tam', { camp_a: 'player' });
@@ -64,9 +67,9 @@ async function aufbau() {
     }
     return cookies.get(name)!;
   };
-  const rufe = async (name: string, method: 'GET' | 'POST', url: string, payload?: object) =>
+  const rufe = async (name: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) =>
     app.inject({ method, url, ...(payload ? { payload } : {}), headers: { cookie: await cookie(name) } });
-  return { repo, live, rufe };
+  return { repo, live, rufe, ids };
 }
 
 const ZUG = [
@@ -139,5 +142,124 @@ describe('Zugplan (T-198)', () => {
     expect(d.actors.map((a: { id: string }) => a.id).sort()).toEqual(['cr_gob', 'pc_rook']);
     expect(d.actor.id).toBe('cr_gob');
     expect(d.targets.map((t: { id: string }) => t.id)).toEqual(['pc_rook']);
+  });
+});
+
+/* Runde 2: das Bild ist 700 × 700, ein Feld 70 — Feld (x, y) hat die Mitte
+   bei ((x + 0.5) / 10, (y + 0.5) / 10). */
+const NAT = { w: 700, h: 700 };
+const mitte = (x: number, y: number) => ({ x: (x + 0.5) / 10, y: (y + 0.5) / 10 });
+
+/** Rook neben den Goblin: Rook auf Feld (2, 1), Goblin auf (3, 1). */
+async function nebeneinander(repo: InMemoryRepository) {
+  const karte = (await repo.getEntity('map_1'))!;
+  await repo.putEntity({
+    ...karte,
+    relations: (karte.relations ?? []).map((r) => (r.id === 'mk_rook' ? { ...r, props: { ...r.props, ...mitte(2, 1) } } : r.id === 'mk_gob' ? { ...r, props: { ...r.props, ...mitte(3, 1) } } : r)),
+  });
+}
+
+const WEG = { id: 'w', kind: 'move', path: [{ x: 2, y: 1 }, { x: 1, y: 1 }, { x: 0, y: 1 }], feet: 10, to: mitte(0, 1) };
+
+describe('Zugplan, Runde 2: Gelegenheitsangriff (T-198)', () => {
+  it('zeigt der Spielerin, wer sie bedroht, und hält beim Ausführen für die Antwort an', async () => {
+    const { rufe, repo } = await aufbau();
+    await nebeneinander(repo);
+    const lage = (await rufe('Sela', 'GET', '/api/maps/map_1/turn-plan')).json();
+    expect(lage.threats).toEqual([{ id: 'cr_gob', name: 'Goblin', rel: 'mk_gob', reach: 5 }]);
+    expect(lage.actor.reaction).toBe(true);
+
+    const plan = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [WEG], nat: NAT })).json().plan;
+    const r = await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/decide`, { decision: 'confirm' });
+    expect(r.json()).toMatchObject({ state: 'reacting', pending: { reactor: 'cr_gob', index: 0, step: 'w' } });
+    /* Das Token steht noch, wo es die Reichweite verlassen will. */
+    expect(markersOf((await repo.getEntity('map_1'))!).find((m) => m.rel.id === 'mk_rook')).toMatchObject(mitte(2, 1));
+
+    /* Den Goblin führt die Leitung — Sela darf nicht für ihn antworten. */
+    expect((await rufe('Sela', 'POST', `/api/maps/map_1/turn-plan/${plan}/react`, { attack: true })).statusCode).toBe(403);
+    const gm = (await rufe('Gwen', 'GET', '/api/maps/map_1/turn-plan')).json();
+    expect(gm.plans[0]).toMatchObject({ state: 'reacting', canAnswer: true });
+
+    const a = await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/react`, { attack: true });
+    expect(a.statusCode).toBe(200);
+    expect(a.json().state).toBe('confirmed');
+    expect(a.json().results.map((x: { text: string }) => x.text)).toEqual([
+      expect.stringMatching(/^Opportunity attack: Unarmed Strike → Rook: (hit|miss)/),
+      'Moved 10 ft.',
+    ]);
+    expect(markersOf((await repo.getEntity('map_1'))!).find((m) => m.rel.id === 'mk_rook')).toMatchObject(mitte(0, 1));
+    expect(await repo.listEvents({ name: 'reaction' })).toHaveLength(1);
+    expect((await repo.listEvents({ name: 'roll' })).some((e) => (e.payload as { actor: { id: string } }).actor.id === 'cr_gob')).toBe(true);
+
+    /* Die Reaktion ist verbraucht: der nächste Zug weg vom Goblin läuft durch. */
+    await nebeneinander(repo);
+    const zwei = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [WEG], nat: NAT })).json().plan;
+    expect((await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${zwei}/decide`, { decision: 'confirm' })).json().state).toBe('confirmed');
+  });
+
+  it('Nein lässt ziehen, ohne zu würfeln; Disengage fragt gar nicht', async () => {
+    const { rufe, repo } = await aufbau();
+    await nebeneinander(repo);
+    const plan = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [WEG], nat: NAT })).json().plan;
+    await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/decide`, { decision: 'confirm' });
+    const nein = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/react`, { attack: false })).json()
+    expect(nein.state).toBe('confirmed');
+    expect(nein.results[0].text).toBe('Goblin lets Rook go.');
+    expect(await repo.listEvents({ name: 'roll' })).toHaveLength(0);
+    expect(await repo.listEvents({ name: 'reaction' })).toHaveLength(0);
+
+    await nebeneinander(repo);
+    const los = { id: 'd', kind: 'act', tile: 'std:disengage', name: 'Disengage', cost: 'action' };
+    const zwei = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [los, WEG], nat: NAT })).json().plan;
+    expect((await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${zwei}/decide`, { decision: 'confirm' })).json().state).toBe('confirmed');
+  });
+
+  it('fragt die Spielerin, wenn ihre Figur reagieren darf', async () => {
+    const { rufe, repo } = await aufbau();
+    await nebeneinander(repo);
+    /* Die Leitung plant für den Goblin, weg von Rook. */
+    const weg = { id: 'g', kind: 'move', path: [{ x: 3, y: 1 }, { x: 4, y: 1 }, { x: 5, y: 1 }], feet: 10, to: mitte(5, 1) };
+    const plan = (await rufe('Gwen', 'POST', '/api/maps/map_1/turn-plan', { actor: 'cr_gob', steps: [weg], nat: NAT })).json().plan;
+    const r = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/decide`, { decision: 'confirm' })).json();
+    expect(r.pending).toMatchObject({ reactor: 'pc_rook', reactorName: 'Rook' });
+    const sela = (await rufe('Sela', 'GET', '/api/maps/map_1/turn-plan')).json();
+    expect(sela.plans.find((p: { plan: string }) => p.plan === plan)).toMatchObject({ state: 'reacting', canAnswer: true });
+    const a = (await rufe('Sela', 'POST', `/api/maps/map_1/turn-plan/${plan}/react`, { attack: true })).json();
+    expect(a.results[0].text).toMatch(/^Opportunity attack: Handaxe → Goblin/);
+    /* Rooks Reaktion ist weg — die Leiste zeigt es, ein Plan mit Reaktion geht nicht. */
+    expect((await rufe('Sela', 'GET', '/api/maps/map_1/turn-plan')).json().actor.reaction).toBe(false);
+  });
+});
+
+describe('Zugplan, Runde 2: kein freies Ziehen im Kampf (T-198)', () => {
+  async function mitKampf(repo: InMemoryRepository, runde: number) {
+    await repo.putEntity({
+      id: 'enc_1', name: 'Ambush', interfaces: ['Encounter'],
+      components: { ...ident('Ambush', 'encounter-0001'), Encounter: { round: runde, turn: 0 } },
+      relations: [im('enc_1'), { id: 'enc_1_m', type: 'onMap', to: 'map_1', props: {} },
+        { id: 'enc_1_p1', type: 'participates', to: 'pc_rook', props: { init: 15 } },
+        { id: 'enc_1_p2', type: 'participates', to: 'cr_gob', props: { init: 10 } }],
+    });
+  }
+  const gezogen = async (repo: InMemoryRepository) => {
+    const k = (await repo.getEntity('map_1'))!;
+    return { ...k, relations: (k.relations ?? []).map((r) => (r.id === 'mk_rook' ? { ...r, props: { ...r.props, x: 0.55 } } : r)) };
+  };
+
+  it('sperrt das Ziehen für Spielende am Server, die Leitung zieht weiter', async () => {
+    const { rufe, repo, ids } = await aufbau();
+    await repo.grantLayer(ids['Sela']!, 'ly_a');
+    await mitKampf(repo, 1);
+    const r = await rufe('Sela', 'PUT', '/api/entities/map_1', await gezogen(repo));
+    expect(r.statusCode).toBe(423);
+    expect(r.json().error).toMatch(/turn plan/);
+    expect((await rufe('Gwen', 'PUT', '/api/entities/map_1', await gezogen(repo))).statusCode).toBe(200);
+  });
+
+  it('lässt ziehen, solange kein Kampf läuft', async () => {
+    const { rufe, repo, ids } = await aufbau();
+    await repo.grantLayer(ids['Sela']!, 'ly_a');
+    await mitKampf(repo, 0);
+    expect((await rufe('Sela', 'PUT', '/api/entities/map_1', await gezogen(repo))).statusCode).toBe(200);
   });
 });
