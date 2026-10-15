@@ -44,7 +44,7 @@ import { Api, type KampagnenGeschichte } from '../kern/api';
         @for (a of d.adventures; track a.id) {
           <h3>
             <a [routerLink]="['/artikel', a.id]">{{ a.name }}</a>
-            <a class="lesen" [routerLink]="['/read', a.layer]">Read</a>
+            <a class="lesen" [routerLink]="['/artikel', a.layer]" [queryParams]="{ tab: 'read' }">Read</a>
           </h3>
           <ol class="liste">
             @for (k of a.chapters; track k.id) {

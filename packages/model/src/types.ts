@@ -511,6 +511,27 @@ export type LayoutElementKind =
    * erklärt stehen. Auf einem Blatt ohne Reiter stehen sie als Felder.
    */
   | 'rules'
+  /**
+   * **Die Leseansicht** (T-091, T-191): die Ebene als Buch — Inhaltsverzeichnis,
+   * Suche, Kapitel am Stück, Lesestand je Konto; eine Gruppe als Regal ihrer
+   * Bücher. Steht in `full` der Ebene; die Artikelseite zeichnet es über die
+   * ganze Breite unter dem Kopf. Die Route `/read/:layer` gab es dafür
+   * eigens und leitet jetzt hierher.
+   */
+  | 'reader'
+  /**
+   * **Die Klassenübersicht** (W6, T-191): Eckdaten, die Stufentabelle, die
+   * Unterklassen zum Wählen und Vergleichen, die Merkmale nach Stufe — wie
+   * 5e.tools. Nimmt Übungen und Wahlen aus der Feldtabelle (`BOOK_CARDS`).
+   * Früher die Seite `/classes/:id`.
+   */
+  | 'classOverview'
+  /**
+   * **Die Übersicht einer Herkunft oder eines Hintergrunds** (T-166,
+   * T-191): Eckdaten, Spielarten zum Umschalten und Vergleichen, Merkmale.
+   * Früher die Seiten `/ancestries/:id` und `/backgrounds/:id`.
+   */
+  | 'originOverview'
   | 'tabs';
 
 /**

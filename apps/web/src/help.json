@@ -74,19 +74,6 @@
       ]
     },
     {
-      "routes": ["read/:layer"],
-      "title": "Reading a book",
-      "sections": [
-        {
-          "text": [
-            "A layer read as a book, chapter after chapter. The table of contents opens at the side; its chapters fold out.",
-            "Search finds a passage in this book. Where you stopped is remembered for your account, on every device.",
-            "A layer's article has the same reader under “Read”; a group of layers shows as a shelf."
-          ]
-        }
-      ]
-    },
-    {
       "routes": ["characters/new", "characters/:id/level-up", "characters/:id/edit"],
       "title": "Character assistant",
       "sections": [
@@ -106,6 +93,19 @@
           "text": [
             "An article as a page of a book. “Edit” changes it; on an article you cannot write, Edit makes your own version in a layer of yours. Click a named article for its quick view; “Open article” goes there.",
             "“Print” puts the article on an A4 sheet. Versions of the same article in other layers can be compared side by side."
+          ]
+        },
+        {
+          "heading": "Layers: reading a book",
+          "text": [
+            "A layer's page shows its book below the header, chapter after chapter. The table of contents opens at the side; its chapters fold out.",
+            "Search finds a passage in this book. Where you stopped is remembered for your account, on every device. A group of layers shows as a shelf."
+          ]
+        },
+        {
+          "heading": "Classes, ancestries and backgrounds",
+          "text": [
+            "A class shows its level table, its subclasses to pick and compare, and its features by level; an ancestry or background its variants and traits."
           ]
         },
         {
@@ -176,12 +176,12 @@
       ]
     },
     {
-      "routes": ["classes", "classes/:id", "ancestries", "ancestries/:id", "backgrounds", "backgrounds/:id"],
+      "routes": ["classes", "ancestries", "backgrounds"],
       "title": "Classes, ancestries and backgrounds",
       "sections": [
         {
           "text": [
-            "An overview of the classes, ancestries and backgrounds in play, and a page for each with what it grants at which level."
+            "The classes, ancestries and backgrounds in play. Each opens on its article page with what it grants at which level."
           ]
         }
       ]

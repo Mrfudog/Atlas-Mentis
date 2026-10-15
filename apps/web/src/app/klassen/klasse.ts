@@ -47,6 +47,8 @@ const KERN = ['PHB', 'DMG', 'MM'];
 })
 export class Klasse {
   readonly id = input.required<string>();
+  /** Als Element auf der Artikelseite (T-191): ohne eigenen Pfad und Titel. */
+  readonly eingebettet = input(false);
   /** `?sub=a,b` — die gewählten Unterklassen. */
   readonly sub = input<string | undefined>();
   /** `?opt=1` — optionale Merkmale und Varianten zeigen. */

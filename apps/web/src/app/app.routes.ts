@@ -1,4 +1,5 @@
-import type { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, type RedirectFunction, type Routes } from '@angular/router';
 import { wache } from './kern/wache';
 
 /**
@@ -10,6 +11,10 @@ import { wache } from './kern/wache';
  * welche Art wohin gehört, sagt `area` am Typ.
  */
 const kompendium = () => import('./artikel/kompendium').then((m) => m.Kompendium);
+
+/** Ein alter Weg auf die Artikelseite (T-191) — mit seinen Abfrageparametern. */
+const zumArtikel: RedirectFunction = ({ params, queryParams }) =>
+  inject(Router).createUrlTree(['/artikel', params['id']], { queryParams });
 
 export const routes: Routes = [
   {
@@ -116,13 +121,11 @@ export const routes: Routes = [
     loadComponent: () => import('./klassen/klassen').then((m) => m.Klassen),
     title: 'Classes · Atlas Mentis',
   },
-  {
-    path: 'classes/:id',
-    canActivate: [wache],
-    loadComponent: () => import('./klassen/klasse').then((m) => m.Klasse),
-    title: 'Class · Atlas Mentis',
-  },
-  /* Herkünfte und Hintergründe wie die Klassen (T-166): eine Liste, eine Seite. */
+  /* Eine Klasse, Herkunft, ein Hintergrund zeigen ihre Übersicht als
+     Element ihrer Artikelseite (T-191); die alten Wege leiten dorthin,
+     `?sub=` und `?opt=` gehen mit. */
+  { path: 'classes/:id', redirectTo: zumArtikel },
+  /* Herkünfte und Hintergründe wie die Klassen (T-166): eine Liste. */
   {
     path: 'ancestries',
     canActivate: [wache],
@@ -130,12 +133,7 @@ export const routes: Routes = [
     loadComponent: () => import('./klassen/herkuenfte').then((m) => m.Herkuenfte),
     title: 'Ancestries · Atlas Mentis',
   },
-  {
-    path: 'ancestries/:id',
-    canActivate: [wache],
-    loadComponent: () => import('./klassen/herkunft').then((m) => m.Herkunft),
-    title: 'Ancestry · Atlas Mentis',
-  },
+  { path: 'ancestries/:id', redirectTo: zumArtikel },
   {
     path: 'backgrounds',
     canActivate: [wache],
@@ -143,12 +141,7 @@ export const routes: Routes = [
     loadComponent: () => import('./klassen/herkuenfte').then((m) => m.Herkuenfte),
     title: 'Backgrounds · Atlas Mentis',
   },
-  {
-    path: 'backgrounds/:id',
-    canActivate: [wache],
-    loadComponent: () => import('./klassen/herkunft').then((m) => m.Herkunft),
-    title: 'Background · Atlas Mentis',
-  },
+  { path: 'backgrounds/:id', redirectTo: zumArtikel },
   /* Der Assistent für Figuren (T-080): seine Schritte kommen aus den
      Artikeln. Der Stufenaufstieg ist derselbe Assistent an einer Figur. */
   {
@@ -185,13 +178,13 @@ export const routes: Routes = [
     loadComponent: () => import('./verwaltung/verwaltung').then((m) => m.Verwaltung),
     title: 'Campaign · Atlas Mentis',
   },
-  /* Die Leseansicht (T-091): eine Ebene als Buch; `?at=` oder `?page=`
-     springen an die Stelle. */
+  /* Die Leseansicht (T-091) ist seit T-191 das Element `reader` auf der
+     Seite der Ebene; ein gespeicherter Link landet dort, `?at=` und
+     `?page=` springen weiter an die Stelle. */
   {
     path: 'read/:layer',
-    canActivate: [wache],
-    loadComponent: () => import('./lesen/lesen').then((m) => m.Lesen),
-    title: 'Read · Atlas Mentis',
+    redirectTo: ({ params, queryParams }) =>
+      inject(Router).createUrlTree(['/artikel', params['layer']], { queryParams: { ...queryParams, tab: 'read' } }),
   },
   /* Fassungen nebeneinander (T-173): links der Artikel, rechts die Fassung. */
   {

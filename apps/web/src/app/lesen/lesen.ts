@@ -123,7 +123,7 @@ interface Abschnitt {
             <ul>
               @for (r of regal; track r.id) {
                 <li [class.ohne-text]="!r.hasText && !r.group">
-                  <a [routerLink]="regalLink(r.id)" [queryParams]="eingebettet() ? { tab: 'read' } : null">{{ r.name }}</a>
+                  <a [routerLink]="regalLink(r.id)" [queryParams]="{ tab: 'read' }">{{ r.name }}</a>
                   <span class="dim">
                     {{ r.group ? 'Group' : r.kind || 'Layer' }}{{ r.active ? '' : ' · not turned on' }}
                   </span>
@@ -305,8 +305,10 @@ export class Lesen {
   readonly at = input<string>();
   /** Eine Seite („XGE p. 12", `?page=`). */
   readonly page = input<string>();
-  /** Im Reiter „Read" am Ebenen-Artikel (T-167): ohne eigenen Brotkrumenpfad und Seitentitel. */
+  /** Als Element `reader` auf der Seite der Ebene (T-167, T-191): ohne eigenen Brotkrumenpfad und Seitentitel. */
   readonly eingebettet = input(false);
+  /** Eingebettet trotzdem zum Lesestand springen (`?tab=read`, alte Links auf `/read/:layer`). */
+  readonly springen = input(false);
 
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
@@ -417,9 +419,9 @@ export class Lesen {
     return raus.filter((z) => z.depth > 0);
   });
 
-  /** Wohin ein Buch im Regal führt: im Reiter zum Reiter, sonst zur Leseseite. */
+  /** Wohin ein Buch im Regal führt: auf die Seite seiner Ebene, wo es sich liest (T-191). */
   protected regalLink(id: string): string[] {
-    return this.eingebettet() ? ['/artikel', id] : ['/read', id];
+    return ['/artikel', id];
   }
 
   /** Die Stücke in Lesereihenfolge, je mit dem ersten Eintrag, der es nennt. */
@@ -458,14 +460,18 @@ export class Lesen {
         (page && Number.isFinite(seite) ? nodeAtPage(b.toc, seite) : undefined) ??
         b.position ??
         b.toc[0]?.id;
-      if (ziel) await this.gehe(ziel, false);
+      /* Auf der Artikelseite (T-191) steht das Buch unter dem Kopf der
+         Ebene: wer sie öffnet, will zuerst den Kopf sehen — gesprungen wird
+         nur auf ausdrücklichen Wunsch (`?at=`, `?page=`, `?tab=read`). */
+      const springen = !this.eingebettet() || !!at || !!page || this.springen();
+      if (ziel) await this.gehe(ziel, false, springen);
     } catch (x) {
       this.fehler.set(x instanceof Error ? x.message : String(x));
     }
   }
 
   /** Zu einem Abschnitt: sein Stück laden, wenn es nicht das offene ist, und hinscrollen. */
-  protected async gehe(id: string, merken = true): Promise<void> {
+  protected async gehe(id: string, merken = true, scrollen = true): Promise<void> {
     const b = this.buch();
     if (!b) return;
     const z = b.toc.find((x) => x.id === id);
@@ -491,6 +497,7 @@ export class Lesen {
     this.ruhigBis = Date.now() + 2000;
     /* Nach dem Zeichnen: der Abschnitt steht erst dann im Dokument. */
     setTimeout(() => {
+      if (!scrollen) return;
       this.hinScrollen(id);
       if (merken) this.merke(id);
       /* Eine Karte darüber, die erst jetzt ihr Bild bekommt, schiebt den
@@ -523,6 +530,9 @@ export class Lesen {
       if (t.getBoundingClientRect().top > 96) break;
       oben = t.dataset['id'] ?? null;
     }
+    /* Auf der Artikelseite steht das Buch unten: solange es nicht oben
+       angekommen ist, liest niemand darin, und der Lesestand bleibt. */
+    if (!oben && this.eingebettet()) return;
     oben ??= teile[0]?.dataset['id'] ?? null;
     if (oben && oben !== this.aktuell()) {
       this.aktuell.set(oben);

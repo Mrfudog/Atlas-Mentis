@@ -113,9 +113,9 @@ describe('the search everywhere (T-138)', () => {
     );
     expect(namen).toEqual(['Fireball', 'Fire Sorcerer']);
     expect(el.querySelector('[role="option"] .name')?.getAttribute('href')).toBe('/artikel/s1');
-    /* Eine Klasse öffnet auf ihrer eigenen Seite. */
+    /* Auch eine Klasse öffnet auf ihrer Artikelseite — die Übersicht ist dort ein Element (T-191). */
     expect(el.querySelectorAll('[role="option"] .name')[1]?.getAttribute('href')).toBe(
-      '/classes/c1',
+      '/artikel/c1',
     );
   });
 
@@ -129,7 +129,7 @@ describe('the search everywhere (T-138)', () => {
     const weg = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     taste(feld, 'ArrowDown');
     taste(feld, 'Enter');
-    expect(weg).toHaveBeenCalledWith(['/classes', 'c1']);
+    expect(weg).toHaveBeenCalledWith(['/artikel', 'c1']);
     expect(suche.offen()).toBe(false);
     expect(suche.zuletzt()[0]).toMatchObject({ id: 'c1', type: 'Class' });
     expect(JSON.parse(localStorage.getItem('atlas.suche.v1')!).zuletzt[0].id).toBe('c1');

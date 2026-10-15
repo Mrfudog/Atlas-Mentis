@@ -102,10 +102,12 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   (`artikel/werkstatt.ts`, Routen in `apps/server/src/handwerk.ts`: ein
   Fertigungsauftrag ist eine Instanz des Rezepts, das Material bleibt
   reserviert im Inventar von Figur und Gruppe, die Regeln stehen an der
-  Kampagne; T-128), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
+  Kampagne; T-128), die **Leseansicht** (`lesen/`: eine
   Ebene als Buch mit aufklappbarem Inhaltsverzeichnis, Suche und
-  Lesestand je Konto, T-091; derselbe als Reiter „Read“ am Ebenen-Artikel,
-  auch vor dem Aufschalten, eine Gruppe als Regal, T-167), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
+  Lesestand je Konto, T-091; auch vor dem Aufschalten, eine Gruppe als
+  Regal, T-167; seit T-191 das Element `reader` auf der Seite der Ebene,
+  `/read/:layer` leitet dorthin — ebenso Klassen und Herkünfte:
+  `classOverview`, `originOverview` statt `/classes/:id` …), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
   Blatt A4, T-110), die **Suche** (`suche/`, Kopfleiste, Strg+K und `/`:
   Treffer beim Tippen aus `GET /api/search`, nach Nähe, Filter nach Art,
   Ebene, Herausgeber und Bereich, das „+" ist die Ansicht `search`;
@@ -136,7 +138,11 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   **Seit T-087 kommt jeder Regelstand herein** (2024, UA, dazu Fahrzeuge,
   Decks, Bastionen): jede Quelle in ihre Ebene, keine neue aufgeschaltet,
   und der Grundstand (was vorher hereinkam) behält Ids, Nummern und Namen —
-  der Lauf rechnet ihn erst allein, für seine Nummern. Laden:
+  der Lauf rechnet ihn erst allein, für seine Nummern. **Bilder** kommen
+  nicht in die Ausfuhrdatei: der Lauf schreibt mit `--images` einen
+  Bildplan (`bilder.ts`), und `scripts/bilder-5etools.mjs` lädt nach ihm
+  aus einem Checkout von `5etools-img` hoch und verknüpft über eine
+  Massenänderung (T-144). Laden:
   [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `scripts/regelwerk.mjs` — der Einleser für Regelwerke anderer Verlage
   (T-122, zuerst Kibbles’ Compendium): liest ein Paket **ausserhalb** des
