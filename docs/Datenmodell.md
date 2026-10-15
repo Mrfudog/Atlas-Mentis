@@ -1437,12 +1437,26 @@ solange niemand einen anderen Reiter wählt, und „All" (`?view=all`) zeigt
 die Seite ohne sie. So ist „World ohne Items" ein Eintrag und keine Liste im
 Code. Was eine Gruppe festhält, ist zweierlei: **was den Reiter ausmacht** —
 Arten samt Untertypen (`of`), ohne Arten samt Untertypen (`notype`),
-Marken, Stand (`status`; ohne Status-Karte zählt `ready`), nur diese Ebenen —
-geht als Grenze an `/api/list`; **womit er anfängt** — Suche, abgewählte
-Ebenen — setzt die Seitenleiste einmal beim Betreten, danach gehört der
-Filter der Seite. Gespeichert in `list_filter` (Migration 066), nicht im
-Artikel: eine Konto-Id wandert nicht mit der Ausfuhr (REQ-199). Routen:
+Marken, Stand (`status`; ohne Status-Karte zählt `ready`) — geht als
+Grenze an `/api/list`; **womit er anfängt** — Suche, Facetten — setzt die
+Seitenleiste einmal beim Betreten, danach gehört der Filter der Seite.
+Gespeichert in `list_filter` (Migration 066), nicht im Artikel: eine
+Konto-Id wandert nicht mit der Ausfuhr (REQ-199). Routen:
 `GET`/`POST /api/filters`, `PUT`/`DELETE /api/filters/:id`.
+
+**Ebenen filtert keine Seite selbst** (T-186, REQ-318): die Listen folgen
+dem Stand der laufenden Kampagne, den das Popup der Kopfleiste schaltet;
+eine Gruppe trägt kein `layer`/`nolayer` mehr (Migration 080 legt alte
+Angaben nach `list_filter_ebenen_alt`, gezählt). Stattdessen speichert das
+Popup **Ebenenauswahlen** („Saved selections"): der Stapel von unten nach
+oben (`layers`, Gruppen inbegriffen) und was trotz Gruppe aus ist (`off`),
+unter einem Namen, je Konto und wahlweise nur für eine Kampagne
+(`app_user_pref`, Schlüssel `layerSets`; Routen `GET`/`POST
+/api/me/layer-sets`, `DELETE …/:id`). Laden schreibt den Stapel über
+`PUT /api/campaigns/:c/layers` — dort prüft der Server die Rolle wie bei
+jedem Häkchen; was fehlt oder sich hier nicht aufschalten lässt, bleibt
+draussen und wird gezählt. Was eine Ebene bringt (`only`, T-105), bleibt
+an ihrer Kante und gehört nicht zur Auswahl.
 
 **Nur die Kachel auf dem Board wählt** (REQ-161, `placementView`): zuerst
 die Platzierung (`placed.props.view`), dann die Regel des Boards je Art
@@ -1548,6 +1562,7 @@ Druck und Registervorschau.
 | wo ein Konto in einem Buch stehen blieb (T-091) | `reading_position` (Konto, Ebene, Abschnitt) | nein |
 | wie jemand liest — Fassungen an den Feldern an/aus, welche Ebenen (T-092) | `app_user_pref` (Konto, Schlüssel, JSON) | nein |
 | Filtergruppen je Seite und die Vorgabe einer Seite (T-137) | `list_filter` (Seite, Name, Kampagne *oder* Konto, Filter, `is_default`) | nein |
+| gespeicherte Ebenenauswahlen (T-186) | `app_user_pref`, Schlüssel `layerSets` | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |

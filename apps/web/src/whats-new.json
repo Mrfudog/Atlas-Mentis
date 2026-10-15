@@ -9,6 +9,14 @@
       "link": "/characters/new"
     },
     {
+      "id": "2026-10-15-saved-layer-selections",
+      "date": "2026-10-15",
+      "title": "One layer filter, and selections you can save",
+      "text": "World, Story, Rules and the Compendium now follow the layers in play for the campaign — “Change layers” in the sidebar opens the campaign popup at the top. There, under “Saved selections”, save what is in play under a name, for this campaign or any, open it to see its layers, and load it again with one click.",
+      "area": "Campaign",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-15-add-field",
       "date": "2026-10-15",
       "title": "Edit shows only the fields that matter",

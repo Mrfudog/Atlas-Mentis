@@ -1,6 +1,11 @@
 /**
- * Der Filter einer Listenseite — Suche, Ebenen, Feldfilter, Teile,
- * Sortierung, Blatt und die Vorschau.
+ * Der Filter einer Listenseite — Suche, Feldfilter, Teile, Sortierung,
+ * Blatt und die Vorschau.
+ *
+ * **Ebenen stehen nicht hier** (T-186): welche gelten, sagt der globale
+ * Stand der laufenden Kampagne in der Kopfleiste (`Stapel`, T-143), und
+ * jede Liste folgt ihm. Ein zweiter Ebenenfilter je Seite war eine zweite
+ * Antwort auf dieselbe Frage.
  *
  * **Der Filter gehört der Seite** (CLAUDE.md): von einem Artikel auf seine
  * Liste zurückzugehen behält ihn; erst wer eine **andere** Listenseite
@@ -64,8 +69,6 @@ export class ListenFilter {
   private gesaet: string | null = null;
 
   readonly suche = signal('');
-  /** Ausgeschlossene Ebenen — leer heisst: alle. Ein Häkchen weg nimmt eine heraus. */
-  readonly ohneEbenen = signal<ReadonlySet<string>>(new Set());
   /** Feldfilter der gewählten Art: `Typ.feld` → gewählte Werte bzw. Spanne. */
   readonly felder = signal<Readonly<Record<string, Feldfilter>>>({});
   /** Teile von Statblöcken einblenden (W7). */
@@ -81,7 +84,6 @@ export class ListenFilter {
     if (this.seite === seite) return;
     this.seite = seite;
     this.suche.set('');
-    this.ohneEbenen.set(new Set());
     this.teile.set(false);
     this.felder.set({});
     this.sortierung.set('');
@@ -92,18 +94,17 @@ export class ListenFilter {
   }
 
   /**
-   * **Womit eine Filtergruppe anfängt** (T-137): Suche, abgewählte
-   * Ebenen und Facetten, einmal je Gruppe. Danach gehört der Filter wieder der Seite —
+   * **Womit eine Filtergruppe anfängt** (T-137): Suche und Facetten,
+   * einmal je Gruppe. Danach gehört der Filter wieder der Seite —
    * zurück vom Artikel bleibt, was jemand seither geändert hat.
    */
   saeen(
     schluessel: string,
-    start: { q?: string | undefined; nolayer?: readonly string[] | undefined; f?: readonly string[] | undefined },
+    start: { q?: string | undefined; f?: readonly string[] | undefined },
   ): void {
     if (this.gesaet === schluessel) return;
     this.gesaet = schluessel;
     this.suche.set(start.q ?? '');
-    this.ohneEbenen.set(new Set(start.nolayer ?? []));
     /* Die Facetten einer Gruppe (T-174): „Wizard-Zauber bis Grad 3". */
     this.felder.set(feldfilterAusF(start.f));
     this.blatt.set(0);

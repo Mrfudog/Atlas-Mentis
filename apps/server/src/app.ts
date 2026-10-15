@@ -122,6 +122,7 @@ import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
 import { registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
 import { registerFiltergruppen } from './filtergruppen.js';
+import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
@@ -1115,6 +1116,8 @@ export function buildApp({
     if (url === '/api/tokens' || url.startsWith('/api/tokens/')) return;
     /* Die eigenen Einstellungen (T-092) schreibt jedes Konto. */
     if (url.startsWith('/api/me/prefs/')) return;
+    /* … und seine gespeicherten Ebenenauswahlen (T-186); geladen wird über die Kampagnenroute. */
+    if (url === '/api/me/layer-sets' || url.startsWith('/api/me/layer-sets/')) return;
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Das eigene Leeren einer Ebene zurücknehmen (T-176): die Route prüft, wer es war. */
     if (/^\/api\/bulk\/[^/]+\/undo$/.test(url)) return;
@@ -2159,6 +2162,8 @@ export function buildApp({
     if (!/^[a-z][a-zA-Z0-9.-]{0,63}$/.test(key)) return reply.code(400).send({ error: 'Unbekannter Schlüssel.' });
     /* Die Schreibebene prüft der Server gegen die Zielebenen (T-161). */
     if (key === WRITE_LAYER_PREF) return reply.code(400).send({ error: 'Die Schreibebene setzt PUT /api/layers/write oder PUT /api/layers/:layer/default.' });
+    /* Gespeicherte Ebenenauswahlen prüft ihre eigene Route (T-186). */
+    if (key === LAYER_SETS_PREF) return reply.code(400).send({ error: 'Ebenenauswahlen speichert POST /api/me/layer-sets.' });
     const value = request.body?.value ?? null;
     if (JSON.stringify(value).length > 8000) return reply.code(400).send({ error: 'Zu gross.' });
     await repo.putPref(user.id, key, value);
@@ -2663,6 +2668,7 @@ export function buildApp({
   });
   /* Filtergruppen je Seite (T-137): die der Kampagne und die eigenen. */
   registerFiltergruppen(app, { repo, viewerOf, roh });
+  registerEbenensets(app, { repo, viewerOf });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
   registerHandwerk(app, {
     repo,

@@ -38,7 +38,9 @@ const OFFEN = 8;
  * auf, je mit Ebene und Quelle.
  *
  * **Gerechnet wird am Server** (`GET /api/list`, W7): Suche, Arten mit
- * Zahl, Ebenen, Feldfilter und das Blatt. Bis zum 13.10. lud diese Seite
+ * Zahl, Feldfilter und das Blatt. **Welche Ebenen** gelten, sagt der
+ * globale Stand der Kampagne (Kopfleiste); einen eigenen Ebenenfilter hat
+ * die Seite seit T-186 nicht mehr, nur den Weg dorthin. Bis zum 13.10. lud diese Seite
  * die Kurzfassung aller 24 157 Artikel und rechnete hier — jetzt kommt ein
  * Blatt mit 50 Zeilen und den Facetten, rund ein bis zwei Kilobyte gepackt.
  *
@@ -162,22 +164,12 @@ const OFFEN = 8;
           </details>
         }
 
-        @if (ebenen().length > 1) {
-          <fieldset>
-            <legend class="leg">Where from</legend>
-            @for (l of ebenen(); track l.id) {
-              <label class="haken">
-                <input
-                  type="checkbox"
-                  [checked]="!filter.ohneEbenen().has(l.id)"
-                  (change)="ebeneUmschalten(l.id)"
-                />
-                {{ l.name }} <span class="zahl">{{ l.count }}</span>
-                <!-- Eine Ebene ist ein Artikel: ihre Karte, ohne das Häkchen zu setzen (T-093). -->
-                <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
-              </label>
-            }
-          </fieldset>
+        <!-- Ebenen filtert die Seite nicht selbst (T-186): sie folgt dem Stand der Kampagne. -->
+        @if (stapel.laufend(); as k) {
+          <p class="ebenen-hinweis">
+            Showing what {{ k.layers }} {{ k.layers === 1 ? 'layer' : 'layers' }} of {{ k.name }} bring.
+            <button type="button" class="link" (click)="stapel.oeffnen()">Change layers</button>
+          </p>
         }
 
         @if ((liste()?.facets?.partsHidden ?? 0) > 0 || filter.teile()) {
@@ -409,6 +401,8 @@ export class Kompendium {
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
   protected readonly filter = inject(ListenFilter);
+  /** Der globale Ebenenstand (T-143) — die Liste folgt ihm, der Hinweis führt hin (T-186). */
+  protected readonly stapel = inject(Stapel);
   protected readonly gruppen = inject(Filtergruppen);
   private readonly api = inject(Api);
   private readonly router = inject(Router);
@@ -504,7 +498,7 @@ export class Kompendium {
     });
     /* Hat sich der Stapel geändert (T-143, das Popup in der Kopfleiste),
        dieselbe Frage noch einmal — sonst stünde da, was eben noch galt. */
-    const stapel = inject(Stapel);
+    const stapel = this.stapel;
     let gesehen = stapel.stand();
     effect(() => {
       const n = stapel.stand();
@@ -529,9 +523,7 @@ export class Kompendium {
       notype: g.notype,
       tag: g.tag,
       status: g.status,
-      layer: g.layer,
       q: this.filter.suche().trim() || undefined,
-      nolayer: [...this.filter.ohneEbenen()],
       parts: this.filter.teile(),
       /* Fassungen derselben Sache als eine Zeile (T-092, E-021 d). */
       versions: true,
@@ -609,7 +601,6 @@ export class Kompendium {
       ...(t ? { of: [t] } : {}),
       ...(q ? { q } : {}),
       ...(f.length ? { f } : {}),
-      nolayer: [...this.filter.ohneEbenen()],
     };
   });
   protected readonly markenDa = computed(() => (this.liste()?.facets.tags ?? []).map((t) => t.tag));
@@ -677,8 +668,6 @@ export class Kompendium {
       .map((g) => ({ ...g, typen: g.typen.filter((x) => x.typ === t) }))
       .filter((g) => g.typen.length);
   });
-
-  protected readonly ebenen = computed(() => this.liste()?.facets.layers ?? []);
 
   protected readonly blatt = computed(() => this.filter.blatt());
   protected readonly blaetter = computed(() => Math.ceil((this.liste()?.total ?? 0) / BLATT));
@@ -769,15 +758,6 @@ export class Kompendium {
 
   protected suchen(q: string): void {
     this.filter.suche.set(q);
-    this.filter.blatt.set(0);
-  }
-  protected ebeneUmschalten(id: string): void {
-    this.filter.ohneEbenen.update((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
     this.filter.blatt.set(0);
   }
   protected teileUmschalten(): void {
