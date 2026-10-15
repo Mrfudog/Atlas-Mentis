@@ -3221,10 +3221,10 @@ export function buildApp({
       return !!user && mayWrite(user, await ownedBy(user), id);
     },
   });
-  /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
   /* Der Zugplan auf der Karte (T-198): planen, einreichen, bestätigen —
      gewürfelt wird beim Bestätigen, ins Log (T-172). */
   registerZugplan(app, { repo, feed: live, viewerOf, roh, sieve, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
+  /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
   registerKarten(app, {
     repo,
     roh,
