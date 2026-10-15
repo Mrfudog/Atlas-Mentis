@@ -545,9 +545,33 @@ Aufzählungszeile `EncounterKind` — `combat`, `social`, `puzzle`,
 weil ein Gespräch in einen Kampf kippt. Eine Zeile und keine Liste am
 Feld: Zufallstabellen (Biom, Region, Reise) liefern Begegnungen jeder Art,
 und die Oberfläche handelt je Art anders. Leer heisst „nicht gesagt“;
-Migration 077 setzt `combat`, wo schon `participates` steht. Die Felder,
-die nur eine Art braucht (Lösung eines Rätsels, Auslöser einer Falle …),
-kommen als Gruppe am `Encounter` dazu und nicht als eigene Arten.
+Migration 077 setzt `combat`, wo schon `participates` steht.
+
+**Felder und Anzeige je Art** (T-184): was nur eine Art braucht, steht als
+Feld an der Begegnung selbst und nicht an einer Art je Sorte — ein Rätsel
+kann zugleich eine Falle sein.
+
+| Art | Felder und Kanten |
+|---|---|
+| `combat` | `participates` (Initiative) |
+| `puzzle` | `solution` (nur Leitung), `hint` (je Eintrag freigebbar) |
+| `social` | `goal`; Beteiligte über `features`, ihre Haltung als `regards` an der Kreatur |
+| `resource` | `check`; was zu holen ist über `loot` und `tableFor` |
+| `trap`, `hazard` | die Gefahr als eigener Artikel (`Hazard`: Auslöser, Wirkung, Gegenmassnahmen) über `features`; `check` |
+| `story` | Vorlesetext (`ReadAloud`) und Verweise im Text |
+
+`Encounter.solution` und `Encounter.hint` stehen in `gmFields`: sie gehen
+nicht an den Tisch, bis eine bekannte Information sie nennt — ein Hinweis
+einzeln (`Encounter.hint#id`), also einer nach dem anderen.
+
+Gezeigt wird je Art über **`when` am Element der Anordnung**
+(`LayoutWhen`, `forArticle`): ein Element gilt, wenn das Feld einen der
+Werte hält (`has`), leer ist und `empty` es zulässt, oder der Artikel eine
+Kante der Art trägt (`relation`). Die Initiative steht bei `combat`, bei
+Teilnehmenden und ohne Art (wie vor T-178); Lösung, Hinweise, Ziel und
+Probe stehen oben nur bei ihrer Art. Was ein ausgelassenes Element
+gezeichnet hätte, nimmt die Feldtabelle (`fields: 'all'`) — ein befülltes
+Feld verschwindet nie. Die Karten-Seitenleiste zeigt die Art je Begegnung.
 
 ### 5.9 Zeitleisten und Spuren (D57, REQ-220)
 
@@ -1859,7 +1883,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, overview |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `controls` `discount` `regards` | `memberOf` `discount` `questGiver` `features` `knownBy` `regards` | quick |
-| `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | quick, overview |
+| `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | `features` | quick, overview |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `priceNote` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, overview, full |
 | `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | full |
@@ -1918,7 +1942,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
-| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `kind` `xpBudget` `phase` `round` `turn` `surprise` | `partOf` `participates` `onMap` `loot` `tableFor` | — | overview, full |
+| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` | — | overview, full |
 | `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
 
 **Ohne Bereich**
@@ -1957,7 +1981,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `enables` | Campaign → * |  | — | — |
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
 | `equips` | Statblock → Item |  | — | — |
-| `features` | Story → Creature \| Statblock \| Faction |  | — | — |
+| `features` | Story \| Encounter → Creature \| Statblock \| Faction \| Hazard |  | — | — |
 | `grants` | Class \| Subclass \| Ancestry \| Background \| Feat → Rule |  | — | `level` |
 | `happensAt` | Story → Place |  | — | — |
 | `hasAncestry` | PlayerCharacter → Ancestry | ja | — | — |

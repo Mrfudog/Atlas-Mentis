@@ -2091,8 +2091,16 @@ Artikel für einen Abend an. Die Wörter stehen in einer Zeile
 (`EncounterKind`) und nicht am Feld, weil mehr als eine Stelle sie
 braucht — die Liste filtert danach, eine Zufallstabelle würfelt
 Begegnungen jeder Art. Und es sind **Wörter, keine Arten**: ein Rätsel
-hat heute kein Feld, das ein Kampf nicht auch hätte; bekommt es eines
-(die Lösung), steht es als Gruppe an der Begegnung.
+hat seine Lösung und seine Hinweise, ein Gespräch sein Ziel, ein Fund
+seine Probe (T-184) — aber diese Felder stehen an der Begegnung, nicht an
+einer Art `Puzzle`, denn eine Begegnung darf zwei Arten zugleich sein,
+und ein Artikel hat genau eine. Dass ein Rätsel seine Lösung oben zeigt
+und ein Gespräch keine Initiative, sagt die **Anordnung** mit `when`: ein
+Element gilt nur an Artikeln, auf die es zutrifft. Die Bedingung steht am
+Element und nicht in einer Ansicht je Art — sonst wären es acht Ansichten,
+die bei jeder Änderung auseinanderliefen. Eine Falle steht als `Hazard`
+für sich und die Begegnung zeigt auf sie (`features`): dieselbe Falle
+steht in zwei Gängen.
 
 ## Wurf und Log
 

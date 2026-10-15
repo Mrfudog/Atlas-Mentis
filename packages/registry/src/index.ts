@@ -80,7 +80,7 @@ export const settings: Record<string, string> = {
      Information sie ausdrücklich freigibt. Als Einstellung, weil eine
      Kampagne das anders halten darf. Es hiess `gmBlockTypes` und nannte
      Blockarten — die gibt es nicht mehr, es sind Felder. */
-  gmFields: 'Secrets.secret,Tactics.tactics',
+  gmFields: 'Secrets.secret,Tactics.tactics,Encounter.solution,Encounter.hint',
   /* Welches Mass-System die Seite zeigt: `imperial`, `metric` oder `both`.
      Eine Artikelart darf es überschreiben (`InterfaceDef.units`) — eine
      Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk

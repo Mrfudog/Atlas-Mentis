@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { LAYER_RELATION, layoutFor, primaryInterface, relationDef } from '@nw/model';
+import { LAYER_RELATION, forArticle, layoutFor, primaryInterface, relationDef } from '@nw/model';
 import type { Entity, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Abschnitte } from './abschnitte';
@@ -227,7 +227,7 @@ export class Blatt {
     const zellen = feldZellen(r, e, this.bestand.name());
     const d = (e.components?.['Description'] as { description?: string } | undefined)?.description;
     return anordnen(
-      layoutFor(r, this.ansicht(), primaryInterface(e)).layout,
+      forArticle(layoutFor(r, this.ansicht(), primaryInterface(e)).layout, e),
       view?.empty === 'show' ? mitLeeren(r, e, zellen) : zellen,
       prosaVon(r, e),
       { beschreibung: view?.description === false ? null : (d ?? null), rest: !!view?.rest, bild: bildDes(e, r) },

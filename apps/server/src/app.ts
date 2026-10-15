@@ -1409,7 +1409,7 @@ export function buildApp({
        diesem einen fände das Sieb keine einzige Information — und liesse
        alles durch, ohne dass irgendwo etwas schiefginge. */
     let alle = roh;
-    const gmFields = String(registry.settings?.['gmFields'] ?? 'Secrets.secret,Tactics.tactics')
+    const gmFields = String(registry.settings?.['gmFields'] ?? 'Secrets.secret,Tactics.tactics,Encounter.solution,Encounter.hint')
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean);

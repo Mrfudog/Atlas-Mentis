@@ -12,8 +12,10 @@
  */
 
 import type {
+  Entity,
   LayoutAdjust,
   LayoutElement,
+  LayoutWhen,
   ObjectSchema,
   PropertySchema,
   Registry,
@@ -114,6 +116,38 @@ export function elementTakes(el: LayoutElement, type: string, field: string): bo
   if ((el.except ?? []).some((x) => x === type || x === `${type}.${field}`)) return false;
   if (el.fields === undefined || el.fields === 'all') return true;
   return el.fields.some((x) => x === type || x === `${type}.${field}`);
+}
+
+/**
+ * **Gilt diese Bedingung an diesem Artikel?** (`LayoutWhen`, T-184). Ohne
+ * Bedingung gilt das Element immer; eine Bedingung ohne jede Angabe auch.
+ */
+export function whenHolds(when: LayoutWhen | undefined, entity: Pick<Entity, 'components' | 'relations'>): boolean {
+  if (!when) return true;
+  const { field, has, empty, relation } = when;
+  if (!field && !relation) return true;
+  if (relation && (entity.relations ?? []).some((r) => r.type === relation)) return true;
+  if (!field) return false;
+  const punkt = field.indexOf('.');
+  const karte = (entity.components?.[field.slice(0, punkt)] ?? {}) as Record<string, unknown>;
+  const roh = karte[field.slice(punkt + 1)];
+  const werte = (Array.isArray(roh) ? roh : roh === undefined || roh === null || roh === '' ? [] : [roh]).map(String);
+  if (!werte.length) return !!empty;
+  return (has ?? []).some((h) => werte.includes(h));
+}
+
+/**
+ * **Die Anordnung für genau diesen Artikel** (T-184): was `when` an ihm
+ * ausschliesst, fällt weg, auch in Reitern. Die Eingabe bleibt, wie sie
+ * ist — sie gehört dem Typ.
+ */
+export function forArticle(
+  layout: readonly LayoutElement[],
+  entity: Pick<Entity, 'components' | 'relations'>,
+): LayoutElement[] {
+  return layout
+    .filter((el) => whenHolds(el.when, entity))
+    .map((el) => (el.tabs ? { ...el, tabs: el.tabs.map((t) => ({ ...t, layout: forArticle(t.layout, entity) })) } : el));
 }
 
 /**

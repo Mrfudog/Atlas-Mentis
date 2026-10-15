@@ -345,7 +345,7 @@ export function redactEntity(
   entities: Map<EntityId, Entity>,
   article: Entity,
   viewerId?: EntityId | readonly EntityId[],
-  gmFields: string[] = ['Secrets.secret', 'Tactics.tactics'],
+  gmFields: string[] = ['Secrets.secret', 'Tactics.tactics', 'Encounter.solution', 'Encounter.hint'],
 ): Entity {
   if (!viewerId) return article;
   const gmSet = new Set(gmFields);

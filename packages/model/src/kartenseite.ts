@@ -31,6 +31,8 @@ export interface SideEncounter {
   name: string;
   phase: string;
   round: number;
+  /** Was für eine Begegnung (`Encounter.kind`, T-178/T-184); leer: nicht gesagt. */
+  kind: string[];
   /** Sie wird auf dieser Karte gefochten (`onMap`). */
   here: boolean;
   /** Die Sitzung führt sie gerade (`activeEncounter`). */
@@ -88,12 +90,13 @@ export function sessionEncounters(entities: Lookup, session: Entity | null, mapI
     .filter((e) => primaryInterface(e) === 'Encounter')
     .filter((e) => e.id === aktiv || (session && unter.has(e.id)) || (mapId && (e.relations ?? []).some((r) => r.type === 'onMap' && r.to === mapId)))
     .map((e) => {
-      const c = (e.components?.['Encounter'] ?? {}) as { phase?: unknown; round?: unknown };
+      const c = (e.components?.['Encounter'] ?? {}) as { phase?: unknown; round?: unknown; kind?: unknown };
       return {
         id: e.id,
         name: entityName(e),
         phase: typeof c.phase === 'string' ? c.phase : 'planned',
         round: zahl(c.round) ?? 0,
+        kind: Array.isArray(c.kind) ? c.kind.filter((k): k is string => typeof k === 'string') : [],
         here: !!mapId && (e.relations ?? []).some((r) => r.type === 'onMap' && r.to === mapId),
         active: e.id === aktiv,
         participants: (e.relations ?? [])

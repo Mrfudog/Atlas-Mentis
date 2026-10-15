@@ -38,14 +38,14 @@ describe('Seitenleiste der Karte (T-203)', () => {
         { id: 't1', type: 'participates', to: 'pc-1', props: {} },
       ],
     });
-    const aktiv = e('enc-a', 'Encounter', 'Active', { components: { Encounter: { phase: 'running', round: 2 } } });
+    const aktiv = e('enc-a', 'Encounter', 'Active', { components: { Encounter: { phase: 'running', round: 2, kind: ['social', 'combat'] } } });
     const hier = e('enc-h', 'Encounter', 'Here', { relations: [{ id: 'o1', type: 'onMap', to: 'map' }] });
     const fremd = e('enc-f', 'Encounter', 'Elsewhere');
     const b = new Map([...bestand.values(), sitzung, szene, unten, aktiv, hier, fremd].map((x) => [x.id, x]));
     const liste = sessionEncounters(b, sitzung, 'map');
     expect(liste.map((x) => x.id)).toEqual(['enc-a', 'enc-h', 'enc-u']);
-    expect(liste[0]).toMatchObject({ active: true, round: 2, phase: 'running' });
-    expect(liste[1]).toMatchObject({ here: true, phase: 'planned' });
+    expect(liste[0]).toMatchObject({ active: true, round: 2, phase: 'running', kind: ['social', 'combat'] });
+    expect(liste[1]).toMatchObject({ here: true, phase: 'planned', kind: [] });
     expect(liste[2]!.participants).toEqual([{ id: 'pc-1', name: 'Rook' }]);
     expect(sessionEncounters(b, null, null)).toEqual([]);
   });

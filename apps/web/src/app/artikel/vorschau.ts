@@ -6,6 +6,7 @@ import {
   entityName,
   entriesOf,
   fieldTitle,
+  forArticle,
   layoutFor,
   primaryInterface,
   proseFields,
@@ -312,7 +313,7 @@ export class Vorschau {
     const view = r.views[ansicht];
     const leer = view?.empty === 'show';
     const genommen = new Set<string>();
-    for (const el of flach(layoutFor(r, ansicht, typ).layout)) {
+    for (const el of flach(forArticle(layoutFor(r, ansicht, typ).layout, e))) {
       if (el.el === 'image') {
         /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
         const bild = bildDes(e, r);
