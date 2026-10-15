@@ -9,6 +9,7 @@ import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { ListenFilter, feldfilterAlsF, feldfilterAusF } from '../kern/filter';
 import { AusgeblendetHinweis } from '../kern/ausgeblendet';
+import { NichtImSpiel } from '../kern/nicht-im-spiel';
 import { KurzLink } from '../kern/kurzansicht';
 import { ALLE, Filtergruppen } from '../kern/filtergruppen';
 import type { Filtergruppe, GespeicherterFilter } from '../kern/api';
@@ -54,7 +55,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -386,6 +387,46 @@ const OFFEN = 8;
                   </tr>
                 }
               </tbody>
+              <!-- Was nur eine Vergleichsebene bringt (T-213): unter dem Blatt, nicht mitgezählt. -->
+              @if (liste()!.compare; as v) {
+                @if (v.total) {
+                  <tbody class="vergleich">
+                    <tr class="vergleich-kopf">
+                      <th [attr.colspan]="spaltenZahl()" scope="rowgroup">
+                        Not in play — from comparison layers ({{ v.total }})
+                      </th>
+                    </tr>
+                    @for (z of v.rows; track z.id) {
+                      <tr class="nicht-im-spiel" [class.gewaehlt]="filter.vorschau() === z.id" (click)="zeile(z, $event)">
+                        <td class="name">
+                          <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
+                          <nw-nicht-im-spiel [id]="z.id" [name]="z.name" [kampagne]="v.canEnable?.campaign" />
+                        </td>
+                        @if (!type()) {
+                          <td>{{ typLabel(z.type) }}</td>
+                        }
+                        @for (c of liste()!.columns; track c.ref) {
+                          <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
+                        }
+                        <td class="dim quelle">
+                          @if (z.source) {
+                            <nw-quelle [text]="z.source" />
+                          } @else {
+                            {{ z.layers.join(', ') }}
+                          }
+                        </td>
+                      </tr>
+                    }
+                    @if (v.total > v.rows.length) {
+                      <tr>
+                        <td [attr.colspan]="spaltenZahl()" class="dim">
+                          {{ v.total - v.rows.length }} more — narrow the filters to see them.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                }
+              }
             </table>
             @if (blaetter() > 1) {
               <div class="fuss">
@@ -560,6 +601,8 @@ export class Kompendium {
       limit: BLATT,
       f,
       usable: this.usable() || undefined,
+      /* Vergleichsartikel als eigener Block darunter (T-213, Schalter im Popup). */
+      compare: this.stapel.vergleich() || undefined,
     };
   });
 

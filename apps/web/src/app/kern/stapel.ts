@@ -11,14 +11,30 @@
  * Artikel der Kampagne hat sich geändert, oder das Register (die
  * Einstellung `campaign`).
  *
+ * **Vergleich in Listen** (T-213, `vergleich`): ein Schalter im Popup,
+ * mit dem Kompendium, Bereiche und Suche auch die Artikel der
+ * Vergleichsebenen zeigen — markiert „not in play", unter dem Blatt des
+ * Spiels. Vorgabe aus; gemerkt je Browser (eine Ansichtsfrage, kein
+ * Stand), und nur, wenn dieses Konto Vergleichsebenen sieht
+ * (`laufend().compare`).
+ *
  * Dazu die **Schreibebene** (T-161, `schreib`): wohin dieses Konto in der
  * laufenden Kampagne anlegt. Sie hängt am Stapel — fällt die gewählte
  * heraus, gilt die Vorgabe —, also wird sie mit ihm neu geholt.
  */
 
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { Api, type KampagneKurz, type LaufendeKampagne, type Schreibstand } from './api';
 import { Live } from './live';
+
+const VERGLEICH_KEY = 'nw.compareInLists';
+function gemerkt(): boolean {
+  try {
+    return localStorage.getItem(VERGLEICH_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class Stapel {
@@ -29,6 +45,7 @@ export class Stapel {
   private readonly _stand = signal(0);
   private readonly _schreib = signal<Schreibstand | null>(null);
   private readonly _gerufen = signal(0);
+  private readonly _vergleich = signal(gemerkt());
   private lauf = 0;
   /** Wann zuletzt hier selbst geschaltet wurde — das Echo im Live-Kanal zählt nicht doppelt. */
   private selbst = 0;
@@ -39,6 +56,8 @@ export class Stapel {
   /** Die Verwaltung wechselt die laufende Kampagne; sie gilt für alle. */
   readonly verwaltung = this._verwaltung.asReadonly();
   readonly stand = this._stand.asReadonly();
+  /** Ob Listen die Artikel der Vergleichsebenen mitzeigen (T-213) — nur, wo es welche gibt. */
+  readonly vergleich = computed(() => this._vergleich() && (this._laufend()?.compare ?? 0) > 0);
   /** Wohin ich anlege (T-161). */
   readonly schreib = this._schreib.asReadonly();
   /** Zählt, wie oft eine Seite das Popup verlangt hat (T-186, „Change layers"); der Knopf hört darauf. */
@@ -81,6 +100,18 @@ export class Stapel {
   /** Die Schreibebene wählen (`null`: die Vorgabe). Der Server prüft gegen die Zielebenen. */
   async schreibWaehlen(layer: string | null): Promise<void> {
     this._schreib.set(await this.api.setWriteLayer(layer));
+  }
+
+  /** Den Schalter „Show comparison articles in lists" setzen (T-213); Listen fragen neu. */
+  vergleichSetzen(an: boolean): void {
+    this._vergleich.set(an);
+    try {
+      if (an) localStorage.setItem(VERGLEICH_KEY, '1');
+      else localStorage.removeItem(VERGLEICH_KEY);
+    } catch {
+      /* Ohne Speicher gilt der Schalter bis zum Neuladen. */
+    }
+    this._stand.update((n) => n + 1);
   }
 
   /** Das Popup der Kopfleiste öffnen — von einer Liste aus, die keinen eigenen Ebenenfilter mehr hat. */

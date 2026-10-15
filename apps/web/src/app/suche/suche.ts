@@ -5,6 +5,8 @@ import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { Kurzansicht } from '../kern/kurzansicht';
 import { Suche, type SuchFilter } from '../kern/suche';
 import { Vorschau } from '../artikel/vorschau';
+import { Stapel } from '../kern/stapel';
+import { NichtImSpiel } from '../kern/nicht-im-spiel';
 import { ansichtWeg } from '../klassen/ansicht-weg';
 
 type Treffer = Suchergebnis['rows'][number];
@@ -35,7 +37,7 @@ const KNOEPFE = 8;
  */
 @Component({
   selector: 'nw-suche',
-  imports: [RouterLink, Vorschau],
+  imports: [RouterLink, Vorschau, NichtImSpiel],
   template: `
     @if (suche.offen()) {
       <div class="schleier" aria-hidden="true" (click)="suche.schliessen()"></div>
@@ -235,13 +237,33 @@ const KNOEPFE = 8;
                 }
               </li>
             } @empty {
-              @if (!laedt()) {
+              @if (!laedt() && !ergebnis()?.compare?.total) {
                 <li class="hinweis" role="presentation">
                   Nothing found{{ filterAn() ? ' with these filters' : '' }}.
                 </li>
               }
             }
           </ul>
+          <!-- Treffer aus Vergleichsebenen (T-213): für sich, nicht im Spiel, nicht mitgezählt. -->
+          @if (ergebnis()?.compare; as v) {
+            @if (v.total) {
+              <p class="vergleich-kopf">Not in play — from comparison layers ({{ v.total }})</p>
+              <ul class="treffer vergleich" aria-label="Not in play">
+                @for (z of v.rows; track z.id) {
+                  <li>
+                    <div class="zeile">
+                      <a class="name" [routerLink]="weg(z.id, z.type)" (click)="geoeffnet(z)">{{ z.name }}</a>
+                      <span class="art">{{ z.typeLabel }}</span>
+                      <nw-nicht-im-spiel [id]="z.id" [name]="z.name" [kampagne]="v.canEnable?.campaign" />
+                    </div>
+                  </li>
+                }
+              </ul>
+              @if (v.total > v.rows.length) {
+                <p class="hinweis">{{ v.total - v.rows.length }} more — refine the search to see them.</p>
+              }
+            }
+          }
           <p class="fuss" aria-live="polite">
             @if (laedt()) {
               Searching …
@@ -354,6 +376,21 @@ const KNOEPFE = 8;
     .treffer li {
       padding: 0.2rem 0.75rem;
     }
+    /* Vergleichstreffer (T-213): unter den Treffern, mit eigener Höhe. */
+    .treffer.vergleich {
+      flex: none;
+      max-height: 30vh;
+    }
+    .treffer.vergleich .name {
+      color: var(--dim);
+    }
+    .vergleich-kopf {
+      margin: 0;
+      padding: 0.4rem 0.75rem 0;
+      border-top: 1px dashed var(--line);
+      color: var(--dim);
+      font-size: 0.85em;
+    }
     .treffer li.aktiv {
       background: var(--hover);
     }
@@ -460,6 +497,7 @@ const KNOEPFE = 8;
 export class SucheComponent {
   protected readonly suche = inject(Suche);
   private readonly api = inject(Api);
+  private readonly stapel = inject(Stapel);
   private readonly router = inject(Router);
   private readonly kurz = inject(Kurzansicht);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -670,6 +708,7 @@ export class SucheComponent {
             : {}),
           offset,
           limit: BLATT,
+          ...(this.stapel.vergleich() ? { compare: true } : {}),
         },
         { signal: abbruch.signal },
       );

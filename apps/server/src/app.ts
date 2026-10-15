@@ -70,6 +70,7 @@ import {
   resolvedStack,
   isGroupLayer,
   versionsOf,
+  versionGroups,
   LAYER_COMPONENT,
   LAYER_RELATION,
   WRITE_LAYER_PREF,
@@ -125,7 +126,7 @@ import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
-import { rechtAn, registerVerwaltung } from './verwaltung.js';
+import { rechtAn, registerVerwaltung, siehtVergleich } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
 import { registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
@@ -1296,20 +1297,6 @@ export function buildApp({
    * steht im Modellpaket, weil es für Server und Oberfläche gleichermassen
    * gilt und es nur einmal geben darf.
    */
-  /**
-   * **Wer die Vergleichsebenen sieht** (T-092, E-021 d): die Verwaltung,
-   * die Leitung der laufenden Kampagne (`gm`, `co-gm`) und — wenn die
-   * Kampagne es sagt (`Campaign.compareFor: 'players'`) — wer am Tisch
-   * sitzt. Vorgabe ist nur die Leitung.
-   */
-  function siehtVergleich(user: User | null, kampagne: Entity | null): boolean {
-    if (!kampagne) return false;
-    if (!user) return true;
-    if (rechtAn(user, kampagne.id)) return true;
-    const fuer = (kampagne.components?.[CAMPAIGN_TYPE] as { compareFor?: unknown } | undefined)?.compareFor;
-    return fuer === 'players' && !!user.roles?.[kampagne.id];
-  }
-
   /* Die laufende Kampagne je Bestand: ohne Einstellung sucht
      `currentCampaign` den ganzen Bestand ab, und das Sieb fragt je Aufruf. */
   const kampagneJe = new WeakMap<Map<string, Entity>, { key: string; kampagne: Entity | null }>();
@@ -1615,7 +1602,7 @@ export function buildApp({
   }
   async function indexFor(
     request: FastifyRequest,
-    stapel: 'inPlay' | 'unactivated' = 'inPlay',
+    stapel: 'inPlay' | 'unactivated' | 'compare' = 'inPlay',
     /** Alle Ebenen nennen, auch nicht aufgeschaltete (T-207) — nur für die
      *  Werkbank der Leitung und Verwaltung (`allLayers=1`, `darfAlleEbenen`). */
     alleEbenen = false,
@@ -1645,10 +1632,38 @@ export function buildApp({
        fallen hier heraus — als Zeile, als Name und als Ebene einer Zeile.
        Damit gilt es für Kompendium, Bereiche, Suche, Quellenkürzel und jede
        Auswahl auf einmal; der Zählindex (`unactivated`) bleibt, wie er war. */
-    const genannt = stapel === 'inPlay' && !alleEbenen ? shownLayers(stand.map, kampagne, siehtVergleich(user, kampagne)) : null;
-    lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then((gesiebt) =>
-      buildListIndex(registry, gesiebt, (e) => rang.rank(stand.map.get(e.id) ?? e), genannt),
-    );
+    const genannt =
+      (stapel === 'inPlay' && !alleEbenen) || stapel === 'compare'
+        ? shownLayers(stand.map, kampagne, siehtVergleich(user, kampagne))
+        : null;
+    /* **Der Vergleichsindex** (T-213): was nur eine Vergleichsebene bringt,
+       ein eigener Index neben dem des Spiels — im selben zählten Facetten
+       und Summen, was nicht im Spiel ist. Und nur, was **keine geltende
+       Fassung im Spiel** hat (`versionGroups`): sonst ist es eine andere
+       Fassung derselben Sache, und die vergleicht die Artikelseite. */
+    const ohneFassungImSpiel = (gesiebt: Entity[]): Entity[] => {
+      if (stapel !== 'compare' || !gesiebt.length) return gesiebt;
+      const gruppe = versionGroups(stand.map.values());
+      const gespielt = new Set<string>();
+      for (const [id, wurzel] of gruppe) {
+        const e = stand.map.get(id);
+        if (e && rang.inPlay(e)) gespielt.add(wurzel);
+      }
+      return gesiebt.filter((e) => {
+        const w = gruppe.get(e.id);
+        return !w || !gespielt.has(w);
+      });
+    };
+    lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then(async (gesiebt) => {
+      const idx = buildListIndex(registry, ohneFassungImSpiel(gesiebt), (e) => rang.rank(stand.map.get(e.id) ?? e), genannt);
+      /* Die Namen kennt der Vergleich vom Spiel: seine Ebenen, und wohin
+         seine Verweise zeigen, sind Artikel, die dieser Betrachter dort
+         sieht — sonst stünde an einer Zeile die Id ihrer Ebene. */
+      if (stapel === 'compare') {
+        for (const [id, name] of (await indexFor(request)).names) if (!idx.names.has(id)) idx.names.set(id, name);
+      }
+      return idx;
+    });
     indizes.set(key, lauf);
     lauf.catch(() => indizes.delete(key));
     /* Alte Stempel fallen sofort, sonst die ältesten über acht. */
@@ -1719,8 +1734,50 @@ export function buildApp({
     const blatt = queryList(idx, q);
     /* Eine Auswahl nach Ids fragt nach Bekanntem; dort fehlt nichts. */
     const aus = q.ids?.length ? null : await ausgeblendet(request, q);
-    return aus ? { ...blatt, unactivated: aus } : blatt;
+    const extra = q.ids?.length ? null : await vergleichsFrage(request, roh_);
+    return {
+      ...blatt,
+      ...(aus ? { unactivated: aus } : {}),
+      ...(extra ? { compare: { ...vergleichsZeilen(queryList(extra.idx, { ...q, offset: extra.offset })), canEnable: extra.canEnable } } : {}),
+    };
   });
+
+  /**
+   * **Was nur eine Vergleichsebene bringt** (T-213, Rest von T-187): mit
+   * `compare=1` stehen unter dem Blatt die Artikel der Vergleichsebenen,
+   * die nichts im Spiel vertreten — dieselben Filter, ein eigener Index
+   * (`indexFor(…, 'compare')`), gesiebt wie jede Liste und nur für wen
+   * Vergleichsebenen sieht (`siehtVergleich`). `canEnable`: die Leitung
+   * holt sie mit „Enable" einzeln ins Spiel (`PUT /api/campaigns/:c/enabled/:id`).
+   * Eigenes Blättern (`compareOffset`): der Vergleich hängt am Ende, nicht
+   * zwischen den Zeilen des Spiels.
+   */
+  async function vergleichsFrage(
+    request: FastifyRequest,
+    roh_: Record<string, unknown>,
+  ): Promise<{ idx: ListIndex; offset: number; canEnable: { campaign: string } | null } | null> {
+    if (roh_['compare'] !== '1' && roh_['compare'] !== 'true') return null;
+    const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    if (!kampagne || !siehtVergleich(user, kampagne)) return null;
+    const offset = Math.max(0, Number.parseInt(String(roh_['compareOffset'] ?? '0'), 10) || 0);
+    return {
+      idx: await indexFor(request, 'compare'),
+      offset,
+      canEnable: rechtAn(user, kampagne.id) === 'manage' ? { campaign: kampagne.id } : null,
+    };
+  }
+  /** Ein Blatt des Vergleichs: die Zeilen mit Merkmal und die Zahl, ohne Facetten — die gehören dem Spiel. */
+  function vergleichsZeilen<R extends { total: number; offset: number; limit: number; rows: object[] }>(
+    blatt: R,
+  ): { total: number; offset: number; limit: number; rows: (R['rows'][number] & { notInPlay: true })[] } {
+    return {
+      total: blatt.total,
+      offset: blatt.offset,
+      limit: blatt.limit,
+      rows: blatt.rows.map((z) => ({ ...(z as R['rows'][number]), notInPlay: true as const })),
+    };
+  }
 
   /**
    * **Die übergreifende Suche** (T-138): `GET /api/search?q=&type=&layer=&publisher=&area=&offset=&limit=&f=&usable=`.
@@ -1754,7 +1811,13 @@ export function buildApp({
       : undefined;
     const v = verlag;
     /* Nur Ebenen, die dieser Betrachter sieht: der Index kennt ihren Namen. */
-    return search(idx, q, publisher, (l) => (idx.names.has(l) ? (v.get(l) ?? '') : ''));
+    const treffer = search(idx, q, publisher, (l) => (idx.names.has(l) ? (v.get(l) ?? '') : ''));
+    /* Mit `compare=1` dazu die Treffer aus Vergleichsebenen (T-213). */
+    const extra = await vergleichsFrage(request, roh_);
+    if (!extra) return treffer;
+    const x = extra.idx;
+    const vergleich = search(x, { ...q, offset: extra.offset }, publisher, (l) => (x.names.has(l) ? (v.get(l) ?? '') : ''));
+    return { ...treffer, compare: { ...vergleichsZeilen(vergleich), canEnable: extra.canEnable } };
   });
 
   /**
