@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-spell-lists",
+      "date": "2026-10-15",
+      "title": "Filter spells by class list — and by what a character can cast",
+      "text": "Spells know which classes and subclasses have them on their list. Filter the spell list by Class spell list, or pick a character under Usable by to keep only the spells on its classes' lists up to the level it casts. In the registry, every field and edge now says whether and how it filters lists (In list filters).",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
       "id": "2026-10-15-map-light-darkvision",
       "date": "2026-10-15",
       "title": "Light, darkness and darkvision on the map",

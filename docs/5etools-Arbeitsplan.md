@@ -394,7 +394,7 @@ nur noch bei leerem Bestand. Betrieb: [Betrieb.md › 5e.tools
 laden](Betrieb.md#5etools-laden).
 Abweichend vom Abgleich: keine `ids.json` (§1: keine stabile Zuordnung
 über Läufe), keine Ebene je Buch, `overrides` entfällt (kein 2024).
-Offen: die Klassenlisten der Zauber (keine Kante von `Class` zu `Spell`),
+Offen (die Klassenlisten der Zauber kamen mit T-212, Kante `spellList`):
 Behälter (`containerCapacity` → `carries` ein Inventar),
 `entry`-Kanten aus Tabellenzeilen; Schatztabellen, „This Is Your Life",
 die Spielarten in `_versions` (ohne die der Unterarten) und die genannten

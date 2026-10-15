@@ -28,7 +28,14 @@ export type Condition =
   | { kind: 'has'; id: string; name: string }
   | { kind: 'unknown'; text: string }
   /** Eine Oder-Gruppe innerhalb einer Bedingung („Elf or Half-Elf"). */
-  | { kind: 'any'; of: Condition[] };
+  | { kind: 'any'; of: Condition[] }
+  /**
+   * **Auf der Zauberliste** (T-212): eine dieser Klassen oder Unterklassen
+   * hat den Zauber auf ihrer Liste (`spellList`), und die Figur wirkt dort
+   * Zauber dieses Grads. Kein Satz an einem Feld, sondern aus den Kanten
+   * gerechnet (`spellListRequirement`).
+   */
+  | { kind: 'spellList'; of: EntityId[]; level: number };
 
 /** Oder über Und: eine leere Liste heisst „keine Voraussetzung". */
 export type Requirement = Condition[][];
@@ -174,6 +181,8 @@ export function conditionKeys(c: Condition): string[] {
       return [`ancestry:${c.name}`];
     case 'has':
       return [`has:${c.id}`];
+    case 'spellList':
+      return [`spellList:${c.level}`];
     case 'unknown':
       return ['unknown'];
     case 'any':
@@ -208,6 +217,8 @@ export function requirementLabel(key: string, name: (id: string) => string | und
       return `Ancestry: ${gross(key.slice(9))}`;
     case 'has':
       return `Has: ${name(key.slice(4)) ?? key.slice(4)}`;
+    case 'spellList':
+      return a === '0' ? 'On a class list (cantrip)' : `On a class list (level ${a})`;
     default:
       return key;
   }
@@ -229,8 +240,64 @@ export interface CharacterProfile {
   /** Übungen am Statblock, klein. Leer: unbekannt. */
   proficient: string[];
   spellcasting: boolean;
+  /**
+   * Je Klasse und Unterklasse der Figur der höchste Grad, den sie dort
+   * wirkt (T-212) — `-1`: dort zaubert sie nicht. Leer: keine Klasse
+   * bekannt.
+   */
+  casting: { id: EntityId; max: number }[];
   /** Was die Figur hat: Klassen, Herkünfte, gewählte und gewährte Artikel. */
   has: EntityId[];
+}
+
+/**
+ * **Wie eine Klasse oder Unterklasse zaubert** (`ClassCasting`, in die Karte
+ * der Art gemischt): `full`, `half`, `third`, `pact`, `artificer` — oder
+ * nichts. Gelesen aus der Karte der Art und, für alte Bestände, aus einer
+ * eigenen Karte `ClassCasting`.
+ */
+export function casterProgression(e: Entity | undefined): string | undefined {
+  for (const k of ['Class', 'Subclass', 'ClassCasting']) {
+    const v = (e?.components?.[k] as { casterProgression?: unknown } | undefined)?.casterProgression;
+    if (typeof v === 'string' && v) return v;
+  }
+  return undefined;
+}
+
+/**
+ * **Der höchste Zaubergrad auf einer Klassenstufe** (T-212), nach der
+ * Tabelle der Zauberplätze: voll ab 1 (Grad 9 ab 17), halb ab 2, ein
+ * Drittel ab 3 (Grad 4 ab 19), Pakt bis Grad 5, der Artificer halb ab 1.
+ * Zaubertricks (Grad 0) gehen, sobald die Klasse überhaupt zaubert. `-1`:
+ * keine Zauber.
+ */
+export function maxSpellLevel(progression: string | undefined, classLevel: number): number {
+  const l = Math.max(0, Math.min(20, Math.floor(classLevel)));
+  if (l < 1) return -1;
+  switch (progression) {
+    case 'full':
+      return Math.min(9, Math.ceil(l / 2));
+    case 'half':
+      return l < 2 ? 0 : Math.min(5, Math.ceil(l / 4));
+    case 'third':
+      return l < 3 ? 0 : Math.min(4, Math.ceil(l / 6));
+    case 'pact':
+      return Math.min(5, Math.ceil(l / 2));
+    case 'artificer':
+      return Math.min(5, Math.ceil(l / 4));
+    default:
+      return -1;
+  }
+}
+
+/**
+ * **Die Zauberliste als Voraussetzung** (T-212): die Klassen und
+ * Unterklassen, auf deren Liste ein Zauber steht, und sein Grad. Ohne Liste
+ * keine Voraussetzung — ein Zauber, den keine Klasse kennt, wird bei
+ * „usable by" nicht still ausgeschlossen.
+ */
+export function spellListRequirement(of: readonly EntityId[], level: number): Requirement {
+  return of.length ? [[{ kind: 'spellList', of: [...new Set(of)], level }]] : [];
 }
 
 /**
@@ -242,7 +309,7 @@ export function characterProfile(character: Entity, byId: ReadonlyMap<EntityId, 
   const level = characterLevel(character);
   const classes: CharacterProfile['classes'] = [];
   let spellcasting = false;
-  const zaubert = (e: Entity | undefined) => !!(e?.components?.['ClassCasting'] as { casterProgression?: unknown } | undefined)?.casterProgression;
+  const casting: CharacterProfile['casting'] = [];
   const ancestries: string[] = [];
   for (const r of character.relations ?? []) {
     if (r.type === 'hasClass') {
@@ -251,7 +318,14 @@ export function characterProfile(character: Entity, byId: ReadonlyMap<EntityId, 
       if (k) classes.push({ name: entityName(k).toLowerCase(), level: l });
       const sub = typeof r.props?.['subclass'] === 'string' ? byId.get(r.props['subclass']) : undefined;
       if (sub) classes.push({ name: entityName(sub).toLowerCase(), level: l });
-      if (zaubert(k) || zaubert(sub)) spellcasting = true;
+      /* Die Unterklasse zaubert für die Klasse mit (der Eldritch Knight
+         den Kämpfer), sonst die Klasse für die Unterklasse (der Paktgeber
+         des Hexenmeisters erweitert dessen Liste). */
+      const prog = casterProgression(sub) ?? casterProgression(k);
+      if (prog) spellcasting = true;
+      const max = maxSpellLevel(prog, l);
+      casting.push({ id: r.to, max });
+      if (typeof r.props?.['subclass'] === 'string') casting.push({ id: r.props['subclass'], max });
     } else if (r.type === 'hasAncestry') {
       for (const id of ancestryLine(r.to, byId)) ancestries.push(entityName(byId.get(id)).toLowerCase());
     }
@@ -277,7 +351,7 @@ export function characterProfile(character: Entity, byId: ReadonlyMap<EntityId, 
     proficient = Array.isArray(pr) ? pr.map((x) => String(x).toLowerCase()) : [];
     break;
   }
-  return { id: character.id, name: entityName(character), level, classes, ancestries, abilities, proficient, spellcasting, has: [...has] };
+  return { id: character.id, name: entityName(character), level, classes, ancestries, abilities, proficient, spellcasting, casting, has: [...has] };
 }
 
 export type Verdict = 'yes' | 'no' | 'unknown';
@@ -311,6 +385,10 @@ function pruefe(c: Condition, p: CharacterProfile): Verdict {
     }
     case 'has':
       return p.has.includes(c.id) ? 'yes' : 'no';
+    case 'spellList': {
+      if (!p.casting.length) return 'unknown';
+      return p.casting.some((x) => c.of.includes(x.id) && x.max >= c.level) ? 'yes' : 'no';
+    }
     case 'unknown':
       return 'unknown';
     case 'any':

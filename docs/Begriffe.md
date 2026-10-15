@@ -272,6 +272,16 @@ ist **unbekannt und nicht „nein"**: es bleibt in der Liste und trägt ein
 „?" — still auszuschliessen hiesse, dass eine unvollständige Erkennung
 wie eine Regel wirkt.
 
+Ein **Zauber** hat keinen Voraussetzungssatz — er steht auf einer
+**Zauberliste** (T-212). Das ist eine dritte Beziehung zwischen Klasse und
+Zauber neben zweien, die schon da waren: `casts` sagt, was jemand
+**wirkt** (vorbereitet, angeboren, aus einem Stab), `grants`, was er
+**bekommt**, und `spellList`, was er lernen **darf**. Die Liste mit
+`grants` zu sagen, sähe kürzer aus und wäre falsch: was gewährt ist, wirkt
+an der Figur, und dreihundert Zauber auf der Liste eines Magiers wirken
+nicht alle. „Usable by" liest die Liste mit dem Grad: was auf der Liste
+einer Klasse der Figur steht und was sie dort wirken kann.
+
 ### Eins oder mehrere
 
 Ein Feld mit `many` hält **mehrere** Werte, und jeder trägt eine Id:

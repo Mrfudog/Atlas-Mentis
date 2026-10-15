@@ -30,10 +30,10 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 |---|---|---|---|
 | 1 | 44 | 138 | 32 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
 | 2 | 96 | 329 | 63 steht · 17 teils · 8 offen · 5 ersetzt · 3 verworfen |
-| 3 | 115 | 331 | 62 steht · 21 teils · 31 offen · 1 ersetzt |
+| 3 | 115 | 331 | 63 steht · 21 teils · 30 offen · 1 ersetzt |
 | 4 | 44 | 195 | 13 steht · 2 teils · 26 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **318** | **1147** | 171 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **318** | **1147** | 172 steht · 47 teils · 83 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -135,7 +135,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-094]] | Regeln an Artikel hängen | Spielleitung | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 2 | 3 | done | steht |
 | [[REQ-095]] | Gewährtes anwenden | Spieler | [[F-046 Regelauswertung\|Regelauswertung]] | 4 | 8 | defined | offen |
 | [[REQ-096]] | Einschränkungen prüfen | Spielleitung | [[F-046 Regelauswertung\|Regelauswertung]] | 5 | 8 | idea | offen |
-| [[REQ-097]] | Zauberlisten | Spieler | [[F-045 Zauber\|Zauber]] | 3 | 2 | defined | offen |
+| [[REQ-097]] | Zauberlisten | Spieler | [[F-045 Zauber\|Zauber]] | 3 | 2 | defined | steht |
 | [[REQ-098]] | Regel in Sekunden | Spieler | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 2 | 2 | done | steht |
 | [[REQ-099]] | Regeln anheften | Spieler | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 3 | 1 | done | steht |
 | [[REQ-100]] | Welt als Ebene | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 1 | 2 | in progress | teils |

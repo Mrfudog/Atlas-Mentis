@@ -123,6 +123,8 @@ export interface Datenstand {
   abenteuer?: Map<string, Abenteuer>;
   /** Je Buch (Kürzel, klein) sein Textbaum aus `book/` (T-108). */
   buecher?: Map<string, Abenteuer>;
+  /** Die Zauberlisten aus `generated/gendata-spell-source-lookup.json` (T-212, `arten/zauberlisten.ts`). */
+  zauberlisten?: Knoten;
 }
 
 /** Ein Abenteuer aus `adventure/adventure-*.json` mit seinem Kopf aus `adventures.json`. */
@@ -189,7 +191,13 @@ export function lies(datenPfad: string): Datenstand {
   };
   meta('books.json', 'book', 'book');
   meta('adventures.json', 'adventure', 'adventure');
-  return { arten, quellen, abenteuer: liesAbenteuer(datenPfad), buecher: liesBuecher(datenPfad) };
+  let zauberlisten: Knoten | undefined;
+  try {
+    zauberlisten = JSON.parse(readFileSync(join(datenPfad, 'generated', 'gendata-spell-source-lookup.json'), 'utf8')) as Knoten;
+  } catch {
+    /* ohne Nachschlagedatei keine Zauberlisten — kein Fehler */
+  }
+  return { arten, quellen, abenteuer: liesAbenteuer(datenPfad), buecher: liesBuecher(datenPfad), ...(zauberlisten ? { zauberlisten } : {}) };
 }
 
 /**

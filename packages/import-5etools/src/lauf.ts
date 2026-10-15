@@ -28,6 +28,7 @@ import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, ohneBuchEbeneId, Werkba
 import type { Zuordnung } from './zuordnung.js';
 import type { Bildplan } from './bilder.js';
 import { bildplan } from './bilder.js';
+import { zauberlisten, zauberlistenPlan, type ZauberlistenPlan } from './arten/zauberlisten.js';
 
 /** Die Reihenfolge aus Abgleich §4.2 — jede spätere Art zeigt auf frühere. */
 export const ZUORDNUNGEN: Zuordnung[] = [
@@ -178,6 +179,8 @@ export interface Ergebnis {
   bericht: Bericht;
   /** Welches Bild aus 5e.tools an welchen Artikel gehört (T-144) — nicht in der Ausfuhrdatei, Bilder gehen über die API. */
   bilder?: Bildplan;
+  /** Je Klasse ihre Zauberliste (T-212) — für den Ergänzungslauf auf einem Server, der die Klassen schon hat. */
+  zauberlisten?: ZauberlistenPlan;
 }
 
 /** Der Text einer Buchebene: was sie ist, in einem Satz (T-088). */
@@ -464,6 +467,11 @@ function bauen(
        Kampagne, die „D&D 5e (2014)" aufschaltet (E-062). */
     if (wb.grund) for (const e of wb.entities.slice(vorher)) if (BUCHTEXT.has(e.interfaces[0] ?? '')) wb.buchtext.add(e.id);
   }
+  /* Die Zauberlisten (T-212): nach allen Artikeln, über alle Regelstände —
+     der 2024-Zauber steht auf der Liste der 2024-Klasse. */
+  wb.stand = '2014';
+  wb.grund = true;
+  zauberlisten(wb, stand.zauberlisten);
   wb.grundSiehtAlles = false;
 
   /* Eine aufgelöste Kopie zeigt auf ihr Original, wenn es hereinkam und
@@ -644,6 +652,7 @@ function bauen(
       },
       bericht: wb.bericht,
       bilder: bildplan(registry, stand, angelegt, wb.entities),
+      zauberlisten: zauberlistenPlan(wb.entities),
     },
     vergeben: wb.vergeben,
   };
