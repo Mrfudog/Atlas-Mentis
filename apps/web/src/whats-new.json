@@ -1,21 +1,20 @@
 {
   "entries": [
     {
-<<<<<<< HEAD
       "id": "2026-10-15-turn-planner",
       "date": "2026-10-15",
       "title": "Plan your turn on the map (prototype)",
       "text": "Under Play, a bar below the map shows your action, bonus action, reaction and movement, and your character's actions as tiles. Tap Move and a square, pick an attack and a target to see the chance to hit, line the steps up in order and send the turn to the GM — who confirms it, the dice are rolled into the log and your token moves.",
       "area": "Play",
       "link": "/play"
-=======
+    },
+    {
       "id": "2026-10-15-builder-effects",
       "date": "2026-10-15",
       "title": "The character builder shows what each option brings",
       "text": "Open “Effects” on an ancestry, background or class to see what it brings — a sub-ancestry includes its base — or tick “Compare” on up to four. Variants sit under their base, your pick's own choices appear right below it, and your draft is kept, so opening an article no longer loses it.",
       "area": "World",
       "link": "/characters/new"
->>>>>>> origin/preprod
     },
     {
       "id": "2026-10-15-origin-views",
