@@ -1,0 +1,242 @@
+{
+  "pages": [
+    {
+      "routes": ["play"],
+      "title": "Play — the table map",
+      "sections": [
+        {
+          "heading": "Which map you see",
+          "text": [
+            "Play shows the map the session has as “Map on the table”. Switch the session at the top; “All maps” opens any other map without changing what the table sees.",
+            "Zoom with + and −, the mouse wheel or two fingers. A sub-map that fills the view is entered; zooming out past the edge leads back to the map above."
+          ]
+        },
+        {
+          "heading": "Tools",
+          "text": [
+            "Measure: tap two points. Add marker (GM): tap where it goes; a marker opens its quick view. Place combatants puts the creatures of the running encounter on the map, Clear play tokens removes them again — prepared markers and the party stay.",
+            "Player view (GM) shows the map as the players see it: fogged parts covered, hidden markers left out."
+          ]
+        },
+        {
+          "heading": "Fog of war",
+          "text": [
+            "Fog is revealed by the GM, not by creatures. You do not need to place a creature: open Fog, switch “Fog on”, then reveal by hand — Reveal drags a rectangle, Brush paints (choose the width), Hide covers an area again, Reveal all and Cover all do the whole map.",
+            "With “Reveal along moves”, moving a token on a fogged map reveals the way it went, as wide as the brush."
+          ]
+        },
+        {
+          "heading": "Line of sight",
+          "text": [
+            "There is no line of sight yet. It needs walls on the map, and walls are still to come. Until then, players see exactly what has been revealed."
+          ]
+        },
+        {
+          "heading": "Turn planner and reactions",
+          "text": [
+            "During an encounter, players plan their turn under “Plan turn”: pick actions from the bar, tap squares to move, then “Send turn to GM”. Player tokens move only through the plan.",
+            "A square marked ⚠ leaves an enemy's reach and provokes an opportunity attack — Disengage first to avoid it. The GM confirms a plan with “Confirm & roll” or sends it back.",
+            "As the turn plays out, whoever may react is asked “Opportunity attack?”. Attack rolls into the log and uses the reaction until that creature's next turn."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["maps"],
+      "title": "Maps",
+      "sections": [
+        {
+          "text": [
+            "Every map you can see, with a preview; sub-maps stand indented under their map. Filter by layer and tag.",
+            "“New map” turns an uploaded or chosen image into a map. To put a map on the table, set “Map on the table” on the session — then it shows under Play."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["images"],
+      "title": "Images",
+      "sections": [
+        {
+          "text": [
+            "All images you can see. Filter by kind, tag, layer, or “unused” for images nothing refers to yet.",
+            "Each image names its resolution, aspect ratio, size and layer. Tags stand as badges: × removes one, “+ tag” adds one; select several images to tag them together.",
+            "“Use as…” turns an image into a map (with a grid suggested from its resolution), a creature's token or a prop, and links to the result."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["read/:layer"],
+      "title": "Reading a book",
+      "sections": [
+        {
+          "text": [
+            "A layer read as a book, chapter after chapter. The table of contents opens at the side; its chapters fold out.",
+            "Search finds a passage in this book. Where you stopped is remembered for your account, on every device.",
+            "A layer's article has the same reader under “Read”; a group of layers shows as a shelf."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["characters/new", "characters/:id/level-up", "characters/:id/edit"],
+      "title": "Character assistant",
+      "sections": [
+        {
+          "text": [
+            "The assistant walks through a character step by step: ancestry, class, background, ability scores, each open choice, then the name. A step you are unsure of can be left with “Decide later”. Its steps and options come from the articles in play — what the campaign's layers bring.",
+            "Level up is the same assistant on an existing character, and “Edit” on a character opens it too. “Full edit” on the article is the plain field form."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["artikel/:id"],
+      "title": "Article",
+      "sections": [
+        {
+          "text": [
+            "An article as a page of a book. “Edit” changes it; on an article you cannot write, Edit makes your own version in a layer of yours. Click a named article for its quick view; “Open article” goes there.",
+            "“Print” puts the article on an A4 sheet. Versions of the same article in other layers can be compared side by side."
+          ]
+        },
+        {
+          "heading": "Sessions",
+          "text": [
+            "A session article holds what is happening at the table: the map on the table, the running encounter and the scene. What the GM sets here reaches every screen at once — Play follows it."
+          ]
+        },
+        {
+          "heading": "Crafting (recipes)",
+          "text": [
+            "On a recipe, “Start crafting” makes a crafting order. Its material stays reserved in the inventory of the character and the party until the order ends.",
+            "“Work a day” advances an order; enter the roll where the recipe asks for a check. The GM accepts or rejects the result. How long crafting takes and what it costs are the campaign's rules."
+          ]
+        },
+        {
+          "heading": "Inventory",
+          "text": [
+            "Characters, parties and containers carry items in a grid: drag to move, rotate a piece, move it between character, party and container. Zones of a container say how long it takes to draw what lies there."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["artikel/:id/print"],
+      "title": "Print",
+      "sections": [
+        {
+          "text": [
+            "One view of the article on an A4 sheet. Choose the view, then print with your browser (Ctrl+P)."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["artikel/:id/compare/:other"],
+      "title": "Compare versions",
+      "sections": [
+        {
+          "text": [
+            "The article on the left, another version of it on the right, field by field. “Only differences” hides what is the same."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["compendium", "world", "story", "rules"],
+      "title": "Lists of articles",
+      "sections": [
+        {
+          "text": [
+            "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview.",
+            "Filter groups are saved filters of a page — reach them as tabs or from ▾ in the header. The layers shown follow the running campaign; change them in the popup under the brand.",
+            "“New article” creates one in your write layer."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["boards", "boards/:id"],
+      "title": "Boards",
+      "sections": [
+        {
+          "text": [
+            "A board is a canvas for one story article: place articles on it as cards, arrange them, and choose how large each card shows."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["classes", "classes/:id", "ancestries", "ancestries/:id", "backgrounds", "backgrounds/:id"],
+      "title": "Classes, ancestries and backgrounds",
+      "sections": [
+        {
+          "text": [
+            "An overview of the classes, ancestries and backgrounds in play, and a page for each with what it grants at which level."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["werkbank"],
+      "title": "Workbench",
+      "sections": [
+        {
+          "text": [
+            "For the GM and administrators: checks that find articles with gaps or broken links, and bulk changes with a preview and undo."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["registry"],
+      "title": "Registry",
+      "sections": [
+        {
+          "text": [
+            "The types of articles, their fields, edges, lists and views. A new type is a new row — create it here. Before something is removed, the registry counts what uses it.",
+            "“How it works” explains the model with a worked example."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["campaign"],
+      "title": "Campaign",
+      "sections": [
+        {
+          "text": [
+            "Members and their roles, invitations, the layers the campaign plays with, and its rules and options. GMs change the members; co-GMs see them."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["account"],
+      "title": "Account",
+      "sections": [
+        {
+          "text": [
+            "Your layers (“Make default” chooses where new articles go) and API tokens for scripts."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["whats-new"],
+      "title": "What's new",
+      "sections": [
+        {
+          "text": [
+            "What changed on this site, newest first; filter by area. The dot in the header goes out once you have read it. The ? on each page shows the entries for that page."
+          ]
+        }
+      ]
+    }
+  ],
+  "without": {
+    "login": "Before signing in there is no header and no help button."
+  }
+}
