@@ -164,6 +164,29 @@ const OFFEN = 8;
           </details>
         }
 
+        <!-- „Usable by <Figur>" (T-180): neben einer Voraussetzung. Was der
+             Server nicht prüfen kann, bleibt in der Liste und trägt ein „?". -->
+        @if (zeigtBrauchbar()) {
+          <details class="facette" open>
+            <summary class="leg">Usable by</summary>
+            <select class="brauchbar" aria-label="Usable by character" (change)="brauchbarSetzen($any($event.target).value)">
+              <option value="" [selected]="!usable()">Anyone</option>
+              @for (c of figuren(); track c.id) {
+                <option [value]="c.id" [selected]="usable() === c.id">{{ c.name }}</option>
+              }
+            </select>
+            @if (liste()?.facets?.usable; as u) {
+              <span class="leer"
+                >{{ u.hidden }} hidden that {{ u.name }} does not meet{{
+                  u.unknown ? '; ' + u.unknown + ' marked “?” could not be checked' : ''
+                }}</span
+              >
+            } @else if (usable()) {
+              <span class="leer">This character is not visible to you.</span>
+            }
+          </details>
+        }
+
         <!-- Ebenen filtert die Seite nicht selbst (T-186): sie folgt dem Stand der Kampagne. -->
         @if (stapel.laufend(); as k) {
           <p class="ebenen-hinweis">
@@ -306,6 +329,9 @@ const OFFEN = 8;
                       @if (z.status && z.status !== 'ready') {
                         <span class="stand">{{ z.status }}</span>
                       }
+                      @if (z.usable === 'unknown') {
+                        <span class="stand" title="The requirement could not be checked against this character">?</span>
+                      }
                       @if ((z.users ?? 0) > 1) {
                         <span class="stand" title="Statblocks using this">used by {{ z.users }}</span>
                       } @else if (z.users === 1 && filter.teile()) {
@@ -396,6 +422,8 @@ export class Kompendium {
   readonly view = input<string | undefined>(undefined);
   /** Die Facetten aus der Adresse (`?f=Spell.school:evocation`, T-174) — ein geteilter Link zeigt dieselbe Wahl. */
   readonly f = input<string | string[] | undefined>(undefined);
+  /** „Usable by <Figur>" aus der Adresse (`?usable=<id>`, T-180). */
+  readonly usable = input<string | undefined>(undefined);
 
   protected readonly OFFEN = OFFEN;
   protected readonly bestand = inject(Bestand);
@@ -531,8 +559,28 @@ export class Kompendium {
       offset: this.filter.blatt() * BLATT,
       limit: BLATT,
       f,
+      usable: this.usable() || undefined,
     };
   });
+
+  /** Die Figuren für „Usable by" (T-180) — geholt, sobald eine Voraussetzung dasteht. */
+  protected readonly figuren = signal<{ id: string; name: string }[]>([]);
+  private figurenGeholt = false;
+  protected readonly zeigtBrauchbar = computed(
+    () => !!this.usable() || (this.liste()?.facets.fields ?? []).some((f) => f.kind === 'enum' && f.of === 'requirement'),
+  );
+  private readonly figurenLaden = effect(() => {
+    if (!this.zeigtBrauchbar() || this.figurenGeholt) return;
+    this.figurenGeholt = true;
+    void this.api
+      .list({ of: ['PlayerCharacter'], limit: 100 })
+      .then((r) => this.figuren.set(r.rows.map((z) => ({ id: z.id, name: z.name }))))
+      .catch(() => (this.figurenGeholt = false));
+  });
+  protected brauchbarSetzen(id: string): void {
+    this.filter.blatt.set(0);
+    void this.router.navigate([], { queryParams: { usable: id || null }, queryParamsHandling: 'merge' });
+  }
 
   private async hole(frage: ListenFrage): Promise<void> {
     const nr = ++this.lauf;
