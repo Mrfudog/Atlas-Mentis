@@ -74,6 +74,8 @@ export interface Stueck {
     | 'fluss'
     /** Die Leseansicht (T-191): das Buch der Ebene, über die ganze Breite. */
     | 'leser'
+    /** Der Inhalt einer Quelle als Baum mit der Wahl der Kampagne (T-189). */
+    | 'inhalt'
     /** Die Klassenübersicht (T-191). */
     | 'klasse'
     /** Die Übersicht einer Herkunft oder eines Hintergrunds (T-191). */
@@ -345,6 +347,10 @@ export function anordnen(
          in der Tabelle (`BOOK_CARDS`). */
       case 'reader':
         out.push({ id: el.id, art: 'leser' });
+        break;
+      /* Der Inhalt einer Quelle (T-189): die Komponente fragt den Server. */
+      case 'contents':
+        out.push({ id: el.id, art: 'inhalt' });
         break;
       case 'classOverview':
       case 'originOverview':

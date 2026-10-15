@@ -114,6 +114,13 @@
           ]
         },
         {
+          "heading": "Layers: what a source brings",
+          "text": [
+            "Contents lists the articles of a layer by type, each linked; a group lists its layers. The ticks show what the current campaign has in play.",
+            "The GM turns the layer on or off, picks which types it brings, and enables single articles from a source that is not in play. Articles that come with the layer stay ticked; a layer brought by its group or a type rule is chosen on the campaign page."
+          ]
+        },
+        {
           "heading": "Classes, ancestries and backgrounds",
           "text": [
             "A class shows its level table, its subclasses to pick and compare, and its features by level; an ancestry or background its variants and traits."

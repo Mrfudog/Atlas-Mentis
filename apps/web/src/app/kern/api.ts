@@ -1867,6 +1867,10 @@ export class Api {
       { method: 'PUT', body: JSON.stringify(rule ?? {}) },
     );
   }
+  /** Der Inhalt einer Quelle als Baum, mit dem Stand in der laufenden Kampagne (T-189). */
+  layerContents(layer: string): Promise<Quelleninhalt> {
+    return this.call<Quelleninhalt>(`/api/layers/${encodeURIComponent(layer)}/contents`);
+  }
   /** Einen Artikel einzeln freigeben oder zurücknehmen (T-187). */
   setEnabled(campaign: string, id: string, on: boolean): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/enabled/${encodeURIComponent(id)}`, {
@@ -2013,4 +2017,31 @@ export interface WurfLog {
   sessions: { id: string; name: string }[];
   subjects: string[];
   leitet: boolean;
+}
+
+/** Der Inhaltsbaum einer Quelle (T-189, `GET /api/layers/:layer/contents`). */
+export interface Quelleninhalt {
+  layer: { id: string; name: string; group?: true };
+  campaign: { id: string; name: string } | null;
+  /** `manage`: ändern; `see`: nur sehen; `null`: keine Leitung dieser Kampagne. */
+  may: 'manage' | 'see' | null;
+  state: {
+    inPlay: boolean;
+    own: boolean;
+    only?: { areas?: string[]; types?: string[] };
+    brings?: { areas?: string[]; types?: string[] };
+    ruleFrom?: { id: string; name: string };
+    compare?: true;
+    off?: true;
+  };
+  types?: {
+    type: string;
+    label: string;
+    area: string;
+    on: boolean;
+    articles: { id: string; name: string; state: 'layer' | 'enabled' | 'off'; replaced?: true; blocked?: true }[];
+  }[];
+  layers?: { id: string; name: string; group?: true; articles: number; inPlay: boolean }[];
+  removes?: number;
+  onlyInPlay?: true;
 }

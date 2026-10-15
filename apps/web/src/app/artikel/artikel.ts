@@ -83,6 +83,7 @@ import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
 import { Verlinkt } from './verlinkt';
 import { Lesen } from '../lesen/lesen';
+import { Quelleninhalt } from './quelleninhalt';
 import { KampagnenReiter } from './ebenen-reiter';
 import { Klasse } from '../klassen/klasse';
 import { Herkunft } from '../klassen/herkunft';
@@ -168,6 +169,7 @@ interface Feld {
     Karte,
     Verlinkt,
     Lesen,
+    Quelleninhalt,
     Klasse,
     Herkunft,
     KampagnenReiter,
@@ -749,6 +751,10 @@ interface Feld {
                   }
                   @case ('fluss') {
                     <nw-fluss [besitzer]="e" />
+                  }
+                  <!-- Was die Quelle bringt, als Baum mit der Wahl der Kampagne (T-189). -->
+                  @case ('inhalt') {
+                    <nw-quelleninhalt [layer]="e.id" />
                   }
                   <!-- Die Übersichten (T-191): früher /classes/:id und /ancestries/:id. -->
                   @case ('klasse') {
