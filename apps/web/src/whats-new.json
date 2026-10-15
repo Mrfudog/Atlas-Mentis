@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-map-tool-bar",
+      "date": "2026-10-15",
+      "title": "Map tools in a tool bar, and fullscreen",
+      "text": "The map has a tool bar on the left: Select, Tokens, Measure and Fog, each with its tools above the map and a key (S, T, M, F). Fullscreen (Shift+F) gives the map the whole screen; on Play the turn planner stays with it. Boards open from a button.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-usable-by",
       "date": "2026-10-15",
       "title": "Filter by prerequisite and effect, and show what a character can use",
