@@ -13,8 +13,11 @@
 -- Der Seed schreibt nur in eine leere Datenbank, also kommt das hier nach.
 -- Nichts fällt weg.
 
+-- Nur in eine Installation, die schon Aufzählungen hat: in einer frischen
+-- schreibt der Seed sie alle, und eine einzelne Zeile vorab hielte ihn davon ab.
 insert into enum_def (name, config)
-values ('EncounterKind', '{"name":"EncounterKind","label":"Encounter kind","values":["combat","social","puzzle","exploration","hazard","trap","resource","story"]}'::jsonb)
+select 'EncounterKind', '{"name":"EncounterKind","label":"Encounter kind","values":["combat","social","puzzle","exploration","hazard","trap","resource","story"]}'::jsonb
+ where exists (select 1 from enum_def)
 on conflict (name) do nothing;
 
 update interface_def
