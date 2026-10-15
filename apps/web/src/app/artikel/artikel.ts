@@ -367,6 +367,15 @@ interface Feld {
             @if (bestand.vergleich().has(e.id)) {
               <p class="band-fertig band-vergleich" role="status">
                 <span>This version comes from a compare layer. It is not in play in this campaign.</span>
+                <!-- Einzeln freigeben (T-187): Extra-Inhalt, ohne das Buch aufzuschalten. -->
+                @if (bestand.freigabe().get(e.id); as f) {
+                  <button type="button" class="klein" [disabled]="freigabeLaeuft()" (click)="freigeben(f.campaign, true)">Enable in campaign</button>
+                }
+              </p>
+            } @else if (bestand.freigabe().get(e.id)?.enabled) {
+              <p class="band-fertig band-vergleich" role="status">
+                <span>Enabled as extra content: in play in this campaign, its layer is not.</span>
+                <button type="button" class="klein" [disabled]="freigabeLaeuft()" (click)="freigeben(bestand.freigabe().get(e.id)!.campaign, false)">Disable</button>
               </p>
             }
 
@@ -1072,6 +1081,21 @@ export class Artikel implements SchnellKontext {
   }
 
   /** „ready" ohne die Maske: der neue Stand gilt (REQ-237). */
+  protected readonly freigabeLaeuft = signal(false);
+  /** Einzeln freigeben oder zurücknehmen (T-187), danach neu holen: Band und Fassungen ändern sich. */
+  protected async freigeben(campaign: string, on: boolean): Promise<void> {
+    const id = this.id();
+    this.freigabeLaeuft.set(true);
+    try {
+      await this.api.setEnabled(campaign, id, on);
+      await this.bestand.oeffnen(id, true);
+    } catch (error) {
+      this.problem.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.freigabeLaeuft.set(false);
+    }
+  }
+
   protected async fertigNennen(): Promise<void> {
     const id = this.id();
     try {
