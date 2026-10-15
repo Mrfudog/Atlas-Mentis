@@ -3,7 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
 import { areaOf } from '@nw/model';
-import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
+import { Api, type Ebenenauswahl, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 
@@ -71,6 +71,42 @@ export function gruppenHaken(g: Pick<KampagnenEbene, 'inPlay'>, buecher: readonl
   return an === buecher.length ? 'an' : an === 0 ? 'aus' : 'teils';
 }
 
+/** Der Stand, den eine gespeicherte Auswahl festhält (T-186): der Stapel von unten nach oben und was trotz Gruppe aus ist. */
+export function auswahlAusStand(layers: readonly KampagnenEbene[]): { layers: string[]; off: string[] } {
+  return { layers: layers.filter((x) => x.active).map((x) => x.id), off: layers.filter((x) => x.off).map((x) => x.id) };
+}
+
+/**
+ * **Eine gespeicherte Auswahl laden** (T-186): was davon noch da ist und
+ * sich hier aufschalten lässt, in ihrer Reihenfolge. Was fehlt — gelöscht,
+ * oder eine Ebene einer anderen Kampagne —, wird gezählt und nicht still
+ * übergangen.
+ */
+export function auswahlAnwenden(
+  set: Pick<Ebenenauswahl, 'layers' | 'off'>,
+  layers: readonly Pick<KampagnenEbene, 'id' | 'name' | 'active' | 'canActivate'>[],
+): { layers: string[]; off: string[]; fehlt: number } {
+  const m = new Map(layers.map((x) => [x.id, x]));
+  const an = set.layers.filter((id) => {
+    const l = m.get(id);
+    return !!l && (l.active || l.canActivate);
+  });
+  const off = set.off.filter((id) => m.has(id));
+  return { layers: an, off, fehlt: set.layers.length - an.length + (set.off.length - off.length) };
+}
+
+/** Steht der Stapel gerade so, wie die Auswahl sagt? Die Reihenfolge zählt, die der Abschaltungen nicht. */
+export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: readonly KampagnenEbene[]): boolean {
+  const jetzt = auswahlAusStand(layers);
+  const off = new Set(jetzt.off);
+  return (
+    jetzt.layers.length === set.layers.length &&
+    jetzt.layers.every((id, i) => id === set.layers[i]) &&
+    off.size === new Set(set.off).size &&
+    set.off.every((id) => off.has(id))
+  );
+}
+
 /**
  * **Die Ebenen einer Kampagne** (T-069, E-008) — auf der Kampagnenseite,
  * unter den Mitgliedern: je Ebene ein Häkchen (aufgeschaltet ja/nein) und
@@ -135,6 +171,75 @@ export function gruppenHaken(g: Pick<KampagnenEbene, 'inPlay'>, buecher: readonl
         <p class="fehler" role="alert">{{ f }}</p>
       }
       @if (daten(); as d) {
+        <!-- Gespeicherte Auswahlen (T-186): der Stapel unter einem Namen, je Konto. -->
+        <details class="sets" [open]="offen().has('sets')" (toggle)="merke('sets', $event)">
+          <summary>
+            <span class="gname">Saved selections</span>
+            <span class="dim">{{ sets().length }} saved</span>
+          </summary>
+          @if (setHinweis(); as h) {
+            <p class="fuss" role="status">{{ h }}</p>
+          }
+          <ul class="setliste">
+            @for (s of sets(); track s.id) {
+              <li [class.gilt]="gilt(s)">
+                <details class="setinhalt">
+                  <summary>
+                    <span class="name">{{ s.name }}</span>
+                    <span class="dim">
+                      {{ s.layers.length }} {{ s.layers.length === 1 ? 'layer' : 'layers' }}
+                      @if (s.off.length) {
+                        · {{ s.off.length }} off
+                      }
+                      · {{ s.campaign ? 'this campaign' : 'any campaign' }}
+                      @if (gilt(s)) {
+                        · <b>in play now</b>
+                      }
+                    </span>
+                  </summary>
+                  <ul class="setnamen">
+                    @for (id of s.layers; track id) {
+                      <li>{{ nameVon(id) }}</li>
+                    }
+                    @for (id of s.off; track id) {
+                      <li class="dim">without {{ nameVon(id) }}</li>
+                    }
+                  </ul>
+                </details>
+                <span class="knoepfe">
+                  <button
+                    type="button"
+                    class="klein"
+                    [disabled]="d.may !== 'manage' || laeuft() || gilt(s)"
+                    [title]="d.may === 'manage' ? 'Put exactly these layers in play' : 'The GM loads selections'"
+                    (click)="auswahlLaden(s)"
+                  >
+                    Load
+                  </button>
+                  <button type="button" class="klein" [attr.aria-label]="'Delete ' + s.name" [disabled]="laeuft()" (click)="auswahlLoeschen(s)">×</button>
+                </span>
+              </li>
+            } @empty {
+              <li class="dim">Nothing saved yet. Save what is in play now to come back to it with one click.</li>
+            }
+          </ul>
+          <form class="setneu" (submit)="auswahlSpeichern($event)">
+            <input
+              type="text"
+              aria-label="Name of the selection"
+              placeholder="Name, e.g. Only 2014 rules"
+              maxlength="80"
+              [value]="setName()"
+              (input)="setName.set($any($event.target).value)"
+            />
+            <label class="haken">
+              <input type="checkbox" [checked]="setNurHier()" (change)="setNurHier.set(!setNurHier())" />
+              only this campaign
+            </label>
+            <button type="submit" class="klein" [disabled]="!setName().trim() || laeuft()">Save current</button>
+          </form>
+          <p class="fuss">Saved for your account. Loading one sets the layers in play for everyone in the campaign.</p>
+        </details>
         <ul class="ebenen">
           @for (l of oben(); track l.id; let i = $index, last = $last) {
             <li [class.aus]="!l.active">
@@ -424,6 +529,67 @@ export function gruppenHaken(g: Pick<KampagnenEbene, 'inPlay'>, buecher: readonl
         margin: 0 1rem 1rem;
       }
     }
+    /* Gespeicherte Auswahlen (T-186): aufklappbar wie die Gruppen, je Auswahl ihr Inhalt. */
+    .sets {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+    }
+    .sets > summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: baseline;
+      min-height: 32px;
+      cursor: pointer;
+    }
+    .setliste {
+      list-style: none;
+      margin: 0.3rem 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .setliste > li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.4rem;
+      padding: 0.2rem 0;
+      border-bottom: 1px solid var(--line2, var(--line));
+    }
+    .setliste > li.gilt .name {
+      color: var(--accent);
+    }
+    .setinhalt {
+      flex: 1 1 14rem;
+      min-width: 0;
+    }
+    .setinhalt summary {
+      cursor: pointer;
+    }
+    .setinhalt .dim {
+      margin-left: 0.3rem;
+    }
+    .setnamen {
+      margin: 0.2rem 0 0.2rem 1.2rem;
+      padding: 0;
+      font-size: 0.85rem;
+    }
+    .setneu {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 0.3rem 0;
+    }
+    .setneu input[type='text'] {
+      flex: 1 1 12rem;
+      min-width: 0;
+      min-height: 36px;
+    }
     .kasten.kompakt {
       margin: 0;
       padding: 0;
@@ -694,6 +860,7 @@ export class KampagnenEbenenListe {
       const c = this.kampagne();
       void this.laden(c);
     });
+    void this.setsLaden();
   }
 
   /**
@@ -1071,6 +1238,66 @@ export class KampagnenEbenenListe {
       this.fehler.set(error instanceof Error ? error.message : String(error));
     } finally {
       this.laeuft.set(false);
+    }
+  }
+
+  /** Die gespeicherten Auswahlen (T-186): die dieses Kontos ohne Kampagne und die für diese. */
+  private readonly alleSets = signal<Ebenenauswahl[]>([]);
+  protected readonly sets = computed(() => this.alleSets().filter((s) => !s.campaign || s.campaign === this.kampagne()));
+  protected readonly setName = signal('');
+  protected readonly setNurHier = signal(true);
+  protected readonly setHinweis = signal<string | null>(null);
+
+  private async setsLaden(): Promise<void> {
+    try {
+      this.alleSets.set((await this.api.layerSets()).sets);
+    } catch {
+      /* Ohne Antwort bleibt die Liste leer — Häkchen gehen trotzdem. */
+    }
+  }
+
+  protected gilt(s: Ebenenauswahl): boolean {
+    return auswahlGilt(s, this.daten()?.layers ?? []);
+  }
+
+  protected nameVon(id: string): string {
+    return this.nachId().get(id)?.name ?? 'a layer that is gone';
+  }
+
+  protected async auswahlSpeichern(ev: Event): Promise<void> {
+    ev.preventDefault();
+    const name = this.setName().trim();
+    if (!name) return;
+    const stand = auswahlAusStand(this.daten()?.layers ?? []);
+    try {
+      const neu = await this.api.saveLayerSet({ name, campaign: this.setNurHier() ? this.kampagne() : null, ...stand });
+      this.alleSets.update((l) => (l.some((x) => x.id === neu.id) ? l.map((x) => (x.id === neu.id ? neu : x)) : [...l, neu]));
+      this.setName.set('');
+      this.setHinweis.set(`Saved “${neu.name}”.`);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  protected async auswahlLaden(s: Ebenenauswahl): Promise<void> {
+    const r = auswahlAnwenden(s, this.daten()?.layers ?? []);
+    this.fehler.set(null);
+    await this.schreiben(r.layers, undefined, r.off);
+    if (this.fehler()) return;
+    this.setHinweis.set(
+      r.fehlt
+        ? `Loaded “${s.name}” — ${r.fehlt} ${r.fehlt === 1 ? 'layer is' : 'layers are'} gone or belong to another campaign and stayed out.`
+        : `Loaded “${s.name}”.`,
+    );
+  }
+
+  protected async auswahlLoeschen(s: Ebenenauswahl): Promise<void> {
+    try {
+      await this.api.deleteLayerSet(s.id);
+      this.alleSets.update((l) => l.filter((x) => x.id !== s.id));
+      this.setHinweis.set(`Deleted “${s.name}”.`);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
     }
   }
 

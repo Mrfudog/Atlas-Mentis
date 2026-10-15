@@ -447,3 +447,22 @@ tr.unter td {
 .reiter a + .reiter-knopf {
   margin-left: auto;
 }
+
+/* Wo früher die Ebenen-Häkchen standen (T-186): der Weg zum globalen Stand. */
+.ebenen-hinweis {
+  margin: 0;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--line2);
+  font-size: 0.82rem;
+  color: var(--dim);
+}
+.ebenen-hinweis .link {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

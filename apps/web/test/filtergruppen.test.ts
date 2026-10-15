@@ -56,9 +56,9 @@ describe('Filtergruppen', () => {
   it('seeds the sidebar once per group, then the page owns it', () => {
     const f = TestBed.inject(ListenFilter);
     f.betrete('world|orte');
-    f.saeen('orte', { q: 'fog', nolayer: ['ly_x'] });
+    f.saeen('orte', { q: 'fog', f: ['Place.kind:city'] });
     expect(f.suche()).toBe('fog');
-    expect([...f.ohneEbenen()]).toEqual(['ly_x']);
+    expect(f.felder()).toEqual({ 'Place.kind': { values: ['city'] } });
     f.suche.set('gate');
     /* Zurück vom Artikel: dieselbe Gruppe sät nicht noch einmal. */
     f.betrete('world|orte');

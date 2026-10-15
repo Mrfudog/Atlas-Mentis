@@ -11,8 +11,10 @@ import { Filtergruppen } from '../kern/filtergruppen';
  * Angeboten werden die Arten **dieser Seite** (`area` am Typ, flach und
  * alphabetisch wie jede Typenliste), die Stände aus der Zeile `State` und
  * die Marken, die die Liste gerade zählt. Beim Anlegen steht vorgefüllt,
- * was die Seite gerade zeigt: die gewählte Art, die Suche, die abgewählten
- * Ebenen — „Save as group" heisst, diesen Blick behalten.
+ * was die Seite gerade zeigt: die gewählte Art, die Suche, die Facetten —
+ * „Save as group" heisst, diesen Blick behalten. Ebenen nicht (T-186): die
+ * sagt der globale Stand, und Auswahlen davon speichert das Popup der
+ * Kopfleiste.
  */
 @Component({
   selector: 'nw-filtergruppe',
@@ -163,13 +165,6 @@ import { Filtergruppen } from '../kern/filtergruppen';
           <span class="leg">Start with search</span>
           <input type="search" [value]="suche()" (input)="suche.set($any($event.target).value)" />
         </label>
-        @if (ebenenAus().length) {
-          <label class="haken">
-            <input type="checkbox" [checked]="mitEbenen()" (change)="mitEbenen.set(!mitEbenen())" />
-            Start with {{ ebenenAus().length }}
-            {{ ebenenAus().length === 1 ? 'layer' : 'layers' }} unchecked
-          </label>
-        }
       </div>
 
       @if (fehler(); as f) {
@@ -308,8 +303,8 @@ export class FiltergruppeMaske implements OnInit {
   protected readonly stand = signal<string[]>([]);
   protected readonly marken = signal<string[]>([]);
   protected readonly suche = signal('');
-  protected readonly ebenenAus = signal<string[]>([]);
-  protected readonly mitEbenen = signal(true);
+  /** Die Facetten (T-174) — die Maske zeigt sie nicht, behält sie aber. */
+  private facetten: string[] = [];
   protected readonly laeuft = signal(false);
   protected readonly fehler = signal<string | null>(null);
 
@@ -324,7 +319,7 @@ export class FiltergruppeMaske implements OnInit {
     this.stand.set([...(f.status ?? [])]);
     this.marken.set([...(f.tag ?? [])]);
     this.suche.set(f.q ?? '');
-    this.ebenenAus.set([...(f.nolayer ?? [])]);
+    this.facetten = [...(f.f ?? [])];
   }
 
   /** Die Arten dieser Seite — was `area` dorthin stellt; im Kompendium jede mit Bereich. */
@@ -371,9 +366,7 @@ export class FiltergruppeMaske implements OnInit {
     if (this.stand().length) f.status = this.stand();
     if (this.marken().length) f.tag = this.marken();
     if (this.suche().trim()) f.q = this.suche().trim();
-    if (this.mitEbenen() && this.ebenenAus().length) f.nolayer = this.ebenenAus();
-    const alt = this.gruppe()?.filter;
-    if (alt?.layer?.length) f.layer = alt.layer;
+    if (this.facetten.length) f.f = this.facetten;
     return f;
   }
 
