@@ -145,6 +145,7 @@ import { registerKarten } from './karten.js';
 import { registerKartenliste } from './kartenliste.js';
 import { registerRegeloptionen } from './regeloptionen.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
+import { registerKampfstart } from './kampfstart.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
 import {
@@ -1165,6 +1166,8 @@ export function buildApp({
     if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/(decide|react))?$/.test(url) && request.method === 'POST') return;
     /* Die eigene Figur ziehen (T-204): die Route prüft Figur, Kampf und Kampagnenregel selbst (`zugplan.ts`). */
     if (/^\/api\/maps\/[^/]+\/move$/.test(url) && request.method === 'POST') return;
+    /* Eine Begegnung beginnen (T-203): die Route prüft die Leitung selbst (`kampfstart.ts`). */
+    if (/^\/api\/encounters\/[^/]+\/start$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -3328,6 +3331,8 @@ export function buildApp({
   /* Der Zugplan auf der Karte (T-198): planen, einreichen, bestätigen —
      gewürfelt wird beim Bestätigen, ins Log (T-172). */
   registerZugplan(app, { repo, feed: live, viewerOf, roh, sieve, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
+  /* Eine Begegnung beginnen (T-203): Initiative, vorplatzierte Tokens, die Sitzung führt sie. */
+  registerKampfstart(app, { repo, feed: live, viewerOf, roh, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
   /* Karten finden (T-202): die Liste unter Play › Maps und wo eine Karte vorkommt. */
   registerKartenliste(app, { roh, sieve });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */

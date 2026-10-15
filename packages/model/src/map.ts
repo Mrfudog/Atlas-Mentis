@@ -184,6 +184,8 @@ export interface MapMarker {
   ratio: number;
   note: string;
   hidden: boolean;
+  /** Vorplatziert für diese Begegnung (`props.encounter`, T-203); leer: nicht. */
+  prepared: EntityId | '';
 }
 
 export function markerOf(rel: Relation): MapMarker {
@@ -200,6 +202,7 @@ export function markerOf(rel: Relation): MapMarker {
     ratio: zahl(p['ratio'], 1) > 0 ? zahl(p['ratio'], 1) : 1,
     note: typeof p['note'] === 'string' ? p['note'] : '',
     hidden: p['hidden'] === true,
+    prepared: typeof p['encounter'] === 'string' ? p['encounter'] : '',
   };
 }
 
@@ -248,6 +251,8 @@ export function placeTokens(
   step: number,
   ar: number,
   idFor: (to: EntityId) => string,
+  /** Vorplatzieren für diese Begegnung (T-203): versteckt, bis sie beginnt. */
+  prepareFor?: EntityId,
 ): Entity {
   const da = new Set(markersOf(map).map((m) => m.to));
   const neu = [...new Set(targets)].filter((t) => t && !da.has(t));
@@ -259,14 +264,47 @@ export function placeTokens(
   neu.forEach((to, i) => {
     const x = centre.x + ((i % spalten) - (spalten - 1) / 2) * step;
     const y = centre.y + (Math.floor(i / spalten) - (zeilen - 1) / 2) * dy;
-    e = addMarker(e, to, { x, y }, idFor(to), 'play');
+    e = prepareFor ? prepareMarker(e, to, { x, y }, idFor(to), prepareFor) : addMarker(e, to, { x, y }, idFor(to), 'play');
   });
   return e;
 }
 
-/** Die Spiel-Tokens weg (nach dem Kampf); Vorbereitetes und die Gruppe bleiben. */
+/**
+ * **Ein Token vorplatzieren** (T-203): ein Spiel-Token, versteckt
+ * (`hidden`, also nur für die Leitung, `redactMap`) und mit der Begegnung,
+ * für die es steht (`encounter`). „Start encounter" deckt es auf
+ * (`startPrepared`).
+ */
+export function prepareMarker(map: Entity, to: EntityId, at: Pt, id: string, encounter: EntityId): Entity {
+  const e = addMarker(map, to, at, id, 'play');
+  return {
+    ...e,
+    relations: (e.relations ?? []).map((r) => (r.id === id ? { ...r, props: { ...r.props, hidden: true, encounter } } : r)),
+  };
+}
+
+/** Die vorplatzierten Tokens einer Begegnung werden Spiel-Tokens: sichtbar, ohne Vermerk. */
+export function startPrepared(map: Entity, encounter: EntityId): Entity {
+  return {
+    ...map,
+    relations: (map.relations ?? []).map((r) => {
+      if (r.type !== MARKER_RELATION || markerOf(r).prepared !== encounter) return r;
+      const { hidden: _h, encounter: _e, ...rest } = (r.props ?? {}) as Record<string, unknown>;
+      return { ...r, props: rest };
+    }),
+  };
+}
+
+/** Die Spiel-Tokens weg (nach dem Kampf); Vorbereitetes, Vorplatziertes und die Gruppe bleiben. */
 export function clearPlayTokens(map: Entity): Entity {
-  return { ...map, relations: (map.relations ?? []).filter((r) => r.type !== MARKER_RELATION || markerOf(r).kind !== 'play') };
+  return {
+    ...map,
+    relations: (map.relations ?? []).filter((r) => {
+      if (r.type !== MARKER_RELATION) return true;
+      const m = markerOf(r);
+      return m.kind !== 'play' || !!m.prepared;
+    }),
+  };
 }
 
 /**
