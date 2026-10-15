@@ -137,7 +137,7 @@ import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
 import { registerRegeloptionen } from './regeloptionen.js';
-import { registerZugplan } from './zugplan.js';
+import { registerZugplan, zugSperre } from './zugplan.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
 import {
@@ -1155,7 +1155,7 @@ export function buildApp({
     /* Geben (T-150): die Route fragt `mayWrite` am Inventar selbst (`stueck.ts`). */
     if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
     /* Der Zugplan (T-198): die Routen prüfen Figur und Leitung selbst (`zugplan.ts`). */
-    if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/decide)?$/.test(url) && request.method === 'POST') return;
+    if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/(decide|react))?$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -3330,6 +3330,15 @@ export function buildApp({
     const gesperrt = await reservierteSperre(repo, await viewerOf(request), await repo.getEntity(entity.id), entity);
     /* 423 und nicht 409: ein 409 heisst in der Maske „neu laden und zusammenführen". */
     if (gesperrt) return { code: 423, body: { error: gesperrt } };
+
+    /* **Im Kampf zieht niemand frei** (T-198, Runde 2): läuft auf dieser
+       Karte eine Begegnung, bewegen Spielende Tokens nur über den Zugplan. */
+    if (vorherRoh && isMap(vorherRoh)) {
+      const alleJetzt = await repo.listEntities();
+      const kampagneJetzt = currentCampaign(new Map(alleJetzt.map((e) => [e.id, e])), (await repo.getRegistry()).settings ?? null);
+      const sperre = zugSperre(await viewerOf(request), alleJetzt, vorherRoh, entity, kampagneJetzt?.id ?? null);
+      if (sperre) return { code: 423, body: { error: sperre } };
+    }
 
     /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
        `maySetReady` ist, macht aus einem unfertigen Artikel keinen

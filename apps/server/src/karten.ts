@@ -23,6 +23,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   currentCampaign,
+  encounterOnMap,
   entityName,
   fogOn,
   frameOf,
@@ -43,7 +44,6 @@ import {
 import type { Repository } from './repo.js';
 
 const SESSION_TYPE = 'Session';
-const ENCOUNTER_TYPE = 'Encounter';
 
 interface Stand {
   alle: Entity[];
@@ -175,18 +175,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
        laufende mit `onMap` hierher. */
     let turn: KartenKontext['turn'] = null;
     let combatants: KartenKontext['combatants'] = [];
-    const hierher = (e: Entity) => (e.relations ?? []).some((r) => r.type === 'onMap' && r.to === karte.id);
-    const laufend = (e: Entity) => Number((e.components?.['Encounter'] as { round?: unknown } | undefined)?.round) >= 1;
-    const gefuehrt = new Set(
-      stand.alle
-        .filter((e) => primaryInterface(e) === SESSION_TYPE)
-        .map((e) => (e.components?.['SessionState'] as { activeEncounter?: unknown } | undefined)?.activeEncounter)
-        .filter((x): x is string => typeof x === 'string'),
-    );
-    const kaempfe = stand.alle
-      .filter((e) => primaryInterface(e) === ENCOUNTER_TYPE && hierher(e))
-      .sort((a, b) => Number(gefuehrt.has(b.id)) - Number(gefuehrt.has(a.id)) || Number(laufend(b)) - Number(laufend(a)) || a.id.localeCompare(b.id));
-    const [kampfRoh] = kaempfe.filter((e) => gefuehrt.has(e.id) || laufend(e));
+    const kampfRoh = encounterOnMap(stand.alle, karte.id);
     const [kampf] = kampfRoh ? await sieve(request, [kampfRoh], stand.map) : [];
     if (kampfRoh && kampf) {
       const gm = leitetKarte && (await leitet(request, kampfRoh, stand.map));

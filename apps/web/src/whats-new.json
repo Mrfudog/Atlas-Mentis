@@ -9,6 +9,23 @@
       "link": "/images"
     },
     {
+      "id": "2026-10-15-opportunity-attacks",
+      "date": "2026-10-15",
+      "title": "Opportunity attacks in the turn planner",
+      "text": "When a planned move leaves an enemy's reach, the map marks the square with ⚠ and the turn says who it provokes — Disengage first to avoid it. As the turn plays out, whoever may react is asked “Opportunity attack?”: Attack rolls into the log and uses the reaction until that creature's next turn. During an encounter, player tokens move only through the turn plan.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-statblock-key-numbers",
+      "date": "2026-10-15",
+      "title": "Quick view of a statblock shows its key numbers",
+      "text": "Clicking a statblock or a creature — in the compendium preview, a popup, on a board or a map token — now shows AC, HP, speed, initiative, passive Perception and CR as one row of tiles; a character adds its current HP and conditions. The full statblock as in the book stays on the article page.",
+      "area": "Rules",
+      "link": "/rules",
+      "query": { "type": "Statblock" }
+    },
+    {
       "id": "2026-10-15-rules-and-options",
       "date": "2026-10-15",
       "title": "A campaign shows the rules it plays by",

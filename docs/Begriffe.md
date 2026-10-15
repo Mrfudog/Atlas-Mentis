@@ -592,6 +592,20 @@ Sonderfall: ein Statblock liest sich wie im Monster Manual, weil am Typ
 Namen „Statblock" fragt. Eine eigene Art, die von `Statblock` erbt, liest
 sich ebenso; eine, die etwas anderes will, sagt es an sich.
 
+**Die Kennzahlen** (T-206, 15.10.2026) folgen derselben Regel an einem
+anderen Ort: die Kurzansicht eines Statblocks war der ganze Bogen und damit
+länger als alles daneben. Am Tisch braucht man in einem Blick AC, HP,
+Bewegung, Initiative, passive Wahrnehmung und CR — also steht an
+`Statblock` für `quick` das Element `stats`, und an `Creature` dasselbe,
+gelesen über `belongsTo` mit ihrem Stand (HP jetzt/Maximum, Zustände). Dass
+es ein Element ist und keine Feldliste in der Ansicht, hat denselben Grund
+wie beim Bogen: zwei der sechs Zahlen sind gerechnet, und sie stammen aus
+drei Karten. Ein Obertyp „Kampfkennzahlen" hätte dafür `ac`, `hp`, `speed`
+und `cr` aus der Karte `Statblock` in eine eigene verschieben müssen — eine
+Wanderung jedes Statblocks für eine Frage der Darstellung. So gilt:
+`overview` < `quick` < `full` — Herausforderung und Art im Verweis, die
+Kennzahlen auf der Karte, der Bogen auf der Seite.
+
 ---
 
 ## Block

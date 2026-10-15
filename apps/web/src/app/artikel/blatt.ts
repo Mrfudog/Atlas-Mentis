@@ -8,6 +8,7 @@ import { anordnen, feldZellen, mitLeeren, prosaVon } from './anordnung';
 import { Fluss } from './fluss';
 import { Gegenstand } from './gegenstand';
 import { Statblock } from './statblock';
+import { Kennzahlen } from './kennzahlen';
 import { Text } from './text';
 import { Zauber } from './zauber';
 import { Bild, bildDes } from './bild';
@@ -25,12 +26,15 @@ import { Bild, bildDes } from './bild';
  */
 @Component({
   selector: 'nw-blatt',
-  imports: [RouterLink, Text, Statblock, Zauber, Gegenstand, Abschnitte, Fluss, Bild],
+  imports: [RouterLink, Text, Statblock, Kennzahlen, Zauber, Gegenstand, Abschnitte, Fluss, Bild],
   template: `
     @for (st of stuecke(); track st.id) {
       @switch (st.art) {
         @case ('statblock') {
           <nw-statblock [artikel]="artikel()" />
+        }
+        @case ('stats') {
+          <nw-kennzahlen [artikel]="artikel()" />
         }
         @case ('spell') {
           <nw-zauber [artikel]="artikel()" [scopes]="scopes()" />

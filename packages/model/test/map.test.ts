@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cellAt,
+  movedTokens,
   clearPlayTokens,
   placeTokens,
   turnOf,
@@ -267,5 +268,22 @@ describe('play tokens and the turn (REQ-135, REQ-144)', () => {
     const t = turnOf(new Map(), enc);
     expect([t.current?.to, t.next?.to]).toEqual(['a', 'b']);
     expect(turnOf(new Map(), { ...enc, components: { Encounter: { round: 0 } } })).toEqual({});
+  });
+});
+
+describe('movedTokens (T-198, Runde 2)', () => {
+  const karte = (x: number): Entity => ({
+    id: 'm', name: 'm', interfaces: ['Map'], components: {},
+    relations: [
+      { id: 'r1', type: 'marker', to: 'pc', props: { x, y: 0.5, kind: 'static' } },
+      { id: 'r2', type: 'marker', to: 'tree', props: { x, y: 0.5, kind: 'scenery' } },
+      { id: 'r3', type: 'marker', to: 'gob', props: { x: 0.2, y: 0.2, kind: 'play' } },
+    ],
+  });
+  it('zählt Teilnehmer und Spiel-Tokens, sonst nichts', () => {
+    expect(movedTokens(karte(0.1), karte(0.3), new Set(['pc']))).toEqual(['pc']);
+    expect(movedTokens(karte(0.1), karte(0.3), new Set())).toEqual([]);
+    const ohneGob = { ...karte(0.1), relations: karte(0.1).relations!.filter((r) => r.id !== 'r3') };
+    expect(movedTokens(karte(0.1), ohneGob, new Set())).toEqual(['gob']);
   });
 });

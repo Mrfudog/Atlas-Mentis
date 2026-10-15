@@ -10,13 +10,20 @@ import { describe, expect, it } from 'vitest';
 import { applyAdjust, isAdjust, layoutFor, RegistrySchema } from '@nw/model';
 import { seedRegistry, typeViews } from '../src/index.js';
 
-const sql = readFileSync(new URL('../../../apps/server/migrations/052_ansichten_je_art.sql', import.meta.url), 'utf8');
+const migration = (n: string) => readFileSync(new URL(`../../../apps/server/migrations/${n}.sql`, import.meta.url), 'utf8');
+const sql = migration('052_ansichten_je_art');
+/* Migrationen, die eine Zeile aus 052 später nachziehen — die letzte gilt. */
+const spaeter = ['083_kennzahlen'].map(migration);
+
+const zeilen = (text: string) =>
+  [...text.matchAll(/\('(\w+)', '(\w+)', '(\{.*?\})'::jsonb\)/g)].map((m) => [m[1]!, m[2]!, JSON.parse(m[3]!)] as const);
 
 describe('Ansichten je Art (T-110)', () => {
-  it('Migration 052 bringt genau die Zeilen aus ansichten.ts', () => {
-    const inSql = [...sql.matchAll(/\('(\w+)', '(\w+)', '(\{.*?\})'::jsonb\)/g)].map((m) => [m[1], m[2], JSON.parse(m[3]!)]);
+  it('Migration 052 und die späteren bringen genau die Zeilen aus ansichten.ts', () => {
+    const stand = new Map(zeilen(sql).map(([t, v, w]) => [`${t}.${v}`, [t, v, w]]));
+    for (const text of spaeter) for (const [t, v, w] of zeilen(text)) stand.set(`${t}.${v}`, [t, v, w]);
     const imCode = Object.entries(typeViews).flatMap(([t, vs]) => Object.entries(vs).map(([v, w]) => [t, v, w]));
-    expect(inSql).toEqual(imCode);
+    expect([...stand.values()]).toEqual(imCode);
     expect(sql).toContain(`'${JSON.stringify(seedRegistry.views['handout'])}'::jsonb`);
     expect(sql).toContain(`set config = '${JSON.stringify(seedRegistry.views['print'])}'::jsonb`);
   });
