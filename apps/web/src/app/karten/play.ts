@@ -1,9 +1,10 @@
-import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Api, type Tisch } from '../kern/api';
 import { Live } from '../kern/live';
 import { WurfZiel } from '../kern/wurfziel';
 import { Karte } from './karte';
+import { Zugplaner } from './zugplaner';
 
 /**
  * **Play › Map** (T-115, CLAUDE.md „Play ist ein Schirm"): die Karte, die
@@ -18,11 +19,11 @@ import { Karte } from './karte';
  */
 @Component({
   selector: 'nw-play',
-  imports: [RouterLink, Karte],
+  imports: [RouterLink, Karte, Zugplaner],
   /* Würfe auf diesem Schirm gehören zur Sitzung am Tisch (T-172). */
   providers: [WurfZiel],
   template: `
-    <div class="seite">
+    <div class="seite" [class.mit-plan]="!!zp()?.planung()">
       <header class="kopf">
         <h1>Play</h1>
         @if (tisch(); as t) {
@@ -54,7 +55,10 @@ import { Karte } from './karte';
       } @else if (!tisch()) {
         <p class="leer">Loading…</p>
       } @else if (karteId(); as id) {
-        <nw-karte [id]="id" ort="play" [gross]="true" />
+        <!-- Der Zugplan (T-198): die Leiste sagt der Karte, was sie zeigt,
+             und die Karte meldet zurück, was angetippt wurde. -->
+        <nw-karte [id]="id" ort="play" [gross]="true" [planung]="zp.planung()" (planTipp)="zp.tipp($event)" />
+        <nw-zugplaner #zp [karte]="id" />
       } @else {
         <section class="ohne">
           <p>
@@ -117,6 +121,10 @@ import { Karte } from './karte';
       .seite {
         padding: 0.75rem 1rem 1.5rem;
       }
+      /* Die Leiste liegt am Telefon fest unten (T-198): darunter Platz, damit nichts verdeckt bleibt. */
+      .seite.mit-plan {
+        padding-bottom: 50vh;
+      }
     }
   `,
 })
@@ -127,6 +135,8 @@ export class Play {
 
   private readonly api = inject(Api);
   private readonly router = inject(Router);
+  /** Die Aktionsleiste (T-198), wenn eine Karte daliegt. */
+  protected readonly zp = viewChild<Zugplaner>('zp');
   protected readonly tisch = signal<Tisch | null>(null);
   protected readonly fehler = signal<string | null>(null);
   protected readonly karteId = computed(() => this.map() || this.tisch()?.map || null);

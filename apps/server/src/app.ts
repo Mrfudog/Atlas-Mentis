@@ -133,6 +133,7 @@ import { gewaehlteEbene } from './schreibebene.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
+import { registerZugplan } from './zugplan.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
 import {
@@ -1147,6 +1148,8 @@ export function buildApp({
     if (/^\/api\/sessions\/[^/]+\/(end|pick-up)$/.test(url) && request.method === 'POST') return;
     /* Geben (T-150): die Route fragt `mayWrite` am Inventar selbst (`stueck.ts`). */
     if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
+    /* Der Zugplan (T-198): die Routen prüfen Figur und Leitung selbst (`zugplan.ts`). */
+    if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/decide)?$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -3218,6 +3221,9 @@ export function buildApp({
       return !!user && mayWrite(user, await ownedBy(user), id);
     },
   });
+  /* Der Zugplan auf der Karte (T-198): planen, einreichen, bestätigen —
+     gewürfelt wird beim Bestätigen, ins Log (T-172). */
+  registerZugplan(app, { repo, feed: live, viewerOf, roh, sieve, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
   registerKarten(app, {
     repo,

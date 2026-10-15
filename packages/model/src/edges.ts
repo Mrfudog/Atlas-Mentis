@@ -317,6 +317,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'turnplan',
+    label: 'Turn planner',
+    area: 'play',
+    does: 'builds the action bar of a creature on the map from the actions of its statblock, and moves its token when the GM confirms a planned turn (T-198)',
+    uses: {
+      [S + 'zugplan.ts']: ['belongsTo', 'composedOf'],
+    },
+  },
+  {
     key: 'reading',
     label: 'Reading view',
     area: 'reading',

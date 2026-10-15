@@ -66,7 +66,7 @@ export function sseTransport(url = '/api/live'): LiveTransport {
     let pause = 1000;
     let uhr: ReturnType<typeof setTimeout> | null = null;
     let zu = false;
-    const NAMEN = ['hello', 'entity', 'gone', 'session', 'registry', 'reset', 'roll'];
+    const NAMEN = ['hello', 'entity', 'gone', 'session', 'registry', 'reset', 'roll', 'plan'];
 
     const oeffne = (): void => {
       if (zu) return;
@@ -139,6 +139,7 @@ export class Live {
   private readonly sitzungsHoerer: Hoerer<SitzungsZustand> = new Set();
   private readonly neuHoerer: Hoerer<'reset' | 'registry'> = new Set();
   private readonly wurfHoerer: Hoerer<RollEntry> = new Set();
+  private readonly planHoerer: Hoerer<string> = new Set();
   private schliessen: (() => void) | null = null;
 
   constructor() {
@@ -162,6 +163,10 @@ export class Live {
   /** Auf Würfe hören (T-172) — nur die, die dieser Betrachter sieht. */
   onWurf(fn: (w: RollEntry) => void): () => void {
     return anmelden(this.wurfHoerer, fn);
+  }
+  /** Auf Zugpläne hören (T-198): die Id der Karte, auf der sich einer änderte. */
+  onPlan(fn: (karte: string) => void): () => void {
+    return anmelden(this.planHoerer, fn);
   }
   /** Alles neu (`reset`: zu viel auf einmal, oder etwas verpasst) oder das Register. */
   onNeu(fn: (was: 'reset' | 'registry') => void): () => void {
@@ -210,6 +215,9 @@ export class Live {
       }
       case 'roll':
         if (id) rufe(this.wurfHoerer, d as unknown as RollEntry);
+        break;
+      case 'plan':
+        if (id) rufe(this.planHoerer, id);
         break;
       case 'reset':
       case 'registry':

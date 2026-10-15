@@ -270,6 +270,45 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
 - **Spielende ziehen die eigene Figur** noch nicht — wer es erlaubt und
   wo das steht, ist E-040.
 
+## Der Zugplan (T-198, Prototyp)
+
+Unter Play steht unter der Karte eine **Aktionsleiste** wie in Baldur's
+Gate 3 — ein Prototyp zum Testen, Bedienung vor Vollständigkeit.
+
+- **Ressourcen** oben rechts: ● Aktion, ▲ Bonusaktion, ◆ Reaktion und die
+  Bewegung als Balken (`planBudget`, `packages/model/src/zugplan.ts`).
+  „Dash" gibt das Tempo noch einmal.
+- **Kacheln** rechnet der Server beim Lesen (D8, D51): die Aktionen des
+  Statblocks (`composedOf` auf Artikel mit `Action`-Karte, die Art aus
+  `Action.actionType`), dazu waffenloser Schlag und die allgemeinen
+  Aktionen (Dash, Disengage, Dodge, Help, Hide).
+- **Auf der Karte**: *Move* zeigt die erreichbaren Felder im übrigen
+  Tempo (5-10-5, andere Tokens besetzt, `planReach`), mit der Maus die
+  Wegvorschau mit Fuss; ein Antippen legt den Weg in die Zugfolge. Ein
+  Angriff zeigt seine Reichweite als Ring, Ziele in Reichweite rot
+  umrandet mit der **Trefferchance** (`hitChance`, natürliche 1 und 20),
+  die übrigen blass.
+- **Die Zugfolge** liest sich „Move 20 ft → Greataxe → Goblin → Bonus:
+  Rage", mit Vorschau (Trefferchance, Schaden, erwarteter Schaden);
+  umordnen per Ziehen oder ← →, zwei Wege tauschen nicht.
+- **Einreichen und bestätigen**: der Plan geht an die Leitung (Echtzeit
+  über den Live-Kanal, Meldung `plan`). Bestätigt sie, würfelt der Server
+  Angriff und Schaden ins Log (T-172, kritisch die Würfel doppelt), und das
+  Token wandert ans Ende des Weges. Abgelehnt mit Grund geht er zurück.
+- **Wer plant:** wer die Figur führt (`app_user_actor`) und ein Token auf
+  der Karte hat; die Leitung für jede Kreatur mit Statblock, auch für
+  einen Gegner. Die **Rüstungsklasse** eines Ziels sieht nur die Leitung;
+  Spielende sehen die Chance.
+- **Ein Plan ist Spielgeschehen, kein Inhalt**: er steht im Protokoll
+  (`event_log`, `turnplan`, `subject` die Karte), je Änderung ein Eintrag
+  mit derselben Plan-Id; es gilt der jüngste. Keine Migration, kein
+  Artikel, keine Ausfuhr.
+
+Noch nicht (Folgeaufgaben): Waffen aus dem Inventar als Kacheln, Zauber
+mit Flächen und Zauberplätzen, Schaden an der Figur abziehen, Initiative
+und „wer ist dran" als Bedingung, Hex-Raster, Wände (`mapBarriers`),
+Vorteil/Nachteil und Deckung.
+
 ## Was noch fehlt
 
 - **Licht, Sperren und Zonen** in der Seite (REQ-140, 193, 208) — der
