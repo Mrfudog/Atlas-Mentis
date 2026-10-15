@@ -71,6 +71,14 @@ export const routes: Routes = [
     loadComponent: () => import('./karten/play').then((m) => m.Play),
     title: 'Play · Atlas Mentis',
   },
+  /* Play › Maps (T-202): der feste Ort für Karten — Liste mit Vorschau,
+     Unterkarten eingerückt, „New map“ aus einem Bild. */
+  {
+    path: 'maps',
+    canActivate: [wache],
+    loadComponent: () => import('./karten/karten').then((m) => m.Karten),
+    title: 'Maps · Atlas Mentis',
+  },
   /* Die Galerie (T-119): alle Bilder, die man sieht — gefiltert nach
      Klasse, Marke, Ebene, „unused". Ein Bild selbst ist ein Artikel. */
   {

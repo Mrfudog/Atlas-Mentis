@@ -25,6 +25,7 @@ import {
   relationDef,
   resolveView,
   isBookPart,
+  isMap,
 } from '@nw/model';
 import type { Entity, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
@@ -52,6 +53,7 @@ import { SCHNELL_KONTEXT, type SchnellKontext } from './schnell';
 import { Karte } from '../karten/karte';
 import { Bild, BildWahl, bildDes } from './bild';
 import { BildPanel } from '../bilder/bildpanel';
+import { KartenPanel } from '../karten/kartenpanel';
 import { Statblock } from './statblock';
 import { Kennzahlen } from './kennzahlen';
 import { Zauber } from './zauber';
@@ -160,6 +162,7 @@ interface Feld {
     Bild,
     BildWahl,
     BildPanel,
+    KartenPanel,
     Karte,
     Verlinkt,
     Lesen,
@@ -894,6 +897,10 @@ interface Feld {
             @if (istBild(e)) {
               <nw-bildpanel [artikel]="e" (gewechselt)="gewechselt($event)" />
             }
+            <!-- Eine Karte (T-202): in welchen Sitzungen und Szenen sie vorkommt. -->
+            @if (istKarte(e)) {
+              <nw-kartenpanel [karte]="e.id" />
+            }
             @if (rueckbezuege().length) {
               <section class="kasten">
                 <h2>Linked here</h2>
@@ -1383,6 +1390,10 @@ export class Artikel implements SchnellKontext {
     const text = (c: Entity) => String((c.components?.['Description'] as { description?: unknown } | undefined)?.description ?? '');
     return textVergleich(text(e), v.map((f) => ({ f, text: text(f.entity) })));
   });
+
+  protected istKarte(e: Entity): boolean {
+    return isMap(e);
+  }
 
   protected istBild(e: Entity): boolean {
     const r = this.reg();

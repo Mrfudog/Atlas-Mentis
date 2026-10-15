@@ -136,6 +136,7 @@ import { gewaehlteEbene } from './schreibebene.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
+import { registerKartenliste } from './kartenliste.js';
 import { registerRegeloptionen } from './regeloptionen.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
@@ -3268,6 +3269,8 @@ export function buildApp({
   /* Der Zugplan auf der Karte (T-198): planen, einreichen, bestätigen —
      gewürfelt wird beim Bestätigen, ins Log (T-172). */
   registerZugplan(app, { repo, feed: live, viewerOf, roh, sieve, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
+  /* Karten finden (T-202): die Liste unter Play › Maps und wo eine Karte vorkommt. */
+  registerKartenliste(app, { roh, sieve });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
   registerKarten(app, {
     repo,

@@ -43,6 +43,7 @@ import { Zugplaner } from './zugplaner';
                 <a [routerLink]="['/artikel', t.session]">Session article</a>
               }
             }
+            <a routerLink="/maps">All maps</a>
             @if (karteId() && karteId() !== t.map && t.map) {
               <a [routerLink]="['/play']" [queryParams]="{ map: null }" queryParamsHandling="merge">Back to the table map</a>
             }
@@ -74,7 +75,7 @@ import { Zugplaner } from './zugplaner';
             @for (m of tisch()?.maps ?? []; track m.id) {
               <li><a [routerLink]="['/play']" [queryParams]="{ map: m.id }">{{ m.name }}</a></li>
             } @empty {
-              <li class="leer">No maps yet.</li>
+              <li class="leer">No maps yet. A map is an image with a grid — <a routerLink="/maps">create one under Maps</a>.</li>
             }
           </ul>
         </section>

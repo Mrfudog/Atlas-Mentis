@@ -1,4 +1,5 @@
 import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { fromImage, imageBecomes } from '@nw/model';
 import { Api, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
@@ -18,6 +19,13 @@ import { Schnell, anlegbareArten, type Angelegt } from './schnell';
  * **Was es nicht gibt, legt man hier an** (T-131): unter den Treffern
  * steht „Create “…” as …" je anlegbarer Art; das Popup (`nw-schnell`)
  * legt an, und der neue Artikel steht sofort im Feld.
+ *
+ * **Ein Bild, das zur Art wird** (T-202): nimmt das Feld eine Art, deren
+ * Bild eine Klasse anbietet (`imageBecomes` — heute die Karte mit `map`),
+ * stehen Bilder dieser Klasse unter den Treffern. Wer eines wählt, legt
+ * daraus einen Artikel an (`fromImage`, in der Schreibebene), und der
+ * steht im Feld. „Map on the table“ nahm vorher nur Karten, und ein
+ * hochgeladenes Kartenbild war dort nicht zu finden.
  */
 @Component({
   selector: 'nw-wahl',
@@ -46,7 +54,19 @@ import { Schnell, anlegbareArten, type Angelegt } from './schnell';
               </button>
             </li>
           } @empty {
-            <li class="leer">{{ sucht() ? 'Searching…' : 'Nothing found.' }}</li>
+            @if (!bilder().length) {
+              <li class="leer">{{ sucht() ? 'Searching…' : 'Nothing found.' }}</li>
+            }
+          }
+          @for (b of bilder(); track b.id) {
+            <li role="option" class="bild" [attr.aria-selected]="false">
+              <button type="button" [disabled]="legtAn()" (click)="ausBild(b)">
+                {{ b.name }} <span>{{ b.label }}</span>
+              </button>
+            </li>
+          }
+          @if (problem(); as p) {
+            <li class="leer" role="alert">{{ p }}</li>
           }
           <!-- Neu anlegen, ohne die Auswahl zu verlassen (T-131). -->
           @if (!sucht()) {
@@ -135,7 +155,8 @@ import { Schnell, anlegbareArten, type Angelegt } from './schnell';
     .leer {
       padding: 0.35rem 0.6rem;
     }
-    .neu {
+    .neu,
+    .bild:first-of-type {
       border-top: 1px solid var(--line);
     }
     .neu button {
@@ -183,6 +204,15 @@ export class Wahl {
   protected readonly offen = signal(false);
   protected readonly sucht = signal(false);
   protected readonly treffer = signal<ListenZeile[]>([]);
+  /** Bilder, die beim Wählen zum Artikel werden (T-202). */
+  protected readonly bilder = signal<{ id: string; name: string; type: string; label: string }[]>([]);
+  protected readonly legtAn = signal(false);
+  protected readonly problem = signal<string | null>(null);
+  /** Welche Bildklasse zu welcher der Zielarten wird (`targets` am Typ). */
+  private readonly ausBildern = computed(() => {
+    const r = this.bestand.registry();
+    return r ? imageBecomes(r, this.arten()) : [];
+  });
   /** Was zuletzt gewählt wurde — sein Name, bis der Artikel ihn selbst mitbringt. */
   private readonly zuletzt = signal<{ id: string; name: string } | null>(null);
 
@@ -213,6 +243,7 @@ export class Wahl {
     if (this.uhr) clearTimeout(this.uhr);
     if (!q.trim()) {
       this.treffer.set([]);
+      this.bilder.set([]);
       return;
     }
     this.sucht.set(true);
@@ -222,16 +253,47 @@ export class Wahl {
   private async hole(q: string): Promise<void> {
     const nr = ++this.lauf;
     try {
-      const r = await this.api.list({ of: this.arten(), q, limit: 20 });
+      const [r, bilder] = await Promise.all([this.api.list({ of: this.arten(), q, limit: 20 }), this.holeBilder(q)]);
       /* Eine ältere Antwort, die nach einer neueren kommt, gilt nicht. */
       if (nr !== this.lauf) return;
+      this.bilder.set(bilder);
       const marken = new Set(this.bevorzugt());
       const passt = (z: ListenZeile) => Number((z.tags ?? []).some((t) => marken.has(t)));
       this.treffer.set(r.rows.filter((z) => z.id !== this.ausser()).sort((a, b) => passt(b) - passt(a)));
     } catch {
-      if (nr === this.lauf) this.treffer.set([]);
+      if (nr === this.lauf) {
+        this.treffer.set([]);
+        this.bilder.set([]);
+      }
     } finally {
       if (nr === this.lauf) this.sucht.set(false);
+    }
+  }
+
+  /** Je Bildklasse, die zu einer Zielart wird, die passenden Bilder (T-202). */
+  private async holeBilder(q: string): Promise<{ id: string; name: string; type: string; label: string }[]> {
+    const raus: { id: string; name: string; type: string; label: string }[] = [];
+    for (const { type, kind } of this.ausBildern()) {
+      const r = await this.api.list({ type: 'Asset', f: [`Asset.kind:${kind}`], q, limit: 10 });
+      const label = `${this.typLabel(type)} image → new ${this.typLabel(type).toLowerCase()}`;
+      for (const z of r.rows) raus.push({ id: z.id, name: z.name, type, label });
+    }
+    return raus;
+  }
+
+  /** Aus dem Bild einen Artikel anlegen und ihn ins Feld setzen (T-202). */
+  protected async ausBild(b: { id: string; name: string; type: string }): Promise<void> {
+    if (this.legtAn()) return;
+    this.legtAn.set(true);
+    this.problem.set(null);
+    try {
+      const neu = fromImage(b.type, { id: b.id, name: b.name, interfaces: ['Asset'], components: {}, relations: [] });
+      const e = await this.api.createEntity(neu.type, neu.name, neu.fields);
+      this.waehle({ id: e.id, name: neu.name, type: neu.type } as ListenZeile);
+    } catch (error) {
+      this.problem.set(error instanceof Error ? error.message : 'Could not create it.');
+    } finally {
+      this.legtAn.set(false);
     }
   }
 
@@ -245,6 +307,7 @@ export class Wahl {
     this.wertChange.emit(z?.id ?? '');
     this.suche.set('');
     this.treffer.set([]);
+    this.bilder.set([]);
     this.offen.set(false);
   }
 }

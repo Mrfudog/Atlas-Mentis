@@ -37,6 +37,7 @@ import {
   participantLabel,
   partyPosition,
   primaryInterface,
+  sessionState,
   turnOf,
   type Entity,
   type Frame,
@@ -224,7 +225,8 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       (await sieve(request, stand.alle.filter(isMap), stand.map)).map((k) => [k.id, k]),
     );
     const zeile = (e: Entity) => {
-      const st = (e.components?.['SessionState'] ?? {}) as { activeMap?: unknown };
+      /* Die Maske schreibt in `Session`, ältere Bestände tragen `SessionState` (T-202). */
+      const st = sessionState(e) as { activeMap?: unknown };
       const t = (e.components?.['Time'] ?? {}) as { sort?: unknown };
       const id = typeof st.activeMap === 'string' && karten.has(st.activeMap) ? st.activeMap : null;
       return {

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-maps",
+      "date": "2026-10-15",
+      "title": "Maps have their own page",
+      "text": "Play › Maps lists every map you can see, with a preview, sub-maps indented under their map, and filters by layer and tag. “New map” turns an uploaded or chosen map image into a map. On a session, “Map on the table” now also offers map images and makes a map from the one you pick; a map’s page says which sessions and scenes use it.",
+      "area": "Play",
+      "link": "/maps"
+    },
+    {
       "id": "2026-10-15-gallery-badges-use-as",
       "date": "2026-10-15",
       "title": "Images show their size, their tags as badges, and become maps or tokens",
