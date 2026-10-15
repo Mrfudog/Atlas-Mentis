@@ -31,6 +31,8 @@ interface Abschnitt {
   bloecke: Block[];
   karten: { id: string; name: string; bild?: string; text?: string }[];
   kaempfe: { id: string; name: string; wer: string[] }[];
+  /** Die Orte, die dieser Abschnitt beschreibt (`describedIn`, T-175). */
+  orte: { id: string; name: string }[];
 }
 
 /**
@@ -222,6 +224,12 @@ interface Abschnitt {
                   }
                   <a class="direkt oeffnen" [routerLink]="['/artikel', a.artikel]" title="Open as article">open</a>
                 </div>
+                @for (o of a.orte; track o.id) {
+                  <div class="verweis ort">
+                    <span class="leg">Place</span>
+                    <a [routerLink]="['/artikel', o.id]" [nwQuick]="o.id">{{ o.name }}</a>
+                  </div>
+                }
                 @for (bl of a.bloecke; track bl.key) {
                   <div class="block" [class]="'block ' + bl.art">
                     @if (bl.art !== 'text') {
@@ -367,7 +375,7 @@ export class Lesen {
         ...(toc.get(x.id)?.page ? { seite: toc.get(x.id)!.page } : {}),
         bloecke,
         karten: x.embeds
-          .filter((k) => primaryInterface(k) === 'Map' || !!k.components?.['Image'])
+          .filter((k) => primaryInterface(k) === 'Map' || (primaryInterface(k) !== 'Place' && !!k.components?.['Image']))
           .map((k) => {
             const bild = k.components?.['Image'] as { image?: unknown; caption?: unknown } | undefined;
             return {
@@ -378,8 +386,9 @@ export class Lesen {
               ...(typeof bild?.caption === 'string' && bild.caption !== entityName(k) ? { text: bild.caption } : {}),
             };
           }),
+        orte: x.embeds.filter((k) => primaryInterface(k) === 'Place').map((k) => ({ id: k.id, name: entityName(k) })),
         kaempfe: x.embeds
-          .filter((k) => primaryInterface(k) !== 'Map' && !k.components?.['Image'])
+          .filter((k) => primaryInterface(k) !== 'Map' && primaryInterface(k) !== 'Place' && !k.components?.['Image'])
           .map((k) => ({
             id: k.id,
             name: entityName(k),

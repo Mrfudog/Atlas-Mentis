@@ -342,7 +342,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Place',
     area: 'world',
     label: 'Place',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'ReadAloud', 'Secrets'],
+    /* `Source`: ein Ort aus einem Buch nennt Quelle und Seite (T-175). */
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'ReadAloud', 'Secrets', 'Source'],
     schema: merge(g.LocationInfo, g.Explored),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */

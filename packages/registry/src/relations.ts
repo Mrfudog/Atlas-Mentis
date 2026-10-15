@@ -573,9 +573,12 @@ export const relations: Record<string, RelationDef> = {
     type: 'describedIn',
     label: 'described in',
     inverseLabel: 'describes',
-    means: 'An article is described in another article; that one lists what it describes.',
+    means: 'An article is described in another article or a section of a book; that one lists what it describes.',
     from: ['*'],
-    to: ['Article'],
+    /* Auch ein Abschnitt eines Buchs (`BookPart`, eine Überschrift) und
+       eine Szene: ein Ort aus einem Buch zeigt auf den Text, der ihn
+       beschreibt (T-175). */
+    to: ['Article', 'Story', 'BookPart'],
   },
 
   // ------------------------------------------------------ players & party

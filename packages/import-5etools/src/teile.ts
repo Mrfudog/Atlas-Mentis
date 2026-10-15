@@ -70,6 +70,14 @@ export interface TeileOptionen {
   bild?: (b: Knoten, ganzes: Entity) => Entity | undefined;
   /** Bericht-Art (`bookData`, `adventureData`). */
   art: string;
+  /**
+   * Orte (T-175): ist dieser benannte Abschnitt (eine Überschrift) ein Ort,
+   * legt die Funktion ihn an und gibt ihn zurück; was darunter steht, liegt
+   * dann in ihm. `eltern` ist der Ort, in dem der Abschnitt steht.
+   */
+  ort?: (k: Knoten, abschnitt: Entity, eltern: Entity | undefined) => Entity | undefined;
+  /** Der Ort einer Szene, damit die Orte in ihrem Text in ihm liegen. */
+  ortVon?: (szene: Entity) => Entity | undefined;
 }
 
 /** Was das Zerlegen eines Ganzen ergab — für Tests und den Bericht. */
@@ -84,8 +92,10 @@ const name = (e: Knoten): string => (typeof e['name'] === 'string' ? e['name'].t
  * `stufe` die Überschriftenstufe des Ganzen (das Kapitel ist 1). Gibt die
  * angelegten Teile in Reihenfolge zurück.
  */
-export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stufe: number, o: TeileOptionen, seite?: unknown): Entity[] {
+export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stufe: number, o: TeileOptionen, seite?: unknown, eltern?: Entity): Entity[] {
   const raus: Entity[] = [];
+  /** Der Ort, in dem der Text gerade steht (T-175). */
+  let hierOrt = eltern;
   const b = wb.artBericht(o.art);
   let rang = 0;
 
@@ -185,7 +195,7 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
             wb.kante(sz, 'partOf', ganzes.id, { rank: rang });
             /* In der Szene beginnen die Stufen von vorn: sie ist ein Ganzes
                wie ein Kapitel, und ihre Überschriften stehen unter ihr. */
-            raus.push(sz, ...legeTeileAn(wb, sz, kinder, 1, o, hier));
+            raus.push(sz, ...legeTeileAn(wb, sz, kinder, 1, o, hier, o.ortVon?.(sz) ?? hierOrt));
             break;
           }
           const da = schonDa(n);
@@ -200,7 +210,10 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
                bliebe als `[[…]]` im Inhaltsverzeichnis stehen. */
             const h = teil('Heading', partName(inline(n, o.ctx), 200), hier);
             wb.feld(h, 'Heading', 'level', tiefe + 1);
+            const vorher = hierOrt;
+            hierOrt = o.ort?.(k, h, hierOrt) ?? hierOrt;
             gehe(kinder, tiefe + 1, hier);
+            hierOrt = vorher;
           } else {
             /* Tiefer: kein eigener Teil für den Namen, aber was darin
                steht, wird weiter zerlegt — ein Vorlesetext und eine Karte
