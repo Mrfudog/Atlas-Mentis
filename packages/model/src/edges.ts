@@ -220,9 +220,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'builder',
     label: 'Character builder and sheet',
     area: 'character',
-    does: 'builds a character — class levels, ancestry (with the base of a sub-ancestry), background, the choices they ask, the effects of each option, ability and equipment methods — and shows the answers by their class',
+    does: 'builds a character — class levels, ancestry (with the base of a sub-ancestry), background, the choices they ask, the effects of each option, ability and equipment methods, the hit points each class level brought (T-194) — and shows the answers by their class',
     uses: {
       [M + 'builder.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [M + 'hitpoints.ts']: ['hasClass'],
       [M + 'choices.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       [M + 'abilities.ts']: ['abilityPool', 'allowsMethod'],
       [M + 'equipment.ts']: ['allowsEquipment', 'hasBackground', 'hasClass'],
@@ -230,6 +231,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [W + 'figur/assistent.ts']: ['belongsTo', 'chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       [W + 'artikel/klasseneintrag.ts']: ['chose', 'hasAncestry', 'hasBackground', 'hasClass'],
       [W + 'artikel/artikel.ts']: ['chose', 'hasClass'],
+    },
+  },
+  {
+    key: 'ruleOptions',
+    label: 'Rules & options of a campaign',
+    area: 'character',
+    does: 'shows, per sort, the options a campaign plays by — among them the ability and equipment methods it allows (T-190)',
+    uses: {
+      [M + 'ruleOptions.ts']: ['allowsEquipment', 'allowsMethod'],
+      [S + 'regeloptionen.ts']: ['allowsEquipment', 'allowsMethod'],
     },
   },
   {
@@ -416,6 +427,8 @@ export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [W + 'register/typ.ts']: ['carries', 'holds'],
   [W + 'register/arbeit.ts']: ['carries'],
   [W + 'artikel/anordnung.ts']: ['crafting'],
+  /* Die Sorte „crafting" der Regeloptionen (T-190), wie das Modul in T-132 heissen wird. */
+  [M + 'ruleOptions.ts']: ['crafting'],
   /* Die Herkunft eines Preisschritts heisst wie die Kante, aus der er kommt (T-129). */
   [W + 'kern/api.ts']: ['discount'],
 };

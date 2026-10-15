@@ -38,6 +38,13 @@ import {
   type AbilityMethod,
   optionEffects,
   type BuilderStep,
+  averageHitDie,
+  hitPointLevels,
+  hitPointProblem,
+  maxHitPoints,
+  setHitPointGain,
+  type HitPointLevel,
+  type HitPointRule,
   type Choice,
   type OptionEffects,
   type ChoiceAtCharacter,
@@ -151,15 +158,22 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
       <nav aria-label="Breadcrumb" class="brot">
         <a routerLink="/world">World</a>
         <span aria-hidden="true">›</span>
-        @if (aufstieg() && figur(); as f) {
-          <a [routerLink]="['/artikel', f.id]">{{ f.name }}</a>
+        @if (gespeichert() && figur(); as f) {
+          <a [routerLink]="['/artikel', f.id]">{{ name() || 'Character' }}</a>
           <span aria-hidden="true">›</span>
-          <span>Level up</span>
+          <span>{{ bearbeiten() ? 'Edit' : 'Level up' }}</span>
         } @else {
           <span>New character</span>
         }
       </nav>
-      <h1>{{ aufstieg() ? 'Level up' : 'New character' }}</h1>
+      <h1>{{ bearbeiten() ? 'Edit character' : aufstieg() ? 'Level up' : 'New character' }}</h1>
+      <!-- Creator oder Full edit (T-194): dieselbe Figur, zwei Masken. -->
+      @if (bearbeiten() && figur(); as f) {
+        <div class="umschalter" role="group" aria-label="Edit view">
+          <span class="an" aria-current="true">Creator</span>
+          <a [routerLink]="['/artikel', f.id]" [queryParams]="{ edit: 'full' }">Full edit</a>
+        </div>
+      }
 
       @if (ladefehler(); as f) {
         <p class="fehler" role="alert">{{ f }}</p>
@@ -360,6 +374,78 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                   @if (attributsproblem(); as p) {
                     <p class="dim">{{ p }}</p>
                   }
+                } @else if (bearbeiten()) {
+                  <!-- Am fertigen Charakter bleiben die Werte, bis ein Verfahren gewählt ist (T-194). -->
+                  <table class="werte">
+                    <thead>
+                      <tr><th>Ability</th><th>Score</th><th>Bonus</th><th>Total</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (a of attribute(); track a) {
+                        <tr>
+                          <th scope="row">{{ a.toUpperCase() }}</th>
+                          <td>{{ werte()[a] ?? '—' }}</td>
+                          <td>{{ bonus()[a] ? '+' + bonus()[a] : '' }}</td>
+                          <td>{{ werte()[a] !== undefined ? werte()[a]! + (bonus()[a] ?? 0) : '' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                  <p class="dim">These are the current scores. Choose a method above to assign them anew.</p>
+                }
+              }
+
+              @case ('hitpoints') {
+                <p class="dim">
+                  {{ tpRegelText() }} CON modifier {{ konMod() >= 0 ? '+' : '' }}{{ konMod() }} is added to every level.
+                </p>
+                <table class="werte tp">
+                  <thead>
+                    <tr><th>Level</th><th>Hit die</th><th>Gain</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    @for (l of tpStufen(); track l.classId + ':' + l.level) {
+                      <tr>
+                        <th scope="row">{{ klassenName(l.classId) }} {{ l.level }}</th>
+                        <td>{{ l.die ? 'd' + l.die : '—' }}</td>
+                        <td>
+                          @if (l.first) {
+                            {{ l.die ?? '—' }} <span class="dim">(maximum)</span>
+                          } @else if (tpRegel() === 'either') {
+                            <input
+                              type="number"
+                              min="1"
+                              [attr.max]="l.die ?? null"
+                              [attr.aria-label]="'Hit points at ' + klassenName(l.classId) + ' level ' + l.level"
+                              [value]="l.value || ''"
+                              (change)="setzeTp(l, $any($event.target).value)"
+                            />
+                          } @else {
+                            {{ l.value || '—' }}
+                          }
+                        </td>
+                        <td>
+                          @if (!l.first && l.die && tpRegel() !== 'average') {
+                            @if (tpRegel() === 'either') {
+                              <button type="button" class="leise" (click)="setzeTp(l, '' + durchschnitt(l.die))">Average {{ durchschnitt(l.die) }}</button>
+                            }
+                            @if (tpRegel() === 'either' || !l.value) {
+                              <button type="button" [disabled]="wuerfelt()" (click)="wuerfleTp(l)">Roll d{{ l.die }}</button>
+                            }
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <p class="wurf">
+                  Hit point maximum: <strong>{{ tpMax() ?? '—' }}</strong>
+                  @if (tpMax() !== null && altesMaxText(); as alt) {
+                    <span class="dim"> — was {{ alt }}</span>
+                  }
+                </p>
+                @if (tpProblem(); as p) {
+                  <p class="dim">{{ p }}</p>
                 }
               }
 
@@ -547,7 +633,38 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                   <span>Name <i class="pflicht" title="required">*</i></span>
                   <input type="text" [value]="name()" (input)="name.set($any($event.target).value)" />
                 </label>
-                @if (gruppen().length) {
+                <!-- Was sonst fehlte (T-194): Deckname, Gesinnung, Grösse, Aussehen. -->
+                <label class="zeile">
+                  <span>Cover name</span>
+                  <input type="text" [value]="deckname()" (input)="deckname.set($any($event.target).value)" />
+                </label>
+                <label class="zeile">
+                  <span>Alignment</span>
+                  <input type="text" list="nw-gesinnungen" [value]="gesinnung()" (input)="gesinnung.set($any($event.target).value)" />
+                  <datalist id="nw-gesinnungen">
+                    @for (g of gesinnungen; track g) {
+                      <option [value]="g"></option>
+                    }
+                  </datalist>
+                </label>
+                @if (groessen().length > 1) {
+                  <label class="zeile">
+                    <span>Size</span>
+                    <select [value]="groesse()" (change)="groesse.set($any($event.target).value)">
+                      <option value="">—</option>
+                      @for (g of groessen(); track g) {
+                        <option [value]="g" [selected]="g === groesse()">{{ g }}</option>
+                      }
+                    </select>
+                  </label>
+                } @else if (groessen().length === 1) {
+                  <p class="zeile"><span>Size</span> {{ groessen()[0] }}</p>
+                }
+                <label class="zeile">
+                  <span>Appearance</span>
+                  <textarea rows="3" [value]="aussehen()" (input)="aussehen.set($any($event.target).value)"></textarea>
+                </label>
+                @if (gruppen().length && !gespeichert()) {
                   <label class="zeile">
                     <span>Party</span>
                     <select [value]="gruppe()" (change)="gruppe.set($any($event.target).value)">
@@ -558,7 +675,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                     </select>
                   </label>
                 }
-                <p class="dim">Image, backstory and the rest follow on the character's page.</p>
+                <p class="dim">Image, backstory and the rest follow on the character's page — or under Full edit.</p>
                 @if (offenGelassen().length) {
                   <p class="dim">Left for later: {{ offenGelassen().join('; ') }}</p>
                 }
@@ -583,7 +700,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
               }
               @if (letzter()) {
                 <button type="button" class="pri" [disabled]="!fertigSchritt(s) || speichert()" (click)="speichern()">
-                  {{ speichert() ? 'Saving…' : aufstieg() ? 'Level up' : 'Create character' }}
+                  {{ speichert() ? 'Saving…' : bearbeiten() ? 'Save' : aufstieg() ? 'Level up' : 'Create character' }}
                 </button>
               } @else {
                 <button type="button" class="pri" (click)="weiterPruefen(s)">Next</button>
@@ -1170,7 +1287,11 @@ export class Assistent {
 
   /** Die Figur beim Stufenaufstieg, so wie sie gespeichert ist. */
   protected readonly figur = signal<Entity | null>(null);
-  protected readonly aufstieg = computed(() => !!this.route.snapshot.paramMap.get('id'));
+  /** Am fertigen Charakter (T-194): Edit ist der Assistent, mit allen Schritten. */
+  protected readonly bearbeiten = computed(() => this.route.snapshot.data['mode'] === 'edit');
+  protected readonly aufstieg = computed(() => !!this.route.snapshot.paramMap.get('id') && !this.bearbeiten());
+  /** Eine gespeicherte Figur: Aufstieg oder Bearbeiten. */
+  protected readonly gespeichert = computed(() => !!this.route.snapshot.paramMap.get('id'));
   protected readonly entwurf = signal<Entity>(LEER);
   /** Die Artikel, die der Entwurf nennt, ganz — daraus kommen die Wahlen. */
   private readonly quellen = signal<ReadonlyMap<string, Entity>>(new Map());
@@ -1256,7 +1377,7 @@ export class Assistent {
   protected readonly festes = computed(() => fixedEquipmentLines(this.entwurf(), this.quellen()).map((z) => z.raw));
 
   protected readonly bereit = computed(
-    () => !!this.bestand.registry() && this.geladenVerfahren() && (!this.aufstieg() || !!this.figur()),
+    () => !!this.bestand.registry() && this.geladenVerfahren() && (!this.gespeichert() || (!!this.figur() && this.statblockGeladen())),
   );
 
   /**
@@ -1272,7 +1393,8 @@ export class Assistent {
   protected readonly schritte = computed<BuilderStep[]>(() =>
     builderSteps(this.entwurf(), this.quellen(), {
       levelUp: this.aufstieg(),
-      done: this.beantwortet(),
+      edit: this.bearbeiten(),
+      done: this.aufstieg() ? this.beantwortet() : undefined,
       rules: { feats: this.talente() },
       nest: true,
     }),
@@ -1290,6 +1412,101 @@ export class Assistent {
     () => enumOptions(this.bestand.registry() ?? { enums: {}, interfaces: {} }, { enumRef: 'Ability' }) ?? [],
   );
   protected readonly bonus = computed<Partial<Record<string, number>>>(() => chosenResult(this.entwurf(), this.quellen()).abilityBonus);
+
+  // ---------------------------------------------------------- Trefferpunkte (T-194)
+
+  /** Der Statblock einer gespeicherten Figur — dort steht das Maximum. */
+  private readonly statblock = signal<Entity | null>(null);
+  private readonly statblockGeladen = signal(false);
+  protected readonly tpRegel = signal<HitPointRule>('either');
+  /** KON mit Bonus aus Abstammung und Wahlen. */
+  protected readonly kon = computed(() => {
+    const w = this.werte()['con'];
+    return w === undefined ? undefined : w + (this.bonus()['con'] ?? 0);
+  });
+  protected readonly konMod = computed(() => {
+    const k = this.kon();
+    return k === undefined ? 0 : Math.floor((k - 10) / 2);
+  });
+  /** Das Maximum, wie es am Statblock steht. */
+  private readonly altesMax = computed(() => {
+    const n = this.statblock()?.components?.['Statblock']?.['hp'];
+    return typeof n === 'number' ? n : undefined;
+  });
+  /**
+   * **Eine Figur von vor T-194**: keine Stufe trägt einen Wert, am
+   * Statblock steht aber ein Maximum. Beim Aufstieg zählt dann nur die neue
+   * Stufe, auf das alte Maximum — sonst würfelte sie ihre ganze Laufbahn neu.
+   */
+  private readonly ohneStufenwerte = computed(() => {
+    const f = this.figur();
+    return !!f && this.altesMax() !== undefined && !(f.relations ?? []).some((r) => r.type === 'hasClass' && Array.isArray(r.props?.['hp']));
+  });
+  protected readonly tpAlle = computed(() => hitPointLevels(this.entwurf(), this.quellen()));
+  /** Die Stufen, nach denen der Schritt fragt. */
+  protected readonly tpStufen = computed<HitPointLevel[]>(() => {
+    const alle = this.tpAlle();
+    if (!this.aufstieg() || !this.ohneStufenwerte()) return alle;
+    return alle.filter((l) => l.classId === this.aufstiegKlasse() && l.level === this.neueStufe());
+  });
+  protected readonly tpProblem = computed(() => hitPointProblem(this.tpStufen(), this.tpRegel()));
+  /** Das neue Maximum; `null`, solange eine Stufe offen ist. */
+  protected readonly tpMax = computed<number | null>(() => {
+    if (this.aufstieg() && this.ohneStufenwerte()) {
+      const l = this.tpStufen()[0];
+      return l?.value ? this.altesMax()! + Math.max(1, l.value + this.konMod()) : null;
+    }
+    return maxHitPoints(this.tpAlle(), this.kon());
+  });
+  protected readonly durchschnitt = averageHitDie;
+  protected tpRegelText(): string {
+    const r = this.tpRegel();
+    return r === 'average' ? 'This campaign takes the average of each hit die.' : r === 'roll' ? 'This campaign rolls each hit die.' : 'Roll each hit die or take its average.';
+  }
+  protected altesMaxText(): string | null {
+    const a = this.altesMax();
+    return a !== undefined && a !== this.tpMax() ? String(a) : null;
+  }
+  protected readonly gesinnungen = ['Lawful good', 'Neutral good', 'Chaotic good', 'Lawful neutral', 'Neutral', 'Chaotic neutral', 'Lawful evil', 'Neutral evil', 'Chaotic evil', 'Unaligned'];
+  protected klassenName(id: string): string {
+    const k = this.quellen().get(id);
+    return (k ? entityName(k) : '') || this.bestand.name()(id) || id;
+  }
+  protected setzeTp(l: HitPointLevel, roh: string): void {
+    const n = roh === '' ? null : Math.round(Number(roh));
+    this.entwurf.update((d) => setHitPointGain(d, l.classId, l.level, n !== null && Number.isFinite(n) ? n : null));
+  }
+  /** Gewürfelt wird am Server, und der Wurf steht im Protokoll (T-172). */
+  protected async wuerfleTp(l: HitPointLevel): Promise<void> {
+    if (!l.die) return;
+    this.wuerfelt.set(true);
+    this.problem.set(null);
+    try {
+      const f = this.figur();
+      const r = await this.api.roll({
+        expr: `1d${l.die}`,
+        ...(f ? { subject: f.id } : {}),
+        label: `Hit points: ${this.klassenName(l.classId)} level ${l.level}`,
+      });
+      this.entwurf.update((d) => setHitPointGain(d, l.classId, l.level, r.total));
+    } catch (e) {
+      this.problem.set((e as Error).message);
+    } finally {
+      this.wuerfelt.set(false);
+    }
+  }
+
+  // ---------------------------------------------------------- Angaben (T-194)
+
+  protected readonly deckname = signal('');
+  protected readonly gesinnung = signal('');
+  protected readonly groesse = signal('');
+  protected readonly aussehen = signal('');
+  /** Die Grössen, die die Abstammung erlaubt (`Ancestry.size`). */
+  protected readonly groessen = computed(() => {
+    const a = this.entwurf().relations?.find((r) => r.type === 'hasAncestry')?.to;
+    return a ? (optionEffects(a, this.quellen())?.size ?? []) : [];
+  });
 
   /** Die Werte, die zu verteilen sind: die feste Reihe, der eigene Wurf, der Pool der Gruppe. */
   protected readonly vorrat = computed<(RolledScores & { at?: string }) | null>(() => {
@@ -1313,6 +1530,8 @@ export class Assistent {
   });
   protected readonly attributsproblem = computed(() => {
     const m = this.methode();
+    /* Am fertigen Charakter bleiben die Werte, bis jemand ein Verfahren wählt (T-194). */
+    if (!m && this.bearbeiten() && this.attribute().every((a) => this.werte()[a] !== undefined)) return null;
     if (!m) return 'Choose a method.';
     return assignmentProblem(this.werte(), this.attribute(), m, this.vorrat()?.values);
   });
@@ -1366,9 +1585,31 @@ export class Assistent {
           const { refs: _r, ...f } = e as Entity & { refs?: unknown };
           this.figur.set(f);
           this.entwurf.set(f);
-          this.name.set(f.name ?? '');
+          /* Der Name steht in `Identity` (`entityName`); `name` kann leer sein. */
+          this.name.set(entityName(f));
+          const c = f.components ?? {};
+          this.deckname.set(String(c['Identity']?.['cover'] ?? ''));
+          const aus = c['Creature']?.['appearance'];
+          this.aussehen.set(String((Array.isArray(aus) ? aus[0] : aus) ?? ''));
         })
         .catch((e: Error) => this.ladefehler.set(e.message));
+      /* Die Zahlen der Figur wohnen am Statblock (`belongsTo`): KON für die
+         Trefferpunkte, die Werte beim Bearbeiten (T-194). */
+      this.api
+        .backlinks(id)
+        .then(async (l) => {
+          /* Die Rückfrage bringt den Artikel nur kurz; die Werte holt der ganze. */
+          const kurz = l.find((b) => b.relation.type === 'belongsTo' && b.from.interfaces?.includes('Statblock'))?.from;
+          const sb = kurz ? await this.api.entity(kurz.id) : null;
+          this.statblock.set(sb);
+          const ab = sb?.components?.['Abilities'] ?? {};
+          this.werte.set(Object.fromEntries(Object.entries(ab).filter(([, v]) => typeof v === 'number')) as Record<string, number>);
+          const st = sb?.components?.['Statblock'] ?? {};
+          this.gesinnung.set(String(st['alignment'] ?? ''));
+          this.groesse.set(String(st['size'] ?? ''));
+        })
+        .catch(() => this.statblock.set(null))
+        .finally(() => this.statblockGeladen.set(true));
     }
     const verfahren = this.api
       .abilities()
@@ -1377,6 +1618,7 @@ export class Assistent {
         this.gruppen.set(r.parties);
         this.sprachen.set(r.languages ?? []);
         this.talente.set(r.feats !== false);
+        this.tpRegel.set(r.hitPoints ?? 'either');
         if (r.methods.length === 1) this.methode.set(r.methods[0]!);
         if (r.parties.length === 1) this.gruppe.set(r.parties[0]!.id);
       })
@@ -1407,6 +1649,14 @@ export class Assistent {
         }, 800);
       });
     }
+
+    /* Nimmt die Kampagne den Durchschnitt (T-194), steht er gleich da. */
+    effect(() => {
+      if (this.tpRegel() !== 'average') return;
+      const offen = this.tpStufen().filter((l) => !l.first && l.die !== undefined && l.value !== averageHitDie(l.die));
+      if (!offen.length) return;
+      untracked(() => this.entwurf.update((d) => offen.reduce((x, l) => setHitPointGain(x, l.classId, l.level, averageHitDie(l.die!)), d)));
+    });
 
     /* Ein anderer Schritt nimmt die Warnung des alten mit. */
     effect(() => {
@@ -1670,6 +1920,8 @@ export class Assistent {
         return 'Level';
       case 'details':
         return 'Name';
+      case 'hitpoints':
+        return 'Hit points';
       case 'equipment':
         return 'Equipment';
       /* Quelle und Wahl (T-162) — vorher „: equipment", weil der Name
@@ -1845,6 +2097,8 @@ export class Assistent {
         return !!this.aufstiegKlasse();
       case 'details':
         return !!this.name().trim();
+      case 'hitpoints':
+        return !this.tpProblem();
       case 'equipment': {
         const m = this.ausrMethode();
         if (!m) return false;
@@ -1899,6 +2153,8 @@ export class Assistent {
         return this.fertigSchritt(s) ? null : 'Choose the class that gains a level.';
       case 'details':
         return this.fertigSchritt(s) ? null : 'Give the character a name.';
+      case 'hitpoints':
+        return this.tpProblem();
     }
   }
 
@@ -2231,15 +2487,74 @@ export class Assistent {
     });
   }
 
+  /** Was der Schritt „Name" an die Figur schreibt (T-194); leer heisst nichts. */
+  private figurFelder(): Record<string, unknown> {
+    const raus: Record<string, unknown> = {};
+    if (this.deckname().trim()) raus['Identity.cover'] = this.deckname().trim();
+    if (this.aussehen().trim()) raus['Creature.appearance'] = [this.aussehen().trim()];
+    return raus;
+  }
+
+  /** Was er an den Statblock schreibt: Gesinnung und Grösse. */
+  private statblockFelder(): Record<string, unknown> {
+    const raus: Record<string, unknown> = {};
+    if (this.gesinnung().trim()) raus['Statblock.alignment'] = this.gesinnung().trim();
+    const g = this.groesse() || (this.groessen().length === 1 ? this.groessen()[0] : '');
+    if (g) raus['Statblock.size'] = g;
+    return raus;
+  }
+
+  /**
+   * **Eine gespeicherte Figur schreiben** (Aufstieg und Bearbeiten, T-194):
+   * Wahlen und Stufenwerte an der Figur, Werte, Maximum, Gesinnung und
+   * Grösse an ihrem Statblock. Der Stand der Trefferpunkte wandert um das,
+   * was das Maximum wandert — wer verwundet aufsteigt, bleibt verwundet.
+   * Ein offenes Maximum (auf später gelegt) lässt das alte stehen.
+   */
+  private async speichereFigur(e: Entity, max: number | null): Promise<void> {
+    const { updatedAt: _u, refs: _r, ...rest } = e as Entity & { updatedAt?: unknown; refs?: unknown };
+    const comps: Record<string, Record<string, unknown>> = { ...(rest.components ?? {}) };
+    const setze = (ziel: Record<string, Record<string, unknown>>, ref: string, wert: unknown) => {
+      const [k, f] = ref.split('.') as [string, string];
+      ziel[k] = { ...(ziel[k] ?? {}), [f]: wert };
+    };
+    const alt = this.altesMax();
+    const stand = comps['Vitals']?.['hp'];
+    if (max !== null && alt !== undefined && typeof stand === 'number') setze(comps, 'Vitals.hp', Math.max(0, stand + max - alt));
+    else if (max !== null && typeof stand !== 'number') setze(comps, 'Vitals.hp', max);
+    if (this.bearbeiten()) {
+      for (const [ref, w] of Object.entries(this.figurFelder())) setze(comps, ref, w);
+      if (!this.deckname().trim() && comps['Identity']) delete comps['Identity']['cover'];
+      if (!this.aussehen().trim() && comps['Creature']) delete comps['Creature']['appearance'];
+    }
+    /* Der Name steht in `Identity` (`entityName`); `name` nur, wo er schon stand. */
+    const neu = this.name().trim();
+    if (this.bearbeiten() && neu) setze(comps, 'Identity.name', neu);
+    const name = this.bearbeiten() && neu && rest.name ? neu : rest.name;
+    await this.api.putEntity({ ...rest, name, components: comps });
+
+    const sb = this.statblock();
+    if (!sb) return;
+    const { updatedAt: _su, refs: _sr, ...sbRest } = sb as Entity & { updatedAt?: unknown; refs?: unknown };
+    const sbComps: Record<string, Record<string, unknown>> = { ...(sbRest.components ?? {}) };
+    if (max !== null) setze(sbComps, 'Statblock.hp', max);
+    if (this.bearbeiten()) {
+      for (const a of this.attribute()) if (this.werte()[a] !== undefined) setze(sbComps, `Abilities.${a}`, this.werte()[a]);
+      for (const [ref, w] of Object.entries(this.statblockFelder())) setze(sbComps, ref, w);
+      if (!this.gesinnung().trim() && sbComps['Statblock']) delete sbComps['Statblock']['alignment'];
+    }
+    if (JSON.stringify(sbComps) !== JSON.stringify(sbRest.components ?? {})) await this.api.putEntity({ ...sbRest, components: sbComps });
+  }
+
   protected async speichern(): Promise<void> {
     if (this.speichert()) return;
     this.speichert.set(true);
     this.problem.set(null);
     try {
       const e = this.entwurf();
-      if (this.aufstieg()) {
-        const { updatedAt: _u, ...rest } = e as Entity & { updatedAt?: unknown };
-        await this.api.putEntity(rest);
+      const max = this.tpMax();
+      if (this.gespeichert()) {
+        await this.speichereFigur(e, max);
         /* Neu holen: die Seite der Figur läse sonst den Stand von vor dem
            Aufstieg aus dem Bestand und zeigte die alte Stufe (T-095). */
         await this.bestand.oeffnen(e.id, true);
@@ -2253,10 +2568,21 @@ export class Assistent {
         const kanten = (e.relations ?? []).map((r) => ({ type: r.type, to: r.to, props: r.props ?? {} }));
         if (this.gruppe()) kanten.push({ type: 'memberOfParty', to: this.gruppe(), props: {} });
         /* Die Figur gehört dem Spieler (E-014 d): gleich fertig. */
-        const figur = await this.api.createEntity('PlayerCharacter', name, { 'Status.status': 'ready' }, kanten);
+        /* Das Maximum steht am Statblock, der Stand gleich voll an der Figur (T-194). */
+        const figur = await this.api.createEntity(
+          'PlayerCharacter',
+          name,
+          { 'Status.status': 'ready', ...this.figurFelder(), ...(max !== null ? { 'Vitals.hp': max } : {}) },
+          kanten,
+        );
         /* Auf später gelegte Werte bleiben leer (T-193). */
         const werte = Object.fromEntries(this.attribute().flatMap((a) => (this.werte()[a] === undefined ? [] : [[`Abilities.${a}`, this.werte()[a]]])));
-        await this.api.createEntity('Statblock', name, { ...werte, 'Status.status': 'ready' }, [{ type: 'belongsTo', to: figur.id }]);
+        await this.api.createEntity(
+          'Statblock',
+          name,
+          { ...werte, ...this.statblockFelder(), ...(max !== null ? { 'Statblock.hp': max } : {}), 'Status.status': 'ready' },
+          [{ type: 'belongsTo', to: figur.id }],
+        );
         figurId = figur.id;
         this.angelegt.set(figurId);
         /* Was sie angelegt hat, schreibt sie — das weiss erst ein neues `/api/me`. */

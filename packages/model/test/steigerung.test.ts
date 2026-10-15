@@ -117,11 +117,11 @@ describe('Ein Merkmal, mehrfach gewährt, fragt je Stufe (T-107)', () => {
     f = answerChoice(f, wahl(f, 'ability-scores', 6), ['str', 'dex']);
     const done = answeredKeys(f, byId);
     const auf7 = builderSteps(setClassLevel(f, 'class-f', 7), byId, { levelUp: true, done });
-    expect(auf7.map((s) => s.id)).toEqual(['level']);
+    expect(auf7.map((s) => s.id)).toEqual(['level', 'hitpoints']);
     const auf8 = builderSteps(setClassLevel(f, 'class-f', 8), byId, { levelUp: true, done });
-    expect(auf8.map((s) => s.id)).toEqual(['level', 'choice:feature-asi#improvement@class-f:8', 'choice:feature-asi#ability-scores@class-f:8']);
+    expect(auf8.map((s) => s.id)).toEqual(['level', 'choice:feature-asi#improvement@class-f:8', 'choice:feature-asi#ability-scores@class-f:8', 'hitpoints']);
     const ohneTalente = builderSteps(setClassLevel(f, 'class-f', 8), byId, { levelUp: true, done, rules: { feats: false } });
-    expect(ohneTalente.map((s) => s.id)).toEqual(['level', 'choice:feature-asi#ability-scores@class-f:8']);
+    expect(ohneTalente.map((s) => s.id)).toEqual(['level', 'choice:feature-asi#ability-scores@class-f:8', 'hitpoints']);
   });
 
   it('ohne Talente am Tisch bleibt nur die Steigerung', () => {

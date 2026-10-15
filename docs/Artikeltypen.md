@@ -894,7 +894,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `inventory` *grid | weight | slots*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `playerRolls` *table | gm*
+- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `playerRolls` *table | gm*
 
 **Geerbte Felder**
 
@@ -947,7 +947,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Campaign`): `description`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
+**Gezeichnet** (aus `Campaign`): `description`, `rules`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
 
 ### Quest
 

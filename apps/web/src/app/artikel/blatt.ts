@@ -227,7 +227,8 @@ export class Blatt {
       view?.empty === 'show' ? mitLeeren(r, e, zellen) : zellen,
       prosaVon(r, e),
       { beschreibung: view?.description === false ? null : (d ?? null), rest: !!view?.rest, bild: bildDes(e, r) },
-    );
+      /* Ein Blatt hat keine Reiter: die Regeloptionen (T-190) stehen als Felder. */
+    ).map((st) => (st.art === 'regeln' ? { ...st, art: 'felder' as const } : st));
   });
 
   /** Die Kanten nach Art, mit den Namen ihrer Ziele — die Ebene steht im Kopf. */

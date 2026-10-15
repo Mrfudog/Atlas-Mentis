@@ -1276,6 +1276,13 @@ Volksmerkmal der Orks.
 (`sum(hasClass.level)`), und der Übungsbonus aus ihr. Eingetippt wäre sie
 die dritte Stelle neben den Kanten und nach dem ersten Aufstieg falsch.
 
+**Die Trefferpunkte einer Stufe stehen an der Kante zur Klasse**
+(`hasClass.props.hp`, T-194), dort, wo die Stufe steht. Gespeichert wird,
+was der Würfel brachte, nicht das Maximum samt KON: wer später KON ändert,
+rechnet neu und würfelt nicht noch einmal — und ein Würfelwurf, den man
+wiederholen kann, ist keiner. Das Maximum am Statblock schreibt der
+Assistent daraus; es ist der Wert, den jeder Bogen liest.
+
 **Was eine Klasse gewährt, ist eine Kante, und die Stufe steht an ihr**
 (`grants`, `props.level`). „Ability Score Improvement" kommt beim Kämpfer
 auf Stufe 4, 6, 8, 12, 14, 16 und 19: ein Artikel, sieben Kanten. Ein Feld
@@ -1654,6 +1661,18 @@ dürfen verschieden spielen. Darum ist es ein Wort an der Kampagne
 an genau einer Stelle (`inventoryRulesOf`): wenn die Regelsysteme Behälter
 werden (T-132), wandert das Wort in ein Modul, und nur diese Funktion sieht
 woanders nach.
+
+**Eine Regeloption sucht man an der Kampagne, nicht im Feld** (T-190).
+Wie gezählt, gehandwerkt und gewürfelt wird, stand als Felder ohne
+Ordnung am Kampagnenartikel und als Einstellungen, die niemand sah — es
+gab sie, und gefunden hat sie keiner. Der Reiter „Rules & options" ordnet
+sie nach Sorte und sagt je Option, was sie tut. **Eine Variante ist ein
+Regelartikel**, den man lesen kann: der importierte, wenn das Regelwerk
+einen hat („Encumbrance"), sonst einer, den die Leitung unter dem Namen
+der Variante schreibt — ein Satz im Code erklärt, ein Artikel lässt sich
+nachlesen, ändern und am Tisch zeigen. Gefunden wird er nach Namen und
+nicht über eine Kante: ein Regelwerk, das morgen eingelesen wird, bringt
+seine Erklärung mit, ohne dass jemand sie anhängt.
 
 **Geben heisst, die Kante umzuhängen.** Wer der Gruppe ein Seil gibt,
 nimmt die `holds`-Kante aus dem eigenen Inventar und legt sie in das der

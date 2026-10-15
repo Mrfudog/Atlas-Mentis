@@ -35,6 +35,7 @@ import {
   startingGoldOf,
   campaignLanguages,
   campaignAllowsFeats,
+  hitPointRuleOf,
   partyPool,
   rollAbilityScores,
   articleVisible,
@@ -135,6 +136,7 @@ import { gewaehlteEbene } from './schreibebene.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
+import { registerRegeloptionen } from './regeloptionen.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
@@ -2373,6 +2375,8 @@ export function buildApp({
       languages: campaignLanguages(kampagne ?? undefined),
       /* Talente am Tisch (T-107): nein nimmt das Talent als Ausweg weg. */
       feats: campaignAllowsFeats(kampagne ?? undefined),
+      /* Trefferpunkte je Stufe (T-194): würfeln, Durchschnitt oder wählen. */
+      hitPoints: hitPointRuleOf(kampagne ?? undefined),
     };
   });
 
@@ -2706,6 +2710,8 @@ export function buildApp({
   registerWuerfe(app, { repo, feed: live, viewerOf, roh, sieve });
   /* Kaufen und Verkaufen im Laden (T-133): der Preis am Server, gegen die gelesene Revision. */
   registerLaden(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet), kampagnenEbene });
+  /* Die Regeloptionen einer Kampagne (T-190): nach Sorte, mit Regelartikeln. */
+  registerRegeloptionen(app, { repo, roh, sieve });
   /* Liegengelassen (T-140): Sitzungsende und Aufheben. */
   registerLiegen(app, {
     repo,

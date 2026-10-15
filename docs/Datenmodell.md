@@ -513,6 +513,7 @@ flowchart LR
 | C8 | **Attributsverfahren sind Artikel** (E-016 a): `AbilityMethod` mit `method` (`array` · `pointBuy` · `roll`), `scores`, `budget`, `costs` (`{"8": 0, "15": 9}`), `dice` (`4d6kh3`), `count`, `scope` (`character` · `party`). Die Kampagne erlaubt über `allowsMethod`; ohne Kante gelten Standardreihe und Punktekauf (`DEFAULT_ABILITY_METHODS`). Gewürfelt wird am Server (`POST /api/abilities/roll`), jeder Wurf steht im Protokoll (`abilities.rolled`); der **Gruppenpool** steht an der Gruppe (`abilityPool` → Verfahren, `props.values`, `rolls`, `at`), jede Figur verteilt dieselben Werte, neu würfelt nur die Leitung. Der Würfelausdruck kennt dafür `khN`/`klN` (behalten). **Bei Reihe und Pool wird jeder Wert genau einmal vergeben**: wer einen schon vergebenen wählt, tauscht mit dem Attribut, das ihn hält (`assignScore`, T-095); der Punktekauf tauscht nicht. | `packages/model/src/abilities.ts`, `dice.ts` |
 | C9 | **Was ein Artikel an der Figur verändert, ist ein Feld** (REQ-238, REQ-063, E-025 a). Der Gegenstand nimmt `Effects`: `effects` hält je Wirkung `{id, target, op, value, when, note}` — `target` ist frei (`ability.str`, `ac`, `speed.walk`, `speed.*`, `spellSaveDc`, `spellAttack`, `save`, `resist`, `immune`, `vulnerable`, `conditionImmune`, `critThreshold`, `carry`, `capacity`, `weapon`, `weapon.attack`, `weapon.damage`, `spellDamage`, `check`, `prof`, `save.concentration`; ein neues Ziel ist ein Wert, kein Feld), `op` ist add · set · grant (`set` hebt ein Attribut nur, wenn es niedriger ist; beim kritischen Treffer gilt die kleinste Schwelle), `when` ist worn · attuned · carried · self — ohne Angabe eingestimmt, wenn der Gegenstand Einstimmung verlangt, sonst getragen. **Getragen** heisst `holds.tier` held/worn oder ein Körperplatz (`slot`), **eingestimmt** `holds.attuned` und getragen, **dabei** alles ausser `stored` und `ground` (auch im Beutel), `self` gilt für keine Figur (Waffenbonus, Fassungsvermögen). **Gerechnet beim Lesen** (D8): `effectsAt` sammelt aus dem Inventar (`carries` → `holds`, Behälter weiter hinein) und aus den Quellen der Wahlen (`choiceSources`, dazu ihre `grants` auf Stufe), `effectTotals` fasst zusammen, `abilityWithEffects` rechnet einen Attributswert mit Boni aus `chosenResult`. Die alten Zahlenfelder `bonusAc`, `bonusWeapon`, `bonusSpellAttack`, `bonusSave` bleiben und zählen beim Lesen als Wirkung (`effectsOf`). | `validateEntity` (`entry`), `packages/model/src/effects.ts` |
 | C10 | **Startausrüstung nach Kampagnenregel** (REQ-250, T-096, T-162): Verfahren sind Artikel wie C8 — `EquipmentMethod` mit `method` `rules` (was Klasse und Hintergrund geben), `gold` (`gold` fest `100` oder gewürfelt `5d4×10`, leer: `Class.startingGold`) oder `free` (`budget` in gp, leer: ohne Grenze); für `gold` und `free` zählen `magic` (`{"uncommon": 1}` je Seltenheit höchstens; was fehlt, keiner; ohne Angabe nur, was einen Preis hat) und `itemTypes` (aus `Item.itemType`). Die Kampagne erlaubt über `allowsEquipment`; ohne Kante gelten „Class and background" und „Starting gold" (`DEFAULT_EQUIPMENT_METHODS`). **Die Varianten (a)/(b) sind Ausrüstungswahlen** (C6, `kind: 'equipment'`), ihre Möglichkeiten `{key, label, items?: [{id, qty}], gold?}` — `items` nennt Nummern wie ein Verweis; ohne `items` liest `equipmentFromText` die Verweise, Mengen und gp aus dem `label`. **Das Feste ist eine Wahl mit einer Möglichkeit** (beantwortet sich selbst); ältere Klassen tragen es nur als Zeilen in `startingEquipment` (ohne „(a)"), und `startingBundle` liest sie dort. Eine zweite Klasse bringt keine Ausrüstung (`when: 'start'`). Der Assistent sammelt die Ausrüstungswahlen einer neuen Figur in **einem** Schritt `equipment`; beim Aufstieg ist keine Ausrüstungswahl ein Schritt (T-162). **Offene Stellen** (T-162, `slots.ts`): ein Satz einer Möglichkeit, der eine Sorte statt eines Gegenstands nennt („two martial weapons of your choice", „one weapon martial melee of your choice", „an artisan's tools"), ist eine Stelle `{count, type: Weapon|Item, category, itemTypes}` (`itemSlotIn`, `optionSlots`); die Antwort füllt sie der Reihe nach (`chose.props.items`, Artikel-Ids, `''` für leer). `slotAccepts` prüft Art, `Weapon.category`, `Item.itemType` und dass der Gegenstand gewöhnlich ist (Seltenheit leer oder `none`); `slotQuery` sagt der Liste Art und Spaltenfilter. `startingBundle` nimmt nur, was die Stelle annimmt, und eine ganz gefüllte Stelle verlässt den Rest. Das Feste mit offener Stelle („one artisan's tools of your choice") steht als Wahl im Schritt; die Antwort ist `picks: ['fixed']` mit `items`. Die Auswahl schlägt Kaufbares vor (`Item.copperPrice`), solange es das gibt — der Server nimmt alles, was die Stelle annimmt. Der Importer schreibt eine Sorte mit Menge und in gesprochener Form („two martial weapons of your choice"; vorher „one weapon martial of your choice" ohne Menge). **Am Server**: Startgold wird gewürfelt (`POST /api/equipment/roll`, Protokoll `equipment.rolled`, die Id ist der Beleg), `POST /api/entities/:id/equipment` rechnet das Paket aus den gespeicherten Antworten oder prüft den Einkauf (`checkPurchase`: Preis, Budget, Arten, Seltenheiten — nur sichtbare, fertige Gegenstände) und legt das Inventar an (`carries` → `Inventory` mit `holds`, Rest im Beutel `Inventory.copper`); jeder Beleg gilt einmal, und hält das Inventar schon etwas, gibt es mehr nur durch die Leitung (`equipment.applied`). | `packages/model/src/equipment.ts`, `packages/model/src/slots.ts`, `apps/server/test/ausruestung.test.ts` |
+| C11 | **Trefferpunkte je Klassenstufe** (T-194): was der Trefferwürfel einer Stufe brachte, steht an der Kante zur Klasse (`hasClass.props.hp`, je Stufe ein Wert ohne KON, der erste die erste Stufe); die erste Stufe der ersten Klasse ist immer das Maximum des Würfels (`Class.hitDie`). Gewürfelt (am Server, im Protokoll), der Durchschnitt oder je Stufe wählbar, sagt `Campaign.hitPoints` (`either` · `average` · `roll`, bis zum Regelmodul T-132; `hitPointRuleOf`). Das Maximum (`maxHitPoints`: je Stufe Wert + KON-Modifikator, mindestens 1) schreibt der Assistent an den Statblock (`Statblock.hp`), der Stand an der Figur (`Vitals.hp`) wandert um dieselbe Differenz. Eine Figur ohne Stufenwerte, aber mit Maximum (vor T-194), fragt beim Aufstieg nur die neue Stufe und rechnet auf ihr Maximum. **Edit an einer Figur ist der Assistent** (`/characters/:id/edit`, `builderSteps` mit `edit`: alle Schritte mit ihren Antworten, ohne Startausrüstung); „Full edit“ ist die Feldmaske. | `packages/model/src/hitpoints.ts` |
 | Ü1 | **Übungen kommen aus Artikeln** (M6): `Proficiencies.proficient` und `expertise` nennen `Skill`, `Language`, `Item` (nur Werkzeuge, `enumWhere` auf `itemType`), `Weapon`, `Weapon.category`, `Armor.armorType`. Die Zeilen `Skill`, `Language`, `Tool`, `WeaponTraining`, `ArmorTraining`, `KnowledgeField` und die Einstellung `skills` sind weg; worauf eine Fertigkeit rechnet, sagt `Skill.ability`. Ein Wissensgebiet (Hausregel) ist eine Fertigkeit mit Artikel. | F12 |
 | Ü2 | **`Language` ist eine Art** (`languageType` standard/exotic/rare/secret, `script`, `typicalSpeakers`). | — |
 | Ü3 | **`DamageType` und `Size` sind Zeilen** (F1): drei Felder nennen die Schadensarten (Waffe, Aktion, Zauber; die Abstammung für Resistenzen), zwei die Grösse. | `validateEntity` (`value_not_allowed`) |
@@ -1525,6 +1526,7 @@ sind Zeilen, Darstellung ist Code.**
 | `quests`, `timeline`, `prep`, `table`, `crawl` | Auftragsbrett, Zeitleiste, Vorbereitung, Tabelle, Punktreise |
 | `stack`, `members` | der Ebenenstapel, die Konten am Tisch |
 | `statblock`, `spell`, `item` | **wie im Buch** (W2): Statblock wie im MM (Kopf kursiv, Kopfzeilen, sechs Werte in einer Reihe, Saves bis Challenge, Abschnitte aus `composedOf` je Aktionsart), Zauber wie im PHB (Casting Time, Range, Components, Duration, At Higher Levels), Gegenstand wie im DMG (Art, Seltenheit, Einstimmung kursiv; AC, Schaden, Preis, Gewicht). Jedes zeichnet **alle** Felder seiner Karten (`BOOK_CARDS`, `book.ts`), was keine Stelle im Buch hat als Zusatzzeile; die Feldtabelle derselben Anordnung nimmt diese Karten mit `except` heraus. Masse in der Einheit von `units` |
+| `rules` | die Regeloptionen (T-190): nimmt die Felder, die `fields` nennt, aus der Feldtabelle und verweist auf den Reiter „Rules & options"; auf einem Blatt ohne Reiter stehen sie als Felder |
 | `tabs` | benannte Gruppen desselben Layouts |
 
 **Was kein Element zeichnet, steht am Ende — wo die Ansicht `rest` sagt.**
@@ -1533,6 +1535,46 @@ Inventar …; die Karte seit T-115); ein Feld, das nur dort stünde, setzt sie u
 Anordnung, statt es zu verschweigen. Zugeteilt wird an einer Stelle
 (`anordnen` in `apps/web/src/app/artikel/anordnung.ts`) für Artikelseite,
 Druck und Registervorschau.
+
+### 10.1 Die Regeloptionen einer Kampagne (T-190)
+
+Wonach eine Kampagne spielt, steht heute an drei Stellen: als **Feld an
+der Kampagne** (`Campaign.inventory`, `stowing`, `craft*`, `feats`,
+`languages`, `playerRolls`, `compareFor`), als **Kante auf ein Verfahren**
+(`allowsMethod` → `AbilityMethod`, `allowsEquipment` → `EquipmentMethod`)
+und als **Einstellung der Installation** (`units`, `travel*`, Basils Blatt).
+Der Reiter **„Rules & options"** an der Kampagne
+(`/artikel/:id?tab=rules`) zeigt alle drei **nach Sorte** — Ability scores,
+Starting equipment, Character options, Inventory, Crafting, Travel, Units,
+At the table; dieselben Sorten, die T-132 als Module baut —, je Option
+einen Satz, was sie bewirkt, und je Variante, welche gilt.
+
+- **Gerechnet am Server** (`GET /api/campaigns/:id/rules`,
+  `apps/server/src/regeloptionen.ts`) mit `ruleOptionsOf`
+  (`packages/model/src/ruleOptions.ts`). Jede Option liest über die
+  Funktion ihres Teilsystems (`inventoryRulesOf`, `craftRulesOf`,
+  `allowedMethods` …) — die Seite sagt nie etwas anderes, als gilt.
+- **Der Katalog** (`RULE_OPTIONS`) nennt je Option ihre Quelle, die
+  Varianten mit einem eigenen Satz und die Namen der Regelartikel, die sie
+  erklären. Ein Test hält ihn mit `CampaignInfo` zusammen: jedes Feld eine
+  Option, jeder Aufzählungswert eine Variante.
+- **Regelartikel nach Namen:** importierte heissen, wie das Regelwerk sie
+  nennt („Encumbrance"), eine eigene Erklärung `<Option>: <Variante>`
+  (`ownRuleName`). Genannt wird ein Artikel der Art `Rule` nur, wenn er im
+  Stapel steht und der Betrachter ihn sieht (E2, Sichtbarkeit) — sonst
+  bietet die Seite der Leitung „Write rule article" an: ein Regelartikel
+  mit diesem Namen und dem Satz der Seite, in der Schreibebene. Buchtext
+  steht im Code keiner.
+- **Geändert wird, wo es steht:** Felder und Kanten in der Maske der
+  Kampagne; die Einstellungen der Installation sind als
+  „installation-wide" markiert und gelten für jede Kampagne, bis T-132 sie
+  ins Modul holt. Auf der Artikelseite selbst nimmt das Layout-Element
+  `rules` (`fields: ['Campaign']`) die eigenen Felder der Kampagne aus der
+  Feldtabelle und verweist auf den Reiter — sie stünden dort ein zweites
+  Mal, ungeordnet; ein `except` an der Feldtabelle reichte nicht, weil der
+  Rest (`rest`) sie am Ende wieder hereinholte. Migration 081.
+- **Mit T-132** schaut `ruleOptionsOf` je Sorte ins gewählte Modul (ein
+  lesbarer Regelartikel); Route und Reiter bleiben.
 
 ---
 
@@ -1735,7 +1777,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | — |
-| `Campaign` | `Story` | `compareFor` `languages` `feats` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `playerRolls` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` | `compareFor` `languages` `feats` `hitPoints` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `playerRolls` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
@@ -1818,7 +1860,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `happensAt` | Story → Place |  | — | — |
 | `hasAncestry` | PlayerCharacter → Ancestry | ja | — | — |
 | `hasBackground` | PlayerCharacter → Background | ja | — | — |
-| `hasClass` | PlayerCharacter → Class |  | — | `level` `subclass` |
+| `hasClass` | PlayerCharacter → Class |  | — | `level` `subclass` `hp` |
 | `hasProperty` | Weapon \| Item \| Armor → ItemProperty |  | — | — |
 | `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `gx` `gy` `rot` `attuned` `note` `reservedFor` `unstowed` |
 | `includes` | Knowledge → Information |  | — | — |
