@@ -14,6 +14,7 @@
  * Kantenziel überhaupt da ist.
  */
 
+import { imageAddresses } from './assets.js';
 import { entityName, linkFinder, typeChain } from './entity.js';
 import { INSTANCE_RELATION, isInstance } from './instance.js';
 import { beschreibeAbweichung, registerAbweichung } from './registerabgleich.js';
@@ -337,6 +338,22 @@ export const CHECKS: Check[] = [
           for (const m of t.matchAll(LINK)) if (finde(m[1]!).length > 1) mehr.add(m[1]!.trim());
         });
         if (mehr.size) raus.push(hit(e, [...mehr].slice(0, 5).join(', ')));
+      }
+      return raus;
+    },
+  },
+  {
+    /* T-201: die Galerie zeigt Assets; ein Bild, das nur als Adresse in
+       einem Feld steht (die Karten der Abenteuer aus 5e.tools), ist für sie
+       nicht da. `scripts/bilder-nachtrag.mjs` führt sie als Assets. */
+    key: 'imageAddress',
+    label: 'Images given as an address',
+    description: 'An image field holds a web address instead of an image article — the gallery does not show it.',
+    run({ registry, entities }) {
+      const raus: CheckHit[] = [];
+      for (const e of entities) {
+        const adressen = imageAddresses(registry, e);
+        if (adressen.length) raus.push(hit(e, adressen.map((a) => `${a.field}: ${a.url}`).join(', ')));
       }
       return raus;
     },

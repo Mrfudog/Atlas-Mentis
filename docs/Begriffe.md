@@ -437,6 +437,23 @@ der Verweise, und die ist eine Abfrage. Sie zeigt nur, was man sehen
 darf: „wird noch an drei Orten gezeigt" verriete drei Artikel, auch ohne
 ihre Namen.
 
+Was man über die **Datei** wissen will — Auflösung, Grösse, Format —
+steht am Bild, gelesen beim Hochladen (T-201). Die Datei ist die Quelle:
+ein Wert, den man bei jedem Lesen neu aus ihr zöge, hiesse, für eine
+Listenzeile hundert Dateien zu öffnen. Das **Seitenverhältnis** dagegen
+steht nirgends; es ist eine Rechnung aus Breite und Höhe, und eine
+gespeicherte Rechnung ist die zweite Stelle, die beim Ersetzen veraltet.
+
+Ein Bild, das **nur als Adresse** in einem Feld steht, zeigt sich zwar,
+ist aber kein Artikel — es hat keine Marken, keine Klasse, keine Herkunft
+und steht darum in keiner Galerie. Der Nachtrag macht es zu einem Asset in
+der Ebene dessen, der es zeigt: dort kam es her.
+
+**„Use as map"** legt die Karte gleich mit an: die Klasse allein sagte
+nur, wo das Bild angeboten wird, und wer ein Bild zur Karte erklärt, will
+eine Karte. Das Gitter ist ein Vorschlag aus der Auflösung; ein falsches
+Gitter ist schlimmer als keins, also bleibt es weg, wenn nichts aufgeht.
+
 Ein Bild **ersetzen** heisst zweierlei, und die Maske fragt:
 
 - **Neue Fassung**: ein zweites Asset mit `variantOf` auf das erste. Beide
