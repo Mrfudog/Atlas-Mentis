@@ -41,6 +41,9 @@ export type LiveEintrag =
   | { seq: number; kind: 'registry'; id: string }
   /** Ein Wurf (T-172): der Eintrag selbst, gesiebt wie `GET /api/rolls`. */
   | { seq: number; kind: 'roll'; id: string; entry: RollEntry }
+  /** Ein Zugplan auf der Karte `id` (T-198): nur die Marke, den Plan holt
+   *  das Gerät über `GET /api/maps/:id/turn-plan`, gesiebt wie immer. */
+  | { seq: number; kind: 'plan'; id: string }
   /** Zu viel auf einmal (eine Einfuhr, eine Massenänderung): alles neu. */
   | { seq: number; kind: 'reset'; id: '' };
 
@@ -326,11 +329,16 @@ export function registerLive(
       /* Würfe: wer den Artikel des Wurfs nicht sieht, sieht ihn nicht. */
       const wurfArtikel = buendel.flatMap((e) => (e.kind === 'roll' && e.entry.subject ? (map.get(e.entry.subject) ?? []) : []));
       const wurfSicht = new Set((wurfArtikel.length ? await deps.sieveFuer(user, wurfArtikel, map) : []).map((e) => e.id));
+      /* Zugpläne: wer die Karte sieht, erfährt, dass sich dort etwas tat. */
+      const planKarten = buendel.flatMap((e) => (e.kind === 'plan' ? (map.get(e.id) ?? []) : []));
+      const planSicht = new Set((planKarten.length ? await deps.sieveFuer(user, planKarten, map) : []).map((e) => e.id));
       for (const e of buendel) {
         const id = `${feed.boot}.${e.seq}`;
         if (e.kind === 'roll') {
           const s = e.entry.subject;
           if (rollVisible(e.entry, user, s && map.has(s) ? wurfSicht.has(s) : null)) schreib(sseNachricht('roll', e.entry, id));
+        } else if (e.kind === 'plan') {
+          if (planSicht.has(e.id)) schreib(sseNachricht('plan', { id: e.id }, id));
         } else if (e.kind === 'reset') schreib(sseNachricht('reset', {}, id));
         else if (e.kind === 'registry') schreib(sseNachricht('registry', { part: e.id }, id));
         else if (sichtbar.has(e.id)) {
