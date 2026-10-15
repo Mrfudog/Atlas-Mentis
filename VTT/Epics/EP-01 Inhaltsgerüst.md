@@ -4,6 +4,10 @@ title: "Inhaltsgerüst"
 typ: "epic"
 umfang: "Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell, mit dem jeder Artikel beschrieben, gespeichert und gezeichnet wird."
 frueher: "Content Backbone"
+arten: ["Layer", "Identity", "Status", "Visibility", "Tags", "Source"]
+kanten: ["inLayer", "activates", "partOf", "overrides", "variantOf", "instanceOf"]
+code: ["packages/model/src/validate.ts", "packages/model/src/entity.ts", "packages/model/src/stack.ts", "packages/model/src/views.ts", "packages/model/src/inline.ts", "packages/model/src/versions.ts", "packages/registry/src", "apps/web/src/app/register"]
+doku: ["docs/Datenmodell.md", "docs/Begriffe.md", "docs/Ebenen.md", "docs/Artikeltypen.md", "docs/Durchgang.md"]
 tags: ["vtt", "epic"]
 ---
 # EP-01 Inhaltsgerüst
@@ -24,6 +28,20 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | [[F-007 Verweise & Platzhalter]] — [[Verweise]] nach Nummer, Rückbezüge, {VAR}-Platzhalter, Regelverweise im Text. | 5 | 15 | 3 steht · 2 teils |
 | [[F-008 Kanten verstehen]] — Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. | 2 | 10 | 1 steht · 1 offen |
 | [[F-009 Verlauf & gleichzeitiges Schreiben]] — Änderungsverlauf, Revisionen, nichts still überschreiben. | 3 | 8 | 2 steht · 1 teils |
+
+### Wo es wohnt
+
+**Arten:** [Layer](../../docs/Artikeltypen.md#layer), `Identity`, `Status`, `Visibility`, `Tags`, `Source`
+
+**Kanten:** `inLayer`, `activates`, `partOf`, `overrides`, `variantOf`, `instanceOf`
+
+**Code:** `packages/model/src/validate.ts`, `packages/model/src/entity.ts`, `packages/model/src/stack.ts`, `packages/model/src/views.ts`, `packages/model/src/inline.ts`, `packages/model/src/versions.ts`, `packages/registry/src`, `apps/web/src/app/register`
+
+**Erklärt in:** [Datenmodell.md](../../docs/Datenmodell.md), [Begriffe.md](../../docs/Begriffe.md), [Ebenen.md](../../docs/Ebenen.md), [Artikeltypen.md](../../docs/Artikeltypen.md), [Durchgang.md](../../docs/Durchgang.md)
+
+**Offen mit Prio 1–3:** [[REQ-003]] Änderungsverlauf je Artikel (teils) · [[REQ-006]] Stapel: was in der Kampagne gilt (teils) · [[REQ-007]] Stapel für Fortgeschrittene (offen) · [[REQ-008]] Varianten einer Sache (teils) · [[REQ-013]] Verweise nach Nummer, getippt nach Name (teils) · [[REQ-045]] Ebenen-Aktionen am Artikel (offen) · [[REQ-100]] Welt als Ebene (teils) · [[REQ-102]] Artikel je Stapel und Wissen zeichnen (teils) · [[REQ-176]] Ähnliches vor dem Anlegen vorschlagen (teils) · [[REQ-249]] Ebenen nach Herausgeber (teils) · [[REQ-253]] Ebenen und Artikel kopieren (offen) · [[REQ-258]] Verweisfeld nennt, welche Artikel es annimmt (teils) · [[REQ-264]] Vergleichsebenen der Kampagne (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
 
 ## Aus dem früheren Funktionsbereich

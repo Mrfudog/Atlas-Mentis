@@ -4,6 +4,10 @@ title: "Regeln & Nachschlagen"
 typ: "epic"
 umfang: "Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zustände, Handwerk, Regelsysteme und die Auswertung von Regeln."
 frueher: "Rules & Reference"
+arten: ["Rule", "Condition", "Disease", "Spell", "Class", "Recipe", "Skill", "Language", "Action", "Table", "Chapter", "Heading", "Paragraph", "ReadAloudText", "Embed"]
+kanten: ["casts", "affects", "stageOf", "grants", "needs", "yields", "craftsWith", "crafting", "tableFor", "entry", "describedIn", "chapterOf"]
+code: ["packages/model/src/effects.ts", "packages/model/src/crafting.ts", "packages/model/src/book.ts", "packages/model/src/reading.ts", "apps/server/src/handwerk.ts", "apps/web/src/app/lesen", "apps/web/src/app/klassen", "apps/web/src/app/artikel/werkstatt.ts"]
+doku: ["docs/Regelsysteme.md", "docs/Datenmodell.md"]
 tags: ["vtt", "epic"]
 ---
 # EP-07 Regeln & Nachschlagen
@@ -23,6 +27,20 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | [[F-047 Handwerk]] — Rezepte, Material, Fortschritt, Blaupausen lernen. | 3 | 9 | 3 steht |
 | [[F-048 Regelsysteme & Module]] — Regelsysteme als Behälter mit Optionen je Kampagne; Homebrew-Regeln; Rahmen wie Taverne. | 3 | 16 | 3 offen |
 | [[F-049 Masse & Einheiten]] — Masse beim Lesen umrechnen, auch im Fliesstext. | 1 | 2 | 1 offen |
+
+### Wo es wohnt
+
+**Arten:** `Rule`, [Condition](../../docs/Artikeltypen.md#condition), [Disease](../../docs/Artikeltypen.md#disease), [Spell](../../docs/Artikeltypen.md#spell), [Class](../../docs/Artikeltypen.md#class), [Recipe](../../docs/Artikeltypen.md#recipe), [Skill](../../docs/Artikeltypen.md#skill), [Language](../../docs/Artikeltypen.md#language), [Action](../../docs/Artikeltypen.md#action), [Table](../../docs/Artikeltypen.md#table), [Chapter](../../docs/Artikeltypen.md#chapter), [Heading](../../docs/Artikeltypen.md#heading), [Paragraph](../../docs/Artikeltypen.md#paragraph), `ReadAloudText`, `Embed`
+
+**Kanten:** `casts`, `affects`, `stageOf`, `grants`, `needs`, `yields`, `craftsWith`, `crafting`, `tableFor`, `entry`, `describedIn`, `chapterOf`
+
+**Code:** `packages/model/src/effects.ts`, `packages/model/src/crafting.ts`, `packages/model/src/book.ts`, `packages/model/src/reading.ts`, `apps/server/src/handwerk.ts`, `apps/web/src/app/lesen`, `apps/web/src/app/klassen`, `apps/web/src/app/artikel/werkstatt.ts`
+
+**Erklärt in:** [Regelsysteme.md](../../docs/Regelsysteme.md), [Datenmodell.md](../../docs/Datenmodell.md)
+
+**Offen mit Prio 1–3:** [[REQ-018]] Wirkungen von Regeln beschreiben (offen) · [[REQ-092]] Zauber als Artikel (offen) · [[REQ-097]] Zauberlisten (offen) · [[REQ-227]] Masse im Fliesstext umrechnen (offen) · [[REQ-287]] Regelsysteme als Behälter mit Optionen (offen) · [[REQ-289]] Homebrew-Regeln erfassen (offen) · [[REQ-313]] Zustände als Artikel (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
 
 ## Aus dem früheren Funktionsbereich

@@ -4,6 +4,10 @@ title: "Karten"
 typ: "epic"
 umfang: "Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und Zonen, Gebiete, Reisen, Karteneditor."
 frueher: "Maps"
+arten: ["Map", "ZoneKind"]
+kanten: ["mapOf", "insideMap", "marker", "zone", "territory", "onMap", "route"]
+code: ["packages/model/src/map.ts", "packages/model/src/movement.ts", "packages/model/src/sight.ts", "apps/server/src/karten.ts", "apps/web/src/app/karten"]
+doku: ["docs/Karten.md"]
 tags: ["vtt", "epic"]
 ---
 # EP-09 Karten
@@ -22,6 +26,20 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 | [[F-059 Gebiete & Overlays]] — Gebiete und Hervorhebungen auf der Karte. | 2 | 8 | 1 steht · 1 teils |
 | [[F-060 Reisen & Erkundung]] — Point-Crawl, Erkundungsstand, Vorräte und Aktionen je Knoten. | 4 | 13 | 4 steht |
 | [[F-061 Karteneditor]] — Zeichnen, Assets platzieren, Effekte. | 3 | 29 | 3 offen |
+
+### Wo es wohnt
+
+**Arten:** [Map](../../docs/Artikeltypen.md#map), `ZoneKind`
+
+**Kanten:** `mapOf`, `insideMap`, `marker`, `zone`, `territory`, `onMap`, `route`
+
+**Code:** `packages/model/src/map.ts`, `packages/model/src/movement.ts`, `packages/model/src/sight.ts`, `apps/server/src/karten.ts`, `apps/web/src/app/karten`
+
+**Erklärt in:** [Karten.md](../../docs/Karten.md)
+
+**Offen mit Prio 1–3:** [[REQ-132]] Kartenebene festhalten (offen) · [[REQ-135]] Tokens im Spiel (teils) · [[REQ-208]] Zonen mit eigenen Regeln (teils) · [[REQ-210]] Karte und Initiative im Vollbild (teils) · [[REQ-294]] Token ohne Bild zeigt den Anfangsbuchstaben (teils) · [[REQ-312]] Eigenes Token bewegen (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
 
 ## Aus dem früheren Funktionsbereich

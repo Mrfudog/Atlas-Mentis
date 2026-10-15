@@ -18,8 +18,11 @@ Story** im Vault, in drei Stufen (T-154):
 ## Die Epics
 
 Jede Epic-Notiz ist die Übersicht ihres Bereichs: Umfang, Features mit
-Stand (erzeugt), und darunter, wo der Bereich im Modell und im Code
-wohnt und welche Seite ihn erklärt.
+Stand und darunter **„Wo es wohnt“** — die Arten und Kanten im Register,
+die Code-Orte, die Seiten, die ihn erklären, und die offenen Stories mit
+Priorität 1–3. Erzeugt aus den Eigenschaften `arten`, `kanten`, `code`,
+`doku` der Notiz; derselbe Abschnitt steht je Epic in
+[Anforderungen.md](../Anforderungen.md).
 
 | Epic | Umfang | Stand |
 |---|---|---|

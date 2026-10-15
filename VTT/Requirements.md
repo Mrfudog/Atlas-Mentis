@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, registry]
 status: derived
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 # Requirements Registry

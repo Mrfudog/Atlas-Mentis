@@ -4,6 +4,10 @@ title: "Welt & Lore"
 typ: "epic"
 umfang: "Bereich World: Orte, Fraktionen, Gottheiten, Lore, Kalender und Zeitleisten, Beziehungen, Läden und Wirtschaft."
 frueher: "World & Lore"
+arten: ["World", "Place", "Faction", "Deity", "Event", "Article", "Shop", "Material"]
+kanten: ["livesIn", "memberOf", "worships", "controls", "sells", "discount", "shopkeeper", "regards", "inWorld"]
+code: ["packages/model/src/timeline.ts", "packages/model/src/shop.ts", "apps/server/src/laden.ts", "apps/web/src/app/artikel/laden.ts"]
+doku: ["docs/Beziehungen.md", "docs/Datenmodell.md"]
 tags: ["vtt", "epic"]
 ---
 # EP-06 Welt & Lore
@@ -20,6 +24,20 @@ Bereich World: Orte, Fraktionen, Gottheiten, Lore, Kalender und Zeitleisten, Bez
 | [[F-039 Beziehungen & Ruf]] — Beziehungen als Kanten mit Marken. | 3 | 11 | 1 steht · 2 ersetzt |
 | [[F-040 Läden & Wirtschaft]] — Läden mit Waren und Preisen, Fraktionspreise, andere Währungen. | 3 | 7 | 1 steht · 1 teils · 1 offen |
 | [[F-041 Namensgenerator]] — Namen für Figuren und Orte erzeugen. | 1 | 3 | 1 offen |
+
+### Wo es wohnt
+
+**Arten:** [World](../../docs/Artikeltypen.md#world), [Place](../../docs/Artikeltypen.md#place), [Faction](../../docs/Artikeltypen.md#faction), [Deity](../../docs/Artikeltypen.md#deity), [Event](../../docs/Artikeltypen.md#event), [Article](../../docs/Artikeltypen.md#article), [Shop](../../docs/Artikeltypen.md#shop), [Material](../../docs/Artikeltypen.md#material)
+
+**Kanten:** `livesIn`, `memberOf`, `worships`, `controls`, `sells`, `discount`, `shopkeeper`, `regards`, `inWorld`
+
+**Code:** `packages/model/src/timeline.ts`, `packages/model/src/shop.ts`, `apps/server/src/laden.ts`, `apps/web/src/app/artikel/laden.ts`
+
+**Erklärt in:** [Beziehungen.md](../../docs/Beziehungen.md), [Datenmodell.md](../../docs/Datenmodell.md)
+
+**Offen mit Prio 1–3:** [[REQ-025]] Kalender der Welt (offen) · [[REQ-285]] Fraktionspreise (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
 
 ## Aus dem früheren Funktionsbereich

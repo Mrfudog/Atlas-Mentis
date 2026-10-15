@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import { interfaces, relations } from '../src/index';
+// @ts-expect-error — ein Skript ohne Typen, wie die übrigen unter scripts/
+import { leseAnforderungen } from '../scripts/stories-lib.mjs';
 
 /* T-156: die Dokumentation führt in drei Stufen vom Einstieg bis in den
    Code. Ein Verweis ins Leere bricht genau diesen Weg, und gemerkt wird es
@@ -62,6 +65,20 @@ describe('Dokumentation (T-156)', () => {
       .filter((f) => !genannt.has(f))
       .map((f) => relative(wurzel, join(wurzel, 'docs', f)));
     expect(fehlt, 'neue Seite? in docs/README.md › Bestandsaufnahme eintragen').toEqual([]);
+  });
+
+  it('names only kinds, edges, code and pages that exist on the epic notes', () => {
+    const { epics } = leseAnforderungen(wurzel);
+    const arten = new Set(Object.keys(interfaces));
+    const kanten = new Set(Object.keys(relations));
+    const fehlt: string[] = [];
+    for (const e of epics as { id: string; arten?: string[]; kanten?: string[]; code?: string[]; doku?: string[] }[]) {
+      for (const a of e.arten ?? []) if (!arten.has(a)) fehlt.push(`${e.id}: Art ${a}`);
+      for (const k of e.kanten ?? []) if (!kanten.has(k)) fehlt.push(`${e.id}: Kante ${k}`);
+      for (const p of [...(e.code ?? []), ...(e.doku ?? [])]) if (!existsSync(join(wurzel, p))) fehlt.push(`${e.id}: ${p}`);
+      if (!e.code?.length || !e.doku?.length) fehlt.push(`${e.id}: ohne code oder doku`);
+    }
+    expect(fehlt).toEqual([]);
   });
 
   it('embeds the SVG of every drawing next to its Excalidraw source', () => {

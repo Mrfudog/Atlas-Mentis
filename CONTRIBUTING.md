@@ -100,6 +100,14 @@ Frontmatter `prio`, `aufwand`, `v1`, `abhaengig`, `status`, `stand` und
 `standNotiz` (was im Repo steht), `herkunft`. Eine Vorlage ist jede
 bestehende Notiz; die Skalen stehen in `VTT/Requirements.md`.
 
+**Ein Epic sagt, wo es wohnt** (T-156): `arten`, `kanten`, `code` und
+`doku` im Frontmatter nennen die Artikelarten, Kantenarten, Code-Orte und
+Seiten des Bereichs. `anforderungen` macht daraus in der Epic-Notiz und in
+`docs/Anforderungen.md` den Abschnitt „Wo es wohnt“, samt den offenen
+Stories mit Priorität 1–3 — der Weg vom Überblick bis in den Code. Ein Test
+prüft, dass jede genannte Art, Kante und Datei existiert; wer eine Datei
+umbenennt oder eine Art streicht, zieht die Angabe nach.
+
 **Der Ablauf, wenn sich etwas ändert:**
 
 1. Ein **neuer Wunsch** wird zuerst eine Story — die nächste freie Nummer,
