@@ -8,6 +8,8 @@ import {
   assignmentProblem,
   builderSteps,
   campaignLanguages,
+  chosenResult,
+  optionEffects,
   choicesOf,
   gainedFeatures,
   partyPool,
@@ -216,5 +218,69 @@ describe('a player receives the choices whole (T-080)', () => {
     const { seedRegistry } = await import('@nw/registry');
     const sieb = redactEntity(seedRegistry, new Map([[fighter.id, fighter]]), fighter, 'pc-x');
     expect(sieb.components?.['Choices']?.['choices']).toEqual(fighter.components?.['Choices']?.['choices']);
+  });
+});
+
+describe('effects, sub-ancestries and nested choices (T-193)', () => {
+  const grund = art('anc-elf', 'Ancestry', {
+    Ancestry: { abilityBonus: { dex: 2 }, size: ['medium'], speed: '30 ft.', darkvision: 60 },
+    Proficiencies: { proficient: ['Perception', 'Elvish'] },
+    Choices: { choices: [{ id: 'cantrip', kind: 'spell', from: { interfaces: ['Spell'] } }] },
+  }, [{ id: 'g1', type: 'grants', to: 'feat-trance' }]);
+  const hoch = art('anc-high', 'Ancestry', {
+    Ancestry: { abilityBonus: { int: 1 } },
+    Proficiencies: { proficient: ['Elvish', 'Longsword'] },
+  }, [{ id: 'h1', type: 'subraceOf', to: 'anc-elf' }, { id: 'h2', type: 'grants', to: 'feat-training' }]);
+  const b = new Map([...bestand, [grund.id, grund], [hoch.id, hoch]]);
+
+  it('reads the base of a sub-ancestry: bonuses add up, the sub-ancestry wins, lists unite', () => {
+    const w = optionEffects('anc-high', b)!;
+    expect(w.line).toEqual(['anc-high', 'anc-elf']);
+    expect(w.abilityBonus).toEqual({ int: 1, dex: 2 });
+    expect(w.speed).toBe('30 ft.');
+    expect(w.darkvision).toBe(60);
+    expect(w.proficient).toEqual(['Elvish', 'Longsword', 'Perception']);
+    expect(w.features.map((f) => f.id)).toEqual(['feat-training', 'feat-trance']);
+    expect(w.choices.map((c) => `${c.by}#${c.choice.id}`)).toEqual(['anc-elf#cantrip']);
+  });
+
+  it('counts the base ancestry for the character: its bonus and its choices', () => {
+    const d = setPick(leer, 'hasAncestry', 'anc-high');
+    expect(chosenResult(d, b).abilityBonus).toEqual({ int: 1, dex: 2 });
+    expect(builderSteps(d, b).map((s) => s.id)).toContain('choice:anc-elf#cantrip');
+  });
+
+  it('class features up to level 1 only, no multiclass or equipment choices', () => {
+    const k = art('class-x', 'Class', {
+      Class: { hitDie: 12 },
+      Proficiencies: { saves: ['str', 'con'] },
+      Choices: {
+        choices: [
+          { id: 'skills', kind: 'proficiency', count: 2, when: 'start', from: { values: ['A', 'B', 'C'] } },
+          { id: 'mc', kind: 'proficiency', when: 'multiclass', from: { values: ['A'] } },
+          { id: 'gear', kind: 'equipment', from: { options: [{ key: 'a', label: 'x' }] } },
+          { id: 'path', kind: 'subclass', level: 3, from: { interfaces: ['Subclass'] } },
+        ],
+      },
+    }, [{ id: 'k1', type: 'grants', to: 'rage', props: { level: 1 } }, { id: 'k2', type: 'grants', to: 'later', props: { level: 2 } }]);
+    const w = optionEffects('class-x', new Map([[k.id, k]]))!;
+    expect(w.hitDie).toBe(12);
+    expect(w.saves).toEqual(['str', 'con']);
+    expect(w.features.map((f) => f.id)).toEqual(['rage']);
+    expect(w.choices.map((c) => c.choice.id)).toEqual(['skills']);
+  });
+
+  it('with nest, the choices of a pick stand inside its step; a chosen feat keeps its own', () => {
+    let d = setPick(leer, 'hasClass', 'class-1');
+    d = setPick(d, 'hasBackground', 'background-1');
+    const s = builderSteps(d, bestand, { nest: true });
+    const klasse = s.find((x) => x.id === 'class');
+    expect(klasse?.kind === 'pick' && klasse.nested?.map((c) => c.choice.id)).toEqual(['skills']);
+    expect(s.map((x) => x.id)).not.toContain('choice:class-1#skills');
+    const hg = s.find((x) => x.id === 'background');
+    if (hg?.kind !== 'pick' || !hg.nested?.[0]) throw new Error('keine Wahl');
+    d = answerChoice(d, hg.nested[0], ['feat-1']);
+    /* Das gewählte Talent fragt selbst — als eigener Schritt (`chose`). */
+    expect(builderSteps(d, bestand, { nest: true }).map((x) => x.id)).toContain('choice:feat-1#ability');
   });
 });
