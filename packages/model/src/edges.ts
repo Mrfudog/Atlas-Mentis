@@ -322,8 +322,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     area: 'play',
     does: 'draws the map with its markers and the frames of its sub-maps, zooms through them, shows where the party stands, puts the combatants of the encounter fought there on it and rings whose turn it is — and keeps hidden markers, markers on unseen articles and markers under the fog from players (T-115, T-117)',
     uses: {
-      [M + 'map.ts']: ['insideMap', 'mapOf', 'marker', 'participates'],
-      [S + 'karten.ts']: ['belongsTo', 'insideMap', 'memberOfParty', 'onMap', 'participates'],
+      [M + 'map.ts']: ['insideMap', 'mapOf', 'marker', 'onMap', 'participates'],
+      [S + 'karten.ts']: ['belongsTo', 'insideMap', 'memberOfParty', 'participates'],
       [W + 'karten/karte.ts']: ['marker'],
     },
   },
@@ -331,9 +331,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'turnplan',
     label: 'Turn planner',
     area: 'play',
-    does: 'builds the action bar of a creature on the map from the actions of its statblock, and moves its token when the GM confirms a planned turn (T-198)',
+    does: 'builds the action bar of a creature on the map from the actions of its statblock, moves its token when the GM confirms a planned turn, and asks for an opportunity attack when the path leaves the reach of a creature on the other side (party members and allies of the encounter against the rest) (T-198)',
     uses: {
-      [S + 'zugplan.ts']: ['belongsTo', 'composedOf'],
+      [S + 'zugplan.ts']: ['belongsTo', 'composedOf', 'memberOfParty', 'participates'],
     },
   },
   {

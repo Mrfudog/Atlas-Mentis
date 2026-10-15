@@ -289,6 +289,52 @@ export function turnOf(
   return { ...(current ? { current } : {}), ...(next ? { next } : {}) };
 }
 
+/**
+ * **Der Kampf auf einer Karte** (REQ-144, T-198): die Begegnung mit
+ * `onMap` hierher, die eine Sitzung gerade führt (`activeEncounter`), sonst
+ * eine laufende (Runde ≥ 1). Eine gefangene, aber nicht laufende zählt nur,
+ * wenn eine Sitzung sie führt.
+ */
+export function encounterOnMap(all: readonly Entity[], mapId: EntityId): Entity | null {
+  const hierher = (e: Entity) => (e.relations ?? []).some((r) => r.type === 'onMap' && r.to === mapId);
+  const laufend = (e: Entity) => Number((e.components?.['Encounter'] as { round?: unknown } | undefined)?.round) >= 1;
+  const gefuehrt = new Set(
+    all
+      .filter((e) => e.interfaces?.[0] === 'Session')
+      .map((e) => ((e.components?.['SessionState'] ?? e.components?.['Session']) as { activeEncounter?: unknown } | undefined)?.activeEncounter)
+      .filter((x): x is string => typeof x === 'string'),
+  );
+  const kaempfe = all
+    .filter((e) => e.interfaces?.[0] === 'Encounter' && hierher(e))
+    .sort((a, b) => Number(gefuehrt.has(b.id)) - Number(gefuehrt.has(a.id)) || Number(laufend(b)) - Number(laufend(a)) || a.id.localeCompare(b.id));
+  return kaempfe.find((e) => gefuehrt.has(e.id) || laufend(e)) ?? null;
+}
+
+/** Wer an einer Begegnung teilnimmt — die Ziele der `participates`-Kanten. */
+export function participantIds(encounter: Entity | null): Set<EntityId> {
+  return new Set((encounter?.relations ?? []).filter((r) => r.type === PARTICIPATES && r.to).map((r) => r.to));
+}
+
+/**
+ * **Welche Tokens sich bewegt haben** (T-198): die Ziele, deren Marker
+ * vorher woanders standen als nachher — als Menge von Stellen je Ziel, damit
+ * „Marker weg, neuer Marker daneben" auch zählt. Nur Spiel-Tokens und die
+ * Ziele in `ids`.
+ */
+export function movedTokens(before: Entity, after: Entity, ids: ReadonlySet<EntityId>): EntityId[] {
+  const stellen = (e: Entity) => {
+    const je = new Map<EntityId, string[]>();
+    for (const m of markersOf(e)) {
+      if (m.kind !== 'play' && !ids.has(m.to)) continue;
+      je.set(m.to, [...(je.get(m.to) ?? []), `${m.x.toFixed(4)},${m.y.toFixed(4)}`]);
+    }
+    return new Map([...je].map(([k, v]) => [k, v.sort().join(';')]));
+  };
+  const a = stellen(before);
+  const b = stellen(after);
+  return [...new Set([...a.keys(), ...b.keys()])].filter((k) => a.get(k) !== b.get(k));
+}
+
 /** Der Tischname eines Teilnehmers für die Leitung — die Angabe an der Kante, sonst der Name. */
 export function participantLabel(entities: ReadonlyMap<EntityId, Entity>, r: Relation): string {
   const p = (r.props ?? {}) as ParticipantProps;
