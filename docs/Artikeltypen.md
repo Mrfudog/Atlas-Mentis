@@ -1367,7 +1367,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Ancestry (angepasst)`): `image`, `description`, `originOverview`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Background
 
@@ -1422,7 +1422,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Background (angepasst)`): `image`, `description`, `originOverview`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Class
 
@@ -1478,7 +1478,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Class (angepasst)`): `image`, `description`, `classOverview`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Condition
 
@@ -3003,7 +3003,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Layer (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `reader`
 
 ### Lore — *abstrakt*
 

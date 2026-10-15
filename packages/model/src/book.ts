@@ -39,6 +39,11 @@ export const BOOK_CARDS: Partial<Record<LayoutElementKind, readonly string[]>> =
   statblock: ['Statblock', 'Abilities', 'Proficiencies'],
   spell: ['Spell'],
   item: ['Item', 'Weapon', 'Armor', 'Material'],
+  /* Die Übersichten (T-191) zeichnen Übungen und Wahlen selbst; die
+     Karte der Art nicht ganz (Zauberprogression, Unterklassentitel …), also
+     bleibt sie in der Feldtabelle. */
+  classOverview: ['Proficiencies', 'Choices'],
+  originOverview: ['Proficiencies', 'Choices'],
 };
 
 /** Eine Zeile wie „**Armor Class** 15 (leather armor)". `text` ist Inline-Markdown. */

@@ -519,7 +519,7 @@ flowchart LR
 | Ü3 | **`DamageType` und `Size` sind Zeilen** (F1): drei Felder nennen die Schadensarten (Waffe, Aktion, Zauber; die Abstammung für Resistenzen), zwei die Grösse. | `validateEntity` (`value_not_allowed`) |
 
 Offen: der Bogen der Oberfläche (`apps/web`) zeichnet Klasse und Stufe
-noch nicht (die Klasse selbst steht unter `/classes/:id`, W6) und rechnet
+noch nicht (die Klasse selbst zeigt ihre Artikelseite mit dem Element `classOverview`, W6, T-191) und rechnet
 die Boni aus `chosenResult` noch nicht zu den Grundwerten des Statblocks —
 der Assistent (`/characters/new`, C7) zeigt die Summe; eine umbenannte
 Fertigkeit nimmt die gespeicherten Übungen nicht mit (F12), und eine
@@ -1403,6 +1403,25 @@ flowchart LR
   Z --> S["Schnittmenge mit dem Artikel<br/>+ empty / rest"]
 ```
 
+**Was eine eigene Seite war, ist ein Element** (T-191): die Leseansicht,
+die Klassenübersicht und die Übersicht einer Herkunft oder eines
+Hintergrunds hatten eigene Routen (`/read/:layer`, `/classes/:id`,
+`/ancestries/:id`, `/backgrounds/:id`). Sie sind jetzt Layout-Elemente, die
+die Art in `full` nennt — eine fünfte Ansicht braucht es dafür nicht, denn
+der Ort ist derselbe: die Artikelseite. Die alten Wege leiten auf
+`/artikel/:id` um (`?at=`, `?page=`, `?sub=`, `?opt=` gehen mit).
+
+| Element | Art (`full`, Anpassung) | Zeichnet |
+|---|---|---|
+| `reader` | `Layer` | die Ebene als Buch (E11): Inhalt, Suche, ein Stück am Stück, Lesestand je Konto; eine Gruppe als Regal. Über die ganze Breite unter Haupt- und Seitenspalte. Gesprungen wird nur auf Wunsch (`?at=`, `?page=`, `?tab=read`) — wer die Ebene öffnet, sieht zuerst ihren Kopf, und solange das Buch nicht oben steht, bleibt der Lesestand. |
+| `classOverview` | `Class` | Eckdaten, Stufentabelle, Unterklassen zum Wählen und Vergleichen, Merkmale je Stufe (C5). Nimmt `Proficiencies` und `Choices` aus der Feldtabelle (`BOOK_CARDS`); die Karte `Class` bleibt dort, weil die Übersicht nicht jedes ihrer Felder zeigt. |
+| `originOverview` | `Ancestry`, `Background` | Eckdaten, Spielarten zum Umschalten und Vergleichen, Merkmale (C5, T-166); nimmt ebenso `Proficiencies` und `Choices`. |
+
+Die Anpassungen stehen in `ansichten.ts` und kommen über Migration 084 in
+bestehende Datenbanken, nur wo die Art für `full` noch nichts sagt. Boards,
+Bibliothek und Handbuch nehmen dieselben Elemente, sobald sie Anordnungen
+zeichnen (T-147, T-168, E-055).
+
 **Die ersten Ansichten je Art** (T-110 Schritt 7, `ansichten.ts`,
 Migration 052, [Bericht](Nachtarbeit/T-110-Ansichten.md)): die Karte
 nimmt je Art die zwei, drei Werte, an denen man eine Sache erkennt (Zauber:
@@ -1796,9 +1815,9 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `AbilityMethod` | `Rule` | `method` `scores` `budget` `costs` `dice` `count` `scope` | `affects` `casts` | `composedOf` `affects` `allowsMethod` `abilityPool` `grants` | overview |
 | `Action` | `Rule` | `actionType` `recharge` `uses` `attack` `ability` `toHitBonus` `reach` `range` `target` `damageDice` `damageBonus` `damageType` `extraDamageDice` `extraDamageType` | `affects` `casts` | `composedOf` `affects` `grants` | overview |
 | `ActionType` | `Rule` | `per` `count` | `affects` `casts` | `composedOf` `affects` `grants` | — |
-| `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` | quick, overview |
-| `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `casts` `grants` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` | — |
-| `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `grants` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` | quick, overview |
+| `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` | quick, full, overview |
+| `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `casts` `grants` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` | full |
+| `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `grants` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` | quick, full, overview |
 | `Condition` | `Rule` | `kind` `stage` `recovery` | `stageOf` `affects` `casts` | `composedOf` `stageOf` `affects` `grants` | overview |
 | `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` `casts` | `composedOf` `stageOf` `affects` `grants` | — |
 | `EquipmentMethod` | `Rule` | `method` `gold` `budget` `magic` `itemTypes` | `affects` `casts` | `composedOf` `affects` `allowsEquipment` `grants` | overview |
@@ -1835,7 +1854,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Chapter` | `Source` | `ordinal` | `partOf` `chapterOf` | `partOf` | — |
 | `Embed` | `BookPart` | `target` | `partOf` | `describedIn` | — |
 | `Heading` | `BookPart` | `level` | `partOf` | `describedIn` | — |
-| `Layer` | — | `kind` `order` `abbreviation` `published` `author` `version` `levels` `storyline` `groupBy` | `partOf` | `partOf` `inLayer` `activates` | — |
+| `Layer` | — | `kind` `order` `abbreviation` `published` `author` `version` `levels` `storyline` `groupBy` | `partOf` | `partOf` `inLayer` `activates` | full |
 | `Paragraph` | `BookPart` | `kind` | `partOf` | `describedIn` | — |
 | `ReadAloudText` | `BookPart` `ReadAloud` | — | `partOf` | `describedIn` | — |
 
