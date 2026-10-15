@@ -2,6 +2,7 @@ import { Component, DestroyRef, computed, effect, inject, input, signal, untrack
 import { Router, RouterLink } from '@angular/router';
 import { Api, type Tisch } from '../kern/api';
 import { Live } from '../kern/live';
+import { WurfZiel } from '../kern/wurfziel';
 import { Karte } from './karte';
 
 /**
@@ -18,6 +19,8 @@ import { Karte } from './karte';
 @Component({
   selector: 'nw-play',
   imports: [RouterLink, Karte],
+  /* Würfe auf diesem Schirm gehören zur Sitzung am Tisch (T-172). */
+  providers: [WurfZiel],
   template: `
     <div class="seite">
       <header class="kopf">
@@ -129,6 +132,8 @@ export class Play {
   protected readonly karteId = computed(() => this.map() || this.tisch()?.map || null);
 
   constructor() {
+    const ziel = inject(WurfZiel);
+    effect(() => ziel.sitzung.set(this.tisch()?.session ?? null));
     effect(() => {
       const s = this.session();
       untracked(() => this.holen(s));

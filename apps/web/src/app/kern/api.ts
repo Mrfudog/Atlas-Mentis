@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, Purchase, Registry, RegistryUsage, Relation, RolledScores } from '@nw/model';
+import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, Purchase, Registry, RegistryUsage, Relation, RollEntry, RolledScores } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1193,6 +1193,16 @@ export class Api {
   rollAbilities(method: string, party?: string): Promise<RolledScores & { at: string }> {
     return this.call('/api/abilities/roll', { method: 'POST', body: JSON.stringify({ method, ...(party ? { party } : {}) }) });
   }
+  /** **Würfeln am Server** (T-172): der Wurf steht im Log des Artikels. */
+  roll(body: RollAnfrage): Promise<RollEntry> {
+    return this.call('/api/rolls', { method: 'POST', body: JSON.stringify(body) });
+  }
+  /** Das Log eines Artikels (T-172), neueste zuerst, gesiebt am Server. */
+  rolls(subject: string, filter: { by?: string; session?: string; offset?: number; limit?: number } = {}): Promise<WurfLog> {
+    const q = new URLSearchParams({ subject });
+    for (const [k, v] of Object.entries(filter)) if (v !== undefined && v !== '') q.set(k, String(v));
+    return this.call(`/api/rolls?${q.toString()}`);
+  }
   /** Die Verfahren für die Startausrüstung der laufenden Kampagne (T-096). */
   equipmentMethods(): Promise<{ methods: EquipmentMethod[] }> {
     return this.call('/api/equipment');
@@ -1633,4 +1643,26 @@ export interface Tisch {
   session: string | null;
   map: string | null;
   maps: { id: string; name: string }[];
+}
+
+/** Ein Wurf, wie die Oberfläche ihn schickt (T-172). */
+export interface RollAnfrage {
+  expr: string;
+  subject?: string | undefined;
+  label?: string | undefined;
+  mode?: 'adv' | 'dis' | undefined;
+  hidden?: boolean | undefined;
+  actor?: string | undefined;
+  session?: string | undefined;
+}
+
+/** Das Log eines Artikels (`GET /api/rolls`). */
+export interface WurfLog {
+  entries: RollEntry[];
+  total: number;
+  next: number | null;
+  people: { id: string; name: string }[];
+  sessions: { id: string; name: string }[];
+  subjects: string[];
+  leitet: boolean;
 }
