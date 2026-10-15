@@ -10,6 +10,10 @@
  * Kapitel 11, die Zustände im Anhang, die Monster im Monster Manual —
  * ein `Embed`, der darauf zeigt. Nichts wird verdoppelt.
  *
+ * Eine Überschrift, die einen Ort beschreibt, bekommt ihren `Place`
+ * (T-175, `orte.ts`) — in Settingbüchern die Städte und Reiche, im DMG die
+ * Domänen des Glossars.
+ *
  * Ein Regelbuch bekommt nur Kapitel; ein Abenteuer bekommt dazu seine
  * Geschichte (`abenteuer.ts`). Läuft nach den übrigen Arten, damit jeder
  * Verweis und jeder `Embed` sein Ziel findet.
@@ -18,6 +22,7 @@
 import type { Entity } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Abenteuer } from '../lesen.js';
+import { ortFuerUeberschrift } from '../orte.js';
 import { legeTeileAn } from '../teile.js';
 import type { Werkbank } from '../werkbank.js';
 import { zaehle } from '../werkbank.js';
@@ -60,7 +65,7 @@ export function buch(wb: Werkbank, b: Abenteuer, art = 'bookData'): Entity[] {
     const k = wb.anlegen('Chapter', titel, `chapter|${quelle.toLowerCase()}|${n.toLowerCase()}|${i}`, { source: quelle, ...(kap['page'] ? { page: kap['page'] } : {}) });
     wb.feld(k, 'Chapter', 'ordinal', ordinal);
     zaehle(bericht.artikel, 'Chapter');
-    legeTeileAn(wb, k, Array.isArray(kap['entries']) ? (kap['entries'] as unknown[]) : [], 1, { quelle, ctx: wb.ctx, art }, kap['page']);
+    legeTeileAn(wb, k, Array.isArray(kap['entries']) ? (kap['entries'] as unknown[]) : [], 1, { quelle, ctx: wb.ctx, art, ort: ortFuerUeberschrift(wb, quelle, art) }, kap['page']);
     kapitel.push(k);
   });
   return kapitel;

@@ -302,11 +302,11 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'reading',
     label: 'Reading view',
     area: 'reading',
-    does: 'reads a layer as a book — chapters and their parts in rank order, maps and fights in place',
+    does: 'reads a layer as a book — chapters and their parts in rank order, maps, fights and the places a section describes in place (T-175)',
     uses: {
       [M + 'reading.ts']: ['inLayer', 'overrides', 'partOf'],
       [M + 'parts.ts']: ['partOf'],
-      [S + 'lesen.ts']: ['chapterOf', 'inLayer', 'mapOf', 'overrides', 'partOf'],
+      [S + 'lesen.ts']: ['chapterOf', 'describedIn', 'inLayer', 'mapOf', 'overrides', 'partOf'],
       [W + 'lesen/lesen.ts']: ['participates'],
       [W + 'artikel/artikel.ts']: ['partOf'],
     },

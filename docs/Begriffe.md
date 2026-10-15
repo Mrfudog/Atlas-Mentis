@@ -1025,6 +1025,18 @@ Szene zeigt aufs Original, und eine Korrektur am Original kommt mit.
 Zwei Wege, weil es zwei Absichten sind; einer allein hiesse, entweder
 jeden Vorlesetext zu kopieren oder keinen ändern zu können.
 
+**Ein Ort steht neben seinem Text, nicht in ihm** (T-175). Barovia war
+nur eine Überschrift im Buch — auffindbar beim Lesen, aber nicht in World,
+nicht auf einer Karte, nicht als Wohnort einer Kreatur. Der Ort ist darum
+ein eigener `Place`, und sein Text bleibt, wo er ist: der Ort zeigt mit
+`describedIn` auf den Abschnitt, der ihn beschreibt. Den Text in den Ort
+zu kopieren hiesse, ihn zweimal zu haben und beim ersten Korrigieren
+zwei Fassungen. Erkannt wird nur, was das Buch selbst sagt — ein Raum mit
+Schlüssel, ein Abschnitt mit Karte, ein erster Satz „X is a city" —; was
+nach einem Ort klingt, ohne es zu sagen, wird gezählt und nicht angelegt,
+denn ein falscher Ort in der Weltliste ist schwerer zu finden als ein
+fehlender.
+
 **Wer schreibt, schreibt in eine Ebene** (T-098, E-001). Die Leitung
 konnte bis zum 14.10. ihre eigene Kampagne lesen und nichts daran ändern;
 die naheliegende Regel „die Leitung schreibt, was ihrer Kampagne gehört"

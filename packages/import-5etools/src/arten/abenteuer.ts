@@ -25,6 +25,11 @@
  *    steht immer an einer Szene** (E-026): liegt sie im Text des Kapitels
  *    selbst, bekommt sie eine eigene Szene (`mode: 'exploration'`, `partOf`
  *    der Arc, mit Rang im Chapter);
+ *  - je Abschnitt, der einen Ort beschreibt (ein Raum mit Schlüssel, ein
+ *    Abschnitt mit Räumen oder eigener Karte, ein erster Satz „X is a
+ *    village …"), ein `Place` (T-175, `orte.ts`): `describedIn` die Szene,
+ *    die Szene `happensAt` ihn, `partOf` der Ort der umgebenden Szene, und
+ *    die Karten der Szene `mapOf` auch ihn;
  *  - je Abschnitt, der Kreaturen mit Anzahl nennt („two {@creature
  *    goblin}"), eine `Encounter`, `partOf` der Abschnitt (der damit eine
  *    Szene mit `mode: 'encounter'` ist), mit einer Kante
@@ -53,6 +58,7 @@
 import type { Entity } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Abenteuer } from '../lesen.js';
+import { hatKarte, hatRaeume as hatOrtRaeume, legeOrtAn, ortBefund, ortFuerUeberschrift, ortKandidat } from '../orte.js';
 import { legeTeileAn } from '../teile.js';
 import type { TextKontext } from '../text.js';
 import { kapitelTitel } from './buch.js';
@@ -209,7 +215,9 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
   const inhaltVon = new Map<Entity, unknown[]>();
   const kapitel: { arc: Entity; chapter: Entity; kap: Knoten }[] = [];
   const ordnung = (Array.isArray(a.kopf['contents']) ? (a.kopf['contents'] as Knoten[]) : []);
-  const abschnitte = (e: Knoten, arc: Entity, pfad: string[]): unknown[] => {
+  /** Der Ort je Szene (T-175). */
+  const ortVon = new Map<string, Entity>();
+  const abschnitte = (e: Knoten, arc: Entity, pfad: string[], elternOrt?: Entity): unknown[] => {
     const inhalt: unknown[] = [];
     const raeume = hatRaeume(e) || e['type'] === 'section';
     for (const k of Array.isArray(e['entries']) ? (e['entries'] as unknown[]) : []) {
@@ -226,7 +234,16 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       if (pfad.length === 1) wb.kante(szene, 'partOf', arc.id);
       if (typeof k['id'] === 'string') nachId.set(k['id'], szene);
       szeneVon.set(k, szene);
-      inhaltVon.set(szene, abschnitte(k, arc, [...pfad, name(k)]));
+      /* Ist der Abschnitt ein Ort? Vor den Räumen darin, die in ihm liegen. */
+      const befund = ortBefund(name(k), k['entries'], { raeume: hatOrtRaeume(k['entries']), karte: hatKarte(k['entries']) });
+      let ort: Entity | undefined;
+      if (befund.ort) {
+        ort = legeOrtAn(wb, name(k), { abschnitt: szene, eltern: elternOrt, befund, quelle, seite: k['page'], art: 'adventureData' });
+        gm(ort);
+        wb.kante(szene, 'happensAt', ort.id);
+        ortVon.set(szene.id, ort);
+      } else if (befund.kandidat) ortKandidat(wb, 'adventureData');
+      inhaltVon.set(szene, abschnitte(k, arc, [...pfad, name(k)], ort ?? elternOrt));
     }
     return inhalt;
   };
@@ -295,6 +312,10 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       wb.feld(karte, 'Image', 'alt', titel);
       raster(wb, karte, k['grid'] as Knoten | undefined);
       wb.kante(karte, 'mapOf', ort.id);
+      /* Die Karte einer Szene zeigt auch ihren Ort (T-175). */
+      const platz = ortVon.get(ort.id);
+      if (platz) wb.kante(karte, 'mapOf', platz.id);
+      else if (imKapitel) wb.notiz('Karte im Kapiteltext: ohne benannten Abschnitt kein Ort (T-175)', 'adventureData');
       return teil;
     };
     legeTeileAn(wb, chapter, Array.isArray(kap['entries']) ? (kap['entries'] as unknown[]) : [], 1, {
@@ -304,6 +325,8 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       angelegt: gm,
       szene: (k) => szeneVon.get(k),
       bild,
+      ort: ortFuerUeberschrift(wb, quelle, 'adventureData', gm),
+      ortVon: (sz) => ortVon.get(sz.id),
     }, kap['page']);
   }
 
