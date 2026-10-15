@@ -4,6 +4,10 @@ title: "Zugang & Betrieb"
 typ: "epic"
 umfang: "Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, Werkbank, Ausrollen, Sicherung, Übernahme zwischen dev und prod, Leistung."
 frueher: "Platform & Access, Cross-cutting"
+arten: ["Visibility", "Information", "Knowledge", "Faction", "Party"]
+kanten: ["knownBy", "includes", "memberOf", "memberOfParty"]
+code: ["apps/server/src/auth.ts", "apps/server/src/user.ts", "apps/server/src/ebenenrechte.ts", "apps/server/src/schreibebene.ts", "apps/server/src/uebernahme.ts", "packages/model/src/visibility.ts", "packages/model/src/knowledge.ts", "packages/model/src/checks.ts", "packages/model/src/bulk.ts", "apps/web/src/app/werkbank", "apps/web/src/app/konto"]
+doku: ["docs/Zugang.md", "docs/Wissen.md", "docs/Betrieb.md", "docs/Architektur.md"]
 tags: ["vtt", "epic"]
 ---
 # EP-02 Zugang & Betrieb
@@ -25,6 +29,20 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[F-017 Ausrollen & Sicherung]] — CI/CD nach Hetzner, dev und prod, Sicherungen, Spiegelung, Netz. | 5 | 12 | 3 steht · 1 teils · 1 offen |
 | [[F-018 Übernahme dev - prod]] — Artikel auf dev vorbereiten und nach prod übernehmen, Konflikte lösen. | 2 | 10 | 1 teils · 1 offen |
 | [[F-019 Leistung & Laden]] — Listen am Server, schnelle Navigation, Ladeanzeige. | 2 | 10 | 2 steht |
+
+### Wo es wohnt
+
+**Arten:** `Visibility`, [Information](../../docs/Artikeltypen.md#information), [Knowledge](../../docs/Artikeltypen.md#knowledge), [Faction](../../docs/Artikeltypen.md#faction), [Party](../../docs/Artikeltypen.md#party)
+
+**Kanten:** `knownBy`, `includes`, `memberOf`, `memberOfParty`
+
+**Code:** `apps/server/src/auth.ts`, `apps/server/src/user.ts`, `apps/server/src/ebenenrechte.ts`, `apps/server/src/schreibebene.ts`, `apps/server/src/uebernahme.ts`, `packages/model/src/visibility.ts`, `packages/model/src/knowledge.ts`, `packages/model/src/checks.ts`, `packages/model/src/bulk.ts`, `apps/web/src/app/werkbank`, `apps/web/src/app/konto`
+
+**Erklärt in:** [Zugang.md](../../docs/Zugang.md), [Wissen.md](../../docs/Wissen.md), [Betrieb.md](../../docs/Betrieb.md), [Architektur.md](../../docs/Architektur.md)
+
+**Offen mit Prio 1–3:** [[REQ-041]] Wer was schreiben darf (teils) · [[REQ-088]] Massenänderungen an Wissen und Rechten (teils) · [[REQ-229]] Konten in der Seite verwalten (offen) · [[REQ-242]] Felder der eigenen Figur sperren (offen) · [[REQ-268]] Dev-Token aus der Werkbank erzeugen (teils) · [[REQ-269]] Ankündigen, wann produktiv gearbeitet werden kann (teils) · [[REQ-270]] Artikel von dev nach prod übernehmen (teils) · [[REQ-271]] Konflikte bei der Übernahme nebeneinander lösen (offen)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
 
 ## Aus dem früheren Funktionsbereich

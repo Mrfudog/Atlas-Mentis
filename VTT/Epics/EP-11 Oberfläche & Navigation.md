@@ -4,6 +4,10 @@ title: "Oberfläche & Navigation"
 typ: "epic"
 umfang: "Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten in der Ansicht, Design und Stilkonzept."
 frueher: "Cross-cutting"
+arten: ["Board"]
+kanten: ["placed"]
+code: ["apps/web/src/app/suche", "apps/web/src/app/kern", "apps/web/src/app/artikel/kurzpopup.ts", "apps/web/src/app/neues", "apps/server/src/filtergruppen.ts", "packages/model/src/views.ts", "packages/model/src/facets.ts"]
+doku: ["docs/Architektur.md", "docs/UI-Arbeitsplan.md", "docs/Web-Arbeitsplan.md", "docs/design"]
 tags: ["vtt", "epic"]
 ---
 # EP-11 Oberfläche & Navigation
@@ -21,6 +25,20 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | [[F-070 Navigation & Kurzansicht]] — Kopfleiste, Brotkrumen, Kurzansicht als Popup, Kampagne und Ebene sichtbar. | 3 | 9 | 3 steht |
 | [[F-071 Bearbeiten in der Ansicht]] — Felder dort bearbeiten, wo sie stehen; optionale Felder; Löschen mit Rückfrage. | 2 | 3 | 1 steht · 1 teils |
 | [[F-072 Design & Stilkonzept]] — Pergament wie die Bücher, Lesbarkeit, Stilkonzept, Sprache der Oberfläche. | 4 | 10 | 1 steht · 1 teils · 1 offen · 1 ersetzt |
+
+### Wo es wohnt
+
+**Arten:** [Board](../../docs/Artikeltypen.md#board)
+
+**Kanten:** `placed`
+
+**Code:** `apps/web/src/app/suche`, `apps/web/src/app/kern`, `apps/web/src/app/artikel/kurzpopup.ts`, `apps/web/src/app/neues`, `apps/server/src/filtergruppen.ts`, `packages/model/src/views.ts`, `packages/model/src/facets.ts`
+
+**Erklärt in:** [Architektur.md](../../docs/Architektur.md), [UI-Arbeitsplan.md](../../docs/UI-Arbeitsplan.md), [Web-Arbeitsplan.md](../../docs/Web-Arbeitsplan.md), [design](../../docs/design)
+
+**Offen mit Prio 1–3:** [[REQ-028]] Volltextsuche (teils) · [[REQ-119]] Boards der Spielenden (offen) · [[REQ-160]] Zwischen Ankern springen (teils) · [[REQ-166]] Auf dem Board anlegen (teils) · [[REQ-291]] Leseansicht auf dem Board (offen) · [[REQ-299]] Optionale Felder verdeckt (teils) · [[REQ-300]] Gestaltung wie die Bücher (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
 
 ## Aus dem früheren Funktionsbereich

@@ -1,5 +1,7 @@
 # Regelsysteme als Behälter (T-132)
 
+↑ [Modell](Themen/Modell.md) · [Einstieg](README.md)
+
 Stand 14.10.2026 — **Bestandsaufnahme und Entscheidungsvorlage**, noch
 keine Umsetzung. Die Wahl liegt als **E-044** bei der Leitung.
 

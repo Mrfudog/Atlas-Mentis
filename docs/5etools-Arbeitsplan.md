@@ -1,5 +1,7 @@
 # 5e.tools übernehmen — Arbeitsplan
 
+↑ [Inhalte](Themen/Inhalte.md) · [Einstieg](README.md) · Plan: P1–P7 sind gebaut; offen ist, was das Projektbrett nennt.
+
 Stand 2026-10-08, überarbeitet nach Mikes Rückmeldung am selben Tag. Baut auf [5etools-Abgleich.md](5etools-Abgleich.md) auf:
 dort steht, *was* fehlt; hier steht, *in welcher Reihenfolge* es gebaut
 wird, mit welchem Modell, und wie man dabei nicht das ganze Kontingent

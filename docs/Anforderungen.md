@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-14. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-15. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -32,6 +32,18 @@ Zusammen: 168 steht · 48 teils · 84 offen · 10 ersetzt · 6 verworfen — 316
 ## EP-01 Inhaltsgerüst
 
 Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell, mit dem jeder Artikel beschrieben, gespeichert und gezeichnet wird.
+
+**Arten:** [Layer](../docs/Artikeltypen.md#layer), `Identity`, `Status`, `Visibility`, `Tags`, `Source`
+
+**Kanten:** `inLayer`, `activates`, `partOf`, `overrides`, `variantOf`, `instanceOf`
+
+**Code:** `packages/model/src/validate.ts`, `packages/model/src/entity.ts`, `packages/model/src/stack.ts`, `packages/model/src/views.ts`, `packages/model/src/inline.ts`, `packages/model/src/versions.ts`, `packages/registry/src`, `apps/web/src/app/register`
+
+**Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Begriffe.md](../docs/Begriffe.md), [Ebenen.md](../docs/Ebenen.md), [Artikeltypen.md](../docs/Artikeltypen.md), [Durchgang.md](../docs/Durchgang.md)
+
+**Offen mit Prio 1–3:** REQ-003 Änderungsverlauf je Artikel (teils) · REQ-006 Stapel: was in der Kampagne gilt (teils) · REQ-007 Stapel für Fortgeschrittene (offen) · REQ-008 Varianten einer Sache (teils) · REQ-013 Verweise nach Nummer, getippt nach Name (teils) · REQ-045 Ebenen-Aktionen am Artikel (offen) · REQ-100 Welt als Ebene (teils) · REQ-102 Artikel je Stapel und Wissen zeichnen (teils) · REQ-176 Ähnliches vor dem Anlegen vorschlagen (teils) · REQ-249 Ebenen nach Herausgeber (teils) · REQ-253 Ebenen und Artikel kopieren (offen) · REQ-258 Verweisfeld nennt, welche Artikel es annimmt (teils) · REQ-264 Vergleichsebenen der Kampagne (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
 ### F-001 Artikelmodell
 
@@ -133,6 +145,18 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, Werkbank, Ausrollen, Sicherung, Übernahme zwischen dev und prod, Leistung.
 
+**Arten:** `Visibility`, [Information](../docs/Artikeltypen.md#information), [Knowledge](../docs/Artikeltypen.md#knowledge), [Faction](../docs/Artikeltypen.md#faction), [Party](../docs/Artikeltypen.md#party)
+
+**Kanten:** `knownBy`, `includes`, `memberOf`, `memberOfParty`
+
+**Code:** `apps/server/src/auth.ts`, `apps/server/src/user.ts`, `apps/server/src/ebenenrechte.ts`, `apps/server/src/schreibebene.ts`, `apps/server/src/uebernahme.ts`, `packages/model/src/visibility.ts`, `packages/model/src/knowledge.ts`, `packages/model/src/checks.ts`, `packages/model/src/bulk.ts`, `apps/web/src/app/werkbank`, `apps/web/src/app/konto`
+
+**Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
+
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
+
 ### F-010 Anmeldung & Konten
 
 | ID | Story | Prio | Stand | Anmerkung |
@@ -225,6 +249,18 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager — alles, was eine Figur oder ein Monster beschreibt.
 
+**Arten:** [Creature](../docs/Artikeltypen.md#creature), `PlayerCharacter`, [Statblock](../docs/Artikeltypen.md#statblock), `Abilities`, `Proficiencies`, `Vitals`, [Class](../docs/Artikeltypen.md#class), [Subclass](../docs/Artikeltypen.md#subclass), [Ancestry](../docs/Artikeltypen.md#ancestry), [Background](../docs/Artikeltypen.md#background), [Feature](../docs/Artikeltypen.md#feature), [Feat](../docs/Artikeltypen.md#feat)
+
+**Kanten:** `belongsTo`, `instanceOf`, `hasClass`, `hasAncestry`, `hasBackground`, `grants`, `chose`, `subclassOf`
+
+**Code:** `packages/model/src/abilities.ts`, `packages/model/src/builder.ts`, `packages/model/src/classes.ts`, `packages/model/src/instance.ts`, `packages/model/src/choices.ts`, `apps/web/src/app/artikel/statblock.ts`, `apps/web/src/app/figur`, `apps/web/src/app/klassen`
+
+**Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Begriffe.md](../docs/Begriffe.md)
+
+**Offen mit Prio 1–3:** REQ-055 Merkmale beim Tippen wiederverwenden (offen) · REQ-060 Begleiter und Beschwörungen (teils) · REQ-067 Charakterbogen: Zauber (offen) · REQ-274 Charakter- und Kampagnenmanager jederzeit aufrufen (offen)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
+
 ### F-020 Kreatur
 
 | ID | Story | Prio | Stand | Anmerkung |
@@ -281,6 +317,18 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 
 Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene Inhalte, Inventar, Chat.
 
+**Arten:** [Inventory](../docs/Artikeltypen.md#inventory), [Item](../docs/Artikeltypen.md#item), `PlayerCharacter`
+
+**Kanten:** `carries`, `holds`, `leftBehind`
+
+**Code:** `packages/model/src/inventory.ts`, `packages/model/src/slots.ts`, `packages/model/src/stowing.ts`, `apps/web/src/app/artikel/inventar.ts`, `apps/server/src/stueck.ts`, `apps/server/src/spielerebene.ts`, `apps/web/src/app/kern/spieler.ts`
+
+**Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
+
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
+
 ### F-025 Spieleransicht & Telefon
 
 | ID | Story | Prio | Stand | Anmerkung |
@@ -325,6 +373,18 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 ## EP-05 Kampagne & Sitzungen
 
 Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitung, Begegnungen, Abenteuer übernehmen, Party, Ladebildschirm.
+
+**Arten:** [Campaign](../docs/Artikeltypen.md#campaign), [Story](../docs/Artikeltypen.md#story), [Arc](../docs/Artikeltypen.md#arc), [Quest](../docs/Artikeltypen.md#quest), `Scene`, [Session](../docs/Artikeltypen.md#session), [Encounter](../docs/Artikeltypen.md#encounter), [Party](../docs/Artikeltypen.md#party), [Board](../docs/Artikeltypen.md#board)
+
+**Kanten:** `partyOf`, `memberOfParty`, `questGiver`, `questAbout`, `happensAt`, `participates`, `involves`, `placed`, `chapterOf`
+
+**Code:** `packages/model/src/board.ts`, `packages/model/src/parts.ts`, `apps/web/src/app/boards`, `apps/web/src/app/verwaltung`, `apps/server/src/gruppe.ts`
+
+**Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Spieltisch.md](../docs/Spieltisch.md)
+
+**Offen mit Prio 1–3:** REQ-079 Schnelle Aktionen in der Sitzung (teils) · REQ-080 Vorlesetexte nach der Sitzung freigeben (offen) · REQ-086 Gruppenübersicht (teils) · REQ-180 Gepflanzte Fäden (offen) · REQ-221 Begegnungen bauen (offen) · REQ-236 Kampagne mit Dialog anlegen (offen) · REQ-279 Kampagnenwerte pflegen und in Texten nutzen (teils) · REQ-282 Sitzungsansicht für das Spiel (offen) · REQ-283 Kampagnen-Ladebildschirm (offen)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
 ### F-029 Kampagne
 
@@ -401,6 +461,18 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 Bereich World: Orte, Fraktionen, Gottheiten, Lore, Kalender und Zeitleisten, Beziehungen, Läden und Wirtschaft.
 
+**Arten:** [World](../docs/Artikeltypen.md#world), [Place](../docs/Artikeltypen.md#place), [Faction](../docs/Artikeltypen.md#faction), [Deity](../docs/Artikeltypen.md#deity), [Event](../docs/Artikeltypen.md#event), [Article](../docs/Artikeltypen.md#article), [Shop](../docs/Artikeltypen.md#shop), [Material](../docs/Artikeltypen.md#material)
+
+**Kanten:** `livesIn`, `memberOf`, `worships`, `controls`, `sells`, `discount`, `shopkeeper`, `regards`, `inWorld`
+
+**Code:** `packages/model/src/timeline.ts`, `packages/model/src/shop.ts`, `apps/server/src/laden.ts`, `apps/web/src/app/artikel/laden.ts`
+
+**Erklärt in:** [Beziehungen.md](../docs/Beziehungen.md), [Datenmodell.md](../docs/Datenmodell.md)
+
+**Offen mit Prio 1–3:** REQ-025 Kalender der Welt (offen) · REQ-285 Fraktionspreise (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
+
 ### F-037 Bereich World
 
 | ID | Story | Prio | Stand | Anmerkung |
@@ -446,6 +518,18 @@ Bereich World: Orte, Fraktionen, Gottheiten, Lore, Kalender und Zeitleisten, Bez
 ## EP-07 Regeln & Nachschlagen
 
 Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zustände, Handwerk, Regelsysteme und die Auswertung von Regeln.
+
+**Arten:** `Rule`, [Condition](../docs/Artikeltypen.md#condition), [Disease](../docs/Artikeltypen.md#disease), [Spell](../docs/Artikeltypen.md#spell), [Class](../docs/Artikeltypen.md#class), [Recipe](../docs/Artikeltypen.md#recipe), [Skill](../docs/Artikeltypen.md#skill), [Language](../docs/Artikeltypen.md#language), [Action](../docs/Artikeltypen.md#action), [Table](../docs/Artikeltypen.md#table), [Chapter](../docs/Artikeltypen.md#chapter), [Heading](../docs/Artikeltypen.md#heading), [Paragraph](../docs/Artikeltypen.md#paragraph), `ReadAloudText`, `Embed`
+
+**Kanten:** `casts`, `affects`, `stageOf`, `grants`, `needs`, `yields`, `craftsWith`, `crafting`, `tableFor`, `entry`, `describedIn`, `chapterOf`
+
+**Code:** `packages/model/src/effects.ts`, `packages/model/src/crafting.ts`, `packages/model/src/book.ts`, `packages/model/src/reading.ts`, `apps/server/src/handwerk.ts`, `apps/web/src/app/lesen`, `apps/web/src/app/klassen`, `apps/web/src/app/artikel/werkstatt.ts`
+
+**Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
+
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-097 Zauberlisten (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme als Behälter mit Optionen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -514,6 +598,18 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, Würfel, Werkzeuge am Tisch.
 
+**Arten:** [Encounter](../docs/Artikeltypen.md#encounter), [Session](../docs/Artikeltypen.md#session), [Board](../docs/Artikeltypen.md#board)
+
+**Kanten:** `participates`, `onMap`
+
+**Code:** `apps/server/src/live.ts`, `packages/model/src/initiative.ts`, `packages/model/src/dice.ts`, `apps/web/src/app/kern/live.ts`, `apps/web/src/app/karten/play.ts`
+
+**Erklärt in:** [Architektur.md](../docs/Architektur.md), [Spieltisch.md](../docs/Spieltisch.md)
+
+**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
+
 ### F-050 Spielleiter-Schirm
 
 | ID | Story | Prio | Stand | Anmerkung |
@@ -570,6 +666,18 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 ## EP-09 Karten
 
 Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und Zonen, Gebiete, Reisen, Karteneditor.
+
+**Arten:** [Map](../docs/Artikeltypen.md#map), `ZoneKind`
+
+**Kanten:** `mapOf`, `insideMap`, `marker`, `zone`, `territory`, `onMap`, `route`
+
+**Code:** `packages/model/src/map.ts`, `packages/model/src/movement.ts`, `packages/model/src/sight.ts`, `apps/server/src/karten.ts`, `apps/web/src/app/karten`
+
+**Erklärt in:** [Karten.md](../docs/Karten.md)
+
+**Offen mit Prio 1–3:** REQ-132 Kartenebene festhalten (offen) · REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
 ### F-055 Karte & Kartenebenen
 
@@ -638,6 +746,16 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 
 Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Druck und Ausfuhr, PDF.
 
+**Arten:** [Asset](../docs/Artikeltypen.md#asset), `Image`
+
+**Code:** `apps/server/src/bilder.ts`, `apps/server/src/assets.ts`, `packages/model/src/assets.ts`, `apps/web/src/app/bilder`, `apps/web/src/app/artikel/druck.ts`
+
+**Erklärt in:** [Betrieb.md](../docs/Betrieb.md), [Datenmodell.md](../docs/Datenmodell.md)
+
+**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
+
 ### F-062 Asset-Ablage
 
 | ID | Story | Prio | Stand | Anmerkung |
@@ -684,6 +802,18 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 ## EP-11 Oberfläche & Navigation
 
 Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten in der Ansicht, Design und Stilkonzept.
+
+**Arten:** [Board](../docs/Artikeltypen.md#board)
+
+**Kanten:** `placed`
+
+**Code:** `apps/web/src/app/suche`, `apps/web/src/app/kern`, `apps/web/src/app/artikel/kurzpopup.ts`, `apps/web/src/app/neues`, `apps/server/src/filtergruppen.ts`, `packages/model/src/views.ts`, `packages/model/src/facets.ts`
+
+**Erklärt in:** [Architektur.md](../docs/Architektur.md), [UI-Arbeitsplan.md](../docs/UI-Arbeitsplan.md), [Web-Arbeitsplan.md](../docs/Web-Arbeitsplan.md), [design](../docs/design)
+
+**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-299 Optionale Felder verdeckt (teils) · REQ-300 Gestaltung wie die Bücher (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
 ### F-067 Boards
 
@@ -742,6 +872,18 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 ## EP-12 Import & Inhalte
 
 5e.tools, Regelwerke anderer Verlage, Obsidian-Vault, Artikelprüfung und KI-erzeugte Inhalte — wie Inhalte hereinkommen und vollständig werden.
+
+**Arten:** `Source`, [Layer](../docs/Artikeltypen.md#layer)
+
+**Kanten:** `inLayer`, `overrides`
+
+**Code:** `packages/import-5etools`, `scripts/regelwerk.mjs`, `apps/server/src/import.ts`, `apps/server/src/ausfuhr.ts`
+
+**Erklärt in:** [5etools-Abgleich.md](../docs/5etools-Abgleich.md), [5etools-Arbeitsplan.md](../docs/5etools-Arbeitsplan.md), [5etools-Bericht.md](../docs/5etools-Bericht.md), [Betrieb.md](../docs/Betrieb.md), [Nachtarbeit](../docs/Nachtarbeit)
+
+**Offen mit Prio 1–3:** REQ-288 Preise für jeden Gegenstand (teils) · REQ-308 Obsidian-Vault einlesen (offen) · REQ-314 Regelwerk eines Drittverlags laden (teils)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
 ### F-073 5e.tools-Import
 

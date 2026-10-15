@@ -1,5 +1,7 @@
 # Durchgang durch die Typen
 
+↑ [Modell](Themen/Modell.md) · [Einstieg](README.md) · Herkunft: der Abgleich vom September; die Entscheidungen darin gelten und stehen als Regel in [Datenmodell.md](Datenmodell.md).
+
 Stand 2026-09-20, nach Block 1. Was hier steht, ist **gemessen** und nicht
 geschätzt: die Zahlen kommen aus dem Register und dem Prüfbestand (70
 Artikel), und „— nie" heisst, dass kein einziger Artikel das Feld füllt.

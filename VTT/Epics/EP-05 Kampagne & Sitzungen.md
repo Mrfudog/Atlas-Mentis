@@ -4,6 +4,10 @@ title: "Kampagne & Sitzungen"
 typ: "epic"
 umfang: "Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitung, Begegnungen, Abenteuer übernehmen, Party, Ladebildschirm."
 frueher: "Campaign & Sessions"
+arten: ["Campaign", "Story", "Arc", "Quest", "Scene", "Session", "Encounter", "Party", "Board"]
+kanten: ["partyOf", "memberOfParty", "questGiver", "questAbout", "happensAt", "participates", "involves", "placed", "chapterOf"]
+code: ["packages/model/src/board.ts", "packages/model/src/parts.ts", "apps/web/src/app/boards", "apps/web/src/app/verwaltung", "apps/server/src/gruppe.ts"]
+doku: ["docs/Datenmodell.md", "docs/Spieltisch.md"]
 tags: ["vtt", "epic"]
 ---
 # EP-05 Kampagne & Sitzungen
@@ -23,6 +27,20 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 | [[F-034 Party]] — Die Figurengruppe einer Kampagne mit ihrer Übersicht. | 3 | 7 | 2 steht · 1 teils |
 | [[F-035 Ladebildschirm-Board]] — Ein öffentliches Board je Kampagne mit Widgets, das alle anpassen. | 1 | 3 | 1 offen |
 | [[F-036 Sitzungsmitschnitt]] — Audio aufnehmen, transkribieren, Recap-Entwurf. | 3 | 18 | 3 offen |
+
+### Wo es wohnt
+
+**Arten:** [Campaign](../../docs/Artikeltypen.md#campaign), [Story](../../docs/Artikeltypen.md#story), [Arc](../../docs/Artikeltypen.md#arc), [Quest](../../docs/Artikeltypen.md#quest), `Scene`, [Session](../../docs/Artikeltypen.md#session), [Encounter](../../docs/Artikeltypen.md#encounter), [Party](../../docs/Artikeltypen.md#party), [Board](../../docs/Artikeltypen.md#board)
+
+**Kanten:** `partyOf`, `memberOfParty`, `questGiver`, `questAbout`, `happensAt`, `participates`, `involves`, `placed`, `chapterOf`
+
+**Code:** `packages/model/src/board.ts`, `packages/model/src/parts.ts`, `apps/web/src/app/boards`, `apps/web/src/app/verwaltung`, `apps/server/src/gruppe.ts`
+
+**Erklärt in:** [Datenmodell.md](../../docs/Datenmodell.md), [Spieltisch.md](../../docs/Spieltisch.md)
+
+**Offen mit Prio 1–3:** [[REQ-079]] Schnelle Aktionen in der Sitzung (teils) · [[REQ-080]] Vorlesetexte nach der Sitzung freigeben (offen) · [[REQ-086]] Gruppenübersicht (teils) · [[REQ-180]] Gepflanzte Fäden (offen) · [[REQ-221]] Begegnungen bauen (offen) · [[REQ-236]] Kampagne mit Dialog anlegen (offen) · [[REQ-279]] Kampagnenwerte pflegen und in Texten nutzen (teils) · [[REQ-282]] Sitzungsansicht für das Spiel (offen) · [[REQ-283]] Kampagnen-Ladebildschirm (offen)
+
+**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
 
 ## Aus dem früheren Funktionsbereich

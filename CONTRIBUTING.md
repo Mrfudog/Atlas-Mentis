@@ -7,7 +7,10 @@ feature/*  →  preprod  →  main
 ```
 
 - **`main`** ist das, woran der Tisch spielt. Nichts landet hier, das nicht auf
-  `preprod` gelaufen ist. Vorspulen statt zusammenführen.
+  `preprod` gelaufen ist. Der Vault wird auch vom Telefon aus direkt auf
+  `main` geschrieben — darum wird `preprod` **gemerged und nicht
+  vorgespult**, und ein Zweig von `preprod` merged vor einem Pull Request
+  nach `main` erst `main` herein.
 - **`preprod`** ist die Testinstanz — eigener Port, eigene Datenbank, eigenes
   Volume. Ein Fehler hier kostet nichts. Jeder Push rollt nach `dev.atlas.…`
   aus, ein Push auf `main` nach der Produktion ([docs/Betrieb.md](docs/Betrieb.md)).
@@ -97,6 +100,14 @@ Frontmatter `prio`, `aufwand`, `v1`, `abhaengig`, `status`, `stand` und
 `standNotiz` (was im Repo steht), `herkunft`. Eine Vorlage ist jede
 bestehende Notiz; die Skalen stehen in `VTT/Requirements.md`.
 
+**Ein Epic sagt, wo es wohnt** (T-156): `arten`, `kanten`, `code` und
+`doku` im Frontmatter nennen die Artikelarten, Kantenarten, Code-Orte und
+Seiten des Bereichs. `anforderungen` macht daraus in der Epic-Notiz und in
+`docs/Anforderungen.md` den Abschnitt „Wo es wohnt“, samt den offenen
+Stories mit Priorität 1–3 — der Weg vom Überblick bis in den Code. Ein Test
+prüft, dass jede genannte Art, Kante und Datei existiert; wer eine Datei
+umbenennt oder eine Art streicht, zieht die Angabe nach.
+
 **Der Ablauf, wenn sich etwas ändert:**
 
 1. Ein **neuer Wunsch** wird zuerst eine Story — die nächste freie Nummer,
@@ -130,6 +141,23 @@ Projektbrett.
 So gibt es nie 167 offene Issues, und die REQ-Nummer bleibt der gemeinsame
 Bezugspunkt zwischen Vault, Issue, Zweig und Commit.
 
+## Dokumentation
+
+Der Weg durch die Dokumentation beginnt bei [docs/README.md](docs/README.md):
+Einstieg mit Bestandsaufnahme → `docs/Themen/` → Detailseiten. Eine neue
+Seite unter `docs/` kommt in die Bestandsaufnahme (ein Test prüft es, und
+dass die Verweise der Einstiegs-, Übersichts- und Epic-Seiten nicht ins
+Leere zeigen). Erzeugte Seiten — `Artikeltypen.md`, „Das Register heute“
+in `Datenmodell.md`, `Anforderungen.md`, `5etools-Bericht.md` — ändert nur
+ihr Skript.
+
+**Bilder:** ein grosses Bild (Übersicht, Modell, Ablauf mit vielen Knoten)
+ist eine Excalidraw-Zeichnung `docs/Bilder/Name.excalidraw.md`, gezeichnet
+in Obsidian; das Plugin schreibt `Name.excalidraw.svg` daneben, und das
+wird eingebunden. Ohne Obsidian legt `node scripts/excalidraw.mjs` eine an.
+Mermaid nur für kleine Abläufe bis etwa zehn Knoten. Mehr:
+[docs/README.md › Bilder](docs/README.md#bilder).
+
 ## Commits
 
 Deutsch, Imperativ oder Nominalstil, erste Zeile unter ~72 Zeichen. Der Rumpf
@@ -138,17 +166,17 @@ hinein, wenn es eine gibt.
 
 ## Register ändern
 
-Schnittstellen, Komponenten, Verknüpfungsarten und Darstellungsstufen sind Daten.
-Zwei Wege, und sie sind nicht gleichwertig:
-
-- **`packages/registry`** ist die Startbelegung einer frischen Datenbank. Änderungen
-  hier wirken nur auf Instanzen, deren Register noch leer ist.
-- **`PUT /api/registry/:part`** ändert eine laufende Instanz. Das ist der normale
-  Weg, sobald es Daten gibt.
-
-Beides geht durch dieselbe Validierung. Wenn eine Registeränderung Artikel
-ungültig macht — etwa weil eine Komponente aus `allows` verschwindet — sagt
-`POST /api/validate` das vorher.
+Typen, Kantenarten, Aufzählungen und Ansichten sind Daten — Zeilen, die
+**einmal** stehen: in `packages/registry`. Wer eine Zeile ändert, ändert sie
+dort, lässt `pnpm --filter @nw/registry emit-seed` und `catalogue` laufen
+und schreibt eine **Migration**, die sie auf bestehenden Datenbanken
+nachzieht — der Seed schreibt Arten nur in eine leere Datenbank (T-123).
+`apps/server/scripts/register-abgleich.mjs` prüft im CI, ob die Migration
+reicht. Eine laufende Installation ändert ihr Register daneben über die
+Registerseite (`/registry`, `PUT /api/registry/:part`); was sie danach
+anders hat als das Paket, zeigt die Werkbank (`registryDrift`). Beides geht
+durch dieselbe Validierung; was eine Änderung trifft, zählt vorher
+`GET /api/registry/usage`. Mehr: [CLAUDE.md › Bauen und prüfen](CLAUDE.md#bauen-und-prüfen).
 
 ## Datenbank
 

@@ -74,11 +74,32 @@ for (const f of features) {
     ...ss.map((s) => `| [[${s.id}]] ${zelle(s.title)} | ${s.rolle ?? '–'} | ${s.prio ?? '–'} | ${s.stand} |`),
   ]);
 }
+/* Wo ein Epic wohnt (T-156): Arten, Kanten, Code und Doku stehen als
+   Eigenschaften an der Epic-Notiz; daraus wird hier der Weg vom Überblick
+   bis in den Code. `basis` führt vom Ort der Seite zur Wurzel des Repos. */
+const typAnker = new Set(
+  [...readFileSync(join(REPO, 'docs', 'Artikeltypen.md'), 'utf8').matchAll(/^### (\w+)$/gm)].map((m) => m[1]),
+);
+const pfadLink = (p, basis) => `[${p.replace(/^docs\//, '')}](${basis}${p.includes(' ') ? encodeURI(p) : p})`;
+function woEsWohnt(e, basis, story) {
+  const z = [];
+  const arten = (e.arten ?? []).map((a) => (typAnker.has(a) ? `[${a}](${basis}docs/Artikeltypen.md#${a.toLowerCase()})` : `\`${a}\``));
+  if (arten.length) z.push(`**Arten:** ${arten.join(', ')}`);
+  if (e.kanten?.length) z.push(`**Kanten:** ${e.kanten.map((k) => `\`${k}\``).join(', ')}`);
+  if (e.code?.length) z.push(`**Code:** ${e.code.map((c) => `\`${c}\``).join(', ')}`);
+  if (e.doku?.length) z.push(`**Erklärt in:** ${e.doku.map((d) => pfadLink(d, basis)).join(', ')}`);
+  const offen = stories.filter((s) => s.epicId === e.id && ['offen', 'teils'].includes(s.stand) && Number(s.prio) <= 3);
+  if (offen.length) z.push(`**Offen mit Prio 1–3:** ${offen.map((s) => `${story(s.id)} ${zelle(s.title)} (${s.stand})`).join(' · ')}`);
+  z.push('**Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.');
+  return z.flatMap((l) => [l, '']).slice(0, -1);
+}
 for (const e of epics) {
   const fs = featuresVon(e.id);
   setzeListe(join('Epics', e.datei), [
     '| Feature | Stories | Punkte | Stand |', '|---|---|---|---|',
     ...fs.map((f) => { const ss = storiesVon(f.id); return `| [[${name(f.datei)}]] — ${zelle(f.beschreibung)} | ${ss.length} | ${punkte(ss)} | ${standZeile(ss)} |`; }),
+    '', '### Wo es wohnt', '',
+    ...woEsWohnt(e, '../../', (id) => `[[${id}]]`),
   ]);
 }
 
@@ -199,6 +220,8 @@ for (const e of epics) {
   w(`## ${e.id} ${e.title}`);
   w();
   w(e.umfang);
+  w();
+  for (const l of woEsWohnt(e, '../', (id) => id)) w(l);
   w();
   for (const f of featuresVon(e.id)) {
     w(`### ${f.id} ${f.title}`);

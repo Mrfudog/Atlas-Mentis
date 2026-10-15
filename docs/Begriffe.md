@@ -1,6 +1,7 @@
 # Begriffe
 
-Stand 2026-09-21.
+Angelegt 2026-09-21, laufend ergänzt; mit den Definitionen der Ernte
+abgeglichen 2026-10-15 (T-156). Zurück zum [Einstieg](README.md).
 
 Diese Datei sagt, wie die Dinge heissen. Sie steht hier, weil dieselbe Sache
 in den letzten Wochen „Komponente", „Schnittstelle", „Interface", „Karte",
@@ -966,8 +967,10 @@ Deck, das er nennt: seine Teile hängen an ihrer Stelle im Buch und nicht
 am Text, und `--only-new` legt in einem Kapitel, das schon steht, ohnehin
 nichts dazu.
 
-**Ein Kapitel ist ein Arc, und ein Abenteuer besteht aus Teilen** (T-097,
-E-026, REQ-252). Die Leitung will ein Abenteuer nicht nur als Ganzes
+**Ein Kapitel eines Abenteuers wird ein Arc, und ein Abenteuer besteht
+aus Teilen** (T-097, E-026, REQ-252; seit T-108 steht dasselbe Kapitel
+zum Lesen zusätzlich als `Chapter` da — „Lesen und Spielen sind zwei
+Arten“, weiter unten). Die Leitung will ein Abenteuer nicht nur als Ganzes
 aufschalten, sondern Teile davon in die eigene Geschichte holen: einen
 Abschnitt, eine Begegnung, ein ganzes Kapitel. Dafür muss ein Kapitel
 dasselbe sein wie ein Arc der eigenen Kampagne — sonst stünde es in der
@@ -1063,8 +1066,8 @@ gilt.
 *Wo der Wert dabeisteht*, ist die Stelle, an der man ihn liest (T-103).
 An Aasimar stand die andere Grösse unter „Languages": der Text war als
 Ganzes verglichen, und die andere Fassung hing am Ende — beim letzten
-Abschnitt, „Languages". Ein Text aus 5e.tools ist aber „## Age … ## Size …
-## Languages …", also wird er Abschnitt für Abschnitt verglichen, nach
+Abschnitt, „Languages". Ein Text aus 5e.tools ist aber
+`## Age … ## Size … ## Languages …`, also wird er Abschnitt für Abschnitt verglichen, nach
 Überschrift und nicht nach Nummer; was nur die andere Fassung hat, steht
 unter seiner eigenen Überschrift. Ebenso ein Statblock nach seinen Zeilen
 („Armor Class", nicht `Statblock.ac`), denn die Zeile ist, was man liest.
@@ -1835,6 +1838,50 @@ in der Planung trägt ein Feature immer seine Kennung `F-nnn`, und wo beides
 vorkommen kann, steht die Kennung dabei. **Story** ist im Register der
 Obertyp der Geschichtsartikel (Bereich `story`) — eine Anforderung heisst
 darum immer mit ihrer Nummer `REQ-nnn`, nie nur „die Story“.
+
+## Ebene und Stapel
+
+Eine **Ebene** (`Layer`) ist ein Paket Inhalt, das als Ganzes an- oder
+abgeschaltet wird: ein Regelwerk, ein Buch, ein Abenteuer, die Ebene einer
+Kampagne, die Spielerebene eines Kontos. Der **Stapel** ist, was eine
+Kampagne aufschaltet, in welcher Reihenfolge — und die nullte Frage jedes
+Lesens ist, ob ein Artikel darin steht (`inPlay`). Eine **Gruppe** ist eine
+Ebene, die Ebenen enthält (`kind: 'group'`, nach Kategorie oder
+Herausgeber); eine **Vergleichsebene** schaltet eine Kampagne zum Ansehen
+dazu, ohne sie zu benutzen. Die Regeln stehen in
+[Datenmodell §8](Datenmodell.md#8-ebenen-und-stapel), ausführlich in
+[Ebenen.md](Ebenen.md). Kein zehntes Wort unter den neun: eine Ebene ist
+selbst ein Artikel, und der Stapel ist eine Abfrage über ihre Kanten.
+
+## Board, Schirm und Werkbank
+
+Drei Orte der Oberfläche, keine Wörter des Modells. Ein **Board** gehört
+zu einem Geschichtsartikel (Kampagne, Kapitel, Sitzung — nicht zu einer
+Szene und nicht zur Weltgeschichte) und sammelt, was dort zusammenhängt;
+seine Kacheln sind `placed`-Kanten, und die Kachel wählt ihre Ansicht. Der
+**Schirm** (Play, der Spielleiter-Schirm) zeigt während der Sitzung, was
+an der Sitzung als laufend steht — Karte, Begegnung, Szene, Boards — und
+ist darum keine Liste. Die **Werkbank** ist der Ort der Leitung und
+Verwaltung für Prüfungen, Massenänderungen mit Rückgängig und die
+Übernahme zwischen dev und prod ([Betrieb.md](Betrieb.md)); „Werkbank am
+Rezept“ ist etwas anderes, die Fertigung (Handwerk).
+
+## Ein Wort, mehrere Sachen
+
+Wörter, die im Gespräch eine andere Sache meinen als im Modell. Was hier
+steht, ist die Lesart in Code und Dokumentation; im Zweifel nennt man den
+Bezeichner dazu.
+
+| Wort | Im Modell | Im Gespräch auch | So halten wir es |
+|---|---|---|---|
+| **Instanz** | eine Instanz einer Vorlage (`instanceOf`): Statblock einer Wache, Stück im Inventar | jeder Artikel als „Instanz eines Typs“ | Ein Artikel *hat* Typen, er ist keine Instanz davon; „Instanz“ heisst nur die Kopie, die von einer Vorlage liest. |
+| **Beziehung** | die Kante `regards` mit Marken ([Beziehungen.md](Beziehungen.md)) | jede Verbindung zwischen Artikeln | Allgemein heisst es **Kante**; „Beziehung“ ist, was jemand vom anderen hält. |
+| **Variante / Fassung** | Fassung: dieselbe Sache aus einer anderen Ebene (`overrides`, `adaptedVersion`); Variante: eine verwandte andere Sache (`variantOf`) | beides „Variante“ | Fassung, wenn es *dieselbe* Sache bleibt; Variante, wenn es eine eigene ist. |
+| **Bereich** | `area` einer Art: world, story, rules, play | ein Anker mit Reiter auf dem Board; ein Bereich der App; ein Funktionsbereich (heute Epic) | `area` heisst Bereich; der Anker auf dem Board heisst Bereich *auf dem Board*; Funktionsbereiche heissen Epic. |
+| **Zone** | Behälterzone (was das Ziehen kostet, `Inventory.zones`) und Kartenzone (eine Regel an einem Ort, `zone`, `ZoneKind`) | — | Zwei Sachen mit gleichem Wort, getrennt durch den Ort; man sagt, welche. |
+| **Gruppe** | Gruppe von Ebenen (`kind: 'group'`) | die Party einer Kampagne | Die Figurengruppe heisst **Party** (`Party`); „Gruppe“ allein meint Ebenen. Die frühere Art `Group` gibt es nicht mehr. |
+| **Feature, Story** | Artikelarten (`Feature`, `Story`) | Wörter der Planung | Siehe oben: mit Kennung `F-nnn`, `REQ-nnn`. |
+| **Kapitel** | `Chapter` zum Lesen, `Arc` zum Spielen | beides „Kapitel“ | Ein Kapitel eines Abenteuers ist beides, über denselben Teilen (`chapterOf`). |
 
 ## Was nirgends steht
 

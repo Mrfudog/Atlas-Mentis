@@ -1,5 +1,7 @@
 # Wissen — wer weiss was
 
+↑ [Modell](Themen/Modell.md) · [Einstieg](README.md)
+
 Stand 2026-09-20, nachgeführt 2026-10-07. Das ist A6 aus dem [Fahrplan](Roadmap.md), gebaut nach
 Entscheidung 4: *„Wissen: selbst festlegen, über ein Seitenpanel in der
 Artikelansicht."*
