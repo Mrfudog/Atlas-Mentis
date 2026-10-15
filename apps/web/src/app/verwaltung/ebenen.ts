@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, output, signal } from '@ang
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
+import { Stapelfolge } from './stapelfolge';
 import { areaOf } from '@nw/model';
 import { Api, type Ebenenauswahl, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -121,7 +122,10 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
  * Anlegen einer Kampagne alle Artikel aus 5e.tools fehlten.
  *
  * Oben steht die spezifischste Ebene — sie gewinnt, wenn zwei dasselbe
- * sagen. Was der Server nicht annähme, bietet die Seite nicht an
+ * sagen. **Die Reihenfolge steht für sich** (T-188, `nw-stapelfolge`):
+ * alles, was ausdrücklich aufgeschaltet ist — Ebenen, Bücher, Gruppen —,
+ * mit Platz, Richtung und dem, was es bewirkt, zum Ziehen; die Pfeile an
+ * den Ebenen darunter sind weg. Was der Server nicht annähme, bietet die Seite nicht an
  * (`may`, `canActivate`).
  *
  * **Vergleichsebenen** (T-092, E-021 d): an jeder Ebene, die nicht im
@@ -135,9 +139,9 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
  * neuen Stand mit (`state`); gefragt wird nur, wenn er fehlt.
  *
  * **Bücher stehen für sich** (T-081, E-017): je Buch aus 5e.tools eine
- * Ebene, mit Häkchen und ohne Pfeile — zwischen Büchern gibt es nichts zu
- * ordnen, und siebzig Zeilen mit Pfeilen verdeckten den Stapel, um den es
- * geht.
+ * Ebene, mit Häkchen und ohne Pfeile — siebzig Zeilen mit Pfeilen
+ * verdeckten den Stapel, um den es geht. Geordnet wird, was aufgeschaltet
+ * ist, in der Reihenfolge oben (T-188).
  *
  * **Gruppen sind Ebenen** (T-088, E-022 b): je Gruppe ein aufklappbarer
  * Abschnitt mit „3 of 12 on", einem Häkchen für die ganze Gruppe und einem
@@ -159,7 +163,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
  */
 @Component({
   selector: 'nw-kampagnen-ebenen',
-  imports: [RouterLink, NgTemplateOutlet, KurzLink],
+  imports: [RouterLink, NgTemplateOutlet, KurzLink, Stapelfolge],
   template: `
     <section class="kasten" [class.kompakt]="kompakt()" aria-label="Layers in play">
       @if (!kompakt()) {
@@ -173,6 +177,24 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
         <p class="fehler" role="alert">{{ f }}</p>
       }
       @if (daten(); as d) {
+        <!-- Die Reihenfolge (T-188): oben gewinnt, ziehen, Gruppen als Block, Bücher herauslösen. -->
+        <details class="sets reihenfolge" [open]="!offen().has('order-zu')" (toggle)="zuklappen('order-zu', $event)">
+          <summary>
+            <span class="gname">Order in play</span>
+            <span class="dim">{{ stapel().length }} in play · top wins</span>
+          </summary>
+          <!-- Erst bei Bedarf geladen: das Popup steht in jeder Seite, und das Grundpaket hat ein Budget. -->
+          @defer (on viewport) {
+            <nw-stapelfolge
+              [layers]="d.layers"
+              [darf]="d.may === 'manage'"
+              [busy]="laeuft()"
+              (order)="ordnen($event)"
+            />
+          } @placeholder {
+            <p class="dim">Loading the order…</p>
+          }
+        </details>
         <!-- Gespeicherte Auswahlen (T-186): der Stapel unter einem Namen, je Konto. -->
         <details class="sets" [open]="offen().has('sets')" (toggle)="merke('sets', $event)">
           <summary>
@@ -243,7 +265,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
           <p class="fuss">Saved for your account. Loading one sets the layers in play for everyone in the campaign.</p>
         </details>
         <ul class="ebenen">
-          @for (l of oben(); track l.id; let i = $index, last = $last) {
+          @for (l of oben(); track l.id) {
             <li [class.aus]="!l.active">
               <label class="haken">
                 <input
@@ -285,28 +307,6 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
                   />
                   compare
                 </label>
-              }
-              @if (l.active && d.may === 'manage') {
-                <span class="knoepfe">
-                  <button
-                    type="button"
-                    class="klein"
-                    [disabled]="i === 0 || laeuft()"
-                    [attr.aria-label]="'Move ' + l.name + ' up'"
-                    (click)="schieben(l, 1)"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    class="klein"
-                    [disabled]="last || !naechsteAktiv(i) || laeuft()"
-                    [attr.aria-label]="'Move ' + l.name + ' down'"
-                    (click)="schieben(l, -1)"
-                  >
-                    ↓
-                  </button>
-                </span>
               }
             </li>
           } @empty {
@@ -1093,6 +1093,20 @@ export class KampagnenEbenenListe {
     });
   }
 
+  /** Ein Abschnitt, der offen anfängt (T-188): gemerkt wird, dass er zu ist. */
+  protected zuklappen(key: string, ev: Event): void {
+    const zu = !(ev.target as HTMLDetailsElement).open;
+    const s = new Set(this.offen());
+    if (zu === s.has(key)) return;
+    if (zu) s.add(key);
+    else s.delete(key);
+    this.offen.set(s);
+    this.merkeStand();
+    void this.api.setPref(OFFEN_PREF, [...s]).catch(() => {
+      /* Nicht gemerkt ist nicht schlimm. */
+    });
+  }
+
   private async offenLaden(): Promise<void> {
     if (this.offenGeladen) return;
     this.offenGeladen = true;
@@ -1415,17 +1429,13 @@ export class KampagnenEbenenListe {
   }
 
   /** Der Stapel von unten nach oben, wie der Server ihn will. */
-  private stapel(): string[] {
+  protected stapel(): string[] {
     return (this.daten()?.layers ?? []).filter((x) => x.active).map((x) => x.id);
   }
 
   protected aenderbar(l: KampagnenEbene): boolean {
     if (this.daten()?.may !== 'manage') return false;
     return l.active || l.canActivate;
-  }
-
-  protected naechsteAktiv(i: number): boolean {
-    return this.oben()[i + 1]?.active === true;
   }
 
   protected zahl(n: number): string {
@@ -1442,19 +1452,9 @@ export class KampagnenEbenenListe {
     }
   }
 
-  /** `um` 1 heisst nach oben (spezifischer), −1 nach unten. Getauscht wird
-   *  mit der nächsten Ebene, die im Stapel steht; die Bücher dazwischen
-   *  bleiben, wo sie sind. */
-  protected schieben(l: KampagnenEbene, um: 1 | -1): void {
-    const s = this.stapel();
-    const oben = new Set(this.oben().map((x) => x.id));
-    const buch = new Set(s.filter((id) => !oben.has(id)));
-    const i = s.indexOf(l.id);
-    let j = i + um;
-    while (j >= 0 && j < s.length && buch.has(s[j]!)) j += um;
-    if (i < 0 || j < 0 || j >= s.length) return;
-    [s[i], s[j]] = [s[j]!, s[i]!];
-    void this.schreiben(s);
+  /** Der neue Stapel aus der Reihenfolge (T-188), von unten nach oben; die Abschaltungen bleiben. */
+  protected ordnen(stapel: string[]): void {
+    void this.schreiben(stapel);
   }
 
   private async schreiben(stapel: string[] | null, dazu?: string, off?: string[]): Promise<void> {

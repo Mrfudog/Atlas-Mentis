@@ -203,3 +203,35 @@ describe('preferences per account (T-092)', () => {
     expect((await rufe('Sela', 'GET', '/api/me/prefs')).json()).toEqual({});
   });
 });
+
+describe('what the order does (T-188)', () => {
+  it('names per layer whose versions it replaces and against whom it loses', async () => {
+    const { repo, rufe } = await aufbau();
+    await repo.putEntity({
+      ...zauber('f_camp', 'Fireball', 9, 'Hausregel', 'ly_camp', 100),
+      relations: [
+        { id: 'fc_in', type: 'inLayer', to: 'ly_camp', props: {} },
+        { id: 'fc_o', type: 'overrides', to: 'f14', props: {} },
+      ],
+    });
+    await repo.putEntity({
+      ...zauber('f_xge', 'Fireball', 10, 'XGE', 'e5_book_xge', 100),
+      relations: [
+        { id: 'fx2_in', type: 'inLayer', to: 'e5_book_xge', props: {} },
+        { id: 'fx2_o', type: 'overrides', to: 'f14', props: {} },
+      ],
+    });
+    const zeile = async (id: string) => {
+      const res = await rufe('Basil', 'GET', '/api/campaigns/camp/layers');
+      expect(res.statusCode).toBe(200);
+      return (res.json() as { layers: { id: string; wins?: unknown[]; loses?: unknown[] }[] }).layers.find((l) => l.id === id);
+    };
+    expect((await zeile('ly_camp'))?.wins).toEqual([{ layer: 'e5_book_phb', name: "Player's Handbook", how: 'version', n: 1 }]);
+    expect((await zeile('e5_book_xge'))?.loses).toEqual([{ layer: 'ly_camp', name: 'Nebelwacht', how: 'version', n: 1 }]);
+    /* Umgedreht: Xanathar oben, dann gilt seine Fassung. */
+    const res = await rufe('Basil', 'PUT', '/api/campaigns/camp/layers', { layers: ['e5_book_phb', 'ly_camp', 'e5_book_xge'] });
+    expect(res.statusCode).toBe(200);
+    const xge = (res.json() as { state: { layers: { id: string; wins?: { layer: string }[] }[] } }).state.layers.find((l) => l.id === 'e5_book_xge');
+    expect(xge?.wins?.map((x) => x.layer)).toEqual(['e5_book_phb']);
+  });
+});

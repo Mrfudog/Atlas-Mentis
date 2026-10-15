@@ -66,6 +66,9 @@ import {
   compareLayers,
   type Entity,
   type TableRole,
+  stackOutcomes,
+  type StackClash,
+  type StackOutcome,
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
 import { sorgeSpielerEbene } from './spielerebene.js';
@@ -369,6 +372,20 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     return gezaehlt.z;
   };
 
+  /**
+   * **Was die Reihenfolge bewirkt** (T-188, `stackOutcomes`), je Stempel
+   * und Kampagne gehalten: ein Gang über den ganzen Bestand, und das Popup
+   * fragt nach jedem Häkchen. Ein Häkchen ändert die Kampagne, also den
+   * Stempel — dann wird neu gerechnet, denn genau dann ändert sich, wer
+   * gewinnt.
+   */
+  let ausgerechnet: { stempel: string; kampagne: Entity; m: Map<string, StackOutcome> } | null = null;
+  const ausgang = async (stempel: string, alle: Map<string, Entity>, kampagne: Entity) => {
+    if (ausgerechnet?.stempel === stempel && ausgerechnet.kampagne === kampagne) return ausgerechnet.m;
+    const m = stackOutcomes(alle, kampagne, await repo.getRegistry());
+    ausgerechnet = { stempel, kampagne, m };
+    return m;
+  };
 
   /**
    * **Die Ebenen einer Kampagne** (T-069, E-008): alle Ebenen des
@@ -414,6 +431,10 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         .map((x) => [x.layer.id, { id: x.ruleFrom!, name: entityName(alle.get(x.ruleFrom!)), only: x.filter }] as const),
     );
     const ausgenommen = new Set(activeStack(alle, kampagne).filter((x) => x.exempt).map((x) => x.layer.id));
+    /* Was die Reihenfolge bewirkt (T-188): wer über wen gewinnt, in Artikeln. */
+    const folgen = await ausgang(stempel, alle, kampagne);
+    const treffer = (l: StackClash[] | undefined) =>
+      (l ?? []).map((x) => ({ ...x, name: x.layer ? entityName(alle.get(x.layer)) : 'articles without a layer' }));
     const zeile = (e: Entity) => {
       const andere = campaignsActivating(alle, e.id, aktiv)
         .filter((k) => k !== c)
@@ -457,6 +478,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         ...(regeln.get(e.id) ? { rule: regeln.get(e.id)! } : {}),
         ...(regelVon.get(e.id) ? { ruleFrom: regelVon.get(e.id)! } : {}),
         ...(ausgenommen.has(e.id) ? { exempt: true } : {}),
+        ...(folgen.has(e.id) ? { wins: treffer(folgen.get(e.id)?.wins), loses: treffer(folgen.get(e.id)?.loses) } : {}),
         alsoIn: andere,
         canActivate: mayActivate(user, alle, e.id, c, mitglieder, aktiv),
       };

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-layer-order",
+      "date": "2026-10-15",
+      "title": "See and drag the order of the layers in play",
+      "text": "On the campaign page and in the layer popup, Order in play lists every layer, book and group in play with its place — the top one wins. Drag rows (by mouse or finger) to reorder, move a group as one block, or drag a single book out of its group to give it its own place. Each layer says what its place does, such as which articles it replaces and where its versions lose.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-15-encounter-kinds-fields",
       "date": "2026-10-15",
       "title": "Encounters show what their kind needs",

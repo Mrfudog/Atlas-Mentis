@@ -1248,6 +1248,21 @@ Abschaltung. „Aus" hiesse sonst „nur nicht über diese Gruppe", und das ist
 nicht, was ein leeres Häkchen sagt. Eine Teilwahl gibt es weiter, über die
 Häkchen am Buch.
 
+**Die Reihenfolge zeigt, was sie bewirkt** (T-188). Die Leitung konnte
+ihre Ebene nach oben und unten schieben, wusste aber nicht, wo oben ist —
+das stand in einem Satz über der Liste —, und die Bücher und Gruppen
+hatten gar keinen Platz, den man sah. Jetzt steht der Stapel als eigene
+Liste mit Platz und Richtung, alles darin ziehbar, eine Gruppe als Block.
+Ein Buch aus einer Gruppe herauszulösen ist dabei kein neuer Begriff: es
+bekommt seine eigene Kante `activates`, und die ausdrückliche Kante schlägt
+die Gruppe schon seit E8. Dazu steht an jeder Ebene, **was** ihr Platz
+bewirkt — „replaces 12 articles of PHB", „1 version loses to …" —, denn
+eine Reihenfolge, deren Folgen man nicht sieht, ist eine Zahl ohne
+Einheit. Gezählt wird, wo der Platz entscheidet: welche von mehreren
+Fassungen gilt und ob eine Herausnahme hält. Eine Fassung gegen ihr
+Original gewinnt immer; das steht trotzdem da, weil es die häufigste
+Frage ist („warum sehe ich die andere Feuerkugel?").
+
 **Eine Ebene darf nur einen Teil bringen** (T-105, REQ-255). Die Leitung
 will aus einem Abenteuer die Gegenstände und Regeln, nicht dessen Orte, NSC
 und Begegnungen — die gehören in eine andere Geschichte. Die Artikel aus
