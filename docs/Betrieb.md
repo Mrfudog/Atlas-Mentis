@@ -628,6 +628,13 @@ eine neue Ebene, und die ist in keiner Kampagne aufgeschaltet** — nach dem
 Lauf auf der Kampagnenseite das Häkchen setzen, sonst stehen seine
 Artikel in keiner Liste (die Listen sagen es mit „Turn on").
 
+**Eine neue Art nachtragen** (T-175, die Orte aus dem Buchtext): `only-new`
+mit `types` = `Place` und den Quellen, deren Text schon steht. Ohne
+`types` brächte ein Lauf über wenige Quellen auch geteilte Merkmale mit,
+die er anders teilt als der Lauf über alle — sie stünden als Waisen daneben.
+Kanten, die **an** schon geladenen Artikeln stehen (`happensAt` an der
+Szene, `mapOf` an der Karte), trägt `only-new` nicht nach.
+
 **Vom Bestand mit einer Ebene zu einer je Buch** (Migration
 `026_ebene_je_buch.sql`, T-081): beim Start hängt der Server jeden Artikel
 der alten Ebene „D&D 5e (2014)" an die Ebene seines Buchs
@@ -717,6 +724,7 @@ nennt sie ausdrücklich.
 | `environment` | `dev` oder `prod` |
 | `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `additions`: wie `only-new`, nur die Neuzugänge seit T-087 · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte, mit `neues`: was `additions` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094) |
 | `sources` | nur diese Quellen, z. B. `PHB,MM` oder ein Modulkürzel; leer heisst alles |
+| `types` | nur diese Arten (und die Ebenen) in die Datei, z. B. `Place`; leer heisst alle — zum Nachtragen einer neuen Art (T-175) |
 | `confirm` | `ersetzen` für `replace-layer`, sonst leer |
 | `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |
 

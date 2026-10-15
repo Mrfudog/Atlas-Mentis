@@ -5,6 +5,7 @@ import type { Datenstand } from '../src/lesen.js';
 import { lauf } from '../src/lauf.js';
 import { kartenTitel, klartext, ortAusKarte, ortAusText, ortBefund } from '../src/orte.js';
 import { buchEbeneId } from '../src/werkbank.js';
+import { nurArten } from '../src/auswahl.js';
 
 /**
  * Orte aus dem Buchtext (T-175) — mit erfundenen Beispielen, keine Daten
@@ -165,5 +166,14 @@ describe('Orte aus Büchern und Abenteuern (T-175)', () => {
   it('gibt bei zwei Läufen dieselben Orte', () => {
     const zweiter = lauf(datenstand()).datei.entities.filter((e) => art(e) === 'Place').map((e) => e.id);
     expect(zweiter).toEqual(es.filter((e) => art(e) === 'Place').map((e) => e.id));
+  });
+});
+
+describe('nur bestimmte Arten ausgeben (T-175)', () => {
+  it('behält die genannten Arten und die Ebenen', () => {
+    const { datei } = lauf(datenstand());
+    const nur = nurArten(datei, ['Place']);
+    expect(new Set(nur.entities.map(art))).toEqual(new Set(['Place', 'Layer']));
+    expect(nur.entities.filter((e) => art(e) === 'Place')).toHaveLength(datei.entities.filter((e) => art(e) === 'Place').length);
   });
 });
