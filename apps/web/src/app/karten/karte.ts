@@ -49,8 +49,18 @@ import {
   planReach,
   tokenCell,
   opportunityAttacks,
+  addWalls,
+  isDoor,
+  mapWalls,
+  nearestWall,
+  removeWall,
+  revealAlong,
+  setWallKind,
+  snapToGrid,
+  wallKind,
+  WALL_KINDS,
 } from '@nw/model';
-import type { Cell, Entity, Frame, MapMarker, MapRules, PlanStep, Pt, RevealShape, Size } from '@nw/model';
+import type { Cell, DoorState, Entity, Frame, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
 import { Api, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -101,11 +111,13 @@ const RAD_PAUSE = 90;
 /** Ein Finger ist breiter als ein Mauszeiger: kleiner wird ein Marker nicht. */
 const MARKER_MIN = 26;
 
-type Werkzeug = 'keins' | 'messen' | 'setzen' | 'aufdecken' | 'pinsel' | 'zudecken';
+type Werkzeug = 'keins' | 'messen' | 'setzen' | 'aufdecken' | 'pinsel' | 'zudecken' | 'wand' | 'wandArt' | 'schloss' | 'wandWeg';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
 const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
+/** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
+const SPERRE_TREFFER = 14;
 /** Pinselbreiten in Feldern. */
 const PINSEL = [1, 2, 4, 8] as const;
 
@@ -134,7 +146,7 @@ const GRUPPEN: readonly GruppenDef[] = [
   { key: 'tokens', label: 'Tokens', title: 'Add markers, place combatants, clear play tokens', sym: '◉', taste: 'T', leitung: true },
   { key: 'messen', label: 'Measure', title: 'Tap two points to measure', sym: '↔', taste: 'M' },
   { key: 'nebel', label: 'Fog', title: 'Fog of war: reveal and hide what the players see', sym: '☁', taste: 'F', leitung: true },
-  { key: 'waende', label: 'Walls', title: 'Walls and doors', sym: '▥', taste: 'W', leitung: true, spaeter: 'T-118' },
+  { key: 'waende', label: 'Walls', title: 'Walls, doors, windows and obstacles', sym: '▥', taste: 'W', leitung: true },
   { key: 'notizen', label: 'Notes', title: 'Notes on the map', sym: '✎', taste: 'N', leitung: true, spaeter: 'T-203' },
   { key: 'zeichnen', label: 'Draw', title: 'Draw on the map', sym: '✐', taste: 'D', leitung: true, spaeter: '—' },
 ];
@@ -295,6 +307,29 @@ interface Zeiger {
             </div>
           }
 
+          @if (aktiv() === 'waende' && darfSchreiben()) {
+            <!-- **Sperren** (T-118, docs/Karten.md › Sperren): Linienzug zeichnen, Art
+                 wechseln, Tür verschliessen, wegnehmen. Türen öffnet man in der Auswahl. -->
+            <div class="unterleiste" role="toolbar" aria-label="Walls">
+              <label>
+                Kind
+                <select (change)="wandArtWaehlen($any($event.target).value)" aria-label="Kind of wall to draw or set">
+                  @for (k of WALL_KINDS; track k.key) {
+                    <option [value]="k.key" [selected]="k.key === wandArt()" [title]="k.does">{{ k.label }}</option>
+                  }
+                </select>
+              </label>
+              <button type="button" [class.an]="werkzeug() === 'wand'" [attr.aria-pressed]="werkzeug() === 'wand'" (click)="waehle('wand')" title="Tap point after point; the line snaps to the grid. Enter or tap the last point again to finish.">Draw</button>
+              <button type="button" [class.an]="werkzeug() === 'wandArt'" [attr.aria-pressed]="werkzeug() === 'wandArt'" (click)="waehle('wandArt')" title="Tap a wall to make it the kind chosen on the left">Set kind</button>
+              <button type="button" [class.an]="werkzeug() === 'schloss'" [attr.aria-pressed]="werkzeug() === 'schloss'" (click)="waehle('schloss')" title="Tap a door to lock or unlock it">Lock</button>
+              <button type="button" [class.an]="werkzeug() === 'wandWeg'" [attr.aria-pressed]="werkzeug() === 'wandWeg'" (click)="waehle('wandWeg')" title="Tap a wall to remove it">Erase</button>
+              @if (wandPunkte().length) {
+                <button type="button" (click)="wandFertig()" [disabled]="wandPunkte().length < 2">Finish ({{ wandPunkte().length - 1 }})</button>
+                <button type="button" (click)="wandPunkte.set([])">Cancel</button>
+              }
+            </div>
+          }
+
           @if (werkzeug() === 'setzen' && setzenBei()) {
             <div class="setzen">
               <p>Which article does the marker stand for?</p>
@@ -387,6 +422,37 @@ interface Zeiger {
                   <canvas #nebelLeinwand class="nebel" aria-hidden="true"></canvas>
                 } @else if (nebelOhneMass()) {
                   <div class="nebel ganz" aria-hidden="true"></div>
+                }
+                @if (sperrenBild(); as sb) {
+                  <!-- Die Sperren (T-118): nur die Leitung sieht die Linien; für alle
+                       anderen sind sie der Grund, warum es dahinter dunkel ist. -->
+                  <svg class="sperren" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                    @for (w of sb.linien; track w.id) {
+                      <line [attr.class]="'sperre k-' + w.kind + (w.offen ? ' offen' : '')" [attr.x1]="w.x1" [attr.y1]="w.y1" [attr.x2]="w.x2" [attr.y2]="w.y2" vector-effect="non-scaling-stroke">
+                        <title>{{ w.titel }}</title>
+                      </line>
+                    }
+                    @if (sb.entwurf) {
+                      <polyline [attr.class]="'sperre entwurf k-' + wandArt()" [attr.points]="sb.entwurf" vector-effect="non-scaling-stroke" />
+                    }
+                  </svg>
+                }
+                @for (t of tueren(); track t.id) {
+                  <button
+                    type="button"
+                    class="tuer"
+                    [class.offen]="t.state === 'open'"
+                    [class.zu]="t.state === 'locked'"
+                    [class.geheim]="t.kind === 'secret'"
+                    [class.still]="!t.klickbar"
+                    [style.left.%]="t.x * 100"
+                    [style.top.%]="t.y * 100"
+                    [style.transform]="'translate(-50%, -50%) rotate(' + t.winkel + 'deg)'"
+                    [title]="t.titel"
+                    [attr.aria-label]="t.titel"
+                    (pointerdown)="$event.stopPropagation()"
+                    (click)="tuerKlick(t)"
+                  ></button>
                 }
                 @if (vorschau(); as v) {
                   <div class="vorschau" [class.zu]="v.zu" [style.left.%]="v.x * 100" [style.top.%]="v.y * 100" [style.width.%]="v.w * 100" [style.height.%]="v.h * 100"></div>
@@ -529,6 +595,14 @@ interface Zeiger {
           Paint over what the players may see.
         } @else if (werkzeug() === 'zudecken') {
           Drag a rectangle — what lies in it is covered again.
+        } @else if (werkzeug() === 'wand') {
+          {{ wandPunkte().length ? 'Tap the next point — Enter, or the last point again, finishes; Esc cancels.' : 'Tap where the ' + wandArtName() + ' starts.' }}
+        } @else if (werkzeug() === 'wandArt') {
+          Tap a wall to make it a {{ wandArtName() }}.
+        } @else if (werkzeug() === 'schloss') {
+          Tap a door to lock or unlock it.
+        } @else if (werkzeug() === 'wandWeg') {
+          Tap a wall to remove it.
         } @else {
           @if (spielersicht()) {
             Player view ·
@@ -558,7 +632,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrl: './karte.scss',
+  styleUrls: ['./karte.scss', './sperren.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -703,7 +777,7 @@ export class Karte {
     return redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
   });
   /** Die Kartenregeln der Kampagne (T-204); ohne Antwort die Vorgaben. */
-  protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', revealOnMove: false });
+  protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', revealOnMove: false, doors: 'players' });
   /** Führt die Kampagne den Nebel je Figur? */
   protected readonly jeFigur = computed(() => this.regeln().fog === 'player');
   /** Für wen aufgedeckt wird und wessen Sicht „Player view“ zeigt (nur je Figur). */
@@ -1148,6 +1222,10 @@ export class Karte {
       const pt = this.punkt(ev);
       if (pt) this.messB.set(pt);
     }
+    if (this.werkzeug() === 'wand' && this.wandPunkte().length && ev.pointerType === 'mouse') {
+      const pt = this.punkt(ev);
+      if (pt) this.wandZeiger.set(this.eingerastet(pt));
+    }
     if (!this.zeiger.has(ev.pointerId)) return;
     this.zeiger.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     if (this.kneifen && this.zeiger.size >= 2) {
@@ -1183,11 +1261,12 @@ export class Karte {
       if (g.zieht && z) {
         this.nachZug = true;
         let neu = moveMarker(this.karte()!, g.id, z.pt);
-        /* **Entlang des Weges aufdecken** (REQ-139): wer im Nebel geht,
-           sieht, wo er war — so breit wie der Pinsel. Wände rechnet die
-           Seite noch nicht (docs/Karten.md, „Was noch fehlt"). */
+        /* **Entlang des Weges aufdecken** (REQ-139, T-118): wer im Nebel
+           geht, sieht, wo er war — mit Sperren auf der Karte, was er von
+           dort sieht (`revealAlong`), sonst so breit wie der Pinsel. */
+        const nat = this.nat();
         if (this.pfadAufdecken() && this.nebelAn()) {
-          neu = revealArea(neu, this.strichForm([g.von, z.pt], g.to));
+          neu = nat ? revealAlong(neu, [g.von, z.pt], nat, () => `s-${crypto.randomUUID()}`, g.to) : revealArea(neu, this.strichForm([g.von, z.pt], g.to));
         }
         const ausserhalb = this.imKampf() && this.kampfLeitung();
         void this.schreiben(neu).finally(() => {
@@ -1262,7 +1341,8 @@ export class Karte {
 
   /** Esc: erst das Unterwerkzeug, dann die Gruppe, dann der Vollbild-Ersatz. */
   private zurueck(): void {
-    if (this.werkzeug() !== 'keins' && this.aktiv() !== 'messen') this.waehle('keins');
+    if (this.wandPunkte().length) this.wandPunkte.set([]);
+    else if (this.werkzeug() !== 'keins' && this.aktiv() !== 'messen') this.waehle('keins');
     else if (this.aktiv() !== 'auswahl') this.gruppeWaehlen('auswahl');
     else if (this.ersatzVollbild()) this.ersatzVollbild.set(false);
   }
@@ -1279,6 +1359,11 @@ export class Karte {
     if (!gemeint) return;
     if (ev.key === 'Escape' && (this.aktiv() !== 'auswahl' || this.ersatzVollbild())) {
       this.zurueck();
+      ev.preventDefault();
+      return;
+    }
+    if (ev.key === 'Enter' && this.wandPunkte().length > 1) {
+      this.wandFertig();
       ev.preventDefault();
       return;
     }
@@ -1319,6 +1404,8 @@ export class Karte {
     this.setzenBei.set(null);
     this.setzenZiel.set(null);
     this.strich.set(null);
+    this.wandPunkte.set([]);
+    this.wandZeiger.set(null);
   }
 
   private antippen(ev: PointerEvent): void {
@@ -1343,6 +1430,15 @@ export class Karte {
       const ziel = this.setzenZiel();
       if (ziel) this.spielTokenSetzen(ziel, pt);
       else this.setzenBei.set(pt);
+    } else if (this.werkzeug() === 'wand') {
+      this.wandPunkt(pt);
+    } else if (this.werkzeug() === 'wandArt' || this.werkzeug() === 'wandWeg') {
+      const e = this.karte();
+      const w = this.sperreBei(pt);
+      if (e && w) void this.schreiben(this.werkzeug() === 'wandWeg' ? removeWall(e, w.id) : setWallKind(e, w.id, this.wandArt()));
+    } else if (this.werkzeug() === 'schloss') {
+      const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
+      if (t) void this.tuerKlick(t);
     }
   }
 
@@ -1368,7 +1464,7 @@ export class Karte {
     const geo = gridGeometry(s, this.nat());
     if (!geo) return null;
     const ms = markersOf(e);
-    const grid = planGrid(geo, ms, plan.rel ?? '');
+    const grid = planGrid(geo, ms, plan.rel ?? '', mapWalls(e));
     if (!grid) return null;
     const ich = ms.find((m) => m.rel.id === plan.rel);
     const token = ich ? tokenCell(geo, grid, ich) : null;
@@ -1565,6 +1661,135 @@ export class Karte {
   protected spielTokensWeg(): void {
     const e = this.karte();
     if (e && confirm('Remove all play tokens from this map? Prepared markers and the party stay.')) void this.schreiben(clearPlayTokens(e));
+  }
+
+  // ------------------------------------------------------------ Sperren
+
+  protected readonly WALL_KINDS = WALL_KINDS;
+  /** Welche Art „Draw“ zeichnet und „Set kind“ setzt (T-118). */
+  protected readonly wandArt = signal<WallKind>('wall');
+  protected readonly wandArtName = computed(() => wallKind(this.wandArt()).label.toLowerCase());
+  /** Der Linienzug, der gerade gezeichnet wird — gespeichert erst mit „Finish“. */
+  protected readonly wandPunkte = signal<Pt[]>([]);
+  private readonly wandZeiger = signal<Pt | null>(null);
+
+  protected wandArtWaehlen(k: string): void {
+    this.wandArt.set(wallKind(k).key);
+  }
+
+  /** Auf Quadraten rastet ein Punkt an der nächsten Gitterecke ein (`snapToGrid`). */
+  private eingerastet(pt: Pt): Pt {
+    const s = this.einst();
+    const geo = s ? gridGeometry(s, this.nat()) : null;
+    return geo?.shape === 'square' ? snapToGrid(pt, geo) : pt;
+  }
+
+  /** Die Sperre unter dem Finger, wenn eine nah genug liegt. */
+  private sperreBei(pt: Pt, nur?: (w: MapWall) => boolean): MapWall | null {
+    const e = this.karte();
+    if (!e) return null;
+    return nearestWall(mapWalls(e), pt, this.seitenverhaeltnis(), SPERRE_TREFFER / this.breite(), nur);
+  }
+
+  /** Ein Punkt mehr im Linienzug; derselbe noch einmal beendet ihn. */
+  private wandPunkt(roh: Pt): void {
+    const p = this.eingerastet(roh);
+    const ps = this.wandPunkte();
+    const letzter = ps.at(-1);
+    if (letzter && Math.hypot(letzter.x - p.x, (letzter.y - p.y) * this.seitenverhaeltnis()) < SPERRE_TREFFER / this.breite()) {
+      this.wandFertig();
+      return;
+    }
+    this.wandPunkte.set([...ps, p]);
+  }
+
+  /** Den Linienzug speichern: je Strecke eine Sperre der gewählten Art. */
+  protected wandFertig(): void {
+    const e = this.karte();
+    const ps = this.wandPunkte();
+    this.wandPunkte.set([]);
+    this.wandZeiger.set(null);
+    if (!e || ps.length < 2) return;
+    const kind = this.wandArt();
+    const tuer = wallKind(kind).door;
+    const neu: MapWall[] = ps.slice(1).map((b, i) => ({
+      id: `w-${crypto.randomUUID().slice(0, 12)}`,
+      kind,
+      x1: ps[i]!.x,
+      y1: ps[i]!.y,
+      x2: b.x,
+      y2: b.y,
+      ...(tuer ? { state: 'closed' as const } : {}),
+    }));
+    void this.schreiben(addWalls(e, neu));
+  }
+
+  /** Was die Leitung von den Sperren sieht: jede Linie, nach Art gefärbt, dazu der Entwurf. */
+  protected readonly sperrenBild = computed(() => {
+    const e = this.karte();
+    if (!e || !this.nat() || !this.alsLeitung()) return null;
+    const linien = mapWalls(e).map((w) => {
+      const offen = isDoor(w) && w.state === 'open';
+      return { ...w, offen, titel: `${wallKind(w.kind).label}${isDoor(w) ? ` (${w.state ?? 'closed'})` : ''} — ${wallKind(w.kind).does}` };
+    });
+    const ps = this.wandPunkte();
+    const z = this.wandZeiger();
+    const entwurf = ps.length ? [...ps, ...(z ? [z] : [])].map((p) => `${p.x},${p.y}`).join(' ') : null;
+    return linien.length || entwurf ? { linien, entwurf } : null;
+  });
+
+  /**
+   * **Die Türen** (T-118): ein Knopf an ihrer Mitte, quer zur Tür. Für
+   * Spielende kommen nur die, die der Server schickt (`redactWalls`) — sie
+   * öffnen eine in der Auswahl, wenn die Kampagne es erlaubt
+   * (`Campaign.doors`); ob ihre Figur daneben steht, prüft der Server.
+   */
+  protected readonly tueren = computed(() => {
+    const e = this.angezeigt();
+    const nat = this.nat();
+    if (!e || !nat) return [];
+    const ar = nat.h / nat.w;
+    const w = this.werkzeug();
+    const lt = this.alsLeitung();
+    const darf = lt || (this.regeln().doors === 'players' && this.eigeneHier().length > 0 && !this.spielersicht());
+    const planWaehlt = (this.planung()?.mode ?? 'idle') !== 'idle';
+    return mapWalls(e)
+      .filter(isDoor)
+      .map((t) => {
+        const state: DoorState = t.state ?? 'closed';
+        /* Im Zugplan wählt ein Antippen Weg oder Ziel; sonst ist eine Tür ein Knopf. */
+        const klickbar = (w === 'keins' && darf && !planWaehlt) || (lt && w === 'schloss');
+        const tun = !klickbar ? '' : w === 'schloss' ? (state === 'locked' ? ' — tap to unlock' : ' — tap to lock') : state === 'open' ? ' — tap to close' : ' — tap to open';
+        return {
+          id: t.id,
+          kind: t.kind,
+          state,
+          x: (t.x1 + t.x2) / 2,
+          y: (t.y1 + t.y2) / 2,
+          winkel: (Math.atan2((t.y2 - t.y1) * ar, t.x2 - t.x1) * 180) / Math.PI,
+          klickbar,
+          titel: `${wallKind(t.kind).label}, ${state}${tun}`,
+        };
+      });
+  });
+
+  /** Eine Tür schalten — über den Server, der auch aufdeckt, was dahinter liegt. */
+  protected async tuerKlick(t: { id: string; state: DoorState; klickbar: boolean }): Promise<void> {
+    if (!t.klickbar || this.speichert()) return;
+    const state: DoorState = this.werkzeug() === 'schloss' ? (t.state === 'locked' ? 'closed' : 'locked') : t.state === 'open' ? 'closed' : 'open';
+    const nat = this.nat();
+    this.mangel.set(null);
+    this.hinweis.set(null);
+    this.speichert.set(true);
+    try {
+      await this.api.door(this.id(), { wall: t.id, state, ...(nat ? { nat } : {}) });
+      await this.bestand.oeffnen(this.id(), true, false);
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.hinweis.set(err instanceof Error ? err.message : 'The door did not move.');
+    } finally {
+      this.speichert.set(false);
+    }
   }
 
   // ------------------------------------------------------------- Nebel

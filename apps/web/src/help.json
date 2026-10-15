@@ -37,9 +37,18 @@
           ]
         },
         {
+          "heading": "Walls and doors",
+          "text": [
+            "Pick Walls in the tool bar (W). Choose a kind — wall, door, secret door, window, obstacle or invisible wall — then Draw: tap point after point, the line snaps to the grid corners; Enter or tapping the last point again finishes, Esc cancels. Set kind changes a wall you tap, Lock locks or unlocks a door, Erase removes a wall.",
+            "Walls and closed doors block movement and sight. Windows, obstacles and invisible walls block movement only. Only the GM sees the lines; players see the doors, and a closed secret door is a wall to them until it is opened.",
+            "Tap a door in Select to open or close it. Players may open a door next to their own token if the campaign allows it (Rules & options › On the map › Doors); a locked door stays shut for them."
+          ]
+        },
+        {
           "heading": "Line of sight",
           "text": [
-            "There is no line of sight yet. It needs walls on the map, and walls are still to come. Until then, players see exactly what has been revealed."
+            "Once a map has walls, revealing follows line of sight: a move (with “Reveal along moves”) uncovers what the token sees from where it went, and opening a door uncovers what the party members who see the door can see through it.",
+            "Without walls, a move still reveals a strip two squares wide. Nothing is revealed automatically without a token that moves — the GM reveals by hand. Light, darkness and darkvision are not counted yet: sight reaches to the next wall."
           ]
         },
         {

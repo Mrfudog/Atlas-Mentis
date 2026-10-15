@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-map-walls-doors",
+      "date": "2026-10-15",
+      "title": "Walls, doors and windows on the map — and fog that follows line of sight",
+      "text": "Under Walls in the map tool bar, draw walls, doors, secret doors, windows and obstacles; the lines snap to the grid. Tap a door to open it — players can open one next to their token — and moves and opened doors reveal what the characters can see, up to the next wall.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-type-rules-and-extra-content",
       "date": "2026-10-15",
       "title": "One type rule for a whole group of books, and single articles as extra content",
