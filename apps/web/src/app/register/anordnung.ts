@@ -254,7 +254,7 @@ export class RegFeldwahl {
                 <label class="haken"><input type="checkbox" [checked]="!!el.when?.empty" [disabled]="!darf()"
                   (change)="wennSetzen(i, { empty: $any($event.target).checked || undefined })" /> or is empty</label>
                 <label class="f klein-f"><span>or has an edge</span>
-                  <input type="text" [value]="el.when?.relation ?? ''" [disabled]="!darf()" placeholder="participates"
+                  <input type="text" [value]="el.when?.relation ?? ''" [disabled]="!darf()" placeholder="edge kind"
                     (change)="wennSetzen(i, { relation: $any($event.target).value.trim() || undefined })" /></label>
               </div>
               <p class="hint">The element shows only on articles that match; what it would have shown falls to a later element that takes all fields. Empty: always.</p>

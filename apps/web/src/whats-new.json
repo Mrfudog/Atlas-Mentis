@@ -4,7 +4,7 @@
       "id": "2026-10-15-encounter-kinds-fields",
       "date": "2026-10-15",
       "title": "Encounters show what their kind needs",
-      "text": "A puzzle encounter has a solution and hints that only the GM sees; reveal a single hint through an information. A social encounter has a goal, a resource encounter a check, and an encounter can feature creatures and hazards. The initiative only shows for fights, and the map's side bar names each encounter's kind. In the registry, any layout element can be limited to articles that match (Only when …).",
+      "text": "A puzzle has a solution and hints only the GM sees; reveal one hint at a time through an information. A social encounter has a goal, a resource a check, and an encounter can feature creatures and hazards. The map's side bar names each kind. In the registry, any layout element can be limited to matching articles (Only when …).",
       "area": "Play",
       "link": "/play"
     },
