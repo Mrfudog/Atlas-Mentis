@@ -1252,6 +1252,13 @@ Volksmerkmal der Orks.
 (`sum(hasClass.level)`), und der Übungsbonus aus ihr. Eingetippt wäre sie
 die dritte Stelle neben den Kanten und nach dem ersten Aufstieg falsch.
 
+**Die Trefferpunkte einer Stufe stehen an der Kante zur Klasse**
+(`hasClass.props.hp`, T-194), dort, wo die Stufe steht. Gespeichert wird,
+was der Würfel brachte, nicht das Maximum samt KON: wer später KON ändert,
+rechnet neu und würfelt nicht noch einmal — und ein Würfelwurf, den man
+wiederholen kann, ist keiner. Das Maximum am Statblock schreibt der
+Assistent daraus; es ist der Wert, den jeder Bogen liest.
+
 **Was eine Klasse gewährt, ist eine Kante, und die Stufe steht an ihr**
 (`grants`, `props.level`). „Ability Score Improvement" kommt beim Kämpfer
 auf Stufe 4, 6, 8, 12, 14, 16 und 19: ein Artikel, sieben Kanten. Ein Feld

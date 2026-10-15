@@ -16183,7 +16183,12 @@ function renderHowto(v){
       "base (subraceOf): High Elf holds only what high elves have on top, and "+
       "the Elf's +2 Dexterity, darkvision and its choices count for the "+
       "character as well; the builder shows these effects of each option, "+
-      "worked out the same way. What an item changes on the character is a field "+
+      "worked out the same way. Each class level brings a hit die: what it "+
+      "gave stands on the class edge (hasClass.hp, one value per level, the "+
+      "first level of the first class always the maximum); rolled or the "+
+      "average, says the campaign (Campaign.hitPoints). The builder writes "+
+      "the maximum to the statblock from these values and CON, so a changed "+
+      "CON never rolls again. What an item changes on the character is a field "+
       "too (Effects: target, kind, value, when — worn, attuned, carried); "+
       "it counts while the inventory edge says the item is worn or attuned, "+
       "and it is worked out on read, so taking the gauntlets off takes the "+
@@ -16200,12 +16205,13 @@ function renderHowto(v){
       return "  "+g.name+(g.from==="type"?"  ("+g.values.length+" visible)":"  "+g.values.join(", "));
     }).join("\n");
     var rechnung2=
-      "hasClass → Fighter    level 3 · subclass Champion\n"+
-      "hasClass → Wizard     level 2\n"+
+      "hasClass → Fighter    level 3 · subclass Champion · hp 10, 7, 6\n"+
+      "hasClass → Wizard     level 2 · hp 4, 4\n"+
       "hasAncestry → Hill Dwarf   (subraceOf → Dwarf)\n"+
       "hasBackground → Acolyte\n\n"+
       "level        = "+pcP.level.derived+"  →  "+(lvB==null?"—":lvB)+"\n"+
       (pcP.proficiency?"proficiency  = "+pcP.proficiency.derived+"  →  "+fmtVal(pcP.proficiency,pfB)+"\n":"")+
+      "hit points   = (10+2)+(7+2)+(6+2)+(4+2)+(4+2)  →  Statblock.hp 41  (CON 14)\n"+
       "\nFighter  grants → Second Wind  at 1\n"+
       "Fighter  grants → Ability Score Improvement  at 4, 6, 8 …\n"+
       (REG.interfaces.Choices?

@@ -31,6 +31,7 @@ export type BuilderStep =
   | { id: 'abilities'; kind: 'abilities' }
   | { id: 'level'; kind: 'level' }
   | { id: string; kind: 'choice'; at: ChoiceAtCharacter }
+  | { id: 'hitpoints'; kind: 'hitpoints' }
   | { id: 'equipment'; kind: 'equipment'; choices: ChoiceAtCharacter[] }
   | { id: 'details'; kind: 'details' };
 
@@ -75,11 +76,16 @@ export function answeredKeys(character: Entity, byId: ReadonlyMap<EntityId, Enti
  * **Eine Möglichkeit allein ist kein Schritt** (T-107): erlaubt die
  * Kampagne keine Talente (`rules.feats`), bleibt von „Steigerung oder
  * Talent" die Steigerung, und es gilt die Vorgabe der Wahl.
+ *
+ * **Die Trefferpunkte sind ein Schritt** (T-194), nach den Wahlen und beim
+ * Aufstieg zuletzt. **`edit`** ist der Assistent am fertigen Charakter:
+ * dieselben Schritte, die beantworteten mit ihrer Antwort, ohne
+ * Startausrüstung.
  */
 export function builderSteps(
   draft: Entity,
   byId: ReadonlyMap<EntityId, Entity>,
-  opts: { levelUp?: boolean; done?: ReadonlySet<string>; rules?: ChoiceRules; nest?: boolean } = {},
+  opts: { levelUp?: boolean; edit?: boolean; done?: ReadonlySet<string>; rules?: ChoiceRules; nest?: boolean } = {},
 ): BuilderStep[] {
   const alle = choicesAtCharacter(draft, byId);
   const einzig = (c: ChoiceAtCharacter) =>
@@ -94,7 +100,9 @@ export function builderSteps(
   const wahlen = offen
     .filter((c) => !wurzel.has(c.source.entity.id))
     .map((c): BuilderStep => ({ id: `choice:${choiceKey(c)}`, kind: 'choice', at: c }));
-  if (opts.levelUp) return [{ id: 'level', kind: 'level' }, ...wahlen];
+  /* Die Trefferpunkte nach den Wahlen (T-194): eine Steigerung kann KON ändern. */
+  const tp: BuilderStep = { id: 'hitpoints', kind: 'hitpoints' };
+  if (opts.levelUp) return [{ id: 'level', kind: 'level' }, ...wahlen, tp];
   const pick = (id: string, edge: PickEdge, type: 'Ancestry' | 'Background' | 'Class'): BuilderStep => {
     const nested = unter(edge);
     return { id, kind: 'pick', edge, type, ...(opts.nest ? { nested } : {}) };
@@ -105,15 +113,21 @@ export function builderSteps(
     pick('class', 'hasClass', 'Class'),
     { id: 'abilities', kind: 'abilities' },
     ...wahlen,
-    /* Das Feste fragt nur, wenn es eine offene Stelle hat (T-162):
-       „one artisan's tools of your choice" in der Ausrüstung des Hintergrunds. */
-    {
-      id: 'equipment',
-      kind: 'equipment',
-      choices: alle.filter((c) => c.choice.kind === 'equipment' && (!c.fixed || (c.choice.from?.options ?? []).some((o) => optionSlots(o).length))),
-    },
+    tp,
+    /* Am fertigen Charakter gibt es keine Startausrüstung mehr (T-194). */
+    ...(opts.edit ? [] : [ausruestung(alle)]),
     { id: 'details', kind: 'details' },
   ];
+}
+
+/* Das Feste fragt nur, wenn es eine offene Stelle hat (T-162):
+   „one artisan's tools of your choice" in der Ausrüstung des Hintergrunds. */
+function ausruestung(alle: ChoiceAtCharacter[]): BuilderStep {
+  return {
+    id: 'equipment',
+    kind: 'equipment',
+    choices: alle.filter((c) => c.choice.kind === 'equipment' && (!c.fixed || (c.choice.from?.options ?? []).some((o) => optionSlots(o).length))),
+  };
 }
 
 /**
