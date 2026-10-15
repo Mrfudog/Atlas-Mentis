@@ -55,13 +55,21 @@ export interface FromImage {
 }
 
 /**
- * **Eine Karte aus einem Bild** (T-202, T-201): Name aus dem Bild, das Bild
- * als `Image.image`. Die Ebene nennt der Aufruf nicht — angelegt wird in
- * der Schreibebene, wie bei jedem Anlegen (T-161). Raster und Massstab
- * bleiben bei den Vorgaben des Registers; eingestellt wird an der Karte.
+ * **Ein Artikel aus einem Bild** (T-202): Name aus dem Bild, das Bild als
+ * `Image.image`. Die Ebene nennt der Aufruf nicht — angelegt wird in der
+ * Schreibebene, wie bei jedem Anlegen (T-161).
+ */
+export function fromImage(type: string, asset: Entity): FromImage {
+  return { type, name: imageTitle(asset), fields: { 'Image.image': asset.id } };
+}
+
+/**
+ * **Eine Karte aus einem Bild** (T-202, T-201: „Use as map“). Raster und
+ * Massstab bleiben bei den Vorgaben des Registers; eingestellt wird an der
+ * Karte.
  */
 export function mapFromImage(asset: Entity): FromImage {
-  return { type: MAP_TYPE, name: imageTitle(asset), fields: { 'Image.image': asset.id } };
+  return fromImage(MAP_TYPE, asset);
 }
 
 /** Eine Zeile der Kartenliste: die Karte, ihre Tiefe und die Karte darüber. */
