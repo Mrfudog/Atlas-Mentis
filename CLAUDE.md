@@ -133,7 +133,11 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   **Seit T-087 kommt jeder Regelstand herein** (2024, UA, dazu Fahrzeuge,
   Decks, Bastionen): jede Quelle in ihre Ebene, keine neue aufgeschaltet,
   und der Grundstand (was vorher hereinkam) behält Ids, Nummern und Namen —
-  der Lauf rechnet ihn erst allein, für seine Nummern. Laden:
+  der Lauf rechnet ihn erst allein, für seine Nummern. **Bilder** kommen
+  nicht in die Ausfuhrdatei: der Lauf schreibt mit `--images` einen
+  Bildplan (`bilder.ts`), und `scripts/bilder-5etools.mjs` lädt nach ihm
+  aus einem Checkout von `5etools-img` hoch und verknüpft über eine
+  Massenänderung (T-144). Laden:
   [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `scripts/regelwerk.mjs` — der Einleser für Regelwerke anderer Verlage
   (T-122, zuerst Kibbles’ Compendium): liest ein Paket **ausserhalb** des
