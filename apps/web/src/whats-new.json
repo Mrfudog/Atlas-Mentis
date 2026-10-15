@@ -9,6 +9,14 @@
       "link": "/classes"
     },
     {
+      "id": "2026-10-15-fog-player-view",
+      "date": "2026-10-15",
+      "title": "Fog of war shows what is revealed in every browser",
+      "text": "With fog on, the player view and player accounts now see the revealed parts of a map in every browser — before, some browsers covered the whole map, revealed areas included.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-help-per-page",
       "date": "2026-10-15",
       "title": "Help for every page",
