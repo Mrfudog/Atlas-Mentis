@@ -1800,6 +1800,21 @@ das, was erst unterwegs dazukommt.
 Was beim Misslingen und beim Abbruch zurückkommt, sagt das Rezept
 (`onFailure`) — sonst entschiede es jedes Mal die Laune am Tisch.
 
+## Beruf
+
+Ein **Beruf** (`Trade`) ist eine Regel mit Werkzeugen: Schmieden mit dem
+Schmiedewerkzeug, Brauen mit dem Braukessel. Er sagt nicht, welche Rezepte
+zu ihm gehören — das sagt jedes Rezept selbst (`Recipe.trade`), und eine
+Liste am Beruf wäre die Stelle, die beim nächsten Rezept nicht nachgezogen
+wird. Daraus folgt alles Übrige als Abfrage: die Übersicht des Berufs, was
+ein Werkzeug möglich macht, was eine Figur mit ihren Werkzeugübungen fertigen
+kann. Nennt ein Rezept ein eigenes Werkzeug, gilt das statt der Werkzeuge
+seines Berufs — es weiss es genauer. Beruf und Werkzeug stehen beim Namen,
+weil die Werkzeugübung, mit der sie verglichen werden, Namen hält (F12);
+der Beruf antwortet auch auf seine Aliasse, damit ein Regelwerk, das
+„Crafting: Smithing" schreibt, und ein Rezept, das „Smithing" sagt,
+zusammenfinden.
+
 **Womit** gefertigt wird — Werkzeug, Attribut, SG — sagt ebenfalls das
 Rezept, so wie seine Quelle es druckt. Ein Tisch, der Kräuterkunde mit
 Weisheit spielt, oder eine Figur, die mit Geschick braut, kopiert das Rezept

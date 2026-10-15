@@ -351,8 +351,47 @@ export interface HandwerkAuftrag {
   sourceFailure: string;
   may: { mark: boolean; roll: boolean; work: boolean; confirm: boolean; finish: boolean; abort: boolean; fail: boolean };
 }
-/** `GET /api/crafting/:id` — am Rezept oder am Auftrag (T-128). */
+/** Eine Zeile der Rezeptliste in der Handwerksübersicht (T-196). */
+export interface HandwerkRezept {
+  id: string;
+  name: string;
+  trade: string;
+  tradeId?: string;
+  tools: string[];
+  ability: string;
+  dc: number | null;
+  time: string;
+  days: number | null;
+  checks: number | null;
+  yields: { id: string; name: string; rarity: string } | null;
+  needs: { item: string; name: string; qty: number }[];
+  /** Ob die Figur es gelernt hat — nur an einer Figur, für Leitung und Führende. */
+  learned?: boolean;
+}
+export interface HandwerkWerkzeug {
+  name: string;
+  id?: string;
+}
+/** Beruf, Werkzeug, Figur: was man womit fertigt (T-196). */
+export type HandwerkUebersicht =
+  | {
+      kind: 'trade';
+      trade: { id: string; name: string; tools: HandwerkWerkzeug[] };
+      recipes: HandwerkRezept[];
+      materials: { item: string; name: string; recipes: number; qty: number }[];
+    }
+  | { kind: 'tool'; tool: { id: string; name: string }; trades: { id: string; name: string }[]; recipes: HandwerkRezept[] }
+  | {
+      kind: 'actor';
+      actor: { id: string; name: string };
+      statblock: boolean;
+      tools: (HandwerkWerkzeug & { trades: { id: string; name: string }[]; recipes: HandwerkRezept[] })[];
+    };
+
+/** `GET /api/crafting/:id` — am Rezept oder am Auftrag (T-128), an Beruf, Werkzeug und Figur (T-196). */
 export type Handwerk =
+  | HandwerkUebersicht
+  | { kind: 'none' }
   | { kind: 'order'; rules: HandwerkRegeln; leitet: boolean; order: HandwerkAuftrag }
   | {
       kind: 'recipe';

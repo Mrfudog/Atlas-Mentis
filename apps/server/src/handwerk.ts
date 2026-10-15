@@ -31,12 +31,17 @@ import {
   entityName,
   insideOf,
   knows,
+  materialsOf,
   nextId,
   ORDER_COMPONENT,
   orderChecks,
   orderNeed,
   RECIPE_COMPONENT,
   recipeLearned,
+  recipeTools,
+  recipeTrade,
+  recipesOfTool,
+  recipesOfTrade,
   reserveIn,
   reservedPieces,
   resolveInstance,
@@ -47,6 +52,10 @@ import {
   tableRole,
   tallyChecks,
   templateOf,
+  TRADE_COMPONENT,
+  tradeOfRecipe,
+  tradesOfTool,
+  tradeTools,
   typeChain,
   primaryInterface,
   type CraftRules,
@@ -267,7 +276,12 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     if (await istAuftrag(roh1)) {
       return { kind: 'order', rules, leitet: leitung, order: auftragsSicht(roh1, stand, user, kampagne) };
     }
-    if (!typeChain(registry, primaryInterface(roh1)).includes(RECIPE_COMPONENT)) {
+    const kette = typeChain(registry, primaryInterface(roh1));
+    /* Beruf, Werkzeug und Figur (T-196): was man womit fertigt. */
+    if (kette.includes(TRADE_COMPONENT)) return { kind: 'trade', ...(await berufSicht(request, roh1, stand, registry)) };
+    if (kette.includes('Item')) return await werkzeugSicht(request, roh1, stand, registry);
+    if (kette.includes('Creature')) return { kind: 'actor', ...(await figurSicht(request, roh1, stand, registry, user, leitung)) };
+    if (!kette.includes(RECIPE_COMPONENT)) {
       return reply.code(404).send({ error: 'Kein Rezept.' });
     }
     const bed = bedarf(roh1, stand.map);
@@ -332,6 +346,156 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
       orders,
     };
   });
+
+  // ---------------------------------------------------------- Übersicht (T-196)
+
+  type Registry = Awaited<ReturnType<Repository['getRegistry']>>;
+
+  /** Rezepte und Berufe im Bestand, roh — ohne Aufträge und Instanzen. */
+  function handwerksArtikel(stand: Stand, registry: Registry) {
+    const rezepte: Entity[] = [];
+    const berufe: Entity[] = [];
+    for (const e of stand.alle) {
+      const kette = typeChain(registry, primaryInterface(e));
+      if (kette.includes(TRADE_COMPONENT)) berufe.push(e);
+      else if (kette.includes(RECIPE_COMPONENT) && !kette.includes(ORDER_TYPE) && !(e.relations ?? []).some((r) => r.type === 'instanceOf')) {
+        rezepte.push(e);
+      }
+    }
+    return { rezepte, berufe };
+  }
+
+  /**
+   * **Die Zeilen einer Rezeptliste** — gebaut aus dem **Gesiebten**: was
+   * eine Information zurückhält (Beruf, SG, Material eines unbekannten
+   * Rezepts), steht hier nicht, und Material oder Ertrag, die dieser
+   * Betrachter nicht sieht, fehlen ganz. `learned` rechnet die Figur am
+   * Rohbestand — ob sie es kann, ist ihr Wissen, nicht das des Betrachters.
+   */
+  async function rezeptZeilen(
+    request: FastifyRequest,
+    rezepte: Entity[],
+    berufe: Entity[],
+    stand: Stand,
+    gelernt?: (rezept: Entity) => boolean,
+  ) {
+    const ziele = new Set<string>();
+    for (const r of rezepte) for (const k of r.relations ?? []) if (k.type === 'needs' || k.type === 'yields') ziele.add(k.to);
+    const sichtbar = new Map(
+      (await sieve(request, [...ziele].map((i) => stand.map.get(i)).filter((x): x is Entity => !!x), stand.map)).map((e) => [e.id, e]),
+    );
+    const name = (id: string) => entityName(sichtbar.get(id));
+    return rezepte
+      .map((r) => {
+        const karte = r.components?.[RECIPE_COMPONENT] ?? {};
+        const ertrag = (r.relations ?? []).find((k) => k.type === 'yields' && sichtbar.has(k.to));
+        const beruf = tradeOfRecipe(berufe, r);
+        const zahlOder = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+        const roh_ = stand.map.get(r.id);
+        return {
+          id: r.id,
+          name: entityName(r),
+          trade: recipeTrade(r),
+          ...(beruf ? { tradeId: beruf.id } : {}),
+          tools: recipeTools(r, berufe),
+          ability: typeof karte['ability'] === 'string' ? karte['ability'] : '',
+          dc: zahlOder(karte['dc']),
+          time: typeof karte['time'] === 'string' ? karte['time'] : '',
+          days: zahlOder(karte['days']),
+          checks: zahlOder(karte['checks']),
+          yields: ertrag
+            ? { id: ertrag.to, name: name(ertrag.to) || ertrag.to, rarity: String(sichtbar.get(ertrag.to)?.components?.['Item']?.['rarity'] ?? '') }
+            : null,
+          needs: (r.relations ?? [])
+            .filter((k) => k.type === 'needs' && sichtbar.has(k.to))
+            .map((k) => ({ item: k.to, name: name(k.to) || k.to, qty: Math.max(1, Number(k.props?.['qty']) || 1) })),
+          ...(gelernt && roh_ ? { learned: gelernt(roh_) } : {}),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** Werkzeuge beim Namen, mit Id, wo dieser Betrachter einen Artikel dazu sieht. */
+  async function werkzeugVerweise(request: FastifyRequest, namen: string[], stand: Stand, registry: Registry) {
+    const gesucht = new Set(namen.map((n) => n.toLowerCase()));
+    const treffer = stand.alle.filter(
+      (e) => gesucht.has(entityName(e).toLowerCase()) && typeChain(registry, primaryInterface(e)).includes('Item'),
+    );
+    const sichtbar = await sieve(request, treffer, stand.map);
+    return namen.map((n) => {
+      const t = sichtbar.find((e) => entityName(e).toLowerCase() === n.toLowerCase());
+      return { name: n, ...(t ? { id: t.id } : {}) };
+    });
+  }
+
+  /** **Ein Beruf:** seine Werkzeuge, seine Rezepte und was sie an Material brauchen. */
+  async function berufSicht(request: FastifyRequest, beruf: Entity, stand: Stand, registry: Registry) {
+    const { rezepte, berufe } = handwerksArtikel(stand, registry);
+    const gesiebt = await sieve(request, recipesOfTrade(rezepte, beruf), stand.map);
+    const zeilen = await rezeptZeilen(request, recipesOfTrade(gesiebt, beruf), berufe, stand);
+    /* Das Material aus dem, was die Zeilen zeigen — nicht aus dem Rohbestand. */
+    const namen = new Map(zeilen.flatMap((z) => z.needs.map((n) => [n.item, n.name] as const)));
+    const materials = materialsOf(gesiebt)
+      .filter((m) => namen.has(m.item))
+      .map((m) => ({ ...m, name: namen.get(m.item) ?? m.item }));
+    return {
+      trade: { id: beruf.id, name: entityName(beruf), tools: await werkzeugVerweise(request, tradeTools(beruf), stand, registry) },
+      recipes: zeilen,
+      materials,
+    };
+  }
+
+  /**
+   * **Ein Werkzeug:** seine Berufe und die Rezepte, die es möglich macht.
+   * An jedem anderen Gegenstand `none` — und zwar bevor gesiebt wird: wenn
+   * kein Rezept und kein Beruf den Namen nennt, ist nichts zu zeigen.
+   */
+  async function werkzeugSicht(request: FastifyRequest, werkzeug: Entity, stand: Stand, registry: Registry) {
+    const name = entityName(werkzeug);
+    const { rezepte, berufe } = handwerksArtikel(stand, registry);
+    const roheRezepte = recipesOfTool(rezepte, berufe, name);
+    if (!roheRezepte.length && !tradesOfTool(berufe, name).length) return { kind: 'none' as const };
+    /* Gerechnet über die Berufe, die er sieht — ein verborgener Beruf
+       verrät sich nicht über seine Rezepte. */
+    const sichtbareBerufe = await sieve(request, berufe, stand.map);
+    const gesiebt = await sieve(request, roheRezepte, stand.map);
+    return {
+      kind: 'tool' as const,
+      tool: { id: werkzeug.id, name },
+      trades: tradesOfTool(sichtbareBerufe, name).map((b) => ({ id: b.id, name: entityName(b) })),
+      recipes: await rezeptZeilen(request, recipesOfTool(gesiebt, sichtbareBerufe, name), sichtbareBerufe, stand),
+    };
+  }
+
+  /**
+   * **Eine Figur:** je Werkzeug, in dem ihr Statblock geübt ist
+   * (`Proficiencies.proficient`, `expertise`), die Rezepte, die es möglich
+   * macht — und ob sie sie gelernt hat (REQ-218). Gelernt zeigt sich nur
+   * der Leitung und dem, der die Figur führt.
+   */
+  async function figurSicht(request: FastifyRequest, figur: Entity, stand: Stand, registry: Registry, user: User, leitung: boolean) {
+    const block = stand.alle.find((e) => (e.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === figur.id));
+    const [gesiebterBlock] = block ? await sieve(request, [block], stand.map) : [];
+    const karte = gesiebterBlock?.components?.['Proficiencies'] ?? {};
+    const geuebt = [...new Set([karte['proficient'], karte['expertise']].flatMap((v) => (Array.isArray(v) ? v.map(String) : [])))];
+    const { rezepte, berufe } = handwerksArtikel(stand, registry);
+    const sichtbareBerufe = await sieve(request, berufe, stand.map);
+    const gesiebt = await sieve(request, rezepte, stand.map);
+    const darf = leitung || (user.actorIds ?? []).includes(figur.id);
+    const gelernt = darf ? (r: Entity) => recipeLearned(stand.map, r, (info) => knows(stand.map, info, figur.id)) : undefined;
+    const tools = [];
+    for (const w of geuebt) {
+      const liste = recipesOfTool(gesiebt, sichtbareBerufe, w);
+      if (!liste.length && !tradesOfTool(sichtbareBerufe, w).length) continue;
+      const [verweis] = await werkzeugVerweise(request, [w], stand, registry);
+      tools.push({
+        ...verweis!,
+        trades: tradesOfTool(sichtbareBerufe, w).map((b) => ({ id: b.id, name: entityName(b) })),
+        recipes: await rezeptZeilen(request, liste, sichtbareBerufe, stand, gelernt),
+      });
+    }
+    return { actor: { id: figur.id, name: entityName(figur) }, statblock: !!gesiebterBlock, tools };
+  }
 
   /** Schreiben, oder mit den Gründen abweisen. */
   async function schreib(e: Entity): Promise<string | null> {
