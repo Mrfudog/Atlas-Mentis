@@ -278,7 +278,7 @@ const SICHTBAR = 2;
       font-size: 0.9em;
     }
     .gewinnt {
-      color: var(--accent);
+      color: var(--link);
     }
     .verliert {
       color: var(--warn);
@@ -305,6 +305,15 @@ const SICHTBAR = 2;
     .griff[disabled] {
       opacity: 0.4;
       cursor: default;
+    }
+    /* Am Telefon stehen die Knöpfe unter dem Namen, sonst bleibt ihm ein Wort je Zeile. */
+    @media (max-width: 600px) {
+      .zeile {
+        flex-wrap: wrap;
+      }
+      .knoepfe {
+        flex-basis: 100%;
+      }
     }
     .fuss {
       color: var(--dim);
