@@ -71,11 +71,13 @@ export interface TeileOptionen {
   /** Bericht-Art (`bookData`, `adventureData`). */
   art: string;
   /**
-   * Orte (T-175): ist dieser benannte Abschnitt (eine Überschrift) ein Ort,
-   * legt die Funktion ihn an und gibt ihn zurück; was darunter steht, liegt
-   * dann in ihm. `eltern` ist der Ort, in dem der Abschnitt steht.
+   * Orte (T-175): ist dieser benannte Abschnitt ein Ort, legt die Funktion
+   * ihn an (Peg aus `herkunft`) und gibt ihn zurück; was darunter steht,
+   * liegt dann in ihm. `eltern` ist der Ort, in dem der Abschnitt steht.
+   * `describedIn` setzt das Zerlegen: die Überschrift, oder tiefer der
+   * erste Teil des Abschnitts (der Absatz mit dem fetten Namen).
    */
-  ort?: (k: Knoten, abschnitt: Entity, eltern: Entity | undefined) => Entity | undefined;
+  ort?: (k: Knoten, herkunft: string, eltern: Entity | undefined) => Entity | undefined;
   /** Der Ort einer Szene, damit die Orte in ihrem Text in ihm liegen. */
   ortVon?: (szene: Entity) => Entity | undefined;
 }
@@ -211,7 +213,11 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
             const h = teil('Heading', partName(inline(n, o.ctx), 200), hier);
             wb.feld(h, 'Heading', 'level', tiefe + 1);
             const vorher = hierOrt;
-            hierOrt = o.ort?.(k, h, hierOrt) ?? hierOrt;
+            const ort = o.ort?.(k, `place|${h.id}`, hierOrt);
+            if (ort) {
+              wb.kante(ort, 'describedIn', h.id);
+              hierOrt = ort;
+            }
             gehe(kinder, tiefe + 1, hier);
             hierOrt = vorher;
           } else {
@@ -219,9 +225,18 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
                steht, wird weiter zerlegt — ein Vorlesetext und eine Karte
                bleiben eigene Teile. */
             ohneText(hier);
+            /* Ein Ort hier (ein Eintrag im Gazetteer) zeigt auf den Absatz,
+               der mit seinem Namen beginnt — er ist der erste Teil danach. */
+            const vorher = hierOrt;
+            const ab = raus.length;
+            const ort = o.ort?.(k, `place|deep|${ganzes.id}|${rang + 1}`, hierOrt);
+            if (ort) hierOrt = ort;
             titel = inline(n, o.ctx).trim().replace(/[.:]$/, '');
             gehe(kinder, tiefe + 1, hier);
             ohneText(hier);
+            const erster = raus[ab];
+            if (ort && erster) wb.kante(ort, 'describedIn', erster.id);
+            hierOrt = vorher;
           }
           break;
         }

@@ -125,3 +125,43 @@ export function rollText(r: DiceRoll | null): string {
   const mod = flach ? (flach > 0 ? ` +${flach}` : ` ${flach}`) : '';
   return wuerfe ? `${r.total} (${wuerfe}${mod})` : String(r.total);
 }
+
+/**
+ * **Vorteil und Nachteil** (T-172): der erste W20 des Ausdrucks wird zwei
+ * W20, von denen der höhere (`adv`) bzw. tiefere (`dis`) zählt. Ohne W20
+ * oder schon mit Behalten bleibt der Ausdruck, wie er ist — ein Vorteil
+ * auf Schaden ist keine Regel.
+ */
+export function withAdvantage(expr: string, mode: 'adv' | 'dis' | null | undefined): string {
+  if (mode !== 'adv' && mode !== 'dis') return expr;
+  const terms = parseDice(expr);
+  if (!terms) return expr;
+  const i = terms.findIndex((t) => !('flat' in t) && t.sides === 20 && t.count === 1 && !t.keep && t.sign === 1);
+  if (i < 0) return expr;
+  return terms
+    .map((t, j) => {
+      if ('flat' in t) return t.flat < 0 ? `-${-t.flat}` : `+${t.flat}`;
+      const kern = j === i ? `2d20k${mode === 'adv' ? 'h' : 'l'}1` : `${t.count}d${t.sides}${t.keep ? `k${t.keep.high ? 'h' : 'l'}${t.keep.n}` : ''}`;
+      return (t.sign < 0 ? '-' : '+') + kern;
+    })
+    .join('')
+    .replace(/^\+/, '');
+}
+
+/**
+ * **Die natürliche Zahl des W20** (T-172): der gezählte W20 eines Wurfs
+ * mit genau einem — bei Vorteil der behaltene. Daraus folgt `crit`
+ * (20) und `fumble` (1); ohne W20 oder mit mehreren gibt es keine.
+ */
+export function naturalD20(r: DiceRoll | null): { nat: number; crit?: 'crit' | 'fumble' } | null {
+  if (!r) return null;
+  const w20 = r.rolls.filter((x): x is { d: number; v: number; vz: 1 | -1; drop?: true } => 'd' in x && x.d === 20 && !x.drop && x.vz > 0);
+  if (w20.length !== 1) return null;
+  const nat = w20[0]!.v;
+  return nat === 20 ? { nat, crit: 'crit' } : nat === 1 ? { nat, crit: 'fumble' } : { nat };
+}
+
+/** Die Summe der festen Glieder — der Modifikator eines Wurfs. */
+export function diceModifier(r: DiceRoll | null): number {
+  return (r?.rolls ?? []).reduce((a, x) => a + ('flat' in x ? x.flat : 0), 0);
+}

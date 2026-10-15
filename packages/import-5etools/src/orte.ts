@@ -10,17 +10,19 @@
  *
  *  - ein **Raum mit Schlüssel** im Abenteuer („K1. Front Courtyard",
  *    „12a. Vault"): `kind: 'Raum'`;
- *  - ein Abschnitt, der **Räume mit Schlüssel enthält** oder **eine eigene
- *    Karte** hat: ein Ort, die Art bleibt offen, solange der Text sie nicht
- *    sagt;
+ *  - ein Abschnitt mit **eigener Karte**: der Ort, den die Karte zeigt,
+ *    benannt nach ihrem Titel („Map 5.1: Vallaki (Area N)" → „Vallaki"),
+ *    die Art offen;
  *  - ein benannter Abschnitt, dessen **erster Satz ihn als Ort nennt**:
  *    „Ravensgate is a walled city …", „The Mirewood, a forest of …" — das
  *    Subjekt ist der Name der Überschrift, und das Hauptwort danach ist ein
  *    Ortswort (`ORTSWORT`). Daraus kommt auch die Art.
  *
  * Steht ein Ortswort im ersten Satz, ohne dass der Satz den Abschnitt
- * meint („Its ruler lives in a tower …"), ist das ein **Kandidat**: er
- * wird gezählt und nicht angelegt.
+ * meint („Its ruler lives in a tower …"), oder hat ein Abschnitt Räume,
+ * aber keine Karte und keinen solchen Satz („Areas of the Village"), ist
+ * das ein **Kandidat**: er wird gezählt und nicht angelegt. Räume darin
+ * liegen dann im nächsten Ort darüber.
  */
 
 import type { Entity } from '@nw/model';
@@ -29,7 +31,9 @@ import { zaehle } from './werkbank.js';
 
 /** Ortswort → `Place.kind` (die Werte der Liste stehen deutsch, sie sind Daten). */
 const ORTSWORT: Record<string, string | undefined> = {
-  kingdom: 'Reich', realm: 'Reich', nation: 'Reich', empire: 'Reich', domain: 'Reich', country: 'Reich',
+  /* „Realm" und „domain" sagen bei Ebenen und Domänen des Schreckens
+     nicht, ob es ein Reich ist: Ort ja, Art offen. */
+  kingdom: 'Reich', realm: undefined, nation: 'Reich', empire: 'Reich', domain: undefined, country: 'Reich',
   duchy: 'Reich', principality: 'Reich', 'city-state': 'Stadt', province: 'Reich',
   city: 'Stadt', town: 'Stadt', village: 'Stadt', hamlet: 'Stadt', capital: 'Stadt', metropolis: 'Stadt',
   settlement: 'Stadt', outpost: 'Stadt', port: 'Stadt',
@@ -60,6 +64,10 @@ export interface OrtBefund {
   kind?: string;
   /** Ein Ortswort im ersten Satz, das nicht sicher den Abschnitt meint. */
   kandidat?: boolean;
+  /** Der Name des Orts, wenn er nicht der des Abschnitts ist (aus dem Titel seiner Karte). */
+  name?: string;
+  /** Erkannt an der eigenen Karte. */
+  karte?: boolean;
 }
 
 const klein = (s: string): string => s.toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, ' ').trim();
@@ -84,8 +92,12 @@ function ersterSatz(t: string): string {
 
 const WORTE = Object.keys(ORTSWORT).sort((a, b) => b.length - a.length).map((w) => w.replace('-', '\\-')).join('|');
 /** Artikel, bis zu drei Beiwörter (nicht „of"), dann das Ortswort. */
+/* Das Ortswort muss das Hauptwort sein: „a forest people" ist ein Volk.
+   Danach kommt ein Satzzeichen, das Ende oder ein Wort, das den Ort
+   weiter beschreibt. */
+const DANACH = '(?=\\s*(?:[,.;:!?)]|$)|\\s+(?:of|in|on|at|near|that|which|where|and|or|known|built|located|from|with|whose|to|ruled|founded|between|beneath|under|above|across|along|by|for|surrounded|perched|nestled|carved|set|situated|hidden|home|famous|renowned|once|now|lying|deep|high|far)\\b)';
 const NACH_SUBJEKT = new RegExp(
-  `^(?:,[^,]{0,80},\\s*)?(?:(?:is|was|are|were)\\s+)?(?:a|an|the|one of the)\\s+((?:(?!of\\b|and\\b|who\\b|that\\b)[\\w'-]+\\s+){0,3}?)(${WORTE})\\b`,
+  `^(?:,[^,]{0,80},\\s*)?(?:(?:is|was|are|were)\\s+)?(?:a|an|the|one of the)\\s+((?:(?!of\\b|and\\b|who\\b|that\\b)[\\w'-]+\\s+){0,3}?)(${WORTE})s?\\b${DANACH}`,
   'i',
 );
 const IRGENDWO = new RegExp(`\\b(${WORTE})\\b`, 'i');
@@ -130,21 +142,43 @@ export function ersterAbsatz(entries: unknown): string {
 }
 
 /**
- * Der Befund für einen benannten Abschnitt: Raum mit Schlüssel, Abschnitt
- * mit Räumen oder Karte, sonst der erste Satz.
+ * Der Befund für einen benannten Abschnitt: ein Raum mit Schlüssel, ein
+ * erster Satz, der ihn als Ort nennt, sonst der Titel seiner Karte (`karte`,
+ * schon bereinigt — `ortAusKarte`): ein Abschnitt „Areas of the Village"
+ * mit der Karte „Map 3.1: Village of Barovia" beschreibt den Ort „Village
+ * of Barovia", nicht einen Ort, der „Areas of the Village" hiesse.
+ * Räume allein machen keinen Ort — „Areas of …" ist eine Liste.
  */
-export function ortBefund(name: string, entries: unknown, o: { raeume?: boolean; karte?: boolean } = {}): OrtBefund {
-  if (RAUM.test(name)) return { ort: true, kind: 'Raum' };
+export function ortBefund(name: string, entries: unknown, o: { karte?: string | undefined; raeume?: boolean; schluessel?: boolean } = {}): OrtBefund {
+  if (o.schluessel !== false && RAUM.test(name)) return { ort: true, kind: 'Raum' };
   const t = ortAusText(name, ersterAbsatz(entries));
   if (t.ort) return t;
-  if (o.raeume || o.karte) return { ort: true };
+  if (o.karte) return klein(o.karte) === klein(name) ? { ort: true, karte: true } : { ort: true, karte: true, name: o.karte };
+  return o.raeume ? { ort: false, kandidat: true } : t;
+}
+
+/**
+ * Der Name eines Orts aus dem Titel seiner Karte: „Map 5.1: Vallaki (Area
+ * N)" → „Vallaki", „Map 13.1: Amber Temple (Area X) - Upper Level" →
+ * „Amber Temple", „Crypt (Battlemap; DM Version)" → „Crypt"; von einer
+ * Sammelkarte („Map 11: A & Map 12: B") der erste. Kein Name aus einer
+ * Fallenskizze.
+ */
+export function ortAusKarte(titel: string): string | undefined {
+  const t = (klartext(titel).split('&')[0] ?? '')
+    .replace(/^maps?\s*[\w.\-–]*\s*:\s*/i, '')
+    .replace(/\s*\([^)]*\b(?:battlemap|version)\b[^)]*\)\s*$/i, '')
+    .replace(/\s+[-–]\s+.*$/, '')
+    .replace(/\s*\((?:area|areas)\b[^)]*\)\s*$/i, '')
+    .trim();
+  if (!t || /\btraps?\b/i.test(t)) return undefined;
   return t;
 }
 
 /** Was ein angelegter Ort mitbekommt. */
 export interface OrtAnlage {
-  /** Der Abschnitt, der ihn beschreibt (Überschrift oder Szene) — `describedIn`. */
-  abschnitt: Entity;
+  /** Der Abschnitt, der ihn beschreibt (Überschrift, Absatz oder Szene) — `describedIn`; steht er noch nicht, setzt ihn der Aufrufer. */
+  abschnitt?: Entity | undefined;
   /** Der Ort, in dem er liegt — `partOf`. */
   eltern?: Entity | undefined;
   befund: OrtBefund;
@@ -165,9 +199,9 @@ export interface OrtAnlage {
  */
 export function legeOrtAn(wb: Werkbank, name: string, a: OrtAnlage): Entity {
   const seite = a.seite !== undefined && a.seite !== 0 ? { page: a.seite } : {};
-  const ort = wb.anlegen('Place', name, a.herkunft ?? `place|${a.abschnitt.id}`, { source: a.quelle, ...seite });
+  const ort = wb.anlegen('Place', name, a.herkunft ?? `place|${a.abschnitt?.id ?? name}`, { source: a.quelle, ...seite });
   if (a.befund.kind) wb.feld(ort, 'Place', 'kind', a.befund.kind);
-  wb.kante(ort, 'describedIn', a.abschnitt.id);
+  if (a.abschnitt) wb.kante(ort, 'describedIn', a.abschnitt.id);
   if (a.eltern) wb.kante(ort, 'partOf', a.eltern.id);
   zaehle(wb.artBericht(a.art).artikel, 'Place');
   return ort;
@@ -186,36 +220,57 @@ export function hatRaeume(entries: unknown): boolean {
 }
 
 /**
- * Hat ein Abschnitt eine eigene Karte — in seinem Text, nicht in einem
- * Raum oder Unterkapitel, die selbst Orte werden?
+ * Die Titel der eigenen Karten eines Abschnitts — in seinem Text, nicht in
+ * einem Raum oder Unterkapitel, die selbst Orte werden.
  */
-export function hatKarte(entries: unknown): boolean {
-  const such = (x: unknown): boolean => {
-    if (Array.isArray(x)) return x.some(such);
-    if (!x || typeof x !== 'object') return false;
+export function kartenTitel(entries: unknown): string[] {
+  const out: string[] = [];
+  const such = (x: unknown): void => {
+    if (Array.isArray(x)) {
+      for (const y of x) such(y);
+      return;
+    }
+    if (!x || typeof x !== 'object') return;
     const k = x as Knoten;
-    if (k['type'] === 'image') return k['imageType'] === 'map';
-    if (k['type'] === 'section' || (typeof k['name'] === 'string' && RAUM.test(k['name'].trim()))) return false;
-    return such(k['images']) || such(k['entries']);
+    if (k['type'] === 'image') {
+      if (k['imageType'] === 'map') out.push(typeof k['title'] === 'string' ? k['title'] : '');
+      return;
+    }
+    if (k['type'] === 'section' || (typeof k['name'] === 'string' && RAUM.test(k['name'].trim()))) return;
+    such(k['images']);
+    such(k['entries']);
   };
-  return such(entries);
+  such(entries);
+  return out;
+}
+
+/** Der erste brauchbare Ortsname aus den eigenen Karten eines Abschnitts. */
+export function ortsnameAusKarten(entries: unknown): string | undefined {
+  for (const t of kartenTitel(entries)) {
+    const n = ortAusKarte(t);
+    if (n) return n;
+  }
+  return undefined;
 }
 
 /**
  * Die Frage der Teile (`TeileOptionen.ort`) für Überschriften: ist der
  * Abschnitt ein Ort, wird er angelegt. `angelegt` bekommt den neuen Ort
- * (das Abenteuer setzt `audience: 'gm'`).
+ * (das Abenteuer setzt `audience: 'gm'`); `schluessel` nur im Abenteuer —
+ * dort ist „3. Den" ein Raum, im Regelbuch „3. Determine Ability Scores"
+ * ein Schritt.
  */
-export function ortFuerUeberschrift(wb: Werkbank, quelle: string, art: string, angelegt?: (e: Entity) => void) {
-  return (k: Knoten, abschnitt: Entity, eltern: Entity | undefined): Entity | undefined => {
+export function ortFuerUeberschrift(wb: Werkbank, quelle: string, art: string, angelegt?: (e: Entity) => void, schluessel = false) {
+  return (k: Knoten, herkunft: string, eltern: Entity | undefined): Entity | undefined => {
     const n = typeof k['name'] === 'string' ? klartext(k['name']) : '';
     if (!n) return undefined;
-    const befund = ortBefund(n, k['entries'], { raeume: hatRaeume(k['entries']) });
+    /* Ein Schlüssel zählt nur im Abenteuer: im Regelbuch ist „1. Choose a Race" ein Schritt. */
+    const befund = ortBefund(n, k['entries'], { raeume: schluessel && hatRaeume(k['entries']), schluessel });
     if (!befund.ort) {
       if (befund.kandidat) ortKandidat(wb, art);
       return undefined;
     }
-    const ort = legeOrtAn(wb, n, { abschnitt, eltern, befund, quelle, seite: k['page'], art });
+    const ort = legeOrtAn(wb, befund.name ?? n, { herkunft, eltern, befund, quelle, seite: k['page'], art });
     angelegt?.(ort);
     return ort;
   };

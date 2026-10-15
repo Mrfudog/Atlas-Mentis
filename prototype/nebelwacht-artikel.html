@@ -16067,6 +16067,20 @@ function renderHowto(v){
     "is still unstowed leaves the inventory and stays at the session as a "+
     "leftBehind edge, with its quantity and where it came from — nothing is "+
     "deleted, and whoever goes back picks it up, unstowed again."));
+  /* Würfe im Protokoll (T-172): steht nur auf der Seite, der Prototyp würfelt weiter selbst. */
+  v.appendChild(el("div",{class:"rsec",text:"A roll lands in the article's log"}));
+  v.appendChild(el("p",{class:"hint"},
+    "On the site the server rolls (POST /api/rolls), not the browser, and "+
+    "every roll is an entry 'roll' in the event log — no new store — with "+
+    "the article it was rolled on as its subject, the dice, the modifier, "+
+    "advantage, the natural d20, a label, who rolled and as whom, the "+
+    "campaign and the session. An article's Rolls section reads them back; "+
+    "a creature's includes its statblock's (belongsTo), a session's every "+
+    "roll made during it. Whoever does not see the article does not see its "+
+    "rolls; the GM may roll hidden, and Campaign.playerRolls: gm hides every "+
+    "player roll from the rest of the table. Rolls are play, not content: "+
+    "they are in no export or transfer, and deleting an article leaves them "+
+    "standing as a roll on a deleted article."));
   var hkB=handActionsCost();
   var leiterB=zonenListe(), sqB=carrySquares(), plB=parsePairs(setting("slotDraw",""));
   var sbB={size:"medium"}, abB={str:16};
