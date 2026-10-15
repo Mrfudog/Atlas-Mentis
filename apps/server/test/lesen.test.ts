@@ -78,6 +78,11 @@ const BESTAND: Entity[] = [
   {
     ...artikel('en_mund', 'Encounter', '1. Mouth', 'encounter-0001', BUCH, { teil: 'sc_mund' }),
   },
+  /* Der Ort, den die Szene beschreibt (T-175): er hängt an ihr. */
+  {
+    ...artikel('pl_mund', 'Place', '1. Mouth', 'place-0001', BUCH),
+    relations: [kante('pl_mund', 'inLayer', BUCH), kante('pl_mund', 'describedIn', 'sc_mund')],
+  },
   /* Ein Monster aus dem Buch, mit Seite — „im Buch lesen" führt dorthin. */
   { ...artikel('cr_frosch', 'Creature', 'Bog Frog', 'creature-0001', BUCH, { seite: '9' }) },
   artikel('sc_fremd', 'Scene', 'Elsewhere', 'scene-0009', 'ly_aus', { audience: 'public', text: 'Not on.' }),
@@ -154,7 +159,7 @@ describe('reading a layer as a book (T-091)', () => {
     expect(k.sections.map((s: { id: string; depth: number }) => `${s.id}:${s.depth}`)).toEqual(['st_k1:1', 'sc_mund:2', 'sc_bau:2']);
     const mund = k.sections[1];
     expect(mund.entity.components.ReadAloud.readaloud[0].value).toBe('You smell the marsh.');
-    expect(mund.embeds.map((e: { id: string }) => e.id).sort()).toEqual(['en_mund', 'mp_mund']);
+    expect(mund.embeds.map((e: { id: string }) => e.id).sort()).toEqual(['en_mund', 'mp_mund', 'pl_mund']);
     expect(k.refs.links['scene-0002'].map((x: { id: string }) => x.id)).toEqual(['sc_bau']);
     expect(k.refs.names['st_tst']).toBe('The Sunken Test');
     /* Ein Abschnitt statt eines Kapitels nennt sein Kapitel. */

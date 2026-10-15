@@ -183,7 +183,8 @@ describe('Abenteuer als Ebene (T-082)', () => {
     const karte = finde(es, 'Map', 'Reed Cave');
     expect(karte.components['Image']).toMatchObject({ image: 'https://5e.tools/img/adventure/TST/Reed%20Cave.webp' });
     expect(karte.components['Map']).toMatchObject({ gridShape: 'square', gridSize: 70, gridOffsetX: 3, kind: 'battle' });
-    expect(kanten(karte, 'mapOf').map((r) => r.to)).toEqual([finde(es, 'Scene', 'Reed Cave').id]);
+    /* Die Höhle hat Räume und eine Karte: sie ist ein Ort, und die Karte zeigt ihn mit (T-175). */
+    expect(kanten(karte, 'mapOf').map((r) => r.to)).toEqual([finde(es, 'Scene', 'Reed Cave').id, finde(es, 'Place', 'Reed Cave').id]);
     expect(es.some((e) => art(e) === 'Map' && e.name === 'Player Version')).toBe(false);
   });
 
