@@ -9,6 +9,15 @@
       "link": "/ancestries"
     },
     {
+      "id": "2026-10-15-encounter-kinds",
+      "date": "2026-10-15",
+      "title": "Encounters have a kind",
+      "text": "An encounter can now say what it is: combat, social, puzzle, exploration, hazard, trap, resource or story — several at once, for a talk that turns into a fight. The kind shows in the encounter list and you can filter by it. Encounters that already had combatants are marked as combat.",
+      "area": "Compendium",
+      "link": "/compendium",
+      "query": { "type": "Encounter" }
+    },
+    {
       "id": "2026-10-15-named-creatures",
       "date": "2026-10-15",
       "title": "Named creatures from the books are characters",

@@ -2435,7 +2435,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `xpBudget` *number*, `phase` *planned | running | done | skipped*, `round` *number*, `turn` *number*, `surprise` *string*
+- `kind` *EncounterKind: combat | social | puzzle | exploration | hazard | trap | resource | story*, `xpBudget` *number*, `phase` *planned | running | done | skipped*, `round` *number*, `turn` *number*, `surprise` *string*
 
 **Geerbte Felder**
 

@@ -2156,6 +2156,11 @@ export const fieldGroups = {
         /* Die Schwierigkeit stand hier als Aufzählung von fünf Wörtern und
            an der Szene als freier Text. Sie ist jetzt eine Stufe von 1 bis
            20 und steht einmal, im Typ `Difficulty`. */
+        /* Was für eine Begegnung (T-178): mehrere Werte, denn ein
+           Gespräch kippt in einen Kampf. Leer heisst „nicht gesagt“, nicht
+           „Kampf“ — die Migration 077 setzt `combat` nur, wo schon jemand
+           mitkämpft. */
+        kind: { type: 'array', title: 'Kind', items: { type: 'string' }, enumRef: 'EncounterKind' },
         xpBudget: { type: 'number', title: 'XP budget' },
         /* Wo der Kampf steht, während er läuft — die Initiative schreibt
            es. Es hiess `state`, wie drei weitere Felder in drei weiteren

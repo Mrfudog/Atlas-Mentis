@@ -591,6 +591,16 @@ ausserdem brächte es Abenteuer und Buchtext des Grundstands mit, die über
 die aufgeschaltete Gruppe „D&D 5e (2014)" sofort im Spiel wären. Ein
 Verweis auf einen Artikel, der nicht mitkommt, wird ein Verweis nach
 Namen. Probelauf: `dry-run` mit `confirm` = `neues`.
+**Der Text der 2014-Regelbücher zählt seit T-145 zu den Neuzugängen**:
+er kam mit T-108, nach dem Grundstand, und ein Bestand von davor hat ihn
+nicht — auf dev am 15.10. alle 2014-Bücher („No text imported yet").
+`additions` bringt je Buch das `Chapter` und seine Teile (Überschriften,
+Absätze, Kästen, `Embed`s), nicht die Orte daraus (die stünden sofort in
+den Listen jeder Kampagne mit „D&D 5e (2014)"; nachtragen wie unten mit
+`types` = `Place`) und nicht die Abenteuer (Arcs, Szenen, Begegnungen —
+ebenso sofort im Spiel). Welche Bücher ihren Text bekommen, entscheidet
+die Verwaltung (E-062); geladen wird dann mit `additions` und `sources`
+= den Kürzeln, zuerst `dry-run` mit `confirm` = `neues`.
 
 **Ein neuer Teil an einem bestehenden Artikel** (T-169): seit T-169 bringt
 der Importer zu jedem benannten Statblock (`isNamedCreature`) eine
