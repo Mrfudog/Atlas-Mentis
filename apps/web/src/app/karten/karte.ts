@@ -59,8 +59,13 @@ import {
   snapToGrid,
   wallKind,
   WALL_KINDS,
+  figureView,
+  litAreas,
+  LIGHTING_LEVELS,
+  mapLighting,
+  setLighting,
 } from '@nw/model';
-import type { Cell, DoorState, Entity, Frame, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
+import type { Cell, DoorState, Entity, Frame, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
 import { Api, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -71,7 +76,7 @@ import { Brett, type Mangel } from '../boards/brett';
 import { BoardSuche } from '../boards/suche';
 import { Ladeanzeige } from '../kern/ladeanzeige';
 import { tipptGerade } from '../kern/suche';
-import { nebelBreite, nebelMalen, type NebelForm } from './nebel';
+import { DUNKEL_FARBE, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type Schnitt } from './nebel';
 import { KartenSeitenleiste, ZIEH_TYP } from './seitenleiste';
 
 /**
@@ -111,7 +116,7 @@ const RAD_PAUSE = 90;
 /** Ein Finger ist breiter als ein Mauszeiger: kleiner wird ein Marker nicht. */
 const MARKER_MIN = 26;
 
-type Werkzeug = 'keins' | 'messen' | 'setzen' | 'aufdecken' | 'pinsel' | 'zudecken' | 'wand' | 'wandArt' | 'schloss' | 'wandWeg';
+type Werkzeug = 'keins' | 'messen' | 'setzen' | 'aufdecken' | 'pinsel' | 'zudecken' | 'wand' | 'wandArt' | 'schloss' | 'wandWeg' | 'licht';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
@@ -304,6 +309,26 @@ interface Zeiger {
               </label>
               <button type="button" (click)="allesAuf()">Reveal all</button>
               <button type="button" (click)="allesZu()">Cover all</button>
+              <!-- **Licht** (T-216, REQ-140): wie hell die Karte ist, und welche Marker leuchten. -->
+              <label title="How bright the map is. In the dark, the players see only lights and what their darkvision reaches.">
+                Lighting
+                <select (change)="helligkeitSetzen($any($event.target).value)" aria-label="Lighting of this map">
+                  @for (l of LIGHTING_LEVELS; track l) {
+                    <option [value]="l" [selected]="l === helligkeit()">{{ l }}</option>
+                  }
+                </select>
+              </label>
+              <button type="button" [class.an]="werkzeug() === 'licht'" [attr.aria-pressed]="werkzeug() === 'licht'" (click)="waehle('licht')" title="Tap a token or marker to give it the light set here; 0 and 0 takes it away">Light source</button>
+              @if (werkzeug() === 'licht') {
+                <label>
+                  Bright
+                  <input type="number" min="0" max="60" step="1" class="zahl" [value]="lichtHell()" (change)="lichtHell.set(+$any($event.target).value || 0)" aria-label="Bright light in squares" />
+                </label>
+                <label>
+                  Dim
+                  <input type="number" min="0" max="120" step="1" class="zahl" [value]="lichtMatt()" (change)="lichtMatt.set(+$any($event.target).value || 0)" aria-label="Dim light in squares, the whole radius" />
+                </label>
+              }
             </div>
           }
 
@@ -415,6 +440,16 @@ interface Zeiger {
                   >
                     <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
                   </a>
+                }
+                @if (schatten()) {
+                  <!-- Licht und Dunkelheit (T-216): unter dem Nebel, Lichter und Dunkelsicht
+                       schneiden heraus. -->
+                  <canvas #schattenLeinwand class="nebel schatten" aria-hidden="true"></canvas>
+                }
+                @if (laufendeSicht()) {
+                  <!-- Die laufende Sicht (T-216): was die eigene Figur gerade sieht, hell;
+                       das einmal Gesehene gedämpft. Der Nebel darüber deckt den Rest. -->
+                  <canvas #sichtLeinwand class="nebel sicht" aria-hidden="true"></canvas>
                 }
                 @if (nebel()) {
                   <!-- Eine Leinwand und keine SVG-Maske: \`url(#…)\` löst nicht jeder
@@ -543,7 +578,7 @@ interface Zeiger {
                     [title]="m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
-                    (click)="kurzansicht($event, m.to)"
+                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : kurzansicht($event, m.to)"
                   >
                     @if (m.bild) {
                       <img [src]="m.bild" alt="" draggable="false" />
@@ -603,6 +638,8 @@ interface Zeiger {
           Tap a door to lock or unlock it.
         } @else if (werkzeug() === 'wandWeg') {
           Tap a wall to remove it.
+        } @else if (werkzeug() === 'licht') {
+          Tap a token or marker: it sheds {{ lichtHell() }} squares of bright and {{ lichtMatt() }} of dim light.
         } @else {
           @if (spielersicht()) {
             Player view ·
@@ -663,6 +700,8 @@ export class Karte {
   private readonly buehne = viewChild<ElementRef<HTMLElement>>('buehne');
   private readonly innen = viewChild<ElementRef<HTMLElement>>('innen');
   private readonly nebelLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('nebelLeinwand');
+  private readonly schattenLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('schattenLeinwand');
+  private readonly sichtLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('sichtLeinwand');
 
   constructor() {
     /* Die Warnungen gehen an den Planer, sobald sie sich ändern — nicht
@@ -714,6 +753,18 @@ export class Karte {
       if (c.height !== h) c.height = h;
       nebelMalen(ctx, b, h, n.formen, n.deckt);
     });
+    /* Licht und laufende Sicht (T-216): dieselbe Leinwand-Rechnung, je eine Schicht. */
+    const schicht = (c: HTMLCanvasElement | undefined, sch: { ar: number; farbe: string; deckt: number; schnitte: Schnitt[] } | null) => {
+      const ctx = sch && c ? c.getContext('2d') : null;
+      if (!sch || !c || !ctx) return;
+      const b = nebelBreite(this.nat()?.w ?? 0);
+      const h = Math.max(1, Math.round(b * sch.ar));
+      if (c.width !== b) c.width = b;
+      if (c.height !== h) c.height = h;
+      schichtMalen(ctx, b, h, sch.farbe, sch.deckt, sch.schnitte);
+    };
+    effect(() => schicht(this.schattenLeinwand()?.nativeElement, this.schatten()));
+    effect(() => schicht(this.sichtLeinwand()?.nativeElement, this.laufendeSicht()));
     /* Das Fenster misst, wie gross Zoom 1 ist — es ändert sich mit dem
        Fenster und nicht mit dem Zoom. */
     effect((aufraeumen) => {
@@ -1902,7 +1953,7 @@ export class Karte {
       const leer = { id: s.id, x: 0, y: 0, w: 0, h: 0, r: 0, pts: [] };
       if (s.kind === 'rect') return { ...leer, tag: 'rect', x: s.x, y: s.y * ar, w: s.w, h: s.h * ar };
       if (s.kind === 'circle') return { ...leer, tag: 'circle', x: s.x, y: s.y * ar, r: s.r };
-      if (s.kind === 'poly') return { ...leer, tag: 'polygon', pts: auf(s.pts) };
+      if (s.kind === 'poly') return { ...leer, tag: 'polygon', pts: auf(s.pts), ...(s.within ? { clip: auf(s.within) } : {}) };
       return { ...leer, tag: 'polyline', r: s.r, pts: auf(s.pts) };
     });
     const st = this.strich();
@@ -1911,6 +1962,118 @@ export class Karte {
     }
     return { ar, formen, deckt: this.alsLeitung() ? 0.5 : 1 };
   });
+  // ------------------------------------------------------------- Licht
+
+  protected readonly LIGHTING_LEVELS = LIGHTING_LEVELS;
+  /** Wie hell die Karte ist (`Map.lighting`, T-216). */
+  protected readonly helligkeit = computed<LightLevel>(() => {
+    const e = this.karte();
+    return e ? mapLighting(e) : 'bright';
+  });
+  protected helligkeitSetzen(wert: string): void {
+    const e = this.karte();
+    if (e && (LIGHTING_LEVELS as readonly string[]).includes(wert)) void this.schreiben(setLighting(e, wert as LightLevel));
+  }
+  /** Was das Werkzeug „Light source“ setzt, in Feldern. */
+  protected readonly lichtHell = signal(4);
+  protected readonly lichtMatt = signal(8);
+  /** Einem Marker Licht geben (`marker.props.light`/`dim`); 0 und 0 nimmt es weg. */
+  protected lichtGeben(relId: string): void {
+    const e = this.karte();
+    if (!e) return;
+    const hell = Math.max(0, this.lichtHell());
+    const matt = Math.max(0, this.lichtMatt());
+    const relations = (e.relations ?? []).map((r) => {
+      if (r.id !== relId) return r;
+      const { light: _l, dim: _d, ...rest } = (r.props ?? {}) as Record<string, unknown>;
+      return { ...r, props: { ...rest, ...(hell ? { light: hell } : {}), ...(matt ? { dim: matt } : {}) } };
+    });
+    void this.schreiben({ ...e, relations });
+  }
+
+  /**
+   * **Wessen Sicht gezeichnet wird** (T-216): für Spielende die eigenen
+   * Figuren und das Gruppen-Token; in der Spielersicht der Leitung die
+   * gewählte Figur, sonst das Gruppen-Token und die Spielercharaktere. Die
+   * Leitung selbst sieht alles.
+   */
+  private readonly betrachter = computed<Set<string>>(() => {
+    if (this.alsLeitung()) return new Set();
+    const e = this.karte();
+    const gruppe = (e ? markersOf(e) : []).filter((m) => m.kind === 'party').map((m) => m.to);
+    if (this.spielersicht() && this.darfSchreiben()) {
+      const fuer = this.nebelFuer();
+      if (fuer) return new Set([fuer]);
+      const ziele = this.kontext()?.targets ?? {};
+      const figuren = (e ? markersOf(e) : []).filter((m) => m.kind === 'play' && ziele[m.to]?.type === 'PlayerCharacter').map((m) => m.to);
+      return new Set([...gruppe, ...figuren]);
+    }
+    return new Set([...this.eigeneHier(), ...gruppe]);
+  });
+  /** Was jede dieser Figuren gerade sieht — am Token, wie es eben gezogen wird. */
+  private readonly sichten = computed(() => {
+    const e = this.angezeigt();
+    const n = this.nat();
+    const wer = this.betrachter();
+    if (!e || !n || !wer.size) return [];
+    const dv = this.kontext()?.darkvision ?? {};
+    return this.marker()
+      .filter((m) => wer.has(m.to) && (m.kind === 'play' || m.kind === 'party'))
+      .map((m) => figureView(e, m, n, dv[m.to] ?? 0));
+  });
+  /**
+   * **Die Dunkelheit** (T-216, REQ-140): auf einer dämmrigen oder dunklen
+   * Karte eine Schicht unter dem Nebel; helles Licht schneidet sie ganz
+   * heraus, Dämmerlicht und die Dunkelsicht der eigenen Figur zur Hälfte.
+   * Die Leitung sieht durch.
+   */
+  protected readonly schatten = computed(() => {
+    const e = this.angezeigt();
+    const n = this.nat();
+    if (!e || !n) return null;
+    const stufe = mapLighting(e);
+    if (stufe === 'bright') return null;
+    const ar = this.seitenverhaeltnis();
+    const lt = this.alsLeitung();
+    const auf = (p: ReadonlyArray<readonly [number, number]>) => p.map(([x, y]) => [x, y * ar] as const);
+    const licht = litAreas(e, n);
+    const dunkelsicht = this.sichten().flatMap((v) => (v.darkvision ? [v.darkvision] : []));
+    return {
+      ar,
+      farbe: DUNKEL_FARBE,
+      deckt: stufe === 'dark' ? (lt ? 0.42 : 0.94) : lt ? 0.2 : 0.5,
+      schnitte: [
+        { formen: [...licht.map((l) => auf(l.dim)), ...dunkelsicht.map(auf)], staerke: 0.5 },
+        { formen: licht.map((l) => auf(l.bright)), staerke: 1 },
+      ],
+    };
+  });
+  /**
+   * **Die laufende Sicht** (T-216, wie Owlbears „Dynamic Fog“): auf einer
+   * Karte mit Nebel hell, was die eigene Figur gerade sieht; das einmal
+   * Aufgedeckte gedämpft. Ohne Figur auf der Karte nichts — dann bleibt das
+   * Aufgedeckte hell wie bisher.
+   */
+  protected readonly laufendeSicht = computed(() => {
+    const e = this.angezeigt();
+    const v = this.sichten();
+    if (!e || !fogOn(e) || !v.length) return null;
+    const ar = this.seitenverhaeltnis();
+    const auf = (p: ReadonlyArray<readonly [number, number]>) => p.map(([x, y]) => [x, y * ar] as const);
+    return {
+      ar,
+      farbe: NEBEL_FARBE,
+      deckt: 0.55,
+      schnitte: [
+        {
+          formen: v.flatMap((x) => x.seen.filter((a) => !a.within).map((a) => auf(a.pts))),
+          geklammert: v.flatMap((x) => x.seen.flatMap((a) => (a.within ? [{ pts: auf(a.pts), clip: auf(a.within) }] : []))),
+          staerke: 1,
+        },
+      ],
+    };
+  });
+
   /** Nebel, aber noch kein Mass: Spielende sehen bis dahin gar nichts. */
   protected readonly nebelOhneMass = computed(() => {
     const e = this.angezeigt();

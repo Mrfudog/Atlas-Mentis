@@ -114,6 +114,9 @@
   gap: 0.35rem;
   min-height: 32px;
 }
+.unterleiste input.zahl {
+  width: 4.5em;
+}
 
 /* Vollbild (T-203): die Bühne nimmt, was bleibt. Ohne Fullscreen API legt
    sich die Karte über die Seite (`.ersatz`). */
