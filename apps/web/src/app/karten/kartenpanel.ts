@@ -6,7 +6,7 @@ import { KurzLink } from '../kern/kurzansicht';
 
 /**
  * **Wo eine Karte vorkommt** (T-202), auf ihrer Artikelseite: Sitzungen,
- * an denen sie auf dem Tisch liegt (`SessionState.activeMap`), Szenen und
+ * an denen sie auf dem Tisch liegt (`Session.activeMap`), Szenen und
  * Kämpfe mit `onMap` und was sie darstellt (`mapOf`). Gesiebt am Server
  * (`GET /api/maps/:id/uses`) — ein Feldverweis steht in keinem Rückbezug,
  * darum reicht „Linked here“ nicht. Dazu der Weg in Play und zur Liste.
@@ -35,12 +35,50 @@ import { KurzLink } from '../kern/kurzansicht';
       </p>
     </section>
   `,
+  /* Wie die übrigen Kästen der Seitenleiste (artikel.scss) — deren Stil
+     erreicht eine eigene Komponente nicht. */
   styles: `
+    .kasten {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    h2 {
+      margin: 0;
+      font-family: var(--caps);
+      font-size: 1.1rem;
+      color: var(--accent);
+    }
+    .kanten {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .kanten li {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: baseline;
+    }
+    .rl {
+      color: var(--dim);
+      font-size: 0.85rem;
+    }
+    p {
+      margin: 0;
+    }
     .dim {
       color: var(--dim);
     }
     .wege {
-      margin: 0.5rem 0 0;
+      margin-top: 0.25rem;
     }
   `,
 })
@@ -75,7 +113,7 @@ export class KartenPanel {
   /** Wie die Karte vorkommt — die Art des Artikels und, wo es mehr sagt, das Wie. */
   protected wie(u: KartenVerwendung): string {
     const art = this.bestand.registry()?.interfaces[u.type]?.label ?? u.type;
-    if (u.via === 'SessionState.activeMap') return `${art} · on the table`;
+    if (u.via.endsWith('.activeMap')) return `${art} · on the table`;
     if (u.via === 'mapOf') return `Map of · ${art}`;
     if (u.via === 'onMap') return `${art} · played here`;
     return art;

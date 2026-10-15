@@ -116,7 +116,21 @@ export function mapTree(maps: readonly Entity[]): MapRow[] {
   return raus;
 }
 
-/** Wo eine Karte vorkommt: der Artikel und wie (`SessionState.activeMap`, `onMap`, `mapOf`). */
+/**
+ * **Der Sitzungszustand eines Artikels** (`activeMap`, `activeEncounter`
+ * …): gespeichert wird eine Karte je Art, die die Felder erklärt — an der
+ * Sitzung also `Session`; ältere Bestände tragen `SessionState`. Beide
+ * gelten, die eigene zuletzt (wie `tableMovedOn`). Wer nur `SessionState`
+ * las, sah die Karte nie, die die Maske gesetzt hatte (T-202).
+ */
+export function sessionState(e: Pick<Entity, 'components'>): Record<string, unknown> {
+  return {
+    ...((e.components?.['SessionState'] ?? {}) as Record<string, unknown>),
+    ...((e.components?.['Session'] ?? {}) as Record<string, unknown>),
+  };
+}
+
+/** Wo eine Karte vorkommt: der Artikel und wie (`Session.activeMap`, `onMap`, `mapOf`). */
 export interface MapUse {
   id: string;
   via: string;
@@ -124,7 +138,7 @@ export interface MapUse {
 
 /**
  * **Wo eine Karte vorkommt** (T-202): Sitzungen und andere Artikel, die sie
- * in einem Feld halten (`SessionState.activeMap`), Szenen und Kämpfe mit
+ * in einem Feld halten (`Session.activeMap`), Szenen und Kämpfe mit
  * `onMap` auf sie, und was sie selbst darstellt (`mapOf`). Die Gegenrichtung
  * ist eine Abfrage wie jede (K). Marken und Unterkarten zählen nicht —
  * die zeigt die Karte selbst.

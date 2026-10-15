@@ -203,6 +203,18 @@ describe('/api/play', () => {
     const gewaehlt = (await hole('Sela', '/api/play?session=s_1')).json();
     expect(gewaehlt).toMatchObject({ session: 's_1', map: null });
   });
+
+  /* T-202: die Maske schreibt `activeMap` in die Karte `Session` (eine
+     Karte je Art, die das Feld erklärt) — gelesen wurde nur `SessionState`,
+     und die gewählte Karte lag in Play nie auf dem Tisch. */
+  it('reads the map the session form writes (card Session)', async () => {
+    const { hole, repo } = await aufbau();
+    const s3 = { ...(await repo.getEntity('s_1'))!, id: 's_3', components: { Identity: { name: 'Abend 3', id: 'session-s_3', aliases: [] }, Time: { sort: 3 }, Session: { activeMap: 'gruft' } } };
+    await repo.putEntity(s3);
+    const p = (await hole('Mira', '/api/play')).json();
+    expect(p).toMatchObject({ session: 's_3', map: 'gruft' });
+    expect(p.sessions.find((x: { id: string }) => x.id === 's_3')).toMatchObject({ activeMap: 'gruft', mapName: 'Gruft' });
+  });
 });
 
 /* Karten finden (T-202): die Liste unter Play › Maps und wo eine Karte vorkommt. */

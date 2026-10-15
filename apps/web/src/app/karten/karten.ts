@@ -185,6 +185,7 @@ import { Bild, BildWahl } from '../artikel/bild';
     .vorschau {
       flex: none;
       width: 6rem;
+      text-decoration: none;
     }
     .vorschau nw-bild ::ng-deep img {
       width: 6rem;

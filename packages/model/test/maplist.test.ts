@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
-import { imageBecomes, imageTitle, mapFromImage, mapTree, mapUses, fieldsOf } from '../src/index.js';
+import { imageBecomes, imageTitle, mapFromImage, mapTree, mapUses, sessionState, fieldsOf } from '../src/index.js';
 import type { Entity } from '../src/index.js';
 
 const e = (id: string, interfaces: string[], components: Entity['components'] = {}, relations: Entity['relations'] = []): Entity => ({
@@ -68,13 +68,23 @@ describe('mapTree', () => {
   });
 });
 
+describe('sessionState', () => {
+  it('reads the card the form writes (Session) over the older SessionState', () => {
+    expect(sessionState({ components: { Session: { activeMap: 'neu' }, SessionState: { activeMap: 'alt', activeScene: 'sz' } } })).toEqual({
+      activeMap: 'neu',
+      activeScene: 'sz',
+    });
+    expect(sessionState({ components: {} })).toEqual({});
+  });
+});
+
 describe('mapUses', () => {
   it('finds sessions, fights on it and what it depicts — not markers or sub-maps', () => {
     const karte = e('m', ['Map'], {}, [{ id: 'o', type: 'mapOf', to: 'place', props: {} }]);
     const uses = mapUses(
       [
         karte,
-        e('s1', ['Session'], { SessionState: { activeMap: 'm' } }),
+        e('s1', ['Session'], { Session: { activeMap: 'm' } }),
         e('enc', ['Encounter'], {}, [{ id: 'on', type: 'onMap', to: 'm', props: {} }]),
         e('big', ['Map'], {}, [{ id: 'mk', type: 'marker', to: 'm', props: {} }]),
         e('sub', ['Map'], {}, [{ id: 'in', type: 'insideMap', to: 'm', props: {} }]),
@@ -83,7 +93,7 @@ describe('mapUses', () => {
       karte,
     );
     expect(uses).toEqual([
-      { id: 's1', via: 'SessionState.activeMap' },
+      { id: 's1', via: 'Session.activeMap' },
       { id: 'enc', via: 'onMap' },
       { id: 'place', via: 'mapOf' },
     ]);
