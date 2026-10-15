@@ -16,6 +16,7 @@ import { Bestand } from '../kern/bestand';
 import { QuelleText } from '../kern/quellen';
 import { Text } from './text';
 import { Bild, bildDes } from './bild';
+import { ansichtWeg } from '../klassen/ansicht-weg';
 
 /** Was die Seitenspalte und die Überschrift schon sagen. */
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source', 'Status', 'Tags'];
@@ -126,7 +127,7 @@ interface Stueck {
         }
         @if (!eingebettet()) {
           <div class="knoepfe">
-            <a class="knopf pri" [routerLink]="e.interfaces[0] === 'Class' ? ['/classes', e.id] : ['/artikel', e.id]">Open article</a>
+            <a class="knopf pri" [routerLink]="weg(e)">Open article</a>
             <!-- Eine Ebene liest man auch von hier (T-167): der Reiter „Read" am Artikel. -->
             @if (e.interfaces[0] === 'Layer') {
               <a class="knopf" [routerLink]="['/artikel', e.id]" [queryParams]="{ tab: 'read' }">Read</a>
@@ -246,6 +247,10 @@ interface Stueck {
 })
 export class Vorschau {
   readonly id = input.required<string>();
+  /** Wohin „Open article" führt — Klasse, Herkunft, Hintergrund in ihre Ansicht. */
+  protected weg(e: { id: string; interfaces: string[] }): string[] {
+    return ansichtWeg(e.interfaces[0], e.id);
+  }
   /** Auch holen, was auf ihn zeigt? Das Popup (T-093) zeigt es nicht und spart die Anfrage. */
   readonly rueck = input(true);
   /** Welche Ansicht (T-138): `quick`, wo nichts anderes gesagt wird; das „+"

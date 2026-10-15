@@ -721,6 +721,17 @@ export interface KlassenBuendel {
   features: Entity[];
 }
 
+/**
+ * Eine Herkunft oder ein Hintergrund samt allem, was die Ansicht braucht
+ * (T-166, `GET /api/origins/:id`) — gebaut wie `KlassenBuendel`.
+ */
+export interface HerkunftBuendel {
+  origin: Entity;
+  variants: Entity[];
+  tables: Entity[];
+  features: Entity[];
+}
+
 export interface Me {
   user: {
     id: string;
@@ -940,6 +951,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/search')) return 'search';
   if (path.startsWith('/api/entities') || path.startsWith('/api/links')) return 'articles';
   if (path.startsWith('/api/classes')) return 'classes';
+  if (path.startsWith('/api/origins')) return 'origins';
   if (path.startsWith('/api/abilities')) return 'ability methods';
   if (path.startsWith('/api/campaigns')) return 'campaign';
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk') || path.startsWith('/api/transfer')) return 'workbench';
@@ -1240,6 +1252,9 @@ export class Api {
   }
   klasse(id: string): Promise<KlassenBuendel> {
     return this.call<KlassenBuendel>(`/api/classes/${encodeURIComponent(id)}`);
+  }
+  herkunft(id: string): Promise<HerkunftBuendel> {
+    return this.call<HerkunftBuendel>(`/api/origins/${encodeURIComponent(id)}`);
   }
   /** Der ganze Artikel, gesiebt, mit den Namen, die er braucht (`refs`). */
   entity(id: string): Promise<Entity & { refs?: Bezuege }> {

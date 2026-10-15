@@ -48,6 +48,7 @@ import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { KurzLink } from '../kern/kurzansicht';
 import { Text } from '../artikel/text';
+import { ansichtWeg } from '../klassen/ansicht-weg';
 
 interface Moeglichkeit {
   /** Was in die Antwort kommt: Artikel-Id, Name oder Schlüssel. */
@@ -173,6 +174,14 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                       <li class="dim">Nothing ready to choose here yet.</li>
                     }
                   </ul>
+                  <!-- „Mehr dazu" (T-166): die gewählte Klasse, Herkunft oder der Hintergrund in seiner Ansicht. -->
+                  @if (gewaehlt(s); as w) {
+                    @if (['Class', 'Ancestry', 'Background'].includes(s.type)) {
+                      <p class="mehrdazu">
+                        <a [routerLink]="ansicht(s.type, w)" target="_blank">More about this {{ s.type === 'Class' ? 'class' : s.type.toLowerCase() }} ↗</a>
+                      </p>
+                    }
+                  }
                 } @else {
                   <p class="dim">Loading…</p>
                 }
@@ -1353,6 +1362,10 @@ export class Assistent {
     return this.antwort(s).filter((w) => w === wert).length;
   }
 
+  /** Wohin „More about this …" führt (T-166). */
+  protected ansicht(typ: string, id: string): string[] {
+    return ansichtWeg(typ, id);
+  }
   protected mehr(s: Extract<BuilderStep, { kind: 'choice' }>, wert: string): void {
     const jetzt = this.antwort(s);
     if (jetzt.length >= (s.at.choice.count ?? 1)) return;

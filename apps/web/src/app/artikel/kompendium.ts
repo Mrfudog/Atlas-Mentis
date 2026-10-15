@@ -16,6 +16,7 @@ import { FiltergruppeMaske } from './filtergruppe';
 import { Anlegen } from './anlegen';
 import { Vorschau } from './vorschau';
 import { Bild } from './bild';
+import { ansichtWeg } from '../klassen/ansicht-weg';
 
 interface TypGruppe {
   label: string;
@@ -64,6 +65,16 @@ const OFFEN = 8;
             (input)="suchen($any($event.target).value)"
           />
         </label>
+
+        <!-- Die Ansichten des Bereichs Rules (W6, T-166): wie im Buch statt als Zeile. -->
+        @if (bereich() === 'rules') {
+          <fieldset>
+            <legend class="leg">Views</legend>
+            <a routerLink="/classes" class="typ">Classes</a>
+            <a routerLink="/ancestries" class="typ">Ancestries</a>
+            <a routerLink="/backgrounds" class="typ">Backgrounds</a>
+          </fieldset>
+        }
 
         <fieldset>
           <legend class="leg">Type</legend>
@@ -816,9 +827,9 @@ export class Kompendium {
     }
     this.filter.vorschau.set(this.filter.vorschau() === z.id ? null : z.id);
   }
-  /** Wohin eine Zeile führt: eine Klasse hat ihre eigene Ansicht (W6). */
+  /** Wohin eine Zeile führt: Klasse, Herkunft und Hintergrund haben ihre eigene Ansicht (W6, T-166). */
   protected zielVon(z: Pick<ListenZeile, 'id' | 'type'>): string[] {
-    return z.type === 'Class' ? ['/classes', z.id] : ['/artikel', z.id];
+    return ansichtWeg(z.type, z.id);
   }
   /** Der Name ist ein echter Link (Mittelklick, neuer Reiter); ein schlichter Klick zeigt die Vorschau. */
   protected link(z: Pick<ListenZeile, 'id' | 'type'>, ev: MouseEvent): void {
