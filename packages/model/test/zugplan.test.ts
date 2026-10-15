@@ -15,6 +15,11 @@ import {
   type PlanStep,
 } from '../src/index.js';
 
+const t0 = () => ({
+  kinds: [] as string[], ability: 'str', toHit: 4, toHitFixed: false, toHitComputed: 4, damageDice: '1d6', damageBonus: 2,
+  damageFixed: false, damage: '1d6 + 2', average: 5, damageType: 'piercing', extra: null, reach: null as number | null, range: null as string | null, target: '', note: '',
+});
+
 describe('Zugplan (T-198)', () => {
   it('liest die Kosten aus der Art der Aktion', () => {
     expect(costOf('Bonus Action')).toBe('bonus');
@@ -57,6 +62,10 @@ describe('Zugplan (T-198)', () => {
     });
     expect(t).toMatchObject({ targeted: true, range: 80, longRange: 320, toHit: 4, group: 'attack' });
     expect(rangePair('30')).toEqual([30, null]);
+    const speer = tileFromAction('j', 'Javelin', 'Action', { ...t0(), kinds: ['melee weapon', 'ranged weapon'], reach: 5, range: '30/120' });
+    expect(speer).toMatchObject({ range: 30, longRange: 120 });
+    const axt = tileFromAction('g', 'Greataxe', 'Action', { ...t0(), kinds: ['melee weapon'], reach: 5, range: null });
+    expect(axt).toMatchObject({ range: 5, longRange: null });
   });
 
   it('hat immer den waffenlosen Schlag und die allgemeinen Aktionen', () => {

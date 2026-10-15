@@ -181,15 +181,17 @@ export function tileFromAction(
     return { id, name, cost, group: 'action', targeted: false, range: null, longRange: null, toHit: null, damage: '', damageType: '', average: null, hint: '' };
   }
   const [kurz, lang] = rangePair(n.range);
-  const nah = n.kinds.some((k) => k.startsWith('melee'));
+  /* Eine Wurfwaffe ist beides (Javelin: Nahkampf 5 ft, Wurf 30/120) — dann
+     gilt die Entfernung; die Leitung sieht beim Bestätigen, ob es ein Wurf war. */
+  const fern = n.kinds.some((k) => k.startsWith('ranged')) && kurz !== null;
   return {
     id,
     name,
     cost,
     group: 'attack',
     targeted: true,
-    range: nah && n.reach !== null ? n.reach : (kurz ?? n.reach ?? 5),
-    longRange: nah ? null : lang,
+    range: fern ? kurz : (n.reach ?? kurz ?? 5),
+    longRange: fern ? lang : null,
     toHit: n.toHit,
     damage: n.damage,
     damageType: n.damageType,
