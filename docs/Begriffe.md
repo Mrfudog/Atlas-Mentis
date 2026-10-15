@@ -1832,6 +1832,20 @@ und an jedem Schritt gilt dieselbe Prüfung wie von Hand.
 
 ---
 
+## Art einer Begegnung
+
+Eine **Begegnung** ist, was am Tisch passiert und vorbereitet sein will —
+ein Kampf, aber ebenso ein Gespräch, ein Rätsel, eine Falle, ein Fund
+oder ein Stück Geschichte. Was davon, sagt `Encounter.kind` (T-178), und
+zwar mit **mehreren** Wörtern: ein Verhör, das in eine Schlägerei
+kippt, ist beides, und wer sich für eines entscheiden müsste, legte zwei
+Artikel für einen Abend an. Die Wörter stehen in einer Zeile
+(`EncounterKind`) und nicht am Feld, weil mehr als eine Stelle sie
+braucht — die Liste filtert danach, eine Zufallstabelle würfelt
+Begegnungen jeder Art. Und es sind **Wörter, keine Arten**: ein Rätsel
+hat heute kein Feld, das ein Kampf nicht auch hätte; bekommt es eines
+(die Lösung), steht es als Gruppe an der Begegnung.
+
 ## Wurf und Log
 
 Ein **Wurf** (Roll) ist, was ein Würfelknopf auslöst; das **Log** (Rolls)
