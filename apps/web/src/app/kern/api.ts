@@ -586,6 +586,22 @@ export interface KampagnenEbenen {
   compareFor?: 'gm' | 'players';
 }
 
+/**
+ * **Eine gespeicherte Ebenenauswahl** (T-186, `/api/me/layer-sets`): ein
+ * Stand des Stapels unter einem Namen, je Konto, wahlweise nur für eine
+ * Kampagne (`campaign`). Geladen wird über `setCampaignLayers`.
+ */
+export interface Ebenenauswahl {
+  id: string;
+  name: string;
+  campaign: string | null;
+  /** Ausdrücklich aufgeschaltet, von unten nach oben. */
+  layers: string[];
+  /** Aus, obwohl eine aufgeschaltete Gruppe sie brächte. */
+  off: string[];
+  savedAt: string;
+}
+
 export interface ListenZeile {
   id: string;
   name: string;
@@ -672,16 +688,14 @@ export interface ListenFrage {
 /**
  * **Eine Filtergruppe** (T-137, `/api/filters`): ein benannter Filter einer
  * Listenseite, als Unterreiter und in der Kopfleiste. `of`, `notype`,
- * `tag`, `status`, `layer` grenzen ein; `q` und `nolayer` setzen die
- * Seitenleiste beim Betreten.
+ * `tag`, `status` grenzen ein; `q` und `f` setzen die Seitenleiste beim
+ * Betreten. Ebenen nicht mehr (T-186): die sagt der globale Stand.
  */
 export interface GespeicherterFilter {
   of?: string[];
   notype?: string[];
   tag?: string[];
   status?: string[];
-  layer?: string[];
-  nolayer?: string[];
   q?: string;
   /** Die Facetten (T-174), wie in der Adresse: `Typ.feld:a|b`, `Typ.feld:1..3`, `in.grants:<id>`. */
   f?: string[];
@@ -1594,6 +1608,17 @@ export class Api {
   }
   campaignLayers(campaign: string): Promise<KampagnenEbenen> {
     return this.call<KampagnenEbenen>(`/api/campaigns/${encodeURIComponent(campaign)}/layers`);
+  }
+  /** Die gespeicherten Ebenenauswahlen dieses Kontos (T-186). */
+  layerSets(): Promise<{ sets: Ebenenauswahl[] }> {
+    return this.call('/api/me/layer-sets', {}, false);
+  }
+  /** Speichern; derselbe Name für dieselbe Kampagne ersetzt. */
+  saveLayerSet(set: { name: string; campaign: string | null; layers: string[]; off: string[] }): Promise<Ebenenauswahl> {
+    return this.call('/api/me/layer-sets', { method: 'POST', body: JSON.stringify(set) });
+  }
+  deleteLayerSet(id: string): Promise<{ ok: true }> {
+    return this.call(`/api/me/layer-sets/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
   /** Der ganze Stapel, von unten nach oben; was fehlt, ist danach aus.
    *  `off` (T-088): die Ebenen, die trotz aufgeschalteter Gruppe aus sind;

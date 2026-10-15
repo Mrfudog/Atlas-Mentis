@@ -28,6 +28,7 @@ export class Stapel {
   private readonly _verwaltung = signal(false);
   private readonly _stand = signal(0);
   private readonly _schreib = signal<Schreibstand | null>(null);
+  private readonly _gerufen = signal(0);
   private lauf = 0;
   /** Wann zuletzt hier selbst geschaltet wurde — das Echo im Live-Kanal zählt nicht doppelt. */
   private selbst = 0;
@@ -40,6 +41,8 @@ export class Stapel {
   readonly stand = this._stand.asReadonly();
   /** Wohin ich anlege (T-161). */
   readonly schreib = this._schreib.asReadonly();
+  /** Zählt, wie oft eine Seite das Popup verlangt hat (T-186, „Change layers"); der Knopf hört darauf. */
+  readonly gerufen = this._gerufen.asReadonly();
 
   constructor() {
     const live = inject(Live);
@@ -78,6 +81,11 @@ export class Stapel {
   /** Die Schreibebene wählen (`null`: die Vorgabe). Der Server prüft gegen die Zielebenen. */
   async schreibWaehlen(layer: string | null): Promise<void> {
     this._schreib.set(await this.api.setWriteLayer(layer));
+  }
+
+  /** Das Popup der Kopfleiste öffnen — von einer Liste aus, die keinen eigenen Ebenenfilter mehr hat. */
+  oeffnen(): void {
+    this._gerufen.update((n) => n + 1);
   }
 
   /** Nach einem Häkchen hier: Zahl neu, Listen neu. */

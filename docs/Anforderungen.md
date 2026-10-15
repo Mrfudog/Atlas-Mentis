@@ -12,7 +12,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 170 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen — 317 Stories in 77 Features und 12 Epics.
+Zusammen: 171 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen — 318 Stories in 77 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -26,7 +26,7 @@ Zusammen: 170 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen — 317
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 18 | 4 steht · 3 teils · 11 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 25 | 16 steht · 4 teils · 4 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 26 | 17 steht · 4 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -844,6 +844,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 |---|---|---|---|---|
 | REQ-302 | Der Filter gehört der Seite | 3 | **steht** | `goPage` |
 | REQ-303 | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter` |
+| REQ-318 | Ein Ebenenfilter, global und speicherbar | 2 | **steht** | T-186: keine Ebenen-Häkchen mehr auf World/Story/Rules/Compendium; „Saved selections“ im Popup der Kopfleiste (`/api/me/layer-sets`); Filtergruppen ohne `layer`/`nolayer` (Migration 080 legt die alten Angaben nach `list_filter_ebenen_alt`) |
 
 ### F-070 Navigation & Kurzansicht
 

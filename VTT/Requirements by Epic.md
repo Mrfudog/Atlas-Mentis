@@ -798,7 +798,7 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 ## EP-11 Oberfläche & Navigation
 
-25 Stories · 79 Punkte · 16 steht · 4 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+26 Stories · 82 Punkte · 17 steht · 4 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -834,6 +834,7 @@ Filter einer Seite, gespeicherte Filtergruppen. — [[F-069 Filter & Filtergrupp
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-303]] | Filtergruppen je Seite | Spielleitung | 2 | 3 | steht |
+| [[REQ-318]] | Ein Ebenenfilter, global und speicherbar | Spielleitung | 2 | 3 | steht |
 | [[REQ-302]] | Der Filter gehört der Seite | Spielleitung | 3 | 1 | steht |
 
 ### F-070 Navigation & Kurzansicht

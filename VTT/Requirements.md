@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 44 | 138 | 32 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 95 | 326 | 62 steht · 17 teils · 8 offen · 5 ersetzt · 3 verworfen |
+| 2 | 96 | 329 | 63 steht · 17 teils · 8 offen · 5 ersetzt · 3 verworfen |
 | 3 | 115 | 331 | 62 steht · 21 teils · 31 offen · 1 ersetzt |
 | 4 | 44 | 195 | 13 steht · 2 teils · 26 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **317** | **1144** | 170 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **318** | **1147** | 171 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -356,6 +356,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-315]] | Globale Kopfleiste | Spieler | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 1 | 2 | done | steht |
 | [[REQ-316]] | Eigene Ebene je Spieler als Vorgabe | Spieler | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 1 | 3 | done | steht |
 | [[REQ-317]] | Zurück an dieselbe Stelle | Spielleitung | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 1 | 2 | done | steht |
+| [[REQ-318]] | Ein Ebenenfilter, global und speicherbar | Spielleitung | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 2 | 3 | done | steht |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.
