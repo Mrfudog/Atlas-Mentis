@@ -23,6 +23,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   currentCampaign,
+  darkvisionFor,
   encounterOnMap,
   entityName,
   fogOn,
@@ -105,6 +106,13 @@ export interface KartenKontext {
   proposals: ZugVorschlag[];
   /** Nur für die Leitung: wer am Kampf teilnimmt, und ob er hier schon ein Token hat. */
   combatants: { id: string; name: string; placed: boolean }[];
+  /**
+   * **Dunkelsicht in Fuss** (T-216) je Figur, deren Sicht die Seite
+   * zeichnet: für Spielende die eigenen und das Gruppen-Token, für die
+   * Leitung jedes Spiel- und Gruppen-Token. Gelesen aus `senses` am
+   * Statblock (`darkvisionFor`, D8) — gespeichert wird sie nirgends neu.
+   */
+  darkvision: Record<string, number>;
 }
 
 /** Die Seitenleiste der Karte (T-203): die Gruppe, und für die Leitung die Begegnungen der Sitzung. */
@@ -251,7 +259,16 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         const s = p.steps[0] as Extract<PlanStep, { kind: 'move' }>;
         return { plan: p.plan, actor: p.actor, actorName: p.actorName, by: p.by.name, to: s.to! };
       });
-    return { parents, children: kinder, targets, party, turn, combatants, rules, own, proposals } satisfies KartenKontext;
+    /* **Dunkelsicht** (T-216): die Seite rechnet die laufende Sicht selbst
+       (`figureView`) und braucht dafür die Reichweite der Figur. */
+    const darkvision: Record<string, number> = {};
+    for (const m of markersOf(karte)) {
+      if (m.kind !== 'play' && m.kind !== 'party') continue;
+      if (!leitetKarte && !meine.has(m.to) && m.kind !== 'party') continue;
+      const dv = darkvisionFor(stand.map, m.to);
+      if (dv > 0) darkvision[m.to] = dv;
+    }
+    return { parents, children: kinder, targets, party, turn, combatants, rules, own, proposals, darkvision } satisfies KartenKontext;
   });
 
   /**

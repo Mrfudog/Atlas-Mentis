@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { NEBEL_FARBE, nebelBreite, nebelMalen, type NebelForm, type NebelKontext } from '../src/app/karten/nebel';
+import { DUNKEL_FARBE, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type NebelKontext } from '../src/app/karten/nebel';
 
 /** Ein Kontext, der mitschreibt, was gezeichnet wird, mit welchem Modus. */
 function aufnahme(): NebelKontext & { log: string[] } {
@@ -34,6 +34,9 @@ function aufnahme(): NebelKontext & { log: string[] } {
     closePath: () => log.push('close'),
     fill: () => log.push(`fill ${k.globalCompositeOperation}`),
     stroke: () => log.push(`stroke ${k.globalCompositeOperation} w=${k.lineWidth}`),
+    save: () => log.push('save'),
+    restore: () => log.push('restore'),
+    clip: () => log.push('clip'),
   };
   return k;
 }
@@ -83,5 +86,35 @@ describe('Nebel als Leinwand (T-204)', () => {
     const quelle = readFileSync(resolve(__dirname, '../src/app/karten/karte.ts'), 'utf8');
     expect(quelle).not.toMatch(/mask\]?="'?url\(#/);
     expect(quelle).toContain('#nebelLeinwand');
+  });
+});
+
+describe('Dunkelheit und laufende Sicht als Schicht (T-216)', () => {
+  it('deckt mit der Stärke zu und schneidet je Schnitt einen Pfad heraus', () => {
+    const k = aufnahme();
+    const a: Array<readonly [number, number]> = [[0, 0], [0.5, 0], [0.5, 0.5]];
+    const b: Array<readonly [number, number]> = [[0.2, 0.2], [0.6, 0.2], [0.6, 0.6]];
+    schichtMalen(k, 100, 100, DUNKEL_FARBE, 0.9, [
+      { formen: [a, b], staerke: 0.5 },
+      { formen: [[[0, 0], [0.1, 0]]], staerke: 1 },
+    ]);
+    expect(k.log[1]).toBe('fillRect source-over a=0.9 0 0 100 100');
+    /* Zwei Dämmerlichter, ein Pfad, eine Füllung — überlappend bleibt es Dämmerung. */
+    expect(k.log.filter((x) => x === 'begin')).toHaveLength(1);
+    expect(k.log.filter((x) => x.startsWith('fill destination-out'))).toHaveLength(1);
+    expect(k.log.filter((x) => x === 'close')).toHaveLength(2);
+    expect(k.globalCompositeOperation).toBe('source-over');
+    expect(k.globalAlpha).toBe(1);
+  });
+});
+
+describe('Licht hinter einer Klammer (T-216)', () => {
+  it('füllt ein Polygon mit `clip` nur innerhalb der Klammer', () => {
+    const k = aufnahme();
+    const pts: Array<readonly [number, number]> = [[0, 0], [1, 0], [1, 1]];
+    nebelMalen(k, 100, 100, [{ ...leer, id: 'l', tag: 'polygon', pts, clip: [[0, 0], [0.5, 0], [0.5, 0.5]] }], 1);
+    const i = k.log.indexOf('save');
+    expect(k.log.slice(i).filter((x) => ['save', 'clip', 'restore'].includes(x))).toEqual(['save', 'clip', 'restore']);
+    expect(k.log.indexOf('clip')).toBeLessThan(k.log.indexOf('fill destination-out'));
   });
 });

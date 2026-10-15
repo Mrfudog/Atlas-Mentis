@@ -13,7 +13,8 @@
  *
  * **Aufgedeckt wird, was man durch die offene Tür sieht** — wenn die Karte
  * Nebel hat und Züge aufdecken (`revealOnMove`): für jede Figur der
- * Gruppe, die die Tür sieht, ihr Sichtpolygon (`sightReveal`), mit `for`
+ * Gruppe, die die Tür sieht, was sie sieht (`revealView`, im Dunkeln mit
+ * Dunkelsicht und Licht, T-216), mit `for`
  * auf sie. Eine zweite Regel dafür wäre die, nach der eine geöffnete Tür
  * auf dem Beamer etwas anderes zeigt als ein Schritt hindurch.
  *
@@ -36,7 +37,8 @@ import {
   PARTY_RELATION,
   segDistance,
   setDoorState,
-  sightReveal,
+  revealView,
+  darkvisionFor,
   wallMid,
   wallsClear,
   type DoorState,
@@ -83,7 +85,7 @@ export function tuerAufdecken(karte: Entity, tuer: string, nat: { w: number; h: 
     const ziel = bestand.get(m.to);
     const gruppe = m.kind === 'party' || (ziel?.relations ?? []).some((r) => r.type === PARTY_RELATION);
     if (!gruppe || !wallsClear(sperren, m, mitte, ar, 'sight')) continue;
-    neu = sightReveal(neu, m, nat, `s-${randomUUID()}`, m.to);
+    neu = revealView(neu, m, nat, () => `s-${randomUUID()}`, m.to, darkvisionFor(bestand, m.to));
   }
   return neu;
 }

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-map-light-darkvision",
+      "date": "2026-10-15",
+      "title": "Light, darkness and darkvision on the map",
+      "text": "Set a map bright, dim or dark under Fog › Lighting and give tokens or markers a light source. In the dark, characters see only lights and as far as their darkvision reaches, and moves reveal just that. On a fogged map, players see brightly what their character sees right now and the rest of what they found dimmed.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-layer-order",
       "date": "2026-10-15",
       "title": "See and drag the order of the layers in play",
