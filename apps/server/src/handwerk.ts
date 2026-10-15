@@ -23,8 +23,16 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   baseArticle,
   applySettlement,
+  coverage,
   craftCheck,
   craftRuleSentences,
+  enumOptions,
+  MATERIAL_GROUP,
+  materialFit,
+  materialGroupOf,
+  materialProfile,
+  substitutionsOf,
+  substitutionText,
   craftRulesOf,
   CRAFTING_RELATION,
   currentCampaign,
@@ -60,6 +68,7 @@ import {
   primaryInterface,
   type CraftRules,
   type Entity,
+  type FitContext,
   type OrderCheck,
   type OrderOutcome,
   type ReservedPiece,
@@ -132,16 +141,36 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     return raus;
   }
 
-  /** Was das Rezept braucht: je Gegenstand Menge und ob es verbraucht wird. */
+  /**
+   * Was das Rezept braucht: je Bestandteil Menge und ob er verbraucht wird.
+   * `key` ist die `needs`-Kante — unter ihr wird reserviert (T-197);
+   * `group`, wenn sie auf eine Materialgruppe zeigt statt auf einen Gegenstand.
+   */
   function bedarf(rezept: Entity, map: Map<string, Entity>) {
     return (rezept.relations ?? [])
       .filter((r) => r.type === 'needs')
-      .map((r) => ({
+      .map((r, i) => ({
+        key: r.id || `needs-${i}`,
         item: r.to,
         name: entityName(map.get(r.to)) || r.to,
+        group: (map.get(r.to)?.interfaces ?? []).includes(MATERIAL_GROUP),
         qty: Math.max(1, Number(r.props?.['qty']) || 1),
         consumed: r.props?.['consumed'] !== false,
       }));
+  }
+
+  type Bedarf = ReturnType<typeof bedarf>[number];
+
+  /** Für welchen Bestandteil ein reserviertes Stück steht: genannt (T-197), sonst nach Grundartikel. */
+  function bestandteil(bed: readonly Bedarf[], piece: ReservedPiece, map: Map<string, Entity>): Bedarf | undefined {
+    return (piece.forNeed ? bed.find((b) => b.key === piece.forNeed) : undefined) ?? bed.find((b) => b.item === baseArticle(map, piece.item));
+  }
+
+  /** Was die Passprüfung braucht: die Seltenheiten des Registers und die Ersatzregeln der Kampagne. */
+  async function passKontext(kampagne: Entity | null, map: Map<string, Entity>): Promise<FitContext> {
+    const registry = await repo.getRegistry();
+    const prop = registry.interfaces['Item']?.schema?.properties?.['rarity'] as Parameters<typeof enumOptions>[1];
+    return { rarities: enumOptions(registry, prop) ?? [], substitutions: substitutionsOf(kampagne, (id) => map.get(id)) };
   }
 
   /** Der Auftrag aufgelöst, sein Rezept, wer fertigt. */
@@ -200,7 +229,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const stuecke = reserviert(order.id, stand.map);
     /* Was die Regel mit dem Material täte (T-165): angewandt wird beim Abschluss, gezeigt sofort. */
     const vorschau = offen && tally.settle
-      ? settlePieces(stuecke, (item) => bed.find((b) => b.item === baseArticle(stand.map, item))?.consumed ?? true, tally.settle)
+      ? settlePieces(stuecke, (_, p) => bestandteil(bed, p, stand.map)?.consumed ?? true, tally.settle)
       : [];
     const darf = offen && (leitung || eigen);
     return {
@@ -233,11 +262,14 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
         : null,
       reserved: stuecke.map((p) => {
         const v = vorschau.find((x) => x.piece.edge === p.edge);
+        const b = bestandteil(bed, p, stand.map);
         return {
           ...p,
           name: entityName(stand.map.get(p.item)) || p.item,
           owner: namen.get(p.inventory)?.name ?? '',
-          consumed: bed.find((b) => b.item === baseArticle(stand.map, p.item))?.consumed ?? true,
+          consumed: b?.consumed ?? true,
+          /* Steht für einen anderen Bestandteil (Gruppe oder Ersatz, T-197): dessen Name. */
+          ...(b && b.item !== baseArticle(stand.map, p.item) ? { for: b.name } : {}),
           /** Was beim Abschluss verloren ginge (verbraucht oder nach der Regel). */
           ...(v ? { lost: p.qty - v.keep } : {}),
         };
@@ -504,8 +536,96 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
   }
 
   /**
+   * **Die Materialwahl** (T-197): je Bestandteil des Rezepts die freien
+   * Stücke in den Inventaren der Figur und ihrer Gruppe, die passen — der
+   * genannte Gegenstand, ein Stück der Gruppe, ein Ersatz nach einer Regel
+   * der Kampagne (`materialFit`) —, und die naheliegenden, die nicht
+   * passen, mit dem Grund. Naheliegend heisst: dieselbe Materialart (ein
+   * Reagenz anderer Seltenheit) oder eine, die nach einer Regel der
+   * Kampagne einspringen dürfte; bei einer Gruppe ohne Materialart jedes
+   * Material. Was der Betrachter nicht sieht, steht nicht da.
+   */
+  async function materialWahl(request: FastifyRequest, rezept: Entity, actor: Entity, stand: Stand, kampagne: Entity | null) {
+    const registry = await repo.getRegistry();
+    const ctx = await passKontext(kampagne, stand.map);
+    const bed = bedarf(rezept, stand.map);
+    const namen = besitzer(stand.map);
+    const istMaterial = (e: Entity) => typeChain(registry, primaryInterface(e)).includes('Material');
+    const frei = inventareVon(actor, stand.map).flatMap((inv) =>
+      (stand.map.get(inv)?.relations ?? [])
+        .filter((r) => r.type === 'holds' && !r.props?.['reservedFor'])
+        .map((r) => ({ inventory: inv, owner: namen.get(inv)?.name ?? '', edge: r.id, item: baseArticle(stand.map, r.to), qty: Math.max(1, Number(r.props?.['qty']) || 1) })),
+    );
+    const grund = new Map<string, Entity>();
+    for (const f of frei) {
+      const e = stand.map.get(f.item);
+      if (e) grund.set(e.id, e);
+    }
+    const sichtbar = new Map((await sieve(request, [...grund.values()], stand.map)).map((e) => [e.id, e]));
+    return {
+      needs: bed.map((b) => {
+        const ziel = stand.map.get(b.item);
+        const options: (typeof frei[number] & { name: string; ratio: number; via?: { id: string; name: string } })[] = [];
+        const rejected: (typeof frei[number] & { name: string; reason: string })[] = [];
+        if (ziel) {
+          const original = materialProfile(ziel);
+          const arten = b.group ? materialGroupOf(ziel).materialTypes : [original.materialType];
+          /* Naheliegend: dieselbe Materialart oder eine, die nach einer Regel einspringen dürfte. */
+          const nahe = new Set(arten.filter(Boolean));
+          for (const r of ctx.substitutions) if (r.replaces.some((t) => arten.includes(t))) for (const t of r.with) nahe.add(t);
+          const marken = ctx.substitutions.filter((r) => r.replaces.some((t) => arten.includes(t))).flatMap((r) => r.withTags);
+          for (const f of frei) {
+            const e = sichtbar.get(f.item);
+            if (!e) continue;
+            const fit = materialFit(ziel, e, ctx, b.group);
+            if (fit.ok) {
+              options.push({ ...f, name: entityName(e), ratio: fit.ratio, ...(fit.via ? { via: fit.via } : {}) });
+              continue;
+            }
+            const p = materialProfile(e);
+            const nah = (b.group && !arten.length) ? istMaterial(e) : nahe.has(p.materialType) || marken.some((t) => p.tags.includes(t));
+            if (nah) rejected.push({ ...f, name: entityName(e), reason: fit.reason });
+          }
+        }
+        return { ...b, options, rejected };
+      }),
+      substitutions: ctx.substitutions.map((s) => ({ id: s.id, name: s.name, does: substitutionText(s) })),
+    };
+  }
+
+  /** Darf dieser Betrachter für diese Figur fertigen? Die eigene; die Leitung jede. */
+  function fuerFigur(user: User, actor: Entity, leitung: boolean): boolean {
+    return leitung || (user.actorIds ?? []).includes(actor.id);
+  }
+
+  /**
+   * **Die Materialwahl beim Start** (T-197): `GET /api/crafting/:id/materials?actor=`.
+   * Erst „Start crafting" fragt, welche Stücke genommen werden — vorher ist
+   * nichts gewählt und nichts reserviert.
+   */
+  app.get<{ Params: { id: string }; Querystring: { actor?: string } }>('/api/crafting/:id/materials', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet' });
+    const stand = await roh();
+    const registry = await repo.getRegistry();
+    const rezept = stand.map.get(request.params.id);
+    const [sichtbar] = rezept ? await sieve(request, [rezept], stand.map) : [];
+    if (!rezept || !sichtbar || !typeChain(registry, primaryInterface(rezept)).includes(RECIPE_COMPONENT) || (await istAuftrag(rezept))) {
+      return reply.code(404).send({ error: 'Kein Rezept.' });
+    }
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const actor = stand.map.get(String(request.query.actor ?? ''));
+    if (!actor) return reply.code(404).send({ error: 'Diese Figur gibt es nicht.' });
+    if (!fuerFigur(user, actor, leitet(user, kampagne))) return reply.code(403).send({ error: 'Nur für die eigene Figur.' });
+    return { actor: { id: actor.id, name: entityName(actor) }, ...(await materialWahl(request, rezept, actor, stand, kampagne)) };
+  });
+
+  /**
    * **Einen Auftrag starten** (T-128): `recipe`, `actor`, `materials` als
-   * `{ inventory, edge, qty }`. Spielende starten für ihre Figur und nur
+   * `{ inventory, edge, qty, need? }` — `need` ist die `needs`-Kante, für
+   * die das Stück steht (T-197; ohne: die, deren Gegenstand es ist). Jedes
+   * Stück muss zu seinem Bestandteil passen (`materialFit`), ein Ersatz
+   * zählt nach seiner Regel (`coverage`). Spielende starten für ihre Figur und nur
    * gelernte Rezepte (REQ-218), mit allem Material, das verbraucht wird;
    * die Leitung startet für jede Figur und auch mit Lücken (D55).
    */
@@ -523,7 +643,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     }
     const actor = stand.map.get(String(request.body?.actor ?? ''));
     if (!actor) return reply.code(404).send({ error: 'Diese Figur gibt es nicht.' });
-    if (!leitung && !(user.actorIds ?? []).includes(actor.id)) return reply.code(403).send({ error: 'Nur für die eigene Figur.' });
+    if (!fuerFigur(user, actor, leitung)) return reply.code(403).send({ error: 'Nur für die eigene Figur.' });
     if (!leitung && !recipeLearned(stand.map, rezept, (info) => knows(stand.map, info, actor.id))) {
       return reply.code(403).send({ error: 'Dieses Rezept hat die Figur noch nicht gelernt.' });
     }
@@ -531,23 +651,37 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const roh2 = Array.isArray(request.body?.materials) ? (request.body.materials as unknown[]) : [];
     const wahl = roh2
       .filter((m): m is Record<string, unknown> => !!m && typeof m === 'object')
-      .map((m) => ({ inventory: String(m['inventory'] ?? ''), edge: String(m['edge'] ?? ''), qty: Math.trunc(Number(m['qty']) || 0) }))
+      .map((m) => ({
+        inventory: String(m['inventory'] ?? ''),
+        edge: String(m['edge'] ?? ''),
+        qty: Math.trunc(Number(m['qty']) || 0),
+        need: typeof m['need'] === 'string' ? m['need'] : '',
+      }))
       .filter((m) => m.qty > 0);
     const erlaubt = new Set(inventareVon(actor, stand.map));
     const bed = bedarf(rezept, stand.map);
-    const gewaehlt = new Map<string, number>();
+    const ctx = await passKontext(kampagne, stand.map);
+    /* Je Stück: für welchen Bestandteil, und wie viele ein Original ersetzen (T-197). */
+    const geprueft: { m: (typeof wahl)[number]; need: string; ratio: number }[] = [];
     for (const m of wahl) {
       if (!erlaubt.has(m.inventory)) return reply.code(403).send({ error: 'Material nur aus dem Inventar der Figur und ihrer Gruppe.' });
       const kante = (stand.map.get(m.inventory)?.relations ?? []).find((r) => r.id === m.edge && r.type === 'holds');
-      const grund = kante ? baseArticle(stand.map, kante.to) : '';
-      if (!kante || !bed.some((b) => b.item === grund)) return reply.code(422).send({ error: 'Das braucht dieses Rezept nicht.' });
-      gewaehlt.set(grund, (gewaehlt.get(grund) ?? 0) + m.qty);
+      const stueck = kante ? stand.map.get(baseArticle(stand.map, kante.to)) : undefined;
+      if (!kante || !stueck) return reply.code(409).send({ error: 'Das Stück ist weg — neu laden.' });
+      /* Ohne genannten Bestandteil: der, dessen Gegenstand es ist (wie vor T-197). */
+      const b = m.need ? bed.find((x) => x.key === m.need) : bed.find((x) => x.item === stueck.id);
+      if (!b) return reply.code(422).send({ error: 'Das braucht dieses Rezept nicht.' });
+      const ziel = stand.map.get(b.item);
+      const fit = ziel ? materialFit(ziel, stueck, ctx, b.group) : ({ ok: false, reason: 'the recipe’s material is missing' } as const);
+      if (!fit.ok) return reply.code(422).send({ error: `${entityName(stueck)} passt nicht zu ${b.name}: ${fit.reason}.` });
+      geprueft.push({ m, need: b.key, ratio: fit.ratio });
     }
-    const fehlt = bed.filter((b) => b.consumed && (gewaehlt.get(b.item) ?? 0) < b.qty);
+    const deckung = coverage(bed, geprueft.map((g) => ({ need: g.need, qty: g.m.qty, ratio: g.ratio })));
+    const fehlt = bed.filter((b) => b.consumed && (deckung.find((d) => d.key === b.key)?.short ?? 0) > 0);
     if (fehlt.length && !leitung) {
-      return reply.code(422).send({ error: `Es fehlt: ${fehlt.map((b) => `${b.qty - (gewaehlt.get(b.item) ?? 0)} × ${b.name}`).join(', ')}.` });
+      return reply.code(422).send({ error: `Es fehlt: ${fehlt.map((b) => `${+(deckung.find((d) => d.key === b.key)?.short ?? 0).toFixed(2)} × ${b.name}`).join(', ')}.` });
     }
-    const zuViel = bed.find((b) => (gewaehlt.get(b.item) ?? 0) > b.qty);
+    const zuViel = bed.find((b) => deckung.find((d) => d.key === b.key)?.over);
     if (zuViel) return reply.code(422).send({ error: `Mehr ${zuViel.name} als das Rezept braucht.` });
 
     const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
@@ -556,10 +690,10 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
 
     /* Zuerst reservieren (im Speicher): sagt ein Stück nein, ist noch nichts geschrieben. */
     const inventare = new Map<string, Entity>();
-    for (const m of wahl) {
+    for (const { m, need } of geprueft) {
       const inv = inventare.get(m.inventory) ?? stand.map.get(m.inventory);
       if (!inv) return reply.code(404).send({ error: 'Dieses Inventar gibt es nicht.' });
-      const r = reserveIn(inv, m.edge, m.qty, id, neueKante(inv.id, 'holds'));
+      const r = reserveIn(inv, m.edge, m.qty, id, neueKante(inv.id, 'holds'), need);
       if ('refused' in r) {
         const warum = { missing: 'Das Stück ist weg — neu laden.', reserved: 'Das Stück ist schon reserviert.', short: 'So viele liegen dort nicht.' };
         return reply.code(409).send({ error: warum[r.refused] });
@@ -610,7 +744,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const a = auftrag(order, map);
     const bed = bedarf(a.aufgeloest, map);
     const stuecke = reserviert(order.id, map);
-    const ergebnis = settlePieces(stuecke, (item) => bed.find((b) => b.item === baseArticle(map, item))?.consumed ?? true, how);
+    const ergebnis = settlePieces(stuecke, (_, p) => bestandteil(bed, p, map)?.consumed ?? true, how);
     const jeInventar = new Map<string, Map<string, number>>();
     for (const { piece, keep } of ergebnis) {
       const m = jeInventar.get(piece.inventory) ?? new Map<string, number>();
