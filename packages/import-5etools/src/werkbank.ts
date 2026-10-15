@@ -472,6 +472,13 @@ export class Werkbank {
   readonly legendaer = new Map<string, Entity[]>();
   /** Die Kreaturen benannter Statblöcke (T-169) — Neuzugänge auch aus dem Grundstand. */
   readonly benannt = new Set<string>();
+  /**
+   * Der Text der Regelbücher des Grundstands (T-145): Kapitel und Teile.
+   * Er kam erst mit T-108, also nach dem Grundstand — ein Bestand, der vor
+   * T-108 geladen wurde, kennt ihn nicht, und `--additions` brachte ihn
+   * bisher nicht mit. Neuzugänge wie die Kreaturen oben.
+   */
+  readonly buchtext = new Set<string>();
 
   /** Begleittext je Art (`monsterFluff` …), nach `name|source`. */
   readonly fluffe = new Map<string, Map<string, Knoten>>();

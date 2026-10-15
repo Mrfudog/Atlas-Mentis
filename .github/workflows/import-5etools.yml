@@ -26,7 +26,7 @@ on:
         options: [dev, prod]
         default: dev
       mode:
-        description: "only-new: nur anlegen, was es noch nicht gibt · additions: wie only-new, aber nur die Neuzugänge seit T-087 (2024, UA, Fahrzeuge, Decks, Bastionen), nichts aus dem Grundstand · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer, mit confirm=neues: additions) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben · layers: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094)"
+        description: "only-new: nur anlegen, was es noch nicht gibt · additions: wie only-new, aber nur die Neuzugänge seit T-087 (2024, UA, Fahrzeuge, Decks, Bastionen), nichts aus dem Grundstand ausser dem Text der Regelbücher (T-145) · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer, mit confirm=neues: additions) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben · layers: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094)"
         type: choice
         options: [only-new, additions, dry-run, replace-layer, add, layers]
         default: only-new

@@ -49,6 +49,9 @@ export const EBENE = 'D&D 5e (2014)';
 
 /** Die Ebene für das, was kein Buch nennt (die Aktionsarten) — unter
  *  Official und in der Gruppe `EBENE` (T-109). */
+/** Was vom Buchtext eines Regelbuchs Neuzugang ist (T-145): das Kapitel und seine Teile. */
+const BUCHTEXT = new Set(['Chapter', 'Heading', 'Paragraph', 'ReadAloudText', 'Embed']);
+
 export const OHNE_BUCH = 'D&D 5e (2014) — no book given';
 
 /** Die drei Grundregelwerke — je eine Ebene wie jedes Buch, gruppiert als `core`. */
@@ -167,7 +170,7 @@ export interface Ergebnis {
     format: string;
     registry: Registry & { components?: unknown };
     entities: Entity[];
-    /** Die Neuzugänge (T-087): was nicht zum Grundstand gehört, mit seinen Ebenen und deren Gruppen. `import --only-new --additions` legt nur sie an. */
+    /** Die Neuzugänge (T-087): was nicht zum Grundstand gehört, mit seinen Ebenen und deren Gruppen, dazu der Text der 2014-Regelbücher (T-145). `import --only-new --additions` legt nur sie an. */
     additions?: string[];
   };
   bericht: Bericht;
@@ -447,7 +450,12 @@ function bauen(
     }
     wb.stand = regelstandDerQuelle(quelleB, stand);
     wb.grund = wb.stand === '2014';
+    const vorher = wb.entities.length;
     buch(wb, b);
+    /* Kapitel und Teile eines 2014-Buchs sind Neuzugänge (T-145); die
+       Orte aus seinem Text nicht — sie stünden sofort in den Listen jeder
+       Kampagne, die „D&D 5e (2014)" aufschaltet (E-062). */
+    if (wb.grund) for (const e of wb.entities.slice(vorher)) if (BUCHTEXT.has(e.interfaces[0] ?? '')) wb.buchtext.add(e.id);
   }
   wb.grundSiehtAlles = false;
 
@@ -759,6 +767,11 @@ function neuzugaenge(wb: Werkbank): string[] {
      einem Statblock des Grundstands sind neu, und `--additions` legt sie
      an (die Kante am bestehenden Statblock zieht die Einfuhr nach). */
   for (const id of wb.benannt) raus.add(id);
+  /* Der Buchtext des Grundstands kam erst mit T-108 (T-145). */
+  for (const id of wb.buchtext) {
+    raus.add(id);
+    for (const r of nachId.get(id)?.relations ?? []) if (r.type === 'inLayer') ebene(r.to);
+  }
   return [...raus];
 }
 
