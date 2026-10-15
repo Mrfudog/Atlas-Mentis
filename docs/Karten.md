@@ -115,9 +115,60 @@ Aufgedeckt wird damit:
   was sie jetzt dahinter sieht (`tuerAufdecken`).
 
 Ohne Token, das zieht, deckt nichts von selbst auf — dann deckt die
-Leitung von Hand auf. **Licht und Dunkelsicht** zählen noch nicht: der
-Blick reicht bis zur nächsten Wand. Das kommt mit `marker.light/dim`
-(REQ-140) als eigener Schritt; die Spalte *Licht* steht schon da.
+Leitung von Hand auf. Wie weit der Blick im Dunkeln reicht, sagt der
+nächste Abschnitt.
+
+### Licht und Dunkelsicht (T-216)
+
+`packages/model/src/lighting.ts`, REQ-140.
+
+- **Die Karte sagt, wie hell es ist** (`Map.lighting`: `bright`, `dim`,
+  `dark`; ohne Angabe hell). Gesetzt unter Fog › Lighting.
+- **Ein Licht ist ein Marker mit Radius** (`marker.props.light` hell,
+  `dim` der ganze Radius, beides in Feldern; `mapLights`). Kein eigener
+  Artikel: dieselbe Laterne leuchtet auf einer Stadtkarte anders weit als
+  auf einer Kampfkarte. Gesetzt mit Fog › Light source (ein Token
+  antippen; 0 und 0 nimmt das Licht weg). Was ein Licht erreicht, ist das
+  Sichtpolygon gegen die Sperren, die **Licht** halten (`lightPolygon`,
+  `litAreas`).
+- **Die Dunkelsicht steht am Statblock** (`senses`, „darkvision 60 ft.")
+  und wird beim Lesen gezogen (`darkvisionFor`, D8), durch eine Instanz
+  hindurch auf ihre Vorlage. Das Gruppen-Token sieht so weit wie die Figur
+  der Gruppe, die am weitesten sieht. Fuss werden über den Massstab der
+  Karte in Felder umgerechnet (`feetPerSquare`: „1,5 m" sind 5 ft).
+- **Was eine Figur sieht** (`figureView`): auf einer hellen oder
+  dämmrigen Karte bis zur nächsten Sperre; im **Dunkeln** so weit wie ihre
+  Dunkelsicht, dazu von jedem Licht der Teil, in den sie hineinsieht —
+  auch durch eine Tür in einen Raum, dessen Laterne hinter der Wand
+  steht. **Die Schnittmenge wird nicht ausgerechnet:** gespeichert wird
+  das Lichtpolygon mit dem Sichtpolygon als Klammer (Form `poly` mit
+  `within`); `inShape` fragt beide, die Leinwand zeichnet mit `clip()`.
+  Zwei beliebige Polygone zu schneiden wäre eine Rechnung mit vielen
+  Sonderfällen.
+- **Aufgedeckt** wird beim Zug und beim Öffnen einer Tür genau das
+  (`revealSeenAlong`, `revealView`): im Dunkeln ohne Dunkelsicht und ohne
+  Licht nichts. Ein Polygon, das für dieselbe Figur schon dasteht, kommt
+  nicht noch einmal dazu.
+
+**Gezeichnet** wird in zwei Leinwänden unter dem Nebel (`schichtMalen`,
+nebel.ts):
+
+1. **Dunkelheit** auf einer dämmrigen oder dunklen Karte; helles Licht
+   schneidet sie ganz heraus, Dämmerlicht und die Dunkelsicht der eigenen
+   Figur zur Hälfte. Alle Polygone eines Schnitts in einem Pfad — zwei
+   überlappende Dämmerlichter bleiben Dämmerung. Die Leitung sieht durch.
+2. **Die laufende Sicht** (wie Owlbears „Dynamic Fog"): auf einer Karte mit
+   Nebel ist hell, was die eigene Figur **gerade** sieht, das einmal
+   Aufgedeckte gedämpft; der Nebel darüber deckt den Rest. Gerechnet im
+   Browser aus der Karte, die er bekommt — also gegen die Sperren am
+   Aufgedeckten (`redactWalls`); was dahinter fehlt, liegt ohnehin unter
+   dem Nebel. Die Dunkelsicht dafür schickt der Kartenkontext
+   (`darkvision`, je eigener Figur und Gruppen-Token; für die Leitung je
+   Spiel-Token). In der Spielersicht der Leitung gilt die gewählte Figur,
+   sonst das Gruppen-Token.
+
+Noch nicht: Tokens im Dunkeln, die die Figur nicht sieht, stehen für
+Spielende weiter da (zurückgehalten wird nur unter dem Nebel).
 
 Ein Zug einer Spielerin durch eine Sperre, die den Schritt hält, wird
 abgelehnt („A wall is in the way.“); der Zugplan rechnet dieselben Sperren
@@ -449,9 +500,9 @@ abziehen, Initiative und „wer ist dran" als Bedingung, Hex-Raster, Wände
 
 ## Was noch fehlt
 
-- **Licht und Zonen** in der Seite (REQ-140, 193, 208) — der Prototyp
-  kann sie, die Seite zeichnet sie noch nicht. Sperren und Sichtlinie
-  stehen seit T-118.
+- **Zonen** in der Seite (REQ-193, 208) — der Prototyp kann sie, die
+  Seite zeichnet sie noch nicht. Sperren und Sichtlinie stehen seit
+  T-118, Licht, Dunkelsicht und laufende Sicht seit T-216.
 - **Rahmen aufziehen** und Marker einstellen (Art, Grösse, Drehung,
   versteckt) mit der Maus; heute über die Kanten im Bearbeiten.
 - **Kacheln** für grosse Karten (REQ-138, `Map.tiles`).

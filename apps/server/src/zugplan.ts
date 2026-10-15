@@ -52,7 +52,8 @@ import {
   mapRulesOf,
   mapSettings,
   movedTokens,
-  revealAlong,
+  darkvisionFor,
+  revealSeenAlong,
   mapWalls,
   wallsClear,
   fogOn,
@@ -285,13 +286,23 @@ export function zugSperre(user: User | null, alle: Entity[], vorher: Entity | un
  * (sonst vom Token zum Ziel), mit `for` auf die Figur — gilt der Nebel je
  * Figur, sieht ihn nur sie (und ihre Gruppe). Hält auf der Karte etwas den
  * Blick, deckt jeder Punkt auf, was man von dort sieht (T-118,
- * `revealAlong`); sonst ein Pinselstrich zwei Felder breit.
+ * `revealAlong`); sonst ein Pinselstrich zwei Felder breit. Im Dunkeln
+ * zählen Dunkelsicht und Licht (T-216, `revealSeenAlong`).
  */
-export function wegAufdecken(karte: Entity, figur: string, s: { path: { x: number; y: number }[]; to?: { x: number; y: number } }, von: { x: number; y: number }, nat: { w: number; h: number }): Entity {
+export function wegAufdecken(
+  karte: Entity,
+  figur: string,
+  s: { path: { x: number; y: number }[]; to?: { x: number; y: number } },
+  von: { x: number; y: number },
+  nat: { w: number; h: number },
+  bestand: ReadonlyMap<string, Entity>,
+): Entity {
   const einst = mapSettings(karte);
   const geo = s.path.length > 1 ? gridGeometry(einst, nat) : null;
   const pts = geo ? s.path.map((c) => cellPoint(geo, c)) : [von, ...(s.to ? [s.to] : [])];
-  return revealAlong(karte, pts, nat, () => `s-${randomUUID()}`, figur);
+  /* Im Dunkeln (T-216) reicht der Blick so weit wie die Dunkelsicht aus dem
+     Statblock der Figur, dazu die Lichter, die sie sieht. */
+  return revealSeenAlong(karte, pts, nat, () => `s-${randomUUID()}`, figur, darkvisionFor(bestand, figur));
 }
 
 export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
@@ -508,7 +519,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       }
 
       let neu = moveMarker(roheKarte, marker.rel.id, to);
-      if (regeln.revealOnMove && fogOn(roheKarte) && nat) neu = wegAufdecken(neu, marker.to, schritt, marker, nat);
+      if (regeln.revealOnMove && fogOn(roheKarte) && nat) neu = wegAufdecken(neu, marker.to, schritt, marker, nat, stand.map);
       const r = await schreibeGeprueft(neu);
       if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
       return { moved: marker.rel.id, to };
@@ -627,7 +638,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
           karte = moveMarker(karte, rel, s.to);
           /* **Aufdecken beim Zug** (T-204): der Weg, so wie er ging — die
              Felder, sonst die Gerade —, für die Figur, die ihn ging. */
-          if (aufdecken && plan.nat && von) karte = wegAufdecken(karte, figur.id, s, von, plan.nat);
+          if (aufdecken && plan.nat && von) karte = wegAufdecken(karte, figur.id, s, von, plan.nat, stand.map);
         }
         results.push({ step: s.id, text: `Moved ${s.feet} ft.` });
         continue;

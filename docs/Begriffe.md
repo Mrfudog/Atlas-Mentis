@@ -490,7 +490,20 @@ ist — nicht eine Wand mit einem Vermerk, den die Seite verbergen müsste.
 Das Sichtpolygon wird beim Zug gerechnet und als Form in `Map.reveal`
 geschrieben; es gibt keine zweite Liste „gerade sichtbar“. Was eine Figur
 einmal gesehen hat, bleibt aufgedeckt — so wie am Tisch ein Raum, den man
-verlassen hat, nicht wieder aus der Erinnerung fällt.
+verlassen hat, nicht wieder aus der Erinnerung fällt. Was die Figur
+**gerade** sieht (die laufende Sicht, T-216), rechnet die Seite aus der
+Karte, die sie ohnehin hat, und speichert es nicht: es ändert sich mit
+jedem Schritt.
+
+**Licht hängt an der Kante, die Dunkelsicht am Statblock** (T-216). Eine
+Laterne ist kein eigener Artikel, sondern ein Marker mit Radius — dieselbe
+Laterne leuchtet auf einer Stadtkarte anders weit als in einem Keller. Die
+Dunkelsicht steht in `senses` am Statblock und wird beim Lesen gezogen;
+eine zweite Zahl an der Figur liefe bei der ersten Änderung auseinander.
+Wie viel von einem Licht eine Figur sieht, ist die **Schnittmenge** aus
+Licht- und Sichtpolygon — sie wird nicht ausgerechnet, sondern als Polygon
+mit Klammer (`within`) gespeichert: zwei Fragen beim Prüfen, ein `clip()`
+beim Zeichnen.
 
 **Wo ein Bild verwendet wird**, steht nirgends — es ist die Gegenrichtung
 der Verweise, und die ist eine Abfrage. Sie zeigt nur, was man sehen
