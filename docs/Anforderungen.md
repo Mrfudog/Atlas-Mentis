@@ -12,7 +12,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 170 steht · 48 teils · 84 offen · 10 ersetzt · 6 verworfen — 318 Stories in 77 Features und 12 Epics.
+Zusammen: 171 steht · 47 teils · 84 offen · 10 ersetzt · 6 verworfen — 318 Stories in 77 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -26,7 +26,7 @@ Zusammen: 170 steht · 48 teils · 84 offen · 10 ersetzt · 6 verworfen — 318
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 18 | 4 steht · 3 teils · 11 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 26 | 16 steht · 5 teils · 4 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 26 | 17 steht · 4 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -811,7 +811,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [UI-Arbeitsplan.md](../docs/UI-Arbeitsplan.md), [Web-Arbeitsplan.md](../docs/Web-Arbeitsplan.md), [design](../docs/design)
 
-**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-299 Optionale Felder verdeckt (teils) · REQ-300 Gestaltung wie die Bücher (teils)
+**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -844,7 +844,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 |---|---|---|---|---|
 | REQ-302 | Der Filter gehört der Seite | 3 | **steht** | `goPage` |
 | REQ-303 | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter` |
-| REQ-318 | Ein Ebenenfilter, global und speicherbar | 2 | **steht** | T-186: keine Ebenen-Häkchen mehr auf World/Story/Rules/Compendium; „Saved selections“ im Popup der Kopfleiste (`/api/me/layer-sets`); Filtergruppen ohne `layer`/`nolayer` (Migration 079 legt die alten Angaben nach `list_filter_ebenen_alt`) |
+| REQ-318 | Ein Ebenenfilter, global und speicherbar | 2 | **steht** | T-186: keine Ebenen-Häkchen mehr auf World/Story/Rules/Compendium; „Saved selections“ im Popup der Kopfleiste (`/api/me/layer-sets`); Filtergruppen ohne `layer`/`nolayer` (Migration 080 legt die alten Angaben nach `list_filter_ebenen_alt`) |
 
 ### F-070 Navigation & Kurzansicht
 
@@ -859,7 +859,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-299 | Optionale Felder verdeckt | 3 | **teils** |  |
+| REQ-299 | Optionale Felder verdeckt | 3 | **steht** | Lesen: `empty` an der Ansicht; Bearbeiten: Pflicht- und befüllte Felder, „+ Add field“ mit Beschreibung (T-195) |
 | REQ-307 | Löschen mit Rückfrage in der Seite | 3 | **steht** |  |
 
 ### F-072 Design & Stilkonzept
@@ -1008,7 +1008,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-295** (3, offen, Medien & Assets) — Bild ersetzen als Fassung oder neue Quelle
 - **REQ-296** (3, teils, Medien & Assets) — Bildklassen — *`Asset.kind` (T-119); Übersicht fehlt*
 - **REQ-297** (3, offen, Medien & Assets) — Bilder aus 5e.tools einlesen und verknüpfen
-- **REQ-299** (3, teils, Oberfläche & Navigation) — Optionale Felder verdeckt
 - **REQ-300** (3, teils, Oberfläche & Navigation) — Gestaltung wie die Bücher — *Pergament in `apps/web`; Design-Lauf offen*
 - **REQ-308** (3, offen, Import & Inhalte) — Obsidian-Vault einlesen — *die alten Importer sind weg (2026-09-20)*
 - **REQ-314** (3, teils, Import & Inhalte) — Regelwerk eines Drittverlags laden — *T-122*

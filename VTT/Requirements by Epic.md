@@ -798,7 +798,7 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 ## EP-11 Oberfläche & Navigation
 
-26 Stories · 82 Punkte · 16 steht · 5 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+26 Stories · 82 Punkte · 17 steht · 4 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -854,7 +854,7 @@ Felder dort bearbeiten, wo sie stehen; optionale Felder; Löschen mit Rückfrage
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-299]] | Optionale Felder verdeckt | Spielleitung | 3 | 2 | teils |
+| [[REQ-299]] | Optionale Felder verdeckt | Spielleitung | 3 | 2 | steht |
 | [[REQ-307]] | Löschen mit Rückfrage in der Seite | Spielleitung | 3 | 1 | steht |
 
 ### F-072 Design & Stilkonzept

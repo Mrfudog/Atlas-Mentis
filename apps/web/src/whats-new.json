@@ -9,6 +9,14 @@
       "link": "/compendium"
     },
     {
+      "id": "2026-10-15-add-field",
+      "date": "2026-10-15",
+      "title": "Edit shows only the fields that matter",
+      "text": "Editing or creating an article now shows the required fields and those with a value. Every other field is under “+ Add field”: search it, read what each field means, and pick one to fill it in.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-15-turn-planner",
       "date": "2026-10-15",
       "title": "Plan your turn on the map (prototype)",

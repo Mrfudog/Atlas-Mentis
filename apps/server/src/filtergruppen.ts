@@ -22,7 +22,7 @@
  * **Ebenen trägt eine Gruppe nicht mehr** (T-186): welche gelten, sagt der
  * globale Stand in der Kopfleiste, und Auswahlen davon speichert man dort
  * (`ebenensets.ts`). Was alte Gruppen an `layer`/`nolayer` trugen, hat
- * Migration 079 nach `list_filter_ebenen_alt` gelegt; hier fällt es weg.
+ * Migration 080 nach `list_filter_ebenen_alt` gelegt; hier fällt es weg.
  *
  * Gesiebt wird hier nichts: eine Gruppe nennt Arten und Marken, keine
  * Artikel, und die Liste dahinter siebt wie jede andere.

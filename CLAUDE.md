@@ -662,10 +662,17 @@ wiederkommen, werden sie neu geschrieben.
   `Party.day`/`watch`/`sinceRation`/`sinceLight`. Ein gerechnetes oder
   ausgegebenes Feld bleibt ohne Eingabe, und wer nicht schreiben darf,
   sieht weiter den Wert.
-- **Beim Bearbeiten steht jedes Feld als Eingabe da**, auch die aus
-  `Identity` (Aliasse, Deckname) — ein Feld, das man nur über die Einfuhr
-  füllen kann, ist keines. Der Name bleibt draussen: er ist die
-  Überschrift, und zwei Eingaben für ihn wären zwei Stellen, die
+- **Beim Bearbeiten ist jedes Feld erreichbar; gezeigt werden Pflicht-
+  und befüllte Felder, die übrigen über „+ Add field“** (T-195), auch
+  die aus `Identity` (Aliasse, Deckname) — ein Feld, das man nur über die
+  Einfuhr füllen kann, ist keines. Vierzig leere Eingaben verstecken die
+  fünf, um die es geht. Die Auswahl gruppiert nach Bestandteil, sucht und
+  zeigt je Feld seine **Beschreibung** (`PropertySchema.description`,
+  sonst was es hält). Auch leer stehen da: `alwaysEdit` und **`prominent`**
+  (heute `Description.description` und `Status.status`); ein Wert gleich
+  der Vorgabe (`default`) zählt nicht als befüllt. Ein Feld, das man in der Maske
+  leert, bleibt bis zum Schliessen stehen. Der Name bleibt draussen: er
+  ist die Überschrift, und zwei Eingaben für ihn wären zwei Stellen, die
   auseinanderlaufen.
 - **Eine Form wird gemalt, nicht getippt** (`format: 'grid'`). `##.,##.`
   als Text sagt der Eingabe nicht, was dabei herauskommt, und beim
@@ -701,7 +708,7 @@ wiederkommen, werden sie neu geschrieben.
   **Die Ebenen gehören nicht der Seite** (T-186): World, Story, Rules und
   Compendium haben keinen eigenen Ebenenfilter — sie folgen dem Stand der
   laufenden Kampagne (Kopfleiste), und „Change layers“ führt dorthin. Eine
-  Filtergruppe trägt darum kein `layer`/`nolayer` mehr (Migration 079 legt
+  Filtergruppe trägt darum kein `layer`/`nolayer` mehr (Migration 080 legt
   alte Angaben nach `list_filter_ebenen_alt`). **Ebenenauswahlen speichert
   das Popup** („Saved selections“, `ebenensets.ts`, `/api/me/layer-sets`):
   je Konto, wahlweise nur für eine Kampagne, in der Einstellung
