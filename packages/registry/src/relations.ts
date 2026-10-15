@@ -207,13 +207,15 @@ export const relations: Record<string, RelationDef> = {
     cardinality: 'one',
   },
 
-  /** Hill Dwarf ist eine Unterart von Dwarf (M3). */
+  /** Hill Dwarf ist eine Unterart von Dwarf (M3). Die Herkunftsansicht
+      liest sie (T-166): die Seite der Herkunft führt ihre Unterarten als
+      Leiste. Dass eine Unterart erbt, was die Herkunft gewährt, tut noch
+      niemand — das steht als Aufgabe am Brett, nicht als Versprechen hier. */
   subraceOf: {
     type: 'subraceOf',
     label: 'subrace of',
     inverseLabel: 'subraces',
     means: 'An ancestry is a subrace of another; the parent lists its subraces.',
-    intended: 'Inherit from the parent: a subrace should bring what its parent ancestry grants, and the builder should offer it under the parent.',
     from: ['Ancestry'],
     to: ['Ancestry'],
     cardinality: 'one',
