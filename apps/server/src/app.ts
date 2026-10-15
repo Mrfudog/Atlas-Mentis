@@ -82,6 +82,9 @@ import {
   readInstance,
   redactEntity,
   redactMap,
+  mapRulesOf,
+  PARTY_RELATION,
+  type FogMode,
   inParty,
   isMap,
   resolveInstance,
@@ -1157,6 +1160,8 @@ export function buildApp({
     if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
     /* Der Zugplan (T-198): die Routen prüfen Figur und Leitung selbst (`zugplan.ts`). */
     if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/(decide|react))?$/.test(url) && request.method === 'POST') return;
+    /* Die eigene Figur ziehen (T-204): die Route prüft Figur, Kampf und Kampagnenregel selbst (`zugplan.ts`). */
+    if (/^\/api\/maps\/[^/]+\/move$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -1457,6 +1462,17 @@ export function buildApp({
       }
       return ja;
     };
+    /* **Nebel je Figur** (T-204): was die Kampagne sagt, und wessen
+       Aufgedecktes dieses Konto sieht — seine Figuren und deren Gruppen. */
+    let nebel: { fog: FogMode; own: (id: string) => boolean } | null = null;
+    const nebelFuer = () => {
+      if (!nebel) {
+        const eigene = new Set(augen);
+        for (const a of augen) for (const r of alle.get(a)?.relations ?? []) if (r.type === PARTY_RELATION) eigene.add(r.to);
+        nebel = { fog: mapRulesOf(currentCampaign(alle, registry.settings ?? null)).fog, own: (id) => eigene.has(id) };
+      }
+      return nebel;
+    };
     return entities
       .filter((e) => articleVisible(alle, e, auge))
       .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields))
@@ -1468,6 +1484,7 @@ export function buildApp({
               /* Unter dem Nebel (REQ-139) bleiben die eigenen stehen: die
                  Figuren der Gruppe und wer zu ihr gehört. */
               keep: (id) => inParty(alle, id),
+              ...nebelFuer(),
             })
           : e,
       );
@@ -3277,6 +3294,7 @@ export function buildApp({
     roh,
     sieve,
     geltend,
+    eigeneFiguren: async (request) => (await viewerOf(request))?.actorIds ?? [],
     /* Wer die Karte leitet, sieht unter dem Nebel alles — dieselbe Frage
        wie in `sieve` vor `redactMap`. */
     leitet: async (request, karte, bestand) => {

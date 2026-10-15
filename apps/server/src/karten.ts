@@ -39,10 +39,14 @@ import {
   primaryInterface,
   sessionState,
   turnOf,
+  mapRulesOf,
   type Entity,
   type Frame,
+  type MapRules,
+  type PlanStep,
 } from '@nw/model';
 import type { Repository } from './repo.js';
+import { plaeneDerKarte } from './zugplan.js';
 
 const SESSION_TYPE = 'Session';
 
@@ -58,6 +62,17 @@ export interface KartenDeps {
   geltend: (e: Entity, map: Map<string, Entity>) => Promise<Entity>;
   /** Leitet der Betrachter diese Karte (oder schreibt sie)? Dann gilt der Nebel ihm nicht. */
   leitet: (request: FastifyRequest, karte: Entity, bestand: Map<string, Entity>) => Promise<boolean>;
+  /** Die Figuren, die der Betrachter führt (`app_user_actor`). */
+  eigeneFiguren: (request: FastifyRequest) => Promise<string[]>;
+}
+
+/** Ein offener Zugvorschlag (T-204): ein Zugplan, der nur zieht, und wohin. */
+export interface ZugVorschlag {
+  plan: string;
+  actor: string;
+  actorName: string;
+  by: string;
+  to: { x: number; y: number };
 }
 
 /** Was eine Marke zeichnet: Name, Art und ein Bild, wenn der Artikel eines hat. */
@@ -77,6 +92,12 @@ export interface KartenKontext {
    * und wessen danach — als Id des Artikels, auf den die Marker zeigen.
    */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
+  /** Die Kartenregeln der Kampagne (T-204): Nebel je Gruppe oder Figur, Züge, Aufdecken beim Zug — ohne `Map.revealOnMove`, das liest die Seite an der Karte. */
+  rules: MapRules;
+  /** Die Figuren des Betrachters mit Token auf dieser Karte — die darf er ziehen (T-204). */
+  own: string[];
+  /** Offene Zugvorschläge: für die Leitung alle, für Spielende die ihrer Figuren (T-204). */
+  proposals: ZugVorschlag[];
   /** Nur für die Leitung: wer am Kampf teilnimmt, und ob er hier schon ein Token hat. */
   combatants: { id: string; name: string; placed: boolean }[];
 }
@@ -89,7 +110,7 @@ function bildVon(e: Entity): string | undefined {
 }
 
 export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
-  const { repo, roh, sieve, geltend, leitet } = deps;
+  const { repo, roh, sieve, geltend, leitet, eigeneFiguren } = deps;
 
   app.get<{ Params: { id: string } }>('/api/maps/:id/context', async (request, reply) => {
     const stand = await roh();
@@ -203,7 +224,20 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
           .map((r) => ({ id: r.to, name: participantLabel(stand.map, r), placed: aufKarte.has(r.to) }));
       }
     }
-    return { parents, children: kinder, targets, party, turn, combatants } satisfies KartenKontext;
+    /* **Regeln, eigene Figuren, Vorschläge** (T-204). Ein Vorschlag nennt
+       nur das Ziel; wer ihn sieht, sieht das Token ohnehin (die eigene
+       Figur, oder die Leitung). */
+    const rules = mapRulesOf(kampagne);
+    const meine = new Set(await eigeneFiguren(request));
+    const own = [...new Set(markersOf(karte).map((m) => m.to))].filter((id) => meine.has(id));
+    const proposals: ZugVorschlag[] = (await plaeneDerKarte(repo, roheKarte.id))
+      .filter((p) => p.state === 'planned' && p.steps.length === 1 && p.steps[0]!.kind === 'move' && !!p.steps[0]!.to)
+      .filter((p) => leitetKarte || meine.has(p.actor))
+      .map((p) => {
+        const s = p.steps[0] as Extract<PlanStep, { kind: 'move' }>;
+        return { plan: p.plan, actor: p.actor, actorName: p.actorName, by: p.by.name, to: s.to! };
+      });
+    return { parents, children: kinder, targets, party, turn, combatants, rules, own, proposals } satisfies KartenKontext;
   });
 
   /**

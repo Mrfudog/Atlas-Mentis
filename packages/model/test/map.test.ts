@@ -30,6 +30,8 @@ import {
   parseScale,
   partyPosition,
   redactMap,
+  mapRulesOf,
+  revealFor,
   zoomStep,
   MAP_NEAR,
 } from '../src/map.js';
@@ -285,5 +287,53 @@ describe('movedTokens (T-198, Runde 2)', () => {
     expect(movedTokens(karte(0.1), karte(0.3), new Set())).toEqual([]);
     const ohneGob = { ...karte(0.1), relations: karte(0.1).relations!.filter((r) => r.id !== 'r3') };
     expect(movedTokens(karte(0.1), ohneGob, new Set())).toEqual(['gob']);
+  });
+});
+
+describe('Nebel je Figur und Kartenregeln (T-204)', () => {
+  const k = (felder: Record<string, unknown>): Entity => ({ id: 'k', interfaces: ['Campaign'], components: { Campaign: felder } });
+  const karte = (map: Record<string, unknown> = {}): Entity => ({
+    id: 'm',
+    interfaces: ['Map'],
+    components: {
+      Map: {
+        fog: true,
+        reveal: [
+          { id: 'a', kind: 'rect', x: 0, y: 0, w: 0.5, h: 0.5 },
+          { id: 'b', kind: 'rect', x: 0.5, y: 0.5, w: 0.5, h: 0.5, for: 'pc_1' },
+        ],
+        ...map,
+      },
+    },
+    relations: [{ id: 'mk', type: 'marker', to: 'cr_x', props: { x: 0.75, y: 0.75 } }],
+  });
+
+  it('liest die Regeln der Kampagne mit Vorgaben; die Karte schlägt beim Aufdecken die Kampagne', () => {
+    expect(mapRulesOf(null)).toEqual({ fog: 'party', moves: 'free', revealOnMove: false });
+    expect(mapRulesOf(k({ fog: 'player', moves: 'confirm', revealOnMove: true }))).toEqual({ fog: 'player', moves: 'confirm', revealOnMove: true });
+    expect(mapRulesOf(k({ fog: 'quatsch' })).fog).toBe('party');
+    expect(mapRulesOf(k({ revealOnMove: true }), karte({ revealOnMove: false })).revealOnMove).toBe(false);
+    expect(mapRulesOf(k({}), karte({ revealOnMove: true })).revealOnMove).toBe(true);
+  });
+
+  it('hält `for` beim Lesen und Schreiben einer Form', () => {
+    expect(revealShapes(karte()).map((s) => s.for)).toEqual([undefined, 'pc_1']);
+    const neu = revealArea(karte(), { id: 'c', kind: 'circle', x: 0.2, y: 0.8, r: 0.1, ar: 1, for: 'pc_2' });
+    expect(revealShapes(neu).at(-1)).toMatchObject({ id: 'c', for: 'pc_2' });
+  });
+
+  it('je Figur zählt nur das eigene und das für alle — je Gruppe alles', () => {
+    expect(revealShapes(revealFor(karte(), 'player', () => false)).map((s) => s.id)).toEqual(['a']);
+    expect(revealShapes(revealFor(karte(), 'player', (id) => id === 'pc_1')).map((s) => s.id)).toEqual(['a', 'b']);
+    expect(revealShapes(revealFor(karte(), 'party', () => false)).map((s) => s.id)).toEqual(['a', 'b']);
+  });
+
+  it('redactMap nimmt je Figur die fremden Formen und die Marker darunter heraus', () => {
+    const fremd = redactMap(karte(), { gm: false, sees: () => true, fog: 'player', own: () => false });
+    expect(revealShapes(fremd).map((s) => s.id)).toEqual(['a']);
+    expect(markersOf(fremd)).toHaveLength(0);
+    const eigen = redactMap(karte(), { gm: false, sees: () => true, fog: 'player', own: (id) => id === 'pc_1' });
+    expect(markersOf(eigen)).toHaveLength(1);
+    expect(revealShapes(redactMap(karte(), { gm: true, sees: () => true, fog: 'player' }))).toHaveLength(2);
   });
 });

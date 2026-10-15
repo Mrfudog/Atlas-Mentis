@@ -368,6 +368,31 @@ button {
   stroke: rgb(40, 110, 180);
   stroke-dasharray: 6 4;
 }
+.plan .weg.vorschlag {
+  stroke-dasharray: 6 4;
+}
+/* Ein Zugvorschlag (T-204): der Geist am Ziel, für die Leitung ✓ und ✗ daneben. */
+.vorschlag-ziel {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  z-index: 3;
+}
+.vorschlag-ziel .geist {
+  position: static;
+  transform: none;
+  width: 28px;
+  height: 28px;
+  display: inline-block;
+}
+.fuer {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
 .plan .ring {
   fill: rgba(200, 140, 40, 0.08);
   stroke: rgba(200, 140, 40, 0.8);

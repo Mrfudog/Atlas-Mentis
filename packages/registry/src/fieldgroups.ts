@@ -1954,7 +1954,16 @@ export const fieldGroups = {
           default: 'bright',
         },
         fog: { type: 'boolean', title: 'Fog of war', default: false },
+        /* Eine Form darf `for` tragen (T-204): die Figur, die es gesehen
+           hat — zählt, wenn die Kampagne den Nebel je Figur führt. */
         reveal: { type: 'array', title: 'Uncovered areas', items: { type: 'object' } },
+        /* **Aufdecken beim Zug, an dieser Karte** (T-204): leer heisst, es
+           gilt die Kampagne (`Campaign.revealOnMove`). */
+        revealOnMove: {
+          type: 'boolean',
+          title: 'Moves reveal the way',
+          description: 'Overrides the campaign for this map: whether a move uncovers the way the token went. Empty follows the campaign.',
+        },
         /* Sperren, nicht nur Sichtblocker: eine Wand hält Blick und Schritt,
            ein Fenster nur den Schritt, ein Abgrund auch nur den Schritt, und
            eine Tür hält beides, solange sie zu ist. Was welche Sorte ist,
@@ -2576,6 +2585,34 @@ export const fieldGroups = {
           title: 'Player rolls visible to',
           enum: ['table', 'gm'],
           default: 'table',
+        },
+        /* **Die Karte am Tisch** (T-204). `fog`: ein Nebel für die ganze
+           Gruppe, oder je Figur — dann sieht jede, was sie selbst (oder
+           ihre Gruppe) aufgedeckt hat, und die Leitung die Vereinigung.
+           `moves`: ziehen Spielende ausserhalb eines Kampfes frei, oder
+           ist ihr Zug ein Vorschlag, den die Leitung bestätigt (im Kampf
+           gilt der Zugplan, T-198). `revealOnMove`: deckt ein Zug den Weg
+           auf; die Karte darf es überschreiben (`Map.revealOnMove`).
+           Gelesen über `mapRulesOf`; wandert mit T-132 in ein Modul. */
+        fog: {
+          type: 'string',
+          title: 'Fog of war',
+          description: 'Whether the whole party shares what is revealed, or each character sees only what it revealed itself.',
+          enum: ['party', 'player'],
+          default: 'party',
+        },
+        moves: {
+          type: 'string',
+          title: 'Player moves',
+          description: 'Outside an encounter: players move their tokens freely, or a move waits for the GM to confirm it.',
+          enum: ['free', 'confirm'],
+          default: 'free',
+        },
+        revealOnMove: {
+          type: 'boolean',
+          title: 'Moves reveal the way',
+          description: 'On a fogged map, a move uncovers the way the token went. A map may say otherwise.',
+          default: false,
         },
       },
     },

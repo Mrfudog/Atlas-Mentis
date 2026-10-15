@@ -444,6 +444,17 @@ Liste im Code. Dass es zwei Dinge bleiben, ist Absicht: dasselbe Bild darf
 zwei Karten tragen, eine mit Raster für den Kampf und eine ohne für die
 Reise.
 
+**Wer was aufgedeckt sieht, ist eine Frage an die Form** (T-204). Ein
+Nebel je Figur hätte auch je Figur eine Liste aufgedeckter Formen sein
+können — dann stünde dasselbe Stück Gang so oft da, wie Figuren es
+gesehen haben, und ein Umstellen von „je Gruppe“ auf „je Figur“ müsste
+erst Listen verteilen. Stattdessen nennt eine Form, für wen sie ist
+(`for`), und die Kampagne sagt, ob das zählt. Je Gruppe bleibt die
+Angabe stehen und wird nicht gelesen; wer später umstellt, weiss noch,
+wer was gesehen hat. Ob ein Zug aufdeckt, steht an der Kampagne und darf
+an einer Karte anders stehen — das Häkchen an der Karte war ein Zustand
+im Browser, der beim Neuladen vergass, was die Leitung wollte.
+
 **Wo ein Bild verwendet wird**, steht nirgends — es ist die Gegenrichtung
 der Verweise, und die ist eine Abfrage. Sie zeigt nur, was man sehen
 darf: „wird noch an drei Orten gezeigt" verriete drei Artikel, auch ohne

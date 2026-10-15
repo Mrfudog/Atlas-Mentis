@@ -48,7 +48,7 @@ import {
   tokenCell,
   opportunityAttacks,
 } from '@nw/model';
-import type { Cell, Entity, Frame, MapMarker, PlanStep, Pt, RevealShape, Size } from '@nw/model';
+import type { Cell, Entity, Frame, MapMarker, MapRules, PlanStep, Pt, RevealShape, Size } from '@nw/model';
 import { Api, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -100,6 +100,8 @@ const MARKER_MIN = 26;
 type Werkzeug = 'keins' | 'messen' | 'setzen' | 'aufdecken' | 'pinsel' | 'zudecken';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
+/** Der Hinweis nach einem Zugvorschlag (T-204). */
+const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** Pinselbreiten in Feldern. */
 const PINSEL = [1, 2, 4, 8] as const;
 
@@ -173,6 +175,18 @@ interface Zeiger {
             <button type="button" [class.an]="spielersicht()" [attr.aria-pressed]="spielersicht()" (click)="spielersicht.set(!spielersicht())" title="See the map as the players do">
               Player view
             </button>
+            @if (jeFigur() && figurenHier().length) {
+              <!-- Nebel je Figur (T-204): für wen aufgedeckt wird und wessen Sicht „Player view“ zeigt. -->
+              <label class="fuer" title="Fog is per character: what you reveal is for this character, and Player view shows what it sees">
+                For
+                <select (change)="nebelFuer.set($any($event.target).value || null)" aria-label="Reveal for, and see as">
+                  <option value="" [selected]="!nebelFuer()">everyone</option>
+                  @for (f of figurenHier(); track f.id) {
+                    <option [value]="f.id" [selected]="nebelFuer() === f.id">{{ f.name }}</option>
+                  }
+                </select>
+              </label>
+            }
           }
         </div>
       </div>
@@ -194,9 +208,13 @@ interface Zeiger {
             </select>
           </label>
           <button type="button" [class.an]="werkzeug() === 'zudecken'" [attr.aria-pressed]="werkzeug() === 'zudecken'" (click)="waehle('zudecken')" title="Drag a rectangle: what lies in it is covered again">Hide</button>
-          <label title="Moving a token on a fogged map reveals the way it went, as wide as the brush">
-            <input type="checkbox" [checked]="pfadAufdecken()" (change)="pfadAufdecken.set($any($event.target).checked)" />
+          <label title="Moving a token on a fogged map reveals the way it went. The campaign sets the default (Rules &amp; options); this map may say otherwise.">
             Reveal along moves
+            <select (change)="pfadAufdeckenSetzen($any($event.target).value)" aria-label="Reveal along moves on this map">
+              <option value="" [selected]="pfadEigen() === null">campaign ({{ kampagneDecktAuf() ? 'on' : 'off' }})</option>
+              <option value="on" [selected]="pfadEigen() === true">on</option>
+              <option value="off" [selected]="pfadEigen() === false">off</option>
+            </select>
           </label>
           <button type="button" (click)="allesAuf()">Reveal all</button>
           <button type="button" (click)="allesZu()">Cover all</button>
@@ -347,6 +365,23 @@ interface Zeiger {
                 <span class="gelegenheit" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [title]="g.text" role="note" [attr.aria-label]="g.text">⚠</span>
               }
             }
+            @if (vorschlaege().length) {
+              <!-- Zugvorschläge (T-204, Campaign.moves: confirm): gestrichelt vom Token zum Ziel. -->
+              <svg class="plan" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                @for (v of vorschlaege(); track v.plan) {
+                  <line class="weg vorschlag" [attr.x1]="v.von.x" [attr.y1]="v.von.y" [attr.x2]="v.to.x" [attr.y2]="v.to.y" vector-effect="non-scaling-stroke" />
+                }
+              </svg>
+              @for (v of vorschlaege(); track v.plan) {
+                <span class="vorschlag-ziel" [style.left.%]="v.to.x * 100" [style.top.%]="v.to.y * 100" (pointerdown)="$event.stopPropagation()">
+                  <span class="geist" [title]="v.actorName + ' — proposed by ' + v.by"></span>
+                  @if (v.entscheiden) {
+                    <button type="button" class="klein" (click)="vorschlagEntscheiden(v.plan, 'confirm')" [attr.aria-label]="'Confirm the move of ' + v.actorName" title="Confirm the move">✓</button>
+                    <button type="button" class="klein" (click)="vorschlagEntscheiden(v.plan, 'reject')" [attr.aria-label]="'Reject the move of ' + v.actorName" title="Reject the move">✗</button>
+                  }
+                </span>
+              }
+            }
             @if (gruppe(); as p) {
               <button
                 type="button"
@@ -442,6 +477,8 @@ interface Zeiger {
             } @else {
               · drag a marker to move it
             }
+          } @else if (eigeneHier().length && !imKampf()) {
+            · {{ regeln().moves === 'confirm' ? 'drag your token to propose a move to the GM' : 'drag your token to move it' }}
           }
         }
       </p>
@@ -550,8 +587,13 @@ export class Karte {
         ev.type === 'Map' || ev.type === 'Encounter' || ev.id === k?.turn?.encounter || ev.id === k?.party?.id || !!k?.targets[ev.id] || !!k?.children.some((c) => c.id === ev.id);
       if (betrifft && ev.id !== this.id()) void this.kontextHolen(this.id());
     });
+    /* Ein Zugvorschlag kommt, wird bestätigt oder verworfen (T-204). */
+    const abPlan = inject(Live).onPlan((karte) => {
+      if (karte === this.id()) void this.kontextHolen(karte);
+    });
     inject(DestroyRef).onDestroy(() => {
       ab();
+      abPlan();
       this.kontextLauf += 1;
     });
   }
@@ -573,7 +615,38 @@ export class Karte {
    */
   protected readonly angezeigt = computed(() => {
     const e = this.karte();
-    return e && this.spielersicht() ? redactMap(e, { gm: false, sees: () => true }) : e;
+    if (!e || !this.spielersicht()) return e;
+    /* Nebel je Figur (T-204): die Sicht der gewählten Figur, ohne Wahl nur
+       das für alle Aufgedeckte. */
+    const fuer = this.nebelFuer();
+    return redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
+  });
+  /** Die Kartenregeln der Kampagne (T-204); ohne Antwort die Vorgaben. */
+  protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', revealOnMove: false });
+  /** Führt die Kampagne den Nebel je Figur? */
+  protected readonly jeFigur = computed(() => this.regeln().fog === 'player');
+  /** Für wen aufgedeckt wird und wessen Sicht „Player view“ zeigt (nur je Figur). */
+  protected readonly nebelFuer = signal<string | null>(null);
+  /** Die Figuren auf der Karte, für die man aufdecken kann: Spiel-Tokens und die Gruppe. */
+  protected readonly figurenHier = computed(() => {
+    const e = this.karte();
+    if (!e) return [];
+    const ziele = this.kontext()?.targets ?? {};
+    const ids = [...new Set(markersOf(e).filter((m) => m.kind === 'play' || m.kind === 'party').map((m) => m.to))];
+    return ids.map((id) => ({ id, name: ziele[id]?.name ?? this.bestand.name()(id) ?? id }));
+  });
+  /** Die eigenen Figuren mit Token hier (T-204) — die zieht der Betrachter selbst. */
+  protected readonly eigeneHier = computed(() => this.kontext()?.own ?? []);
+  /** Offene Zugvorschläge, mit dem Punkt, an dem das Token steht. */
+  protected readonly vorschlaege = computed(() => {
+    const e = this.angezeigt();
+    if (!e) return [];
+    const marker = markersOf(e);
+    const entscheiden = this.session.leitung() && !this.spielersicht();
+    return (this.kontext()?.proposals ?? []).flatMap((v) => {
+      const m = marker.find((x) => x.to === v.actor);
+      return m ? [{ ...v, von: { x: m.x, y: m.y }, entscheiden }] : [];
+    });
   });
   /** Leitet der Betrachter (er schreibt die Karte) und schaut nicht gerade als Spieler? */
   private readonly alsLeitung = computed(() => this.darfSchreiben() && !this.spielersicht());
@@ -594,7 +667,11 @@ export class Karte {
     const lauf = ++this.kontextLauf;
     try {
       const k = await this.api.mapContext(id);
-      if (lauf === this.kontextLauf) this.kontext.set(k);
+      if (lauf === this.kontextLauf) {
+        this.kontext.set(k);
+        /* Der eigene Vorschlag ist entschieden (T-204): der Hinweis darauf geht. */
+        if (this.hinweis() === VORSCHLAG_GESENDET && !(k.proposals ?? []).some((v) => (k.own ?? []).includes(v.actor))) this.hinweis.set(null);
+      }
     } catch {
       /* Ohne Zusammenhang bleibt die Karte eine Karte: keine Brotkrumen,
          keine Rahmen, keine Gruppe — gezeichnet wird trotzdem. */
@@ -855,12 +932,18 @@ export class Karte {
   }
 
   private nachZug = false;
-  private griff: { id: string; sx: number; sy: number; zieht: boolean; pointer: number; von: Pt } | null = null;
+  private griff: { id: string; to: string; sx: number; sy: number; zieht: boolean; pointer: number; von: Pt; selbst: boolean } | null = null;
 
   protected greifen(ev: PointerEvent, m: MapMarker): void {
     ev.stopPropagation();
     this.nachZug = false;
-    if (!this.darfSchreiben() || this.werkzeug() !== 'keins' || ev.button !== 0) return;
+    /* **Die eigene Figur zieht, wer sie führt** (T-204) — auch ohne die
+       Karte zu schreiben, über `POST /api/maps/:id/move`; wie, sagt die
+       Kampagne (`moves`). Wer nicht leitet und bestätigen lassen muss,
+       geht denselben Weg, auch wenn er die Karte schreibt. */
+    const eigen = this.eigeneHier().includes(m.to) && !this.spielersicht();
+    const selbst = eigen && (!this.darfSchreiben() || (!this.session.leitung() && this.regeln().moves === 'confirm'));
+    if ((!this.darfSchreiben() && !eigen) || this.werkzeug() !== 'keins' || ev.button !== 0) return;
     /* **Im Kampf zieht der Plan** (T-198, Runde 2): Spielende bewegen ein
        Token dann nur über den Zugplan — der Server prüft dasselbe
        (`zugSperre`); die Leitung zieht weiter, mit Hinweis. */
@@ -868,7 +951,7 @@ export class Karte {
       this.hinweis.set('During the encounter, your token moves through the turn plan.');
       return;
     }
-    this.griff = { id: m.rel.id, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y } };
+    this.griff = { id: m.rel.id, to: m.to, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y }, selbst };
     (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId);
   }
 
@@ -977,6 +1060,11 @@ export class Karte {
     if (g && g.pointer === ev.pointerId) {
       this.griff = null;
       const z = this.zug();
+      if (g.zieht && z && g.selbst) {
+        this.nachZug = true;
+        void this.selbstZiehen(g.id, z.pt).finally(() => this.zug.set(null));
+        return;
+      }
       if (g.zieht && z) {
         this.nachZug = true;
         let neu = moveMarker(this.karte()!, g.id, z.pt);
@@ -984,7 +1072,7 @@ export class Karte {
            sieht, wo er war — so breit wie der Pinsel. Wände rechnet die
            Seite noch nicht (docs/Karten.md, „Was noch fehlt"). */
         if (this.pfadAufdecken() && this.nebelAn()) {
-          neu = revealArea(neu, this.strichForm([g.von, z.pt]));
+          neu = revealArea(neu, this.strichForm([g.von, z.pt], g.to));
         }
         const ausserhalb = this.imKampf() && this.kampfLeitung();
         void this.schreiben(neu).finally(() => {
@@ -1257,7 +1345,20 @@ export class Karte {
   protected readonly spielersicht = signal(false);
   protected readonly nebelOffen = signal(false);
   protected readonly pinsel = signal<number>(2);
-  protected readonly pfadAufdecken = signal(false);
+  /** `Map.revealOnMove` dieser Karte: an, aus, oder leer — dann gilt die Kampagne (T-204). */
+  protected readonly pfadEigen = computed(() => {
+    const v = (this.karte()?.components?.['Map'] as { revealOnMove?: unknown } | undefined)?.revealOnMove;
+    return typeof v === 'boolean' ? v : null;
+  });
+  protected readonly kampagneDecktAuf = computed(() => this.regeln().revealOnMove);
+  protected readonly pfadAufdecken = computed(() => this.pfadEigen() ?? this.kampagneDecktAuf());
+  protected pfadAufdeckenSetzen(wert: string): void {
+    const e = this.karte();
+    if (!e) return;
+    const { revealOnMove: _alt, ...rest } = (e.components?.['Map'] ?? {}) as Record<string, unknown>;
+    const karte = wert === 'on' ? { ...rest, revealOnMove: true } : wert === 'off' ? { ...rest, revealOnMove: false } : rest;
+    void this.schreiben({ ...e, components: { ...e.components, Map: karte } });
+  }
   protected readonly nebelAn = computed(() => {
     const e = this.karte();
     return !!e && fogOn(e);
@@ -1283,14 +1384,19 @@ export class Karte {
     return (this.pinsel() * s.gridSize) / 2 / n.w;
   });
 
-  private strichForm(pts: Pt[]): RevealShape {
+  private strichForm(pts: Pt[], fuer?: string | null): RevealShape {
     return {
       id: `s-${crypto.randomUUID()}`,
       kind: 'path',
       pts: pts.map((p) => [p.x, p.y] as [number, number]),
       r: this.pinselRadius(),
       ar: this.seitenverhaeltnis(),
+      ...(fuer ? { for: fuer } : {}),
     };
+  }
+  /** Für wen die Leitung von Hand aufdeckt: nur je Figur, und nur mit Wahl (T-204). */
+  private fuerWen(): string | null {
+    return this.jeFigur() ? this.nebelFuer() : null;
   }
 
   private kasten(a: Pt, b: Pt): Frame {
@@ -1310,14 +1416,15 @@ export class Karte {
     if (!e || !pts.length) return;
     const w = this.werkzeug();
     if (w === 'pinsel') {
-      void this.schreiben(revealArea(e, this.strichForm(pts)));
+      void this.schreiben(revealArea(e, this.strichForm(pts, this.fuerWen())));
       return;
     }
     if (pts.length < 2) return;
     const k = this.kasten(pts[0]!, pts[1]!);
     /* Ein Antippen ist kein Rechteck. */
     if (k.w < 0.005 && k.h < 0.005) return;
-    if (w === 'aufdecken') void this.schreiben(revealArea(e, { id: `s-${crypto.randomUUID()}`, kind: 'rect', ...k }));
+    const fuer = this.fuerWen();
+    if (w === 'aufdecken') void this.schreiben(revealArea(e, { id: `s-${crypto.randomUUID()}`, kind: 'rect', ...k, ...(fuer ? { for: fuer } : {}) }));
     else if (w === 'zudecken') void this.schreiben(coverArea(e, k));
   }
 
@@ -1374,6 +1481,40 @@ export class Karte {
   protected readonly imKampf = computed(() => !!this.kontext()?.turn);
   /** Leitet der Betrachter den Tisch (und schaut nicht als Spieler)? Schreiben allein reicht im Kampf nicht. */
   protected readonly kampfLeitung = computed(() => this.session.leitung() && !this.spielersicht());
+
+  /**
+   * **Die eigene Figur ziehen** (T-204): frei zieht der Server sofort und
+   * deckt auf, wenn die Regel es sagt; mit Bestätigung entsteht ein
+   * Vorschlag, gestrichelt, bis die Leitung entscheidet.
+   */
+  private async selbstZiehen(rel: string, to: Pt): Promise<void> {
+    const e = this.karte();
+    if (!e || this.speichert()) return;
+    const nat = this.nat();
+    this.mangel.set(null);
+    this.speichert.set(true);
+    if (this.regeln().moves !== 'confirm') this.entwurf.set(moveMarker(e, rel, to));
+    try {
+      const r = await this.api.moveToken(this.id(), { rel, to, ...(nat ? { nat } : {}) });
+      if (r.proposal) this.hinweis.set(VORSCHLAG_GESENDET);
+      await this.bestand.oeffnen(this.id(), true, false);
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.mangel.set({ text: err instanceof Error ? err.message : 'The move did not go through.', einzeln: [] });
+    } finally {
+      this.entwurf.set(null);
+      this.speichert.set(false);
+    }
+  }
+
+  protected async vorschlagEntscheiden(plan: string, d: 'confirm' | 'reject'): Promise<void> {
+    try {
+      await this.api.decideTurnPlan(this.id(), plan, d);
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.hinweis.set(err instanceof Error ? err.message : 'That did not work.');
+    }
+  }
 
   /**
    * Die Karte mit der geänderten Kante schreiben — durch `validateEntity`
