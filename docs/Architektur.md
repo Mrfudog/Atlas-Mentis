@@ -1,6 +1,6 @@
 # Architektur
 
-Stand 2026-10-12 (preprod nach P5). Zeigt, **was läuft** (Container),
+Stand 2026-10-12 (preprod nach P5); Bild §1 als Zeichnung 2026-10-15. Zeigt, **was läuft** (Container),
 **womit** (Frameworks), **wo es liegt** (Repo) und **wie der Code
 zusammenhängt** (Pakete, Server, Oberfläche). Das Datenmodell selbst —
 Typen, Felder, Kanten — steht in [Datenmodell.md](Datenmodell.md);
@@ -14,33 +14,9 @@ Eine Hetzner-Maschine, fünf Container. `prod` und `dev` sind vollständig
 getrennt: eigenes Abbild, eigene Datenbank, eigenes Volume. Der einzige
 Container mit offenem Port nach aussen ist Caddy.
 
-```mermaid
-flowchart TB
-  user([Browser<br/>Spielleitung, Spielende])
-  subgraph host["Hetzner CPX22 · Ubuntu 24.04 · Docker"]
-    direction TB
-    subgraph proxy["/srv/atlas/proxy"]
-      caddy[caddy:2-alpine<br/>Reverse Proxy, TLS über Let's Encrypt<br/>network_mode: host · Ports 80, 443]
-    end
-    subgraph prod["/srv/atlas/prod · Zweig main"]
-      appP[app<br/>ghcr.io/mrfudog/atlas-mentis:main-‹sha›<br/>Node 22 · Fastify + Angular-Build<br/>127.0.0.1:8080]
-      dbP[(db<br/>postgres:17-alpine<br/>./daten/db)]
-    end
-    subgraph dev["/srv/atlas/dev · Zweig preprod"]
-      appD[app<br/>ghcr.io/mrfudog/atlas-mentis:preprod-‹sha›<br/>127.0.0.1:8081]
-      dbD[(db<br/>postgres:17-alpine<br/>./daten/db-preprod)]
-    end
-    cron[cron 03:17<br/>pg_dump je Wochentag]
-  end
-  user -- https://atlas.‹domain› --> caddy
-  user -- https://dev.atlas.‹domain› --> caddy
-  caddy -- 127.0.0.1:8080 --> appP
-  caddy -->|"127.0.0.1:8081 · noindex"| appD
-  appP -- DATABASE_URL --> dbP
-  appD -- DATABASE_URL --> dbD
-  cron -.-> dbP
-  cron -.-> dbD
-```
+![Was auf dem Server läuft](Bilder/Server.excalidraw.svg)
+
+Gezeichnet in [Bilder/Server.excalidraw.md](Bilder/Server.excalidraw.md).
 
 | Container | Abbild | Aufgabe | Daten |
 |---|---|---|---|

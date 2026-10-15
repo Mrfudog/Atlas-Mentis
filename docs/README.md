@@ -112,5 +112,3 @@ ist — als Folgeaufgabe im Projektbrett:
   ([Bilder/Server.excalidraw.svg](Bilder/Server.excalidraw.svg)).
 - **Die Definitionen aus der Ernte** mit [Begriffe.md](Begriffe.md)
   abgleichen (T-156, Teil 4).
-- `VTT/Projektbrett.md`, auf das CLAUDE.md verweist, gibt es im Repo nicht;
-  der Stand Prototyp/Web steht im Projektbrett selbst.

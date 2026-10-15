@@ -144,8 +144,7 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   was er kann, wird in die Seite übernommen, mit seinen Erkenntnissen
   (Regeln oben, Entscheidungen im Decision Log), aber er bekommt keine neuen
   Funktionen mehr. Welche Anforderung im Prototyp steht und in der Seite noch
-  nicht, zeigt das Projektbrett (Spalten „Prototyp" und „Web") und
-  `VTT/Projektbrett.md`. `emit-seed` schreibt sein Register weiter, solange
+  nicht, zeigt das Projektbrett (Spalten „Prototyp" und „Web"). `emit-seed` schreibt sein Register weiter, solange
   seine Prüfungen laufen.
 
 Was es **nicht** mehr gibt: `packages/import` und der Importer im Prototyp (der für 5e.tools ist neu geschrieben, oben). Die Obsidian-Importer für
@@ -851,8 +850,9 @@ vom Code zur Begründung ohne Suchen.
 | Anforderungen (Stories, Features, Epics; Prio, Stand) | der Vault in diesem Repo: je Story eine Notiz in `VTT/Stories/`, Features in `VTT/Features/`, Epics in `VTT/Epics/` — mit Obsidian-Mitteln: `[[Verweise]]`, Bases (`VTT/Stories.base`) für Übersichten |
 | was davon hier steht | [docs/Anforderungen.md](docs/Anforderungen.md), erzeugt von `anforderungen.mjs` |
 | Entscheidungen zum Modell | [docs/Durchgang.md](docs/Durchgang.md) (Abgleich, mit Entscheidungsspalte), [docs/Begriffe.md](docs/Begriffe.md) (das Warum) |
-| offene Arbeit | [docs/Roadmap.md](docs/Roadmap.md) „Als Nächstes"; Issues für das, was gerade gebaut wird |
-| Konzepte | [docs/Datenmodell.md](docs/Datenmodell.md) — **mit Grafiken** (Mermaid), wo ein Bild mehr sagt als eine Liste |
+| offene Arbeit | das Projektbrett (Aufgaben `T-nnn` an Stories, offene Entscheidungen `E-nnn`); Issues für das, was gerade gebaut wird. [docs/Roadmap.md](docs/Roadmap.md) ist der Fahrplan vom 19.9. und Herkunft |
+| Konzepte | [docs/Datenmodell.md](docs/Datenmodell.md) — **mit Bildern**, wo ein Bild mehr sagt als eine Liste: grosse (Übersichten, Modell, Abläufe mit vielen Knoten) als Excalidraw-Zeichnung in `docs/Bilder/` mit SVG daneben, Mermaid nur für kleine Abläufe bis etwa zehn Knoten ([docs/README.md › Bilder](docs/README.md#bilder)) |
+| der Weg durch die Dokumentation | [docs/README.md](docs/README.md) (Einstieg und Bestandsaufnahme) → `docs/Themen/` (je Thema eine Übersicht) → Detailseiten; eine neue Seite unter `docs/` kommt in die Bestandsaufnahme |
 
 Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
