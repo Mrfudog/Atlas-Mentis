@@ -73,14 +73,31 @@ export const ZIEH_TYP = 'text/x-nw-artikel';
                 · fought elsewhere
               }
             </p>
-            @if (offen(e).length && schreibt()) {
-              <button type="button" class="klein" (click)="alleSetzen.emit(offen(e))" [title]="'Put ' + offen(e).length + ' combatants on the map, in the middle of the view'">
-                Place {{ offen(e).length }}
-              </button>
+            @if (schreibt()) {
+              <div class="knoepfe">
+                @if (offen(e).length && e.round > 0) {
+                  <button type="button" class="klein" (click)="alleSetzen.emit(offen(e))" [title]="'Put ' + offen(e).length + ' combatants on the map, in the middle of the view'">
+                    Place {{ offen(e).length }}
+                  </button>
+                } @else if (offen(e).length) {
+                  <!-- Vorplatzieren (T-203): versteckt, blass, nur für die Leitung — bis die Begegnung beginnt. -->
+                  <button type="button" class="klein" (click)="vorbereiten.emit({ encounter: e.id, ids: offen(e) })" [title]="'Set ' + offen(e).length + ' combatants on the map, hidden from the players until the encounter starts'">
+                    Prepare {{ offen(e).length }}
+                  </button>
+                }
+                @if (e.round === 0) {
+                  <button type="button" class="klein start" (click)="starten(e)" [disabled]="startet() === e.id" title="Roll initiative for who has none, reveal the prepared tokens and run this encounter in the session">
+                    {{ startet() === e.id ? 'Starting…' : '▶ Start' }}
+                  </button>
+                }
+              </div>
             }
           </div>
         } @empty {
           <p class="dim">No encounter in this session yet.</p>
+        }
+        @if (fehler(); as f) {
+          <p class="fehler" role="alert">{{ f }}</p>
         }
       </section>
     }
@@ -199,6 +216,20 @@ export const ZIEH_TYP = 'text/x-nw-artikel';
       margin: 0.15rem 0;
       color: var(--dim);
     }
+    .knoepfe {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+    button.start {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .fehler {
+      margin: 0.25rem 0 0;
+      color: var(--warn);
+    }
   `,
 })
 export class KartenSeitenleiste {
@@ -212,6 +243,7 @@ export class KartenSeitenleiste {
   readonly zentrieren = output<string>();
   readonly setzen = output<{ id: string; name: string }>();
   readonly alleSetzen = output<string[]>();
+  readonly vorbereiten = output<{ encounter: string; ids: string[] }>();
 
   private readonly api = inject(Api);
   protected readonly seite = signal<KartenSeite | null>(null);
@@ -247,6 +279,24 @@ export class KartenSeitenleiste {
       if (n === this.lauf) this.seite.set(null);
     } finally {
       if (n === this.lauf) this.geladen.set(true);
+    }
+  }
+
+  protected readonly startet = signal<string | null>(null);
+  protected readonly fehler = signal<string | null>(null);
+
+  /** „Start“ (T-203): der Server würfelt, deckt auf und lässt die Sitzung führen; Live bringt den Rest. */
+  protected async starten(e: KartenSeite['encounters'][number]): Promise<void> {
+    if (this.startet()) return;
+    this.startet.set(e.id);
+    this.fehler.set(null);
+    try {
+      await this.api.startEncounter(e.id, { map: this.karte(), session: this.seite()?.session?.id ?? this.sitzung() });
+      await this.holen(this.karte(), this.sitzung());
+    } catch (err) {
+      this.fehler.set(err instanceof Error ? err.message : 'The encounter did not start.');
+    } finally {
+      this.startet.set(null);
     }
   }
 

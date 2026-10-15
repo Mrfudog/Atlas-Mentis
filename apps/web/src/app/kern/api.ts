@@ -1340,6 +1340,10 @@ export class Api {
   mapContext(id: string): Promise<KartenKontext> {
     return this.call<KartenKontext>(`/api/maps/${encodeURIComponent(id)}/context`);
   }
+  /** Eine Begegnung beginnen (T-203): Initiative, vorplatzierte Tokens aufdecken, die Sitzung führt sie. */
+  startEncounter(id: string, body: { map?: string; session?: string | null }): Promise<{ encounter: string; revealed: number; session: string | null }> {
+    return this.call(`/api/encounters/${encodeURIComponent(id)}/start`, { method: 'POST', body: JSON.stringify(body) });
+  }
   /** Die Seitenleiste der Karte (T-203): Gruppe, und für die Leitung die Begegnungen der Sitzung. */
   mapSide(id: string, session?: string | null): Promise<KartenSeite> {
     const q = session ? `?session=${encodeURIComponent(session)}` : '';
