@@ -1,24 +1,32 @@
 @if (haupt(); as h) {
-  <div class="buch">
-    <nav aria-label="Breadcrumb" class="brot">
-      <a routerLink="/rules">Rules</a>
-      <span aria-hidden="true">›</span>
-      <a [routerLink]="liste().weg">{{ liste().liste }}</a>
-      <span aria-hidden="true">›</span>
-      <span>{{ name() }}</span>
-    </nav>
+  <div class="buch" [class.eingebettet]="eingebettet()">
+    <!-- Auf der Artikelseite (T-191) steht der Pfad schon darüber. -->
+    @if (!eingebettet()) {
+      <nav aria-label="Breadcrumb" class="brot">
+        <a routerLink="/rules">Rules</a>
+        <span aria-hidden="true">›</span>
+        <a [routerLink]="liste().weg">{{ liste().liste }}</a>
+        <span aria-hidden="true">›</span>
+        <span>{{ name() }}</span>
+      </nav>
+    }
 
     <article class="blatt">
-      <div class="titelzeile">
-        <div>
-          <h1>{{ name() }}</h1>
-          @if (untertitel()) {
-            <p class="untertitel">{{ untertitel() }}</p>
-          }
+      <!-- Eingebettet steht der Name als Überschrift des Artikels darüber. -->
+      @if (!eingebettet()) {
+        <div class="titelzeile">
+          <div>
+            <h1>{{ name() }}</h1>
+            @if (untertitel()) {
+              <p class="untertitel">{{ untertitel() }}</p>
+            }
+          </div>
+          <a class="knopf" [routerLink]="['/artikel', h.id]">Article</a>
         </div>
-        <a class="knopf" [routerLink]="['/artikel', h.id]">Article</a>
-      </div>
-      <div class="linie" aria-hidden="true"></div>
+        <div class="linie" aria-hidden="true"></div>
+      } @else if (untertitel()) {
+        <p class="untertitel">{{ untertitel() }}</p>
+      }
 
       @if (eckdaten().length) {
         <dl class="eckdaten">

@@ -258,7 +258,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
                 <span class="verlag" [title]="'Publisher: ' + l.publisher + (l.publisherWhy ? ' — ' + l.publisherWhy : '') + ' Change it on the layer.'">{{ l.publisher }}</span>
               }
               @if (l.readable && l.active) {
-                <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
+                <a class="lesen" [routerLink]="['/artikel', l.id]" [queryParams]="{ tab: 'read' }">Read</a>
               }
               <span class="dim">
                 @if (l.kind) {
@@ -407,7 +407,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
               <span class="verlag" [title]="'Publisher: ' + l.publisher + (l.publisherWhy ? ' — ' + l.publisherWhy : '') + ' Change it on the layer.'">{{ l.publisher }}</span>
             }
             @if (l.readable && l.inPlay) {
-              <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
+              <a class="lesen" [routerLink]="['/artikel', l.id]" [queryParams]="{ tab: 'read' }">Read</a>
             }
             @if (!l.inPlay) {
               @if (ueberVergleich().has(l.id) && !l.compare) {

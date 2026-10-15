@@ -93,7 +93,7 @@ interface Regelstand {
         <ul class="kacheln">
           @for (k of kacheln(); track k.id) {
             <li>
-              <a [routerLink]="[weg(), k.id]">
+              <a [routerLink]="['/artikel', k.id]">
                 <span class="name">{{ k.name }}</span>
                 <span class="quelle" [title]="quellTitel(k.quelle)">{{ k.quelle }}</span>
                 @if (k.spielarten) {
@@ -233,7 +233,6 @@ export class Herkuenfte {
   protected readonly suche = signal('');
 
   protected readonly titel = computed(() => HERKUNFT_WEG[this.art()]?.liste ?? this.art());
-  protected readonly weg = computed(() => HERKUNFT_WEG[this.art()]?.weg ?? '/artikel');
 
   /** Die gewählten Facetten als `ref → Werte`. */
   private readonly gewaehlt = computed(() => {

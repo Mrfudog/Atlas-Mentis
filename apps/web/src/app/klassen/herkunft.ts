@@ -48,6 +48,8 @@ interface Spielart {
 })
 export class Herkunft {
   readonly id = input.required<string>();
+  /** Als Element auf der Artikelseite (T-191): ohne eigenen Pfad und Titel. */
+  readonly eingebettet = input(false);
   /** `?sub=a,b` — die gewählten Spielarten. */
   readonly sub = input<string | undefined>();
 

@@ -585,9 +585,17 @@ mit Strg/⌘ wie auf jeden Link. Am Telefon ist das Popup ein Blatt von
 unten. Die Leseansicht hatte dafür eine eigene Spalte neben dem Text; sie
 ist im Popup aufgegangen, damit ein Verweis überall dasselbe tut.
 
-**Ein Buch liest man an ihm selbst** (T-167, 14.10.2026): eine Ebene hat
-die Reiter „Article" und „Read", und „Read" ist dieselbe Leseansicht wie
-`/read/:layer` — eine Komponente, keine zweite. Gelesen werden darf auch,
+**Ein Buch liest man an ihm selbst** (T-167, 14.10.2026; seit T-191,
+15.10.2026, ohne Reiter): die Leseansicht ist das Element `reader` in der
+Anordnung der Ebene und steht auf ihrer Artikelseite unter dem Kopf —
+nicht eine Seite neben dem Artikel, sondern ein Teil von ihm. Dasselbe gilt
+für die Klassenübersicht (`classOverview`) und die Übersicht einer Herkunft
+oder eines Hintergrunds (`originOverview`): eine eigene Seite je Art wäre
+der Sonderfall mit eigenem Weg, den „Die Anordnung wohnt am Typ"
+abgeschafft hat; ein Element nimmt jede Art, die es in ihre Anordnung
+schreibt, und jeder Ort, der Anordnungen zeichnet. Eine fünfte Ansicht ist
+es nicht: der Ort — die Artikelseite — ist derselbe, also auch die
+Ansicht (`full`). Gelesen werden darf auch,
 was noch nicht aufgeschaltet ist: wer ein Buch aufschalten soll, will es
 vorher ansehen. Das ist die einzige Stelle, an der „steht es im Stapel?"
 nicht die erste Frage ist, und darum fragt sie nur die Leseansicht und

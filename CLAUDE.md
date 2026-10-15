@@ -102,10 +102,12 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   (`artikel/werkstatt.ts`, Routen in `apps/server/src/handwerk.ts`: ein
   Fertigungsauftrag ist eine Instanz des Rezepts, das Material bleibt
   reserviert im Inventar von Figur und Gruppe, die Regeln stehen an der
-  Kampagne; T-128), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
+  Kampagne; T-128), die **Leseansicht** (`lesen/`: eine
   Ebene als Buch mit aufklappbarem Inhaltsverzeichnis, Suche und
-  Lesestand je Konto, T-091; derselbe als Reiter „Read“ am Ebenen-Artikel,
-  auch vor dem Aufschalten, eine Gruppe als Regal, T-167), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
+  Lesestand je Konto, T-091; auch vor dem Aufschalten, eine Gruppe als
+  Regal, T-167; seit T-191 das Element `reader` auf der Seite der Ebene,
+  `/read/:layer` leitet dorthin — ebenso Klassen und Herkünfte:
+  `classOverview`, `originOverview` statt `/classes/:id` …), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
   Blatt A4, T-110), die **Suche** (`suche/`, Kopfleiste, Strg+K und `/`:
   Treffer beim Tippen aus `GET /api/search`, nach Nähe, Filter nach Art,
   Ebene, Herausgeber und Bereich, das „+" ist die Ansicht `search`;

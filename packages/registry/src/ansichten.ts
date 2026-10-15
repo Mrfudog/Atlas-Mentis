@@ -31,6 +31,15 @@ const karte = (...felder: string[]): TypeLayout => ({ adjust: { add: { 'q-f': fe
  * Feldtabelle den Rest. `drop` für Elemente, die das Buch-Element schon
  * zeichnet — der Statblock setzt seine Abschnitte (Aktionen …) selbst.
  */
+/**
+ * Die Artikelseite mit einer Übersicht gleich unter Bild und Beschreibung
+ * (T-191): Klasse, Herkunft und Hintergrund zeigen sich so, wie es die
+ * eigenen Seiten taten. Die Feldtabelle bleibt für den Rest.
+ */
+const uebersicht = (el: LayoutElement['el']): TypeLayout => ({
+  adjust: { extra: [{ id: `l-${el}`, el }], order: ['l-img', 'l-desc', `l-${el}`] },
+});
+
 const buchDruck = (el: LayoutElement['el'], drop: string[] = []): TypeLayout => ({
   adjust: { ...(drop.length ? { drop } : {}), extra: [{ id: `p-${el}`, el }], order: [`p-${el}`] },
 });
@@ -38,8 +47,9 @@ const buchDruck = (el: LayoutElement['el'], drop: string[] = []): TypeLayout => 
 export const typeViews: Record<string, Record<string, TypeLayout>> = {
   /* Regeln */
   Spell: { quick: karte('Spell.level', 'Spell.school', 'Spell.concentration', 'Spell.ritual'), print: buchDruck('spell') },
-  Class: { quick: karte('Class.hitDie', 'Class.primaryAbility') },
-  Ancestry: { quick: karte('Ancestry.size') },
+  Class: { quick: karte('Class.hitDie', 'Class.primaryAbility'), full: uebersicht('classOverview') },
+  Ancestry: { quick: karte('Ancestry.size'), full: uebersicht('originOverview') },
+  Background: { full: uebersicht('originOverview') },
   Feat: { quick: karte('Feat.prerequisite') },
   Rule: { quick: karte('Rule.kind') },
   Statblock: { print: buchDruck('statblock', ['p-c']) },
@@ -65,4 +75,7 @@ export const typeViews: Record<string, Record<string, TypeLayout>> = {
   /* Geschichte */
   Scene: { quick: karte('Scene.mode', 'Difficulty') },
   Quest: { quick: karte('Quest.progress', 'Quest.reward') },
+  /* Eine Ebene liest sich an ihr selbst als Buch (T-191): die Leseansicht
+     ist ein Element ihrer Seite und keine eigene. */
+  Layer: { full: { adjust: { extra: [{ id: 'l-reader', el: 'reader' }] } } },
 };

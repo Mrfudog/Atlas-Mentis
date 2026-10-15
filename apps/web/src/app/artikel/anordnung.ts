@@ -72,6 +72,12 @@ export interface Stueck {
     | 'prosa'
     | 'teile'
     | 'fluss'
+    /** Die Leseansicht (T-191): das Buch der Ebene, über die ganze Breite. */
+    | 'leser'
+    /** Die Klassenübersicht (T-191). */
+    | 'klasse'
+    /** Die Übersicht einer Herkunft oder eines Hintergrunds (T-191). */
+    | 'herkunft'
     | 'ueberschrift'
     | 'absatz'
     | 'kanten'
@@ -332,6 +338,18 @@ export function anordnen(
          fragt selbst und zeichnet nichts, wo nichts hängt. */
       case 'parts':
         out.push({ id: el.id, art: 'fluss' });
+        break;
+      /* Die Leseansicht und die Übersichten (T-191): was früher eigene
+         Seiten waren, zeichnet jetzt die Artikelseite an ihrer Stelle.
+         Übungen und Wahlen stehen in der Übersicht und nicht noch einmal
+         in der Tabelle (`BOOK_CARDS`). */
+      case 'reader':
+        out.push({ id: el.id, art: 'leser' });
+        break;
+      case 'classOverview':
+      case 'originOverview':
+        for (const karte of BOOK_CARDS[el.el] ?? []) felderDa.add(karte);
+        out.push({ id: el.id, art: el.el === 'classOverview' ? 'klasse' : 'herkunft' });
         break;
       /* Die Regeloptionen (T-190): die genannten Felder stehen unter dem
          Reiter „Rules & options"; hier nur der Verweis dorthin. Die Zellen
