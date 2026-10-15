@@ -229,6 +229,27 @@ describe('the campaign page switches layers on', () => {
     expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: [], off: 'e5_book_mm' })).statusCode).toBe(400);
   });
 
+  it('switches a whole group and brings back no old partial choice (T-185)', async () => {
+    const { rufe } = await mitGruppen();
+    /* Die Leitung hatte beide Bücher einzeln an — wie „Core rules" auf dev. */
+    await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: ['e5_book_phb', 'e5_book_mm', 'ly_a'] });
+    let res = await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers/e5_group_core/group', { on: false });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().layers).toEqual(['ly_a']);
+    expect(zeile(res.json().state, 'e5_book_phb')).toMatchObject({ active: false, inPlay: false });
+    res = await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers/e5_group_core/group', { on: true });
+    expect(res.json().layers).toEqual(['e5_group_core', 'ly_a']);
+    expect(zeile(res.json().state, 'e5_book_mm')).toMatchObject({ active: false, inPlay: true, off: false });
+    /* Ein Buch heraus, Gruppe aus und an: das Buch ist wieder da. */
+    await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: ['e5_group_core', 'ly_a'], off: ['e5_book_mm'] });
+    await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers/e5_group_core/group', { on: false });
+    res = await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers/e5_group_core/group', { on: true });
+    expect(zeile(res.json().state, 'e5_book_mm')).toMatchObject({ inPlay: true, off: false });
+    expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers/e5_book_mm/group', { on: true })).statusCode).toBe(400);
+    expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers/e5_group_core/group', {})).statusCode).toBe(400);
+    expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers/g_fremd/group', { on: true })).statusCode).toBe(403);
+  });
+
   it('answers every switch with the new state, and a whole group compares (T-143)', async () => {
     const { rufe, repo } = await mitGruppen(Gehalten);
     let l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();

@@ -12,7 +12,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 168 steht · 48 teils · 84 offen · 10 ersetzt · 6 verworfen — 316 Stories in 77 Features und 12 Epics.
+Zusammen: 169 steht · 48 teils · 84 offen · 10 ersetzt · 6 verworfen — 317 Stories in 77 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -26,7 +26,7 @@ Zusammen: 168 steht · 48 teils · 84 offen · 10 ersetzt · 6 verworfen — 316
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 18 | 4 steht · 3 teils · 11 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 24 | 14 steht · 5 teils · 4 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 25 | 15 steht · 5 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -92,7 +92,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | REQ-045 | Ebenen-Aktionen am Artikel | 3 | **offen** |  |
 | REQ-100 | Welt als Ebene | 1 | **teils** | `Layer.kind: world`; keine Mitglieder je Welt |
 | REQ-102 | Artikel je Stapel und Wissen zeichnen | 2 | **teils** | Prototyp ja; Server ohne Stapel — Abgleich A2 |
-| REQ-244 | Ebenen gruppieren | 2 | **steht** | `kind: group`, `partOf`, `resolvedStack` (T-088, E-022 b) |
+| REQ-244 | Ebenen gruppieren | 2 | **steht** | `kind: group`, `partOf`, `resolvedStack` (T-088, E-022 b); Gruppe ganz schalten und Häkchen aus dem Stand der Bücher: `groupSwitched` (T-185) |
 | REQ-245 | Ebenen beschreiben sich selbst | 2 | **steht** | Titel, Kürzel, Beschreibung an der Ebene (T-088) |
 | REQ-249 | Ebenen nach Herausgeber | 2 | **teils** | `publisherOf` und Herausgeber-Gruppen (T-094, T-109); Kategorien wie die Blocklist von 5e.tools offen |
 | REQ-253 | Ebenen und Artikel kopieren | 3 | **offen** | später; Kopie ohne `overrides` |
@@ -852,6 +852,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | REQ-248 | Kurzansicht überall | 2 | **steht** | `nwQuick`, `nw-kurzpopup`, Brotkrumen (T-093) |
 | REQ-305 | Kampagne und Ebene immer sichtbar | 2 | **steht** | T-143: Kampagne und Ebenen im Popup; T-161: Schreibebene in der Kopfleiste, wählbar, am Server je Konto und Kampagne |
 | REQ-315 | Globale Kopfleiste | 1 | **steht** |  |
+| REQ-317 | Zurück an dieselbe Stelle | 1 | **steht** | T-185: `Rueckweg` merkt den Scrollstand je Verlaufseintrag und stellt ihn bei „Zurück“ wieder her, sobald die Liste hoch genug ist; die Ebenenliste zeichnet den letzten Stand sofort |
 
 ### F-071 Bearbeiten in der Ansicht
 
