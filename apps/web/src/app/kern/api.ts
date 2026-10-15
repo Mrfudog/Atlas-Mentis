@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, Purchase, Registry, RegistryUsage, Relation, RollEntry, RolledScores } from '@nw/model';
+import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1243,6 +1243,21 @@ export class Api {
   mapContext(id: string): Promise<KartenKontext> {
     return this.call<KartenKontext>(`/api/maps/${encodeURIComponent(id)}/context`);
   }
+  /** Was die Aktionsleiste auf dieser Karte braucht (T-198). */
+  turnPlan(map: string, actor?: string | null): Promise<ZugLage> {
+    return this.call<ZugLage>(`/api/maps/${encodeURIComponent(map)}/turn-plan${actor ? `?actor=${encodeURIComponent(actor)}` : ''}`);
+  }
+  /** Einen Zug einreichen — oder einen eingereichten ersetzen (`plan`). */
+  submitTurnPlan(map: string, body: { actor: string; steps: PlanStep[]; plan?: string }): Promise<TurnPlan & { text: string }> {
+    return this.call(`/api/maps/${encodeURIComponent(map)}/turn-plan`, { method: 'POST', body: JSON.stringify(body) });
+  }
+  /** Die Leitung bestätigt oder lehnt ab; bestätigt wird gewürfelt (T-172). */
+  decideTurnPlan(map: string, plan: string, decision: 'confirm' | 'reject', note?: string): Promise<TurnPlan> {
+    return this.call(`/api/maps/${encodeURIComponent(map)}/turn-plan/${encodeURIComponent(plan)}/decide`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, ...(note ? { note } : {}) }),
+    });
+  }
   /** Welche Karte auf dem Tisch liegt (`SessionState.activeMap`, T-115). */
   play(session?: string): Promise<Tisch> {
     return this.call<Tisch>(`/api/play${session ? `?session=${encodeURIComponent(session)}` : ''}`);
@@ -1637,6 +1652,17 @@ export class Api {
   dropInvite(handle: string): Promise<unknown> {
     return this.call(`/api/invites/${encodeURIComponent(handle)}`, { method: 'DELETE' });
   }
+}
+
+/** Die Lage für den Zugplan (`GET /api/maps/:id/turn-plan`, T-198). */
+export interface ZugLage {
+  leitet: boolean;
+  actors: { id: string; name: string; own: boolean; rel: string | null }[];
+  actor: { id: string; name: string; speed: number; rel: string | null } | null;
+  tiles: PlanTile[];
+  /** `chances`: Trefferchance in Prozent je Angriffskachel; `ac` nur für die Leitung. */
+  targets: { id: string; name: string; type: string; chances: Record<string, number>; ac?: number }[];
+  plans: (TurnPlan & { at: string })[];
 }
 
 /** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */

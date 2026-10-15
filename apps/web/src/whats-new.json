@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-turn-planner",
+      "date": "2026-10-15",
+      "title": "Plan your turn on the map (prototype)",
+      "text": "Under Play, a bar below the map shows your action, bonus action, reaction and movement, and your character's actions as tiles. Tap Move and a square, pick an attack and a target to see the chance to hit, line the steps up in order and send the turn to the GM — who confirms it, the dice are rolled into the log and your token moves.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-origin-views",
       "date": "2026-10-15",
       "title": "Ancestries and backgrounds read like the class view",
