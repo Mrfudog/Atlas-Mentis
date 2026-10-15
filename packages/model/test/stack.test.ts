@@ -20,6 +20,7 @@ import {
   offLayers,
   resolvedStack,
   withOff,
+  groupSwitched,
   groupingOf,
   publisherOf,
   HOMEBREW,
@@ -305,6 +306,44 @@ describe('groups of layers (T-088)', () => {
     const selbst = withStack(k, ['g_core', 'mm']);
     expect(offLayers(selbst).size).toBe(0);
     expect(withOff(selbst, ['mm']).relations?.filter((r) => r.props?.['mode'] === 'off')).toEqual([]);
+  });
+
+  /* T-185: das Häkchen an der Gruppe schaltet alles darin und stellt keine alte Teilwahl her. */
+  it('turns a whole group off, books turned on one by one included', () => {
+    const k = withOff(K(an('phb', 'g_supp', 'mm', 'lose')), ['xge']);
+    const w = welt(k);
+    const r = groupSwitched(w, k, 'g_core', false);
+    expect(r).toEqual({ layers: ['g_supp', 'lose'], off: ['xge'] });
+    /* … und wieder an: die Gruppe, ohne die alten Einzelkanten. */
+    const k2 = withOff(withStack(k, r.layers), r.off);
+    const r2 = groupSwitched(w, k2, 'g_core', true);
+    expect(r2.layers).toEqual(['g_supp', 'lose', 'g_core']);
+    const k3 = withOff(withStack(k2, r2.layers), r2.off);
+    expect(resolvedStack(w, k3).map((l) => l.id)).toEqual(expect.arrayContaining(['phb', 'mm']));
+  });
+
+  it('turns a group on with nothing left off inside it, nested', () => {
+    const k = withOff(K(an('g_supp')), ['xge', 'erlw', 'mm']);
+    const r = groupSwitched(welt(k), k, 'g_supp', true);
+    expect(r).toEqual({ layers: ['g_supp'], off: ['mm'] });
+  });
+
+  it('takes a book out of another group that still brings it: off means off', () => {
+    /* PHB steht auch in „2014" — die Gruppe Core aus nimmt es dort heraus. */
+    const g14 = L('g_2014', 'group', '');
+    const phb = { ...L('phb', 'book', '2014-08-19', ['g_core', 'g_2014']) };
+    const scag = L('scag', 'book', '2015-11-03', ['g_2014']);
+    const k = K(an('g_2014', 'g_core'));
+    const w = new Map<EntityId, Entity>([...basis, g14, phb, scag, k].map((e) => [e.id, e]));
+    const r = groupSwitched(w, k, 'g_core', false);
+    expect(r.layers).toEqual(['g_2014']);
+    expect(r.off).toEqual(['phb']);
+    /* Andersherum: „2014" aus nimmt PHB auch aus Core; MM bleibt, also Core auch. */
+    const r2 = groupSwitched(w, k, 'g_2014', false);
+    expect(r2).toEqual({ layers: ['g_core'], off: ['phb'] });
+    /* Und ist in „2014" ausser PHB nichts, geht es mit Core aus mit. */
+    const nurPhb = new Map([...w].filter(([id]) => id !== 'scag'));
+    expect(groupSwitched(nurPhb, k, 'g_core', false).layers).toEqual([]);
   });
 
   it('never makes a group the place for new articles', () => {

@@ -5,6 +5,7 @@ import { KurzLink } from '../kern/kurzansicht';
 import { areaOf } from '@nw/model';
 import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Session } from '../kern/session';
 
 /** Ebenen, die Bücher sind — ohne Gruppe stehen sie unter „Other books". */
 const BUCHARTEN = new Set(['book', 'adventure']);
@@ -13,6 +14,17 @@ const OFFEN_PREF = 'layerGroups';
 /** … und wonach die Bücher gruppiert stehen (T-094). */
 const ANSICHT_PREF = 'layerGroupBy';
 type Ansicht = 'category' | 'publisher';
+
+/**
+ * **Der letzte Stand, über die Seite hinaus** (T-185): wer aus der Liste
+ * einen Artikel öffnet und zurückgeht, bekommt eine neue Liste — die stand
+ * bisher leer da („Loading…"), mit allen Gruppen zu, bis Server und
+ * Einstellungen geantwortet hatten, und der Rückweg (`Rueckweg`) fand die
+ * Stelle nicht mehr. Jetzt zeichnet sie sofort den letzten Stand und fragt
+ * trotzdem neu. Je Konto und Sicht, damit nach einem Wechsel nichts vom
+ * vorigen stehen bleibt.
+ */
+const ZULETZT = new Map<string, { daten: KampagnenEbenen; offen: Set<string> | null; ansicht: Ansicht | null }>();
 
 /** Die Bereiche in der Reihenfolge der Kopfleiste; andere danach, ohne Bereich zuletzt (T-105). */
 const BEREICHE = ['world', 'story', 'rules', 'play'];
@@ -36,6 +48,27 @@ interface Gruppe {
   /** Bücher darin (verschachtelt, ohne Gruppen), davon im Spiel. */
   gesamt: number;
   an: number;
+  /**
+   * Das Häkchen der Gruppe (T-185), aus dem Stand ihrer Bücher gerechnet:
+   * alle im Spiel `an`, keines `aus`, sonst `teils`. Nicht aus der Kante
+   * der Gruppe — „Core rules" mit drei einzeln aufgeschalteten Büchern ist
+   * ganz an, auch wenn die Gruppe selbst nicht im Stapel steht.
+   */
+  stand: 'an' | 'aus' | 'teils';
+}
+
+/**
+ * **Das Häkchen einer Gruppe** (T-185): aus dem Stand ihrer Bücher
+ * (verschachtelt, ohne Gruppen) — alle im Spiel `an`, keines `aus`, sonst
+ * `teils`. Eine leere Gruppe sagt, ob sie selbst im Spiel ist. Gezählt wird
+ * jedes Mitglied, das die Liste unter der Gruppe zeigt, auch eine Ebene, die
+ * kein Buch ist („— no book given"); Vergleichsebenen sind nicht im Spiel
+ * und zählen als aus.
+ */
+export function gruppenHaken(g: Pick<KampagnenEbene, 'inPlay'>, buecher: readonly Pick<KampagnenEbene, 'inPlay'>[]): 'an' | 'aus' | 'teils' {
+  if (!buecher.length) return g.inPlay ? 'an' : 'aus';
+  const an = buecher.filter((x) => x.inPlay).length;
+  return an === buecher.length ? 'an' : an === 0 ? 'aus' : 'teils';
 }
 
 /**
@@ -209,12 +242,12 @@ interface Gruppe {
               <input
                 type="checkbox"
                 class="ganz"
-                [checked]="g.ebene.inPlay"
-                [indeterminate]="!g.ebene.inPlay && g.an > 0"
+                [checked]="g.stand === 'an'"
+                [indeterminate]="g.stand === 'teils'"
                 [disabled]="!aenderbar(g.ebene) || laeuft()"
-                [attr.aria-label]="'Turn the whole group ' + g.ebene.name + (g.ebene.inPlay ? ' off' : ' on')"
+                [attr.aria-label]="'Turn the whole group ' + g.ebene.name + (g.stand === 'an' ? ' off' : ' on')"
                 (click)="$event.stopPropagation()"
-                (change)="gruppeSchalten(g.ebene)"
+                (change)="gruppeSchalten(g)"
               />
               <span class="gname">{{ g.ebene.name }}</span>
               <button type="button" class="quick-info" [nwQuick]="g.ebene.id" [attr.aria-label]="'Quick view of ' + g.ebene.name">i</button>
@@ -649,6 +682,7 @@ export class KampagnenEbenenListe {
 
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
+  private readonly session = inject(Session);
   protected readonly daten = signal<KampagnenEbenen | null>(null);
   protected readonly fehler = signal<string | null>(null);
   protected readonly laeuft = signal(false);
@@ -669,19 +703,43 @@ export class KampagnenEbenenListe {
   private async uebernehmen(c: string, r: { state?: KampagnenEbenen | null } | null): Promise<void> {
     if (r?.state && c === this.kampagne()) {
       this.daten.set(r.state);
+      this.merkeStand();
       this.fehler.set(null);
     } else {
       await this.laden(c);
     }
   }
 
+  /** Unter welchem Schlüssel der letzte Stand steht: Konto, Sicht, Kampagne. */
+  private schluessel(c = this.kampagne()): string {
+    return `${this.session.user()?.id ?? ''}|${this.session.viewAs()?.id ?? ''}|${c}`;
+  }
+
+  private merkeStand(): void {
+    const d = this.daten();
+    if (!d) return;
+    const alt = ZULETZT.get(this.schluessel());
+    ZULETZT.set(this.schluessel(), {
+      daten: d,
+      offen: this.offenGeladen ? this.offen() : (alt?.offen ?? null),
+      ansicht: this.offenGeladen ? this.ansicht() : (alt?.ansicht ?? null),
+    });
+  }
+
   private async laden(c: string): Promise<void> {
+    const z = ZULETZT.get(this.schluessel(c));
+    if (z && !this.daten()) {
+      this.daten.set(z.daten);
+      if (z.ansicht) this.ansicht.set(z.ansicht);
+      if (z.offen) this.offen.set(new Set(z.offen));
+    }
     try {
       const d = await this.api.campaignLayers(c);
       if (c !== this.kampagne()) return;
       this.daten.set(d);
       this.fehler.set(null);
-      void this.offenLaden();
+      await this.offenLaden();
+      this.merkeStand();
     } catch (error) {
       this.daten.set(null);
       this.fehler.set(error instanceof Error ? error.message : String(error));
@@ -715,7 +773,8 @@ export class KampagnenEbenenListe {
       };
       untergruppen.forEach(sammle);
       const alle = [...blaetter.values()];
-      return { ebene: g, untergruppen, ebenen, gesamt: alle.length, an: this.anZahl(alle) };
+      const an = this.anZahl(alle);
+      return { ebene: g, untergruppen, ebenen, gesamt: alle.length, an, stand: gruppenHaken(g, alle) };
     };
     const ansicht = this.ansicht();
     const gruppen = (this.daten()?.layers ?? []).filter((x) => x.kind === 'group' && (x.groupBy ?? 'category') === ansicht);
@@ -766,6 +825,7 @@ export class KampagnenEbenenListe {
   protected ansichtWaehlen(a: Ansicht): void {
     if (this.ansicht() === a) return;
     this.ansicht.set(a);
+    this.merkeStand();
     void this.api.setPref(ANSICHT_PREF, a).catch(() => {
       /* Nicht gemerkt ist nicht schlimm: die Ansicht gilt trotzdem. */
     });
@@ -778,6 +838,7 @@ export class KampagnenEbenenListe {
     if (auf) s.add(key);
     else s.delete(key);
     this.offen.set(s);
+    this.merkeStand();
     void this.api.setPref(OFFEN_PREF, [...s]).catch(() => {
       /* Nicht gemerkt ist nicht schlimm: der Abschnitt ist trotzdem offen. */
     });
@@ -924,11 +985,22 @@ export class KampagnenEbenenListe {
     return l.groups.some((g) => m.get(g)?.inPlay === true);
   }
 
-  /** Die ganze Gruppe an oder aus (T-088). */
-  protected gruppeSchalten(g: KampagnenEbene): void {
-    if (g.active) void this.schreiben(this.stapel().filter((id) => id !== g.id));
-    else if (g.off) void this.schreiben(this.stapel(), undefined, this.abgeschaltet().filter((id) => id !== g.id));
-    else void this.schreiben(null, g.id);
+  /**
+   * Die ganze Gruppe an oder aus (T-088): ganz an heisst aus, sonst an —
+   * mit allem darin, ohne die alte Teilwahl (T-185, `groupSwitched` am
+   * Server).
+   */
+  protected async gruppeSchalten(g: Gruppe): Promise<void> {
+    const c = this.kampagne();
+    this.laeuft.set(true);
+    try {
+      await this.uebernehmen(c, await this.api.switchGroup(c, g.ebene.id, g.stand !== 'an'));
+      this.geschaltet.emit();
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.laeuft.set(false);
+    }
   }
 
   /**

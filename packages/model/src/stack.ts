@@ -868,6 +868,64 @@ export function withOff(campaign: Entity, layerIds: readonly EntityId[]): Entity
 }
 
 /**
+ * **Eine ganze Gruppe an oder aus** (T-185): das Häkchen an einer Gruppe
+ * schaltet alle ihre Ebenen, verschachtelt — und stellt keine alte
+ * Teilwahl wieder her. Die Leitung schaltete eine Gruppe aus und wieder
+ * an und hatte danach die Bücher wieder, die sie vorher einzeln gewählt
+ * hatte; eine Teilwahl gibt es nur über die Häkchen am Buch.
+ *
+ * - **an:** die Gruppe kommt in den Stapel (an die Stelle, die ihre
+ *   Spezifität sagt, wie `POST …/layers/:layer`), und keine Ebene darin
+ *   bleibt abgeschaltet;
+ * - **aus:** die Gruppe und jede Ebene darin gehen aus dem Stapel. Bringt
+ *   eine andere aufgeschaltete Gruppe eine davon trotzdem, wird sie dort
+ *   abgeschaltet (`off`) — „aus" heisst aus, nicht „nur nicht über diese
+ *   Gruppe". Bleibt in einer solchen Gruppe nichts an, geht sie mit.
+ *
+ * Zurück kommen der neue Stapel (von unten nach oben) und die neue Liste
+ * der Abschaltungen, so wie `PUT /api/campaigns/:c/layers` sie nimmt.
+ */
+export function groupSwitched(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity,
+  groupId: EntityId,
+  on: boolean,
+  members: Map<EntityId, EntityId[]> = groupMembers(entities),
+): { layers: EntityId[]; off: EntityId[] } {
+  const stapel = activeStack(entities, campaign);
+  const darin = new Set([groupId, ...layersInGroup(entities, groupId, members)]);
+  const aus = [...offLayers(campaign)].filter((id) => !darin.has(id));
+  if (on) {
+    const ids = stapel.map((x) => x.layer.id);
+    if (!ids.includes(groupId)) {
+      const spez = (e: Entity | undefined) => {
+        const o = (e?.components?.[LAYER_COMPONENT] as { order?: unknown } | undefined)?.order;
+        return o != null && Number.isFinite(Number(o)) ? Number(o) : 10;
+      };
+      const eigene = spez(entities.get(groupId));
+      const bei = stapel.findIndex((x) => spez(x.layer) > eigene);
+      ids.splice(bei < 0 ? ids.length : bei, 0, groupId);
+    }
+    return { layers: ids, off: aus };
+  }
+  const layers = stapel.map((x) => x.layer.id).filter((id) => !darin.has(id));
+  /* Was eine andere Gruppe noch brächte, wird abgeschaltet — einmal
+     gerechnet genügt, denn eine Abschaltung nimmt nur weg. */
+  const probe = withOff(withStack(campaign, layers), aus);
+  const noch = resolvedStack(entities, probe, members).filter((e) => darin.has(e.id));
+  const off = [...aus, ...noch.map((e) => e.id)];
+  /* Eine andere Gruppe, in der danach nichts mehr an ist, geht mit aus dem
+     Stapel — sonst stünde sie als leere Gruppe da, die nichts bringt. Ihre
+     Abschaltungen bleiben: sie gelten für jede Gruppe, die das Buch bringt. */
+  const aus2 = new Set(off);
+  const leer = (g: EntityId) => {
+    const innen = layersInGroup(entities, g, members).filter((id) => !isGroupLayer(entities.get(id)));
+    return innen.length > 0 && innen.every((id) => aus2.has(id));
+  };
+  return { layers: layers.filter((id) => !isGroupLayer(entities.get(id)) || !leer(id)), off };
+}
+
+/**
  * **Was diese Fassung ersetzt** (E-018, T-082): die Artikel, auf die sie
  * über `overrides` zeigt, und deren Originale — die ganze Kette zurück,
  * nicht im Kreis. Wer auf das Original zeigt, zeigt in einer Kampagne mit
