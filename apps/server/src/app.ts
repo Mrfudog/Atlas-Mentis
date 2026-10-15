@@ -61,6 +61,7 @@ import {
   resolveArticle,
   playStack,
   compareLayers,
+  shownLayers,
   activeLayerRanks,
   layerShort,
   layersOf,
@@ -115,12 +116,13 @@ import { seedRegistry } from '@nw/registry';
 import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
-import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
-import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
+import { buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
+import { rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
 import { registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
 import { registerFiltergruppen } from './filtergruppen.js';
+import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
@@ -1115,6 +1117,8 @@ export function buildApp({
     if (url === '/api/tokens' || url.startsWith('/api/tokens/')) return;
     /* Die eigenen Einstellungen (T-092) schreibt jedes Konto. */
     if (url.startsWith('/api/me/prefs/')) return;
+    /* … und seine gespeicherten Ebenenauswahlen (T-186); geladen wird über die Kampagnenroute. */
+    if (url === '/api/me/layer-sets' || url.startsWith('/api/me/layer-sets/')) return;
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Das eigene Leeren einer Ebene zurücknehmen (T-176): die Route prüft, wer es war. */
     if (/^\/api\/bulk\/[^/]+\/undo$/.test(url)) return;
@@ -1569,9 +1573,20 @@ export function buildApp({
    * Leute gleichzeitig am Kompendium.
    */
   const indizes = new Map<string, Promise<ListIndex>>();
+  /** Wer die Werkbank hat (W9): die Verwaltung und die Leitung der laufenden
+   *  Kampagne — sie sieht alle Ebenen (T-207), jede andere Seite nur den Stapel. */
+  async function darfAlleEbenen(request: FastifyRequest): Promise<boolean> {
+    const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
+    if (!user) return true;
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    return user.isAdmin || (!!kampagne && !!rechtAn(user, kampagne.id));
+  }
   async function indexFor(
     request: FastifyRequest,
     stapel: 'inPlay' | 'unactivated' = 'inPlay',
+    /** Alle Ebenen nennen, auch nicht aufgeschaltete (T-207) — nur für die
+     *  Werkbank der Leitung und Verwaltung (`allLayers=1`, `darfAlleEbenen`). */
+    alleEbenen = false,
   ): Promise<ListIndex> {
     const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
     /* Die ausgenommenen Figuren gehören in den Schlüssel: wer eine Figur
@@ -1582,7 +1597,7 @@ export function buildApp({
       !user || user.isAdmin
         ? '*'
         : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}|${[...(await ausgenommen(stand.map, registry))].sort().join(',')}|${(user.layerIds ?? []).join(',')}|${[...(await besessen())].sort().join(',')}`;
-    const key = `${stand.stempel}|${stapel}|${registerStempel(registry)}|${wer}`;
+    const key = `${stand.stempel}|${stapel}|${alleEbenen ? 'alle' : ''}|${registerStempel(registry)}|${wer}`;
     let lauf = indizes.get(key);
     if (lauf) {
       indizes.delete(key);
@@ -1591,9 +1606,16 @@ export function buildApp({
     }
     /* Der Rang je Artikel für die Kopfzeile der Fassungen (T-092) —
        derselbe Stapel, einmal gerechnet. */
-    const rang = playStack(stand.map, currentCampaign(stand.map, registry.settings ?? null), registry);
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const rang = playStack(stand.map, kampagne, registry);
+    /* **Was nicht aufgeschaltet ist, steht nicht da** (T-207): Ebenen
+       ausserhalb des Stapels (und der Vergleichsebenen, wer sie sieht)
+       fallen hier heraus — als Zeile, als Name und als Ebene einer Zeile.
+       Damit gilt es für Kompendium, Bereiche, Suche, Quellenkürzel und jede
+       Auswahl auf einmal; der Zählindex (`unactivated`) bleibt, wie er war. */
+    const genannt = stapel === 'inPlay' && !alleEbenen ? shownLayers(stand.map, kampagne, siehtVergleich(user, kampagne)) : null;
     lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then((gesiebt) =>
-      buildListIndex(registry, gesiebt, (e) => rang.rank(stand.map.get(e.id) ?? e)),
+      buildListIndex(registry, gesiebt, (e) => rang.rank(stand.map.get(e.id) ?? e), genannt),
     );
     indizes.set(key, lauf);
     lauf.catch(() => indizes.delete(key));
@@ -1611,8 +1633,8 @@ export function buildApp({
    * Route sucht für Auswahlen (Kantenziel, Verweis): `of=Art&q=…&limit=20`.
    */
   app.get('/api/list', async (request) => {
-    const idx = await indexFor(request);
     const roh_ = request.query as Record<string, unknown>;
+    const idx = await indexFor(request, 'inPlay', (roh_['allLayers'] === '1' || roh_['allLayers'] === 'true') && (await darfAlleEbenen(request)));
     const q = parseListQuery(roh_);
     /* **Unbenutzte Bilder** (T-119, `unused=1`): was kein Artikel zeigt,
        **den dieser Betrachter sieht** — ein Bild, das nur ein verborgener
@@ -1627,7 +1649,7 @@ export function buildApp({
     }
     const blatt = queryList(idx, q);
     /* Eine Auswahl nach Ids fragt nach Bekanntem; dort fehlt nichts. */
-    const aus = q.ids?.length ? null : await ausgeblendet(request, idx, q);
+    const aus = q.ids?.length ? null : await ausgeblendet(request, q);
     return aus ? { ...blatt, unactivated: aus } : blatt;
   });
 
@@ -1690,21 +1712,21 @@ export function buildApp({
 
   /**
    * **Was fehlt, weil seine Ebene nicht aufgeschaltet ist** (T-069) — mit
-   * denselben Filtern wie das Blatt, je Ebene gezählt. Auf dev verschwanden
-   * nach dem Anlegen einer Kampagne alle 5e.tools-Artikel, und die Seite
-   * sagte nicht warum; nichts war gelöscht. Gezählt wird nur, was dieser
-   * Betrachter nach dem Aufschalten sähe (gesiebt wie sonst), und
-   * `canActivate` sagt, wo er selbst aufschalten darf.
+   * denselben Filtern wie das Blatt gezählt. Auf dev verschwanden nach dem
+   * Anlegen einer Kampagne alle 5e.tools-Artikel, und die Seite sagte nicht
+   * warum; nichts war gelöscht. Gezählt wird nur, was dieser Betrachter
+   * nach dem Aufschalten sähe (gesiebt wie sonst).
+   *
+   * **Eine Zahl und kein Verzeichnis** (T-207): welche Ebenen das sind,
+   * steht auf der Kampagnenseite, und nur dort wird ein- und
+   * ausgeschaltet. Eine Liste je Seite war die Ebene, die nirgends
+   * aufgeschaltet ist und trotzdem überall genannt wurde. `canManage`
+   * sagt, ob dieser Betrachter dort schaltet.
    */
   async function ausgeblendet(
     request: FastifyRequest,
-    idx: ListIndex,
     q: ReturnType<typeof parseListQuery>,
-  ): Promise<{
-    campaign: { id: string; name: string };
-    total: number;
-    layers: { id: string; name: string; count: number; canActivate: boolean }[];
-  } | null> {
+  ): Promise<{ campaign: { id: string; name: string }; total: number; canManage: boolean } | null> {
     const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
     const kampagne = currentCampaign(stand.map, registry.settings ?? null);
     if (!kampagne) return null;
@@ -1716,20 +1738,10 @@ export function buildApp({
       limit: 1,
     });
     if (!aus.total) return null;
-    const darf = rechtAn(user, kampagne.id) === 'manage';
     return {
       campaign: { id: kampagne.id, name: entityName(kampagne) },
       total: aus.total,
-      layers: aus.facets.layers
-        .filter((l) => l.id !== NO_LAYER)
-        .map((l) => ({
-          id: l.id,
-          /* Den Namen der Ebene nur, wenn er sie sieht. */
-          name: idx.names.get(l.id) ?? 'another layer',
-          count: l.count,
-          canActivate: darf && mayActivate(user, stand.map, l.id, kampagne.id),
-        }))
-        .sort((a, b) => b.count - a.count),
+      canManage: rechtAn(user, kampagne.id) === 'manage',
     };
   }
 
@@ -1911,8 +1923,18 @@ export function buildApp({
     e: Entity,
   ): Promise<{ names: Record<string, string>; links: Record<string, { id: string; name: string }[]> }> {
     const registry = await repo.getRegistry();
+    const stand = await roh();
+    /* Die Ebenen eines Artikels nur, soweit die Kampagne sie aufschaltet
+       oder vergleicht (T-207) — „PHB · Ein Buch, das niemand aufschaltet"
+       wäre die Ebene, die nirgends sonst steht. */
+    const kampagne = kampagneIn(stand.map, registry.settings ?? null);
+    const genannt = shownLayers(stand.map, kampagne, siehtVergleich(await viewerOf(request), kampagne));
     const ids = new Set<string>();
-    for (const r of e.relations ?? []) if (r.to) ids.add(r.to);
+    for (const r of e.relations ?? []) {
+      if (!r.to) continue;
+      if (r.type === LAYER_RELATION && genannt && !genannt.has(r.to)) continue;
+      ids.add(r.to);
+    }
     for (const [typ, karte] of Object.entries(e.components ?? {})) {
       const props = registry.interfaces[typ]?.schema?.properties ?? {};
       for (const [k, v] of Object.entries(karte ?? {})) {
@@ -1921,7 +1943,6 @@ export function buildApp({
         for (const w of Array.isArray(v) ? v : [v]) if (typeof w === 'string' && w) ids.add(w);
       }
     }
-    const stand = await roh();
     /* Ein Ziel, das eine Fassung ersetzt (E-018), heisst wie die Fassung —
        der Verweis führt dorthin (`GET /api/entities/:id`). */
     const paare = await Promise.all(
@@ -2008,6 +2029,10 @@ export function buildApp({
       }
     }
     const basisImSpiel = sicht.inPlay(basis);
+    /* Genannt werden nur Spiel- und Vergleichsebenen (T-207): liegt der
+       Artikel auch in einem Buch, das die Kampagne nicht aufschaltet, steht
+       es hier nicht. */
+    const genannt = shownLayers(stand.map, kampagne, siehtVergleich(user, kampagne));
     const ebenenIds = new Set(layersOf(basis));
     const versions = gesiebt.map((v) => {
       const r = stand.map.get(v.id) ?? v;
@@ -2016,7 +2041,7 @@ export function buildApp({
       const adoptedAs = kopieVon.get(v.id);
       return {
         entity: v,
-        layers: layersOf(r),
+        layers: layersOf(r).filter((id) => !genannt || genannt.has(id)),
         play: sicht.inPlay(r),
         compare,
         ...(adoptedAs ? { adoptedAs } : {}),
@@ -2025,7 +2050,10 @@ export function buildApp({
     });
     const ebenen = await sieve(
       request,
-      [...ebenenIds].map((id) => stand.map.get(id)).filter((e): e is Entity => !!e),
+      [...ebenenIds]
+        .filter((id) => !genannt || genannt.has(id))
+        .map((id) => stand.map.get(id))
+        .filter((e): e is Entity => !!e),
       stand.map,
     );
     return {
@@ -2159,6 +2187,8 @@ export function buildApp({
     if (!/^[a-z][a-zA-Z0-9.-]{0,63}$/.test(key)) return reply.code(400).send({ error: 'Unbekannter Schlüssel.' });
     /* Die Schreibebene prüft der Server gegen die Zielebenen (T-161). */
     if (key === WRITE_LAYER_PREF) return reply.code(400).send({ error: 'Die Schreibebene setzt PUT /api/layers/write oder PUT /api/layers/:layer/default.' });
+    /* Gespeicherte Ebenenauswahlen prüft ihre eigene Route (T-186). */
+    if (key === LAYER_SETS_PREF) return reply.code(400).send({ error: 'Ebenenauswahlen speichert POST /api/me/layer-sets.' });
     const value = request.body?.value ?? null;
     if (JSON.stringify(value).length > 8000) return reply.code(400).send({ error: 'Zu gross.' });
     await repo.putPref(user.id, key, value);
@@ -2661,6 +2691,7 @@ export function buildApp({
   });
   /* Filtergruppen je Seite (T-137): die der Kampagne und die eigenen. */
   registerFiltergruppen(app, { repo, viewerOf, roh });
+  registerEbenensets(app, { repo, viewerOf });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
   registerHandwerk(app, {
     repo,

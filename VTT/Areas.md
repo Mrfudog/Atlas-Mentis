@@ -25,5 +25,5 @@ Die Funktionsbereiche von früher sind die **Epics** (E-049): je Epic ein Bereic
 | [[EP-08 Live-Spiel]] | Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, Würfel, Werkzeuge am Tisch. | 5 | 28 | 98 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [[EP-09 Karten]] | Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und Zonen, Gebiete, Reisen, Karteneditor. | 7 | 28 | 124 | 18 steht · 6 teils · 4 offen |
 | [[EP-10 Medien & Assets]] | Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Druck und Ausfuhr, PDF. | 5 | 18 | 76 | 4 steht · 3 teils · 11 offen |
-| [[EP-11 Oberfläche & Navigation]] | Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten in der Ansicht, Design und Stilkonzept. | 6 | 25 | 79 | 15 steht · 5 teils · 4 offen · 1 ersetzt |
+| [[EP-11 Oberfläche & Navigation]] | Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten in der Ansicht, Design und Stilkonzept. | 6 | 26 | 82 | 17 steht · 4 teils · 4 offen · 1 ersetzt |
 | [[EP-12 Import & Inhalte]] | 5e.tools, Regelwerke anderer Verlage, Obsidian-Vault, Artikelprüfung und KI-erzeugte Inhalte — wie Inhalte hereinkommen und vollständig werden. | 5 | 10 | 39 | 5 steht · 2 teils · 1 offen · 2 verworfen |

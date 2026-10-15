@@ -1,5 +1,5 @@
 import type { ElementRef } from '@angular/core';
-import { Component, HostListener, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { SchreibOption } from '../kern/api';
 import { Stapel } from '../kern/stapel';
@@ -389,6 +389,16 @@ export class StapelKnopf {
   constructor() {
     /* Der Fokus geht ins Popup und beim Schliessen zurück zum Knopf. */
     effect(() => this.popup()?.nativeElement.focus());
+    /* „Change layers" an einer Liste (T-186) öffnet dasselbe Popup. */
+    let gesehen = this.stapel.gerufen();
+    effect(() => {
+      const n = this.stapel.gerufen();
+      if (n === gesehen) return;
+      gesehen = n;
+      untracked(() => {
+        if (!this.offen()) this.umschalten();
+      });
+    });
   }
 
   @HostListener('document:fullscreenchange')

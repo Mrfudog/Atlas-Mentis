@@ -827,14 +827,15 @@ export class Werkbank {
       .map(([n]) => n)
       .sort();
   });
-  /** Die Ebenen — eine Handvoll, aus der Liste am Server. */
+  /** Die Ebenen — alle, auch nicht aufgeschaltete (T-207: die Werkbank sieht alles). */
   protected readonly ebenen = signal<{ id: string; name: string }[]>([]);
   protected readonly kantenarten = computed(() => Object.keys(this.bestand.registry()?.relations ?? {}).sort());
 
   constructor() {
     void this.bestand.load();
-    void this.bestand
-      .liste({ type: 'Layer', limit: 200 })
+    /* Am Bestand vorbei: dessen Namen gelten für jede Seite, und die übrigen nennen nur den Stapel. */
+    void this.api
+      .list({ type: 'Layer', limit: 1000, allLayers: true })
       .then((l) => this.ebenen.set(l.rows.map((z) => ({ id: z.id, name: z.name }))))
       .catch(() => undefined);
     if (this.session.leitung()) {

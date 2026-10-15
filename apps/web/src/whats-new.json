@@ -10,6 +10,30 @@
       "query": { "type": "Campaign" }
     },
     {
+      "id": "2026-10-15-only-layers-in-play",
+      "date": "2026-10-15",
+      "title": "Only the layers in play are shown",
+      "text": "Lists, search, articles and their versions now name only the layers your campaign puts in play (and its compare layers). Layers that are off no longer appear as articles, filters or sources; a single line says how many articles are hidden and links to the campaign, where layers are turned on and off.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-15-saved-layer-selections",
+      "date": "2026-10-15",
+      "title": "One layer filter, and selections you can save",
+      "text": "World, Story, Rules and the Compendium now follow the layers in play for the campaign — “Change layers” in the sidebar opens the campaign popup at the top. There, under “Saved selections”, save what is in play under a name, for this campaign or any, open it to see its layers, and load it again with one click.",
+      "area": "Campaign",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-15-add-field",
+      "date": "2026-10-15",
+      "title": "Edit shows only the fields that matter",
+      "text": "Editing or creating an article now shows the required fields and those with a value. Every other field is under “+ Add field”: search it, read what each field means, and pick one to fill it in.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-15-turn-planner",
       "date": "2026-10-15",
       "title": "Plan your turn on the map (prototype)",

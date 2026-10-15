@@ -210,6 +210,8 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `default` | gilt beim Anlegen, nie rückwirkend |
 | `target` | bei einem Verweis: `interfaces` (Regel), `tags`, `where` (Vorschlag für die Maske) |
 | `alwaysEdit` | steht immer als Eingabe da (`Vitals.hp`) |
+| `prominent` | steht beim Bearbeiten auch leer da (`Description.description`, `Status.status`, T-195) |
+| `description` | ein Satz, was das Feld meint — gezeigt in „+ Add field“ (T-195) |
 | `suggest` | ein freies Wort schlägt vor, was sichtbare Artikel darin tragen (`Creature.kind`) |
 | `readOnly` | ausgegeben, nicht eingetippt (`Identity.id`) |
 | `editOnly` | nur in der Maske, nie beim Lesen: ein Schlüssel zum Ordnen (`Time.sort`, T-126) |
@@ -253,7 +255,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | F6 | **Immer bearbeitbar steht am Feld und nur dort** (`alwaysEdit`). |
 | F7 | **Vorgeschlagen wird nur, wo das Feld es sagt** (`suggest`), und nur aus Artikeln, die man sehen darf. |
 | F8 | **Status ist der Vorbereitungsstand** (`idea` · `prepared` · `ready`). Wie weit eine Sache am Tisch ist, sagt das Feld der Art (`Quest.progress`, `Encounter.phase`, `Place.state`). |
-| F9 | **Beim Bearbeiten steht jedes Feld als Eingabe da**, auch die aus `Identity`; nur der Name bleibt Überschrift. |
+| F9 | **Beim Bearbeiten ist jedes Feld erreichbar** (T-195), auch die aus `Identity`; nur der Name bleibt Überschrift. Gezeigt werden Pflichtfelder, Felder mit Wert (die Vorgabe zählt nicht), `alwaysEdit` und `prominent`; die übrigen holt „+ Add field“ — nach Bestandteil gruppiert, mit Suche und der `description` des Felds (sonst was es hält). |
 | F10 | **Was eine Beschreibung braucht, ist ein Artikel und keine Wortliste.** Zustände sind Artikel der Art `Condition`, Reisehandlungen Regelartikel mit `Rule.kind` `travel`; Felder, die sie brauchen, verweisen (`Vitals.conditions` auf `Condition`, `Party.actions`). Eine Einstellung hält nur, was ein Wort oder eine Zahl ist (`gridSize`, `units`). `skills` (Fertigkeit → Attribut) war eine solche und ist seit M6 weg: die Fertigkeit ist ein Artikel und trägt ihr Attribut selbst. |
 | F11 | **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10). Verweise nennen die Nummer, nicht den Namen (M11); Würfel sind `{{…}}`, Platzhalter `{VAR}` (M12). Siehe 4.4. |
 | F12 | **Die Zeile hält, die Art schlägt vor** (M6, D50). Nennt `enumRef` eine Artikelart, sind die Werte die Namen ihrer sichtbaren Artikel (Untertypen ja, Instanzen nein), und gespeichert wird der Name. Die Prüfung hält ein solches Feld **nicht** an der Liste fest (`enumHolds`): ein Name ist der heutige Stand, und eine Umbenennung machte eine gespeicherte Übung sonst rückwirkend falsch — dieselbe Regel wie bei `target.tags` (F4). Eine Liste mit Wörtern, die nur ein Wort sind (Waffengruppen), nennt das Feld, das sie trägt (`Weapon.category`), statt einer zweiten Zeile. **Wo ein Feld genau einen Artikel meint, ist es ein Verweis** (F13). |
@@ -806,7 +808,8 @@ und ein Ziel, das kein Gegenstand ist, bleiben und werden aufgezählt.
 |---|---|
 | E1 | **Ohne `inLayer` gehört ein Artikel der Kampagne und ist immer da.** Das ist der Normalfall und kostet keine Zeile. |
 | E2 | **Was gilt, ist eine Abfrage** (`inStack`, `resolveArticle`, `inPlay` in `packages/model/src/stack.ts`): ein Artikel steht im Stapel, wenn eine aufgeschaltete Ebene ihn bringt und keine spezifischere ihn herausnimmt; Überschreibungen werden bis zum Ende der Kette verfolgt, nicht im Kreis. Gelöscht wird dabei nie. **Der Server siebt damit zuerst** — vor Sichtbarkeit und Wissen, für jeden, auch die Verwaltung (A2, 7.10.); die laufende Kampagne ist die Einstellung `campaign`, sonst die erste. Ohne irgendeine Kampagne gilt alles. |
-| E2a | **Ohne Aufschalten ist ein Artikel einer Ebene nicht da** — er ist nicht gelöscht, er steht nur in keiner Liste der Kampagne. Sobald es eine Kampagne gibt, zeigt der Server nur, was ihre aufgeschalteten Ebenen bringen, und Artikel ohne Ebene; eine Ebene, die sie nicht aufschaltet (z. B. ein Buch aus 5e.tools nach dem Einlesen), bleibt mit all ihren Artikeln aussen vor. **Darum sagen es die Listen** (T-069): `/api/list` zählt je Ebene, was mit denselben Filtern fehlt, weil die laufende Kampagne die Ebene nicht aufschaltet (`unactivatedLayers`, Feld `unactivated`), und Kompendium, Bereiche und Board-Suche zeigen es mit „Turn on" für wer darf. Was eine aufgeschaltete Ebene herausnimmt oder eine Fassung überschreibt, zählt nicht — das ist Absicht. Das Register zählt je Art beides: im Stapel und gespeichert. |
+| E2a | **Ohne Aufschalten ist ein Artikel einer Ebene nicht da** — er ist nicht gelöscht, er steht nur in keiner Liste der Kampagne. Sobald es eine Kampagne gibt, zeigt der Server nur, was ihre aufgeschalteten Ebenen bringen, und Artikel ohne Ebene; eine Ebene, die sie nicht aufschaltet (z. B. ein Buch aus 5e.tools nach dem Einlesen), bleibt mit all ihren Artikeln aussen vor. **Darum sagen es die Listen** (T-069): `/api/list` zählt je Ebene, was mit denselben Filtern fehlt, weil die laufende Kampagne die Ebene nicht aufschaltet (`unactivatedLayers`, Feld `unactivated`), und Kompendium, Bereiche und Board-Suche sagen es in **einer Zeile** mit der Zahl und einem Link auf die Kampagne (`canManage`) — ohne die Ebenen aufzuzählen (T-207). Was eine aufgeschaltete Ebene herausnimmt oder eine Fassung überschreibt, zählt nicht — das ist Absicht. Das Register zählt je Art beides: im Stapel und gespeichert. |
+| E2b | **Was nicht aufgeschaltet ist, steht nicht da** (T-207, `shownLayers` in `stack.ts`): genannt werden die Ebenen des Stapels (`resolvedStack`, Gruppen und ihre Mitglieder) und — wer sie sieht (`Campaign.compareFor`) — die Vergleichsebenen; eine andere erscheint weder als Artikel (die Ebene selbst), noch als Ebene einer Zeile, Fassung, Filteroption, Quellenkürzel oder Zählung. Gesiebt wird am Server **einmal im Listenindex** (`buildListIndex(…, shown)`) — damit gilt es für `/api/list`, `/api/search`, `/api/sources` und jede Auswahl —, dazu an `GET /api/entities/:id` (`refs.names` der `inLayer`-Ziele) und `…/versions`. Ohne Kampagne gibt es keinen Stapel und alles steht da. Ausnahmen bewusst: die Kampagnenseite und das Popup der Kopfleiste (dort wird geschaltet), die Bibliothek (Bücher zum Aufschalten, T-168) und die Werkbank (`/api/list?allLayers=1`, nur Verwaltung, `gm` und `co-gm`). |
 | E2b | **Aufschalten dürfen die Verwaltung und die Leitung (`gm`) der Kampagne**, wie bei den Mitgliedern; ein Mitleiter sieht die Liste. Eine Ebene, die genau **einer anderen** Kampagne gehört (E3), schaltet nur die Verwaltung dazu — sonst würde sie gemeinsam, und die Leitung sähe, was dort nur deren Leitung sieht (`mayActivate`). Neu aufgeschaltet steht eine Ebene, wo ihre `Layer.order` sie hinstellt; danach ordnet die Kante. |
 | E3 | **Wem ein Artikel gehört, sagt der Stapel** (`campaignsOf`): eine Ebene, die genau eine Kampagne aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist gemeinsam; ohne Ebene ist er niemandem zuzuordnen. `removes` zählt nicht. |
 | E4 | **Instanzen und Varianten** erben die Ebene nicht (V3). |
@@ -1434,12 +1437,26 @@ solange niemand einen anderen Reiter wählt, und „All" (`?view=all`) zeigt
 die Seite ohne sie. So ist „World ohne Items" ein Eintrag und keine Liste im
 Code. Was eine Gruppe festhält, ist zweierlei: **was den Reiter ausmacht** —
 Arten samt Untertypen (`of`), ohne Arten samt Untertypen (`notype`),
-Marken, Stand (`status`; ohne Status-Karte zählt `ready`), nur diese Ebenen —
-geht als Grenze an `/api/list`; **womit er anfängt** — Suche, abgewählte
-Ebenen — setzt die Seitenleiste einmal beim Betreten, danach gehört der
-Filter der Seite. Gespeichert in `list_filter` (Migration 066), nicht im
-Artikel: eine Konto-Id wandert nicht mit der Ausfuhr (REQ-199). Routen:
+Marken, Stand (`status`; ohne Status-Karte zählt `ready`) — geht als
+Grenze an `/api/list`; **womit er anfängt** — Suche, Facetten — setzt die
+Seitenleiste einmal beim Betreten, danach gehört der Filter der Seite.
+Gespeichert in `list_filter` (Migration 066), nicht im Artikel: eine
+Konto-Id wandert nicht mit der Ausfuhr (REQ-199). Routen:
 `GET`/`POST /api/filters`, `PUT`/`DELETE /api/filters/:id`.
+
+**Ebenen filtert keine Seite selbst** (T-186, REQ-318): die Listen folgen
+dem Stand der laufenden Kampagne, den das Popup der Kopfleiste schaltet;
+eine Gruppe trägt kein `layer`/`nolayer` mehr (Migration 080 legt alte
+Angaben nach `list_filter_ebenen_alt`, gezählt). Stattdessen speichert das
+Popup **Ebenenauswahlen** („Saved selections"): der Stapel von unten nach
+oben (`layers`, Gruppen inbegriffen) und was trotz Gruppe aus ist (`off`),
+unter einem Namen, je Konto und wahlweise nur für eine Kampagne
+(`app_user_pref`, Schlüssel `layerSets`; Routen `GET`/`POST
+/api/me/layer-sets`, `DELETE …/:id`). Laden schreibt den Stapel über
+`PUT /api/campaigns/:c/layers` — dort prüft der Server die Rolle wie bei
+jedem Häkchen; was fehlt oder sich hier nicht aufschalten lässt, bleibt
+draussen und wird gezählt. Was eine Ebene bringt (`only`, T-105), bleibt
+an ihrer Kante und gehört nicht zur Auswahl.
 
 **Nur die Kachel auf dem Board wählt** (REQ-161, `placementView`): zuerst
 die Platzierung (`placed.props.view`), dann die Regel des Boards je Art
@@ -1554,7 +1571,7 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
   `rules` (`fields: ['Campaign']`) die eigenen Felder der Kampagne aus der
   Feldtabelle und verweist auf den Reiter — sie stünden dort ein zweites
   Mal, ungeordnet; ein `except` an der Feldtabelle reichte nicht, weil der
-  Rest (`rest`) sie am Ende wieder hereinholte. Migration 079.
+  Rest (`rest`) sie am Ende wieder hereinholte. Migration 081.
 - **Mit T-132** schaut `ruleOptionsOf` je Sorte ins gewählte Modul (ein
   lesbarer Regelartikel); Route und Reiter bleiben.
 
@@ -1586,6 +1603,7 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
 | wo ein Konto in einem Buch stehen blieb (T-091) | `reading_position` (Konto, Ebene, Abschnitt) | nein |
 | wie jemand liest — Fassungen an den Feldern an/aus, welche Ebenen (T-092) | `app_user_pref` (Konto, Schlüssel, JSON) | nein |
 | Filtergruppen je Seite und die Vorgabe einer Seite (T-137) | `list_filter` (Seite, Name, Kampagne *oder* Konto, Filter, `is_default`) | nein |
+| gespeicherte Ebenenauswahlen (T-186) | `app_user_pref`, Schlüssel `layerSets` | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |

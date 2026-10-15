@@ -192,6 +192,15 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   sind drei Klicks für eine Zahl. Es steht **am Feld und nur dort**: am Typ
   war es ein Schalter für zwanzig Felder auf einmal, und an `Vitals` sind
   die Trefferpunkte ein Stand, die Zustandsliste aber ein Satz Häkchen,
+- ob es beim Bearbeiten **auch leer dasteht** (`prominent`, T-195). Die
+  Maske zeigt Pflichtfelder und Felder mit Wert; die übrigen holt man über
+  „+ Add field“, denn vierzig leere Eingaben verstecken die fünf, um die
+  es geht; ein Wert, der nur die Vorgabe ist, zählt nicht. Die
+  Beschreibung, die man fast immer ausfüllt, und den Stand, der über die
+  Sichtbarkeit entscheidet, soll man dafür nicht erst suchen,
+- **was es meint** (`description`): ein Satz, gezeigt in der Auswahl
+  „+ Add field“. Die Beschriftung sagt, wie ein Feld heisst; wer es zum
+  ersten Mal hinzufügt, will wissen, wofür,
 - ob es **nur in der Maske** steht (`editOnly`): ein Schlüssel, den man
   setzt und niemand liest — `Time.sort` ordnet die Weltgeschichte, gelesen
   wird „Mirtul 12, 1492 DR". In der Feldtabelle stand „Sortable value
@@ -523,8 +532,16 @@ einer Marke. Sie gehört nicht ins Register: wie jemand seine Listen
 schneidet, ist keine Regel, und eine eigene Gruppe trägt eine Konto-Id, die
 in keinem Artikel stehen darf. Getrennt bleibt, was eine Gruppe **ist**
 (Arten, Marken, Stand — die Grenze des Reiters) und womit sie **anfängt**
-(Suche, Ebenen — danach gehört der Filter der Seite): sonst liesse sich in
+(Suche, Facetten — danach gehört der Filter der Seite): sonst liesse sich in
 „Places" eine Suche nicht mehr löschen, ohne die Gruppe zu ändern.
+
+**Ebenen wählt man an einer Stelle** (T-186, 15.10.2026). Bis dahin hatte
+jede Listenseite ihre Ebenen-Häkchen *neben* dem Stand der Kampagne in der
+Kopfleiste — zwei Antworten auf „was ist da?", und die Seite gewann, ohne
+es zu sagen. Jetzt folgt die Seite dem Stand, und wer zwischen Ständen
+wechselt, speichert ihn als **Ebenenauswahl** im Popup. Eine Auswahl ist
+kein Filter, der über dem Stand liegt, sondern der Stand selbst unter einem
+Namen: laden heisst schalten, für alle am Tisch.
 
 **Die Kurzansicht** ist das deutsche Wort für Quick, kein zehntes Wort
 (T-093, REQ-248, 14.10.2026). Sie steht auch als **Popup**: wo ein Artikel
@@ -877,6 +894,13 @@ Grund.
 Leitung sie nicht. Was eine Kampagne zeigt, ist ihre wichtigste
 Einstellung; sie steht jetzt auf der Kampagnenseite als Liste mit Häkchen
 und Reihenfolge, und die Listen sagen, was fehlt und warum (T-069).
+
+**Was nicht aufgeschaltet ist, steht nicht da** (T-207). Nach dem Einlesen
+nannte das Kompendium 177 Ebenen, die Hälfte davon in keiner Runde, und
+jede Liste zählte die abgeschalteten einzeln auf. Ein Buch, das die
+Kampagne nicht aufschaltet, ist für den Tisch nicht da — auch nicht als
+Name. Geschaltet wird an der Kampagne; die übrigen Seiten sagen nur, dass
+etwas fehlt, und führen dorthin.
 
 **Eine Spielerebene ist Herkunft, kein Versteck** (T-164). Was eine
 Spielerin anlegt, liegt in ihrer eigenen Ebene — „Mara · Nebelwacht" —, und

@@ -39,10 +39,12 @@ import {
   inListe,
   kantenAusEntwurf,
   type KantenEntwurf,
+  stehtDa,
   suchgruppen,
   verweisZiele,
   type Eingabe,
 } from './felder';
+import { holds } from '../register/regeln';
 import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Text } from './text';
 import { Wahl } from './wahl';
@@ -95,6 +97,11 @@ interface Feld {
   comp: string;
   prop: string;
   label: string;
+  /** Für „+ Add field“ (T-195): der Bestandteil, das Feld an dieser Art
+   *  und was es meint — aus dem Register, sonst was es hält. */
+  gruppe: string;
+  titel: string;
+  beschreibung: string;
   art: Eingabe;
   schema: PropertySchema | undefined;
   /* Die Werte einer Auswahl, schon aufgelöst: das Feld trägt sie selbst
@@ -427,8 +434,8 @@ interface Feld {
               }
 
               <div class="maske">
-                @for (f of felder(); track f.ref) {
-                  <label>
+                @for (f of sichtbareFelder(); track f.ref) {
+                  <label [attr.data-ref]="f.ref">
                     <span>{{ f.label }}@if (f.pflicht) {<i class="pflicht" title="required">*</i>}</span>
                     @switch (f.art) {
                       @case ('jaNein') {
@@ -501,6 +508,36 @@ interface Feld {
                   </label>
                 }
               </div>
+              <!-- T-195: die übrigen Felder sind erreichbar, nicht ausgebreitet. -->
+              @if (weitereZahl()) {
+                <div class="feldwahl-anker">
+                  <button type="button" class="klein" [attr.aria-expanded]="feldwahlOffen()" (click)="feldwahl(!feldwahlOffen())">
+                    + Add field <span class="zahl">{{ weitereZahl() }}</span>
+                  </button>
+                  @if (feldwahlOffen()) {
+                    <div class="feldwahl" role="dialog" aria-label="Add a field" (keydown.escape)="feldwahl(false)">
+                      <div class="fwkopf">
+                        <input type="search" placeholder="Search fields" aria-label="Search fields"
+                               [value]="feldSuche()" (input)="feldSuche.set($any($event.target).value)" />
+                        <button type="button" class="weg" title="Close" (click)="feldwahl(false)">×</button>
+                      </div>
+                      <div class="fwliste">
+                        @for (g of weitereFelder(); track g.name) {
+                          <h4>{{ g.name }}</h4>
+                          @for (f of g.felder; track f.ref) {
+                            <button type="button" class="fweintrag" (click)="feldDazu(f.ref)">
+                              <span class="fwtitel">{{ f.titel }}</span>
+                              <span class="fwtext">{{ f.beschreibung }}</span>
+                            </button>
+                          }
+                        } @empty {
+                          <p class="leer">No field matches.</p>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
 
               <h3>Passages</h3>
               @for (b of entwurfProsa(); track b.id) {
@@ -904,7 +941,8 @@ interface Feld {
       <p class="leer buch">Loading…</p>
     }
   `,
-  styleUrl: './artikel.scss',
+  /* Die Feldauswahl (T-195) in einer eigenen Datei: das Budget je Datei. */
+  styleUrls: ['./artikel.scss', './feldwahl.scss'],
 })
 export class Artikel implements SchnellKontext {
   readonly id = input.required<string>();
@@ -1489,6 +1527,52 @@ export class Artikel implements SchnellKontext {
   /** Verweise, die beim letzten Speichern keine Id bekamen (M11). */
   protected readonly offeneVerweise = signal<string[]>([]);
   protected readonly felder = signal<Feld[]>([]);
+  /**
+   * **Welche Felder die Maske zeigt** (T-195): Pflicht, befüllt,
+   * `prominent`, `alwaysEdit` — festgehalten beim Öffnen und um das
+   * erweitert, was „+ Add field“ dazuholt. Ein Feld, das man leert, bleibt
+   * stehen: es verschwände sonst unter dem Cursor.
+   */
+  protected readonly gezeigt = signal<ReadonlySet<string>>(new Set());
+  protected readonly sichtbareFelder = computed(() => {
+    const da = this.gezeigt();
+    return this.felder().filter((f) => da.has(f.ref));
+  });
+  /** Die übrigen, nach Bestandteil gruppiert, für die Auswahl. */
+  protected readonly feldwahlOffen = signal(false);
+  protected readonly feldSuche = signal('');
+  protected readonly weitereFelder = computed(() => {
+    const da = this.gezeigt();
+    const q = this.feldSuche().trim().toLowerCase();
+    const gruppen = new Map<string, Feld[]>();
+    for (const f of this.felder()) {
+      if (da.has(f.ref) || f.schema?.readOnly) continue;
+      if (q && !`${f.gruppe} ${f.titel} ${f.beschreibung}`.toLowerCase().includes(q)) continue;
+      const g = gruppen.get(f.gruppe) ?? [];
+      g.push(f);
+      gruppen.set(f.gruppe, g);
+    }
+    return [...gruppen].map(([name, felder]) => ({ name, felder }));
+  });
+  protected readonly weitereZahl = computed(
+    () => this.felder().filter((f) => !this.gezeigt().has(f.ref) && !f.schema?.readOnly).length,
+  );
+
+  protected feldwahl(offen: boolean): void {
+    this.feldSuche.set('');
+    this.feldwahlOffen.set(offen);
+    if (offen) setTimeout(() => document.querySelector<HTMLInputElement>('.feldwahl input')?.focus());
+  }
+
+  /** Ein Feld aus der Auswahl dazu — und gleich hinein. */
+  protected feldDazu(ref: string): void {
+    this.gezeigt.update((s) => new Set([...s, ref]));
+    this.feldwahl(false);
+    setTimeout(() => {
+      const ziel = document.querySelector<HTMLElement>(`.maske [data-ref="${CSS.escape(ref)}"]`);
+      ziel?.querySelector<HTMLElement>('input, select, textarea, button')?.focus();
+    });
+  }
   protected readonly entwurfProsa = signal<
     { id: string; type: string; key: string; label: string; wert: string }[]
   >([]);
@@ -1540,7 +1624,8 @@ export class Artikel implements SchnellKontext {
     const name = this.bestand.name();
     const w = this.stapel.schreib()?.layer;
     return {
-      ebenen: ebenen.map((id) => name(id) ?? id),
+      /* Ebenen ausserhalb des Stapels nennt der Server nicht (T-207). */
+      ebenen: ebenen.map((id) => name(id)).filter((n): n is string => !!n),
       schreib: w?.name ?? null,
       fremd: !w || !ebenen.includes(w.id),
     };
@@ -1650,10 +1735,12 @@ export class Artikel implements SchnellKontext {
   });
 
   /**
-   * Die Maske zeigt **jedes erlaubte Feld**, nicht nur die ausgefüllten:
+   * Die Maske kennt **jedes erlaubte Feld**, nicht nur die ausgefüllten:
    * ein Feld, das erst erscheint, wenn es einen Wert hat, kann niemand zum
-   * ersten Mal ausfüllen. Die Darstellungsstufe gilt hier nicht — sie sagt,
-   * was man *liest*, nicht was es gibt.
+   * ersten Mal ausfüllen. **Gezeigt** werden Pflicht- und befüllte Felder
+   * (T-195, `stehtDa`); die übrigen holt „+ Add field“ mit ihrer
+   * Beschreibung. Die Darstellungsstufe gilt hier nicht — sie sagt, was man
+   * *liest*, nicht was es gibt.
    */
   protected beginnen(): void {
     const e = this.artikel();
@@ -1664,6 +1751,7 @@ export class Artikel implements SchnellKontext {
       erlaubt.flatMap((t) => (r.interfaces[t]?.schema?.required ?? []).map((k) => `${t}.${k}`)),
     );
     const out: Feld[] = [];
+    const da = new Set<string>();
     for (const comp of erlaubt) {
       const def = r.interfaces[comp];
       if (!def) continue;
@@ -1697,19 +1785,25 @@ export class Artikel implements SchnellKontext {
         /* Wohin das Feld **an dieser Art** zeigt (T-119): die Karte bietet
            bei `Image.image` Kartenbilder an (`targets`), sonst gilt das Feld. */
         const ziel = fieldTarget(r, primaryInterface(e), { type: comp, key: prop, prop: schema });
+        const titel = fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema });
+        const istPflicht = pflicht.has(`${comp}.${prop}`);
+        if (stehtDa(schema, karte[prop], istPflicht)) da.add(`${comp}.${prop}`);
         out.push({
           ref: `${comp}.${prop}`,
           comp,
           prop,
           /* Wie das Feld **an dieser Art** heisst: derselbe `Time.until`
              ist an einem Auftrag die Frist und an einem Ereignis das Ende. */
-          label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
+          label: `${def.label ?? comp} · ${titel}`,
+          gruppe: def.label ?? comp,
+          titel,
+          beschreibung: schema.description ?? holds(r, schema),
           art,
           schema: ziel === schema.target ? schema : { ...schema, ...(ziel ? { target: ziel } : {}) },
           werte: chips ? suche.feste : werte,
           wert: art === 'jaNein' || chips ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,
-          pflicht: pflicht.has(`${comp}.${prop}`),
+          pflicht: istPflicht,
           liste: chips ? inListe(karte[prop]) : [],
           gruppen: suche.gruppen,
           frei: suche.frei,
@@ -1717,6 +1811,8 @@ export class Artikel implements SchnellKontext {
       }
     }
     this.felder.set(out);
+    this.gezeigt.set(da);
+    this.feldwahlOffen.set(false);
     this.entwurfProsa.set(
       this.prosa().map((b) => {
         const [typ, rest] = b.ref.split('.');

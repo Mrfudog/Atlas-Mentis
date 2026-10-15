@@ -268,6 +268,10 @@ describe("filter groups per page (T-137)", () => {
         extra: true,
       }),
     ).toEqual({ of: ["Location"], q: "fog" });
+    /* Ebenen trägt eine Gruppe nicht mehr (T-186) — der globale Stand sagt sie. */
+    expect(
+      savedFilter({ of: ["Item"], layer: ["ly_a"], nolayer: ["ly_b"] }),
+    ).toEqual({ of: ["Item"] });
     expect(savedFilter(null)).toEqual({});
   });
 });

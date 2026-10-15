@@ -171,6 +171,21 @@ export interface PropertySchema {
    */
   alwaysEdit?: boolean;
   /**
+   * **Steht beim Bearbeiten auch leer da** (T-195). Die Maske zeigt
+   * Pflichtfelder und Felder mit Wert; alles andere holt man über
+   * „+ Add field“. Ein Feld, das man fast immer ausfüllt (die
+   * Beschreibung), soll dafür nicht erst gesucht werden müssen.
+   *
+   * Es ist keine Pflicht: leer gespeichert bleibt es leer.
+   */
+  prominent?: boolean;
+  /**
+   * **Was das Feld meint**, in einem Satz, auf Englisch — gezeigt in der
+   * Auswahl „+ Add field“ (T-195). Die Beschriftung sagt, wie es heisst;
+   * wer ein Feld zum ersten Mal hinzufügt, will wissen, wofür.
+   */
+  description?: string;
+  /**
    * **Schlägt vor, was schon dasteht.** Für ein freies Wort, das eine
    * Sorte benennt (`Creature.kind`, `Deity.pantheon`): die Eingabe bietet
    * die Werte an, die andere Artikel in diesem Feld tragen, damit dieselbe
