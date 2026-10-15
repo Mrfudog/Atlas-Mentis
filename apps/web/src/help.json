@@ -177,7 +177,7 @@
         {
           "text": [
             "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview.",
-            "Filter groups are saved filters of a page — reach them as tabs or from ▾ in the header. The layers shown follow the running campaign; change them in the popup under the brand.",
+            "Filter groups are saved filters of a page — reach them as tabs or from ▾ in the header. The layers shown follow the running campaign; change them in the popup under the brand. There, “Show comparison articles in lists” adds what only a comparison layer brings, below the list and marked “not in play”; the GM brings one into play with “Enable”.",
             "Pick one type and its fields become filters. Where a type has a prerequisite (feats, magic items, classes), “Usable by” keeps what a character meets; a “?” marks a prerequisite that could not be checked.",
             "“New article” creates one in your write layer."
           ]
