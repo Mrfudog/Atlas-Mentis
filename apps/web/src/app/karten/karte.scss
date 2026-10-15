@@ -288,7 +288,8 @@ button {
 }
 
 /* Der Nebel (REQ-139): über Bild, Gitter und Rahmen, unter den Markern.
-   Die Leitung sieht halb hindurch. */
+   Die Leitung sieht halb hindurch. Eine Leinwand (nebel.ts), gestreckt
+   auf den Kasten; die Farbe steht dort als NEBEL_FARBE. */
 .nebel {
   position: absolute;
   inset: 0;
@@ -298,9 +299,6 @@ button {
 }
 .nebel.ganz {
   background: #1d1a17;
-}
-.nebelflaeche {
-  fill: #1d1a17;
 }
 .nebelleiste {
   display: flex;

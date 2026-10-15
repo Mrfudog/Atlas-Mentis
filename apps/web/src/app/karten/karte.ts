@@ -58,6 +58,7 @@ import { bildAdresse } from '../artikel/bild';
 import { Brett, type Mangel } from '../boards/brett';
 import { BoardSuche } from '../boards/suche';
 import { Ladeanzeige } from '../kern/ladeanzeige';
+import { nebelBreite, nebelMalen, type NebelForm } from './nebel';
 
 /**
  * **Was der Zugplan auf der Karte zeigt** (T-198). Die Karte rechnet
@@ -101,18 +102,6 @@ type Werkzeug = 'keins' | 'messen' | 'setzen' | 'aufdecken' | 'pinsel' | 'zudeck
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
 /** Pinselbreiten in Feldern. */
 const PINSEL = [1, 2, 4, 8] as const;
-
-/** Eine aufgedeckte Form, fertig zum Zeichnen in `0 0 1 ar`. */
-interface NebelForm {
-  id: string;
-  tag: 'rect' | 'circle' | 'polygon' | 'polyline';
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  r: number;
-  points: string;
-}
 
 interface Zeiger {
   x: number;
@@ -315,26 +304,10 @@ interface Zeiger {
                 <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
               </a>
             }
-            @if (nebel(); as n) {
-              <svg class="nebel" [attr.viewBox]="'0 0 1 ' + n.ar" preserveAspectRatio="none" aria-hidden="true">
-                <defs>
-                  <mask [attr.id]="nebelId">
-                    <rect x="0" y="0" width="1" [attr.height]="n.ar" fill="#fff" />
-                    @for (f of n.formen; track f.id) {
-                      @if (f.tag === 'rect') {
-                        <rect [attr.x]="f.x" [attr.y]="f.y" [attr.width]="f.w" [attr.height]="f.h" fill="#000" />
-                      } @else if (f.tag === 'circle') {
-                        <circle [attr.cx]="f.x" [attr.cy]="f.y" [attr.r]="f.r" fill="#000" />
-                      } @else if (f.tag === 'polygon') {
-                        <polygon [attr.points]="f.points" fill="#000" />
-                      } @else {
-                        <polyline [attr.points]="f.points" fill="none" stroke="#000" [attr.stroke-width]="f.r * 2" stroke-linecap="round" stroke-linejoin="round" />
-                      }
-                    }
-                  </mask>
-                </defs>
-                <rect class="nebelflaeche" x="0" y="0" width="1" [attr.height]="n.ar" [attr.fill-opacity]="n.deckt" [attr.mask]="'url(#' + nebelId + ')'" />
-              </svg>
+            @if (nebel()) {
+              <!-- Eine Leinwand und keine SVG-Maske: \`url(#…)\` löst nicht jeder
+                   Browser unter \`<base href>\` auf (T-204, nebel.ts). -->
+              <canvas #nebelLeinwand class="nebel" aria-hidden="true"></canvas>
             } @else if (nebelOhneMass()) {
               <div class="nebel ganz" aria-hidden="true"></div>
             }
@@ -491,8 +464,6 @@ export class Karte {
 
   protected readonly MARKER_MIN = MARKER_MIN;
   protected readonly PINSEL = PINSEL;
-  /** Je Karte eine eigene Maske — zwei Karten auf einer Seite teilen sonst eine. */
-  protected readonly nebelId = `nebel-${Math.random().toString(36).slice(2, 10)}`;
 
   private readonly bestand = inject(Bestand);
   private readonly api = inject(Api);
@@ -503,6 +474,7 @@ export class Karte {
 
   private readonly buehne = viewChild<ElementRef<HTMLElement>>('buehne');
   private readonly innen = viewChild<ElementRef<HTMLElement>>('innen');
+  private readonly nebelLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('nebelLeinwand');
 
   constructor() {
     /* Die Warnungen gehen an den Planer, sobald sie sich ändern — nicht
@@ -539,6 +511,20 @@ export class Karte {
       const e = this.gespeichert();
       if (!e) return;
       untracked(() => void this.kontextHolen(e.id));
+    });
+    /* Der Nebel (T-204): neu gezeichnet, sobald sich eine Form, die
+       Deckkraft oder das Bild ändert — nicht beim Zoomen, die Leinwand
+       wächst mit dem Kasten (CSS). */
+    effect(() => {
+      const n = this.nebel();
+      const c = this.nebelLeinwand()?.nativeElement;
+      const ctx = n && c ? c.getContext('2d') : null;
+      if (!n || !c || !ctx) return;
+      const b = nebelBreite(this.nat()?.w ?? 0);
+      const h = Math.max(1, Math.round(b * n.ar));
+      if (c.width !== b) c.width = b;
+      if (c.height !== h) c.height = h;
+      nebelMalen(ctx, b, h, n.formen, n.deckt);
     });
     /* Das Fenster misst, wie gross Zoom 1 ist — es ändert sich mit dem
        Fenster und nicht mit dem Zoom. */
@@ -1348,13 +1334,6 @@ export class Karte {
     if (e && confirm('Cover the whole map? Everything revealed so far is covered again.')) void this.schreiben(coverAll(e));
   }
 
-  private punkteText(pts: ReadonlyArray<readonly [number, number]>, ar: number): string {
-    /* Ein Strich aus einem Punkt ist ein Tupfer: zweimal derselbe Punkt,
-       sonst zeichnet die Linie nichts. */
-    const p = pts.length === 1 ? [pts[0]!, pts[0]!] : pts;
-    return p.map(([x, y]) => `${x},${y * ar}`).join(' ');
-  }
-
   /**
    * **Der Nebel** (REQ-139): zugedeckt ist alles, was keine aufgedeckte Form
    * berührt. Gezeichnet in `0 0 1 ar`, damit ein Kreis rund bleibt. Die
@@ -1365,16 +1344,17 @@ export class Karte {
     const n = this.nat();
     if (!e || !fogOn(e) || !n) return null;
     const ar = this.seitenverhaeltnis();
+    const auf = (pts: ReadonlyArray<readonly [number, number]>) => pts.map(([x, y]) => [x, y * ar] as const);
     const formen: NebelForm[] = revealShapes(e).map((s) => {
-      const leer = { id: s.id, x: 0, y: 0, w: 0, h: 0, r: 0, points: '' };
+      const leer = { id: s.id, x: 0, y: 0, w: 0, h: 0, r: 0, pts: [] };
       if (s.kind === 'rect') return { ...leer, tag: 'rect', x: s.x, y: s.y * ar, w: s.w, h: s.h * ar };
       if (s.kind === 'circle') return { ...leer, tag: 'circle', x: s.x, y: s.y * ar, r: s.r };
-      if (s.kind === 'poly') return { ...leer, tag: 'polygon', points: this.punkteText(s.pts, ar) };
-      return { ...leer, tag: 'polyline', r: s.r, points: this.punkteText(s.pts, ar) };
+      if (s.kind === 'poly') return { ...leer, tag: 'polygon', pts: auf(s.pts) };
+      return { ...leer, tag: 'polyline', r: s.r, pts: auf(s.pts) };
     });
     const st = this.strich();
     if (st && this.werkzeug() === 'pinsel') {
-      formen.push({ id: '__strich', tag: 'polyline', x: 0, y: 0, w: 0, h: 0, r: this.pinselRadius(), points: this.punkteText(st.pts.map((p) => [p.x, p.y] as const), ar) });
+      formen.push({ id: '__strich', tag: 'polyline', x: 0, y: 0, w: 0, h: 0, r: this.pinselRadius(), pts: auf(st.pts.map((p) => [p.x, p.y] as const)) });
     }
     return { ar, formen, deckt: this.alsLeitung() ? 0.5 : 1 };
   });
