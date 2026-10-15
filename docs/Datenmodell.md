@@ -535,6 +535,16 @@ flowchart LR
   E -. "ac, hpMax: participantStats" .-> S
 ```
 
+**Die Art einer Begegnung** (T-178): `Encounter.kind` hält Wörter aus der
+Aufzählungszeile `EncounterKind` — `combat`, `social`, `puzzle`,
+`exploration`, `hazard`, `trap`, `resource`, `story` —, mehrere zugleich,
+weil ein Gespräch in einen Kampf kippt. Eine Zeile und keine Liste am
+Feld: Zufallstabellen (Biom, Region, Reise) liefern Begegnungen jeder Art,
+und die Oberfläche handelt je Art anders. Leer heisst „nicht gesagt“;
+Migration 077 setzt `combat`, wo schon `participates` steht. Die Felder,
+die nur eine Art braucht (Lösung eines Rätsels, Auslöser einer Falle …),
+kommen als Gruppe am `Encounter` dazu und nicht als eigene Arten.
+
 ### 5.9 Zeitleisten und Spuren (D57, REQ-220)
 
 ```mermaid
@@ -1645,7 +1655,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-15: 56 Artikelarten, 24 Grundtypen, 64 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-15: 56 Artikelarten, 24 Grundtypen, 64 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -1748,7 +1758,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
-| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `xpBudget` `phase` `round` `turn` `surprise` | `partOf` `participates` `onMap` `loot` `tableFor` | — | full |
+| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `kind` `xpBudget` `phase` `round` `turn` `surprise` | `partOf` `participates` `onMap` `loot` `tableFor` | — | overview, full |
 | `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
 
 **Ohne Bereich**
@@ -1839,6 +1849,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Class.primaryAbility` `Class.spellAbility` `Subclass.spellAbility` `Disease.save` `Spell.save` `ZoneKind.save` `Statblock.spellAbility` `Recipe.ability` |
 | `DamageType` | 13: acid · bludgeoning · cold · fire … | `Ancestry.resistances` `Action.damageType` `Action.extraDamageType` `Spell.damageTypes` `Weapon.damageType` |
 | `DrawTime` | free action · bonus action · action · turn · round | `Inventory.zones` |
+| `EncounterKind` | combat · social · puzzle · exploration · hazard · trap · resource · story | `Encounter.kind` |
 | `RuleKind` | 9: rule · travel · sense · reward … | `Rule.kind` |
 | `Size` | tiny · small · medium · large · huge · gargantuan | `Ancestry.size` `Statblock.size` |
 | `State` | idea · prepared · ready | `Status.status` |

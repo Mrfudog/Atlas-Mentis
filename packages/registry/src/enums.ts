@@ -97,6 +97,20 @@ export const enums: Record<string, EnumDef> = {
     values: ['rule', 'travel', 'sense', 'reward', 'boon', 'option', 'upgrade', 'facility', 'card'],
   },
 
+  /**
+   * **Was für eine Begegnung** (T-178, REQ-085): ein Kampf ist eine Art
+   * davon und nicht die einzige. Eine Zeile und keine Liste am Feld, weil
+   * die Oberfläche je Art anders handelt und Zufallstabellen (Biom,
+   * Region, Reise) Begegnungen jeder Art liefern — wer eine Art
+   * dazunimmt, nimmt sie an einer Stelle dazu. Ein Untertyp je Art wäre
+   * ein Wort als Zeile (CLAUDE.md › Untertyp ohne eigene Felder).
+   */
+  EncounterKind: {
+    name: 'EncounterKind',
+    label: 'Encounter kind',
+    values: ['combat', 'social', 'puzzle', 'exploration', 'hazard', 'trap', 'resource', 'story'],
+  },
+
   State: {
     name: 'State',
     label: 'State',

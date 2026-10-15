@@ -1202,6 +1202,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
+      overview: [{ id: 'e-ov', el: 'fields', fields: ['Encounter.kind', 'Encounter.phase'] }],
       full: [
         { id: 'e-init', el: 'initiative' },
         { id: 'e-desc', el: 'description' },
