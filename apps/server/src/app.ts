@@ -128,6 +128,7 @@ import type { AtlasEnv } from './config.js';
 import { buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
 import { rechtAn, registerVerwaltung, siehtVergleich } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
+import { registerQuelleninhalt } from './quelleninhalt.js';
 import { registerHandwerk } from './handwerk.js';
 import { registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
 import { registerFiltergruppen } from './filtergruppen.js';
@@ -1325,7 +1326,11 @@ export function buildApp({
    * aufgeschaltet ist — die Vorschau eines Buchs vor dem Aufschalten.
    * Sichtbarkeit und Wissen gelten danach wie immer.
    */
-  type Stapelfrage = 'inPlay' | 'unactivated' | 'versions' | 'compare' | { preview: ReadonlySet<string> };
+  /* `{ preview, whole: true }` (T-189): alles, was in einer dieser Ebenen
+     liegt, auch was eine Auswahl, eine Typ-Regel oder eine Fassung im Spiel
+     gerade nicht bringt — der Inhaltsbaum einer Quelle zeigt der Leitung
+     das Ganze, mit dem Stand daneben. */
+  type Stapelfrage = 'inPlay' | 'unactivated' | 'versions' | 'compare' | { preview: ReadonlySet<string>; whole?: true };
 
   async function sieve(
     request: FastifyRequest,
@@ -1379,7 +1384,12 @@ export function buildApp({
     entities = entities
       .filter((e) =>
         typeof stapel === 'object'
-          ? sicht.inPlay(e) || sicht.unactivated(e).some((l) => stapel.preview.has(l))
+          ? sicht.inPlay(e) ||
+            (stapel.whole
+              ? (e.relations ?? []).some(
+                  (r) => r.type === LAYER_RELATION && stapel.preview.has(r.to) && (r.props as { mode?: unknown } | undefined)?.mode !== 'removes',
+                )
+              : sicht.unactivated(e).some((l) => stapel.preview.has(l)))
           : stapel === 'inPlay'
           ? sicht.inPlay(e)
           : stapel === 'versions'
@@ -2844,6 +2854,15 @@ export function buildApp({
     geltend,
     bezuegeVon,
     aufgeschaltet: async (map) => new Set(activeLayerRanks(map, kampagneIn(map, (await repo.getRegistry()).settings ?? null)).keys()),
+  });
+  /* Der Inhalt einer Quelle als Baum (T-189): gesiebt wie die Leseansicht. */
+  registerQuelleninhalt(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve: (request, entities, bestand, vorschau) =>
+      sieve(request, entities, bestand, undefined, vorschau?.size ? { preview: vorschau, whole: true } : 'inPlay'),
+    kampagne: (map, registry) => kampagneIn(map, registry.settings ?? null),
   });
   /* Filtergruppen je Seite (T-137): die der Kampagne und die eigenen. */
   registerFiltergruppen(app, { repo, viewerOf, roh });

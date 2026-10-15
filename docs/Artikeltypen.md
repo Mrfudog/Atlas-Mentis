@@ -3223,7 +3223,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Layer (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `reader`
+**Gezeichnet** (aus `Layer (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `contents`, `reader`
 
 ### Lore — *abstrakt*
 

@@ -76,6 +76,7 @@ export const typeViews: Record<string, Record<string, TypeLayout>> = {
   Scene: { quick: karte('Scene.mode', 'Difficulty') },
   Quest: { quick: karte('Quest.progress', 'Quest.reward') },
   /* Eine Ebene liest sich an ihr selbst als Buch (T-191): die Leseansicht
-     ist ein Element ihrer Seite und keine eigene. */
-  Layer: { full: { adjust: { extra: [{ id: 'l-reader', el: 'reader' }] } } },
+     ist ein Element ihrer Seite und keine eigene. Darüber steht, was sie
+     bringt, als Baum mit der Wahl der Kampagne (T-189). */
+  Layer: { full: { adjust: { extra: [{ id: 'l-contents', el: 'contents' }, { id: 'l-reader', el: 'reader' }] } } },
 };

@@ -95,6 +95,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [S + 'ebenenrechte.ts']: ['activates', 'inLayer', 'partOf'],
       /* Die Spielerebene: von ihrer Kampagne aufgeschaltet (T-164). */
       [S + 'spielerebene.ts']: ['activates'],
+      /* Der Inhalt einer Quelle mit dem Stand in der Kampagne (T-189). */
+      [S + 'quelleninhalt.ts']: ['activates', 'inLayer'],
     },
   },
   {

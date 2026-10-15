@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-source-contents",
+      "date": "2026-10-15",
+      "title": "See everything a source brings, and choose down to single articles",
+      "text": "A layer's page now lists its articles by type, each linked, under Contents. Ticks show what the current campaign has in play: the GM turns the layer on or off, picks which types it brings, and enables single articles from a source that is not in play — the same choice as on the campaign page.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-15-spell-lists",
       "date": "2026-10-15",
       "title": "Filter spells by class list — and by what a character can cast",

@@ -1332,6 +1332,17 @@ einschaltet, und wird je Browser gemerkt — er ändert, was man sieht, nicht
 was gilt; die Regel der Leitung (T-207) bleibt: was nicht eingeschaltet
 ist, steht nicht da, ausser man fragt danach.
 
+**Was eine Quelle bringt, steht an ihr** (T-189, 15.10.2026). Die
+Leitung wollte am Buch sehen, welche Artikel es hinzufügt, und dort auch
+wählen — bis zum einzelnen Artikel. Ein Baum Art → Artikel (Element
+`contents`) zeigt das, und seine Häkchen sind **keine eigene Wahl**: sie
+schreiben die Kanten, die die Kampagnenseite schreibt (`activates`,
+`activates.props.types`, `enables`). Zwei Stellen für dieselbe Wahl liefen
+beim ersten Klick auseinander. Was mit der Ebene kommt, steht darum
+angehakt und gesperrt da: eine Kante, die einen einzelnen Artikel aus
+einer Ebene im Spiel nimmt, gibt es nicht, und der Baum erfindet keine
+(E-073).
+
 **Eine Ebene erklärt ihr Kürzel.** „XGE" steht an jedem Artikel aus
 Xanathar's Guide; wer das Buch nicht kennt, liest drei Buchstaben. Darum
 trägt die Ebene ihr Kürzel (`Layer.abbreviation`) neben dem vollen Titel,

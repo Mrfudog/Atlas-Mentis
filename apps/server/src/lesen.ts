@@ -132,6 +132,29 @@ function texteIn(wert: unknown, raus: string[]): void {
   else if (wert && typeof wert === 'object') for (const [k, w] of Object.entries(wert)) if (k !== 'id') texteIn(w, raus);
 }
 
+/**
+ * **Darf dieser Betrachter die Ebene lesen, bevor sie aufgeschaltet
+ * ist?** (T-167) Dann die Ebenen, deren Artikel das Sieb dazu fragt —
+ * die Ebene selbst, bei einer Gruppe auch ihre Mitglieder; sonst eine
+ * leere Menge, und es gilt der Stapel wie überall.
+ *
+ * Immer: die Verwaltung, wer irgendwo leitet, und wer die Ebene besitzt
+ * oder bearbeitet. Spielende nur, wenn die Ebene ausdrücklich
+ * `audience: 'public'` trägt — die Vorgabe `public` ohne Angabe reicht
+ * nicht, sonst wäre jedes Buch der Installation vor dem Aufschalten
+ * offen. Was im Spiel ist, lesen sie ohnehin. Welche Felder und Artikel
+ * danach ankommen, sagt das Sieb wie immer (`redactEntity`). Der
+ * Inhaltsbaum einer Quelle (T-189) fragt dasselbe.
+ */
+export function vorschauEbenen(user: User | null, l: Entity, map: Map<string, Entity>): ReadonlySet<string> {
+  const ebenen = (): Set<string> => new Set([l.id, ...(isGroupLayer(l) ? layersInGroup(map, l.id, groupMembers(map)) : [])]);
+  if (!user || user.isAdmin) return ebenen();
+  if (Object.values(user.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm')) return ebenen();
+  if ((user.layerIds ?? []).includes(l.id) || (user.ownedLayerIds ?? []).includes(l.id)) return ebenen();
+  const vis = l.components?.['Visibility'] as { audience?: unknown } | undefined;
+  return vis?.audience === 'public' ? ebenen() : new Set();
+}
+
 export function registerLesen(
   app: FastifyInstance,
   deps: LeseDeps,
@@ -168,28 +191,8 @@ export function registerLesen(
     return (await sieve(request, [l], stand.map))[0];
   }
 
-  /**
-   * **Darf dieser Betrachter die Ebene lesen, bevor sie aufgeschaltet
-   * ist?** (T-167) Dann die Ebenen, deren Artikel das Sieb dazu fragt —
-   * die Ebene selbst, bei einer Gruppe auch ihre Mitglieder; sonst eine
-   * leere Menge, und es gilt der Stapel wie überall.
-   *
-   * Immer: die Verwaltung, wer irgendwo leitet, und wer die Ebene besitzt
-   * oder bearbeitet. Spielende nur, wenn die Ebene ausdrücklich
-   * `audience: 'public'` trägt — die Vorgabe `public` ohne Angabe reicht
-   * nicht, sonst wäre jedes Buch der Installation vor dem Aufschalten
-   * offen. Was im Spiel ist, lesen sie ohnehin. Welche Felder und Artikel
-   * danach ankommen, sagt das Sieb wie immer (`redactEntity`).
-   */
   async function vorschauFuer(request: FastifyRequest, l: Entity, stand: Stand): Promise<ReadonlySet<string>> {
-    const user = await viewerOf(request);
-    const ebenen = (): Set<string> =>
-      new Set([l.id, ...(isGroupLayer(l) ? layersInGroup(stand.map, l.id, groupMembers(stand.map)) : [])]);
-    if (!user || user.isAdmin) return ebenen();
-    if (Object.values(user.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm')) return ebenen();
-    if ((user.layerIds ?? []).includes(l.id) || (user.ownedLayerIds ?? []).includes(l.id)) return ebenen();
-    const vis = l.components?.['Visibility'] as { audience?: unknown } | undefined;
-    return vis?.audience === 'public' ? ebenen() : new Set();
+    return vorschauEbenen(await viewerOf(request), l, stand.map);
   }
 
   /**
