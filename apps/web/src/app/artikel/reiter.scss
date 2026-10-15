@@ -1,0 +1,33 @@
+/* Die Reiter am Kopf eines Artikels — an der Ebene (T-167) und an der Kampagne (T-190) gleich. */
+.reiter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+a {
+  padding: 0.4rem 0.9rem;
+  min-height: 36px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+a.an {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: -1px;
+}
+a.ohne-text:not(.an) {
+  color: var(--dim);
+}
+a.ganz {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--link);
+}

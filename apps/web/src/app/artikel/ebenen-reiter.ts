@@ -1,42 +1,6 @@
 import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-/** Die Reiter am Kopf eines Artikels — an der Ebene und an der Kampagne gleich. */
-const REITER_STILE = `
-    .reiter {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-end;
-      gap: 0.25rem;
-      border-bottom: 1px solid var(--line);
-    }
-    a {
-      padding: 0.4rem 0.9rem;
-      min-height: 36px;
-      box-sizing: border-box;
-      border: 1px solid transparent;
-      border-bottom: 0;
-      border-radius: 6px 6px 0 0;
-      color: var(--ink);
-      text-decoration: none;
-    }
-    a.an {
-      border-color: var(--line);
-      background: var(--surface);
-      color: var(--accent);
-      font-weight: 600;
-      margin-bottom: -1px;
-    }
-    a.ohne-text:not(.an) {
-      color: var(--dim);
-    }
-    a.ganz {
-      margin-left: auto;
-      font-size: 0.85rem;
-      color: var(--link);
-    }
-`;
-
 /**
  * **Die Reiter einer Ebene** (T-167): „Article" und „Read". Eine Ebene
  * liest man an ihr selbst — der Reiter zeigt dieselbe Leseansicht wie
@@ -55,7 +19,7 @@ const REITER_STILE = `
       <a class="ganz" [routerLink]="['/read', ebene()]" title="Open the reading view on its own page">Full page ↗</a>
     </nav>
   `,
-  styles: REITER_STILE,
+  styleUrl: './reiter.scss',
 })
 export class EbenenReiter {
   readonly ebene = input.required<string>();
@@ -79,7 +43,7 @@ export class EbenenReiter {
          [attr.aria-current]="regeln() ? 'page' : null">Rules &amp; options</a>
     </nav>
   `,
-  styles: REITER_STILE,
+  styleUrl: './reiter.scss',
 })
 export class KampagnenReiter {
   readonly kampagne = input.required<string>();
