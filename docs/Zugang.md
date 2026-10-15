@@ -1,5 +1,7 @@
 # Zugang
 
+↑ [Installation](Themen/Installation.md) · [Einstieg](README.md)
+
 Stand 2026-10-14. REQ-031 und REQ-032 aus
 [`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 

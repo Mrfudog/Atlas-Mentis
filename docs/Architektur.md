@@ -1,5 +1,7 @@
 # Architektur
 
+↑ [Technik](Themen/Technik.md) · [Einstieg](README.md)
+
 Stand 2026-10-12 (preprod nach P5); Bilder §1 und §6 als Zeichnung 2026-10-15. Zeigt, **was läuft** (Container),
 **womit** (Frameworks), **wo es liegt** (Repo) und **wie der Code
 zusammenhängt** (Pakete, Server, Oberfläche). Das Datenmodell selbst —

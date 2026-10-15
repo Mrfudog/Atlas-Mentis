@@ -1,5 +1,7 @@
 # Beziehungen
 
+↑ [Modell](Themen/Modell.md) · [Einstieg](README.md)
+
 Stand 2026-09-20. REQ-030 und REQ-081 aus
 [`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 

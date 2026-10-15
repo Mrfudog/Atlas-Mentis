@@ -1,5 +1,7 @@
 # Nebelwacht — Fahrplan
 
+↑ [Produkt](Themen/Produkt.md) · [Einstieg](README.md)
+
 Stand 2026-09-19. Sammelt alles, was seit dem Artikel-Prototyp angefragt wurde,
 und ordnet es. Offene Entscheidungen stehen am Schluss.
 
