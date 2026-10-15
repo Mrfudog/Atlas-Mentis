@@ -53,6 +53,7 @@ import { Karte } from '../karten/karte';
 import { Bild, BildWahl, bildDes } from './bild';
 import { BildPanel } from '../bilder/bildpanel';
 import { Statblock } from './statblock';
+import { Kennzahlen } from './kennzahlen';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Laden } from './laden';
@@ -145,6 +146,7 @@ interface Feld {
     Wahl,
     Mehrfach,
     Statblock,
+    Kennzahlen,
     Zauber,
     Gegenstand,
     Laden, Liegengelassen, Werkstatt,
@@ -679,6 +681,9 @@ interface Feld {
                 @switch (st.art) {
                   @case ('statblock') {
                     <nw-statblock [artikel]="e" [fassungen]="vergleich()" />
+                  }
+                  @case ('stats') {
+                    <nw-kennzahlen [artikel]="e" />
                   }
                   @case ('spell') {
                     <nw-zauber [artikel]="e" [scopes]="scopes()" [fassungen]="vergleich()" />

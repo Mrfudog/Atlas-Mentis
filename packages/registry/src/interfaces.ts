@@ -684,12 +684,15 @@ export const interfaces: Record<string, InterfaceDef> = {
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
       /* Die Spalten im Kompendium (W7, `listColumns`). */
-      overview: [{ id: 's-ov-img', el: 'image' }, { id: 's-ov', el: 'fields', fields: ['Statblock.cr', 'Statblock.size', 'Statblock.creatureType', 'Statblock.alignment'] }],
-      /* Der Statblock neben der Initiative (REQ-211, D53) ist `quick`: die
-         Zahlen und was er kann, ohne Beziehungen und Fliesstext. Die
-         Grundanordnung von `quick` (Bild, Beschreibung, Passagen) zeigte an
-         einem Statblock nichts. */
-      quick: [{ id: 's-q-sb', el: 'statblock' }],
+      /* Ein Verweis sagt, was man vor sich hat: Herausforderung, Grösse,
+         Art (T-206). Die Gesinnung steht im Bogen. */
+      overview: [{ id: 's-ov-img', el: 'image' }, { id: 's-ov', el: 'fields', fields: ['Statblock.cr', 'Statblock.size', 'Statblock.creatureType'] }],
+      /* **Die Kurzansicht sind die Kennzahlen** (T-206, Leitung 15.10.):
+         AC, HP, Bewegung, Initiative, passive Wahrnehmung, CR in einer
+         Reihe — Karte, Popup und Token. Bis dahin stand hier der ganze
+         Bogen (REQ-211), und die Kurzansicht war länger als die Seite
+         daneben; der Bogen gehört zu `full`. */
+      quick: [{ id: 's-q-img', el: 'image' }, { id: 's-q-stats', el: 'stats' }],
       /* **Wie im Monster Manual** (W2, Leitung 13.10.): das Element
          `statblock` zeichnet Kopf, Werte und die Abschnitte aus
          `composedOf` — es ersetzt Feldtabelle und `composed` für die

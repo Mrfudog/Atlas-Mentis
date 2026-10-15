@@ -321,13 +321,10 @@ export function statblockBook(
     details.push({ label: 'Condition Immunities', text: zustaende.join(', '), ref: 'Statblock.conditionImmunities' });
   }
 
-  /* Die passive Wahrnehmung rechnet die Fertigkeit mit: 10 plus der Bonus
-     auf Perception, wo der Statblock darin geübt ist, sonst plus WIS. */
-  const wahrnehmung = fertigkeiten.find((n) => n.toLowerCase() === 'perception');
-  const passivBonus = wahrnehmung ? fertigkeitBonus(wahrnehmung) : modOf('wis');
+  const passiv = passivePerception(entity, ctx);
   const sinne = [
     str(sb['senses']) ? convertText(registry, str(sb['senses']), mode, props['senses']?.unit) : '',
-    passivBonus === null ? '' : `passive Perception ${10 + passivBonus}`,
+    passiv === null ? '' : `passive Perception ${passiv}`,
   ].filter(Boolean);
   if (sinne.length) details.push({ label: 'Senses', text: sinne.join(', '), ref: 'Statblock.senses' });
 
@@ -352,6 +349,124 @@ export function statblockBook(
     details,
     extra: extras(registry, entity, BOOK_CARDS.statblock ?? [], STATBLOCK_PLACED, mode),
   };
+}
+
+/**
+ * **Die passive Wahrnehmung** rechnet die Fertigkeit mit: 10 plus der
+ * Bonus auf Perception, wo der Statblock darin geübt ist (oder eine feste
+ * Zahl nennt), sonst plus WIS. Eine Rechnung für den Bogen und die
+ * Kennzahlen (T-206).
+ */
+export function passivePerception(entity: Entity, ctx: StatblockContext = {}): number | null {
+  const sb = (entity.components?.['Statblock'] ?? {}) as Card;
+  const ab = (entity.components?.['Abilities'] ?? {}) as Card;
+  const pr = (entity.components?.['Proficiencies'] ?? {}) as Card;
+  const bonuses = (sb['bonuses'] && typeof sb['bonuses'] === 'object' ? sb['bonuses'] : {}) as Card;
+  const wis = num(ab['wis']);
+  const wisMod = wis === null ? null : abilityMod(wis);
+  const expertise = list(pr['expertise']);
+  const name = [...list(pr['proficient']), ...expertise].find((n) => n.toLowerCase() === 'perception');
+  if (name) {
+    const fest = num(bonuses[name]);
+    if (fest !== null) return 10 + fest;
+    const prof = num(sb['prof']);
+    /* Eine andere Grundlage als WIS sagt der Fertigkeitsartikel. */
+    const grund = ctx.skillAbility?.(name) ?? 'wis';
+    const s = num(ab[grund]);
+    if (s !== null && prof !== null) return 10 + abilityMod(s) + prof * (expertise.includes(name) ? 2 : 1);
+  }
+  return wisMod === null ? null : 10 + wisMod;
+}
+
+// ------------------------------------------------------------ Kennzahlen
+
+/** Eine Kachel der Kennzahlen: „AC 15". */
+export interface KeyStat {
+  key: 'ac' | 'hp' | 'speed' | 'initiative' | 'passivePerception' | 'cr';
+  label: string;
+  value: string;
+  /** Was die Kachel genauer sagt: der Rüstungsvermerk, die Trefferwürfel. */
+  note?: string;
+  /** `Typ.feld`, woher der Wert kommt. */
+  ref?: string;
+}
+
+export interface KeyStats {
+  tiles: KeyStat[];
+  /** Die Zustände der Figur (`Vitals.conditions`): Id und Name, der Name die Id, wo keiner kam. */
+  conditions: { id: string; name: string }[];
+}
+
+/**
+ * **Die Kennzahlen eines Statblocks** (T-206, Leitung 15.10.): was man am
+ * Tisch in einem Blick braucht — Rüstungsklasse, Trefferpunkte, Bewegung,
+ * Initiative, passive Wahrnehmung, Herausforderung — als eine Reihe
+ * Kacheln. Das Element `stats` zeichnet sie in der Kurzansicht (`quick`);
+ * der Bogen (`statblock`) bleibt der Artikelseite.
+ *
+ * Hängt der Statblock an einer Figur (`belongsTo`, gelesen wie ein Feld),
+ * zählt ihr Stand: die Trefferpunkte als „jetzt/Maximum" aus `Vitals`
+ * (dort der Stand, am Statblock das Maximum) und ihre Zustände. Gerechnet
+ * wird beim Lesen (D8), nichts davon wird gespeichert.
+ *
+ * Welche Kennzahlen es sind, steht hier und nicht als Feldliste in der
+ * Ansicht — wie beim Bogen ist das eine Frage der Darstellung, nicht des
+ * Registers: die Werte stammen aus drei Karten (`Statblock`, `Abilities`,
+ * `Proficiencies`) und zwei davon sind gerechnet.
+ */
+export function keyStats(
+  registry: BookRegistry,
+  statblock: Entity | undefined,
+  owner?: Entity,
+  ctx: StatblockContext = {},
+): KeyStats {
+  const tiles: KeyStat[] = [];
+  const vitals = (owner?.components?.['Vitals'] ?? {}) as Card;
+  if (statblock) {
+    const sb = (statblock.components?.['Statblock'] ?? {}) as Card;
+    const ab = (statblock.components?.['Abilities'] ?? {}) as Card;
+    const bonuses = (sb['bonuses'] && typeof sb['bonuses'] === 'object' ? sb['bonuses'] : {}) as Card;
+    const props = registry.interfaces['Statblock']?.schema?.properties ?? {};
+    const mode = unitsFor(registry, primaryInterface(statblock));
+
+    const ac = num(sb['ac']);
+    if (ac !== null) tiles.push({ key: 'ac', label: 'AC', value: String(ac), note: str(sb['acNote']) || undefined, ref: 'Statblock.ac' });
+
+    const max = num(sb['hp']);
+    const jetzt = num(vitals['hp']);
+    const temp = num(vitals['hpTemp']);
+    if (max !== null || jetzt !== null) {
+      const wert = jetzt !== null ? `${jetzt}${max !== null ? `/${max}` : ''}` : String(max);
+      tiles.push({
+        key: 'hp',
+        label: 'HP',
+        value: temp ? `${wert} +${temp}` : wert,
+        note: str(sb['hpFormula']) || undefined,
+        ref: jetzt !== null ? 'Vitals.hp' : 'Statblock.hp',
+      });
+    }
+
+    if (str(sb['speed'])) {
+      tiles.push({ key: 'speed', label: 'Speed', value: fieldText(registry, props['speed'], sb['speed'], mode), ref: 'Statblock.speed' });
+    }
+
+    /* Die Initiative ist der DEX-Modifikator (`Abilities.initiative`),
+       ausser das Buch nennt eine feste Zahl. */
+    const dex = num(ab['dex']);
+    const init = num(bonuses['initiative']) ?? (dex === null ? null : abilityMod(dex));
+    if (init !== null) tiles.push({ key: 'initiative', label: 'Initiative', value: signedBook(init), ref: 'Abilities.initiative' });
+
+    const pp = passivePerception(statblock, ctx);
+    if (pp !== null) tiles.push({ key: 'passivePerception', label: 'Passive Perception', value: String(pp), ref: 'Abilities.passivePerception' });
+
+    const cr = str(sb['cr']);
+    if (cr) tiles.push({ key: 'cr', label: 'CR', value: cr, ref: 'Statblock.cr' });
+  } else if (num(vitals['hp']) !== null) {
+    /* Ohne Statblock keine Zahlen — ausser dem Stand, den die Figur trägt. */
+    tiles.push({ key: 'hp', label: 'HP', value: String(num(vitals['hp'])), ref: 'Vitals.hp' });
+  }
+  const conditions = list(vitals['conditions']).map((id) => ({ id, name: ctx.nameOf?.(id) ?? id }));
+  return { tiles, conditions };
 }
 
 // ------------------------------------------------------------ Abschnitte

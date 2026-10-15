@@ -64,6 +64,7 @@ export interface Stueck {
   id: string;
   art:
     | 'statblock'
+    | 'stats'
     | 'spell'
     | 'item'
     | 'beschreibung'
@@ -275,6 +276,11 @@ export function anordnen(
         out.push({ id: el.id, art: el.el });
         break;
       }
+      case 'stats':
+        /* Die Kennzahlen (T-206) nehmen kein Feld aus der Tabelle: sie sind
+           ein Auszug, und der Bogen oder die Tabelle zeigt dieselben Werte. */
+        out.push({ id: el.id, art: 'stats' });
+        break;
       case 'description': {
         const text = opt.beschreibung;
         felderDa.add('Description.description');

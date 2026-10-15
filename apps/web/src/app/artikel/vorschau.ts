@@ -17,12 +17,13 @@ import { QuelleText } from '../kern/quellen';
 import { Text } from './text';
 import { Bild, bildDes } from './bild';
 import { ansichtWeg } from '../klassen/ansicht-weg';
+import { Kennzahlen } from './kennzahlen';
 
 /** Was die Seitenspalte und die Überschrift schon sagen. */
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source', 'Status', 'Tags'];
 
 interface Stueck {
-  kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild';
+  kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild' | 'kennzahlen';
   key: string;
   bild?: { wert: string; caption: string; alt: string; version?: string };
   text?: string;
@@ -46,7 +47,7 @@ interface Stueck {
  */
 @Component({
   selector: 'nw-vorschau',
-  imports: [RouterLink, Text, QuelleText, KurzLink, Bild],
+  imports: [RouterLink, Text, QuelleText, KurzLink, Bild, Kennzahlen],
   template: `
     <aside class="vorschau" [class.eingebettet]="eingebettet()" aria-label="Preview">
       @if (!eingebettet()) {
@@ -74,6 +75,9 @@ interface Stueck {
           @switch (s.kind) {
             @case ('text') {
               <nw-text [text]="s.text!" [scopes]="scopes()" />
+            }
+            @case ('kennzahlen') {
+              <nw-kennzahlen [artikel]="e" />
             }
             @case ('bild') {
               <nw-bild [wert]="s.bild!.wert" groesse="thumb" [caption]="s.bild!.caption" [alt]="s.bild!.alt || name(e)" />
@@ -313,6 +317,9 @@ export class Vorschau {
         /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
         const bild = bildDes(e, r);
         if (bild) raus.push({ kind: 'bild', key: el.id, bild });
+      } else if (el.el === 'stats') {
+        /* Die Kennzahlen (T-206) — sie holen ihren Statblock selbst. */
+        raus.push({ kind: 'kennzahlen', key: el.id });
       } else if (el.el === 'description') {
         const d = (e.components?.['Description'] as { description?: string } | undefined)?.description;
         if (d) raus.push({ kind: 'text', key: el.id, text: d });
