@@ -40,6 +40,7 @@ import {
 import type { Repository } from './repo.js';
 import { foldName, type User } from './auth.js';
 import { spielerEbenen } from './spielerebene.js';
+import { mitWahl } from './schreibebene.js';
 
 /**
  * **Die Ebenen, die hier angelegt wurden** (T-109): jede, die nicht aus
@@ -65,6 +66,11 @@ interface Deps {
   zielEbenen(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity[]>;
   kampagnenEbene(map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
   vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
+  schreibEbene(
+    user: User | null,
+    map: Map<string, Entity>,
+    kampagne: Entity | null,
+  ): Promise<{ layer: Entity | null; grund: Entity | null; chosen: string | null; dropped: string | null }>;
 }
 
 /** An einer Spielerebene (T-164): für welche Kampagne, und ob es die eigene ist. */
@@ -85,7 +91,7 @@ const NAME_MAX = 80;
 
 export function registerEbenenrechte(
   app: FastifyInstance,
-  { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene, vorgabeEbene }: Deps,
+  { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene, vorgabeEbene, schreibEbene }: Deps,
 ): void {
   const nein = (reply: FastifyReply, code: number, error: string) => reply.code(code).send({ error });
   const bestand = async () => new Map((await repo.listEntities()).map((e) => [e.id, e]));
@@ -178,6 +184,101 @@ export function registerEbenenrechte(
   });
 
   /**
+   * **Die Schreibebene** (T-161): wohin dieses Konto in der laufenden
+   * Kampagne anlegt, ob gewählt oder Vorgabe, eine Wahl, die gerade nicht
+   * gilt (`dropped`), und die Ebenen zur Wahl — je mit Grund, und ob sie
+   * wählbar ist: nur die Zielebenen (`zielEbenen`), keine Gruppe, keine,
+   * die hier nicht aufgeschaltet ist. Die Verwaltung legt ohne Wahl
+   * ausserhalb jeder Ebene an (`none`).
+   */
+  async function schreibStand(user: User) {
+    const map = await bestand();
+    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const s = await schreibEbene(user, map, kampagne);
+    const ziele = await zielEbenen(user, map, kampagne);
+    const zielIds = ziele.map((l) => l.id);
+    const kurz = (l: Entity | null | undefined) => (l ? { id: l.id, name: entityName(l) } : null);
+    const kEbene = await kampagnenEbene(map, kampagne);
+    const spieler = spielerEbenen(await repo.layerGrants());
+    const namen = new Map((await repo.listUsers()).map((u) => [u.id, u.name]));
+    const rolle = kampagne ? user.roles?.[kampagne.id] : undefined;
+    const ids = [...new Set([...zielIds, ...(await schreibEbenen(user, map))])];
+    const options = ids
+      .map((id) => map.get(id))
+      .filter(istEbene)
+      .map((l) => {
+        const sp = spieler.get(l.id);
+        const reason =
+          sp && sp.userId === user.id
+            ? 'player'
+            : sp
+              ? 'playerOf'
+              : (user.ownedLayerIds ?? []).includes(l.id)
+                ? 'owner'
+                : (user.layerIds ?? []).includes(l.id)
+                  ? 'granted'
+                  : l.id === kEbene?.id && (rolle === 'gm' || rolle === 'co-gm')
+                    ? rolle
+                    : user.isAdmin
+                      ? 'admin'
+                      : 'gm';
+        const selectable = zielIds.includes(l.id);
+        const why = selectable
+          ? undefined
+          : isGroupLayer(l)
+            ? 'A group of layers — articles go into one layer.'
+            : 'Not switched on in this campaign.';
+        return {
+          id: l.id,
+          name: entityName(l),
+          reason,
+          ...(sp && sp.userId !== user.id ? { player: namen.get(sp.userId) ?? sp.userId } : {}),
+          selectable,
+          ...(why ? { why } : {}),
+        };
+      })
+      .sort(
+        (a, b) =>
+          Number(b.selectable) - Number(a.selectable) ||
+          (zielIds.indexOf(a.id) + 1 || 1e9) - (zielIds.indexOf(b.id) + 1 || 1e9) ||
+          a.name.localeCompare(b.name, 'de'),
+      );
+    /* Die Verwaltung legt ohne Wahl ausserhalb jeder Ebene an (wie bisher). */
+    const ohne = user.isAdmin && (!s.chosen || !!s.dropped);
+    return {
+      campaign: kurz(kampagne),
+      layer: ohne ? null : kurz(s.layer),
+      default: user.isAdmin ? null : kurz(s.grund),
+      chosen: !!s.chosen && !s.dropped,
+      dropped: s.dropped ? (kurz(map.get(s.dropped)) ?? { id: s.dropped, name: s.dropped }) : null,
+      none: ohne,
+      options,
+    };
+  }
+
+  app.get('/api/layers/write', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return nein(reply, 401, 'Nicht angemeldet.');
+    return schreibStand(user);
+  });
+
+  /** **Die Schreibebene wählen** (T-161) — `{ layer: null }` heisst: wieder die Vorgabe. */
+  app.put<{ Body: { layer?: unknown } | null }>('/api/layers/write', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user || user.disabledAt) return nein(reply, 401, 'Nicht angemeldet.');
+    const map = await bestand();
+    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    if (!kampagne) return nein(reply, 409, 'Es läuft keine Kampagne.');
+    const roh = request.body?.layer;
+    const layer = typeof roh === 'string' && roh ? roh : null;
+    if (layer && !(await zielEbenen(user, map, kampagne)).some((l) => l.id === layer)) {
+      return nein(reply, 403, 'In diese Ebene schreibst du in dieser Kampagne nicht.');
+    }
+    await repo.putPref(user.id, WRITE_LAYER_PREF, mitWahl(await repo.getPrefs(user.id), kampagne.id, layer));
+    return schreibStand(user);
+  });
+
+  /**
    * **Die Schreibebene wählen** (T-176, für T-161): wohin dieses Konto in
    * der laufenden Kampagne anlegt, wenn es keine Ebene nennt. Gewählt
    * werden kann nur eine Ebene, in der es schreibt und die im Spiel ist
@@ -255,7 +356,11 @@ export function registerEbenenrechte(
       return nein(reply, 409, 'Ihr Konto spielt in dieser Kampagne noch mit.');
     }
     const kampagne = map.get(s.campaign) ?? null;
-    const ziel = await kampagnenEbene(map, kampagne);
+    /* In die Schreibebene der Leitung, wenn sie gewählt ist und keine
+       Spielerebene ist (T-161); sonst in die Ebene der Kampagne. */
+    const wahl = await schreibEbene(user, map, kampagne);
+    const gewaehlt = wahl.chosen && !wahl.dropped && wahl.layer && !spielerEbenen(await repo.layerGrants()).has(wahl.layer.id) ? wahl.layer : null;
+    const ziel = gewaehlt ?? (await kampagnenEbene(map, kampagne));
     if (!kampagne || !ziel) return nein(reply, 409, 'Die Kampagne hat keine eigene Ebene, die den Inhalt aufnimmt.');
     const registry = await repo.getRegistry();
     const known = new Map([...map.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));

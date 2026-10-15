@@ -891,6 +891,19 @@ Und **keine Fassungen darin**: der Stapel gilt für alle am Tisch — eine
 Überschreibung in Maras Ebene änderte den Artikel auch für Tom. Was Mara an
 einem fremden Artikel anmerken will, ist eine Notiz mit Verweis.
 
+**Schreibebene, Zielebene, Vorgabe — drei Wörter für drei Fragen** (T-161).
+*Zielebenen* sind alle Ebenen, in die ein Konto in dieser Kampagne anlegen
+darf (es schreibt darin, und sie sind im Spiel). Die *Vorgabe* ist die, die
+gilt, wenn niemand etwas sagt — die Spielerebene, für die Leitung die Ebene
+der Kampagne. Die *Schreibebene* ist die, die gerade gilt: die gewählte,
+solange sie eine Zielebene ist, sonst die Vorgabe. Sie steht am Server und
+nicht im Browser, weil der Laptop und das Telefon derselben Leiterin sonst
+an zwei Orte schrieben, und sie wird **beim Lesen** geprüft und nicht beim
+Wählen allein: eine Ebene, die die Leitung abschaltet, soll nicht still
+weiter beschrieben werden, und eine Wahl, die man wegen einer Pause
+verliert, wählt man nicht gern zweimal. Darum bleibt die Wahl stehen und
+die Kopfleiste sagt, dass sie gerade nicht gilt.
+
 Dass die Zugehörigkeit so von selbst herausfällt, ist der Grund, dafür **kein
 Feld** zu setzen. `Layer.kind` kennt zwar die Wörter `campaign` und
 `player`, aber ein Feld,

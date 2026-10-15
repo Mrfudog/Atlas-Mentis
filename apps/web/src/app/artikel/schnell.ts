@@ -17,6 +17,7 @@ import type { Entity, PropertySchema, Registry } from '@nw/model';
 import { Api, ApiError, type MeineEbene } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
 import { Wahl } from './wahl';
 
 /**
@@ -185,7 +186,7 @@ const QUICK_HOECHSTENS = 8;
             <span>Layer</span>
             <select [value]="ebene()" (change)="ebene.set($any($event.target).value)">
               @for (l of ebenen(); track l.id) {
-                <option [value]="l.id" [selected]="l.id === ebene()">{{ l.name }}</option>
+                <option [value]="l.id" [selected]="l.id === ebene()">{{ l.name }}{{ l.id === schreibId() ? ' (write layer)' : '' }}</option>
               }
             </select>
           </label>
@@ -200,8 +201,11 @@ const QUICK_HOECHSTENS = 8;
             </select>
           </label>
         }
+        @if (!ebenen().length && stapel.schreib()?.layer; as l) {
+          <p class="hinweis">Goes to <b>{{ l.name }}</b>.</p>
+        }
         @if (herkunftName(); as h) {
-          <p class="hinweis">Layer and audience follow {{ h }}.</p>
+          <p class="hinweis">Audience follows {{ h }}.</p>
         }
         @if (problem(); as p) {
           <p class="fehler" role="alert">{{ p }}</p>
@@ -329,6 +333,7 @@ export class Schnell {
   private readonly bestand = inject(Bestand);
   private readonly router = inject(Router);
   private readonly session = inject(Session);
+  protected readonly stapel = inject(Stapel);
   private readonly kontext = inject(SCHNELL_KONTEXT, { optional: true });
 
   protected readonly name = linkedSignal(() => this.vorschlag().trim());
@@ -389,11 +394,15 @@ export class Schnell {
   private readonly herkunftsEbene = computed(
     () => this.herkunft()?.relations?.find((r) => r.type === LAYER_RELATION)?.to ?? '',
   );
+  /** Vorgewählt die Schreibebene (T-161), sonst die des Ausgangsartikels. */
   protected readonly ebene = linkedSignal(() => {
     const von = this.herkunftsEbene();
+    const schreib = this.stapel.schreib()?.layer?.id;
     const liste = this.ebenen();
+    if (schreib && liste.some((l) => l.id === schreib)) return schreib;
     return liste.some((l) => l.id === von) ? von : (liste[0]?.id ?? '');
   });
+  protected readonly schreibId = computed(() => this.stapel.schreib()?.layer?.id ?? '');
 
   /** Die Stufen der Sichtbarkeit, wenn die Art sie trägt. */
   protected readonly sichtbarkeit = computed(() => {

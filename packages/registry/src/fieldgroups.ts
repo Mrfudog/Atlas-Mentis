@@ -2523,8 +2523,9 @@ export const fieldGroups = {
           type: 'string',
           title: 'Kind',
           /* `player`: die Spielerebene eines Kontos in einer Kampagne (T-164) —
-             Beschreibung wie jedes Wort hier; wessen sie ist, steht am Server. */
-          enum: ['system', 'expansion', 'book', 'adventure', 'world', 'pack', 'campaign', 'player', 'overrides', 'group'],
+             Beschreibung wie jedes Wort hier; wessen sie ist, steht am Server.
+             `test`: eine Ebene zum Ausprobieren, die man wieder leert (T-176). */
+          enum: ['system', 'expansion', 'book', 'adventure', 'world', 'pack', 'campaign', 'player', 'test', 'overrides', 'group'],
           default: 'pack',
         },
         order: { type: 'number', title: 'Specificity', default: 10 },

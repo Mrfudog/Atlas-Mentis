@@ -13,6 +13,19 @@ import { Stapel } from '../src/app/kern/stapel';
 import { StapelKnopf } from '../src/app/verwaltung/stapel-knopf';
 
 let antwort: unknown;
+/* Die Schreibebene (T-161): eine Spielerin mit ihrer Spielerebene als Vorgabe. */
+const schreib = {
+  campaign: { id: 'camp', name: 'Aus Nebel wacht' },
+  layer: { id: 'ly_sela', name: 'Sela · Aus Nebel wacht' },
+  default: { id: 'ly_sela', name: 'Sela · Aus Nebel wacht' },
+  chosen: false,
+  dropped: null,
+  none: false,
+  options: [
+    { id: 'ly_sela', name: 'Sela · Aus Nebel wacht', reason: 'player', selectable: true },
+    { id: 'ly_notizen', name: 'Notes', reason: 'owner', selectable: false, why: 'Not switched on in this campaign.' },
+  ],
+};
 const gefragt: string[] = [];
 
 describe('the campaign in the bar (T-143)', () => {
@@ -28,7 +41,8 @@ describe('the campaign in the bar (T-143)', () => {
     };
     vi.stubGlobal('fetch', async (url: string) => {
       gefragt.push(url);
-      return { ok: true, status: 200, headers: new Headers(), text: async () => JSON.stringify(antwort) } as Response;
+      const body = url === '/api/layers/write' ? schreib : antwort;
+      return { ok: true, status: 200, headers: new Headers(), text: async () => JSON.stringify(body) } as Response;
     });
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: LIVE_TRANSPORT, useValue: () => () => undefined }],
@@ -43,9 +57,20 @@ describe('the campaign in the bar (T-143)', () => {
     const knopf = el.querySelector<HTMLButtonElement>('.knopf')!;
     expect(knopf.textContent).toContain('Aus Nebel wacht');
     expect(knopf.textContent).toContain('4 layers');
+    /* Wohin geschrieben wird, steht immer da (T-161). */
+    expect(knopf.textContent).toContain('Sela · Aus Nebel wacht');
     knopf.click();
     await f.whenStable();
     expect(el.querySelector('[role="dialog"]')?.textContent).toContain('The GM chooses which');
+    const wahl = el.querySelector('.schreibwahl')!;
+    expect(wahl.textContent).toContain('Your player layer');
+    /* Die Vorgabe steht einmal; was nicht im Spiel ist, ist nicht wählbar und sagt warum. */
+    const radios = [...wahl.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+    expect(radios.map((r) => [r.checked, r.disabled])).toEqual([
+      [true, false],
+      [false, true],
+    ]);
+    expect(wahl.textContent).toContain('Not switched on in this campaign.');
     /* Die Ebenenliste fragt nur, wer sie sehen darf. */
     expect(el.querySelector('nw-kampagnen-ebenen')).toBeNull();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

@@ -10,6 +10,14 @@
       "query": { "type": "Spell" }
     },
     {
+      "id": "2026-10-15-write-layer",
+      "date": "2026-10-15",
+      "title": "See and choose where your articles go",
+      "text": "Under the campaign name in the top bar you now see which layer you write to. Open it to pick another of your layers in play; the choice is saved for your account, on every device. New article and quick create start there and let you change it for one article, and editing an article in another layer says so before you save.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-15-empty-layer",
       "date": "2026-10-15",
       "title": "Pick your write layer, empty a layer in one go",

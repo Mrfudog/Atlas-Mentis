@@ -1,9 +1,10 @@
 import { Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { areaOf, typeChain } from '@nw/model';
+import { LAYER_RELATION, areaOf, typeChain } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
 import { pflichtFelder, type Pflicht } from './schnell';
 import { Wahl } from './wahl';
 
@@ -13,6 +14,10 @@ import { Wahl } from './wahl';
  * Vorgabe hat (die Art einer Aktion). Den Rest setzt der Server — Peg-Id,
  * Nummer (`nextId`), Vorgaben aus dem Register — und prüft wie beim
  * Schreiben. Danach öffnet sich die Artikelseite gleich zum Bearbeiten.
+ *
+ * **Wohin** steht dabei (T-161): die Schreibebene aus der Kopfleiste,
+ * für diesen einen Artikel änderbar unter den wählbaren Ebenen. Der Server
+ * prüft die genannte Ebene gegen die Zielebenen.
  *
  * Angeboten werden die **anlegbaren** Arten (nicht `abstract`), in einem
  * Bereich nur seine (`area`, `areaOf`). Im Code steht keine Liste davon.
@@ -64,6 +69,20 @@ import { Wahl } from './wahl';
             <input type="text" (input)="setze(p.ref, $any($event.target).value)" />
           }
         </label>
+      }
+      @if (stapel.schreib(); as w) {
+        @if (wahlEbenen().length > 1) {
+          <label>
+            <span>Layer</span>
+            <select [value]="ebene()" (change)="ebene.set($any($event.target).value)">
+              @for (l of wahlEbenen(); track l.id) {
+                <option [value]="l.id" [selected]="l.id === ebene()">{{ l.name }}{{ l.id === w.layer?.id ? ' (write layer)' : '' }}</option>
+              }
+            </select>
+          </label>
+        } @else {
+          <p class="hinweis ziel">Goes to <b>{{ w.layer?.name ?? 'no layer' }}</b>.</p>
+        }
       }
       @if (typ() === 'PlayerCharacter') {
         <!-- Klasse, Herkunft, Hintergrund und ihre Wahlen (T-080). -->
@@ -160,6 +179,7 @@ export class Anlegen {
   private readonly bestand = inject(Bestand);
   private readonly router = inject(Router);
   private readonly session = inject(Session);
+  protected readonly stapel = inject(Stapel);
 
   protected readonly name = signal('');
   protected readonly werte = signal<Partial<Record<string, string>>>({});
@@ -179,6 +199,11 @@ export class Anlegen {
       .map((d) => ({ name: d.name, label: d.label ?? d.name }))
       .sort((a, z) => a.label.localeCompare(z.label, 'en'));
   });
+
+  /** Die Ebenen, in die hier angelegt werden kann (T-161): die wählbaren aus der Kopfleiste. */
+  protected readonly wahlEbenen = computed(() => (this.stapel.schreib()?.options ?? []).filter((o) => o.selectable));
+  /** Für diesen einen Artikel; vorgewählt die Schreibebene. */
+  protected readonly ebene = linkedSignal(() => this.stapel.schreib()?.layer?.id ?? '');
 
   /** Die gewählte Art; zuerst die vorgeschlagene, wenn sie hier anlegbar ist. */
   protected readonly typ = linkedSignal(() => {
@@ -220,7 +245,10 @@ export class Anlegen {
         if (roh === undefined || roh === '') continue;
         felder[p.ref] = p.prop.type === 'number' || p.prop.type === 'integer' ? Number(roh) : roh;
       }
-      const e = await this.api.createEntity(typ, name, felder);
+      /* Nur eine abweichende Ebene wird genannt — sonst nimmt der Server die Schreibebene. */
+      const ebene = this.ebene();
+      const kanten = ebene && ebene !== this.stapel.schreib()?.layer?.id ? [{ type: LAYER_RELATION, to: ebene }] : [];
+      const e = await this.api.createEntity(typ, name, felder, kanten);
       /* Was eine Spielerin anlegt, darf sie schreiben (REQ-237) — das weiss
          erst ein neues `/api/me`. Ohne es öffnete der Artikel schreibgeschützt. */
       if (!this.session.isAdmin()) await this.session.load(true);

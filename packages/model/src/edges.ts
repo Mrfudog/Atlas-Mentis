@@ -366,6 +366,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [W + 'artikel/blatt.ts']: ['inLayer'],
       /* Schnell anlegen schlägt die Ebene des Ausgangsartikels vor (T-131). */
       [W + 'artikel/schnell.ts']: ['inLayer'],
+      /* „New article" nennt eine andere Ebene als die Schreibebene (T-161). */
+      [W + 'artikel/anlegen.ts']: ['inLayer'],
       /* Was über eine asField-Kante hängt, am Ort des lesenden Artikels
          (T-125): welche Kanten, sagt `linkedTypes`; genannt werden nur die
          Vorlage einer neuen Instanz und ihre Ebene — das Inventar zeichnet

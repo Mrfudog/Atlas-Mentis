@@ -138,7 +138,7 @@ export class PgRepository implements Repository {
              def.owned ?? false, def.cardinality ?? 'many', def.section ?? null,
              JSON.stringify(def.props ?? {}), def.asField ?? null, def.means ?? null, def.intended ?? null],
           );
-          /* `facet` (T-174, Migration 073) nur, wo eine Kante es sagt — so
+          /* `facet` (T-174, Migration 074) nur, wo eine Kante es sagt — so
              schreibt dieselbe Zeile auch in eine Datenbank vor 073. */
           if (def.facet !== undefined) {
             await client.query('update relation_def set facet = $2 where type = $1', [type, JSON.stringify(def.facet)]);

@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-14. 80 Schnittstellen, 64 Kantenarten.
+Stand 2026-10-15. 80 Schnittstellen, 64 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -2958,7 +2958,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *system | expansion | book | adventure | world | pack | campaign | player | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*, `groupBy` *category | publisher*
+- `kind` *system | expansion | book | adventure | world | pack | campaign | player | test | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*, `groupBy` *category | publisher*
 
 **Geerbte Felder**
 

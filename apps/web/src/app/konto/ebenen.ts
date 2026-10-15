@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Api, ApiError, type EbenenSchreiber, type MeineEbene } from '../kern/api';
 import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
 
 /**
  * **Die Ebenen, in denen ich schreibe** (T-098, E-001) — auf der Seite
@@ -228,6 +229,7 @@ import { Session } from '../kern/session';
 export class MeineEbenen {
   private readonly api = inject(Api);
   protected readonly session = inject(Session);
+  private readonly stapel = inject(Stapel);
 
   protected readonly ebenen = signal<MeineEbene[]>([]);
   protected readonly kampagne = signal<string | null>(null);
@@ -306,7 +308,11 @@ export class MeineEbenen {
   }
 
   protected vorgabeSetzen(l: MeineEbene): Promise<void> {
-    return this.tue(() => this.api.chooseDefaultLayer(l.id));
+    /* Die Kopfleiste zeigt die Schreibebene (T-161) — sie muss es erfahren. */
+    return this.tue(async () => {
+      await this.api.chooseDefaultLayer(l.id);
+      await this.stapel.laden();
+    });
   }
 
   /** Eine Ebene leeren (T-176): die Vorschau nennt Zahl und Namen, bestätigt wird mit der Zahl. */
