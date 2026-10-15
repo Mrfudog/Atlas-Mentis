@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-builder-hit-points",
+      "date": "2026-10-15",
+      "title": "Hit points in the character builder, and Edit opens the builder",
+      "text": "The builder now has a Hit points step: roll each hit die or take its average, as the campaign allows, and see the maximum with your CON. Edit on a character opens the same builder with every choice in place, so you can change a pick and see what follows — Full edit switches to all fields. Cover name, alignment, size and appearance are asked at the end.",
+      "area": "World",
+      "link": "/characters/new"
+    },
+    {
       "id": "2026-10-15-turn-planner",
       "date": "2026-10-15",
       "title": "Plan your turn on the map (prototype)",

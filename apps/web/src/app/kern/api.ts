@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, TurnPlan } from '@nw/model';
+import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, HitPointRule, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1153,6 +1153,8 @@ export class Api {
     languages?: string[];
     /** Talente am Tisch (T-107); ohne Angabe ja. */
     feats?: boolean;
+    /** Trefferpunkte je Stufe (T-194); ohne Angabe wählen. */
+    hitPoints?: HitPointRule;
   }> {
     return this.call('/api/abilities');
   }

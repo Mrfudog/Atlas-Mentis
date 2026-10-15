@@ -155,6 +155,14 @@ export const routes: Routes = [
     loadComponent: () => import('./figur/assistent').then((m) => m.Assistent),
     title: 'Level up · Atlas Mentis',
   },
+  /* Edit an einer Figur ist der Assistent (T-194); „Full edit" ist die Feldmaske. */
+  {
+    path: 'characters/:id/edit',
+    canActivate: [wache],
+    loadComponent: () => import('./figur/assistent').then((m) => m.Assistent),
+    data: { mode: 'edit' },
+    title: 'Edit character · Atlas Mentis',
+  },
   {
     path: 'registry',
     canActivate: [wache],
