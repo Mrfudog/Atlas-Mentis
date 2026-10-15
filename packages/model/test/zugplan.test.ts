@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   costOf,
+  opportunityAttacks,
+  reactionBack,
   gridGeometry,
   hitChance,
   markerOf,
@@ -93,5 +95,39 @@ describe('Zugplan (T-198)', () => {
     expect(cleanStep({ kind: 'act', tile: 'std:dash', cost: 'nonsense', name: 'Dash', evil: 1 }, 0)).toEqual({
       id: 's1', kind: 'act', tile: 'std:dash', name: 'Dash', cost: 'action',
     });
+  });
+});
+
+describe('Gelegenheitsangriffe (T-198, Runde 2)', () => {
+  const gob = { id: 'g', name: 'Goblin', cell: { x: 3, y: 1 }, reach: 5 };
+  const weg = (id: string, ...p: [number, number][]): PlanStep => ({ id, kind: 'move', path: p.map(([x, y]) => ({ x, y })), feet: (p.length - 1) * 5 });
+
+  it('meldet den Schritt, der aus der Reichweite führt, und jeden Gegner einmal', () => {
+    const p = opportunityAttacks([weg('a', [2, 1], [1, 1], [0, 1]), weg('b', [0, 1], [1, 1], [2, 1], [1, 1])], [gob]);
+    expect(p).toEqual([{ step: 'a', index: 0, reactor: 'g', reactorName: 'Goblin' }]);
+  });
+
+  it('bleibt still, wer in der Reichweite bleibt oder vorher Disengage nimmt', () => {
+    expect(opportunityAttacks([weg('a', [2, 1], [2, 2])], [gob])).toEqual([]);
+    const los: PlanStep = { id: 'd', kind: 'act', tile: 'std:disengage', name: 'Disengage', cost: 'action' };
+    expect(opportunityAttacks([los, weg('a', [2, 1], [1, 1])], [gob])).toEqual([]);
+    /* Danach gesetzt hilft es dem Weg davor nicht. */
+    expect(opportunityAttacks([weg('a', [2, 1], [1, 1]), los], [gob])).toHaveLength(1);
+  });
+
+  it('gibt die Reaktion zum eigenen nächsten Zug zurück', () => {
+    /* Verbraucht in Runde 2 bei Zug 3; der Reagierende ist Platz 1. */
+    expect(reactionBack({ round: 2, turn: 3 }, { round: 2, turn: 4 }, 1)).toBe(false);
+    expect(reactionBack({ round: 2, turn: 3 }, { round: 3, turn: 0 }, 1)).toBe(false);
+    expect(reactionBack({ round: 2, turn: 3 }, { round: 3, turn: 1 }, 1)).toBe(true);
+    /* Platz 5 kommt noch in derselben Runde. */
+    expect(reactionBack({ round: 2, turn: 3 }, { round: 2, turn: 5 }, 5)).toBe(true);
+    expect(reactionBack(null, { round: 1, turn: 0 }, 0)).toBeNull();
+  });
+
+  it('zieht die verbrauchte Reaktion vom Budget ab', () => {
+    const r: PlanStep = { id: 'r', kind: 'act', tile: 'x', name: 'Shield', cost: 'reaction' };
+    expect(planBudget([r], 30).problems).toEqual([]);
+    expect(planBudget([r], 30, { reactionSpent: true }).problems).toHaveLength(1);
   });
 });

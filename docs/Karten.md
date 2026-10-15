@@ -318,10 +318,41 @@ Gate 3 — ein Prototyp zum Testen, Bedienung vor Vollständigkeit.
   mit derselben Plan-Id; es gilt der jüngste. Keine Migration, kein
   Artikel, keine Ausfuhr.
 
-Noch nicht (Folgeaufgaben): Waffen aus dem Inventar als Kacheln, Zauber
-mit Flächen und Zauberplätzen, Schaden an der Figur abziehen, Initiative
-und „wer ist dran" als Bedingung, Hex-Raster, Wände (`mapBarriers`),
-Vorteil/Nachteil und Deckung.
+### Runde 2: Gelegenheitsangriffe und kein freies Ziehen
+
+- **Wer bedroht:** die Tokens der Gegenseite mit Statblock, im Kampf nur
+  die Teilnehmer. Seiten gibt es zwei: die der Gruppe (Spielerfigur,
+  Mitglied einer Gruppe, `participates.ally`) und alle anderen
+  (`seiteVon`, `apps/server/src/zugplan.ts`). Die Reichweite ist der
+  weiteste Nahkampfangriff, sonst 5 ft.
+- **Vor dem Senden:** verlässt ein geplanter Weg (oder die Vorschau) die
+  Reichweite eines Gegners, steht ein ⚠ am Feld davor, und der Schritt
+  sagt „provokes an opportunity attack from Goblin" (`opportunityAttacks`,
+  jeder Gegner einmal je Zug). **Disengage** vor dem Weg hebt es auf.
+  Die Felder rechnet die Karte; dem Server schickt der Plan dafür die
+  Bildgrösse mit (`nat`).
+- **Beim Ausführen** hält der Zug am Feld an, das das Token verlassen
+  will (`state: 'reacting'`, `pending`), und fragt, wer reagieren darf —
+  die Leitung für Gegner, Spielende für ihre Figur: „Opportunity attack?"
+  Ja würfelt den besten Nahkampfangriff am Server ins Log und verbraucht
+  die Reaktion (`event_log`, `reaction`); Nein lässt ziehen. Danach geht
+  der Zug weiter (`POST /api/maps/:id/turn-plan/:plan/react`).
+- **Die Reaktion ist weg bis zum eigenen nächsten Zug** (`reactionBack`,
+  nach Runde und Platz in der Reihe); ohne Kampf, bis ein Zug der Figur
+  bestätigt ist. Die Leiste zeigt ◆ dann blass, und ein Plan mit einer
+  Reaktion geht nicht durch.
+- **Kein freies Ziehen im Kampf:** läuft auf der Karte eine Begegnung
+  (`encounterOnMap`), lehnt der Server das Schreiben der Karte ab, wenn
+  jemand, der nicht leitet, ein Spiel-Token oder das Token eines
+  Teilnehmers verschiebt (`zugSperre`, 423). Die Maske sagt es vorher;
+  die Leitung zieht weiter und liest „Moved outside the plan." Ausserhalb
+  eines Kampfes gilt die Kampagneneinstellung (T-204).
+
+Noch nicht (Folgeaufgaben): weitere Reaktionen (Shield, Counterspell) als
+Kacheln, die auf einen Auslöser warten; Waffen aus dem Inventar als
+Kacheln, Zauber mit Flächen und Zauberplätzen, Schaden an der Figur
+abziehen, Initiative und „wer ist dran" als Bedingung, Hex-Raster, Wände
+(`mapBarriers`), Vorteil/Nachteil und Deckung.
 
 ## Was noch fehlt
 

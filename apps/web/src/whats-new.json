@@ -9,6 +9,22 @@
       "link": "/maps"
     },
     {
+      "id": "2026-10-15-gallery-badges-use-as",
+      "date": "2026-10-15",
+      "title": "Images show their size, their tags as badges, and become maps or tokens",
+      "text": "Each image in the gallery now names its resolution, aspect ratio, file size and format, and the layer it comes from. Tags stand as badges: remove one with ×, add one with “+ tag”, or tag a whole selection. “Use as…” turns an image into a map (with a grid suggested from its resolution), the token of a creature, or a prop — and links straight to the result.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
+      "id": "2026-10-15-opportunity-attacks",
+      "date": "2026-10-15",
+      "title": "Opportunity attacks in the turn planner",
+      "text": "When a planned move leaves an enemy's reach, the map marks the square with ⚠ and the turn says who it provokes — Disengage first to avoid it. As the turn plays out, whoever may react is asked “Opportunity attack?”: Attack rolls into the log and uses the reaction until that creature's next turn. During an encounter, player tokens move only through the turn plan.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-statblock-key-numbers",
       "date": "2026-10-15",
       "title": "Quick view of a statblock shows its key numbers",

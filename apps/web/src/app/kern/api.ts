@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, HitPointRule, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
+import type { AbilityMethod, AssetMeta, Entity, EquipmentMethod, GoldRoll, HitPointRule, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -603,6 +603,13 @@ export interface Ebenenauswahl {
   savedAt: string;
 }
 
+/** Was „Use as …" an einem Bild getan hat (T-201). */
+export interface BildVerwendet {
+  /** Ob die Klasse des Bildes jetzt so steht (nicht, wenn man es nicht schreibt). */
+  kind: boolean;
+  open: { id: string; name: string; type: string } | null;
+}
+
 export interface ListenZeile {
   id: string;
   name: string;
@@ -615,6 +622,8 @@ export interface ListenZeile {
   cols: Record<string, unknown>;
   /** Das Vorschaubild — Asset-Id oder Adresse —, wenn `overview` der Art eines zeigt (T-114). */
   image?: string;
+  /** An einem Bild die Masse der Datei (T-201). */
+  asset?: AssetMeta;
   tags?: string[];
   /** Die Ziele der Kantenarten, nach denen `rel=` fragte. */
   rels?: Record<string, string[]>;
@@ -1271,8 +1280,18 @@ export class Api {
     return this.call<ZugLage>(`/api/maps/${encodeURIComponent(map)}/turn-plan${actor ? `?actor=${encodeURIComponent(actor)}` : ''}`);
   }
   /** Einen Zug einreichen — oder einen eingereichten ersetzen (`plan`). */
-  submitTurnPlan(map: string, body: { actor: string; steps: PlanStep[]; plan?: string }): Promise<TurnPlan & { text: string }> {
+  submitTurnPlan(
+    map: string,
+    body: { actor: string; steps: PlanStep[]; plan?: string; nat?: { w: number; h: number } },
+  ): Promise<TurnPlan & { text: string }> {
     return this.call(`/api/maps/${encodeURIComponent(map)}/turn-plan`, { method: 'POST', body: JSON.stringify(body) });
+  }
+  /** Die Antwort auf einen Gelegenheitsangriff (T-198, Runde 2). */
+  reactTurnPlan(map: string, plan: string, attack: boolean): Promise<TurnPlan> {
+    return this.call(`/api/maps/${encodeURIComponent(map)}/turn-plan/${encodeURIComponent(plan)}/react`, {
+      method: 'POST',
+      body: JSON.stringify({ attack }),
+    });
   }
   /** Die Leitung bestätigt oder lehnt ab; bestätigt wird gewürfelt (T-172). */
   decideTurnPlan(map: string, plan: string, decision: 'confirm' | 'reject', note?: string): Promise<TurnPlan> {
@@ -1560,6 +1579,18 @@ export class Api {
     return this.sendeBild('PUT', `/api/assets/${encodeURIComponent(id)}/file`, form);
   }
 
+  /**
+   * **Ein Bild als Karte, Token oder Requisite** (T-201): setzt die Klasse
+   * (wo man das Bild schreibt) und legt an, was dazugehört — `open` ist der
+   * Artikel, zu dem „Open" springt.
+   */
+  useAsset(id: string, als: 'map' | 'token' | 'prop', fuer?: string): Promise<BildVerwendet> {
+    return this.call<BildVerwendet>(`/api/assets/${encodeURIComponent(id)}/use`, {
+      method: 'POST',
+      body: JSON.stringify({ as: als, ...(fuer ? { for: fuer } : {}) }),
+    });
+  }
+
   assetUses(id: string): Promise<BildVerwendung> {
     return this.call<BildVerwendung>(`/api/assets/${encodeURIComponent(id)}/uses`);
   }
@@ -1707,11 +1738,17 @@ export class Api {
 export interface ZugLage {
   leitet: boolean;
   actors: { id: string; name: string; own: boolean; rel: string | null }[];
-  actor: { id: string; name: string; speed: number; rel: string | null } | null;
+  /** `reaction`: hat die Figur ihre Reaktion (Runde 2: verbraucht bis zum eigenen nächsten Zug)? */
+  actor: { id: string; name: string; speed: number; rel: string | null; reaction: boolean } | null;
+  /** Läuft auf der Karte eine Begegnung? Dann zieht nur der Plan. */
+  encounter: { id: string } | null;
   tiles: PlanTile[];
   /** `chances`: Trefferchance in Prozent je Angriffskachel; `ac` nur für die Leitung. */
   targets: { id: string; name: string; type: string; chances: Record<string, number>; ac?: number }[];
-  plans: (TurnPlan & { at: string })[];
+  /** Wer die Figur bedroht: Token (`rel`) der Gegenseite und seine Reichweite in Fuss. */
+  threats: { id: string; name: string; rel: string; reach: number }[];
+  /** `canAnswer`: dieser Betrachter beantwortet die offene Reaktionsfrage. */
+  plans: (TurnPlan & { at: string; canAnswer?: boolean })[];
 }
 
 /** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */

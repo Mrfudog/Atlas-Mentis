@@ -12,6 +12,18 @@
  *   (oder einen eingereichten ersetzen).
  * - `POST /api/maps/:id/turn-plan/:plan/decide` `{decision, note?}` —
  *   die Leitung bestätigt (`confirm`) oder lehnt ab (`reject`).
+ * - `POST /api/maps/:id/turn-plan/:plan/react` `{attack}` — die Antwort
+ *   auf einen **Gelegenheitsangriff** (Runde 2): verlässt ein Weg die
+ *   Reichweite eines Gegners, hält die Ausführung dort an (`reacting`), und
+ *   wer reagieren darf — die Leitung für Gegner, Spielende für ihre Figur —
+ *   sagt Ja (am Server gewürfelt, die Reaktion verbraucht bis zum eigenen
+ *   nächsten Zug) oder Nein. Dann geht der Zug weiter.
+ *
+ * **Im Kampf zieht niemand frei** (Runde 2): läuft auf einer Karte eine
+ * Begegnung, bewegen Spielende Tokens nur über den Plan — `zugSperre`
+ * prüft das beim Schreiben der Karte (`PUT /api/entities/:id`); die
+ * Leitung zieht weiter frei. Ausserhalb eines Kampfes gilt, was die
+ * Kampagne sagt (T-204).
  *
  * **Ein Plan ist Spielgeschehen und kein Inhalt** (wie ein Wurf): er steht
  * im Protokoll (`event_log`, `name: 'turnplan'`, `subject` die Karte), je
@@ -29,7 +41,20 @@
 import { randomUUID, getRandomValues } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  cellAt,
+  cellPoint,
+  cleanNat,
   cleanStep,
+  encounterOnMap,
+  gridGeometry,
+  initiativeOrder,
+  mapSettings,
+  movedTokens,
+  opportunityAttacks,
+  PARTICIPATES,
+  PARTY_RELATION,
+  participantIds,
+  REACTION_EVENT,
   currentCampaign,
   diceModifier,
   entityName,
@@ -46,10 +71,14 @@ import {
   speedModes,
   tilesFor,
   TURNPLAN_EVENT,
+  reactionBack,
   type Entity,
   type PlanResult,
   type PlanStep,
+  type PlanThreat,
   type PlanTile,
+  type GridGeometry,
+  type ReactionSpent,
   type RollPayload,
   type TurnPlan,
   type validateEntity,
@@ -140,6 +169,102 @@ async function plaeneDerKarte(repo: Repository, karte: string): Promise<(TurnPla
   return [...je.values()];
 }
 
+/**
+ * **Auf welcher Seite eine Figur steht** — für die Frage, wer wen bedroht.
+ * Die Seite der Gruppe hat, wer in einer Gruppe ist (`memberOfParty`), eine
+ * Gruppe selbst, eine Spielerfigur, und wer an der Begegnung `ally` trägt;
+ * alle anderen stehen dagegen. Es gibt keine dritte Seite — wer zwei
+ * Lager braucht, braucht erst eine Regel dafür.
+ */
+export function seiteVon(stand: Stand, kampf: Entity | null, id: string): 'party' | 'foe' {
+  const e = stand.map.get(id);
+  if (!e) return 'foe';
+  const typ = primaryInterface(e);
+  if (typ === 'Party' || typ === 'PlayerCharacter') return 'party';
+  if ((e.relations ?? []).some((r) => r.type === PARTY_RELATION)) return 'party';
+  const kante = (kampf?.relations ?? []).find((r) => r.type === PARTICIPATES && r.to === id);
+  return (kante?.props as { ally?: unknown } | undefined)?.ally === true ? 'party' : 'foe';
+}
+
+/** Die Nahkampfreichweite einer Kreatur aus ihren Kacheln; ohne Angriff 5 ft. */
+function reichweiteVon(stand: Stand, e: Entity): number {
+  const nah = kachelnVon(stand.map, statblockVon(stand.alle, e), () => true).filter((t) => t.group === 'attack' && t.longRange === null && t.range !== null);
+  return Math.max(5, ...nah.map((t) => t.range!));
+}
+
+/**
+ * **Wer die Figur bedroht**: die Tokens der Gegenseite auf dieser Karte mit
+ * Statblock, im Kampf nur die Teilnehmer. `karte` ist die Karte, die der
+ * Fragende sieht — Spielende bekommen so keinen verborgenen Gegner verraten.
+ */
+export function bedrohungen(stand: Stand, karte: Entity, figur: string, kampf: Entity | null): { id: string; name: string; rel: string; reach: number }[] {
+  const meine = seiteVon(stand, kampf, figur);
+  const dabei = kampf ? participantIds(kampf) : null;
+  const out: { id: string; name: string; rel: string; reach: number }[] = [];
+  const gesehen = new Set<string>();
+  for (const m of markersOf(karte)) {
+    if (m.kind === 'scenery' || m.to === figur || gesehen.has(m.to)) continue;
+    if (dabei && !dabei.has(m.to)) continue;
+    const e = stand.map.get(m.to);
+    if (!e || !statblockVon(stand.alle, e) || seiteVon(stand, kampf, m.to) === meine) continue;
+    gesehen.add(m.to);
+    out.push({ id: m.to, name: entityName(e), rel: m.rel.id, reach: reichweiteVon(stand, e) });
+  }
+  return out;
+}
+
+/** Die Bedrohungen mit ihren Feldern, für `opportunityAttacks`. */
+function bedrohteFelder(karte: Entity, geo: GridGeometry, b: ReturnType<typeof bedrohungen>): PlanThreat[] {
+  const marker = new Map(markersOf(karte).map((m) => [m.rel.id, m]));
+  return b.flatMap((t) => {
+    const m = marker.get(t.rel);
+    return m ? [{ id: t.id, name: t.name, reach: t.reach, cell: cellAt(geo, m) }] : [];
+  });
+}
+
+/** Wo eine Begegnung steht und welchen Platz `id` in ihrer Reihe hat. */
+function kampfStand(stand: Stand, kampf: Entity | null, id: string): { jetzt: { round: number; turn: number } | null; platz: number | null } {
+  if (!kampf) return { jetzt: null, platz: null };
+  const k = (kampf.components?.['Encounter'] ?? {}) as { round?: unknown; turn?: unknown };
+  const runde = Number(k.round);
+  const jetzt = runde >= 1 ? { round: runde, turn: Math.max(0, Number(k.turn) || 0) } : null;
+  const reihe = initiativeOrder(stand.map, (kampf.relations ?? []).filter((r) => r.type === PARTICIPATES && r.to));
+  const i = reihe.findIndex((r) => r.to === id);
+  return { jetzt, platz: i >= 0 ? i : null };
+}
+
+/**
+ * **Hat `id` seine Reaktion?** Verbraucht ist sie bis zum eigenen nächsten
+ * Zug: im Kampf nach der Reihe (`reactionBack`), sonst bis ein Zug dieser
+ * Figur auf dieser Karte bestätigt ist.
+ */
+export async function reaktionDa(repo: Repository, stand: Stand, karte: string, id: string, kampf: Entity | null): Promise<boolean> {
+  const verbraucht = (await repo.listEvents({ name: REACTION_EVENT, subject: karte, limit: FENSTER })).find((ev) => (ev.payload as ReactionSpent)?.reactor === id);
+  if (!verbraucht) return true;
+  const p = verbraucht.payload as ReactionSpent;
+  if (kampf && p.encounter === kampf.id && p.round != null && p.turn != null) {
+    const { jetzt, platz } = kampfStand(stand, kampf, id);
+    const zurueck = reactionBack({ round: p.round, turn: p.turn }, jetzt, platz);
+    if (zurueck !== null) return zurueck;
+  }
+  return (await plaeneDerKarte(repo, karte)).some((pl) => pl.actor === id && pl.state === 'confirmed' && pl.at > verbraucht.at);
+}
+
+/**
+ * **Freies Ziehen im Kampf** (T-198, Runde 2): läuft auf der Karte eine
+ * Begegnung, bewegt, wer nicht leitet, kein Token eines Teilnehmers und
+ * kein Spiel-Token — die eigene Figur geht dann über den Zugplan. Gibt den
+ * Grund zurück, oder `null`, wenn das Schreiben darf.
+ */
+export function zugSperre(user: User | null, alle: Entity[], vorher: Entity | undefined, nachher: Entity, kampagne: string | null): string | null {
+  if (!user || !vorher || !isMap(vorher) || !isMap(nachher)) return null;
+  if (leitetTisch(user, kampagne)) return null;
+  const kampf = encounterOnMap(alle, nachher.id);
+  if (!kampf) return null;
+  if (!movedTokens(vorher, nachher, participantIds(kampf)).length) return null;
+  return 'During an encounter, tokens move through the turn plan.';
+}
+
 export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   const { repo, feed, viewerOf, roh, sieve, geltend, schreibeGeprueft } = deps;
 
@@ -171,9 +296,10 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   app.get<{ Params: { id: string }; Querystring: { actor?: string } }>('/api/maps/:id/turn-plan', async (request, reply) => {
     const l = await lage(request, request.params.id);
     if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
-    const { user, stand, karte, leitet } = l;
+    const { user, stand, roheKarte, karte, leitet } = l;
     const moegliche = figuren(stand, karte, user, leitet);
     const figur = moegliche.find((e) => e.id === request.query.actor) ?? moegliche.find((e) => (user.actorIds ?? []).includes(e.id)) ?? moegliche[0] ?? null;
+    const kampf = encounterOnMap(stand.alle, roheKarte.id);
 
     let tiles: PlanTile[] = [];
     let speed = 30;
@@ -191,6 +317,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const zielIds = [...new Set(marker.map((m) => m.to))].filter((i) => i !== figur?.id);
     const zielRoh = zielIds.flatMap((i) => stand.map.get(i) ?? []);
     const ziele = zielRoh.length ? await sieve(request, zielRoh, stand.map) : [];
+    const sichtbar = new Set(ziele.map((z) => z.id));
     const angriffe = tiles.filter((t) => t.toHit !== null);
     const targets = ziele.map((z) => {
       const ac = rkVon(stand, stand.map.get(z.id)!);
@@ -198,36 +325,63 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if (ac !== null) for (const t of angriffe) chances[t.id] = Math.round(hitChance(t.toHit!, ac) * 100);
       return { id: z.id, name: entityName(z), type: primaryInterface(z), chances, ...(leitet && ac !== null ? { ac } : {}) };
     });
+    /* Wer die Figur bedroht — auf der gesiebten Karte und nur, wen der
+       Betrachter sieht; Namen wie in `targets`. */
+    const namen = new Map(targets.map((t) => [t.id, t.name]));
+    const threats = figur
+      ? bedrohungen(stand, karte, figur.id, kampf)
+          .filter((t) => sichtbar.has(t.id))
+          .map((t) => ({ ...t, name: namen.get(t.id) ?? t.name }))
+      : [];
 
-    /* Die Pläne: die Leitung sieht alle dieser Karte, Spielende ihre eigenen. */
+    /* Die Pläne: die Leitung sieht alle dieser Karte, Spielende ihre
+       eigenen — und den, der ihre Figur gerade um eine Reaktion fragt. */
     const eigene = new Set(user.actorIds ?? []);
     const plans = (await plaeneDerKarte(repo, karte.id))
-      .filter((p) => leitet || p.by?.id === user.id || eigene.has(p.actor))
-      .slice(0, 20);
+      .filter((p) => leitet || p.by?.id === user.id || eigene.has(p.actor) || (p.state === 'reacting' && !!p.pending && eigene.has(p.pending.reactor)))
+      .slice(0, 20)
+      .map((p) => ({ ...p, ...(p.state === 'reacting' && p.pending ? { canAnswer: darfAntworten(user, leitet, p.pending.reactor) } : {}) }));
 
     return {
       leitet,
+      encounter: kampf ? { id: kampf.id } : null,
       actors: moegliche.map((e) => ({ id: e.id, name: entityName(e), own: eigene.has(e.id), rel: markersOf(karte).find((m) => m.to === e.id)?.rel.id ?? null })),
-      actor: figur ? { id: figur.id, name: entityName(figur), speed, rel: markersOf(karte).find((m) => m.to === figur.id)?.rel.id ?? null } : null,
+      actor: figur
+        ? {
+            id: figur.id,
+            name: entityName(figur),
+            speed,
+            rel: markersOf(karte).find((m) => m.to === figur.id)?.rel.id ?? null,
+            reaction: await reaktionDa(repo, stand, roheKarte.id, figur.id, kampf),
+          }
+        : null,
       tiles,
       targets,
+      threats,
       plans,
     };
   });
 
-  app.post<{ Params: { id: string }; Body: { actor?: unknown; steps?: unknown; plan?: unknown } | null }>(
+  /** Antworten darf die Leitung für jeden, Spielende für ihre Figur. */
+  function darfAntworten(user: User, leitet: boolean, reactor: string): boolean {
+    return leitet || (user.actorIds ?? []).includes(reactor);
+  }
+
+  app.post<{ Params: { id: string }; Body: { actor?: unknown; steps?: unknown; plan?: unknown; nat?: unknown } | null }>(
     '/api/maps/:id/turn-plan',
     async (request, reply) => {
       const l = await lage(request, request.params.id);
       if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
-      const { user, stand, karte, kampagne, leitet } = l;
+      const { user, stand, roheKarte, karte, kampagne, leitet } = l;
       const b = request.body ?? {};
       const figur = figuren(stand, karte, user, leitet).find((e) => e.id === b.actor);
       if (!figur) return reply.code(403).send({ error: 'Planen darf, wer die Figur führt oder am Tisch leitet — und sie braucht ein Token auf dieser Karte.' });
       const steps = (Array.isArray(b.steps) ? b.steps : []).slice(0, 30).map(cleanStep).filter((s): s is PlanStep => !!s);
       if (!steps.length) return reply.code(422).send({ error: 'Ein Plan braucht mindestens einen Schritt.' });
       const tempo = tempoVon(werte(stand.map, statblockVon(stand.alle, figur)));
-      const { problems } = planBudget(steps, tempo);
+      const kampf = encounterOnMap(stand.alle, roheKarte.id);
+      const reactionSpent = !(await reaktionDa(repo, stand, roheKarte.id, figur.id, kampf));
+      const { problems } = planBudget(steps, tempo, { reactionSpent });
       if (problems.length) return reply.code(422).send({ error: problems.join(' ') });
 
       let planId = typeof b.plan === 'string' && b.plan ? b.plan : '';
@@ -235,6 +389,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         const alt = (await plaeneDerKarte(repo, karte.id)).find((p) => p.plan === planId);
         if (!alt || alt.actor !== figur.id || alt.state !== 'planned') planId = '';
       }
+      const nat = cleanNat(b.nat);
       const plan: TurnPlan = {
         plan: planId || `tp-${randomUUID().slice(0, 12)}`,
         map: karte.id,
@@ -245,12 +400,136 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         state: 'planned',
         campaign: kampagne?.id ?? null,
         session: tischSitzung(stand.alle)?.id ?? null,
+        ...(nat ? { nat } : {}),
       };
       await repo.appendEvent(TURNPLAN_EVENT, karte.id, plan);
       feed.publish({ kind: 'plan', id: karte.id });
       return { ...plan, text: planText(steps) };
     },
   );
+
+  /** Ein Wurf am Server ins Log (T-172), für `wer`, geworfen von `von`. */
+  async function wurf(
+    wer: Entity,
+    von: { id: string; name: string },
+    expr: string,
+    label: string,
+    kampagne: Entity | null,
+    hidden: boolean,
+    stand: Stand,
+  ): Promise<{ total: number; crit?: 'crit' | 'fumble' | undefined } | null> {
+    const w = rollDice(expr, zufall);
+    if (!w) return null;
+    const nat = naturalD20(w);
+    const payload: RollPayload = {
+      expr: w.expr,
+      total: w.total,
+      rolls: w.rolls,
+      modifier: diceModifier(w),
+      ...(nat ? { nat: nat.nat } : {}),
+      ...(nat?.crit ? { crit: nat.crit } : {}),
+      label: label.slice(0, 120),
+      by: von,
+      actor: { id: wer.id, name: entityName(wer) },
+      campaign: kampagne?.id ?? null,
+      session: tischSitzung(stand.alle)?.id ?? null,
+      ...(hidden ? { hidden: true as const } : {}),
+    };
+    await wurfEintragen({ repo, feed }, wer, payload);
+    return { total: w.total, crit: nat?.crit };
+  }
+
+  /** Ein Angriff mit einer Kachel: Wurf, Treffer gegen die RK, Schaden — und was davon im Ergebnis steht. */
+  async function angriff(
+    t: PlanTile,
+    wer: Entity,
+    ziel: Entity,
+    von: { id: string; name: string },
+    kampagne: Entity | null,
+    hidden: boolean,
+    stand: Stand,
+    vorne = '',
+  ): Promise<Omit<PlanResult, 'step'>> {
+    const zielName = entityName(ziel);
+    const w = await wurf(wer, von, `1d20${t.toHit! < 0 ? t.toHit : `+${t.toHit}`}`, `${vorne}${t.name} → ${zielName}: attack`, kampagne, hidden, stand);
+    const ac = rkVon(stand, ziel);
+    const treffer = !!w && w.crit !== 'fumble' && (w.crit === 'crit' || (ac !== null && w.total >= ac));
+    let schaden: number | undefined;
+    if (treffer && t.damage) {
+      /* Kritisch: die Würfel zweimal (PHB), der feste Teil einmal. */
+      const ausdruck = w!.crit === 'crit' && /d/.test(t.damage) ? `${t.damage.replace(/\s*[+-]\s*\d+\s*$/, '')}+${t.damage}` : t.damage;
+      const dmg = await wurf(wer, von, ausdruck, `${vorne}${t.name} → ${zielName}: damage${t.damageType ? ` (${t.damageType})` : ''}`, kampagne, hidden, stand);
+      schaden = dmg?.total;
+    }
+    const wie = ac === null ? `rolled ${w?.total ?? '—'} (no AC known)` : treffer ? 'hit' : 'miss';
+    return {
+      text: `${vorne}${t.name} → ${zielName}: ${wie}${schaden !== undefined ? `, ${schaden}${t.damageType ? ` ${t.damageType}` : ''} damage` : ''}`,
+      ...(ac !== null ? { hit: treffer } : {}),
+      ...(schaden !== undefined ? { damage: schaden } : {}),
+    };
+  }
+
+  /**
+   * **Einen bestätigten Zug ausführen** — ab `plan.done`, bis er fertig ist
+   * oder ein Gelegenheitsangriff eine Antwort braucht. Dann steht das Token
+   * auf dem Feld, das es gerade verlassen will, und der Plan auf
+   * `reacting`. Die Kacheln **jetzt** gerechnet, nicht aus dem Plan: der
+   * Plan hält, was gewählt wurde, die Zahlen gehören dem Statblock (D8, D51).
+   */
+  async function ausfuehren(
+    stand: Stand,
+    roheKarte: Entity,
+    kampagne: Entity | null,
+    plan: TurnPlan,
+    von: { id: string; name: string },
+  ): Promise<{ plan: TurnPlan } | { fehler: number; error: string; issues?: unknown }> {
+    const figur = stand.map.get(plan.actor);
+    if (!figur) return { fehler: 409, error: 'Die Figur gibt es nicht mehr.' };
+    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true).map((t) => [t.id, t]));
+    const hidden =
+      (kampagne?.components?.['Campaign'] as { playerRolls?: unknown } | undefined)?.playerRolls === 'gm' && plan.by.id !== von.id;
+    const kampf = encounterOnMap(stand.alle, roheKarte.id);
+    const geo = plan.nat ? gridGeometry(mapSettings(roheKarte), plan.nat) : null;
+    /* Die Leitung führt aus: gegen die ganze Karte, auch verborgene Gegner. */
+    const provs = geo ? opportunityAttacks(plan.steps, bedrohteFelder(roheKarte, geo, bedrohungen(stand, roheKarte, figur.id, kampf))) : [];
+    const gefragt = new Set(plan.asked ?? []);
+    const results: PlanResult[] = [...(plan.results ?? [])];
+    let karte = roheKarte;
+    const rel = markersOf(karte).find((m) => m.to === figur.id)?.rel.id;
+    const schreiben = async () => {
+      if (karte === roheKarte) return null;
+      const r = await schreibeGeprueft(karte);
+      return 'issues' in r ? { fehler: 422, error: 'Die Karte liess sich nicht schreiben.', issues: r.issues } : null;
+    };
+    const { pending: _p, done: _d, ...rest } = plan;
+
+    for (let i = plan.done ?? 0; i < plan.steps.length; i++) {
+      const s = plan.steps[i]!;
+      if (s.kind === 'move') {
+        for (const p of provs.filter((x) => x.step === s.id && !gefragt.has(x.reactor))) {
+          gefragt.add(p.reactor);
+          if (!(await reaktionDa(repo, stand, roheKarte.id, p.reactor, kampf))) continue;
+          if (rel && geo) karte = moveMarker(karte, rel, cellPoint(geo, s.path[p.index]!));
+          const f = await schreiben();
+          if (f) return f;
+          return { plan: { ...rest, state: 'reacting', pending: p, done: i, asked: [...gefragt], results } };
+        }
+        if (rel && s.to) karte = moveMarker(karte, rel, s.to);
+        results.push({ step: s.id, text: `Moved ${s.feet} ft.` });
+        continue;
+      }
+      const t = kacheln.get(s.tile);
+      const ziel = s.target ? stand.map.get(s.target) : undefined;
+      if (!t || t.toHit === null || !ziel) {
+        results.push({ step: s.id, text: `${s.name}${s.targetName ? ` → ${s.targetName}` : ''}` });
+        continue;
+      }
+      results.push({ step: s.id, ...(await angriff(t, figur, ziel, plan.by, kampagne, hidden, stand)) });
+    }
+    const f = await schreiben();
+    if (f) return f;
+    return { plan: { ...rest, state: 'confirmed', asked: [...gefragt], results } };
+  }
 
   app.post<{ Params: { id: string; plan: string }; Body: { decision?: unknown; note?: unknown } | null }>(
     '/api/maps/:id/turn-plan/:plan/decide',
@@ -275,78 +554,66 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       }
       if (b.decision !== 'confirm') return reply.code(422).send({ error: 'decision: confirm oder reject' });
 
-      const figur = stand.map.get(plan.actor);
-      if (!figur) return reply.code(409).send({ error: 'Die Figur gibt es nicht mehr.' });
-      /* Die Kacheln **jetzt** gerechnet, nicht aus dem Plan: der Plan hält,
-         was gewählt wurde, die Zahlen gehören dem Statblock (D8, D51). */
-      const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true).map((t) => [t.id, t]));
-      const session = tischSitzung(stand.alle)?.id ?? null;
-      const hidden =
-        (kampagne?.components?.['Campaign'] as { playerRolls?: unknown } | undefined)?.playerRolls === 'gm' && plan.by.id !== user.id;
-      const wurf = async (expr: string, label: string) => {
-        const w = rollDice(expr, zufall);
-        if (!w) return null;
-        const nat = naturalD20(w);
-        const payload: RollPayload = {
-          expr: w.expr,
-          total: w.total,
-          rolls: w.rolls,
-          modifier: diceModifier(w),
-          ...(nat ? { nat: nat.nat } : {}),
-          ...(nat?.crit ? { crit: nat.crit } : {}),
-          label: label.slice(0, 120),
-          by: plan.by,
-          actor: { id: figur.id, name: entityName(figur) },
-          campaign: kampagne?.id ?? null,
-          session,
-          ...(hidden ? { hidden: true as const } : {}),
-        };
-        await wurfEintragen({ repo, feed }, figur, payload);
-        return { total: w.total, crit: nat?.crit };
-      };
-
-      const results: PlanResult[] = [];
-      let karte = roheKarte;
-      const rel = markersOf(karte).find((m) => m.to === figur.id)?.rel.id;
-      for (const s of plan.steps) {
-        if (s.kind === 'move') {
-          if (rel && s.to) karte = moveMarker(karte, rel, s.to);
-          results.push({ step: s.id, text: `Moved ${s.feet} ft.` });
-          continue;
-        }
-        const t = kacheln.get(s.tile);
-        const ziel = s.target ? stand.map.get(s.target) : undefined;
-        if (!t || t.toHit === null || !ziel) {
-          results.push({ step: s.id, text: `${s.name}${s.targetName ? ` → ${s.targetName}` : ''}` });
-          continue;
-        }
-        const zielName = entityName(ziel);
-        const angriff = await wurf(`1d20${t.toHit < 0 ? t.toHit : `+${t.toHit}`}`, `${t.name} → ${zielName}: attack`);
-        const ac = rkVon(stand, ziel);
-        const treffer = !!angriff && angriff.crit !== 'fumble' && (angriff.crit === 'crit' || (ac !== null && angriff.total >= ac));
-        let schaden: number | undefined;
-        if (treffer && t.damage) {
-          /* Kritisch: die Würfel zweimal (PHB), der feste Teil einmal. */
-          const ausdruck = angriff!.crit === 'crit' && /d/.test(t.damage) ? `${t.damage.replace(/\s*[+-]\s*\d+\s*$/, '')}+${t.damage}` : t.damage;
-          const dmg = await wurf(ausdruck, `${t.name} → ${zielName}: damage${t.damageType ? ` (${t.damageType})` : ''}`);
-          schaden = dmg?.total;
-        }
-        const wie = ac === null ? `rolled ${angriff?.total ?? '—'} (no AC known)` : treffer ? 'hit' : 'miss';
-        results.push({
-          step: s.id,
-          text: `${t.name} → ${zielName}: ${wie}${schaden !== undefined ? `, ${schaden}${t.damageType ? ` ${t.damageType}` : ''} damage` : ''}`,
-          ...(ac !== null ? { hit: treffer } : {}),
-          ...(schaden !== undefined ? { damage: schaden } : {}),
-        });
-      }
-      if (karte !== roheKarte) {
-        const r = await schreibeGeprueft(karte);
-        if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
-      }
-      const neu: TurnPlan = { ...ohneZeit, state: 'confirmed', decidedBy: entschieden, results, ...(note ? { note } : {}) };
-      await repo.appendEvent(TURNPLAN_EVENT, roheKarte.id, neu);
+      const r = await ausfuehren(stand, roheKarte, kampagne, { ...ohneZeit, decidedBy: entschieden, ...(note ? { note } : {}) }, entschieden);
+      if ('fehler' in r) return reply.code(r.fehler).send({ error: r.error, ...(r.issues ? { issues: r.issues } : {}) });
+      await repo.appendEvent(TURNPLAN_EVENT, roheKarte.id, r.plan);
       feed.publish({ kind: 'plan', id: roheKarte.id });
-      return neu;
+      return r.plan;
+    },
+  );
+
+  /**
+   * **Die Antwort auf einen Gelegenheitsangriff.** Ja: der Reagierende
+   * schlägt mit seinem besten Nahkampfangriff zu (am Server gewürfelt),
+   * und seine Reaktion ist bis zum eigenen nächsten Zug weg. Nein: der
+   * Zug geht weiter, die Reaktion bleibt.
+   */
+  app.post<{ Params: { id: string; plan: string }; Body: { attack?: unknown } | null }>(
+    '/api/maps/:id/turn-plan/:plan/react',
+    async (request, reply) => {
+      const l = await lage(request, request.params.id);
+      if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
+      const { user, stand, roheKarte, kampagne, leitet } = l;
+      const plan = (await plaeneDerKarte(repo, roheKarte.id)).find((p) => p.plan === request.params.plan);
+      if (!plan) return reply.code(404).send({ error: 'Nicht gefunden' });
+      if (plan.state !== 'reacting' || !plan.pending) return reply.code(409).send({ error: 'Dieser Zug wartet auf keine Reaktion.' });
+      const p = plan.pending;
+      if (!darfAntworten(user, leitet, p.reactor)) return reply.code(403).send({ error: 'Antworten darf die Leitung oder wer die Figur führt.' });
+      const reagiert = stand.map.get(p.reactor);
+      const figur = stand.map.get(plan.actor);
+      if (!reagiert || !figur) return reply.code(409).send({ error: 'Die Figur gibt es nicht mehr.' });
+      const { at: _at, ...ohneZeit } = plan;
+      const results: PlanResult[] = [...(plan.results ?? [])];
+      const von = { id: user.id, name: user.name };
+
+      if (request.body?.attack === true) {
+        /* Der beste Nahkampfangriff: die höchste Trefferzahl, die nicht weit trägt. */
+        const nah = kachelnVon(stand.map, statblockVon(stand.alle, reagiert), () => true)
+          .filter((t) => t.group === 'attack' && t.toHit !== null && t.longRange === null)
+          .sort((a, b) => b.toHit! - a.toHit! || (b.average ?? 0) - (a.average ?? 0));
+        const t = nah[0];
+        if (t) results.push({ step: p.step, ...(await angriff(t, reagiert, figur, von, kampagne, false, stand, 'Opportunity attack: ')) });
+        else results.push({ step: p.step, text: `Opportunity attack: ${p.reactorName} has no melee attack.` });
+        const kampf = encounterOnMap(stand.alle, roheKarte.id);
+        const { jetzt } = kampfStand(stand, kampf, p.reactor);
+        const spent: ReactionSpent = {
+          reactor: p.reactor,
+          plan: plan.plan,
+          map: roheKarte.id,
+          encounter: kampf?.id ?? null,
+          round: jetzt?.round ?? null,
+          turn: jetzt?.turn ?? null,
+        };
+        await repo.appendEvent(REACTION_EVENT, roheKarte.id, spent);
+      } else {
+        results.push({ step: p.step, text: `${p.reactorName} lets ${plan.actorName} go.` });
+      }
+
+      const r = await ausfuehren(stand, roheKarte, kampagne, { ...ohneZeit, results }, plan.decidedBy ?? von);
+      if ('fehler' in r) return reply.code(r.fehler).send({ error: r.error, ...(r.issues ? { issues: r.issues } : {}) });
+      await repo.appendEvent(TURNPLAN_EVENT, roheKarte.id, r.plan);
+      feed.publish({ kind: 'plan', id: roheKarte.id });
+      return r.plan;
     },
   );
 }

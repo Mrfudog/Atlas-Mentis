@@ -23,6 +23,8 @@
  */
 
 import {
+  assetMeta,
+  type AssetMeta,
   areaOf,
   commonFacets,
   facetFieldValues,
@@ -73,6 +75,8 @@ interface IndexZeile {
   cols: Record<string, unknown>;
   /** Das Vorschaubild (T-114): die Asset-Id oder Adresse — nur, wenn `overview` ein Bild zeigt. */
   image?: string;
+  /** An einem Bild die Masse der Datei (T-201): Galerie und Liste zeigen sie, ohne den Artikel zu holen. */
+  asset?: AssetMeta;
   tags: string[];
   /** Die Werte je Facette seiner Art (T-174): Wörter, Zahlen als Text, Ids. */
   fv: Record<string, string[]>;
@@ -210,6 +214,7 @@ export function buildListIndex(
       users: nutzer.get(e.id)?.size ?? 0,
       cols,
       ...(art.bild ? bildVon(e, art.chain, names) : {}),
+      ...(art.chain.includes('Asset') ? { asset: assetMeta(e) } : {}),
       tags: tagsOf(e),
       fv: facettenWerte(art.facets, e, names, ein),
       relations: e.relations ?? [],
@@ -398,6 +403,8 @@ export interface ListResult {
     cols: Record<string, unknown>;
     /** Das Vorschaubild (T-114). */
     image?: string;
+    /** An einem Bild die Masse der Datei (T-201). */
+    asset?: AssetMeta;
     tags?: string[];
     rels?: Record<string, string[]>;
     /** Die übrigen Fassungen dieser Sache (T-092, mit `versions=1`). */
@@ -649,6 +656,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       ...(z.users ? { users: z.users } : {}),
       cols: z.cols,
       ...(z.image ? { image: z.image } : {}),
+      ...(z.asset ? { asset: z.asset } : {}),
       ...(z.tags.length ? { tags: z.tags } : {}),
       ...(unter.has(z.id)
         ? {

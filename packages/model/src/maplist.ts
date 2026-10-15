@@ -10,11 +10,11 @@
  * Art wird** — gelesen aus `targets['Image.image']` am Typ und nicht aus
  * einer Liste im Code — und wie der Artikel dazu aussieht.
  *
- * Kein Framework: die Auswahl im Web, die Kartenliste und „Use as map“ am
- * Bild (T-201) rechnen gleich.
+ * Kein Framework: die Auswahl im Web und die Kartenliste rechnen gleich;
+ * die Karte selbst baut `mapFromImage` (T-201), wie „Use as map“ am Bild.
  */
 
-import { offeredAssetKind, assetUses } from './assets.js';
+import { offeredAssetKind, assetUses, mapFromImage } from './assets.js';
 import { entityName, fieldTarget } from './entity.js';
 import { INSIDE_MAP_RELATION, isMap, MAP_OF_RELATION, MAP_TYPE, parentMapRelation } from './map.js';
 import type { Entity, Registry } from './types.js';
@@ -55,21 +55,14 @@ export interface FromImage {
 }
 
 /**
- * **Ein Artikel aus einem Bild** (T-202): Name aus dem Bild, das Bild als
- * `Image.image`. Die Ebene nennt der Aufruf nicht — angelegt wird in der
- * Schreibebene, wie bei jedem Anlegen (T-161).
+ * **Ein Artikel aus einem Bild** (T-202): Name aus dem Bild ohne Endung,
+ * das Bild als `Image.image`. Eine Karte baut `mapFromImage` (T-201, mit
+ * dem vorgeschlagenen Gitter) — beide Wege bauen dieselbe Karte. Die Ebene
+ * nennt der Aufruf nicht: angelegt wird in der Schreibebene (T-161).
  */
 export function fromImage(type: string, asset: Entity): FromImage {
+  if (type === MAP_TYPE) return mapFromImage(asset, imageTitle(asset));
   return { type, name: imageTitle(asset), fields: { 'Image.image': asset.id } };
-}
-
-/**
- * **Eine Karte aus einem Bild** (T-202, T-201: „Use as map“). Raster und
- * Massstab bleiben bei den Vorgaben des Registers; eingestellt wird an der
- * Karte.
- */
-export function mapFromImage(asset: Entity): FromImage {
-  return fromImage(MAP_TYPE, asset);
 }
 
 /** Eine Zeile der Kartenliste: die Karte, ihre Tiefe und die Karte darüber. */

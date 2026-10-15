@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { describeAsset } from '@nw/model';
 import { Api, ApiError, type BulkAntwort, type Liste, type ListenZeile } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
@@ -19,6 +20,13 @@ const BLATT = 60;
  * verwendet wird, ersetzen). **Marken für viele auf einmal** setzt die
  * Leitung über die Massenänderung der Werkbank (`/api/bulk`) — mit
  * Rückgängig, wie dort.
+ *
+ * **T-201:** jede Kachel nennt die Datei (Auflösung, Verhältnis, Grösse,
+ * Format — gespeichert beim Hochladen, `describeAsset`) und ihre Herkunft
+ * (Ebene, Buch); die Marken stehen als Badges da und werden dort gesetzt
+ * und entfernt, Vorschläge aus den Marken der Treffer. „Use as …" macht
+ * aus einem Bild eine Karte, ein Token oder eine Requisite und springt
+ * hin (`POST /api/assets/:id/use`).
  */
 @Component({
   selector: 'nw-galerie',
@@ -96,18 +104,47 @@ const BLATT = 60;
           <span class="dim" role="status">{{ liste()?.total ?? 0 }} {{ (liste()?.total ?? 0) === 1 ? 'image' : 'images' }}</span>
         </header>
 
-        @if (session.leitung() && auswahl().length) {
+        <datalist id="galerie-marken">
+          @for (t of marken(); track t.tag) {
+            <option [value]="t.tag"></option>
+          }
+        </datalist>
+        @if (auswahl().length) {
           <div class="massen" role="region" aria-label="Selected images">
             <b>{{ auswahl().length }} selected</b>
-            <input type="text" placeholder="tag" [value]="neueMarke()" (input)="neueMarke.set($any($event.target).value)" aria-label="Tag for the selected images" />
-            <button type="button" (click)="marke('addTag')" [disabled]="!neueMarke().trim() || arbeitet()">Add tag</button>
-            <button type="button" (click)="marke('removeTag')" [disabled]="!neueMarke().trim() || arbeitet()">Remove tag</button>
+            @if (session.leitung()) {
+              <input type="text" list="galerie-marken" placeholder="tag" [value]="neueMarke()" (input)="neueMarke.set($any($event.target).value)" aria-label="Tag for the selected images" />
+              <button type="button" (click)="marke('addTag', neueMarke(), auswahl())" [disabled]="!neueMarke().trim() || arbeitet()">Add tag</button>
+              <button type="button" (click)="marke('removeTag', neueMarke(), auswahl())" [disabled]="!neueMarke().trim() || arbeitet()">Remove tag</button>
+            }
+            @if (session.darfAnlegen()) {
+              <span class="als">
+                Use as
+                <button type="button" (click)="verwenden(auswahl(), 'map')" [disabled]="arbeitet()">map</button>
+                <button type="button" (click)="tokenWaehlen(auswahl())" [disabled]="arbeitet()">token</button>
+                <button type="button" (click)="verwenden(auswahl(), 'prop')" [disabled]="arbeitet()">prop</button>
+              </span>
+            }
             <button type="button" class="leise" (click)="auswahl.set([])">Clear selection</button>
+          </div>
+        }
+        @if (tokenFuer(); as ids) {
+          <div class="massen token" role="dialog" aria-label="Use as token">
+            <b>Token for</b>
+            <input type="search" placeholder="Creature or character…" [value]="kreaturSuche()" (input)="sucheKreatur($any($event.target).value)" aria-label="Find a creature" />
+            @for (k of kreaturen(); track k.id) {
+              <button type="button" (click)="verwenden(ids, 'token', k.id)" [disabled]="arbeitet()">{{ k.name }}</button>
+            }
+            <button type="button" (click)="verwenden(ids, 'token')" [disabled]="arbeitet()">Only set the class</button>
+            <button type="button" class="leise" (click)="tokenFuer.set(null)">Cancel</button>
           </div>
         }
         @if (ergebnis(); as r) {
           <p class="ergebnis" role="status">
             {{ r.text }}
+            @for (o of r.open ?? []; track o.id) {
+              <a [routerLink]="['/artikel', o.id]">Open {{ o.name }}</a>
+            }
             @if (r.lauf) {
               <button type="button" class="leise" (click)="zurueck(r.lauf)">Undo</button>
             }
@@ -121,19 +158,47 @@ const BLATT = 60;
           <ul class="raster" aria-label="Images">
             @for (z of zeilen(); track z.id) {
               <li class="kachel" [class.gewaehlt]="auswahl().includes(z.id)">
-                @if (session.leitung()) {
+                @if (session.leitung() || session.darfAnlegen()) {
                   <input class="waehler" type="checkbox" [checked]="auswahl().includes(z.id)" (change)="umschalten(auswahl, z.id)" [attr.aria-label]="'Select ' + z.name" />
                 }
                 <a [routerLink]="['/artikel', z.id]" [nwQuick]="z.id" class="bildlink">
                   <nw-bild [wert]="z.id" groesse="thumb" [oeffnen]="false" [alt]="z.name" />
                   <span class="name">{{ z.name }}</span>
                 </a>
+                @if (beschreibung(z); as d) {
+                  <span class="datei">{{ d }}</span>
+                }
+                @if (z.layers.length) {
+                  <span class="herkunft" [title]="z.layers.join(', ')">from {{ z.layers.join(', ') }}</span>
+                }
                 <span class="meta">
                   <span class="klasse">{{ klasseVon(z) }}</span>
                   @for (t of z.tags ?? []; track t) {
-                    <span class="marke">{{ t }}</span>
+                    <span class="marke">
+                      {{ t }}
+                      @if (session.leitung()) {
+                        <button type="button" class="weg" (click)="marke('removeTag', t, [z.id])" [disabled]="arbeitet()" [attr.aria-label]="'Remove tag ' + t + ' from ' + z.name">×</button>
+                      }
+                    </span>
+                  }
+                  @if (session.leitung()) {
+                    @if (markeAnKachel() === z.id) {
+                      <input class="neu" type="text" list="galerie-marken" placeholder="tag" autofocus
+                        (keydown.enter)="kachelMarke(z, $any($event.target).value)" (keydown.escape)="markeAnKachel.set(null)"
+                        (blur)="kachelMarke(z, $any($event.target).value)" [attr.aria-label]="'New tag for ' + z.name" />
+                    } @else {
+                      <button type="button" class="marke plus" (click)="markeAnKachel.set(z.id)" [attr.aria-label]="'Add a tag to ' + z.name">+ tag</button>
+                    }
                   }
                 </span>
+                @if (session.darfAnlegen()) {
+                  <select class="als-wahl" (change)="alsWahl(z.id, $event)" [attr.aria-label]="'Use ' + z.name + ' as'" [disabled]="arbeitet()">
+                    <option value="">Use as…</option>
+                    <option value="map">Map</option>
+                    <option value="token">Token</option>
+                    <option value="prop">Prop</option>
+                  </select>
+                }
               </li>
             }
           </ul>
@@ -169,7 +234,13 @@ export class Galerie {
   protected readonly laedt = signal(false);
   protected readonly arbeitet = signal(false);
   protected readonly problem = signal<string | null>(null);
-  protected readonly ergebnis = signal<{ text: string; lauf: string | null } | null>(null);
+  protected readonly ergebnis = signal<{ text: string; lauf: string | null; open?: { id: string; name: string }[] } | null>(null);
+  /** An welcher Kachel gerade eine Marke getippt wird. */
+  protected readonly markeAnKachel = signal<string | null>(null);
+  /** Für welche Bilder ein Token gewählt wird — und die Kreaturen zur Wahl. */
+  protected readonly tokenFuer = signal<string[] | null>(null);
+  protected readonly kreaturSuche = signal('');
+  protected readonly kreaturen = signal<{ id: string; name: string }[]>([]);
   /* Am Telefon ist die Leiste zugeklappt; am Desktop offen. */
   protected readonly breit = signal(typeof matchMedia === 'function' ? !matchMedia('(max-width: 760px)').matches : true);
 
@@ -235,10 +306,14 @@ export class Galerie {
     return typeof k === 'string' && k ? k : 'image';
   }
 
-  /** Marke an die gewählten Bilder — über die Massenänderung, mit Rückgängig. */
-  protected async marke(op: 'addTag' | 'removeTag'): Promise<void> {
-    const tag = this.neueMarke().trim();
-    const ids = this.auswahl();
+  /** Die Zeile über die Datei: `1920×1080 px · 16:9 · 640 KB · WEBP` (T-201). */
+  protected beschreibung(z: ListenZeile): string {
+    return z.asset ? describeAsset(z.asset) : '';
+  }
+
+  /** Marke an Bilder — über die Massenänderung, mit Rückgängig; an einer Kachel wie an der Auswahl. */
+  protected async marke(op: 'addTag' | 'removeTag', roh: string, ids: string[]): Promise<void> {
+    const tag = roh.trim();
     if (!tag || !ids.length) return;
     this.arbeitet.set(true);
     this.problem.set(null);
@@ -252,6 +327,69 @@ export class Galerie {
     } finally {
       this.arbeitet.set(false);
     }
+  }
+
+  /** Enter und das Verlassen des Feldes schicken ab — einmal: wer schon abgeschickt hat, hat das Feld geschlossen. */
+  protected kachelMarke(z: ListenZeile, wert: string): void {
+    if (this.markeAnKachel() !== z.id || this.arbeitet()) return;
+    this.markeAnKachel.set(null);
+    const tag = wert.trim();
+    if (tag && !(z.tags ?? []).includes(tag)) void this.marke('addTag', tag, [z.id]);
+  }
+
+  protected alsWahl(id: string, ev: Event): void {
+    const el = ev.target as HTMLSelectElement;
+    const als = el.value as 'map' | 'token' | 'prop' | '';
+    el.value = '';
+    if (als === 'token') this.tokenWaehlen([id]);
+    else if (als) void this.verwenden([id], als);
+  }
+
+  protected tokenWaehlen(ids: string[]): void {
+    this.tokenFuer.set([...ids]);
+    this.kreaturen.set([]);
+    this.sucheKreatur('');
+  }
+
+  private kreaturLauf = 0;
+  protected async sucheKreatur(q: string): Promise<void> {
+    this.kreaturSuche.set(q);
+    const nr = ++this.kreaturLauf;
+    try {
+      const r = await this.api.list({ type: 'Creature', q: q.trim() || undefined, limit: 8 });
+      if (nr === this.kreaturLauf) this.kreaturen.set(r.rows.map((z) => ({ id: z.id, name: z.name })));
+    } catch {
+      if (nr === this.kreaturLauf) this.kreaturen.set([]);
+    }
+  }
+
+  /**
+   * **Als Karte, Token, Requisite verwenden** (T-201): je Bild ein Aufruf;
+   * was angelegt oder angehängt wurde, steht danach mit „Open" da.
+   */
+  protected async verwenden(ids: string[], als: 'map' | 'token' | 'prop', fuer?: string): Promise<void> {
+    if (!ids.length) return;
+    this.arbeitet.set(true);
+    this.problem.set(null);
+    const open: { id: string; name: string }[] = [];
+    let fehler = 0;
+    let letzter = '';
+    for (const id of ids) {
+      try {
+        const r = await this.api.useAsset(id, als, fuer);
+        if (r.open && !open.some((o) => o.id === r.open!.id)) open.push({ id: r.open.id, name: r.open.name });
+      } catch (e) {
+        fehler += 1;
+        letzter = e instanceof ApiError ? e.message : 'The change failed.';
+      }
+    }
+    this.tokenFuer.set(null);
+    const getan = ids.length - fehler;
+    const was = als === 'map' ? `Made ${getan} ${getan === 1 ? 'map' : 'maps'}` : als === 'token' ? (fuer ? `Set the token of ${open[0]?.name ?? 'the creature'}` : `Marked ${getan} as token`) : `Marked ${getan} as prop`;
+    this.ergebnis.set({ text: `${was}${fehler ? `, ${fehler} failed` : ''}.`, lauf: null, open });
+    if (fehler) this.problem.set(letzter);
+    this.arbeitet.set(false);
+    await this.hole(this.frage(), 0);
   }
 
   protected async zurueck(lauf: string): Promise<void> {

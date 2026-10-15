@@ -46,8 +46,9 @@ import {
   planPath,
   planReach,
   tokenCell,
+  opportunityAttacks,
 } from '@nw/model';
-import type { Cell, Entity, Frame, MapMarker, Pt, RevealShape, Size } from '@nw/model';
+import type { Cell, Entity, Frame, MapMarker, PlanStep, Pt, RevealShape, Size } from '@nw/model';
 import { Api, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -77,11 +78,15 @@ export interface Planung {
   labels: Readonly<Record<string, string>>;
   /** Die schon geplanten Wege. */
   paths: readonly (readonly Cell[])[];
+  /** Die Zugfolge — für die Gelegenheitsangriffe (Disengage davor hebt sie auf). */
+  steps: readonly PlanStep[];
+  /** Wer bedroht: das Token (`rel`) und seine Reichweite in Fuss. */
+  threats: readonly { id: string; name: string; rel: string; reach: number }[];
 }
 
-/** Was ein Antippen im Plan ergibt: ein Weg oder ein Ziel. */
+/** Was ein Antippen im Plan ergibt: ein Weg (mit der Bildgrösse, für den Server) oder ein Ziel. */
 export type PlanTipp =
-  | { kind: 'cell'; path: Cell[]; feet: number; to: Pt }
+  | { kind: 'cell'; path: Cell[]; feet: number; to: Pt; nat: Size }
   | { kind: 'target'; id: string; name: string; feet: number | null };
 
 /** Ab so vielen Bildpunkten ist ein Druck ein Ziehen und kein Antippen. */
@@ -365,6 +370,9 @@ interface Zeiger {
               @if (pb.vorschauText; as t) {
                 <span class="messwert" [style.left.%]="t.x * 100" [style.top.%]="t.y * 100">{{ t.text }}</span>
               }
+              @for (g of pb.warnungen; track g.k) {
+                <span class="gelegenheit" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [title]="g.text" role="note" [attr.aria-label]="g.text">⚠</span>
+              }
             }
             @if (gruppe(); as p) {
               <button
@@ -426,6 +434,9 @@ interface Zeiger {
           @for (x of f.einzeln; track x) {
             <span class="fehler"> · {{ x }}</span>
           }
+        } @else if (hinweis(); as h) {
+          {{ h }}
+          <button type="button" class="klein" (click)="hinweis.set(null)" aria-label="Dismiss">×</button>
         } @else if (werkzeug() === 'messen') {
           {{ messung()?.text || 'Tap a start point, then an end point.' }}
         } @else if (werkzeug() === 'setzen') {
@@ -453,7 +464,11 @@ interface Zeiger {
             · {{ marker().length }} {{ marker().length === 1 ? 'marker' : 'markers' }}
           }
           @if (darfSchreiben() && marker().length) {
-            · drag a marker to move it
+            @if (imKampf() && !kampfLeitung()) {
+              · during the encounter, tokens move through the turn plan
+            } @else {
+              · drag a marker to move it
+            }
           }
         }
       </p>
@@ -470,6 +485,9 @@ export class Karte {
   /** Der Zugplan (T-198): solange er dasteht, wählt ein Antippen Weg oder Ziel. */
   readonly planung = input<Planung | null>(null);
   readonly planTipp = output<PlanTipp>();
+  /** Die Gelegenheitsangriffe der geplanten Wege (ohne Vorschau) — für die Zugfolge (T-198, Runde 2). */
+  readonly planWarnungen = output<{ step: string; reactorName: string }[]>();
+  private warnSchluessel = '';
 
   protected readonly MARKER_MIN = MARKER_MIN;
   protected readonly PINSEL = PINSEL;
@@ -487,6 +505,15 @@ export class Karte {
   private readonly innen = viewChild<ElementRef<HTMLElement>>('innen');
 
   constructor() {
+    /* Die Warnungen gehen an den Planer, sobald sie sich ändern — nicht
+       bei jeder Mausbewegung (die Vorschau zählt nicht mit). */
+    effect(() => {
+      const w = (this.planBild()?.warnungen ?? []).filter((x) => x.step !== '__vorschau').map((x) => ({ step: x.step, reactorName: x.reactorName }));
+      const k = w.map((x) => `${x.step}:${x.reactorName}`).join('|');
+      if (k === this.warnSchluessel) return;
+      this.warnSchluessel = k;
+      untracked(() => this.planWarnungen.emit(w));
+    });
     /* Geschrieben wird durch `validateEntity`, und das braucht das
        Register. Unter Play lud es bis T-117 niemand — jedes Ziehen eines
        Markers endete dort mit „The registry is not loaded". */
@@ -848,6 +875,13 @@ export class Karte {
     ev.stopPropagation();
     this.nachZug = false;
     if (!this.darfSchreiben() || this.werkzeug() !== 'keins' || ev.button !== 0) return;
+    /* **Im Kampf zieht der Plan** (T-198, Runde 2): Spielende bewegen ein
+       Token dann nur über den Zugplan — der Server prüft dasselbe
+       (`zugSperre`); die Leitung zieht weiter, mit Hinweis. */
+    if (this.imKampf() && !this.kampfLeitung() && m.kind !== 'scenery') {
+      this.hinweis.set('During the encounter, your token moves through the turn plan.');
+      return;
+    }
     this.griff = { id: m.rel.id, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y } };
     (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId);
   }
@@ -966,7 +1000,11 @@ export class Karte {
         if (this.pfadAufdecken() && this.nebelAn()) {
           neu = revealArea(neu, this.strichForm([g.von, z.pt]));
         }
-        void this.schreiben(neu).finally(() => this.zug.set(null));
+        const ausserhalb = this.imKampf() && this.kampfLeitung();
+        void this.schreiben(neu).finally(() => {
+          this.zug.set(null);
+          if (ausserhalb && !this.mangel()) this.hinweis.set('Moved outside the plan.');
+        });
       }
       return;
     }
@@ -1050,7 +1088,8 @@ export class Karte {
     if (!pt) return;
     if (this.planung()?.mode === 'move') {
       const w = this.wegZu(pt);
-      if (w) this.planTipp.emit({ kind: 'cell', ...w });
+      const nat = this.nat();
+      if (w && nat) this.planTipp.emit({ kind: 'cell', ...w, nat });
       return;
     }
     if (this.werkzeug() === 'messen') {
@@ -1144,10 +1183,27 @@ export class Karte {
         ? { cx: mitte.x, cy: mitte.y, rx: ((plan.range / 5 + 0.5) * geo.size) / geo.w, ry: ((plan.range / 5 + 0.5) * geo.size) / geo.h }
         : null;
     const verschoben = pr.token && (pr.token.x !== pr.start.x || pr.token.y !== pr.start.y);
+    /* **Gelegenheitsangriffe** (T-198, Runde 2): wo ein geplanter Weg oder
+       die Vorschau die Reichweite eines Gegners verlässt, steht ein ⚠ am
+       Feld davor — bevor der Zug an die Leitung geht. */
+    const marker = new Map(markersOf(this.angezeigt() ?? ({} as Entity)).map((m) => [m.rel.id, m]));
+    const drohen = plan.threats.flatMap((t) => {
+      const m = marker.get(t.rel);
+      return m ? [{ id: t.id, name: t.name, reach: t.reach, cell: cellAt(geo, m) }] : [];
+    });
+    const folge: PlanStep[] = [...plan.steps];
+    if (w) folge.push({ id: '__vorschau', kind: 'move', path: w.path, feet: w.feet });
+    const warnungen = opportunityAttacks(folge, drohen).map((p) => {
+      const weg = folge.find((x) => x.id === p.step);
+      const c = weg?.kind === 'move' ? weg.path[p.index]! : pr.start;
+      const pt = cellPoint(geo, c);
+      return { k: `${p.step}-${p.reactor}`, step: p.step, reactorName: p.reactorName, x: pt.x, y: pt.y, text: `Provokes an opportunity attack from ${p.reactorName}` };
+    });
     return {
       reach,
       wege,
       ring,
+      warnungen,
       vorschau: w ? linie(w.path) : null,
       vorschauText: w ? { x: w.to.x, y: w.to.y, text: `${w.feet} ft` } : null,
       geist: verschoben ? { ...mitte, px: Math.max(MARKER_MIN, geo.size * this.faktor()) } : null,
@@ -1332,6 +1388,12 @@ export class Karte {
 
   protected readonly speichert = signal(false);
   protected readonly mangel = signal<Mangel | null>(null);
+  /** Ein kurzer Hinweis unter der Leiste — etwa „Moved outside the plan." (T-198). */
+  protected readonly hinweis = signal<string | null>(null);
+  /** Läuft auf dieser Karte ein Kampf? (`/api/maps/:id/context`, `turn`). */
+  protected readonly imKampf = computed(() => !!this.kontext()?.turn);
+  /** Leitet der Betrachter den Tisch (und schaut nicht als Spieler)? Schreiben allein reicht im Kampf nicht. */
+  protected readonly kampfLeitung = computed(() => this.session.leitung() && !this.spielersicht());
 
   /**
    * Die Karte mit der geänderten Kante schreiben — durch `validateEntity`

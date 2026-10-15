@@ -138,7 +138,7 @@ import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
 import { registerKartenliste } from './kartenliste.js';
 import { registerRegeloptionen } from './regeloptionen.js';
-import { registerZugplan } from './zugplan.js';
+import { registerZugplan, zugSperre } from './zugplan.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
 import {
@@ -1156,7 +1156,7 @@ export function buildApp({
     /* Geben (T-150): die Route fragt `mayWrite` am Inventar selbst (`stueck.ts`). */
     if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
     /* Der Zugplan (T-198): die Routen prüfen Figur und Leitung selbst (`zugplan.ts`). */
-    if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/decide)?$/.test(url) && request.method === 'POST') return;
+    if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/(decide|react))?$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -1171,6 +1171,9 @@ export function buildApp({
        `mayWrite` selbst — erst nach dem Sieb, damit ein fremdes Bild 404
        sagt und nicht 403. */
     if (/^\/api\/assets\/[^/]+\/file$/.test(url) && request.method === 'PUT') return;
+    /* Ein Bild als Karte, Token, Requisite (T-201): die Route fragt
+       `mayCreate` und `mayWrite` selbst, je nachdem, was sie tut. */
+    if (/^\/api\/assets\/[^/]+\/use$/.test(url) && request.method === 'POST') return;
     /* Ein Konto schreibt seine Figur und was an ihr hängt, was es selbst
        angelegt hat und was in seinen Ebenen liegt (T-098) — und sonst
        nichts. */
@@ -3258,6 +3261,10 @@ export function buildApp({
       const user = await viewerOf(request);
       return !!user && mayWrite(user, await ownedBy(user), id);
     },
+    darfAnlegen: async (request) => {
+      const user = await viewerOf(request);
+      return !!user && (user.isAdmin || (await mayCreate(user)));
+    },
   });
   /* Der Zugplan auf der Karte (T-198): planen, einreichen, bestätigen —
      gewürfelt wird beim Bestätigen, ins Log (T-172). */
@@ -3326,6 +3333,15 @@ export function buildApp({
     const gesperrt = await reservierteSperre(repo, await viewerOf(request), await repo.getEntity(entity.id), entity);
     /* 423 und nicht 409: ein 409 heisst in der Maske „neu laden und zusammenführen". */
     if (gesperrt) return { code: 423, body: { error: gesperrt } };
+
+    /* **Im Kampf zieht niemand frei** (T-198, Runde 2): läuft auf dieser
+       Karte eine Begegnung, bewegen Spielende Tokens nur über den Zugplan. */
+    if (vorherRoh && isMap(vorherRoh)) {
+      const alleJetzt = await repo.listEntities();
+      const kampagneJetzt = currentCampaign(new Map(alleJetzt.map((e) => [e.id, e])), (await repo.getRegistry()).settings ?? null);
+      const sperre = zugSperre(await viewerOf(request), alleJetzt, vorherRoh, entity, kampagneJetzt?.id ?? null);
+      if (sperre) return { code: 423, body: { error: sperre } };
+    }
 
     /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
        `maySetReady` ist, macht aus einem unfertigen Artikel keinen

@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { mapFromImage } from '@nw/model';
+import { MAP_TYPE, fromImage } from '@nw/model';
 import { Api, type KartenZeile } from '../kern/api';
 import { Session } from '../kern/session';
 import { Bild, BildWahl } from '../artikel/bild';
@@ -9,7 +9,7 @@ import { Bild, BildWahl } from '../artikel/bild';
  * **Play › Maps** (T-202, `/maps`): der feste Ort für Karten. Eine Liste
  * mit Vorschaubild, Unterkarten eingerückt unter ihrer Karte (`mapTree`),
  * gefiltert nach Ebene, Marke und Namen; dazu „New map“ — ein Kartenbild
- * hochladen oder wählen, und die Karte steht da (`mapFromImage`, in der
+ * hochladen oder wählen, und die Karte steht da (`fromImage` → `mapFromImage`, in der
  * Schreibebene).
  *
  * Vorher hiess „eine Karte anlegen“: im Kompendium die Art Map finden,
@@ -303,7 +303,7 @@ export class Karten {
     this.problem.set(null);
     try {
       const bild = await this.api.entity(assetId);
-      const neu = mapFromImage(bild);
+      const neu = fromImage(MAP_TYPE, bild);
       const e = await this.api.createEntity(neu.type, neu.name, neu.fields);
       /* Was eine Spielerin anlegt, darf sie schreiben (REQ-237). */
       if (!this.session.isAdmin()) await this.session.load(true);

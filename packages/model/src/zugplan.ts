@@ -79,8 +79,31 @@ export type PlanStep =
       targetName?: string;
     };
 
-/** Wie ein Plan steht. */
-export type PlanState = 'draft' | 'planned' | 'confirmed' | 'rejected';
+/**
+ * Wie ein Plan steht. `reacting`: bestätigt und halb ausgeführt — er wartet
+ * auf die Antwort zu einem Gelegenheitsangriff (`pending`).
+ */
+export type PlanState = 'draft' | 'planned' | 'reacting' | 'confirmed' | 'rejected';
+
+/**
+ * **Ein Gelegenheitsangriff, den ein Weg auslöst** (T-198, Runde 2): beim
+ * Schritt von `path[index]` nach `path[index + 1]` verlässt die Figur die
+ * Reichweite von `reactor`.
+ */
+export interface Provocation {
+  step: string;
+  index: number;
+  reactor: string;
+  reactorName: string;
+}
+
+/** Wer reagieren könnte: ein Token der Gegenseite, sein Feld und seine Reichweite in Fuss. */
+export interface PlanThreat {
+  id: string;
+  name: string;
+  cell: Cell;
+  reach: number;
+}
 
 /** Was ein bestätigter Schritt ergab. */
 export interface PlanResult {
@@ -108,9 +131,32 @@ export interface TurnPlan {
   results?: PlanResult[];
   campaign?: string | null;
   session?: string | null;
+  /** Die Bildgrösse der Karte beim Planen — ohne sie kennt der Server keine Felder. */
+  nat?: { w: number; h: number };
+  /** Bei `reacting`: wer gefragt wird, und wo der Zug steht. */
+  pending?: Provocation;
+  /** Bei `reacting`: so viele Schritte sind schon ausgeführt. */
+  done?: number;
+  /** Wer in diesem Zug schon gefragt wurde — jeder einmal. */
+  asked?: string[];
 }
 
 export const TURNPLAN_EVENT = 'turnplan';
+
+/**
+ * Eine verbrauchte Reaktion (`event_log`, `name: 'reaction'`, `subject` die
+ * Karte): wer, in welchem Plan, und wo die Begegnung da stand.
+ */
+export interface ReactionSpent {
+  reactor: string;
+  plan: string;
+  map: string;
+  encounter?: string | null;
+  round?: number | null;
+  turn?: number | null;
+}
+
+export const REACTION_EVENT = 'reaction';
 
 /** Ein frischer Zug: je eins, und das Tempo. */
 export function freshResources(speed: number): TurnResources {
@@ -241,8 +287,14 @@ export function tilesFor(
  * Was nicht mehr reicht, steht in `problems` — gespeichert werden darf ein
  * solcher Plan nicht, angezeigt schon (rot), damit man sieht, warum.
  */
-export function planBudget(steps: readonly PlanStep[], speed: number): { left: TurnResources; problems: string[] } {
+export function planBudget(
+  steps: readonly PlanStep[],
+  speed: number,
+  /** Die Reaktion ist schon weg (ein Gelegenheitsangriff seit dem eigenen letzten Zug). */
+  opts: { reactionSpent?: boolean } = {},
+): { left: TurnResources; problems: string[] } {
   const left = freshResources(speed);
+  if (opts.reactionSpent) left.reaction = 0;
   const problems: string[] = [];
   for (const s of steps) {
     if (s.kind === 'move') {
@@ -393,4 +445,74 @@ export function cleanStep(raw: unknown, i: number): PlanStep | null {
     };
   }
   return null;
+}
+
+/** Die Bildgrösse aus dem Netz: zwei positive Zahlen, sonst nichts. */
+export function cleanNat(raw: unknown): { w: number; h: number } | null {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const w = num(o['w']);
+  const h = num(o['h']);
+  return w !== null && h !== null && w > 0 && h > 0 && w < 100000 && h < 100000 ? { w, h } : null;
+}
+
+// ------------------------------------------------------------ Reaktionen
+
+/** Wie weit zwei Felder auseinander sind, in Fuss (5-10-5). */
+export function cellFeet(a: Cell, b: Cell): number {
+  const dx = Math.abs(a.x - b.x);
+  const dy = Math.abs(a.y - b.y);
+  return (Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2)) * 5;
+}
+
+/**
+ * **Welche Gelegenheitsangriffe ein Plan auslöst** (T-198, Runde 2; PHB:
+ * wer die Reichweite einer feindlichen Kreatur verlässt). Gezählt wird
+ * jeder Schritt eines Weges, der aus der Reichweite heraus führt; jeder
+ * Gegner einmal je Zug — er hat nur eine Reaktion. **Disengage** vor dem
+ * Weg hebt es auf, wie im Spielerhandbuch und in BG3; danach gesetzt hilft
+ * es dem Weg davor nicht.
+ */
+export function opportunityAttacks(steps: readonly PlanStep[], threats: readonly PlanThreat[]): Provocation[] {
+  const out: Provocation[] = [];
+  const schon = new Set<string>();
+  let geloest = false;
+  for (const s of steps) {
+    if (s.kind === 'act') {
+      if (s.tile === 'std:disengage') geloest = true;
+      continue;
+    }
+    if (geloest) continue;
+    for (let k = 0; k + 1 < s.path.length; k++) {
+      const a = s.path[k]!;
+      const b = s.path[k + 1]!;
+      for (const t of threats) {
+        if (schon.has(t.id)) continue;
+        if (cellFeet(a, t.cell) <= t.reach && cellFeet(b, t.cell) > t.reach) {
+          schon.add(t.id);
+          out.push({ step: s.id, index: k, reactor: t.id, reactorName: t.name });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** Wo eine Begegnung steht: Runde und Zug (Index in der Reihe). */
+export interface RoundTurn {
+  round: number;
+  turn: number;
+}
+
+/**
+ * **Ist die Reaktion wieder da?** Verbraucht bis zum **eigenen nächsten
+ * Zug** (PHB): `spent` ist der Stand beim Verbrauch, `now` der jetzige,
+ * `own` der Platz des Reagierenden in der Reihe. Kennt die Begegnung
+ * einen Stand nicht (kein Kampf, nicht in der Reihe), sagt `null` —
+ * dann entscheidet der Aufrufer nach seinem eigenen Zug (`fallback`).
+ */
+export function reactionBack(spent: RoundTurn | null, now: RoundTurn | null, own: number | null): boolean | null {
+  if (!spent || !now || own === null) return null;
+  /* Der nächste eigene Zug nach dem Verbrauch. */
+  const naechste: RoundTurn = own > spent.turn ? { round: spent.round, turn: own } : { round: spent.round + 1, turn: own };
+  return now.round > naechste.round || (now.round === naechste.round && now.turn >= naechste.turn);
 }

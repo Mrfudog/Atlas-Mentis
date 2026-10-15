@@ -251,6 +251,66 @@ h1 {
 .klasse {
   font-family: var(--caps);
 }
+/* T-201: die Datei und ihre Herkunft unter dem Namen, die Marken als
+   Badges mit ×, „Use as" darunter. */
+.datei,
+.herkunft {
+  font-size: 0.78rem;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.herkunft {
+  font-style: italic;
+}
+.marke {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.weg,
+.plus {
+  font: inherit;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+}
+.weg {
+  border: 0;
+  padding: 0 0.15rem;
+  min-width: 24px;
+  min-height: 24px;
+}
+.plus {
+  border-style: dashed;
+  min-height: 24px;
+}
+.neu {
+  width: 7rem;
+  min-height: 24px;
+  font: inherit;
+  padding: 0 0.3rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+}
+.als-wahl {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.als {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+.ergebnis a {
+  margin-left: 0.5rem;
+}
 
 @media (max-width: 760px) {
   .seite {

@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
-import { imageBecomes, imageTitle, mapFromImage, mapTree, mapUses, sessionState, fieldsOf } from '../src/index.js';
+import { fromImage, imageBecomes, imageTitle, mapTree, mapUses, sessionState, fieldsOf } from '../src/index.js';
 import type { Entity } from '../src/index.js';
 
 const e = (id: string, interfaces: string[], components: Entity['components'] = {}, relations: Entity['relations'] = []): Entity => ({
@@ -29,11 +29,12 @@ describe('imageBecomes', () => {
   });
 });
 
-describe('mapFromImage', () => {
+describe('fromImage', () => {
   it('takes the name of the image without its file ending and sets the image', () => {
     const bild = named(e('as-1', ['Asset'], { Asset: { kind: 'map', ref: 'x' } }), 'Harbour.webp');
     expect(imageTitle(bild)).toBe('Harbour');
-    expect(mapFromImage(bild)).toEqual({ type: 'Map', name: 'Harbour', fields: { 'Image.image': 'as-1' } });
+    expect(fromImage('Map', bild)).toEqual({ type: 'Map', name: 'Harbour', fields: { 'Image.image': 'as-1' } });
+    expect(fromImage('Scene', bild)).toEqual({ type: 'Scene', name: 'Harbour', fields: { 'Image.image': 'as-1' } });
   });
 
   it('keeps a name without ending, and falls back to the id', () => {
