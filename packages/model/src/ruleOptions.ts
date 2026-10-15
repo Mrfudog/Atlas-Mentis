@@ -29,6 +29,7 @@ import { hitPointRuleOf } from './hitpoints.js';
 import { inventoryRulesOf } from './inventory.js';
 import { mapRulesOf } from './map.js';
 import { stowingRuleOf } from './stowing.js';
+import { substitutionsOf, substitutionText } from './substitutes.js';
 import type { Entity, EntityId } from './types.js';
 
 export type RuleSortKey = 'inventory' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'map' | 'table';
@@ -65,7 +66,7 @@ export type RuleOptionSource =
   /** Ein Feld an der Kampagne, `Campaign.<feld>`. */
   | { field: string }
   /** Kanten von der Kampagne auf Artikel, die das Verfahren tragen. */
-  | { edge: 'allowsMethod' | 'allowsEquipment' }
+  | { edge: 'allowsMethod' | 'allowsEquipment' | 'allowsSubstitution' }
   /** Einstellungen der Installation (`registry.settings`), bis T-132 sie ins Modul holt. */
   | { settings: string[] };
 
@@ -223,6 +224,14 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
       { key: 'gm', label: 'After the GM confirms', does: 'A player’s check waits for the GM.' },
       { key: 'player', label: 'At once', does: 'A player’s check counts as soon as it is rolled.' },
     ],
+  },
+  {
+    /* Ersatzmaterialien (T-197): Regelartikel `Substitution`, die die Kampagne nennt. */
+    key: 'substitutions',
+    sort: 'crafting',
+    label: 'Material substitutions',
+    does: 'Which materials may stand in for the ones a recipe names, chosen when crafting starts. Without a rule, only what the recipe names counts.',
+    source: { edge: 'allowsSubstitution' },
   },
   {
     key: 'travel',
@@ -477,6 +486,15 @@ export function ruleOptionsOf(campaign: Entity | null | undefined, ctx: RuleOpti
         }
       } else if ('edge' in src) {
         raus.relation = src.edge;
+        if (src.edge === 'allowsSubstitution') {
+          raus.methods = substitutionsOf(campaign, (id) => ctx.byId.get(id)).map((r) => ({
+            id: r.id,
+            name: r.name,
+            builtIn: false,
+            does: substitutionText(r),
+          }));
+          return raus;
+        }
         const methoden: (AbilityMethod | EquipmentMethod)[] =
           src.edge === 'allowsMethod' ? allowedMethods(campaign ?? undefined, ctx.byId) : allowedEquipmentMethods(campaign ?? undefined, ctx.byId);
         raus.methods = methoden.map((m) => ({

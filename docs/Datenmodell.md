@@ -1294,6 +1294,48 @@ stateDiagram-v2
   Verbrauchten; die Leitung für jede Figur und auch mit Lücken. Was sich
   ändert, geht über den Live-Kanal (T-116).
 
+#### Materialien beim Start, Gruppen und Ersatz (T-197)
+
+```mermaid
+flowchart LR
+  R["Recipe"] -- "needs · qty · consumed" --> M["Item"]
+  R -- "needs · qty" --> G["MaterialGroup<br/>materialTypes · rarityMin/Max<br/>tags · items"]
+  K["Campaign"] -- "allowsSubstitution" --> S["Substitution<br/>replaces · with · withTags<br/>rarity · ratio"]
+  Inv["Inventory"] -- "holds · reservedFor · forNeed" --> P["Stück (Material)"]
+```
+
+- **Gewählt wird erst beim Start.** Das Rezept zeigt, was es braucht;
+  „Start crafting…" fragt `GET /api/crafting/:id/materials?actor=` und
+  zeigt je Bestandteil die freien Stücke aus Figur und Gruppe, die passen,
+  und die naheliegenden, die nicht passen, **mit Grund** („rarity common,
+  below uncommon"). Erst „Reserve and start" reserviert (T-134). Vorgeschlagen
+  wird das Genannte und die Gruppe; einen Ersatz wählt man selbst.
+- **Ein Bestandteil darf eine Eigenschaft nennen** statt eines Gegenstands:
+  `needs` zeigt auf eine **Materialgruppe** (`MaterialGroup`, erbt von
+  `Rule`). Sie prüft am Stück Materialart (`Material.materialType`),
+  Seltenheit (Grenzen in der Reihenfolge von `Item.rarity`; `varies` und
+  `unknown` lassen sich nicht vergleichen), Marken, oder sie nennt es beim
+  Namen. Was leer ist, schränkt nicht ein. Eine Liste der Mitglieder gibt
+  es nicht — die Eigenschaften stehen am Stück.
+- **Ersatz ist eine Regel, die die Kampagne spielt** (`Substitution`,
+  Kante `allowsSubstitution`; Seite „Rules & options", Sorte Crafting):
+  `replaces` nennt Materialarten, `with`/`withTags`, was einspringen darf,
+  `rarity` (`same`, `atLeast`, `any`), ob der Ersatz die verlangte
+  Seltenheit haben muss (bei einer Gruppe: ihre Untergrenze), `ratio`, wie
+  viele Ersatzstücke ein Original decken. Der Text der Regel (etwa eine
+  Zusatzregel eines Regelwerks) steht in ihrer Beschreibung; die Felder
+  sagen, was gerechnet wird. Ohne Kante gilt nur das Rezept.
+- **Gerechnet in `materialFit`** (`packages/model/src/substitutes.ts`):
+  erst das Rezept, dann die Ersatzregeln in ihrer Reihenfolge — die erste,
+  die passt, gilt. **Gedeckt** (`coverage`) zählt ein Ersatzstück `1/ratio`;
+  mehr als gebraucht lehnt der Start ab. Am Server wird jedes Stück gegen
+  seinen Bestandteil geprüft, nicht der Maske geglaubt.
+- **Reserviert wird je Bestandteil** (`holds.props.forNeed` = die
+  `needs`-Kante): ein Ersatz oder ein Stück aus einer Gruppe ist nicht der
+  Gegenstand, den das Rezept nennt, und die Abrechnung muss wissen, ob es
+  verbraucht wird. Ältere Reservierungen ohne `forNeed` finden ihren
+  Bestandteil wie bisher nach dem Grundartikel. Migration 090.
+
 ### 9.6 Laden und Preise (T-129)
 
 - **Ein Laden ist ein Ort** (`Shop extends Place`, Bereich `world`). Er
@@ -1791,7 +1833,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-15: 57 Artikelarten, 24 Grundtypen, 66 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-15: 59 Artikelarten, 24 Grundtypen, 67 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -1853,7 +1895,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | — |
-| `Campaign` | `Story` | `compareFor` `languages` `feats` `hitPoints` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `playerRolls` `fog` `moves` `revealOnMove` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` | `compareFor` `languages` `feats` `hitPoints` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `playerRolls` `fog` `moves` `revealOnMove` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
@@ -1879,12 +1921,14 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` `casts` | `composedOf` `affects` `grants` `hasProperty` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | — |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` | `composedOf` `affects` `grants` | overview |
+| `MaterialGroup` | `Rule` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` | `composedOf` `affects` `grants` `needs` | — |
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | full |
 | `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` `casts` | `composedOf` `affects` `grants` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` `casts` | `composedOf` `affects` `grants` `loot` | — |
 | `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` `casts` | `composedOf` `affects` `casts` `grants` | quick, print, overview, full |
 | `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `carryExtra*` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | print, overview, quick, full |
 | `Subclass` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `subclassOf` `grants` `tableFor` | `composedOf` `affects` `chose` `grants` | overview |
+| `Substitution` | `Rule` | `replaces` `with` `withTags` `rarity` `ratio` | `affects` `casts` | `composedOf` `affects` `allowsSubstitution` `grants` | — |
 | `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | overview, full |
 | `Trade` | `Rule` | `tools` | `affects` `casts` | `composedOf` `affects` `grants` | quick, full |
 | `ZoneKind` | `Rule` | `moveCost` `light` `obscured` `hiddenUntil` `damage` `damageType` `save` `saveDC` `condition` `trigger` | `affects` `casts` | `composedOf` `affects` `grants` `zone` | — |
@@ -1919,6 +1963,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `affects` | Rule → Rule |  | — | `effect` `on` `note` |
 | `allowsEquipment` | Campaign → EquipmentMethod |  | — | — |
 | `allowsMethod` | Campaign → AbilityMethod |  | — | — |
+| `allowsSubstitution` | Campaign → Substitution |  | — | — |
 | `belongsTo` | Statblock → Creature | ja | Feld am `to`-Ende | — |
 | `carries` | Creature \| Party \| Item → Inventory | ja | Feld am `from`-Ende | — |
 | `casts` | Statblock \| PlayerCharacter \| Item \| Subclass \| Ancestry \| Feat \| Faction \| Rule → Spell |  | — | `mode` `uses` `level` `charges` `fromLevel` |
@@ -1940,7 +1985,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `hasBackground` | PlayerCharacter → Background | ja | — | — |
 | `hasClass` | PlayerCharacter → Class |  | — | `level` `subclass` `hp` |
 | `hasProperty` | Weapon \| Item \| Armor → ItemProperty |  | — | — |
-| `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `gx` `gy` `rot` `attuned` `note` `reservedFor` `unstowed` |
+| `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `gx` `gy` `rot` `attuned` `note` `reservedFor` `forNeed` `unstowed` |
 | `includes` | Knowledge → Information |  | — | — |
 | `inLayer` | * → Layer |  | — | `mode` `addedAt` |
 | `insideMap` | Map → Map | ja | — | `x` `y` `w` `h` |
@@ -1957,7 +2002,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `marker` | Map → * |  | — | `x` `y` `kind` `size` `rot` `ratio` `note` `light` `dim` `hidden` `stealth` `encounter` |
 | `memberOf` | Creature → Faction |  | — | `rank` `note` |
 | `memberOfParty` | Creature → Party |  | — | — |
-| `needs` | Recipe → Item |  | — | `qty` `consumed` `note` |
+| `needs` | Recipe → Item \| MaterialGroup |  | — | `qty` `consumed` `note` |
 | `onMap` | Encounter \| Story → Map | ja | — | — |
 | `overrides` | * → * | ja | — | `scope` `note` |
 | `owes` | Creature → Creature |  | — | — |

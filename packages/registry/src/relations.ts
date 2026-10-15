@@ -295,6 +295,20 @@ export const relations: Record<string, RelationDef> = {
    * (REQ-250, T-096). Nennt sie keines, gelten „Klasse und Hintergrund"
    * und „Startgold" (`DEFAULT_EQUIPMENT_METHODS`).
    */
+  /**
+   * **Welche Ersatzregeln eine Kampagne spielt** (T-197): Pflanzen statt
+   * Reagenzien und dergleichen. Nennt sie keine, zählt nur, was das Rezept
+   * nennt (`materialFit`).
+   */
+  allowsSubstitution: {
+    type: 'allowsSubstitution',
+    label: 'allows substitution',
+    inverseLabel: 'allowed in',
+    means: 'A campaign plays by a material substitution rule; the rule lists the campaigns that allow it.',
+    from: ['Campaign'],
+    to: ['Substitution'],
+  },
+
   allowsEquipment: {
     type: 'allowsEquipment',
     label: 'allows equipment method',
@@ -698,6 +712,11 @@ export const relations: Record<string, RelationDef> = {
            liegt; verschieben lässt es sich nicht, bis die Reservierung fällt
            (`reservedFor`, `moveHeld`). */
         reservedFor: { type: 'string', format: 'link', target: { interfaces: ['Identity'] }, title: 'Reserved for' },
+        /* **Für welchen Bestandteil** (T-197): die `needs`-Kante des
+           Rezepts, für die das Stück reserviert ist — ein Ersatzstück oder
+           eines aus einer Gruppe ist nicht der Gegenstand, den das Rezept
+           nennt, und die Abrechnung muss wissen, ob es verbraucht wird. */
+        forNeed: { type: 'string', title: 'For the recipe’s material' },
         /* **Noch nicht verstaut** (T-140): gekauft, erbeutet, geschenkt —
            liegt vor der Figur und noch nicht in ihren Sachen. Verstaut ist
            es im Raster, an einem Platz, in einem Behälter. Wie lange es so
@@ -1018,9 +1037,11 @@ export const relations: Record<string, RelationDef> = {
     type: 'needs',
     label: 'needs',
     inverseLabel: 'used in',
-    means: 'A recipe needs an item, in a quantity; the item lists the recipes that use it.',
+    means: 'A recipe needs an item — or any piece of a material group — in a quantity; the item lists the recipes that use it.',
     from: ['Recipe'],
-    to: ['Item'],
+    /* Eine Materialgruppe (T-197) steht für „irgendein Reagenz ab
+       ungewöhnlich" — welches Stück, wählt man beim Start. */
+    to: ['Item', 'MaterialGroup'],
     props: {
       type: 'object',
       properties: {
