@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, HitPointRule, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
+import type { AbilityMethod, AssetMeta, Entity, EquipmentMethod, GoldRoll, HitPointRule, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -603,6 +603,13 @@ export interface Ebenenauswahl {
   savedAt: string;
 }
 
+/** Was „Use as …" an einem Bild getan hat (T-201). */
+export interface BildVerwendet {
+  /** Ob die Klasse des Bildes jetzt so steht (nicht, wenn man es nicht schreibt). */
+  kind: boolean;
+  open: { id: string; name: string; type: string } | null;
+}
+
 export interface ListenZeile {
   id: string;
   name: string;
@@ -615,6 +622,8 @@ export interface ListenZeile {
   cols: Record<string, unknown>;
   /** Das Vorschaubild — Asset-Id oder Adresse —, wenn `overview` der Art eines zeigt (T-114). */
   image?: string;
+  /** An einem Bild die Masse der Datei (T-201). */
+  asset?: AssetMeta;
   tags?: string[];
   /** Die Ziele der Kantenarten, nach denen `rel=` fragte. */
   rels?: Record<string, string[]>;
@@ -1550,6 +1559,18 @@ export class Api {
     if (revision !== undefined && revision !== null) form.append('revision', String(revision));
     form.append('file', datei, (datei as File).name || 'image');
     return this.sendeBild('PUT', `/api/assets/${encodeURIComponent(id)}/file`, form);
+  }
+
+  /**
+   * **Ein Bild als Karte, Token oder Requisite** (T-201): setzt die Klasse
+   * (wo man das Bild schreibt) und legt an, was dazugehört — `open` ist der
+   * Artikel, zu dem „Open" springt.
+   */
+  useAsset(id: string, als: 'map' | 'token' | 'prop', fuer?: string): Promise<BildVerwendet> {
+    return this.call<BildVerwendet>(`/api/assets/${encodeURIComponent(id)}/use`, {
+      method: 'POST',
+      body: JSON.stringify({ as: als, ...(fuer ? { for: fuer } : {}) }),
+    });
   }
 
   assetUses(id: string): Promise<BildVerwendung> {
