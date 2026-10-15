@@ -273,7 +273,19 @@ interface Feld {
                     </button>
                   }
                 }
-                @if (darfSchreiben() && !zeigtAlten()) {
+                <!-- Edit an einer Figur ist der Assistent (T-194); die Feldmaske heisst „Full edit". -->
+                @if (darfSchreiben() && !zeigtAlten() && art(e) === 'PlayerCharacter') {
+                  @if (bearbeitet()) {
+                    <span class="umschalter" role="group" aria-label="Edit view">
+                      <a [routerLink]="['/characters', e.id, 'edit']">Creator</a>
+                      <span class="an" aria-current="true">Full edit</span>
+                    </span>
+                    <button type="button" (click)="abbrechen()">Cancel</button>
+                  } @else {
+                    <a class="knopf" [routerLink]="['/characters', e.id, 'edit']">Edit</a>
+                    <button type="button" (click)="beginnen()" title="Every field of the character, without the creator">Full edit</button>
+                  }
+                } @else if (darfSchreiben() && !zeigtAlten()) {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
                   </button>

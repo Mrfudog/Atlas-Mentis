@@ -245,6 +245,11 @@ export const relations: Record<string, RelationDef> = {
           title: 'Subclass',
           target: { interfaces: ['Subclass'] },
         },
+        /* **Was der Trefferwürfel je Stufe brachte** (T-194), ohne KON; der
+           erste Eintrag die erste Stufe. Gewürfelt oder der Durchschnitt,
+           sagt die Kampagne (`Campaign.hitPoints`). Das Maximum am
+           Statblock rechnet daraus, wer KON ändert, würfelt nicht neu. */
+        hp: { type: 'array', items: { type: 'number' }, title: 'Hit points per level' },
       },
     },
   },

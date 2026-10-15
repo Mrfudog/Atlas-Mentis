@@ -35,6 +35,7 @@ import {
   startingGoldOf,
   campaignLanguages,
   campaignAllowsFeats,
+  hitPointRuleOf,
   partyPool,
   rollAbilityScores,
   articleVisible,
@@ -2374,6 +2375,8 @@ export function buildApp({
       languages: campaignLanguages(kampagne ?? undefined),
       /* Talente am Tisch (T-107): nein nimmt das Talent als Ausweg weg. */
       feats: campaignAllowsFeats(kampagne ?? undefined),
+      /* Trefferpunkte je Stufe (T-194): würfeln, Durchschnitt oder wählen. */
+      hitPoints: hitPointRuleOf(kampagne ?? undefined),
     };
   });
 

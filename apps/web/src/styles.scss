@@ -126,6 +126,30 @@ a.knopf {
   white-space: nowrap;
 }
 
+/* Creator oder Full edit an einer Figur (T-194): zwei Masken derselben
+   Figur, als Segmentschalter — das Aktive ist kein Link. */
+.umschalter {
+  display: inline-flex;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.umschalter > a,
+.umschalter > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 0.8rem;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.umschalter > .an {
+  background: var(--accent);
+  color: var(--surface);
+}
+
 /* Der Info-Knopf der Kurzansicht (T-093): wo ein Name schon etwas anderes
    tut — ein Häkchen setzt, eine Zeile wählt —, öffnet dieser kleine Knopf
    daneben die Karte des Artikels. Klein, aber am Telefon antippbar. */

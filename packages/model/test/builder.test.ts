@@ -60,8 +60,10 @@ describe('the character builder reads its steps from the articles (T-080)', () =
     d = setPick(d, 'hasClass', 'class-1');
     expect(builderSteps(d, bestand).map((s) => s.id)).toEqual([
       'ancestry', 'background', 'class', 'abilities',
-      'choice:background-1#origin-feat', 'choice:class-1#skills', 'equipment', 'details',
+      'choice:background-1#origin-feat', 'choice:class-1#skills', 'hitpoints', 'equipment', 'details',
     ]);
+    /* Am fertigen Charakter keine Startausrüstung (T-194). */
+    expect(builderSteps(d, bestand, { edit: true }).map((s) => s.id)).not.toContain('equipment');
   });
 
   it('shows a changed or new class without a code change, and drops answers nobody asks any more', () => {
@@ -90,7 +92,7 @@ describe('the character builder reads its steps from the articles (T-080)', () =
     const done = new Set(['class-1#skills']);
     pc = setClassLevel(pc, 'class-1', 3);
     const sub = builderSteps(pc, bestand, { levelUp: true, done });
-    expect(sub.map((s) => s.id)).toEqual(['level', 'choice:class-1#martial-archetype']);
+    expect(sub.map((s) => s.id)).toEqual(['level', 'choice:class-1#martial-archetype', 'hitpoints']);
     const st = sub[1];
     if (st?.kind !== 'choice') throw new Error('kein Schritt');
     pc = answerChoice(pc, st.at, ['sub-1']);

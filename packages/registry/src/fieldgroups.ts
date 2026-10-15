@@ -2507,6 +2507,16 @@ export const fieldGroups = {
            einer Wahl weg („Steigerung oder Talent" wird „Steigerung").
            Ohne Angabe ja. */
         feats: { type: 'boolean', title: 'Feats allowed', default: true },
+        /* **Trefferpunkte je Stufe** (T-194): würfeln, den Durchschnitt
+           nehmen, oder je Stufe selbst wählen (5e). Ohne Angabe wählen.
+           Gelesen über `hitPointRuleOf`; wandert mit T-132 in ein Modul. */
+        hitPoints: {
+          type: 'string',
+          title: 'Hit points per level',
+          description: 'How a level beyond the first adds hit points in the character builder: roll the hit die, take its average, or either.',
+          enum: ['either', 'average', 'roll'],
+          default: 'either',
+        },
         /* **Wie diese Kampagne Inventar zählt** (T-127): im Raster nach
            Basils Blatt, nach Gewicht mit Tragestufen, oder nach Slots.
            Gelesen über `inventoryRulesOf`; wandert mit T-132 in ein Modul. */
