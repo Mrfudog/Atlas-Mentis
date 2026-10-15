@@ -37,9 +37,16 @@
           ]
         },
         {
+          "heading": "Walls and doors",
+          "text": [
+            "Walls (W): pick a kind, then Draw — tap point after point (snaps to the grid), Enter finishes. Set kind, Lock and Erase act on the wall you tap. Walls and closed doors block movement and sight; windows and obstacles block movement only. Players see only doors; a closed secret door is a wall to them.",
+            "Tap a door in Select to open or close it. Players open a door next to their token if the campaign allows (Rules & options › Doors); locked doors stay shut."
+          ]
+        },
+        {
           "heading": "Line of sight",
           "text": [
-            "There is no line of sight yet. It needs walls on the map, and walls are still to come. Until then, players see exactly what has been revealed."
+            "With walls on a map, moves (if they reveal) and opened doors uncover what the characters see, up to the next wall. Without walls a move reveals a strip two squares wide; without a moving token, the GM reveals by hand. Light and darkvision do not count yet."
           ]
         },
         {

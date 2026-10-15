@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-15-map-walls-doors",
+      "date": "2026-10-15",
+      "title": "Walls, doors and windows on the map — and fog that follows line of sight",
+      "text": "Draw walls, doors, windows and obstacles under Walls in the map tool bar. Tap a door to open it — players too, next to their token — and moves and opened doors reveal what the characters see.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-crafting-choose-materials",
       "date": "2026-10-15",
       "title": "Choose materials when crafting starts, with substitutes",
