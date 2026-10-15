@@ -13,7 +13,7 @@
  */
 
 import { z } from 'zod';
-import { articleId, entityName, setTags, tagsOf, typeChain } from './entity.js';
+import { articleId, entityName, nextId, setTags, tagsOf, typeChain } from './entity.js';
 import { stableJson } from './checks.js';
 import { detachInstance, INSTANCE_RELATION, isInstance } from './instance.js';
 import type { Entity, Registry, Relation } from './types.js';
@@ -56,6 +56,19 @@ const OpSchema = z.discriminatedUnion('op', [
     props: z.record(z.string(), z.unknown()).optional(),
   }),
   z.object({ op: z.literal('removeRelation'), type: z.string().min(1), to: z.string().optional() }),
+  /** Je ausgewähltem Artikel einen neuen anlegen, an den er über `relation`
+   *  gebunden wird (T-169: zu jedem benannten Statblock seine Kreatur). Der
+   *  neue liegt in denselben Ebenen, heisst wie der ausgewählte (ohne
+   *  Klammer am Ende mit `stripBracket`) und nimmt die Karten aus `copy` mit. */
+  z.object({
+    op: z.literal('addLinked'),
+    type: z.string().min(1),
+    relation: z.string().min(1),
+    /** `Karte.feld` → Wert am neuen Artikel. */
+    fields: z.record(z.string(), z.unknown()).optional(),
+    copy: z.array(z.string()).optional(),
+    stripBracket: z.boolean().optional(),
+  }),
   z.object({
     op: z.literal('merge'),
     /** `variant`: die anderen zeigen mit `variantOf` auf den bleibenden.
@@ -430,6 +443,16 @@ export function teileDazu(
 }
 
 /**
+ * Die Peg-Id des Artikels, den `addLinked` zu `vonId` anlegt (T-169). Sie
+ * folgt aus dem ausgewählten Artikel, damit der 5e.tools-Importer dieselbe
+ * vergibt (`monster.ts`, benannte Kreatur): was die Werkbank auf dev
+ * nachgetragen hat, legt ein späteres `--only-new` nicht ein zweites Mal an.
+ */
+export function linkedPeg(vonId: string, type: string): string {
+  return `${vonId}-${type.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+/**
  * Was ein Lauf ändern würde. `raw` ist der gespeicherte Bestand (Instanzen
  * dünn, wie sie liegen) — geändert wird, was gespeichert ist, nicht die
  * aufgelöste Fassung. `selected` sind die Ids, die die Auswahl traf.
@@ -458,6 +481,9 @@ export function planBulk(
   }
   const peg = (x: string) => (raw.has(x) ? x : nachNummer.get(x));
   const ziele = selected.map((id) => raw.get(id)).filter((e): e is Entity => !!e);
+  /** Was `addLinked` in diesem Lauf schon an Nummern vergab. */
+  const nummern: string[] = [];
+  const nenne = (e: Entity | undefined) => (e ? `${entityName(e)} (${articleId(e) || e.id})` : '?');
 
   const merge = ops.find((o) => o.op === 'merge');
   if (ops.some((o) => o.op === 'delete')) {
@@ -590,6 +616,53 @@ export function planBulk(
             neu.relations = (neu.relations ?? []).filter((r) => !(r.type === op.type && (!to || r.to === to)));
             break;
           }
+          case 'addLinked': {
+            const def = registry.relations[op.relation];
+            if (!def) {
+              problem(e, `${op.relation}: no such edge type`);
+              break;
+            }
+            /* Hängt schon einer an, gibt es nichts anzulegen — eine benannte
+               Kreatur gibt es einmal. */
+            const schon = (neu.relations ?? []).find((r) => r.type === op.relation);
+            if (schon && def.cardinality === 'one') {
+              problem(e, `already has a ${op.relation} (${nenne(raw.get(schon.to))})`);
+              break;
+            }
+            if (isInstance(e)) {
+              problem(e, 'an instance gets nothing of its own');
+              break;
+            }
+            const id = linkedPeg(e.id, op.type);
+            if (raw.has(id) || nachher.has(id)) {
+              problem(e, `${id} exists already`);
+              break;
+            }
+            const roh = entityName(e).trim();
+            const name = op.stripBracket ? roh.replace(/\s*\([^)]*\)\s*$/, '').trim() || roh : roh;
+            const nummer = nextId(raw.values(), op.type, nummern);
+            nummern.push(nummer);
+            const kind: Entity = {
+              id,
+              interfaces: [op.type],
+              name,
+              components: { Identity: { name, id: nummer } },
+              relations: [],
+            };
+            for (const karte of op.copy ?? []) {
+              if (karte === 'Identity') continue;
+              const k = e.components?.[karte];
+              if (k) kind.components[karte] = JSON.parse(JSON.stringify(k)) as Record<string, unknown>;
+            }
+            for (const [feld, wert] of Object.entries(op.fields ?? {})) setzeFeld(registry, kind, feld, wert);
+            /* In denselben Ebenen wie der ausgewählte. */
+            for (const r of e.relations ?? []) {
+              if (r.type === LAYER_RELATION) kind.relations!.push({ id: neueKantenId(kind, LAYER_RELATION, vergeben), type: LAYER_RELATION, to: r.to });
+            }
+            nachher.set(id, kind);
+            (neu.relations ??= []).push({ id: neueKantenId(neu, op.relation, vergeben), type: op.relation, to: id });
+            break;
+          }
         }
       }
       if (storedKey(neu) !== storedKey(e)) nachher.set(e.id, neu);
@@ -597,7 +670,6 @@ export function planBulk(
   }
 
   const changes: BulkChange[] = [];
-  const nenne = (e: Entity | undefined) => (e ? `${entityName(e)} (${articleId(e) || e.id})` : '?');
   for (const id of geloescht) {
     const before = raw.get(id)!;
     const zeile = wohin.has(id)
