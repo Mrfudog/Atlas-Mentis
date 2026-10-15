@@ -348,6 +348,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [W + 'karten/karte.ts']: ['marker'],
       /* Die Seitenleiste (T-203): die Gruppe und die Begegnungen der Sitzung. */
       [M + 'kartenseite.ts']: ['memberOfParty', 'onMap', 'partOf', 'participates'],
+      /* Eine Begegnung beginnen (T-203): ihre Karte, wenn keine genannt ist. */
+      [S + 'kampfstart.ts']: ['onMap'],
     },
   },
   {

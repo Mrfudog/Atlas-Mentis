@@ -274,3 +274,50 @@ describe('the side bar of a map (T-203)', () => {
     expect((await hole('Mira', '/api/maps/nix/side')).statusCode).toBe(404);
   });
 });
+
+describe('starting an encounter (T-203)', () => {
+  it('rolls initiative where none stands, reveals prepared tokens and lets the session lead it — GM only', async () => {
+    const vorbereitet: Entity[] = bestand.map((e) => {
+      if (e.id === 'gruft') {
+        return {
+          ...e,
+          relations: [...(e.relations ?? []), { id: 'v1', type: 'marker', to: 'npc_wache', props: { x: 0.6, y: 0.6, kind: 'play', hidden: true, encounter: 'enc_neu' } }],
+        };
+      }
+      return e;
+    });
+    vorbereitet.push(
+      art('enc_neu', 'Encounter', 'Wachwechsel', { Encounter: { phase: 'planned', round: 0 } }, [
+        { id: 'n1', type: 'participates', to: 'npc_wache', props: {} },
+        { id: 'n2', type: 'participates', to: 'pc_1', props: { init: 15 } },
+        { id: 'n3', type: 'onMap', to: 'gruft', props: {} },
+      ]),
+    );
+    const repo = new InMemoryRepository({ ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_nebel' } }, vorbereitet);
+    const app = buildApp({ repo });
+    for (const [name, role] of [['Mira', 'gm'], ['Sela', 'player']] as const) {
+      await repo.putUser({ id: `u_${name.toLowerCase()}`, name, passwordHash: await hashPassword(PASSWORT), isAdmin: false, actorIds: [], roles: { camp_nebel: role } });
+    }
+    const keks = async (name: string) => {
+      const res = await app.inject({ method: 'POST', url: '/api/login', payload: { name, password: PASSWORT } });
+      return `nw_session=${res.cookies.find((x) => x.name === 'nw_session')!.value}`;
+    };
+    const start = async (name: string) =>
+      app.inject({ method: 'POST', url: '/api/encounters/enc_neu/start', headers: { cookie: await keks(name) }, payload: { session: 's_1' } });
+
+    expect((await start('Sela')).statusCode).toBe(403);
+    const res = await start('Mira');
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json()).toMatchObject({ encounter: 'enc_neu', revealed: 1, session: 's_1' });
+    const enc = (await repo.getEntity('enc_neu'))!;
+    expect(enc.components['Encounter']).toMatchObject({ phase: 'running', round: 1, turn: 0 });
+    const inits = (enc.relations ?? []).filter((r) => r.type === 'participates').map((r) => (r.props as { init?: number }).init);
+    expect(inits[1]).toBe(15);
+    expect(inits[0]).toBeGreaterThanOrEqual(1);
+    const karte = (await repo.getEntity('gruft'))!;
+    expect((karte.relations ?? []).find((r) => r.id === 'v1')!.props).toEqual({ x: 0.6, y: 0.6, kind: 'play' });
+    const sitzung = (await repo.getEntity('s_1'))!;
+    expect((sitzung.components['Session'] ?? sitzung.components['SessionState']) as object).toMatchObject({ activeEncounter: 'enc_neu' });
+    expect((await start('Mira')).statusCode).toBe(409);
+  });
+});

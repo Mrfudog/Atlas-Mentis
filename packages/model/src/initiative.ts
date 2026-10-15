@@ -313,3 +313,40 @@ export function redactParticipants(
   }
   return raus;
 }
+
+/**
+ * **Eine Begegnung beginnen** (T-203): Runde 1, der erste in der Reihe ist
+ * dran, `phase: running`. Wer noch keine Initiative hat, bekommt einen
+ * W20 plus den Geschicklichkeitsmodifikator seines Statblocks (der Instanz,
+ * mit der Vorlage darunter); wer schon eine hat — die Leitung hat sie
+ * eingetragen, eine Spielerin hat gewürfelt —, behält sie. `d20` gibt
+ * 1 bis 20; gewürfelt wird am Server.
+ */
+export function startEncounter(
+  entities: Lookup,
+  encounter: Entity,
+  d20: () => number,
+): { encounter: Entity; rolled: { edge: string; to: EntityId; roll: number; mod: number; init: number }[] } {
+  const rolled: { edge: string; to: EntityId; roll: number; mod: number; init: number }[] = [];
+  const relations = (encounter.relations ?? []).map((r) => {
+    if (r.type !== PARTICIPATES || !r.to) return r;
+    const props = (r.props ?? {}) as ParticipantProps;
+    if (typeof props.init === 'number' && Number.isFinite(props.init)) return r;
+    const t = entities.get(r.to);
+    const sb = t ? statblockFor(entities, t) : null;
+    const dex = Number(((sb ? resolveInstance(entities, sb).components?.['Abilities'] : undefined) as { dex?: unknown } | undefined)?.dex);
+    const mod = Number.isFinite(dex) ? Math.floor((dex - 10) / 2) : 0;
+    const roll = d20();
+    rolled.push({ edge: r.id, to: r.to, roll, mod, init: roll + mod });
+    return { ...r, props: { ...(r.props ?? {}), init: roll + mod } };
+  });
+  const card = (encounter.components?.['Encounter'] ?? {}) as Record<string, unknown>;
+  return {
+    encounter: {
+      ...encounter,
+      relations,
+      components: { ...encounter.components, Encounter: { ...card, phase: 'running', round: 1, turn: 0 } },
+    },
+    rolled,
+  };
+}

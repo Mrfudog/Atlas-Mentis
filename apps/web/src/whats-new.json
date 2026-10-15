@@ -9,6 +9,14 @@
       "link": "/campaign"
     },
     {
+      "id": "2026-10-15-map-prepare-encounter",
+      "date": "2026-10-15",
+      "title": "Prepare an encounter on the map, then start it",
+      "text": "In Table beside the map, Prepare sets the combatants of an encounter on the map, hidden from the players until it starts. Start rolls initiative for whoever has none, reveals the prepared tokens and runs the encounter in the session.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-map-side-bar",
       "date": "2026-10-15",
       "title": "The party and the session's encounters beside the map",

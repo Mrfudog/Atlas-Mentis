@@ -1968,6 +1968,16 @@ ihre Umgebung (`insideMap`), und die Gegenrichtung fragt der Server — so
 wie bei jeder Kante. Ein Feld „Unterkarten" an der grossen Karte wäre die
 zweite Stelle, die beim ersten Verschieben nicht mitkommt.
 
+**Ein vorplatziertes Token ist ein verstecktes Spiel-Token mit seiner
+Begegnung** (T-203). Die Leitung baut den Kampf vor der Sitzung auf; bis
+er beginnt, darf ihn niemand sehen. Eine eigene Art „vorbereitet“ wäre
+eine zweite Frage an jeden, der Marker liest — `hidden` hält schon, was
+der Server zurückhält. Neu ist nur, **für welche Begegnung** es steht
+(`marker.props.encounter`): sonst deckte „Start encounter“ auch die
+lauernde Wache auf, die versteckt bleiben soll (REQ-209). Der Vermerk
+steht an der Kante und nicht an der Kreatur, weil dieselbe Kreatur auf
+einer anderen Karte für eine andere Begegnung bereitstehen kann.
+
 ## Zug, Tempo und Zone auf der Karte
 
 **Ein Zug ist kein Feld der Kreatur.** Dass der Kämpfer schon 20 Fuss
