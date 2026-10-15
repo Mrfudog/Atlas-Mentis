@@ -1,6 +1,8 @@
 import { Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Api } from './kern/api';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
 import { Session } from './kern/session';
 import { BEREICHE } from './kern/bereiche';
 import { KurzPopup } from './artikel/kurzpopup';
@@ -12,6 +14,7 @@ import { Stapel } from './kern/stapel';
 import { Rueckweg } from './kern/rueckweg';
 import { StapelKnopf } from './verwaltung/stapel-knopf';
 import { Neues } from './kern/neues';
+import { Hilfe } from './hilfe/hilfe';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -50,13 +53,17 @@ import { Neues } from './kern/neues';
  * solange es für dieses Konto Ungelesenes gibt — kein Bereich, sondern
  * ein Hinweis; am Telefon nur das Zeichen.
  *
+ * **Das „?“** (T-205) daneben öffnet die Hilfe der Seite, auf der man
+ * steht, als Seitenpanel (`nw-hilfe`): ihr Hilfetext und was What's new
+ * über sie sagt. Es steht auf jeder Seite und ist nur ein Zeichen.
+ *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
  * später den Namen, sieht nach einem Fehler aus, auch wenn keiner vorliegt.
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf, Hilfe],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -155,6 +162,18 @@ import { Neues } from './kern/neues';
           [attr.aria-label]="live.stand() === 'offen' ? 'Live' : 'Live reconnecting'"
           role="img"
         ></span>
+        <!-- Hilfe zu dieser Seite (T-205). -->
+        <button
+          type="button"
+          class="hilfeknopf"
+          [class.an]="hilfeOffen()"
+          [attr.aria-expanded]="hilfeOffen()"
+          (click)="hilfeOffen.set(!hilfeOffen())"
+          aria-label="Help for this page"
+          title="Help for this page"
+        >
+          ?
+        </button>
         <!-- Was neu ist (T-157): klein, mit Punkt, solange etwas ungelesen ist. -->
         <a
           class="neues"
@@ -226,6 +245,9 @@ import { Neues } from './kern/neues';
     <!-- Die übergreifende Suche, eine für alle Seiten (T-138). -->
     @if (session.angemeldet()) {
       <nw-suche />
+      @if (hilfeOffen()) {
+        <nw-hilfe [url]="adresse()" (zu)="hilfeOffen.set(false)" />
+      }
     }
     <!-- Die Kurzansicht eines genannten Artikels, eine für alle Seiten (T-093). -->
     <nw-kurzpopup />
@@ -407,6 +429,24 @@ import { Neues } from './kern/neues';
       border-radius: 50%;
       background: var(--accent);
     }
+    .hilfeknopf {
+      flex: none;
+      width: 1.7rem;
+      height: 1.7rem;
+      min-height: 0;
+      padding: 0;
+      border: 1.5px solid var(--dim);
+      border-radius: 50%;
+      background: none;
+      color: var(--dim);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .hilfeknopf:hover,
+    .hilfeknopf.an {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
     .wer {
       color: var(--dim);
       text-decoration: none;
@@ -470,7 +510,7 @@ import { Neues } from './kern/neues';
     @media (max-width: 640px) {
       .leiste {
         padding: 0.4rem 1rem 0;
-        gap: 0.25rem 0.75rem;
+        gap: 0.25rem 0.5rem;
       }
       .bereiche {
         order: 3;
@@ -507,6 +547,14 @@ import { Neues } from './kern/neues';
         padding: 0.3rem 0.6rem;
         font-size: 0.85rem;
       }
+      /* Das „?“ (T-205) kleiner, und die Abstände oben enger — sonst
+         bräche „Sign out" wieder in eine zweite Zeile. */
+      .leiste > .hilfeknopf {
+        width: 1.4rem;
+        height: 1.4rem;
+        padding: 0;
+        font-size: 0.8rem;
+      }
       .untermenue {
         padding: 0.3rem 1rem;
       }
@@ -540,6 +588,15 @@ export class App {
     const n = this.neues.anzahl();
     return n ? `What's new: ${n} since your last visit` : "What's new";
   });
+  /** Die Hilfe der Seite (T-205): offen oder zu, und für welche Adresse. */
+  protected readonly hilfeOffen = signal(false);
+  protected readonly adresse = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
   /** Der Live-Kanal (T-116) — hier geholt, damit er mit der Anmeldung steht. */
   protected readonly live = inject(Live);
   /** Ob gerade sichtbar gewartet wird: erst wenn eine Anfrage länger als

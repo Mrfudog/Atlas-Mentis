@@ -76,6 +76,16 @@ auf `main` — gepflegt wird nur die Datei.
 `apps/web/test/neues.test.ts` prüft die Datei: eindeutige Ids, Reihenfolge,
 und dass jeder `link` eine Route trifft.
 
+**Die Hilfe je Seite** (T-205) zeigt unter dem „?“ der Kopfleiste die
+Einträge, deren `link` auf die Seite zeigt, auf der man steht — ein guter
+`link` macht den Eintrag also auch dort sichtbar. Ändert sich, wie eine
+Seite bedient wird, zieht derselbe Pull Request ihren Text in
+[`apps/web/src/help.json`](apps/web/src/help.json) nach: je Eintrag die
+Routen (Pfade wie in `app.routes.ts`), ein Titel, Abschnitte mit kurzen
+englischen Absätzen. Eine **neue Route** braucht dort einen Text oder
+einen Eintrag unter `without` mit Grund — `apps/web/test/hilfe.test.ts`
+prüft das.
+
 ## Wo Anforderungen leben
 
 **Im Vault**, der seit dem 7.10. in diesem Repo liegt, als **User Stories**

@@ -9,6 +9,14 @@
       "link": "/classes"
     },
     {
+      "id": "2026-10-15-help-per-page",
+      "date": "2026-10-15",
+      "title": "Help for every page",
+      "text": "The ? in the header opens help for the page you are on, with the What's new entries about it. On Play it explains the map tools, how fog is revealed (by hand or along moves), why there is no line of sight yet, and the turn planner with its reactions.",
+      "area": "Navigation",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-15-maps",
       "date": "2026-10-15",
       "title": "Maps have their own page",
