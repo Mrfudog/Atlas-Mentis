@@ -222,9 +222,47 @@ export async function runImport(
     }
     return neuRoh.filter((e) => drin.has(e.id));
   };
-  const neu = optionen.additions ? mitZielen(neuRoh.filter((e) => genannt.has(e.id))) : neuRoh;
-  const ausAlterEbene = neuRoh.length - neu.length;
-  const mitgezogen = optionen.additions ? neu.filter((e) => !genannt.has(e.id)).length : 0;
+  const neu0 = optionen.additions ? mitZielen(neuRoh.filter((e) => genannt.has(e.id))) : neuRoh;
+  const ausAlterEbene = neuRoh.length - neu0.length;
+  const mitgezogen = optionen.additions ? neu0.filter((e) => !genannt.has(e.id)).length : 0;
+  /* **Ein neuer Teil an einem bestehenden Artikel** (T-169): die Kreatur
+     eines benannten Statblocks ist neu, der Statblock steht schon — und
+     die Kante `belongsTo` steht an ihm. Eine Kante, die sich an einem Ende
+     wie ein Feld liest (`asField`), von einem bestehenden Artikel auf einen
+     neuen, kommt darum an den bestehenden dazu; was dort schon stand, bleibt.
+     Hat er schon eine (`one`) — die Leitung hat ihm selbst eine Kreatur
+     gegeben —, kommt der neue Artikel gar nicht: er wäre eine zweite Figur
+     ohne Zahlen. Andere Kanten aus bestehenden Artikeln bleiben, wie sie sind. */
+  const angehaengt: Entity[] = [];
+  const ohneHalt = new Set<string>();
+  if (optionen.onlyNew) {
+    const neuIds = new Set(neu0.map((e) => e.id));
+    const nachBestand = new Map(bestand.map((e) => [e.id, e] as const));
+    const vergeben = new Set([...bestand, ...neu0].flatMap((e) => (e.relations ?? []).map((r) => r.id)));
+    for (const a of ausDatei) {
+      const alt = nachBestand.get(a.id);
+      if (!alt) continue;
+      let kopie: Entity | undefined;
+      for (const r of a.relations ?? []) {
+        const def = registry.relations[r.type];
+        if (!neuIds.has(r.to) || !def?.asField) continue;
+        const schon = (kopie ?? alt).relations ?? [];
+        if (schon.some((x) => x.type === r.type && (def.cardinality === 'one' || x.to === r.to))) {
+          ohneHalt.add(r.to);
+          continue;
+        }
+        kopie ??= structuredClone(alt);
+        let n = schon.length + 1;
+        while (vergeben.has(`${alt.id}~${r.type}-${n}`)) n += 1;
+        const id = `${alt.id}~${r.type}-${n}`;
+        vergeben.add(id);
+        kopie.relations = [...schon, { ...r, id }];
+      }
+      if (kopie) angehaengt.push(kopie);
+    }
+  }
+  const neu = neu0.filter((e) => !ohneHalt.has(e.id));
+  const anhangText = `${angehaengt.length ? ` ${angehaengt.length} bestehende Artikel bekommen eine Kante auf einen neuen (${[...new Set(angehaengt.flatMap((e) => (e.relations ?? []).filter((r) => neu.some((x) => x.id === r.to)).map((r) => r.type)))].join(', ')}).` : ''}${ohneHalt.size ? ` ${ohneHalt.size} neue nicht angelegt: ihr bestehender Artikel hat schon einen.` : ''}`;
   const teileMitGanzem = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && ganzesSchonDa(e)).length : 0;
   const uebersprungen = ausDatei.length - neu.length;
   const angeglichen = optionen.onlyNew ? nummernAngleichen(ausDatei, bestand, neu) : 0;
@@ -242,6 +280,7 @@ export async function runImport(
   const danach = new Map<string, Entity>();
   for (const e of bestand) if (!wegIds.has(e.id)) danach.set(e.id, e);
   for (const e of neu) danach.set(e.id, e);
+  for (const e of angehaengt) danach.set(e.id, e);
   /* Eine Vorlage, die geht, nimmt nichts mit — wie beim Löschen über die
      Route: ihre bleibenden Instanzen bekommen vorher, was sie lasen. */
   const geloest: Entity[] = [];
@@ -283,6 +322,11 @@ export async function runImport(
     }
     zuSchreiben.push(schreib);
   }
+  for (const e of angehaengt) {
+    for (const issue of validateEntity(registry, isInstance(e) ? resolveInstance(danach, e) : e, { knownTypes: arten, knownIds: bekannt, stageOf: stufen })) {
+      fehler.push(`${e.interfaces?.[0] ?? '?'} „${e.name}" (${e.id}): ${issue.message}`);
+    }
+  }
   if (fehler.length) {
     throw new ImportFehler(`${fehler.length} Fehler, nichts geschrieben:\n${fehler.slice(0, 30).join('\n')}${fehler.length > 30 ? `\n… ${fehler.length - 30} weitere` : ''}`);
   }
@@ -301,7 +345,7 @@ export async function runImport(
 
   if (optionen.dryRun) {
     const zeilen = [optionen.onlyNew
-      ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).${angeglichenText}`
+      ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).${angeglichenText}${anhangText}`
       : `Probelauf, nichts geschrieben${ebenenText ? ` — ${ebenenText}` : ''}: ${zuSchreiben.length} Artikel würden geschrieben, ${weg.length} gelöscht${weg.length ? ` (${jeArt(weg)})` : ''}.`];
     if (geloest.length) zeilen.push(`${geloest.length} Instanzen würden von ihrer Vorlage gelöst: ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
     if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'würden ins Leere zeigen'));
@@ -318,12 +362,13 @@ export async function runImport(
     if (await repo.deleteEntity(alt.id)) geloescht += 1;
   }
   for (const e of zuSchreiben) await repo.putEntity(e);
+  for (const e of angehaengt) await repo.putEntity(e);
   for (const e of geloest) await repo.putEntity(e);
   await repo.appendEvent('import', undefined, {
     written: zuSchreiben.length,
     removed: geloescht,
     replace: Boolean(optionen.replace),
-    ...(optionen.onlyNew ? { onlyNew: true, skipped: uebersprungen } : {}),
+    ...(optionen.onlyNew ? { onlyNew: true, skipped: uebersprungen, ...(angehaengt.length ? { attached: angehaengt.length } : {}) } : {}),
     ...(optionen.replaceLayer ? { replaceLayer: ebenenText } : {}),
     ...(verwaisteKanten.length ? { danglingRelations: verwaisteKanten.length } : {}),
   });
@@ -337,7 +382,7 @@ export async function runImport(
     if (weg.length) verwaist.push(`${u.name}: ${weg.join(', ')}`);
   }
   const zeilen = [optionen.onlyNew
-    ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).${angeglichenText}`
+    ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).${angeglichenText}${anhangText}`
     : `${ebenenText ? `${ebenenText}: ` : ''}${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht (${jeArt(weg)})` : ''}.`];
   if (geloest.length) zeilen.push(`${geloest.length} Instanzen von ihrer gelöschten Vorlage gelöst (sie tragen jetzt, was sie lasen): ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
   if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'zeigen jetzt ins Leere'));

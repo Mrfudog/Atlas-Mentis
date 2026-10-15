@@ -16,11 +16,13 @@
  */
 
 import type { Entity } from '@nw/model';
+import { linkedPeg } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import { profAusCr } from '../copy.js';
 import { inline, OHNE, zauberwirken } from '../text.js';
 import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
+import { SPIELART } from '../lesen.js';
 import { ATTRIBUTE, gesinnung, GROESSE, liste, zahl } from '../zuordnung.js';
 import { aktionsart, fertigkeit } from './regeln.js';
 import { zerlegeAngriff } from './angriff.js';
@@ -551,6 +553,43 @@ export function vorlagenwerte(text: string, e: Knoten): string {
   });
 }
 
+/**
+ * **Eine benannte Kreatur ist eine Figur** (T-169): Strahd, Venomfang, Gar
+ * stehen bei 5e.tools nur als Zahlen da. Dazu gehört eine `Creature`
+ * (`kind: npc`), der der Statblock über `belongsTo` gehört — direkt, keine
+ * Instanz: eine benannte Kreatur gibt es einmal. Sie liegt in der Ebene des
+ * Statblocks (dieselbe Quelle), heisst wie er ohne Klammer am Ende
+ * („(Wraith Form)") und trägt dieselbe Peg-Id, die die Werkbank für sie
+ * vergibt (`linkedPeg`). Der Statblock behält das Merkmal als Marke
+ * `named`. Erkannt wird nur `isNamedCreature`: ein grossgeschriebener
+ * `shortName` allein ist kein Eigenname, er wird gezählt.
+ * Spielarten (`_versions`) bekommen keine eigene — die Grundfassung trägt sie.
+ */
+export function benannteKreatur(wb: Werkbank, sb: Entity, e: Knoten): Entity | undefined {
+  /* Eine Spielart verliert `isNamedCreature` beim Auflösen, wenn 5e.tools
+     es nicht ausdrücklich behält — sie bekommt ohnehin keine eigene. */
+  if (e[SPIELART]) {
+    if (e['isNamedCreature']) {
+      wb.marke(sb, 'named');
+      wb.notiz('benannte Spielart: keine eigene Kreatur');
+    }
+    return undefined;
+  }
+  if (!e['isNamedCreature']) {
+    if (typeof e['shortName'] === 'string' && /^\p{Lu}/u.test(e['shortName'])) wb.notiz('shortName gross, ohne isNamedCreature: keine Kreatur');
+    return undefined;
+  }
+  wb.marke(sb, 'named');
+  const voll = String(e['name']);
+  const name = voll.replace(/\s*\([^)]*\)\s*$/, '').trim() || voll;
+  const k = wb.anlegen('Creature', name, `named|${sb.id}`, e, linkedPeg(sb.id, 'Creature'));
+  wb.feld(k, 'Creature', 'kind', 'npc');
+  wb.kante(sb, 'belongsTo', k.id);
+  wb.benannt.add(k.id);
+  wb.notiz('benannte Kreatur angelegt');
+  return k;
+}
+
 export const MONSTER: Zuordnung[] = [
   {
     art: 'monster',
@@ -574,6 +613,7 @@ export const MONSTER: Zuordnung[] = [
       }
       const f = wb.fluff('monsterFluff', String(e['name']), String(e['source']));
       if (f) wb.lore(sb, wb.text(f['entries']));
+      benannteKreatur(wb, sb, e);
     },
   },
   {

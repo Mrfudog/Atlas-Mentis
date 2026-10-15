@@ -187,6 +187,43 @@ describe('pnpm --filter @nw/server run import', () => {
     const inEbene = (e: Entity): Entity => ({ ...e, relations: [{ id: `${e.id}-inLayer`, type: 'inLayer', to: ebene.id }] });
     const datei = { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, inEbene(regel('a', 'A')), inEbene(regel('b', 'B'))] };
 
+    /* T-169: die Kreatur eines benannten Statblocks ist neu, der Statblock
+       steht schon. Namen erfunden. */
+    it('hängt einen bestehenden Statblock an seine neue Kreatur — oder lässt sie weg, wenn er schon eine hat', async () => {
+      const sb = (id: string, name: string): Entity => ({
+        id, interfaces: ['Statblock'], name, relations: [{ id: `${id}-inLayer`, type: 'inLayer', to: ebene.id }],
+        components: { Identity: { name, id: `statblock-${id}` }, Status: { status: 'ready' } },
+      });
+      const kreatur = (id: string, name: string): Entity => ({
+        id, interfaces: ['Creature'], name, relations: [{ id: `${id}-inLayer`, type: 'inLayer', to: ebene.id }],
+        components: { Identity: { name, id: `creature-${id}` }, Status: { status: 'ready' }, Creature: { kind: 'npc' } },
+      });
+      const eigene = kreatur('k-eigen', 'Tobin, von der Leitung');
+      const schonVergeben: Entity = { ...sb('s2', 'Tobin'), relations: [...sb('s2', 'Tobin').relations!, { id: 's2~belongsTo-1', type: 'belongsTo', to: 'k-eigen' }] };
+      const repo = await mitKonto([ebene, sb('s1', 'Morwen'), schonVergeben, eigene]);
+      const mitKante = (e: Entity, to: string): Entity => ({ ...e, relations: [...e.relations!, { id: `${e.id}~belongsTo-9`, type: 'belongsTo', to }] });
+      const datei = {
+        format: 'nebelwacht/1', registry: seedRegistry,
+        entities: [ebene, mitKante(sb('s1', 'Morwen'), 's1-creature'), mitKante(sb('s2', 'Tobin'), 's2-creature'), kreatur('s1-creature', 'Morwen'), kreatur('s2-creature', 'Tobin')],
+        additions: ['s1-creature', 's2-creature'],
+      };
+      const probe = await runImport(repo, datei, { onlyNew: true, dryRun: true });
+      expect(probe.text).toMatch(/1 neu.*1 bestehende Artikel bekommen eine Kante auf einen neuen \(belongsTo\).*1 neue nicht angelegt/);
+      expect((await repo.getEntity('s1'))!.relations!.some((r) => r.type === 'belongsTo')).toBe(false);
+
+      const r = await runImport(repo, datei, { onlyNew: true, additions: true });
+      expect(r.geschrieben).toBe(1);
+      expect(await repo.getEntity('s2-creature')).toBeUndefined();
+      const s1 = (await repo.getEntity('s1'))!;
+      expect(s1.relations!.filter((x) => x.type === 'belongsTo').map((x) => x.to)).toEqual(['s1-creature']);
+      expect((await repo.getEntity('s2'))!.relations!.filter((x) => x.type === 'belongsTo').map((x) => x.to)).toEqual(['k-eigen']);
+
+      /* Ein zweiter Lauf findet alles schon da. */
+      const zweit = await runImport(repo, datei, { onlyNew: true });
+      expect(zweit.geschrieben).toBe(0);
+      expect(zweit.text).not.toMatch(/bekommen eine Kante/);
+    });
+
     it('legt beim zweiten Lauf mit derselben Datei nichts an, und ein geänderter Artikel bleibt geändert', async () => {
       const repo = await mitKonto();
       const erst = await runImport(repo, datei, { onlyNew: true });
