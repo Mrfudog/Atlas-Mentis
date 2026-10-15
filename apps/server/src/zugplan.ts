@@ -170,7 +170,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
 
   app.get<{ Params: { id: string }; Querystring: { actor?: string } }>('/api/maps/:id/turn-plan', async (request, reply) => {
     const l = await lage(request, request.params.id);
-    if ('fehler' in l) return reply.code(l.fehler).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
+    if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
     const { user, stand, karte, leitet } = l;
     const moegliche = figuren(stand, karte, user, leitet);
     const figur = moegliche.find((e) => e.id === request.query.actor) ?? moegliche.find((e) => (user.actorIds ?? []).includes(e.id)) ?? moegliche[0] ?? null;
@@ -219,7 +219,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     '/api/maps/:id/turn-plan',
     async (request, reply) => {
       const l = await lage(request, request.params.id);
-      if ('fehler' in l) return reply.code(l.fehler).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
+      if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
       const { user, stand, karte, kampagne, leitet } = l;
       const b = request.body ?? {};
       const figur = figuren(stand, karte, user, leitet).find((e) => e.id === b.actor);
@@ -256,7 +256,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     '/api/maps/:id/turn-plan/:plan/decide',
     async (request, reply) => {
       const l = await lage(request, request.params.id);
-      if ('fehler' in l) return reply.code(l.fehler).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
+      if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
       const { user, stand, roheKarte, kampagne, leitet } = l;
       if (!leitet) return reply.code(403).send({ error: 'Bestätigen darf die Leitung.' });
       const plan = (await plaeneDerKarte(repo, roheKarte.id)).find((p) => p.plan === request.params.plan);
