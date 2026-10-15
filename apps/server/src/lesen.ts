@@ -40,7 +40,8 @@ import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 
 /** Was an einem Abschnitt hängt und mit ihm gezeigt wird: seine Karten, seine Begegnungen. */
-const EINGEBETTET = new Set(['mapOf', 'partOf']);
+/* `describedIn`: ein Ort aus dem Buch zeigt auf den Abschnitt, der ihn beschreibt (T-175). */
+const EINGEBETTET = new Set(['mapOf', 'partOf', 'describedIn']);
 /** Die Karten, deren Text gesucht wird — die übrigen sind Zahlen und Kanten. */
 const TEXTKARTEN = ['Prose', 'ReadAloud', 'Description'];
 const TREFFER_HOECHSTENS = 50;
