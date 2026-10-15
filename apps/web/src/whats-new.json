@@ -6,6 +6,11 @@
       "title": "Fog of war shows what is revealed in every browser",
       "text": "With fog on, the player view and player accounts now see the revealed parts of a map in every browser — before, some browsers covered the whole map, revealed areas included.",
       "area": "Play",
+      "id": "2026-10-15-help-per-page",
+      "date": "2026-10-15",
+      "title": "Help for every page",
+      "text": "The ? in the header opens help for the page you are on, with the What's new entries about it. On Play it explains the map tools, how fog is revealed (by hand or along moves), why there is no line of sight yet, and the turn planner with its reactions.",
+      "area": "Navigation",
       "link": "/play"
     },
     {
