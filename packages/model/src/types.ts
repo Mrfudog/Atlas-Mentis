@@ -231,8 +231,14 @@ export interface PropertySchema {
   facet?: FacetHint;
 }
 
-/** Was ein Feld oder eine Kante zur Facette sagt (T-174). */
-export type FacetHint = false | { label?: string; order?: number };
+/**
+ * Was ein Feld oder eine Kante zur Facette sagt (T-174). `as` (T-180)
+ * liest ein Feld, das sonst keine Facette wäre, auf eine bestimmte Weise:
+ * `effect` die Einträge von `Effects.effects` (Ziel und Art), `requirement`
+ * einen Satz wie „level 4, STR 13" als prüfbare Voraussetzung
+ * (`parseRequirement`).
+ */
+export type FacetHint = false | { label?: string; order?: number; as?: 'effect' | 'requirement' };
 
 /**
  * Wohin ein Verweisfeld zeigen darf. Drei Filter, alle freiwillig, mit UND
