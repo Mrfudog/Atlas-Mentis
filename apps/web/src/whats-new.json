@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-trades-and-tools",
+      "date": "2026-10-15",
+      "title": "Trades show their recipes and materials; tools and characters show what they can craft",
+      "text": "A new article type Trade names the tools it is practised with. Its page lists every recipe of the trade with check, time and what it yields, and the materials those recipes need, with search and a rarity filter. A tool’s page shows “Can craft”, and a character’s Craft tab lists, per tool they are proficient in, the recipes it makes — learned or not.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
       "id": "2026-10-15-map-table-rules",
       "date": "2026-10-15",
       "title": "Fog per character, moves the GM confirms, and reveal along moves as a campaign rule",

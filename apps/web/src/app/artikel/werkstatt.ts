@@ -1,9 +1,10 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { nextMark } from '@nw/model';
-import { Api, ApiError, type Handwerk, type HandwerkAuftrag, type HandwerkKreis } from '../kern/api';
+import { Api, ApiError, type Handwerk, type HandwerkAuftrag, type HandwerkKreis, type HandwerkUebersicht } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
+import { Handwerksuebersicht } from './handwerksuebersicht';
 
 type RezeptSicht = Extract<Handwerk, { kind: 'recipe' }>;
 
@@ -32,9 +33,9 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
  */
 @Component({
   selector: 'nw-werkstatt',
-  imports: [RouterLink, KurzLink],
+  imports: [RouterLink, KurzLink, Handwerksuebersicht],
   template: `
-    @if (sicht(); as s) {
+    @if (werkbank(); as s) {
       <section class="werkstatt" aria-label="Crafting">
         @if (s.kind === 'recipe') {
           <h3>Crafting</h3>
@@ -104,7 +105,7 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
               }
             </ul>
           }
-        } @else {
+        } @else if (s.kind === 'order') {
           <h3>Crafting order</h3>
           @let o = s.order;
           <aside class="regeln" aria-label="Campaign rules">
@@ -218,6 +219,8 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
           <p class="fehler" role="alert">{{ fehler() }}</p>
         }
       </section>
+    } @else if (uebersicht(); as u) {
+      <nw-handwerksuebersicht [sicht]="u" />
     }
   `,
   styles: `
@@ -284,6 +287,16 @@ export class Werkstatt {
   protected readonly rueck = signal('none');
   private lauf = 0;
 
+  /** Rezept oder Auftrag: die Werkbank. Beruf, Werkzeug, Figur: die Übersicht (T-196). */
+  protected readonly werkbank = computed(() => {
+    const s = this.sicht();
+    return s?.kind === 'recipe' || s?.kind === 'order' ? s : null;
+  });
+  protected readonly uebersicht = computed((): HandwerkUebersicht | null => {
+    const s = this.sicht();
+    return s && s.kind !== 'recipe' && s.kind !== 'order' && s.kind !== 'none' ? s : null;
+  });
+
   protected readonly figur = computed(() => {
     const s = this.sicht();
     return s?.kind === 'recipe' ? (s.actors.find((a) => a.id === this.wer()) ?? null) : null;
@@ -292,7 +305,8 @@ export class Werkstatt {
   constructor() {
     effect(() => void this.holen(this.id()));
     const ab = inject(Live).onArtikel((ev) => {
-      if (this.betrifft(ev.id) || ev.type === 'CraftingOrder' || ev.type === 'Inventory') void this.holen(this.id(), true);
+      const uebersicht = !!this.uebersicht() && (ev.type === 'Recipe' || ev.type === 'Trade' || ev.type === 'Statblock');
+      if (this.betrifft(ev.id) || uebersicht || ev.type === 'CraftingOrder' || ev.type === 'Inventory') void this.holen(this.id(), true);
     });
     inject(DestroyRef).onDestroy(ab);
   }
@@ -302,7 +316,8 @@ export class Werkstatt {
     if (!s) return false;
     if (id === this.id()) return true;
     if (s.kind === 'order') return s.order.actor?.id === id || s.order.recipe?.id === id;
-    return s.actors.some((a) => a.id === id);
+    if (s.kind === 'recipe') return s.actors.some((a) => a.id === id);
+    return false;
   }
 
   private async holen(id: string, still = false): Promise<void> {

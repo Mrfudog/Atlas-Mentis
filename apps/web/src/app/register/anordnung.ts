@@ -25,6 +25,7 @@ export const ELEMENTE: { el: LayoutElementKind; label: string; was: string; draw
   { el: 'reader', label: 'Reader', was: 'The layer as a book: contents, search, chapters in one go, reading position per account; a group as a shelf. Drawn across the full width below the article.', drawn: true },
   { el: 'classOverview', label: 'Class overview', was: 'Key data, the level table, subclasses to pick and compare, features by level. Takes proficiencies and choices out of the field table.', drawn: true },
   { el: 'originOverview', label: 'Ancestry/background overview', was: 'Key data, variants to switch and compare, traits. Takes proficiencies and choices out of the field table.', drawn: true },
+  { el: 'crafting', label: 'Crafting', was: 'On a recipe the workbench to start an order, on an order its checks; on a trade its tools, recipes and materials; on a tool what it makes; on a character what it can craft with the tools it is proficient in — learned or not. Draws nothing elsewhere.', drawn: true },
   { el: 'relations', label: 'Relations', was: 'Its edges with their targets. The article page has them in its side column.', drawn: true },
   { el: 'linked', label: 'Linked', was: 'The fields of what hangs on an asField edge (the statblock of a creature), editable in place; without one, Create and From a template.', drawn: true },
   { el: 'usedBy', label: 'Used by', was: 'Who composes this article, by creature type.', drawn: false },
