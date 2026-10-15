@@ -114,6 +114,7 @@ export function holds(registry: Pick<Registry, 'enums' | 'interfaces'>, p: Prope
   if (p.editOnly) teile.push('edit form only');
   if (p.readOnly) teile.push('issued');
   if (p.facet === false) teile.push('no list filter');
+  else if (p.facet && p.facet.as) teile.push(`filter as ${p.facet.as}`);
   return teile.join(' · ');
 }
 

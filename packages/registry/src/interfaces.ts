@@ -424,8 +424,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Feat',
     area: 'rules',
     label: 'Feat',
-    /* Ein Talent fragt selbst (+1 auf welches Attribut?, REQ-238). */
-    extends: ['Rule', 'Choices'],
+    /* Ein Talent fragt selbst (+1 auf welches Attribut?, REQ-238) und
+       wirkt wie ein Gegenstand (T-180, `effectsAt` liest es schon). */
+    extends: ['Rule', 'Choices', 'Effects'],
     schema: merge(g.FeatInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
@@ -585,8 +586,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Feature',
     /* Ein Merkmal fragt selbst (Fighting Style, Ability Score
        Improvement); gewährt eine Klasse es mehrmals, fragt es jedes Mal
-       (T-107, E-027). */
-    extends: ['Rule', 'Choices'],
+       (T-107, E-027). Seine Wirkungen gelten, sobald es gewährt ist
+       (T-180, `effectsAt`). */
+    extends: ['Rule', 'Choices', 'Effects'],
     schema: merge(g.FeatureInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */

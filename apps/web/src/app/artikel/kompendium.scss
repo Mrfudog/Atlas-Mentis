@@ -241,6 +241,15 @@ td.name .daumen ::ng-deep img {
   display: none;
 }
 /* „Edit type" / „New type": ins Register (W5), aussehend wie ein Knopf. */
+.brauchbar {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+}
 .knopf {
   display: inline-flex;
   align-items: center;
