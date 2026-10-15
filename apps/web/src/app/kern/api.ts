@@ -1619,6 +1619,13 @@ export class Api {
   setCurrentCampaign(id: string): Promise<{ ok: true; current: string }> {
     return this.call('/api/campaigns/current', { method: 'PUT', body: JSON.stringify({ id }) });
   }
+  /** Eine ganze Gruppe an oder aus, mit allem darin (T-185). */
+  switchGroup(campaign: string, group: string, on: boolean): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(group)}/group`,
+      { method: 'PUT', body: JSON.stringify({ on }) },
+    );
+  }
   activateLayer(campaign: string, layer: string): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {
     return this.call(
       `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(layer)}`,
