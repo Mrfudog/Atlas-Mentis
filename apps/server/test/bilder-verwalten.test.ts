@@ -109,7 +109,7 @@ async function aufbau(opts: { maxBytes?: number } = {}) {
   };
   const hole = async (name: string, url: string, headers: Record<string, string> = {}) =>
     app.inject({ method: 'GET', url, headers: { ...headers, cookie: await keks(name) } });
-  const als = async (name: string, method: 'GET' | 'PUT' | 'DELETE', url: string, payload?: unknown) =>
+  const als = async (name: string, method: 'GET' | 'PUT' | 'DELETE' | 'POST', url: string, payload?: unknown) =>
     app.inject({ method, url, headers: { cookie: await keks(name) }, ...(payload !== undefined ? { payload: payload as object } : {}) });
   return { repo, store, app, hoch, hole, als };
 }
@@ -212,7 +212,7 @@ describe('replacing an image', () => {
     await zeige(repo, 'c_offen', alt.id);
 
     const res = await hoch('Mira', { variantOf: alt.id }, { name: 'b.png', type: 'image/png', data: await png(42, 42, { r: 1, g: 200, b: 9 }) });
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode, res.body).toBe(201);
     const neu = res.json() as Hochgeladen;
     expect(neu.id).not.toBe(alt.id);
     expect(neu.name).toBe('Wache (new version)');
@@ -264,5 +264,61 @@ describe('replacing an image', () => {
     const keks = (await app.inject({ method: 'POST', url: '/api/login', payload: { name: 'Sela', password: PASSWORT } })).cookies.find((c) => c.name === 'nw_session')!;
     const res = await app.inject({ method: 'PUT', url: `/api/assets/${alt.id}/file`, payload: f.payload, headers: { ...f.headers, cookie: `nw_session=${keks.value}` } });
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('use an image as a map, a token or a prop (T-201)', () => {
+  it('lists the size of the file with each image', async () => {
+    const { hoch, hole } = await aufbau();
+    await hoch('Mira', { name: 'Gross' }, { name: 'g.png', type: 'image/png', data: await png(1920, 1080) });
+    const r = (await hole('Mira', '/api/list?type=Asset')).json() as { rows: { asset?: { width: number; height: number; mime: string; bytes: number } }[] };
+    expect(r.rows[0]!.asset).toMatchObject({ width: 1920, height: 1080, mime: 'image/png', backend: 'app' });
+    expect(r.rows[0]!.asset!.bytes).toBeGreaterThan(0);
+  });
+
+  it('makes a map with a grid from the resolution and sets the class', async () => {
+    const { repo, hoch, als } = await aufbau();
+    const bild = (await hoch('Mira', { name: 'Krypta' }, { name: 'k.png', type: 'image/png', data: await png(1400, 700) })).json() as Hochgeladen;
+    const res = await als('Mira', 'POST', `/api/assets/${bild.id}/use`, { as: 'map' });
+    expect(res.statusCode, res.body).toBe(201);
+    const { kind, open } = res.json() as { kind: boolean; open: { id: string; type: string } };
+    expect(kind).toBe(true);
+    expect(open.type).toBe('Map');
+    const karte = (await repo.getEntity(open.id))!;
+    expect(karte.components?.['Image']).toMatchObject({ image: bild.id });
+    expect(karte.components?.['Map']).toMatchObject({ gridShape: 'square', gridSize: 70, kind: 'battle' });
+    expect(((await repo.getEntity(bild.id))!.components?.['Asset'] as { kind: string }).kind).toBe('map');
+  });
+
+  it('puts a token on the statblock of a creature, and refuses one without', async () => {
+    const { repo, hoch, als } = await aufbau();
+    await repo.putEntity({
+      id: 'sb_volo',
+      interfaces: ['Statblock'],
+      name: 'Volo',
+      components: { Identity: { name: 'Volo', id: 'statblock-0001', aliases: [] } },
+      relations: [
+        { id: 'sb_volo~b', type: 'belongsTo', to: 'c_offen', props: {} },
+        { id: 'sb_volo~l', type: 'inLayer', to: 'ly_nebel', props: {} },
+      ],
+    });
+    const bild = (await hoch('Mira', { name: 'Volo Token' }, { name: 't.png', type: 'image/png', data: await png(64, 64) })).json() as Hochgeladen;
+    const ohne = await als('Mira', 'POST', `/api/assets/${bild.id}/use`, { as: 'token', for: 'c_geheim' });
+    expect(ohne.statusCode).toBe(409);
+    expect(((await repo.getEntity(bild.id))!.components?.['Asset'] as { kind: string }).kind).toBe('image');
+
+    const res = await als('Mira', 'POST', `/api/assets/${bild.id}/use`, { as: 'token', for: 'c_offen' });
+    expect(res.statusCode).toBe(200);
+    expect((res.json() as { open: { id: string } }).open.id).toBe('c_offen');
+    expect((await repo.getEntity('sb_volo'))!.components?.['Statblock']).toMatchObject({ token: bild.id });
+  });
+
+  it('does not let a spectator classify or create', async () => {
+    const { hoch, als } = await aufbau();
+    const bild = (await hoch('Mira', { name: 'Wappen', for: 'c_offen' }, { name: 'w.png', type: 'image/png', data: await png(50, 50) })).json() as Hochgeladen;
+    const res = await als('Gast', 'POST', `/api/assets/${bild.id}/use`, { as: 'map' });
+    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    const prop = await als('Gast', 'POST', `/api/assets/${bild.id}/use`, { as: 'prop' });
+    expect((prop.json() as { kind?: boolean }).kind ?? false).toBe(false);
   });
 });
