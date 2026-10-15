@@ -1603,7 +1603,8 @@ export class Artikel implements SchnellKontext {
     const name = this.bestand.name();
     const w = this.stapel.schreib()?.layer;
     return {
-      ebenen: ebenen.map((id) => name(id) ?? id),
+      /* Ebenen ausserhalb des Stapels nennt der Server nicht (T-207). */
+      ebenen: ebenen.map((id) => name(id)).filter((n): n is string => !!n),
       schreib: w?.name ?? null,
       fremd: !w || !ebenen.includes(w.id),
     };

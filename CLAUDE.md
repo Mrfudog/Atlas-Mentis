@@ -203,6 +203,12 @@ wiederkommen, werden sie neu geschrieben.
   Homebrew, wenn sie hier angelegt wurde, und „Unassigned", wenn sie
   eingelesen ist (T-109); ein Feld dafür gibt es nicht — die Ebenenseite
   zeigt den Grund und hängt die `partOf`-Kante um.
+  **Was nicht aufgeschaltet ist, steht nicht da** (T-207, `shownLayers`):
+  eine Ebene ausserhalb des Stapels — und der Vergleichsebenen, wer sie
+  sieht — erscheint weder als Artikel noch als Fassung, Filteroption,
+  Kürzel oder Zählung; gesiebt wird im Listenindex am Server, nicht je
+  Seite. Ein- und ausgeschaltet wird nur an der Kampagne (Kampagnenseite,
+  Popup der Kopfleiste); Bibliothek und Werkbank (`allLayers=1`) sehen alle.
 - **Zwei Fragen, und die grobe kommt zuerst.** Die **Sichtbarkeit**
   (`articleVisible`) sagt, ob ein Artikel überhaupt an jemanden geht; das
   **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer

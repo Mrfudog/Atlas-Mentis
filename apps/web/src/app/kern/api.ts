@@ -515,7 +515,8 @@ export interface Liste {
 export interface Ausgeblendet {
   campaign: { id: string; name: string };
   total: number;
-  layers: { id: string; name: string; count: number; canActivate: boolean }[];
+  /** Ob dieses Konto an der Kampagne Ebenen schaltet (T-207) — welche, steht nur dort. */
+  canManage: boolean;
 }
 
 /** Eine Ebene auf der Kampagnenseite (`GET /api/campaigns/:c/layers`). */
@@ -683,6 +684,8 @@ export interface ListenFrage {
   tag?: string[] | undefined;
   /** Nur Bilder, die kein sichtbarer Artikel zeigt (T-119). */
   unused?: boolean | undefined;
+  /** Auch Ebenen, die die Kampagne nicht aufschaltet (T-207) — nur die Werkbank; der Server gibt sie Verwaltung und Leitung. */
+  allLayers?: boolean | undefined;
 }
 
 /**

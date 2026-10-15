@@ -266,7 +266,7 @@ const OFFEN = 8;
           <p class="fehler" role="alert">{{ f }}</p>
         }
 
-        <nw-ausgeblendet [info]="liste()?.unactivated" (geaendert)="neuFragen()" />
+        <nw-ausgeblendet [info]="liste()?.unactivated" />
 
         @if (!liste()) {
           <p class="leer">Loading…</p>
