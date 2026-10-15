@@ -10,6 +10,7 @@ const KASTEN: Record<string, string> = {
   'ReadAloud.readaloud': 'vorlesen',
   'Secrets.secret': 'geheim',
   'Tactics.tactics': 'geheim',
+  'Encounter.hint': 'geheim',
 };
 /** Wie ein Absatz eines Buchs gesetzt wird, nach `Paragraph.kind` (T-108); Text, Liste und Tabelle stehen im Fluss. */
 const SORTE: Record<string, string> = { sidebar: 'rand', quote: 'zitat' };

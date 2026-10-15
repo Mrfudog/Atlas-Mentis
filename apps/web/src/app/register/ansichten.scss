@@ -88,6 +88,18 @@ nw-register {
   .klein-f {
     max-width: 14rem;
   }
+  /* Nur, wenn der Artikel es sagt (T-184). */
+  .wenn > summary {
+    cursor: pointer;
+    font-size: 0.9em;
+  }
+  .wenn-felder {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.8rem;
+    align-items: end;
+    margin-top: 0.3rem;
+  }
   .vorschau-reg {
     display: flex;
     flex-direction: column;

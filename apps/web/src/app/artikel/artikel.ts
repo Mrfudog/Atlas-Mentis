@@ -7,6 +7,7 @@ import {
   BOOK_CARDS,
   edgeEffects,
   edgeEffectText,
+  forArticle,
   layoutFor,
   LAYER_RELATION,
   typeChain,
@@ -801,9 +802,10 @@ interface Feld {
                     </dl>
                   }
                   @case ('prosa') {
-                    @for (b of st.prosa; track b.ref) {
+                    @for (b of st.prosa; track b.ref; let i = $index) {
                       <section class="block" [class]="b.key">
-                        @if (b.key !== 'paragraph') {
+                        <!-- Einträge desselben Feldes stehen unter einer Überschrift (T-184: drei Hinweise sind ein Abschnitt). -->
+                        @if (b.key !== 'paragraph' && neuesFeld(st.prosa, i)) {
                           <h2>{{ b.label }}</h2>
                         }
                         <!-- Je Abschnitt unter seiner Überschrift, was eine andere
@@ -1252,7 +1254,8 @@ export class Artikel implements SchnellKontext {
     const r = this.reg();
     if (!e || !r) return [];
     const v = this.view();
-    const layout = layoutFor(r, 'full', primaryInterface(e)).layout;
+    /* Was `when` an diesem Artikel ausschliesst, fällt weg (T-184). */
+    const layout = forArticle(layoutFor(r, 'full', primaryInterface(e)).layout, e);
     /* Leere Felder, wenn die Ansicht es sagt (T-110) — beim Lesen; die
        Maske zeigt ohnehin jedes Feld. */
     const zellen = v?.empty === 'show' ? mitLeeren(r, e, this.zellenMitFassungen()) : this.zellenMitFassungen();
@@ -1477,6 +1480,12 @@ export class Artikel implements SchnellKontext {
     }
     return out;
   });
+
+  /** Beginnt hier ein anderes Feld als im Eintrag davor? Dann steht seine Überschrift (T-184). */
+  protected neuesFeld(prosa: readonly Prosa[] | undefined, i: number): boolean {
+    const feld = (p: Prosa | undefined) => (p ? `${p.type}.${p.key}` : '');
+    return i === 0 || feld(prosa?.[i - 1]) !== feld(prosa?.[i]);
+  }
 
   /** Die Prosa samt leeren Einträgen, wo nur eine andere Fassung Text hat (T-103). */
   private readonly prosaMitFassungen = computed<Prosa[]>(() => {

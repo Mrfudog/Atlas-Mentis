@@ -1,6 +1,6 @@
 import { Component, ViewEncapsulation, computed, inject, input, output, signal } from '@angular/core';
 import { typeList } from '@nw/model';
-import type { LayoutElement, LayoutElementKind, Registry } from '@nw/model';
+import type { LayoutElement, LayoutElementKind, LayoutWhen, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 
 /**
@@ -233,6 +233,33 @@ export class RegFeldwahl {
               <button type="button" class="klein" (click)="reiterDazu(i)">+ tab</button>
             }
           }
+          <!-- Nur, wenn der Artikel es sagt (T-184): sonst fällt das Element an ihm weg. -->
+          @if (el.when || darf()) {
+            <details class="wenn" [open]="!!el.when">
+              <summary>
+                Only when …
+                @if (el.when) {
+                  <span class="dim">{{ wennText(el.when) }}</span>
+                } @else {
+                  <span class="dim">always</span>
+                }
+              </summary>
+              <div class="wenn-felder">
+                <label class="f klein-f"><span>Field</span>
+                  <input type="text" [value]="el.when?.field ?? ''" [disabled]="!darf()" placeholder="Encounter.kind"
+                    (change)="wennSetzen(i, { field: $any($event.target).value.trim() || undefined })" /></label>
+                <label class="f klein-f"><span>holds one of</span>
+                  <input type="text" [value]="(el.when?.has ?? []).join(', ')" [disabled]="!darf()" placeholder="combat, social"
+                    (change)="wennSetzen(i, { has: liste2($any($event.target).value) })" /></label>
+                <label class="haken"><input type="checkbox" [checked]="!!el.when?.empty" [disabled]="!darf()"
+                  (change)="wennSetzen(i, { empty: $any($event.target).checked || undefined })" /> or is empty</label>
+                <label class="f klein-f"><span>or has an edge</span>
+                  <input type="text" [value]="el.when?.relation ?? ''" [disabled]="!darf()" placeholder="edge kind"
+                    (change)="wennSetzen(i, { relation: $any($event.target).value.trim() || undefined })" /></label>
+              </div>
+              <p class="hint">The element shows only on articles that match; what it would have shown falls to a later element that takes all fields. Empty: always.</p>
+            </details>
+          }
           <p class="hint">{{ was(el.el) }}</p>
         </li>
       } @empty {
@@ -295,6 +322,24 @@ export class RegAnordnung {
   }
   protected weg(i: number): void {
     this.neu((l) => l.splice(i, 1));
+  }
+  /** Die Bedingung in einem Satz (T-184). */
+  protected wennText(w: LayoutWhen): string {
+    const teile: string[] = [];
+    if (w.field && w.has?.length) teile.push(`${w.field} is ${w.has.join(' or ')}`);
+    if (w.field && w.empty) teile.push(`${w.field} is empty`);
+    if (w.relation) teile.push(`it has ${w.relation}`);
+    return teile.join(', or ') || 'always';
+  }
+  protected liste2(text: string): string[] | undefined {
+    const l = text.split(',').map((x) => x.trim()).filter(Boolean);
+    return l.length ? l : undefined;
+  }
+  /** Ändert die Bedingung; leer heisst: keine Bedingung. */
+  protected wennSetzen(i: number, teil: Partial<LayoutWhen>): void {
+    const w: LayoutWhen = { ...(this.layout()[i]?.when ?? {}), ...teil };
+    for (const k of Object.keys(w) as (keyof LayoutWhen)[]) if (w[k] === undefined) delete w[k];
+    this.setzen(i, { when: Object.keys(w).length ? w : undefined });
   }
   protected setzen(i: number, teil: Partial<LayoutElement>): void {
     this.neu((l) => {

@@ -789,9 +789,12 @@ export const relations: Record<string, RelationDef> = {
     type: 'features',
     label: 'features',
     inverseLabel: 'appears in',
-    means: 'A story features a creature, statblock or faction; they list the stories they appear in.',
-    from: ['Story'],
-    to: ['Creature', 'Statblock', 'Faction'],
+    means: 'A story or encounter features a creature, statblock, faction or hazard; they list where they appear.',
+    /* Seit T-184 auch die Begegnung: wer an einem Gespräch beteiligt ist
+       (die Haltung steht als `regards` bei der Kreatur), welche Falle eine
+       Fallenbegegnung ist — die Falle steht als `Hazard` für sich. */
+    from: ['Story', 'Encounter'],
+    to: ['Creature', 'Statblock', 'Faction', 'Hazard'],
   },
 
   // ------------------------------------------------------------- knowledge
