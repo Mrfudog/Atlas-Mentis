@@ -29,6 +29,7 @@ import {
   publisherGroups,
   withFilter,
   withCompare,
+  shownLayers,
   filterOf,
   passesFilter,
 } from '../src/stack.js';
@@ -256,6 +257,14 @@ describe('groups of layers (T-088)', () => {
   ];
   const welt = (k: Entity) => new Map<EntityId, Entity>([...basis, k].map((e) => [e.id, e]));
   const an = (...ids: string[]) => ids.map((to, i) => ({ id: `a_${to}`, type: 'activates', to, props: { order: (i + 1) * 10 } }));
+
+  it('names only the layers in play, groups and members included, and compare layers on request (T-207)', () => {
+    const k = withCompare(K([...an('g_core'), { id: 'aus', type: 'activates', to: 'mm', props: { mode: 'off' } }]), ['xge']);
+    const w = welt(k);
+    expect([...shownLayers(w, k, false)!].sort()).toEqual(['g_core', 'phb']);
+    expect([...shownLayers(w, k, true)!].sort()).toEqual(['g_core', 'phb', 'xge']);
+    expect(shownLayers(w, null, true)).toBeNull();
+  });
 
   it('finds the members, by publication date, and the nested ones without looping', () => {
     const k = K([]);
