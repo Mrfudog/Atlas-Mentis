@@ -2,7 +2,10 @@
  * Der Importer von der Kommandozeile.
  *
  *   node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md]
- *                    [--srd] [--sources PHB,MM] [--only-2014] [--sample [verzeichnis]]
+ *                    [--srd] [--sources PHB,MM] [--types Place] [--only-2014] [--sample [verzeichnis]]
+ *
+ * `--types Place` gibt nur Artikel dieser Arten (und die Ebenen) aus — zum
+ * Nachtragen einer neuen Art mit `only-new` (T-175, `auswahl.ts`).
  *
  * `--only-2014` nimmt nur den Grundstand, wie vor T-087: ohne 2024, UA,
  * Fahrzeuge, Decks, Bastionen und Waffenmeisterschaften.
@@ -17,6 +20,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { nurArten } from './auswahl.js';
 import { berichtMarkdown } from './bericht.js';
 import { ausschnitt, lauf, PROBE, Prueffehler } from './lauf.js';
 import { lies } from './lesen.js';
@@ -31,7 +35,7 @@ const wert = (flag: string): string | undefined => {
 };
 const pfad = args[0] && !args[0].startsWith('--') ? args[0] : undefined;
 if (!pfad) {
-  console.error('node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md] [--srd] [--sources PHB,MM] [--only-2014] [--sample [verzeichnis]]');
+  console.error('node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md] [--srd] [--sources PHB,MM] [--types Place] [--only-2014] [--sample [verzeichnis]]');
   process.exit(2);
 }
 
@@ -49,13 +53,16 @@ const daten = resolve(pfad);
 console.log(`Lese ${daten} …`);
 const datenstand = lies(daten);
 const quellen = wert('--sources');
+const arten = wert('--types');
 try {
-  const { datei, bericht } = lauf(datenstand, {
+  const gelaufen = lauf(datenstand, {
     nurSrd: args.includes('--srd'),
     nurGrundstand: args.includes('--only-2014'),
     quellen: quellen ? quellen.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
   });
-  console.log(`${datei.entities.length} Artikel, alle geprüft.`);
+  const { bericht } = gelaufen;
+  const datei = arten ? nurArten(gelaufen.datei, arten.split(',').map((s) => s.trim()).filter(Boolean)) : gelaufen.datei;
+  console.log(`${gelaufen.datei.entities.length} Artikel, alle geprüft${arten ? `; ausgegeben ${datei.entities.length} (${arten} und Ebenen)` : ''}.`);
 
   const out = wert('--out');
   if (out) {

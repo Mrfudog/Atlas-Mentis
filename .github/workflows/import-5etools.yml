@@ -34,6 +34,10 @@ on:
         description: "Nur diese Quellen, z. B. PHB,MM oder ein Modulkürzel (leer = alles)"
         type: string
         default: ""
+      types:
+        description: "Nur diese Arten ausgeben, z. B. Place (leer = alle) — zum Nachtragen einer neuen Art mit only-new"
+        type: string
+        default: ""
       confirm:
         description: "Für replace-layer: ersetzen eintippen"
         type: string
@@ -51,6 +55,9 @@ on:
         type: string
         default: only-new
       sources:
+        type: string
+        default: ""
+      types:
         type: string
         default: ""
       confirm:
@@ -79,6 +86,7 @@ jobs:
       ENVIRONMENT: ${{ inputs.environment }}
       MODE: ${{ inputs.mode }}
       SOURCES: ${{ inputs.sources }}
+      TYPES: ${{ inputs.types }}
       CONFIRM: ${{ inputs.confirm }}
       SOURCE_REF: ${{ inputs.source-ref }}
       DIR: ${{ vars.DEPLOY_DIR || (inputs.environment == 'prod' && '/srv/atlas/prod' || '/srv/atlas/dev') }}
@@ -118,6 +126,9 @@ jobs:
           case "$SOURCES" in
             *[!A-Za-z0-9,_\ -]*) echo "::error::sources: nur Kürzel, durch Kommas getrennt (z. B. PHB,MM)"; exit 1 ;;
           esac
+          case "$TYPES" in
+            *[!A-Za-z0-9,]*) echo "::error::types: nur Artnamen, durch Kommas getrennt (z. B. Place)"; exit 1 ;;
+          esac
 
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -145,7 +156,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
           node packages/import-5etools/dist/cli.js "$RUNNER_TEMP/5etools-src/data" \
-            ${SOURCES:+--sources "$SOURCES"} --out "$RUNNER_TEMP/5etools-2014.json" --bericht "$RUNNER_TEMP/5etools-Bericht.md"
+            ${SOURCES:+--sources "$SOURCES"} ${TYPES:+--types "$TYPES"} --out "$RUNNER_TEMP/5etools-2014.json" --bericht "$RUNNER_TEMP/5etools-Bericht.md"
           gzip -9 "$RUNNER_TEMP/5etools-2014.json"
           ls -l "$RUNNER_TEMP/5etools-2014.json.gz"
 
@@ -186,7 +197,7 @@ jobs:
         if: always()
         run: |
           {
-            echo "### 5e.tools → $ENVIRONMENT ($MODE${SOURCES:+, $SOURCES})"
+            echo "### 5e.tools → $ENVIRONMENT ($MODE${SOURCES:+, $SOURCES}${TYPES:+, nur $TYPES})"
             echo
             echo '```'
             cat "$RUNNER_TEMP/ausgabe.txt" 2>/dev/null || echo "(keine Ausgabe — siehe Log)"
