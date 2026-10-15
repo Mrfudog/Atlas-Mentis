@@ -5,7 +5,9 @@ import {
   creatureRef,
   fieldText,
   itemBook,
+  keyStats,
   ordinal,
+  passivePerception,
   spellBook,
   statblockBook,
   xpForCr,
@@ -285,5 +287,60 @@ describe('Kleinzeug', () => {
     expect(coinText(3)).toBe('3 cp');
     expect(xpForCr('17')).toBe(18000);
     expect(fieldText(imperial, { type: 'number', unit: 'ft' }, 150, 'imperial')).toBe('150 ft');
+  });
+});
+
+describe('Kennzahlen (T-206)', () => {
+  it('ein Statblock: AC, HP, Bewegung, Initiative, passive Wahrnehmung, CR', () => {
+    const k = keyStats(imperial, goblin);
+    expect(k.tiles.map((t) => [t.label, t.value])).toEqual([
+      ['AC', '15'],
+      ['HP', '7'],
+      ['Speed', '30 ft'],
+      ['Initiative', '+2'],
+      ['Passive Perception', '9'],
+      ['CR', '1/4'],
+    ]);
+    expect(k.tiles.find((t) => t.key === 'ac')?.note).toBe('leather armor, shield');
+    expect(k.conditions).toEqual([]);
+  });
+
+  it('an einer Figur: Trefferpunkte jetzt/Maximum, zeitweilige, Zustände mit Namen', () => {
+    const figur: Entity = {
+      id: 'pc-1',
+      interfaces: ['Creature'],
+      name: 'Rin',
+      components: { Vitals: { hp: 4, hpTemp: 3, conditions: ['cond-prone', 'cond-x'] } },
+    };
+    const k = keyStats(imperial, goblin, figur, { nameOf: (id) => (id === 'cond-prone' ? 'Prone' : undefined) });
+    expect(k.tiles.find((t) => t.key === 'hp')).toMatchObject({ value: '4/7 +3', ref: 'Vitals.hp' });
+    expect(k.conditions).toEqual([
+      { id: 'cond-prone', name: 'Prone' },
+      { id: 'cond-x', name: 'cond-x' },
+    ]);
+  });
+
+  it('ohne Statblock nur der Stand, ohne Werte keine leeren Kacheln', () => {
+    expect(keyStats(imperial, undefined, { id: 'x', interfaces: ['Creature'], components: { Vitals: { hp: 3 } } }).tiles).toEqual([
+      { key: 'hp', label: 'HP', value: '3', ref: 'Vitals.hp' },
+    ]);
+    expect(keyStats(imperial, { id: 'leer', interfaces: ['Statblock'], components: {} }).tiles).toEqual([]);
+  });
+
+  it('feste Zahlen gehen vor: Initiative und Perception aus `bonuses`', () => {
+    const sb: Entity = {
+      ...goblin,
+      components: {
+        ...goblin.components,
+        Statblock: { ...(goblin.components!['Statblock'] as object), bonuses: { initiative: 5, Perception: 4 } },
+        Proficiencies: { proficient: ['Perception'] },
+      },
+    };
+    const k = keyStats(imperial, sb);
+    expect(k.tiles.find((t) => t.key === 'initiative')?.value).toBe('+5');
+    expect(passivePerception(sb)).toBe(14);
+    /* Geübt ohne feste Zahl: WIS (−1) plus Übung (2). */
+    const geuebt: Entity = { ...goblin, components: { ...goblin.components, Proficiencies: { proficient: ['Perception'] } } };
+    expect(passivePerception(geuebt)).toBe(11);
   });
 });
