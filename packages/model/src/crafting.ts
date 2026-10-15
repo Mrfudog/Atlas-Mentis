@@ -465,6 +465,8 @@ export interface ReservedPiece {
   edge: string;
   item: EntityId;
   qty: number;
+  /** Für welchen Bestandteil (T-197); fehlt bei Reservierungen von vorher. */
+  forNeed?: string;
 }
 
 /**
@@ -476,11 +478,11 @@ export interface ReservedPiece {
  */
 export function settlePieces(
   pieces: readonly ReservedPiece[],
-  consumed: (item: EntityId) => boolean,
+  consumed: (item: EntityId, piece: ReservedPiece) => boolean,
   how: 'success' | Return,
 ): { piece: ReservedPiece; keep: number }[] {
   return pieces.map((piece) => {
-    if (!consumed(piece.item)) return { piece, keep: piece.qty };
+    if (!consumed(piece.item, piece)) return { piece, keep: piece.qty };
     const keep = how === 'success' || how === 'none' ? 0 : how === 'all' ? piece.qty : Math.floor(piece.qty / 2);
     return { piece, keep };
   });
@@ -500,6 +502,8 @@ export function reserveIn(
   qty: number,
   orderId: EntityId,
   newId: string,
+  /** Der Bestandteil des Rezepts, für den reserviert wird (T-197, `holds.props.forNeed`). */
+  forNeed?: string,
 ): { inventory: Entity; edge: string } | { refused: ReserveRefusal } {
   const kante = (inventory.relations ?? []).find((r) => r.id === edgeId && r.type === 'holds');
   if (!kante) return { refused: 'missing' };
@@ -509,12 +513,12 @@ export function reserveIn(
   if (n > alle) return { refused: 'short' };
   if (n === alle) {
     const relations = (inventory.relations ?? []).map((r) =>
-      r === kante ? { ...r, props: { ...(r.props ?? {}), reservedFor: orderId } } : r,
+      r === kante ? { ...r, props: { ...(r.props ?? {}), reservedFor: orderId, ...(forNeed ? { forNeed } : {}) } } : r,
     );
     return { inventory: { ...inventory, relations }, edge: kante.id };
   }
   /* Geteilt: der reservierte Teil liegt lose im Fach (ohne Lage), der Rest bleibt, wo er war. */
-  const props: Record<string, unknown> = { ...(kante.props ?? {}), qty: n, reservedFor: orderId };
+  const props: Record<string, unknown> = { ...(kante.props ?? {}), qty: n, reservedFor: orderId, ...(forNeed ? { forNeed } : {}) };
   for (const k of ['gx', 'gy', 'rot', 'slot']) delete props[k];
   const relations = [
     ...(inventory.relations ?? []).map((r) => (r === kante ? { ...r, props: { ...(r.props ?? {}), qty: alle - n } } : r)),
@@ -527,7 +531,13 @@ export function reserveIn(
 export function reservedPieces(inventory: Entity, orderId: EntityId): ReservedPiece[] {
   return (inventory.relations ?? [])
     .filter((r) => r.type === 'holds' && r.props?.['reservedFor'] === orderId)
-    .map((r) => ({ inventory: inventory.id, edge: r.id, item: r.to, qty: Math.max(1, Number(r.props?.['qty']) || 1) }));
+    .map((r) => ({
+      inventory: inventory.id,
+      edge: r.id,
+      item: r.to,
+      qty: Math.max(1, Number(r.props?.['qty']) || 1),
+      ...(typeof r.props?.['forNeed'] === 'string' ? { forNeed: r.props['forNeed'] } : {}),
+    }));
 }
 
 /**
@@ -541,6 +551,7 @@ export function applySettlement(inventory: Entity, keep: ReadonlyMap<string, num
     if (n <= 0) return [];
     const props: Record<string, unknown> = { ...(r.props ?? {}), qty: n };
     delete props['reservedFor'];
+    delete props['forNeed'];
     return [{ ...r, props }];
   });
   return { ...inventory, relations };
