@@ -954,6 +954,10 @@ export const interfaces: Record<string, InterfaceDef> = {
     views: {
       full: [
         { id: 'k-desc', el: 'description' },
+        /* Die eigenen Felder der Kampagne sind Regeloptionen: sie stehen
+           gruppiert und erklärt unter dem Reiter „Rules & options" (T-190),
+           hier nur der Verweis; bearbeitet werden sie mit den übrigen. */
+        { id: 'k-rules', el: 'rules', fields: ['Campaign'] },
         { id: 'k-f', el: 'fields', fields: 'all' },
         { id: 'k-stack', el: 'stack' },
         /* Wer an diesem Tisch sitzt. Die Rollen stehen am Konto; gepflegt

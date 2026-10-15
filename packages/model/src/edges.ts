@@ -233,6 +233,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'ruleOptions',
+    label: 'Rules & options of a campaign',
+    area: 'character',
+    does: 'shows, per sort, the options a campaign plays by — among them the ability and equipment methods it allows (T-190)',
+    uses: {
+      [M + 'ruleOptions.ts']: ['allowsEquipment', 'allowsMethod'],
+      [S + 'regeloptionen.ts']: ['allowsEquipment', 'allowsMethod'],
+    },
+  },
+  {
     key: 'effects',
     label: 'Effects on the numbers',
     area: 'character',
@@ -407,6 +417,8 @@ export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [W + 'register/typ.ts']: ['carries', 'holds'],
   [W + 'register/arbeit.ts']: ['carries'],
   [W + 'artikel/anordnung.ts']: ['crafting'],
+  /* Die Sorte „crafting" der Regeloptionen (T-190), wie das Modul in T-132 heissen wird. */
+  [M + 'ruleOptions.ts']: ['crafting'],
   /* Die Herkunft eines Preisschritts heisst wie die Kante, aus der er kommt (T-129). */
   [W + 'kern/api.ts']: ['discount'],
 };
