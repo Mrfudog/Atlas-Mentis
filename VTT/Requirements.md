@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, registry]
 status: derived
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 # Requirements Registry
@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 44 | 138 | 32 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 96 | 329 | 63 steht · 17 teils · 8 offen · 5 ersetzt · 3 verworfen |
-| 3 | 115 | 331 | 63 steht · 21 teils · 30 offen · 1 ersetzt |
-| 4 | 44 | 195 | 13 steht · 2 teils · 26 offen · 2 ersetzt · 1 verworfen |
+| 2 | 107 | 357 | 63 steht · 17 teils · 19 offen · 5 ersetzt · 3 verworfen |
+| 3 | 118 | 338 | 63 steht · 21 teils · 33 offen · 1 ersetzt |
+| 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **318** | **1147** | 172 steht · 47 teils · 83 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **333** | **1183** | 172 steht · 47 teils · 98 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -357,6 +357,21 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-316]] | Eigene Ebene je Spieler als Vorgabe | Spieler | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 1 | 3 | done | steht |
 | [[REQ-317]] | Zurück an dieselbe Stelle | Spielleitung | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 1 | 2 | done | steht |
 | [[REQ-318]] | Ein Ebenenfilter, global und speicherbar | Spielleitung | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 2 | 3 | done | steht |
+| [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 5 | defined | offen |
+| [[REQ-320]] | Formen frei malen, auch nicht rechteckig | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | offen |
+| [[REQ-321]] | Stapel im Raster | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
+| [[REQ-322]] | Spezialplätze mit Filter | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
+| [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
+| [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
+| [[REQ-325]] | Gegenstandsartikel im Detailbereich | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 1 | defined | offen |
+| [[REQ-326]] | Ziehen und Ablegen im Raster | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
+| [[REQ-327]] | Packen am Telefon | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | offen |
+| [[REQ-328]] | Ablage für nicht Verstautes | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 1 | defined | offen |
+| [[REQ-329]] | Bilder im Inventar | Spieler | [[F-063 Bildverwaltung\|Bildverwaltung]] | 3 | 2 | defined | offen |
+| [[REQ-330]] | Inventarbild an einen Gegenstand binden | Spielleitung | [[F-064 Token-Werkstatt\|Token-Werkstatt]] | 3 | 2 | defined | offen |
+| [[REQ-331]] | Hilfe für Gegenstandsbilder | Spielleitung | [[F-064 Token-Werkstatt\|Token-Werkstatt]] | 4 | 1 | defined | offen |
+| [[REQ-332]] | Beute öffnen und nehmen | Spieler | [[F-078 Beute\|Beute]] | 3 | 3 | defined | offen |
+| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | offen |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

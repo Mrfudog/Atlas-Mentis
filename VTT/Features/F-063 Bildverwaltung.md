@@ -15,7 +15,7 @@ Epic: [[EP-10 Medien & Assets]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-4 Stories · 11 Punkte · 2 teils · 2 offen
+5 Stories · 13 Punkte · 2 teils · 3 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -23,4 +23,5 @@ Epic: [[EP-10 Medien & Assets]]
 | [[REQ-295]] Bild ersetzen als Fassung oder neue Quelle | Spielleitung | 3 | offen |
 | [[REQ-296]] Bildklassen | Spielleitung | 3 | teils |
 | [[REQ-297]] Bilder aus 5e.tools einlesen und verknüpfen | Spielleitung | 3 | offen |
+| [[REQ-329]] Bilder im Inventar | Spieler | 3 | offen |
 <!-- stories:ende -->

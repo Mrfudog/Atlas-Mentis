@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-15. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-16. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -12,20 +12,20 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 172 steht · 47 teils · 83 offen · 10 ersetzt · 6 verworfen — 318 Stories in 77 Features und 12 Epics.
+Zusammen: 172 steht · 47 teils · 98 offen · 10 ersetzt · 6 verworfen — 333 Stories in 78 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 51 | 31 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 38 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 27 | 16 steht · 1 teils · 9 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 21 | 8 steht · 5 teils · 8 offen |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 32 | 8 steht · 5 teils · 19 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 23 | 11 steht · 1 teils · 11 offen |
+| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 24 | 11 steht · 1 teils · 12 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
-| [EP-10 Medien & Assets](#ep-10-medien--assets) | 18 | 4 steht · 3 teils · 11 offen |
+| [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
 | [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 26 | 17 steht · 4 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
@@ -325,7 +325,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Spezialplätze mit Filter (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -353,6 +353,16 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | REQ-275 | Erhaltene Gegenstände als Instanz | 2 | **teils** | `instanceOf` am Item vorhanden (T-150 läuft) |
 | REQ-276 | Unverstaute Gegenstände gelten als liegengelassen | 4 | **offen** |  |
 | REQ-277 | Gegenstände mit Form spiegeln | 4 | **offen** |  |
+| REQ-320 | Formen frei malen, auch nicht rechteckig | 2 | **offen** |  |
+| REQ-321 | Stapel im Raster | 2 | **offen** |  |
+| REQ-322 | Spezialplätze mit Filter | 2 | **offen** |  |
+| REQ-323 | Alle möglichen Plätze eines Gegenstands | 2 | **offen** |  |
+| REQ-324 | Hände als Plätze mit Regeln | 2 | **offen** |  |
+| REQ-325 | Gegenstandsartikel im Detailbereich | 2 | **offen** |  |
+| REQ-326 | Ziehen und Ablegen im Raster | 2 | **offen** |  |
+| REQ-327 | Packen am Telefon | 2 | **offen** |  |
+| REQ-328 | Ablage für nicht Verstautes | 2 | **offen** |  |
+| REQ-333 | Vorgaben für Formen und Stapel | 2 | **offen** |  |
 
 ### F-027 Eigene Inhalte der Spielenden
 
@@ -369,6 +379,12 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | REQ-200 | Chat mit der Leitung und unter Spielenden | 3 | **offen** |  |
 | REQ-201 | Aus dem Chat wird Inhalt | 3 | **offen** |  |
 | REQ-202 | Chats bleiben privat | 2 | **offen** |  |
+
+### F-078 Beute
+
+| ID | Story | Prio | Stand | Anmerkung |
+|---|---|---|---|---|
+| REQ-332 | Beute öffnen und nehmen | 3 | **offen** |  |
 
 ## EP-05 Kampagne & Sitzungen
 
@@ -527,7 +543,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme als Behälter mit Optionen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils)
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme als Behälter mit Optionen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -587,6 +603,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | REQ-223 | Rahmen für Regelsysteme wie Taverne | 4 | **offen** |  |
 | REQ-287 | Regelsysteme als Behälter mit Optionen | 2 | **offen** | E-044, T-132 |
 | REQ-289 | Homebrew-Regeln erfassen | 3 | **offen** | wenn das Gerüst steht |
+| REQ-319 | Inventarregeln als wählbares Modul | 2 | **offen** |  |
 
 ### F-049 Masse & Einheiten
 
@@ -752,7 +769,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 **Erklärt in:** [Betrieb.md](../docs/Betrieb.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen)
+**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen) · REQ-329 Bilder im Inventar (offen) · REQ-330 Inventarbild an einen Gegenstand binden (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -777,12 +794,15 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 | REQ-295 | Bild ersetzen als Fassung oder neue Quelle | 3 | **offen** |  |
 | REQ-296 | Bildklassen | 3 | **teils** | `Asset.kind` (T-119); Übersicht fehlt |
 | REQ-297 | Bilder aus 5e.tools einlesen und verknüpfen | 3 | **offen** |  |
+| REQ-329 | Bilder im Inventar | 3 | **offen** |  |
 
 ### F-064 Token-Werkstatt
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-298 | Bilder bearbeiten und Tokens zusammenstellen | 4 | **offen** |  |
+| REQ-330 | Inventarbild an einen Gegenstand binden | 3 | **offen** |  |
+| REQ-331 | Hilfe für Gegenstandsbilder | 4 | **offen** |  |
 
 ### F-065 Druck & Ausfuhr
 
@@ -959,6 +979,17 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-311** (2, teils, Spielererlebnis) — Spieleransicht mit der eigenen Figur im Fokus — *Entwurf Player/PlayerPhone*
 - **REQ-312** (2, teils, Karten) — Eigenes Token bewegen — *Prototyp ja; in der Seite noch nicht für Spielende*
 - **REQ-313** (2, teils, Regeln & Nachschlagen) — Zustände als Artikel — *Wirkung `affects` gespeichert, nicht ausgewertet*
+- **REQ-319** (2, offen, Regeln & Nachschlagen) — Inventarregeln als wählbares Modul
+- **REQ-320** (2, offen, Spielererlebnis) — Formen frei malen, auch nicht rechteckig
+- **REQ-321** (2, offen, Spielererlebnis) — Stapel im Raster
+- **REQ-322** (2, offen, Spielererlebnis) — Spezialplätze mit Filter
+- **REQ-323** (2, offen, Spielererlebnis) — Alle möglichen Plätze eines Gegenstands
+- **REQ-324** (2, offen, Spielererlebnis) — Hände als Plätze mit Regeln
+- **REQ-325** (2, offen, Spielererlebnis) — Gegenstandsartikel im Detailbereich
+- **REQ-326** (2, offen, Spielererlebnis) — Ziehen und Ablegen im Raster
+- **REQ-327** (2, offen, Spielererlebnis) — Packen am Telefon
+- **REQ-328** (2, offen, Spielererlebnis) — Ablage für nicht Verstautes
+- **REQ-333** (2, offen, Spielererlebnis) — Vorgaben für Formen und Stapel
 - **REQ-007** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **REQ-022** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **REQ-025** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*
@@ -1010,3 +1041,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-300** (3, teils, Oberfläche & Navigation) — Gestaltung wie die Bücher — *Pergament in `apps/web`; Design-Lauf offen*
 - **REQ-308** (3, offen, Import & Inhalte) — Obsidian-Vault einlesen — *die alten Importer sind weg (2026-09-20)*
 - **REQ-314** (3, teils, Import & Inhalte) — Regelwerk eines Drittverlags laden — *T-122*
+- **REQ-329** (3, offen, Medien & Assets) — Bilder im Inventar
+- **REQ-330** (3, offen, Medien & Assets) — Inventarbild an einen Gegenstand binden
+- **REQ-332** (3, offen, Spielererlebnis) — Beute öffnen und nehmen
