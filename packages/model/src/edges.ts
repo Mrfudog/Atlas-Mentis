@@ -488,7 +488,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     uses: {
       /* T-247: die Trefferwürfel je Klassenstufe. */
       [M + 'sheet.ts']: ['hasClass'],
-      [W + 'bogen/daten.ts']: ['carries', 'casts', 'hasClass', 'hasProperty', 'holds', 'memberOfParty'],
+      [W + 'bogen/daten.ts']: ['carries', 'casts', 'composedOf', 'hasClass', 'hasProperty', 'holds', 'memberOfParty'],
     },
   },
 ];

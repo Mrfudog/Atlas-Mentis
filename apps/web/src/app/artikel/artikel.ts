@@ -68,6 +68,7 @@ import { Fluss } from './fluss';
 import { anordnen, feldZellen, mitLeeren, prosaVon, reiterVon, SCHON_ANDERSWO, type Prosa, type Stueck, type Zelle } from './anordnung';
 import { Bogen } from '../bogen/kopf';
 import { Reiterleiste } from '../bogen/reiterleiste';
+import { Zug } from '../bogen/zug';
 import { Herausgeber } from './herausgeber';
 import {
   abweichungen,
@@ -143,7 +144,7 @@ interface Feld {
  * die erste wegzulassen.
  */
 /** Stücke, die noch keine Komponente zeichnet (T-247 in Etappen) — ihr Reiter erscheint erst mit ihr. */
-const NOCH_NICHT = new Set<Stueck['art']>(['zug', 'zauberliste', 'kampagne']);
+const NOCH_NICHT = new Set<Stueck['art']>(['zauberliste', 'kampagne']);
 
 @Component({
   selector: 'nw-artikel',
@@ -155,6 +156,7 @@ const NOCH_NICHT = new Set<Stueck['art']>(['zug', 'zauberliste', 'kampagne']);
     FormsModule,
     Bogen,
     Reiterleiste,
+    Zug,
     Text,
     Wahl,
     Mehrfach,
@@ -699,6 +701,9 @@ const NOCH_NICHT = new Set<Stueck['art']>(['zug', 'zauberliste', 'kampagne']);
                 @switch (st.art) {
                   @case ('bogen') {
                     <nw-bogen [artikel]="e" />
+                  }
+                  @case ('zug') {
+                    <nw-zug [artikel]="e" />
                   }
                   @case ('statblock') {
                     <nw-statblock [artikel]="e" [fassungen]="vergleich()" />

@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-your-turn",
+      "date": "2026-10-16",
+      "title": "Your turn: every action in one list",
+      "text": "A character's Combat tab starts with Your turn: every action by type — rules, statblock features, spells by casting time, potions — with a filter by type and by source. Mark Action, Bonus and Reaction as used, start a new turn. What your hands block stays in the list with the reason. Tap a row for its toolbar and details.",
+      "area": "Characters",
+      "link": "/world",
+      "query": { "type": "PlayerCharacter" }
+    },
+    {
       "id": "2026-10-16-player-sheet-header",
       "date": "2026-10-16",
       "title": "A character sheet header for the table",

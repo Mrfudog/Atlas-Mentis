@@ -485,3 +485,82 @@ export function goldText(copperOnYou: number | null, copperParty: number | null)
   };
   return { onYou: gp(Math.max(0, copperOnYou ?? 0)), party: copperParty ? gp(copperParty) : null };
 }
+
+// ------------------------------------------------------------ Your turn zusammenstellen
+
+/** Eine Aktion des Statblocks (`composedOf` → `Action`), mit dem Namen ihrer Art. */
+export interface StatblockAction {
+  id: string;
+  name: string;
+  actionTypeName: string | null;
+  meta?: string;
+}
+
+/** Ein Zauber der Figur (`casts`), wie „Your turn" ihn braucht. */
+export interface TurnSpell {
+  id: string;
+  name: string;
+  level: number | null;
+  /** Der Name der Aktionsart der Wirkzeit (`castingAction`); ohne: eine Minute oder mehr. */
+  actionTypeName: string | null;
+  components: readonly string[];
+  /** Wann eine Reaktion ausgelöst wird (`castingCondition`). */
+  trigger?: string;
+}
+
+/**
+ * **„Your turn" aus allem, was die Figur hat** (T-247): die allgemeinen
+ * Aktionen, der Angriff mit dem, was die Hände halten, die Aktionen des
+ * Statblocks, die Zauber nach ihrer Wirkzeit, und was man trinken oder
+ * benutzen kann. Jede Quelle bringt ihre eigene Zeile; eine Zauberwirkzeit
+ * von einer Minute steht nicht im Zug.
+ */
+export function turnActions(o: {
+  hands: HandState;
+  actions?: readonly StatblockAction[];
+  spells?: readonly TurnSpell[];
+  /** Tränke und anderes, das man mit einer Aktion benutzt. */
+  consumables?: readonly { id: string; name: string }[];
+}): TurnAction[] {
+  const out: TurnAction[] = [];
+  const { main, off, both } = o.hands;
+  out.push({
+    id: 'rule:attack',
+    name: 'Attack',
+    type: 'action',
+    source: 'rules',
+    sourceLabel: 'Rules',
+    meta: main && !main.shield ? `${main.name}${gripDamage(main, both) ? ` ${gripDamage(main, both)}` : ''}` : 'unarmed',
+    does: 'With what you hold',
+    ...(main && !main.shield ? { article: main.id } : {}),
+  });
+  for (const a of RULE_ACTIONS) {
+    out.push(a.id === 'rule:offhand' && off && !off.shield ? { ...a, meta: `${off.name}${off.damage ? ` ${off.damage}` : ''}` } : a);
+  }
+  for (const a of o.actions ?? []) {
+    const type = turnTypeOf(a.actionTypeName);
+    if (!type) continue;
+    out.push({ id: a.id, name: a.name, type, source: 'statblock', sourceLabel: 'Features', article: a.id, ...(a.meta ? { meta: a.meta } : {}) });
+  }
+  for (const s of o.spells ?? []) {
+    const type = s.trigger ? 'reaction' : turnTypeOf(s.actionTypeName);
+    if (!type) continue;
+    const c = new Set(s.components.map((x) => x.toLowerCase()));
+    out.push({
+      id: s.id,
+      name: s.name,
+      type,
+      source: 'spells',
+      sourceLabel: 'Spells',
+      meta: s.level === 0 ? 'cantrip' : s.level ? `${ordinalShort(s.level)}-level slot` : '',
+      needs: 'cast',
+      components: { somatic: c.has('s'), material: c.has('m') },
+      article: s.id,
+      ...(s.trigger ? { does: s.trigger } : {}),
+    });
+  }
+  for (const k of o.consumables ?? []) {
+    out.push({ id: `use:${k.id}`, name: `Use ${k.name}`, type: 'action', source: 'items', sourceLabel: 'Items', needs: 'hand', article: k.id });
+  }
+  return out;
+}

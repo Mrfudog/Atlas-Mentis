@@ -66,7 +66,8 @@
           "heading": "Playing your character",
           "text": [
             "Open your character. The header stays above the tabs: set the amount, then Damage, Heal or Temp — damage takes temporary hit points first. Click pips to spend hit dice, spell slots and inspiration.",
-            "Conditions and concentration stand in the status row with how long they last. When you take damage while concentrating, the sheet asks for the Constitution save; roll it, then Passed or Failed."
+            "Conditions and concentration stand in the status row with how long they last. When you take damage while concentrating, the sheet asks for the Constitution save; roll it, then Passed or Failed.",
+            "On your turn open Combat: Your turn lists what you can do, by action type. Mark what you used; New turn clears it. A locked row says why — stow or drop something to free a hand."
           ]
         },
         {
