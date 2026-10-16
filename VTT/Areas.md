@@ -2,7 +2,7 @@
 tags: [vtt, epics, view]
 aliases: [Epics]
 status: derived
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 # Epics
@@ -18,12 +18,12 @@ Die Funktionsbereiche von früher sind die **Epics** (E-049): je Epic ein Bereic
 | [[EP-01 Inhaltsgerüst]] | Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell, mit dem jeder Artikel beschrieben, gespeichert und gezeichnet wird. | 9 | 51 | 169 | 31 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [[EP-02 Zugang & Betrieb]] | Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, Werkbank, Ausrollen, Sicherung, Übernahme zwischen dev und prod, Leistung. | 10 | 38 | 117 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
 | [[EP-03 Kreaturen & Figuren]] | Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager — alles, was eine Figur oder ein Monster beschreibt. | 5 | 27 | 116 | 16 steht · 1 teils · 9 offen · 1 ersetzt |
-| [[EP-04 Spielererlebnis]] | Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene Inhalte, Inventar, Chat. | 4 | 21 | 54 | 8 steht · 5 teils · 8 offen |
+| [[EP-04 Spielererlebnis]] | Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene Inhalte, Inventar, Chat. | 5 | 32 | 80 | 8 steht · 5 teils · 19 offen |
 | [[EP-05 Kampagne & Sitzungen]] | Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitung, Begegnungen, Abenteuer übernehmen, Party, Ladebildschirm. | 8 | 31 | 106 | 17 steht · 3 teils · 11 offen |
 | [[EP-06 Welt & Lore]] | Bereich World: Orte, Fraktionen, Gottheiten, Lore, Kalender und Zeitleisten, Beziehungen, Läden und Wirtschaft. | 5 | 17 | 63 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [[EP-07 Regeln & Nachschlagen]] | Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zustände, Handwerk, Regelsysteme und die Auswertung von Regeln. | 8 | 23 | 103 | 11 steht · 1 teils · 11 offen |
+| [[EP-07 Regeln & Nachschlagen]] | Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zustände, Handwerk, Regelsysteme und die Auswertung von Regeln. | 8 | 24 | 108 | 11 steht · 1 teils · 12 offen |
 | [[EP-08 Live-Spiel]] | Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, Würfel, Werkzeuge am Tisch. | 5 | 28 | 98 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [[EP-09 Karten]] | Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und Zonen, Gebiete, Reisen, Karteneditor. | 7 | 28 | 124 | 18 steht · 6 teils · 4 offen |
-| [[EP-10 Medien & Assets]] | Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Druck und Ausfuhr, PDF. | 5 | 18 | 76 | 4 steht · 3 teils · 11 offen |
+| [[EP-10 Medien & Assets]] | Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Druck und Ausfuhr, PDF. | 5 | 21 | 81 | 4 steht · 3 teils · 14 offen |
 | [[EP-11 Oberfläche & Navigation]] | Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten in der Ansicht, Design und Stilkonzept. | 6 | 26 | 82 | 17 steht · 4 teils · 4 offen · 1 ersetzt |
 | [[EP-12 Import & Inhalte]] | 5e.tools, Regelwerke anderer Verlage, Obsidian-Vault, Artikelprüfung und KI-erzeugte Inhalte — wie Inhalte hereinkommen und vollständig werden. | 5 | 10 | 39 | 5 steht · 2 teils · 1 offen · 2 verworfen |

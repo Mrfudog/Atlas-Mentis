@@ -15,11 +15,12 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-3 Stories · 16 Punkte · 3 offen
+4 Stories · 21 Punkte · 4 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-223]] Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | offen |
 | [[REQ-287]] Regelsysteme als Behälter mit Optionen | Spielleitung | 2 | offen |
 | [[REQ-289]] Homebrew-Regeln erfassen | Spielleitung | 3 | offen |
+| [[REQ-319]] Inventarregeln als wählbares Modul | Spielleitung | 2 | offen |
 <!-- stories:ende -->

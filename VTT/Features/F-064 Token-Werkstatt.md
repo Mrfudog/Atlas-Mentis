@@ -15,9 +15,11 @@ Epic: [[EP-10 Medien & Assets]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-1 Stories · 8 Punkte · 1 offen
+3 Stories · 11 Punkte · 3 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-298]] Bilder bearbeiten und Tokens zusammenstellen | Spielleitung | 4 | offen |
+| [[REQ-330]] Inventarbild an einen Gegenstand binden | Spielleitung | 3 | offen |
+| [[REQ-331]] Hilfe für Gegenstandsbilder | Spielleitung | 4 | offen |
 <!-- stories:ende -->

@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 # Requirements by Epic
@@ -310,7 +310,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-21 Stories · 54 Punkte · 8 steht · 5 teils · 8 offen — [[EP-04 Spielererlebnis]]
+32 Stories · 80 Punkte · 8 steht · 5 teils · 19 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -331,6 +331,16 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 |---|---|---|---|---|---|
 | [[REQ-064]] | Inventar als Liste | Spieler | 2 | 3 | steht |
 | [[REQ-275]] | Erhaltene Gegenstände als Instanz | Spieler | 2 | 3 | teils |
+| [[REQ-320]] | Formen frei malen, auch nicht rechteckig | Spielleitung | 2 | 2 | offen |
+| [[REQ-321]] | Stapel im Raster | Spieler | 2 | 3 | offen |
+| [[REQ-322]] | Spezialplätze mit Filter | Spieler | 2 | 3 | offen |
+| [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | 2 | 3 | offen |
+| [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | 2 | 3 | offen |
+| [[REQ-325]] | Gegenstandsartikel im Detailbereich | Spieler | 2 | 1 | offen |
+| [[REQ-326]] | Ziehen und Ablegen im Raster | Spieler | 2 | 3 | offen |
+| [[REQ-327]] | Packen am Telefon | Spieler | 2 | 2 | offen |
+| [[REQ-328]] | Ablage für nicht Verstautes | Spieler | 2 | 1 | offen |
+| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | 2 | 2 | offen |
 | [[REQ-183]] | Gruppeninventar | Spieler | 3 | 2 | steht |
 | [[REQ-215]] | Tragraster aus Grösse und Stärke | Spieler | 3 | 2 | steht |
 | [[REQ-216]] | Behälter in Behältern | Spieler | 3 | 2 | steht |
@@ -360,6 +370,14 @@ Fäden zwischen Leitung und Spielenden, daraus Kampagneninhalt. — [[F-028 Chat
 | [[REQ-202]] | Chats bleiben privat | Spieler | 2 | 2 | offen |
 | [[REQ-200]] | Chat mit der Leitung und unter Spielenden | Spieler | 3 | 5 | offen |
 | [[REQ-201]] | Aus dem Chat wird Inhalt | Spielleitung | 3 | 3 | offen |
+
+### F-078 Beute
+
+Beute vorbereiten, während der Sitzung öffnen und von Spielenden nehmen lassen. — [[F-078 Beute]]
+
+| ID | Story | Rolle | Prio | Aufwand | Stand |
+|---|---|---|---|---|---|
+| [[REQ-332]] | Beute öffnen und nehmen | Spieler | 3 | 3 | offen |
 
 ## EP-05 Kampagne & Sitzungen
 
@@ -510,7 +528,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-23 Stories · 103 Punkte · 11 steht · 1 teils · 11 offen — [[EP-07 Regeln & Nachschlagen]]
+24 Stories · 108 Punkte · 11 steht · 1 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -580,6 +598,7 @@ Regelsysteme als Behälter mit Optionen je Kampagne; Homebrew-Regeln; Rahmen wie
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-287]] | Regelsysteme als Behälter mit Optionen | Spielleitung | 2 | 8 | offen |
+| [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | 2 | 5 | offen |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | 3 | 3 | offen |
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | 5 | offen |
 
@@ -741,7 +760,7 @@ Zeichnen, Assets platzieren, Effekte. — [[F-061 Karteneditor]]
 
 ## EP-10 Medien & Assets
 
-18 Stories · 76 Punkte · 4 steht · 3 teils · 11 offen — [[EP-10 Medien & Assets]]
+21 Stories · 81 Punkte · 4 steht · 3 teils · 14 offen — [[EP-10 Medien & Assets]]
 
 ### F-062 Asset-Ablage
 
@@ -768,6 +787,7 @@ Hochladen, Übersicht, Bildklassen, Ersetzen, Import der Bilder. — [[F-063 Bil
 | [[REQ-295]] | Bild ersetzen als Fassung oder neue Quelle | Spielleitung | 3 | 2 | offen |
 | [[REQ-296]] | Bildklassen | Spielleitung | 3 | 2 | teils |
 | [[REQ-297]] | Bilder aus 5e.tools einlesen und verknüpfen | Spielleitung | 3 | 5 | offen |
+| [[REQ-329]] | Bilder im Inventar | Spieler | 3 | 2 | offen |
 
 ### F-064 Token-Werkstatt
 
@@ -775,7 +795,9 @@ Bilder bearbeiten, Tokens zusammenstellen. — [[F-064 Token-Werkstatt]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-330]] | Inventarbild an einen Gegenstand binden | Spielleitung | 3 | 2 | offen |
 | [[REQ-298]] | Bilder bearbeiten und Tokens zusammenstellen | Spielleitung | 4 | 8 | offen |
+| [[REQ-331]] | Hilfe für Gegenstandsbilder | Spielleitung | 4 | 1 | offen |
 
 ### F-065 Druck & Ausfuhr
 

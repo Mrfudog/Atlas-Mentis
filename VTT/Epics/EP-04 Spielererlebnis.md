@@ -20,9 +20,10 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | Feature | Stories | Punkte | Stand |
 |---|---|---|---|
 | [[F-025 Spieleransicht & Telefon]] — Die Seite aus Sicht der Spielenden, auch am Telefon. | 4 | 10 | 3 teils · 1 offen |
-| [[F-026 Inventar]] — Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, Gruppeninventar, Gegenstände als Instanz. | 11 | 28 | 8 steht · 1 teils · 2 offen |
+| [[F-026 Inventar]] — Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, Gruppeninventar, Gegenstände als Instanz. | 21 | 51 | 8 steht · 1 teils · 12 offen |
 | [[F-027 Eigene Inhalte der Spielenden]] — Notizen, Ziele, Lore-Artikel, die Spielende selbst anlegen. | 3 | 6 | 1 teils · 2 offen |
 | [[F-028 Chat]] — Fäden zwischen Leitung und Spielenden, daraus Kampagneninhalt. | 3 | 10 | 3 offen |
+| [[F-078 Beute]] — Beute vorbereiten, während der Sitzung öffnen und von Spielenden nehmen lassen. | 1 | 3 | 1 offen |
 
 ### Wo es wohnt
 
@@ -34,7 +35,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../../docs/Zugang.md), [Spieltisch.md](../../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** [[REQ-069]] Am Telefon spielen (teils) · [[REQ-072]] Eigene Notizen (offen) · [[REQ-074]] Schnellzugriffe (teils) · [[REQ-083]] Eigene Quests und Ziele (offen) · [[REQ-109]] Lore-Texte von Spielenden (teils) · [[REQ-200]] Chat mit der Leitung und unter Spielenden (offen) · [[REQ-201]] Aus dem Chat wird Inhalt (offen) · [[REQ-202]] Chats bleiben privat (offen) · [[REQ-275]] Erhaltene Gegenstände als Instanz (teils) · [[REQ-311]] Spieleransicht mit der eigenen Figur im Fokus (teils)
+**Offen mit Prio 1–3:** [[REQ-069]] Am Telefon spielen (teils) · [[REQ-072]] Eigene Notizen (offen) · [[REQ-074]] Schnellzugriffe (teils) · [[REQ-083]] Eigene Quests und Ziele (offen) · [[REQ-109]] Lore-Texte von Spielenden (teils) · [[REQ-200]] Chat mit der Leitung und unter Spielenden (offen) · [[REQ-201]] Aus dem Chat wird Inhalt (offen) · [[REQ-202]] Chats bleiben privat (offen) · [[REQ-275]] Erhaltene Gegenstände als Instanz (teils) · [[REQ-311]] Spieleransicht mit der eigenen Figur im Fokus (teils) · [[REQ-320]] Formen frei malen, auch nicht rechteckig (offen) · [[REQ-321]] Stapel im Raster (offen) · [[REQ-322]] Spezialplätze mit Filter (offen) · [[REQ-323]] Alle möglichen Plätze eines Gegenstands (offen) · [[REQ-324]] Hände als Plätze mit Regeln (offen) · [[REQ-325]] Gegenstandsartikel im Detailbereich (offen) · [[REQ-326]] Ziehen und Ablegen im Raster (offen) · [[REQ-327]] Packen am Telefon (offen) · [[REQ-328]] Ablage für nicht Verstautes (offen) · [[REQ-332]] Beute öffnen und nehmen (offen) · [[REQ-333]] Vorgaben für Formen und Stapel (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
