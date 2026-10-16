@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 44 | 138 | 32 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 107 | 357 | 63 steht · 17 teils · 19 offen · 5 ersetzt · 3 verworfen |
-| 3 | 118 | 338 | 63 steht · 21 teils · 33 offen · 1 ersetzt |
+| 2 | 113 | 372 | 63 steht · 17 teils · 25 offen · 5 ersetzt · 3 verworfen |
+| 3 | 119 | 341 | 63 steht · 21 teils · 34 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **333** | **1183** | 172 steht · 47 teils · 98 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **340** | **1201** | 172 steht · 47 teils · 105 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -372,6 +372,13 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-331]] | Hilfe für Gegenstandsbilder | Spielleitung | [[F-064 Token-Werkstatt\|Token-Werkstatt]] | 4 | 1 | defined | offen |
 | [[REQ-332]] | Beute öffnen und nehmen | Spieler | [[F-078 Beute\|Beute]] | 3 | 3 | defined | offen |
 | [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | offen |
+| [[REQ-334]] | Ausrüstung bringt Tragplätze mit | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
+| [[REQ-335]] | Plätze für lange Gegenstände verbinden | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | offen |
+| [[REQ-336]] | Festlegen, wo ein Gegenstand getragen werden darf | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | offen |
+| [[REQ-337]] | Sehen, was weichen muss | Spieler | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | offen |
+| [[REQ-338]] | Körperplätze und Platzarten als Daten | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
+| [[REQ-339]] | Tragplätze an der Figur | Spieler | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
+| [[REQ-340]] | Platzplan in der Maske | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 3 | 3 | defined | offen |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.
