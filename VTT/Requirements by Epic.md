@@ -14,7 +14,7 @@ Sprung: [[#EP-01 Inhaltsgerüst]] · [[#EP-02 Zugang & Betrieb]] · [[#EP-03 Kre
 
 ## EP-01 Inhaltsgerüst
 
-52 Stories · 174 Punkte · 32 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
+53 Stories · 177 Punkte · 32 steht · 10 teils · 5 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
 
 ### F-001 Artikelmodell
 
@@ -67,6 +67,7 @@ Ebenen, Gruppen von Ebenen, Herausgeber, Aufschalten (auch teilweise) und was im
 | [[REQ-005]] | Zugehörigkeit eines Artikels zu einer Ebene | Spielleitung | 1 | 3 | steht |
 | [[REQ-006]] | Stapel: was in der Kampagne gilt | Spielleitung | 1 | 5 | teils |
 | [[REQ-100]] | Welt als Ebene | Spielleitung | 1 | 2 | teils |
+| [[REQ-348]] | Ebene am Artikel immer sichtbar | Spielleitung | 1 | 3 | offen |
 | [[REQ-044]] | Herkunft am Artikel sehen | Spielleitung | 2 | 5 | steht |
 | [[REQ-102]] | Artikel je Stapel und Wissen zeichnen | Spieler | 2 | 5 | teils |
 | [[REQ-244]] | Ebenen gruppieren | Spielleitung | 2 | 3 | steht |
@@ -313,7 +314,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-40 Stories · 101 Punkte · 8 steht · 6 teils · 26 offen — [[EP-04 Spielererlebnis]]
+40 Stories · 101 Punkte · 5 steht · 9 teils · 26 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -337,7 +338,7 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 | [[REQ-275]] | Erhaltene Gegenstände als Instanz | Spieler | 2 | 3 | teils |
 | [[REQ-320]] | Formen frei malen, auch nicht rechteckig | Spielleitung | 2 | 2 | offen |
 | [[REQ-321]] | Stapel im Raster | Spieler | 2 | 3 | offen |
-| [[REQ-322]] | Spezialplätze mit Filter | Spieler | 2 | 3 | offen |
+| [[REQ-322]] | Besondere Zonen mit eigenen Regeln | Spieler | 2 | 3 | offen |
 | [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | 2 | 3 | offen |
 | [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | 2 | 3 | offen |
 | [[REQ-325]] | Gegenstandsartikel im Detailbereich | Spieler | 2 | 1 | offen |
@@ -346,10 +347,10 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 | [[REQ-328]] | Ablage für nicht Verstautes | Spieler | 2 | 1 | offen |
 | [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | 2 | 2 | offen |
 | [[REQ-183]] | Gruppeninventar | Spieler | 3 | 2 | steht |
-| [[REQ-215]] | Tragraster aus Grösse und Stärke | Spieler | 3 | 2 | steht |
-| [[REQ-216]] | Behälter in Behältern | Spieler | 3 | 2 | steht |
+| [[REQ-215]] | Tragraster aus Grösse und Stärke | Spieler | 3 | 2 | teils |
+| [[REQ-216]] | Behälter in Behältern | Spieler | 3 | 2 | teils |
 | [[REQ-217]] | Ziehen am Bogen | Spieler | 3 | 2 | steht |
-| [[REQ-225]] | Fallenlassen und Verstauen | Spieler | 3 | 1 | steht |
+| [[REQ-225]] | Fallenlassen und Verstauen | Spieler | 3 | 1 | teils |
 | [[REQ-065]] | Inventar als Raster | Spieler | 4 | 8 | steht |
 | [[REQ-214]] | Ausrüstungsfigur | Spieler | 4 | 2 | steht |
 | [[REQ-276]] | Unverstaute Gegenstände gelten als liegengelassen | Spielleitung | 4 | 2 | offen |
@@ -385,17 +386,17 @@ Beute vorbereiten, während der Sitzung öffnen und von Spielenden nehmen lassen
 
 ### F-079 Tragplätze
 
-Plätze am Körper und an Ausrüstung (Gürtel, Riemen, Scheide, Köcher, Laschen), verbundene Plätze für lange Gegenstände, Trageregeln am Gegenstand, alle möglichen Plätze mit Grund und Verdrängen. — [[F-079 Tragplätze]]
+Körperplan des Inventarmoduls, tragende Ausrüstung als Behälter mit eigenem kleinem Raster (Gürtel, Riemen, Scheide, Köcher, Laschen), Verbund-Zonen für Stücke über mehrere Zellen, Trageregeln am Gegenstand, alle möglichen Plätze mit Grund und Verdrängen. — [[F-079 Tragplätze]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-334]] | Ausrüstung bringt Tragplätze mit | Spielleitung | 2 | 3 | offen |
-| [[REQ-335]] | Plätze für lange Gegenstände verbinden | Spielleitung | 2 | 2 | offen |
+| [[REQ-334]] | Tragende Ausrüstung als Behälter mit eigenem Raster | Spielleitung | 2 | 3 | offen |
+| [[REQ-335]] | Verbund: Zellen, die gemeinsam ein Stück tragen | Spielleitung | 2 | 2 | offen |
 | [[REQ-336]] | Festlegen, wo ein Gegenstand getragen werden darf | Spielleitung | 2 | 2 | offen |
 | [[REQ-337]] | Sehen, was weichen muss | Spieler | 2 | 2 | offen |
-| [[REQ-338]] | Körperplätze und Platzarten als Daten | Spielleitung | 2 | 3 | offen |
-| [[REQ-339]] | Tragplätze an der Figur | Spieler | 2 | 3 | offen |
-| [[REQ-340]] | Platzplan in der Maske | Spielleitung | 3 | 3 | offen |
+| [[REQ-338]] | Körperplätze als Plan des Moduls | Spielleitung | 2 | 3 | offen |
+| [[REQ-339]] | Tragende Ausrüstung an der Figur | Spieler | 2 | 3 | offen |
+| [[REQ-340]] | Raster und Zonen eines Trägers in der Maske | Spielleitung | 3 | 3 | offen |
 
 ## EP-05 Kampagne & Sitzungen
 
@@ -612,11 +613,11 @@ Rezepte, Material, Fortschritt, Blaupausen lernen. — [[F-047 Handwerk]]
 
 ### F-048 Regelsysteme & Module
 
-Regelsysteme als Behälter mit Optionen je Kampagne; Homebrew-Regeln; Rahmen wie Taverne. — [[F-048 Regelsysteme & Module]]
+Regelsysteme und Module als Ebenen, je Sorte ein Modul, gewählt an der Kampagne; Homebrew-Regeln; Rahmen wie Taverne. — [[F-048 Regelsysteme & Module]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-287]] | Regelsysteme als Behälter mit Optionen | Spielleitung | 2 | 8 | offen |
+| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | offen |
 | [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | 2 | 5 | offen |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | 3 | 3 | offen |
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | 5 | offen |
@@ -814,7 +815,7 @@ Bilder bearbeiten, Tokens zusammenstellen. — [[F-064 Token-Werkstatt]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-330]] | Inventarbild an einen Gegenstand binden | Spielleitung | 3 | 2 | offen |
+| [[REQ-330]] | Inventory image an einen Gegenstand binden | Spielleitung | 3 | 2 | offen |
 | [[REQ-298]] | Bilder bearbeiten und Tokens zusammenstellen | Spielleitung | 4 | 8 | offen |
 | [[REQ-331]] | Hilfe für Gegenstandsbilder | Spielleitung | 4 | 1 | offen |
 
