@@ -245,7 +245,7 @@ Listen am Server, schnelle Navigation, Ladeanzeige. — [[F-019 Leistung & Laden
 
 ## EP-03 Kreaturen & Figuren
 
-27 Stories · 116 Punkte · 16 steht · 1 teils · 9 offen · 1 ersetzt — [[EP-03 Kreaturen & Figuren]]
+29 Stories · 122 Punkte · 18 steht · 2 teils · 8 offen · 1 ersetzt — [[EP-03 Kreaturen & Figuren]]
 
 ### F-020 Kreatur
 
@@ -287,10 +287,12 @@ Der Bogen einer Figur: Allgemein, Kampf, Zauber, Freispiel, schnelle Änderungen
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-343]] | Konzentration und Zustandsdauer in der Statuszeile | Spieler | 1 | 3 | steht |
+| [[REQ-344]] | Gesperrte Aktionen bleiben sichtbar, mit Grund | Spieler | 1 | 3 | teils |
 | [[REQ-051]] | Schnelle Änderungen am Bogen | Spieler | 2 | 3 | steht |
 | [[REQ-063]] | Charakterbogen: Allgemein | Spieler | 2 | 5 | steht |
 | [[REQ-066]] | Charakterbogen: Kampf | Spieler | 3 | 5 | steht |
-| [[REQ-067]] | Charakterbogen: Zauber | Spieler | 3 | 5 | offen |
+| [[REQ-067]] | Charakterbogen: Zauber | Spieler | 3 | 5 | steht |
 | [[REQ-068]] | Charakterbogen: Freispiel | Spieler | 4 | 3 | offen |
 | [[REQ-073]] | Eigene Anordnung des Bogens je Nutzer | – | 4 | 5 | ersetzt |
 
@@ -311,7 +313,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-39 Stories · 98 Punkte · 8 steht · 5 teils · 26 offen — [[EP-04 Spielererlebnis]]
+40 Stories · 101 Punkte · 8 steht · 6 teils · 26 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -320,6 +322,7 @@ Die Seite aus Sicht der Spielenden, auch am Telefon. — [[F-025 Spieleransicht 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-069]] | Am Telefon spielen | Spieler | 1 | 3 | teils |
+| [[REQ-346]] | Was die Kampagne meiner Figur gezeigt hat | Spieler | 1 | 3 | teils |
 | [[REQ-311]] | Spieleransicht mit der eigenen Figur im Fokus | Spieler | 2 | 5 | teils |
 | [[REQ-074]] | Schnellzugriffe | Spieler | 3 | 1 | teils |
 | [[REQ-194]] | Untere Leiste am Telefon wählen | Spieler | 4 | 1 | offen |
@@ -543,7 +546,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-24 Stories · 108 Punkte · 11 steht · 1 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
+25 Stories · 111 Punkte · 12 steht · 1 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -602,6 +605,7 @@ Rezepte, Material, Fortschritt, Blaupausen lernen. — [[F-047 Handwerk]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-347]] | Handwerk an der Figur | Spieler | 2 | 3 | steht |
 | [[REQ-218]] | Blaupausen lernen | Spieler | 3 | 2 | steht |
 | [[REQ-219]] | Material beim Start binden | Spieler | 3 | 2 | steht |
 | [[REQ-184]] | Handwerk mit Rezepten | Spieler | 4 | 5 | steht |
@@ -835,7 +839,7 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 ## EP-11 Oberfläche & Navigation
 
-27 Stories · 87 Punkte · 18 steht · 4 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+28 Stories · 90 Punkte · 18 steht · 5 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -885,6 +889,7 @@ Kopfleiste, Brotkrumen, Kurzansicht als Popup, Kampagne und Ebene sichtbar. — 
 | [[REQ-342]] | Handbuch: alle Erklärungen an einer Stelle | Spielleitung | 1 | 5 | steht |
 | [[REQ-248]] | Kurzansicht überall | Spieler | 2 | 5 | steht |
 | [[REQ-305]] | Kampagne und Ebene immer sichtbar | Spielleitung | 2 | 2 | steht |
+| [[REQ-345]] | Schwebende Werkzeugleiste für eine Auswahl | Spieler | 2 | 3 | teils |
 
 ### F-071 Bearbeiten in der Ansicht
 

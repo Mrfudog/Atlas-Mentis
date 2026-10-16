@@ -24,7 +24,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | [[F-044 Klassen]] — Klassenansicht mit Stufentabelle und Unterklassen. | 1 | 3 | 1 steht |
 | [[F-045 Zauber]] — Zauber als Artikel, Zauberlisten. | 2 | 5 | 1 steht · 1 offen |
 | [[F-046 Regelauswertung]] — Effekte, Bedingungen und Wechselwirkungen von Regeln auswerten. | 6 | 44 | 6 offen |
-| [[F-047 Handwerk]] — Rezepte, Material, Fortschritt, Blaupausen lernen. | 3 | 9 | 3 steht |
+| [[F-047 Handwerk]] — Rezepte, Material, Fortschritt, Blaupausen lernen. | 4 | 12 | 4 steht |
 | [[F-048 Regelsysteme & Module]] — Regelsysteme als Behälter mit Optionen je Kampagne; Homebrew-Regeln; Rahmen wie Taverne. | 4 | 21 | 4 offen |
 | [[F-049 Masse & Einheiten]] — Masse beim Lesen umrechnen, auch im Fliesstext. | 1 | 2 | 1 offen |
 

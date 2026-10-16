@@ -15,11 +15,12 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-3 Stories · 9 Punkte · 3 steht
+4 Stories · 12 Punkte · 4 steht
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-184]] Handwerk mit Rezepten | Spieler | 4 | steht |
 | [[REQ-218]] Blaupausen lernen | Spieler | 3 | steht |
 | [[REQ-219]] Material beim Start binden | Spieler | 3 | steht |
+| [[REQ-347]] Handwerk an der Figur | Spieler | 2 | steht |
 <!-- stories:ende -->

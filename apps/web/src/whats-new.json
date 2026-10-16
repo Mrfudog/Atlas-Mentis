@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-character-crafting-campaign",
+      "date": "2026-10-16",
+      "title": "Crafting and Campaign tabs on your character",
+      "text": "Crafting on a character lists its blueprints — known or all — with filters for ready now, almost (one or two missing) and tool, opens the workbench of the one you pick with material from you and your party, and shows your orders with their checks. Campaign gathers what you were given: handouts, sessions, quests, people, encounters, maps and places.",
+      "area": "Characters",
+      "link": "/world",
+      "query": { "type": "PlayerCharacter" }
+    },
+    {
       "id": "2026-10-16-spells-tab",
       "date": "2026-10-16",
       "title": "A Spells tab on every caster",

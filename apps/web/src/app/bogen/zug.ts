@@ -22,7 +22,7 @@ const ARTEN: Record<TurnType, { label: string; budget: string; farbe: string }> 
  * Quellen aufklappbar und einzeln wählbar, „Used" je Action/Bonus/Reaction
  * (gespeichert an der Figur, `Vitals.turnUsed`), „New turn".
  *
- * **Gesperrte Aktionen bleiben sichtbar**, mit 🔒 und dem Grund — was die
+ * **Gesperrte Aktionen bleiben sichtbar** (REQ-344), mit 🔒 und dem Grund — was die
  * Hände gerade nicht erlauben (`lockOf` im Modell). Eine gewählte Zeile
  * bekommt die schwebende Werkzeugleiste: benutzen, zum Artikel, Details
  * (am Telefon als Blatt von unten), rückgängig, fertig.

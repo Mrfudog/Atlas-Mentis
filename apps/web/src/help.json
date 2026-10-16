@@ -142,7 +142,9 @@
             "Overview, Combat, Gear, Crafting and Ties are tabs; a link such as the gold in the header opens its tab.",
             "Combat starts with Your turn: every action by type (Action, Bonus, Reaction, Free, Trigger). The chips filter by type; Sources picks which features, spells and items show. Click Action, Bonus or Reaction under Used once spent; New turn clears them.",
             "A blocked action stays with 🔒 and the reason — a spell without a free hand, for instance. Click a row for its toolbar: use it, open its article, see details, undo.",
-            "Spells shows ability, spell attack, save DC, slots and concentration on top, then every spell by level. Cast uses the lowest free slot of its level or higher, starts concentration for a concentration spell and marks the action used; a ritual needs no slot. Blocked shows why. Below: your class spell lists, what is possible for you now, and how you learn spells — other ways fold out."
+            "Spells shows ability, spell attack, save DC, slots and concentration on top, then every spell by level. Cast uses the lowest free slot of its level or higher, starts concentration for a concentration spell and marks the action used; a ritual needs no slot. Blocked shows why. Below: your class spell lists, what is possible for you now, and how you learn spells — other ways fold out.",
+            "Crafting lists your blueprints: what you know or all of them, ready now, almost, by tool. Pick one for its workbench — materials from you and your party, then Start crafting. Your running orders stand below with their checks as circles.",
+            "Campaign shows what the campaign gave your character: handouts (letters, maps, pictures and knowledge you hold), sessions, quests, people, encounters, maps and places. It only holds what the server lets you see."
           ]
         },
         {

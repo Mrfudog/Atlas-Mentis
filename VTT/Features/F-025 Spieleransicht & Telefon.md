@@ -15,7 +15,7 @@ Epic: [[EP-04 Spielererlebnis]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-4 Stories · 10 Punkte · 3 teils · 1 offen
+5 Stories · 13 Punkte · 4 teils · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -23,4 +23,5 @@ Epic: [[EP-04 Spielererlebnis]]
 | [[REQ-074]] Schnellzugriffe | Spieler | 3 | teils |
 | [[REQ-194]] Untere Leiste am Telefon wählen | Spieler | 4 | offen |
 | [[REQ-311]] Spieleransicht mit der eigenen Figur im Fokus | Spieler | 2 | teils |
+| [[REQ-346]] Was die Kampagne meiner Figur gezeigt hat | Spieler | 1 | teils |
 <!-- stories:ende -->

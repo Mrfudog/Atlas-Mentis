@@ -232,8 +232,27 @@ const APP: AppTerm[] = [
   {
     term: 'Handout',
     sort: 'app',
-    definition: 'A view for printing or showing one article to the players, set up in Registry › Views.',
+    definition: 'A view for printing or showing one article to the players, set up in Registry › Views. On a character’s Campaign tab, the handouts are the pictures, letters, maps and knowledge the character was given.',
     translations: { de: 'Handzettel' },
+  },
+  {
+    term: 'Character sheet',
+    aliases: ['Sheet header', 'Status row'],
+    sort: 'app',
+    definition: 'The header of a character above its tabs: hit points with an amount for damage, healing and temporary hit points, vitals and spellcasting, hit dice, slots, inspiration, gold, abilities, and the status row with concentration and conditions. Collapses with “▴ Less”.',
+    translations: { de: 'Charakterbogen' },
+  },
+  {
+    term: 'Your turn',
+    sort: 'app',
+    definition: 'The list of everything a character can do on its turn, by action type, with what is used this turn. What the hands block stays visible with the reason.',
+    translations: { de: 'Dein Zug' },
+  },
+  {
+    term: 'Floating toolbar',
+    sort: 'app',
+    definition: 'The bar at the bottom while something is selected: its actions, undo and done; on a phone compact, with details as a sheet from below.',
+    translations: { de: 'Schwebende Werkzeugleiste' },
   },
   {
     term: 'Quick view',

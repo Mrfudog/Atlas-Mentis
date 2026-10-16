@@ -11,7 +11,7 @@ export interface LeistenAktion {
 }
 
 /**
- * **Die schwebende Werkzeugleiste** (T-247): unten mittig, solange etwas
+ * **Die schwebende Werkzeugleiste** (T-247, REQ-345): unten mittig, solange etwas
  * gewählt ist — Titel, Aktionen (Zeichen mit Wort), Rückgängig, Fertig.
  * Auf dem Telefon kompakt (nur Zeichen), und „Details" öffnet ein Blatt
  * von unten (`nw-unterblatt`).

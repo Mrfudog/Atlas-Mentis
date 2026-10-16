@@ -1,10 +1,11 @@
-import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, forwardRef, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { nextMark } from '@nw/model';
 import { Api, ApiError, type Handwerk, type HandwerkAuftrag, type HandwerkKreis, type HandwerkMaterialwahl, type HandwerkUebersicht } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
 import { Handwerksuebersicht } from './handwerksuebersicht';
+import { FigurHandwerk } from '../bogen/handwerk';
 
 type RezeptSicht = Extract<Handwerk, { kind: 'recipe' }>;
 
@@ -34,7 +35,7 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
  */
 @Component({
   selector: 'nw-werkstatt',
-  imports: [RouterLink, KurzLink, Handwerksuebersicht],
+  imports: [RouterLink, KurzLink, Handwerksuebersicht, forwardRef(() => FigurHandwerk)],
   template: `
     @if (werkbank(); as s) {
       <section class="werkstatt" aria-label="Crafting">
@@ -259,7 +260,12 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
         }
       </section>
     } @else if (uebersicht(); as u) {
-      <nw-handwerksuebersicht [sicht]="u" />
+      <!-- An der Figur der Reiter Crafting (T-247), sonst die Übersicht (T-196). -->
+      @if (u.kind === 'actor') {
+        <nw-figur-handwerk [sicht]="u" />
+      } @else {
+        <nw-handwerksuebersicht [sicht]="u" />
+      }
     }
   `,
   styles: `

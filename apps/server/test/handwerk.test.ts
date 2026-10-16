@@ -342,4 +342,21 @@ describe('Handwerksübersicht (T-196)', () => {
     const gelernt = Object.fromEntries(s.tools[0].recipes.map((r: { id: string; learned?: boolean }) => [r.id, r.learned]));
     expect(gelernt).toEqual({ salbe: true, geheim: false });
   });
+
+  it('der Reiter Crafting (T-247): alle Blaupausen, freies Material der Figur und Gruppe, ihre Aufträge', async () => {
+    const id = await starten();
+    const s = (await get('s', '/api/crafting/f')).json();
+    expect(s.recipes.map((r: { id: string; toolOk: boolean }) => [r.id, r.toolOk])).toEqual([['salbe', true], ['geheim', true]]);
+    // Reserviertes zählt nicht: 5 − 2 im Gepäck, 1 − 1 in der Truhe.
+    expect(s.stock['kraut']).toEqual({ qty: 3, where: ['Ash'] });
+    expect(s.orders).toEqual([expect.objectContaining({ id, recipe: { id: 'salbe', name: 'Draught recipe' }, progress: 0, needed: 2, outcome: 'open' })]);
+  });
+
+  it('fremdes Material und fremde Aufträge sieht nur die Figur selbst und die Leitung', async () => {
+    await repo.putUser({ id: 'u_x', name: 'andere', passwordHash: await hashPassword(PW), isAdmin: false, actorIds: [], roles: { k: 'player' } });
+    cookies['x'] = await anmelden('andere');
+    const s = (await get('x', '/api/crafting/f')).json();
+    expect(s.stock).toEqual({});
+    expect(s.orders).toEqual([]);
+  });
 });
