@@ -312,9 +312,16 @@ export const interfaces: Record<string, InterfaceDef> = {
             },
             /* Was im Kampf zählt. Die Zahlen stehen oben im Bogen; hier
                steht, was man mit ihnen tut. */
-            { id: 'combat', label: 'Combat', layout: [{ id: 'c-c', el: 'composed' }] },
+            /* „Your turn" vor den Abschnitten (T-247): eine Liste nach
+               Aktionsart, und was die Hände sperren, steht mit Grund da. */
+            { id: 'combat', label: 'Combat', layout: [{ id: 'c-turn', el: 'turn' }, { id: 'c-c', el: 'composed' }] },
+            /* Die Zauber (T-246), nur an einer Kreatur, die zaubert. */
+            { id: 'spells', label: 'Spells', layout: [{ id: 'c-spells', el: 'spells', when: { relation: 'casts' } }] },
             { id: 'gear', label: 'Gear', layout: [{ id: 'c-inv', el: 'inventory' }] },
-            { id: 'craft', label: 'Craft', layout: [{ id: 'c-craft', el: 'crafting' }] },
+            { id: 'craft', label: 'Crafting', layout: [{ id: 'c-craft', el: 'crafting' }] },
+            /* Was die Kampagne der Figur gezeigt hat (T-247) — an der
+               Spielerfigur, nicht an jedem NSC; gesiebt am Server. */
+            { id: 'campaign', label: 'Campaign', layout: [{ id: 'c-camp', el: 'campaign', when: { type: 'PlayerCharacter' } }] },
             /* Wer wie zu wem steht, und woran sie sonst hängt. */
             {
               id: 'ties',

@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-player-sheet-header",
+      "date": "2026-10-16",
+      "title": "A character sheet header for the table",
+      "text": "A character's page opens with its header: hit points with an amount for Damage (temporary hit points first), Heal and Temp, vitals and spellcasting behind the arrows, hit dice, slots and inspiration as pips, gold and the abilities. The status row shows concentration and conditions with their duration and asks for the concentration save after damage. Below, the groups are tabs.",
+      "area": "Characters",
+      "link": "/world",
+      "query": { "type": "PlayerCharacter" }
+    },
+    {
       "id": "2026-10-16-handbook-glossary",
       "date": "2026-10-16",
       "title": "A handbook with a glossary",

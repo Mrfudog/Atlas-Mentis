@@ -139,7 +139,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
+- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*, `concentration` *link → Spell*, `durations` *object*, `hidden` *boolean*, `turnUsed` *action | bonus | reaction*
 - *`Lore`* — `lore` *long*
 - *`Facts`* — `fact` *long*
 - *`Secrets`* — `secret` *long*
@@ -187,9 +187,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
   - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
-  - **Combat** — `composed`
+  - **Combat** — `turn`, `composed`
+  - **Spells** — `spells`
   - **Gear** — `inventory`
-  - **Craft** — `crafting`
+  - **Crafting** — `crafting`
+  - **Campaign** — `campaign`
   - **Ties** — `standing`, `relations`
 
 ### Deity
@@ -637,7 +639,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
+- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*, `concentration` *link → Spell*, `durations` *object*, `hidden` *boolean*, `turnUsed` *action | bonus | reaction*
 - *`Lore`* — `lore` *long*
 - *`Facts`* — `fact` *long*
 - *`Secrets`* — `secret` *long*
@@ -690,9 +692,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
   - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
-  - **Combat** — `composed`
+  - **Combat** — `turn`, `composed`
+  - **Spells** — `spells`
   - **Gear** — `inventory`
-  - **Craft** — `crafting`
+  - **Crafting** — `crafting`
+  - **Campaign** — `campaign`
   - **Ties** — `standing`, `relations`
 
 ### Shop
@@ -3861,7 +3865,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
+- `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*, `concentration` *link → Spell*, `durations` *object*, `hidden` *boolean*, `turnUsed` *action | bonus | reaction*
 
 **Kanten von hier**
 

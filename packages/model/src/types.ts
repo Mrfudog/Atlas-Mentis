@@ -463,7 +463,18 @@ export type LayoutElementKind =
   | 'linked'
   | 'knowledge'
   | 'map'
+  /**
+   * **Der Kopf der Spielerseite** (T-247): Trefferpunkte mit Betrag,
+   * Vitals ↔ Spellcasting, Trefferwürfel, Plätze, Inspiration, Gold, die
+   * Attribute und die Statuszeile. Steht über den Reitern.
+   */
   | 'sheet'
+  /** „Your turn" (T-247): alle Aktionen nach Aktionsart, gesperrte mit Grund. */
+  | 'turn'
+  /** Die Zauber einer Figur (T-246): Kopf, nach Grad, Listen, Lernweg. */
+  | 'spells'
+  /** Was die Kampagne einer Figur gezeigt hat (T-247): Handouts, Sitzungen, Quests … */
+  | 'campaign'
   | 'inventory'
   | 'crafting'
   /** Die Waren eines Ladens mit ihren Preisen und deren Herkunft (T-129). */
@@ -614,6 +625,12 @@ export interface LayoutElement {
  * eigene Felder ist ein Wort (CLAUDE.md).
  */
 export interface LayoutWhen {
+  /**
+   * Der Artikel ist von dieser Art (seine erste Art, `interfaces[0]`, oder
+   * eine darin genannte). Die Kampagne steht an der Spielerfigur, nicht
+   * an jedem NSC (T-247).
+   */
+  type?: string;
   /** `Typ.feld`, gelesen an der Karte des Typs. */
   field?: string;
   has?: string[];

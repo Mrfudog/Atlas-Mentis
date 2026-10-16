@@ -160,7 +160,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'casts',
     inverseLabel: 'cast by',
     means: 'A statblock, character, item, subclass, ancestry, feat, cult or boon can cast a spell; the spell lists who casts it.',
-    intended: 'Feed the spell list and its uses: mode, uses, level and charges should appear on the sheet as castable, with slots and charges counted down in play.',
     from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry', 'Feat', 'Faction', 'Rule'],
     to: ['Spell'],
     props: {
@@ -456,7 +455,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'has property',
     inverseLabel: 'property of',
     means: 'A weapon, armour or item has a property (finesse, heavy); the property lists the items that have it.',
-    intended: 'Use the property in numbers: finesse should let an attack use DEX, heavy and two-handed should show on the attack.',
     from: ['Weapon', 'Item', 'Armor'],
     to: ['ItemProperty'],
   },
