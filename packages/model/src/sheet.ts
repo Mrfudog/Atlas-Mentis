@@ -362,7 +362,9 @@ export function sheetHeader(
   const sb = (statblock?.components?.['Statblock'] ?? {}) as Record<string, unknown>;
   const ab = (statblock?.components?.['Abilities'] ?? {}) as Record<string, unknown>;
   const pr = (statblock?.components?.['Proficiencies'] ?? {}) as Record<string, unknown>;
-  const sc = statblock?.components?.['Spellcasting'] as Record<string, unknown> | undefined;
+  /* Das Zauberwirken ist in die Statblock-Karte gemischt (`StatblockCore`
+     + `Spellcasting`, Z5): `Statblock.spellSlots`, nicht eine eigene Karte. */
+  const sc = sb['spellAbility'] !== undefined || sb['spellSlots'] !== undefined ? sb : undefined;
   const bonuses = (sb['bonuses'] && typeof sb['bonuses'] === 'object' ? sb['bonuses'] : {}) as Record<string, unknown>;
 
   /* Der Übungsbonus: am Statblock gegeben, sonst aus der Stufe der Figur. */
@@ -409,10 +411,10 @@ export function sheetHeader(
   let casting: SheetCell[] | null = null;
   const spells = ctx.spells ?? [];
   if (sc || spells.length) {
-    const scProps = registry.interfaces['Spellcasting']?.schema?.properties ?? {};
+    const scProps = registry.interfaces['Statblock']?.schema?.properties ?? {};
     const abil = typeof sc?.['spellAbility'] === 'string' ? (sc['spellAbility'] as string) : '';
-    const dc = scProps['spellDc'] ? derivedValue(scProps['spellDc'], sc ?? {}, statblock?.components) : undefined;
-    const atk = scProps['spellAttack'] ? derivedValue(scProps['spellAttack'], sc ?? {}, statblock?.components) : undefined;
+    const dc = scProps['spellDc'] ? derivedValue(scProps['spellDc'], sb, statblock?.components) : undefined;
+    const atk = scProps['spellAttack'] ? derivedValue(scProps['spellAttack'], sb, statblock?.components) : undefined;
     const am = abil ? modOf(abil.toLowerCase()) : null;
     casting = [
       { key: 'ability', label: 'Ability', value: abil ? abil.toUpperCase() : '—' },

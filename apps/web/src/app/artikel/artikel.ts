@@ -692,10 +692,10 @@ const NOCH_NICHT = new Set<Stueck['art']>(['zug', 'zauberliste', 'kampagne']);
               <!-- Reiter (T-247): die Gruppen einer Kreatur stehen nicht
                    untereinander, sondern einer auf einmal; was über den
                    Reitern steht (der Kopf), steht immer da. -->
-              @if (reiter().length > 1) {
-                <nw-reiterleiste [reiter]="reiter()" [aktiv]="aktiverReiter()" (waehle)="zeigeReiter($event)" />
-              }
               @for (st of sichtbareStuecke(); track st.id) {
+                @if (st.id === ersterImReiter() && reiter().length > 1) {
+                  <nw-reiterleiste [reiter]="reiter()" [aktiv]="aktiverReiter()" (waehle)="zeigeReiter($event)" />
+                }
                 @switch (st.art) {
                   @case ('bogen') {
                     <nw-bogen [artikel]="e" />
@@ -1323,6 +1323,8 @@ export class Artikel implements SchnellKontext {
     const a = this.aktiverReiter();
     return this.stuecke().filter((x) => !NOCH_NICHT.has(x.art) && (!x.reiter || !a || x.reiter === a));
   });
+  /** Die Reiterzeile steht vor dem ersten Stück in einem Reiter — unter dem Kopf. */
+  protected readonly ersterImReiter = computed(() => this.sichtbareStuecke().find((x) => x.reiter)?.id ?? null);
   protected zeigeReiter(id: string): void {
     void this.router.navigate([], { queryParams: { tab: id }, queryParamsHandling: 'merge', replaceUrl: true });
   }

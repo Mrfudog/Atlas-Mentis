@@ -126,11 +126,10 @@ describe('the sheet header (T-247)', () => {
   const reg = {
     interfaces: {
       PlayerCharacter: { name: 'PlayerCharacter', schema: { type: 'object', properties: { proficiency: { type: 'number', derived: '2+(sum(hasClass.level)-1)/4' } } } },
-      Spellcasting: {
-        name: 'Spellcasting',
+      Statblock: {
+        name: 'Statblock',
         schema: { type: 'object', properties: { spellDc: { type: 'number', derived: '8+prof+modOf(spellAbility)' }, spellAttack: { type: 'number', derived: 'prof+modOf(spellAbility)' } } },
       },
-      Statblock: { name: 'Statblock', schema: { type: 'object', properties: {} } },
     },
     relations: {},
     units: {},
@@ -145,10 +144,9 @@ describe('the sheet header (T-247)', () => {
   const sb: Entity = {
     id: 'sb', interfaces: ['Statblock'], name: 'Sb',
     components: {
-      Statblock: { ac: 15, hp: 22, prof: 2 },
+      Statblock: { ac: 15, hp: 22, prof: 2, spellAbility: 'int', spellSlots: [2] },
       Abilities: { str: 8, dex: 18, con: 12, int: 14, wis: 10, cha: 14 },
       Proficiencies: { saves: ['dex', 'int'] },
-      Spellcasting: { spellAbility: 'int', spellSlots: [2] },
     },
     relations: [],
   };
