@@ -5,6 +5,16 @@
 Stand 14.10.2026 — **Bestandsaufnahme und Entscheidungsvorlage**, noch
 keine Umsetzung. Die Wahl liegt als **E-044** bei der Leitung.
 
+> **Entschieden am 16.10.2026** (E-078, E-090–E-094): **Regelsysteme und
+> Module sind Ebenen.** Ein Modul bringt eigene Methoden mit — wie es
+> zählt, was es zeigt, was es sperrt. Je Sorte (z. B. Inventar) gilt
+> eines; die Leitung wählt es an der Kampagne. Ein tieferes Modul, das die
+> Wahl ausschliesst, wird nicht angezeigt. Reines D&D heisst beim
+> Inventar: Gewicht, ohne Raster. Das präzisiert Weg c unten: das Modul ist
+> die Ebene selbst und kein Artikel `RuleModule` in einer Ebene. Die
+> Abwägung bleibt als Begründung stehen; die Anforderungen dazu sind
+> REQ-287, REQ-319 und REQ-223.
+
 Der Wunsch der Leitung: in der Kampagne wird das Regelset gewählt. Ein
 System (hier D&D) gibt Optionen vor, die Kampagne übernimmt sie oder
 wandelt sie ab. Teilsysteme wie das Handwerk gehören zu D&D, sollen aber
