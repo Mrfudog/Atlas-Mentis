@@ -5,15 +5,22 @@ import {
   parseInline,
   parseMarkdown,
   rollText,
+  spotTerms,
 } from '@nw/model';
 import type { Block, Segment, VarScopes } from '@nw/model';
 import { Api } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { WurfZiel } from '../kern/wurfziel';
 import { KurzLink } from '../kern/kurzansicht';
+import { BegriffLink, Glossar } from '../kern/glossar';
 
-/** Ein Segment, wie die Vorlage es braucht: der Verweis schon aufgelöst. */
-type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
+/** Ein Segment, wie die Vorlage es braucht: der Verweis schon aufgelöst.
+ *  `begriff` ist ein Glossarbegriff (T-242) — erkannt oder verlinkt. */
+type Stueck = (Segment | { kind: 'begriff'; text: string; bold?: boolean; italic?: boolean }) & {
+  ziel?: string;
+  titel?: string;
+  schluessel: string;
+};
 
 /**
  * Ein langes Textfeld, gezeichnet (M10–M12).
@@ -27,6 +34,10 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
  * mehreres trifft, wird nicht geraten (M11) — er steht da und sagt es.
  * Ein Klick zeigt die Kurzansicht des Ziels (T-093); mit Strg, ⌘ oder der
  * mittleren Taste geht er wie jeder Link auf die Artikelseite.
+ * **Glossarbegriffe** (T-242) sind gepunktet unterstrichen — erkannt über
+ * Name und Aliasse (`spotTerms`, nur Begriffe mit `autolink`) oder als
+ * Verweis auf einen Glossarartikel: Darüberfahren und Klick zeigen die
+ * Kurzansicht, Strg/⌘+Klick öffnet den Eintrag in der Glossarleiste.
  * Ein Würfelausdruck ist ein Knopf, und das Ergebnis steht daneben
  * (REQ-070): wer den Wurf nicht sieht, glaubt ihn nicht. **Gewürfelt wird
  * am Server** (T-172): der Wurf steht im Log des Artikels, auf dem er
@@ -34,7 +45,7 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
  */
 @Component({
   selector: 'nw-text',
-  imports: [RouterLink, NgTemplateOutlet, KurzLink],
+  imports: [RouterLink, NgTemplateOutlet, KurzLink, BegriffLink],
   template: `
     <ng-template #bloecke let-liste>
       @for (b of liste; track $index) {
@@ -103,7 +114,7 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
     <!-- Eng gesetzt und mit Absicht: jeder Zeilenumbruch hier würde ein
          Leerzeichen vor „leather armor" und in „( 2d6 )" setzen. -->
     <ng-template #zeile let-text>
-      @for (s of stuecke(text); track $index) {<span [class.b]="s.bold" [class.i]="s.italic">@switch (s.kind) {@case ('link') {@if (s.ziel) {<a [routerLink]="['/artikel', s.ziel]" [nwQuick]="s.ziel" [attr.title]="s.titel">{{ s.text }}</a>} @else {<span class="tot" [attr.title]="s.titel">{{ s.text }}</span>}}@case ('var') {<span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>}@case ('dice') {<button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr, $event)">{{ s.text }}</button>@if (wuerfe()[s.schluessel]; as w) {<output class="ergebnis" [class.krit]="w.krit === 'crit'" [class.patzer]="w.krit === 'fumble'" [attr.title]="w.titel">{{ w.text }}</output>}}@default {<ng-container>{{ s.text }}</ng-container>}}</span>}
+      @for (s of stuecke(text); track $index) {<span [class.b]="s.bold" [class.i]="s.italic">@switch (s.kind) {@case ('link') {@if (s.ziel) {<a [routerLink]="['/artikel', s.ziel]" [nwQuick]="s.ziel" [attr.title]="s.titel">{{ s.text }}</a>} @else {<span class="tot" [attr.title]="s.titel">{{ s.text }}</span>}}@case ('begriff') {<span [nwBegriff]="s.ziel" [nwQuick]="s.ziel">{{ s.text }}</span>}@case ('var') {<span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>}@case ('dice') {<button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr, $event)">{{ s.text }}</button>@if (wuerfe()[s.schluessel]; as w) {<output class="ergebnis" [class.krit]="w.krit === 'crit'" [class.patzer]="w.krit === 'fumble'" [attr.title]="w.titel">{{ w.text }}</output>}}@default {<ng-container>{{ s.text }}</ng-container>}}</span>}
     </ng-template>
 
     <ng-template #vorspannT>
@@ -242,6 +253,11 @@ export class Text {
   private readonly bestand = inject(Bestand);
   private readonly api = inject(Api);
   private readonly ziel = inject(WurfZiel, { optional: true });
+  private readonly glossar = inject(Glossar);
+
+  constructor() {
+    void this.glossar.laden();
+  }
 
   protected readonly bloeckeVon = computed<Block[]>(() => parseMarkdown(this.text()));
 
@@ -255,23 +271,35 @@ export class Text {
        die Id zuerst, sonst Name und Alias, und mehr als einer ist
        mehrdeutig. */
     const verweise = this.bestand.verweise();
-    return parseInline(text, this.scopes()).map((s, i) => {
+    const index = this.glossar.index();
+    const begriffe = this.glossar.nachId();
+    return parseInline(text, this.scopes()).flatMap((s, i): Stueck[] => {
       /* Zeile und Stelle: zwei gleiche Ausdrücke in einer Zeile sind zwei
          Würfe, und ein neues Zeichnen verliert das Ergebnis nicht. */
       const schluessel = `${i}#${text}`;
-      if (s.kind !== 'link') return { ...s, schluessel };
+      if (s.kind === 'text') {
+        return spotTerms(s.text, index).map((t, j) =>
+          t.kind === 'term'
+            ? { kind: 'begriff', text: t.text, bold: s.bold, italic: s.italic, ziel: t.id, schluessel: `${schluessel}#${j}` }
+            : { ...s, text: t.text, schluessel: `${schluessel}#${j}` },
+        );
+      }
+      if (s.kind !== 'link') return [{ ...s, schluessel }];
       const treffer = verweise.get(s.target.trim()) ?? [];
       if (treffer.length === 1) {
         const ziel = treffer[0]!;
-        return { ...s, schluessel, ziel: ziel.id, titel: ziel.name };
+        if (begriffe.has(ziel.id)) return [{ kind: 'begriff', text: s.text, bold: s.bold, italic: s.italic, ziel: ziel.id, schluessel }];
+        return [{ ...s, schluessel, ziel: ziel.id, titel: ziel.name }];
       }
-      return {
-        ...s,
-        schluessel,
-        titel: treffer.length
-          ? `Ambiguous: ${treffer.length} articles are called “${s.target}”`
-          : `No article “${s.target}”`,
-      };
+      return [
+        {
+          ...s,
+          schluessel,
+          titel: treffer.length
+            ? `Ambiguous: ${treffer.length} articles are called “${s.target}”`
+            : `No article “${s.target}”`,
+        },
+      ];
     });
   }
 

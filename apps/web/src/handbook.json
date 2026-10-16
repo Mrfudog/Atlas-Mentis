@@ -1,0 +1,84 @@
+{
+  "chapters": [
+    {
+      "id": "start",
+      "title": "First steps",
+      "intro": "Atlas Mentis is the site for a GM and their groups: the world, the story, the rules and the table in one place.",
+      "sections": [
+        {
+          "heading": "Finding your way",
+          "text": [
+            "The header leads to the areas World, Story, Rules and Play, and to the Compendium, which lists everything at once. Under the mark at the left you see the running campaign and how many layers it plays with.",
+            "Search with Ctrl+K or /. Each hit opens its quick view with +; Enter opens the article."
+          ]
+        },
+        {
+          "heading": "What you see",
+          "text": [
+            "A campaign plays with layers — books, homebrew, its own layer and one per player. What no switched-on layer brings is not there, for anyone.",
+            "Players see what is ready, what was revealed to their character and what they made themselves. Nothing has a separate “player view”: you see the same page with less in it."
+          ]
+        },
+        {
+          "heading": "Creating and writing",
+          "text": [
+            "“New article” asks for a kind and a name. New articles go into your write layer (set in the layers popup); an article you may not write is edited as your own adapted version.",
+            "In long texts, [[Name]] links an article and {{1d6+2}} is a die to roll. Terms from the glossary are underlined with dots: hover for a preview, Ctrl/⌘+click to open the entry beside the page."
+          ]
+        },
+        {
+          "heading": "Help on every page",
+          "text": [
+            "The “?” in the header opens the help for the page you are on — the same text as in the chapter Pages below — with what is new there."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pages",
+      "title": "Pages",
+      "intro": "What each page does and how to use it. The “?” in the header shows the part for the page you are on."
+    },
+    {
+      "id": "rules",
+      "title": "Rules & options",
+      "intro": "The choices a campaign makes about how it plays. They are set on the campaign page under Rules & options, and each says what it does."
+    },
+    {
+      "id": "workflows",
+      "title": "Workflows",
+      "intro": "Step by step through what you do often.",
+      "sections": [
+        {
+          "heading": "Preparing a session",
+          "text": [
+            "Create the session under Play, put the scene, the encounter and the map you need on it, and set what you prepare to ready when players may see it.",
+            "During play the session says which map, encounter and scene run; Play shows them to the table."
+          ]
+        },
+        {
+          "heading": "Making a new kind of article",
+          "text": [
+            "Registry › Types › New type: name it, choose its area and what it takes in, add its fields. It can be created right away — no code change."
+          ]
+        },
+        {
+          "heading": "More to come",
+          "text": [
+            "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "types",
+      "title": "Article types",
+      "intro": "Every kind of article you can create, in one sentence each. The registry shows their fields."
+    },
+    {
+      "id": "glossary",
+      "title": "Glossary",
+      "intro": "Terms of the app and of the rules, with what they mean at the table. Terms from the rules come from the books the campaign plays with; a campaign can add its own."
+    }
+  ]
+}

@@ -115,6 +115,13 @@ export const routes: Routes = [
     loadComponent: () => import('./neues/neues').then((m) => m.NeuesSeite),
     title: "What's new · Atlas Mentis",
   },
+  /* Das Handbuch (T-242, T-225): alle Erklärungen auf einer Seite, mit Glossar. */
+  {
+    path: 'handbook',
+    canActivate: [wache],
+    loadComponent: () => import('./handbuch/handbuch').then((m) => m.Handbuch),
+    title: 'Handbook · Atlas Mentis',
+  },
   {
     path: 'classes',
     canActivate: [wache],

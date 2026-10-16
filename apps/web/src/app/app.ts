@@ -15,6 +15,8 @@ import { Rueckweg } from './kern/rueckweg';
 import { StapelKnopf } from './verwaltung/stapel-knopf';
 import { Neues } from './kern/neues';
 import { Hilfe } from './hilfe/hilfe';
+import { GlossarLeiste } from './glossar/leiste';
+import { Glossar } from './kern/glossar';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -63,7 +65,7 @@ import { Hilfe } from './hilfe/hilfe';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf, Hilfe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf, Hilfe, GlossarLeiste],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -247,6 +249,10 @@ import { Hilfe } from './hilfe/hilfe';
       <nw-suche />
       @if (hilfeOffen()) {
         <nw-hilfe [url]="adresse()" (zu)="hilfeOffen.set(false)" />
+      }
+      <!-- Der offene Glossareintrag (T-242), eine Leiste für alle Seiten. -->
+      @if (glossar.offen()) {
+        <nw-glossar-leiste />
       }
     }
     <!-- Die Kurzansicht eines genannten Artikels, eine für alle Seiten (T-093). -->
@@ -590,6 +596,8 @@ export class App {
   });
   /** Die Hilfe der Seite (T-205): offen oder zu, und für welche Adresse. */
   protected readonly hilfeOffen = signal(false);
+  /** Die Glossarleiste (T-242): offen, sobald ein Begriff geöffnet wird. */
+  protected readonly glossar = inject(Glossar);
   protected readonly adresse = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),

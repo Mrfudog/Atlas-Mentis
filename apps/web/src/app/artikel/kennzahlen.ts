@@ -4,6 +4,7 @@ import { keyStats, layoutFor, linkedTypes, primaryInterface } from '@nw/model';
 import type { Entity, KeyStats, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
+import { BegriffLink, Glossar } from '../kern/glossar';
 import { flach } from './anordnung';
 
 /**
@@ -20,7 +21,7 @@ import { flach } from './anordnung';
  */
 @Component({
   selector: 'nw-kennzahlen',
-  imports: [RouterLink, KurzLink],
+  imports: [RouterLink, KurzLink, BegriffLink],
   template: `
     @if (zahlen(); as z) {
       @if (z.tiles.length) {
@@ -38,7 +39,7 @@ import { flach } from './anordnung';
       @if (z.conditions.length) {
         <p class="zustaende" aria-label="Conditions">
           @for (c of z.conditions; track c.id) {
-            <a class="zustand" [routerLink]="['/artikel', c.id]" [nwQuick]="c.id">{{ c.name }}</a>
+            <a class="zustand" [routerLink]="['/artikel', c.id]" [nwQuick]="c.id" [nwBegriff]="begriff(c.id, c.name)">{{ c.name }}</a>
           }
         </p>
       }
@@ -105,6 +106,12 @@ import { flach } from './anordnung';
   `,
 })
 export class Kennzahlen {
+  /** Ein Zustand oder eine Eigenschaft mit Glossareintrag (T-242): Strg/⌘+Klick öffnet ihn. */
+  protected readonly glossar = inject(Glossar);
+  protected begriff(id: string | null | undefined, name: string): string | null {
+    return this.glossar.begriffZu(id, name);
+  }
+
   readonly artikel = input.required<Entity>();
 
   private readonly bestand = inject(Bestand);

@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, AssetMeta, Entity, EquipmentMethod, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
+import type { AbilityMethod, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1322,6 +1322,14 @@ export class Api {
     hitPoints?: HitPointRule;
   }> {
     return this.call('/api/abilities');
+  }
+  /** Das Glossar (T-242): Wörter der App und die sichtbaren Glossarartikel im Stapel. */
+  glossary(): Promise<{ terms: GlossaryEntry[] }> {
+    return this.call('/api/glossary');
+  }
+  /** Wo ein Glossarbegriff genannt wird — gezählt nach dem Sieb (T-242). */
+  glossaryUses(id: string): Promise<{ counted: boolean; total: number; rows: { id: string; name: string; type: string }[] }> {
+    return this.call(`/api/glossary/${encodeURIComponent(id)}/uses`);
   }
   /** Die Regeloptionen einer Kampagne, nach Sorte, mit ihren Regelartikeln (T-190). */
   campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[] }> {

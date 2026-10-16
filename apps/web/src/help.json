@@ -270,6 +270,25 @@
           ]
         }
       ]
+    },
+    {
+      "routes": ["handbook"],
+      "title": "Handbook",
+      "sections": [
+        {
+          "heading": "Chapters",
+          "text": [
+            "Everything the app explains, on one page: first steps, the help of every page, rules and options, workflows, the article types and the glossary. The list at the top jumps to a chapter."
+          ]
+        },
+        {
+          "heading": "Glossary",
+          "text": [
+            "Search by term, alias, definition or translation; the letters jump, the buttons filter by sort. Click a term to open it beside the page, with how it affects play, examples and where it is used.",
+            "In any text, glossary terms are underlined with dots: hover or click for a preview, Ctrl/⌘+click to open the entry."
+          ]
+        }
+      ]
     }
   ],
   "without": {
