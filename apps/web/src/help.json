@@ -141,7 +141,8 @@
             "The status row below shows concentration, conditions with how long they last and whether you are hidden; × removes one, “+ Condition” adds one. Damage while concentrating asks for the Constitution save (DC 10 or half the damage); “Failed” ends the spell. “▴ Less” collapses the header to hit points, damage and heal, AC, initiative and speed; on a phone it starts collapsed.",
             "Overview, Combat, Gear, Crafting and Ties are tabs; a link such as the gold in the header opens its tab.",
             "Combat starts with Your turn: every action by type (Action, Bonus, Reaction, Free, Trigger). The chips filter by type; Sources picks which features, spells and items show. Click Action, Bonus or Reaction under Used once spent; New turn clears them.",
-            "A blocked action stays with 🔒 and the reason — a spell without a free hand, for instance. Click a row for its toolbar: use it, open its article, see details, undo."
+            "A blocked action stays with 🔒 and the reason — a spell without a free hand, for instance. Click a row for its toolbar: use it, open its article, see details, undo.",
+            "Spells shows ability, spell attack, save DC, slots and concentration on top, then every spell by level. Cast uses the lowest free slot of its level or higher, starts concentration for a concentration spell and marks the action used; a ritual needs no slot. Blocked shows why. Below: your class spell lists, what is possible for you now, and how you learn spells — other ways fold out."
           ]
         },
         {

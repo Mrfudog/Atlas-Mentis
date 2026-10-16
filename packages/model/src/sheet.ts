@@ -564,3 +564,58 @@ export function turnActions(o: {
   }
   return out;
 }
+
+// ------------------------------------------------------------ Zaubern (T-246)
+
+/**
+ * **Mit welchem Platz gewirkt wird**: der kleinste freie ab dem Grad des
+ * Zaubers (höher wirken geht immer). Ein Zaubertrick braucht keinen
+ * (`0`); ist keiner frei, `null`.
+ */
+export function slotFor(level: number | null, slots: readonly SlotLevel[]): number | null {
+  if (!level) return 0;
+  const frei = slots.filter((s) => s.level >= level && s.used < s.max).sort((a, b) => a.level - b.level)[0];
+  return frei ? frei.level : null;
+}
+
+/**
+ * **Warum dieser Zauber gerade nicht geht** — die Hände zuerst, dann der
+ * Platz. Ein Ritual geht ohne Platz (es dauert zehn Minuten länger), also
+ * sperrt der fehlende Platz es nicht.
+ */
+export function spellLock(
+  hands: HandState,
+  spell: { level: number | null; components: readonly string[]; ritual?: boolean },
+  slots: readonly SlotLevel[],
+): string {
+  const c = new Set(spell.components.map((x) => x.toLowerCase()));
+  const hand = castBlock(hands, { somatic: c.has('s'), material: c.has('m') });
+  if (hand) return hand;
+  if (spell.level && slotFor(spell.level, slots) === null && !spell.ritual) return `no ${ordinalShort(spell.level)}-level slot or higher left — back on a long rest`;
+  return '';
+}
+
+/** Die Zauber nach Grad, Zaubertricks zuerst, darin nach Namen. */
+export function spellsByLevel<T extends { level: number | null; name: string }>(spells: readonly T[]): { level: number; rows: T[] }[] {
+  const grade = [...new Set(spells.map((s) => s.level ?? 0))].sort((a, b) => a - b);
+  return grade.map((level) => ({ level, rows: spells.filter((s) => (s.level ?? 0) === level).sort((a, b) => a.name.localeCompare(b.name)) }));
+}
+
+/**
+ * **Wie diese Figur Zauber lernt**, aus ihren `casts`-Kanten (`mode`):
+ * vorbereitet, bekannt, angeboren, aus einem Gegenstand. Der eigene Weg
+ * steht offen, die übrigen der Kampagne zugeklappt (Rückmeldung der
+ * Leitung, T-246). Die Mechaniken selbst werden Regelartikel mit Ablauf
+ * (T-241, T-249) — bis dahin ein Satz je Weg.
+ */
+export const LEARNING_PATHS: readonly { mode: string; label: string; text: string }[] = [
+  { mode: 'known', label: 'Spells known', text: 'You know a fixed number of spells. On a new level you learn the spells your class table gives and may swap one you know for another from your list.' },
+  { mode: 'prepared', label: 'Prepared from the list', text: 'After a long rest you choose which spells from your list you have ready — as many as your class allows.' },
+  { mode: 'innate', label: 'Innate', text: 'Your ancestry, feat or gift lets you cast these, often a number of times per day, without learning them.' },
+  { mode: 'item', label: 'From an item', text: 'An item casts these with its charges while you carry it — or attune to it, if it asks.' },
+];
+
+export function learningPaths(modes: readonly string[]): { own: typeof LEARNING_PATHS[number][]; other: typeof LEARNING_PATHS[number][] } {
+  const m = new Set(modes);
+  return { own: LEARNING_PATHS.filter((p) => m.has(p.mode)), other: LEARNING_PATHS.filter((p) => !m.has(p.mode)) };
+}

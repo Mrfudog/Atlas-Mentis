@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-spells-tab",
+      "date": "2026-10-16",
+      "title": "A Spells tab on every caster",
+      "text": "Characters who cast spells have a Spells tab: ability, attack, save DC, slots and concentration on top, every spell by level with casting time, range and components, and Cast, which uses the lowest free slot and starts concentration. Below, your spell lists with what is possible for you now, and how you learn spells.",
+      "area": "Characters",
+      "link": "/world",
+      "query": { "type": "PlayerCharacter" }
+    },
+    {
       "id": "2026-10-16-your-turn",
       "date": "2026-10-16",
       "title": "Your turn: every action in one list",

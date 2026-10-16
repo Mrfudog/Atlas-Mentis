@@ -489,6 +489,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       /* T-247: die Trefferwürfel je Klassenstufe. */
       [M + 'sheet.ts']: ['hasClass'],
       [W + 'bogen/daten.ts']: ['carries', 'casts', 'composedOf', 'hasClass', 'hasProperty', 'holds', 'memberOfParty'],
+      /* Die Zauberlisten der eigenen Klassen (T-246). */
+      [W + 'bogen/zauberliste.ts']: ['hasClass'],
     },
   },
 ];
