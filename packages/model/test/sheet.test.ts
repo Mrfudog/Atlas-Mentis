@@ -16,6 +16,8 @@ import {
   turnSources,
   turnTypeOf,
   wheelAmount,
+  turnActions,
+  turnRows,
   sheetHeader,
   pipToggle,
   setSlotsUsed,
@@ -174,5 +176,32 @@ describe('the sheet header (T-247)', () => {
     expect(pipToggle(1, 0)).toBe(0);
     expect(pipToggle(1, 1)).toBe(2);
     expect(setSlotsUsed(undefined, 2, 1)).toEqual([0, 1]);
+  });
+});
+
+describe('composing your turn (T-247)', () => {
+  it('attacks with what the hands hold and lists spells by casting time, locked when blocked', () => {
+    const hands = handState([waffe('rapier', 'mainHand', ['finesse'], { damage: '1d8' }), waffe('dagger', 'offHand', ['light'], { damage: '1d4' })]);
+    const rows = turnRows(
+      turnActions({
+        hands,
+        actions: [{ id: 'a1', name: 'Cunning Action', actionTypeName: 'Bonus Action' }, { id: 'a2', name: 'Ritual', actionTypeName: 'minute' }],
+        spells: [
+          { id: 's1', name: 'Spark', level: 0, actionTypeName: 'Action', components: ['v', 's'] },
+          { id: 's2', name: 'Shield Spell', level: 1, actionTypeName: 'Reaction', components: ['v', 's'], trigger: 'when you are hit' },
+          { id: 's3', name: 'Long Spell', level: 1, actionTypeName: null, components: ['v'] },
+        ],
+        consumables: [{ id: 'p1', name: 'Potion' }],
+      }),
+      hands,
+    );
+    const by = (id: string) => rows.find((r) => r.id === id)!;
+    expect(by('rule:attack').meta).toBe('rapier 1d8');
+    expect(by('rule:offhand').lock).toBe('');
+    expect(by('a1').type).toBe('bonus');
+    expect(rows.some((r) => r.id === 'a2' || r.id === 's3')).toBe(false);
+    expect(by('s1').lock).toMatch(/no free hand/);
+    expect(by('s2').type).toBe('reaction');
+    expect(by('use:p1').lock).toMatch(/free hand/);
   });
 });

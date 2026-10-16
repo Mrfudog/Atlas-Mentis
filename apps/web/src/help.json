@@ -139,7 +139,9 @@
           "text": [
             "A character's page has its header above the tabs: hit points with an amount — type it, use − and + or scroll over it — for Damage, Heal and Temp. Damage takes temporary hit points first; temporary hit points don't stack, the higher value stays. The arrows switch between vitals and spellcasting; hit dice, spell slots and inspiration are pips you click.",
             "The status row below shows concentration, conditions with how long they last and whether you are hidden; × removes one, “+ Condition” adds one. Damage while concentrating asks for the Constitution save (DC 10 or half the damage); “Failed” ends the spell. “▴ Less” collapses the header to hit points, damage and heal, AC, initiative and speed; on a phone it starts collapsed.",
-            "Overview, Combat, Gear, Crafting and Ties are tabs; a link such as the gold in the header opens its tab."
+            "Overview, Combat, Gear, Crafting and Ties are tabs; a link such as the gold in the header opens its tab.",
+            "Combat starts with Your turn: every action by type (Action, Bonus, Reaction, Free, Trigger). The chips filter by type; Sources picks which features, spells and items show. Click Action, Bonus or Reaction under Used once spent; New turn clears them.",
+            "A blocked action stays with 🔒 and the reason — a spell without a free hand, for instance. Click a row for its toolbar: use it, open its article, see details, undo."
           ]
         },
         {

@@ -6,12 +6,13 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { Directive, Input, signal } from '@angular/core';
+import { Component, Directive, Input, signal } from '@angular/core';
 import { provideRouter, RouterLink } from '@angular/router';
-import { handState } from '@nw/model';
+import { handState, turnActions, turnRows } from '@nw/model';
 import type { Entity, SheetHeader } from '@nw/model';
 import { anordnen, reiterVon } from '../src/app/artikel/anordnung';
 import { Bogen } from '../src/app/bogen/kopf';
+import { Zug } from '../src/app/bogen/zug';
 import { FigurDaten } from '../src/app/bogen/daten';
 import { Werkzeugleiste } from '../src/app/muster/werkzeugleiste';
 import { Api } from '../src/app/kern/api';
@@ -202,5 +203,82 @@ describe('nw-werkzeugleiste (T-247)', () => {
     expect(aktion).toHaveBeenCalledWith('use');
     expect(undo).not.toHaveBeenCalled();
     expect(fertig).toHaveBeenCalled();
+  });
+});
+
+/* JIT kennt `input()` nicht: Leiste und Blatt als Attrappen mit @Input. */
+@Component({ selector: 'nw-werkzeugleiste', template: '<div class="leiste">{{ titel }}</div>' })
+class LeisteAttrappe {
+  @Input() titel = '';
+  @Input() beschriftung = '';
+  @Input() hinweis = '';
+  @Input() aktionen: unknown[] = [];
+  @Input() rueckgaengigMoeglich: boolean | null = null;
+  @Input() mitDetails = false;
+  @Input() detailsOffen = false;
+}
+@Component({ selector: 'nw-unterblatt', template: '<ng-content />' })
+class BlattAttrappe {
+  @Input() titel = '';
+  @Input() offen = false;
+}
+
+describe('nw-zug (T-247)', () => {
+  function zug(turnUsed?: string[]) {
+    const figur: Entity = { id: 'pc', interfaces: ['PlayerCharacter'], name: 'Pc', components: { Vitals: turnUsed ? { turnUsed } : {} }, relations: [] };
+    const haende = handState([
+      { id: 'w', name: 'Blade', slot: 'mainHand', properties: [], damage: '1d6' },
+      { id: 'w2', name: 'Club', slot: 'offHand', properties: [] },
+    ]);
+    const zeilen = turnRows(
+      turnActions({ hands: haende, spells: [{ id: 's', name: 'Spark', level: 0, actionTypeName: 'Action', components: ['v', 's'] }] }),
+      haende,
+    );
+    const daten = {
+      fuer: () => ({ zug: signal(zeilen) }),
+      vitals: vi.fn().mockResolvedValue(undefined),
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: FigurDaten, useValue: daten }, { provide: Session, useValue: { darfSchreiben: signal(() => true) } }],
+    });
+    TestBed.overrideComponent(Zug, { set: { styleUrl: undefined, styleUrls: [], styles: [], imports: [RouterLink, LeisteAttrappe, BlattAttrappe] } });
+    const fixture = TestBed.createComponent(Zug);
+    Object.assign(fixture.componentInstance, { artikel: signal(figur) });
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement, daten };
+  }
+
+  it('lists every action by type, keeps blocked ones visible with the reason', () => {
+    const { el } = zug();
+    expect([...el.querySelectorAll('h3')].map((h) => h.textContent?.split(' ')[0]?.trim())).toEqual(['Action', 'Bonus', 'Reaction', 'Free', 'Trigger']);
+    const spark = [...el.querySelectorAll('.zeile')].find((z) => z.textContent?.includes('Spark'))!;
+    expect(spark.classList).toContain('gesperrt');
+    expect(spark.textContent).toContain('🔒 no free hand');
+    expect(el.textContent).toContain('Blade 1d6');
+  });
+
+  it('filters by type with counts and by source', () => {
+    const { el, fixture } = zug();
+    const bonus = [...el.querySelectorAll('.filter .chip')].find((b) => b.textContent?.startsWith('Bonus')) as HTMLButtonElement;
+    expect(bonus.textContent).toContain('1');
+    bonus.click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('h3').length).toBe(1);
+    (el.querySelector('.quellen-knopf') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('.quellen')?.textContent).toContain('Spells');
+  });
+
+  it('marks a type used, starts a new turn, and shows the toolbar for a chosen row', async () => {
+    const { el, fixture, daten } = zug(['bonus']);
+    const used = [...el.querySelectorAll('.used .chip')] as HTMLButtonElement[];
+    expect(used.find((b) => b.textContent?.includes('Bonus'))?.getAttribute('aria-pressed')).toBe('true');
+    used.find((b) => b.textContent?.includes('Action'))!.click();
+    await Promise.resolve();
+    expect((daten.vitals.mock.calls[0]![1] as () => unknown)()).toEqual({ turnUsed: ['bonus', 'action'] });
+    ([...el.querySelectorAll('.zeile')].find((z) => z.textContent?.includes('Dash')) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('nw-werkzeugleiste')?.textContent).toContain('Dash');
   });
 });

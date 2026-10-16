@@ -1,6 +1,6 @@
 import { EnvironmentInjector, Injectable, computed, effect, inject, untracked, type Signal } from '@angular/core';
-import { handState, inHand, primaryInterface, sheetHeader, linkedTypes } from '@nw/model';
-import type { Entity, HandState, HeldItem, KnownSpell, Relation, SheetHeader } from '@nw/model';
+import { entityName, handState, inHand, primaryInterface, sheetHeader, linkedTypes, turnActions, turnRows } from '@nw/model';
+import type { Entity, HandState, HeldItem, KnownSpell, Relation, SheetHeader, TurnRow } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 
@@ -20,6 +20,8 @@ export interface FigurLage {
   zauber: Signal<{ kante: Relation; spell: Entity | undefined }[]>;
   /** Gold bei der Figur und bei der Gruppe, in Kupfer (T-245 baut weiter). */
   kupfer: Signal<{ beiDir: number | null; gruppe: number | null }>;
+  /** „Your turn": jede Aktion mit ihrer Sperre (T-247). */
+  zug: Signal<TurnRow[]>;
 }
 
 /**
@@ -89,6 +91,24 @@ export class FigurDaten {
 
     const klassenIds = computed(() => (figur()?.relations ?? []).filter((k) => k.type === 'hasClass').map((k) => k.to));
 
+    /* Die Aktionen des Statblocks (`composedOf`) und die Arten, die sie
+       und die Zauber nennen (`Action.actionType`, `Spell.castingAction`). */
+    const teilIds = computed(() => (statblock()?.relations ?? []).filter((k) => k.type === 'composedOf').map((k) => k.to));
+    const artIds = computed(() => {
+      const ids: string[] = [];
+      for (const id of [...teilIds(), ...castsKanten().map((k) => k.to)]) {
+        const e = b.voll().get(id);
+        const a = (e?.components?.['Action'] as { actionType?: unknown } | undefined)?.actionType;
+        const z = (e?.components?.['Spell'] as { castingAction?: unknown } | undefined)?.castingAction;
+        for (const x of [a, z]) if (typeof x === 'string') ids.push(x);
+      }
+      return ids;
+    });
+    /* Was man mit einer Aktion benutzt: Tränke im Inventar, nicht verstaut zu Hause. */
+    const verbrauchKanten = computed(() =>
+      (inventar()?.relations ?? []).filter((k) => k.type === 'holds' && k.props?.['tier'] !== 'stored' && k.props?.['tier'] !== 'ground'),
+    );
+
     /* Nachladen, was fehlt: Rückfrage (Statblock), Inventar, Gegenstände,
        ihre Eigenschaften, Zauber, Klassen, die Gruppe. */
     effect(() => {
@@ -105,6 +125,9 @@ export class FigurDaten {
         ...handKanten().map((k) => k.to),
         ...castsKanten().map((k) => k.to),
         ...klassenIds(),
+        ...teilIds(),
+        ...artIds(),
+        ...verbrauchKanten().map((k) => k.to),
       ].filter((x): x is string => !!x);
       if (ids.length) untracked(() => void b.holen(ids));
     }, { injector: this.injector });
@@ -136,10 +159,10 @@ export class FigurDaten {
         const p = geuebt();
         const proficient = shield
           ? p.has('shield') || p.has('shields')
-          : !it?.components?.['Weapon'] || p.has(String(weapon['category'] ?? '').toLowerCase()) || p.has((it?.name ?? '').toLowerCase());
+          : !it?.components?.['Weapon'] || p.has(String(weapon['category'] ?? '').toLowerCase()) || p.has(entityName(it).toLowerCase());
         return {
           id: k.to,
-          name: it?.name ?? name(k.to) ?? k.to,
+          name: it ? entityName(it) : name(k.to) ?? k.to,
           slot,
           properties: props,
           shield,
@@ -175,7 +198,41 @@ export class FigurDaten {
       return { beiDir: c(inventarId()), gruppe: c(gruppenInventarId()) };
     });
 
+    const zug = computed<TurnRow[]>(() => {
+      const name = b.name();
+      const nameVon = (id: unknown) => {
+        if (typeof id !== 'string') return null;
+        const e = b.voll().get(id);
+        return e ? entityName(e) : name(id) ?? null;
+      };
+      const actions = teilIds().flatMap((id) => {
+        const e = b.voll().get(id);
+        const a = e?.components?.['Action'] as { actionType?: unknown } | undefined;
+        return e && a ? [{ id, name: entityName(e), actionTypeName: nameVon(a.actionType) }] : [];
+      });
+      const spells = zauber().flatMap(({ kante, spell }) => {
+        const sp = spell?.components?.['Spell'] as Record<string, unknown> | undefined;
+        if (!spell || !sp) return [];
+        const lvl = Number(sp['level']);
+        return [{
+          id: kante.to,
+          name: entityName(spell),
+          level: Number.isFinite(lvl) ? lvl : null,
+          actionTypeName: sp['castingUnit'] ? null : nameVon(sp['castingAction']) ?? 'Action',
+          components: Array.isArray(sp['components']) ? (sp['components'] as string[]) : [],
+          ...(typeof sp['castingCondition'] === 'string' && sp['castingCondition'] ? { trigger: sp['castingCondition'] as string } : {}),
+        }];
+      });
+      const consumables = verbrauchKanten().flatMap((k) => {
+        const it = b.voll().get(k.to);
+        const art = String((it?.components?.['Item'] as { itemType?: unknown } | undefined)?.itemType ?? '').toLowerCase();
+        return it && art === 'potion' ? [{ id: k.to, name: entityName(it) }] : [];
+      });
+      return turnRows(turnActions({ hands: haende(), actions, spells, consumables }), haende());
+    });
+
     return {
+      zug,
       figur,
       statblock,
       ohneStatblock: computed(() => statblockId() === null),
