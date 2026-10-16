@@ -147,6 +147,7 @@ import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
 import { registerKartenliste } from './kartenliste.js';
 import { registerRegeloptionen } from './regeloptionen.js';
+import { registerGlossar } from './glossar.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
 import { registerTueren } from './tueren.js';
 import { registerKampfstart } from './kampfstart.js';
@@ -2884,6 +2885,8 @@ export function buildApp({
   registerLaden(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet), kampagnenEbene });
   /* Die Regeloptionen einer Kampagne (T-190): nach Sorte, mit Regelartikeln. */
   registerRegeloptionen(app, { repo, roh, sieve });
+  /* Das Glossar (T-242): Wörter der App und sichtbare Glossarartikel, mit Nennungen. */
+  registerGlossar(app, { roh, sieve });
   /* Liegengelassen (T-140): Sitzungsende und Aufheben. */
   registerLiegen(app, {
     repo,
