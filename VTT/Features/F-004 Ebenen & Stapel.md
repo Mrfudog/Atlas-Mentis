@@ -15,7 +15,7 @@ Epic: [[EP-01 Inhaltsgerüst]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-13 Stories · 52 Punkte · 6 steht · 4 teils · 3 offen
+14 Stories · 55 Punkte · 6 steht · 4 teils · 4 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -32,4 +32,5 @@ Epic: [[EP-01 Inhaltsgerüst]]
 | [[REQ-249]] Ebenen nach Herausgeber | Spielleitung | 2 | teils |
 | [[REQ-253]] Ebenen und Artikel kopieren | Spielleitung | 3 | offen |
 | [[REQ-255]] Ebenen teilweise aufschalten | Spielleitung | 2 | steht |
+| [[REQ-348]] Ebene am Artikel immer sichtbar | Spielleitung | 1 | offen |
 <!-- stories:ende -->

@@ -23,14 +23,14 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 177 steht · 50 teils · 104 offen · 10 ersetzt · 6 verworfen — 347 Stories in 79 Features und 12 Epics.
+Zusammen: 174 steht · 53 teils · 105 offen · 10 ersetzt · 6 verworfen — 348 Stories in 79 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
-| [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 52 | 32 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
+| [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 53 | 32 steht · 10 teils · 5 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 38 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 40 | 8 steht · 6 teils · 26 offen |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 40 | 5 steht · 9 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 25 | 12 steht · 1 teils · 12 offen |
@@ -52,7 +52,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 **Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Begriffe.md](../docs/Begriffe.md), [Ebenen.md](../docs/Ebenen.md), [Artikeltypen.md](../docs/Artikeltypen.md), [Durchgang.md](../docs/Durchgang.md)
 
-**Offen mit Prio 1–3:** REQ-003 Änderungsverlauf je Artikel (teils) · REQ-006 Stapel: was in der Kampagne gilt (teils) · REQ-007 Stapel für Fortgeschrittene (offen) · REQ-008 Varianten einer Sache (teils) · REQ-013 Verweise nach Nummer, getippt nach Name (teils) · REQ-045 Ebenen-Aktionen am Artikel (offen) · REQ-100 Welt als Ebene (teils) · REQ-102 Artikel je Stapel und Wissen zeichnen (teils) · REQ-176 Ähnliches vor dem Anlegen vorschlagen (teils) · REQ-249 Ebenen nach Herausgeber (teils) · REQ-253 Ebenen und Artikel kopieren (offen) · REQ-258 Verweisfeld nennt, welche Artikel es annimmt (teils) · REQ-264 Vergleichsebenen der Kampagne (teils)
+**Offen mit Prio 1–3:** REQ-003 Änderungsverlauf je Artikel (teils) · REQ-006 Stapel: was in der Kampagne gilt (teils) · REQ-007 Stapel für Fortgeschrittene (offen) · REQ-008 Varianten einer Sache (teils) · REQ-013 Verweise nach Nummer, getippt nach Name (teils) · REQ-045 Ebenen-Aktionen am Artikel (offen) · REQ-100 Welt als Ebene (teils) · REQ-102 Artikel je Stapel und Wissen zeichnen (teils) · REQ-176 Ähnliches vor dem Anlegen vorschlagen (teils) · REQ-249 Ebenen nach Herausgeber (teils) · REQ-253 Ebenen und Artikel kopieren (offen) · REQ-258 Verweisfeld nennt, welche Artikel es annimmt (teils) · REQ-264 Vergleichsebenen der Kampagne (teils) · REQ-348 Ebene am Artikel immer sichtbar (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -108,6 +108,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | [[REQ-249]] | Ebenen nach Herausgeber | 2 | **teils** | `publisherOf` und Herausgeber-Gruppen (T-094, T-109); Kategorien wie die Blocklist von 5e.tools offen |
 | [[REQ-253]] | Ebenen und Artikel kopieren | 3 | **offen** | später; Kopie ohne `overrides` |
 | [[REQ-255]] | Ebenen teilweise aufschalten | 2 | **steht** | `activates` mit Auswahl nach Bereich und Art (T-105) |
+| [[REQ-348]] | Ebene am Artikel immer sichtbar | 1 | **offen** |  |
 
 ### F-005 Fassungen & Varianten
 
@@ -339,7 +340,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Spezialplätze mit Filter (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Ausrüstung bringt Tragplätze mit (offen) · REQ-335 Plätze für lange Gegenstände verbinden (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze und Platzarten als Daten (offen) · REQ-339 Tragplätze an der Figur (offen) · REQ-340 Platzplan in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -361,16 +362,16 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | [[REQ-065]] | Inventar als Raster | 4 | **steht** | Kachelraster, `Item.rows`, `Inventory.grid`/`zones` |
 | [[REQ-183]] | Gruppeninventar | 3 | **steht** | `carries` von `Party` |
 | [[REQ-214]] | Ausrüstungsfigur | 4 | **steht** | `Creature.figure`, Plätze des Blatts an `holds.props.slot`, Reiter „Worn“ mit Figur (Prototyp, D54) |
-| [[REQ-215]] | Tragraster aus Grösse und Stärke | 3 | **steht** | `Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54) |
-| [[REQ-216]] | Behälter in Behältern | 3 | **steht** | Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54) |
-| [[REQ-217]] | Ziehen am Bogen | 3 | **steht** | Abschnitt „Actions“ am Bogen, je `DrawTime`-Stufe „Draw“ mit Weg (Prototyp, D54) |
-| [[REQ-225]] | Fallenlassen und Verstauen | 3 | **steht** | „Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58) |
+| [[REQ-215]] | Tragraster aus Grösse und Stärke | 3 | **teils** | `Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54). Zonen je Zelle setzbar („Shape & zones“); die Vorgabe nach Spalten kommt noch aus der globalen Einstellung `carryZones`, nicht aus dem Inventarmodul (E-096) |
+| [[REQ-216]] | Behälter in Behältern | 3 | **teils** | Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54). Offen nach E-096: innere Zonen zählen heute absolut (das Langsamere aus Zone und Behälter + 1), nicht vom Platz des Behälters aus |
+| [[REQ-217]] | Ziehen am Bogen | 3 | **steht** | Abschnitt „Actions“ am Bogen, je `DrawTime`-Stufe „Draw“ mit Weg (Prototyp, D54); die Kosten rechnet `drawStage` (relativ nach E-096 mit REQ-216) |
+| [[REQ-225]] | Fallenlassen und Verstauen | 3 | **teils** | „Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58). Offen nach E-080 a: Kosten aus dem Modul (`fixed`/`drawPlusOne`), am Platz und im Verdrängen-Dialog |
 | [[REQ-275]] | Erhaltene Gegenstände als Instanz | 2 | **teils** | `instanceOf` am Item vorhanden (T-150 läuft) |
 | [[REQ-276]] | Unverstaute Gegenstände gelten als liegengelassen | 4 | **offen** |  |
 | [[REQ-277]] | Gegenstände mit Form spiegeln | 4 | **offen** |  |
 | [[REQ-320]] | Formen frei malen, auch nicht rechteckig | 2 | **offen** |  |
 | [[REQ-321]] | Stapel im Raster | 2 | **offen** |  |
-| [[REQ-322]] | Spezialplätze mit Filter | 2 | **offen** |  |
+| [[REQ-322]] | Besondere Zonen mit eigenen Regeln | 2 | **offen** |  |
 | [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | 2 | **offen** |  |
 | [[REQ-324]] | Hände als Plätze mit Regeln | 2 | **offen** |  |
 | [[REQ-325]] | Gegenstandsartikel im Detailbereich | 2 | **offen** |  |
@@ -405,13 +406,13 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-334]] | Ausrüstung bringt Tragplätze mit | 2 | **offen** |  |
-| [[REQ-335]] | Plätze für lange Gegenstände verbinden | 2 | **offen** |  |
+| [[REQ-334]] | Tragende Ausrüstung als Behälter mit eigenem Raster | 2 | **offen** |  |
+| [[REQ-335]] | Verbund: Zellen, die gemeinsam ein Stück tragen | 2 | **offen** |  |
 | [[REQ-336]] | Festlegen, wo ein Gegenstand getragen werden darf | 2 | **offen** |  |
 | [[REQ-337]] | Sehen, was weichen muss | 2 | **offen** |  |
-| [[REQ-338]] | Körperplätze und Platzarten als Daten | 2 | **offen** |  |
-| [[REQ-339]] | Tragplätze an der Figur | 2 | **offen** |  |
-| [[REQ-340]] | Platzplan in der Maske | 3 | **offen** |  |
+| [[REQ-338]] | Körperplätze als Plan des Moduls | 2 | **offen** |  |
+| [[REQ-339]] | Tragende Ausrüstung an der Figur | 2 | **offen** |  |
+| [[REQ-340]] | Raster und Zonen eines Trägers in der Maske | 3 | **offen** |  |
 
 ## EP-05 Kampagne & Sitzungen
 
@@ -570,7 +571,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme als Behälter mit Optionen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen)
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -621,7 +622,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 |---|---|---|---|---|
 | [[REQ-184]] | Handwerk mit Rezepten | 4 | **steht** | `Recipe`, `needs`, `yields`, `crafting` |
 | [[REQ-218]] | Blaupausen lernen | 3 | **steht** | gelernt über `knownBy`, Werkbank mit Filtern (Prototyp, D55) |
-| [[REQ-219]] | Material beim Start binden | 3 | **steht** | beim Start gebunden in `crafting.props.put`, `onFailure` (D55) |
+| [[REQ-219]] | Material beim Start binden | 3 | **steht** | beim Start gebunden in `crafting.props.put` (D55); was ein Misserfolg kostet, sagt `Campaign.craftFailure` (T-165) |
 | [[REQ-347]] | Handwerk an der Figur | 2 | **steht** | Reiter Crafting an der Figur auf der Werkbank (T-247, T-128, T-197) |
 
 ### F-048 Regelsysteme & Module
@@ -629,7 +630,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | 4 | **offen** |  |
-| [[REQ-287]] | Regelsysteme als Behälter mit Optionen | 2 | **offen** | E-044, T-132 |
+| [[REQ-287]] | Regelsysteme und Module als Ebenen | 2 | **offen** | E-044, T-132; entschieden als Ebenen: E-078, E-090–E-094 |
 | [[REQ-289]] | Homebrew-Regeln erfassen | 3 | **offen** | wenn das Gerüst steht |
 | [[REQ-319]] | Inventarregeln als wählbares Modul | 2 | **offen** |  |
 
@@ -797,7 +798,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 **Erklärt in:** [Betrieb.md](../docs/Betrieb.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen) · REQ-329 Bilder im Inventar (offen) · REQ-330 Inventarbild an einen Gegenstand binden (offen)
+**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen) · REQ-329 Bilder im Inventar (offen) · REQ-330 Inventory image an einen Gegenstand binden (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -829,7 +830,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-298]] | Bilder bearbeiten und Tokens zusammenstellen | 4 | **offen** |  |
-| [[REQ-330]] | Inventarbild an einen Gegenstand binden | 3 | **offen** |  |
+| [[REQ-330]] | Inventory image an einen Gegenstand binden | 3 | **offen** |  |
 | [[REQ-331]] | Hilfe für Gegenstandsbilder | 4 | **offen** |  |
 
 ### F-065 Druck & Ausfuhr
@@ -986,6 +987,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-145]]** (1, teils, Medien & Assets) — Ablage in der Seite — *Assets als Artikel; Ablage im Artefakt*
 - **[[REQ-344]]** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
 - **[[REQ-346]]** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
+- **[[REQ-348]]** (1, offen, Inhaltsgerüst) — Ebene am Artikel immer sichtbar
 - **[[REQ-041]]** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **[[REQ-072]]** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **[[REQ-079]]** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
@@ -1006,7 +1008,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-275]]** (2, teils, Spielererlebnis) — Erhaltene Gegenstände als Instanz — *`instanceOf` am Item vorhanden (T-150 läuft)*
 - **[[REQ-279]]** (2, teils, Kampagne & Sitzungen) — Kampagnenwerte pflegen und in Texten nutzen — *Auflösung steht; Maske fehlt*
 - **[[REQ-282]]** (2, offen, Kampagne & Sitzungen) — Sitzungsansicht für das Spiel — *Vorbereitungsseite steht (REQ-078), Spielansicht nicht*
-- **[[REQ-287]]** (2, offen, Regeln & Nachschlagen) — Regelsysteme als Behälter mit Optionen — *E-044, T-132*
+- **[[REQ-287]]** (2, offen, Regeln & Nachschlagen) — Regelsysteme und Module als Ebenen — *E-044, T-132; entschieden als Ebenen: E-078, E-090–E-094*
 - **[[REQ-292]]** (2, teils, Live-Spiel) — Neuen Artikel aus einer Auswahl anlegen
 - **[[REQ-311]]** (2, teils, Spielererlebnis) — Spieleransicht mit der eigenen Figur im Fokus — *Entwurf Player/PlayerPhone*
 - **[[REQ-312]]** (2, teils, Karten) — Eigenes Token bewegen — *Prototyp ja; in der Seite noch nicht für Spielende*
@@ -1014,7 +1016,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-319]]** (2, offen, Regeln & Nachschlagen) — Inventarregeln als wählbares Modul
 - **[[REQ-320]]** (2, offen, Spielererlebnis) — Formen frei malen, auch nicht rechteckig
 - **[[REQ-321]]** (2, offen, Spielererlebnis) — Stapel im Raster
-- **[[REQ-322]]** (2, offen, Spielererlebnis) — Spezialplätze mit Filter
+- **[[REQ-322]]** (2, offen, Spielererlebnis) — Besondere Zonen mit eigenen Regeln
 - **[[REQ-323]]** (2, offen, Spielererlebnis) — Alle möglichen Plätze eines Gegenstands
 - **[[REQ-324]]** (2, offen, Spielererlebnis) — Hände als Plätze mit Regeln
 - **[[REQ-325]]** (2, offen, Spielererlebnis) — Gegenstandsartikel im Detailbereich
@@ -1022,12 +1024,12 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-327]]** (2, offen, Spielererlebnis) — Packen am Telefon
 - **[[REQ-328]]** (2, offen, Spielererlebnis) — Ablage für nicht Verstautes
 - **[[REQ-333]]** (2, offen, Spielererlebnis) — Vorgaben für Formen und Stapel
-- **[[REQ-334]]** (2, offen, Spielererlebnis) — Ausrüstung bringt Tragplätze mit
-- **[[REQ-335]]** (2, offen, Spielererlebnis) — Plätze für lange Gegenstände verbinden
+- **[[REQ-334]]** (2, offen, Spielererlebnis) — Tragende Ausrüstung als Behälter mit eigenem Raster
+- **[[REQ-335]]** (2, offen, Spielererlebnis) — Verbund: Zellen, die gemeinsam ein Stück tragen
 - **[[REQ-336]]** (2, offen, Spielererlebnis) — Festlegen, wo ein Gegenstand getragen werden darf
 - **[[REQ-337]]** (2, offen, Spielererlebnis) — Sehen, was weichen muss
-- **[[REQ-338]]** (2, offen, Spielererlebnis) — Körperplätze und Platzarten als Daten
-- **[[REQ-339]]** (2, offen, Spielererlebnis) — Tragplätze an der Figur
+- **[[REQ-338]]** (2, offen, Spielererlebnis) — Körperplätze als Plan des Moduls
+- **[[REQ-339]]** (2, offen, Spielererlebnis) — Tragende Ausrüstung an der Figur
 - **[[REQ-345]]** (2, teils, Oberfläche & Navigation) — Schwebende Werkzeugleiste für eine Auswahl — *Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt*
 - **[[REQ-007]]** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **[[REQ-022]]** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
@@ -1059,7 +1061,10 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-205]]** (3, teils, Live-Spiel) — Ein Board je Geschichtsartikel — *ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards*
 - **[[REQ-208]]** (3, teils, Karten) — Zonen mit eigenen Regeln — *`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)*
 - **[[REQ-210]]** (3, teils, Karten) — Karte und Initiative im Vollbild — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
+- **[[REQ-215]]** (3, teils, Spielererlebnis) — Tragraster aus Grösse und Stärke — *`Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54). Zonen je Zelle setzbar („Shape & zones“); die Vorgabe nach Spalten kommt noch aus der globalen Einstellung `carryZones`, nicht aus dem Inventarmodul (E-096)*
+- **[[REQ-216]]** (3, teils, Spielererlebnis) — Behälter in Behältern — *Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54). Offen nach E-096: innere Zonen zählen heute absolut (das Langsamere aus Zone und Behälter + 1), nicht vom Platz des Behälters aus*
 - **[[REQ-221]]** (3, offen, Kampagne & Sitzungen) — Begegnungen bauen
+- **[[REQ-225]]** (3, teils, Spielererlebnis) — Fallenlassen und Verstauen — *„Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58). Offen nach E-080 a: Kosten aus dem Modul (`fixed`/`drawPlusOne`), am Platz und im Verdrängen-Dialog*
 - **[[REQ-227]]** (3, offen, Regeln & Nachschlagen) — Masse im Fliesstext umrechnen — *umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2)*
 - **[[REQ-229]]** (3, offen, Zugang & Betrieb) — Konten in der Seite verwalten — *nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3)*
 - **[[REQ-242]]** (3, offen, Zugang & Betrieb) — Felder der eigenen Figur sperren — *die eigene Figur verwaltet der Spieler ganz (E-014 d)*
@@ -1080,6 +1085,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-308]]** (3, offen, Import & Inhalte) — Obsidian-Vault einlesen — *die alten Importer sind weg (2026-09-20)*
 - **[[REQ-314]]** (3, teils, Import & Inhalte) — Regelwerk eines Drittverlags laden — *T-122*
 - **[[REQ-329]]** (3, offen, Medien & Assets) — Bilder im Inventar
-- **[[REQ-330]]** (3, offen, Medien & Assets) — Inventarbild an einen Gegenstand binden
+- **[[REQ-330]]** (3, offen, Medien & Assets) — Inventory image an einen Gegenstand binden
 - **[[REQ-332]]** (3, offen, Spielererlebnis) — Beute öffnen und nehmen
-- **[[REQ-340]]** (3, offen, Spielererlebnis) — Platzplan in der Maske
+- **[[REQ-340]]** (3, offen, Spielererlebnis) — Raster und Zonen eines Trägers in der Maske
