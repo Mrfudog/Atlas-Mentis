@@ -70,6 +70,7 @@ import { Bogen } from '../bogen/kopf';
 import { Reiterleiste } from '../bogen/reiterleiste';
 import { Zug } from '../bogen/zug';
 import { Zauberliste } from '../bogen/zauberliste';
+import { FigurKampagne } from '../bogen/kampagne';
 import { Herausgeber } from './herausgeber';
 import {
   abweichungen,
@@ -144,8 +145,8 @@ interface Feld {
  * Prüfung sähe nach Sorgfalt aus und wäre das Gegenteil: sie lüde dazu ein,
  * die erste wegzulassen.
  */
-/** Stücke, die noch keine Komponente zeichnet (T-247 in Etappen) — ihr Reiter erscheint erst mit ihr. */
-const NOCH_NICHT = new Set<Stueck['art']>(['kampagne']);
+/** Stücke, die noch keine Komponente zeichnet — ihr Reiter erscheint erst mit ihr. */
+const NOCH_NICHT = new Set<Stueck['art']>([]);
 
 @Component({
   selector: 'nw-artikel',
@@ -159,6 +160,7 @@ const NOCH_NICHT = new Set<Stueck['art']>(['kampagne']);
     Reiterleiste,
     Zug,
     Zauberliste,
+    FigurKampagne,
     Text,
     Wahl,
     Mehrfach,
@@ -709,6 +711,9 @@ const NOCH_NICHT = new Set<Stueck['art']>(['kampagne']);
                   }
                   @case ('zauberliste') {
                     <nw-zauberliste [artikel]="e" />
+                  }
+                  @case ('kampagne') {
+                    <nw-figur-kampagne [artikel]="e" />
                   }
                   @case ('statblock') {
                     <nw-statblock [artikel]="e" [fassungen]="vergleich()" />

@@ -619,3 +619,44 @@ export function learningPaths(modes: readonly string[]): { own: typeof LEARNING_
   const m = new Set(modes);
   return { own: LEARNING_PATHS.filter((p) => m.has(p.mode)), other: LEARNING_PATHS.filter((p) => !m.has(p.mode)) };
 }
+
+// ------------------------------------------------------------ Blaupausen (T-247, auf T-128/T-197)
+
+/** Wie es um eine Blaupause steht, aus Sicht der Figur. */
+export type BlueprintState = 'busy' | 'unlearned' | 'ready' | 'missing';
+
+/**
+ * **Was fehlt** — je Bestandteil, was die Figur und ihre Gruppe frei haben,
+ * nach Grundartikel. Eine Materialgruppe oder ein Ersatz nach einer Regel
+ * der Kampagne (T-197) zählt hier nicht: das entscheidet die Werkbank beim
+ * Start. „Fehlt" ist darum eine Obergrenze, „bereit" stimmt.
+ */
+export function blueprintMissing(needs: readonly { item: string; qty: number }[], stock: Readonly<Record<string, { qty: number }>>): number {
+  return needs.reduce((n, b) => n + Math.max(0, b.qty - (stock[b.item]?.qty ?? 0)), 0);
+}
+
+export function blueprintState(
+  r: { id: string; learned?: boolean; needs: readonly { item: string; qty: number }[] },
+  stock: Readonly<Record<string, { qty: number }>>,
+  busy: ReadonlySet<string>,
+): { state: BlueprintState; missing: number } {
+  const missing = blueprintMissing(r.needs, stock);
+  if (busy.has(r.id)) return { state: 'busy', missing };
+  if (r.learned === false) return { state: 'unlearned', missing };
+  return { state: missing ? 'missing' : 'ready', missing };
+}
+
+/** Die Filter des Reiters: gelernt/alle, bereit/fast (1–2 fehlen), Werkzeug. */
+export function filterBlueprints<T extends { id: string; learned?: boolean; tools: readonly string[]; needs: readonly { item: string; qty: number }[] }>(
+  rows: readonly T[],
+  stock: Readonly<Record<string, { qty: number }>>,
+  f: { scope: 'known' | 'all'; can: 'all' | 'ready' | 'almost'; tool: string },
+): T[] {
+  return rows.filter((r) => {
+    if (f.scope === 'known' && r.learned === false) return false;
+    if (f.tool && !r.tools.some((w) => w.toLowerCase() === f.tool.toLowerCase())) return false;
+    if (f.can === 'all') return true;
+    const m = blueprintMissing(r.needs, stock);
+    return r.learned !== false && (f.can === 'ready' ? m === 0 : m > 0 && m <= 2);
+  });
+}

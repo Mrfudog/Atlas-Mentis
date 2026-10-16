@@ -12,21 +12,21 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 174 steht · 47 teils · 105 offen · 10 ersetzt · 6 verworfen — 342 Stories in 79 Features und 12 Epics.
+Zusammen: 177 steht · 50 teils · 104 offen · 10 ersetzt · 6 verworfen — 347 Stories in 79 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 52 | 32 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 38 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
-| [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 27 | 16 steht · 1 teils · 9 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 39 | 8 steht · 5 teils · 26 offen |
+| [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 40 | 8 steht · 6 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 24 | 11 steht · 1 teils · 12 offen |
+| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 25 | 12 steht · 1 teils · 12 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 27 | 18 steht · 4 teils · 4 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 28 | 18 steht · 5 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -258,7 +258,7 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 
 **Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Begriffe.md](../docs/Begriffe.md)
 
-**Offen mit Prio 1–3:** REQ-055 Merkmale beim Tippen wiederverwenden (offen) · REQ-060 Begleiter und Beschwörungen (teils) · REQ-067 Charakterbogen: Zauber (offen) · REQ-274 Charakter- und Kampagnenmanager jederzeit aufrufen (offen)
+**Offen mit Prio 1–3:** REQ-055 Merkmale beim Tippen wiederverwenden (offen) · REQ-060 Begleiter und Beschwörungen (teils) · REQ-274 Charakter- und Kampagnenmanager jederzeit aufrufen (offen) · REQ-344 Gesperrte Aktionen bleiben sichtbar, mit Grund (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -295,11 +295,13 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-051 | Schnelle Änderungen am Bogen | 2 | **steht** | `Vitals` mit `alwaysEdit`, Bogen |
-| REQ-063 | Charakterbogen: Allgemein | 2 | **steht** |  |
-| REQ-066 | Charakterbogen: Kampf | 3 | **steht** | Reiter Combat; Initiative am Spieltisch |
-| REQ-067 | Charakterbogen: Zauber | 3 | **offen** | es gibt keine Art für Zauber — Abgleich A9 |
+| REQ-063 | Charakterbogen: Allgemein | 2 | **steht** | Kopf der Spielerseite (T-247): HP mit Betrag, Trefferwürfel, Plätze, Inspiration, Zustände mit Dauer; Rast folgt mit T-241 |
+| REQ-066 | Charakterbogen: Kampf | 3 | **steht** | Reiter Combat mit „Your turn“ nach Aktionsart, Sperren mit Grund (T-247); Initiative am Spieltisch |
+| REQ-067 | Charakterbogen: Zauber | 3 | **steht** | Reiter Spells (T-246): Zauberkopf, Zauber nach Grad, Cast mit Platz und Konzentration, Listen, Lernweg |
 | REQ-068 | Charakterbogen: Freispiel | 4 | **offen** |  |
 | REQ-073 | Eigene Anordnung des Bogens je Nutzer | 4 | **ersetzt** | die Anordnung steht am Typ im Register, nicht je Nutzer |
+| REQ-343 | Konzentration und Zustandsdauer in der Statuszeile | 1 | **steht** | Statuszeile im Kopf, `Vitals.concentration`/`durations` (T-247) |
+| REQ-344 | Gesperrte Aktionen bleiben sichtbar, mit Grund | 1 | **teils** | „Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244 |
 
 ### F-024 Charaktermanager
 
@@ -326,7 +328,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Spezialplätze mit Filter (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Ausrüstung bringt Tragplätze mit (offen) · REQ-335 Plätze für lange Gegenstände verbinden (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze und Platzarten als Daten (offen) · REQ-339 Tragplätze an der Figur (offen) · REQ-340 Platzplan in der Maske (offen)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Spezialplätze mit Filter (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Ausrüstung bringt Tragplätze mit (offen) · REQ-335 Plätze für lange Gegenstände verbinden (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze und Platzarten als Daten (offen) · REQ-339 Tragplätze an der Figur (offen) · REQ-340 Platzplan in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -334,10 +336,11 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-069 | Am Telefon spielen | 1 | **teils** | Prototyp passt sich an; `apps/web` ist noch klein |
+| REQ-069 | Am Telefon spielen | 1 | **teils** | Spielerseite bei 390 px ohne Überlauf, Kopf eingeklappt (T-247); Inventar am Telefon wartet auf T-244 |
 | REQ-074 | Schnellzugriffe | 3 | **teils** | Bereich Play und die Leiste |
 | REQ-194 | Untere Leiste am Telefon wählen | 4 | **offen** |  |
 | REQ-311 | Spieleransicht mit der eigenen Figur im Fokus | 2 | **teils** | Entwurf Player/PlayerPhone |
+| REQ-346 | Was die Kampagne meiner Figur gezeigt hat | 1 | **teils** | Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen |
 
 ### F-026 Inventar
 
@@ -608,6 +611,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | REQ-184 | Handwerk mit Rezepten | 4 | **steht** | `Recipe`, `needs`, `yields`, `crafting` |
 | REQ-218 | Blaupausen lernen | 3 | **steht** | gelernt über `knownBy`, Werkbank mit Filtern (Prototyp, D55) |
 | REQ-219 | Material beim Start binden | 3 | **steht** | beim Start gebunden in `crafting.props.put`, `onFailure` (D55) |
+| REQ-347 | Handwerk an der Figur | 2 | **steht** | Reiter Crafting an der Figur auf der Werkbank (T-247, T-128, T-197) |
 
 ### F-048 Regelsysteme & Module
 
@@ -844,7 +848,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [UI-Arbeitsplan.md](../docs/UI-Arbeitsplan.md), [Web-Arbeitsplan.md](../docs/Web-Arbeitsplan.md), [design](../docs/design)
 
-**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils)
+**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils) · REQ-345 Schwebende Werkzeugleiste für eine Auswahl (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -888,6 +892,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | REQ-315 | Globale Kopfleiste | 1 | **steht** |  |
 | REQ-317 | Zurück an dieselbe Stelle | 1 | **steht** | T-185: `Rueckweg` merkt den Scrollstand je Verlaufseintrag und stellt ihn bei „Zurück“ wieder her, sobald die Liste hoch genug ist; die Ebenenliste zeichnet den letzten Stand sofort |
 | REQ-342 | Handbuch: alle Erklärungen an einer Stelle | 1 | **steht** | `/handbook`, `help.json`, `RULE_OPTIONS.does`, `APP_TERMS`, Tests erzwingen das Nachziehen (T-242, T-225, T-205) |
+| REQ-345 | Schwebende Werkzeugleiste für eine Auswahl | 2 | **teils** | Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt |
 
 ### F-071 Bearbeiten in der Ansicht
 
@@ -965,9 +970,11 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-008** (1, teils, Inhaltsgerüst) — Varianten einer Sache — *Kante `variantOf` da; kein Kopierknopf*
 - **REQ-013** (1, teils, Inhaltsgerüst) — Verweise nach Nummer, getippt nach Name — *`[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben*
 - **REQ-018** (1, offen, Regeln & Nachschlagen) — Wirkungen von Regeln beschreiben — *keine `effects[]`; Regeln sind Text mit `{VAR}`*
-- **REQ-069** (1, teils, Spielererlebnis) — Am Telefon spielen — *Prototyp passt sich an; `apps/web` ist noch klein*
+- **REQ-069** (1, teils, Spielererlebnis) — Am Telefon spielen — *Spielerseite bei 390 px ohne Überlauf, Kopf eingeklappt (T-247); Inventar am Telefon wartet auf T-244*
 - **REQ-100** (1, teils, Inhaltsgerüst) — Welt als Ebene — *`Layer.kind: world`; keine Mitglieder je Welt*
 - **REQ-145** (1, teils, Medien & Assets) — Ablage in der Seite — *Assets als Artikel; Ablage im Artefakt*
+- **REQ-344** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
+- **REQ-346** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
 - **REQ-041** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **REQ-072** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **REQ-079** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
@@ -1010,6 +1017,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-337** (2, offen, Spielererlebnis) — Sehen, was weichen muss
 - **REQ-338** (2, offen, Spielererlebnis) — Körperplätze und Platzarten als Daten
 - **REQ-339** (2, offen, Spielererlebnis) — Tragplätze an der Figur
+- **REQ-345** (2, teils, Oberfläche & Navigation) — Schwebende Werkzeugleiste für eine Auswahl — *Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt*
 - **REQ-007** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **REQ-022** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **REQ-025** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*
@@ -1017,7 +1025,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-045** (3, offen, Inhaltsgerüst) — Ebenen-Aktionen am Artikel
 - **REQ-055** (3, offen, Kreaturen & Figuren) — Merkmale beim Tippen wiederverwenden — *Pool steht; Variante beim Tippen nicht*
 - **REQ-060** (3, teils, Kreaturen & Figuren) — Begleiter und Beschwörungen — *`Creature.kind` companion/summon; keine `companionOf`-Kante*
-- **REQ-067** (3, offen, Kreaturen & Figuren) — Charakterbogen: Zauber — *es gibt keine Art für Zauber — Abgleich A9*
 - **REQ-074** (3, teils, Spielererlebnis) — Schnellzugriffe — *Bereich Play und die Leiste*
 - **REQ-080** (3, offen, Kampagne & Sitzungen) — Vorlesetexte nach der Sitzung freigeben
 - **REQ-083** (3, offen, Spielererlebnis) — Eigene Quests und Ziele — *Spieler schreiben nur ihre Figur*

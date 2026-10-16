@@ -50,7 +50,7 @@ interface Chip {
  * Schaden. Einklappbar über „▴ Less" in der Statuszeile — nicht in der
  * Navigation (Rückmeldung der Leitung); schmal startet er eingeklappt.
  *
- * Gerechnet wird im Modell (`sheetHeader`, `applyDamage` …), gespeichert
+ * REQ-343 (Statuszeile, Konzentration). Gerechnet wird im Modell (`sheetHeader`, `applyDamage` …), gespeichert
  * in `Vitals` der Figur; wer nicht schreiben darf, sieht die Werte.
  */
 @Component({

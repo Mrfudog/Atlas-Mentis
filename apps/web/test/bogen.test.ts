@@ -14,6 +14,8 @@ import { anordnen, reiterVon } from '../src/app/artikel/anordnung';
 import { Bogen } from '../src/app/bogen/kopf';
 import { Zug } from '../src/app/bogen/zug';
 import { Zauberliste } from '../src/app/bogen/zauberliste';
+import { FigurKampagne } from '../src/app/bogen/kampagne';
+import { FigurHandwerk } from '../src/app/bogen/handwerk';
 import { FigurDaten } from '../src/app/bogen/daten';
 import { Werkzeugleiste } from '../src/app/muster/werkzeugleiste';
 import { Api } from '../src/app/kern/api';
@@ -346,5 +348,69 @@ describe('nw-zauberliste (T-246)', () => {
     const { el } = zauberliste(handState([{ id: 'a', name: 'A', slot: 'mainHand', properties: [] }, { id: 'b', name: 'B', slot: 'offHand', properties: [] }]));
     expect(el.querySelector('.wirken')?.textContent).toContain('Blocked');
     expect(el.querySelector('.sperre')?.textContent).toContain('no free hand');
+  });
+});
+
+describe('nw-figur-kampagne (T-247)', () => {
+  it('shows handouts the character knows and lists the other sections, as the server sends them', async () => {
+    const figur: Entity = { id: 'pc', interfaces: ['PlayerCharacter'], name: 'Pc', components: {}, relations: [{ id: 'm', type: 'memberOfParty', to: 'band' }] };
+    const zeile = (id: string, type: string, rels?: Record<string, string[]>) => ({ id, name: id, type, layers: [], source: '', status: '', cols: {}, ...(rels ? { rels } : {}) });
+    const list = vi.fn(async (f: { type: string }) => ({
+      total: 1,
+      rows:
+        f.type === 'Asset' ? [zeile('letter', 'Asset')]
+        : f.type === 'Information' ? [zeile('known', 'Information', { knownBy: ['band'] }), zeile('secret', 'Information', { knownBy: ['other'] })]
+        : f.type === 'Quest' ? [zeile('q1', 'Quest')]
+        : [],
+    }));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: Api, useValue: { list } }, { provide: Session, useValue: { leitung: signal(false) } }],
+    });
+    TestBed.overrideComponent(FigurKampagne, { set: { styles: [], imports: [RouterLink, QuickAttrappe] } });
+    const fixture = TestBed.createComponent(FigurKampagne);
+    Object.assign(fixture.componentInstance, { artikel: signal(figur) });
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const kacheln = [...el.querySelectorAll('.kachel b')].map((b) => b.textContent);
+    expect(kacheln).toEqual(['letter', 'known']);
+    expect(el.textContent).toContain('Only what your character has seen');
+    ([...el.querySelectorAll('.abschnitte button')].find((b) => b.textContent?.includes('Quests')) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('.zeilen')?.textContent).toContain('q1');
+  });
+});
+
+describe('nw-figur-handwerk (T-247)', () => {
+  it('filters blueprints and shows what is missing and what is on the workbench', () => {
+    const r = (id: string, learned: boolean, qty: number) => ({
+      id, name: id, trade: 'Herbalism', tools: ['Kit'], ability: 'wis', dc: 12, time: '', days: null, checks: 2, yields: null,
+      needs: [{ item: 'herb', name: 'Herb', qty }], learned, toolOk: true,
+    });
+    const sicht = {
+      kind: 'actor' as const,
+      actor: { id: 'pc', name: 'Pc' },
+      statblock: true,
+      tools: [],
+      recipes: [r('salve', true, 2), r('tonic', true, 4), r('elixir', false, 1)],
+      stock: { herb: { qty: 2, where: ['Pc'] } },
+      orders: [{ id: 'o1', name: 'Salve order', recipe: { id: 'salve', name: 'salve' }, progress: 1, needed: 2, outcome: 'open' }],
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    TestBed.overrideComponent(FigurHandwerk, { set: { styles: [], imports: [RouterLink, QuickAttrappe] } });
+    const fixture = TestBed.createComponent(FigurHandwerk);
+    Object.assign(fixture.componentInstance, { sicht: signal(sicht) });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const zustand = () => [...el.querySelectorAll('.rezept')].map((b) => `${b.querySelector('b')?.textContent}:${b.querySelector('.zustand')?.textContent?.trim()}`);
+    expect(zustand()).toEqual(['salve:in progress', 'tonic:2 missing']);
+    ([...el.querySelectorAll('.filter button')].find((b) => b.textContent?.includes('All blueprints')) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(zustand()).toContain('elixir:not learned');
+    expect(el.querySelector('.auftrag')?.textContent).toContain('1 of 2');
+    expect(el.querySelectorAll('.kreise i.voll').length).toBe(1);
   });
 });

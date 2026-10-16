@@ -409,6 +409,11 @@ export type HandwerkUebersicht =
       actor: { id: string; name: string };
       statblock: boolean;
       tools: (HandwerkWerkzeug & { trades: { id: string; name: string }[]; recipes: HandwerkRezept[] })[];
+      /** Der Reiter Crafting (T-247): alle Blaupausen, ob das Werkzeug geübt ist. */
+      recipes?: (HandwerkRezept & { toolOk: boolean })[];
+      /** Freies Material bei der Figur und ihrer Gruppe, nach Grundartikel — nur für sie selbst und die Leitung. */
+      stock?: Record<string, { qty: number; where: string[] }>;
+      orders?: { id: string; name: string; recipe: { id: string; name: string } | null; progress: number; needed: number; outcome: string }[];
     };
 
 /** `GET /api/crafting/:id` — am Rezept oder am Auftrag (T-128), an Beruf, Werkzeug und Figur (T-196). */

@@ -16,6 +16,9 @@ import {
   turnSources,
   turnTypeOf,
   wheelAmount,
+  blueprintMissing,
+  blueprintState,
+  filterBlueprints,
   slotFor,
   spellLock,
   spellsByLevel,
@@ -232,5 +235,28 @@ describe('casting from the spells tab (T-246)', () => {
     const l = learningPaths(['known']);
     expect(l.own.map((p) => p.mode)).toEqual(['known']);
     expect(l.other.length).toBe(3);
+  });
+});
+
+describe('blueprints on the character (T-247)', () => {
+  const stock = { a: { qty: 2 }, b: { qty: 1 } };
+  const rows = [
+    { id: 'r1', learned: true, tools: ['Kit'], needs: [{ item: 'a', qty: 2 }] },
+    { id: 'r2', learned: true, tools: ['Kit'], needs: [{ item: 'b', qty: 3 }] },
+    { id: 'r3', learned: false, tools: ['Saw'], needs: [] },
+  ];
+  it('counts what is missing and names the state', () => {
+    expect(blueprintMissing(rows[1]!.needs, stock)).toBe(2);
+    expect(blueprintState(rows[0]!, stock, new Set()).state).toBe('ready');
+    expect(blueprintState(rows[0]!, stock, new Set(['r1'])).state).toBe('busy');
+    expect(blueprintState(rows[2]!, stock, new Set()).state).toBe('unlearned');
+  });
+  it('filters known, ready, almost and by tool', () => {
+    const ids = (f: Parameters<typeof filterBlueprints>[2]) => filterBlueprints(rows, stock, f).map((r) => r.id);
+    expect(ids({ scope: 'all', can: 'all', tool: '' })).toEqual(['r1', 'r2', 'r3']);
+    expect(ids({ scope: 'known', can: 'all', tool: '' })).toEqual(['r1', 'r2']);
+    expect(ids({ scope: 'all', can: 'ready', tool: '' })).toEqual(['r1']);
+    expect(ids({ scope: 'all', can: 'almost', tool: '' })).toEqual(['r2']);
+    expect(ids({ scope: 'all', can: 'all', tool: 'saw' })).toEqual(['r3']);
   });
 });

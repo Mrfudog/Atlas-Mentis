@@ -526,7 +526,47 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
         recipes: await rezeptZeilen(request, liste, sichtbareBerufe, stand, gelernt),
       });
     }
-    return { actor: { id: figur.id, name: entityName(figur) }, statblock: !!gesiebterBlock, tools };
+    /* **Der Reiter Crafting an der Figur** (T-247): alle Blaupausen, nicht
+       nur die ihrer Werkzeuge — mit der Angabe, ob sie das Werkzeug kann —,
+       das freie Material in ihren Inventaren und denen ihrer Gruppe (nach
+       Grundartikel, wie die Werkbank zählt, T-150), und ihre Aufträge.
+       Nur für sie selbst und die Leitung: fremdes Material zählt niemand. */
+    const geuebtKlein = new Set(geuebt.map((w) => w.toLowerCase()));
+    const alle = (await rezeptZeilen(request, gesiebt, sichtbareBerufe, stand, gelernt)).map((r) => ({
+      ...r,
+      toolOk: !r.tools.length || r.tools.some((w) => geuebtKlein.has(w.toLowerCase())),
+    }));
+    const namen = besitzer(stand.map);
+    const stock: Record<string, { qty: number; where: string[] }> = {};
+    const orders: { id: string; name: string; recipe: { id: string; name: string } | null; progress: number; needed: number; outcome: string }[] = [];
+    if (darf) {
+      for (const inv of inventareVon(figur, stand.map)) {
+        for (const r of stand.map.get(inv)?.relations ?? []) {
+          if (r.type !== 'holds' || r.props?.['reservedFor']) continue;
+          const item = baseArticle(stand.map, r.to);
+          const x = (stock[item] ??= { qty: 0, where: [] });
+          x.qty += Math.max(1, Number(r.props?.['qty']) || 1);
+          const wer = namen.get(inv)?.name ?? '';
+          if (wer && !x.where.includes(wer)) x.where.push(wer);
+        }
+      }
+      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      const rules = craftRulesOf(kampagne);
+      const eigene = stand.alle.filter((o) => primaryInterface(o) === ORDER_TYPE && (figur.relations ?? []).some((r) => r.type === CRAFTING_RELATION && r.to === o.id));
+      for (const o of await sieve(request, eigene, stand.map)) {
+        const a = auftrag(stand.map.get(o.id) ?? o, stand.map);
+        const { need, tally } = zaehlen(a, rules);
+        orders.push({
+          id: o.id,
+          name: entityName(o),
+          recipe: a.rezept ? { id: a.rezept.id, name: entityName(a.rezept) } : null,
+          progress: tally.progress,
+          needed: need.needed,
+          outcome: a.outcome,
+        });
+      }
+    }
+    return { actor: { id: figur.id, name: entityName(figur) }, statblock: !!gesiebterBlock, tools, recipes: alle, stock, orders };
   }
 
   /** Schreiben, oder mit den Gründen abweisen. */

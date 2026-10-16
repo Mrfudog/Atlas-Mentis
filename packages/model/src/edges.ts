@@ -484,13 +484,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'sheet',
     label: 'Player sheet',
     area: 'play',
-    does: 'draws the header of a character — hit dice from its classes, gold from its inventory and its party’s, spellcasting from the spells it casts — and blocks what its hands do not allow: spells without a free hand, an untrained shield, an off-hand attack without a light weapon',
+    does: 'draws the header of a character — hit dice from its classes, gold from its inventory and its party’s, spellcasting from the spells it casts, handouts it knows — and blocks what its hands do not allow: spells without a free hand, an untrained shield, an off-hand attack without a light weapon',
     uses: {
       /* T-247: die Trefferwürfel je Klassenstufe. */
       [M + 'sheet.ts']: ['hasClass'],
       [W + 'bogen/daten.ts']: ['carries', 'casts', 'composedOf', 'hasClass', 'hasProperty', 'holds', 'memberOfParty'],
       /* Die Zauberlisten der eigenen Klassen (T-246). */
       [W + 'bogen/zauberliste.ts']: ['hasClass'],
+      /* Handouts: Wissen, das an der Figur oder ihrer Gruppe hängt (T-247). */
+      [W + 'bogen/kampagne.ts']: ['knownBy', 'memberOfParty'],
     },
   },
 ];
