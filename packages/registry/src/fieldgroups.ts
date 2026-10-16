@@ -2262,6 +2262,63 @@ export const fieldGroups = {
   },
 
   /**
+   * **Ein Glossareintrag** (T-242): was ein Begriff heisst, wie er am Tisch
+   * wirkt, ein Beispiel und wie er in anderen Sprachen heisst. Die
+   * Definition ist `Description.description` (an der Art „Definition"
+   * genannt), Aliasse stehen in `Identity` — beides gibt es schon, und eine
+   * zweite Stelle dafür wäre die, die beim Umbenennen nicht mitkommt.
+   *
+   * Die Sorte ist eine Liste am Feld: nur dieses Feld braucht sie. Sie ist
+   * der Filter im Handbuch und sagt nichts über die Regel — was ein
+   * Zustand bewirkt, steht am Zustand (`explains` zeigt hin).
+   */
+  GlossaryTermInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        sort: {
+          type: 'string',
+          title: 'Sort',
+          enum: ['app', 'rule', 'condition', 'property', 'action', 'other'],
+          default: 'rule',
+          description:
+            'What kind of term this is: app (a word of Atlas Mentis itself), rule, condition, property (of a weapon or item), action (a kind of action), other. The handbook filters by it.',
+        },
+        effect: {
+          type: 'string',
+          format: 'long',
+          title: 'How it affects play',
+          description: 'What changes at the table when this applies — in a sentence or two.',
+        },
+        example: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Examples',
+          description: 'A short situation that shows the term at work.',
+        },
+        translations: {
+          type: 'array',
+          many: true,
+          title: 'Translations',
+          description: 'The term in other languages: the word, and a definition if it differs.',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id', 'lang', 'term'],
+            properties: {
+              id: { type: 'string', title: 'Id' },
+              lang: { type: 'string', title: 'Language', description: 'A language code such as de or fr.' },
+              term: { type: 'string', title: 'Term' },
+              definition: { type: 'string', format: 'long', title: 'Definition' },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  /**
    * **Ein Fertigungsauftrag** (T-128): was am Auftrag selbst steht und nicht
    * am Rezept, dessen Instanz er ist. Fortschritt in der Einheit des Rezepts
    * (gelungene Proben oder Arbeitstage, `orderNeed`), der Ausgang und die
