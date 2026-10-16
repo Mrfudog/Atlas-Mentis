@@ -20,6 +20,13 @@
 - [ ] Eintrag in `apps/web/src/whats-new.json` ergänzt
 - [ ] nicht nötig (keine sichtbare Änderung)
 
+## Handbuch und Glossar
+
+<!-- CONTRIBUTING.md › Handbuch und Glossar nachziehen: Hilfetext, does, APP_TERMS, handbook.json. Die Tests nennen, was fehlt. -->
+
+- [ ] Hilfetext, Regeloption, Glossar oder Handbuch nachgezogen
+- [ ] nicht nötig (nichts, was die Seite erklärt, hat sich geändert)
+
 ## Zu beachten
 
 <!-- Migrationen, Registeränderungen, alles was preprod anders macht als main. -->

@@ -14,7 +14,7 @@ Sprung: [[#EP-01 Inhaltsgerüst]] · [[#EP-02 Zugang & Betrieb]] · [[#EP-03 Kre
 
 ## EP-01 Inhaltsgerüst
 
-51 Stories · 169 Punkte · 31 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
+52 Stories · 174 Punkte · 32 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
 
 ### F-001 Artikelmodell
 
@@ -106,6 +106,7 @@ Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohn
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-013]] | Verweise nach Nummer, getippt nach Name | Spielleitung | 1 | 5 | teils |
+| [[REQ-341]] | Glossar: Begriffe im Text nachschlagen | Spieler | 1 | 5 | steht |
 | [[REQ-174]] | Regeltexte mit Platzhaltern | Spielleitung | 2 | 3 | steht |
 | [[REQ-014]] | Rückbezüge sehen | Spielleitung | 3 | 2 | steht |
 | [[REQ-175]] | Regelbegriffe im Text erkennen | Spieler | 3 | 2 | steht |
@@ -834,7 +835,7 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 ## EP-11 Oberfläche & Navigation
 
-26 Stories · 82 Punkte · 17 steht · 4 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+27 Stories · 87 Punkte · 18 steht · 4 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -881,6 +882,7 @@ Kopfleiste, Brotkrumen, Kurzansicht als Popup, Kampagne und Ebene sichtbar. — 
 |---|---|---|---|---|---|
 | [[REQ-315]] | Globale Kopfleiste | Spieler | 1 | 2 | steht |
 | [[REQ-317]] | Zurück an dieselbe Stelle | Spielleitung | 1 | 2 | steht |
+| [[REQ-342]] | Handbuch: alle Erklärungen an einer Stelle | Spielleitung | 1 | 5 | steht |
 | [[REQ-248]] | Kurzansicht überall | Spieler | 2 | 5 | steht |
 | [[REQ-305]] | Kampagne und Ebene immer sichtbar | Spielleitung | 2 | 2 | steht |
 
