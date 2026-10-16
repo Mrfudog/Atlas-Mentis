@@ -131,6 +131,14 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der
   Maske lüde nur dazu ein, die erste wegzulassen.
+- **Handbuch und Glossar** (T-242, T-225): `/handbook` (`apps/web/src/app/handbuch/`,
+  Kapitel in `kern/handbuch.ts`, eigener Text in `apps/web/src/handbook.json`,
+  erzeugt aus `help.json`, `RULE_OPTIONS` und `GET /api/glossary`). Ein
+  Begriff ist ein Artikel `GlossaryTerm` mit Kante `explains`; die Wörter
+  der App stehen in `packages/registry/src/glossar.ts`. Erkannt im Text
+  (`spotTerms`, `packages/model/src/glossary.ts`), Strg/⌘+Klick öffnet die
+  Glossarleiste (`glossar/leiste.ts`, `kern/glossar.ts`), Nennungen fragt
+  `GET /api/glossary/:id/uses` (gesiebt, `apps/server/src/glossar.ts`).
 - `packages/import-5etools` — der Importer für 5e.tools (P5): liest einen
   Checkout von `5etools-src/data`, schreibt eine Ausfuhrdatei und den
   Bericht [docs/5etools-Bericht.md](docs/5etools-Bericht.md). Kein
@@ -601,6 +609,21 @@ wiederkommen, werden sie neu geschrieben.
   gehört in denselben Commit wie die Zeile, die sich geändert hat. Eine
   Erklärung, die man später nachzieht, erklärt in der Zwischenzeit etwas,
   das es nicht mehr gibt.
+- **Bei jeder Änderung wandern Handbuch und Glossar mit** (T-242, T-225).
+  Das Handbuch (`/handbook`) ist die eine Stelle, an der die Seite sich
+  erklärt; das Glossar ist sein letztes Kapitel. In denselben Commit wie
+  die Änderung gehören: der Hilfetext der Seite (`apps/web/src/help.json`,
+  er ist das Kapitel „Pages" und das „?"), das `does` einer neuen
+  Regeloption oder Variante, ein Eintrag in `APP_TERMS`
+  (`packages/registry/src/glossar.ts`) für **jede neue anlegbare Art und
+  jedes neue Wort der App**, und Text in `apps/web/src/handbook.json`, wo
+  sich ein Ablauf ändert. **Die Tests sagen, was fehlt**
+  (`packages/registry/test/glossar.test.ts`, `apps/web/test/hilfe.test.ts`,
+  `apps/web/test/glossar.test.ts`) — sie nennen die Art, das Wort, die
+  Route oder die Option. Erzeugt wird, was erzeugt werden kann; abgetippt
+  wird nichts. **Spielbegriffe** (Zustände, Eigenschaften, Aktionsarten)
+  sind keine Wörter der App: sie kommen als `GlossaryTerm`-Artikel in die
+  Ebene ihres Regelwerks, über die API und mit Protokoll — nie ins Repo.
 - **Wie die Dinge heissen, steht in [docs/Begriffe.md](docs/Begriffe.md):**
   Typ, Bestandteil, Feld, Bezeichner, Artikel, Ansicht, Block, Kante,
   Einheit — neun Wörter, mehr nicht. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen; im

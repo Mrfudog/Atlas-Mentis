@@ -2,6 +2,7 @@ import { Component, DestroyRef, effect, inject, input, output, signal, untracked
 import { RouterLink } from '@angular/router';
 import { Api, type KartenSeite } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
+import { BegriffLink, Glossar } from '../kern/glossar';
 import { Live } from '../kern/live';
 
 /** Der Datentyp beim Ziehen aus der Seitenleiste auf die Bühne. */
@@ -17,7 +18,7 @@ export const ZIEH_TYP = 'text/x-nw-artikel';
  */
 @Component({
   selector: 'nw-kartenseite',
-  imports: [RouterLink, KurzLink],
+  imports: [RouterLink, KurzLink, BegriffLink],
   template: `
     <section aria-label="Party">
       <h2>{{ seite()?.party?.name ?? 'Party' }}</h2>
@@ -45,7 +46,7 @@ export const ZIEH_TYP = 'text/x-nw-artikel';
           @if (f.conditions.length) {
             <ul class="zustaende" aria-label="Conditions">
               @for (c of f.conditions; track c.id) {
-                <li><a [routerLink]="['/artikel', c.id]" [nwQuick]="c.id">{{ c.name }}</a></li>
+                <li><a [routerLink]="['/artikel', c.id]" [nwQuick]="c.id" [nwBegriff]="begriff(c.id, c.name)">{{ c.name }}</a></li>
               }
             </ul>
           }
@@ -237,6 +238,12 @@ export const ZIEH_TYP = 'text/x-nw-artikel';
   `,
 })
 export class KartenSeitenleiste {
+  /** Ein Zustand mit Glossareintrag (T-242): Strg/⌘+Klick öffnet ihn. */
+  protected readonly glossar = inject(Glossar);
+  protected begriff(id: string | null | undefined, name: string): string | null {
+    return this.glossar.begriffZu(id, name);
+  }
+
   readonly karte = input.required<string>();
   readonly sitzung = input<string | null>(null);
   /** Welche Ziele schon einen Marker auf der Karte haben. */

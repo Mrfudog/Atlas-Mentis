@@ -25,7 +25,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | [[F-004 Ebenen & Stapel]] — Ebenen, Gruppen von Ebenen, Herausgeber, Aufschalten (auch teilweise) und was im Stapel einer Kampagne steht. | 13 | 52 | 6 steht · 4 teils · 3 offen |
 | [[F-005 Fassungen & Varianten]] — Dieselbe Sache aus einer anderen Quelle (Fassung, Überschreibung) und eine verwandte Sache (Variante); Vergleichsebenen. | 5 | 14 | 3 steht · 2 teils |
 | [[F-006 Ansichten & Anordnung]] — Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohne Code. | 3 | 14 | 2 steht · 1 ersetzt |
-| [[F-007 Verweise & Platzhalter]] — [[Verweise]] nach Nummer, Rückbezüge, {VAR}-Platzhalter, Regelverweise im Text. | 5 | 15 | 3 steht · 2 teils |
+| [[F-007 Verweise & Platzhalter]] — [[Verweise]] nach Nummer, Rückbezüge, {VAR}-Platzhalter, Regelverweise im Text. | 6 | 20 | 4 steht · 2 teils |
 | [[F-008 Kanten verstehen]] — Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. | 2 | 10 | 1 steht · 1 offen |
 | [[F-009 Verlauf & gleichzeitiges Schreiben]] — Änderungsverlauf, Revisionen, nichts still überschreiben. | 3 | 8 | 2 steht · 1 teils |
 

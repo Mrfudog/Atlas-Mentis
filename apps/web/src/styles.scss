@@ -213,3 +213,24 @@ button.quick-info:hover {
     display: none !important;
   }
 }
+
+/* Ein Glossarbegriff (T-242, `nwBegriff`): gepunktet unterstrichen wie im
+   Design-Canvas, in der Farbe des Textes — ein Hinweis, kein Sprung. Global,
+   weil er im Text, in Masken und im Handbuch steht. */
+.begriff {
+  text-decoration: underline dotted var(--accent);
+  text-underline-offset: 0.18em;
+  cursor: help;
+}
+.begriff:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+button.begriff {
+  font: inherit;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}

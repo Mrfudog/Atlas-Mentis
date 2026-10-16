@@ -28,12 +28,12 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
-| 1 | 44 | 138 | 32 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
+| 1 | 46 | 148 | 34 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
 | 2 | 113 | 372 | 63 steht · 17 teils · 25 offen · 5 ersetzt · 3 verworfen |
 | 3 | 119 | 341 | 63 steht · 21 teils · 34 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **340** | **1201** | 172 steht · 47 teils · 105 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **342** | **1211** | 174 steht · 47 teils · 105 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -379,6 +379,8 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-338]] | Körperplätze und Platzarten als Daten | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
 | [[REQ-339]] | Tragplätze an der Figur | Spieler | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
 | [[REQ-340]] | Platzplan in der Maske | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 3 | 3 | defined | offen |
+| [[REQ-341]] | Glossar: Begriffe im Text nachschlagen | Spieler | [[F-007 Verweise & Platzhalter\|Verweise & Platzhalter]] | 1 | 5 | done | steht |
+| [[REQ-342]] | Handbuch: alle Erklärungen an einer Stelle | Spielleitung | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 1 | 5 | done | steht |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

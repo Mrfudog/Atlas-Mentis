@@ -208,6 +208,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'glossary',
+    label: 'Glossary',
+    area: 'display',
+    does: 'shows what a glossary term explains — the condition, property or rule it points to — in the glossary sidebar, and finds the term of a condition or property so that Ctrl/⌘+click opens it (T-242)',
+    uses: {
+      [M + 'glossary.ts']: ['explains'],
+      [S + 'glossar.ts']: ['explains'],
+    },
+  },
+  {
     key: 'craftOverview',
     label: 'Crafting overview',
     area: 'display',

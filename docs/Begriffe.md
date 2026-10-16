@@ -1,7 +1,9 @@
 # Begriffe
 
 Angelegt 2026-09-21, laufend ergänzt; mit den Definitionen der Ernte
-abgeglichen 2026-10-15 (T-156). Zurück zum [Einstieg](README.md).
+abgeglichen 2026-10-15 (T-156). Die neun Wörter stehen auch im Glossar
+des Handbuchs (`packages/registry/src/glossar.ts`) — ein Test hält beide
+zusammen. Zurück zum [Einstieg](README.md).
 
 Diese Datei sagt, wie die Dinge heissen. Sie steht hier, weil dieselbe Sache
 in den letzten Wochen „Komponente", „Schnittstelle", „Interface", „Karte",
@@ -2201,6 +2203,31 @@ dazu, ohne sie zu benutzen. Die Regeln stehen in
 [Datenmodell §8](Datenmodell.md#8-ebenen-und-stapel), ausführlich in
 [Ebenen.md](Ebenen.md). Kein zehntes Wort unter den neun: eine Ebene ist
 selbst ein Artikel, und der Stapel ist eine Abfrage über ihre Kanten.
+
+## Glossar und Handbuch
+
+Ein **Glossarbegriff** (`GlossaryTerm`, T-242) ist ein Artikel, kein
+zehntes Wort: er hat Ebene, Sichtbarkeit und Stand wie jeder, und eine
+Kampagne kann eigene Begriffe neben die des Regelwerks stellen. Er erbt
+von `Rule`, weil er wie eine Regel nachgeschlagen wird und `Rule.autolink`
+schon sagte, ob ein Name im Text erkannt werden darf (REQ-175) — das Feld
+stand da, gelesen hat es bis dahin niemand. Was er erklärt, sagt die Kante
+`explains`; die Regel selbst bleibt am Zustand oder an der Eigenschaft.
+Warum nicht der Zustand selbst der Eintrag ist: ein Begriff ist kürzer als
+seine Regel, hat eine Wirkung „am Tisch" und Übersetzungen, und es gibt
+Begriffe ohne Regelartikel (Konzentration, Vorteil).
+
+Die **Wörter der App** stehen dagegen im Code (`APP_TERMS`): sie ändern
+sich mit dem Code, gehören in denselben Commit, und ein Test verlangt je
+anlegbare Art und je Wort aus der Tabelle oben einen Eintrag. In der
+Datenbank stünden sie auf dev und prod je einmal und liefen auseinander.
+
+Das **Handbuch** (`/handbook`, T-225) ist die eine Stelle, an der alles
+erklärt wird; was erzeugt werden kann (Hilfe je Seite, Regeloptionen,
+Arten, Glossar), wird erzeugt. Es löst `VTT/Glossary.md` ab, das den
+Begriffsstand des Konzepts 0.5 beschreibt (Entity, Component,
+ContentBlock) und als überholt markiert ist. Wie es mit Stories, Features
+und What's new zusammenfindet, ist E-055.
 
 ## Board, Schirm und Werkbank
 

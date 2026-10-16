@@ -1,6 +1,6 @@
 import { Component, HostListener, computed, effect, inject, input, output, viewChild, type ElementRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { hilfeFuer, neuesFuer } from '../kern/hilfe';
+import { abschnittId, hilfeFuer, neuesFuer } from '../kern/hilfe';
 import { Neues } from '../kern/neues';
 
 /**
@@ -8,6 +8,9 @@ import { Neues } from '../kern/neues';
  * Kopfleiste. Oben der Hilfetext der Seite, darunter, was What's new über
  * genau diese Seite sagt — neueste zuerst, seit der Anlage des Kontos
  * (T-163), wie auf der Seite What's new selbst.
+ *
+ * **Es ist ein Abschnitt des Handbuchs** (T-242, T-225): dieselben Texte
+ * stehen dort im Kapitel „Pages", und „Open in the handbook" führt hin.
  *
  * Das Panel folgt der Adresse: wer bei offenem Panel weitergeht, liest die
  * Hilfe der neuen Seite. Escape und × schliessen es.
@@ -50,7 +53,14 @@ import { Neues } from '../kern/neues';
           </ul>
         </section>
       }
-      <p class="fuss"><a routerLink="/whats-new" (click)="zu.emit()">All of What's new</a></p>
+      <p class="fuss">
+        @if (seite(); as s) {
+          <a routerLink="/handbook" [fragment]="abschnitt(s)" (click)="zu.emit()">Open in the handbook</a>
+        } @else {
+          <a routerLink="/handbook" (click)="zu.emit()">Handbook</a>
+        }
+        <a routerLink="/whats-new" (click)="zu.emit()">All of What's new</a>
+      </p>
     </aside>
   `,
   styles: `
@@ -121,6 +131,9 @@ import { Neues } from '../kern/neues';
       font-size: 0.8rem;
     }
     .fuss {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
       margin-top: 1rem;
       font-size: 0.9rem;
     }
@@ -134,6 +147,8 @@ export class Hilfe {
   private readonly panel = viewChild<ElementRef<HTMLElement>>('panel');
 
   protected readonly seite = computed(() => hilfeFuer(this.url()));
+  /** Derselbe Text steht im Handbuch, Kapitel „Pages" (T-242, T-225). */
+  protected readonly abschnitt = abschnittId;
   protected readonly neu = computed(() => neuesFuer(this.url(), this.neues.eintraege()));
 
   constructor() {

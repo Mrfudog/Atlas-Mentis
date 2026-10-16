@@ -73,3 +73,19 @@ export function neuesFuer(
   if (r === null) return [];
   return eintraege.filter((e) => !!e.link && routeVon(e.link, seiten) === r);
 }
+
+/**
+ * **Der Abschnitt im Handbuch** (T-242, T-225), der den Hilfetext einer
+ * Seite trägt: das Handbuch zeigt dieselben Texte im Kapitel „Pages", und
+ * „?" wie What's new verlinken genau dorthin. Der Anker kommt aus der
+ * ersten Route — `read/:layer` wird `page-read-layer`.
+ */
+export function abschnittId(seite: HilfeSeite): string {
+  return `page-${(seite.routes[0] ?? 'start').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'start'}`;
+}
+
+/** Der Handbuchabschnitt zu einer Adresse, `null` ohne Hilfetext. */
+export function abschnittFuer(url: string, seiten: readonly HilfeSeite[] = HILFE): string | null {
+  const s = hilfeFuer(url, seiten);
+  return s ? abschnittId(s) : null;
+}

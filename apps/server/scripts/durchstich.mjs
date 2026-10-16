@@ -387,6 +387,23 @@ try {
     const weg = await fetch(`${BASE}/api/entities/${neu.id}`, { method: 'DELETE', headers: { cookie: admin } });
     pruefe('DELETE des neuen Artikels', weg.ok, String(weg.status));
 
+    /* ---------------------------------------------- Glossar (T-242) */
+    /* Ein Begriff als Artikel durch die Prüfung, gegen die Zeile aus 095. */
+    const begriff = await fetch(`${BASE}/api/entities`, {
+      method: 'POST',
+      headers: { ...json, cookie: admin },
+      body: JSON.stringify({ type: 'GlossaryTerm', name: 'Probebegriff' }),
+    });
+    const gb = await begriff.json();
+    pruefe('POST /api/entities legt einen Glossarbegriff an', begriff.status === 201, `${begriff.status} ${JSON.stringify(gb).slice(0, 300)}`);
+    const glossar = await (await get(admin, '/api/glossary')).json();
+    pruefe(
+      'GET /api/glossary bringt Wörter der App und Begriffe',
+      glossar.terms?.some((t) => t.id === 'app:layer') && glossar.terms?.some((t) => t.id === gb.id),
+      JSON.stringify(glossar).slice(0, 200),
+    );
+    if (gb.id) await fetch(`${BASE}/api/entities/${gb.id}`, { method: 'DELETE', headers: { cookie: admin } });
+
     /* ---------------------------------------------- Bilder (T-114) */
     /* Ein PNG mit einem Bildpunkt, von Hand — der Durchstich lädt kein sharp. */
     const PNG = Buffer.from(

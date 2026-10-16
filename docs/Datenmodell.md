@@ -291,6 +291,7 @@ flowchart LR
 | `[[npc-0042\|Volo]]` | Verweis über die Nummer (11) |
 | `{VAR}` | Platzhalter (6) |
 | `{{1d6+2}}`, `{{+4}}` | Würfel zum Anklicken (6) |
+| ein Glossarbegriff (Name, Alias) | gepunktet unterstrichen, wenn er `autolink` hat (10.2) |
 
 **Kein HTML aus dem Text.** Ein Block ist ein Datum und kein Markup; die
 Oberfläche baut Elemente (`nw-text`), der Prototyp ebenso (`para`,
@@ -1705,6 +1706,55 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
 - **Mit T-132** schaut `ruleOptionsOf` je Sorte ins gewählte Modul (ein
   lesbarer Regelartikel); Route und Reiter bleiben.
 
+### 10.2 Glossar und Handbuch (T-242, T-225)
+
+**Ein Begriff ist ein Artikel der Art `GlossaryTerm`** (erbt von `Rule`,
+Bereich rules): die Definition ist `Description.description` (an der Art
+„Definition"), die Aliasse `Identity.aliases`, dazu `GlossaryTerm.sort`
+(app, rule, condition, property, action, other), `effect` („How it affects
+play"), `example` (`many`) und `translations` (`many`, je Eintrag `lang`,
+`term`, `definition`). Worauf er sich bezieht, sagt die Kante **`explains`**
+(Begriff → beliebiger Artikel: der Zustand, die Eigenschaft, die Regel).
+Spielbegriffe liegen in der Ebene ihres Regelwerks, eigene in der
+Kampagne — Ebenen wie überall.
+
+**Die Wörter der App sind Code** (`packages/registry/src/glossar.ts`,
+`APP_TERMS`): die neun Wörter aus [Begriffe.md](Begriffe.md), Ebene,
+Stapel, Rolle, Regeloption … und **je anlegbare Art ein Eintrag**
+(`types`). Sie gehören zum Code wie die Arten selbst und kommen nicht in
+die Datenbank.
+
+- **Eine Liste, zwei Quellen:** `GET /api/glossary` legt die Wörter der App
+  und die Glossarartikel im Stapel zusammen, die der Betrachter sieht
+  (`glossaryEntryOf`); ein Ziel von `explains`, das er nicht sieht, fehlt.
+- **Erkennen** (`termIndex`, `spotTerms`): im Fliesstext (`nw-text`) werden
+  Name und Aliasse der Glossarartikel mit `Rule.autolink` als ganze Wörter
+  erkannt, längste zuerst; ein Name, den zwei tragen, nicht (wie M11). Ein
+  `[[Verweis]]` auf einen Glossarartikel zeichnet sich ebenso. Die Wörter
+  der App werden nie erkannt — „field" stünde sonst in jedem Regeltext.
+- **Öffnen:** Darüberfahren und Klick zeigen die Kurzansicht, Strg/⌘+Klick
+  und Enter die **Glossarleiste** (Begriff, Aliasse, Definition, Wirkung,
+  Beispiele, Ziele, Nennungen, Übersetzungen). An Zuständen und an Kanten
+  auf einen erklärten Artikel gilt dasselbe (`begriffZu`: über `explains`,
+  sonst den gleichnamigen Begriff).
+- **Nennungen** (`GET /api/glossary/:id/uses`, `mentionsTerm`): Artikel,
+  deren Texte den Begriff als Wort, Alias oder Verweis auf seine Nummer
+  nennen — vorgefiltert am rohen Bestand, gezählt am gesiebten. Die Wörter
+  der App zählt der Server nicht.
+
+**Das Handbuch** (`/handbook`) ist **eine Quelle für alle Erklärungen**:
+„First steps" und „Workflows" stehen in `apps/web/src/handbook.json`; die
+übrigen Kapitel werden erzeugt — „Pages" aus `help.json` (dieselben Texte
+wie hinter „?"), „Rules & options" aus `RULE_SORTS`/`RULE_OPTIONS`
+(`does`), „Article types" und „Glossary" aus `GET /api/glossary`. Das „?"
+und What's new führen in den Abschnitt der Seite (`abschnittId`).
+
+**Erzwungen, nicht erhofft:** `packages/registry/test/glossar.test.ts`
+verlangt einen Eintrag je anlegbarer Art und je Wort aus Begriffe.md und
+ein `does` an jeder Regeloption und Variante; `apps/web/test/hilfe.test.ts`
+einen Hilfetext je Route, `apps/web/test/glossar.test.ts` jedes Kapitel
+und jede Regeloption im Handbuch. Fehlt etwas, nennt der Test es.
+
 ---
 
 ## 11. Bezeichner und Namen
@@ -1847,7 +1897,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-15: 59 Artikelarten, 24 Grundtypen, 68 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-16: 60 Artikelarten, 24 Grundtypen, 69 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -1930,6 +1980,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `EquipmentMethod` | `Rule` | `method` `gold` `budget` `magic` `itemTypes` | `affects` `casts` | `composedOf` `affects` `allowsEquipment` `grants` | overview |
 | `Feat` | `Rule` `Choices` `Effects` | `prerequisite` `repeatable` | `affects` `casts` `grants` | `composedOf` `affects` `chose` `grants` `loot` | quick, overview |
 | `Feature` | `Rule` `Choices` `Effects` | `featureType` | `affects` `casts` | `composedOf` `affects` `chose` `grants` | overview |
+| `GlossaryTerm` | `Rule` | `sort` `effect` `example` `translations` | `affects` `casts` `explains` | `composedOf` `affects` `grants` | overview |
 | `Information` | `Secrets` `Facts` | `fields` `tier` | `knownBy` | `knowledge` `includes` `loot` | — |
 | `Inventory` | — | `capacity` `copper` `grid` `zones` | `holds` | `carries` | full |
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` `casts` | `composedOf` `affects` `grants` `hasProperty` | — |
@@ -1992,6 +2043,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `enables` | Campaign → * |  | — | — |
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
 | `equips` | Statblock → Item |  | — | — |
+| `explains` | GlossaryTerm → * |  | — | — |
 | `features` | Story \| Encounter → Creature \| Statblock \| Faction \| Hazard |  | — | — |
 | `grants` | Class \| Subclass \| Ancestry \| Background \| Feat → Rule |  | — | `level` |
 | `happensAt` | Story → Place |  | — | — |

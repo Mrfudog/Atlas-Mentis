@@ -41,6 +41,33 @@ DATABASE_URL=postgres://… node apps/server/scripts/durchstich.mjs
 Die Reihenfolge ist keine Willkür: `registry`, `server` und `web` übersetzen
 gegen die von `model` erzeugten Typdateien, nicht gegen dessen Quelltext.
 
+## Handbuch und Glossar nachziehen
+
+Das Handbuch (`/handbook`, T-242, T-225) ist die eine Stelle, an der die
+Seite sich erklärt, und es hält nur Schritt, wenn jede Änderung es
+mitnimmt — **im selben Pull Request**:
+
+- **Neue Seite oder geänderte Bedienung** → Hilfetext in
+  [`apps/web/src/help.json`](apps/web/src/help.json). Er ist das „?" der
+  Seite und das Kapitel „Pages" des Handbuchs.
+- **Neue Regeloption oder Variante** → ihr `does` in
+  `packages/model/src/ruleOptions.ts`; das Kapitel „Rules & options" wird
+  daraus erzeugt.
+- **Neue anlegbare Art, neues Wort der App** → ein Eintrag in
+  `packages/registry/src/glossar.ts` (`APP_TERMS`, mit deutscher
+  Übersetzung).
+- **Geänderter Ablauf** → Text in
+  [`apps/web/src/handbook.json`](apps/web/src/handbook.json) („First
+  steps", „Workflows").
+- **Spielbegriffe** (Zustände, Eigenschaften, Aktionsarten …) nie ins
+  Repo: sie sind `GlossaryTerm`-Artikel in der Ebene ihres Regelwerks,
+  angelegt über die API mit Protokoll.
+
+Was fehlt, sagen die Tests: `packages/registry/test/glossar.test.ts`
+(Arten, Wörter aus `docs/Begriffe.md`, Regeloptionen),
+`apps/web/test/hilfe.test.ts` (Routen) und `apps/web/test/glossar.test.ts`
+(Kapitel). Sie nennen, was fehlt.
+
 ## What's new ergänzen
 
 **Jeder Pull Request mit einer sichtbaren Änderung** trägt einen Eintrag in

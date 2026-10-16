@@ -1201,6 +1201,26 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
+   * **Ein Begriff im Glossar** (T-242): ein Wort mit Definition, Wirkung,
+   * Beispielen und Übersetzungen. Erbt von `Rule`, weil er wie eine Regel
+   * nachgeschlagen wird und `Rule.autolink` sagt, ob sein Name im
+   * Fliesstext erkannt wird (REQ-175). Worauf er sich bezieht — den
+   * Zustand, die Eigenschaft, die Aktion —, sagt die Kante `explains`.
+   * Spielbegriffe liegen als Artikel in der Ebene ihres Regelwerks, eigene
+   * in der Kampagne; die Wörter der App selbst stehen im Repo
+   * (`packages/registry/src/glossar.ts`), weil sie zum Code gehören.
+   */
+  GlossaryTerm: {
+    name: 'GlossaryTerm',
+    area: 'rules',
+    label: 'Glossary term',
+    extends: ['Rule'],
+    schema: merge(g.GlossaryTermInfo),
+    titles: { 'Description.description': 'Definition' },
+    views: { overview: [{ id: 'glo-ov', el: 'fields', fields: ['GlossaryTerm.sort', 'Description.description'] }] },
+  },
+
+  /**
    * **Ein Fertigungsauftrag** (T-128) ist eine Instanz des Rezepts: er
    * erbt von `Recipe` und zeigt mit `instanceOf` auf das Rezept, liest dort
    * Werkzeug, SG, Zeit, Material und Ertrag und speichert nur, was abweicht

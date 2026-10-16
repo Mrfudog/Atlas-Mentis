@@ -12,11 +12,11 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 172 steht · 47 teils · 105 offen · 10 ersetzt · 6 verworfen — 340 Stories in 79 Features und 12 Epics.
+Zusammen: 174 steht · 47 teils · 105 offen · 10 ersetzt · 6 verworfen — 342 Stories in 79 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
-| [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 51 | 31 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
+| [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 52 | 32 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 38 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 27 | 16 steht · 1 teils · 9 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 39 | 8 steht · 5 teils · 26 offen |
@@ -26,7 +26,7 @@ Zusammen: 172 steht · 47 teils · 105 offen · 10 ersetzt · 6 verworfen — 34
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 26 | 17 steht · 4 teils · 4 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 27 | 18 steht · 4 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -123,8 +123,9 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | REQ-013 | Verweise nach Nummer, getippt nach Name | 1 | **teils** | `[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben |
 | REQ-014 | Rückbezüge sehen | 3 | **steht** | Rückbezüge in der Seitenleiste (`backlinks`) |
 | REQ-174 | Regeltexte mit Platzhaltern | 2 | **steht** | `{VAR}`: Kante → Artikel → Kampagnenwerte → Register; ein Platzhalter trägt seinen Artikel, Satzanfang gross beim Lesen (D60) |
-| REQ-175 | Regelbegriffe im Text erkennen | 3 | **steht** | `Rule.autolink` |
+| REQ-175 | Regelbegriffe im Text erkennen | 3 | **steht** | `Rule.autolink`, gelesen vom Glossar: `spotTerms`, Glossarleiste (T-242, REQ-341) |
 | REQ-176 | Ähnliches vor dem Anlegen vorschlagen | 3 | **teils** | Vorschläge nach Name und Alias; keine Ähnlichkeit |
+| REQ-341 | Glossar: Begriffe im Text nachschlagen | 1 | **steht** | `GlossaryTerm`, `explains`, `spotTerms`, Glossarleiste, `GET /api/glossary` (T-242) |
 
 ### F-008 Kanten verstehen
 
@@ -886,6 +887,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | REQ-305 | Kampagne und Ebene immer sichtbar | 2 | **steht** | T-143: Kampagne und Ebenen im Popup; T-161: Schreibebene in der Kopfleiste, wählbar, am Server je Konto und Kampagne |
 | REQ-315 | Globale Kopfleiste | 1 | **steht** |  |
 | REQ-317 | Zurück an dieselbe Stelle | 1 | **steht** | T-185: `Rueckweg` merkt den Scrollstand je Verlaufseintrag und stellt ihn bei „Zurück“ wieder her, sobald die Liste hoch genug ist; die Ebenenliste zeichnet den letzten Stand sofort |
+| REQ-342 | Handbuch: alle Erklärungen an einer Stelle | 1 | **steht** | `/handbook`, `help.json`, `RULE_OPTIONS.does`, `APP_TERMS`, Tests erzwingen das Nachziehen (T-242, T-225, T-205) |
 
 ### F-071 Bearbeiten in der Ansicht
 

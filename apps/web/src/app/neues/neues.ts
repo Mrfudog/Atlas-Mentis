@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { abschnittFuer } from '../kern/hilfe';
 import { Neues, type NeuEintrag } from '../kern/neues';
 import { Session } from '../kern/session';
 
@@ -15,6 +16,10 @@ import { Session } from '../kern/session';
  * Nach Bereich einengen lässt sich die Liste über die Marken oben; sie
  * kommen aus den Einträgen selbst, nicht aus einer Liste im Code.
  *
+ * Jeder Eintrag mit Link führt auch in den Abschnitt des Handbuchs, der
+ * die Seite erklärt (T-242, T-225) — What's new sagt, was neu ist, das
+ * Handbuch, wie es geht.
+ *
  * Gezeigt wird, was seit der Anlage des Kontos kam (T-163); ein neues
  * Konto sieht einen Hinweis statt der ganzen Geschichte. Die Verwaltung
  * darf mit „Show all" auch das Ältere aufklappen.
@@ -27,7 +32,8 @@ import { Session } from '../kern/session';
       <header class="kopf">
         <h1>What's new</h1>
         <p class="hinweis">
-          What changed on this site, newest first.
+          What changed on this site, newest first. How everything works is in the
+          <a routerLink="/handbook">handbook</a>.
           @if (neu().size) {
             <strong>{{ neu().size }} new</strong> since your last visit.
           }
@@ -84,6 +90,9 @@ import { Session } from '../kern/session';
                     <span class="bereich">{{ e.area }}</span>
                     @if (e.link) {
                       <a [routerLink]="e.link" [queryParams]="e.query ?? null">Go there →</a>
+                      @if (handbuch(e.link); as h) {
+                        <a routerLink="/handbook" [fragment]="h">In the handbook</a>
+                      }
                     }
                   </p>
                 </div>
@@ -236,6 +245,9 @@ import { Session } from '../kern/session';
   `,
 })
 export class NeuesSeite {
+  /** Der Abschnitt im Handbuch, der die verlinkte Seite erklärt (T-242). */
+  protected readonly handbuch = abschnittFuer;
+
   private readonly neues = inject(Neues);
   protected readonly isAdmin = inject(Session).isAdmin;
   protected readonly ab = this.neues.ab;

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-handbook-glossary",
+      "date": "2026-10-16",
+      "title": "A handbook with a glossary",
+      "text": "Everything the site explains is now on one page: first steps, the help of every page, rules and options, article types and a glossary with search, letters and filters. Glossary terms in any text are underlined with dots — hover for a preview, Ctrl/⌘+click to open the term beside the page with its effect, examples, translations and where it is used. The “?” leads to the part for your page.",
+      "area": "Help",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-16-rules-only-what-applies",
       "date": "2026-10-16",
       "title": "Rules & options shows grid settings only for grid inventories",

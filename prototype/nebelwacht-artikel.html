@@ -16109,6 +16109,25 @@ function renderHowto(v){
     "party members who see the door now see through it. Example: Rook "+
     "stands at a closed door; opening it uncovers the hall behind it up to "+
     "the far wall, for Rook, and the goblin standing there appears."));
+  /* Glossar und Handbuch (T-242, T-225): stehen nur auf der Seite. */
+  v.appendChild(el("div",{class:"rsec",text:"Glossary terms and the handbook"}));
+  v.appendChild(el("p",{class:"hint"},
+    "A glossary term is an article of type GlossaryTerm (extends Rule): its "+
+    "definition is Description.description (titled 'Definition' there), "+
+    "aliases are Identity.aliases, and GlossaryTerm adds sort, effect (how "+
+    "it affects play), examples and translations. The edge 'explains' points "+
+    "from the term to the article it explains — a condition, a property, a "+
+    "rule. Rule.autolink says whether its name is spotted in prose. The words "+
+    "of the app itself (Type, Field, Edge, Layer … and one entry per article "+
+    "type) are not articles but code (packages/registry glossar.ts); the "+
+    "server merges both (GET /api/glossary). Example: the term 'Glum' "+
+    "explains the condition Glum; in 'The bard looks gloomy' the alias is "+
+    "underlined with dots, hovering shows its quick view, Ctrl/⌘+click opens "+
+    "it beside the page with 'Used in 2 places' — counted after the sieve, "+
+    "so a mention in a secret the player does not know does not count. The "+
+    "handbook (/handbook) puts every explanation on one page: the help of "+
+    "each page, Rules & options from RULE_OPTIONS, the article types and the "+
+    "glossary; the '?' of the header opens its section for the page."));
   /* Würfe im Protokoll (T-172): steht nur auf der Seite, der Prototyp würfelt weiter selbst. */
   v.appendChild(el("div",{class:"rsec",text:"A roll lands in the article's log"}));
   v.appendChild(el("p",{class:"hint"},

@@ -15,7 +15,7 @@ Epic: [[EP-01 Inhaltsgerüst]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-5 Stories · 15 Punkte · 3 steht · 2 teils
+6 Stories · 20 Punkte · 4 steht · 2 teils
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -24,4 +24,5 @@ Epic: [[EP-01 Inhaltsgerüst]]
 | [[REQ-174]] Regeltexte mit Platzhaltern | Spielleitung | 2 | steht |
 | [[REQ-175]] Regelbegriffe im Text erkennen | Spieler | 3 | steht |
 | [[REQ-176]] Ähnliches vor dem Anlegen vorschlagen | Spielleitung | 3 | teils |
+| [[REQ-341]] Glossar: Begriffe im Text nachschlagen | Spieler | 1 | steht |
 <!-- stories:ende -->

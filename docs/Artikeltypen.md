@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-15. 83 Schnittstellen, 68 Kantenarten.
+Stand 2026-10-16. 84 Schnittstellen, 69 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -56,6 +56,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- GlossaryTerm — `explains` → „explained by"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
@@ -104,6 +105,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -164,6 +166,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `belongsTo` → „statblock of"
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `owes` → „creditor of"
 - Shop | Faction | Creature — `discount` → „discount from"
 - Shop — `shopkeeper` → „keeps shop"
@@ -222,6 +225,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature | Faction — `worships` → „worshipped by"
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -268,6 +272,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -317,6 +322,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `memberOf` → „members"
 - Shop | Faction | Creature — `discount` → „discount from"
 - Quest — `questGiver` → „gives"
@@ -366,6 +372,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Story | Encounter — `features` → „appears in"
 - Map — `marker` → „on the map"
@@ -418,6 +425,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- GlossaryTerm — `explains` → „explained by"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
@@ -478,6 +486,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- GlossaryTerm — `explains` → „explained by"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
@@ -534,6 +543,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Shop | Faction | Creature — `discount` → „discount from"
 - Creature — `memberOfParty` → „members"
 - Quest — `questAbout` → „concerned by"
@@ -587,6 +597,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `livesIn` → „residents"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
@@ -658,6 +669,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `belongsTo` → „statblock of"
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `owes` → „creditor of"
 - Shop | Faction | Creature — `discount` → „discount from"
 - Shop — `shopkeeper` → „keeps shop"
@@ -723,6 +735,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `livesIn` → „residents"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
@@ -781,6 +794,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- GlossaryTerm — `explains` → „explained by"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
@@ -830,6 +844,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -889,6 +904,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
@@ -953,6 +969,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
@@ -1006,6 +1023,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1060,6 +1078,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
@@ -1117,6 +1136,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
@@ -1172,6 +1192,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
@@ -1192,7 +1213,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Rules
 
-*Woran man sich hält.* — 27 Arten.
+*Woran man sich hält.* — 28 Arten.
 
 ### Ability score method
 
@@ -1230,6 +1251,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
 - Campaign — `allowsMethod` → „allowed in"
+- GlossaryTerm — `explains` → „explained by"
 - Party — `abilityPool` → „pool of"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
@@ -1279,6 +1301,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1327,6 +1350,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1384,6 +1408,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - Ancestry — `subraceOf` → „subraces"
 - PlayerCharacter — `hasAncestry` → „ancestry of"
+- GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
@@ -1440,6 +1465,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
 - PlayerCharacter — `hasBackground` → „background of"
+- GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
@@ -1498,6 +1524,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - Subclass — `subclassOf` → „subclasses"
 - PlayerCharacter — `hasClass` → „taken by"
+- GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
@@ -1549,6 +1576,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Condition — `stageOf` → „has stages"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1600,6 +1628,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Condition — `stageOf` → „has stages"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1648,6 +1677,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Campaign — `allowsEquipment` → „allowed in"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
@@ -1700,6 +1730,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
@@ -1752,7 +1783,58 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Glossary term
+
+`GlossaryTerm` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `sort` *app | rule | condition | property | action | other*, `effect` *long*, `example` *long*, `translations` *array*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `explains` → * — „explains"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1797,6 +1879,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - * — `knowledge` → „about"
 - Knowledge — `includes` → „part of"
@@ -1841,6 +1924,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Creature | Party | Item — `carries` → „carried by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1889,6 +1973,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Weapon | Item | Armor — `hasProperty` → „property of"
 - Quest — `questAbout` → „concerned by"
@@ -1929,6 +2014,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1976,6 +2062,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2024,6 +2111,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2071,6 +2159,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2119,6 +2208,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2167,6 +2257,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2218,6 +2309,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - Statblock | PlayerCharacter | Item | Subclass | Ancestry | Feat | Faction | Rule — `casts` → „cast by"
 - Class | Subclass — `spellList` → „on the spell list of"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2271,6 +2363,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Story | Encounter — `features` → „appears in"
 - Map — `marker` → „on the map"
@@ -2329,6 +2422,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
@@ -2379,6 +2473,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
 - Campaign — `allowsSubstitution` → „allowed in"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2423,6 +2518,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2471,6 +2567,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2519,6 +2616,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2569,6 +2667,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2616,6 +2715,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2670,6 +2770,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2718,6 +2819,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `insideMap` → „zoom into"
 - Map — `marker` → „on the map"
@@ -2756,6 +2858,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2798,6 +2901,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2833,6 +2937,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2876,6 +2981,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2907,6 +3013,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2938,6 +3045,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2968,6 +3076,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2998,6 +3107,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3037,6 +3147,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -3068,6 +3179,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3107,6 +3219,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -3138,6 +3251,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3168,6 +3282,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3209,6 +3324,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -3243,6 +3359,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3273,6 +3390,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3313,6 +3431,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -3344,6 +3463,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3374,6 +3494,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3404,6 +3525,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3440,6 +3562,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -3471,6 +3594,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3501,6 +3625,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3531,6 +3656,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3561,6 +3687,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3591,6 +3718,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3621,6 +3749,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3651,6 +3780,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3681,6 +3811,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3711,6 +3842,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3741,6 +3873,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"

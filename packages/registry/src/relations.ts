@@ -339,6 +339,22 @@ export const relations: Record<string, RelationDef> = {
     to: ['Substitution'],
   },
 
+  /**
+   * **Ein Glossarbegriff erklärt einen Artikel** (T-242): „Poisoned" im
+   * Glossar zeigt auf den Zustand, „Versatile" auf die Eigenschaft. Der
+   * Begriff sagt in einem Satz, was er heisst; die Regel steht am Ziel.
+   * Rückwärts liest eine Regel, welche Begriffe sie erklären — so findet
+   * die Maske zu einem Zustand seinen Eintrag.
+   */
+  explains: {
+    type: 'explains',
+    label: 'explains',
+    inverseLabel: 'explained by',
+    means: 'A glossary term explains an article (a condition, a property, a rule); the article lists the terms that explain it.',
+    from: ['GlossaryTerm'],
+    to: ['*'],
+  },
+
   allowsEquipment: {
     type: 'allowsEquipment',
     label: 'allows equipment method',

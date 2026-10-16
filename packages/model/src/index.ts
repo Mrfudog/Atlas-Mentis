@@ -53,3 +53,4 @@ export * from './ruleOptions.js';
 export * from './facets.js';
 export * from './requirements.js';
 export * from './zugplan.js';
+export * from './glossary.js';

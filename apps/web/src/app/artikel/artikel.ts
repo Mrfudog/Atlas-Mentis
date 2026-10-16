@@ -32,6 +32,7 @@ import type { Entity, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } 
 import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
+import { BegriffLink, Glossar } from '../kern/glossar';
 import { Session } from '../kern/session';
 import { Stapel } from '../kern/stapel';
 import {
@@ -161,6 +162,7 @@ interface Feld {
     FassungsAbzeichen,
     AbwMarken,
     KurzLink,
+    BegriffLink,
     Herausgeber,
     Bild,
     BildWahl,
@@ -869,7 +871,7 @@ interface Feld {
                     <li>
                       <span class="rl" [attr.title]="kantenWirkung(k.typ)">{{ k.label }}</span>
                       @if (k.ziel) {
-                        <a [routerLink]="['/artikel', k.ziel]" [nwQuick]="k.ziel">{{ k.text }}</a>
+                        <a [routerLink]="['/artikel', k.ziel]" [nwQuick]="k.ziel" [nwBegriff]="begriff(k.ziel, k.text)">{{ k.text }}</a>
                       } @else {
                         <span class="weg">{{ k.text }}</span>
                       }
@@ -989,6 +991,13 @@ interface Feld {
   styleUrls: ['./artikel.scss', './feldwahl.scss'],
 })
 export class Artikel implements SchnellKontext {
+  /** Eine Kante auf eine Eigenschaft, einen Zustand, eine Aktionsart mit
+   *  Glossareintrag (T-242): Strg/⌘+Klick öffnet den Eintrag. */
+  private readonly glossar = inject(Glossar);
+  protected begriff(id: string | null | undefined, name: string): string | null {
+    return this.glossar.begriffZu(id, name);
+  }
+
   readonly id = input.required<string>();
   /** `?edit=1`: gleich bearbeiten — so öffnet „New article" den frischen Artikel (W7). */
   readonly edit = input<string | undefined>(undefined);
