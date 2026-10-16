@@ -3,14 +3,14 @@ id: "F-079"
 title: "Tragplätze"
 typ: "feature"
 epic: "[[EP-04 Spielererlebnis]]"
-beschreibung: "Plätze am Körper und an Ausrüstung (Gürtel, Riemen, Scheide, Köcher, Laschen), verbundene Plätze für lange Gegenstände, Trageregeln am Gegenstand, alle möglichen Plätze mit Grund und Verdrängen."
+beschreibung: "Körperplan des Inventarmoduls, tragende Ausrüstung als Behälter mit eigenem kleinem Raster (Gürtel, Riemen, Scheide, Köcher, Laschen), Verbund-Zonen für Stücke über mehrere Zellen, Trageregeln am Gegenstand, alle möglichen Plätze mit Grund und Verdrängen."
 tags: ["vtt", "feature"]
 ---
 # F-079 Tragplätze
 
-Plätze am Körper und an Ausrüstung (Gürtel, Riemen, Scheide, Köcher, Laschen), verbundene Plätze für lange Gegenstände, Trageregeln am Gegenstand, alle möglichen Plätze mit Grund und Verdrängen.
+Körperplan des Inventarmoduls, tragende Ausrüstung als Behälter mit eigenem kleinem Raster (Gürtel, Riemen, Scheide, Köcher, Laschen), Verbund-Zonen für Stücke über mehrere Zellen, Trageregeln am Gegenstand, alle möglichen Plätze mit Grund und Verdrängen.
 
-Ein Tragplatz nimmt **ein Stück** (oder einen Stapel bis zu seiner Grenze), unabhängig von dessen Form — anders als ein Behälter mit Raster ([[F-026 Inventar]], REQ-322). Platzträger sind der Körper (aus dem Inventarmodul) und Gegenstände, die Plätze mitbringen. Hände und Spezialplätze: REQ-322, REQ-323, REQ-324.
+**Keine eigene Platzart neben dem Raster** (E-084, präzisiert am 16.10.2026): ein Gürtel ist ein Gegenstand mit eigenem kleinem Raster (`###/#.#`), ablegbar, und die Stücke in ihm gehen mit; Köcher, Scheide und Lasche ebenso — Behälter mit Raster und Zonen ([[F-026 Inventar]], REQ-322). Ob etwas passt, entscheiden die Zellen, die seine Form belegt (E-089); was mehrere Zellen gemeinsam tragen, sagt eine Zone der Art `verbund` (E-085). Der Körper ist ein Plan des Inventarmoduls (E-088 a). Hände und besondere Zonen: REQ-322, REQ-323, REQ-324.
 
 Epic: [[EP-04 Spielererlebnis]]
 
@@ -21,11 +21,11 @@ Epic: [[EP-04 Spielererlebnis]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-334]] Ausrüstung bringt Tragplätze mit | Spielleitung | 2 | offen |
-| [[REQ-335]] Plätze für lange Gegenstände verbinden | Spielleitung | 2 | offen |
+| [[REQ-334]] Tragende Ausrüstung als Behälter mit eigenem Raster | Spielleitung | 2 | offen |
+| [[REQ-335]] Verbund: Zellen, die gemeinsam ein Stück tragen | Spielleitung | 2 | offen |
 | [[REQ-336]] Festlegen, wo ein Gegenstand getragen werden darf | Spielleitung | 2 | offen |
 | [[REQ-337]] Sehen, was weichen muss | Spieler | 2 | offen |
-| [[REQ-338]] Körperplätze und Platzarten als Daten | Spielleitung | 2 | offen |
-| [[REQ-339]] Tragplätze an der Figur | Spieler | 2 | offen |
-| [[REQ-340]] Platzplan in der Maske | Spielleitung | 3 | offen |
+| [[REQ-338]] Körperplätze als Plan des Moduls | Spielleitung | 2 | offen |
+| [[REQ-339]] Tragende Ausrüstung an der Figur | Spieler | 2 | offen |
+| [[REQ-340]] Raster und Zonen eines Trägers in der Maske | Spielleitung | 3 | offen |
 <!-- stories:ende -->
