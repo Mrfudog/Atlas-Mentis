@@ -2025,6 +2025,24 @@ export const fieldGroups = {
            Grad. Wie viele es gibt, steht am Statblock (`spellSlots`): das
            ist die Festlegung, das hier der Stand — wie `hp` an beiden. */
         slotsUsed: { type: 'array', title: 'Spell slots used', items: { type: 'number' } },
+        /* **Woran sie sich konzentriert** (T-247, REQ-067): ein Zauber, nicht
+           ein Häkchen — die Statuszeile nennt ihn, und „Failed" bei der
+           Probe nach Schaden leert das Feld. Höchstens einer (PHB). */
+        concentration: {
+          type: 'string', format: 'link', title: 'Concentrating on',
+          target: { interfaces: ['Spell'] },
+        },
+        /* Wie lange noch: „9 min", „1 h", „until you attack". Ein Wort
+           je Zustand oder `concentration`, freier Text — eine Dauer am
+           Tisch wird gesagt, nicht gerechnet; die Initiative zählt Runden
+           an ihrer eigenen Kante (`participates`, REQ-115). */
+        durations: { type: 'object', title: 'Durations' },
+        /* Versteckt ist kein Zustand des Regelwerks, sondern ein Stand. */
+        hidden: { type: 'boolean', title: 'Hidden' },
+        /* **Was in diesem Zug verbraucht ist** (`action`, `bonus`,
+           `reaction`; T-247): an der Figur und nicht in der Maske, damit
+           Telefon und Laptop dasselbe sehen. „New turn" leert es. */
+        turnUsed: { type: 'array', title: 'Used this turn', items: { type: 'string' }, enum: ['action', 'bonus', 'reaction'] },
       },
     },
   },

@@ -89,8 +89,18 @@ export interface Stueck {
     | 'karte'
     | 'liegen'
     | 'regeln'
-    | 'verlinkt';
+    | 'verlinkt'
+    /** Der Kopf der Spielerseite (T-247). */
+    | 'bogen'
+    /** „Your turn" (T-247). */
+    | 'zug'
+    /** Die Zauber einer Figur (T-246). */
+    | 'zauberliste'
+    /** Was die Kampagne einer Figur gezeigt hat (T-247). */
+    | 'kampagne';
   text?: string;
+  /** Der Reiter, in dem das Stück steht (T-247); ohne steht es über allen. */
+  reiter?: string;
   /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
   bild?: { wert: string; caption: string; alt: string; version?: string };
   zellen?: Zelle[];
@@ -102,7 +112,27 @@ export interface Stueck {
 
 /** Reiter gibt es auf einem Blatt nicht: ihre Gruppen stehen nacheinander. */
 export function flach(layout: readonly LayoutElement[]): LayoutElement[] {
-  return layout.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]));
+  return mitReiter(layout).map((x) => x.el);
+}
+
+/**
+ * **Flach, aber mit dem Reiter, in dem ein Element steht** (T-247). Die
+ * Artikelseite zeichnet Reiter als Reiter — am Tisch schaut man auf einen,
+ * und zwischen Kampf und Zaubern zu scrollen ist der Weg, den die Leitung
+ * nicht will. Ein Blatt (Druck) liest weiter alles nacheinander. Reiter in
+ * Reitern zählen zum äussersten.
+ */
+export function mitReiter(layout: readonly LayoutElement[], reiter?: string): { el: LayoutElement; reiter?: string }[] {
+  return layout.flatMap((el) =>
+    el.el === 'tabs'
+      ? (el.tabs ?? []).flatMap((t) => mitReiter(t.layout, reiter ?? t.id))
+      : [{ el, ...(reiter ? { reiter } : {}) }],
+  );
+}
+
+/** Die Reiter einer Anordnung, in ihrer Reihenfolge (nur die äussersten). */
+export function reiterVon(layout: readonly LayoutElement[]): { id: string; label: string }[] {
+  return layout.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).map((t) => ({ id: t.id, label: t.label })) : []));
 }
 
 /**
@@ -269,7 +299,8 @@ export function anordnen(
   const da = (typ: string, feld: string) => felderDa.has(typ) || felderDa.has(`${typ}.${feld}`);
   const out: Stueck[] = [];
 
-  for (const el of flach(layout)) {
+  for (const { el, reiter } of mitReiter(layout)) {
+    const vorher = out.length;
     switch (el.el) {
       case 'statblock':
       case 'spell':
@@ -403,11 +434,27 @@ export function anordnen(
       case 'inventory':
         out.push({ id: el.id, art: 'verlinkt', nur: ['Inventory'] });
         break;
+      /* Die Spielerseite (T-247, T-246): Kopf, Zug, Zauber, Kampagne —
+         jede Komponente fragt selbst und zeichnet nichts, wo nichts ist. */
+      case 'sheet':
+        felderDa.add('Vitals');
+        out.push({ id: el.id, art: 'bogen' });
+        break;
+      case 'turn':
+        out.push({ id: el.id, art: 'zug' });
+        break;
+      case 'spells':
+        out.push({ id: el.id, art: 'zauberliste' });
+        break;
+      case 'campaign':
+        out.push({ id: el.id, art: 'kampagne' });
+        break;
       default:
-        /* Bogen, Board … zeichnet noch niemand (W4 und
+        /* Board, Haltung … zeichnet noch niemand (W4 und
            später). Was sie tragen, steht im Rest, wo die Ansicht ihn will. */
         break;
     }
+    if (reiter) for (let i = vorher; i < out.length; i++) out[i]!.reiter = reiter;
   }
 
   if (opt.rest) {
@@ -415,9 +462,12 @@ export function anordnen(
        (T-114). Zeichnet die Ansicht keines, stehen sie nicht als lose
        Felder im Rest — eine Unterschrift ohne Bild sagt nichts (T-090). */
     const rest = zellen.filter((z) => !da(z.comp, z.prop) && z.comp !== 'Image');
-    if (rest.length) out.push({ id: 'rest-f', art: 'felder', zellen: rest });
+    /* Mit Reitern steht der Rest im ersten — sonst hinge er unter jedem. */
+    const erster = reiterVon(layout)[0]?.id;
+    const im = erster ? { reiter: erster } : {};
+    if (rest.length) out.push({ id: 'rest-f', art: 'felder', zellen: rest, ...im });
     const restProsa = prosa.filter((b) => !prosaDa.has(b.ref));
-    if (restProsa.length) out.push({ id: 'rest-p', art: 'prosa', prosa: restProsa });
+    if (restProsa.length) out.push({ id: 'rest-p', art: 'prosa', prosa: restProsa, ...im });
   }
   return out;
 }

@@ -1,0 +1,206 @@
+/**
+ * Die Spielerseite (T-247): Reiter auf der Artikelseite, der Kopf mit
+ * Schaden, Heilung, zeitweiligen, Punkten, Statuszeile und
+ * Konzentrationsprobe, und die schwebende Werkzeugleiste als Muster.
+ */
+
+import { describe, expect, it, vi } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { Directive, Input, signal } from '@angular/core';
+import { provideRouter, RouterLink } from '@angular/router';
+import { handState } from '@nw/model';
+import type { Entity, SheetHeader } from '@nw/model';
+import { anordnen, reiterVon } from '../src/app/artikel/anordnung';
+import { Bogen } from '../src/app/bogen/kopf';
+import { FigurDaten } from '../src/app/bogen/daten';
+import { Werkzeugleiste } from '../src/app/muster/werkzeugleiste';
+import { Api } from '../src/app/kern/api';
+import { Bestand } from '../src/app/kern/bestand';
+import { Session } from '../src/app/kern/session';
+import { Glossar } from '../src/app/kern/glossar';
+
+@Directive({ selector: '[nwQuick]' })
+class QuickAttrappe {
+  @Input() nwQuick: string | null = null;
+}
+@Directive({ selector: '[nwBegriff]' })
+class BegriffAttrappe {
+  @Input() nwBegriff: string | null = null;
+}
+
+describe('anordnen › tabs (T-247)', () => {
+  const layout = [
+    { id: 's', el: 'sheet' as const },
+    {
+      id: 't',
+      el: 'tabs' as const,
+      tabs: [
+        { id: 'about', label: 'Overview', layout: [{ id: 'f', el: 'fields' as const, fields: 'all' as const }] },
+        { id: 'combat', label: 'Combat', layout: [{ id: 'z', el: 'turn' as const }] },
+      ],
+    },
+  ];
+  it('keeps the header above the tabs and tags every piece with its tab', () => {
+    const st = anordnen(layout, [], [], { beschreibung: null, rest: false });
+    expect(st.map((x) => [x.art, x.reiter ?? null])).toEqual([
+      ['bogen', null],
+      ['zug', 'combat'],
+    ]);
+    expect(reiterVon(layout).map((t) => t.id)).toEqual(['about', 'combat']);
+  });
+  it('puts the rest into the first tab, not under every one', () => {
+    const zelle = { comp: 'X', prop: 'y', ref: 'X.y', label: 'Y', wert: '1', key: 'X.y' };
+    const st = anordnen([layout[1]!], [zelle as never], [], { beschreibung: null, rest: true });
+    expect(st.find((x) => x.id === 'f')?.reiter).toBe('about');
+  });
+});
+
+const kopf = (mehr: Partial<SheetHeader> = {}): SheetHeader => ({
+  hp: 18,
+  max: 22,
+  temp: 3,
+  vitals: [{ key: 'ac', label: 'AC', value: '15' }, { key: 'init', label: 'Init', value: '+4' }],
+  casting: [{ key: 'dc', label: 'Save DC', value: '12' }],
+  hitDice: { die: 'd8', max: 3, left: 2 },
+  slots: [{ level: 1, max: 2, used: 1 }],
+  inspiration: false,
+  abilities: ['str', 'dex', 'con', 'int', 'wis', 'cha'].map((key) => ({ key, label: key.toUpperCase(), score: 10, mod: 0, save: key === 'con' ? 1 : 0, saveProficient: false })),
+  ...mehr,
+});
+
+function aufbauen(vitals: Record<string, unknown> = {}, opt: { darf?: boolean; k?: SheetHeader } = {}) {
+  const figur: Entity = { id: 'pc', interfaces: ['PlayerCharacter'], name: 'Pc', components: { Vitals: { hp: 18, hpTemp: 3, ...vitals } }, relations: [] };
+  const daten = {
+    fuer: () => ({
+      figur: signal(figur),
+      statblock: signal(undefined),
+      ohneStatblock: signal(false),
+      kopf: signal(opt.k ?? kopf()),
+      gehalten: signal([]),
+      haende: signal(handState([])),
+      zauber: signal([]),
+      kupfer: signal({ beiDir: 3712, gruppe: 15000 }),
+    }),
+    vitals: vi.fn().mockResolvedValue(undefined),
+  };
+  const api = { roll: vi.fn().mockResolvedValue({ total: 14 }), list: vi.fn().mockResolvedValue({ rows: [{ id: 'cond-p', name: 'Poisoned' }] }) };
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([]),
+      { provide: FigurDaten, useValue: daten },
+      { provide: Api, useValue: api },
+      { provide: Bestand, useValue: { name: signal((id: string) => ({ 'sp-1': 'Silent Image', 'cond-p': 'Poisoned' })[id]), holen: vi.fn() } },
+      { provide: Session, useValue: { darfSchreiben: signal(() => opt.darf ?? true) } },
+      { provide: Glossar, useValue: { begriffZu: () => null } },
+    ],
+  });
+  /* JIT lädt keine Stildatei und kennt `input()` nicht (text.test.ts). */
+  TestBed.overrideComponent(Bogen, { set: { styleUrl: undefined, styleUrls: [], styles: [], imports: [RouterLink, QuickAttrappe, BegriffAttrappe] } });
+  const fixture = TestBed.createComponent(Bogen);
+  Object.assign(fixture.componentInstance, { artikel: signal(figur) });
+  fixture.detectChanges();
+  const el = fixture.nativeElement as HTMLElement;
+  const knopf = (text: string) => [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === text) as HTMLButtonElement;
+  return { fixture, el, daten, api, knopf, figur };
+}
+
+describe('nw-bogen (T-247)', () => {
+  it('shows hit points, temp, the carousel and gold on you and with the party', () => {
+    const { el } = aufbauen();
+    expect(el.querySelector('.hpwert')?.textContent).toContain('18');
+    expect(el.querySelector('.hpwert')?.textContent).toContain('/ 22');
+    expect((el.querySelector('.temp input') as HTMLInputElement).value).toBe('3');
+    expect(el.querySelector('.karussell')?.textContent).toContain('Vitals');
+    expect(el.querySelector('.goldwert')?.textContent).toContain('37 gp 12 cp');
+    expect(el.querySelector('.goldwert')?.textContent).toContain('party 150 gp');
+    expect(el.querySelectorAll('.attr').length).toBe(6);
+  });
+
+  it('turns the carousel to spellcasting', () => {
+    const { el, fixture } = aufbauen();
+    (el.querySelector('.pfeil[aria-label="Next"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('.karussell')?.textContent).toContain('Save DC');
+  });
+
+  it('writes damage through the model: temp first', async () => {
+    const { knopf, daten } = aufbauen();
+    knopf('− Damage').click();
+    await Promise.resolve();
+    const aendern = daten.vitals.mock.calls[0]![1] as (v: Record<string, unknown>) => Record<string, unknown>;
+    expect(aendern({ hp: 18, hpTemp: 3 })).toEqual({ hp: 17, hpTemp: undefined });
+  });
+
+  it('asks for the concentration check after damage while concentrating, and Failed ends it', async () => {
+    const { knopf, daten, fixture, el } = aufbauen({ concentration: 'sp-1', durations: { concentration: '9 min' } });
+    expect(el.querySelector('.status')?.textContent).toContain('Concentrating · Silent Image');
+    expect(el.querySelector('.status')?.textContent).toContain('9 min');
+    await (fixture.componentInstance as unknown as { schaden: () => Promise<void> }).schaden();
+    fixture.detectChanges();
+    expect(el.querySelector('.probe')?.textContent).toContain('CON save DC 10');
+    knopf('Failed').click();
+    await Promise.resolve();
+    const aendern = daten.vitals.mock.calls.at(-1)![1] as (v: Record<string, unknown>) => Record<string, unknown>;
+    expect(aendern({ concentration: 'sp-1', durations: { concentration: '9 min' } })).toEqual({ concentration: undefined, durations: undefined });
+  });
+
+  it('collapses from the status row and keeps HP, damage and heal', () => {
+    const { knopf, fixture, el } = aufbauen();
+    knopf('▴ Less').click();
+    fixture.detectChanges();
+    expect(el.querySelector('.kompakt')).not.toBeNull();
+    expect(knopf('− Dmg')).toBeTruthy();
+    expect(knopf('▾ More')?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('adds a condition with a duration', async () => {
+    const { knopf, fixture, el, daten } = aufbauen();
+    knopf('+ Condition').click();
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    (fixture.componentInstance as unknown as { zustandDazu: (id: string, d: string) => Promise<void> }).zustandDazu('cond-p', '1 h');
+    await Promise.resolve();
+    const aendern = daten.vitals.mock.calls.at(-1)![1] as (v: Record<string, unknown>) => Record<string, unknown>;
+    expect(aendern({})).toEqual({ conditions: ['cond-p'], durations: { 'cond-p': '1 h' } });
+    expect(el.querySelector('select option[value="cond-p"]')).not.toBeNull();
+  });
+
+  it('shows values without buttons to those who may not write', () => {
+    const { el } = aufbauen({}, { darf: false });
+    expect(el.textContent).not.toContain('Damage');
+    expect(el.textContent).not.toContain('+ Condition');
+    expect(el.querySelector('.hpwert')?.textContent).toContain('18');
+  });
+});
+
+describe('nw-werkzeugleiste (T-247)', () => {
+  it('emits its actions, undo only when possible, and done', () => {
+    TestBed.resetTestingModule();
+    const fixture = TestBed.createComponent(Werkzeugleiste);
+    Object.assign(fixture.componentInstance, {
+      titel: signal('Rapier'),
+      beschriftung: signal(''),
+      hinweis: signal(''),
+      aktionen: signal([{ id: 'use', icon: '✓', label: 'Use' }]),
+      rueckgaengigMoeglich: signal(false),
+      mitDetails: signal(true),
+      detailsOffen: signal(false),
+    });
+    const aktion = vi.fn();
+    const undo = vi.fn();
+    const fertig = vi.fn();
+    fixture.componentInstance.aktion.subscribe(aktion);
+    fixture.componentInstance.rueckgaengig.subscribe(undo);
+    fixture.componentInstance.fertig.subscribe(fertig);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[role="toolbar"]')?.textContent).toContain('Rapier');
+    (el.querySelector('[aria-label="Use"]') as HTMLButtonElement).click();
+    (el.querySelector('[aria-label="Undo"]') as HTMLButtonElement).click();
+    (el.querySelector('.fertig') as HTMLButtonElement).click();
+    expect(aktion).toHaveBeenCalledWith('use');
+    expect(undo).not.toHaveBeenCalled();
+    expect(fertig).toHaveBeenCalled();
+  });
+});

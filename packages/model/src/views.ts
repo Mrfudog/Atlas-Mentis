@@ -122,10 +122,11 @@ export function elementTakes(el: LayoutElement, type: string, field: string): bo
  * **Gilt diese Bedingung an diesem Artikel?** (`LayoutWhen`, T-184). Ohne
  * Bedingung gilt das Element immer; eine Bedingung ohne jede Angabe auch.
  */
-export function whenHolds(when: LayoutWhen | undefined, entity: Pick<Entity, 'components' | 'relations'>): boolean {
+export function whenHolds(when: LayoutWhen | undefined, entity: Pick<Entity, 'components' | 'relations'> & { interfaces?: readonly string[] }): boolean {
   if (!when) return true;
-  const { field, has, empty, relation } = when;
-  if (!field && !relation) return true;
+  const { field, has, empty, relation, type } = when;
+  if (type && (entity.interfaces ?? []).includes(type)) return true;
+  if (!field && !relation) return !type;
   if (relation && (entity.relations ?? []).some((r) => r.type === relation)) return true;
   if (!field) return false;
   const punkt = field.indexOf('.');
@@ -143,7 +144,7 @@ export function whenHolds(when: LayoutWhen | undefined, entity: Pick<Entity, 'co
  */
 export function forArticle(
   layout: readonly LayoutElement[],
-  entity: Pick<Entity, 'components' | 'relations'>,
+  entity: Pick<Entity, 'components' | 'relations'> & { interfaces?: readonly string[] },
 ): LayoutElement[] {
   return layout
     .filter((el) => whenHolds(el.when, entity))

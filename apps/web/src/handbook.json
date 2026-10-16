@@ -63,6 +63,13 @@
           ]
         },
         {
+          "heading": "Playing your character",
+          "text": [
+            "Open your character. The header stays above the tabs: set the amount, then Damage, Heal or Temp — damage takes temporary hit points first. Click pips to spend hit dice, spell slots and inspiration.",
+            "Conditions and concentration stand in the status row with how long they last. When you take damage while concentrating, the sheet asks for the Constitution save; roll it, then Passed or Failed."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."

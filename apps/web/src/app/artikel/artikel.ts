@@ -65,7 +65,9 @@ import { Liegengelassen } from './liegen';
 import { Werkstatt } from './werkstatt';
 import { Abschnitte } from './abschnitte';
 import { Fluss } from './fluss';
-import { anordnen, feldZellen, mitLeeren, prosaVon, SCHON_ANDERSWO, type Prosa, type Stueck, type Zelle } from './anordnung';
+import { anordnen, feldZellen, mitLeeren, prosaVon, reiterVon, SCHON_ANDERSWO, type Prosa, type Stueck, type Zelle } from './anordnung';
+import { Bogen } from '../bogen/kopf';
+import { Reiterleiste } from '../bogen/reiterleiste';
 import { Herausgeber } from './herausgeber';
 import {
   abweichungen,
@@ -140,6 +142,9 @@ interface Feld {
  * Prüfung sähe nach Sorgfalt aus und wäre das Gegenteil: sie lüde dazu ein,
  * die erste wegzulassen.
  */
+/** Stücke, die noch keine Komponente zeichnet (T-247 in Etappen) — ihr Reiter erscheint erst mit ihr. */
+const NOCH_NICHT = new Set<Stueck['art']>(['zug', 'zauberliste', 'kampagne']);
+
 @Component({
   selector: 'nw-artikel',
   /* Schnell anlegen aus einer Auswahl (T-131): der Artikel schlägt Ebene
@@ -148,6 +153,8 @@ interface Feld {
   imports: [
     RouterLink,
     FormsModule,
+    Bogen,
+    Reiterleiste,
     Text,
     Wahl,
     Mehrfach,
@@ -682,8 +689,17 @@ interface Feld {
               <!-- Gezeichnet wird die Anordnung der Art (layoutFor): was ein
                    Element nicht kennt, zeichnet hier noch niemand; was kein
                    Element zeichnet, steht am Ende (rest). -->
-              @for (st of stuecke(); track st.id) {
+              <!-- Reiter (T-247): die Gruppen einer Kreatur stehen nicht
+                   untereinander, sondern einer auf einmal; was über den
+                   Reitern steht (der Kopf), steht immer da. -->
+              @if (reiter().length > 1) {
+                <nw-reiterleiste [reiter]="reiter()" [aktiv]="aktiverReiter()" (waehle)="zeigeReiter($event)" />
+              }
+              @for (st of sichtbareStuecke(); track st.id) {
                 @switch (st.art) {
+                  @case ('bogen') {
+                    <nw-bogen [artikel]="e" />
+                  }
                   @case ('statblock') {
                     <nw-statblock [artikel]="e" [fassungen]="vergleich()" />
                   }
@@ -1264,13 +1280,20 @@ export class Artikel implements SchnellKontext {
    * `extends`-Kette hoch; zugeteilt in `anordnen`). Was kein Element
    * zeichnet, steht am Ende, weil `full` es sagt (`rest`, T-110).
    */
+  private readonly anordnung = computed(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    if (!e || !r) return [];
+    /* Was `when` an diesem Artikel ausschliesst, fällt weg (T-184). */
+    return forArticle(layoutFor(r, 'full', primaryInterface(e)).layout, e);
+  });
+
   protected readonly stuecke = computed<Stueck[]>(() => {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r) return [];
     const v = this.view();
-    /* Was `when` an diesem Artikel ausschliesst, fällt weg (T-184). */
-    const layout = forArticle(layoutFor(r, 'full', primaryInterface(e)).layout, e);
+    const layout = this.anordnung();
     /* Leere Felder, wenn die Ansicht es sagt (T-110) — beim Lesen; die
        Maske zeigt ohnehin jedes Feld. */
     const zellen = v?.empty === 'show' ? mitLeeren(r, e, this.zellenMitFassungen()) : this.zellenMitFassungen();
@@ -1281,6 +1304,28 @@ export class Artikel implements SchnellKontext {
       bild: bildDes(e, r),
     });
   });
+
+  /**
+   * **Die Reiter, die etwas zeigen** (T-247): ein Reiter ohne Stück ist ein
+   * Knopf, der nichts tut. Welcher offen ist, sagt `?tab=` (ein Link wie
+   * „Gold → Gear" setzt ihn), sonst der erste.
+   */
+  protected readonly reiter = computed(() => {
+    const st = this.stuecke().filter((x) => !NOCH_NICHT.has(x.art));
+    return reiterVon(this.anordnung()).filter((t) => st.some((x) => x.reiter === t.id));
+  });
+  protected readonly aktiverReiter = computed(() => {
+    const ids = this.reiter().map((t) => t.id);
+    const w = this.tab();
+    return w && ids.includes(w) ? w : ids[0] ?? null;
+  });
+  protected readonly sichtbareStuecke = computed(() => {
+    const a = this.aktiverReiter();
+    return this.stuecke().filter((x) => !NOCH_NICHT.has(x.art) && (!x.reiter || !a || x.reiter === a));
+  });
+  protected zeigeReiter(id: string): void {
+    void this.router.navigate([], { queryParams: { tab: id }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
 
   /** Steht ein Buch-Element zuoberst, setzt es die Zeile unter den Namen. */
   protected readonly buchKopf = computed(() => {

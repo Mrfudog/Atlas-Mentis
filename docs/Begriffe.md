@@ -1420,6 +1420,31 @@ DEX und Übung +4 ergäben. Der Bogen nimmt ihn statt der Rechnung. Was ein
 Monster führt, sagt die Kante `equips` zum Gegenstand aus dem Buch; ein
 Inventar hat erst die Figur am Tisch.
 
+### Der Kopf und die Reiter der Spielerseite
+
+**Der Kopf steht über den Reitern**, nicht in einem (T-247): Trefferpunkte,
+Rüstungsklasse und Zustände braucht man, ohne umzuschalten — dieselbe
+Regel wie die Initiative am Spieltisch. Darunter sind die Gruppen der
+Kreatur **Reiter und keine Abschnitte untereinander**: am Tisch schaut man
+auf einen, und zwischen Kampf und Zaubern zu scrollen ist der Weg, den
+niemand zweimal geht. Ein Blatt (Druck) liest weiter alles nacheinander.
+
+**Was am Tisch gesetzt wird, steht in `Vitals`**, auch was die Statuszeile
+zeigt: woran die Figur sich konzentriert (ein Zauber, kein Häkchen — die
+Zeile nennt ihn, und „Failed" leert ihn), wie lange ein Zustand noch dauert
+(ein Wort, weil eine Dauer am Tisch gesagt und nicht gerechnet wird; die
+Initiative zählt Runden an ihrer eigenen Kante), ob sie versteckt ist, und
+was in diesem Zug verbraucht ist. Letzteres steht an der Figur und nicht in
+der Maske, damit Telefon und Laptop dasselbe sehen.
+
+**Gesperrt heisst nicht verborgen.** Eine Aktion, die die Hände gerade
+nicht erlauben — ein Zauber ohne freie Hand, das Zaubern hinter einem
+Schild ohne Übung —, bleibt in „Your turn" stehen, mit 🔒 und dem Grund.
+Verschwände sie, wüsste niemand, warum der Zauber fehlt, und keiner käme
+auf die Idee, die Waffe wegzustecken. Die Sperre rechnet das Modell aus
+dem, was gehalten wird (`handState`); das Ausrüsten selbst kommt mit dem
+Inventar (T-244) und speist dieselbe Funktion.
+
 ### Klasse, Stufe und was gewährt wird
 
 Klasse, Unterklasse, Abstammung und Hintergrund sind **Regeln mit eigenen

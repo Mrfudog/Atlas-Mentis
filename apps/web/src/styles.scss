@@ -31,6 +31,13 @@
   --sub-4: #4c6b2a;
   --sub-5: #6b3d75;
   --sub-6: #2e6e64;
+  /* Die Spielerseite (T-247): Trefferpunkte, Heilung, Magie, Reaktion —
+     dieselben Töne wie die Unterklassen, mit Namen, die sagen, wofür. */
+  --hp: #a3241a;
+  --good: #4c6b2a;
+  --magic: #6b3d75;
+  --blue: #2f5d7c;
+  --accent-soft: rgba(140, 28, 19, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,6 +65,11 @@
     --sub-4: #9cc070;
     --sub-5: #c49ad0;
     --sub-6: #74c2b5;
+    --hp: #e08a74;
+    --good: #9cc070;
+    --magic: #c49ad0;
+    --blue: #7fb0d4;
+    --accent-soft: rgba(208, 103, 90, 0.14);
   }
 }
 

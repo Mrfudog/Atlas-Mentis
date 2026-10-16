@@ -90,7 +90,7 @@ const objectSchema: z.ZodType<ObjectSchema> = z.lazy(() =>
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'wares', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'stats', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'stats', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),
@@ -98,6 +98,7 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
     /* Anzeige je Art (T-184): nur, wenn der Artikel es sagt. */
     when: z
       .object({
+        type: z.string().optional(),
         field: z.string().optional(),
         has: z.array(z.string()).optional(),
         empty: z.boolean().optional(),
