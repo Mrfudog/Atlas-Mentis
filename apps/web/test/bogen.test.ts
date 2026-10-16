@@ -13,6 +13,7 @@ import type { Entity, SheetHeader } from '@nw/model';
 import { anordnen, reiterVon } from '../src/app/artikel/anordnung';
 import { Bogen } from '../src/app/bogen/kopf';
 import { Zug } from '../src/app/bogen/zug';
+import { Zauberliste } from '../src/app/bogen/zauberliste';
 import { FigurDaten } from '../src/app/bogen/daten';
 import { Werkzeugleiste } from '../src/app/muster/werkzeugleiste';
 import { Api } from '../src/app/kern/api';
@@ -280,5 +281,70 @@ describe('nw-zug (T-247)', () => {
     ([...el.querySelectorAll('.zeile')].find((z) => z.textContent?.includes('Dash')) as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el.querySelector('nw-werkzeugleiste')?.textContent).toContain('Dash');
+  });
+});
+
+describe('nw-zauberliste (T-246)', () => {
+  function zauberliste(haende = handState([])) {
+    const figur: Entity = { id: 'pc', interfaces: ['PlayerCharacter'], name: 'Pc', components: { Vitals: {} }, relations: [{ id: 'k1', type: 'casts', to: 'sp1', props: { mode: 'known' } }] };
+    const spell: Entity = {
+      id: 'sp1', interfaces: ['Spell'], name: 'Veil',
+      components: { Spell: { level: 1, school: 'illusion', components: ['v', 's'], concentration: true, duration: 'timed', durationAmount: 10, durationUnit: 'minute', castingAction: 'at' } },
+      relations: [],
+    };
+    const reg = { interfaces: { Spell: { name: 'Spell', schema: { properties: {} } } }, relations: {}, views: {}, units: {}, settings: {} };
+    const daten = {
+      fuer: () => ({
+        zauber: signal([{ kante: figur.relations![0]!, spell }]),
+        haende: signal(haende),
+        kopf: signal(kopf({ slots: [{ level: 1, max: 2, used: 0 }] })),
+      }),
+      vitals: vi.fn().mockResolvedValue(undefined),
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: FigurDaten, useValue: daten },
+        { provide: Api, useValue: { list: vi.fn().mockResolvedValue({ total: 14, rows: [{ id: 'x', name: 'Charm' }] }) } },
+        { provide: Bestand, useValue: { registry: signal(reg), name: signal((id: string) => (id === 'at' ? 'Action' : undefined)), voll: signal(new Map([['at', { id: 'at', interfaces: ['ActionType'], name: 'Action', components: {}, relations: [] }]])) } },
+        { provide: Session, useValue: { darfSchreiben: signal(() => true) } },
+      ],
+    });
+    TestBed.overrideComponent(Zauberliste, { set: { styleUrl: undefined, styleUrls: [], styles: [], imports: [RouterLink, QuickAttrappe] } });
+    const fixture = TestBed.createComponent(Zauberliste);
+    Object.assign(fixture.componentInstance, { artikel: signal(figur) });
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement, daten };
+  }
+
+  it('lists spells by level with time, tags and Cast with the slot it uses', async () => {
+    const { el, fixture } = zauberliste();
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    expect(el.querySelector('h3')?.textContent).toContain('1st level');
+    const z = el.querySelector('.zeile')!;
+    expect(z.textContent).toContain('Veil');
+    expect(z.textContent).toContain('1 action');
+    expect(z.querySelector('.tag.konz')).not.toBeNull();
+    expect(z.querySelector('.wirken')?.textContent?.trim()).toBe('Cast 1st');
+    expect(el.textContent).toContain('Possible for you now');
+    expect(el.textContent).toContain('all 14');
+    expect(el.querySelector('.weg')?.textContent).toContain('Spells known');
+    expect(el.querySelector('details summary')?.textContent).toContain('Other ways');
+  });
+
+  it('casting uses the slot, starts concentration and marks the action used', async () => {
+    const { el, daten } = zauberliste();
+    (el.querySelector('.wirken') as HTMLButtonElement).click();
+    await Promise.resolve();
+    const aendern = daten.vitals.mock.calls[0]![1] as (v: Record<string, unknown>) => Record<string, unknown>;
+    expect(aendern({})).toEqual({ slotsUsed: [1], concentration: 'sp1', durations: { concentration: 'up to 10 minutes' }, turnUsed: ['action'] });
+  });
+
+  it('blocks casting without a free hand and says why', () => {
+    const { el } = zauberliste(handState([{ id: 'a', name: 'A', slot: 'mainHand', properties: [] }, { id: 'b', name: 'B', slot: 'offHand', properties: [] }]));
+    expect(el.querySelector('.wirken')?.textContent).toContain('Blocked');
+    expect(el.querySelector('.sperre')?.textContent).toContain('no free hand');
   });
 });

@@ -1,0 +1,184 @@
+/* Der Reiter Spells (T-246) — Marken aus styles.scss. */
+:host {
+  display: block;
+}
+.zauber {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.karte {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  min-width: 0;
+}
+h2 {
+  margin: 0 0 0.3rem;
+  font-family: var(--caps);
+  font-size: 1.2rem;
+  color: var(--heading);
+}
+h3 {
+  margin: 0.8rem 0 0.3rem;
+  font-family: var(--caps);
+  font-size: 1rem;
+  color: var(--heading);
+}
+small,
+.leer,
+.fuss {
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+/* Ein Zusatz neben einem Titel oder Link steht mit Abstand (Angular nimmt das Leerzeichen). */
+h3 small,
+p > small,
+.deins {
+  margin-left: 0.4rem;
+}
+.titel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.kopf {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  background: var(--bar);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.kopf div {
+  text-align: center;
+  min-width: 0;
+}
+.kopf dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.kopf dd {
+  margin: 0;
+  font-family: var(--caps);
+  font-size: 1.35rem;
+  color: var(--heading);
+}
+.kopf small {
+  display: block;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.zeile {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) 5.5rem 6rem minmax(0, 1fr) 6rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line2);
+}
+.name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.zeit,
+.weite {
+  font-size: 0.9rem;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.tag {
+  padding: 0 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+.tag.konz {
+  border-color: var(--magic);
+  color: var(--magic);
+}
+.tag.ritual {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.wirken {
+  min-height: 32px;
+  padding: 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.wirken.gesperrt {
+  border-color: var(--line);
+  color: var(--dim);
+  cursor: not-allowed;
+}
+.sperre {
+  grid-column: 1 / -1;
+  color: var(--hp);
+}
+.unten {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.pillen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.pille {
+  padding: 0 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  text-decoration: none;
+}
+.weg p {
+  margin: 0.2rem 0 0.5rem;
+}
+.weg.anders {
+  opacity: 0.75;
+}
+.deins {
+  color: var(--good);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+summary {
+  cursor: pointer;
+  color: var(--link);
+}
+.fehler {
+  color: var(--warn);
+}
+@media (max-width: 760px) {
+  .zeile {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .zeit,
+  .weite {
+    display: none;
+  }
+  .tags {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+  .unten {
+    grid-template-columns: 1fr;
+  }
+}

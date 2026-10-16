@@ -16,6 +16,10 @@ import {
   turnSources,
   turnTypeOf,
   wheelAmount,
+  slotFor,
+  spellLock,
+  spellsByLevel,
+  learningPaths,
   turnActions,
   turnRows,
   sheetHeader,
@@ -203,5 +207,30 @@ describe('composing your turn (T-247)', () => {
     expect(by('s1').lock).toMatch(/no free hand/);
     expect(by('s2').type).toBe('reaction');
     expect(by('use:p1').lock).toMatch(/free hand/);
+  });
+});
+
+describe('casting from the spells tab (T-246)', () => {
+  const slots = [{ level: 1, max: 2, used: 2 }, { level: 2, max: 1, used: 0 }];
+  it('picks the lowest free slot at or above the spell level', () => {
+    expect(slotFor(0, slots)).toBe(0);
+    expect(slotFor(1, slots)).toBe(2);
+    expect(slotFor(3, slots)).toBeNull();
+  });
+  it('locks for the hands first, then for the slot, but not a ritual', () => {
+    const frei = handState([]);
+    const voll = handState([waffe('a', 'mainHand'), waffe('b', 'offHand')]);
+    expect(spellLock(voll, { level: 1, components: ['v', 's'] }, slots)).toMatch(/free hand/);
+    expect(spellLock(frei, { level: 3, components: ['v'] }, slots)).toMatch(/no 3rd-level slot/);
+    expect(spellLock(frei, { level: 3, components: ['v'], ritual: true }, slots)).toBe('');
+  });
+  it('groups by level and splits learning paths into own and other', () => {
+    expect(spellsByLevel([{ level: 1, name: 'B' }, { level: 0, name: 'A' }, { level: 1, name: 'A' }]).map((g) => [g.level, g.rows.map((r) => r.name)])).toEqual([
+      [0, ['A']],
+      [1, ['A', 'B']],
+    ]);
+    const l = learningPaths(['known']);
+    expect(l.own.map((p) => p.mode)).toEqual(['known']);
+    expect(l.other.length).toBe(3);
   });
 });
