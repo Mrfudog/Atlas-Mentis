@@ -1697,6 +1697,11 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
   Feldtabelle und verweist auf den Reiter — sie stünden dort ein zweites
   Mal, ungeordnet; ein `except` an der Feldtabelle reichte nicht, weil der
   Rest (`rest`) sie am Ende wieder hereinholte. Migration 081.
+- **Was unter der gewählten Variante nichts sagt, steht nicht da**
+  (T-248): eine Option mit `when: { field, is }` erscheint nur, solange
+  die genannte Option eine dieser Varianten hat — Basils Raster, Zonen und
+  Körperplätze (`carrying`) nur unter `inventory = grid`. Eine Kampagne,
+  die nach Gewicht zählt, sieht keine Rastereinstellungen.
 - **Mit T-132** schaut `ruleOptionsOf` je Sorte ins gewählte Modul (ein
   lesbarer Regelartikel); Route und Reiter bleiben.
 

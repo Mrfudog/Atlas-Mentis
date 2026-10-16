@@ -79,6 +79,13 @@ export interface RuleOptionDef {
   variants?: readonly RuleVariantDef[];
   /** Regelartikel zur Option als Ganzes. */
   rules?: string[];
+  /**
+   * **Gilt nur unter einer Variante einer anderen Option** (T-248): Basils
+   * Raster, Zonen und Körperplätze sagen nichts, wenn die Kampagne nach
+   * Gewicht oder Slots zählt — dann steht die Option nicht da. Gelesen wird
+   * der Wert über dieselbe Funktion wie sonst (`feldwert`).
+   */
+  when?: { field: string; is: readonly string[] };
 }
 
 /**
@@ -174,6 +181,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: "Basil's sheet: grid, zones and body slots",
     does: 'The grid size per creature size, the draw time per grid column and per body slot, what dropping and stowing cost, and the container templates.',
     source: { settings: ['carrySquares', 'carryZones', 'slotDraw', 'handActions', 'inventoryCols', 'inventoryRows', 'container:*'] },
+    when: { field: 'inventory', is: ['grid'] },
   },
   {
     key: 'craftFailure',
@@ -469,7 +477,8 @@ export function ruleOptionsOf(campaign: Entity | null | undefined, ctx: RuleOpti
   const settings = ctx.settings ?? {};
   return RULE_SORTS.map((sort) => ({
     ...sort,
-    options: RULE_OPTIONS.filter((o) => o.sort === sort.key).map((o): RuleOptionState => {
+    /* Was unter der gewählten Variante nichts sagt, steht nicht da (T-248). */
+    options: RULE_OPTIONS.filter((o) => o.sort === sort.key && (!o.when || o.when.is.includes(String(feldwert(campaign, o.when.field))))).map((o): RuleOptionState => {
       const raus: RuleOptionState = {
         key: o.key,
         label: o.label,
