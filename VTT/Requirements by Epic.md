@@ -310,7 +310,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-32 Stories · 80 Punkte · 8 steht · 5 teils · 19 offen — [[EP-04 Spielererlebnis]]
+39 Stories · 98 Punkte · 8 steht · 5 teils · 26 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -378,6 +378,20 @@ Beute vorbereiten, während der Sitzung öffnen und von Spielenden nehmen lassen
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-332]] | Beute öffnen und nehmen | Spieler | 3 | 3 | offen |
+
+### F-079 Tragplätze
+
+Plätze am Körper und an Ausrüstung (Gürtel, Riemen, Scheide, Köcher, Laschen), verbundene Plätze für lange Gegenstände, Trageregeln am Gegenstand, alle möglichen Plätze mit Grund und Verdrängen. — [[F-079 Tragplätze]]
+
+| ID | Story | Rolle | Prio | Aufwand | Stand |
+|---|---|---|---|---|---|
+| [[REQ-334]] | Ausrüstung bringt Tragplätze mit | Spielleitung | 2 | 3 | offen |
+| [[REQ-335]] | Plätze für lange Gegenstände verbinden | Spielleitung | 2 | 2 | offen |
+| [[REQ-336]] | Festlegen, wo ein Gegenstand getragen werden darf | Spielleitung | 2 | 2 | offen |
+| [[REQ-337]] | Sehen, was weichen muss | Spieler | 2 | 2 | offen |
+| [[REQ-338]] | Körperplätze und Platzarten als Daten | Spielleitung | 2 | 3 | offen |
+| [[REQ-339]] | Tragplätze an der Figur | Spieler | 2 | 3 | offen |
+| [[REQ-340]] | Platzplan in der Maske | Spielleitung | 3 | 3 | offen |
 
 ## EP-05 Kampagne & Sitzungen
 

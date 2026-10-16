@@ -12,14 +12,14 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 172 steht · 47 teils · 98 offen · 10 ersetzt · 6 verworfen — 333 Stories in 78 Features und 12 Epics.
+Zusammen: 172 steht · 47 teils · 105 offen · 10 ersetzt · 6 verworfen — 340 Stories in 79 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 51 | 31 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 38 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 27 | 16 steht · 1 teils · 9 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 32 | 8 steht · 5 teils · 19 offen |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 39 | 8 steht · 5 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 24 | 11 steht · 1 teils · 12 offen |
@@ -325,7 +325,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Spezialplätze mit Filter (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Spezialplätze mit Filter (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Ausrüstung bringt Tragplätze mit (offen) · REQ-335 Plätze für lange Gegenstände verbinden (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze und Platzarten als Daten (offen) · REQ-339 Tragplätze an der Figur (offen) · REQ-340 Platzplan in der Maske (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -385,6 +385,18 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-332 | Beute öffnen und nehmen | 3 | **offen** |  |
+
+### F-079 Tragplätze
+
+| ID | Story | Prio | Stand | Anmerkung |
+|---|---|---|---|---|
+| REQ-334 | Ausrüstung bringt Tragplätze mit | 2 | **offen** |  |
+| REQ-335 | Plätze für lange Gegenstände verbinden | 2 | **offen** |  |
+| REQ-336 | Festlegen, wo ein Gegenstand getragen werden darf | 2 | **offen** |  |
+| REQ-337 | Sehen, was weichen muss | 2 | **offen** |  |
+| REQ-338 | Körperplätze und Platzarten als Daten | 2 | **offen** |  |
+| REQ-339 | Tragplätze an der Figur | 2 | **offen** |  |
+| REQ-340 | Platzplan in der Maske | 3 | **offen** |  |
 
 ## EP-05 Kampagne & Sitzungen
 
@@ -990,6 +1002,12 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-327** (2, offen, Spielererlebnis) — Packen am Telefon
 - **REQ-328** (2, offen, Spielererlebnis) — Ablage für nicht Verstautes
 - **REQ-333** (2, offen, Spielererlebnis) — Vorgaben für Formen und Stapel
+- **REQ-334** (2, offen, Spielererlebnis) — Ausrüstung bringt Tragplätze mit
+- **REQ-335** (2, offen, Spielererlebnis) — Plätze für lange Gegenstände verbinden
+- **REQ-336** (2, offen, Spielererlebnis) — Festlegen, wo ein Gegenstand getragen werden darf
+- **REQ-337** (2, offen, Spielererlebnis) — Sehen, was weichen muss
+- **REQ-338** (2, offen, Spielererlebnis) — Körperplätze und Platzarten als Daten
+- **REQ-339** (2, offen, Spielererlebnis) — Tragplätze an der Figur
 - **REQ-007** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **REQ-022** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **REQ-025** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*
@@ -1044,3 +1062,4 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-329** (3, offen, Medien & Assets) — Bilder im Inventar
 - **REQ-330** (3, offen, Medien & Assets) — Inventarbild an einen Gegenstand binden
 - **REQ-332** (3, offen, Spielererlebnis) — Beute öffnen und nehmen
+- **REQ-340** (3, offen, Spielererlebnis) — Platzplan in der Maske
