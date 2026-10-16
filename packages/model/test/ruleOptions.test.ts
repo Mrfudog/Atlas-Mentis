@@ -64,6 +64,26 @@ describe('ruleOptionsOf', () => {
     expect(option(s, 'carrying').value).toEqual(['Backpack: ###']);
   });
 
+  it('zeigt Basils Raster nur, wenn die Kampagne nach Raster zählt (T-248)', () => {
+    const setz = { 'container:Backpack': '###' };
+    expect(option(ruleOptionsOf(null, ctx(undefined, setz)), 'carrying')).toBeDefined();
+    expect(option(ruleOptionsOf(kampagne({ inventory: 'grid' }), ctx(undefined, setz)), 'carrying')).toBeDefined();
+    for (const inventory of ['weight', 'slots']) {
+      const s = ruleOptionsOf(kampagne({ inventory }), ctx(undefined, setz));
+      expect(s.flatMap((x) => x.options).some((o) => o.key === 'carrying')).toBe(false);
+      /* Die übrigen Optionen der Sorte bleiben. */
+      expect(option(s, 'inventory')).toBeDefined();
+      expect(option(s, 'stowing')).toBeDefined();
+    }
+  });
+
+  it('nennt in `when` nur Felder mit Varianten, die es gibt', () => {
+    for (const o of RULE_OPTIONS.filter((x) => x.when)) {
+      const ziel = RULE_OPTIONS.find((x) => 'field' in x.source && x.source.field === o.when!.field);
+      expect(ziel?.variants?.map((v) => v.key)).toEqual(expect.arrayContaining([...o.when!.is]));
+    }
+  });
+
   it('sucht jeden Namen, den die Seite verwendet', () => {
     const namen = ruleOptionRuleNames();
     for (const o of RULE_OPTIONS) for (const v of o.variants ?? []) expect(namen).toContain(ownRuleName(o, v));

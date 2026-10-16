@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-rules-only-what-applies",
+      "date": "2026-10-16",
+      "title": "Rules & options shows grid settings only for grid inventories",
+      "text": "A campaign that counts inventory by weight or slots no longer lists the grid, zone and body slot settings under Rules & options › Inventory. Switch Inventory rules to Grid and they appear again.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-15-source-contents",
       "date": "2026-10-15",
       "title": "See everything a source brings, and choose down to single articles",

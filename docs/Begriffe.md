@@ -1844,7 +1844,11 @@ einen hat („Encumbrance"), sonst einer, den die Leitung unter dem Namen
 der Variante schreibt — ein Satz im Code erklärt, ein Artikel lässt sich
 nachlesen, ändern und am Tisch zeigen. Gefunden wird er nach Namen und
 nicht über eine Kante: ein Regelwerk, das morgen eingelesen wird, bringt
-seine Erklärung mit, ohne dass jemand sie anhängt.
+seine Erklärung mit, ohne dass jemand sie anhängt. **Was nicht gilt,
+steht nicht da** — auch hier: die Einstellungen von Basils Raster stehen
+nur, wenn die Kampagne nach Raster zählt (T-248); wer reines D&D spielt,
+soll nicht lesen müssen, wie eine Hausregel eingestellt ist, die er nicht
+spielt.
 
 **Geben heisst, die Kante umzuhängen.** Wer der Gruppe ein Seil gibt,
 nimmt die `holds`-Kante aus dem eigenen Inventar und legt sie in das der
