@@ -267,7 +267,8 @@ for (const s of soll) {
   let publikation = e.publication;
   for (const id of basis) {
     const b = ok(await api(`/api/entities/${encodeURIComponent(id)}`), `Grundlage ${id}`);
-    verweise.push(`[[${id}|${b.components?.Identity?.name ?? b.name ?? id}]]`);
+    /* Ein Verweis nennt die Nummer (M11), nicht die interne Id. */
+    verweise.push(`[[${b.components?.Identity?.id ?? id}|${b.components?.Identity?.name ?? b.name ?? id}]]`);
     publikation ??= b.components?.Source?.publication;
   }
   const text = verweise.length ? `${s.does}\n\nBased on ${verweise.join(', ')}.` : s.does;
