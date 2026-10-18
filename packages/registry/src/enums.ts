@@ -76,6 +76,19 @@ export const enums: Record<string, EnumDef> = {
    * eine Kampagne mit einer anderen Leiter ist eine andere Zeile und kein
    * Codewechsel.
    */
+  /**
+   * **Die Stufen der Sichtbarkeit**, von aussen nach innen: `public` jedes
+   * Konto, `campaign` jedes mit einer Rolle am Tisch (in der Übersicht
+   * „Table"), `players` die Spielenden, `gm` die Leitung. Eine Zeile, seit
+   * drei Felder sie brauchen (T-252): `Visibility.audience` am Artikel,
+   * `Layer.defaultAudience` und die Regeln je Gruppe der Kampagne.
+   */
+  Audience: {
+    name: 'Audience',
+    label: 'Audience',
+    values: ['public', 'campaign', 'players', 'gm'],
+  },
+
   DrawTime: {
     name: 'DrawTime',
     label: 'Draw time',

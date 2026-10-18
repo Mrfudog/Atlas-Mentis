@@ -61,16 +61,16 @@
    "y": 660,
    "w": 260,
    "h": 64,
-   "text": "audience?",
+   "text": "audience\nam Artikel?",
    "farbe": "gelb"
   },
   {
    "id": "RO",
-   "x": 280,
-   "y": 770,
-   "w": 260,
+   "x": 640,
+   "y": 880,
+   "w": 280,
    "h": 64,
-   "text": "Rolle in der Kampagne\nder Ebene reicht?",
+   "text": "Stufe reicht für seine Rolle?\n(public immer; Rolle in der Kampagne)",
    "farbe": "gelb"
   },
   {
@@ -111,8 +111,8 @@
   },
   {
    "id": "N2",
-   "x": 0,
-   "y": 770,
+   "x": 700,
+   "y": 1020,
    "w": 180,
    "h": 64,
    "text": "unsichtbar",
@@ -130,11 +130,38 @@
   {
    "id": "J2",
    "x": 720,
-   "y": 640,
+   "y": 660,
    "w": 180,
    "h": 100,
    "text": "sichtbar",
    "farbe": "gruen"
+  },
+  {
+   "id": "KR",
+   "x": 280,
+   "y": 770,
+   "w": 260,
+   "h": 64,
+   "text": "Regel der Kampagne?\n(genaueste, die für ihn spricht)",
+   "farbe": "gelb"
+  },
+  {
+   "id": "LV",
+   "x": 280,
+   "y": 880,
+   "w": 260,
+   "h": 64,
+   "text": "Vorgabe der Ebene?\n(engste, sonst public)",
+   "farbe": "gelb"
+  },
+  {
+   "id": "N4",
+   "x": 0,
+   "y": 770,
+   "w": 180,
+   "h": 64,
+   "text": "unsichtbar",
+   "farbe": "rot"
   }
  ],
  "pfeile": [
@@ -210,13 +237,38 @@
   },
   {
    "von": "A",
-   "nach": "J2",
-   "text": "public"
+   "nach": "RO",
+   "text": "gesetzt"
   },
   {
    "von": "A",
+   "nach": "KR",
+   "text": "keine"
+  },
+  {
+   "von": "KR",
+   "nach": "N4",
+   "text": "hide nennt ihn"
+  },
+  {
+   "von": "KR",
+   "nach": "J2",
+   "text": "show nennt ihn"
+  },
+  {
+   "von": "KR",
    "nach": "RO",
-   "text": "campaign · players · gm"
+   "text": "Stufe"
+  },
+  {
+   "von": "KR",
+   "nach": "LV",
+   "text": "keine"
+  },
+  {
+   "von": "LV",
+   "nach": "RO",
+   "text": "Stufe"
   },
   {
    "von": "RO",
@@ -232,10 +284,10 @@
  "texte": [
   {
    "x": 0,
-   "y": 860,
+   "y": 1120,
    "w": 900,
    "groesse": 14,
-   "text": "Reihenfolge ist die Regel: hiddenFrom schlägt revealedTo schlägt audience. Träger eines Betrachters: seine Figuren,\nderen Party (memberOfParty) und Faction (memberOf) — einen Schritt weit."
+   "text": "Reihenfolge ist die Regel: hiddenFrom > revealedTo > audience am Artikel > Regel der Kampagne > Vorgabe der Ebene > public\n(T-252, E-098). Träger eines Betrachters: seine Figuren, deren Party und Faction — einen Schritt weit."
   }
  ]
 }
