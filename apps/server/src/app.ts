@@ -3256,7 +3256,7 @@ export function buildApp({
   async function anlegen(
     request: FastifyRequest,
     body: Anlage | null | undefined,
-    optionen: { fuer?: string; zurueck?: boolean } = {},
+    optionen: { fuer?: string; zurueck?: boolean; ohneVorgabe?: string[] } = {},
   ): Promise<{ code: number; body: unknown }> {
       const type = String(body?.type ?? '');
       const name = String(body?.name ?? '').trim();
@@ -3275,7 +3275,7 @@ export function buildApp({
         if (!schema) continue;
         const karte: Record<string, unknown> = {};
         for (const [k, p] of Object.entries(schema.properties ?? {})) {
-          if (!p.derived && p.default !== undefined) karte[k] = structuredClone(p.default);
+          if (!p.derived && p.default !== undefined && !optionen.ohneVorgabe?.includes(`${t}.${k}`)) karte[k] = structuredClone(p.default);
         }
         if (Object.keys(karte).length || (schema.required ?? []).length) components[t] = karte;
       }
