@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-proficiencies-with-source",
+      "date": "2026-10-18",
+      "title": "Every proficiency with where it comes from",
+      "text": "A character is now proficient in what its class, background, origin, feats and choices grant — a tool chosen at the background counts in Crafting. Below the statblock, each saving throw, proficiency and expertise shows its source, linked to the article.",
+      "area": "Characters",
+      "link": "/world",
+      "query": { "type": "PlayerCharacter" }
+    },
+    {
       "id": "2026-10-16-character-crafting-campaign",
       "date": "2026-10-16",
       "title": "Crafting and Campaign tabs on your character",
