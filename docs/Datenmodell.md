@@ -901,7 +901,32 @@ und deren `Faction` (`memberOf`) — einen Schritt weit.
 | `revealedTo` | Träger | ausdrücklich freigegeben |
 | `hiddenFrom` | Träger | ausdrücklich verborgen |
 
-`hiddenFrom` schlägt `revealedTo` schlägt `audience`. Träger sind `Creature`,
+`hiddenFrom` schlägt `revealedTo` schlägt `audience`. **Sagt der Artikel
+keine Stufe, sagt es seine Gruppe** (T-252, E-098): erst die Regel der
+laufenden Kampagne, dann die Vorgabe seiner Ebene, dann `public`.
+
+| Wo | Feld | Bedeutung |
+|---|---|---|
+| Kampagne | `VisibilityRules.visibilityRules` | je Gruppe eine Regel `{id, audience?, show?, hide?}` — `id` ist der Schlüssel der Gruppe aus den Transformationen (`layer:dnd\|type:Spell`, T-253), `show`/`hide` nennen Träger |
+| Ebene | `Layer.defaultAudience` | die Vorgabe für ihre Artikel (nicht die Sichtbarkeit der Ebene selbst); liegt ein Artikel in mehreren Ebenen, gilt die engste |
+
+Von mehreren Regeln gilt **die genaueste, die für diesen Betrachter etwas
+sagt** (`mostSpecific`, die meisten Glieder): ein Verbot oder eine Freigabe
+für einen seiner Träger, sonst ihre Stufe — gefragt wird dann die Rolle in
+**dieser** Kampagne. Eine Regel, die nur Rook etwas zeigt, sagt über Sela
+nichts; für sie gilt die nächst gröbere. Die Dimensionen der Schlüssel
+(Ebene, Ebenengruppe, Art, Bereich, Marke, Status, Sichtbarkeit) stehen in
+`visibilityDimensions`; ein Glied einer Dimension, die es nicht gibt,
+trifft nie. Gesetzt wird in der Übersicht der Kampagnenseite (Reiter
+Visibility, `GET /api/campaigns/:c/visibility`, `PUT …/visibility/rules`,
+`POST …/visibility/follow`), die je Gruppe und Spalte zählt, woher die
+Stufe kommt (`effectiveAudience`: `article`, `campaign`, `layer`,
+`default`), und Artikel mit eigenem Feld als Ausnahmen zeigt.
+**Ein ausdrücklich gesetztes `audience`, auch `public`, ist ein eigenes
+Feld** und schlägt jede Regel — „Follow the group" nimmt es weg. Die
+Stufen sind die Zeile `Audience` (seit drei Felder sie brauchen).
+
+Träger sind `Creature`,
 `Party`, `Faction` — dieselben drei wie `knownBy`. Gefragt wird die
 Rolle in **der** Kampagne, der der Artikel gehört (E3); gehört er keiner
 einzelnen, zählt die stärkste Rolle irgendwo. **Vererbt wird nichts.** Wer
@@ -1903,7 +1928,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-18: 60 Artikelarten, 24 Grundtypen, 69 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-18: 60 Artikelarten, 25 Grundtypen, 69 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -1932,6 +1957,7 @@ Stand 2026-10-18: 60 Artikelarten, 24 Grundtypen, 69 Kantenarten, 7 Aufzählungs
 | `Todos` | `items` | 4 |
 | `Vars` | `bindings` | `Creature` `Rule` `Statblock` |
 | `Visibility` | `audience` `revealedTo` `hiddenFrom` | 26 |
+| `VisibilityRules` | `visibilityRules` | `Campaign` |
 | `Vitals` | `hp` `hpTemp` `hitDiceLeft` `deathSuccess` `deathFail` `inspiration` `conditions` `nat1` `slotsUsed` `concentration` `durations` `hidden` `turnUsed` | `Creature` |
 
 Ein `*` am Feld heisst gerechnet.
@@ -1965,7 +1991,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | — |
-| `Campaign` | `Story` | `compareFor` `languages` `feats` `hitPoints` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `playerRolls` `fog` `moves` `revealOnMove` `doors` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` `VisibilityRules` | `compareFor` `languages` `feats` `hitPoints` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `playerRolls` `fog` `moves` `revealOnMove` `doors` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
@@ -2021,7 +2047,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Chapter` | `Source` | `ordinal` | `partOf` `chapterOf` | `partOf` | — |
 | `Embed` | `BookPart` | `target` | `partOf` | `describedIn` | — |
 | `Heading` | `BookPart` | `level` | `partOf` | `describedIn` | — |
-| `Layer` | — | `kind` `order` `abbreviation` `published` `author` `version` `levels` `storyline` `groupBy` | `partOf` | `partOf` `inLayer` `activates` `layerRule` | full |
+| `Layer` | — | `kind` `order` `abbreviation` `published` `author` `version` `levels` `storyline` `groupBy` `defaultAudience` | `partOf` | `partOf` `inLayer` `activates` `layerRule` | full |
 | `Paragraph` | `BookPart` | `kind` | `partOf` | `describedIn` | — |
 | `ReadAloudText` | `BookPart` `ReadAloud` | — | `partOf` | `describedIn` | — |
 
@@ -2104,6 +2130,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Zeile | Wörter | genannt von |
 |---|---|---|
 | `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Class.primaryAbility` `Class.spellAbility` `Subclass.spellAbility` `Disease.save` `Spell.save` `ZoneKind.save` `Statblock.spellAbility` `Recipe.ability` |
+| `Audience` | public · campaign · players · gm | `Visibility.audience` `Layer.defaultAudience` |
 | `DamageType` | 13: acid · bludgeoning · cold · fire … | `Ancestry.resistances` `Action.damageType` `Action.extraDamageType` `Spell.damageTypes` `Weapon.damageType` |
 | `DrawTime` | free action · bonus action · action · turn · round | `Inventory.zones` |
 | `EncounterKind` | combat · social · puzzle · exploration · hazard · trap · resource · story | `Encounter.kind` |

@@ -19,8 +19,11 @@
  */
 
 import { areaOf, primaryInterface } from './entity.js';
+import { dimensionValues, glied, NONE, type Dimension } from './transformkeys.js';
 import type { Entity, Registry } from './types.js';
 import { layersOf } from './versions.js';
+
+export * from './transformkeys.js';
 
 /** Ein Schritt der Kette. */
 export type TransformStep =
@@ -29,20 +32,6 @@ export type TransformStep =
   | { filter: string; values: string[]; not?: boolean }
   /** Sortiert die Zeilen in jedem Knoten nach dem ersten Wert von `dim`. */
   | { sort: string; desc?: boolean };
-
-/** Wonach gruppiert, gefiltert oder sortiert werden kann. */
-export interface Dimension<T> {
-  /** Ohne `:`, `|` und `,` — sie trennen Glieder und Schritte. */
-  key: string;
-  label: string;
-  /** Die Werte einer Zeile; leer heisst: keiner (`NONE`). */
-  values: (row: T) => readonly string[];
-  /** Wie ein Wert heisst — sonst der Wert selbst. */
-  valueLabel?: (value: string) => string;
-}
-
-/** Der Wert für Zeilen ohne Wert in einer Dimension. */
-export const NONE = '';
 
 export interface TransformNode<T> {
   /** Der Weg: `dim:wert|dim:wert`. */
@@ -70,10 +59,6 @@ function dimOf(step: TransformStep): string {
   return 'group' in step ? step.group : 'filter' in step ? step.filter : step.sort;
 }
 
-function werte<T>(d: Dimension<T>, row: T): readonly string[] {
-  const v = d.values(row);
-  return v.length ? v : [NONE];
-}
 
 const vergleich = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 
@@ -99,7 +84,7 @@ export function applyTransform<T>(
     const d = nachKey.get(s.filter);
     if (!d) continue;
     const gesucht = new Set(s.values);
-    liste = liste.filter((r) => werte(d, r).some((v) => gesucht.has(v)) !== !!s.not);
+    liste = liste.filter((r) => dimensionValues(d, r).some((v) => gesucht.has(v)) !== !!s.not);
   }
 
   const sortierer = steps.flatMap((s) => {
@@ -112,7 +97,7 @@ export function applyTransform<T>(
       .map((r, i) => ({ r, i }))
       .sort((a, b) => {
         for (const { d, desc } of sortierer) {
-          const c = vergleich.compare(werte(d, a.r)[0] ?? '', werte(d, b.r)[0] ?? '');
+          const c = vergleich.compare(dimensionValues(d, a.r)[0] ?? '', dimensionValues(d, b.r)[0] ?? '');
           if (c) return desc ? -c : c;
         }
         return a.i - b.i;
@@ -131,7 +116,7 @@ export function applyTransform<T>(
     if (!d) return [];
     const je = new Map<string, T[]>();
     for (const r of zeilen) {
-      for (const v of new Set(werte(d, r))) {
+      for (const v of new Set(dimensionValues(d, r))) {
         const l = je.get(v);
         if (l) l.push(r);
         else je.set(v, [r]);
@@ -156,60 +141,6 @@ export function applyTransform<T>(
   };
 
   return { rows: liste, nodes: baue(liste, 0, ''), unknown };
-}
-
-/* Ein Glied `dim:wert`. Der Wert ist geschützt (`encodeURIComponent`):
-   eine Marke oder ein Feldwert darf `:` und `|` enthalten, eine
-   Dimension nicht. */
-function glied(dim: string, value: string): string {
-  return dim + ':' + encodeURIComponent(value);
-}
-
-/** Die Glieder eines Schlüssels: `layer:dnd|type:Spell` → `[['layer','dnd'],['type','Spell']]`. */
-export function keyParts(key: string): [string, string][] {
-  if (!key) return [];
-  return key.split('|').map((p) => {
-    const i = p.indexOf(':');
-    return [p.slice(0, i), decodeURIComponent(p.slice(i + 1))];
-  });
-}
-
-/** Ein Schlüssel aus Gliedern — die Umkehrung von `keyParts`. */
-export function keyOf(parts: readonly (readonly [string, string])[]): string {
-  return parts.map(([d, v]) => glied(d, v)).join('|');
-}
-
-/**
- * **Trifft der Schlüssel diese Zeile?** Jedes Glied muss passen; eine
- * Dimension mit mehreren Werten passt, wenn einer davon passt. Ein Glied
- * einer unbekannten Dimension passt nie — eine Regel, die nach etwas fragt,
- * das es nicht mehr gibt, soll nicht plötzlich für alles gelten.
- */
-export function keyMatches<T>(key: string, row: T, dims: readonly Dimension<T>[]): boolean {
-  const nachKey = new Map(dims.map((d) => [d.key, d]));
-  return keyParts(key).every(([dim, v]) => {
-    const d = nachKey.get(dim);
-    return !!d && werte(d, row).includes(v);
-  });
-}
-
-/**
- * **Der genaueste Schlüssel, der passt** — der mit den meisten Gliedern;
- * bei gleich vielen der erste in `keys`. `null`, wenn keiner passt.
- * So liest die Sichtbarkeit ihre Regeln je Gruppe (E-098: „genaueste
- * zuerst").
- */
-export function mostSpecific<T>(keys: Iterable<string>, row: T, dims: readonly Dimension<T>[]): string | null {
-  let best: string | null = null;
-  let tiefe = -1;
-  for (const k of keys) {
-    const n = keyParts(k).length;
-    if (n > tiefe && keyMatches(k, row, dims)) {
-      best = k;
-      tiefe = n;
-    }
-  }
-  return best;
 }
 
 /**
