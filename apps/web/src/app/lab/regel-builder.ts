@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild, type ElementRef } from '@angular/core';
 import {
   describeRuleNode,
   exampleRuleGraphs,
@@ -106,8 +106,8 @@ type Ziehen =
                 @for (g of gr.regeln; track g.id) {
                   <li>
                     <button type="button" class="regel" [class.aktiv]="g.id === aktivId()" [class.aus]="!g.enabled" (click)="waehle(g.id)">
-                      <span>{{ g.name }}{{ geaendert().has(g.id) ? ' •' : '' }}</span>
-                      <small>{{ ausloeserVon(g) }} · {{ g.nodes.length }} nodes{{ g.enabled ? '' : ' · off' }}</small>
+                      <span>{{ g.name }}</span>
+                      <small>{{ ausloeserVon(g) }} · {{ g.nodes.length }} nodes{{ g.enabled ? '' : ' · off' }}{{ geaendert().has(g.id) ? ' · unsaved' : '' }}</small>
                     </button>
                   </li>
                 }
@@ -749,6 +749,10 @@ type Ziehen =
     .zahl {
       width: 4.5rem;
     }
+    .feuert {
+      list-style: none;
+      padding: 0;
+    }
     .feuert li {
       margin: 0.2rem 0;
     }
@@ -775,6 +779,7 @@ export class RegelBuilder {
   protected readonly drahtWahl = signal<number | null>(null);
   protected readonly ziehen = signal<Ziehen | null>(null);
   protected readonly massstab = signal(1);
+  private readonly flaecheRef = viewChild<ElementRef<HTMLElement>>('flaeche');
 
   /* Filter der Übersicht. */
   protected readonly suche = signal('');
@@ -872,7 +877,8 @@ export class RegelBuilder {
         const regeln = [...alt, ...neu];
         this.regeln.set(regeln);
         this.geaendert.set(new Set(neu.map((g) => g.id)));
-        this.aktivId.set(this.gruppen()[0]?.regeln[0]?.id ?? regeln[0]?.id ?? null);
+        const erste = this.gruppen()[0]?.regeln[0]?.id ?? regeln[0]?.id;
+        if (erste) this.waehle(erste);
       }
     } catch {
       this.fehler.set('The rules could not be loaded.');
@@ -887,6 +893,14 @@ export class RegelBuilder {
     this.aktivId.set(id);
     this.knotenWahl.set(null);
     this.drahtWahl.set(null);
+    /* Eine neue Regel steht ganz da: verkleinert, bis sie in die Breite passt. */
+    this.massstab.set(1);
+    /* Gemessen wird nach dem Zeichnen; beim ersten Laden steht die Fläche erst danach. */
+    setTimeout(() => {
+      const el = this.flaecheRef()?.nativeElement;
+      /* Von selbst nicht kleiner als lesbar; den Rest scrollt man, „Fit" geht weiter. */
+      if (el) this.einpassen(el, 0.6);
+    }, 50);
   }
 
   private aendere(id: string, f: (g: RuleGraph) => RuleGraph): void {
@@ -1208,9 +1222,9 @@ export class RegelBuilder {
   }
 
   /** So klein, dass die ganze Regel in die Breite der Fläche passt (höchstens 100 %). */
-  protected einpassen(flaeche: HTMLElement): void {
+  protected einpassen(flaeche: HTMLElement, mindestens = 0.3): void {
     const breite = flaeche.clientWidth - 4;
-    if (breite > 0) this.massstab.set(Math.max(0.3, Math.min(1, breite / this.groesse().w)));
+    if (breite > 0) this.massstab.set(Math.max(mindestens, Math.min(1, breite / this.groesse().w)));
   }
 
   /* ----------------------------------------------------------- Probelauf */
