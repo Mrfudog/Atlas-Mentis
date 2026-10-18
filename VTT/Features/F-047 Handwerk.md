@@ -15,7 +15,7 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-4 Stories · 12 Punkte · 4 steht
+5 Stories · 14 Punkte · 5 steht
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -23,4 +23,5 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 | [[REQ-218]] Blaupausen lernen | Spieler | 3 | steht |
 | [[REQ-219]] Material beim Start binden | Spieler | 3 | steht |
 | [[REQ-347]] Handwerk an der Figur | Spieler | 2 | steht |
+| [[REQ-349]] Wie Blaupausen gelernt werden, ist eine Regeloption | Spielleitung | 1 | steht |
 <!-- stories:ende -->

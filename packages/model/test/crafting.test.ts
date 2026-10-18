@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyRoll,
+  blueprintKnown,
   craftCheck,
   craftRuleSentences,
   craftRulesOf,
@@ -72,7 +73,7 @@ describe('Fertigungsauftrag (T-128): Regeln, Probe, Abrechnung', () => {
   const proben = { unit: 'checks' as const, needed: 3 };
 
   it('Vorgaben ohne Kampagne, Unsinn fällt auf die Vorgabe', () => {
-    expect(regeln).toEqual({ failure: 'halfLost', critSuccess: 'asSuccess', critFailure: 'asFailure', confirm: 'gm' });
+    expect(regeln).toEqual({ failure: 'halfLost', critSuccess: 'asSuccess', critFailure: 'asFailure', confirm: 'gm', learning: 'taught', learnRarity: 'common' });
     const k = art('k', 'Campaign', 'Run', { components: { Campaign: { craftFailure: 'quatsch', craftConfirm: 'player' } } });
     expect(craftRulesOf(k)).toMatchObject({ failure: 'halfLost', confirm: 'player' });
     // Das alte „dem Rezept folgen" gibt es nicht mehr (T-165).
@@ -104,12 +105,14 @@ describe('Fertigungsauftrag (T-128): Regeln, Probe, Abrechnung', () => {
       'On a natural 20: an ordinary success.',
       'On a natural 1: counts as a failed check.',
       'Checks by players count once the GM accepts them.',
+      'Known: only blueprints that were taught.',
     ]);
-    expect(craftRuleSentences({ failure: 'noProgress', critSuccess: 'double', critFailure: 'materialsLost', confirm: 'player' })).toEqual([
+    expect(craftRuleSentences({ failure: 'noProgress', critSuccess: 'double', critFailure: 'materialsLost', confirm: 'player', learning: 'rarity', learnRarity: 'common' })).toEqual([
       'On a failed check: the check simply does not count.',
       'On a natural 20: the check counts twice.',
       'On a natural 1: the work fails and the materials are lost.',
       'Checks by players count at once.',
+      'Known: every blueprint up to common for a tool the character is proficient in, and what was taught.',
     ]);
   });
 
@@ -224,5 +227,28 @@ describe('Proben als Kreise (T-165): Zyklus, Anwenden und Zurücknehmen je Regel
     expect(verloren).toMatchObject({ outcome: 'open', daysLeft: 2, progress: 0 });
     expect(verloren.circles[1]).toMatchObject({ mark: null, open: false });
     expect(tallyChecks([k('failure'), k('success')], tage, r, 4)).toMatchObject({ outcome: 'succeeded' });
+  });
+});
+
+describe('known blueprints (T-280, REQ-349)', () => {
+  const regeln = (learning: 'all' | 'taught' | 'rarity', learnRarity = 'common') => ({ learning, learnRarity });
+  it('knows everything under Kibbles, only what was taught otherwise', () => {
+    expect(blueprintKnown(regeln('all'), { taught: false, toolOk: false, rarity: 'legendary' })).toBe(true);
+    expect(blueprintKnown(regeln('taught'), { taught: false, toolOk: true, rarity: 'none' })).toBe(false);
+    expect(blueprintKnown(regeln('taught'), { taught: true, toolOk: false, rarity: 'rare' })).toBe(true);
+  });
+  it('by rarity: up to the campaign’s rarity, for a tool the character is proficient in', () => {
+    expect(blueprintKnown(regeln('rarity'), { taught: false, toolOk: true, rarity: 'common' })).toBe(true);
+    expect(blueprintKnown(regeln('rarity'), { taught: false, toolOk: true, rarity: 'none' })).toBe(true);
+    expect(blueprintKnown(regeln('rarity'), { taught: false, toolOk: true, rarity: 'uncommon' })).toBe(false);
+    expect(blueprintKnown(regeln('rarity'), { taught: false, toolOk: false, rarity: 'common' })).toBe(false);
+    expect(blueprintKnown(regeln('rarity', 'rare'), { taught: false, toolOk: true, rarity: 'uncommon' })).toBe(true);
+    expect(blueprintKnown(regeln('rarity'), { taught: false, toolOk: true, rarity: 'varies' })).toBe(false);
+    expect(blueprintKnown(regeln('rarity'), { taught: true, toolOk: false, rarity: 'legendary' })).toBe(true);
+  });
+  it('reads the rule at the campaign, taught when it says nothing', () => {
+    expect(craftRulesOf(null)).toMatchObject({ learning: 'taught', learnRarity: 'common' });
+    const k = { id: 'k', interfaces: ['Campaign'], name: 'k', components: { Campaign: { craftLearning: 'rarity', craftLearnRarity: 'uncommon' } }, relations: [] };
+    expect(craftRulesOf(k)).toMatchObject({ learning: 'rarity', learnRarity: 'uncommon' });
   });
 });
