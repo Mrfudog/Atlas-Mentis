@@ -27,8 +27,8 @@ const ZUSTAND: Record<string, string> = { busy: 'in progress', unlearned: 'not l
     <section class="handwerk" aria-label="Crafting">
       <aside class="filter" aria-label="Filter blueprints">
         <span class="lbl">Blueprints</span>
-        <button type="button" [class.an]="scope() === 'known'" (click)="scope.set('known')">{{ s.actor.name }} knows</button>
-        <button type="button" [class.an]="scope() === 'all'" (click)="scope.set('all')">All blueprints</button>
+        <button type="button" [class.an]="scope() === 'known'" (click)="bereich.set('known')">{{ s.actor.name }} knows · {{ gelernt() }}</button>
+        <button type="button" [class.an]="scope() === 'all'" (click)="bereich.set('all')">All blueprints</button>
         <span class="lbl">Can make</span>
         <button type="button" [class.an]="kann() === 'all'" (click)="kann.set('all')">Everything</button>
         <button type="button" [class.an]="kann() === 'ready'" (click)="umschalten('ready')">Ready now</button>
@@ -43,6 +43,10 @@ const ZUSTAND: Record<string, string> = { busy: 'in progress', unlearned: 'not l
       </aside>
       <div class="liste">
         <h3>{{ scope() === 'known' ? 'Known' : 'All blueprints' }} · {{ zeilen().length }}</h3>
+        @if (scope() === 'all' && bereich() === null && alle().length && !gelernt()) {
+          <!-- Kennt die Figur noch nichts, beginnt der Reiter mit allen (sonst stünde er leer da). -->
+          <p class="hinweis">{{ s.actor.name }} has not learned a blueprint yet — showing all. A recipe counts as learned when an information on it is known by the character.</p>
+        }
         @for (r of zeilen(); track r.id) {
           <button type="button" class="rezept" [class.gewaehlt]="gewaehlt() === r.id" [class.ungelernt]="r.learned === false" (click)="waehle(r.id)">
             <span class="name">
@@ -94,7 +98,7 @@ const ZUSTAND: Record<string, string> = { busy: 'in progress', unlearned: 'not l
     .rezept.gewaehlt, .auftrag.gewaehlt { border: 2px solid var(--accent); background: var(--hover); }
     .rezept.ungelernt { border-style: dashed; opacity: .75; }
     .name { display: flex; flex-direction: column; min-width: 0; }
-    small, .leer, .fuss { color: var(--dim); font-size: .85rem; }
+    small, .leer, .fuss, .hinweis { color: var(--dim); font-size: .85rem; }
     .zustand { white-space: nowrap; font-size: .85rem; color: var(--dim); }
     .zustand[data-zustand='ready'] { color: var(--good); font-weight: 700; }
     .zustand[data-zustand='busy'] { color: var(--gold); font-weight: 700; }
@@ -116,7 +120,10 @@ export class FigurHandwerk {
   readonly sicht = input.required<FigurSicht>();
 
   protected readonly zustandText = ZUSTAND;
-  protected readonly scope = signal<'known' | 'all'>('known');
+  /** Was gewählt wurde; ohne Wahl gelernt, wenn es Gelerntes gibt, sonst alle. */
+  protected readonly bereich = signal<'known' | 'all' | null>(null);
+  protected readonly gelernt = computed(() => this.alle().filter((r) => r.learned === true).length);
+  protected readonly scope = computed<'known' | 'all'>(() => this.bereich() ?? (this.gelernt() ? 'known' : 'all'));
   protected readonly kann = signal<'all' | 'ready' | 'almost'>('all');
   protected readonly werkzeug = signal('');
   protected readonly gewaehlt = signal<string | null>(null);

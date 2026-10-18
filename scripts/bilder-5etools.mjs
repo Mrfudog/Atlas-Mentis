@@ -8,6 +8,7 @@
  *   Auswahl: --only MM,PHB (Quellen)  --kind token,image,map  --limit 50
  *   Ablage:  --out <verzeichnis>  (Vorgabe ./bilder-lauf: Journal und Massenänderungen)
  *   --targets  zählt schon in der Vorschau, welche Artikel es auf dev gibt
+ *   --reserve <GB>  so viel bleibt auf dem Datenträger der Ablage frei (Vorgabe 2)
  *
  * Der Plan kommt vom Einleser (`node packages/import-5etools/dist/cli.js
  * <data> --images bildplan.json`, `bilder.ts`): je Bild der Pfad unter
@@ -148,6 +149,27 @@ if (existsSync(journalPfad)) {
   }
 }
 console.log(`Schon hochgeladen (Journal): ${eintraege.filter((b) => journal.has(b.pfad)).length}`);
+
+/* ---- Platz (T-211): was die Ablage hat und was der Lauf noch braucht.
+   Je Datei das Original und seine Vorschau (480 px WebP, geschätzt 40 KB,
+   nie grösser als das Original). Mit `--write` bricht der Lauf ab, bevor
+   er den Datenträger unter die Reserve füllt — ein voller Datenträger
+   nimmt auch der Datenbank daneben den Platz. */
+const offen = [...dateien.entries()].filter(([p]) => !journal.has(p));
+const braucht = offen.reduce((s, [, d]) => s + d.bytes + Math.min(d.bytes, 40 * 1024), 0);
+const reserve = Number(wert('--reserve') ?? 2) * 1024 ** 3;
+const platzRes = await fetch(`${BASE}/api/assets/storage`, { headers: kopf() });
+const platz = platzRes.ok ? await platzRes.json() : (await platzRes.arrayBuffer(), null);
+if (platz) {
+  console.log(`Ablage: ${platz.files} Dateien, ${mb(platz.bytes)}; frei ${platz.free == null ? '?' : mb(platz.free)} von ${platz.total == null ? '?' : mb(platz.total)}`);
+} else {
+  console.log(`Ablage: Platz unbekannt (GET /api/assets/storage: ${platzRes.status})`);
+}
+console.log(`Braucht noch: ${offen.length} Dateien, ${mb(braucht)} mit Vorschauen; Reserve ${mb(reserve)}`);
+if (SCHREIBEN && offen.length && (!platz || platz.free == null || platz.free - braucht < reserve)) {
+  console.error(platz?.free == null ? 'Abgebrochen: der freie Platz der Ablage ist nicht bekannt.' : `Abgebrochen: danach blieben ${mb(platz.free - braucht)} frei, weniger als die Reserve.`);
+  process.exit(3);
+}
 
 /* ---- 2. Hochladen */
 const abgelehnt = [];

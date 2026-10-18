@@ -16,7 +16,7 @@
 
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import sharp from 'sharp';
@@ -34,6 +34,16 @@ export interface AssetStore {
   delete(key: string): Promise<void>;
   /** Alle Schlüssel — für Zählung und Aufräumen, nicht für Routen. */
   keys(): Promise<string[]>;
+  /** Wie viel liegt und wie viel noch frei ist (T-211) — `free`/`total`
+   *  sind die des Datenträgers, `null`, wo die Ablage keinen kennt. */
+  usage(): Promise<AssetUsage>;
+}
+
+export interface AssetUsage {
+  files: number;
+  bytes: number;
+  free: number | null;
+  total: number | null;
 }
 
 /* Nur so sieht ein Schlüssel aus. Ein `ref` steht in einem Artikel, den
@@ -111,6 +121,24 @@ export class FileAssetStore implements AssetStore {
     return raus.sort();
   }
 
+  /* Vor einem grossen Lauf (T-211) muss man wissen, ob er Platz hat — und
+     von aussen sieht man den Datenträger der Umgebung nicht. */
+  async usage(): Promise<AssetUsage> {
+    let bytes = 0;
+    const keys = await this.keys();
+    for (const k of keys) bytes += (await stat(this.pfad(k))).size;
+    let free: number | null = null;
+    let total: number | null = null;
+    try {
+      const fs = await statfs(this.dir);
+      free = fs.bavail * fs.bsize;
+      total = fs.blocks * fs.bsize;
+    } catch {
+      /* kein Verzeichnis: dann gibt es auch nichts zu zählen */
+    }
+    return { files: keys.length, bytes, free, total };
+  }
+
   /** Beim Start: das Verzeichnis gibt es und es ist schreibbar — sonst
    *  sagt der Server es jetzt und nicht beim ersten Hochladen. */
   async bereit(): Promise<void> {
@@ -145,6 +173,12 @@ export class InMemoryAssetStore implements AssetStore {
 
   async keys(): Promise<string[]> {
     return [...this.files.keys()].sort();
+  }
+
+  async usage(): Promise<AssetUsage> {
+    let bytes = 0;
+    for (const d of this.files.values()) bytes += d.length;
+    return { files: this.files.size, bytes, free: null, total: null };
   }
 }
 

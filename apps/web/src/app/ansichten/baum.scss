@@ -1,0 +1,185 @@
+/* Eine gestaltete Ansicht (T-268): Pergament wie die Artikelseite. */
+:host {
+  display: block;
+  line-height: 1.4;
+}
+.abschnitt {
+  margin: 0 0 0.9rem;
+}
+h3,
+.ueber {
+  margin: 0 0 0.35rem;
+  font-family: var(--caps);
+  color: var(--heading);
+}
+h3 {
+  font-size: 1.05rem;
+  border-bottom: 1px solid var(--line2);
+  padding-bottom: 0.15rem;
+}
+.spalten {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
+  gap: 0.9rem;
+  margin: 0 0 0.9rem;
+}
+@media (max-width: 640px) {
+  .spalten {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.klapp {
+  margin: 0 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  background: var(--surface);
+}
+.klapp summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+}
+.karussell {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+.folie {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  background: var(--surface);
+}
+.pfeil {
+  min-width: 2.25rem;
+  font-size: 1.3rem;
+}
+.punkte {
+  margin: 0.3rem 0 0;
+  text-align: center;
+  color: var(--line);
+  letter-spacing: 0.2rem;
+}
+.punkte .an {
+  color: var(--accent);
+}
+.kacheln {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+}
+.kachel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  background: var(--surface);
+}
+.lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.zitat {
+  margin: 0 0 0.6rem;
+  padding: 0.35rem 0.7rem;
+  border-left: 3px solid var(--gold);
+  font-family: var(--serif);
+  font-style: italic;
+}
+.marken {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0 0 0.6rem;
+}
+.marke {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 0.55rem;
+  font-size: 0.85rem;
+  background: var(--chip);
+}
+.kantentabelle {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.9rem;
+  font-size: 0.92rem;
+}
+.kantentabelle caption {
+  text-align: left;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+.kantentabelle th,
+.kantentabelle td {
+  text-align: left;
+  padding: 0.2rem 0.4rem;
+  border-bottom: 1px solid var(--line2);
+}
+.kantentabelle th {
+  color: var(--dim);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.werte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.9rem;
+  margin: 0 0 0.6rem;
+}
+.werte div {
+  display: flex;
+  gap: 0.3rem;
+}
+dt {
+  color: var(--dim);
+}
+dd {
+  margin: 0;
+  font-weight: 600;
+}
+.von {
+  margin: 0.2rem 0;
+  font-weight: 700;
+}
+.satz {
+  display: block;
+  margin: 0 0 0.5rem;
+}
+.hinweis {
+  color: var(--dim);
+  font-style: italic;
+  margin: 0 0 0.5rem;
+}
+.leser.rechts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14rem;
+  gap: 1rem;
+}
+.rand {
+  border-left: 3px solid var(--gold);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.92rem;
+}
+.leser.unten .rand {
+  border-left: 0;
+  border-top: 3px solid var(--gold);
+  margin-top: 0.8rem;
+}
+@media (max-width: 760px) {
+  .leser.rechts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

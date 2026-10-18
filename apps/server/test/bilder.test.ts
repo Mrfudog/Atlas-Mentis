@@ -91,6 +91,7 @@ async function aufbau(opts: { maxBytes?: number } = {}) {
   await konto('Mira', { roles: { camp_nebel: 'gm' } });
   await konto('Sela', { roles: { camp_nebel: 'player' } });
   await konto('Gast', { roles: { camp_nebel: 'spectator' } });
+  await konto('Admin', { admin: true });
   const kekse = new Map<string, string>();
   const keks = async (name: string): Promise<string> => {
     const da = kekse.get(name);
@@ -200,6 +201,17 @@ describe('an image is only served to whom its article is visible', () => {
     expect((await hole('Sela', a.url)).statusCode).toBe(404);
     expect((await hole('Sela', a.thumb)).statusCode).toBe(404);
     expect((await hole('Sela', `/api/entities/${a.id}`)).statusCode).toBe(404);
+  });
+
+  it('follows the group like its article when the article names no audience (T-211, T-252)', async () => {
+    const { hoch, hole, repo } = await aufbau();
+    const a = (await hoch('Mira', { for: 'c_offen' }, { name: 'volo.png', type: 'image/png', data: await png() })).json() as Hochgeladen;
+    expect((a.components?.['Visibility'] as { audience?: unknown } | undefined)?.audience).toBeUndefined();
+    /* Die Ebene verbirgt ihre Artikel vor den Spielenden: Artikel und Bild beide. */
+    const ly = (await repo.getEntity('ly_nebel'))!;
+    await repo.putEntity({ ...ly, components: { ...ly.components, Layer: { defaultAudience: 'gm' } } });
+    expect((await hole('Sela', a.url)).statusCode).toBe(404);
+    expect((await hole('Mira', a.url)).statusCode).toBe(200);
   });
 
   it('serves an open image to players', async () => {
@@ -320,6 +332,18 @@ describe('preparing an image', () => {
   });
 });
 
+describe('the storage of the asset store (T-211)', () => {
+  it('tells the admin how much lies there, and nobody else', async () => {
+    const { hoch, als } = await aufbau();
+    await hoch('Mira', { name: 'Volo' }, { name: 'volo.png', type: 'image/png', data: await png() });
+    const res = await als('Admin', 'GET', '/api/assets/storage');
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ files: 2, free: null, total: null });
+    expect(res.json().bytes).toBeGreaterThan(0);
+    expect((await als('Mira', 'GET', '/api/assets/storage')).statusCode).toBe(403);
+  });
+});
+
 describe('FileAssetStore', () => {
   const dirs: string[] = [];
   afterAll(async () => {
@@ -338,6 +362,10 @@ describe('FileAssetStore', () => {
     const got = await s.get(key);
     expect(got?.bytes).toBe(1);
     got?.body.destroy();
+    const u = await s.usage();
+    expect(u).toMatchObject({ files: 1, bytes: 1 });
+    expect(u.free).toBeGreaterThan(0);
+    expect(u.total).toBeGreaterThanOrEqual(u.free ?? 0);
     await expect(s.put('../boese', Buffer.from('x'))).rejects.toThrow();
     expect(await s.get('../boese')).toBeNull();
     await s.delete(key);

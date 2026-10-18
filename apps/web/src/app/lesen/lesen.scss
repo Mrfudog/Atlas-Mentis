@@ -34,6 +34,15 @@
 .spalten.ohne-inhalt {
   grid-template-columns: minmax(0, 1fr);
 }
+/* Das Verzeichnis über dem Text (T-268): eine gestaltete Ansicht sagt es. */
+.spalten.toc-oben {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+.spalten.toc-oben .inhalt {
+  position: static;
+  max-height: 16rem;
+}
 /* Am Ebenen-Artikel (T-167) steht die Leseansicht in der Seite, ohne eigenen Rand. */
 .leser.eingebettet {
   padding: 0;

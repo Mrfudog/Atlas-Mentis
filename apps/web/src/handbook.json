@@ -73,6 +73,13 @@
           ]
         },
         {
+          "heading": "Designing a view (experiment)",
+          "text": [
+            "Switch on the View designer in Rules & options › Experiments. Registry › Views lists every view; Design opens one as a tree. Add elements from the palette, move them with ← → ↑ ×, and give each its values — follow an edge to show fields of linked articles, such as the wares of the shop a creature keeps.",
+            "Say what the view applies to: types, conditions on field values or edges, or one article. On an article, the View row offers every view that applies; “Design this view” saves the change for all it applies to, or as a new view only for this article or with a condition. Board cards offer the same views."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."
