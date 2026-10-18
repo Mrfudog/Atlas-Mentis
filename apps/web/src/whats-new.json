@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-numbers-with-parts",
+      "date": "2026-10-18",
+      "title": "Character numbers with their parts",
+      "text": "Ability scores now include the bonuses of origin, background, choices and items everywhere — header, statblock, quick view and prerequisites. Below the statblock, “How the numbers come about” breaks down every ability, proficiency bonus, hit points, AC, initiative, speed and senses, each part linked to its source.",
+      "area": "Characters",
+      "link": "/world",
+      "query": { "type": "PlayerCharacter" }
+    },
+    {
       "id": "2026-10-18-rule-options-in-place",
       "date": "2026-10-18",
       "title": "Change rules & options in place",
