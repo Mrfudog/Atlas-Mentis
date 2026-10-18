@@ -203,6 +203,17 @@ describe('an image is only served to whom its article is visible', () => {
     expect((await hole('Sela', `/api/entities/${a.id}`)).statusCode).toBe(404);
   });
 
+  it('follows the group like its article when the article names no audience (T-211, T-252)', async () => {
+    const { hoch, hole, repo } = await aufbau();
+    const a = (await hoch('Mira', { for: 'c_offen' }, { name: 'volo.png', type: 'image/png', data: await png() })).json() as Hochgeladen;
+    expect((a.components?.['Visibility'] as { audience?: unknown } | undefined)?.audience).toBeUndefined();
+    /* Die Ebene verbirgt ihre Artikel vor den Spielenden: Artikel und Bild beide. */
+    const ly = (await repo.getEntity('ly_nebel'))!;
+    await repo.putEntity({ ...ly, components: { ...ly.components, Layer: { defaultAudience: 'gm' } } });
+    expect((await hole('Sela', a.url)).statusCode).toBe(404);
+    expect((await hole('Mira', a.url)).statusCode).toBe(200);
+  });
+
   it('serves an open image to players', async () => {
     const { hoch, hole } = await aufbau();
     const a = (await hoch('Mira', { for: 'c_offen' }, { name: 'volo.png', type: 'image/png', data: await png() })).json() as Hochgeladen;

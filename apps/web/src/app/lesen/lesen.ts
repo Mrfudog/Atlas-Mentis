@@ -138,8 +138,8 @@ interface Abschnitt {
         @if (tocOffen()) {
           <button type="button" class="vorhang" aria-label="Close contents" (click)="tocOffen.set(false)"></button>
         }
-        <div class="spalten" [class.ohne-inhalt]="!b.toc.length">
-          @if (b.toc.length) {
+        <div class="spalten" [class.ohne-inhalt]="!b.toc.length || toc() === 'off'" [class.toc-oben]="toc() === 'top'">
+          @if (b.toc.length && toc() !== 'off') {
           <nav id="inhalt" class="inhalt" [class.offen]="tocOffen()" aria-label="Contents">
             <form class="suche" role="search" (submit)="suchen($event)">
               <input type="search" name="q" [(ngModel)]="frage" placeholder="Search this book"
@@ -309,6 +309,8 @@ export class Lesen {
   readonly eingebettet = input(false);
   /** Eingebettet trotzdem zum Lesestand springen (`?tab=read`, alte Links auf `/read/:layer`). */
   readonly springen = input(false);
+  /** Wo das Inhaltsverzeichnis steht (T-268, Element `reader` einer gestalteten Ansicht); Vorgabe links wie bisher. */
+  readonly toc = input<'left' | 'top' | 'off'>('left');
 
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
