@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-rule-builder-engines",
+      "date": "2026-10-18",
+      "title": "Rule builder (experiment): engines, filters and more examples",
+      "text": "The rule builder lists rules by engine with search and filters for engine, trigger and active rules, brings a dozen sample rules with yes and no branches, and scrolls and zooms on a phone. Dry runs take an amount, such as damage or a spell level.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
       "id": "2026-10-18-view-as-header",
       "date": "2026-10-18",
       "title": "View as from the header",
