@@ -78,6 +78,8 @@ import {
   VARIANT_RELATION,
   detachInstance,
   registryUsage,
+  appliesCount,
+  incomingIndex,
   instancesOf,
   isBookPart,
   isInstance,
@@ -1244,14 +1246,25 @@ export function buildApp({
        zeigt, was die laufende Kampagne aufschaltet. Beides steht jetzt da;
        „sichtbar" heisst im Stapel, vor Sichtbarkeit und Wissen. */
     const kampagne = currentCampaign(map, registry.settings ?? null);
-    if (!kampagne) return usage;
+    const stapel = kampagne ? playStack(map, kampagne, registry) : null;
+    /* Gestaltete Ansichten (T-268): wie viele Artikel jede bekommt —
+       gezählt, was im Stapel steht; Teile und Instanzen sind keine Artikel
+       einer Liste und bekommen keine eigene Ansicht. */
+    const gestaltet = Object.entries(registry.views).filter(([, d]) => d.applies);
+    const views: Record<string, number> = {};
+    if (gestaltet.length) {
+      const zaehlbar = alle.filter((e) => (!stapel || stapel.inPlay(e)) && !isBookPart(e) && !isInstance(e));
+      const rueck = incomingIndex(alle);
+      for (const [key, def] of gestaltet) views[key] = appliesCount(registry, def, zaehlbar, (id) => rueck.get(id) ?? []);
+    }
+    const mitAnsichten = gestaltet.length ? { ...usage, views } : usage;
+    if (!kampagne || !stapel) return mitAnsichten;
     const inPlayJeArt: Record<string, number> = {};
-    const stapel = playStack(map, kampagne, registry);
     for (const e of alle) {
       const typ = e.interfaces?.[0];
       if (typ && stapel.inPlay(e)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
     }
-    return { ...usage, inPlay: inPlayJeArt, campaign: { id: kampagne.id, name: entityName(kampagne) } };
+    return { ...mitAnsichten, inPlay: inPlayJeArt, campaign: { id: kampagne.id, name: entityName(kampagne) } };
   }
 
   app.put<{ Params: { part: string }; Body: unknown }>(
