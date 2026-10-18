@@ -547,7 +547,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-25 Stories · 111 Punkte · 12 steht · 1 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
+26 Stories · 113 Punkte · 13 steht · 1 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -606,6 +606,7 @@ Rezepte, Material, Fortschritt, Blaupausen lernen. — [[F-047 Handwerk]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-349]] | Wie Blaupausen gelernt werden, ist eine Regeloption | Spielleitung | 1 | 2 | steht |
 | [[REQ-347]] | Handwerk an der Figur | Spieler | 2 | 3 | steht |
 | [[REQ-218]] | Blaupausen lernen | Spieler | 3 | 2 | steht |
 | [[REQ-219]] | Material beim Start binden | Spieler | 3 | 2 | steht |
