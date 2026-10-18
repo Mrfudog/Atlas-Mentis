@@ -285,6 +285,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'proficiencies',
+    label: 'Proficiencies of a character',
+    area: 'character',
+    does: 'gathers every proficiency, expertise and saving throw of a character with where it comes from — the statblock by hand, the first class (later classes only their multiclass list), subclass, origin with its base, background, what they grant on their level, chosen feats, answered choices and items that grant proficiency (T-239)',
+    uses: {
+      [M + 'proficiency.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+    },
+  },
+  {
     key: 'usableBy',
     label: 'Usable by a character',
     area: 'character',
