@@ -25,7 +25,7 @@ import type { Ausgeblendet } from './api';
         {{ zahl(i.total) }} {{ i.total === 1 ? 'article is' : 'articles are' }} in layers
         ‘{{ i.campaign.name }}’ does not put in play.
         @if (i.canManage) {
-          <a routerLink="/campaign" [queryParams]="{ c: i.campaign.id }">Change layers</a>
+          <a routerLink="/campaign" [queryParams]="{ c: i.campaign.id, tab: 'layers' }">Change layers</a>
         } @else {
           The GM of the campaign turns layers on.
         }
