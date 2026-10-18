@@ -981,6 +981,8 @@ export interface LaufendeKampagne {
   layers: number;
   /** Wie viele Vergleichsebenen dieses Konto sieht (T-213) — ohne eine kein Schalter. */
   compare?: number;
+  /** Die Ebene der Kampagne (T-251) — Listen nennen nur andere. */
+  campaignLayer?: { id: string; name: string } | null;
 }
 export interface Kampagnen {
   campaigns: KampagneKurz[];
