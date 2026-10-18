@@ -1951,6 +1951,16 @@ die Frage der Sichtbarkeit, nicht des Wissens —, nur gestrichelt und mit
 „must still be learned". Einen Fundort nennt die Werkbank nicht: wo man
 eine Blaupause lernt, ist Kampagneninhalt.
 
+**Wer was kennt, ist eine Tischregel** (T-280, REQ-349). Kibbles lässt
+jede Figur jede Blaupause von Anfang an; Nebelwacht beginnt damit, dass
+jede die gewöhnlichen ihres Berufs kennt und Seltenes gelernt werden muss.
+Darum steht an der Kampagne, *wie* gelernt wird — alle, nur Beigebrachtes,
+oder bis zu einer Seltenheit je Werkzeugübung —, und gerechnet wird beim
+Lesen. Die Blaupausen den Figuren als Informationen zuzuteilen hätte bei
+siebenhundert Rezepten tausende Kanten gemacht, die beim nächsten
+Regelwechsel alle falsch stünden; beigebracht wird weiter über `knownBy`,
+und das gilt unter jeder Regel dazu.
+
 Ein **Gang** ist ein laufendes Handwerk und eine Kante (`crafting`) von dem,
 der arbeitet, zum Rezept. **Beim Start wird gebunden**, was das Rezept
 braucht: es verlässt das Inventar und steht am Gang. Bis dahin ging nichts

@@ -367,6 +367,21 @@ describe('Handwerksübersicht (T-196)', () => {
     expect(s.recipes.every((r: { toolOk: boolean }) => r.toolOk)).toBe(true);
   });
 
+  it('kennt Blaupausen nach der Regel der Kampagne (T-280)', async () => {
+    /* Nur Beigebracht (Vorgabe): „geheim“ ist nicht gelernt. */
+    let s = (await get('s', '/api/crafting/f')).json();
+    expect(Object.fromEntries(s.recipes.map((r: { id: string; learned?: boolean }) => [r.id, r.learned]))).toEqual({ salbe: true, geheim: false });
+    /* Kibbles: alles von Anfang an. */
+    await aufbauen({ craftLearning: 'all' });
+    s = (await get('s', '/api/crafting/f')).json();
+    expect(s.recipes.every((r: { learned?: boolean }) => r.learned === true)).toBe(true);
+    /* Nach Seltenheit: der Trank ist gewöhnlich, die Figur beherrscht kein Herb Kit (ohne die Zusätze dieser Gruppe). */
+    await aufbauen({ craftLearning: 'rarity' });
+    s = (await get('s', '/api/crafting/f')).json();
+    const geheim = s.recipes.find((r: { id: string }) => r.id === 'geheim');
+    expect(geheim.learned).toBe(geheim.toolOk);
+  });
+
   it('der Reiter Crafting (T-247): alle Blaupausen, freies Material der Figur und Gruppe, ihre Aufträge', async () => {
     const id = await starten();
     const s = (await get('s', '/api/crafting/f')).json();

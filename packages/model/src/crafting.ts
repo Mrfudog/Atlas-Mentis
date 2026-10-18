@@ -157,6 +157,13 @@ export const CRAFT_FAILURE = ['noProgress', 'progressLost', 'materialsLost', 'ha
 export const CRAFT_CRIT_SUCCESS = ['asSuccess', 'double'] as const;
 export const CRAFT_CRIT_FAILURE = ['asFailure', 'progressLost', 'materialsLost'] as const;
 export const CRAFT_CONFIRM = ['gm', 'player'] as const;
+/**
+ * **Wie Blaupausen gelernt werden** (T-280, REQ-349): `all` — jede ist von
+ * Anfang an bekannt (Kibbles); `taught` — nur, was der Figur beigebracht
+ * wurde (`recipeLearned`, REQ-218); `rarity` — jede bis zur Seltenheit
+ * `learnRarity`, deren Werkzeug die Figur beherrscht, dazu Beigebrachtes.
+ */
+export const CRAFT_LEARNING = ['all', 'taught', 'rarity'] as const;
 
 export type CraftFailure = (typeof CRAFT_FAILURE)[number];
 
@@ -165,6 +172,9 @@ export interface CraftRules {
   critSuccess: (typeof CRAFT_CRIT_SUCCESS)[number];
   critFailure: (typeof CRAFT_CRIT_FAILURE)[number];
   confirm: (typeof CRAFT_CONFIRM)[number];
+  learning: (typeof CRAFT_LEARNING)[number];
+  /** Bei `rarity`: bis zu welcher Seltenheit (`Item.rarity`) eine Blaupause bekannt ist. */
+  learnRarity: string;
 }
 
 const einer = <T extends string>(liste: readonly T[], v: unknown, vorgabe: T): T =>
@@ -183,7 +193,45 @@ export function craftRulesOf(campaign: Entity | null | undefined): CraftRules {
     critSuccess: einer(CRAFT_CRIT_SUCCESS, k['craftCritSuccess'], 'asSuccess'),
     critFailure: einer(CRAFT_CRIT_FAILURE, k['craftCritFailure'], 'asFailure'),
     confirm: einer(CRAFT_CONFIRM, k['craftConfirm'], 'gm'),
+    /* Vorgabe `taught`: so galt es bis T-280 — eine Kampagne, die nichts
+       sagt, ändert sich nicht. */
+    learning: einer(CRAFT_LEARNING, k['craftLearning'], 'taught'),
+    learnRarity: typeof k['craftLearnRarity'] === 'string' && k['craftLearnRarity'] ? k['craftLearnRarity'] : 'common',
   };
+}
+
+/** Die Seltenheiten der Reihe nach, wie `Item.rarity` sie nennt; ohne Register diese. */
+export const RARITY_ORDER = ['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact'] as const;
+
+/**
+ * **Die Seltenheit einer Blaupause**: die des Gegenstands, den sie liefert
+ * (`yields`). Ohne Ertrag oder ohne Angabe `none` — ein gewöhnlicher
+ * Gegenstand ohne Magie.
+ */
+export function recipeRarity(entities: ReadonlyMap<EntityId, Entity>, recipe: Entity): string {
+  const ziel = (recipe.relations ?? []).find((r) => r.type === 'yields')?.to;
+  const r = ziel ? entities.get(ziel)?.components?.['Item']?.['rarity'] : undefined;
+  return typeof r === 'string' && r ? r : 'none';
+}
+
+/**
+ * **Kennt die Figur diese Blaupause?** (T-280, REQ-349) Nach der Regel der
+ * Kampagne: alle, nur Beigebrachtes, oder bis zu einer Seltenheit, wenn
+ * sie das Werkzeug beherrscht. `varies` und `unknown` haben keinen Rang und
+ * kommen nur beigebracht.
+ */
+export function blueprintKnown(
+  rules: Pick<CraftRules, 'learning' | 'learnRarity'>,
+  b: { taught: boolean; toolOk: boolean; rarity: string },
+  order: readonly string[] = RARITY_ORDER,
+): boolean {
+  if (rules.learning === 'all') return true;
+  if (b.taught) return true;
+  if (rules.learning !== 'rarity' || !b.toolOk) return false;
+  const rang = (x: string) => order.indexOf(x.toLowerCase());
+  const hier = rang(b.rarity);
+  const bis = rang(rules.learnRarity);
+  return hier >= 0 && bis >= 0 && hier <= bis;
 }
 
 /** Was eine Verlustregel (oder ein Ausgang) in Worten tut. */
@@ -208,6 +256,11 @@ export function craftRuleSentences(r: CraftRules): string[] {
     `On a natural 20: ${r.critSuccess === 'double' ? 'the check counts twice' : 'an ordinary success'}.`,
     `On a natural 1: ${nat1}.`,
     r.confirm === 'gm' ? 'Checks by players count once the GM accepts them.' : 'Checks by players count at once.',
+    r.learning === 'all'
+      ? 'Every blueprint is known from the start.'
+      : r.learning === 'rarity'
+        ? `Known: every blueprint up to ${r.learnRarity} for a tool the character is proficient in, and what was taught.`
+        : 'Known: only blueprints that were taught.',
   ];
 }
 
