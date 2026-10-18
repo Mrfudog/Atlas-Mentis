@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-16
+updated: 2026-10-18
 ---
 
 # Requirements by Epic
@@ -14,7 +14,7 @@ Sprung: [[#EP-01 Inhaltsgerüst]] · [[#EP-02 Zugang & Betrieb]] · [[#EP-03 Kre
 
 ## EP-01 Inhaltsgerüst
 
-53 Stories · 177 Punkte · 32 steht · 10 teils · 5 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
+53 Stories · 177 Punkte · 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
 
 ### F-001 Artikelmodell
 
@@ -67,7 +67,7 @@ Ebenen, Gruppen von Ebenen, Herausgeber, Aufschalten (auch teilweise) und was im
 | [[REQ-005]] | Zugehörigkeit eines Artikels zu einer Ebene | Spielleitung | 1 | 3 | steht |
 | [[REQ-006]] | Stapel: was in der Kampagne gilt | Spielleitung | 1 | 5 | teils |
 | [[REQ-100]] | Welt als Ebene | Spielleitung | 1 | 2 | teils |
-| [[REQ-348]] | Ebene am Artikel immer sichtbar | Spielleitung | 1 | 3 | offen |
+| [[REQ-348]] | Ebene am Artikel immer sichtbar | Spielleitung | 1 | 3 | steht |
 | [[REQ-044]] | Herkunft am Artikel sehen | Spielleitung | 2 | 5 | steht |
 | [[REQ-102]] | Artikel je Stapel und Wissen zeichnen | Spieler | 2 | 5 | teils |
 | [[REQ-244]] | Ebenen gruppieren | Spielleitung | 2 | 3 | steht |
