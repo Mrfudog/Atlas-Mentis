@@ -2869,6 +2869,21 @@ export const fieldGroups = {
           enum: ['gm', 'player'],
           default: 'gm',
         },
+        /* **Wie Blaupausen gelernt werden** (T-280, REQ-349): alle (Kibbles),
+           nur Beigebrachtes, oder bis zu einer Seltenheit je Werkzeugübung.
+           Gelesen über `craftRulesOf`, gerechnet in `blueprintKnown`. */
+        craftLearning: {
+          type: 'string',
+          title: 'Crafting: known blueprints',
+          enum: ['all', 'taught', 'rarity'],
+          default: 'taught',
+        },
+        craftLearnRarity: {
+          type: 'string',
+          title: 'Crafting: blueprints up to',
+          enum: ['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary'],
+          default: 'common',
+        },
         /* **Wer die Würfe der Spielenden sieht** (T-172): der Tisch oder
            nur die Leitung (dann ist jeder Wurf einer Spielerin verdeckt,
            wie ein verdeckter der Leitung). Gilt ab dem Wurf — ein späteres

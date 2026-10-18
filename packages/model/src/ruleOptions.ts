@@ -245,6 +245,40 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
+    /* Wie Blaupausen gelernt werden (T-280, REQ-349). */
+    key: 'craftLearning',
+    sort: 'crafting',
+    label: 'Known blueprints',
+    does: 'Which blueprints a character knows — and so may start on the workbench.',
+    source: { field: 'craftLearning' },
+    rules: ['Downtime Activity: Crafting an Item', 'Downtime Activity: Crafting'],
+    variants: [
+      { key: 'all', label: 'All', does: 'Every blueprint is known from the start (Kibbles).' },
+      { key: 'taught', label: 'Only taught', does: 'Only what was taught: an information on the recipe the character knows.' },
+      {
+        key: 'rarity',
+        label: 'By rarity',
+        does: 'Every blueprint up to a rarity (Blueprints up to) for a tool the character is proficient in, and whatever was taught.',
+      },
+    ],
+  },
+  {
+    key: 'craftLearnRarity',
+    sort: 'crafting',
+    label: 'Blueprints up to',
+    does: 'With “By rarity”: the highest rarity a character knows without being taught. Common to start; raise it as the campaign goes on.',
+    source: { field: 'craftLearnRarity' },
+    variants: [
+      { key: 'none', label: 'Mundane', does: 'Only blueprints for items without a rarity.' },
+      { key: 'common', label: 'Common', does: 'Mundane and common blueprints.' },
+      { key: 'uncommon', label: 'Uncommon', does: 'Up to uncommon.' },
+      { key: 'rare', label: 'Rare', does: 'Up to rare.' },
+      { key: 'very rare', label: 'Very rare', does: 'Up to very rare.' },
+      { key: 'legendary', label: 'Legendary', does: 'Up to legendary.' },
+    ],
+    when: { field: 'craftLearning', is: ['rarity'] },
+  },
+  {
     /* Ersatzmaterialien (T-197): Regelartikel `Substitution`, die die Kampagne nennt. */
     key: 'substitutions',
     sort: 'crafting',
@@ -533,6 +567,10 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return craftRulesOf(campaign).critFailure;
     case 'craftConfirm':
       return craftRulesOf(campaign).confirm;
+    case 'craftLearning':
+      return craftRulesOf(campaign).learning;
+    case 'craftLearnRarity':
+      return craftRulesOf(campaign).learnRarity;
     case 'hitPoints':
       return hitPointRuleOf(campaign ?? undefined);
     case 'fog':

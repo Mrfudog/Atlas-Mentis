@@ -52,8 +52,11 @@ import {
   recipesOfTrade,
   reserveIn,
   reservedPieces,
+  blueprintKnown,
+  hasProficiency,
   proficienciesOf,
   proficiencyNames,
+  recipeRarity,
   resolveInstance,
   rollResult,
   setCheck,
@@ -349,7 +352,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
       return {
         id: f.id,
         name: entityName(f),
-        learned: recipeLearned(stand.map, roh1, (info) => knows(stand.map, info, roheFigur.id)),
+        learned: kenntnis(roheFigur, stand, registry, kampagne, handwerksArtikel(stand, registry).berufe)(roh1),
         check: { tool: check.tool, ability: check.ability, dc: check.dc },
         stock,
       };
@@ -502,6 +505,28 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
   }
 
   /**
+   * **Kennt die Figur das Rezept?** (T-280, REQ-349) Nach der Regel der
+   * Kampagne (`craftLearning`): alle, nur Beigebrachtes (`recipeLearned`),
+   * oder bis zu einer Seltenheit, wenn sie das Werkzeug beherrscht. Die
+   * Übungen werden einmal je Figur gerechnet, nicht je Rezept.
+   */
+  function kenntnis(figur: Entity, stand: Stand, registry: Registry, kampagne: Entity | null, berufe: Entity[]): (rezept: Entity) => boolean {
+    const rules = craftRulesOf(kampagne);
+    const reihe = registry.interfaces['Item']?.schema?.properties?.['rarity']?.enum;
+    const order = Array.isArray(reihe) ? reihe.map(String) : undefined;
+    const block = stand.alle.find((e) => (e.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === figur.id));
+    let uebungen: ReturnType<typeof proficienciesOf> | null = null;
+    return (rezept) => {
+      const taught = recipeLearned(stand.map, rezept, (info) => knows(stand.map, info, figur.id));
+      if (rules.learning !== 'rarity') return blueprintKnown(rules, { taught, toolOk: false, rarity: '' }, order);
+      uebungen ??= proficienciesOf(figur, block ? resolveInstance(stand.map, block) : undefined, stand.map);
+      const tools = recipeTools(rezept, berufe);
+      const toolOk = !tools.length || tools.some((w) => hasProficiency(uebungen!, w));
+      return blueprintKnown(rules, { taught, toolOk, rarity: recipeRarity(stand.map, rezept) }, order);
+    };
+  }
+
+  /**
    * **Eine Figur:** je Werkzeug, in dem sie geübt ist (`proficienciesOf`:
    * Statblock, Klasse, Hintergrund, Talente, Wahlen), die Rezepte, die es möglich
    * macht — und ob sie sie gelernt hat (REQ-218). Gelernt zeigt sich nur
@@ -517,7 +542,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const sichtbareBerufe = await sieve(request, berufe, stand.map);
     const gesiebt = await sieve(request, rezepte, stand.map);
     const darf = leitung || (user.actorIds ?? []).includes(figur.id);
-    const gelernt = darf ? (r: Entity) => recipeLearned(stand.map, r, (info) => knows(stand.map, info, figur.id)) : undefined;
+    const gelernt = darf ? kenntnis(figur, stand, registry, currentCampaign(stand.map, registry.settings ?? null), berufe) : undefined;
     const tools = [];
     for (const w of geuebt) {
       const liste = recipesOfTool(gesiebt, sichtbareBerufe, w);
@@ -687,7 +712,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const actor = stand.map.get(String(request.body?.actor ?? ''));
     if (!actor) return reply.code(404).send({ error: 'Diese Figur gibt es nicht.' });
     if (!fuerFigur(user, actor, leitung)) return reply.code(403).send({ error: 'Nur für die eigene Figur.' });
-    if (!leitung && !recipeLearned(stand.map, rezept, (info) => knows(stand.map, info, actor.id))) {
+    if (!leitung && !kenntnis(actor, stand, registry, kampagne, handwerksArtikel(stand, registry).berufe)(rezept)) {
       return reply.code(403).send({ error: 'Dieses Rezept hat die Figur noch nicht gelernt.' });
     }
 

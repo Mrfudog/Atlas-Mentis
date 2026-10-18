@@ -200,9 +200,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'craftingOrder',
     label: 'Crafting order',
     area: 'character',
-    does: 'runs a crafting order — an instance of a recipe: who crafts it, which materials in the crafter’s and the party’s inventory are reserved for it (and locked on the server while it runs), the checks, and on the end what is used up, what comes back and what the recipe yields',
+    does: 'runs a crafting order — an instance of a recipe: which blueprints a character knows by the campaign’s rule (all, taught, or up to a rarity of what it yields, T-280), who crafts it, which materials in the crafter’s and the party’s inventory are reserved for it (and locked on the server while it runs), the checks, and on the end what is used up, what comes back and what the recipe yields',
     uses: {
-      [M + 'crafting.ts']: ['crafting', 'holds', 'knowledge'],
+      /* Die Seltenheit einer Blaupause ist die ihres Ertrags (T-280). */
+      [M + 'crafting.ts']: ['crafting', 'holds', 'knowledge', 'yields'],
       [S + 'handwerk.ts']: ['carries', 'crafting', 'holds', 'inLayer', 'instanceOf', 'memberOfParty', 'needs', 'partyOf', 'yields'],
       [S + 'reservierung.ts']: ['holds'],
     },

@@ -75,7 +75,7 @@ Auf Wunsch der Leitung nach dem ersten Blick auf dev:
 Auf Wunsch der Leitung kommen Rules & options und der Regel-Builder jetzt
 aus **Regelartikeln**: jeder Artikel steht für ein System, eine Regel oder
 eine Option (`Rule.kind`, `Rule.key`, `partOf`), der Graph steht am Artikel
-(`Rule.graph`, Migration 098). Die Einstellungen im Konto (`labRule.*`)
+(`Rule.graph`, Migration 099). Die Einstellungen im Konto (`labRule.*`)
 liest der Builder nicht mehr. Angelegt hat die Artikel
 `scripts/regeln-anlegen.mjs`: Hausregeln in der Hausregel-Ebene, was auf
 einem Buch beruht oder nur die App betrifft in einer eigenen Ebene „Table

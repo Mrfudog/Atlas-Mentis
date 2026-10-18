@@ -12,7 +12,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 175 steht · 53 teils · 104 offen · 10 ersetzt · 6 verworfen — 348 Stories in 79 Features und 12 Epics.
+Zusammen: 176 steht · 53 teils · 104 offen · 10 ersetzt · 6 verworfen — 349 Stories in 79 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -22,7 +22,7 @@ Zusammen: 175 steht · 53 teils · 104 offen · 10 ersetzt · 6 verworfen — 34
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 40 | 5 steht · 9 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 25 | 12 steht · 1 teils · 12 offen |
+| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 26 | 13 steht · 1 teils · 12 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
@@ -613,6 +613,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | REQ-218 | Blaupausen lernen | 3 | **steht** | gelernt über `knownBy`, Werkbank mit Filtern (Prototyp, D55) |
 | REQ-219 | Material beim Start binden | 3 | **steht** | beim Start gebunden in `crafting.props.put` (D55); was ein Misserfolg kostet, sagt `Campaign.craftFailure` (T-165) |
 | REQ-347 | Handwerk an der Figur | 2 | **steht** | Reiter Crafting an der Figur auf der Werkbank (T-247, T-128, T-197) |
+| REQ-349 | Wie Blaupausen gelernt werden, ist eine Regeloption | 1 | **steht** | T-280: Campaign.craftLearning (all · taught · rarity) mit craftLearnRarity; gerechnet in blueprintKnown |
 
 ### F-048 Regelsysteme & Module
 

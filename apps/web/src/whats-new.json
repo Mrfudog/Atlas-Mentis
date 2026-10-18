@@ -10,6 +10,15 @@
       "query": { "tab": "rules" }
     },
     {
+      "id": "2026-10-18-known-blueprints-rule",
+      "date": "2026-10-18",
+      "title": "Choose how blueprints are learned",
+      "text": "Rules & options › Crafting has “Known blueprints”: all from the start (Kibbles), only taught, or by rarity — every blueprint up to a rarity (common to start) for a tool the character is proficient in, plus what was taught.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "rules" }
+    },
+    {
       "id": "2026-10-18-view-designer-experiment",
       "date": "2026-10-18",
       "title": "Experiment: design your own views",

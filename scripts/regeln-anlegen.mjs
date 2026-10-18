@@ -129,9 +129,9 @@ const sichere = () => {
   if (!trocken) writeFileSync(zustandPfad, JSON.stringify(zustand, null, 2));
 };
 
-/* Das Register muss die Felder kennen (Migration 098). */
+/* Das Register muss die Felder kennen (Migration 099). */
 const registry = ok(await api('/api/registry'), 'Register');
-if (!registry.interfaces?.Rule?.schema?.properties?.key) stirb('Das Register kennt Rule.key nicht — Migration 098 fehlt auf dieser Installation.');
+if (!registry.interfaces?.Rule?.schema?.properties?.key) stirb('Das Register kennt Rule.key nicht — Migration 099 fehlt auf dieser Installation.');
 
 /* ------------------------------------------------------------ Ebenen */
 
