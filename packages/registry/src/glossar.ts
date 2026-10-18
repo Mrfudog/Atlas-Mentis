@@ -181,7 +181,7 @@ const APP: AppTerm[] = [
     aliases: ['Visibility', 'Revealed to', 'Hidden from'],
     sort: 'app',
     definition: 'Who may see an article at all: public, campaign, players or GM — and lists of characters, parties or factions it is revealed to or hidden from.',
-    effect: 'Hidden from beats revealed to beats audience.',
+    effect: 'Hidden from beats revealed to beats the article’s own audience; without one, the campaign’s rule for its group counts, then the default of its layer, then public.',
     translations: { de: 'Sichtbarkeit' },
   },
   {
@@ -266,6 +266,14 @@ const APP: AppTerm[] = [
     sort: 'app',
     definition: 'A saved filter of a page, shown as a tab. The campaign’s are kept by the GM, your own by you.',
     translations: { de: 'Filtergruppe' },
+  },
+  {
+    term: 'Visibility by group',
+    aliases: ['Layer default', 'Visibility rule'],
+    sort: 'app',
+    definition: 'Who sees a group of articles in a campaign — all of a layer, a type, an area, a tag. The layer sets the default, the campaign overrides it per group, and an article’s own setting wins over both.',
+    effect: 'Set on the campaign page under Visibility; it also holds for articles added later.',
+    translations: { de: 'Sichtbarkeit je Gruppe' },
   },
   {
     term: 'Transformation',

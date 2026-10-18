@@ -16072,6 +16072,27 @@ function renderHowto(v){
     "is still unstowed leaves the inventory and stays at the session as a "+
     "leftBehind edge, with its quantity and where it came from — nothing is "+
     "deleted, and whoever goes back picks it up, unstowed again."));
+  /* Sichtbarkeit je Gruppe (T-252, E-098): steht nur auf der Seite. */
+  v.appendChild(el("div",{class:"rsec",text:"Who sees what, per group"}));
+  v.appendChild(el("p",{class:"hint"},
+    "An article that says nothing about its audience takes it from its "+
+    "group. The order is the rule: Visibility.hiddenFrom, then revealedTo, "+
+    "then the article's own audience, then the campaign's rule for its "+
+    "group (Campaign › VisibilityRules.visibilityRules — the most specific "+
+    "key wins, 'layer:dnd|type:Spell' over 'layer:dnd'), then the default "+
+    "of its layer (Layer.defaultAudience, the narrowest of several), then "+
+    "public. A rule may also show or hide its group for single characters "+
+    "(show, hide — characters, parties, factions, never accounts). Nothing "+
+    "is written into the articles: a rule holds for tomorrow's articles "+
+    "too, and a shared layer stays shared. Worked through: D&D 5e has no "+
+    "default, Basil's homebrew says gm, the campaign says 'layer:brew → "+
+    "campaign' and 'layer:dnd|type:Item → show to Rook'. A homebrew rule "+
+    "is seen by the whole table (the campaign beats the layer), a D&D spell "+
+    "by everyone (public), a D&D item that says gm itself only by the GM — "+
+    "the article's own field beats the rule, and Rook's freedom with it. "+
+    "On the site the campaign page shows this under Visibility, counted per "+
+    "column (Public · Table · each player · GM) and grouped with the "+
+    "transformations (T-253)."));
   /* Nebel je Figur, Züge, Aufdecken beim Zug (T-204): steht nur auf der Seite. */
   v.appendChild(el("div",{class:"rsec",text:"Fog per party or per character, and how players move"}));
   v.appendChild(el("p",{class:"hint"},

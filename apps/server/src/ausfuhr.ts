@@ -57,6 +57,7 @@ import {
   LAYER_COMPONENT,
   LAYER_RELATION,
   articleVisible,
+  campaignVisibility,
   entityName,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
@@ -153,7 +154,11 @@ export function kampagnenAusfuhr(
   const an = aufgeschaltet(kampagne);
   const auge = optionen.user.isAdmin
     ? undefined
-    : { actors: optionen.user.actorIds ?? [], roles: optionen.user.roles ?? {} };
+    : (() => {
+        /* Die Regeln je Gruppe dieser Kampagne gelten auch hier (T-252). */
+        const campaignRules = campaignVisibility(karte, registry, kampagne);
+        return { actors: optionen.user.actorIds ?? [], roles: optionen.user.roles ?? {}, ...(campaignRules ? { campaignRules } : {}) };
+      })();
   const entities = alle
     .filter((e) => optionen.all || gehoertDazu(e, kampagne, eigene, an))
     .filter((e) => articleVisible(karte, e, auge))
