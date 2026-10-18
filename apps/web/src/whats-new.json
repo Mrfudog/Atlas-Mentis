@@ -10,6 +10,14 @@
       "query": { "tab": "members" }
     },
     {
+      "id": "2026-10-18-rule-builder-experiment",
+      "date": "2026-10-18",
+      "title": "Experiment: a rule builder with nodes",
+      "text": "Game masters can switch on the rule builder in Rules & options › Experiments: chain a trigger, conditions and outcomes on a canvas — for example offering a reaction when a creature is hit — and try it on a made-up event. It is an experiment and may be dropped again.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
       "id": "2026-10-18-layer-on-every-article",
       "date": "2026-10-18",
       "title": "Every article names its layer",
