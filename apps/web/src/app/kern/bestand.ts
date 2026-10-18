@@ -284,6 +284,18 @@ export class Bestand {
     }
   }
 
+  /**
+   * **Eine andere Sicht** (T-269, REQ-241): nach „View as" oder zurück
+   * sieht der Betrachter anderes. Namen und Verweise der alten Sicht
+   * vergessen und alles Geöffnete neu holen — was die neue Sicht nicht
+   * sieht, fällt dabei als fehlend heraus.
+   */
+  sichtGewechselt(): void {
+    this._namen.set(new Map());
+    this._verweise.set(new Map());
+    this.allesNeu();
+  }
+
   /** Alles Geöffnete neu holen — nach `reset` (zu viel auf einmal, oder
    *  die Verbindung war zu lange weg). */
   private allesNeu(): void {

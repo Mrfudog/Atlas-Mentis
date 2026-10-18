@@ -10,6 +10,40 @@
       "query": { "tab": "visibility" }
     },
     {
+      "id": "2026-10-18-rule-builder-engines",
+      "date": "2026-10-18",
+      "title": "Rule builder (experiment): engines, filters and more examples",
+      "text": "The rule builder lists rules by engine with search and filters for engine, trigger and active rules, brings a dozen sample rules with yes and no branches, and scrolls and zooms on a phone. Dry runs take an amount, such as damage or a spell level.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
+      "id": "2026-10-18-rule-options-in-place",
+      "date": "2026-10-18",
+      "title": "Change rules & options in place",
+      "text": "On the campaign’s Rules & options tab, pick “Use this” beside a variant to switch it at once — no edit form needed. Option and variant names link straight to the rule article that explains them.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "rules" }
+    },
+    {
+      "id": "2026-10-18-view-as-header",
+      "date": "2026-10-18",
+      "title": "View as from the header",
+      "text": "GMs and co-GMs find “View as ▾” under the campaign in the header: pick a player, spectator or co-GM and every page shows what they would see, read only. Alt+Shift+V switches back; on a phone it sits in the campaign popup.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "members" }
+    },
+    {
+      "id": "2026-10-18-rule-builder-experiment",
+      "date": "2026-10-18",
+      "title": "Experiment: a rule builder with nodes",
+      "text": "Game masters can switch on the rule builder in Rules & options › Experiments: chain a trigger, conditions and outcomes on a canvas — for example offering a reaction when a creature is hit — and try it on a made-up event. It is an experiment and may be dropped again.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
       "id": "2026-10-18-layer-on-every-article",
       "date": "2026-10-18",
       "title": "Every article names its layer",
