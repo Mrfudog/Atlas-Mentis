@@ -10,6 +10,15 @@
       "query": { "type": "PlayerCharacter" }
     },
     {
+      "id": "2026-10-18-campaign-tabs",
+      "date": "2026-10-18",
+      "title": "The campaign page in tabs",
+      "text": "The campaign page is split into tabs — Overview, Members, Layers and Rules & options — instead of one long page. The tab stands in the address, so you can share a link straight to the layers or the members.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "layers" }
+    },
+    {
       "id": "2026-10-16-character-crafting-campaign",
       "date": "2026-10-16",
       "title": "Crafting and Campaign tabs on your character",
