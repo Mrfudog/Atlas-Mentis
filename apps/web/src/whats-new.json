@@ -10,6 +10,15 @@
       "query": { "tab": "views" }
     },
     {
+      "id": "2026-10-18-crafting-starts-with-all",
+      "date": "2026-10-18",
+      "title": "Crafting shows all blueprints until one is learned",
+      "text": "A character who has not learned a blueprint yet no longer sees an empty Crafting tab: it starts with all blueprints and says why. “<Name> knows” shows how many are learned.",
+      "area": "Characters",
+      "link": "/world",
+      "query": { "type": "PlayerCharacter" }
+    },
+    {
       "id": "2026-10-18-numbers-with-parts",
       "date": "2026-10-18",
       "title": "Character numbers with their parts",
