@@ -55,3 +55,4 @@ export * from './requirements.js';
 export * from './zugplan.js';
 export * from './glossary.js';
 export * from './sheet.js';
+export * from './ruleGraph.js';
