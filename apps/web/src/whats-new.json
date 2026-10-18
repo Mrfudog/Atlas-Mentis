@@ -12,7 +12,7 @@
       "id": "2026-10-18-rule-options-in-place",
       "date": "2026-10-18",
       "title": "Change rules & options in place",
-      "text": "On the campaign’s Rules & options tab, pick “Use this” beside a variant to switch it at once — no edit form needed. Option and variant names link straight to the rule article that explains them.",
+      "text": "On the campaign’s Rules & options tab, pick “Use this” beside a variant to switch it at once — no edit form needed. Option and variant names link straight to the rule article that explains them; a variant without its own article points to the one of its option.",
       "area": "Campaign",
       "link": "/campaign",
       "query": { "tab": "rules" }
