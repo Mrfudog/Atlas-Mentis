@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { articleWithGraph, evalRuleExpr, exampleRuleGraphs, graphFromArticle, isRuleGraph, ruleGraphProblems, runRules, RULE_ENGINES, type Entity, type RuleCreature, type RuleGraph } from '../src/index.js';
+import { articleWithGraph, ruleGraphWords, evalRuleExpr, exampleRuleGraphs, graphFromArticle, isRuleGraph, ruleGraphProblems, runRules, RULE_ENGINES, type Entity, type RuleCreature, type RuleGraph } from '../src/index.js';
 
 /* Regel-Builder, Versuch (T-270). Erfundene Kreaturen. */
 
@@ -179,5 +179,16 @@ describe('Graph am Regelartikel (T-270)', () => {
 
   it('lässt einen Artikel ohne Knoten ohne Graph', () => {
     expect(articleWithGraph(art, graphFromArticle(art, sys)).components['Rule']).toEqual({ kind: 'rule', key: 'shield' });
+  });
+});
+
+describe('ruleGraphWords (T-270)', () => {
+  it('nennt die Begriffe, auf denen eine Regel aufbaut', () => {
+    const g = (id: string) => exampleRuleGraphs().find((x) => x.id === id)!;
+    expect(ruleGraphWords(g('hellish-rebuke'))).toEqual(['attack roll', 'reach', 'reaction']);
+    expect(ruleGraphWords(g('opportunity-attack'))).toEqual(['disengage', 'opportunity attack', 'reach', 'reaction']);
+    expect(ruleGraphWords(g('counterspell'))).toEqual(['reach', 'reaction', 'spell slot']);
+    expect(ruleGraphWords(g('concentration'))).toEqual(['concentration', 'damage roll', 'hit points']);
+    expect(ruleGraphWords(g('somatic-hand'))).toEqual(['somatic component', 'spell slot']);
   });
 });

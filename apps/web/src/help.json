@@ -352,6 +352,7 @@
           "heading": "Rules by engine",
           "text": [
             "The list on the left groups the rules by system — the system articles, from reactions and spellcasting to inventory and crafting. Search by name or node text, or narrow it to one system, one trigger or active rules only. A rule with options lists them under its text.",
+            "“Builds on” names the glossary terms a rule rests on — from its trigger, the values its conditions read and its outcomes, and from its text; tap one to open it in the glossary. A dashed word has no glossary term yet.",
             "On a phone, swipe on the empty canvas to scroll it; a node or dot takes the swipe for itself. − and + zoom, Fit shrinks the rule to the width of the screen."
           ]
         },

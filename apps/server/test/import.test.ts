@@ -158,6 +158,14 @@ describe('pnpm --filter @nw/server run import', () => {
       expect(r.verwaisteKanten).not.toContainEqual(expect.stringContaining('sb_brom'));
     });
 
+    it('lässt Eigenes in der Buchebene stehen, wenn die Datei ein Id-Präfix hat (T-270)', async () => {
+      const repo = await mitKonto([ebene, in5e(regel('e5_alt', 'Alt')), in5e(regel('e_begriff', 'Reach')), in5e(regel('e5_bleibt', 'Bleibt'))]);
+      const r = await runImport(repo, { format: 'nebelwacht/1', entities: [ebene, in5e(regel('e5_bleibt', 'Bleibt'))] }, { replaceLayer: true });
+      const ids = (await repo.listEntities()).map((e) => e.id).sort();
+      expect(ids).toEqual(['e5_bleibt', 'e5_layer', 'e_begriff']);
+      expect(r.geloescht).toBe(1);
+    });
+
     it('sagt im Probelauf dasselbe und schreibt nichts', async () => {
       const repo = await bestand();
       const vorher = await repo.listEntities();

@@ -440,6 +440,64 @@ export function exampleRuleGraphs(): RuleGraph[] {
   ];
 }
 
+/* ------------------------------------------------------------ Begriffe */
+
+/** Welche Spielbegriffe ein Auslöser voraussetzt (Wörter, wie das Glossar sie führt). */
+const AUSLOESER_BEGRIFFE: Partial<Record<RuleTriggerKey, string[]>> = {
+  attacked: ['attack roll'],
+  hit: ['attack roll'],
+  missed: ['attack roll'],
+  damaged: ['damage roll', 'hit points'],
+  leavesReach: ['reach', 'opportunity attack'],
+  entersReach: ['reach'],
+  castsSpell: ['spell slot'],
+  turnStart: ['initiative'],
+  turnEnd: ['initiative'],
+};
+
+/** Welche Begriffe ein Wert in einer Rechnung meint (`self.reactionFree` → Reaction). */
+const WERT_BEGRIFFE: [RegExp, string[]][] = [
+  [/^reactionFree$/, ['reaction']],
+  [/^(reach|distance|distanceToTarget)$/, ['reach']],
+  [/^(hp|maxHp)$/, ['hit points']],
+  [/^slots\d$/, ['spell slot']],
+  [/^concentrat/, ['concentration']],
+  [/^freeHands$/, ['somatic component']],
+  [/^disengaged$/, ['disengage']],
+  [/^prone$/, ['prone']],
+];
+
+/**
+ * **Worauf eine Regel aufbaut** (T-270): die Spielbegriffe ihrer Auslöser,
+ * der Werte in ihren Bedingungen und ihrer Folgen — Wörter, die der
+ * Builder gegen das Glossar hält (Begriff und Aliasse). Was ein Knoten
+ * beim Namen nennt („knows Hellish Rebuke"), ist kein Begriff, sondern ein
+ * Artikel, und steht nicht hier.
+ */
+export function ruleGraphWords(g: RuleGraph): string[] {
+  const raus = new Set<string>();
+  const werte = (expr: string) => {
+    for (const roh of String(expr).match(/[A-Za-z_][\w.]*/g) ?? []) {
+      const name = roh.split('.').pop() ?? roh;
+      for (const [muster, woerter] of WERT_BEGRIFFE) if (muster.test(name)) for (const w of woerter) raus.add(w);
+    }
+  };
+  for (const n of g.nodes) {
+    if (n.kind === 'trigger') for (const w of AUSLOESER_BEGRIFFE[n.on] ?? []) raus.add(w);
+    else if (n.kind === 'condition' && n.test.kind === 'compare') {
+      werte(n.test.left);
+      werte(n.test.right);
+    } else if (n.kind === 'outcome') {
+      if (n.then.kind === 'offerReaction') raus.add('reaction');
+      if (n.then.kind === 'changeValue') {
+        werte(n.then.field);
+        werte(n.then.expr);
+      }
+    }
+  }
+  return [...raus].sort();
+}
+
 /* ------------------------------------------------------------ Am Artikel (T-270) */
 
 /** Was am Artikel steht: `Rule.graph` — Knoten, Verbindungen, aktiv. */

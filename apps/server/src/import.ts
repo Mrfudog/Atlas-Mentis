@@ -12,7 +12,8 @@
  *
  * **Ersetzen je Ebene** (`--replace-layer`, W8): gelöscht wird nur, was
  * die Ebene der Datei bringt (`inLayer` auf sie und auf keine andere) und
- * in der Datei fehlt; alles andere bleibt. Ohne Wert nimmt es die eine
+ * in der Datei fehlt; alles andere bleibt — auch was hier in der Buchebene
+ * angelegt wurde (anderes Id-Präfix als die Datei, T-270). Ohne Wert nimmt es die eine
  * Ebene, auf die die Artikel der Datei zeigen. Was gelöscht wird, wird
  * gezählt, und Kanten aus bleibenden Artikeln, die danach ins Leere zeigen,
  * werden aufgezählt — in Postgres bleiben sie stehen (Migration 012a) und
@@ -274,7 +275,13 @@ export async function runImport(
   else if (optionen.replaceLayer) {
     const ebene = findeEbene(optionen.replaceLayer, neu, bestand);
     ebenenText = `Ebene „${entityName(ebene)}" (${ebene.id})`;
-    weg = bestand.filter((e) => !ids.has(e.id) && nurInEbene(e, ebene.id));
+    /* **Eigenes in einer Buchebene bleibt** (T-270): ein Glossarbegriff
+       oder eine Tischregel, die hier angelegt wurde, gehört der Quelle und
+       nicht dem Einleser. Gelöscht wird nur, was dasselbe Id-Präfix trägt
+       wie die Datei (`e5_` aus 5e.tools); hat eine Id der Datei keines,
+       gilt die alte Regel. */
+    const praefixe = idPraefixe(ids);
+    weg = bestand.filter((e) => !ids.has(e.id) && nurInEbene(e, ebene.id) && (!praefixe || praefixe.has(idPraefix(e.id) ?? '')));
   }
   const wegIds = new Map(weg.map((e) => [e.id, entityName(e)] as const));
   const danach = new Map<string, Entity>();
@@ -609,6 +616,22 @@ function findeEbene(wahl: string | true, neu: Entity[], bestand: Entity[]): Enti
  * Bringt die Ebene diesen Artikel — und keine andere? Einer, der auch in
  * einer zweiten Ebene steht, bringt die auch; er bleibt.
  */
+/** `e5_spell_x` → `e5_`; ohne Unterstrich keines. */
+function idPraefix(id: string): string | undefined {
+  return /^([a-z0-9]+_)/i.exec(id)?.[1];
+}
+
+/** Die Präfixe der Datei — `null`, wenn eine Id keines hat (dann schützt das Präfix nichts). */
+function idPraefixe(ids: Iterable<string>): Set<string> | null {
+  const raus = new Set<string>();
+  for (const id of ids) {
+    const p = idPraefix(id);
+    if (!p) return null;
+    raus.add(p);
+  }
+  return raus;
+}
+
 function nurInEbene(e: Entity, ebene: string): boolean {
   const ziele = (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
   return ziele.length > 0 && ziele.every((z) => z === ebene);

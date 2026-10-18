@@ -8,6 +8,8 @@ import {
   graphFromArticle,
   ruleArticleKey,
   ruleArticleKind,
+  ruleGraphWords,
+  spotTerms,
   ruleGraphProblems,
   runRules,
   RULE_COMPARATORS,
@@ -17,6 +19,7 @@ import {
   RULE_TRIGGERS,
   type RuleComparator,
   type Entity,
+  type GlossaryEntry,
   type RuleCreature,
   type RuleEvent,
   type RuleGraph,
@@ -30,6 +33,7 @@ import {
 } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Experimente } from '../kern/experimente';
+import { Glossar } from '../kern/glossar';
 import { Session } from '../kern/session';
 
 /** Werte mit eigener Spalte im Probelauf; der Rest steht unter „More values". */
@@ -148,6 +152,20 @@ type Ziehen =
               <button type="button" class="leise" (click)="loeschen(g)">Delete rule</button>
             }
           </div>
+          @if (begriffe().length) {
+            <p class="begriffe">
+              <span class="hint">Builds on:</span>
+              @for (b of begriffe(); track b.wort) {
+                @if (b.id; as id) {
+                  <button type="button" class="begriff-chip" (click)="glossar.oeffnen(id)" [attr.title]="'Open “' + b.wort + '” in the glossary'">
+                    {{ b.name }}
+                  </button>
+                } @else {
+                  <span class="begriff-chip fehlt" title="No glossary term yet">{{ b.wort }}</span>
+                }
+              }
+            </p>
+          }
           <label class="text"
             >Text
             <textarea rows="3" [value]="textVon(g.id)" (change)="setzeText(g.id, $any($event.target).value)"></textarea>
@@ -798,6 +816,28 @@ type Ziehen =
         grid-template-columns: minmax(0, 1fr);
       }
     }
+    .begriffe {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.3rem 0.4rem;
+      margin: 0.2rem 0 0.4rem;
+    }
+    .begriff-chip {
+      min-height: 32px;
+      padding: 0 0.6rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 0.85rem;
+      color: var(--link);
+    }
+    .begriff-chip.fehlt {
+      display: inline-flex;
+      align-items: center;
+      color: var(--dim);
+      border-style: dashed;
+    }
     .zahl {
       width: 4.5rem;
     }
@@ -812,6 +852,7 @@ type Ziehen =
 })
 export class RegelBuilder {
   protected readonly exp = inject(Experimente);
+  protected readonly glossar = inject(Glossar);
   private readonly api = inject(Api);
   protected readonly session = inject(Session);
 
@@ -898,6 +939,31 @@ export class RegelBuilder {
   });
   protected readonly aktivArtikel = computed(() => this.artikel().find((e) => e.id === this.aktivId()) ?? null);
 
+  /**
+   * **Worauf die Regel aufbaut** (T-270): die Begriffe ihrer Knoten
+   * (`ruleGraphWords`) und die, die das Glossar in ihrem Text und dem ihrer
+   * Optionen erkennt — je Begriff ein Knopf in die Glossarleiste.
+   */
+  protected readonly begriffe = computed(() => {
+    const g = this.aktiv();
+    if (!g) return [];
+    const eintraege = (this.glossar.eintraege() ?? []).filter((e) => !e.id.startsWith('app:'));
+    const nachWort = new Map<string, GlossaryEntry>();
+    for (const e of eintraege) for (const w of [e.term, ...(e.aliases ?? [])]) nachWort.set(w.toLowerCase(), e);
+    const woerter = new Set(ruleGraphWords(g));
+    const index = this.glossar.index();
+    for (const text of [this.textVon(g.id), ...this.optionen().map((o) => this.textVon(o.id))]) {
+      for (const t of spotTerms(text, index)) if (t.kind === 'term') woerter.add(t.text.toLowerCase());
+    }
+    const raus = new Map<string, { wort: string; id: string | null; name: string }>();
+    for (const w of woerter) {
+      const e = nachWort.get(w);
+      const schluessel = e?.id ?? w;
+      if (!raus.has(schluessel)) raus.set(schluessel, { wort: w, id: e?.id ?? null, name: e?.term ?? w });
+    }
+    return [...raus.values()].sort((a, b) => Number(!a.id) - Number(!b.id) || a.name.localeCompare(b.name));
+  });
+
   /** Die Übersicht: gefiltert, nach System gruppiert. */
   protected readonly gruppen = computed(() => {
     const q = this.suche().trim().toLowerCase();
@@ -938,6 +1004,7 @@ export class RegelBuilder {
   }
 
   private async start(): Promise<void> {
+    void this.glossar.laden();
     try {
       await this.exp.lade(true);
       if (this.exp.ruleBuilder()) {

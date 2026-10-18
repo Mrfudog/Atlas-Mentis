@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-rule-builder-builds-on",
+      "date": "2026-10-19",
+      "title": "Rules show the glossary terms they build on",
+      "text": "In the rule builder (experiment), every rule lists the terms it rests on — reach, reaction, spell slot … — and opens them in the glossary. Rule texts on Rules & options link the same terms.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
       "id": "2026-10-18-rules-from-articles",
       "date": "2026-10-18",
       "title": "Rules & options come from rule articles",
