@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import type { RuleOptionState, RuleSortState, RuleVariantState } from '@nw/model';
+import { withRuleVariant, type Entity, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
@@ -26,7 +26,10 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
       <header class="kopf">
         <h2 id="regeln-titel">Rules &amp; options</h2>
         <p class="hint">
-          How this campaign plays. Each option says what it does; each variant links the rule article that explains it.
+          How this campaign plays. Each option says what it does; a name with a link opens the rule article that explains it.
+          @if (darfSchreiben()) {
+            Pick “Use this” to change a choice right here.
+          }
         </p>
         @if (darfSchreiben()) {
           <a class="knopf" [routerLink]="['/artikel', kampagne()]" [queryParams]="{ edit: 1 }">Change options</a>
@@ -53,7 +56,11 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
           @for (o of s.options; track o.key) {
             <article class="option">
               <div class="optionskopf">
-                <h4>{{ o.label }}</h4>
+                @if (o.rule; as r) {
+                  <h4><a [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">{{ o.label }}</a></h4>
+                } @else {
+                  <h4>{{ o.label }}</h4>
+                }
                 @if (o.scope === 'installation') {
                   <span class="marke" title="A setting of this installation: it applies to every campaign.">installation-wide</span>
                 }
@@ -68,9 +75,19 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
                   @for (v of o.variants; track v.key) {
                     <li [class.gewaehlt]="v.chosen">
                       <div class="zeile">
-                        <span class="name">{{ v.label }}</span>
+                        <!-- Der Name führt direkt auf den Regelartikel, wo es einen gibt. -->
+                        @if (v.rule; as r) {
+                          <a class="name" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">{{ v.label }}</a>
+                        } @else {
+                          <span class="name">{{ v.label }}</span>
+                        }
                         @if (v.chosen) {
                           <span class="marke an">in use</span>
+                        } @else if (darfSchreiben() && o.field) {
+                          <button type="button" class="klein" [disabled]="waehlt() !== null" (click)="waehle(o, v)"
+                                  [attr.title]="'Use “' + v.label + '” in this campaign'">
+                            {{ waehlt() === o.key + ':' + v.key ? 'Saving…' : 'Use this' }}
+                          </button>
                         }
                         @if (v.rule; as r) {
                           <a class="regel" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">Rule: {{ r.name }}</a>
@@ -263,6 +280,8 @@ export class Regeloptionen {
   protected readonly sorten = signal<RuleSortState[]>([]);
   protected readonly laedt = signal(false);
   protected readonly fehler = signal<string | null>(null);
+  /** Welche Variante gerade gespeichert wird (`option:variante`). */
+  protected readonly waehlt = signal<string | null>(null);
   /** Der Name der Regel, die gerade angelegt wird. */
   protected readonly schreibt = signal<string | null>(null);
 
@@ -288,6 +307,28 @@ export class Regeloptionen {
   protected springe(ev: Event, key: string): void {
     ev.preventDefault();
     document.getElementById(`regel-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /**
+   * **Eine Variante direkt wählen:** die Kampagne holen, das Feld setzen
+   * (`withRuleVariant`) und wie aus der Maske speichern — das Schreibrecht
+   * und `validateEntity` prüft der Server.
+   */
+  protected async waehle(o: RuleOptionState, v: RuleVariantState): Promise<void> {
+    if (this.waehlt()) return;
+    this.waehlt.set(`${o.key}:${v.key}`);
+    this.fehler.set(null);
+    try {
+      const { refs: _refs, fromTemplate: _ft, ...k } = (await this.api.entity(this.kampagne())) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      const neu = withRuleVariant(k as Entity, o.key, v.key);
+      if (!neu) return;
+      await this.api.putEntity(neu);
+      await this.lade(this.kampagne());
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'The option could not be saved.');
+    } finally {
+      this.waehlt.set(null);
+    }
   }
 
   /**
