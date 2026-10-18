@@ -122,6 +122,15 @@ const APP: AppTerm[] = [
     see: '/campaign',
   },
   {
+    term: 'View as',
+    aliases: ['Viewing as'],
+    sort: 'app',
+    definition: 'The GM, a co-GM or the administration sees the site as one member of the running campaign — read only, on every page.',
+    effect: 'The server filters as it would for that member, so lists, articles, maps and the player page show exactly what they would see. Switch with “View as ▾” in the header (Alt+Shift+V); the band at the top leads back.',
+    translations: { de: 'Ansicht als' },
+    see: '/campaign',
+  },
+  {
     term: 'Layer stack',
     aliases: ['Stack'],
     sort: 'app',
