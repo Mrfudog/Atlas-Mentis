@@ -65,9 +65,9 @@ type Ziehen =
         <div class="leiste">
           <label>
             Rule
-            <select [value]="aktivId() ?? ''" (change)="waehle($any($event.target).value)">
+            <select (change)="waehle($any($event.target).value)">
               @for (g of regeln(); track g.id) {
-                <option [value]="g.id">{{ g.name }}{{ g.enabled ? '' : ' (off)' }}{{ geaendert().has(g.id) ? ' •' : '' }}</option>
+                <option [value]="g.id" [selected]="g.id === (aktivId() ?? '')">{{ g.name }}{{ g.enabled ? '' : ' (off)' }}{{ geaendert().has(g.id) ? ' •' : '' }}</option>
               }
             </select>
           </label>
@@ -162,9 +162,9 @@ type Ziehen =
                   @case ('trigger') {
                     <label
                       >When a creature
-                      <select [value]="n.on" (change)="setzeKnoten(n.id, { on: $any($event.target).value })">
+                      <select (change)="setzeKnoten(n.id, { on: $any($event.target).value })">
                         @for (t of triggers; track t.key) {
-                          <option [value]="t.key">{{ t.label }}</option>
+                          <option [value]="t.key" [selected]="t.key === (n.on)">{{ t.label }}</option>
                         }
                       </select>
                     </label>
@@ -172,10 +172,10 @@ type Ziehen =
                   @case ('condition') {
                     <label
                       >Test
-                      <select [value]="n.test.kind" (change)="setzeTestArt(n.id, $any($event.target).value)">
-                        <option value="compare">Compare numbers</option>
-                        <option value="knows">Knows by name</option>
-                        <option value="same">Same creature</option>
+                      <select (change)="setzeTestArt(n.id, $any($event.target).value)">
+                        <option value="compare" [selected]="'compare' === (n.test.kind)">Compare numbers</option>
+                        <option value="knows" [selected]="'knows' === (n.test.kind)">Knows by name</option>
+                        <option value="same" [selected]="'same' === (n.test.kind)">Same creature</option>
                       </select>
                     </label>
                     @switch (n.test.kind) {
@@ -183,9 +183,9 @@ type Ziehen =
                         <label>Left <input type="text" [value]="$any(n.test).left" (change)="setzeTest(n.id, { left: $any($event.target).value })" /></label>
                         <label
                           >Is
-                          <select [value]="$any(n.test).op" (change)="setzeTest(n.id, { op: $any($event.target).value })">
+                          <select (change)="setzeTest(n.id, { op: $any($event.target).value })">
                             @for (o of vergleiche; track o) {
-                              <option [value]="o">{{ o }}</option>
+                              <option [value]="o" [selected]="o === ($any(n.test).op)">{{ o }}</option>
                             }
                           </select>
                         </label>
@@ -198,9 +198,9 @@ type Ziehen =
                       @case ('knows') {
                         <label
                           >Who
-                          <select [value]="$any(n.test).who" (change)="setzeTest(n.id, { who: $any($event.target).value })">
+                          <select (change)="setzeTest(n.id, { who: $any($event.target).value })">
                             @for (r of rollen; track r) {
-                              <option [value]="r">{{ r }}</option>
+                              <option [value]="r" [selected]="r === ($any(n.test).who)">{{ r }}</option>
                             }
                           </select>
                         </label>
@@ -208,9 +208,9 @@ type Ziehen =
                       }
                       @case ('same') {
                         <label
-                          ><select [value]="$any(n.test).a" (change)="setzeTest(n.id, { a: $any($event.target).value })">
+                          ><select (change)="setzeTest(n.id, { a: $any($event.target).value })">
                             @for (r of rollen; track r) {
-                              <option [value]="r">{{ r }}</option>
+                              <option [value]="r" [selected]="r === ($any(n.test).a)">{{ r }}</option>
                             }
                           </select></label
                         >
@@ -219,9 +219,9 @@ type Ziehen =
                           not</label
                         >
                         <label
-                          ><select [value]="$any(n.test).b" (change)="setzeTest(n.id, { b: $any($event.target).value })">
+                          ><select (change)="setzeTest(n.id, { b: $any($event.target).value })">
                             @for (r of rollen; track r) {
-                              <option [value]="r">{{ r }}</option>
+                              <option [value]="r" [selected]="r === ($any(n.test).b)">{{ r }}</option>
                             }
                           </select></label
                         >
@@ -231,20 +231,20 @@ type Ziehen =
                   @case ('outcome') {
                     <label
                       >Then
-                      <select [value]="n.then.kind" (change)="setzeFolgeArt(n.id, $any($event.target).value)">
-                        <option value="offerReaction">Offer a reaction</option>
-                        <option value="applyEffect">Apply an effect</option>
-                        <option value="blockAction">Block an action</option>
-                        <option value="changeValue">Change a value</option>
+                      <select (change)="setzeFolgeArt(n.id, $any($event.target).value)">
+                        <option value="offerReaction" [selected]="'offerReaction' === (n.then.kind)">Offer a reaction</option>
+                        <option value="applyEffect" [selected]="'applyEffect' === (n.then.kind)">Apply an effect</option>
+                        <option value="blockAction" [selected]="'blockAction' === (n.then.kind)">Block an action</option>
+                        <option value="changeValue" [selected]="'changeValue' === (n.then.kind)">Change a value</option>
                       </select>
                     </label>
                     @for (f of folgeFelder(n.then); track f.key) {
                       <label
                         >{{ f.label }}
                         @if (f.rolle) {
-                          <select [value]="f.wert" (change)="setzeFolge(n.id, f.key, $any($event.target).value)">
+                          <select (change)="setzeFolge(n.id, f.key, $any($event.target).value)">
                             @for (r of rollen; track r) {
-                              <option [value]="r">{{ r }}</option>
+                              <option [value]="r" [selected]="r === (f.wert)">{{ r }}</option>
                             }
                           </select>
                         } @else {
@@ -333,26 +333,26 @@ type Ziehen =
           <div class="leiste ereignis">
             <label
               >Event
-              <select [value]="ereignis().on" (change)="setzeEreignis({ on: $any($event.target).value })">
+              <select (change)="setzeEreignis({ on: $any($event.target).value })">
                 @for (t of triggers; track t.key) {
-                  <option [value]="t.key">{{ t.label }}</option>
+                  <option [value]="t.key" [selected]="t.key === (ereignis().on)">{{ t.label }}</option>
                 }
               </select>
             </label>
             <label
               >Who acts
-              <select [value]="ereignis().actor" (change)="setzeEreignis({ actor: $any($event.target).value })">
+              <select (change)="setzeEreignis({ actor: $any($event.target).value })">
                 @for (c of kreaturen(); track c.id) {
-                  <option [value]="c.id">{{ c.name }}</option>
+                  <option [value]="c.id" [selected]="c.id === (ereignis().actor)">{{ c.name }}</option>
                 }
               </select>
             </label>
             <label
               >Against
-              <select [value]="ereignis().target ?? ''" (change)="setzeEreignis({ target: $any($event.target).value || undefined })">
-                <option value="">—</option>
+              <select (change)="setzeEreignis({ target: $any($event.target).value || undefined })">
+                <option value="" [selected]="'' === (ereignis().target ?? '')">—</option>
                 @for (c of kreaturen(); track c.id) {
-                  <option [value]="c.id">{{ c.name }}</option>
+                  <option [value]="c.id" [selected]="c.id === (ereignis().target ?? '')">{{ c.name }}</option>
                 }
               </select>
             </label>
@@ -371,10 +371,10 @@ type Ziehen =
             @if (aktiv()) {
               <label
                 >Show the path for
-                <select [value]="spurFuer() ?? ''" (change)="spurFuer.set($any($event.target).value || null)">
-                  <option value="">—</option>
+                <select (change)="spurFuer.set($any($event.target).value || null)">
+                  <option value="" [selected]="'' === (spurFuer() ?? '')">—</option>
                   @for (c of kreaturen(); track c.id) {
-                    <option [value]="c.id">{{ c.name }}</option>
+                    <option [value]="c.id" [selected]="c.id === (spurFuer() ?? '')">{{ c.name }}</option>
                   }
                 </select>
               </label>
@@ -396,6 +396,9 @@ type Ziehen =
     }
     .hint {
       color: var(--dim);
+    }
+    .hint code {
+      font-size: 0.85em;
     }
     .fehler,
     .warn {
@@ -421,6 +424,7 @@ type Ziehen =
     label {
       display: flex;
       flex-direction: column;
+      align-items: flex-start;
       gap: 0.15rem;
       font-size: 0.9rem;
     }

@@ -119,9 +119,12 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
         </section>
       }
 
-      <!-- Versuche (T-270): nur Leitung und Verwaltung, Schalter je Konto. -->
+      <!-- Versuche (T-270): nur Leitung und Verwaltung, Schalter je Konto;
+           nachgeladen, damit der Versuch das erste Bündel nicht schwerer macht. -->
       @if (leitet()) {
-        <nw-experimente />
+        @defer {
+          <nw-experimente />
+        }
       }
     </section>
   `,

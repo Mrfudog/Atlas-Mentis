@@ -335,11 +335,11 @@ export function exampleRuleGraphs(): RuleGraph[] {
       enabled: true,
       nodes: [
         { id: 't', kind: 'trigger', x: 20, y: 40, on: 'hit' },
-        { id: 'c1', kind: 'condition', x: 260, y: 40, test: { kind: 'same', a: 'self', b: 'target' } },
-        { id: 'c2', kind: 'condition', x: 500, y: 40, test: { kind: 'knows', who: 'self', name: 'Hellish Rebuke' } },
-        { id: 'c3', kind: 'condition', x: 740, y: 40, test: { kind: 'compare', left: 'self.reactionFree', op: '=', right: '1' } },
-        { id: 'c4', kind: 'condition', x: 740, y: 180, test: { kind: 'compare', left: 'distance', op: '<=', right: '60' } },
-        { id: 'o', kind: 'outcome', x: 980, y: 180, then: { kind: 'offerReaction', name: 'Hellish Rebuke', to: 'self', against: 'actor' } },
+        { id: 'c1', kind: 'condition', x: 250, y: 40, test: { kind: 'same', a: 'self', b: 'target' } },
+        { id: 'c2', kind: 'condition', x: 480, y: 40, test: { kind: 'knows', who: 'self', name: 'Hellish Rebuke' } },
+        { id: 'c3', kind: 'condition', x: 710, y: 40, test: { kind: 'compare', left: 'self.reactionFree', op: '=', right: '1' } },
+        { id: 'c4', kind: 'condition', x: 250, y: 190, test: { kind: 'compare', left: 'distance', op: '<=', right: '60' } },
+        { id: 'o', kind: 'outcome', x: 480, y: 190, then: { kind: 'offerReaction', name: 'Hellish Rebuke', to: 'self', against: 'actor' } },
       ],
       wires: [
         { from: 't', to: 'c1' },
@@ -355,11 +355,11 @@ export function exampleRuleGraphs(): RuleGraph[] {
       enabled: true,
       nodes: [
         { id: 't', kind: 'trigger', x: 20, y: 40, on: 'picksUpObject' },
-        { id: 'c1', kind: 'condition', x: 260, y: 40, test: { kind: 'same', a: 'self', b: 'actor', not: true } },
-        { id: 'c2', kind: 'condition', x: 500, y: 40, test: { kind: 'knows', who: 'self', name: 'Snatch Punisher' } },
-        { id: 'c3', kind: 'condition', x: 740, y: 40, test: { kind: 'compare', left: 'distance', op: '<=', right: 'self.reach' } },
-        { id: 'c4', kind: 'condition', x: 740, y: 180, test: { kind: 'compare', left: 'self.reactionFree', op: '=', right: '1' } },
-        { id: 'o', kind: 'outcome', x: 980, y: 180, then: { kind: 'offerReaction', name: 'Melee attack', to: 'self', against: 'actor' } },
+        { id: 'c1', kind: 'condition', x: 250, y: 40, test: { kind: 'same', a: 'self', b: 'actor', not: true } },
+        { id: 'c2', kind: 'condition', x: 480, y: 40, test: { kind: 'knows', who: 'self', name: 'Snatch Punisher' } },
+        { id: 'c3', kind: 'condition', x: 710, y: 40, test: { kind: 'compare', left: 'distance', op: '<=', right: 'self.reach' } },
+        { id: 'c4', kind: 'condition', x: 250, y: 190, test: { kind: 'compare', left: 'self.reactionFree', op: '=', right: '1' } },
+        { id: 'o', kind: 'outcome', x: 480, y: 190, then: { kind: 'offerReaction', name: 'Melee attack', to: 'self', against: 'actor' } },
       ],
       wires: [
         { from: 't', to: 'c1' },
