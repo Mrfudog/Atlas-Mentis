@@ -55,6 +55,18 @@ h2 {
   flex-direction: column;
   gap: 0.4rem;
 }
+/* Die Reiter (T-254): die Zeile über die volle Breite, der Inhalt wie die Kästen eingerückt. */
+nw-reiterleiste {
+  display: block;
+  margin: 0 1.5rem;
+}
+.eingerueckt {
+  margin: 0 1.5rem 1rem;
+}
+.kennzahlen {
+  margin: 0;
+  padding-left: 1.1rem;
+}
 .flaeche {
   display: flex;
   flex-wrap: wrap;
@@ -301,7 +313,9 @@ button.weg {
     margin-left: 0;
   }
   .kasten,
-  .flaeche {
+  .flaeche,
+  nw-reiterleiste,
+  .eingerueckt {
     margin-left: 1rem;
     margin-right: 1rem;
   }
