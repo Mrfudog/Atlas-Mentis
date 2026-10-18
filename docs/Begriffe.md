@@ -1380,6 +1380,20 @@ Ganzes auf.
 
 ---
 
+
+**Sichtbarkeit je Gruppe** (T-252, E-098). Ein Artikel, der keine Stufe
+sagt, nimmt die seiner Gruppe: die Regel der laufenden Kampagne, sonst die
+Vorgabe seiner Ebene, sonst `public`. Warum keine Massenänderung, die
+`audience` in jeden Artikel schreibt: dann änderte „D&D → public" in der
+einen Runde einen Artikel, den drei Runden teilen, und der Artikel von
+morgen folgte der Regel nicht. Warum nicht nur die Ebene: dann wäre
+dieselbe Ebene in jeder Runde gleich sichtbar, und gruppieren liesse sich
+nur nach ihr. Also gibt die Ebene vor, und die Kampagne überschreibt je
+Gruppe — und die Gruppe ist ein Schlüssel der Transformationen, damit die
+Übersicht, in der man sie setzt, und die Rechnung, die sie liest, dasselbe
+meinen. Das ist keine Vererbung von Artikel zu Artikel (die gibt es weiter
+nicht): die Regel steht an der Kampagne und sagt für jeden Artikel der
+Gruppe dasselbe.
 ## Die Zahlen einer Kreatur
 
 **Sie wohnen am Statblock** — auch die eines Spielercharakters. Er hat mehr

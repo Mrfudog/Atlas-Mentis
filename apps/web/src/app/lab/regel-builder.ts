@@ -1,14 +1,16 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild, type ElementRef } from '@angular/core';
 import {
   describeRuleNode,
   exampleRuleGraphs,
   ruleGraphProblems,
   runRules,
   RULE_COMPARATORS,
+  RULE_ENGINES,
   RULE_ROLES,
   RULE_TRIGGERS,
   type RuleComparator,
   type RuleCreature,
+  type RuleEngineKey,
   type RuleEvent,
   type RuleGraph,
   type RuleNode,
@@ -22,12 +24,16 @@ import {
 import { Experimente } from '../kern/experimente';
 import { Session } from '../kern/session';
 
+/** Werte mit eigener Spalte im Probelauf; der Rest steht unter „More values". */
+const EIGENE_SPALTEN = new Set(['hp', 'reach', 'reactionFree']);
+
 /** Masse eines Knotens auf der Leinwand. */
 const B = 210;
 const H = 76;
 
 type Ziehen =
   | { art: 'knoten'; id: string; dx: number; dy: number }
+  | { art: 'flaeche'; x: number; y: number; el: HTMLElement }
   | { art: 'draht'; von: string; port?: 'yes' | 'no'; x: number; y: number };
 
 /**
@@ -62,25 +68,68 @@ type Ziehen =
         @if (fehler(); as f) {
           <p class="fehler" role="alert">{{ f }}</p>
         }
-        <div class="leiste">
-          <label>
-            Rule
-            <select (change)="waehle($any($event.target).value)">
-              @for (g of regeln(); track g.id) {
-                <option [value]="g.id" [selected]="g.id === (aktivId() ?? '')">{{ g.name }}{{ g.enabled ? '' : ' (off)' }}{{ geaendert().has(g.id) ? ' •' : '' }}</option>
-              }
-            </select>
-          </label>
-          <button type="button" (click)="neueRegel()">New rule</button>
-          <button type="button" (click)="beispiele()">Add examples</button>
-          <button type="button" class="pri" [disabled]="!geaendert().size || speichert()" (click)="speichern()">
-            {{ speichert() ? 'Saving…' : 'Save' }}
-          </button>
-        </div>
+        <div class="oben">
+        <aside class="uebersicht" aria-label="Rules by engine">
+          <div class="leiste">
+            <button type="button" (click)="neueRegel()">New rule</button>
+            <button type="button" (click)="beispiele()">Add examples</button>
+            <button type="button" class="pri" [disabled]="!geaendert().size || speichert()" (click)="speichern()">
+              {{ speichert() ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+          <div class="filter">
+            <label>Search <input type="search" [value]="suche()" (input)="suche.set($any($event.target).value)" placeholder="Name, trigger, text…" /></label>
+            <label
+              >Engine
+              <select (change)="engineFilter.set($any($event.target).value)">
+                <option value="" [selected]="engineFilter() === ''">All engines</option>
+                @for (e of engines; track e.key) {
+                  <option [value]="e.key" [selected]="engineFilter() === e.key">{{ e.label }}</option>
+                }
+              </select>
+            </label>
+            <label
+              >Trigger
+              <select (change)="triggerFilter.set($any($event.target).value)">
+                <option value="" [selected]="triggerFilter() === ''">Any trigger</option>
+                @for (t of triggers; track t.key) {
+                  <option [value]="t.key" [selected]="triggerFilter() === t.key">{{ t.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="haken"><input type="checkbox" [checked]="nurAktive()" (change)="nurAktive.set($any($event.target).checked)" /> Active only</label>
+          </div>
+          @for (gr of gruppen(); track gr.key) {
+            <section class="engine">
+              <h2>{{ gr.label }} <span class="zahl-klein">{{ gr.regeln.length }}</span></h2>
+              <ul>
+                @for (g of gr.regeln; track g.id) {
+                  <li>
+                    <button type="button" class="regel" [class.aktiv]="g.id === aktivId()" [class.aus]="!g.enabled" (click)="waehle(g.id)">
+                      <span>{{ g.name }}</span>
+                      <small>{{ ausloeserVon(g) }} · {{ g.nodes.length }} nodes{{ g.enabled ? '' : ' · off' }}{{ geaendert().has(g.id) ? ' · unsaved' : '' }}</small>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </section>
+          } @empty {
+            <p class="hint">No rule matches the filter.</p>
+          }
+        </aside>
 
+        <div class="haupt">
         @if (aktiv(); as g) {
           <div class="regelkopf">
             <label>Name <input type="text" [value]="g.name" (change)="aendereRegel({ name: $any($event.target).value })" /></label>
+            <label
+              >Engine
+              <select (change)="aendereRegel({ engine: $any($event.target).value })">
+                @for (e of engines; track e.key) {
+                  <option [value]="e.key" [selected]="(g.engine ?? 'other') === e.key">{{ e.label }}</option>
+                }
+              </select>
+            </label>
             <label class="haken"
               ><input type="checkbox" [checked]="g.enabled" (change)="aendereRegel({ enabled: $any($event.target).checked })" /> Active</label
             >
@@ -91,20 +140,28 @@ type Ziehen =
             <button type="button" (click)="neuerKnoten('trigger')">Trigger</button>
             <button type="button" (click)="neuerKnoten('condition')">Condition</button>
             <button type="button" (click)="neuerKnoten('outcome')">Outcome</button>
+            <span class="zoom">
+              <button type="button" (click)="zoome(-1)" aria-label="Zoom out">−</button>
+              <span class="hint">{{ (massstab() * 100).toFixed(0) }}%</span>
+              <button type="button" (click)="zoome(1)" aria-label="Zoom in">+</button>
+              <button type="button" (click)="einpassen(flaeche)">Fit</button>
+            </span>
           </div>
           @for (p of probleme(); track p) {
             <p class="warn">{{ p }}</p>
           }
 
           <div class="arbeit">
-            <div class="flaeche" aria-label="Rule canvas">
+            <div class="flaeche" #flaeche aria-label="Rule canvas">
               <svg
                 #svg
-                [attr.width]="groesse().w"
-                [attr.height]="groesse().h"
+                [attr.width]="groesse().w * massstab()"
+                [attr.height]="groesse().h * massstab()"
+                [attr.viewBox]="'0 0 ' + groesse().w + ' ' + groesse().h"
+                (pointerdown)="schiebe($event, svg, flaeche)"
                 (pointermove)="bewege($event, svg)"
                 (pointerup)="loslassen($event, svg)"
-                (pointerleave)="ziehen.set(null)"
+                (pointercancel)="ziehen.set(null)"
               >
                 @for (w of g.wires; track $index) {
                   <svg:path
@@ -288,11 +345,18 @@ type Ziehen =
               }
             </aside>
           </div>
+        } @else {
+          <p class="hint">Pick a rule on the left, or start a new one.</p>
         }
+        </div>
+        </div>
 
         <section class="probe" aria-labelledby="probe-titel">
           <h2 id="probe-titel">Try it</h2>
-          <p class="hint">Made-up creatures for a dry run. Positions are in feet; “reaction free” counts as 1 or 0.</p>
+          <p class="hint">
+            Made-up creatures for a dry run. Positions are in feet; “reaction free” counts as 1 or 0. More values are read as
+            <code>self.name</code>, <code>actor.name</code> or <code>target.name</code>, written <code>name=number</code> and separated by commas.
+          </p>
           <div class="tabelle">
             <table>
               <thead>
@@ -304,6 +368,7 @@ type Ziehen =
                   <th>HP</th>
                   <th>Reach</th>
                   <th>Reaction free</th>
+                  <th>More values</th>
                   <th></th>
                 </tr>
               </thead>
@@ -321,6 +386,10 @@ type Ziehen =
                     <td>
                       <input type="checkbox" [checked]="c.values['reactionFree'] === 1"
                              (change)="setzeWert(c.id, 'reactionFree', $any($event.target).checked ? '1' : '0')" />
+                    </td>
+                    <td>
+                      <input type="text" class="mehr" [value]="weitere(c)" (change)="setzeWeitere(c.id, $any($event.target).value)"
+                             placeholder="maxHp=20, slots1=2" />
                     </td>
                     <td><button type="button" class="leise" (click)="entferneKreatur(c.id)" [attr.aria-label]="'Remove ' + c.name">×</button></td>
                   </tr>
@@ -356,6 +425,12 @@ type Ziehen =
                 }
               </select>
             </label>
+            <label
+              >Amount
+              <input type="number" class="zahl" [value]="ereignis().amount ?? ''"
+                     (change)="setzeEreignis({ amount: $any($event.target).value === '' ? undefined : +$any($event.target).value })"
+                     title="Damage, spell level … — read as amount" />
+            </label>
             <button type="button" class="pri" (click)="probe()">Run</button>
           </div>
 
@@ -363,7 +438,11 @@ type Ziehen =
             <h3>What fires</h3>
             <ul class="feuert">
               @for (f of r.firings; track $index) {
-                <li><strong>{{ f.ruleName }}:</strong> {{ f.text }}</li>
+                <li>
+                  <button type="button" class="leise feuer" (click)="zeigeFeuer(f.rule, f.self)" title="Show this rule and its path">
+                    <strong>{{ f.ruleName }}:</strong> {{ f.text }}
+                  </button>
+                </li>
               } @empty {
                 <li class="hint">No rule fires.</li>
               }
@@ -464,10 +543,14 @@ type Ziehen =
         radial-gradient(circle, var(--line) 1px, transparent 1px) 0 0 / 20px 20px,
         var(--surface);
     }
+    /* Chrome beachtet touch-action an SVG-Kindern nicht: also nimmt die
+       Leinwand jede Geste selbst — Knoten ziehen, Punkte verbinden, und auf
+       freiem Grund verschiebt sie die Fläche (\`schiebe\`). */
     svg {
       display: block;
       touch-action: none;
       user-select: none;
+      cursor: grab;
     }
     .knoten rect {
       fill: var(--paper);
@@ -570,8 +653,105 @@ type Ziehen =
       text-align: left;
       font-size: 0.85rem;
     }
+    .mehr {
+      width: 12rem;
+    }
+    .oben {
+      display: grid;
+      grid-template-columns: 16rem minmax(0, 1fr);
+      gap: 1rem;
+      align-items: start;
+    }
+    @media (max-width: 1000px) {
+      .oben {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+    .uebersicht {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 0.6rem;
+      max-height: 85vh;
+      overflow: auto;
+    }
+    @media (max-width: 1000px) {
+      .uebersicht {
+        max-height: 50vh;
+      }
+    }
+    .uebersicht .leiste {
+      margin-top: 0;
+    }
+    .filter {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.6rem;
+      margin-bottom: 0.4rem;
+    }
+    .filter label {
+      flex: 1 1 10rem;
+    }
+    .filter input[type='search'],
+    .filter select {
+      width: 100%;
+    }
+    .engine h2 {
+      font-size: 0.95rem;
+      margin: 0.7rem 0 0.2rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .zahl-klein {
+      color: var(--dim);
+      font-weight: normal;
+      font-size: 0.8rem;
+    }
+    .engine ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    button.regel {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+      min-height: 44px;
+      padding: 0.3rem 0.5rem;
+      margin: 0.15rem 0;
+      text-align: left;
+      border-color: transparent;
+      background: none;
+    }
+    button.regel small {
+      color: var(--dim);
+    }
+    button.regel.aktiv {
+      border-color: var(--accent);
+      background: var(--paper);
+    }
+    button.regel.aus span {
+      color: var(--dim);
+      text-decoration: line-through;
+    }
+    .zoom {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-left: auto;
+    }
+    button.feuer {
+      text-align: left;
+      min-height: 36px;
+      padding: 0.2rem 0;
+      color: inherit;
+    }
     .zahl {
       width: 4.5rem;
+    }
+    .feuert {
+      list-style: none;
+      padding: 0;
     }
     .feuert li {
       margin: 0.2rem 0;
@@ -587,6 +767,7 @@ export class RegelBuilder {
   protected readonly triggers = RULE_TRIGGERS;
   protected readonly rollen = RULE_ROLES;
   protected readonly vergleiche = RULE_COMPARATORS;
+  protected readonly engines = RULE_ENGINES;
 
   protected readonly bereit = signal(false);
   protected readonly regeln = signal<RuleGraph[]>([]);
@@ -597,12 +778,37 @@ export class RegelBuilder {
   protected readonly knotenWahl = signal<string | null>(null);
   protected readonly drahtWahl = signal<number | null>(null);
   protected readonly ziehen = signal<Ziehen | null>(null);
+  protected readonly massstab = signal(1);
+  private readonly flaecheRef = viewChild<ElementRef<HTMLElement>>('flaeche');
+
+  /* Filter der Übersicht. */
+  protected readonly suche = signal('');
+  protected readonly engineFilter = signal('');
+  protected readonly triggerFilter = signal('');
+  protected readonly nurAktive = signal(false);
+  /** Beispiele, die jemand gelöscht hat — sie kommen nicht von selbst wieder. */
+  private verworfen: string[] = [];
 
   /** Erfundene Kreaturen für den Probelauf — keine Artikel, nichts gespeichert. */
   protected readonly kreaturen = signal<RuleCreature[]>([
-    { id: 'a', name: 'Creature A', knows: [], values: { hp: 20, reach: 5, reactionFree: 1 }, x: 30, y: 0 },
-    { id: 'b', name: 'Creature B', knows: ['Hellish Rebuke'], values: { hp: 15, reach: 5, reactionFree: 1 }, x: 0, y: 0 },
-    { id: 'c', name: 'Creature C', knows: ['Snatch Punisher'], values: { hp: 30, reach: 10, reactionFree: 1 }, x: 25, y: 5 },
+    { id: 'a', name: 'Creature A', knows: [], values: { hp: 20, maxHp: 20, reach: 5, reactionFree: 1, freeHands: 0, disengaged: 0 }, x: 30, y: 0 },
+    {
+      id: 'b',
+      name: 'Creature B',
+      knows: ['Hellish Rebuke', 'Shield'],
+      values: { hp: 15, maxHp: 15, reach: 5, reactionFree: 1, slots1: 2, concentrating: 1, freeHands: 1 },
+      x: 0,
+      y: 0,
+    },
+    {
+      id: 'c',
+      name: 'Creature C',
+      knows: ['Snatch Punisher', 'Sentinel', 'Counterspell'],
+      values: { hp: 30, maxHp: 30, reach: 10, reactionFree: 1, slots3: 1 },
+      x: 25,
+      y: 5,
+    },
+    { id: 'd', name: 'Creature D', knows: ['Regeneration', 'Uncanny Dodge'], values: { hp: 40, maxHp: 60, reach: 10, reactionFree: 1, fireOrAcid: 0 }, x: 100, y: 0 },
   ]);
   protected readonly ereignis = signal<RuleEvent>({ on: 'hit', actor: 'a', target: 'b' });
   protected readonly ergebnis = signal<RuleRunResult | null>(null);
@@ -617,10 +823,29 @@ export class RegelBuilder {
   protected readonly groesse = computed(() => {
     const ns = this.aktiv()?.nodes ?? [];
     return {
-      w: Math.max(640, ...ns.map((n) => n.x + B + 60)),
-      h: Math.max(320, ...ns.map((n) => n.y + H + 60)),
+      w: Math.max(400, ...ns.map((n) => n.x + B + 40)),
+      h: Math.max(240, ...ns.map((n) => n.y + H + 40)),
     };
   });
+  /** Die Übersicht: gefiltert, nach Engine gruppiert in der Reihenfolge der Engines. */
+  protected readonly gruppen = computed(() => {
+    const q = this.suche().trim().toLowerCase();
+    const eng = this.engineFilter();
+    const tr = this.triggerFilter();
+    const passt = (g: RuleGraph) =>
+      (!eng || (g.engine ?? 'other') === eng) &&
+      (!tr || g.nodes.some((n) => n.kind === 'trigger' && n.on === tr)) &&
+      (!this.nurAktive() || g.enabled) &&
+      (!q || g.name.toLowerCase().includes(q) || g.nodes.some((n) => describeRuleNode(n).toLowerCase().includes(q)));
+    return RULE_ENGINES.map((e) => ({
+      key: e.key,
+      label: e.label,
+      regeln: this.regeln()
+        .filter((g) => (g.engine ?? 'other') === e.key && passt(g))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    })).filter((gr) => gr.regeln.length);
+  });
+
   /** Ergebnis je Knoten der aktiven Regel für die gewählte Kreatur. */
   protected readonly spur = computed(() => {
     const m = new Map<string, boolean | null>();
@@ -642,11 +867,18 @@ export class RegelBuilder {
       await this.exp.lade(true);
       if (this.exp.ruleBuilder()) {
         const gespeichert = await this.exp.regeln();
-        const regeln = gespeichert.length ? gespeichert : exampleRuleGraphs();
+        this.verworfen = await this.exp.verworfeneBeispiele();
+        const beispiele = exampleRuleGraphs();
+        /* Gespeicherte Beispiele von früher bekommen ihre Engine nachgetragen. */
+        const alt = gespeichert.map((g) => (g.engine ? g : { ...g, engine: beispiele.find((b) => b.id === g.id)?.engine ?? 'other' }));
+        const da = new Set(alt.map((g) => g.id));
+        /* Neue Beispiele kommen dazu und gelten als ungespeichert, bis jemand „Save" sagt. */
+        const neu = beispiele.filter((b) => !da.has(b.id) && !this.verworfen.includes(b.id));
+        const regeln = [...alt, ...neu];
         this.regeln.set(regeln);
-        /* Die Beispiele gelten als ungespeichert, bis jemand „Save" sagt. */
-        if (!gespeichert.length) this.geaendert.set(new Set(regeln.map((g) => g.id)));
-        this.aktivId.set(regeln[0]?.id ?? null);
+        this.geaendert.set(new Set(neu.map((g) => g.id)));
+        const erste = this.gruppen()[0]?.regeln[0]?.id ?? regeln[0]?.id;
+        if (erste) this.waehle(erste);
       }
     } catch {
       this.fehler.set('The rules could not be loaded.');
@@ -661,6 +893,14 @@ export class RegelBuilder {
     this.aktivId.set(id);
     this.knotenWahl.set(null);
     this.drahtWahl.set(null);
+    /* Eine neue Regel steht ganz da: verkleinert, bis sie in die Breite passt. */
+    this.massstab.set(1);
+    /* Gemessen wird nach dem Zeichnen; beim ersten Laden steht die Fläche erst danach. */
+    setTimeout(() => {
+      const el = this.flaecheRef()?.nativeElement;
+      /* Von selbst nicht kleiner als lesbar; den Rest scrollt man, „Fit" geht weiter. */
+      if (el) this.einpassen(el, 0.6);
+    }, 50);
   }
 
   private aendere(id: string, f: (g: RuleGraph) => RuleGraph): void {
@@ -668,14 +908,15 @@ export class RegelBuilder {
     this.geaendert.update((s) => new Set(s).add(id));
   }
 
-  protected aendereRegel(teil: Partial<Pick<RuleGraph, 'name' | 'enabled'>>): void {
+  protected aendereRegel(teil: Partial<Pick<RuleGraph, 'name' | 'enabled' | 'engine'>>): void {
     const id = this.aktivId();
     if (id) this.aendere(id, (g) => ({ ...g, ...teil }));
   }
 
   protected neueRegel(): void {
     const id = `rule-${Date.now().toString(36)}`;
-    const g: RuleGraph = { id, name: 'New rule', enabled: true, nodes: [{ id: 'n1', kind: 'trigger', x: 20, y: 40, on: 'attacked' }], wires: [] };
+    const eng = (this.engineFilter() || 'other') as RuleEngineKey;
+    const g: RuleGraph = { id, name: 'New rule', engine: eng, enabled: true, nodes: [{ id: 'n1', kind: 'trigger', x: 20, y: 40, on: 'attacked' }], wires: [] };
     this.regeln.update((rs) => [...rs, g]);
     this.geaendert.update((s) => new Set(s).add(id));
     this.waehle(id);
@@ -684,6 +925,10 @@ export class RegelBuilder {
   protected beispiele(): void {
     const da = new Set(this.regeln().map((g) => g.id));
     const neu = exampleRuleGraphs().filter((g) => !da.has(g.id));
+    if (this.verworfen.length) {
+      this.verworfen = [];
+      void this.exp.setzeVerworfeneBeispiele([]);
+    }
     if (!neu.length) return;
     this.regeln.update((rs) => [...rs, ...neu]);
     this.geaendert.update((s) => new Set([...s, ...neu.map((g) => g.id)]));
@@ -710,6 +955,10 @@ export class RegelBuilder {
     if (!confirm(`Delete the rule “${g.name}”?`)) return;
     try {
       await this.exp.loescheRegel(g.id);
+      if (exampleRuleGraphs().some((b) => b.id === g.id) && !this.verworfen.includes(g.id)) {
+        this.verworfen = [...this.verworfen, g.id];
+        await this.exp.setzeVerworfeneBeispiele(this.verworfen);
+      }
     } catch {
       /* Ungespeichert gab es sie am Server nicht. */
     }
@@ -893,8 +1142,27 @@ export class RegelBuilder {
     return this.pfadVon(g, w.from, w.port, z.x, z.y + H / 2);
   }
 
+  /** Ziehen auf freiem Grund verschiebt die Fläche — mit Finger wie Maus. */
+  protected schiebe(ev: PointerEvent, svg: Element, flaeche: HTMLElement): void {
+    /* Eine Verbindung bleibt anklickbar: dort beginnt kein Verschieben. */
+    if (this.ziehen() || (ev.target as Element | null)?.closest?.('path.draht')) return;
+    this.halte(ev, svg);
+    this.ziehen.set({ art: 'flaeche', x: ev.clientX, y: ev.clientY, el: flaeche });
+  }
+
+  /** Die Geste bleibt bei der Leinwand, auch wenn der Finger sie verlässt. */
+  private halte(ev: PointerEvent, svg: Element): void {
+    try {
+      svg.setPointerCapture?.(ev.pointerId);
+    } catch {
+      /* Ohne Erfassung endet das Ziehen am Rand — nicht schlimm. */
+    }
+  }
+
   protected greife(ev: PointerEvent, n: RuleNode, svg: Element): void {
     ev.preventDefault();
+    ev.stopPropagation();
+    this.halte(ev, svg);
     const p = this.punkt(ev, svg);
     this.knotenWahl.set(n.id);
     this.drahtWahl.set(null);
@@ -904,6 +1172,7 @@ export class RegelBuilder {
   protected zieheDraht(ev: PointerEvent, von: string, port: 'yes' | 'no' | undefined, svg: Element): void {
     ev.preventDefault();
     ev.stopPropagation();
+    this.halte(ev, svg);
     const p = this.punkt(ev, svg);
     this.ziehen.set({ art: 'draht', von, port, x: p.x, y: p.y });
   }
@@ -911,6 +1180,18 @@ export class RegelBuilder {
   protected bewege(ev: PointerEvent, svg: Element): void {
     const z = this.ziehen();
     if (!z) return;
+    if (z.art === 'flaeche') {
+      const dx = ev.clientX - z.x;
+      const dy = ev.clientY - z.y;
+      const vorher = z.el.scrollTop;
+      z.el.scrollLeft -= dx;
+      z.el.scrollTop -= dy;
+      /* Was die Fläche senkrecht nicht mehr nehmen kann, scrollt die Seite. */
+      const rest = -dy - (z.el.scrollTop - vorher);
+      if (Math.abs(rest) > 0.5) window.scrollBy(0, rest);
+      this.ziehen.set({ ...z, x: ev.clientX, y: ev.clientY });
+      return;
+    }
     const p = this.punkt(ev, svg);
     if (z.art === 'draht') {
       this.ziehen.set({ ...z, x: p.x, y: p.y });
@@ -931,6 +1212,21 @@ export class RegelBuilder {
     if (ziel) this.verbinde(z.von, ziel.id, z.port);
   }
 
+  /* ----------------------------------------------------------- Zoom */
+
+  protected zoome(richtung: 1 | -1): void {
+    const stufen = [0.4, 0.5, 0.6, 0.75, 0.9, 1, 1.25, 1.5];
+    const i = stufen.findIndex((x) => x >= this.massstab() - 0.001);
+    const j = Math.min(stufen.length - 1, Math.max(0, (i < 0 ? stufen.length - 1 : i) + richtung));
+    this.massstab.set(stufen[j]!);
+  }
+
+  /** So klein, dass die ganze Regel in die Breite der Fläche passt (höchstens 100 %). */
+  protected einpassen(flaeche: HTMLElement, mindestens = 0.3): void {
+    const breite = flaeche.clientWidth - 4;
+    if (breite > 0) this.massstab.set(Math.max(mindestens, Math.min(1, breite / this.groesse().w)));
+  }
+
   /* ----------------------------------------------------------- Probelauf */
 
   protected liste(s: string): string[] {
@@ -942,6 +1238,40 @@ export class RegelBuilder {
 
   protected setzeKreatur(id: string, teil: Partial<RuleCreature>): void {
     this.kreaturen.update((cs) => cs.map((c) => (c.id === id ? { ...c, ...teil } : c)));
+  }
+
+  /** Die Werte ausser denen mit eigener Spalte, als `name=zahl, …`. */
+  protected weitere(c: RuleCreature): string {
+    return Object.entries(c.values)
+      .filter(([k]) => !EIGENE_SPALTEN.has(k))
+      .map(([k, v]) => `${k}=${v}`)
+      .join(', ');
+  }
+
+  protected setzeWeitere(id: string, roh: string): void {
+    const neu: Record<string, number> = {};
+    for (const teil of roh.split(',')) {
+      const m = /^\s*([A-Za-z_]\w*)\s*=\s*(-?\d+(?:\.\d+)?)\s*$/.exec(teil);
+      if (m && !EIGENE_SPALTEN.has(m[1]!)) neu[m[1]!] = Number(m[2]);
+    }
+    this.kreaturen.update((cs) =>
+      cs.map((c) => {
+        if (c.id !== id) return c;
+        const bleiben = Object.fromEntries(Object.entries(c.values).filter(([k]) => EIGENE_SPALTEN.has(k)));
+        return { ...c, values: { ...bleiben, ...neu } };
+      }),
+    );
+  }
+
+  /** Ein Treffer der Liste zeigt seine Regel und den Weg der Kreatur. */
+  protected zeigeFeuer(regel: string, self: string): void {
+    this.waehle(regel);
+    this.spurFuer.set(self);
+  }
+
+  protected ausloeserVon(g: RuleGraph): string {
+    const t = g.nodes.filter((n) => n.kind === 'trigger').map((n) => (n.kind === 'trigger' ? n.on : ''));
+    return t.length ? t.join(', ') : 'no trigger';
   }
 
   protected setzeWert(id: string, key: string, roh: string): void {

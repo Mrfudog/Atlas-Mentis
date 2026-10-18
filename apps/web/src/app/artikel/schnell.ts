@@ -409,7 +409,7 @@ export class Schnell {
     const r = this.bestand.registry();
     const typ = this.typ();
     if (!r || !typ || !typeChain(r, typ).includes('Visibility')) return [];
-    return r.interfaces['Visibility']?.schema?.properties?.['audience']?.enum ?? [];
+    return enumOptions(r, r.interfaces['Visibility']?.schema?.properties?.['audience']) ?? [];
   });
   protected readonly publikum = linkedSignal(() => {
     const von = (this.herkunft()?.components?.['Visibility'] as { audience?: string } | undefined)?.audience;

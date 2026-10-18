@@ -274,13 +274,14 @@ export const fieldGroups = {
          * irgendwo. `app_user.is_admin` ist etwas anderes: die Verwaltung
          * der Installation, die alles sieht.
          *
-         * Vier Wörter mit genau einem Nutzer — die bleiben am Feld. Eine
-         * Registerzeile dafür wäre der Umweg ohne den Gewinn.
+         * Die vier Wörter sind die Zeile `Audience`, seit drei Felder sie
+         * brauchen (T-252): dieses, die Vorgabe der Ebene und die Regeln je
+         * Gruppe der Kampagne.
          */
         audience: {
           type: 'string',
           title: 'Audience',
-          enum: ['public', 'campaign', 'players', 'gm'],
+          enumRef: 'Audience',
           default: 'public',
           description: 'Who may see this at all: everyone, the campaign, its players or the GM.',
         },
@@ -321,6 +322,66 @@ export const fieldGroups = {
     },
   },
 
+
+  /**
+   * **Die Sichtbarkeit je Gruppe** (T-252, E-098): an der Kampagne eine
+   * Regel je Gruppe — „alles aus D&D 5e → public", „mein Homebrew → gm",
+   * „Inventarregeln → table". Die `id` eines Eintrags ist der Schlüssel
+   * der Gruppe aus den Transformationen (`layer:…|type:…`, T-253): eine
+   * Gruppe hat genau eine Regel, und der Schlüssel ist der Halt.
+   *
+   * Gelesen wird beim Lesen (D8), nichts wird in die Artikel geschrieben:
+   * eine Regel gilt auch für den Artikel, den es morgen gibt, und eine
+   * geteilte Ebene bleibt geteilt. Reihenfolge: Feld am Artikel > Regel
+   * der Kampagne (die genaueste zuerst) > Vorgabe der Ebene
+   * (`Layer.defaultAudience`) > public.
+   *
+   * `show` und `hide` nennen **Träger** wie `revealedTo`/`hiddenFrom` —
+   * Figuren, Gruppen, Fraktionen, nie Konten (REQ-199, E-007).
+   *
+   * `editOnly`: gesetzt wird in der Übersicht der Kampagnenseite
+   * (Reiter Visibility); in der Feldtabelle stünde nur eine Liste von
+   * Schlüsseln.
+   */
+  VisibilityRules: {
+    schema: {
+      type: 'object',
+      properties: {
+        visibilityRules: {
+          type: 'array',
+          many: true,
+          editOnly: true,
+          title: 'Visibility by group',
+          description: 'Who sees each group of articles in this campaign — set on the campaign page under Visibility. An article’s own setting wins.',
+          items: { type: 'object' },
+          facet: false,
+          entry: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+              /* Der Schlüssel der Gruppe, `layer:dnd|type:Spell`. */
+              id: { type: 'string', title: 'Group' },
+              audience: { type: 'string', title: 'Audience', enumRef: 'Audience' },
+              show: {
+                type: 'array',
+                format: 'link',
+                title: 'Show to',
+                items: { type: 'string' },
+                target: { interfaces: ['Creature', 'Party', 'Faction'] },
+              },
+              hide: {
+                type: 'array',
+                format: 'link',
+                title: 'Hide from',
+                items: { type: 'string' },
+                target: { interfaces: ['Creature', 'Party', 'Faction'] },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 
   Image: {
     schema: {
@@ -2876,6 +2937,17 @@ export const fieldGroups = {
         levels: { type: 'string', title: 'Levels' },
         storyline: { type: 'string', title: 'Storyline', suggest: true },
         groupBy: { type: 'string', title: 'Groups by', enum: ['category', 'publisher'] },
+        /* **Die Vorgabe der Ebene für ihre Artikel** (T-252, E-098) — nicht
+           zu verwechseln mit `Visibility.audience` der Ebene selbst (wer die
+           Ebene sieht). Gilt überall, wo die Kampagne nichts sagt; liegt
+           ein Artikel in mehreren Ebenen, gilt die engste Vorgabe. */
+        defaultAudience: {
+          type: 'string',
+          title: 'Articles visible to',
+          enumRef: 'Audience',
+          description: 'Who sees the articles of this layer, unless the campaign or the article says otherwise. Empty: everyone.',
+          facet: false,
+        },
       },
     },
   },

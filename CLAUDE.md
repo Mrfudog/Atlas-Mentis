@@ -239,7 +239,16 @@ wiederkommen, werden sie neu geschrieben.
   Gelesen werden drei Felder, und die Reihenfolge ist die Regel:
   `hiddenFrom` schlägt `revealedTo` schlägt `audience`. **`public` ist die
   Vorgabe und heisst: jeder darf es sehen** — wer etwas verbergen will, sagt
-  es, und nicht umgekehrt. Die Stufen von aussen nach innen: `public` jedes
+  es, und nicht umgekehrt. **Sagt der Artikel keine Stufe, sagt es seine
+  Gruppe** (T-252, E-098): die Regel der laufenden Kampagne
+  (`VisibilityRules.visibilityRules`, je Gruppe ein Schlüssel der
+  Transformationen wie `layer:dnd|type:Spell`, die genaueste zuerst, auch
+  zeigen/verbergen je Träger), sonst die Vorgabe der Ebene
+  (`Layer.defaultAudience`, die engste), sonst `public`. Gelesen wird beim
+  Lesen (`Viewer.campaignRules`, vom Server mitgegeben), nichts wandert in
+  die Artikel; ein ausdrücklich gesetztes `audience`, auch `public`, ist
+  ein eigenes Feld und schlägt jede Regel. Gesetzt wird auf der
+  Kampagnenseite unter Visibility. Die Stufen von aussen nach innen: `public` jedes
   Konto, `campaign` jedes Konto mit einer Rolle am Tisch, `players` die
   Spielenden (`player`, `co-gm`, `gm`), `gm` die Leitung (`gm`, `co-gm`).
   Die beiden Listen nennen **Träger** (`Creature | Party | Faction`),

@@ -156,6 +156,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: g.Visibility.schema,
   },
 
+  /* Die Regeln je Gruppe an der Kampagne (T-252, E-098). Ein eigener
+     Typ und kein Feld von CampaignInfo: das sind die Regeloptionen, und
+     wer sieht was ist keine Option, wie gespielt wird. */
+  VisibilityRules: {
+    name: 'VisibilityRules',
+    label: 'Visibility by group',
+    abstract: true,
+    schema: g.VisibilityRules.schema,
+  },
+
   /** Marken — ein Bestandteil und keine Eigenschaft der Entität. */
   Tags: {
     name: 'Tags',
@@ -958,7 +968,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Campaign',
     area: 'story',
     label: 'Campaign',
-    extends: ['Story'],
+    extends: ['Story', 'VisibilityRules'],
     /* Wer die Vergleichsebenen sieht (T-092, E-021 d). */
     schema: merge(g.CampaignInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
