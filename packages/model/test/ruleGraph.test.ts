@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evalRuleExpr, exampleRuleGraphs, isRuleGraph, ruleGraphProblems, runRules, type RuleCreature, type RuleGraph } from '../src/index.js';
+import { evalRuleExpr, exampleRuleGraphs, isRuleGraph, ruleGraphProblems, runRules, RULE_ENGINES, type RuleCreature, type RuleGraph } from '../src/index.js';
 
 /* Regel-Builder, Versuch (T-270). Erfundene Kreaturen. */
 
@@ -108,5 +108,50 @@ describe('ruleGraphProblems und isRuleGraph', () => {
     expect(isRuleGraph(exampleRuleGraphs()[0])).toBe(true);
     expect(isRuleGraph({ id: 'x' })).toBe(false);
     expect(isRuleGraph(null)).toBe(false);
+  });
+});
+
+describe('die Beispielregeln', () => {
+  const alle = exampleRuleGraphs();
+  const regel = (id: string) => alle.find((g) => g.id === id)!;
+
+  it('sind ohne Mängel, haben eine Engine und eindeutige Ids', () => {
+    expect(new Set(alle.map((g) => g.id)).size).toBe(alle.length);
+    for (const g of alle) {
+      expect(ruleGraphProblems(g), g.id).toEqual([]);
+      expect(RULE_ENGINES.map((e) => e.key)).toContain(g.engine);
+    }
+  });
+
+  it('Counterspell: der Zaubergrad wählt den Zweig', () => {
+    const magier = kreatur('m', { x: 40 });
+    const wache = kreatur('w', { knows: ['Counterspell'], values: { reactionFree: 1, slots3: 1 } });
+    const lauf = (amount: number) => runRules([regel('counterspell')], { on: 'castsSpell', actor: 'm', amount }, [magier, wache]).firings.map((f) => f.text);
+    expect(lauf(2)).toEqual(['W may react with “Counterspell: the spell fails” against M']);
+    expect(lauf(5)).toEqual(['W may react with “Counterspell: ability check, DC 10 + spell level” against M']);
+  });
+
+  it('Konzentration: der SG ist die Hälfte des Schadens, mindestens 10', () => {
+    const b = kreatur('b', { values: { concentrating: 1 } });
+    const texte = (amount: number) =>
+      runRules([regel('concentration')], { on: 'damaged', actor: 'a', target: 'b', amount }, [kreatur('a'), b]).firings.map((f) => f.text);
+    expect(texte(30)).toContain('B.concentrationDC becomes 15');
+    expect(texte(8)).toContain('B.concentrationDC becomes 10');
+  });
+
+  it('auf 0 Trefferpunkte: massiver Schaden tötet', () => {
+    const b = kreatur('b', { values: { hp: 5, maxHp: 10 } });
+    const texte = (amount: number) =>
+      runRules([regel('drop-to-zero')], { on: 'damaged', actor: 'a', target: 'b', amount }, [kreatur('a'), b]).firings.map((f) => f.text);
+    expect(texte(20)).toContain('B gets “Dead (massive damage)”');
+    expect(texte(8)).toContain('B gets “Unconscious, dying”');
+    expect(texte(3)).toEqual([]);
+  });
+
+  it('ohne freie Hand sperrt die Regel das Zaubern, War Caster nicht', () => {
+    const r = (knows: string[]) =>
+      runRules([regel('somatic-hand')], { on: 'castsSpell', actor: 'a' }, [kreatur('a', { knows, values: { freeHands: 0 } })]).firings.map((f) => f.text);
+    expect(r([])).toEqual(['A cannot cast a spell with somatic components: no free hand']);
+    expect(r(['War Caster'])).toEqual(['A gets “Somatic components with hands full (War Caster)”']);
   });
 });

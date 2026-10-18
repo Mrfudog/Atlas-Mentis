@@ -54,6 +54,7 @@ import {
   classParts,
   originParts,
   currentCampaign,
+  campaignVisibility,
   inStack,
   adaptedVersion,
   rehang,
@@ -150,6 +151,7 @@ import { registerKarten } from './karten.js';
 import { registerKartenliste } from './kartenliste.js';
 import { registerRegeloptionen } from './regeloptionen.js';
 import { registerGlossar } from './glossar.js';
+import { registerSichtbarkeit } from './sichtbarkeit.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
 import { registerTueren } from './tueren.js';
 import { registerKampfstart } from './kampfstart.js';
@@ -691,11 +693,15 @@ export function buildApp({
 
   /** Mit wessen Augen gesiebt wird: Figuren, Rollen, Eigenes, Ausgenommenes. */
   async function augeVon(user: User, bestand: Map<string, Entity>, registry: Registry) {
+    /* Die Regeln je Gruppe der laufenden Kampagne (T-252, E-098): sagt ein
+       Artikel keine Stufe, sagt es seine Gruppe. */
+    const campaignRules = campaignVisibility(bestand, registry, currentCampaign(bestand, registry.settings ?? null));
     return {
       actors: user.actorIds ?? [],
       roles: user.roles ?? {},
       own: await ownedBy(user, bestand.values()),
       ungated: await ausgenommen(bestand, registry),
+      ...(campaignRules ? { campaignRules } : {}),
     };
   }
 
@@ -2900,6 +2906,18 @@ export function buildApp({
   registerRegeloptionen(app, { repo, roh, sieve });
   /* Das Glossar (T-242): Wörter der App und sichtbare Glossarartikel, mit Nennungen. */
   registerGlossar(app, { roh, sieve });
+  /* Die Sichtbarkeit je Gruppe an der Kampagne (T-252, E-098). */
+  registerSichtbarkeit(app, {
+    repo,
+    viewerOf,
+    roh,
+    imSpiel: (map, kampagne, registry) => {
+      const st = stapelFuer(map, kampagne, registry);
+      return (e) => st.inPlay(e);
+    },
+    augeVon,
+    schreiben,
+  });
   /* Liegengelassen (T-140): Sitzungsende und Aufheben. */
   registerLiegen(app, {
     repo,

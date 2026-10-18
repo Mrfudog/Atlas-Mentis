@@ -66,6 +66,12 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
                 }
                 @if (o.rule; as r) {
                   <a class="regel" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">Rule: {{ r.name }}</a>
+                } @else if (leitet() && !hatVariantenregel(o)) {
+                  <!-- Einmal je Option und nur, wo nichts sie erklärt: die Varianten verweisen dann darauf. -->
+                  <button type="button" class="klein" [disabled]="schreibt() === o.ownName" (click)="schreibeRegel(o)"
+                          [attr.title]="'Create the rule article “' + o.ownName + '” and open it'">
+                    {{ schreibt() === o.ownName ? 'Creating…' : 'Write rule article' }}
+                  </button>
                 }
               </div>
               <p class="was">{{ o.does }}</p>
@@ -89,13 +95,11 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
                             {{ waehlt() === o.key + ':' + v.key ? 'Saving…' : 'Use this' }}
                           </button>
                         }
+                        <!-- Ohne eigenen Artikel verweist die Variante auf den der Option. -->
                         @if (v.rule; as r) {
                           <a class="regel" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">Rule: {{ r.name }}</a>
-                        } @else if (leitet()) {
-                          <button type="button" class="klein" [disabled]="schreibt() === v.ownName" (click)="schreibeRegel(o, v)"
-                                  [attr.title]="'Create the rule article “' + v.ownName + '” and open it'">
-                            {{ schreibt() === v.ownName ? 'Creating…' : 'Write rule article' }}
-                          </button>
+                        } @else if (o.rule; as r) {
+                          <a class="regel siehe" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">See: {{ r.name }}</a>
                         }
                       </div>
                       <p class="was">{{ v.does }}</p>
@@ -244,6 +248,9 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
       font-size: 0.85rem;
       color: var(--link);
     }
+    .regel.siehe {
+      color: var(--dim);
+    }
     .werte code {
       font-size: 0.8rem;
       overflow-wrap: anywhere;
@@ -331,21 +338,31 @@ export class Regeloptionen {
     }
   }
 
+  /** Erklärt schon ein Artikel eine der Varianten? Dann braucht die Option keinen Knopf. */
+  protected hatVariantenregel(o: RuleOptionState): boolean {
+    return !!o.variants?.some((v) => v.rule);
+  }
+
   /**
-   * **Eine Variante als Regelartikel** (T-190): angelegt in der
+   * **Eine Option (oder Variante) als Regelartikel** (T-190): angelegt in der
    * Schreibebene, mit dem Satz der Seite als Anfang — danach schreibt die
    * Leitung ihn aus, und die Seite findet ihn unter diesem Namen.
    */
-  protected async schreibeRegel(o: RuleOptionState, v: RuleVariantState): Promise<void> {
+  protected async schreibeRegel(o: RuleOptionState, v?: RuleVariantState): Promise<void> {
     if (this.schreibt()) return;
-    this.schreibt.set(v.ownName);
+    const name = v ? v.ownName : o.ownName;
+    this.schreibt.set(name);
     this.fehler.set(null);
     try {
-      const e = await this.api.createEntity('Rule', v.ownName, {
+      /* Ein Artikel für die ganze Option fängt mit ihren Varianten an. */
+      const text = v
+        ? `${o.does} ${v.does}`
+        : [o.does, '', ...(o.variants ?? []).map((x) => `- **${x.label}:** ${x.does}`)].join('\n');
+      const e = await this.api.createEntity('Rule', name, {
         'Rule.kind': 'option',
         /* „Feats: Allowed" ist ein Name, kein Begriff im Fliesstext (REQ-175). */
         'Rule.autolink': false,
-        'Description.description': `${o.does} ${v.does}`,
+        'Description.description': text,
       });
       if (!this.session.isAdmin()) await this.session.load(true);
       await this.router.navigate(['/artikel', e.id], { queryParams: { edit: 1 } });

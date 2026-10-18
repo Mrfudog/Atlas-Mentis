@@ -66,9 +66,27 @@ export interface RuleWire {
   port?: 'yes' | 'no';
 }
 
+/**
+ * **Engines** (T-265): das Rechenwerk, zu dem eine Regel gehört. Im Versuch
+ * nur eine Ordnung für die Übersicht; mit E-102 (a) wird daraus, welche
+ * Laufzeit die Regel liest.
+ */
+export const RULE_ENGINES = [
+  { key: 'reactions', label: 'Reactions' },
+  { key: 'turn', label: 'Turn & actions' },
+  { key: 'hands', label: 'Hands & blocking' },
+  { key: 'hitPoints', label: 'Hit points & damage' },
+  { key: 'spellcasting', label: 'Spellcasting' },
+  { key: 'movement', label: 'Movement & reach' },
+  { key: 'other', label: 'Other' },
+] as const;
+export type RuleEngineKey = (typeof RULE_ENGINES)[number]['key'];
+
 export interface RuleGraph {
   id: string;
   name: string;
+  /** Ohne Angabe: `other`. */
+  engine?: RuleEngineKey;
   /** Aus heisst: der Probelauf überspringt sie. */
   enabled: boolean;
   nodes: RuleNode[];
@@ -92,6 +110,8 @@ export interface RuleEvent {
   on: RuleTriggerKey;
   actor: string;
   target?: string;
+  /** Eine Zahl des Ereignisses — Schaden, Zaubergrad … —, in Rechnungen `amount`. */
+  amount?: number;
 }
 
 export interface RuleFiring {
@@ -128,6 +148,7 @@ interface Scope {
   self: RuleCreature;
   actor: RuleCreature | undefined;
   target: RuleCreature | undefined;
+  amount?: number;
 }
 
 const who = (s: Scope, r: RuleRole): RuleCreature | undefined => s[r];
@@ -141,6 +162,7 @@ const dist = (a: RuleCreature | undefined, b: RuleCreature | undefined): number 
  */
 export function ruleVariables(s: Scope): Record<string, number> {
   const v: Record<string, number> = {};
+  if (s.amount !== undefined && Number.isFinite(s.amount)) v['amount'] = s.amount;
   const d = dist(s.self, s.actor);
   if (d !== undefined) v['distance'] = d;
   const dt = dist(s.self, s.target);
@@ -272,7 +294,7 @@ export function runRules(rules: readonly RuleGraph[], event: RuleEvent, creature
     const starts = g.nodes.filter((n) => n.kind === 'trigger' && n.on === event.on);
     if (!starts.length) continue;
     for (const self of creatures) {
-      const scope: Scope = { self, actor: byId.get(event.actor), target: event.target ? byId.get(event.target) : undefined };
+      const scope: Scope = { self, actor: byId.get(event.actor), target: event.target ? byId.get(event.target) : undefined, amount: event.amount };
       const run: RuleRun = { rule: g.id, self: self.id, steps: [] };
       const besucht = new Set<string>();
       const queue = starts.map((n) => n.id);
@@ -322,52 +344,96 @@ export function isRuleGraph(v: unknown): v is RuleGraph {
   );
 }
 
+/* ------------------------------------------------------------ Beispiele */
+
+type Knoten = [id: string, was: RuleTriggerKey | RuleTest | RuleOutcome, spalte: number, reihe: number];
+type Draht = [from: string, to: string, port?: 'yes' | 'no'];
+
+const istTest = (v: RuleTest | RuleOutcome): v is RuleTest => v.kind === 'compare' || v.kind === 'knows' || v.kind === 'same';
+
+/** Ein Beispiel aus Knoten im Raster (230 × 140) — damit die Beispiele lesbar bleiben. */
+function bau(id: string, name: string, engine: RuleEngineKey, knoten: Knoten[], draehte: Draht[]): RuleGraph {
+  return {
+    id,
+    name,
+    engine,
+    enabled: true,
+    nodes: knoten.map(([nid, was, sp, re]): RuleNode => {
+      const x = 20 + sp * 230;
+      const y = 30 + re * 130;
+      if (typeof was === 'string') return { id: nid, kind: 'trigger', x, y, on: was };
+      return istTest(was) ? { id: nid, kind: 'condition', x, y, test: was } : { id: nid, kind: 'outcome', x, y, then: was };
+    }),
+    wires: draehte.map(([from, to, port]) => (port ? { from, to, port } : { from, to })),
+  };
+}
+
+const cmp = (left: string, op: RuleComparator, right: string): RuleTest => ({ kind: 'compare', left, op, right });
+const kennt = (name: string, who: RuleRole = 'self'): RuleTest => ({ kind: 'knows', who, name });
+const ist = (a: RuleRole, b: RuleRole, not = false): RuleTest => ({ kind: 'same', a, b, ...(not ? { not: true } : {}) });
+const reaktion = (name: string, against: RuleRole = 'actor'): RuleOutcome => ({ kind: 'offerReaction', name, to: 'self', against });
+const effekt = (name: string, to: RuleRole = 'self'): RuleOutcome => ({ kind: 'applyEffect', name, to });
+
 /**
- * Die beiden Beispiele der Aufgabe, fertig gebaut. Snatch Punisher ist hier
- * als Hausregel gelesen: wer in Reichweite einen Gegenstand aufhebt, fängt
- * sich einen Nahkampfangriff ein.
+ * **Beispielregeln** zum Ausprobieren, nach Engine. Hellish Rebuke und
+ * Snatch Punisher sind die beiden der Aufgabe (Snatch Punisher hier als
+ * Hausregel gelesen: wer in Reichweite etwas aufhebt, fängt sich einen
+ * Nahkampfangriff ein); die übrigen sind bekannte Fälle mit Ja- und
+ * Nein-Zweigen. Eigene Kurzsätze, kein Buchtext.
  */
 export function exampleRuleGraphs(): RuleGraph[] {
   return [
-    {
-      id: 'hellish-rebuke',
-      name: 'Hellish Rebuke',
-      enabled: true,
-      nodes: [
-        { id: 't', kind: 'trigger', x: 20, y: 40, on: 'hit' },
-        { id: 'c1', kind: 'condition', x: 250, y: 40, test: { kind: 'same', a: 'self', b: 'target' } },
-        { id: 'c2', kind: 'condition', x: 480, y: 40, test: { kind: 'knows', who: 'self', name: 'Hellish Rebuke' } },
-        { id: 'c3', kind: 'condition', x: 710, y: 40, test: { kind: 'compare', left: 'self.reactionFree', op: '=', right: '1' } },
-        { id: 'c4', kind: 'condition', x: 250, y: 190, test: { kind: 'compare', left: 'distance', op: '<=', right: '60' } },
-        { id: 'o', kind: 'outcome', x: 480, y: 190, then: { kind: 'offerReaction', name: 'Hellish Rebuke', to: 'self', against: 'actor' } },
-      ],
-      wires: [
-        { from: 't', to: 'c1' },
-        { from: 'c1', to: 'c2', port: 'yes' },
-        { from: 'c2', to: 'c3', port: 'yes' },
-        { from: 'c3', to: 'c4', port: 'yes' },
-        { from: 'c4', to: 'o', port: 'yes' },
-      ],
-    },
-    {
-      id: 'snatch-punisher',
-      name: 'Snatch Punisher',
-      enabled: true,
-      nodes: [
-        { id: 't', kind: 'trigger', x: 20, y: 40, on: 'picksUpObject' },
-        { id: 'c1', kind: 'condition', x: 250, y: 40, test: { kind: 'same', a: 'self', b: 'actor', not: true } },
-        { id: 'c2', kind: 'condition', x: 480, y: 40, test: { kind: 'knows', who: 'self', name: 'Snatch Punisher' } },
-        { id: 'c3', kind: 'condition', x: 710, y: 40, test: { kind: 'compare', left: 'distance', op: '<=', right: 'self.reach' } },
-        { id: 'c4', kind: 'condition', x: 250, y: 190, test: { kind: 'compare', left: 'self.reactionFree', op: '=', right: '1' } },
-        { id: 'o', kind: 'outcome', x: 480, y: 190, then: { kind: 'offerReaction', name: 'Melee attack', to: 'self', against: 'actor' } },
-      ],
-      wires: [
-        { from: 't', to: 'c1' },
-        { from: 'c1', to: 'c2', port: 'yes' },
-        { from: 'c2', to: 'c3', port: 'yes' },
-        { from: 'c3', to: 'c4', port: 'yes' },
-        { from: 'c4', to: 'o', port: 'yes' },
-      ],
-    },
+    bau('hellish-rebuke', 'Hellish Rebuke', 'reactions',
+      [['t', 'hit', 0, 0], ['c1', ist('self', 'target'), 1, 0], ['c2', kennt('Hellish Rebuke'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
+       ['c4', cmp('distance', '<=', '60'), 1, 1], ['o', reaktion('Hellish Rebuke'), 2, 1]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'o', 'yes']]),
+    bau('snatch-punisher', 'Snatch Punisher', 'reactions',
+      [['t', 'picksUpObject', 0, 0], ['c1', ist('self', 'actor', true), 1, 0], ['c2', kennt('Snatch Punisher'), 2, 0], ['c3', cmp('distance', '<=', 'self.reach'), 3, 0],
+       ['c4', cmp('self.reactionFree', '=', '1'), 1, 1], ['o', reaktion('Melee attack'), 2, 1]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'o', 'yes']]),
+    bau('opportunity-attack', 'Opportunity attack', 'movement',
+      [['t', 'leavesReach', 0, 0], ['c1', ist('self', 'actor', true), 1, 0], ['c2', cmp('actor.disengaged', '=', '1'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
+       ['c4', cmp('distance', '<=', 'self.reach'), 3, 1], ['o', reaktion('Opportunity attack'), 2, 1], ['o2', effekt('Leaves without provoking (Disengage)', 'actor'), 2, 2]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'no'], ['c2', 'o2', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'o', 'yes']]),
+    bau('sentinel', 'Sentinel', 'reactions',
+      [['t', 'attacked', 0, 0], ['c1', ist('self', 'actor', true), 1, 0], ['c2', ist('self', 'target', true), 2, 0], ['c3', kennt('Sentinel'), 3, 0],
+       ['c4', cmp('distance', '<=', 'self.reach'), 1, 1], ['c5', cmp('self.reactionFree', '=', '1'), 2, 1], ['o', reaktion('Sentinel: melee attack'), 3, 1]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'c5', 'yes'], ['c5', 'o', 'yes']]),
+    bau('shield', 'Shield', 'spellcasting',
+      [['t', 'hit', 0, 0], ['c1', ist('self', 'target'), 1, 0], ['c2', kennt('Shield'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
+       ['c4', cmp('self.slots1', '>=', '1'), 1, 1], ['o', reaktion('Shield (+5 AC until your next turn)'), 2, 1], ['o2', effekt('Shield unavailable: no 1st-level slot'), 2, 2]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'o', 'yes'], ['c4', 'o2', 'no']]),
+    bau('counterspell', 'Counterspell', 'spellcasting',
+      [['t', 'castsSpell', 0, 0], ['c1', ist('self', 'actor', true), 1, 0], ['c2', kennt('Counterspell'), 2, 0], ['c3', cmp('distance', '<=', '60'), 3, 0],
+       ['c4', cmp('self.reactionFree', '=', '1'), 1, 1], ['c5', cmp('self.slots3', '>=', '1'), 2, 1], ['c6', cmp('amount', '<=', '3'), 3, 1],
+       ['o', reaktion('Counterspell: the spell fails'), 2, 2], ['o2', reaktion('Counterspell: ability check, DC 10 + spell level'), 3, 2]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'c5', 'yes'], ['c5', 'c6', 'yes'], ['c6', 'o', 'yes'], ['c6', 'o2', 'no']]),
+    bau('uncanny-dodge', 'Uncanny Dodge', 'reactions',
+      [['t', 'hit', 0, 0], ['c1', ist('self', 'target'), 1, 0], ['c2', kennt('Uncanny Dodge'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
+       ['o', reaktion('Uncanny Dodge: halve the damage'), 3, 1]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'o', 'yes']]),
+    bau('concentration', 'Concentration check', 'hitPoints',
+      [['t', 'damaged', 0, 0], ['c1', ist('self', 'target'), 1, 0], ['c2', cmp('self.concentrating', '=', '1'), 2, 0], ['c3', cmp('amount / 2', '>', '10'), 3, 0],
+       ['o1', { kind: 'changeValue', field: 'concentrationDC', expr: 'amount / 2', to: 'self' }, 2, 1],
+       ['o2', { kind: 'changeValue', field: 'concentrationDC', expr: '10', to: 'self' }, 3, 1], ['o3', effekt('Constitution save to keep concentration'), 1, 1]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c2', 'o3', 'yes'], ['c3', 'o1', 'yes'], ['c3', 'o2', 'no']]),
+    bau('drop-to-zero', 'Dropping to 0 hit points', 'hitPoints',
+      [['t', 'damaged', 0, 0], ['c1', ist('self', 'target'), 1, 0], ['c2', cmp('self.hp - amount', '<=', '0'), 2, 0], ['c3', cmp('amount - self.hp', '>=', 'self.maxHp'), 3, 0],
+       ['o1', effekt('Dead (massive damage)'), 3, 1], ['o2', effekt('Unconscious, dying'), 2, 1], ['o3', { kind: 'changeValue', field: 'hp', expr: '0', to: 'self' }, 1, 1]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c2', 'o3', 'yes'], ['c3', 'o1', 'yes'], ['c3', 'o2', 'no']]),
+    bau('regeneration', 'Regeneration', 'hitPoints',
+      [['t', 'turnStart', 0, 0], ['c1', ist('self', 'actor'), 1, 0], ['c2', kennt('Regeneration'), 2, 0], ['c3', cmp('self.hp', '>', '0'), 3, 0],
+       ['c4', cmp('self.fireOrAcid', '=', '0'), 3, 1], ['o1', { kind: 'changeValue', field: 'hp', expr: 'self.hp + 10', to: 'self' }, 2, 1], ['o2', effekt('No regeneration this turn (fire or acid)'), 2, 2]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'o1', 'yes'], ['c4', 'o2', 'no']]),
+    bau('somatic-hand', 'Somatic components need a free hand', 'hands',
+      [['t', 'castsSpell', 0, 0], ['c1', ist('self', 'actor'), 1, 0], ['c2', cmp('self.freeHands', '<', '1'), 2, 0], ['c3', kennt('War Caster'), 3, 0],
+       ['o1', { kind: 'blockAction', action: 'cast a spell with somatic components', reason: 'no free hand', to: 'self' }, 3, 1],
+       ['o2', effekt('Somatic components with hands full (War Caster)'), 2, 1]],
+      [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'o1', 'no'], ['c3', 'o2', 'yes']]),
+    bau('turn-start', 'Start of turn', 'turn',
+      [['t', 'turnStart', 0, 0], ['c1', ist('self', 'actor'), 1, 0], ['o1', { kind: 'changeValue', field: 'reactionFree', expr: '1', to: 'self' }, 2, 0],
+       ['c2', cmp('self.prone', '=', '1'), 1, 1], ['o2', effekt('Standing up costs half your speed'), 2, 1],
+       ['c3', cmp('self.hp', '<=', '0'), 1, 2], ['o3', effekt('Death saving throw'), 2, 2]],
+      [['t', 'c1'], ['c1', 'o1', 'yes'], ['c1', 'c2', 'yes'], ['c2', 'o2', 'yes'], ['c1', 'c3', 'yes'], ['c3', 'o3', 'yes']]),
   ];
 }

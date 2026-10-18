@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, untracked } from '@angular/
 import { RouterLink } from '@angular/router';
 import { keyStats, layoutFor, linkedTypes, primaryInterface } from '@nw/model';
 import type { Entity, KeyStats, Registry } from '@nw/model';
+import { FigurDaten } from '../bogen/daten';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { BegriffLink, Glossar } from '../kern/glossar';
@@ -115,6 +116,7 @@ export class Kennzahlen {
   readonly artikel = input.required<Entity>();
 
   private readonly bestand = inject(Bestand);
+  private readonly daten = inject(FigurDaten);
 
   /** Trägt dieser Artikel die Zahlen selbst? Dann zeigt seine `quick` sie aus ihm. */
   private readonly selbst = computed(() => !!this.artikel().components?.['Statblock']);
@@ -186,6 +188,9 @@ export class Kennzahlen {
     const r: Registry | null = this.bestand.registry();
     if (!r) return null;
     const name = this.bestand.name();
-    return keyStats(r, this.statblock(), this.artikel(), { nameOf: (id) => name(id) });
+    /* An einer Kreatur die Endwerte (T-272): Boni aus Herkunft, Wahlen und
+       Gegenständen, Trefferpunkte aus den Klassenstufen. */
+    const sb = !this.selbst() && this.statblockId() ? (this.daten.fuer(this.artikel().id).werte()?.statblock ?? this.statblock()) : this.statblock();
+    return keyStats(r, sb, this.artikel(), { nameOf: (id) => name(id) });
   });
 }

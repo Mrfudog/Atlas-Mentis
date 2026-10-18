@@ -1,6 +1,6 @@
 import { EnvironmentInjector, Injectable, computed, effect, inject, untracked, type Signal } from '@angular/core';
-import { entityName, handState, hasProficiency, inHand, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, turnActions, turnRows } from '@nw/model';
-import type { Entity, HandState, HeldItem, KnownSpell, ProficiencyList, Relation, SheetHeader, TurnRow } from '@nw/model';
+import { characterStats, entityName, handState, hasProficiency, inHand, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, turnActions, turnRows } from '@nw/model';
+import type { CharacterStats, Entity, HandState, HeldItem, KnownSpell, ProficiencyList, Relation, SheetHeader, TurnRow } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 
@@ -24,6 +24,11 @@ export interface FigurLage {
   zug: Signal<TurnRow[]>;
   /** Jede Übung mit Herkunft (T-239, `proficienciesOf`). */
   uebungen: Signal<ProficiencyList>;
+  /**
+   * Die gerechneten Werte mit ihren Teilen (T-272, `characterStats`) und der
+   * gelesene Statblock darin — Endwerte statt der gespeicherten Grundwerte.
+   */
+  werte: Signal<CharacterStats | null>;
 }
 
 /**
@@ -147,6 +152,12 @@ export class FigurDaten {
       const e = figur();
       return e ? proficienciesOf(e, statblock(), b.voll()) : { entries: [], missing: [] };
     });
+    const werte = computed<CharacterStats | null>(() => {
+      const e = figur();
+      /* Erst rechnen, wenn feststeht, ob ein Statblock anhängt. */
+      if (!e || statblockId() === undefined) return null;
+      return characterStats(e, statblock(), b.voll());
+    });
     effect(() => {
       const fehlt = uebungen().missing;
       if (fehlt.length) untracked(() => void b.holen(fehlt));
@@ -195,7 +206,8 @@ export class FigurDaten {
         const lvl = Number((spell?.components?.['Spell'] as { level?: unknown } | undefined)?.level);
         return { id: kante.to, level: Number.isFinite(lvl) ? lvl : null, mode: String(kante.props?.['mode'] ?? '') };
       });
-      return sheetHeader(r, e, statblock(), b.voll(), { nameOf: (x) => name(x), spells });
+      /* Der Kopf liest die Endwerte (T-272), nicht die Grundwerte der Karte. */
+      return sheetHeader(r, e, werte()?.statblock ?? statblock(), b.voll(), { nameOf: (x) => name(x), spells });
     });
 
     const kupfer = computed(() => {
@@ -251,6 +263,7 @@ export class FigurDaten {
       zauber,
       kupfer,
       uebungen,
+      werte,
     };
   }
 

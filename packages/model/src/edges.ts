@@ -100,6 +100,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'visibilityByGroup',
+    label: 'Visibility by group',
+    area: 'visibility',
+    does: 'groups articles by their layer and the layer’s group, so a campaign’s visibility rule for a group (T-252) and the default of a layer reach the articles in it',
+    uses: {
+      [M + 'groupvisibility.ts']: ['partOf'],
+    },
+  },
+  {
     key: 'take',
     label: 'Take into your story',
     area: 'stack',
@@ -291,6 +300,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     does: 'gathers every proficiency, expertise and saving throw of a character with where it comes from — the statblock by hand, the first class (later classes only their multiclass list), subclass, origin with its base, background, what they grant on their level, chosen feats, answered choices and items that grant proficiency (T-239)',
     uses: {
       [M + 'proficiency.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+    },
+  },
+  {
+    key: 'characterStats',
+    label: 'Numbers of a character',
+    area: 'character',
+    does: 'computes the numbers of a character with their parts — ability scores from the statblock’s base plus origin and chosen bonuses and items, proficiency bonus from the level, hit points from the class levels and CON, AC, initiative, speed and senses — and the statblock as it reads with them (T-272)',
+    uses: {
+      [M + 'stats.ts']: ['hasAncestry', 'hasClass'],
+      /* Im Full edit der Figur: der Hinweis auf ihren Statblock (T-272). */
+      [W + 'artikel/artikel.ts']: ['belongsTo'],
     },
   },
   {

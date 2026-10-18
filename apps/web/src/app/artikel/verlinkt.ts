@@ -21,6 +21,8 @@ import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Schnell } from './schnell';
 import { Statblock } from './statblock';
 import { Uebungen } from './uebungen';
+import { Werte } from './werte';
+import { FigurDaten } from '../bogen/daten';
 import { Inventar } from './inventar';
 import { Text } from './text';
 import { Wahl } from './wahl';
@@ -89,7 +91,7 @@ interface EFeld {
  */
 @Component({
   selector: 'nw-verlinkt',
-  imports: [RouterLink, Statblock, Text, Wahl, Mehrfach, Schnell, KurzLink, Inventar, Uebungen],
+  imports: [RouterLink, Statblock, Text, Wahl, Mehrfach, Schnell, KurzLink, Inventar, Uebungen, Werte],
   template: `
     <!-- Ein Inventar selbst: was es hält (das Element \`inventory\` an seiner eigenen Seite). -->
     @if (selbst()) {
@@ -185,9 +187,12 @@ interface EFeld {
                   <p class="hinweis">Saved into {{ name(le) }}, not into this article. Passages and relations: open it.</p>
                 </form>
             } @else if (g.bogen) {
-              <nw-statblock [artikel]="le" />
+              <!-- Mit den Endwerten der Figur (T-272); bearbeitet wird oben die gespeicherte Karte. -->
+              <nw-statblock [artikel]="gelesen(le)" />
               <!-- Jede Übung mit Herkunft (T-239): an der Figur gerechnet, nicht am Statblock. -->
               <nw-uebungen [figur]="artikel()" />
+              <!-- Wie jede Zahl zustande kommt (T-272). -->
+              <nw-werte [figur]="artikel()" />
             } @else {
               @if (g.inventar) {
                 <nw-inventar [inventar]="le" [traeger]="artikel()" [statblock]="statblockVon(artikel())" />
@@ -473,6 +478,17 @@ export class Verlinkt {
    * Inventars (T-127): das andere Ende der `asField`-Kante, deren Art der
    * Bogen zeichnet — kein Artname hier, wie bei den Gliedern.
    */
+  private readonly figurDaten = inject(FigurDaten);
+
+  /**
+   * Der Statblock, wie er an dieser Figur gilt (T-272): Endwerte statt der
+   * gespeicherten Grundwerte. Für einen anderen verlinkten Artikel er selbst.
+   */
+  protected gelesen(le: Entity): Entity {
+    const w = this.figurDaten.fuer(this.artikel().id).werte()?.statblock;
+    return w && w.id === le.id ? w : le;
+  }
+
   protected statblockVon(e: Entity | null): Entity | null {
     const r = this.reg();
     if (!r || !e) return null;

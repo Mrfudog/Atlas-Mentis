@@ -361,6 +361,15 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 }
               </p>
             }
+            <!-- Die Zahlen und Übungen wohnen am Statblock (T-272): im Full edit
+                 der Figur stehen sie nicht, also sagt es die Maske und führt hin. -->
+            @if (bearbeitet() && statblockDerFigur(); as sb) {
+              <p class="hinweis" role="note">
+                Ability scores, hand-added proficiencies and the other numbers stand on its statblock
+                <a [routerLink]="['/artikel', sb.id]" [queryParams]="{ edit: 1 }">{{ sb.name }}</a>.
+                What class, background, origin and choices add is computed and shown on the overview.
+              </p>
+            }
             <!-- Wer die Ebene herausgibt und warum (T-109) — gerechnet, geändert wird die Kante. -->
             @if (art(e) === 'Layer' && !zeigtAlten()) {
               <nw-herausgeber [ebene]="e.id" />
@@ -1280,6 +1289,14 @@ export class Artikel implements SchnellKontext {
     return { glieder, offen };
   });
   protected readonly pfad = computed(() => this.kette().glieder);
+
+  /** Der Statblock, der an dieser Figur hängt (`belongsTo` drüben), mit Namen — für den Hinweis im Full edit (T-272). */
+  protected readonly statblockDerFigur = computed<{ id: string; name: string } | null>(() => {
+    const e = this.artikel();
+    if (!e) return null;
+    const b = (this.bestand.rueckbezuege().get(e.id) ?? []).find((x) => x.relation.type === 'belongsTo' && x.relation.to === e.id);
+    return b ? { id: b.from.id, name: entityName(b.from) } : null;
+  });
 
   /** Art · Nummer — die Zeile über dem Blatt. Die Ebene steht in der Marke unter dem Namen (T-251). */
   protected readonly meta = computed(() => {

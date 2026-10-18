@@ -10,10 +10,36 @@
       "query": { "tab": "views" }
     },
     {
+      "id": "2026-10-18-numbers-with-parts",
+      "date": "2026-10-18",
+      "title": "Character numbers with their parts",
+      "text": "Ability scores now include the bonuses of origin, background, choices and items everywhere — header, statblock, quick view and prerequisites. Below the statblock, “How the numbers come about” breaks down every ability, proficiency bonus, hit points, AC, initiative, speed and senses, each part linked to its source.",
+      "area": "Characters",
+      "link": "/world",
+      "query": { "type": "PlayerCharacter" }
+    },
+    {
+      "id": "2026-10-18-visibility-by-group",
+      "date": "2026-10-18",
+      "title": "Who sees what, per group",
+      "text": "The campaign page has a Visibility tab: every group of articles — by layer, type, area or tag, in the order you choose — with how many each player, the table and the public see. Set a group to Public, Table, Players or GM, show or hide it for one player, and see which articles say it themselves. A layer can now set a default for its articles.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "visibility" }
+    },
+    {
+      "id": "2026-10-18-rule-builder-engines",
+      "date": "2026-10-18",
+      "title": "Rule builder (experiment): engines, filters and more examples",
+      "text": "The rule builder lists rules by engine with search and filters for engine, trigger and active rules, brings a dozen sample rules with yes and no branches, and scrolls and zooms on a phone. Dry runs take an amount, such as damage or a spell level.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
       "id": "2026-10-18-rule-options-in-place",
       "date": "2026-10-18",
       "title": "Change rules & options in place",
-      "text": "On the campaign’s Rules & options tab, pick “Use this” beside a variant to switch it at once — no edit form needed. Option and variant names link straight to the rule article that explains them.",
+      "text": "On the campaign’s Rules & options tab, pick “Use this” beside a variant to switch it at once — no edit form needed. Option and variant names link straight to the rule article that explains them; a variant without its own article points to the one of its option.",
       "area": "Campaign",
       "link": "/campaign",
       "query": { "tab": "rules" }

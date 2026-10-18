@@ -1404,6 +1404,20 @@ Ganzes auf.
 
 ---
 
+
+**Sichtbarkeit je Gruppe** (T-252, E-098). Ein Artikel, der keine Stufe
+sagt, nimmt die seiner Gruppe: die Regel der laufenden Kampagne, sonst die
+Vorgabe seiner Ebene, sonst `public`. Warum keine Massenänderung, die
+`audience` in jeden Artikel schreibt: dann änderte „D&D → public" in der
+einen Runde einen Artikel, den drei Runden teilen, und der Artikel von
+morgen folgte der Regel nicht. Warum nicht nur die Ebene: dann wäre
+dieselbe Ebene in jeder Runde gleich sichtbar, und gruppieren liesse sich
+nur nach ihr. Also gibt die Ebene vor, und die Kampagne überschreibt je
+Gruppe — und die Gruppe ist ein Schlüssel der Transformationen, damit die
+Übersicht, in der man sie setzt, und die Rechnung, die sie liest, dasselbe
+meinen. Das ist keine Vererbung von Artikel zu Artikel (die gibt es weiter
+nicht): die Regel steht an der Kampagne und sagt für jeden Artikel der
+Gruppe dasselbe.
 ## Die Zahlen einer Kreatur
 
 **Sie wohnen am Statblock** — auch die eines Spielercharakters. Er hat mehr
@@ -1424,6 +1438,14 @@ Statblock zu kopieren hätte zwei Stellen gemacht, die beim nächsten
 Klassenwechsel auseinanderlaufen; also rechnet `proficienciesOf` beim
 Lesen alle Quellen zusammen und sagt je Übung, woher sie kommt — und wer
 fragt, ob jemand geübt ist, fragt diese eine Funktion.
+
+**Mit den Attributen ging es genauso** (T-272). Der Assistent legt die
+Grundwerte am Statblock ab, und die Boni aus Herkunft und Hintergrund
+rechnete `chosenResult` — aber kein Leser nahm sie, der Bogen zeigte STR
+15, wo 16 galt. Die Boni in den Statblock zu schreiben hiesse, dass ein
+Wechsel des Hintergrunds die Zahl dort nicht mehr findet. Also gibt
+`characterStats` jeden Wert mit seinen Teilen und dazu den Statblock, wie
+er an der Figur *gelesen* wird; wer eine Zahl zeigt, nimmt diesen.
 
 **Eine benannte Kreatur aus einem Buch ist eine Figur** (T-169). Strahd
 oder Venomfang standen nach dem Einlesen nur als Statblock da — Zahlen

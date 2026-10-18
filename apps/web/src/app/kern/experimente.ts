@@ -8,6 +8,8 @@ export const RULE_BUILDER_PREF = 'experiments.ruleBuilder';
 export const VIEW_DESIGNER_PREF = 'experiments.viewDesigner';
 /** Je Regelgraph ein Schlüssel: eine Einstellung hält höchstens 8000 Zeichen. */
 export const LAB_RULE_PREFIX = 'labRule.';
+/** Beispielregeln, die das Konto gelöscht hat — sie kommen nicht von selbst wieder. */
+export const LAB_RULES_DROPPED = 'labRulesDropped';
 
 /**
  * **Versuche** (T-270): Schalter je Konto, Vorgabe aus. Gespeichert in den
@@ -63,6 +65,17 @@ export class Experimente {
 
   speichereRegel(g: RuleGraph): Promise<unknown> {
     return this.api.setPref(LAB_RULE_PREFIX + g.id, g);
+  }
+
+  async verworfeneBeispiele(): Promise<string[]> {
+    await this.lade();
+    const v = (this._prefs() ?? {})[LAB_RULES_DROPPED];
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  }
+
+  setzeVerworfeneBeispiele(ids: string[]): Promise<unknown> {
+    this._prefs.update((p) => ({ ...(p ?? {}), [LAB_RULES_DROPPED]: ids }));
+    return this.api.setPref(LAB_RULES_DROPPED, ids.length ? ids : null);
   }
 
   loescheRegel(id: string): Promise<unknown> {
