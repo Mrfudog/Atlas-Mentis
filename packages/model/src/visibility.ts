@@ -251,6 +251,23 @@ export function isTableRole(x: unknown): x is TableRole {
 
 /* ---------- wem ein Artikel gehört ---------- */
 
+/* **Die Kampagnen eines Bestands, einmal gesucht** (T-252): `campaignsOf`
+   fragt je Artikel, und mit einer Vorgabe der Ebene fragt das Sieb bei
+   vierundzwanzigtausend Artikeln jedes Mal — die Suche über den ganzen
+   Bestand je Artikel wäre die Zeit der ganzen Liste. Gemerkt werden die
+   Ids, gelesen wird der Artikel aus dem Bestand: wer einen Eintrag
+   ersetzt (der letzte fertige Stand), bekommt den neuen; kommt einer
+   dazu, ändert sich die Grösse und es wird neu gesucht. */
+const kampagnenJe = new WeakMap<Map<EntityId, Entity>, { size: number; ids: EntityId[] }>();
+function kampagnenIn(entities: Map<EntityId, Entity>): EntityId[] {
+  const da = kampagnenJe.get(entities);
+  if (da && da.size === entities.size) return da.ids;
+  const ids: EntityId[] = [];
+  for (const e of entities.values()) if ((e.interfaces ?? [])[0] === CAMPAIGN_TYPE) ids.push(e.id);
+  kampagnenJe.set(entities, { size: entities.size, ids });
+  return ids;
+}
+
 /**
  * **Die Kampagnen, denen dieser Artikel gehört** — abgelesen am
  * Ebenenstapel, nicht an einem eigenen Feld.
@@ -282,8 +299,9 @@ export function campaignsOf(
   }
   if (!ebenen.size) return null;
   const out = new Set<EntityId>();
-  for (const e of entities.values()) {
-    if ((e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
+  for (const id of kampagnenIn(entities)) {
+    const e = entities.get(id);
+    if (!e || (e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
     for (const r of e.relations ?? []) {
       /* Ein Vergleich schaltet nicht auf (T-092): wer eine Ebene nur zum
          Vergleichen nennt, macht sie nicht zu seiner oder zu einer gemeinsamen. */
