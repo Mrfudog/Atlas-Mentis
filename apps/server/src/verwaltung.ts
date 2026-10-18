@@ -63,6 +63,7 @@ import {
   validateEntity,
   withStack,
   withCompare,
+  campaignLayer,
   compareLayers,
   type Entity,
   type TableRole,
@@ -222,6 +223,12 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
 
   // ---------------------------------------------------------- Kampagnen
 
+  /** Id und Name der Kampagnenebene (`campaignLayer`), oder `null`. */
+  function kampagnenEbeneKurz(alle: Map<string, Entity>, kampagne: Entity, besessen: ReadonlySet<string>): { id: string; name: string } | null {
+    const l = campaignLayer(alle, kampagne, besessen);
+    return l ? { id: l.id, name: entityName(l) } : null;
+  }
+
   /** Die Kampagnen, an denen dieser Betrachter etwas verwaltet oder sieht.
    *  Spielende bekommen eine leere Liste — die Kopfleiste zeigt den
    *  Eintrag dann nicht. */
@@ -264,6 +271,10 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
             /* Wie viele Vergleichsebenen dieser Betrachter sieht (T-213) —
                ohne eine gibt es den Schalter „Show comparison" nicht. */
             compare: siehtVergleich(user, laufend) ? compareLayers(alleJetzt, laufend).length : 0,
+            /* **Die Ebene der Kampagne** (T-251, REQ-348): die Listen nennen
+               die Ebene einer Zeile nur, wenn es nicht diese ist — sonst
+               stünde sie an jeder Zeile und sagte nichts. */
+            campaignLayer: kampagnenEbeneKurz(alleJetzt, laufend, new Set((await repo.layerGrants()).filter((g) => g.owner).map((g) => g.layerId))),
           }
         : null,
     };

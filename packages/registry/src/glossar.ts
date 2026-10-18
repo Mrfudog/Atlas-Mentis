@@ -117,7 +117,7 @@ const APP: AppTerm[] = [
     aliases: ['Book', 'Source layer'],
     sort: 'app',
     definition: 'A collection of articles that comes from one place: a rulebook, a homebrew collection, the campaign, a player.',
-    effect: 'A campaign switches layers on and off; what no switched-on layer brings is not there.',
+    effect: 'A campaign switches layers on and off; what no switched-on layer brings is not there. Every article names its layer under its title, with the layers of its other versions and why you see it: in play, from a compare layer, enabled as extra content, or in no layer.',
     translations: { de: 'Ebene' },
     see: '/campaign',
   },
