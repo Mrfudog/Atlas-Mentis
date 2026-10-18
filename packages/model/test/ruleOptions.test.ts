@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ownRuleName, ruleOptionRuleNames, ruleOptionsOf, withRuleVariant, RULE_OPTIONS, RULE_SORTS, type Entity, type RuleRef } from '../src/index.js';
+import { indexRuleArticles, missingRuleArticles, ruleOptionsOf, withRuleVariant, RULE_OPTIONS, RULE_SORTS, type Entity } from '../src/index.js';
 
 /* Die Regeloptionen einer Kampagne (T-190). Erfundene Artikel. */
 
@@ -10,14 +10,29 @@ const kampagne = (felder: Record<string, unknown>, relations: Entity['relations'
   relations,
 });
 
-const regeln = new Map<string, RuleRef>([
-  ['encumbrance', { id: 'r-enc', name: 'Encumbrance' }],
-  ['inventory rules: slots', { id: 'r-slots', name: 'Inventory rules: Slots' }],
-]);
-const ctx = (byId = new Map<string, Entity>(), settings: Record<string, string> = {}) => ({
+/* Regelartikel (T-270): ein Artikel je System, Regel und Option, wie die Einfuhr sie anlegt. */
+const artikel = (kind: string, key: string, name: string, eltern?: string, text?: string): Entity => ({
+  id: `r-${kind}-${eltern ?? ''}-${key}`,
+  interfaces: ['Rule'],
+  components: { Identity: { name }, Rule: { kind, key }, ...(text ? { Description: { description: text } } : {}) },
+  relations: eltern ? [{ type: 'partOf', to: eltern }] : [],
+});
+/** Alle Artikel zum Katalog; `ohne` lässt Schlüssel weg (`regel` oder `regel:option`). */
+function alleArtikel(ohne: string[] = []): Entity[] {
+  const raus: Entity[] = [];
+  for (const s of RULE_SORTS) if (!ohne.includes(s.key)) raus.push(artikel('system', s.key, s.label));
+  for (const o of RULE_OPTIONS) {
+    if (ohne.includes(o.key)) continue;
+    const r = artikel('rule', o.key, o.label, `r-system--${o.sort}`);
+    raus.push(r);
+    for (const v of o.variants ?? []) if (!ohne.includes(`${o.key}:${v.key}`)) raus.push(artikel('option', v.key, v.label, r.id));
+  }
+  return raus;
+}
+const ctx = (byId = new Map<string, Entity>(), settings: Record<string, string> = {}, articles: Entity[] = alleArtikel()) => ({
   byId,
   settings,
-  ruleNamed: (names: readonly string[]) => names.map((n) => regeln.get(n.toLowerCase())).find(Boolean),
+  articles,
 });
 
 const option = (s: ReturnType<typeof ruleOptionsOf>, key: string) => s.flatMap((x) => x.options).find((o) => o.key === key)!;
@@ -41,12 +56,41 @@ describe('ruleOptionsOf', () => {
     expect(option(s, 'languages').value).toEqual(['Common', 'Elvish']);
   });
 
-  it('verweist auf den importierten Regelartikel, sonst auf die eigene Erklärung', () => {
-    const inv = option(ruleOptionsOf(null, ctx()), 'inventory');
-    expect(inv.variants!.find((v) => v.key === 'weight')?.rule?.id).toBe('r-enc');
-    expect(inv.variants!.find((v) => v.key === 'slots')?.rule?.id).toBe('r-slots');
-    expect(inv.variants!.find((v) => v.key === 'grid')?.rule).toBeUndefined();
-    expect(inv.variants!.find((v) => v.key === 'grid')?.ownName).toBe("Inventory rules: Grid (Basil's sheet)");
+  it('nimmt Namen und Text aus den Artikeln und verweist auf sie (T-270)', () => {
+    const arts = alleArtikel().map((e) =>
+      e.id === 'r-option-r-rule-r-system--inventory-inventory-weight'
+        ? { ...e, components: { ...e.components, Identity: { name: 'Encumbrance' }, Description: { description: 'Carry by weight.' } } }
+        : e,
+    );
+    const inv = option(ruleOptionsOf(null, ctx(undefined, undefined, arts)), 'inventory');
+    const w = inv.variants!.find((v) => v.key === 'weight')!;
+    expect(w).toMatchObject({ label: 'Encumbrance', does: 'Carry by weight.' });
+    expect(w.rule?.id).toBe('r-option-r-rule-r-system--inventory-inventory-weight');
+    expect(inv.rule?.name).toBe('Inventory rules');
+  });
+
+  it('zeigt nur, wofür ein Artikel steht — die gewählte Option immer', () => {
+    const s = ruleOptionsOf(kampagne({ inventory: 'weight' }), ctx(undefined, undefined, alleArtikel(['units', 'doors', 'inventory:slots', 'inventory:weight'])));
+    expect(s.some((x) => x.key === 'units')).toBe(false);
+    expect(s.flatMap((x) => x.options).some((o) => o.key === 'doors')).toBe(false);
+    const inv = option(s, 'inventory');
+    expect(inv.variants!.map((v) => v.key)).toEqual(['grid', 'weight']);
+    expect(inv.variants!.find((v) => v.key === 'weight')!.rule).toBeUndefined();
+  });
+
+  it('ohne Artikel steht nichts da, und missingRuleArticles nennt alles', () => {
+    expect(ruleOptionsOf(null, ctx(undefined, undefined, []))).toEqual([]);
+    const fehlt = missingRuleArticles([]);
+    expect(fehlt.filter((f) => f.kind === 'system')).toHaveLength(RULE_SORTS.length);
+    expect(fehlt).toContainEqual(expect.objectContaining({ kind: 'option', key: 'weight', parent: 'inventory', basedOn: ['Variant: Encumbrance', 'Encumbrance'] }));
+    expect(missingRuleArticles(alleArtikel())).toEqual([]);
+    expect(missingRuleArticles(alleArtikel(['fog:player']))).toEqual([expect.objectContaining({ kind: 'option', key: 'player', parent: 'fog' })]);
+  });
+
+  it('hält gleiche Optionsschlüssel verschiedener Regeln auseinander', () => {
+    const idx = indexRuleArticles(alleArtikel());
+    expect(idx.options.get('doors:gm')).not.toBe(idx.options.get('playerRolls:gm'));
+    expect(idx.options.get('doors:gm')).toBeDefined();
   });
 
   it('nennt die gewählten Verfahren mit einem Satz', () => {
@@ -84,28 +128,6 @@ describe('ruleOptionsOf', () => {
     }
   });
 
-  it('sucht jeden Namen, den die Seite verwendet', () => {
-    const namen = ruleOptionRuleNames();
-    for (const o of RULE_OPTIONS) for (const v of o.variants ?? []) expect(namen).toContain(ownRuleName(o, v));
-    expect(namen).toContain('Encumbrance');
-    /* Auch die Option als Ganzes — auf sie verweisen Varianten ohne eigenen Artikel. */
-    for (const o of RULE_OPTIONS) expect(namen).toContain(ownRuleName(o));
-  });
-
-  it('findet den Artikel der Option auch, wo sie Varianten hat; ein eigener geht vor', () => {
-    const r = new Map<string, RuleRef>([
-      ['carrying capacity', { id: 'r-cc', name: 'Carrying Capacity' }],
-      ['downtime activity: crafting an item', { id: 'r-craft', name: 'Downtime Activity: Crafting an Item' }],
-      ['player moves', { id: 'r-own', name: 'Player moves' }],
-    ]);
-    const c = { ...ctx(), ruleNamed: (names: readonly string[]) => names.map((n) => r.get(n.toLowerCase())).find(Boolean) };
-    const s = ruleOptionsOf(null, c);
-    expect(option(s, 'inventory').rule?.id).toBe('r-cc');
-    expect(option(s, 'stowing').rule?.id).toBe('r-cc');
-    expect(option(s, 'craftCritFailure').rule?.id).toBe('r-craft');
-    expect(option(s, 'moves').rule?.id).toBe('r-own');
-    expect(option(s, 'doors').rule).toBeUndefined();
-  });
 });
 
 describe('withRuleVariant', () => {

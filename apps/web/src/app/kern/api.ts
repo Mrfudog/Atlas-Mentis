@@ -1373,7 +1373,7 @@ export class Api {
     return this.call(`/api/glossary/${encodeURIComponent(id)}/uses`);
   }
   /** Die Regeloptionen einer Kampagne, nach Sorte, mit ihren Regelartikeln (T-190). */
-  campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[] }> {
+  campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[]; missing?: number }> {
     return this.call(`/api/campaigns/${encodeURIComponent(id)}/rules`);
   }
   /** Regelset und Gruppen der laufenden Kampagne, mit den Inventaren, zwischen denen Sachen wandern (T-127). */
