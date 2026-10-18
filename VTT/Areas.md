@@ -2,7 +2,7 @@
 tags: [vtt, epics, view]
 aliases: [Epics]
 status: derived
-updated: 2026-10-16
+updated: 2026-10-18
 ---
 
 # Epics
@@ -15,7 +15,7 @@ Die Funktionsbereiche von früher sind die **Epics** (E-049): je Epic ein Bereic
 
 | Epic | Umfang | Features | Stories | Punkte | Stand |
 |---|---|---|---|---|---|
-| [[EP-01 Inhaltsgerüst]] | Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell, mit dem jeder Artikel beschrieben, gespeichert und gezeichnet wird. | 9 | 53 | 177 | 32 steht · 10 teils · 5 offen · 4 ersetzt · 2 verworfen |
+| [[EP-01 Inhaltsgerüst]] | Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell, mit dem jeder Artikel beschrieben, gespeichert und gezeichnet wird. | 9 | 53 | 177 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [[EP-02 Zugang & Betrieb]] | Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, Werkbank, Ausrollen, Sicherung, Übernahme zwischen dev und prod, Leistung. | 10 | 38 | 117 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
 | [[EP-03 Kreaturen & Figuren]] | Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager — alles, was eine Figur oder ein Monster beschreibt. | 5 | 29 | 122 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
 | [[EP-04 Spielererlebnis]] | Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene Inhalte, Inventar, Chat. | 6 | 40 | 101 | 5 steht · 9 teils · 26 offen |
