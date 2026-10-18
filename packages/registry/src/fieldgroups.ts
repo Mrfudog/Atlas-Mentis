@@ -602,6 +602,27 @@ export const fieldGroups = {
            (REQ-175). Ein falscher Treffer kostet mehr Vertrauen, als zehn
            richtige einbringen — deshalb lässt er sich hier abschalten. */
         autolink: { type: 'boolean', title: 'Spot it in prose', default: true, facet: false },
+        /* **Regeln als Artikel** (T-270, E-102 a): ein Artikel steht für ein
+           System (`kind: system`, z. B. inventory), eine Regel darin
+           (`kind: rule`, z. B. craftFailure) oder eine Option dieser Regel
+           (`kind: option`, z. B. materialsLost); `partOf` hängt die Option
+           an die Regel und die Regel an das System. `key` sagt der Laufzeit,
+           welche es ist — der Name darf sich ändern, der Schlüssel nicht. */
+        key: {
+          type: 'string',
+          title: 'Runtime key',
+          facet: false,
+          description:
+            'Which system, rule or option of the app this article stands for, such as inventory, craftFailure or materialsLost. Rules & options and the rule builder find the article by it; the name may change.',
+        },
+        /* Der Graph des Regel-Builders (Auslöser → Bedingung → Folge) am
+           Artikel der Regel — wie die Formen eines Boards an ihm selbst. */
+        graph: {
+          type: 'object',
+          title: 'Rule graph',
+          facet: false,
+          description: 'The nodes and connections of this rule in the rule builder: triggers, conditions and outcomes.',
+        },
       },
     },
   },

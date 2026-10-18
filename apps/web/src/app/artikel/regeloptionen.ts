@@ -1,32 +1,33 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { withRuleVariant, type Entity, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
 import { ExperimenteSchalter } from '../lab/experimente-schalter';
+import { Text } from './text';
 
 /**
  * **Rules & options** (T-190): die Regeloptionen einer Kampagne, nach
- * Sorte gruppiert, je Option ein Satz, was sie bewirkt, und je Variante der
- * Regelartikel, der sie erklärt. Gerechnet am Server
- * (`GET /api/campaigns/:id/rules`) — hier steht nur, was ankommt.
+ * System gruppiert. **Seit T-270 aus Regelartikeln:** jedes System, jede
+ * Regel und jede Option ist ein Artikel, und ihr Name führt dorthin.
+ * Gerechnet am Server (`GET /api/campaigns/:id/rules`) — hier steht nur,
+ * was ankommt.
  *
- * Geändert wird, wo es heute steht: die Felder in der Maske der Kampagne,
- * die Verfahren über ihre Kanten, die Einstellungen der Installation
- * nirgends hier (sie gelten für jede Kampagne, bis T-132 sie ins Modul
- * holt). Fehlt einer Variante ein Regelartikel, schreibt die Leitung ihn —
- * unter dem Namen, unter dem die Seite ihn danach findet (`ownRuleName`).
+ * Gewählt wird hier („Use this"); die Verfahren über ihre Kanten in der
+ * Maske der Kampagne, die Einstellungen der Installation nirgends hier.
+ * Einen Regelartikel schreibt man nicht von hier aus: was fehlt, legt die
+ * Einfuhr der Regeln an (`scripts/regeln-anlegen.mjs`).
  */
 @Component({
   selector: 'nw-regeloptionen',
-  imports: [RouterLink, KurzLink, ExperimenteSchalter],
+  imports: [RouterLink, KurzLink, ExperimenteSchalter, Text],
   template: `
     <section class="regeln" aria-labelledby="regeln-titel">
       <header class="kopf">
         <h2 id="regeln-titel">Rules &amp; options</h2>
         <p class="hint">
-          How this campaign plays. Each option says what it does; a name with a link opens the rule article that explains it.
+          How this campaign plays. Every system, rule and option is a rule article — its name opens it.
           @if (darfSchreiben()) {
             Pick “Use this” to change a choice right here.
           }
@@ -41,6 +42,14 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
       }
       @if (laedt() && !sorten().length) {
         <p class="hint">Loading…</p>
+      } @else if (!laedt() && !sorten().length && !fehler()) {
+        <p class="hint">No rule articles are in play yet.</p>
+      }
+      @if (leitet() && fehlen()) {
+        <p class="hint fehlt">
+          {{ fehlen() }} rules or options the app knows have no rule article in play, so they are not listed. A layer with the
+          table rules adds them.
+        </p>
       }
 
       <nav class="inhalt" aria-label="Rule sorts">
@@ -51,8 +60,12 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
 
       @for (s of sorten(); track s.key) {
         <section class="sorte" [id]="'regel-' + s.key">
-          <h3>{{ s.label }}</h3>
-          <p class="was">{{ s.does }}</p>
+          @if (s.rule; as r) {
+            <h3><a [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">{{ s.label }}</a></h3>
+          } @else {
+            <h3>{{ s.label }}</h3>
+          }
+          <p class="was"><nw-text [text]="s.does" inline /></p>
           @for (o of s.options; track o.key) {
             <article class="option">
               <div class="optionskopf">
@@ -64,24 +77,15 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
                 @if (o.scope === 'installation') {
                   <span class="marke" title="A setting of this installation: it applies to every campaign.">installation-wide</span>
                 }
-                @if (o.rule; as r) {
-                  <a class="regel" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">Rule: {{ r.name }}</a>
-                } @else if (leitet() && !hatVariantenregel(o)) {
-                  <!-- Einmal je Option und nur, wo nichts sie erklärt: die Varianten verweisen dann darauf. -->
-                  <button type="button" class="klein" [disabled]="schreibt() === o.ownName" (click)="schreibeRegel(o)"
-                          [attr.title]="'Create the rule article “' + o.ownName + '” and open it'">
-                    {{ schreibt() === o.ownName ? 'Creating…' : 'Write rule article' }}
-                  </button>
-                }
               </div>
-              <p class="was">{{ o.does }}</p>
+              <p class="was"><nw-text [text]="o.does" inline /></p>
 
               @if (o.variants) {
                 <ul class="varianten">
                   @for (v of o.variants; track v.key) {
                     <li [class.gewaehlt]="v.chosen">
                       <div class="zeile">
-                        <!-- Der Name führt direkt auf den Regelartikel, wo es einen gibt. -->
+                        <!-- Der Name führt auf den Artikel der Option; ohne steht nur die gewählte da. -->
                         @if (v.rule; as r) {
                           <a class="name" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">{{ v.label }}</a>
                         } @else {
@@ -95,14 +99,8 @@ import { ExperimenteSchalter } from '../lab/experimente-schalter';
                             {{ waehlt() === o.key + ':' + v.key ? 'Saving…' : 'Use this' }}
                           </button>
                         }
-                        <!-- Ohne eigenen Artikel verweist die Variante auf den der Option. -->
-                        @if (v.rule; as r) {
-                          <a class="regel" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">Rule: {{ r.name }}</a>
-                        } @else if (o.rule; as r) {
-                          <a class="regel siehe" [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">See: {{ r.name }}</a>
-                        }
                       </div>
-                      <p class="was">{{ v.does }}</p>
+                      <p class="was"><nw-text [text]="v.does" inline /></p>
                     </li>
                   }
                 </ul>
@@ -270,13 +268,12 @@ export class Regeloptionen {
   readonly darfSchreiben = input(false);
 
   private readonly api = inject(Api);
-  private readonly router = inject(Router);
   private readonly session = inject(Session);
 
   /**
    * Leitet dieses Konto die Kampagne (oder verwaltet die Installation)? Dann
-   * darf es einer Variante ihren Regelartikel schreiben — angelegt wird in
-   * seiner Schreibebene, nicht im Kampagnenartikel. Anzeige, der Server prüft.
+   * sieht es, wie viele Regeln noch keinen Artikel haben, und die Versuche.
+   * Anzeige, der Server prüft.
    */
   protected readonly leitet = computed(() => {
     const u = this.session.user();
@@ -289,8 +286,8 @@ export class Regeloptionen {
   protected readonly fehler = signal<string | null>(null);
   /** Welche Variante gerade gespeichert wird (`option:variante`). */
   protected readonly waehlt = signal<string | null>(null);
-  /** Der Name der Regel, die gerade angelegt wird. */
-  protected readonly schreibt = signal<string | null>(null);
+  /** Wie viele Regeln und Optionen der Laufzeit noch keinen Artikel im Stapel haben. */
+  protected readonly fehlen = signal(0);
 
   constructor() {
     effect(() => {
@@ -302,7 +299,9 @@ export class Regeloptionen {
     this.laedt.set(true);
     this.fehler.set(null);
     try {
-      this.sorten.set((await this.api.campaignRules(id)).sorts);
+      const r = await this.api.campaignRules(id);
+      this.sorten.set(r.sorts);
+      this.fehlen.set(r.missing ?? 0);
     } catch (error) {
       this.fehler.set(error instanceof ApiError ? error.message : 'The options could not be loaded.');
     } finally {
@@ -335,41 +334,6 @@ export class Regeloptionen {
       this.fehler.set(error instanceof ApiError ? error.message : 'The option could not be saved.');
     } finally {
       this.waehlt.set(null);
-    }
-  }
-
-  /** Erklärt schon ein Artikel eine der Varianten? Dann braucht die Option keinen Knopf. */
-  protected hatVariantenregel(o: RuleOptionState): boolean {
-    return !!o.variants?.some((v) => v.rule);
-  }
-
-  /**
-   * **Eine Option (oder Variante) als Regelartikel** (T-190): angelegt in der
-   * Schreibebene, mit dem Satz der Seite als Anfang — danach schreibt die
-   * Leitung ihn aus, und die Seite findet ihn unter diesem Namen.
-   */
-  protected async schreibeRegel(o: RuleOptionState, v?: RuleVariantState): Promise<void> {
-    if (this.schreibt()) return;
-    const name = v ? v.ownName : o.ownName;
-    this.schreibt.set(name);
-    this.fehler.set(null);
-    try {
-      /* Ein Artikel für die ganze Option fängt mit ihren Varianten an. */
-      const text = v
-        ? `${o.does} ${v.does}`
-        : [o.does, '', ...(o.variants ?? []).map((x) => `- **${x.label}:** ${x.does}`)].join('\n');
-      const e = await this.api.createEntity('Rule', name, {
-        'Rule.kind': 'option',
-        /* „Feats: Allowed" ist ein Name, kein Begriff im Fliesstext (REQ-175). */
-        'Rule.autolink': false,
-        'Description.description': text,
-      });
-      if (!this.session.isAdmin()) await this.session.load(true);
-      await this.router.navigate(['/artikel', e.id], { queryParams: { edit: 1 } });
-    } catch (error) {
-      this.fehler.set(error instanceof ApiError ? error.message : 'The rule article could not be created.');
-    } finally {
-      this.schreibt.set(null);
     }
   }
 }

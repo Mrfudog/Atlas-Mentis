@@ -842,6 +842,8 @@ describe('loot is more than items', () => {
       'rule', 'travel', 'sense', 'reward', 'boon', 'option',
       /* T-087: Aufrüstung eines Fahrzeugs, Raum einer Bastion, Karte eines Decks. */
       'upgrade', 'facility', 'card',
+      /* T-270: ein Artikel steht für ein System der App (Inventar, Handwerk …). */
+      'system',
     ]);
   });
 

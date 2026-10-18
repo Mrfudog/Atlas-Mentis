@@ -1778,13 +1778,29 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
   Varianten mit einem eigenen Satz und die Namen der Regelartikel, die sie
   erklären. Ein Test hält ihn mit `CampaignInfo` zusammen: jedes Feld eine
   Option, jeder Aufzählungswert eine Variante.
-- **Regelartikel nach Namen:** importierte heissen, wie das Regelwerk sie
-  nennt („Encumbrance"), eine eigene Erklärung `<Option>: <Variante>`
-  (`ownRuleName`). Genannt wird ein Artikel der Art `Rule` nur, wenn er im
-  Stapel steht und der Betrachter ihn sieht (E2, Sichtbarkeit) — sonst
-  bietet die Seite der Leitung „Write rule article" an: ein Regelartikel
-  mit diesem Namen und dem Satz der Seite, in der Schreibebene. Buchtext
-  steht im Code keiner.
+- **Die Auswahl kommt aus Regelartikeln** (T-270, E-102 a): **jeder
+  Artikel steht für ein System, eine Regel oder eine Option.**
+  `Rule.kind` sagt was (`system`, `rule`, `option`), `Rule.key` sagt der
+  Laufzeit, welches (`inventory`, `craftFailure`, `materialsLost`), und
+  `partOf` hängt die Option an ihre Regel und die Regel an ihr System
+  (`indexRuleArticles`; Optionen als `regel:option`, denn `gm` ist an
+  mehreren Regeln eine Option). Die Seite zeigt nur, wofür ein Artikel
+  steht, mit dessen Namen und Text, und der Name führt hin; eine gewählte
+  Option ohne Artikel steht trotzdem da — sonst sähe niemand, was gilt.
+  Der Katalog im Code sagt nur noch, was die Laufzeit ausführen kann und
+  woher der Wert kommt; seine Sätze und Buchnamen (`rules`) sind der
+  Anfang, mit dem `scripts/regeln-anlegen.mjs` fehlende Artikel anlegt
+  (`missingRuleArticles`). Genannt wird ein Artikel nur, wenn er im Stapel
+  steht und der Betrachter ihn sieht (E2, Sichtbarkeit). Einen Knopf zum
+  Schreiben gibt es nicht; die Leitung sieht, wie viele Artikel fehlen.
+- **Woher eine Regel kommt, sagt ihre Ebene:** Hausregeln in der Ebene der
+  Hausregeln, was auf einem Buch beruht oder nur die App betrifft in einer
+  eigenen Ebene „Table rules" — nie in einer eingelesenen Buchebene, die
+  ein Neuladen ersetzt. Der Artikel nennt das Buch in `Source` und
+  verweist im Text auf dessen Regelartikel. Buchtext steht keiner da.
+- **Der Graph des Regel-Builders wohnt am Artikel** (`Rule.graph`), wie die
+  Formen eines Boards am Board: der Artikel *ist* die Regel, ein eigener
+  Graph-Artikel daneben wäre zwei Dinge für eine Sache. Migration 099.
 - **Geändert wird, wo es steht:** Felder und Kanten in der Maske der
   Kampagne; die Einstellungen der Installation sind als
   „installation-wide" markiert und gelten für jede Kampagne, bis T-132 sie
@@ -2066,34 +2082,34 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `AbilityMethod` | `Rule` | `method` `scores` `budget` `costs` `dice` `count` `scope` | `affects` `casts` | `composedOf` `affects` `allowsMethod` `abilityPool` `grants` | overview |
-| `Action` | `Rule` | `actionType` `recharge` `uses` `attack` `ability` `toHitBonus` `reach` `range` `target` `damageDice` `damageBonus` `damageType` `extraDamageDice` `extraDamageType` | `affects` `casts` | `composedOf` `affects` `grants` | overview |
-| `ActionType` | `Rule` | `per` `count` | `affects` `casts` | `composedOf` `affects` `grants` | — |
-| `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` | quick, full, overview |
-| `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `casts` `grants` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` | full |
-| `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `grants` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` | quick, full, overview |
-| `Condition` | `Rule` | `kind` `stage` `recovery` | `stageOf` `affects` `casts` | `composedOf` `stageOf` `affects` `grants` | overview |
-| `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` `casts` | `composedOf` `stageOf` `affects` `grants` | — |
-| `EquipmentMethod` | `Rule` | `method` `gold` `budget` `magic` `itemTypes` | `affects` `casts` | `composedOf` `affects` `allowsEquipment` `grants` | overview |
-| `Feat` | `Rule` `Choices` `Effects` | `prerequisite` `repeatable` | `affects` `casts` `grants` | `composedOf` `affects` `chose` `grants` `loot` | quick, overview |
-| `Feature` | `Rule` `Choices` `Effects` | `featureType` | `affects` `casts` | `composedOf` `affects` `chose` `grants` | overview |
-| `GlossaryTerm` | `Rule` | `sort` `effect` `example` `translations` | `affects` `casts` `explains` | `composedOf` `affects` `grants` | overview |
+| `AbilityMethod` | `Rule` | `method` `scores` `budget` `costs` `dice` `count` `scope` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsMethod` `abilityPool` `grants` `partOf` | overview |
+| `Action` | `Rule` | `actionType` `recharge` `uses` `attack` `ability` `toHitBonus` `reach` `range` `target` `damageDice` `damageBonus` `damageType` `extraDamageDice` `extraDamageType` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
+| `ActionType` | `Rule` | `per` `count` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | — |
+| `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` `partOf` | quick, full, overview |
+| `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `casts` `grants` `partOf` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` `partOf` | full |
+| `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `grants` `partOf` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` `partOf` | quick, full, overview |
+| `Condition` | `Rule` | `kind` `stage` `recovery` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | overview |
+| `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | — |
+| `EquipmentMethod` | `Rule` | `method` `gold` `budget` `magic` `itemTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsEquipment` `grants` `partOf` | overview |
+| `Feat` | `Rule` `Choices` `Effects` | `prerequisite` `repeatable` | `affects` `casts` `grants` `partOf` | `composedOf` `affects` `chose` `grants` `partOf` `loot` | quick, overview |
+| `Feature` | `Rule` `Choices` `Effects` | `featureType` | `affects` `casts` `partOf` | `composedOf` `affects` `chose` `grants` `partOf` | overview |
+| `GlossaryTerm` | `Rule` | `sort` `effect` `example` `translations` | `affects` `casts` `explains` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
 | `Information` | `Secrets` `Facts` | `fields` `tier` | `knownBy` | `knowledge` `includes` `loot` | — |
 | `Inventory` | — | `capacity` `copper` `grid` `zones` | `holds` | `carries` | full |
-| `ItemProperty` | `Rule` | `abbreviation` | `affects` `casts` | `composedOf` `affects` `grants` `hasProperty` | — |
+| `ItemProperty` | `Rule` | `abbreviation` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `hasProperty` `partOf` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | — |
-| `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` | `composedOf` `affects` `grants` | overview |
-| `MaterialGroup` | `Rule` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` | `composedOf` `affects` `grants` `needs` | — |
+| `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
+| `MaterialGroup` | `Rule` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `needs` | — |
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | full |
-| `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` `casts` | `composedOf` `affects` `grants` | quick, overview |
-| `Skill` | `Rule` | `ability` | `affects` `casts` | `composedOf` `affects` `grants` `loot` | — |
-| `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` `casts` | `composedOf` `affects` `casts` `spellList` `grants` | quick, print, overview, full |
+| `Rule` | `Source` `Vars` | `kind` `autolink` `key` `graph` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, overview |
+| `Skill` | `Rule` | `ability` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `loot` | — |
+| `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `casts` `spellList` `grants` `partOf` | quick, print, overview, full |
 | `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `carryExtra*` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | print, overview, quick, full |
-| `Subclass` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `subclassOf` `grants` `tableFor` | `composedOf` `affects` `chose` `grants` | overview |
-| `Substitution` | `Rule` | `replaces` `with` `withTags` `rarity` `ratio` | `affects` `casts` | `composedOf` `affects` `allowsSubstitution` `grants` | — |
+| `Subclass` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `subclassOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `chose` `grants` `partOf` | overview |
+| `Substitution` | `Rule` | `replaces` `with` `withTags` `rarity` `ratio` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsSubstitution` `grants` `partOf` | — |
 | `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | overview, full |
-| `Trade` | `Rule` | `tools` | `affects` `casts` | `composedOf` `affects` `grants` | quick, full |
-| `ZoneKind` | `Rule` | `moveCost` `light` `obscured` `hiddenUntil` `damage` `damageType` `save` `saveDC` `condition` `trigger` | `affects` `casts` | `composedOf` `affects` `grants` `zone` | — |
+| `Trade` | `Rule` | `tools` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, full |
+| `ZoneKind` | `Rule` | `moveCost` `light` `obscured` `hiddenUntil` `damage` `damageType` `save` `saveDC` `condition` `trigger` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `zone` | — |
 
 **Play**
 
@@ -2170,7 +2186,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `overrides` | * → * | ja | — | `scope` `note` |
 | `owes` | Creature → Creature |  | — | — |
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
-| `partOf` | Place \| Story \| Quest \| Event \| Board \| Encounter \| Layer \| Chapter \| BookPart → Place \| Story \| Event \| Layer \| Chapter |  | — | `rank` |
+| `partOf` | Place \| Story \| Quest \| Event \| Board \| Encounter \| Layer \| Chapter \| BookPart \| Rule → Place \| Story \| Event \| Layer \| Chapter \| Rule |  | — | `rank` |
 | `partyOf` | Party → Campaign | ja | — | — |
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
 | `questAbout` | Quest → * |  | — | — |
@@ -2199,7 +2215,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `DamageType` | 13: acid · bludgeoning · cold · fire … | `Ancestry.resistances` `Action.damageType` `Action.extraDamageType` `Spell.damageTypes` `Weapon.damageType` |
 | `DrawTime` | free action · bonus action · action · turn · round | `Inventory.zones` |
 | `EncounterKind` | combat · social · puzzle · exploration · hazard · trap · resource · story | `Encounter.kind` |
-| `RuleKind` | 9: rule · travel · sense · reward … | `Rule.kind` |
+| `RuleKind` | 10: rule · travel · sense · reward … | `Rule.kind` |
 | `Size` | tiny · small · medium · large · huge · gargantuan | `Ancestry.size` `Statblock.size` |
 | `State` | idea · prepared · ready | `Status.status` |
 

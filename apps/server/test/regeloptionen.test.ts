@@ -1,7 +1,8 @@
 /**
  * Die Regeloptionen einer Kampagne (T-190): `GET /api/campaigns/:id/rules`.
- * Ein Regelartikel wird nur genannt, wenn er im Stapel steht und der
- * Betrachter ihn sieht. Erfundene Artikel.
+ * Seit T-270 aus Regelartikeln (System, Regel, Option mit `Rule.key`); ein
+ * Artikel zählt nur, wenn er im Stapel steht und der Betrachter ihn sieht.
+ * Erfundene Artikel.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -15,6 +16,13 @@ import { hashPassword } from '../src/auth.js';
 const PASSWORT = 'nebel-wacht-am-tor';
 const ident = (name: string, id: string, status = 'ready') => ({ Identity: { name, id, aliases: [] }, Status: { status } });
 const im = (id: string, ebene = 'ly_a') => ({ id: `${id}_in`, type: 'inLayer', to: ebene, props: {} });
+const regel = (id: string, name: string, kind: string, key: string, eltern?: string, ebene = 'ly_a', status = 'ready'): Entity => ({
+  id,
+  name,
+  interfaces: ['Rule'],
+  components: { ...ident(name, `rule-${id}`, status), Rule: { kind, key } },
+  relations: [im(id, ebene), ...(eltern ? [{ id: `${id}_p`, type: 'partOf', to: eltern, props: {} }] : [])],
+});
 
 function bestand(): Entity[] {
   return [
@@ -22,11 +30,19 @@ function bestand(): Entity[] {
     { id: 'ly_aus', name: 'ly_aus', interfaces: ['Layer'], components: { ...ident('Ebene aus', 'layer-0002'), Layer: { kind: 'book', order: 20 } }, relations: [] },
     { id: 'camp_a', name: 'Runde A', interfaces: ['Campaign'], components: { ...ident('Runde A', 'campaign-0001'), Campaign: { inventory: 'weight', feats: false } },
       relations: [{ id: 'camp_a_ac', type: 'activates', to: 'ly_a', props: {} }, { id: 'camp_a_m', type: 'allowsMethod', to: 'am_geheim', props: {} }, { id: 'camp_a_m2', type: 'allowsMethod', to: 'am_offen', props: {} }] },
-    { id: 'r_enc', name: 'Encumbrance', interfaces: ['Rule'], components: ident('Encumbrance', 'rule-0001'), relations: [im('r_enc')] },
-    /* Nicht im Stapel: die Ebene ist nicht aufgeschaltet. */
-    { id: 'r_feats', name: 'Feats', interfaces: ['Rule'], components: ident('Feats', 'rule-0002'), relations: [im('r_feats', 'ly_aus')] },
+    regel('r_sys_inv', 'Inventory', 'system', 'inventory'),
+    regel('r_inv', 'Inventory rules', 'rule', 'inventory', 'r_sys_inv'),
+    regel('r_grid', 'Grid', 'option', 'grid', 'r_inv'),
+    regel('r_enc', 'Encumbrance', 'option', 'weight', 'r_inv'),
     /* Für Spielende nicht sichtbar: noch nicht fertig. */
-    { id: 'r_slots', name: 'Inventory rules: Slots', interfaces: ['Rule'], components: ident('Inventory rules: Slots', 'rule-0003', 'idea'), relations: [im('r_slots')] },
+    regel('r_slots', 'Slots', 'option', 'slots', 'r_inv', 'ly_a', 'idea'),
+    regel('r_sys_char', 'Character options', 'system', 'character'),
+    /* Nicht im Stapel: die Ebene ist nicht aufgeschaltet. */
+    regel('r_feats', 'Feats', 'rule', 'feats', 'r_sys_char', 'ly_aus'),
+    regel('r_sys_ab', 'Ability scores', 'system', 'abilities'),
+    regel('r_am', 'Ability score methods', 'rule', 'abilityMethods', 'r_sys_ab'),
+    regel('r_sys_units', 'Units', 'system', 'units'),
+    regel('r_units', 'Units', 'rule', 'units', 'r_sys_units'),
     { id: 'am_geheim', name: 'Heroic', interfaces: ['AbilityMethod'], components: { ...ident('Heroic', 'abilitymethod-0001', 'idea'), AbilityMethod: { method: 'roll', dice: '4d6kh3' } }, relations: [im('am_geheim')] },
     { id: 'am_offen', name: 'Fixed', interfaces: ['AbilityMethod'], components: { ...ident('Fixed', 'abilitymethod-0002'), AbilityMethod: { method: 'array', scores: [15, 14, 13, 12, 10, 8] } }, relations: [im('am_offen')] },
   ];
@@ -52,17 +68,20 @@ async function aufbau() {
 const option = (sorts: RuleSortState[], key: string) => sorts.flatMap((s) => s.options).find((o) => o.key === key)!;
 
 describe('GET /api/campaigns/:id/rules (T-190)', () => {
-  it('zeigt der Leitung die Optionen mit den Regelartikeln, die im Stapel stehen', async () => {
+  it('zeigt der Leitung die Systeme, Regeln und Optionen aus den Artikeln im Stapel', async () => {
     const { get } = await aufbau();
     const r = await get('Gwen', '/api/campaigns/camp_a/rules');
     expect(r.statusCode).toBe(200);
     const sorts = r.json().sorts as RuleSortState[];
+    expect(sorts.map((s) => s.key)).toEqual(['abilities', 'character', 'inventory', 'units']);
     const inv = option(sorts, 'inventory');
+    expect(inv.rule).toEqual({ id: 'r_inv', name: 'Inventory rules' });
     expect(inv.variants!.find((v) => v.chosen)?.key).toBe('weight');
-    expect(inv.variants!.find((v) => v.key === 'weight')?.rule).toEqual({ id: 'r_enc', name: 'Encumbrance' });
-    expect(inv.variants!.find((v) => v.key === 'slots')?.rule?.id).toBe('r_slots');
+    expect(inv.variants!.find((v) => v.key === 'weight')).toMatchObject({ label: 'Encumbrance', rule: { id: 'r_enc', name: 'Encumbrance' } });
+    expect(inv.variants!.map((v) => v.key)).toEqual(['grid', 'weight', 'slots']);
     /* Nicht aufgeschaltet heisst nicht da — auch für die Leitung. */
-    expect(option(sorts, 'feats').variants!.find((v) => v.key === 'true')?.rule).toBeUndefined();
+    expect(sorts.flatMap((s) => s.options).some((o) => o.key === 'feats')).toBe(false);
+    expect(r.json().missing).toBeGreaterThan(0);
     expect(option(sorts, 'abilityMethods').methods!.map((m) => m.id).sort()).toEqual(['am_geheim', 'am_offen']);
     expect(option(sorts, 'units')).toMatchObject({ scope: 'installation', value: ['units: metric'] });
   });
@@ -70,7 +89,7 @@ describe('GET /api/campaigns/:id/rules (T-190)', () => {
   it('siebt für Spielende: was sie nicht sehen, wird nicht genannt', async () => {
     const { get } = await aufbau();
     const sorts = (await get('Sela', '/api/campaigns/camp_a/rules')).json().sorts as RuleSortState[];
-    expect(option(sorts, 'inventory').variants!.find((v) => v.key === 'slots')?.rule).toBeUndefined();
+    expect(option(sorts, 'inventory').variants!.map((v) => v.key)).toEqual(['grid', 'weight']);
     expect(option(sorts, 'abilityMethods').methods!.map((m) => m.id)).toEqual(['am_offen']);
   });
 
@@ -78,5 +97,17 @@ describe('GET /api/campaigns/:id/rules (T-190)', () => {
     const { get } = await aufbau();
     expect((await get('Gwen', '/api/campaigns/r_enc/rules')).statusCode).toBe(404);
     expect((await get('Gwen', '/api/campaigns/nichts/rules')).statusCode).toBe(404);
+  });
+});
+
+describe('GET /api/rule-articles (T-270)', () => {
+  it('gibt die Regelartikel mit Schlüssel ganz, gesiebt', async () => {
+    const { get } = await aufbau();
+    const gwen = (await get('Gwen', '/api/rule-articles')).json() as Entity[];
+    expect(gwen.map((e) => e.id).sort()).toEqual(['r_am', 'r_enc', 'r_grid', 'r_inv', 'r_slots', 'r_sys_ab', 'r_sys_char', 'r_sys_inv', 'r_sys_units', 'r_units']);
+    expect(gwen.find((e) => e.id === 'r_inv')?.components['Rule']).toMatchObject({ kind: 'rule', key: 'inventory' });
+    /* Spielende sehen das Unfertige nicht. */
+    const sela = (await get('Sela', '/api/rule-articles')).json() as Entity[];
+    expect(sela.some((e) => e.id === 'r_slots')).toBe(false);
   });
 });

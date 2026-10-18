@@ -279,10 +279,20 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'ruleOptions',
     label: 'Rules & options of a campaign',
     area: 'character',
-    does: 'shows, per sort, the options a campaign plays by — among them the ability and equipment methods and the material substitutions it allows (T-190, T-197)',
+    does: 'shows, per system, the options a campaign plays by — taken from rule articles hung together with partOf (option → rule → system), among them the ability and equipment methods and the material substitutions it allows (T-190, T-197, T-270)',
     uses: {
-      [M + 'ruleOptions.ts']: ['allowsEquipment', 'allowsMethod', 'allowsSubstitution'],
+      [M + 'ruleOptions.ts']: ['allowsEquipment', 'allowsMethod', 'allowsSubstitution', 'partOf'],
       [S + 'regeloptionen.ts']: ['allowsEquipment', 'allowsMethod', 'allowsSubstitution'],
+    },
+  },
+  {
+    key: 'ruleBuilder',
+    label: 'Rule builder',
+    area: 'character',
+    does: 'groups the rule articles by system — a rule hangs on its system with partOf — and writes a rule’s system back as that edge (T-270)',
+    uses: {
+      [M + 'ruleGraph.ts']: ['partOf'],
+      [W + 'lab/regel-builder.ts']: ['partOf'],
     },
   },
   {

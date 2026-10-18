@@ -1,16 +1,23 @@
 import { Component, computed, inject, signal, viewChild, type ElementRef } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
+  articleWithGraph,
   describeRuleNode,
+  entityName,
   exampleRuleGraphs,
+  graphFromArticle,
+  ruleArticleKey,
+  ruleArticleKind,
   ruleGraphProblems,
   runRules,
   RULE_COMPARATORS,
   RULE_ENGINES,
   RULE_ROLES,
+  RULE_SORTS,
   RULE_TRIGGERS,
   type RuleComparator,
+  type Entity,
   type RuleCreature,
-  type RuleEngineKey,
   type RuleEvent,
   type RuleGraph,
   type RuleNode,
@@ -21,6 +28,7 @@ import {
   type RuleTriggerKey,
   type RuleWire,
 } from '@nw/model';
+import { Api, ApiError } from '../kern/api';
 import { Experimente } from '../kern/experimente';
 import { Session } from '../kern/session';
 
@@ -48,6 +56,7 @@ type Ziehen =
  */
 @Component({
   selector: 'nw-regel-builder',
+  imports: [RouterLink],
   template: `
     <main class="lab">
       <header class="kopf">
@@ -80,10 +89,10 @@ type Ziehen =
           <div class="filter">
             <label>Search <input type="search" [value]="suche()" (input)="suche.set($any($event.target).value)" placeholder="Name, trigger, text…" /></label>
             <label
-              >Engine
+              >System
               <select (change)="engineFilter.set($any($event.target).value)">
-                <option value="" [selected]="engineFilter() === ''">All engines</option>
-                @for (e of engines; track e.key) {
+                <option value="" [selected]="engineFilter() === ''">All systems</option>
+                @for (e of systeme(); track e.key) {
                   <option [value]="e.key" [selected]="engineFilter() === e.key">{{ e.label }}</option>
                 }
               </select>
@@ -123,18 +132,40 @@ type Ziehen =
           <div class="regelkopf">
             <label>Name <input type="text" [value]="g.name" (change)="aendereRegel({ name: $any($event.target).value })" /></label>
             <label
-              >Engine
-              <select (change)="aendereRegel({ engine: $any($event.target).value })">
-                @for (e of engines; track e.key) {
-                  <option [value]="e.key" [selected]="(g.engine ?? 'other') === e.key">{{ e.label }}</option>
+              >System
+              <select (change)="aendereRegel({ engine: $any($event.target).value || undefined })">
+                <option value="" [selected]="!g.engine">—</option>
+                @for (e of systeme(); track e.key) {
+                  <option [value]="e.key" [selected]="g.engine === e.key">{{ e.label }}</option>
                 }
               </select>
             </label>
             <label class="haken"
               ><input type="checkbox" [checked]="g.enabled" (change)="aendereRegel({ enabled: $any($event.target).checked })" /> Active</label
             >
-            <button type="button" class="leise" (click)="loeschen(g)">Delete rule</button>
+            <a class="knopf" [routerLink]="['/artikel', g.id]">Open article</a>
+            @if (darfLoeschen(g.id)) {
+              <button type="button" class="leise" (click)="loeschen(g)">Delete rule</button>
+            }
           </div>
+          <label class="text"
+            >Text
+            <textarea rows="3" [value]="textVon(g.id)" (change)="setzeText(g.id, $any($event.target).value)"></textarea>
+          </label>
+          @if (optionen().length) {
+            <details class="optionen" open>
+              <summary>Options of this rule ({{ optionen().length }})</summary>
+              <ul>
+                @for (o of optionen(); track o.id) {
+                  <li>
+                    <a [routerLink]="['/artikel', o.id]">{{ optionsName(o) }}</a>
+                    <textarea rows="2" [value]="textVon(o.id)" (change)="setzeText(o.id, $any($event.target).value)"
+                              [attr.aria-label]="'Text of ' + optionsName(o)"></textarea>
+                  </li>
+                }
+              </ul>
+            </details>
+          }
           <div class="leiste">
             <span class="hint">Add:</span>
             <button type="button" (click)="neuerKnoten('trigger')">Trigger</button>
@@ -746,6 +777,27 @@ type Ziehen =
       padding: 0.2rem 0;
       color: inherit;
     }
+    label.text,
+    label.text textarea {
+      width: 100%;
+    }
+    .optionen ul {
+      list-style: none;
+      padding: 0;
+      margin: 0.4rem 0;
+    }
+    .optionen li {
+      display: grid;
+      grid-template-columns: minmax(8rem, 14rem) minmax(0, 1fr);
+      gap: 0.5rem;
+      align-items: start;
+      margin: 0.3rem 0;
+    }
+    @media (max-width: 700px) {
+      .optionen li {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
     .zahl {
       width: 4.5rem;
     }
@@ -760,6 +812,7 @@ type Ziehen =
 })
 export class RegelBuilder {
   protected readonly exp = inject(Experimente);
+  private readonly api = inject(Api);
   protected readonly session = inject(Session);
 
   protected readonly B = B;
@@ -767,10 +820,14 @@ export class RegelBuilder {
   protected readonly triggers = RULE_TRIGGERS;
   protected readonly rollen = RULE_ROLES;
   protected readonly vergleiche = RULE_COMPARATORS;
-  protected readonly engines = RULE_ENGINES;
 
   protected readonly bereit = signal(false);
+  /** Die Regelartikel, wie sie vom Server kommen (T-270) — System, Regel, Option. */
+  protected readonly artikel = signal<Entity[]>([]);
+  /** Die Regeln als Graphen, aus den Artikeln gelesen; bearbeitet wird hier, gespeichert in den Artikel. */
   protected readonly regeln = signal<RuleGraph[]>([]);
+  /** Geänderte Texte je Artikel (Regel oder Option), bis „Save". */
+  protected readonly texte = signal<Map<string, string>>(new Map());
   protected readonly aktivId = signal<string | null>(null);
   protected readonly geaendert = signal<Set<string>>(new Set());
   protected readonly speichert = signal(false);
@@ -786,8 +843,6 @@ export class RegelBuilder {
   protected readonly engineFilter = signal('');
   protected readonly triggerFilter = signal('');
   protected readonly nurAktive = signal(false);
-  /** Beispiele, die jemand gelöscht hat — sie kommen nicht von selbst wieder. */
-  private verworfen: string[] = [];
 
   /** Erfundene Kreaturen für den Probelauf — keine Artikel, nichts gespeichert. */
   protected readonly kreaturen = signal<RuleCreature[]>([
@@ -827,23 +882,43 @@ export class RegelBuilder {
       h: Math.max(240, ...ns.map((n) => n.y + H + 40)),
     };
   });
-  /** Die Übersicht: gefiltert, nach Engine gruppiert in der Reihenfolge der Engines. */
+  /** Die System-Artikel, in der Reihenfolge der bekannten Systeme, dann nach Namen. */
+  protected readonly systeme = computed(() => {
+    const bekannt: string[] = [...RULE_ENGINES.map((e) => e.key), ...RULE_SORTS.map((s) => s.key)];
+    const rang = (k: string) => (bekannt.includes(k) ? bekannt.indexOf(k) : bekannt.length);
+    return this.artikel()
+      .filter((e) => ruleArticleKind(e) === 'system' && ruleArticleKey(e))
+      .map((e) => ({ id: e.id, key: ruleArticleKey(e)!, label: entityName(e) }))
+      .sort((a, b) => rang(a.key) - rang(b.key) || a.label.localeCompare(b.label));
+  });
+  /** Die Optionen der gewählten Regel — Artikel, die per `partOf` an ihr hängen. */
+  protected readonly optionen = computed(() => {
+    const id = this.aktivId();
+    return this.artikel().filter((e) => ruleArticleKind(e) === 'option' && (e.relations ?? []).some((r) => r.type === 'partOf' && r.to === id));
+  });
+  protected readonly aktivArtikel = computed(() => this.artikel().find((e) => e.id === this.aktivId()) ?? null);
+
+  /** Die Übersicht: gefiltert, nach System gruppiert. */
   protected readonly gruppen = computed(() => {
     const q = this.suche().trim().toLowerCase();
     const eng = this.engineFilter();
     const tr = this.triggerFilter();
     const passt = (g: RuleGraph) =>
-      (!eng || (g.engine ?? 'other') === eng) &&
+      (!eng || g.engine === eng) &&
       (!tr || g.nodes.some((n) => n.kind === 'trigger' && n.on === tr)) &&
       (!this.nurAktive() || g.enabled) &&
       (!q || g.name.toLowerCase().includes(q) || g.nodes.some((n) => describeRuleNode(n).toLowerCase().includes(q)));
-    return RULE_ENGINES.map((e) => ({
-      key: e.key,
-      label: e.label,
+    const gruppen = this.systeme().map((sys) => ({
+      key: sys.key,
+      label: sys.label,
       regeln: this.regeln()
-        .filter((g) => (g.engine ?? 'other') === e.key && passt(g))
+        .filter((g) => g.engine === sys.key && passt(g))
         .sort((a, b) => a.name.localeCompare(b.name)),
-    })).filter((gr) => gr.regeln.length);
+    }));
+    /* Regeln ohne System stehen am Ende — sie hängen an nichts, was die Liste kennt. */
+    const bekannt = new Set(this.systeme().map((x) => x.key));
+    const lose = this.regeln().filter((g) => (!g.engine || !bekannt.has(g.engine)) && passt(g));
+    return [...gruppen, { key: '', label: 'Without a system', regeln: lose }].filter((gr) => gr.regeln.length);
   });
 
   /** Ergebnis je Knoten der aktiven Regel für die gewählte Kreatur. */
@@ -866,18 +941,8 @@ export class RegelBuilder {
     try {
       await this.exp.lade(true);
       if (this.exp.ruleBuilder()) {
-        const gespeichert = await this.exp.regeln();
-        this.verworfen = await this.exp.verworfeneBeispiele();
-        const beispiele = exampleRuleGraphs();
-        /* Gespeicherte Beispiele von früher bekommen ihre Engine nachgetragen. */
-        const alt = gespeichert.map((g) => (g.engine ? g : { ...g, engine: beispiele.find((b) => b.id === g.id)?.engine ?? 'other' }));
-        const da = new Set(alt.map((g) => g.id));
-        /* Neue Beispiele kommen dazu und gelten als ungespeichert, bis jemand „Save" sagt. */
-        const neu = beispiele.filter((b) => !da.has(b.id) && !this.verworfen.includes(b.id));
-        const regeln = [...alt, ...neu];
-        this.regeln.set(regeln);
-        this.geaendert.set(new Set(neu.map((g) => g.id)));
-        const erste = this.gruppen()[0]?.regeln[0]?.id ?? regeln[0]?.id;
+        await this.ladeArtikel();
+        const erste = this.gruppen().find((g) => g.regeln.some((r) => r.nodes.length))?.regeln.find((r) => r.nodes.length)?.id ?? this.regeln()[0]?.id;
         if (erste) this.waehle(erste);
       }
     } catch {
@@ -885,6 +950,16 @@ export class RegelBuilder {
     } finally {
       this.bereit.set(true);
     }
+  }
+
+  /** Die Regelartikel holen und die Regeln daraus lesen (T-270). Ungespeichertes geht dabei verloren. */
+  private async ladeArtikel(): Promise<void> {
+    const alle = await this.api.ruleArticles();
+    this.artikel.set(alle);
+    const systemKey = new Map(alle.filter((e) => ruleArticleKind(e) === 'system').map((e) => [e.id, ruleArticleKey(e)]));
+    this.regeln.set(alle.filter((e) => ruleArticleKind(e) === 'rule').map((e) => graphFromArticle(e, (id) => systemKey.get(id))));
+    this.geaendert.set(new Set());
+    this.texte.set(new Map());
   }
 
   /* ----------------------------------------------------------- Regeln */
@@ -913,62 +988,126 @@ export class RegelBuilder {
     if (id) this.aendere(id, (g) => ({ ...g, ...teil }));
   }
 
-  protected neueRegel(): void {
-    const id = `rule-${Date.now().toString(36)}`;
-    const eng = (this.engineFilter() || 'other') as RuleEngineKey;
-    const g: RuleGraph = { id, name: 'New rule', engine: eng, enabled: true, nodes: [{ id: 'n1', kind: 'trigger', x: 20, y: 40, on: 'attacked' }], wires: [] };
-    this.regeln.update((rs) => [...rs, g]);
+  /** Der Text eines Artikels, wie er gerade bearbeitet wird. */
+  protected textVon(id: string): string {
+    const neu = this.texte().get(id);
+    if (neu !== undefined) return neu;
+    const d = this.artikel().find((e) => e.id === id)?.components?.['Description']?.['description'];
+    return typeof d === 'string' ? d : '';
+  }
+
+  protected setzeText(id: string, text: string): void {
+    this.texte.update((m) => new Map(m).set(id, text));
     this.geaendert.update((s) => new Set(s).add(id));
-    this.waehle(id);
   }
 
-  protected beispiele(): void {
-    const da = new Set(this.regeln().map((g) => g.id));
-    const neu = exampleRuleGraphs().filter((g) => !da.has(g.id));
-    if (this.verworfen.length) {
-      this.verworfen = [];
-      void this.exp.setzeVerworfeneBeispiele([]);
+  protected optionsName(e: Entity): string {
+    return entityName(e);
+  }
+
+  /**
+   * **Eine neue Regel** ist ein Regelartikel (T-270): angelegt wie jeder
+   * Artikel, in der Schreibebene, an das gewählte System gehängt.
+   */
+  protected async neueRegel(): Promise<void> {
+    const sys = this.systeme().find((x) => x.key === this.engineFilter()) ?? this.systeme().find((x) => x.key === this.aktiv()?.engine);
+    const name = prompt('Name of the new rule', 'New rule')?.trim();
+    if (!name) return;
+    this.fehler.set(null);
+    try {
+      const graph = { enabled: true, nodes: [{ id: 'n1', kind: 'trigger', x: 20, y: 30, on: 'attacked' }], wires: [] };
+      const e = await this.api.createEntity('Rule', name, { 'Rule.kind': 'rule', 'Rule.autolink': false, 'Rule.graph': graph }, sys ? [{ type: 'partOf', to: sys.id }] : []);
+      await this.ladeArtikel();
+      this.waehle(e.id);
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'The rule could not be created.');
     }
-    if (!neu.length) return;
-    this.regeln.update((rs) => [...rs, ...neu]);
-    this.geaendert.update((s) => new Set([...s, ...neu.map((g) => g.id)]));
-    this.waehle(neu[0]!.id);
   }
 
+  /**
+   * **Die Beispiele als Artikel:** was es noch nicht gibt (nach Namen), in
+   * der Schreibebene, an das System seiner Engine — gibt es das System
+   * nicht, bleibt das Beispiel weg und die Meldung sagt es.
+   */
+  protected async beispiele(): Promise<void> {
+    const da = new Set(this.regeln().map((g) => g.name.toLowerCase()));
+    const neu = exampleRuleGraphs().filter((g) => !da.has(g.name.toLowerCase()));
+    if (!neu.length) return;
+    if (!confirm(`Create ${neu.length} example rules as articles in your write layer?`)) return;
+    this.fehler.set(null);
+    const ohne: string[] = [];
+    try {
+      for (const g of neu) {
+        const sys = this.systeme().find((x) => x.key === g.engine);
+        if (!sys) {
+          ohne.push(g.name);
+          continue;
+        }
+        await this.api.createEntity(
+          'Rule',
+          g.name,
+          { 'Rule.kind': 'rule', 'Rule.autolink': false, 'Rule.graph': { enabled: g.enabled, nodes: g.nodes, wires: g.wires } },
+          [{ type: 'partOf', to: sys.id }],
+        );
+      }
+      await this.ladeArtikel();
+      if (ohne.length) this.fehler.set(`No system article for: ${ohne.join(', ')}.`);
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'The examples could not be created.');
+    }
+  }
+
+  /**
+   * **Speichern heisst: in die Artikel schreiben** (T-270). Je geänderter
+   * Regel der ganze Artikel, frisch geholt, mit Namen, Text, Graph und dem
+   * System als `partOf`; je geänderter Option ihr Text. Schreibrecht und
+   * `validateEntity` prüft der Server.
+   */
   protected async speichern(): Promise<void> {
     this.speichert.set(true);
     this.fehler.set(null);
+    const sysIds = new Map(this.systeme().map((x) => [x.key, x.id]));
+    const alleSys = new Set(this.systeme().map((x) => x.id));
     try {
       for (const id of this.geaendert()) {
+        const { refs: _r, fromTemplate: _t, ...roh } = (await this.api.entity(id)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+        let neu = roh as Entity;
         const g = this.regeln().find((x) => x.id === id);
-        if (g) await this.exp.speichereRegel(g);
+        if (g) {
+          neu = articleWithGraph(neu, g);
+          /* Das System ist die Kante: die alte auf ein System geht, die neue kommt. */
+          const ziel = g.engine ? sysIds.get(g.engine) : undefined;
+          const rel = (neu.relations ?? []).filter((r) => !(r.type === 'partOf' && alleSys.has(r.to)));
+          if (ziel) rel.push({ id: `rel_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`, type: 'partOf', to: ziel, props: {} });
+          neu = { ...neu, relations: rel };
+        }
+        const text = this.texte().get(id);
+        if (text !== undefined) neu = { ...neu, components: { ...neu.components, Description: { ...(neu.components['Description'] ?? {}), description: text } } };
+        await this.api.putEntity(neu);
       }
-      this.geaendert.set(new Set());
-    } catch {
-      this.fehler.set('Saving failed — a rule may be too large (8000 characters each).');
+      await this.ladeArtikel();
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'Saving failed.');
     } finally {
       this.speichert.set(false);
     }
   }
 
+  /** Löschen nur, was die Laufzeit nicht kennt — eine Regel mit Schlüssel fehlte sonst in Rules & options. */
+  protected darfLoeschen(id: string): boolean {
+    const e = this.artikel().find((x) => x.id === id);
+    return !!e && !ruleArticleKey(e);
+  }
+
   protected async loeschen(g: RuleGraph): Promise<void> {
-    if (!confirm(`Delete the rule “${g.name}”?`)) return;
+    if (!this.darfLoeschen(g.id) || !confirm(`Delete the rule article “${g.name}”?`)) return;
     try {
-      await this.exp.loescheRegel(g.id);
-      if (exampleRuleGraphs().some((b) => b.id === g.id) && !this.verworfen.includes(g.id)) {
-        this.verworfen = [...this.verworfen, g.id];
-        await this.exp.setzeVerworfeneBeispiele(this.verworfen);
-      }
-    } catch {
-      /* Ungespeichert gab es sie am Server nicht. */
+      await this.api.deleteEntity(g.id);
+      await this.ladeArtikel();
+      this.waehle(this.regeln()[0]?.id ?? '');
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'The rule could not be deleted.');
     }
-    this.regeln.update((rs) => rs.filter((x) => x.id !== g.id));
-    this.geaendert.update((s) => {
-      const n = new Set(s);
-      n.delete(g.id);
-      return n;
-    });
-    this.waehle(this.regeln()[0]?.id ?? '');
   }
 
   /* ----------------------------------------------------------- Knoten */

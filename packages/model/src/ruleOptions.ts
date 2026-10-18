@@ -15,11 +15,12 @@
  * ihr Teilsystem ohnehin liest (`inventoryRulesOf`, `craftRulesOf`,
  * `allowedMethods` …), damit die Seite nie etwas anderes sagt, als gilt.
  *
- * **Regelartikel** werden nach Namen gesucht: die importierten heissen,
- * wie das Regelwerk sie nennt („Encumbrance"), und eine eigene Erklärung
- * hat den Namen, den `ownRuleName` vorschlägt. Was gefunden wird, entscheidet
- * der Server (im Stapel, sichtbar); hier stehen nur die Namen. Buchtext
- * steht hier keiner — nur eigene kurze Sätze (T-190).
+ * **Seit T-270 kommt die Auswahl aus Regelartikeln:** je System, Regel
+ * und Option ein Artikel (`Rule.kind`, `Rule.key`, `partOf`), mit Namen und
+ * Text. Der Katalog hier sagt nur, was die Laufzeit ausführen kann und
+ * woher der Wert kommt; seine Sätze sind der Anfang, mit dem die Einfuhr
+ * fehlende Artikel anlegt (`missingRuleArticles`). Buchtext steht hier
+ * keiner — nur eigene kurze Sätze (T-190).
  */
 
 import { allowedMethods, type AbilityMethod } from './abilities.js';
@@ -30,6 +31,7 @@ import { inventoryRulesOf } from './inventory.js';
 import { mapRulesOf } from './map.js';
 import { stowingRuleOf } from './stowing.js';
 import { substitutionsOf, substitutionText } from './substitutes.js';
+import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
 
 export type RuleSortKey = 'inventory' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'map' | 'table';
@@ -58,7 +60,7 @@ export interface RuleVariantDef {
   key: string;
   label: string;
   does: string;
-  /** Namen importierter Regelartikel, die diese Variante erklären — der erste, der da ist, gilt. */
+  /** Buchartikel, auf denen diese Option beruht (Namen) — der Artikel der Option verweist darauf (T-270). */
   rules?: string[];
 }
 
@@ -77,7 +79,7 @@ export interface RuleOptionDef {
   does: string;
   source: RuleOptionSource;
   variants?: readonly RuleVariantDef[];
-  /** Regelartikel zur Option als Ganzes. */
+  /** Buchartikel, auf denen die Regel beruht (Namen) — ihr Artikel verweist darauf (T-270). */
   rules?: string[];
   /**
    * **Gilt nur unter einer Variante einer anderen Option** (T-248): Basils
@@ -373,14 +375,6 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
   },
 ];
 
-/**
- * **Der Name einer eigenen Erklärung**: so heisst ein Regelartikel, den
- * die Leitung für eine Variante schreibt, und so wird er wiedergefunden.
- */
-export function ownRuleName(option: Pick<RuleOptionDef, 'label'>, variant?: Pick<RuleVariantDef, 'label'>): string {
-  return variant ? `${option.label}: ${variant.label}` : option.label;
-}
-
 /** Felder, deren Varianten `true`/`false` heissen, aber als Wahrheitswert stehen. */
 const WAHRHEITSFELDER = new Set(['feats', 'revealOnMove']);
 
@@ -402,21 +396,92 @@ export function withRuleVariant(campaign: Entity, optionKey: string, variantKey:
   };
 }
 
-/** Alle Namen, nach denen gesucht wird — der Server sucht sie einmal. */
-export function ruleOptionRuleNames(): string[] {
-  const raus = new Set<string>();
-  for (const o of RULE_OPTIONS) {
-    for (const n of o.rules ?? []) raus.add(n);
-    /* Auch Optionen mit Varianten haben einen Artikel als Ganzes — auf ihn
-       verweisen die Varianten, die keinen eigenen haben. */
-    raus.add(ownRuleName(o));
-    for (const v of o.variants ?? []) {
-      for (const n of v.rules ?? []) raus.add(n);
-      raus.add(ownRuleName(o, v));
+/* ------------------------------------------------------------ Regelartikel */
+
+export type RuleArticleKind = 'system' | 'rule' | 'option';
+
+/** Was ein Regelartikel ist (`Rule.kind`), wenn er für die Laufzeit steht. */
+export function ruleArticleKind(e: Entity): RuleArticleKind | undefined {
+  const k = e.components?.['Rule']?.['kind'];
+  return k === 'system' || k === 'rule' || k === 'option' ? k : undefined;
+}
+
+/** Der Schlüssel, unter dem die Laufzeit einen Regelartikel kennt (`Rule.key`). */
+export function ruleArticleKey(e: Entity): string | undefined {
+  const k = e.components?.['Rule']?.['key'];
+  return typeof k === 'string' && k.trim() ? k.trim() : undefined;
+}
+
+/** Die Regelartikel nach Schlüssel: Optionen als `regel:option`, weil `gm` an mehreren Regeln eine Option ist. */
+export interface RuleArticleIndex {
+  systems: Map<string, Entity>;
+  rules: Map<string, Entity>;
+  options: Map<string, Entity>;
+}
+
+const elternVon = (e: Entity): string[] => (e.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to);
+
+/**
+ * **Die Regelartikel geordnet** (T-270): ein Artikel steht für ein System,
+ * eine Regel oder eine Option, `key` sagt welche, `partOf` hängt die Option
+ * an ihre Regel. Gibt es zu einem Schlüssel zwei (zwei Ebenen), gilt der
+ * erste in Nummernfolge — stabil statt nach Ladereihenfolge.
+ */
+export function indexRuleArticles(articles: Iterable<Entity>): RuleArticleIndex {
+  const alle = [...articles].filter((e) => ruleArticleKind(e) && ruleArticleKey(e)).sort((a, z) => a.id.localeCompare(z.id));
+  const idx: RuleArticleIndex = { systems: new Map(), rules: new Map(), options: new Map() };
+  const regelNachId = new Map<string, string>();
+  for (const e of alle) {
+    const key = ruleArticleKey(e)!;
+    if (ruleArticleKind(e) === 'system' && !idx.systems.has(key)) idx.systems.set(key, e);
+    if (ruleArticleKind(e) === 'rule') {
+      if (!idx.rules.has(key)) idx.rules.set(key, e);
+      regelNachId.set(e.id, key);
     }
   }
-  return [...raus];
+  for (const e of alle) {
+    if (ruleArticleKind(e) !== 'option') continue;
+    for (const eltern of elternVon(e)) {
+      const regel = regelNachId.get(eltern);
+      const k = regel ? `${regel}:${ruleArticleKey(e)}` : undefined;
+      if (k && !idx.options.has(k)) idx.options.set(k, e);
+    }
+  }
+  return idx;
 }
+
+/** Was die Laufzeit kennt und noch keinen Artikel hat — für die Einfuhr und den Hinweis. */
+export interface MissingRuleArticle {
+  kind: RuleArticleKind;
+  key: string;
+  /** Bei einer Regel das System, bei einer Option die Regel. */
+  parent?: string;
+  label: string;
+  does: string;
+  /** Buchartikel, auf denen sie beruht (Namen), wenn es welche gibt. */
+  basedOn: string[];
+}
+
+export function missingRuleArticles(articles: Iterable<Entity>): MissingRuleArticle[] {
+  const idx = indexRuleArticles(articles);
+  const raus: MissingRuleArticle[] = [];
+  for (const s of RULE_SORTS) {
+    if (!idx.systems.has(s.key)) raus.push({ kind: 'system', key: s.key, label: s.label, does: s.does, basedOn: [] });
+  }
+  for (const o of RULE_OPTIONS) {
+    if (!idx.rules.has(o.key)) raus.push({ kind: 'rule', key: o.key, parent: o.sort, label: o.label, does: o.does, basedOn: [...(o.rules ?? [])] });
+    for (const v of o.variants ?? []) {
+      if (!idx.options.has(`${o.key}:${v.key}`)) raus.push({ kind: 'option', key: v.key, parent: o.key, label: v.label, does: v.does, basedOn: [...(v.rules ?? [])] });
+    }
+  }
+  return raus;
+}
+
+const refVon = (e: Entity): RuleRef => ({ id: e.id, name: entityName(e) });
+const textVon = (e: Entity | undefined, sonst: string): string => {
+  const d = e?.components?.['Description']?.['description'];
+  return typeof d === 'string' && d.trim() ? d.trim() : sonst;
+};
 
 /** Ein gefundener Regelartikel. */
 export interface RuleRef {
@@ -429,10 +494,8 @@ export interface RuleVariantState {
   label: string;
   does: string;
   chosen: boolean;
-  /** Der erklärende Regelartikel, wenn es einen gibt. */
+  /** Der Artikel dieser Option (T-270). Fehlt er, steht die Option nur da, wenn sie gewählt ist. */
   rule?: RuleRef;
-  /** Unter diesem Namen schriebe die Leitung eine eigene Erklärung. */
-  ownName: string;
 }
 
 /** Ein gewähltes Verfahren (Attribute, Ausrüstung): ein Artikel oder eine Vorgabe aus dem Code. */
@@ -457,20 +520,21 @@ export interface RuleOptionState {
   value?: string[];
   variants?: RuleVariantState[];
   methods?: RuleMethodState[];
-  /** Regelartikel zur Option als Ganzes. */
+  /** Der Artikel dieser Regel (T-270). */
   rule?: RuleRef;
-  ownName: string;
 }
 
 export interface RuleSortState extends RuleSortDef {
   options: RuleOptionState[];
+  /** Der Artikel des Systems (T-270). */
+  rule?: RuleRef;
 }
 
 export interface RuleOptionsContext {
   byId: ReadonlyMap<EntityId, Entity>;
   settings: Readonly<Record<string, string>> | null | undefined;
-  /** Der erste Regelartikel dieser Namen, der im Stapel und sichtbar ist. */
-  ruleNamed: (names: readonly string[]) => RuleRef | undefined;
+  /** Die Regelartikel mit Schlüssel, die im Stapel stehen und der Betrachter sieht (T-270). */
+  articles: readonly Entity[];
 }
 
 /** Was ein Attributsverfahren tut, in einem Satz. */
@@ -541,40 +605,43 @@ function einstellungen(keys: readonly string[], settings: Readonly<Record<string
 }
 
 /**
- * **Die Regeloptionen einer Kampagne**, nach Sorte. Ohne Kampagne stehen
- * die Vorgaben da — die Seite zeigt sie trotzdem, denn das ist, was gilt.
+ * **Die Regeloptionen einer Kampagne**, nach Sorte — **aus den
+ * Regelartikeln** (T-270): ein System, eine Regel, eine Option steht da,
+ * wenn ein Artikel für sie steht, mit dessen Namen und Text. Der Katalog im
+ * Code sagt nur noch, was die Laufzeit ausführen kann und woher der Wert
+ * kommt. Eine gewählte Option ohne Artikel steht trotzdem da — sonst sähe
+ * niemand, was gilt.
  */
 export function ruleOptionsOf(campaign: Entity | null | undefined, ctx: RuleOptionsContext): RuleSortState[] {
   const settings = ctx.settings ?? {};
-  return RULE_SORTS.map((sort) => ({
-    ...sort,
+  const idx = indexRuleArticles(ctx.articles);
+  return RULE_SORTS.filter((sort) => idx.systems.has(sort.key)).map((sort) => {
+    const sys = idx.systems.get(sort.key)!;
+    return {
+    key: sort.key,
+    label: entityName(sys),
+    does: textVon(sys, sort.does),
+    rule: refVon(sys),
     /* Was unter der gewählten Variante nichts sagt, steht nicht da (T-248). */
-    options: RULE_OPTIONS.filter((o) => o.sort === sort.key && (!o.when || o.when.is.includes(String(feldwert(campaign, o.when.field))))).map((o): RuleOptionState => {
+    options: RULE_OPTIONS.filter((o) => o.sort === sort.key && idx.rules.has(o.key) && (!o.when || o.when.is.includes(String(feldwert(campaign, o.when.field))))).map((o): RuleOptionState => {
+      const art = idx.rules.get(o.key)!;
       const raus: RuleOptionState = {
         key: o.key,
-        label: o.label,
-        does: o.does,
+        label: entityName(art),
+        does: textVon(art, o.does),
         scope: 'settings' in o.source ? 'installation' : 'campaign',
-        ownName: ownRuleName(o),
+        rule: refVon(art),
       };
-      /* Der eigene Artikel zur Option geht vor: wer ihn schreibt, meint diese Tischregel. */
-      const rule = ctx.ruleNamed([ownRuleName(o), ...(o.rules ?? [])]);
-      if (rule) raus.rule = rule;
       const src = o.source;
       if ('field' in src) {
         raus.field = `Campaign.${src.field}`;
         const wert = feldwert(campaign, src.field);
         if (o.variants) {
-          raus.variants = o.variants.map((v) => {
-            const r = ctx.ruleNamed([...(v.rules ?? []), ownRuleName(o, v)]);
-            return {
-              key: v.key,
-              label: v.label,
-              does: v.does,
-              chosen: String(wert) === v.key,
-              ownName: ownRuleName(o, v),
-              ...(r ? { rule: r } : {}),
-            };
+          raus.variants = o.variants.flatMap((v): RuleVariantState[] => {
+            const a = idx.options.get(`${o.key}:${v.key}`);
+            const chosen = String(wert) === v.key;
+            if (!a && !chosen) return [];
+            return [{ key: v.key, label: a ? entityName(a) : v.label, does: textVon(a, v.does), chosen, ...(a ? { rule: refVon(a) } : {}) }];
           });
         } else {
           raus.value = Array.isArray(wert) ? wert.map(String) : wert === undefined ? [] : [String(wert)];
@@ -603,5 +670,6 @@ export function ruleOptionsOf(campaign: Entity | null | undefined, ctx: RuleOpti
       }
       return raus;
     }),
-  }));
+    };
+  });
 }

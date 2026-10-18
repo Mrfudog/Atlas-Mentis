@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evalRuleExpr, exampleRuleGraphs, isRuleGraph, ruleGraphProblems, runRules, RULE_ENGINES, type RuleCreature, type RuleGraph } from '../src/index.js';
+import { articleWithGraph, evalRuleExpr, exampleRuleGraphs, graphFromArticle, isRuleGraph, ruleGraphProblems, runRules, RULE_ENGINES, type Entity, type RuleCreature, type RuleGraph } from '../src/index.js';
 
 /* Regel-Builder, Versuch (T-270). Erfundene Kreaturen. */
 
@@ -153,5 +153,31 @@ describe('die Beispielregeln', () => {
       runRules([regel('somatic-hand')], { on: 'castsSpell', actor: 'a' }, [kreatur('a', { knows, values: { freeHands: 0 } })]).firings.map((f) => f.text);
     expect(r([])).toEqual(['A cannot cast a spell with somatic components: no free hand']);
     expect(r(['War Caster'])).toEqual(['A gets “Somatic components with hands full (War Caster)”']);
+  });
+});
+
+describe('Graph am Regelartikel (T-270)', () => {
+  const art: Entity = {
+    id: 'r1',
+    interfaces: ['Rule'],
+    components: { Identity: { name: 'Shield' }, Rule: { kind: 'rule', key: 'shield' } },
+    relations: [{ type: 'partOf', to: 'sys-spells' }],
+  };
+  const sys = (id: string) => (id === 'sys-spells' ? 'spellcasting' : undefined);
+
+  it('liest einen Artikel ohne Graph als leeren, mit System aus partOf', () => {
+    expect(graphFromArticle(art, sys)).toEqual({ id: 'r1', name: 'Shield', engine: 'spellcasting', enabled: true, nodes: [], wires: [] });
+  });
+
+  it('schreibt Graph und Namen zurück, und liest sie wieder gleich', () => {
+    const g = { ...exampleRuleGraphs().find((x) => x.id === 'shield')!, id: 'r1', name: 'Shield (house)', engine: 'spellcasting', enabled: false };
+    const neu = articleWithGraph(art, g);
+    expect(neu.components['Identity']).toEqual({ name: 'Shield (house)' });
+    expect(neu.components['Rule']).toMatchObject({ kind: 'rule', key: 'shield' });
+    expect(graphFromArticle(neu, sys)).toEqual(g);
+  });
+
+  it('lässt einen Artikel ohne Knoten ohne Graph', () => {
+    expect(articleWithGraph(art, graphFromArticle(art, sys)).components['Rule']).toEqual({ kind: 'rule', key: 'shield' });
   });
 });

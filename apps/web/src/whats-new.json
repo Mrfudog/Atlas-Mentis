@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-rules-from-articles",
+      "date": "2026-10-18",
+      "title": "Rules & options come from rule articles",
+      "text": "Every system, rule and option on a campaign’s Rules & options tab is now a rule article of its own, in the layer it comes from — open it by its name, edit it like any article. The rule builder (experiment) lists the same articles by system and saves rules, texts and nodes into them.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "rules" }
+    },
+    {
       "id": "2026-10-18-known-blueprints-rule",
       "date": "2026-10-18",
       "title": "Choose how blueprints are learned",

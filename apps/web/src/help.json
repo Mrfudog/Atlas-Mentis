@@ -279,7 +279,7 @@
         {
           "text": [
             "The campaign page has tabs: Overview (the story and what hangs on the campaign), Members (who sits at the table, roles, invitations), Layers (what is switched on and in which order), Rules & options and Visibility. The tab stands in the address, so a link opens it. GMs change the members; co-GMs see them.",
-            "Rules & options shows every choice of the campaign. Whoever may change the campaign picks “Use this” beside a variant to switch it right there; a variant or option name with a link opens the rule article that explains it. A variant without its own article points to the article of its option (“See:”); “Write rule article” appears once per option, only where nothing explains it yet.",
+            "Rules & options shows the campaign’s choices by system. Every system, rule and option is a rule article — its name opens it. Whoever may change the campaign picks “Use this” beside an option to switch it right there. GMs see how many rules of the app still lack an article; those are not listed.",
             "“View as” on a member — or “View as ▾” under the campaign in the header, on every page (Alt+Shift+V) — shows the site as that member sees it, read only. The band at the top says whose view it is; “Exit” or Alt+Shift+V goes back.",
             "“Order in play” lists every layer and group in play, top first: the higher one counts where two bring a version of the same article. Drag a row by its handle (or use ↑ ↓); a group moves as a block. Drag a book out of its group, or use “Own place”, to give it its own place; “Back into …” returns it.",
             "Each row says what its place does: which articles it replaces, and where its versions lose.",
@@ -345,13 +345,13 @@
           "text": [
             "A rule is a chain of nodes: a trigger (a creature is hit, picks up an object …), conditions with a yes and a no exit, and outcomes such as offering a reaction. Add nodes with Trigger, Condition and Outcome; drag a node to move it.",
             "Drag from a dot on a node’s right edge onto another node to connect them, or pick “Connect to” beside the canvas. Conditions compare numbers (distance, self.hp, self.reactionFree …), check whether a creature knows something by name, or whether two roles are the same creature.",
-            "Save keeps your rules in your account. Add examples brings back the sample rules you deleted."
+            "Every rule is a rule article, and Save writes into it: name, text, the options’ texts, its system and the nodes. New rule creates an article in your write layer; Open article shows it as a page. Add examples creates the sample rules that are missing. Rules the app runs on (those on Rules & options) cannot be deleted here."
           ]
         },
         {
           "heading": "Rules by engine",
           "text": [
-            "The list on the left groups the rules by engine — reactions, turn and actions, hands, hit points, spellcasting, movement. Search by name or node text, or narrow it to one engine, one trigger or active rules only. Each rule names its engine above the canvas.",
+            "The list on the left groups the rules by system — the system articles, from reactions and spellcasting to inventory and crafting. Search by name or node text, or narrow it to one system, one trigger or active rules only. A rule with options lists them under its text.",
             "On a phone, swipe on the empty canvas to scroll it; a node or dot takes the swipe for itself. − and + zoom, Fit shrinks the rule to the width of the screen."
           ]
         },
