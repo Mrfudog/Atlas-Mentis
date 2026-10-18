@@ -1401,6 +1401,14 @@ Klassenwechsel auseinanderlaufen; also rechnet `proficienciesOf` beim
 Lesen alle Quellen zusammen und sagt je Übung, woher sie kommt — und wer
 fragt, ob jemand geübt ist, fragt diese eine Funktion.
 
+**Mit den Attributen ging es genauso** (T-272). Der Assistent legt die
+Grundwerte am Statblock ab, und die Boni aus Herkunft und Hintergrund
+rechnete `chosenResult` — aber kein Leser nahm sie, der Bogen zeigte STR
+15, wo 16 galt. Die Boni in den Statblock zu schreiben hiesse, dass ein
+Wechsel des Hintergrunds die Zahl dort nicht mehr findet. Also gibt
+`characterStats` jeden Wert mit seinen Teilen und dazu den Statblock, wie
+er an der Figur *gelesen* wird; wer eine Zahl zeigt, nimmt diesen.
+
 **Eine benannte Kreatur aus einem Buch ist eine Figur** (T-169). Strahd
 oder Venomfang standen nach dem Einlesen nur als Statblock da — Zahlen
 ohne jemanden, dem sie gehören, und damit in keiner Beziehung, keiner
