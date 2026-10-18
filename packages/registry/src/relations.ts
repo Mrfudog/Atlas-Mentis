@@ -525,10 +525,11 @@ export const relations: Record<string, RelationDef> = {
     means: 'An article is part of a larger one (a room of a house, a scene of an arc, a book of a group); the larger one lists what it contains, in rank order.',
     /* `Encounter` (T-082): eine Begegnung hängt an ihrer Szene oder ihrem
        Kapitel — so stand es am Typ, die Kante liess es nicht zu. */
-    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter', 'Layer', 'Chapter', 'BookPart'],
+    /* `Rule` (T-270): eine Option hängt an ihrer Regel, die Regel an ihrem System. */
+    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter', 'Layer', 'Chapter', 'BookPart', 'Rule'],
     /* `Layer` (E-022 b, T-088): eine Ebene hängt an ihrer Gruppe — einer
        Ebene mit `kind: 'group'`. Eine Ebene darf in mehreren Gruppen sein. */
-    to: ['Place', 'Story', 'Event', 'Layer', 'Chapter'],
+    to: ['Place', 'Story', 'Event', 'Layer', 'Chapter', 'Rule'],
     /* **Die Reihenfolge der Teile steht an der Kante** (T-108): derselbe
        Vorlesetext steht im Kapitel an dritter Stelle und in der eigenen
        Szene an erster — eine Zahl am Teil gälte nur für eines davon. Ohne

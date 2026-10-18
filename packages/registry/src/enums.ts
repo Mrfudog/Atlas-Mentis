@@ -107,7 +107,7 @@ export const enums: Record<string, EnumDef> = {
   RuleKind: {
     name: 'RuleKind',
     label: 'Rule kind',
-    values: ['rule', 'travel', 'sense', 'reward', 'boon', 'option', 'upgrade', 'facility', 'card'],
+    values: ['rule', 'travel', 'sense', 'reward', 'boon', 'option', 'upgrade', 'facility', 'card', 'system'],
   },
 
   /**

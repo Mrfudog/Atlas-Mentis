@@ -264,7 +264,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `involves` → * — „involves"
@@ -275,7 +275,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -588,7 +588,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -601,7 +601,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - GlossaryTerm — `explains` → „explained by"
 - Creature — `livesIn` → „residents"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
 - Story — `happensAt` → „scenes here"
@@ -725,7 +725,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `sells` → Item — „sells"
 - `discount` → Creature | Party | Faction — „discount for"
 - `shopkeeper` → Creature — „shopkeeper"
@@ -741,7 +741,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - GlossaryTerm — `explains` → „explained by"
 - Creature — `livesIn` → „residents"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
 - Story — `happensAt` → „scenes here"
@@ -894,7 +894,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction | Hazard — „features"
@@ -909,7 +909,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
@@ -955,7 +955,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `allowsMethod` → AbilityMethod — „allows ability method"
 - `allowsSubstitution` → Substitution — „allows substitution"
 - `allowsEquipment` → EquipmentMethod — „allows equipment method"
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction | Hazard — „features"
@@ -975,7 +975,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
 - Party — `partyOf` → „parties"
@@ -1016,7 +1016,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `questGiver` → Creature | Faction — „given by"
 - `questAbout` → * — „concerns"
@@ -1069,7 +1069,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction | Hazard — „features"
@@ -1084,7 +1084,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
@@ -1126,7 +1126,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `leftBehind` → Item — „left behind"
 - `happensAt` → Place — „happens at"
@@ -1142,7 +1142,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
@@ -1183,7 +1183,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction | Hazard — „features"
@@ -1198,7 +1198,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Chapter — `chapterOf` → „read as chapter"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
@@ -1230,7 +1230,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1245,6 +1245,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1259,6 +1260,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - Party — `abilityPool` → „pool of"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1281,7 +1283,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1296,6 +1298,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1308,6 +1311,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1330,7 +1334,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1345,6 +1349,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1357,6 +1362,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1379,7 +1385,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
 - *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
@@ -1400,6 +1406,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `subraceOf` → Ancestry — „subrace of"
 - `grants` → Rule — „grants"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -1416,6 +1423,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1438,7 +1446,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
 - *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
@@ -1458,6 +1466,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -1473,6 +1482,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1495,7 +1505,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
 - *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
@@ -1516,6 +1526,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `spellList` → Spell — „spell list"
 - `grants` → Rule — „grants"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -1532,6 +1543,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1554,7 +1566,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1570,6 +1582,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `stageOf` → Condition — „stage of"
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1583,6 +1596,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1606,7 +1620,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Condition`* — `kind` *condition | status*, `stage` *1…∞*, `recovery` *none | shortRest | longRest | longRestStep | save | special*
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1622,6 +1636,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `stageOf` → Condition — „stage of"
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1635,6 +1650,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1657,7 +1673,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1672,6 +1688,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1685,6 +1702,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - Campaign — `allowsEquipment` → „allowed in"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1707,7 +1725,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Choices`* — `choices` *array*
 - *`Effects`* — `effects` *array*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
@@ -1725,6 +1743,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1738,6 +1757,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1761,7 +1781,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Choices`* — `choices` *array*
 - *`Effects`* — `effects` *array*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
@@ -1778,6 +1798,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1791,6 +1812,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1813,7 +1835,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1829,6 +1851,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
 - `explains` → * — „explains"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1841,6 +1864,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1953,7 +1977,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1968,6 +1992,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1981,6 +2006,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Weapon | Item | Armor — `hasProperty` → „property of"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2042,7 +2068,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -2057,6 +2083,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2069,6 +2096,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2091,7 +2119,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -2106,6 +2134,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2118,6 +2147,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2185,7 +2215,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 
 **Geerbte Felder**
 
@@ -2203,6 +2233,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2215,6 +2246,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2237,7 +2269,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -2252,6 +2284,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2264,6 +2297,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2287,7 +2321,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -2302,6 +2336,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2316,6 +2351,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Class | Subclass — `spellList` → „on the spell list of"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2394,7 +2430,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
 - *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
@@ -2416,6 +2452,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `spellList` → Spell — „spell list"
 - `subclassOf` → Class — „subclass of"
 - `grants` → Rule — „grants"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -2430,6 +2467,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2452,7 +2490,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -2467,6 +2505,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2480,6 +2519,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Campaign — `allowsSubstitution` → „allowed in"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2547,7 +2587,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -2562,6 +2602,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2574,6 +2615,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2596,7 +2638,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -2611,6 +2653,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2623,6 +2666,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `zone` → „lies on"
@@ -2662,7 +2706,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `placed` → * — „on the board"
@@ -2761,7 +2805,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
@@ -2933,7 +2977,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2976,7 +3020,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `chapterOf` → Story — „chapter of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2987,7 +3031,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3143,7 +3187,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3215,7 +3259,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3320,7 +3364,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3330,7 +3374,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
-- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3427,7 +3471,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3558,7 +3602,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
