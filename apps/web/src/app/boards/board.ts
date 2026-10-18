@@ -22,7 +22,10 @@ import {
   placementView,
   primaryInterface,
   snapTo,
+  isDesignedView,
+  layoutFor,
   viewKeys,
+  viewsFor,
   withAnchors,
 } from '@nw/model';
 import type { BoardAnchor, BoardPlacement, Entity, Relation } from '@nw/model';
@@ -30,6 +33,8 @@ import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { Brett, chainAbove, isBoard, storyOf, type Mangel } from './brett';
 import { Kachel } from './kachel';
+import { Ansichtsbaum } from '../ansichten/baum';
+import { Experimente } from '../kern/experimente';
 import { BoardSuche } from './suche';
 import { SCHNELL_KONTEXT, type SchnellKontext } from '../artikel/schnell';
 
@@ -107,7 +112,7 @@ interface Bzug {
  */
 @Component({
   selector: 'nw-board',
-  imports: [RouterLink, Kachel, BoardSuche],
+  imports: [RouterLink, Kachel, BoardSuche, Ansichtsbaum],
   templateUrl: './board.html',
   styleUrl: './board.scss',
   /* Was aus der Suche neu angelegt wird, folgt der Ebene des Boards (T-131). */
@@ -129,16 +134,22 @@ export class Board implements SchnellKontext {
   protected readonly bestand = inject(Bestand);
   private readonly session = inject(Session);
   private readonly brett = inject(Brett);
+  /** Der Ansichtsdesigner (T-268): mit ihm bietet die Kachel jede geltende Ansicht. */
+  protected readonly exp = inject(Experimente);
 
   constructor() {
     void this.bestand.load();
+    void this.exp.lade();
     effect(() => {
       void this.bestand.oeffnen(this.id(), false, false);
     });
     /* Die Artikel auf den Kacheln kommen erst, wenn sie auf dem Board
        liegen — ganz, aber ohne Rückbezüge; die zeigt keine Kachel. */
     effect(() => {
-      for (const k of this.kanten()) void this.bestand.oeffnen(k.to, false, false);
+      /* Mit dem Ansichtsdesigner auch die Rückbezüge: „hat einen Shop" ist
+         eine Kante, die auf die Kreatur zeigt (T-268). */
+      const rueck = this.exp.viewDesigner();
+      for (const k of this.kanten()) void this.bestand.oeffnen(k.to, false, rueck);
     });
     /* Was die Seitenspalte nennt (verbundene Artikel) und der Pfad über dem
        Board (die Geschichte) kommen aus der Liste am Server (W7) — Namen und
@@ -498,8 +509,32 @@ export class Board implements SchnellKontext {
   protected readonly ansichten = computed(() => {
     const r = this.bestand.registry();
     /* Die Artikelseite und der Druck sind Seiten, keine Kacheln; eigene Ansichten stehen zur Wahl (T-110). */
-    return r ? viewKeys(r).filter((k) => k !== 'full' && k !== 'print') : [];
+    return r ? viewKeys(r).filter((k) => k !== 'full' && k !== 'print' && !isDesignedView(r.views[k])) : [];
   });
+
+  /**
+   * **Was diese Kachel zur Wahl stellt** (T-268, E-103): mit dem
+   * Ansichtsdesigner jede Ansicht, die für ihren Artikel gilt —
+   * genaueste zuerst; ohne ihn dieselbe Liste wie bisher.
+   */
+  protected ansichtenFuer(e: Entity | undefined): string[] {
+    const r = this.bestand.registry();
+    if (!r || !e || !this.exp.viewDesigner()) return this.ansichten();
+    const rueck = (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id }));
+    return viewsFor(e, r, { incoming: rueck })
+      .filter((v) => isDesignedView(r.views[v.key]) || (v.key !== 'full' && v.key !== 'print'))
+      .map((v) => v.key);
+  }
+  protected rueckVon(e: Entity): { type: string; from: string }[] {
+    return (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id }));
+  }
+  protected gestaltet(key: string): boolean {
+    return this.exp.viewDesigner() && isDesignedView(this.bestand.registry()?.views[key]);
+  }
+  protected gestaltetesLayout(key: string, e: Entity) {
+    const r = this.bestand.registry();
+    return r ? layoutFor(r, key, primaryInterface(e)).layout : [];
+  }
 
   /** Kampagne › Kapitel › Sitzung — und je Sprosse ihr Board, wenn sie eines hat. */
   protected readonly pfad = computed(() => {
