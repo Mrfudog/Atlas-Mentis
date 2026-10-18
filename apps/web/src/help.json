@@ -167,6 +167,12 @@
           "text": [
             "Characters, parties and containers carry items in a grid: drag to move, rotate a piece, move it between character, party and container. Zones of a container say how long it takes to draw what lies there."
           ]
+        },
+        {
+          "title": "Views of an article (experiment)",
+          "text": [
+            "With the View designer experiment on, a row “View” above the article lists every view that applies to it, the most specific first. Full is the page as always; any other draws its own layout. “Design this view” opens the designer beside the article: save as this view, as a new view only for this article, or as a new view with conditions."
+          ]
         }
       ]
     },
@@ -214,6 +220,12 @@
           "text": [
             "A board is a canvas for one story article: place articles on it as cards, arrange them, and choose how large each card shows."
           ]
+        },
+        {
+          "title": "Views on a card (experiment)",
+          "text": [
+            "With the View designer experiment on, a card’s view menu offers every view that applies to its article — for example “Shop” on a creature that keeps a shop."
+          ]
         }
       ]
     },
@@ -247,6 +259,13 @@
           "text": [
             "The types of articles, their fields, edges, lists and views. A new type is a new row — create it here. Before something is removed, the registry counts what uses it.",
             "“How it works” explains the model with a worked example."
+          ]
+        },
+        {
+          "title": "View designer (experiment)",
+          "text": [
+            "With the experiment “View designer” on (Rules & options › Experiments), Registry › Views lists every view with its group, what it applies to and how many articles get it. “Design” opens a view as a tree: add elements from the palette, move them with ← → ↑ ×, and give each its values — also from linked articles, by following an edge.",
+            "“Applies to” says which articles get the view: types, conditions on field values or edges, or one article. The views places ask for (Overview, Quick, Full, Print) stay as they are; designing one saves a new view."
           ]
         }
       ]

@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-view-designer-experiment",
+      "date": "2026-10-18",
+      "title": "Experiment: design your own views",
+      "text": "Game masters can switch on the View designer in Rules & options › Experiments: build a view from sections, columns, tiles and tables, show values of linked articles, and say which articles it applies to. Articles and board cards then offer every view that applies.",
+      "area": "Registry",
+      "link": "/registry",
+      "query": { "tab": "views" }
+    },
+    {
       "id": "2026-10-18-rule-options-in-place",
       "date": "2026-10-18",
       "title": "Change rules & options in place",

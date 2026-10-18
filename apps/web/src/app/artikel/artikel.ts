@@ -28,7 +28,8 @@ import {
   isBookPart,
   isMap,
 } from '@nw/model';
-import type { Entity, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import type { Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import { layoutFor as anordnungFuer, viewFor } from '@nw/model';
 import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
@@ -98,6 +99,10 @@ import { Regeloptionen } from './regeloptionen';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 import { Wuerfe } from './wuerfe';
 import { WurfZiel } from '../kern/wurfziel';
+import { Experimente } from '../kern/experimente';
+import { Ansichtsbaum } from '../ansichten/baum';
+import { Ansichtswahl } from '../ansichten/wahl';
+import { Ansichtsdesigner } from '../ansichten/designer';
 
 /** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
 const PART_RELATION = 'partOf';
@@ -192,6 +197,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     EbenenMarke,
     Regeloptionen,
     Wuerfe,
+    Ansichtsbaum,
+    Ansichtswahl,
+    Ansichtsdesigner,
   ],
   template: `
     @if (artikel(); as e) {
@@ -399,6 +407,12 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
               </p>
             }
 
+            <!-- Die Ansichten, die für diesen Artikel gelten (T-268, E-103) — nur mit dem Versuch. -->
+            @if (exp.viewDesigner() && !bearbeitet()) {
+              <nw-ansichtswahl [artikel]="e" [rueck]="rueckKanten()" [aktiv]="geltendeAnsicht()"
+                               [darfGestalten]="session.darfRegister()" [(offen)]="gestaltet"
+                               (waehle)="ansichtGewaehlt.set($event)" />
+            }
             <article class="blatt">
               <div>
                 <h1>{{ name(e) }}</h1>
@@ -689,6 +703,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   <b>{{ kantenLabel(v) }}:</b> {{ kantenWirkung(v) }}
                 </p>
               }
+            } @else if (andereAnsicht(); as av) {
+              <!-- Eine andere Ansicht als die Seite (T-268): ihr Baum, oder der Entwurf der Leiste. -->
+              <nw-ansichtsbaum [artikel]="e" [layout]="av" [rueck]="rueckKanten()" />
             } @else {
               @if (offeneVerweise().length) {
                 <p class="hinweis" role="status">
@@ -898,6 +915,14 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
           </main>
 
           <aside class="seitenspalte" aria-label="Connections">
+            <!-- Die Leiste „Design this view" (T-268): gestaltet an diesem Artikel. -->
+            @if (exp.viewDesigner() && gestaltet() && !bearbeitet()) {
+              <section class="kasten" aria-label="Design this view">
+                <h2>View · {{ bestand.registry()?.views?.[geltendeAnsicht()]?.label ?? geltendeAnsicht() }}</h2>
+                <nw-ansichtsdesigner [schluessel]="geltendeAnsicht()" [beispiel]="e" [kompakt]="true"
+                                     (entwurf)="ansichtsEntwurf.set($event)" (fertig)="ansichtGestaltet($event)" />
+              </section>
+            }
             @if (kanten().length || abwKanten().length) {
               <section class="kasten">
                 <h2>Relations</h2>
@@ -1054,9 +1079,53 @@ export class Artikel implements SchnellKontext {
   private readonly lesart = inject(FassungsLesart);
   private readonly router = inject(Router);
   private readonly wurfZiel = inject(WurfZiel);
+  protected readonly exp = inject(Experimente);
+
+  // ------------------------------------------------- Ansichten (T-268)
+
+  /** Die am Artikel gewählte Ansicht; `null` heisst: die genaueste der Gruppe `full`. */
+  protected readonly ansichtGewaehlt = signal<string | null>(null);
+  /** Die Leiste „Design this view" ist offen. */
+  protected readonly gestaltet = signal(false);
+  /** Ihr Entwurf — die Seite zeichnet ihn, solange sie offen ist. */
+  protected readonly ansichtsEntwurf = signal<LayoutElement[] | null>(null);
+  protected readonly rueckKanten = computed<IncomingEdge[]>(() =>
+    (this.bestand.rueckbezuege().get(this.id()) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id, props: b.relation.props })),
+  );
+  protected readonly geltendeAnsicht = computed(() => {
+    const e = this.artikel();
+    const r = this.bestand.registry();
+    if (!this.exp.viewDesigner() || !e || !r) return 'full';
+    const k = this.ansichtGewaehlt();
+    return k && r.views[k] ? k : viewFor(e, r, 'full', { incoming: this.rueckKanten() });
+  });
+  /** Was statt der Seite steht: eine andere Ansicht als `full`, oder der Entwurf der Leiste. */
+  protected readonly andereAnsicht = computed<LayoutElement[] | null>(() => {
+    const e = this.artikel();
+    const r = this.bestand.registry();
+    if (!this.exp.viewDesigner() || !e || !r || this.bearbeitet()) return null;
+    if (this.gestaltet() && this.ansichtsEntwurf()) return this.ansichtsEntwurf();
+    const k = this.geltendeAnsicht();
+    return k === 'full' ? null : anordnungFuer(r, k, e.interfaces?.[0] ?? '').layout;
+  });
+  protected ansichtGestaltet(key: string | null): void {
+    this.gestaltet.set(false);
+    this.ansichtsEntwurf.set(null);
+    if (key) this.ansichtGewaehlt.set(key);
+  }
 
   constructor() {
     void this.bestand.load();
+    void this.exp.lade();
+    /* Ein anderer Artikel: seine Ansicht fängt wieder bei der geltenden an (T-268). */
+    effect(() => {
+      this.id();
+      untracked(() => {
+        this.ansichtGewaehlt.set(null);
+        this.gestaltet.set(false);
+        this.ansichtsEntwurf.set(null);
+      });
+    });
     /* Der ganze Artikel kommt erst hier, beim Öffnen — die Liste trägt nur
        seine Zeile. Wechselt die Id (ein Verweis auf der Seite), wird
        der nächste geholt. */

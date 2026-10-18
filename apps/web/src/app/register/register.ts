@@ -1,6 +1,6 @@
 import { Component, ViewEncapsulation, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { typeList, viewKeys } from '@nw/model';
+import { isDesignedView, typeList, viewKeys } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { RegisterArbeit } from './arbeit';
@@ -10,6 +10,9 @@ import { RegListe } from './liste';
 import { techName } from './regeln';
 import { RegTyp } from './typ';
 import { RegAnsicht } from './ansicht';
+import { Experimente } from '../kern/experimente';
+import { Ansichtsliste } from '../ansichten/liste';
+import { Ansichtsdesigner } from '../ansichten/designer';
 
 type Reiter = 'types' | 'edges' | 'lists' | 'views';
 
@@ -31,7 +34,7 @@ type Reiter = 'types' | 'edges' | 'lists' | 'views';
  */
 @Component({
   selector: 'nw-register',
-  imports: [RouterLink, RegTyp, RegKante, RegKantentabelle, RegListe, RegAnsicht],
+  imports: [RouterLink, RegTyp, RegKante, RegKantentabelle, RegListe, RegAnsicht, Ansichtsliste, Ansichtsdesigner],
   template: `
     <div class="seite">
       <nav class="leiste" [class.zu]="!!gewaehlt() && !listeOffen()" aria-label="Registry rows">
@@ -58,7 +61,7 @@ type Reiter = 'types' | 'edges' | 'lists' | 'views';
           <h1>Registry</h1>
           <div class="reiter" role="tablist">
             @for (r of reiterListe; track r.k) {
-              <a role="tab" [routerLink]="[]" [queryParams]="{ tab: r.k === 'types' ? null : r.k, type: null, edge: null, list: null, view: null, create: null }"
+              <a role="tab" [routerLink]="[]" [queryParams]="{ tab: r.k === 'types' ? null : r.k, type: null, edge: null, list: null, view: null, create: null, design: null }"
                 [class.an]="reiter() === r.k" [attr.aria-selected]="reiter() === r.k">{{ r.label }}</a>
             }
           </div>
@@ -138,8 +141,13 @@ type Reiter = 'types' | 'edges' | 'lists' | 'views';
           <nw-reg-kante [name]="edge()!" [darf]="darf()" />
         } @else if (reiter() === 'lists' && list()) {
           <nw-reg-liste [name]="list()!" [darf]="darf()" />
+        } @else if (reiter() === 'views' && exp.viewDesigner() && darf() && (design() === 'new' || (view() && (design() || gestaltet())))) {
+          <!-- Der Ansichtsdesigner (T-268), hinter dem Versuch. -->
+          <nw-ansichtsdesigner [schluessel]="design() === 'new' ? null : (view() ?? null)" (fertig)="designFertig($event)" />
         } @else if (reiter() === 'views' && view()) {
           <nw-reg-ansicht [name]="view()!" [darf]="darf()" />
+        } @else if (reiter() === 'views' && exp.viewDesigner()) {
+          <nw-ansichtsliste />
         } @else if (reiter() === 'edges') {
           <!-- Wie Kanten wirken (T-111): je Kantenart Bedeutung und
                Wirkung, gerechnet aus den Auswertern (edgeEffects). -->
@@ -182,6 +190,8 @@ export class Register {
   readonly list = input<string | undefined>(undefined);
   /** `?tab=views&view=` — eine Ansicht (T-110). */
   readonly view = input<string | undefined>(undefined);
+  /** `?design=1` (eine Ansicht im Designer) oder `?design=new` (T-268). */
+  readonly design = input<string | undefined>(undefined);
   /** `?create=1` — aus dem Kompendium, „New type". */
   readonly create = input<string | undefined>(undefined);
   /** `?from=Typ` — der Typ, den ein neuer nehmen soll. */
@@ -191,6 +201,12 @@ export class Register {
   protected readonly arbeit = inject(RegisterArbeit);
   private readonly session = inject(Session);
   private readonly router = inject(Router);
+  protected readonly exp = inject(Experimente);
+  /** Die gewählte Ansicht ist eine gestaltete (T-268) — sie öffnet im Designer. */
+  protected readonly gestaltet = computed(() => {
+    const v = this.view();
+    return !!v && isDesignedView(this.bestand.registry()?.views[v]);
+  });
 
   protected readonly suche = signal('');
   protected readonly neuOffen = signal(false);
@@ -249,6 +265,7 @@ export class Register {
 
   constructor() {
     void this.bestand.load();
+    void this.exp.lade();
     effect(() => {
       if (this.darf()) void this.arbeit.zaehlen();
     });
@@ -370,6 +387,10 @@ export class Register {
       });
       if (ok) await this.zu({ tab: 'lists', list: name });
     }
+  }
+
+  protected designFertig(key: string | null): void {
+    void this.router.navigate(['/registry'], { queryParams: key ? { tab: 'views', view: key, design: 1 } : { tab: 'views' } });
   }
 
   private async zu(query: Record<string, string>): Promise<void> {
