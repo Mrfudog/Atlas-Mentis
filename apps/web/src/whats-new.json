@@ -9,6 +9,14 @@
       "link": "/lab/rules"
     },
     {
+      "id": "2026-10-18-layer-on-every-article",
+      "date": "2026-10-18",
+      "title": "Every article names its layer",
+      "text": "Under an article's title you now see the layer it is in, the layers of its other versions — one click opens that version — and why it shows: in play, from a compare layer, enabled as extra content, or in no layer. The quick view names the layer too, and lists show it when it is not the campaign's own.",
+      "area": "Layers",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-18-proficiencies-with-source",
       "date": "2026-10-18",
       "title": "Every proficiency with where it comes from",

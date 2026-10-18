@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, output } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
 import {
+  LAYER_RELATION,
   elementTakes,
   entityName,
   entriesOf,
@@ -66,6 +67,9 @@ interface Stueck {
             {{ m.art }}
             @if (m.quelle) {
               · <nw-quelle [text]="m.quelle" />
+            }
+            @if (m.ebenen) {
+              · <span class="ebene" [title]="m.vergleich ? 'Compare layer — not in play' : 'Layer'">{{ m.ebenen }}{{ m.vergleich ? ' (not in play)' : '' }}</span>
             }
           </p>
         }
@@ -290,8 +294,13 @@ export class Vorschau {
     const typ = primaryInterface(e);
     const q = e.components?.['Source'] as { publication?: string; page?: string } | undefined;
     const quelle = [q?.publication, q?.page ? `p. ${q.page}` : ''].filter(Boolean).join(' ');
+    /* Die Ebene auch hier (T-251): worin der Artikel steht. Eine, deren
+       Namen der Server nicht schickt, steht nicht da (T-207). */
+    const name = this.bestand.name();
+    const ebenen = (e.relations ?? []).filter((x) => x.type === LAYER_RELATION).map((x) => name(x.to)).filter((n): n is string => !!n);
+    const vergleich = this.bestand.vergleich().has(e.id);
     /* Das Kürzel erklärt sich selbst (T-088). */
-    return { art: r.interfaces[typ]?.label ?? typ, quelle };
+    return { art: r.interfaces[typ]?.label ?? typ, quelle, ebenen: ebenen.join(', '), vergleich };
   });
 
   protected readonly scopes = computed<VarScopes>(() => {

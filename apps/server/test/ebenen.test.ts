@@ -339,6 +339,8 @@ describe('the campaign page switches layers on', () => {
     const { rufe } = await aufbau();
     expect((await rufe('Sela', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_a', name: 'Aus Nebel wacht', role: 'player', may: null });
     expect((await rufe('Basil', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_a', may: 'manage' });
+    /* Die Ebene der Kampagne (T-251): Listen nennen nur andere. */
+    expect((await rufe('Sela', 'GET', '/api/campaigns')).json().current.campaignLayer).toEqual({ id: 'ly_a', name: 'Runde A' });
     expect((await rufe('Basil', 'PUT', '/api/campaigns/current', { id: 'camp_b' })).statusCode).toBe(403);
     expect((await rufe('Admin', 'PUT', '/api/campaigns/current', { id: 'r_frei' })).statusCode).toBe(400);
     expect((await rufe('Admin', 'PUT', '/api/campaigns/current', { id: 'camp_b' })).statusCode).toBe(200);

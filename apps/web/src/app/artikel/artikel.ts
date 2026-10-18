@@ -91,6 +91,7 @@ import { Verlinkt } from './verlinkt';
 import { Lesen } from '../lesen/lesen';
 import { Quelleninhalt } from './quelleninhalt';
 import { KampagnenReiter } from './ebenen-reiter';
+import { EbenenMarke } from './ebenen-marke';
 import { Klasse } from '../klassen/klasse';
 import { Herkunft } from '../klassen/herkunft';
 import { Regeloptionen } from './regeloptionen';
@@ -188,6 +189,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Klasse,
     Herkunft,
     KampagnenReiter,
+    EbenenMarke,
     Regeloptionen,
     Wuerfe,
   ],
@@ -403,6 +405,8 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 @if (untertitel(); as u) {
                   <p class="untertitel">{{ u }}</p>
                 }
+                <!-- Worin der Artikel steht und wodurch er zu sehen ist (T-251, REQ-348). -->
+                <nw-ebenen-marke [artikel]="e" [fassungen]="fassungen()" />
                 <!-- Fassungen auf einen Blick (T-173): oben, auch am Telefon. -->
                 @if (!bearbeitet()) {
                   <nw-fassungs-abzeichen [basis]="e" [fassungen]="fassungen()" />
@@ -1208,17 +1212,12 @@ export class Artikel implements SchnellKontext {
   });
   protected readonly pfad = computed(() => this.kette().glieder);
 
-  /** Art · Nummer · Ebenen — die Zeile über dem Blatt. */
+  /** Art · Nummer — die Zeile über dem Blatt. Die Ebene steht in der Marke unter dem Namen (T-251). */
   protected readonly meta = computed(() => {
     const e = this.artikel();
     if (!e) return '';
-    /* Die Namen kommen mit dem Artikel (`refs`, W7). */
-    const name = this.bestand.name();
     const nummer = (e.components?.['Identity'] as { id?: string } | undefined)?.id;
-    const ebenen = (e.relations ?? [])
-      .filter((r) => r.type === LAYER_RELATION)
-      .map((r) => name(r.to) ?? '');
-    return [this.typLabel(primaryInterface(e)), nummer, ...ebenen].filter(Boolean).join(' · ');
+    return [this.typLabel(primaryInterface(e)), nummer].filter(Boolean).join(' · ');
   });
 
   /** Aliasse und Deckname, kursiv unter dem Namen. */
