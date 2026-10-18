@@ -52,6 +52,8 @@ import {
   recipesOfTrade,
   reserveIn,
   reservedPieces,
+  proficienciesOf,
+  proficiencyNames,
   resolveInstance,
   rollResult,
   setCheck,
@@ -500,16 +502,17 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
   }
 
   /**
-   * **Eine Figur:** je Werkzeug, in dem ihr Statblock geübt ist
-   * (`Proficiencies.proficient`, `expertise`), die Rezepte, die es möglich
+   * **Eine Figur:** je Werkzeug, in dem sie geübt ist (`proficienciesOf`:
+   * Statblock, Klasse, Hintergrund, Talente, Wahlen), die Rezepte, die es möglich
    * macht — und ob sie sie gelernt hat (REQ-218). Gelernt zeigt sich nur
    * der Leitung und dem, der die Figur führt.
    */
   async function figurSicht(request: FastifyRequest, figur: Entity, stand: Stand, registry: Registry, user: User, leitung: boolean) {
     const block = stand.alle.find((e) => (e.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === figur.id));
     const [gesiebterBlock] = block ? await sieve(request, [block], stand.map) : [];
-    const karte = gesiebterBlock?.components?.['Proficiencies'] ?? {};
-    const geuebt = [...new Set([karte['proficient'], karte['expertise']].flatMap((v) => (Array.isArray(v) ? v.map(String) : [])))];
+    /* Geübt ist, was Statblock, Klasse, Hintergrund, Talente und Wahlen
+       zusammen bringen (T-239) — nicht nur die Karte am Statblock. */
+    const geuebt = proficiencyNames(proficienciesOf(figur, gesiebterBlock ? resolveInstance(stand.map, gesiebterBlock) : undefined, stand.map));
     const { rezepte, berufe } = handwerksArtikel(stand, registry);
     const sichtbareBerufe = await sieve(request, berufe, stand.map);
     const gesiebt = await sieve(request, rezepte, stand.map);

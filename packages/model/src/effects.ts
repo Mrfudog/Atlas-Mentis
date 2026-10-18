@@ -62,6 +62,10 @@ export const EFFECT_TARGETS: Record<string, string> = {
   critThreshold: 'critical hit',
   carry: 'carrying capacity',
   capacity: 'holds',
+  /* Übung durch einen Gegenstand (T-239): gelesen von `proficienciesOf`. */
+  proficiency: 'proficiency',
+  expertise: 'expertise',
+  saveProficiency: 'saving throw proficiency',
 };
 
 /** Ein Eintrag von `Effects.effects`. */

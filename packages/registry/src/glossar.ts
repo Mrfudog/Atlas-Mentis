@@ -268,6 +268,12 @@ const APP: AppTerm[] = [
     translations: { de: 'Filtergruppe' },
   },
   {
+    term: 'Transformation',
+    sort: 'app',
+    definition: 'A chain of steps — group by, filter, sort — that turns a list into a tree with a count on every node, as in Jira Structure. Steps can be reordered, saved under a name and shared as a link.',
+    translations: { de: 'Transformation' },
+  },
+  {
     term: 'Glossary',
     sort: 'app',
     definition: 'Terms with definition, effect at the table, examples and translations. Terms are spotted in text — hover for a preview, Ctrl/⌘+click to open the entry.',

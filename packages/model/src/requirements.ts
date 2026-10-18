@@ -15,6 +15,8 @@
 
 import { ancestryLine, characterLevel, choiceSources, answersOf } from './choices.js';
 import { entityName, primaryInterface } from './entity.js';
+import { resolveInstance } from './instance.js';
+import { proficienciesOf, proficiencyNames } from './proficiency.js';
 import type { Entity, EntityId } from './types.js';
 
 export type Condition =
@@ -340,17 +342,18 @@ export function characterProfile(character: Entity, byId: ReadonlyMap<EntityId, 
   for (const a of answersOf(character)) for (const p of a.picks) has.add(p);
   /* Der Statblock: zeigt mit `belongsTo` auf die Figur. */
   let abilities: CharacterProfile['abilities'] = {};
-  let proficient: string[] = [];
+  let statblock: Entity | undefined;
   for (const e of byId.values()) {
     if (!(e.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === character.id)) continue;
     const ab = (e.components?.['Abilities'] ?? {}) as Record<string, unknown>;
     abilities = Object.fromEntries(
       ['str', 'dex', 'con', 'int', 'wis', 'cha'].filter((k) => typeof ab[k] === 'number').map((k) => [k, ab[k] as number]),
     );
-    const pr = (e.components?.['Proficiencies'] as { proficient?: unknown } | undefined)?.proficient;
-    proficient = Array.isArray(pr) ? pr.map((x) => String(x).toLowerCase()) : [];
+    statblock = e;
     break;
   }
+  /* Übungen aus allen Quellen, nicht nur der Statblock-Karte (T-239). */
+  const proficient = proficiencyNames(proficienciesOf(character, statblock ? resolveInstance(byId, statblock) : undefined, byId)).map((x) => x.toLowerCase());
   return { id: character.id, name: entityName(character), level, classes, ancestries, abilities, proficient, spellcasting, casting, has: [...has] };
 }
 

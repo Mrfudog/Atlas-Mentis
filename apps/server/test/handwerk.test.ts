@@ -343,6 +343,30 @@ describe('Handwerksübersicht (T-196)', () => {
     expect(gelernt).toEqual({ salbe: true, geheim: false });
   });
 
+  it('ein Werkzeug, das die Figur beim Hintergrund gewählt hat, zählt (T-239)', async () => {
+    /* Der Statblock nennt das Werkzeug nicht; die Figur hat es beim
+       Hintergrund gewählt (`chose`). Bis T-239 galt sie als ungeübt. */
+    const sb = (await repo.getEntity('sb'))!;
+    await repo.putEntity({ ...sb, components: { ...sb.components, Proficiencies: { proficient: [] } } });
+    await repo.putEntity(
+      art('hg', 'Background', 'Artisan', 'background-0001', {
+        components: { Choices: { choices: [{ id: 'tools', kind: 'proficiency', count: 1, from: { values: ['Herb Kit', 'Smith Tools'] } }] } },
+      }),
+    );
+    const f = (await repo.getEntity('f'))!;
+    await repo.putEntity({
+      ...f,
+      relations: [
+        ...(f.relations ?? []),
+        { id: 'f~hg', type: 'hasBackground', to: 'hg' },
+        { id: 'f~wahl', type: 'chose', to: 'hg', props: { choice: 'tools', picks: ['Herb Kit'] } },
+      ],
+    });
+    const s = (await get('s', '/api/crafting/f')).json();
+    expect(s.tools.map((w: { name: string }) => w.name)).toEqual(['Herb Kit']);
+    expect(s.recipes.every((r: { toolOk: boolean }) => r.toolOk)).toBe(true);
+  });
+
   it('der Reiter Crafting (T-247): alle Blaupausen, freies Material der Figur und Gruppe, ihre Aufträge', async () => {
     const id = await starten();
     const s = (await get('s', '/api/crafting/f')).json();

@@ -20,6 +20,7 @@ import { KurzLink } from '../kern/kurzansicht';
 import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Schnell } from './schnell';
 import { Statblock } from './statblock';
+import { Uebungen } from './uebungen';
 import { Inventar } from './inventar';
 import { Text } from './text';
 import { Wahl } from './wahl';
@@ -88,7 +89,7 @@ interface EFeld {
  */
 @Component({
   selector: 'nw-verlinkt',
-  imports: [RouterLink, Statblock, Text, Wahl, Mehrfach, Schnell, KurzLink, Inventar],
+  imports: [RouterLink, Statblock, Text, Wahl, Mehrfach, Schnell, KurzLink, Inventar, Uebungen],
   template: `
     <!-- Ein Inventar selbst: was es hält (das Element \`inventory\` an seiner eigenen Seite). -->
     @if (selbst()) {
@@ -185,6 +186,8 @@ interface EFeld {
                 </form>
             } @else if (g.bogen) {
               <nw-statblock [artikel]="le" />
+              <!-- Jede Übung mit Herkunft (T-239): an der Figur gerechnet, nicht am Statblock. -->
+              <nw-uebungen [figur]="artikel()" />
             } @else {
               @if (g.inventar) {
                 <nw-inventar [inventar]="le" [traeger]="artikel()" [statblock]="statblockVon(artikel())" />

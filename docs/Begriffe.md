@@ -1391,6 +1391,16 @@ Die Übungen standen bis P4 an der Kreatur; seither nimmt der Statblock
 ist, sagt `belongsTo`; gespeichert wird nur vorwärts, und „welchen Statblock
 hat Rook" ist der Rückbezug.
 
+**Am Statblock steht, was von Hand dazukam — geübt ist eine Figur in
+mehr** (T-239). Was Klasse, Hintergrund und Talent fest gewähren, steht an
+deren Artikeln, und was die Figur gewählt hat, an ihren Kanten `chose`.
+Die Karte am Statblock allein zu lesen hiess, dass der Barbar, der beim
+Hintergrund Smith's tools wählte, im Handwerk ungeübt war. Die Wahl in den
+Statblock zu kopieren hätte zwei Stellen gemacht, die beim nächsten
+Klassenwechsel auseinanderlaufen; also rechnet `proficienciesOf` beim
+Lesen alle Quellen zusammen und sagt je Übung, woher sie kommt — und wer
+fragt, ob jemand geübt ist, fragt diese eine Funktion.
+
 **Eine benannte Kreatur aus einem Buch ist eine Figur** (T-169). Strahd
 oder Venomfang standen nach dem Einlesen nur als Statblock da — Zahlen
 ohne jemanden, dem sie gehören, und damit in keiner Beziehung, keiner
@@ -2266,6 +2276,29 @@ ist darum keine Liste. Die **Werkbank** ist der Ort der Leitung und
 Verwaltung für Prüfungen, Massenänderungen mit Rückgängig und die
 Übernahme zwischen dev und prod ([Betrieb.md](Betrieb.md)); „Werkbank am
 Rezept“ ist etwas anderes, die Fertigung (Handwerk).
+
+## Transformation
+
+Eine **Transformation** ist eine Kette von Schritten — gruppieren,
+filtern, sortieren —, die aus einer Liste einen Baum mit Zählern macht,
+wie in Jira Structure (T-253). Die Kette ist **Daten**
+(`[{group: 'layer'}, {group: 'type'}]`) und keine Einstellung einer
+Seite: dieselbe Rechnung (`applyTransform`, `packages/model/src/transform.ts`)
+gruppiert Artikel nach Ebene und Art, Prüfungen nach Sorte, Ebenen nach
+Herausgeber. Was eine Dimension ist, sagt die Seite; die üblichen für
+Artikel stehen in `articleDimensions`.
+
+Der **Schlüssel** eines Knotens ist sein Weg, `layer:dnd|type:Spell`, und
+er ist mehr als eine Adresse im Baum: eine Regel, die für eine Gruppe
+gilt — die Sichtbarkeit der Kampagne je Gruppe (T-252, E-098) —, hängt an
+genau so einem Schlüssel. Treffen mehrere, gewinnt der **genaueste**
+(`mostSpecific`, die meisten Glieder), so wie ein Feld am Artikel eine
+Regel der Kampagne schlägt. Ein Glied einer Dimension, die es nicht mehr
+gibt, trifft nie — sonst gälte eine alte Regel plötzlich für alles.
+
+Warum keine feste Gruppierung je Seite: „nach Ebene, dann Art" ist heute
+richtig und morgen „nach Regelmodul, dann Bereich". Eine Liste im Code
+müsste jedes Mal geändert werden; eine Kette stellt man um.
 
 ## Ein Wort, mehrere Sachen
 
