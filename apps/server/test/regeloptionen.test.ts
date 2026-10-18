@@ -99,3 +99,15 @@ describe('GET /api/campaigns/:id/rules (T-190)', () => {
     expect((await get('Gwen', '/api/campaigns/nichts/rules')).statusCode).toBe(404);
   });
 });
+
+describe('GET /api/rule-articles (T-270)', () => {
+  it('gibt die Regelartikel mit Schlüssel ganz, gesiebt', async () => {
+    const { get } = await aufbau();
+    const gwen = (await get('Gwen', '/api/rule-articles')).json() as Entity[];
+    expect(gwen.map((e) => e.id).sort()).toEqual(['r_am', 'r_enc', 'r_grid', 'r_inv', 'r_slots', 'r_sys_ab', 'r_sys_char', 'r_sys_inv', 'r_sys_units', 'r_units']);
+    expect(gwen.find((e) => e.id === 'r_inv')?.components['Rule']).toMatchObject({ kind: 'rule', key: 'inventory' });
+    /* Spielende sehen das Unfertige nicht. */
+    const sela = (await get('Sela', '/api/rule-articles')).json() as Entity[];
+    expect(sela.some((e) => e.id === 'r_slots')).toBe(false);
+  });
+});

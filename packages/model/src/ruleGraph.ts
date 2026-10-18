@@ -15,6 +15,8 @@
  */
 
 import { evalArith } from './calc.js';
+import { entityName } from './entity.js';
+import type { Entity } from './types.js';
 
 /** Die Auslöser, aus denen ein Knoten wählt (vgl. E-093). */
 export const RULE_TRIGGERS = [
@@ -85,8 +87,8 @@ export type RuleEngineKey = (typeof RULE_ENGINES)[number]['key'];
 export interface RuleGraph {
   id: string;
   name: string;
-  /** Ohne Angabe: `other`. */
-  engine?: RuleEngineKey;
+  /** Das System (`Rule.key` des System-Artikels); ohne Angabe `other`. */
+  engine?: string;
   /** Aus heisst: der Probelauf überspringt sie. */
   enabled: boolean;
   nodes: RuleNode[];
@@ -436,4 +438,42 @@ export function exampleRuleGraphs(): RuleGraph[] {
        ['c3', cmp('self.hp', '<=', '0'), 1, 2], ['o3', effekt('Death saving throw'), 2, 2]],
       [['t', 'c1'], ['c1', 'o1', 'yes'], ['c1', 'c2', 'yes'], ['c2', 'o2', 'yes'], ['c1', 'c3', 'yes'], ['c3', 'o3', 'yes']]),
   ];
+}
+
+/* ------------------------------------------------------------ Am Artikel (T-270) */
+
+/** Was am Artikel steht: `Rule.graph` — Knoten, Verbindungen, aktiv. */
+interface GespeicherterGraph {
+  enabled?: boolean;
+  nodes?: RuleNode[];
+  wires?: RuleWire[];
+}
+
+/**
+ * **Der Graph eines Regelartikels** (T-270): wie ein Board seine Formen
+ * trägt der Artikel seinen Graphen selbst (`Rule.graph`); das System liest
+ * die Kante `partOf` auf einen System-Artikel. Ein Artikel ohne Graph gibt
+ * einen leeren — der Builder zeigt ihn trotzdem und lässt ihn füllen.
+ */
+export function graphFromArticle(e: Entity, systemKeyOf: (id: string) => string | undefined): RuleGraph {
+  const g = (e.components?.['Rule']?.['graph'] ?? {}) as GespeicherterGraph;
+  const system = (e.relations ?? []).filter((r) => r.type === 'partOf').map((r) => systemKeyOf(r.to)).find(Boolean);
+  return {
+    id: e.id,
+    name: entityName(e),
+    ...(system ? { engine: system } : {}),
+    enabled: g.enabled !== false,
+    nodes: Array.isArray(g.nodes) ? g.nodes : [],
+    wires: Array.isArray(g.wires) ? g.wires : [],
+  };
+}
+
+/** Der Artikel mit dem Graphen und dem Namen aus dem Builder; das System setzt, wer die Kante umhängt. */
+export function articleWithGraph(e: Entity, g: RuleGraph): Entity {
+  const rule = { ...(e.components?.['Rule'] ?? {}) } as Record<string, unknown>;
+  if (g.nodes.length || g.wires.length || rule['graph'] !== undefined) rule['graph'] = { enabled: g.enabled, nodes: g.nodes, wires: g.wires };
+  return {
+    ...e,
+    components: { ...e.components, Identity: { ...(e.components?.['Identity'] ?? {}), name: g.name }, Rule: rule },
+  };
 }

@@ -32,6 +32,20 @@ const VERFAHREN = new Set(['allowsMethod', 'allowsEquipment', 'allowsSubstitutio
 export function registerRegeloptionen(app: FastifyInstance, deps: RegeloptionenDeps): void {
   const { repo, roh, sieve } = deps;
 
+  /**
+   * **Die Regelartikel** (T-270): jedes System, jede Regel und jede Option
+   * mit Schlüssel oder Graph, ganz — für den Regel-Builder, der sie nach
+   * System ordnet und bearbeitet. Gesiebt wie jede Route: was nicht im
+   * Stapel steht oder der Betrachter nicht sieht, fehlt.
+   */
+  app.get('/api/rule-articles', async (request) => {
+    const stand = await roh();
+    const kandidaten = [...stand.map.values()].filter(
+      (e) => primaryInterface(e) === RULE_TYPE && ruleArticleKind(e) && (ruleArticleKey(e) || e.components?.['Rule']?.['graph']),
+    );
+    return sieve(request, kandidaten, stand.map);
+  });
+
   app.get<{ Params: { id: string } }>('/api/campaigns/:id/rules', async (request, reply) => {
     const stand = await roh();
     const registry = await repo.getRegistry();

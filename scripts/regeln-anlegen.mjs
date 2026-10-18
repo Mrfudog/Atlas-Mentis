@@ -17,7 +17,8 @@
  *       "system:inventory":        { "layer": "<ebene>" },
  *       "rule:stowing":            { "use": "<artikel-id>" },
  *       "option:inventory:grid":   { "use": "<artikel-id>" },
- *       "option:inventory:weight": { "basedOn": ["<buchartikel-id>"] }
+ *       "option:inventory:weight": { "basedOn": ["<buchartikel-id>"] },
+ *       "graph:snatch-punisher":   { "layer": "<hausregel-ebene>" }
  *     }
  *   }
  *
@@ -27,6 +28,9 @@
  *   Elternartikels, sonst in der Vorgabe-Ebene. Name und Satz aus dem
  *   Katalog im Code; `basedOn` (Ids, sonst die Buchnamen des Katalogs,
  *   gesucht als `Rule`) wird ein Verweis im Text und gibt `Source`.
+ * - Dazu die Systeme des Regel-Builders (Reactions, Spellcasting …) und
+ *   seine Beispielregeln mit Graph (`graph:<id>`, `--ohne-beispiele` lässt
+ *   sie weg).
  * - **Buchebenen werden nie beschrieben** — ein Neuladen ersetzt sie. Der
  *   Lauf bricht ab, wenn ein Ziel eine eingelesene Ebene ist (`kind: book`).
  *
@@ -52,7 +56,7 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && !process.env.NODE_US
 }
 
 const REPO = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), '..'));
-const { RULE_OPTIONS, RULE_SORTS } = await import(resolve(REPO, 'packages/model/dist/index.js'));
+const { RULE_ENGINES, RULE_OPTIONS, RULE_SORTS, exampleRuleGraphs } = await import(resolve(REPO, 'packages/model/dist/index.js'));
 
 const BASE = (process.env.ATLAS_URL || 'https://dev.ttrpg.fuchsbau.io').replace(/\/+$/, '');
 const TOKEN = process.env.ATLAS_DEV_TOKEN || '';
@@ -193,6 +197,26 @@ const soll = [
   ...RULE_OPTIONS.flatMap((o) =>
     (o.variants ?? []).map((v) => ({ schluessel: `option:${o.key}:${v.key}`, kind: 'option', key: v.key, eltern: `rule:${o.key}`, label: v.label, does: v.does, namen: v.rules ?? [] })),
   ),
+  /* Die Systeme des Regel-Builders, die keine Sorte von Rules & options sind, und die Beispielregeln mit Graph. */
+  ...RULE_ENGINES.filter((e) => e.key !== 'other' && !RULE_SORTS.some((s) => s.key === e.key)).map((e) => ({
+    schluessel: `system:${e.key}`,
+    kind: 'system',
+    key: e.key,
+    eltern: null,
+    label: e.label,
+    does: `Rules of the rule builder about ${e.label.toLowerCase()}.`,
+    namen: [],
+  })),
+  ...(flag('--ohne-beispiele') ? [] : exampleRuleGraphs()).map((g) => ({
+    schluessel: `graph:${g.id}`,
+    kind: 'rule',
+    key: null,
+    eltern: `system:${g.engine}`,
+    label: g.name,
+    does: `An example rule of the rule builder: ${g.name}.`,
+    namen: [],
+    graph: { enabled: g.enabled, nodes: g.nodes, wires: g.wires },
+  })),
 ];
 for (const k of Object.keys(eintraege)) if (!soll.some((s) => s.schluessel === k)) stirb(`Unbekannter Eintrag im Plan: ${k}`);
 
@@ -209,7 +233,7 @@ for (const s of soll) {
   if (e.use) {
     const roh = ok(await api(`/api/entities/${encodeURIComponent(e.use)}`), `Artikel ${e.use}`);
     const { refs: _r, fromTemplate: _t, ...art } = roh;
-    const rule = { ...(art.components?.Rule ?? {}), kind: s.kind, key: s.key };
+    const rule = { ...(art.components?.Rule ?? {}), kind: s.kind, ...(s.key ? { key: s.key } : {}), ...(s.graph ? { graph: s.graph } : {}) };
     const relations = [...(art.relations ?? [])];
     if (elternId && !relations.some((r) => r.type === 'partOf' && r.to === elternId)) relations.push({ id: `rel_${randomUUID().replace(/-/g, '').slice(0, 16)}`, type: 'partOf', to: elternId, props: {} });
     console.log(`übernehmen ${s.schluessel} ← ${e.use}`);
@@ -249,7 +273,8 @@ for (const s of soll) {
   const text = verweise.length ? `${s.does}\n\nBased on ${verweise.join(', ')}.` : s.does;
   const fields = {
     'Rule.kind': s.kind,
-    'Rule.key': s.key,
+    ...(s.key ? { 'Rule.key': s.key } : {}),
+    ...(s.graph ? { 'Rule.graph': s.graph } : {}),
     /* „Weight" ist ein Name, kein Begriff im Fliesstext (REQ-175). */
     'Rule.autolink': false,
     'Description.description': text,

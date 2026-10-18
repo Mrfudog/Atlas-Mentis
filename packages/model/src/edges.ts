@@ -285,6 +285,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'ruleBuilder',
+    label: 'Rule builder',
+    area: 'character',
+    does: 'groups the rule articles by system — a rule hangs on its system with partOf — and writes a rule’s system back as that edge (T-270)',
+    uses: {
+      [M + 'ruleGraph.ts']: ['partOf'],
+      [W + 'lab/regel-builder.ts']: ['partOf'],
+    },
+  },
+  {
     key: 'effects',
     label: 'Effects on the numbers',
     area: 'character',
