@@ -1903,7 +1903,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-16: 60 Artikelarten, 24 Grundtypen, 69 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-18: 60 Artikelarten, 24 Grundtypen, 69 Kantenarten, 7 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
