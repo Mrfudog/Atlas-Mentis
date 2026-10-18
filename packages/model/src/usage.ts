@@ -46,6 +46,11 @@ export interface RegistryUsage {
   inPlay?: Record<string, number>;
   /** Die laufende Kampagne, gegen die `inPlay` gezählt ist. */
   campaign?: { id: string; name: string };
+  /**
+   * Je gestalteter Ansicht mit Geltung (T-268): wie viele Artikel sie
+   * bekommen — im Stapel, wenn es eine Kampagne gibt.
+   */
+  views?: Record<string, number>;
 }
 
 /** Leer heisst: nichts, was eine Änderung verlieren könnte. */

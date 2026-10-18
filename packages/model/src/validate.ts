@@ -83,6 +83,21 @@ const objectSchema: z.ZodType<ObjectSchema> = z.lazy(() =>
   }),
 );
 
+const ViewPathStepSchema = z.object({
+  relation: z.string(),
+  dir: z.enum(['out', 'in']).optional(),
+  type: z.string().optional(),
+});
+
+const LayoutWhenSchema = z.object({
+  type: z.string().optional(),
+  field: z.string().optional(),
+  has: z.array(z.string()).optional(),
+  empty: z.boolean().optional(),
+  relation: z.string().optional(),
+  incoming: z.string().optional(),
+});
+
 /* Ein Reiter enthält ein Layout, und ein Layout kann Reiter enthalten —
    also ist das Schema rekursiv. `z.lazy` ist dafür da; die Tiefe begrenzt
    niemand, weil Reiter in Reitern niemand baut und eine Grenze, die nie
@@ -90,7 +105,7 @@ const objectSchema: z.ZodType<ObjectSchema> = z.lazy(() =>
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'stats', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'stats', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs', 'section', 'columns', 'tileGroup', 'carousel', 'collapsible', 'quote', 'badges', 'edgeTable']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),
@@ -103,8 +118,16 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
         has: z.array(z.string()).optional(),
         empty: z.boolean().optional(),
         relation: z.string().optional(),
+        incoming: z.string().optional(),
       })
       .optional(),
+    /* Gestaltete Ansichten (T-268): Kinder, Pfad über Kanten, Einstellungen. */
+    children: z.array(LayoutElementSchema).optional(),
+    path: z.array(ViewPathStepSchema).optional(),
+    props: z.array(z.string()).optional(),
+    open: z.boolean().optional(),
+    side: z.enum(['right', 'bottom', 'none']).optional(),
+    toc: z.enum(['left', 'top', 'off']).optional(),
     tabs: z
       .array(
         z.object({
@@ -187,6 +210,15 @@ export const ViewDefSchema = z.object({
   layout: z.array(LayoutElementSchema).optional(),
   rest: z.boolean().optional(),
   empty: z.enum(['hide', 'show']).optional(),
+  /* Gruppe und Geltung (T-268, E-103). */
+  group: z.string().optional(),
+  applies: z
+    .object({
+      types: z.array(z.string()).optional(),
+      where: z.array(LayoutWhenSchema).optional(),
+      article: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const RegistrySchema = z.object({

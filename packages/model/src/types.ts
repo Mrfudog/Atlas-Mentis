@@ -556,7 +556,29 @@ export type LayoutElementKind =
    * Früher die Seiten `/ancestries/:id` und `/backgrounds/:id`.
    */
   | 'originOverview'
-  | 'tabs';
+  | 'tabs'
+  /*
+   * **Gestaltete Ansichten** (T-268, E-103): Behälter, die andere Elemente
+   * in `children` tragen, und Werte, die über `path` auch Felder
+   * verknüpfter Artikel zeigen. Gezeichnet nur hinter dem Schalter
+   * `experiments.viewDesigner`; eine Anordnung ohne sie zeichnet wie bisher.
+   */
+  /** Ein Abschnitt mit Überschrift (`text`) über seinen Kindern. */
+  | 'section'
+  /** Die Kinder nebeneinander, `columns` Spalten (0: so viele wie Kinder). */
+  | 'columns'
+  /** Die Werte als Kacheln: je Feld eine Kachel mit Beschriftung und Wert. */
+  | 'tileGroup'
+  /** Die Kinder nacheinander, eins auf einmal, mit ‹ › . */
+  | 'carousel'
+  /** Aufklappbar: `text` ist die Kopfzeile, `open` sagt, ob es offen anfängt. */
+  | 'collapsible'
+  /** Ein Feld als Zitat — die Stimme eines NSC, ein Motto. */
+  | 'quote'
+  /** Die Werte als Marken (Tags, Zustände, Eigenschaften). */
+  | 'badges'
+  /** Je Kante eine Zeile: Ziel und die Eigenschaften der Kante (`props`). */
+  | 'edgeTable';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the
@@ -613,6 +635,54 @@ export interface LayoutElement {
    * kein befülltes Feld.
    */
   when?: LayoutWhen;
+  /**
+   * **Was ein Behälter enthält** (T-268): `section`, `columns`,
+   * `carousel`, `collapsible` tragen ihre Elemente hier — ein Baum statt
+   * einer Liste. Reiter (`tabs`) bleiben, wie sie sind.
+   */
+  children?: LayoutElement[];
+  /**
+   * **Woher die Werte kommen** (T-268): ohne Pfad vom Artikel selbst, mit
+   * Pfad von den Artikeln am Ende der Kanten — `shopkeeper › Shop › sells
+   * › Item` ist `[{ relation: 'shopkeeper', dir: 'in' }, { relation:
+   * 'sells' }]`. `fields` gilt dann an diesen Artikeln.
+   */
+  path?: ViewPathStep[];
+  /** `edgeTable`: die Eigenschaften der letzten Kante, die als Spalten stehen. */
+  props?: string[];
+  /** `collapsible`: offen beim Öffnen der Seite. */
+  open?: boolean;
+  /** `reader`: wo die Werte stehen — am Rand rechts, unten oder gar nicht. */
+  side?: 'right' | 'bottom' | 'none';
+  /** `reader`: wo das Inhaltsverzeichnis steht — links, oben oder aus. */
+  toc?: 'left' | 'top' | 'off';
+}
+
+/**
+ * **Ein Schritt über eine Kante** (T-268). `dir: 'out'` (Vorgabe) folgt
+ * der Kante, wie sie gespeichert ist; `in` fragt die Gegenrichtung — die
+ * Kante bleibt nur vorwärts gespeichert (CLAUDE.md), das Zurück ist eine
+ * Abfrage. `type` engt die Artikel am Ende ein (die `extends`-Kette hoch).
+ */
+export interface ViewPathStep {
+  relation: string;
+  dir?: 'out' | 'in';
+  type?: string;
+}
+
+/**
+ * **Wofür eine Ansicht gilt** (T-268, E-103). Alles Genannte muss
+ * zutreffen. Wie genau sie ist, sagt, was dasteht: ein Artikel schlägt
+ * eine Bedingung, eine Bedingung einen Typ, ein Typ die Ansicht ohne
+ * Geltung (global) — `viewsFor` ordnet danach.
+ */
+export interface ViewApplies {
+  /** Der Artikel ist einer dieser Typen (oder ein Untertyp). */
+  types?: string[];
+  /** Jede Bedingung muss gelten (`LayoutWhen`, auch Kanten in beide Richtungen). */
+  where?: LayoutWhen[];
+  /** Genau dieser Artikel. */
+  article?: string;
 }
 
 /**
@@ -636,6 +706,12 @@ export interface LayoutWhen {
   has?: string[];
   empty?: boolean;
   relation?: string;
+  /**
+   * Eine Kante dieser Art **zeigt auf** den Artikel (T-268): „hat einen
+   * Shop" ist `incoming: 'shopkeeper'`, denn die Kante steht am Shop.
+   * Gelesen nur, wo der Aufrufer die Rückbezüge mitgibt.
+   */
+  incoming?: string;
 }
 
 /**
@@ -706,6 +782,15 @@ export interface ViewDef {
    * „—" — auf einem Druckbogen will man sehen, was noch fehlt.
    */
   empty?: 'hide' | 'show';
+  /**
+   * **Die Gruppe** (T-268, E-103): der Ort, an dem diese Ansicht gilt —
+   * `overview`, `quick`, `full`, `print` oder eine eigene. Ohne Angabe ist
+   * der Schlüssel die Gruppe; die fünf Ansichten der Orte sind so ihre
+   * eigene Gruppe, wie bisher.
+   */
+  group?: string;
+  /** **Wofür sie gilt**; ohne Angabe für jeden Artikel (global). */
+  applies?: ViewApplies;
 }
 
 export interface Registry {

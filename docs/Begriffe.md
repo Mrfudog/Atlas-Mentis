@@ -689,6 +689,30 @@ Wanderung jedes Statblocks für eine Frage der Darstellung. So gilt:
 `overview` < `quick` < `full` — Herausforderung und Art im Verweis, die
 Kennzahlen auf der Karte, der Bogen auf der Seite.
 
+### Eine Ansicht gilt für etwas (T-268, E-103)
+
+Bis hierher war eine Ansicht ein Ort, und die Art ordnete sie an. Das
+reicht, solange jede Kreatur gleich aussehen soll. Ein Wirt aber ist eine
+Kreatur, die einen Laden führt, und am Tisch will man von ihm Stimme,
+Waren und Gebäude sehen — das ist keine Art (ein Untertyp ohne eigene
+Felder wäre ein Wort), und es sind Felder **anderer** Artikel. Darum hat
+eine Ansicht jetzt eine **Geltung**: Typen, Bedingungen auf Felder und
+Kanten, oder genau ein Artikel. Gerechnet wird beim Zeigen, nicht
+gespeichert: „Durnan bekommt Shop“ steht nirgends, es folgt daraus, dass
+eine `shopkeeper`-Kante auf ihn zeigt.
+
+Warum genaueste zuerst und nicht „die letzte gewinnt“: eine Ansicht für
+genau Durnan ist eine Ausnahme, und eine Ausnahme soll die Regel schlagen,
+egal in welcher Reihenfolge jemand sie angelegt hat. Warum trotzdem alle
+zur Wahl: auf dem Board fragt die Kachel, und dort ist die Wahl der Sinn.
+
+Und warum ein **Baum**: die Leitung wollte Struktur gestalten — Kacheln,
+Karussell, Spalten — und nicht nur Felder auswählen. Eine Liste kann nur
+untereinander; ein Element mit Kindern kann nebeneinander, nacheinander
+und aufklappbar. Werte über Kanten (`path`) halten die Daten, wo sie
+hingehören: der Preis steht an der `sells`-Kante des Ladens, und die
+Ansicht des Wirts liest ihn dort, statt ihn zu kopieren.
+
 ---
 
 ## Block

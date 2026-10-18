@@ -1570,6 +1570,62 @@ Die Migration (050) änderte, was gezeichnet wird, nicht: `full` bekam
 `rest: true` — das tat die Artikelseite schon immer, nur stand es nirgends —,
 `print` kam dazu; die Anordnungen an den Arten bleiben Listen.
 
+### Gestaltete Ansichten: Gruppe, Geltung, Baum (T-268, E-103)
+
+**Der Ort wählt die Gruppe, die Geltung wählt die Ansicht darin.** Eine
+Ansicht (`ViewDef`) darf zwei Angaben mehr tragen, beide optional und
+additiv — die heutigen Zeilen haben keine und zeichnen wie bisher:
+
+| Angabe | Sagt | Ohne Angabe |
+|---|---|---|
+| `group` | an welchem Ort sie gilt: `overview`, `quick`, `full`, `print` oder ein eigenes Wort (`shop`) | der Schlüssel ist die Gruppe |
+| `applies` | für welche Artikel: `types` (die `extends`-Kette hoch), `where` (Bedingungen wie `LayoutWhen`, alle müssen gelten: Feldwert, ausgehende Kante `relation`, **eingehende Kante `incoming`**), `article` (genau einer) | für jeden Artikel (global) |
+
+`viewsFor(artikel, register, { incoming })` (`viewScope.ts`) liefert alle
+geltenden Ansichten, **genaueste zuerst**: Artikel › Bedingung › Typ ›
+global; bei gleicher Genauigkeit geht die ausdrücklich gestaltete vor.
+Eine Ansicht ohne Geltung ist „Typ", wenn die Art für sie etwas sagt
+(`InterfaceDef.views`), sonst global. `viewFor(…, gruppe)` gibt die
+genaueste einer Gruppe — dort, wo ein Ort genau eine braucht; wo gewählt
+wird (Board-Kachel, Reihe „View" am Artikel), stehen alle. Eingehende Kanten
+sind eine Abfrage (die Rückbezüge) und werden mitgegeben; ohne sie gilt
+keine Bedingung darauf.
+
+**Die Anordnung ist ein Baum.** Behälter tragen `children`: `section`
+(Überschrift), `columns` (`columns` Spalten, am Telefon eine), `carousel`,
+`collapsible` (`open`). Werte-Elemente lesen `fields` wie bisher, und mit
+`path` an den Artikeln am Ende von Kanten: `shopkeeper › Shop › sells ›
+Item` ist `[{ relation: 'shopkeeper', dir: 'in', type: 'Shop' }, {
+relation: 'sells', type: 'Item' }]` (`followPath`). Neu dazu: `tileGroup`,
+`quote`, `badges`, `edgeTable` (je Kante eine Zeile, `props` nennt die
+Eigenschaften der Kante als Spalten). `reader` nimmt `toc` (`left`, `top`,
+`off`) und `side` (Werte am Rand `right`, `bottom`, `none`). `when` je
+Element bleibt und sieht auch Kinder und eingehende Kanten (`forArticle`).
+
+```mermaid
+flowchart LR
+  A["Artikel + Rückbezüge"] --> V{"viewsFor"}
+  V --> L["alle geltenden<br/>(Wahl: Kachel, Reihe „View“)"]
+  V --> G{"Gruppe des Orts"}
+  G --> E["genaueste<br/>Artikel › Bedingung › Typ › global"]
+  E --> B["Baum zeichnen<br/>(Werte auch über Kanten)"]
+```
+
+Gespeichert wird eine gewöhnliche Zeile in `view_def` (`config` als JSON) —
+keine Migration, kein neuer Seed. Gezeichnet, gewählt und gestaltet wird
+nur hinter dem Schalter `experiments.viewDesigner` (je Konto, Rules &
+options › Experiments); ohne ihn bieten die Orte gestaltete Ansichten nicht
+an (`designed: false`) und jede Seite zeichnet wie bisher. Die Ansichten der
+Orte (Overview, Quick, Full, Print, Search) werden im Designer nicht
+überschrieben: aus ihnen entsteht eine **neue** Ansicht. Gezählt, wie viele
+Artikel eine Ansicht bekommen, wird am Server (`/api/registry/usage`,
+`views`), im Stapel.
+
+Noch offen (Folgeaufgaben): die grossen Blöcke (Statblock, Zauber,
+Gegenstand, Bogen) als Ansichten aus diesen Elementen, Counter, Dots,
+Ability row, Steps, Charakterassistent als Ansicht der Gruppe Edit, die
+Leiste als Blatt von unten am Telefon.
+
 **Eine Listenzeile ist `overview`** (W7): welche Spalten das Kompendium
 für eine Art zeigt und wonach es filtert, sagen die `fields`-Elemente ihrer
 `overview`-Anordnung (`listColumns` in `views.ts`: `Typ.feld` oder ein

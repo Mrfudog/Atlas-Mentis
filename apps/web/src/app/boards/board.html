@@ -207,7 +207,7 @@
                         <option value="" [selected]="!k.rel.props?.['view']">
                           Auto · {{ viewLabel(k.ansicht) }}
                         </option>
-                        @for (v of ansichten(); track v) {
+                        @for (v of ansichtenFuer(k.ziel ?? k.kurz); track v) {
                           <option [value]="v" [selected]="k.rel.props?.['view'] === v">
                             {{ viewLabel(v) }}
                           </option>
@@ -242,7 +242,12 @@
                   }
                   <div class="kinhalt">
                     @if (k.ziel) {
-                      <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" />
+                      @if (gestaltet(k.ansicht)) {
+                        <!-- Eine gestaltete Ansicht (T-268): ihr Baum, mit Werten verknüpfter Artikel. -->
+                        <nw-ansichtsbaum [artikel]="k.ziel" [layout]="gestaltetesLayout(k.ansicht, k.ziel)" [rueck]="rueckVon(k.ziel)" />
+                      } @else {
+                        <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" />
+                      }
                     } @else if (k.kurz) {
                       <p class="laedt">Loading…</p>
                     }
