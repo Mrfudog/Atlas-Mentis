@@ -1826,8 +1826,17 @@ Bereich rules): die Definition ist `Description.description` (an der Art
 play"), `example` (`many`) und `translations` (`many`, je Eintrag `lang`,
 `term`, `definition`). Worauf er sich bezieht, sagt die Kante **`explains`**
 (Begriff → beliebiger Artikel: der Zustand, die Eigenschaft, die Regel).
-Spielbegriffe liegen in der Ebene ihres Regelwerks, eigene in der
-Kampagne — Ebenen wie überall.
+Spielbegriffe liegen **in der Ebene ihrer Quelle** — der Ebene des
+Artikels, den sie erklären (ein Buch, Kibbles, die Hausregeln), nie in
+einer Gruppe; `Source.publication` nennt sie. Eigene in der Kampagne —
+Ebenen wie überall. Ein Neuladen der Buchebene lässt sie stehen
+(`--replace-layer` löscht nur Ids mit dem Präfix der Datei, T-270).
+**Die Begriffe, auf denen eine Regel aufbaut** (T-270): der Regel-Builder
+nennt sie je Regel unter „Builds on" — aus ihren Knoten
+(`ruleGraphWords`: Auslöser, Werte in Bedingungen, Folgen) und aus ihrem
+Text (`spotTerms`); ein Wort ohne Begriff steht gestrichelt da. Angelegt
+werden sie mit `scripts/glossar-anlegen.mjs` nach einem Plan ausserhalb des
+Repos.
 
 **Die Wörter der App sind Code** (`packages/registry/src/glossar.ts`,
 `APP_TERMS`): die neun Wörter aus [Begriffe.md](Begriffe.md), Ebene,
