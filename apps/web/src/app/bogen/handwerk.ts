@@ -45,7 +45,7 @@ const ZUSTAND: Record<string, string> = { busy: 'in progress', unlearned: 'not l
         <h3>{{ scope() === 'known' ? 'Known' : 'All blueprints' }} · {{ zeilen().length }}</h3>
         @if (scope() === 'all' && bereich() === null && alle().length && !gelernt()) {
           <!-- Kennt die Figur noch nichts, beginnt der Reiter mit allen (sonst stünde er leer da). -->
-          <p class="hinweis">{{ s.actor.name }} has not learned a blueprint yet — showing all. A recipe counts as learned when an information on it is known by the character.</p>
+          <p class="hinweis">{{ s.actor.name }} knows no blueprint yet — showing all. Which blueprints a character knows is a campaign rule (Rules &amp; options › Crafting); a blueprint can also be taught.</p>
         }
         @for (r of zeilen(); track r.id) {
           <button type="button" class="rezept" [class.gewaehlt]="gewaehlt() === r.id" [class.ungelernt]="r.learned === false" (click)="waehle(r.id)">
