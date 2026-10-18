@@ -337,6 +337,27 @@ export function ownRuleName(option: Pick<RuleOptionDef, 'label'>, variant?: Pick
   return variant ? `${option.label}: ${variant.label}` : option.label;
 }
 
+/** Felder, deren Varianten `true`/`false` heissen, aber als Wahrheitswert stehen. */
+const WAHRHEITSFELDER = new Set(['feats', 'revealOnMove']);
+
+/**
+ * **Eine Variante direkt wählen** (Rules & options): gibt die Kampagne mit
+ * dem neuen Wert zurück — geschrieben wird sie wie jede andere über
+ * `PUT /api/entities/:id`, also durch `validateEntity` und das Schreibrecht
+ * am Server. `null`, wo die Option kein Feld mit Varianten ist (Kanten,
+ * Einstellungen der Installation) oder die Variante nicht dazugehört.
+ */
+export function withRuleVariant(campaign: Entity, optionKey: string, variantKey: string): Entity | null {
+  const o = RULE_OPTIONS.find((x) => x.key === optionKey);
+  if (!o || !('field' in o.source) || !o.variants?.some((v) => v.key === variantKey)) return null;
+  const feld = o.source.field;
+  const wert: unknown = WAHRHEITSFELDER.has(feld) ? variantKey === 'true' : variantKey;
+  return {
+    ...campaign,
+    components: { ...campaign.components, Campaign: { ...(campaign.components?.['Campaign'] ?? {}), [feld]: wert } },
+  };
+}
+
 /** Alle Namen, nach denen gesucht wird — der Server sucht sie einmal. */
 export function ruleOptionRuleNames(): string[] {
   const raus = new Set<string>();

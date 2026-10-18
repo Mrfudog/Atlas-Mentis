@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ownRuleName, ruleOptionRuleNames, ruleOptionsOf, RULE_OPTIONS, RULE_SORTS, type Entity, type RuleRef } from '../src/index.js';
+import { ownRuleName, ruleOptionRuleNames, ruleOptionsOf, withRuleVariant, RULE_OPTIONS, RULE_SORTS, type Entity, type RuleRef } from '../src/index.js';
 
 /* Die Regeloptionen einer Kampagne (T-190). Erfundene Artikel. */
 
@@ -88,5 +88,22 @@ describe('ruleOptionsOf', () => {
     const namen = ruleOptionRuleNames();
     for (const o of RULE_OPTIONS) for (const v of o.variants ?? []) expect(namen).toContain(ownRuleName(o, v));
     expect(namen).toContain('Encumbrance');
+  });
+});
+
+describe('withRuleVariant', () => {
+  it('setzt das Feld der Kampagne, als Wahrheitswert, wo es einer ist', () => {
+    const k = kampagne({ inventory: 'grid' });
+    expect(withRuleVariant(k, 'inventory', 'slots')!.components['Campaign']).toEqual({ inventory: 'slots' });
+    expect(withRuleVariant(k, 'feats', 'false')!.components['Campaign']).toMatchObject({ feats: false });
+    expect(withRuleVariant(k, 'revealOnMove', 'true')!.components['Campaign']).toMatchObject({ revealOnMove: true });
+    const s = ruleOptionsOf(withRuleVariant(k, 'craftFailure', 'nothingLost'), ctx());
+    expect(option(s, 'craftFailure').variants!.find((v) => v.chosen)?.key).toBe('nothingLost');
+  });
+  it('lässt Kanten, Einstellungen und fremde Varianten', () => {
+    const k = kampagne({});
+    expect(withRuleVariant(k, 'abilityMethods', 'x')).toBeNull();
+    expect(withRuleVariant(k, 'units', 'metric')).toBeNull();
+    expect(withRuleVariant(k, 'inventory', 'bag')).toBeNull();
   });
 });
