@@ -121,8 +121,20 @@ for (const p of [...fehlt].slice(0, 15)) console.log(`  fehlt: ${p}`);
 const daSind = new Map();
 async function gibtEs(id) {
   if (!daSind.has(id)) {
-    const res = await fetch(`${BASE}/api/entities/${encodeURIComponent(id)}`, { headers: kopf() });
-    await res.arrayBuffer();
+    /* Tausende Abfragen hintereinander: ein 502 dazwischen (Neustart,
+       Proxy) ist kein Grund, den Lauf zu verlieren. */
+    let res;
+    for (let versuch = 0; ; versuch++) {
+      try {
+        res = await fetch(`${BASE}/api/entities/${encodeURIComponent(id)}`, { headers: kopf() });
+        await res.arrayBuffer();
+        if (res.status >= 500 && versuch < 4) throw new Error(`HTTP ${res.status}`);
+        break;
+      } catch (error) {
+        if (versuch >= 4) throw error;
+        await new Promise((r) => setTimeout(r, 2000 * 2 ** versuch));
+      }
+    }
     if (res.status !== 200 && res.status !== 404) throw new Error(`GET /api/entities/${id}: ${res.status}`);
     daSind.set(id, res.status === 200);
   }
