@@ -171,6 +171,15 @@ export const routes: Routes = [
     data: { mode: 'edit' },
     title: 'Edit character · Atlas Mentis',
   },
+  /* Lab › Rules (T-270): der Regel-Builder als Versuch. Die Seite zeigt
+     ohne den Schalter `experiments.ruleBuilder` nur einen Hinweis; verlinkt
+     ist sie allein aus Rules & options › Experiments. */
+  {
+    path: 'lab/rules',
+    canActivate: [wache],
+    loadComponent: () => import('./lab/regel-builder').then((m) => m.RegelBuilder),
+    title: 'Rule builder · Atlas Mentis',
+  },
   {
     path: 'registry',
     canActivate: [wache],

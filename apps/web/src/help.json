@@ -302,6 +302,32 @@
           ]
         }
       ]
+    },
+    {
+      "routes": ["lab/rules"],
+      "title": "Rule builder (experiment)",
+      "sections": [
+        {
+          "heading": "Turning it on",
+          "text": [
+            "The rule builder is an experiment for game masters and admins. Turn it on in a campaign’s Rules & options › Experiments; the switch applies to your account only."
+          ]
+        },
+        {
+          "heading": "Building a rule",
+          "text": [
+            "A rule is a chain of nodes: a trigger (a creature is hit, picks up an object …), conditions with a yes and a no exit, and outcomes such as offering a reaction. Add nodes with Trigger, Condition and Outcome; drag a node to move it.",
+            "Drag from a dot on a node’s right edge onto another node to connect them, or pick “Connect to” beside the canvas. Conditions compare numbers (distance, self.hp, self.reactionFree …), check whether a creature knows something by name, or whether two roles are the same creature.",
+            "Save keeps your rules in your account. Add examples brings back the two sample rules."
+          ]
+        },
+        {
+          "heading": "Trying it",
+          "text": [
+            "Try it holds made-up creatures. Pick an event, who acts and against whom, and Run: the page lists what fires and colours the path through the rule. Nothing is saved and nothing changes at the table."
+          ]
+        }
+      ]
     }
   ],
   "without": {

@@ -4,6 +4,7 @@ import type { RuleOptionState, RuleSortState, RuleVariantState } from '@nw/model
 import { Api, ApiError } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
+import { ExperimenteSchalter } from '../lab/experimente-schalter';
 
 /**
  * **Rules & options** (T-190): die Regeloptionen einer Kampagne, nach
@@ -19,7 +20,7 @@ import { Session } from '../kern/session';
  */
 @Component({
   selector: 'nw-regeloptionen',
-  imports: [RouterLink, KurzLink],
+  imports: [RouterLink, KurzLink, ExperimenteSchalter],
   template: `
     <section class="regeln" aria-labelledby="regeln-titel">
       <header class="kopf">
@@ -116,6 +117,11 @@ import { Session } from '../kern/session';
             </article>
           }
         </section>
+      }
+
+      <!-- Versuche (T-270): nur Leitung und Verwaltung, Schalter je Konto. -->
+      @if (leitet()) {
+        <nw-experimente />
       }
     </section>
   `,
