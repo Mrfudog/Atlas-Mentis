@@ -866,6 +866,13 @@ node scripts/atlas.mjs bulk --dry-run bilder-lauf/verknuepfen-1.json
 node scripts/atlas.mjs bulk bilder-lauf/verknuepfen-1.json
 ```
 
+**Vorher der Platz:** `GET /api/assets/storage` (nur Verwaltung) nennt
+Dateien und Bytes der Ablage und was ihr Datenträger frei hat; das Skript
+fragt dort in Vorschau und Lauf und bricht `--write` ab, bevor danach
+weniger als die Reserve frei bliebe (`--reserve <GB>`, Vorgabe 2 GB —
+Datenbank und Sicherungen liegen auf demselben Datenträger). Gerechnet
+wird je Datei mit Original und Vorschau.
+
 Jedes Bild wird **aus seinem Artikel heraus** hochgeladen (`for`): es
 liegt in dessen Ebene und übernimmt dessen Sichtbarkeit und Stand, mit
 Klasse und Herkunft (`Source.publication`, `Source.anchor:
