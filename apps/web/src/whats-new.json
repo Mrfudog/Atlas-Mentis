@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-visibility-by-group",
+      "date": "2026-10-18",
+      "title": "Who sees what, per group",
+      "text": "The campaign page has a Visibility tab: every group of articles — by layer, type, area or tag, in the order you choose — with how many each player, the table and the public see. Set a group to Public, Table, Players or GM, show or hide it for one player, and see which articles say it themselves. A layer can now set a default for its articles.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "visibility" }
+    },
+    {
       "id": "2026-10-18-proficiencies-with-source",
       "date": "2026-10-18",
       "title": "Every proficiency with where it comes from",

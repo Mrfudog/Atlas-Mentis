@@ -19,6 +19,7 @@ import { KampagnenEbenenListe } from './ebenen';
 import { KampagnenGeschichteListe } from './geschichte';
 import { Regeloptionen } from '../artikel/regeloptionen';
 import { Reiterleiste } from '../bogen/reiterleiste';
+import { KampagnenSichtbarkeit } from './sichtbarkeit';
 
 /** Die Reiter der Kampagnenseite (T-254), in ihrer Reihenfolge. Ebenen und
  *  Regeln brauchen den Kampagnenartikel; ohne ihn stehen sie nicht da. */
@@ -27,6 +28,8 @@ const REITER: { id: string; label: string; artikel?: boolean }[] = [
   { id: 'members', label: 'Members' },
   { id: 'layers', label: 'Layers', artikel: true },
   { id: 'rules', label: 'Rules & options', artikel: true },
+  /* Wer sieht was, je Gruppe (T-252, E-098) — für Leitung und Mitleitung. */
+  { id: 'visibility', label: 'Visibility', artikel: true },
 ];
 
 /** Was jede Rolle heisst — dieselben Sätze wie auf der Tafel (`Members.dc.html`). */
@@ -52,7 +55,7 @@ const ROLLEN: { role: TableRole; text: string }[] = [
  */
 @Component({
   selector: 'nw-verwaltung',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, KampagnenEbenenListe, KampagnenGeschichteListe, Regeloptionen, Reiterleiste],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, KampagnenEbenenListe, KampagnenGeschichteListe, Regeloptionen, Reiterleiste, KampagnenSichtbarkeit],
   template: `
     <div class="kopf">
       @if (mitglieder()) {
@@ -352,6 +355,11 @@ const ROLLEN: { role: TableRole; text: string }[] = [
         <!-- Die Geschichte liest beim Zeichnen neu; ein Abenteuer, das hier
              aufgeschaltet wird, steht danach in der Übersicht. -->
         <nw-kampagnen-ebenen [kampagne]="m.campaign.id" (geschaltet)="stapel.geaendert()" />
+      }
+      @case ('visibility') {
+        <div class="eingerueckt">
+          <nw-kampagnen-sichtbarkeit [kampagne]="m.campaign.id" />
+        </div>
       }
       @case ('rules') {
         <div class="eingerueckt">

@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -999,6 +999,40 @@ export interface Mitglied {
   /** Ob „View as" angeboten wird — der Server sagt es (`mayViewAs`, REQ-241). */
   viewAs?: boolean;
 }
+/** Eine Spalte der Sichtbarkeitsübersicht (T-252). */
+export interface SichtSpalte {
+  key: string;
+  label: string;
+  kind: 'public' | 'table' | 'player' | 'gm';
+  bearers?: string[];
+}
+/** Ein Knoten der Übersicht: eine Gruppe mit Zählern je Spalte. */
+export interface SichtKnoten {
+  key: string;
+  dim: string;
+  value: string;
+  label: string;
+  depth: number;
+  count: number;
+  cells: Record<string, number>;
+  levels: Partial<Record<Audience, number>>;
+  sources: Partial<Record<AudienceSource, number>>;
+  rule?: VisibilityRule;
+  exceptions: { count: number; items: { id: string; name: string; own: string }[] };
+  children: SichtKnoten[];
+}
+export interface SichtUebersicht {
+  campaign: { id: string; name: string };
+  may: Recht;
+  columns: SichtSpalte[];
+  dimensions: { key: string; label: string }[];
+  steps: TransformStep[];
+  unknown: string[];
+  total: number;
+  levels: Audience[];
+  rules: VisibilityRule[];
+  nodes: SichtKnoten[];
+}
 export interface Mitglieder {
   campaign: { id: string; name: string; exists: boolean };
   may: Recht;
@@ -1796,6 +1830,20 @@ export class Api {
   }
   createCampaign(name: string, lead: boolean): Promise<{ id: string; name: string }> {
     return this.call('/api/campaigns', { method: 'POST', body: JSON.stringify({ name, lead }) });
+  }
+  /** Die Sichtbarkeit je Gruppe (T-252): gerechnet am Server, je Spalte gezählt. */
+  campaignVisibility(campaign: string, steps: string): Promise<SichtUebersicht> {
+    const q = steps ? `?steps=${encodeURIComponent(steps)}` : '';
+    return this.call<SichtUebersicht>(`/api/campaigns/${encodeURIComponent(campaign)}/visibility${q}`);
+  }
+  setVisibilityRule(
+    campaign: string,
+    rule: { id: string; audience?: Audience | null; show?: string[]; hide?: string[] },
+  ): Promise<{ ok: true; rules: VisibilityRule[] }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/visibility/rules`, { method: 'PUT', body: JSON.stringify(rule) });
+  }
+  followGroup(campaign: string, ids: string[]): Promise<{ ok: true; done: string[]; refused: { id: string; error: string }[] }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/visibility/follow`, { method: 'POST', body: JSON.stringify({ ids }) });
   }
   members(campaign: string): Promise<Mitglieder> {
     return this.call<Mitglieder>(`/api/campaigns/${encodeURIComponent(campaign)}/members`);
