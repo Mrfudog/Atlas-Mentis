@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   Api,
   ApiError,
@@ -17,6 +17,17 @@ import { Session } from '../kern/session';
 import { Stapel } from '../kern/stapel';
 import { KampagnenEbenenListe } from './ebenen';
 import { KampagnenGeschichteListe } from './geschichte';
+import { Regeloptionen } from '../artikel/regeloptionen';
+import { Reiterleiste } from '../bogen/reiterleiste';
+
+/** Die Reiter der Kampagnenseite (T-254), in ihrer Reihenfolge. Ebenen und
+ *  Regeln brauchen den Kampagnenartikel; ohne ihn stehen sie nicht da. */
+const REITER: { id: string; label: string; artikel?: boolean }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'members', label: 'Members' },
+  { id: 'layers', label: 'Layers', artikel: true },
+  { id: 'rules', label: 'Rules & options', artikel: true },
+];
 
 /** Was jede Rolle heisst — dieselben Sätze wie auf der Tafel (`Members.dc.html`). */
 const ROLLEN: { role: TableRole; text: string }[] = [
@@ -41,7 +52,7 @@ const ROLLEN: { role: TableRole; text: string }[] = [
  */
 @Component({
   selector: 'nw-verwaltung',
-  imports: [FormsModule, NgTemplateOutlet, KampagnenEbenenListe, KampagnenGeschichteListe],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, KampagnenEbenenListe, KampagnenGeschichteListe, Regeloptionen, Reiterleiste],
   template: `
     <div class="kopf">
       @if (mitglieder()) {
@@ -56,7 +67,7 @@ const ROLLEN: { role: TableRole; text: string }[] = [
           } @else {
             <b>{{ mitglieder()?.campaign?.name ?? '…' }}</b>
           }
-          › Members &amp; layers
+          › {{ reiterName() }}
         </span>
       }
       <span class="stand">{{ standText() }}</span>
@@ -99,6 +110,12 @@ const ROLLEN: { role: TableRole; text: string }[] = [
     }
 
     @if (mitglieder(); as m) {
+      <!-- Reiter (T-254): die Seite war eine lange Rolle — Mitglieder,
+           Ebenen, Geschichte, Einladungen untereinander. Man schaut auf
+           einen; welcher, steht in der Adresse (\`?tab=\`). -->
+      <nw-reiterleiste [reiter]="reiterListe()" [aktiv]="reiter()" (waehle)="zeigeReiter($event)" />
+      @switch (reiter()) {
+      @case ('members') {
       <div class="flaeche">
         <section class="kasten tisch" aria-label="Members">
           <h2>At the table</h2>
@@ -305,11 +322,6 @@ const ROLLEN: { role: TableRole; text: string }[] = [
         </section>
       </div>
 
-      @if (m.campaign.exists) {
-        <nw-kampagnen-ebenen [kampagne]="m.campaign.id" (geschaltet)="geschichte.laden(); stapel.geaendert()" />
-        <nw-kampagnen-geschichte #geschichte [kampagne]="m.campaign.id" />
-      }
-
       <section class="kasten" aria-label="Open invitations">
         <h2>Open invitations</h2>
         @if (einladungenHier().length) {
@@ -334,8 +346,45 @@ const ROLLEN: { role: TableRole; text: string }[] = [
           <p class="dim">None open.</p>
         }
       </section>
+      <ng-container *ngTemplateOutlet="kontenListe" />
+      }
+      @case ('layers') {
+        <!-- Die Geschichte liest beim Zeichnen neu; ein Abenteuer, das hier
+             aufgeschaltet wird, steht danach in der Übersicht. -->
+        <nw-kampagnen-ebenen [kampagne]="m.campaign.id" (geschaltet)="stapel.geaendert()" />
+      }
+      @case ('rules') {
+        <div class="eingerueckt">
+          <nw-regeloptionen [kampagne]="m.campaign.id" [darfSchreiben]="m.may === 'manage'" />
+        </div>
+      }
+      @default {
+        <section class="kasten uebersicht" aria-label="Overview">
+          <h2>{{ m.campaign.name }}</h2>
+          <ul class="kennzahlen">
+            <li><b>{{ m.members.length }}</b> at the table</li>
+            <li><b>{{ einladungenHier().length }}</b> open invitation{{ einladungenHier().length === 1 ? '' : 's' }}</li>
+            @if (m.campaign.exists) {
+              <li><a [routerLink]="['/artikel', m.campaign.id]">Open the campaign article</a></li>
+            }
+          </ul>
+        </section>
+        @if (m.campaign.exists) {
+          <nw-kampagnen-geschichte [kampagne]="m.campaign.id" />
+        }
+        @if (kampagnen()?.isAdmin) {
+          <section class="kasten" aria-label="New campaign">
+            <h2>New campaign</h2>
+            <ng-container *ngTemplateOutlet="anlegen" />
+          </section>
+        }
+      }
+      }
+    } @else if (kampagnen()?.isAdmin) {
+      <ng-container *ngTemplateOutlet="kontenListe" />
     }
 
+    <ng-template #kontenListe>
     @if (kampagnen()?.isAdmin) {
       <section class="kasten" aria-label="Accounts">
         <h2>Accounts of this installation</h2>
@@ -397,13 +446,8 @@ const ROLLEN: { role: TableRole; text: string }[] = [
           }
         </ul>
       </section>
-      @if (kampagnen()?.campaigns?.length) {
-        <section class="kasten" aria-label="New campaign">
-          <h2>New campaign</h2>
-          <ng-container *ngTemplateOutlet="anlegen" />
-        </section>
-      }
     }
+    </ng-template>
 
     <ng-template #anlegen>
       <form class="dazunehmen" (ngSubmit)="kampagneAnlegen()">
@@ -472,6 +516,24 @@ export class Verwaltung {
     return '';
   });
 
+  /** Welche Reiter es gibt — ohne Kampagnenartikel nur Übersicht und Mitglieder. */
+  protected readonly reiterListe = computed(() => {
+    const da = !!this.mitglieder()?.campaign.exists;
+    return REITER.filter((r) => da || !r.artikel);
+  });
+  /** Der offene Reiter: `?tab=`, sonst die Übersicht. Ein alter Link ohne
+   *  Reiter landet so dort, wo die Seite anfängt. */
+  protected readonly reiter = computed(() => {
+    const w = this.tabParam();
+    return this.reiterListe().some((r) => r.id === w) ? w! : 'overview';
+  });
+  protected readonly reiterName = computed(() => REITER.find((r) => r.id === this.reiter())?.label ?? '');
+  private readonly tabParam = signal<string | null>(null);
+  protected zeigeReiter(id: string): void {
+    this.tabParam.set(id);
+    void this.router.navigate([], { queryParams: { tab: id }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
   protected readonly mehrere = computed(() => (this.kampagnen()?.campaigns.length ?? 0) > 1);
 
   /** Eine Methode und kein `computed`: `neu` ist ein gewöhnliches Objekt
@@ -486,6 +548,7 @@ export class Verwaltung {
 
   constructor() {
     void this.laden(this.route.snapshot.queryParamMap.get('c'));
+    this.route.queryParamMap.subscribe((q) => this.tabParam.set(q.get('tab')));
   }
 
   /** Die Sicht dieses Mitglieds einnehmen (REQ-241) und dorthin, wo man
@@ -622,7 +685,7 @@ export class Verwaltung {
   protected async waehlen(id: string): Promise<void> {
     this.gewaehlt.set(id);
     this.link.set(null);
-    void this.router.navigate([], { queryParams: { c: id }, replaceUrl: true });
+    void this.router.navigate([], { queryParams: { c: id }, queryParamsHandling: 'merge', replaceUrl: true });
     await this.tun(() => this.ladeKampagne());
   }
 
@@ -727,7 +790,7 @@ export class Verwaltung {
     if (!ok) return;
     this.kampagneName = '';
     if (this.selbstLeiten) await this.session.load(true);
-    if (id) void this.router.navigate([], { queryParams: { c: id }, replaceUrl: true });
+    if (id) void this.router.navigate([], { queryParams: { c: id }, queryParamsHandling: 'merge', replaceUrl: true });
     await this.laden(id);
   }
 }
