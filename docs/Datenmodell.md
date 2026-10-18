@@ -1715,13 +1715,29 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
   Varianten mit einem eigenen Satz und die Namen der Regelartikel, die sie
   erklären. Ein Test hält ihn mit `CampaignInfo` zusammen: jedes Feld eine
   Option, jeder Aufzählungswert eine Variante.
-- **Regelartikel nach Namen:** importierte heissen, wie das Regelwerk sie
-  nennt („Encumbrance"), eine eigene Erklärung `<Option>: <Variante>`
-  (`ownRuleName`). Genannt wird ein Artikel der Art `Rule` nur, wenn er im
-  Stapel steht und der Betrachter ihn sieht (E2, Sichtbarkeit) — sonst
-  bietet die Seite der Leitung „Write rule article" an: ein Regelartikel
-  mit diesem Namen und dem Satz der Seite, in der Schreibebene. Buchtext
-  steht im Code keiner.
+- **Die Auswahl kommt aus Regelartikeln** (T-270, E-102 a): **jeder
+  Artikel steht für ein System, eine Regel oder eine Option.**
+  `Rule.kind` sagt was (`system`, `rule`, `option`), `Rule.key` sagt der
+  Laufzeit, welches (`inventory`, `craftFailure`, `materialsLost`), und
+  `partOf` hängt die Option an ihre Regel und die Regel an ihr System
+  (`indexRuleArticles`; Optionen als `regel:option`, denn `gm` ist an
+  mehreren Regeln eine Option). Die Seite zeigt nur, wofür ein Artikel
+  steht, mit dessen Namen und Text, und der Name führt hin; eine gewählte
+  Option ohne Artikel steht trotzdem da — sonst sähe niemand, was gilt.
+  Der Katalog im Code sagt nur noch, was die Laufzeit ausführen kann und
+  woher der Wert kommt; seine Sätze und Buchnamen (`rules`) sind der
+  Anfang, mit dem `scripts/regeln-anlegen.mjs` fehlende Artikel anlegt
+  (`missingRuleArticles`). Genannt wird ein Artikel nur, wenn er im Stapel
+  steht und der Betrachter ihn sieht (E2, Sichtbarkeit). Einen Knopf zum
+  Schreiben gibt es nicht; die Leitung sieht, wie viele Artikel fehlen.
+- **Woher eine Regel kommt, sagt ihre Ebene:** Hausregeln in der Ebene der
+  Hausregeln, was auf einem Buch beruht oder nur die App betrifft in einer
+  eigenen Ebene „Table rules" — nie in einer eingelesenen Buchebene, die
+  ein Neuladen ersetzt. Der Artikel nennt das Buch in `Source` und
+  verweist im Text auf dessen Regelartikel. Buchtext steht keiner da.
+- **Der Graph des Regel-Builders wohnt am Artikel** (`Rule.graph`), wie die
+  Formen eines Boards am Board: der Artikel *ist* die Regel, ein eigener
+  Graph-Artikel daneben wäre zwei Dinge für eine Sache. Migration 098.
 - **Geändert wird, wo es steht:** Felder und Kanten in der Maske der
   Kampagne; die Einstellungen der Installation sind als
   „installation-wide" markiert und gelten für jede Kampagne, bis T-132 sie

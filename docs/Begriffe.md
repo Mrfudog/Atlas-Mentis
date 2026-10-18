@@ -1897,13 +1897,18 @@ woanders nach.
 Wie gezählt, gehandwerkt und gewürfelt wird, stand als Felder ohne
 Ordnung am Kampagnenartikel und als Einstellungen, die niemand sah — es
 gab sie, und gefunden hat sie keiner. Der Reiter „Rules & options" ordnet
-sie nach Sorte und sagt je Option, was sie tut. **Eine Variante ist ein
-Regelartikel**, den man lesen kann: der importierte, wenn das Regelwerk
-einen hat („Encumbrance"), sonst einer, den die Leitung unter dem Namen
-der Variante schreibt — ein Satz im Code erklärt, ein Artikel lässt sich
-nachlesen, ändern und am Tisch zeigen. Gefunden wird er nach Namen und
-nicht über eine Kante: ein Regelwerk, das morgen eingelesen wird, bringt
-seine Erklärung mit, ohne dass jemand sie anhängt. **Was nicht gilt,
+sie nach System und sagt je Option, was sie tut. **Jeder Artikel steht
+für ein System, eine Regel oder eine Option** (T-270): die Auswahl kommt
+aus den Artikeln und nicht aus einer Liste im Code — ein Satz im Code
+erklärt, ein Artikel lässt sich nachlesen, ändern und am Tisch zeigen.
+Bis T-270 wurde er nach Namen gesucht, und wo keiner passte, bot die Seite
+an, einen zu schreiben; an fast jeder Variante stand dann derselbe Knopf,
+obwohl die Hausregel längst als Artikel dastand, nur unter einem anderen
+Namen. Jetzt sagt der Artikel selbst, wofür er steht (`Rule.key`): der
+Name darf sich ändern, der Schlüssel nicht. Und weil ein Buch beim
+Neuladen ersetzt wird, steht eine Tischregel nie in der Buchebene,
+sondern in den Hausregeln oder in einer eigenen Ebene, und verweist auf
+das Buch. **Was nicht gilt,
 steht nicht da** — auch hier: die Einstellungen von Basils Raster stehen
 nur, wenn die Kampagne nach Raster zählt (T-248); wer reines D&D spielt,
 soll nicht lesen müssen, wie eine Hausregel eingestellt ist, die er nicht
