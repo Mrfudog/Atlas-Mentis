@@ -17,6 +17,7 @@ import { ancestryLine, characterLevel, choiceSources, answersOf } from './choice
 import { entityName, primaryInterface } from './entity.js';
 import { resolveInstance } from './instance.js';
 import { proficienciesOf, proficiencyNames } from './proficiency.js';
+import { characterStats, STAT_ABILITIES } from './stats.js';
 import type { Entity, EntityId } from './types.js';
 
 export type Condition =
@@ -341,17 +342,18 @@ export function characterProfile(character: Entity, byId: ReadonlyMap<EntityId, 
   }
   for (const a of answersOf(character)) for (const p of a.picks) has.add(p);
   /* Der Statblock: zeigt mit `belongsTo` auf die Figur. */
-  let abilities: CharacterProfile['abilities'] = {};
   let statblock: Entity | undefined;
   for (const e of byId.values()) {
     if (!(e.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === character.id)) continue;
-    const ab = (e.components?.['Abilities'] ?? {}) as Record<string, unknown>;
-    abilities = Object.fromEntries(
-      ['str', 'dex', 'con', 'int', 'wis', 'cha'].filter((k) => typeof ab[k] === 'number').map((k) => [k, ab[k] as number]),
-    );
     statblock = e;
     break;
   }
+  /* Die Endwerte, nicht die Grundwerte am Statblock (T-272): STR 13 aus
+     12 und dem Bonus des Hintergrunds erfüllt „STR 13". */
+  const werte = characterStats(character, statblock ? resolveInstance(byId, statblock) : undefined, byId);
+  const abilities: CharacterProfile['abilities'] = Object.fromEntries(
+    STAT_ABILITIES.filter((k) => werte.abilities[k].value !== null).map((k) => [k, werte.abilities[k].value!]),
+  );
   /* Übungen aus allen Quellen, nicht nur der Statblock-Karte (T-239). */
   const proficient = proficiencyNames(proficienciesOf(character, statblock ? resolveInstance(byId, statblock) : undefined, byId)).map((x) => x.toLowerCase());
   return { id: character.id, name: entityName(character), level, classes, ancestries, abilities, proficient, spellcasting, casting, has: [...has] };

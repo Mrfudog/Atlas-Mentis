@@ -303,6 +303,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'characterStats',
+    label: 'Numbers of a character',
+    area: 'character',
+    does: 'computes the numbers of a character with their parts — ability scores from the statblock’s base plus origin and chosen bonuses and items, proficiency bonus from the level, hit points from the class levels and CON, AC, initiative, speed and senses — and the statblock as it reads with them (T-272)',
+    uses: {
+      [M + 'stats.ts']: ['hasAncestry', 'hasClass'],
+      /* Im Full edit der Figur: der Hinweis auf ihren Statblock (T-272). */
+      [W + 'artikel/artikel.ts']: ['belongsTo'],
+    },
+  },
+  {
     key: 'usableBy',
     label: 'Usable by a character',
     area: 'character',
