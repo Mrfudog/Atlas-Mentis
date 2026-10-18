@@ -1391,6 +1391,16 @@ Die Übungen standen bis P4 an der Kreatur; seither nimmt der Statblock
 ist, sagt `belongsTo`; gespeichert wird nur vorwärts, und „welchen Statblock
 hat Rook" ist der Rückbezug.
 
+**Am Statblock steht, was von Hand dazukam — geübt ist eine Figur in
+mehr** (T-239). Was Klasse, Hintergrund und Talent fest gewähren, steht an
+deren Artikeln, und was die Figur gewählt hat, an ihren Kanten `chose`.
+Die Karte am Statblock allein zu lesen hiess, dass der Barbar, der beim
+Hintergrund Smith's tools wählte, im Handwerk ungeübt war. Die Wahl in den
+Statblock zu kopieren hätte zwei Stellen gemacht, die beim nächsten
+Klassenwechsel auseinanderlaufen; also rechnet `proficienciesOf` beim
+Lesen alle Quellen zusammen und sagt je Übung, woher sie kommt — und wer
+fragt, ob jemand geübt ist, fragt diese eine Funktion.
+
 **Eine benannte Kreatur aus einem Buch ist eine Figur** (T-169). Strahd
 oder Venomfang standen nach dem Einlesen nur als Statblock da — Zahlen
 ohne jemanden, dem sie gehören, und damit in keiner Beziehung, keiner

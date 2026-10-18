@@ -14,6 +14,7 @@
 import { keyStats, signedBook, type StatblockContext } from './book.js';
 import { abilityMod, derivedValue } from './calc.js';
 import { hitPointLevels } from './hitpoints.js';
+import { proficienciesOf, proficiencyNames } from './proficiency.js';
 import type { Entity, EntityId, Registry } from './types.js';
 
 // ------------------------------------------------------------ Trefferpunkte
@@ -334,10 +335,6 @@ function zahl(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function liste(v: unknown): string[] {
-  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-}
-
 /** Die Zauber an der Figur (`casts`), mit ihrem Grad, wo der Artikel da ist. */
 export interface KnownSpell {
   id: EntityId;
@@ -361,7 +358,6 @@ export function sheetHeader(
   const v = (character.components?.['Vitals'] ?? {}) as Record<string, unknown>;
   const sb = (statblock?.components?.['Statblock'] ?? {}) as Record<string, unknown>;
   const ab = (statblock?.components?.['Abilities'] ?? {}) as Record<string, unknown>;
-  const pr = (statblock?.components?.['Proficiencies'] ?? {}) as Record<string, unknown>;
   /* Das Zauberwirken ist in die Statblock-Karte gemischt (`StatblockCore`
      + `Spellcasting`, Z5): `Statblock.spellSlots`, nicht eine eigene Karte. */
   const sc = sb['spellAbility'] !== undefined || sb['spellSlots'] !== undefined ? sb : undefined;
@@ -391,7 +387,8 @@ export function sheetHeader(
     const s = zahl(ab[a]);
     return s === null ? null : abilityMod(s);
   };
-  const saves = new Set(liste(pr['saves']));
+  /* Rettungswürfe aus allen Quellen, die erste Klasse eingeschlossen (T-239). */
+  const saves = new Set(proficiencyNames(proficienciesOf(character, statblock, byId), 'saves').map((x) => x.toLowerCase()));
   const abilities: SheetAbility[] = SHEET_ABILITIES.map((key) => {
     const score = zahl(ab[key]);
     const mod = modOf(key);

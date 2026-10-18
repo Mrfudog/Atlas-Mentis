@@ -24,6 +24,7 @@ export * from './usage.js';
 export * from './classes.js';
 export * from './choices.js';
 export * from './effects.js';
+export * from './proficiency.js';
 export * from './abilities.js';
 export * from './equipment.js';
 export * from './slots.js';

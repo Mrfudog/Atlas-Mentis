@@ -1,6 +1,6 @@
 import { EnvironmentInjector, Injectable, computed, effect, inject, untracked, type Signal } from '@angular/core';
-import { entityName, handState, inHand, primaryInterface, sheetHeader, linkedTypes, turnActions, turnRows } from '@nw/model';
-import type { Entity, HandState, HeldItem, KnownSpell, Relation, SheetHeader, TurnRow } from '@nw/model';
+import { entityName, handState, hasProficiency, inHand, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, turnActions, turnRows } from '@nw/model';
+import type { Entity, HandState, HeldItem, KnownSpell, ProficiencyList, Relation, SheetHeader, TurnRow } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 
@@ -22,6 +22,8 @@ export interface FigurLage {
   kupfer: Signal<{ beiDir: number | null; gruppe: number | null }>;
   /** „Your turn": jede Aktion mit ihrer Sperre (T-247). */
   zug: Signal<TurnRow[]>;
+  /** Jede Übung mit Herkunft (T-239, `proficienciesOf`). */
+  uebungen: Signal<ProficiencyList>;
 }
 
 /**
@@ -138,10 +140,17 @@ export class FigurDaten {
       if (eig.length) untracked(() => void b.holen(eig));
     }, { injector: this.injector });
 
-    const geuebt = computed(() => {
-      const p = statblock()?.components?.['Proficiencies'] as { proficient?: unknown } | undefined;
-      return new Set((Array.isArray(p?.proficient) ? p.proficient : []).map((x) => String(x).toLowerCase()));
+    /* Geübt ist, was Statblock, Klasse, Hintergrund, Talente und Wahlen
+       zusammen bringen (T-239); was die Rechnung nennt und noch fehlt,
+       wird geholt, und sie rechnet neu. */
+    const uebungen = computed<ProficiencyList>(() => {
+      const e = figur();
+      return e ? proficienciesOf(e, statblock(), b.voll()) : { entries: [], missing: [] };
     });
+    effect(() => {
+      const fehlt = uebungen().missing;
+      if (fehlt.length) untracked(() => void b.holen(fehlt));
+    }, { injector: this.injector });
 
     const gehalten = computed<HeldItem[]>(() => {
       const name = b.name();
@@ -156,10 +165,10 @@ export class FigurDaten {
         /* Der Griff mit beiden Händen (vielseitig) kommt mit T-244; bis
            dahin belegt nur eine zweihändige Waffe beide (`handState`). */
         const slot: HeldItem['slot'] = k.props?.['slot'] === 'offHand' ? 'offHand' : 'mainHand';
-        const p = geuebt();
+        const p = uebungen();
         const proficient = shield
-          ? p.has('shield') || p.has('shields')
-          : !it?.components?.['Weapon'] || p.has(String(weapon['category'] ?? '').toLowerCase()) || p.has(entityName(it).toLowerCase());
+          ? hasProficiency(p, 'shield')
+          : !it?.components?.['Weapon'] || hasProficiency(p, String(weapon['category'] ?? '')) || hasProficiency(p, entityName(it));
         return {
           id: k.to,
           name: it ? entityName(it) : name(k.to) ?? k.to,
@@ -241,6 +250,7 @@ export class FigurDaten {
       haende,
       zauber,
       kupfer,
+      uebungen,
     };
   }
 
