@@ -124,7 +124,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Konto in `/api/me/prefs`, Punkt in der Kopfleiste; T-157), die **Hilfe je Seite**
   (`hilfe/`, das „?“ der Kopfleiste: Texte aus `apps/web/src/help.json` je
   Route und die What's-new-Einträge mit Link auf die Seite; jede Route hat
-  einen Text oder steht unter `without`, T-205) und das Konto mit seinen API-Tokens (`konto/`); die
+  einen Text oder steht unter `without`, T-205) und das Konto mit seinen API-Tokens (`konto/`), dazu als Versuch der
+  **Ansichtsdesigner** (`ansichten/`: Zeichner `baum.ts`, Designer,
+  Ansichtswahl am Artikel; Logik in `packages/model/src/viewScope.ts`,
+  T-268); die
   Oberfläche hält **keinen Bestand** (W7). Licht und Dunkelsicht mit
   `packages/model/src/lighting.ts` (T-216);
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
@@ -354,6 +357,15 @@ wiederkommen, werden sie neu geschrieben.
   ist. **Es gibt keine Spieleransicht:** zurückgehalten wird am Server
   (`redactEntity`), und wer weniger sehen darf, sieht dieselbe Ansicht mit
   weniger darin.
+  **Der Ort wählt die Gruppe, die Geltung die Ansicht darin** (T-268,
+  E-103): eine Ansicht darf eine Gruppe (`group`, ein Ort oder ein eigenes
+  Wort wie `shop`) und eine Geltung (`applies`: Typen, Bedingungen auf
+  Felder und Kanten — auch eingehende —, oder genau ein Artikel) tragen.
+  `viewsFor` rechnet die geltenden, genaueste zuerst (Artikel › Bedingung ›
+  Typ › global); wo eine gebraucht wird, gilt die genaueste, wo gewählt
+  wird (Kachel, Reihe „View" am Artikel), stehen alle. Noch ein Versuch
+  hinter `experiments.viewDesigner`: ohne ihn bieten die Orte gestaltete
+  Ansichten nicht an, und jede Seite zeichnet wie bisher.
 - **Die Anordnung wohnt am Typ** (`InterfaceDef.views`), nicht an der
   Ansicht: eine Kreatur zeigt ihren Bogen, ein Rezept seine Werkbank, ohne
   dass jemand etwas auswählt. Untertypen erben sie (`layoutFor` läuft die
@@ -366,6 +378,13 @@ wiederkommen, werden sie neu geschrieben.
   Schnittmenge aus Ansicht und Artikel; leere Felder (`empty`) und
   Ungenanntes am Ende (`rest`) sagt die Ansicht. Zugeteilt wird einmal
   (`anordnen`), für Artikelseite, Druck und Registervorschau.
+  **Eine gestaltete Ansicht trägt ihre Anordnung selbst** (T-268): einen
+  Baum aus Elementen (`children` an `section`, `columns`, `carousel`,
+  `collapsible`), deren Werte auch über Kanten kommen (`path`,
+  `shopkeeper › Shop › sells › Item`). Sie ist die Ausnahme für das, was
+  keine Art ist (ein Wirt ist eine Kreatur mit Laden); was für alle einer
+  Art gilt, bleibt an der Art. Die Ansichten der Orte überschreibt der
+  Designer nicht — aus ihnen entsteht eine neue.
 - **Ein Typ darf ein geerbtes Feld umbenennen** (`InterfaceDef.titles`,
   `Typ.feld` → Beschriftung, die `extends`-Kette hoch geerbt wie `area`).
   `Time.until` heisst an einem Auftrag „Deadline" und an einem Ereignis

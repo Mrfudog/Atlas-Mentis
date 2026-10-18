@@ -1,6 +1,7 @@
 export * from './types.js';
 export * from './calc.js';
 export * from './views.js';
+export * from './viewScope.js';
 export * from './inline.js';
 export * from './markdown.js';
 export * from './dice.js';
