@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-view-as-header",
+      "date": "2026-10-18",
+      "title": "View as from the header",
+      "text": "GMs and co-GMs find “View as ▾” under the campaign in the header: pick a player, spectator or co-GM and every page shows what they would see, read only. Alt+Shift+V switches back; on a phone it sits in the campaign popup.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "members" }
+    },
+    {
       "id": "2026-10-18-rule-builder-experiment",
       "date": "2026-10-18",
       "title": "Experiment: a rule builder with nodes",

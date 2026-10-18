@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import type { SchreibOption } from '../kern/api';
 import { Stapel } from '../kern/stapel';
 import { KampagnenEbenenListe } from './ebenen';
+import { SichtKnopf } from './sicht-knopf';
 
 /**
  * **Kampagne und Ebenen in der Kopfleiste** (T-143, Wunsch der Leitung
@@ -31,7 +32,7 @@ import { KampagnenEbenenListe } from './ebenen';
  */
 @Component({
   selector: 'nw-stapel',
-  imports: [RouterLink, KampagnenEbenenListe],
+  imports: [RouterLink, KampagnenEbenenListe, SichtKnopf],
   template: `
     @if (stapel.laufend(); as k) {
       @if (!vollbild()) {
@@ -79,6 +80,8 @@ import { KampagnenEbenenListe } from './ebenen';
               }
             </p>
           }
+          <!-- „View as" am Telefon: hier statt in der Leiste (T-269). -->
+          <nw-sicht [liste]="true" />
           @if (fehler(); as f) {
             <p class="fehler" role="alert">{{ f }}</p>
           }

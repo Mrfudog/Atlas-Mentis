@@ -11,8 +11,10 @@ import { ALLE, Filtergruppen } from './kern/filtergruppen';
 import { Suche, tipptGerade } from './kern/suche';
 import { SucheComponent } from './suche/suche';
 import { Stapel } from './kern/stapel';
+import { Bestand } from './kern/bestand';
 import { Rueckweg } from './kern/rueckweg';
 import { StapelKnopf } from './verwaltung/stapel-knopf';
+import { SichtKnopf } from './verwaltung/sicht-knopf';
 import { Neues } from './kern/neues';
 import { Hilfe } from './hilfe/hilfe';
 import { GlossarLeiste } from './glossar/leiste';
@@ -65,7 +67,7 @@ import { Glossar } from './kern/glossar';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf, Hilfe, GlossarLeiste],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf, SichtKnopf, Hilfe, GlossarLeiste],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -90,6 +92,8 @@ import { Glossar } from './kern/glossar';
         <div class="marke-ort">
           <a routerLink="/" class="marke">Atlas Mentis</a>
           <nw-stapel />
+          <!-- „View as" für die Leitung, neben Kampagne und Ebenen (T-269). -->
+          <nw-sicht />
         </div>
         <nav aria-label="Areas" class="bereiche">
           <a routerLink="/play" routerLinkActive="an" ariaCurrentWhenActive="page">Play</a>
@@ -585,6 +589,7 @@ export class App {
   protected readonly menue = signal<string | null>(null);
   /** Die laufende Kampagne in der Leiste (T-143). */
   private readonly stapel = inject(Stapel);
+  private readonly bestand = inject(Bestand);
 
   protected readonly api = inject(Api);
   protected readonly suche = inject(Suche);
@@ -620,9 +625,13 @@ export class App {
     void this.session.load();
     /* Die Gruppen gehören zum Konto und zur Kampagne: neu nach Anmelden,
        Abmelden und jedem Wechsel der Sicht (REQ-241). */
+    let vorher: string | null = null;
     effect(() => {
       const wer = this.session.angemeldet() ? `${this.session.user()?.id}|${this.session.viewAs()?.id ?? ''}` : null;
       untracked(() => {
+        /* Eine andere Sicht sieht andere Artikel (T-269): das Geöffnete neu holen. */
+        if (vorher && wer && vorher !== wer) this.bestand.sichtGewechselt();
+        vorher = wer;
         this.menue.set(null);
         if (wer) void this.gruppen.laden(true);
         else this.gruppen.vergessen();
