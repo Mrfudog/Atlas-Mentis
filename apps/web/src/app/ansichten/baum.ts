@@ -153,7 +153,7 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
                   <tr>
                     <th scope="col">Name</th>
                     @for (p of el.props ?? []; track p) {
-                      <th scope="col">{{ p }}</th>
+                      <th scope="col">{{ propTitel(el, p) }}</th>
                     }
                     @for (w of tr[0]!.werte; track w.ref) {
                       <th scope="col">{{ w.label }}</th>
@@ -373,6 +373,13 @@ export class Ansichtsbaum {
       }
     }
     return raus;
+  }
+
+  /** Die Beschriftung einer Eigenschaft der letzten Kante des Pfads, sonst ihr Schlüssel. */
+  protected propTitel(el: LayoutElement, p: string): string {
+    const letzte = el.path?.[el.path.length - 1];
+    const titel = letzte ? this.reg()?.relations[letzte.relation]?.props?.properties?.[p]?.title : undefined;
+    return titel ?? p;
   }
 
   protected folie(el: LayoutElement): number {
