@@ -88,6 +88,23 @@ describe('ruleOptionsOf', () => {
     const namen = ruleOptionRuleNames();
     for (const o of RULE_OPTIONS) for (const v of o.variants ?? []) expect(namen).toContain(ownRuleName(o, v));
     expect(namen).toContain('Encumbrance');
+    /* Auch die Option als Ganzes — auf sie verweisen Varianten ohne eigenen Artikel. */
+    for (const o of RULE_OPTIONS) expect(namen).toContain(ownRuleName(o));
+  });
+
+  it('findet den Artikel der Option auch, wo sie Varianten hat; ein eigener geht vor', () => {
+    const r = new Map<string, RuleRef>([
+      ['carrying capacity', { id: 'r-cc', name: 'Carrying Capacity' }],
+      ['downtime activity: crafting an item', { id: 'r-craft', name: 'Downtime Activity: Crafting an Item' }],
+      ['player moves', { id: 'r-own', name: 'Player moves' }],
+    ]);
+    const c = { ...ctx(), ruleNamed: (names: readonly string[]) => names.map((n) => r.get(n.toLowerCase())).find(Boolean) };
+    const s = ruleOptionsOf(null, c);
+    expect(option(s, 'inventory').rule?.id).toBe('r-cc');
+    expect(option(s, 'stowing').rule?.id).toBe('r-cc');
+    expect(option(s, 'craftCritFailure').rule?.id).toBe('r-craft');
+    expect(option(s, 'moves').rule?.id).toBe('r-own');
+    expect(option(s, 'doors').rule).toBeUndefined();
   });
 });
 

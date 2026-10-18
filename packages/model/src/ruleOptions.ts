@@ -117,6 +117,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'Feats',
     does: 'Whether a feat may be taken in place of an ability score improvement.',
     source: { field: 'feats' },
+    rules: ['Feats'],
     variants: [
       { key: 'true', label: 'Allowed', does: 'Where a class grants an ability score improvement, a feat may be taken instead.', rules: ['Feats'] },
       { key: 'false', label: 'Not allowed', does: 'Ability score improvements stay improvements; the builder does not offer feats.' },
@@ -129,6 +130,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'Hit points per level',
     does: 'How a level beyond the first adds hit points in the character builder.',
     source: { field: 'hitPoints' },
+    rules: ['Hit Points'],
     variants: [
       { key: 'either', label: 'Roll or average', does: 'Each player chooses per level: roll the hit die or take its average.', rules: ['Hit Points'] },
       { key: 'average', label: 'Average', does: 'Every level adds the average of the hit die; nobody rolls.', rules: ['Hit Points'] },
@@ -148,11 +150,13 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'Inventory rules',
     does: 'How carrying capacity is counted.',
     source: { field: 'inventory' },
+    rules: ['Carrying Capacity', 'Encumbrance'],
     variants: [
       {
         key: 'grid',
         label: "Grid (Basil's sheet)",
         does: 'Items take squares on a carrying grid sized by the creature; the column an item lies in decides how long it takes to draw.',
+        rules: ['Grid Inventory'],
       },
       {
         key: 'weight',
@@ -169,6 +173,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'Unstowed items',
     does: 'How long a newly received item may lie unstowed in front of a character.',
     source: { field: 'stowing' },
+    rules: ['Carrying Capacity'],
     variants: [
       { key: 'anytime', label: 'Any time', does: 'Loot and purchases wait until someone stows them.' },
       { key: 'bySessionEnd', label: 'By the end of the session', does: 'Whatever is still unstowed when the session ends is left behind.' },
@@ -181,6 +186,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: "Basil's sheet: grid, zones and body slots",
     does: 'The grid size per creature size, the draw time per grid column and per body slot, what dropping and stowing cost, and the container templates.',
     source: { settings: ['carrySquares', 'carryZones', 'slotDraw', 'handActions', 'inventoryCols', 'inventoryRows', 'container:*'] },
+    rules: ['Grid Inventory'],
     when: { field: 'inventory', is: ['grid'] },
   },
   {
@@ -205,6 +211,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'On a natural 20',
     does: 'What a natural 20 on a crafting check does.',
     source: { field: 'craftCritSuccess' },
+    rules: ['Downtime Activity: Crafting an Item', 'Downtime Activity: Crafting'],
     variants: [
       { key: 'asSuccess', label: 'A success', does: 'A natural 20 counts like any success.' },
       { key: 'double', label: 'Double progress', does: 'A natural 20 makes twice the progress.' },
@@ -216,6 +223,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'On a natural 1',
     does: 'What a natural 1 on a crafting check does.',
     source: { field: 'craftCritFailure' },
+    rules: ['Downtime Activity: Crafting an Item', 'Downtime Activity: Crafting'],
     variants: [
       { key: 'asFailure', label: 'A failure', does: 'A natural 1 counts like any failure.' },
       { key: 'progressLost', label: 'Progress lost', does: 'A natural 1 loses all progress so far.' },
@@ -228,6 +236,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'Player checks count',
     does: 'Whether a crafting check rolled by a player counts at once or after the GM confirms it.',
     source: { field: 'craftConfirm' },
+    rules: ['Downtime Activity: Crafting an Item', 'Downtime Activity: Crafting'],
     variants: [
       { key: 'gm', label: 'After the GM confirms', does: 'A player’s check waits for the GM.' },
       { key: 'player', label: 'At once', does: 'A player’s check counts as soon as it is rolled.' },
@@ -267,6 +276,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
       {
         key: 'player',
         label: 'Per character',
+        rules: ['Fog of War per Character'],
         does: 'Each character sees what it revealed itself, what its party revealed, and what the GM revealed for everyone. The GM sees all of it, or picks a character.',
       },
     ],
@@ -363,7 +373,9 @@ export function ruleOptionRuleNames(): string[] {
   const raus = new Set<string>();
   for (const o of RULE_OPTIONS) {
     for (const n of o.rules ?? []) raus.add(n);
-    if (!o.variants) raus.add(ownRuleName(o));
+    /* Auch Optionen mit Varianten haben einen Artikel als Ganzes — auf ihn
+       verweisen die Varianten, die keinen eigenen haben. */
+    raus.add(ownRuleName(o));
     for (const v of o.variants ?? []) {
       for (const n of v.rules ?? []) raus.add(n);
       raus.add(ownRuleName(o, v));
@@ -507,7 +519,8 @@ export function ruleOptionsOf(campaign: Entity | null | undefined, ctx: RuleOpti
         scope: 'settings' in o.source ? 'installation' : 'campaign',
         ownName: ownRuleName(o),
       };
-      const rule = ctx.ruleNamed([...(o.rules ?? []), ...(o.variants ? [] : [ownRuleName(o)])]);
+      /* Der eigene Artikel zur Option geht vor: wer ihn schreibt, meint diese Tischregel. */
+      const rule = ctx.ruleNamed([ownRuleName(o), ...(o.rules ?? [])]);
       if (rule) raus.rule = rule;
       const src = o.source;
       if ('field' in src) {
