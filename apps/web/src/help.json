@@ -322,13 +322,21 @@
           "text": [
             "A rule is a chain of nodes: a trigger (a creature is hit, picks up an object …), conditions with a yes and a no exit, and outcomes such as offering a reaction. Add nodes with Trigger, Condition and Outcome; drag a node to move it.",
             "Drag from a dot on a node’s right edge onto another node to connect them, or pick “Connect to” beside the canvas. Conditions compare numbers (distance, self.hp, self.reactionFree …), check whether a creature knows something by name, or whether two roles are the same creature.",
-            "Save keeps your rules in your account. Add examples brings back the two sample rules."
+            "Save keeps your rules in your account. Add examples brings back the sample rules you deleted."
+          ]
+        },
+        {
+          "heading": "Rules by engine",
+          "text": [
+            "The list on the left groups the rules by engine — reactions, turn and actions, hands, hit points, spellcasting, movement. Search by name or node text, or narrow it to one engine, one trigger or active rules only. Each rule names its engine above the canvas.",
+            "On a phone, swipe on the empty canvas to scroll it; a node or dot takes the swipe for itself. − and + zoom, Fit shrinks the rule to the width of the screen."
           ]
         },
         {
           "heading": "Trying it",
           "text": [
-            "Try it holds made-up creatures. Pick an event, who acts and against whom, and Run: the page lists what fires and colours the path through the rule. Nothing is saved and nothing changes at the table."
+            "Try it holds made-up creatures. Pick an event, who acts and against whom, and Run: the page lists what fires and colours the path through the rule. Nothing is saved and nothing changes at the table.",
+            "Amount is the number of the event — damage taken, spell level — and conditions read it as amount. More values gives a creature further numbers such as maxHp=20 or slots1=2. Tap a result to open its rule with the path."
           ]
         }
       ]

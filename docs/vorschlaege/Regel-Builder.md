@@ -40,6 +40,36 @@ und Verwaltung sehen den Abschnitt). Der Schalter gilt je Konto.
 
 <img src="bilder/regel-builder-390.jpg" alt="Dieselbe Seite bei 390 px" width="260">
 
+## Nachtrag 18.10. abends: Engines, Filter, mehr Regeln, Telefon
+
+Auf Wunsch der Leitung nach dem ersten Blick auf dev:
+
+- **Übersicht nach Engine** (links, auf dem Telefon oben): Reactions,
+  Turn & actions, Hands & blocking, Hit points & damage, Spellcasting,
+  Movement & reach, Other — mit Suche (Name und Knotentext) und Filtern nach
+  Engine, Auslöser und „Active only“. Die Engine steht an der Regel
+  (`RuleGraph.engine`) und lässt sich im Kopf der Regel ändern.
+- **Zwölf Beispielregeln** mit 5–9 Knoten und Ja-/Nein-Zweigen: Hellish
+  Rebuke, Snatch Punisher, Sentinel, Uncanny Dodge (Reactions), Shield,
+  Counterspell (Spellcasting; der Zaubergrad wählt den Zweig), Concentration
+  check, Dropping to 0 hit points, Regeneration (Hit points), Somatic
+  components need a free hand (Hands), Start of turn (Turn), Opportunity
+  attack (Movement). Neue Beispiele kommen in bestehende Konten dazu; wer eins
+  löscht, bekommt es nur über „Add examples“ zurück (`labRulesDropped`).
+- **Probelauf**: `amount` für Schaden oder Zaubergrad, „More values“ je
+  Kreatur (`maxHp=20, slots1=2`), vier Beispielkreaturen; ein Treffer in
+  „What fires“ öffnet seine Regel mit dem Weg.
+- **Telefon**: Chrome beachtet `touch-action` an SVG-Kindern nicht, darum
+  nahm die Leinwand jede Geste und liess sich nicht schieben. Jetzt
+  verschiebt Ziehen auf freiem Grund die Fläche selbst (senkrecht Übriges
+  scrollt die Seite), Ziehen auf einem Knoten zieht ihn. Zoom −/+ und „Fit“;
+  beim Wählen einer Regel wird bis 60 % eingepasst. Geprüft mit echten
+  Touch-Ereignissen (CDP) bei 390 px.
+
+![Übersicht nach Engine, Counterspell mit Weg für Kreatur C](bilder/regel-builder-engines.jpg)
+
+<img src="bilder/regel-builder-engines-390.jpg" alt="Telefon: Fläche verschoben, 60 %" width="260">
+
 ## Wie es gebaut ist
 
 | Teil | Wo | Bemerkung |
