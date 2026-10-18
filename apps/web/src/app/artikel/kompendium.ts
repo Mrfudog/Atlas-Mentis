@@ -359,6 +359,10 @@ const OFFEN = 8;
                     <td class="dim quelle">
                       @if (z.source) {
                         <nw-quelle [text]="z.source" />
+                        <!-- Die Ebene knapp, wenn es nicht die der Kampagne ist (T-251). -->
+                        @if (fremdeEbenen(z.layers); as l) {
+                          <small class="ebene"> · {{ l }}</small>
+                        }
                       } @else {
                         {{ z.layers.join(', ') }}
                       }
@@ -470,6 +474,15 @@ export class Kompendium {
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
   protected readonly filter = inject(ListenFilter);
+  /**
+   * Die Ebenen einer Zeile ohne die der Kampagne (T-251, REQ-348): steht
+   * dort nur sie, sagt die Zeile nichts dazu — das ist der Normalfall.
+   */
+  protected fremdeEbenen(layers: readonly string[]): string {
+    const k = this.stapel.laufend()?.campaignLayer?.name;
+    return layers.filter((l) => l !== k).join(', ');
+  }
+
   /** Der globale Ebenenstand (T-143) — die Liste folgt ihm, der Hinweis führt hin (T-186). */
   protected readonly stapel = inject(Stapel);
   protected readonly gruppen = inject(Filtergruppen);

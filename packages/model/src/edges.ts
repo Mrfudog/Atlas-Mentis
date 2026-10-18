@@ -469,13 +469,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'display',
     label: 'Where it is from',
     area: 'display',
-    does: 'shows where an article comes from — its layer, its template, what it is part of — in lists and on the page',
+    does: 'shows where an article comes from — its layer, its template, what it is part of — in lists, in the quick view and on the page, where the layer stands under the title with the layers of its other versions (T-251)',
     uses: {
       [M + 'summary.ts']: ['inLayer', 'instanceOf', 'partOf'],
       [S + 'liste.ts']: ['inLayer'],
       /* Die Facetten lassen die Ebenenkante aus — dafür steht „Where from“ (T-174). */
       [M + 'facets.ts']: ['inLayer'],
       [W + 'artikel/artikel.ts']: ['inLayer'],
+      /* Die Ebene im Kopf jeder Artikelseite und in der Kurzansicht (T-251). */
+      [W + 'artikel/ebenen-marke.ts']: ['inLayer'],
+      [W + 'artikel/vorschau.ts']: ['inLayer'],
       /* Der Druck lässt die Ebene aus der Kantenliste — sie steht im Kopf (T-110). */
       [W + 'artikel/blatt.ts']: ['inLayer'],
       /* Schnell anlegen schlägt die Ebene des Ausgangsartikels vor (T-131). */
