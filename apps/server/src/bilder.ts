@@ -39,7 +39,7 @@ export interface BilderDeps {
   anlegen: (
     request: FastifyRequest,
     body: { type: string; name: string; fields: Record<string, unknown>; relations: { type: string; to: string }[] },
-    optionen: { fuer?: string; zurueck?: boolean },
+    optionen: { fuer?: string; zurueck?: boolean; ohneVorgabe?: string[] },
   ) => Promise<{ code: number; body: unknown }>;
   /** Schreiben mit den Regeln von `PUT /api/entities/:id` (T-119: „Quelle ersetzen"). */
   schreiben: (request: FastifyRequest, entity: Entity) => Promise<{ code: number; body: unknown } | { konflikt: number | null }>;
@@ -240,10 +240,20 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
       dateiname.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() ||
       (fuer ? `${fuer.name ?? 'Image'} (image)` : 'Image');
 
+    /* **Sagt der Artikel keine Stufe, sagt sein Bild auch keine** (T-211,
+       T-252): sonst stünde am Bild die Vorgabe `public` als eigenes Feld,
+       und das schlägt jede Regel der Kampagne und die Vorgabe der Ebene —
+       das Bild eines Statblocks, den eine Regel den Spielenden verbirgt,
+       wäre für sie sichtbar. */
+    const quelle = von ? stand.map.get(von.id) : fuer;
+    const folgt = !!quelle && typeof (quelle.components?.['Visibility'] as { audience?: unknown } | undefined)?.audience !== 'string';
     const r = await anlegen(
       request,
       { type: ASSET_TYPE, name, fields, relations },
-      fuerId ? { fuer: fuerId, zurueck: true } : von ? { zurueck: true } : {},
+      {
+        ...(fuerId ? { fuer: fuerId, zurueck: true } : von ? { zurueck: true } : {}),
+        ...(folgt ? { ohneVorgabe: ['Visibility.audience'] } : {}),
+      },
     );
     if (r.code !== 201) {
       await frei(bild.ref);
