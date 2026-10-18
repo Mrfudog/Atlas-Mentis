@@ -716,7 +716,10 @@ Name (`--replace-layer="Monster Manual"`), ohne ihn bricht der Lauf ab
 und zählt die Ebenen auf. Gelöscht wird nur, was die Ebene
 der Datei bringt — `inLayer` auf sie und auf keine andere — und in der
 Datei fehlt. Eigene Artikel ohne Ebene oder in einer Kampagnenebene
-bleiben, auch einer, der zusätzlich in der 5e-Ebene steht. Der Lauf sagt:
+bleiben, auch einer, der zusätzlich in der 5e-Ebene steht. **Auch was hier
+in einer Buchebene angelegt wurde, bleibt** (T-270) — Glossarbegriffe zu
+den Regeln eines Buchs etwa: gelöscht wird nur, was dasselbe Id-Präfix
+trägt wie die Datei (`e5_`), und hier Angelegtes heisst `e_…`. Der Lauf sagt:
 
 - wie viele Artikel geschrieben und gelöscht wurden, die gelöschten je Art
   (`3 gelöscht (Spell 2, Statblock 1)`);
