@@ -259,9 +259,9 @@ Jeder Schritt ist für sich nutzbar.
 1. **Ereignisquelle und Vorschläge im Zugplan** (Laufzeit). Erst die Reaktionen
    aus C, die nicht doppelt sind: Hellish Rebuke, Snatch Punisher, Uncanny
    Dodge, Shield, Counterspell.
-2. **„Wer führt“ entscheiden** für OA, Reaktion zurück und 0 TP. Vorschlag: der
-   Code führt die Rechnung, der Graph darf nur anbieten. Das ist eine
-   Arbeitsweise, also **entscheidet die Verwaltung** (neue E-nnn).
+2. **Der Graph führt** bei OA, Reaktion zurück und 0 TP (entschieden 19.10.,
+   zuerst als Versuch): ist der Graph der Kampagne an, bietet nur er an, sonst
+   der Code wie bisher.
 3. **Bausteine für Sentinel**: `usesAction`, `attackKind`, `canSee`,
    `sameSide`, Dauer an Folgen. Danach Sentinel 2014 und 2024 als je ein
    Artikel in PHB und XPHB, mit dem Vergleich daneben.
@@ -275,7 +275,5 @@ Jeder Schritt ist für sich nutzbar.
 
 ## Offene Entscheidungen
 
-- **Wer führt bei Doppeltem** (Schritt 2). Neue E-nnn.
 - **Die doppelte Reiseregel** zusammenlegen (A). Löscht einen Artikel.
-- **Story:** Für die Regeln als Graphen am Tisch gibt es noch keine REQ.
-  Nach T-154 kommt sie vor den Aufgaben.
+- **Story:** REQ-357 Regelgraphen wirken am Tisch (`VTT/Stories/REQ-357.md`).
