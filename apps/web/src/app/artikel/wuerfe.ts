@@ -22,7 +22,7 @@ import { WurfZiel } from '../kern/wurfziel';
   template: `
     <details class="log" (toggle)="offen.set($any($event.target).open)">
       <summary>
-        <h2>Rolls</h2>
+        <h2>Log</h2>
         @if (log(); as l) {
           <span class="zahl">{{ l.total }}</span>
         }

@@ -221,6 +221,12 @@ const APP: AppTerm[] = [
     translations: { de: 'Schreibebene' },
   },
   {
+    term: 'Roll log',
+    sort: 'app',
+    definition: 'The block “Log” on an article: every roll made on it, newest first — on a creature with the rolls on its statblock, on a session every roll made during it.',
+    translations: { de: 'Würfelprotokoll' },
+  },
+  {
     term: 'Adapted version',
     aliases: ['Version'],
     sort: 'app',

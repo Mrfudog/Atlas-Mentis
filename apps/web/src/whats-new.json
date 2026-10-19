@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-character-locks",
+      "date": "2026-10-19",
+      "title": "No double picks in the character assistant",
+      "text": "Skills, tools, languages and feats you already have from an earlier step are locked in later choices and show where they come from; a later choice that doubles one is marked. The assistant shows the character's layer, and the rolls block on an article is now called Log.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
       "id": "2026-10-19-carry-blocks",
       "date": "2026-10-19",
       "title": "Carry sheet from blocks with real zones",
