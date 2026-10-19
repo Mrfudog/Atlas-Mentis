@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-creature-image-from-statblock",
+      "date": "2026-10-19",
+      "title": "Creatures show their statblock’s image",
+      "text": "A creature without an image of its own now shows the image of its statblock — or its token —, also from a template, in lists, cards and on its page. Statblocks and parties show their image on their page too, and lists with images load faster on the second visit because the browser may keep them.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
       "id": "2026-10-19-one-view-editor",
       "date": "2026-10-19",
       "title": "One editor for every view",

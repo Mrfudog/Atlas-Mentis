@@ -77,7 +77,7 @@ import { Bild, BildWahl } from '../artikel/bild';
           <li [style.--tiefe]="z.zeile.depth" [class.pfad]="!z.treffer">
             <a class="vorschau" [routerLink]="['/play']" [queryParams]="{ map: z.zeile.id }" [attr.aria-label]="'Open ' + z.zeile.name + ' in Play'">
               @if (z.zeile.image) {
-                <nw-bild [wert]="z.zeile.image" groesse="thumb" [oeffnen]="false" [alt]="z.zeile.name" />
+                <nw-bild [wert]="z.zeile.image" [version]="z.zeile.imageVersion" groesse="thumb" [oeffnen]="false" [alt]="z.zeile.name" />
               } @else {
                 <span class="ohne">no image</span>
               }

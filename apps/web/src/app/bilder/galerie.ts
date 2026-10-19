@@ -162,7 +162,7 @@ const BLATT = 60;
                   <input class="waehler" type="checkbox" [checked]="auswahl().includes(z.id)" (change)="umschalten(auswahl, z.id)" [attr.aria-label]="'Select ' + z.name" />
                 }
                 <a [routerLink]="['/artikel', z.id]" [nwQuick]="z.id" class="bildlink">
-                  <nw-bild [wert]="z.id" groesse="thumb" [oeffnen]="false" [alt]="z.name" />
+                  <nw-bild [wert]="z.id" [version]="z.imageVersion" groesse="thumb" [oeffnen]="false" [alt]="z.name" />
                   <span class="name">{{ z.name }}</span>
                 </a>
                 @if (beschreibung(z); as d) {
