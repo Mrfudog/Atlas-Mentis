@@ -267,6 +267,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Vorlage und Instanz' },
   },
   {
+    term: 'Map in play',
+    aliases: ['Released', 'Release to players', 'Take into play', 'Played'],
+    sort: 'app',
+    definition: 'The instance of a map (or encounter) that a session uses: tokens, fog and the fight live there, while the map itself stays as prepared. Players see a map in play only once the GM releases it.',
+    effect: 'Each session gets its own; the template lists them under Played, so a past table can be looked at again.',
+    translations: { de: 'Karte im Spiel' },
+  },
+  {
     term: 'Status',
     aliases: ['Idea', 'Prepared', 'Ready'],
     sort: 'app',

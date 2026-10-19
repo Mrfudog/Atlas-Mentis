@@ -106,6 +106,14 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /* Eine Stufe von 1 bis 20, die Begegnung und Szene teilen. */
+  /** Wann und wo eine Karte oder Begegnung gespielt wurde (T-289) — nur an der Instanz gefüllt. */
+  Played: {
+    name: 'Played',
+    label: 'Played',
+    abstract: true,
+    schema: g.Played.schema,
+  },
+
   Difficulty: {
     name: 'Difficulty',
     label: 'Difficulty',
@@ -1135,7 +1143,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Map',
     area: 'play',
     label: 'Map',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud', 'Played'],
     schema: merge(g.MapInfo),
     /* Das Kartenbild wählt aus Kartenbildern (T-119): `Image.image` bietet
        sonst allgemeine Bilder an. */
@@ -1307,7 +1315,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Encounter',
     area: 'play',
     label: 'Encounter',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets', 'Difficulty'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets', 'Difficulty', 'Played'],
     schema: merge(g.EncounterInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */

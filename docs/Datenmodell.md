@@ -792,14 +792,26 @@ beides zusammen (`resolveInstance`), Feld für Feld.
 | V2 | **Kanten nach Art:** die Aktionen der Vorlage (`composedOf`) kommen mit, solange die Instanz keine eigenen hat; eine geänderte Liste gehört ganz ihr. |
 | V3 | **Nicht vererbt:** `Identity`, `Visibility` und die Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`, `overrides`, `variantOf`) — dazu, was ein **Stück** trägt (`carries`, `PIECE_RELATIONS`, T-150): zwei Rucksäcke aus einer Vorlage haben nicht denselben Inhalt. Anders als `inLayer` ist `carries` eine Abweichung: ein Behälter mit eigenem Inhalt folgt der Vorlage nicht mehr (`followsTemplate`) und bildet keinen Stapel. |
 | V4 | **Eine Vorlage darf selbst Instanz sein**; gelesen wird die Kette hoch, ein Kreis bricht ab. |
-| V5 | **Instanzen stehen an ihrer Kreatur oder in ihrem Inventar und sonst nirgends** — nicht in Listen, nicht als Verweisziel. |
+| V5 | **Instanzen stehen an ihrer Kreatur oder in ihrem Inventar und sonst nirgends** — nicht in Listen, nicht als Verweisziel. Ausnahme V8. |
 | V6 | **Löschen nimmt nichts weg:** geht die Vorlage, bekommen die Instanzen vorher, was sie lasen (`detachInstance`); geht die Kreatur, geht ihre Instanz mit. |
 | V7 | Am Server kommt eine Instanz aufgelöst an, mit `fromTemplate` (Vorlage, geerbte Felder) — nur gelesen, nie gespeichert. |
+| V8 | **Eine Karte oder Begegnung im Spiel ist eine Instanz** (T-289, E-039): Tokens, Nebel (`Map.reveal`), Freigabe (`Map.released`) und Kampfstand stehen an ihr, wann und wo an `Played`. **Sie steht in genau einer Liste: „Played" an ihrer Vorlage** (`playedOf`) — ein gespielter Stand ist etwas, das man wiederfinden will, und zwar dort, wo man nach der Karte sucht; in Kompendium, Kartenliste und Suche steht sie nicht. Für Spielende ist eine Karteninstanz bis zur Freigabe nicht vorhanden (`heldBackMap` in `articleVisible`). |
 
 Welche Arten Vorlagen haben dürfen, sagt die Kante (`instanceOf.from`/`to`),
-heute `Statblock` und `Item` (M4: das +1-Langschwert am Tisch ist eine
-Instanz des Langschwerts), und `to: same` hält die Instanz in der Art ihrer
-Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
+heute `Statblock`, `Item` (M4: das +1-Langschwert am Tisch ist eine
+Instanz des Langschwerts), `CraftingOrder`, `Map` und `Encounter` (T-289),
+und `to: same` hält die Instanz in der Art ihrer Vorlage. Ein eigener Typ
+dafür wäre derselbe Typ ein zweites Mal.
+
+**Eine Karte oder Begegnung im Spiel** (T-289, `playinstance.ts`):
+`newPlayInstance` legt sie beim Nutzen an — wie ein Stück, dazu `Played`
+(`playedAt`, `playedIn` → Sitzung), die Sichtbarkeit der Vorlage und an
+einer Karte `Map: {fog: true, reveal: [], released: false}`; eine
+Begegnungsinstanz zeigt mit `onMap` auf die Karteninstanz. Die Tischrouten
+lesen sie aufgelöst (`resolvePlay`), geschrieben wird ausgedünnt wie jede
+Instanz. Die Marker der Vorlage liest sie, bis sie eigene hat (V2: Kanten
+je Art) — dann stehen alle an ihr. Siehe [Karten.md › Karten und
+Begegnungen im Spiel](Karten.md#karten-und-begegnungen-im-spiel-t-289).
 
 **Was eine Figur in die Hand bekommt, entsteht als Instanz** (T-150, zuerst
 beim Kauf, T-133): `newInstance` legt den Artikel an — `instanceOf` auf den
@@ -2078,7 +2090,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-19: 60 Artikelarten, 25 Grundtypen, 69 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-19: 60 Artikelarten, 26 Grundtypen, 69 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2095,6 +2107,7 @@ Stand 2026-10-19: 60 Artikelarten, 25 Grundtypen, 69 Kantenarten, 8 Aufzählungs
 | `Image` | `image` `caption` `alt` | 15 |
 | `Lore` | `lore` | 17 |
 | `Notes` | `note` | 26 |
+| `Played` | `playedAt` `playedIn` | `Map` `Encounter` |
 | `Proficiencies` | `proficient` `expertise` `saves` | 5 |
 | `Prose` | `paragraph` | 26 |
 | `ReadAloud` | `readaloud` | 7 |
@@ -2186,8 +2199,8 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
-| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` | — | overview, full |
-| `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
+| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | overview, full |
+| `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | full |
 
 **Ohne Bereich**
 
@@ -2237,7 +2250,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `includes` | Knowledge → Information |  | — | — |
 | `inLayer` | * → Layer |  | — | `mode` `addedAt` |
 | `insideMap` | Map → Map | ja | — | `x` `y` `w` `h` |
-| `instanceOf` | Statblock \| Item \| CraftingOrder → same | ja | — | — |
+| `instanceOf` | Statblock \| Item \| CraftingOrder \| Map \| Encounter → same | ja | — | — |
 | `involves` | Event → * |  | — | — |
 | `inWorld` | Campaign → World | ja | — | — |
 | `knowledge` | * → Information |  | owned | — |

@@ -1483,10 +1483,12 @@ export const relations: Record<string, RelationDef> = {
     type: 'instanceOf',
     label: 'instance of',
     inverseLabel: 'instances',
-    means: 'A statblock, item or crafting order is an instance of a template and stores only what differs; the template lists its instances.',
+    means: 'A statblock, item, crafting order, map or encounter is an instance of a template and stores only what differs; the template lists its instances.',
     /* Ein Fertigungsauftrag ist eine Instanz seines Rezepts (T-128) —
-       `same` nimmt die Obertypen mit: ein Auftrag *ist* ein Rezept. */
-    from: ['Statblock', 'Item', 'CraftingOrder'],
+       `same` nimmt die Obertypen mit: ein Auftrag *ist* ein Rezept. Eine
+       Karte oder Begegnung im Spiel ist eine Instanz ihrer Vorlage (T-289):
+       Tokens, Nebel und Kampfstand je Runde, die Vorlage bleibt unberührt. */
+    from: ['Statblock', 'Item', 'CraftingOrder', 'Map', 'Encounter'],
     to: ['same'],
     cardinality: 'one',
   },

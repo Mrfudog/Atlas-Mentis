@@ -1852,7 +1852,8 @@ Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
 - **Instanzen stehen an ihrer Kreatur und sonst nirgends** — nicht in
   Listen, nicht im Kompendium, nicht als Verweisziel. Dreissig Wachen wären
   sonst dreissig „Wache"-Statblocks im Regelwerk. Die Vorlage sagt
-  „template of 30", die Instanz „instance of Wache".
+  „template of 30", die Instanz „instance of Wache". Die eine Ausnahme ist
+  die Karte im Spiel (unten): sie steht unter „Played" an ihrer Vorlage.
 - **Löschen nimmt nichts weg.** Geht die Vorlage, bekommen ihre Instanzen
   vorher, was sie von ihr lasen. Geht die Kreatur, geht ihre Instanz mit;
   ein eigener Statblock ohne Vorlage bleibt stehen, nur seine Kante geht.
@@ -1860,6 +1861,22 @@ Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
   die Felder, die von dort kommen) — nur gelesen, nie gespeichert.
 
 Ein Statblock gehört damit **einer** Kreatur (`belongsTo` ist wieder `one`).
+
+**Eine Karte am Tisch ist eine Instanz** (T-289, E-039, E-041). Dieselbe
+Gruft wird in zwei Runden gespielt; lägen Tokens und Nebel an der Karte
+selbst, sähe die zweite Runde die Goblins der ersten, und was die erste
+aufgedeckt hat, wäre für die zweite schon offen. Also nimmt „Take into
+play" eine Instanz: die Vorlage bleibt die Vorbereitung (Bild, Gitter,
+Wände, Marker), die Instanz ist der Abend (Nebel, Spiel-Tokens, die
+Freigabe für Spielende), und eine Begegnung im Spiel liegt auf der Instanz
+und nicht auf der Vorlage. **Freigegeben** heisst: erst dann ist die Karte
+für Spielende überhaupt da — vorher nicht einmal als Name, denn eine Karte,
+die man nicht sehen darf, aber in der Liste steht, verrät schon, wohin der
+Abend geht. Und hier steht eine Instanz **doch in einer Liste**: an ihrer
+Vorlage unter „Played". Eine Wache ist ein Stück einer Vorlage und sonst
+nichts; ein gespielter Abend ist ein Stand, zu dem man zurück will („wie sah
+die Gruft aus, als sie flohen?") — gesucht wird er an der Karte, und nur
+dort steht er.
 
 **Ein Stück im Inventar ist eine Instanz** (T-150). Was eine Figur in die
 Hand bekommt — gekauft, erbeutet, gefertigt, geschenkt —, ist nicht der

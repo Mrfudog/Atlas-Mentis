@@ -36,6 +36,7 @@
 import type { Entity, EntityId } from './types.js';
 import { knowledgeHolders } from './knowledge.js';
 import { mostSpecific, type Dimension } from './transformkeys.js';
+import { heldBackMap } from './playinstance.js';
 
 /** Die Art, deren Karte die Sichtbarkeit trägt. */
 export const VISIBILITY_COMPONENT = 'Visibility';
@@ -411,6 +412,10 @@ export function articleVisible(
      einen Artikel angelegt hat oder schreiben darf, verliert ihn nicht aus
      den Augen, nur weil die Leitung ihn noch nicht fertig nennt. */
   if (enthaelt(v.own, article.id)) return true;
+  /* **Eine Karte im Spiel ist nicht vorhanden, bis sie freigegeben ist**
+     (T-289, E-041): Spielende bekommen sie weder in einer Liste noch über
+     die Id noch im Live-Kanal. Die Leitung der Kampagne sieht sie immer. */
+  if (heldBackMap(article) && !seesUnfinished(entities, article, v)) return false;
   /* **Unfertiges sieht nur die Leitung** (REQ-237, E-011). Wer nicht `gm`
      oder `co-gm` der Kampagne ist, der der Artikel gehört, bekommt nur,
      was `ready` ist. Das ist die grobe Frage: ein Entwurf stünde sonst mit
