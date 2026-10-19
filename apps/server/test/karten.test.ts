@@ -308,16 +308,23 @@ describe('starting an encounter (T-203)', () => {
     expect((await start('Sela')).statusCode).toBe(403);
     const res = await start('Mira');
     expect(res.statusCode, res.body).toBe(200);
-    expect(res.json()).toMatchObject({ encounter: 'enc_neu', revealed: 1, session: 's_1' });
-    const enc = (await repo.getEntity('enc_neu'))!;
+    /* Begonnen wird eine Instanz (T-289): auf einer Instanz der Karte, und die Sitzung zeigt auf beide. */
+    const { encounter: id } = res.json() as { encounter: string };
+    expect(res.json()).toMatchObject({ revealed: 1, session: 's_1' });
+    expect(id).not.toBe('enc_neu');
+    const enc = (await repo.getEntity(id))!;
     expect(enc.components['Encounter']).toMatchObject({ phase: 'running', round: 1, turn: 0 });
     const inits = (enc.relations ?? []).filter((r) => r.type === 'participates').map((r) => (r.props as { init?: number }).init);
     expect(inits[1]).toBe(15);
     expect(inits[0]).toBeGreaterThanOrEqual(1);
-    const karte = (await repo.getEntity('gruft'))!;
-    expect((karte.relations ?? []).find((r) => r.id === 'v1')!.props).toEqual({ x: 0.6, y: 0.6, kind: 'play' });
+    expect((await repo.getEntity('enc_neu'))!.components['Encounter']).toMatchObject({ round: 0 });
+    const karteId = (enc.relations ?? []).find((r) => r.type === 'onMap')!.to;
+    expect(karteId).not.toBe('gruft');
+    const karte = (await repo.getEntity(karteId))!;
+    expect((karte.relations ?? []).find((r) => r.id.startsWith('v1'))!.props).toEqual({ x: 0.6, y: 0.6, kind: 'play' });
     const sitzung = (await repo.getEntity('s_1'))!;
-    expect((sitzung.components['Session'] ?? sitzung.components['SessionState']) as object).toMatchObject({ activeEncounter: 'enc_neu' });
+    expect((sitzung.components['Session'] ?? sitzung.components['SessionState']) as object).toMatchObject({ activeEncounter: id, activeMap: karteId });
+    /* Noch einmal: dieselbe Instanz der Sitzung, und die läuft schon. */
     expect((await start('Mira')).statusCode).toBe(409);
   });
 });

@@ -443,9 +443,10 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   gehen nicht an Spielende, ausser dem Gruppen-Token und den Figuren der
   Gruppe — wer im Dunkeln steht, steht trotzdem auf der Karte. Rahmen von
   Unterkarten nur, wenn ihre Mitte oder eine Ecke aufgedeckt ist. **Das
-  Bild selbst** geht ganz hinaus und wird im Browser zugedeckt; ob der
-  Server es beschneiden soll, ist E-041. Was wirklich geheim ist, gehört
-  auf ein Blatt `gmOnly` — das geht nicht hinaus.
+  Bild selbst** geht noch ganz hinaus und wird im Browser zugedeckt; dass
+  der Server es Spielenden beschnitten liefert, bis alles aufgedeckt ist,
+  ist entschieden (E-041) und eine eigene Aufgabe nach T-289. Was wirklich
+  geheim ist, gehört auf ein Blatt `gmOnly` — das geht nicht hinaus.
 - **Die Leitung sieht halb hindurch.** Mit *Player view* sieht sie die
   Karte, wie Spielende sie bekommen: Nebel deckend, ohne Blätter der
   Leitung, ohne versteckte Marker — dieselbe Rechnung (`redactMap`), im
@@ -458,8 +459,8 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   setzt *Place combatants* jeden Teilnehmer ohne Token als Marker
   `kind: play` in die Mitte des Ausschnitts, ein Feld auseinander; die
   Leitung zieht sie an ihren Platz. *Clear play tokens* räumt nach dem
-  Kampf auf — Vorbereitetes und die Gruppe bleiben. Wie lange ein
-  Spiel-Token lebt (Sitzung, Kampagne, Begegnung), ist E-039.
+  Kampf auf — Vorbereitetes und die Gruppe bleiben. Seit T-289 stehen
+  Spiel-Tokens an der **Karte im Spiel** (unten), also je Runde.
 - **Live:** ein Zug ist eine Änderung der Karte und geht über den
   Live-Kanal an jedes Gerät, gesiebt je Empfänger.
 - **Wer dran ist** (REQ-144): ein goldener Ring um das Token des
@@ -475,6 +476,51 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   `redactEntity`); die Maske entscheidet das nicht.
 - **Spielende ziehen die eigene Figur** noch nicht — wer es erlaubt und
   wo das steht, ist E-040.
+
+## Karten und Begegnungen im Spiel (T-289)
+
+Entschieden 19.10. (E-039, E-041): **wer eine Karte oder Begegnung nutzt,
+nutzt eine Instanz davon** — wie eine Wache aus einem Statblock
+(Datenmodell §7). Die Vorlage bleibt die Vorbereitung; was am Tisch
+geschieht, steht an der Instanz.
+
+```mermaid
+flowchart LR
+  V["Karte (Vorlage)<br/>Bild, Gitter, Sperren, Marker"] -- instanceOf --- I1["Instanz · Abend 1<br/>Nebel, Spiel-Tokens, released"]
+  V -- instanceOf --- I2["Instanz · Abend 2"]
+  B["Begegnung (Vorlage)"] -- instanceOf --- BI["Instanz · Abend 1<br/>Runde, Initiative"]
+  BI -- onMap --> I1
+  S["Sitzung Abend 1"] -. activeMap / activeEncounter .-> I1
+  S -.-> BI
+```
+
+- **Take into play** (Play, die Leitung, `POST /api/play/take`): die Karte
+  wird eine Instanz der Sitzung — in der Ebene der Kampagne, Nebel an,
+  nichts aufgedeckt, **nicht freigegeben**; die Sitzung zeigt auf sie
+  (`activeMap`). Dieselbe Karte noch einmal in derselben Sitzung setzt
+  den Stand fort (`sessionInstance`); eine andere Sitzung bekommt eine
+  eigene. **Start encounter** an einer Vorlage tut dasselbe für die
+  Begegnung: ihre Instanz liegt mit `onMap` auf der Instanz der Karte,
+  die vorplatzierten Tokens der Vorlage werden Spiel-Tokens der
+  Karteninstanz, und die Vorlage bleibt bei Runde 0.
+- **Freigabe** (`Map.released`, Knopf *Release to players*): bis dahin ist
+  die Instanz für Spielende **nicht vorhanden** — nicht in Listen, nicht
+  über die Id, nicht im Live-Kanal, nicht unter Play (`heldBackMap`, in
+  `articleVisible`). Danach sehen sie sie sofort mit Nebel.
+- **Nebel je Instanz:** `Map.reveal` und `Map.fog` stehen an der Instanz;
+  der Nebel der Vorlage gilt ihr nicht. Spiel-Tokens sind Marker der
+  Instanz — die zweite Runde sieht die der ersten nicht (E-109: vorerst
+  Marker und nicht `participates.props.x/y`).
+- **Played** an der Vorlage (Artikelseite der Karte): die gespielten
+  Stände mit Datum, Sitzung und Begegnung, ein Klick öffnet den Stand
+  (die Instanz, mit Nebel; die Leitung sieht beides). Das ist die
+  bewusste Ausnahme von „Instanzen stehen in keiner Liste" (Datenmodell
+  V8). Gelesen über `GET /api/maps/:id/played`, gesiebt.
+- **Bestand** (Migration 106): je Karte mit Spiel-Tokens oder auf dem
+  Tisch einer Sitzung eine Instanz `mi_<karte>`, freigegeben; Tokens und
+  Aufgedecktes wandern hin, die Sitzung zeigt auf sie.
+- **Stockwerke** (T-307, E-108) kommen als Ebenen derselben Karte: eine
+  Instanz je Gebäude, Formen und Marker tragen dann ihre Ebene.
 
 ## Der Zugplan (T-198, Prototyp)
 
@@ -555,5 +601,7 @@ abziehen, Initiative und „wer ist dran" als Bedingung, Hex-Raster, Wände
   versteckt) mit der Maus; heute über die Kanten im Bearbeiten.
 - **Kacheln** für grosse Karten (REQ-138, `Map.tiles`).
 - **Mehrere Tokens auf einmal** verschieben.
-- **Spielende ziehen die eigene Figur** (E-040), **Lebensdauer** der
-  Spiel-Tokens (E-039).
+- **Spielende ziehen die eigene Figur** (E-040).
+- **Das Kartenbild am Server beschnitten** (E-041): solange nicht alles
+  aufgedeckt ist, nur das Aufgedeckte an Spielende — Folgeaufgabe von
+  T-289.

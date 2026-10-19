@@ -98,6 +98,7 @@ import {
   inParty,
   isMap,
   resolveInstance,
+  resolvePlay,
   thinInstance,
   stageBases,
   summaryFields,
@@ -163,6 +164,7 @@ import { registerSichtbarkeit } from './sichtbarkeit.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
 import { registerTueren } from './tueren.js';
 import { registerKampfstart } from './kampfstart.js';
+import { insSpiel, registerSpielinstanz } from './spielinstanz.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
 import {
@@ -1206,6 +1208,8 @@ export function buildApp({
     if (/^\/api\/maps\/[^/]+\/door$/.test(url) && request.method === 'POST') return;
     /* Eine Begegnung beginnen (T-203): die Route prüft die Leitung selbst (`kampfstart.ts`). */
     if (/^\/api\/encounters\/[^/]+\/start$/.test(url) && request.method === 'POST') return;
+    /* Eine Karte oder Begegnung ins Spiel nehmen (T-289): die Route prüft die Leitung selbst (`spielinstanz.ts`). */
+    if (url === '/api/play/take' && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -1948,7 +1952,11 @@ export function buildApp({
        dem Stempel — eine Kapitelseite fragt hier für jeden Verweis darin,
        und je Frage ein `count(*)` über 150 000 Artikel waren drei Sekunden. */
     const stand = rohStand?.map === map ? rohStand : await roh();
-    if (!stand.ersetzt.has(e.id)) return e;
+    /* **Eine Karte oder Begegnung im Spiel** (T-289) kommt aufgelöst: die
+       Tischrouten (Kontext, Kampfstart, Zugplan, Türen) lesen Marker und
+       Teilnehmer der Vorlage mit; geschrieben wird ausgedünnt
+       (`schreibeGeprueft`). */
+    if (!stand.ersetzt.has(e.id)) return resolvePlay(map, e);
     const registry = await repo.getRegistry();
     const kampagne = kampagneIn(map, registry.settings ?? null);
     if (!kampagne) return e;
@@ -3595,7 +3603,10 @@ export function buildApp({
   /* Türen am Tisch (T-118): öffnen, schliessen, verschliessen — und aufdecken, was dahinter liegt. */
   registerTueren(app, { repo, viewerOf, roh, sieve, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
   /* Eine Begegnung beginnen (T-203): Initiative, vorplatzierte Tokens, die Sitzung führt sie. */
-  registerKampfstart(app, { repo, feed: live, viewerOf, roh, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
+  /* Karten und Begegnungen im Spiel als Instanz (T-289): „In Play nehmen“ und „Played“. */
+  const spielDeps = { repo, viewerOf, roh, sieve, kampagnenEbene, schreibeGeprueft: (e: Entity) => schreibeGeprueft(e) };
+  registerSpielinstanz(app, spielDeps);
+  registerKampfstart(app, { repo, feed: live, viewerOf, roh, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e), insSpiel: insSpiel(spielDeps) });
   /* Karten finden (T-202): die Liste unter Play › Maps und wo eine Karte vorkommt. */
   registerKartenliste(app, { roh, sieve });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */

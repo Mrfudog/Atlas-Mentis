@@ -92,6 +92,8 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Play › Map unter `/play`, Blätter, Gitter, Messen, Marker mit
   Kurzansicht, Unterkarten zum Hineinzoomen, Gruppen-Token; Logik in
   `packages/model/src/map.ts`, Zurückhalten mit `redactMap`, T-115; darunter
+  **Karten im Spiel** als Instanz mit Freigabe und „Played", T-289,
+  `apps/server/src/spielinstanz.ts`; darunter
   der **Zugplan** als Prototyp, `karten/zugplaner.ts`, Routen in
   `apps/server/src/zugplan.ts`, Logik in `packages/model/src/zugplan.ts`:
   Aktionsleiste, Zugfolge, Bestätigen durch die Leitung, T-198), das
@@ -452,6 +454,16 @@ wiederkommen, werden sie neu geschrieben.
   Instanz mit. Nicht vererbt werden `Identity`, `Visibility` und die
   Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`,
   `overrides`, `variantOf`), und das Inventar eines Stücks (`carries`).
+  **Eine Karte oder Begegnung im Spiel ist eine Instanz** (T-289, E-039,
+  E-041, `packages/model/src/playinstance.ts`): „Take into play" bzw.
+  „Start encounter" an einer Vorlage legt sie an (`newPlayInstance`, je
+  Sitzung eine), Tokens, Nebel (`Map.reveal`) und Kampfstand stehen an ihr,
+  die Sitzung zeigt auf sie. Für Spielende ist eine Karteninstanz **nicht
+  vorhanden, bis die Leitung sie freigibt** (`Map.released`, `heldBackMap`
+  in `articleVisible`). **Abweichung von „Instanzen stehen in keiner
+  Liste":** sie steht unter „Played" an ihrer Vorlage (`playedOf`) und
+  sonst nirgends — ein gespielter Stand ist einer, zu dem man zurück will,
+  und gesucht wird er an der Karte.
   **Ein Gegenstand im Inventar ist ein Stück** (T-150): gekauft, erbeutet,
   gefertigt oder gegeben entsteht er als Instanz (`newInstance`,
   `stueckWerkstatt`), ein loser Stapel derselben Vorlage wächst stattdessen

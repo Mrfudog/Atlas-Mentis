@@ -904,9 +904,9 @@ describe('one registry of types', () => {
   /* Die Vorlage, aus der eine Instanz liest: Statblock zu Statblock,
      Gegenstand zu Gegenstand (M4), und eine Instanz hat genau eine.
      Mehrere Vorlagen wären eine Mischung, die niemand geschrieben hat. */
-  it('lets a statblock, an item and a crafting order read a template of their own kind', () => {
+  it('lets a statblock, an item, a crafting order, a map and an encounter read a template of their own kind', () => {
     const r = seedRegistry.relations['instanceOf'];
-    expect(r?.from).toEqual(['Statblock', 'Item', 'CraftingOrder']);
+    expect(r?.from).toEqual(['Statblock', 'Item', 'CraftingOrder', 'Map', 'Encounter']);
     expect(r?.to).toEqual(['same']);
     expect(r?.cardinality).toBe('one');
     expect(r?.asField).toBeUndefined();

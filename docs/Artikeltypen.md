@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-19. 85 Schnittstellen, 69 Kantenarten.
+Stand 2026-10-19. 86 Schnittstellen, 69 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -71,7 +71,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
-- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -442,7 +442,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
-- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -503,7 +503,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
-- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -813,7 +813,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
-- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2418,7 +2418,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
-- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2778,7 +2778,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
-- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | PlayerCharacter | Party — `crafting` → „worked on by"
@@ -2787,7 +2787,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Encounter
 
-`Encounter` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Tactics` ← `ReadAloud` ← `Notes` ← `Secrets` ← `Difficulty`
+`Encounter` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Tactics` ← `ReadAloud` ← `Notes` ← `Secrets` ← `Difficulty` ← `Played`
 
 **Eigene Felder**
 
@@ -2807,6 +2807,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Secrets`* — `secret` *long*
 - *`Difficulty`* — `difficulty` *1…20*
+- *`Played`* — `playedAt` *string*, `playedIn` *link → Session*
 
 **Kanten von hier**
 
@@ -2819,6 +2820,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
@@ -2832,6 +2834,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2839,11 +2842,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Map
 
-`Map` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Notes` ← `Secrets` ← `ReadAloud`
+`Map` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Notes` ← `Secrets` ← `ReadAloud` ← `Played`
 
 **Eigene Felder**
 
-- `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *measure in m*, `lighting` *bright | dim | dark*, `fog` *boolean*, `reveal` *array*, `revealOnMove` *boolean*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
+- `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *measure in m*, `lighting` *bright | dim | dark*, `fog` *boolean*, `released` *boolean*, `reveal` *array*, `revealOnMove` *boolean*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
 
 **Geerbte Felder**
 
@@ -2857,6 +2860,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
+- *`Played`* — `playedAt` *string*, `playedIn` *link → Session*
 
 **Kanten von hier**
 
@@ -2868,6 +2872,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `zone` → ZoneKind — „zone"
 - `territory` → * — „territory"
 - `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
@@ -2883,6 +2888,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2892,7 +2898,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 32 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 33 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -3487,6 +3493,37 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - GlossaryTerm — `explains` → „explained by"
 - * — `describedIn` → „describes"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Played — *abstrakt*
+
+`Played`
+
+**Eigene Felder**
+
+- `playedAt` *string*, `playedIn` *link → Session*
+
+**Kanten von hier**
+
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"

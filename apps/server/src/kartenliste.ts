@@ -15,7 +15,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { assetVersion, entityName, isMap, LAYER_RELATION, mapImage, mapTree, mapUses, primaryInterface, type Entity } from '@nw/model';
+import { assetVersion, entityName, isMap, isPlayInstance, LAYER_RELATION, mapImage, mapTree, mapUses, primaryInterface, type Entity } from '@nw/model';
 
 interface Stand {
   alle: Entity[];
@@ -47,7 +47,8 @@ export function registerKartenliste(app: FastifyInstance, deps: KartenlisteDeps)
 
   app.get('/api/maps', async (request) => {
     const stand = await roh();
-    const karten = await sieve(request, stand.alle.filter(isMap), stand.map);
+    /* Karten im Spiel stehen nicht hier, sondern unter Played an ihrer Vorlage (T-289). */
+    const karten = await sieve(request, stand.alle.filter((e) => isMap(e) && !isPlayInstance(e)), stand.map);
     /* Die Namen der Ebenen nur, wo der Betrachter die Ebene sieht. */
     const ebenenIds = new Set(
       karten.flatMap((k) => (k.relations ?? []).filter((r) => r.type === LAYER_RELATION).map((r) => r.to)),

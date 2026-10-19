@@ -1,0 +1,21 @@
+/* Ein gespielter Stand und „Played" an der Vorlage (T-289). */
+.gespielt {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: var(--dim);
+}
+.gespielt .marke,
+.gespielt-liste .marke {
+  margin-left: 0.4rem;
+}
+.gespielt-liste {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+.gespielt-liste ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+}
+.freigabe:not(.an) {
+  border-color: var(--accent);
+}

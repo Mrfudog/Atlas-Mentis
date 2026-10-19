@@ -26,6 +26,10 @@ import {
   gridGeometry,
   HEX_TILE_PATH,
   isMap,
+  isPlayInstance,
+  isReleased,
+  playedInfo,
+  templateOf,
   MAP_ZOOM_MAX,
   MAP_ZOOM_MIN,
   mapSettings,
@@ -80,7 +84,7 @@ import {
   wallPoints,
 } from '@nw/model';
 import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
-import { Api, type KartenKontext } from '../kern/api';
+import { Api, type GespieltZeile, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
@@ -254,6 +258,16 @@ interface Zeiger {
               </label>
             }
           }
+          @if (darfSchreiben() && istInstanz()) {
+            <!-- **Freigabe** (T-289, E-041): bis dahin ist die Karte für Spielende nicht vorhanden. -->
+            <button type="button" class="freigabe" [class.an]="freigegeben()" [attr.aria-pressed]="freigegeben()" (click)="freigeben(!freigegeben())" [title]="freigegeben() ? 'Players see this map. Click to take it back from them.' : 'Players do not see this map yet. Release it — the fog applies at once.'">
+              {{ freigegeben() ? 'Released' : 'Release to players' }}
+            </button>
+          } @else if (darfSchreiben() && ort() === 'play' && sitzung() && karte() && !istInstanz()) {
+            <button type="button" class="freigabe" (click)="insSpielNehmen()" title="Put this map on the table of the session as a map in play: tokens and fog live there, the map itself stays as it is">
+              Take into play
+            </button>
+          }
           <button type="button" [class.an]="seiteOffen()" [attr.aria-expanded]="seiteOffen()" (click)="seiteUm()" title="Party and encounters beside the map">
             <span aria-hidden="true">☰</span> Table
           </button>
@@ -263,6 +277,42 @@ interface Zeiger {
           </button>
         </div>
       </div>
+
+      @if (gespielt(); as g) {
+        <!-- **Ein gespielter Stand** (T-289): die Instanz, mit Datum, Sitzung und Vorlage. -->
+        <p class="gespielt" role="note">
+          <b>Map in play</b>{{ g.at ? ' · ' + g.at : '' }}
+          @if (g.session) {
+            · <a [routerLink]="['/artikel', g.session]">{{ g.sessionName }}</a>
+          }
+          @if (g.template) {
+            · from <a [routerLink]="['/artikel', g.template]">{{ g.templateName }}</a>
+          }
+          @if (darfSchreiben() && !freigegeben()) {
+            <span class="marke">Not released — players do not see this map</span>
+          }
+        </p>
+      } @else if (ort() === 'artikel' && gespieltListe().length) {
+        <details class="gespielt-liste">
+          <summary>Played ({{ gespieltListe().length }})</summary>
+          <ul>
+            @for (r of gespieltListe(); track r.id) {
+              <li>
+                <a [routerLink]="['/artikel', r.id]">{{ datum(r.at) || r.name }}</a>
+                @if (r.sessionName) {
+                  · {{ r.sessionName }}
+                }
+                @for (b of r.encounterNames; track b.id) {
+                  · <a [routerLink]="['/artikel', b.id]">{{ b.name }}</a>
+                }
+                @if (darfSchreiben() && !r.released) {
+                  <span class="marke">not released</span>
+                }
+              </li>
+            }
+          </ul>
+        </details>
+      }
 
       @if (blaetterOffen() && blaetter().length > 1) {
         <ul class="blaetter" aria-label="Layers">
@@ -808,7 +858,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -823,6 +873,8 @@ export class Karte {
   readonly planTipp = output<PlanTipp>();
   /** Die Gelegenheitsangriffe der geplanten Wege (ohne Vorschau) — für die Zugfolge (T-198, Runde 2). */
   readonly planWarnungen = output<{ step: string; reactorName: string }[]>();
+  /** Die Leitung hat diese Karte ins Spiel genommen (T-289): die Id der Instanz. */
+  readonly insSpiel = output<string>();
   private warnSchluessel = '';
 
   protected readonly MARKER_MIN = MARKER_MIN;
@@ -843,6 +895,15 @@ export class Karte {
   private readonly sichtLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('sichtLeinwand');
 
   constructor() {
+    /* „Played" an der Vorlage (T-289): neu, wenn die Karte wechselt oder ein Stand dazukommt. */
+    effect(() => {
+      const id = this.id();
+      const vorlage = this.ort() === 'artikel' && !!this.karte() && !this.istInstanz();
+      untracked(() => {
+        if (vorlage) void this.gespieltHolen(id);
+        else this.gespieltListe.set([]);
+      });
+    });
     /* Die Warnungen gehen an den Planer, sobald sie sich ändern — nicht
        bei jeder Mausbewegung (die Vorschau zählt nicht mit). */
     effect(() => {
@@ -1007,6 +1068,62 @@ export class Karte {
     return e ? mapSettings(d ? setGrid(e, d) : e) : null;
   });
   protected readonly darfSchreiben = computed(() => this.session.darfSchreiben()(this.id()));
+
+  // ------------------------------------------------------------ Im Spiel
+
+  /** Ist das eine Karte im Spiel (T-289), eine Instanz ihrer Vorlage? */
+  protected readonly istInstanz = computed(() => isPlayInstance(this.karte()));
+  /** Freigegeben für Spielende (`Map.released`)? Nur an einer Instanz von Belang. */
+  protected readonly freigegeben = computed(() => {
+    const e = this.karte();
+    return !!e && isReleased(e);
+  });
+  /** Wann, in welcher Sitzung, aus welcher Vorlage — die Kopfzeile eines gespielten Stands. */
+  protected readonly gespielt = computed(() => {
+    const e = this.karte();
+    if (!e || !isPlayInstance(e)) return null;
+    const info = playedInfo(e);
+    const vorlage = templateOf(this.bestand.voll(), e)?.id ?? (e.relations ?? []).find((r) => r.type === 'instanceOf')?.to ?? null;
+    return {
+      at: this.datum(info.at),
+      session: info.session,
+      sessionName: info.session ? (this.bestand.name()(info.session) ?? 'Session') : null,
+      template: vorlage,
+      templateName: vorlage ? (this.bestand.name()(vorlage) ?? 'the template') : null,
+    };
+  });
+  /** „Played" an der Vorlage: die gespielten Stände (`GET /api/maps/:id/played`). */
+  protected readonly gespieltListe = signal<GespieltZeile[]>([]);
+  private gespieltLauf = 0;
+  private async gespieltHolen(id: string): Promise<void> {
+    const lauf = ++this.gespieltLauf;
+    try {
+      const r = await this.api.played(id);
+      if (lauf === this.gespieltLauf) this.gespieltListe.set(r.rows.filter((z) => z.kind === 'map'));
+    } catch {
+      if (lauf === this.gespieltLauf) this.gespieltListe.set([]);
+    }
+  }
+  protected datum(iso: string): string {
+    const d = iso ? new Date(iso) : null;
+    return d && !Number.isNaN(d.getTime()) ? d.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  }
+  protected freigeben(an: boolean): void {
+    const e = this.karte();
+    if (!e) return;
+    const karte = { ...((e.components?.['Map'] ?? {}) as Record<string, unknown>), released: an };
+    void this.schreiben({ ...e, components: { ...e.components, Map: karte } });
+  }
+  protected async insSpielNehmen(): Promise<void> {
+    try {
+      const r = await this.api.takeIntoPlay({ session: this.sitzung(), map: this.id() });
+      /* Was die Leitung schreibt, sagt `/api/me` — die neue Instanz gehört dazu. */
+      await this.session.load(true);
+      if (r.map) this.insSpiel.emit(r.map);
+    } catch (e) {
+      this.hinweis.set((e as Error).message);
+    }
+  }
 
   protected readonly kontext = signal<KartenKontext | null>(null);
   private kontextLauf = 0;

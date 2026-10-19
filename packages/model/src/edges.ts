@@ -413,11 +413,21 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     uses: {
       [M + 'map.ts']: ['insideMap', 'mapOf', 'marker', 'onMap', 'participates'],
       [S + 'karten.ts']: ['belongsTo', 'insideMap', 'instanceOf', 'memberOfParty', 'participates'],
-      [W + 'karten/karte.ts']: ['marker'],
-      /* Die Seitenleiste (T-203): die Gruppe und die Begegnungen der Sitzung. */
-      [M + 'kartenseite.ts']: ['memberOfParty', 'onMap', 'partOf', 'participates'],
+      [W + 'karten/karte.ts']: ['instanceOf', 'marker'],
+      /* Die Seitenleiste (T-203): die Gruppe und die Begegnungen der Sitzung — im Spiel die Instanzen (T-289). */
+      [M + 'kartenseite.ts']: ['instanceOf', 'memberOfParty', 'onMap', 'partOf', 'participates'],
       /* Eine Begegnung beginnen (T-203): ihre Karte, wenn keine genannt ist. */
       [S + 'kampfstart.ts']: ['onMap'],
+    },
+  },
+  {
+    key: 'playInstances',
+    label: 'Maps in play',
+    area: 'play',
+    does: 'takes a map or encounter into play as an instance of its template — tokens, fog and the fight live there, players see the map only once the GM releases it — and lists the played states on the template (T-289)',
+    uses: {
+      [M + 'playinstance.ts']: ['instanceOf', 'onMap'],
+      [S + 'spielinstanz.ts']: ['inLayer', 'onMap'],
     },
   },
   {

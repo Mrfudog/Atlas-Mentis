@@ -1711,6 +1711,25 @@ export const fieldGroups = {
     },
   },
 
+  /**
+   * **Gespielt** (T-289, E-039): wann und in welcher Sitzung eine Karte
+   * oder Begegnung als Instanz auf den Tisch kam. Steht nur an der
+   * Instanz; die Vorlage listet ihre gespielten Stände daraus („Played").
+   */
+  Played: {
+    schema: {
+      type: 'object',
+      properties: {
+        playedAt: { type: 'string', title: 'Played on', readOnly: true, description: 'When this map or encounter was taken into play — set on the instance, empty on the template.' },
+        playedIn: {
+          type: 'string', format: 'link', title: 'Played in', readOnly: true,
+          description: 'The session that took this instance into play.',
+          target: { interfaces: ['Session'] },
+        },
+      },
+    },
+  },
+
   SceneInfo: {
     schema: {
       type: 'object',
@@ -2075,6 +2094,14 @@ export const fieldGroups = {
           default: 'bright',
         },
         fog: { type: 'boolean', title: 'Fog of war', default: false },
+        /* **Freigegeben** (T-289, E-041): eine Karte im Spiel (Instanz) ist
+           für Spielende nicht vorhanden, bis die Leitung sie freigibt —
+           gesiebt am Server (`heldBackMap`). An der Vorlage zählt es nicht. */
+        released: {
+          type: 'boolean',
+          title: 'Released to players',
+          description: 'On a map in play: players see it only once released, with the fog already on. A template map is not affected.',
+        },
         /* Eine Form darf `for` tragen (T-204): die Figur, die es gesehen
            hat — zählt, wenn die Kampagne den Nebel je Figur führt. Ein
            `poly` darf `within` tragen (T-216): es gilt nur, soweit es auch

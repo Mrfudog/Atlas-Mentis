@@ -7,7 +7,8 @@
 
 import { entityName, primaryInterface } from './entity.js';
 import { statblockFor, PARTICIPATES } from './initiative.js';
-import { resolveInstance } from './instance.js';
+import { INSTANCE_RELATION, resolveInstance, templateOf } from './instance.js';
+import { isPlayInstance, playedInfo, resolvePlay } from './playinstance.js';
 import { PARTY_RELATION } from './knowledge.js';
 import { markersOf, participantLabel } from './map.js';
 import type { Entity, EntityId } from './types.js';
@@ -75,6 +76,11 @@ const TIEFE = 4;
  * **Die Begegnungen einer Sitzung**: was über `partOf` unter ihr hängt
  * (auch über Szenen), die, die sie führt (`activeEncounter`), und was auf
  * dieser Karte gefochten wird (`onMap`). Laufende zuerst, dann nach Namen.
+ *
+ * **Im Spiel** (T-289): liegt eine Karteninstanz auf dem Tisch, zählen die
+ * Begegnungen der Vorlage mit, und hat diese Sitzung eine davon schon als
+ * Instanz genommen, steht die Instanz an ihrer Stelle — mit ihren
+ * Teilnehmern, aufgelöst. Instanzen anderer Runden stehen nicht da.
  */
 export function sessionEncounters(entities: Lookup, session: Entity | null, mapId: EntityId | null): SideEncounter[] {
   const st = (session?.components?.['SessionState'] ?? session?.components?.['Session'] ?? {}) as { activeEncounter?: unknown };
@@ -86,10 +92,26 @@ export function sessionEncounters(entities: Lookup, session: Entity | null, mapI
       if ((e.relations ?? []).some((r) => r.type === 'partOf' && unter.has(r.to))) unter.add(e.id);
     }
   }
+  const karte = mapId ? entities.get(mapId) : undefined;
+  const vorlage = karte ? templateOf(entities, karte)?.id : undefined;
+  const hier = (e: Entity, ids: (EntityId | undefined)[]) =>
+    (e.relations ?? []).some((r) => r.type === 'onMap' && ids.includes(r.to));
+  /* Welche Vorlagen diese Sitzung schon als Instanz spielt. */
+  const gespielt = new Set<EntityId>();
+  for (const e of alle) {
+    if (primaryInterface(e) !== 'Encounter' || !isPlayInstance(e) || !session || playedInfo(e).session !== session.id) continue;
+    const t = (e.relations ?? []).find((r) => r.type === INSTANCE_RELATION)?.to;
+    if (t) gespielt.add(t);
+  }
   return alle
     .filter((e) => primaryInterface(e) === 'Encounter')
-    .filter((e) => e.id === aktiv || (session && unter.has(e.id)) || (mapId && (e.relations ?? []).some((r) => r.type === 'onMap' && r.to === mapId)))
-    .map((e) => {
+    .filter((e) => {
+      if (isPlayInstance(e)) return e.id === aktiv || (!!session && playedInfo(e).session === session.id) || (!!mapId && hier(e, [mapId]));
+      if (gespielt.has(e.id)) return false;
+      return e.id === aktiv || (session && unter.has(e.id)) || (mapId && hier(e, [mapId, vorlage]));
+    })
+    .map((roh) => {
+      const e = resolvePlay(entities, roh);
       const c = (e.components?.['Encounter'] ?? {}) as { phase?: unknown; round?: unknown; kind?: unknown };
       return {
         id: e.id,
@@ -97,7 +119,7 @@ export function sessionEncounters(entities: Lookup, session: Entity | null, mapI
         phase: typeof c.phase === 'string' ? c.phase : 'planned',
         round: zahl(c.round) ?? 0,
         kind: Array.isArray(c.kind) ? c.kind.filter((k): k is string => typeof k === 'string') : [],
-        here: !!mapId && (e.relations ?? []).some((r) => r.type === 'onMap' && r.to === mapId),
+        here: !!mapId && hier(e, [mapId, vorlage]),
         active: e.id === aktiv,
         participants: (e.relations ?? [])
           .filter((r) => r.type === PARTICIPATES && r.to)
