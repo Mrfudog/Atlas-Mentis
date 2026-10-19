@@ -104,7 +104,17 @@ import { WurfZiel } from '../kern/wurfziel';
 import { Ansichtsbaum } from '../ansichten/baum';
 import { Ansichtswahl } from '../ansichten/wahl';
 import { Ansichtsdesigner, type AnsichtsEntwurf } from '../ansichten/designer';
+import { Kapitel, Kapitelteil } from '../muster/kapitel';
 
+/** So viele Rückbezüge stehen, bevor „Show all" kommt. */
+const RUECK_KURZ = 12;
+/** Woher die geltende Sichtbarkeitsstufe kommt (T-252), in Worten. */
+const HERKUNFT: Record<string, string> = {
+  article: 'set here',
+  campaign: 'campaign rule',
+  layer: 'layer default',
+  default: 'default',
+};
 /** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
 const PART_RELATION = 'partOf';
 /** So viele Glieder höchstens im Brotkrumenpfad. */
@@ -203,6 +213,8 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Ansichtsbaum,
     Ansichtswahl,
     Ansichtsdesigner,
+    Kapitel,
+    Kapitelteil,
   ],
   template: `
     @if (artikel(); as e) {
@@ -235,205 +247,213 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         @if (regelReiter()) {
           <nw-regeloptionen [kampagne]="e.id" [darfSchreiben]="session.isAdmin() || darfSchreiben()" />
         } @else {
-        <div class="spalten">
-          <main class="hauptspalte">
-            <div class="werkzeugzeile">
-              <span class="meta">{{ meta() }}</span>
-              <div class="werkzeuge">
-                <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
-                @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
-                  <a class="knopf" [routerLink]="['/characters', e.id, 'level-up']">Level up</a>
-                }
-                <!-- Der Druck (T-110): die Ansicht print auf einem Blatt A4. -->
-                @if (!bearbeitet()) {
-                  <a class="knopf" [routerLink]="['/artikel', e.id, 'print']">Print</a>
-                }
-                <!-- Die Leseansicht (T-091): an der Stelle im Buch — auf der
-                     Seite der Ebene, wo das Buch als Element steht (T-191). -->
-                @if (leseZiel(); as z) {
-                  @if (!bearbeitet() && art(e) !== 'Layer') {
-                    <a class="knopf" [routerLink]="['/artikel', z.layer]" [queryParams]="leseParams(z)">Read in book</a>
-                  }
-                }
-                <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
-                     der Ebene der Kampagne, das Original bleibt. -->
-                @if (anpassbar() && session.isAdmin() && !bearbeitet()) {
-                  <button type="button" [disabled]="passtAn()" (click)="anpassen()"
-                          title="Make a version for this campaign. The original stays as it is.">
-                    {{ passtAn() ? 'Adapting…' : 'Adapt for this campaign' }}
-                  </button>
-                }
-                <!-- In die Geschichte holen (E-026): ein Kapitel oder eine Szene samt allem
-                     darunter in die eigene Kampagne, an sie oder einen ihrer Arcs. -->
-                @if (uebernahmeZiele().length && !bearbeitet()) {
-                  <span class="fassung-wahl">
-                    <label>
-                      Take into
-                      <select #wohin [disabled]="passtAn()" aria-label="Where to take it">
-                        @for (z of uebernahmeZiele(); track z.id) {
-                          <option [value]="z.id">{{ z.name }}{{ z.type === 'Campaign' ? '' : ' (' + z.type + ')' }}</option>
-                        }
-                      </select>
-                    </label>
-                    <button type="button" [disabled]="passtAn()" (click)="uebernehmen(wohin.value)"
-                            title="Make this campaign's version of it, with everything below it. The original stays.">
-                      {{ passtAn() ? 'Taking…' : 'Take' }}
-                    </button>
-                    <!-- Einen Teil eines Buchs verwenden statt kopieren (E-028, T-108):
-                         ein Verweis aufs Original, der Korrekturen am Original mitnimmt. -->
-                    @if (istBuchteil()) {
-                      <button type="button" [disabled]="passtAn()" (click)="uebernehmen(wohin.value, true)"
-                              title="Show the original there, as it is. Take it instead when you want to change it.">
-                        Use as is
-                      </button>
+        <!-- Werkzeuge, Bänder und die Ansichtswahl stehen über den Kapiteln (T-277, T-310). -->
+        <div class="kopfzeilen">
+        <div class="werkzeugzeile">
+          <span class="meta">{{ meta() }}</span>
+          <div class="werkzeuge">
+            <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
+            @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
+              <a class="knopf" [routerLink]="['/characters', e.id, 'level-up']">Level up</a>
+            }
+            <!-- Der Druck (T-110): die Ansicht print auf einem Blatt A4. -->
+            @if (!bearbeitet()) {
+              <a class="knopf" [routerLink]="['/artikel', e.id, 'print']">Print</a>
+            }
+            <!-- Die Leseansicht (T-091): an der Stelle im Buch — auf der
+                 Seite der Ebene, wo das Buch als Element steht (T-191). -->
+            @if (leseZiel(); as z) {
+              @if (!bearbeitet() && art(e) !== 'Layer') {
+                <a class="knopf" [routerLink]="['/artikel', z.layer]" [queryParams]="leseParams(z)">Read in book</a>
+              }
+            }
+            <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
+                 der Ebene der Kampagne, das Original bleibt. -->
+            @if (anpassbar() && session.isAdmin() && !bearbeitet()) {
+              <button type="button" [disabled]="passtAn()" (click)="anpassen()"
+                      title="Make a version for this campaign. The original stays as it is.">
+                {{ passtAn() ? 'Adapting…' : 'Adapt for this campaign' }}
+              </button>
+            }
+            <!-- In die Geschichte holen (E-026): ein Kapitel oder eine Szene samt allem
+                 darunter in die eigene Kampagne, an sie oder einen ihrer Arcs. -->
+            @if (uebernahmeZiele().length && !bearbeitet()) {
+              <span class="fassung-wahl">
+                <label>
+                  Take into
+                  <select #wohin [disabled]="passtAn()" aria-label="Where to take it">
+                    @for (z of uebernahmeZiele(); track z.id) {
+                      <option [value]="z.id">{{ z.name }}{{ z.type === 'Campaign' ? '' : ' (' + z.type + ')' }}</option>
                     }
-                  </span>
-                }
-                @if (original(); as o) {
-                  @if ((session.isAdmin() || darfSchreiben()) && !bearbeitet()) {
-                    <button type="button" [disabled]="passtAn()" (click)="zumOriginal(o.id)"
-                            title="Delete this version; the campaign sees the original again.">
-                      Back to the original
-                    </button>
-                  }
-                }
-                <!-- Edit an einer Figur ist der Assistent (T-194); die Feldmaske heisst „Full edit". -->
-                @if (darfSchreiben() && !zeigtAlten() && art(e) === 'PlayerCharacter') {
-                  @if (bearbeitet()) {
-                    <span class="umschalter" role="group" aria-label="Edit view">
-                      <a [routerLink]="['/characters', e.id, 'edit']">Creator</a>
-                      <span class="an" aria-current="true">Full edit</span>
-                    </span>
-                    <button type="button" (click)="abbrechen()">Cancel</button>
-                  } @else {
-                    <a class="knopf" [routerLink]="['/characters', e.id, 'edit']">Edit</a>
-                    <button type="button" (click)="beginnen()" title="Every field of the character, without the creator">Full edit</button>
-                  }
-                } @else if (darfSchreiben() && !zeigtAlten()) {
-                  <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
-                    {{ bearbeitet() ? 'Cancel' : 'Edit' }}
-                  </button>
-                } @else if (fassungsZiele().length && !zeigtAlten() && !session.isAdmin()) {
-                  <!-- Fremdes ändert man als Fassung in einer eigenen Ebene (T-098, E-001). -->
-                  @if (fassungsZiele().length === 1) {
-                    <button type="button" [disabled]="passtAn()" (click)="alsFassung(fassungsZiele()[0]!.id)"
-                            [title]="'This article is not in a layer you edit. Edit makes your version in ' + fassungsZiele()[0]!.name + '; the original stays.'">
-                      {{ passtAn() ? 'Making your version…' : 'Edit' }}
-                    </button>
-                  } @else {
-                    <span class="fassung-wahl">
-                      <label>
-                        Edit as a version in
-                        <select #ziel [disabled]="passtAn()" aria-label="Layer for your version">
-                          @for (l of fassungsZiele(); track l.id) {
-                            <option [value]="l.id">{{ l.name }}</option>
-                          }
-                        </select>
-                      </label>
-                      <button type="button" [disabled]="passtAn()" (click)="alsFassung(ziel.value)">
-                        {{ passtAn() ? 'Making…' : 'Edit' }}
-                      </button>
-                    </span>
-                  }
-                }
-                @if (bearbeitet()) {
-                  <button type="button" class="pri" [disabled]="speichert()" (click)="speichern()">
-                    {{ speichert() ? 'Saving…' : 'Save' }}
+                  </select>
+                </label>
+                <button type="button" [disabled]="passtAn()" (click)="uebernehmen(wohin.value)"
+                        title="Make this campaign's version of it, with everything below it. The original stays.">
+                  {{ passtAn() ? 'Taking…' : 'Take' }}
+                </button>
+                <!-- Einen Teil eines Buchs verwenden statt kopieren (E-028, T-108):
+                     ein Verweis aufs Original, der Korrekturen am Original mitnimmt. -->
+                @if (istBuchteil()) {
+                  <button type="button" [disabled]="passtAn()" (click)="uebernehmen(wohin.value, true)"
+                          title="Show the original there, as it is. Take it instead when you want to change it.">
+                    Use as is
                   </button>
                 }
-              </div>
-            </div>
-
-            @if (anpassFehler(); as f) {
-              <p class="fehler" role="alert">{{ f }}</p>
-            }
-            <!-- Wohin die Änderung geht (T-161): in diesen Artikel und damit
-                 in seine Ebene — damit niemand aus Versehen ein geteiltes
-                 Regelwerk ändert. -->
-            @if (bearbeitet() && schreibZiel(); as z) {
-              <p class="hinweis" [class.fehler]="z.fremd" role="status">
-                @if (z.ebenen.length) {
-                  Changes go into this article in <b>{{ z.ebenen.join(', ') }}</b>
-                } @else {
-                  Changes go into this article, which is in no layer
-                }
-                @if (z.fremd) {
-                  — not your write layer{{ z.schreib ? ' (' + z.schreib + ')' : '' }}. Everyone who uses that layer sees the change.
-                } @else {
-                  — your write layer.
-                }
-              </p>
-            }
-            <!-- Die Zahlen und Übungen wohnen am Statblock (T-272): im Full edit
-                 der Figur stehen sie nicht, also sagt es die Maske und führt hin. -->
-            @if (bearbeitet() && statblockDerFigur(); as sb) {
-              <p class="hinweis" role="note">
-                Ability scores, hand-added proficiencies and the other numbers stand on its statblock
-                <a [routerLink]="['/artikel', sb.id]" [queryParams]="{ edit: 1 }">{{ sb.name }}</a>.
-                What class, background, origin and choices add is computed and shown on the overview.
-              </p>
-            }
-            <!-- Wer die Ebene herausgibt und warum (T-109) — gerechnet, geändert wird die Kante. -->
-            @if (art(e) === 'Layer' && !zeigtAlten()) {
-              <nw-herausgeber [ebene]="e.id" />
+              </span>
             }
             @if (original(); as o) {
-              <p class="hinweis" role="status">
-                This campaign’s version of “{{ o.name }}”. Links to the original lead here; the
-                original stays as it was.
-              </p>
+              @if ((session.isAdmin() || darfSchreiben()) && !bearbeitet()) {
+                <button type="button" [disabled]="passtAn()" (click)="zumOriginal(o.id)"
+                        title="Delete this version; the campaign sees the original again.">
+                  Back to the original
+                </button>
+              }
             }
-            <!-- Ein älterer fertiger Stand gilt für alle anderen (REQ-237,
-                 E-012). Das Band sieht nur, wer den Arbeitsstand sieht. -->
-            @if (fertigAm(); as am) {
-              <p class="band-fertig" role="status">
-                @if (zeigtAlten()) {
-                  <span>You are looking at the ready version from {{ am }}.</span>
-                  <button type="button" class="klein" (click)="zeigeNeuen()">Show the current version</button>
-                } @else {
-                  <span>Not ready yet — the version from {{ am }} applies.</span>
-                  <button type="button" class="klein" [disabled]="laedtAlten()" (click)="zeigeAlten()">Show that version</button>
-                  @if (session.darfReady()(e.id) && !bearbeitet()) {
-                    <button type="button" class="klein" (click)="fertigNennen()">Mark ready</button>
-                  }
-                }
-                @if (!bearbeitet() && problem(); as p) {
-                  <span class="fehler" role="alert">{{ p }}</span>
-                }
-              </p>
+            <!-- Edit an einer Figur ist der Assistent (T-194); die Feldmaske heisst „Full edit". -->
+            @if (darfSchreiben() && !zeigtAlten() && art(e) === 'PlayerCharacter') {
+              @if (bearbeitet()) {
+                <span class="umschalter" role="group" aria-label="Edit view">
+                  <a [routerLink]="['/characters', e.id, 'edit']">Creator</a>
+                  <span class="an" aria-current="true">Full edit</span>
+                </span>
+                <button type="button" (click)="abbrechen()">Cancel</button>
+              } @else {
+                <a class="knopf" [routerLink]="['/characters', e.id, 'edit']">Edit</a>
+                <button type="button" (click)="beginnen()" title="Every field of the character, without the creator">Full edit</button>
+              }
+            } @else if (darfSchreiben() && !zeigtAlten()) {
+              <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
+                {{ bearbeitet() ? 'Cancel' : 'Edit' }}
+              </button>
+            } @else if (fassungsZiele().length && !zeigtAlten() && !session.isAdmin()) {
+              <!-- Fremdes ändert man als Fassung in einer eigenen Ebene (T-098, E-001). -->
+              @if (fassungsZiele().length === 1) {
+                <button type="button" [disabled]="passtAn()" (click)="alsFassung(fassungsZiele()[0]!.id)"
+                        [title]="'This article is not in a layer you edit. Edit makes your version in ' + fassungsZiele()[0]!.name + '; the original stays.'">
+                  {{ passtAn() ? 'Making your version…' : 'Edit' }}
+                </button>
+              } @else {
+                <span class="fassung-wahl">
+                  <label>
+                    Edit as a version in
+                    <select #ziel [disabled]="passtAn()" aria-label="Layer for your version">
+                      @for (l of fassungsZiele(); track l.id) {
+                        <option [value]="l.id">{{ l.name }}</option>
+                      }
+                    </select>
+                  </label>
+                  <button type="button" [disabled]="passtAn()" (click)="alsFassung(ziel.value)">
+                    {{ passtAn() ? 'Making…' : 'Edit' }}
+                  </button>
+                </span>
+              }
             }
+            @if (bearbeitet()) {
+              <button type="button" class="pri" [disabled]="speichert()" (click)="speichern()">
+                {{ speichert() ? 'Saving…' : 'Save' }}
+              </button>
+            }
+          </div>
+        </div>
 
-            <!-- Eine Fassung aus einer Vergleichsebene (T-092): sichtbar, aber nicht im Spiel. -->
-            @if (bestand.vergleich().has(e.id)) {
-              <p class="band-fertig band-vergleich" role="status">
-                <span>This version comes from a compare layer. It is not in play in this campaign.</span>
-                <!-- Einzeln freigeben (T-187): Extra-Inhalt, ohne das Buch aufzuschalten. -->
-                @if (bestand.freigabe().get(e.id); as f) {
-                  <button type="button" class="klein" [disabled]="freigabeLaeuft()" (click)="freigeben(f.campaign, true)">Enable in campaign</button>
-                }
-              </p>
-            } @else if (bestand.freigabe().get(e.id)?.enabled) {
-              <p class="band-fertig band-vergleich" role="status">
-                <span>Enabled as extra content: in play in this campaign, its layer is not.</span>
-                <button type="button" class="klein" [disabled]="freigabeLaeuft()" (click)="freigeben(bestand.freigabe().get(e.id)!.campaign, false)">Disable</button>
-              </p>
+        @if (anpassFehler(); as f) {
+          <p class="fehler" role="alert">{{ f }}</p>
+        }
+        <!-- Wohin die Änderung geht (T-161): in diesen Artikel und damit
+             in seine Ebene — damit niemand aus Versehen ein geteiltes
+             Regelwerk ändert. -->
+        @if (bearbeitet() && schreibZiel(); as z) {
+          <p class="hinweis" [class.fehler]="z.fremd" role="status">
+            @if (z.ebenen.length) {
+              Changes go into this article in <b>{{ z.ebenen.join(', ') }}</b>
+            } @else {
+              Changes go into this article, which is in no layer
             }
+            @if (z.fremd) {
+              — not your write layer{{ z.schreib ? ' (' + z.schreib + ')' : '' }}. Everyone who uses that layer sees the change.
+            } @else {
+              — your write layer.
+            }
+          </p>
+        }
+        <!-- Die Zahlen und Übungen wohnen am Statblock (T-272): im Full edit
+             der Figur stehen sie nicht, also sagt es die Maske und führt hin. -->
+        @if (bearbeitet() && statblockDerFigur(); as sb) {
+          <p class="hinweis" role="note">
+            Ability scores, hand-added proficiencies and the other numbers stand on its statblock
+            <a [routerLink]="['/artikel', sb.id]" [queryParams]="{ edit: 1 }">{{ sb.name }}</a>.
+            What class, background, origin and choices add is computed and shown on the overview.
+          </p>
+        }
+        <!-- Wer die Ebene herausgibt und warum (T-109) — gerechnet, geändert wird die Kante. -->
+        @if (art(e) === 'Layer' && !zeigtAlten()) {
+          <nw-herausgeber [ebene]="e.id" />
+        }
+        @if (original(); as o) {
+          <p class="hinweis" role="status">
+            This campaign’s version of “{{ o.name }}”. Links to the original lead here; the
+            original stays as it was.
+          </p>
+        }
+        <!-- Ein älterer fertiger Stand gilt für alle anderen (REQ-237,
+             E-012). Das Band sieht nur, wer den Arbeitsstand sieht. -->
+        @if (fertigAm(); as am) {
+          <p class="band-fertig" role="status">
+            @if (zeigtAlten()) {
+              <span>You are looking at the ready version from {{ am }}.</span>
+              <button type="button" class="klein" (click)="zeigeNeuen()">Show the current version</button>
+            } @else {
+              <span>Not ready yet — the version from {{ am }} applies.</span>
+              <button type="button" class="klein" [disabled]="laedtAlten()" (click)="zeigeAlten()">Show that version</button>
+              @if (session.darfReady()(e.id) && !bearbeitet()) {
+                <button type="button" class="klein" (click)="fertigNennen()">Mark ready</button>
+              }
+            }
+            @if (!bearbeitet() && problem(); as p) {
+              <span class="fehler" role="alert">{{ p }}</span>
+            }
+          </p>
+        }
 
-            <!-- Die Leiste „Views" (T-268, T-276, T-310): die Ansichten, die für diesen Artikel gelten,
-                 beim Lesen immer, im Full edit für alle, die das Register ändern. Die Wahl steht in ?view=. -->
-            @if (ansichtsLeiste()) {
-              <nw-ansichtswahl [artikel]="e" [rueck]="rueckKanten()" [aktiv]="geltendeAnsicht()"
-                               [darfGestalten]="session.darfRegister()" [offen]="gestaltet()" (offenChange)="gestalten($event)"
-                               (waehle)="waehleAnsicht($event)" />
+        <!-- Eine Fassung aus einer Vergleichsebene (T-092): sichtbar, aber nicht im Spiel. -->
+        @if (bestand.vergleich().has(e.id)) {
+          <p class="band-fertig band-vergleich" role="status">
+            <span>This version comes from a compare layer. It is not in play in this campaign.</span>
+            <!-- Einzeln freigeben (T-187): Extra-Inhalt, ohne das Buch aufzuschalten. -->
+            @if (bestand.freigabe().get(e.id); as f) {
+              <button type="button" class="klein" [disabled]="freigabeLaeuft()" (click)="freigeben(f.campaign, true)">Enable in campaign</button>
             }
+          </p>
+        } @else if (bestand.freigabe().get(e.id)?.enabled) {
+          <p class="band-fertig band-vergleich" role="status">
+            <span>Enabled as extra content: in play in this campaign, its layer is not.</span>
+            <button type="button" class="klein" [disabled]="freigabeLaeuft()" (click)="freigeben(bestand.freigabe().get(e.id)!.campaign, false)">Disable</button>
+          </p>
+        }
+
+        <!-- Die Leiste „Views" (T-268, T-276, T-310): die Ansichten, die für diesen Artikel gelten,
+             beim Lesen immer, im Full edit für alle, die das Register ändern. Die Wahl steht in ?view=. -->
+        @if (ansichtsLeiste()) {
+          <nw-ansichtswahl [artikel]="e" [rueck]="rueckKanten()" [aktiv]="geltendeAnsicht()"
+                           [darfGestalten]="session.darfRegister()" [offen]="gestaltet()" (offenChange)="gestalten($event)"
+                           (waehle)="waehleAnsicht($event)" />
+        }
+        </div>
+        <!-- Die Kapitel der Seite (T-277): am Telefon Reiter, am Desktop
+             gerahmte Bereiche — Felder links breit, Kanten rechts schmal,
+             Admin und Log darunter zugeklappt. -->
+        <nw-kapitel class="spalten" [vorgabe]="tab() === 'read' ? 'read' : null">
+          <nw-kapitelteil key="fields" titel="Fields" lage="haupt" class="kahl">
+          <main class="hauptspalte">
             <article class="blatt">
               <div>
                 <h1>{{ name(e) }}</h1>
                 @if (untertitel(); as u) {
                   <p class="untertitel">{{ u }}</p>
                 }
-                <!-- Worin der Artikel steht und wodurch er zu sehen ist (T-251, REQ-348). -->
-                <nw-ebenen-marke [artikel]="e" [fassungen]="fassungen()" />
+                <!-- Worin der Artikel steht (T-251, REQ-348) — am Kopf nur das
+                     Kürzel, die ganze Marke steht unter Admin (T-277). -->
+                <nw-ebenen-marke [artikel]="e" [fassungen]="fassungen()" [kurz]="true" />
                 <!-- Fassungen auf einen Blick (T-173): oben, auch am Telefon. -->
                 @if (!bearbeitet()) {
                   <nw-fassungs-abzeichen [basis]="e" [fassungen]="fassungen()" />
@@ -936,136 +956,150 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
             }
             </article>
           </main>
+          </nw-kapitelteil>
 
-          <aside class="seitenspalte" aria-label="Connections">
-            <!-- Die Leiste „Design this view" (T-268): gestaltet an diesem Artikel. -->
-            @if (gestaltet() && !bearbeitet()) {
-              <section class="kasten gestalten" aria-label="Design this view">
-                <h2>View · {{ bestand.registry()?.views?.[geltendeAnsicht()]?.label ?? geltendeAnsicht() }}</h2>
-                <nw-ansichtsdesigner [schluessel]="geltendeAnsicht()" [beispiel]="e" [typ]="art(e)" [kompakt]="true"
-                                     (entwurf)="ansichtsEntwurf.set($event)" (fertig)="ansichtGestaltet($event)" (wechsel)="waehleAnsicht($event)" />
-              </section>
-            }
-            @if (kanten().length || abwKanten().length) {
-              <section class="kasten">
-                <h2>Relations</h2>
-                <ul class="kanten">
-                  @for (k of kanten(); track k.id) {
-                    <li>
-                      <span class="rl" [attr.title]="kantenWirkung(k.typ)">{{ k.label }}</span>
-                      @if (k.ziel) {
-                        <a [routerLink]="['/artikel', k.ziel]" [nwQuick]="k.ziel" [nwBegriff]="begriff(k.ziel, k.text)">{{ k.text }}</a>
-                      } @else {
-                        <span class="weg">{{ k.text }}</span>
-                      }
-                      @if (k.stufe) {
-                        <span class="stufe">level {{ k.stufe }}</span>
-                      }
-                      @if (k.unter; as u) {
-                        <a class="unter" [routerLink]="['/artikel', u.id]">{{ u.name }}</a>
-                      }
-                      @if (k.antworten.length) {
-                        <dl class="antworten">
-                          @for (a of k.antworten; track a.id) {
-                            <dt>{{ a.label }}</dt>
-                            <dd>{{ a.text || '—' }}</dd>
-                          }
-                        </dl>
-                      }
-                    </li>
+          <!-- Die Leiste „Design this view" (T-268): gestaltet an diesem Artikel. -->
+          <nw-kapitelteil key="design" titel="Design" lage="seite" [zeigen]="gestaltet() && !bearbeitet()">
+              @if (gestaltet() && !bearbeitet()) {
+                <section class="gestalten" aria-label="Design this view">
+                  <h3>View · {{ bestand.registry()?.views?.[geltendeAnsicht()]?.label ?? geltendeAnsicht() }}</h3>
+                  <nw-ansichtsdesigner [schluessel]="geltendeAnsicht()" [beispiel]="e" [typ]="art(e)" [kompakt]="true"
+                                       (entwurf)="ansichtsEntwurf.set($event)" (fertig)="ansichtGestaltet($event)" (wechsel)="waehleAnsicht($event)" />
+                </section>
+              }
+          </nw-kapitelteil>
+          <nw-kapitelteil key="relations" titel="Relations" lage="seite" [zahl]="kanten().length" [zeigen]="!!(kanten().length || abwKanten().length)">
+            <ul class="kanten">
+              @for (k of kanten(); track k.id) {
+                <li>
+                  <span class="rl" [attr.title]="kantenWirkung(k.typ)">{{ k.label }}</span>
+                  @if (k.ziel) {
+                    <a [routerLink]="['/artikel', k.ziel]" [nwQuick]="k.ziel" [nwBegriff]="begriff(k.ziel, k.text)">{{ k.text }}</a>
+                  } @else {
+                    <span class="weg">{{ k.text }}</span>
                   }
-                  @for (k of abwKanten(); track $index) {
-                    <li class="fassung-kante">
-                      <span class="rl">{{ k.label }}</span>
-                      <span class="kuerzel" [class.vergleich]="k.compare" [title]="k.titel">{{ k.kuerzel }}</span>
-                      @if (k.dazu.length) {
-                        <span>+ {{ k.dazu.join(', ') }}</span>
-                      }
-                      @if (k.weg.length) {
-                        <span class="weg">− {{ k.weg.join(', ') }}</span>
-                      }
-                    </li>
+                  @if (k.stufe) {
+                    <span class="stufe">level {{ k.stufe }}</span>
                   }
-                </ul>
-              </section>
-            }
-            <nw-fassungen [artikel]="e.id" [basis]="e" [fassungen]="fassungen()" (gewechselt)="gewechselt($event)" />
-            <!-- Wer was über diesen Artikel weiss (T-286) — nur die Leitung, der Server sagt es. -->
-            @if (session.leitung() && !bearbeitet() && art(e) !== 'Information' && art(e) !== 'Knowledge') {
-              <nw-wissenskasten [artikel]="e" />
-            }
-            <!-- Ein Bild (T-119): wo es gezeigt wird, seine Fassungen, „Replace image". -->
+                  @if (k.unter; as u) {
+                    <a class="unter" [routerLink]="['/artikel', u.id]">{{ u.name }}</a>
+                  }
+                  @if (k.antworten.length) {
+                    <dl class="antworten">
+                      @for (a of k.antworten; track a.id) {
+                        <dt>{{ a.label }}</dt>
+                        <dd>{{ a.text || '—' }}</dd>
+                      }
+                    </dl>
+                  }
+                </li>
+              }
+              @for (k of abwKanten(); track $index) {
+                <li class="fassung-kante">
+                  <span class="rl">{{ k.label }}</span>
+                  <span class="kuerzel" [class.vergleich]="k.compare" [title]="k.titel">{{ k.kuerzel }}</span>
+                  @if (k.dazu.length) {
+                    <span>+ {{ k.dazu.join(', ') }}</span>
+                  }
+                  @if (k.weg.length) {
+                    <span class="weg">− {{ k.weg.join(', ') }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          </nw-kapitelteil>
+          <!-- Was auf diesen Artikel zeigt — auch wo ein Bild gezeigt wird (T-119)
+               und in welchen Sitzungen eine Karte vorkommt (T-202). -->
+          <nw-kapitelteil key="linked" titel="Linked here" lage="seite" [zahl]="rueckbezuege().length"
+                          [zeigen]="!!(rueckbezuege().length || istBild(e) || istKarte(e))">
             @if (istBild(e)) {
               <nw-bildpanel [artikel]="e" (gewechselt)="gewechselt($event)" />
             }
-            <!-- Eine Karte (T-202): in welchen Sitzungen und Szenen sie vorkommt. -->
             @if (istKarte(e)) {
               <nw-kartenpanel [karte]="e.id" />
             }
             @if (rueckbezuege().length) {
-              <section class="kasten">
-                <h2>Linked here</h2>
-                <ul class="kanten">
-                  @for (r of rueckbezuege(); track r.id) {
-                    <li>
-                      <span class="rl" [attr.title]="kantenWirkung(r.typ)">{{ r.label }}</span>
-                      <a [routerLink]="['/artikel', r.ziel]" [nwQuick]="r.ziel">{{ r.text }}</a>
-                    </li>
-                  }
-                </ul>
-              </section>
-            }
-            <!-- Die Würfe auf diesem Artikel (T-172). -->
-            <nw-wuerfe class="kasten" [artikel]="e.id" />
-            <section class="kasten">
-              <h2>Who can see this</h2>
-              <div class="zeile"><span>Audience</span><strong>{{ sicht().audience }}</strong></div>
-              @for (z of sicht().listen; track z.label) {
-                <div class="zeile">
-                  <span>{{ z.label }}</span>
-                  <span>
-                    @for (l of z.links; track $index) {
-                      @if (!$first) {<ng-container>, </ng-container>}
-                      @if (l.ziel) {
-                        <a [routerLink]="['/artikel', l.ziel]" [nwQuick]="l.ziel">{{ l.text }}</a>
-                      } @else {
-                        <span class="weg">{{ l.text }}</span>
-                      }
-                    }
-                  </span>
-                </div>
+              <ul class="kanten">
+                @for (r of rueckGezeigt(); track r.id) {
+                  <li>
+                    <span class="rl" [attr.title]="kantenWirkung(r.typ)">{{ r.label }}</span>
+                    <a [routerLink]="['/artikel', r.ziel]" [nwQuick]="r.ziel">{{ r.text }}</a>
+                  </li>
+                }
+              </ul>
+              @if (rueckGezeigt().length < rueckbezuege().length) {
+                <button type="button" class="klein" (click)="alleRueckFuer.set(e.id)">Show all {{ rueckbezuege().length }}</button>
               }
-            </section>
-            @if (quelle(); as q) {
+            }
+          </nw-kapitelteil>
+          <!-- Admin an jeder Artikelart (T-277): Ebene und Herkunft, wer es sieht,
+               wer was weiss, Fassungen, Quelle — schmale Kästen nebeneinander. -->
+          <nw-kapitelteil key="admin" titel="Admin" lage="voll" [zu]="true" [hinweis]="adminHinweis()">
+            <div class="admin">
               <section class="kasten">
-                <h2>Source</h2>
-                @if (q.url) {
-                  <a [href]="q.url" target="_blank" rel="noopener">{{ q.text }}</a>
-                } @else if (leseZiel(); as z) {
-                  <!-- „XGE p. 12" springt an die Stelle im Buch (T-091). -->
-                  <a [routerLink]="['/artikel', z.layer]" [queryParams]="leseParams(z)">{{ q.text }}</a>
-                } @else {
-                  <span>{{ q.text }}</span>
-                }
-                <!-- Das Kürzel ausgeschrieben (T-088): „XGE" sagt nur, wer das Buch kennt. -->
-                @if (q.titel) {
-                  <p class="quelltitel">{{ q.titel }}</p>
-                }
-                @if (q.verlag) {
-                  <p class="quelltitel">Publisher: {{ q.verlag }}</p>
+                <h3>Layer</h3>
+                <nw-ebenen-marke [artikel]="e" [fassungen]="fassungen()" />
+              </section>
+              <section class="kasten">
+                <h3>Who can see this</h3>
+                <div class="zeile"><span>Audience</span><span><strong>{{ sicht().audience }}</strong> <small class="dim">{{ sicht().herkunft }}</small></span></div>
+                @for (z of sicht().listen; track z.label) {
+                  <div class="zeile">
+                    <span>{{ z.label }}</span>
+                    <span>
+                      @for (l of z.links; track $index) {
+                        @if (!$first) {<ng-container>, </ng-container>}
+                        @if (l.ziel) {
+                          <a [routerLink]="['/artikel', l.ziel]" [nwQuick]="l.ziel">{{ l.text }}</a>
+                        } @else {
+                          <span class="weg">{{ l.text }}</span>
+                        }
+                      }
+                    </span>
+                  </div>
                 }
               </section>
+              <!-- Wer was über diesen Artikel weiss (T-286) — nur die Leitung, der Server sagt es. -->
+              @if (session.leitung() && !bearbeitet() && art(e) !== 'Information' && art(e) !== 'Knowledge') {
+                <nw-wissenskasten [artikel]="e" />
+              }
+              <nw-fassungen [artikel]="e.id" [basis]="e" [fassungen]="fassungen()" (gewechselt)="gewechselt($event)" />
+              @if (quelle(); as q) {
+                <section class="kasten">
+                  <h3>Source</h3>
+                  @if (q.url) {
+                    <a [href]="q.url" target="_blank" rel="noopener">{{ q.text }}</a>
+                  } @else if (leseZiel(); as z) {
+                    <!-- „XGE p. 12" springt an die Stelle im Buch (T-091). -->
+                    <a [routerLink]="['/artikel', z.layer]" [queryParams]="leseParams(z)">{{ q.text }}</a>
+                  } @else {
+                    <span>{{ q.text }}</span>
+                  }
+                  <!-- Das Kürzel ausgeschrieben (T-088): „XGE" sagt nur, wer das Buch kennt. -->
+                  @if (q.titel) {
+                    <p class="quelltitel">{{ q.titel }}</p>
+                  }
+                  @if (q.verlag) {
+                    <p class="quelltitel">Publisher: {{ q.verlag }}</p>
+                  }
+                </section>
+              }
+            </div>
+          </nw-kapitelteil>
+          <!-- Die Würfe auf diesem Artikel (T-172) — geholt, sobald das Kapitel offen ist. -->
+          <nw-kapitelteil key="log" titel="Log" lage="voll" [zu]="true" #log>
+            <nw-wuerfe [artikel]="e.id" [geoeffnet]="log.sichtbar()" />
+          </nw-kapitelteil>
+          <!-- Die Leseansicht (T-091, T-191): das Element „reader" braucht die
+               ganze Breite — Inhaltsverzeichnis links, Kapitel rechts. -->
+          <nw-kapitelteil key="read" titel="Read" lage="voll" class="kahl" [zeigen]="leser()">
+            @if (leser()) {
+              <section id="lesen" class="lesen" aria-label="Read">
+                <nw-lesen [layer]="e.id" [eingebettet]="true" [at]="at()" [page]="page()" [springen]="tab() === 'read'" />
+              </section>
             }
-          </aside>
-        </div>
-        <!-- Die Leseansicht (T-091, T-191): das Element „reader" braucht die
-             ganze Breite — Inhaltsverzeichnis links, Kapitel rechts — und
-             steht darum unter Haupt- und Seitenspalte. -->
-        @if (leser()) {
-          <section id="lesen" class="lesen" aria-label="Read">
-            <nw-lesen [layer]="e.id" [eingebettet]="true" [at]="at()" [page]="page()" [springen]="tab() === 'read'" />
-          </section>
-        }
+          </nw-kapitelteil>
+        </nw-kapitel>
         }
       </div>
     } @else if (bestand.fehlt().has(id())) {
@@ -1074,8 +1108,8 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
       <p class="leer buch">Loading…</p>
     }
   `,
-  /* Die Feldauswahl (T-195) in einer eigenen Datei: das Budget je Datei. */
-  styleUrls: ['./artikel.scss', './feldwahl.scss'],
+  /* Die Feldauswahl (T-195) und das Kapitel „Admin" (T-277) in eigenen Dateien: das Budget je Datei. */
+  styleUrls: ['./artikel.scss', './feldwahl.scss', './admin.scss'],
 })
 export class Artikel implements SchnellKontext {
   /** Eine Kante auf eine Eigenschaft, einen Zustand, eine Aktionsart mit
@@ -1365,13 +1399,31 @@ export class Artikel implements SchnellKontext {
       | undefined;
     const name = this.bestand.name();
     /* Träger als Links, wie jedes Verweisfeld (T-068). */
+    /* Die geltende Stufe rechnet der Server (T-252): sagt der Artikel
+       keine, sagt es die Regel der Kampagne oder die Ebene. */
+    const g = this.bestand.stufe().get(this.id());
     return {
-      audience: v?.audience ?? 'public',
+      audience: g?.audience ?? v?.audience ?? 'public',
+      herkunft: g ? HERKUNFT[g.source] : v?.audience ? 'set here' : 'default',
       listen: [
         { label: 'Revealed to', links: verweisZiele(v?.revealedTo, name) },
         { label: 'Hidden from', links: verweisZiele(v?.hiddenFrom, name) },
       ].filter((l) => l.links.length),
     };
+  });
+
+  /** „Linked here" kurz (T-277): ein Zauber hat 150 Rückbezüge, und die
+   *  schmale Spalte wäre sonst länger als das Blatt. „Show all" je Artikel. */
+  protected readonly alleRueckFuer = signal<string | null>(null);
+  protected readonly rueckGezeigt = computed(() => {
+    const r = this.rueckbezuege();
+    return this.alleRueckFuer() === this.id() || r.length <= RUECK_KURZ + 3 ? r : r.slice(0, RUECK_KURZ);
+  });
+
+  /** Die Zeile neben „Admin" (T-277): wer es sieht, auf einen Blick. */
+  protected readonly adminHinweis = computed(() => {
+    const s = this.sicht();
+    return [s.audience, s.listen.length ? 'with exceptions' : ''].filter(Boolean).join(' · ');
   });
 
   protected readonly quelle = computed(() => {

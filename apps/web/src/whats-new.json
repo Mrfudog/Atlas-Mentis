@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-19-chapters",
+      "date": "2026-10-19",
+      "title": "Pages in chapters: tabs on the phone, framed areas on the desktop",
+      "text": "Articles, characters and registry types are split into chapters — Fields, Relations, Linked here, Admin and Log on an article. On a phone they are tabs and the address keeps the one you chose; on a wider screen the fields stand on the left and relations on the right. Admin, on every article, shows its layers, who can see it and why, what is known about it and its versions.",
+      "area": "Articles",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-19-maps-in-play",
       "date": "2026-10-19",
       "title": "Maps in play: release to players, fog per session, look back later",

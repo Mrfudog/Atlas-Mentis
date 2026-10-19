@@ -1,0 +1,23 @@
+/* Das Kapitel „Admin" (T-277): Ebene, Sichtbarkeit, Wissen, Fassungen und
+   Quelle sind schmal — nebeneinander, so viele die Breite trägt. */
+.admin {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+.kasten h3 {
+  margin: 0;
+  font-family: var(--caps);
+  font-size: 1rem;
+  color: var(--accent);
+}
+.dim {
+  color: var(--dim);
+  margin-left: 0.35rem;
+}
+@media (max-width: 719.98px) {
+  .admin {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

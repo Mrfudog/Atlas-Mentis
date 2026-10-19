@@ -127,4 +127,16 @@ describe('Sichtbarkeit je Gruppe (T-252)', () => {
     expect((await repo.getEntity('p_gruft'))?.components?.['Visibility']).toBeUndefined();
     expect(await sieht('Sela')).toEqual(['p_gruft', 'p_markt', 'p_tor']);
   });
+
+  it('sagt am Artikel die geltende Stufe und woher sie kommt (refs.audience, T-277)', async () => {
+    const { app, keks } = await aufbau();
+    const mira = await keks('Mira');
+    const stufe = async (id: string) =>
+      (await app.inject({ method: 'GET', url: `/api/entities/${id}`, headers: { cookie: mira } })).json().refs.audience;
+    expect(await stufe('p_markt')).toEqual({ audience: 'public', source: 'default' });
+    expect(await stufe('p_werk')).toEqual({ audience: 'gm', source: 'layer' });
+    expect(await stufe('p_gruft')).toEqual({ audience: 'gm', source: 'article' });
+    await app.inject({ method: 'PUT', url: '/api/campaigns/camp_nebel/visibility/rules', headers: { cookie: mira }, payload: { id: 'layer:ly_dnd', audience: 'players' } });
+    expect(await stufe('p_markt')).toEqual({ audience: 'players', source: 'campaign', rule: 'layer:ly_dnd' });
+  });
 });
