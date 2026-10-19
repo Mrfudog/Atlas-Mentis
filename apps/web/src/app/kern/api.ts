@@ -1408,7 +1408,7 @@ export class Api {
   ruleArticles(): Promise<Entity[]> {
     return this.call<Entity[]>('/api/rule-articles');
   }
-  campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[]; missing?: number }> {
+  campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[]; missing?: number; choices?: Record<string, { id: string; name: string; does: string }[]> }> {
     return this.call(`/api/campaigns/${encodeURIComponent(id)}/rules`);
   }
   /** Regelset und Gruppen der laufenden Kampagne, mit den Inventaren, zwischen denen Sachen wandern (T-127). */

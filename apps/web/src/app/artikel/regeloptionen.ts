@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { withRuleVariant, type Entity, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
+import { withRuleVariant, type Entity, type Relation, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
@@ -105,6 +105,34 @@ import { Tragraster } from './tragraster';
                     </li>
                   }
                 </ul>
+              } @else if (o.methods && darfSchreiben() && o.relation && (wahl()[o.relation]?.length ?? 0) > 0) {
+                <!-- Mehrfachwahl (Leitung 19.10.): jedes mögliche Verfahren mit Häkchen, an- und abwählbar. -->
+                <ul class="varianten">
+                  @for (m of wahl()[o.relation!] ?? []; track m.id) {
+                    <li [class.gewaehlt]="gewaehlt(o, m.id)">
+                      <label class="zeile">
+                        <input type="checkbox" [checked]="gewaehlt(o, m.id)" [disabled]="waehlt() !== null" (change)="schalte(o, m.id, $any($event.target).checked)" />
+                        <a class="name" [routerLink]="['/artikel', m.id]" [nwQuick]="m.id">{{ m.name }}</a>
+                        @if (waehlt() === o.key + ':' + m.id) {
+                          <span class="marke">Saving…</span>
+                        }
+                      </label>
+                      <p class="was">{{ m.does }}</p>
+                    </li>
+                  }
+                  @for (m of o.methods; track m.id) {
+                    @if (m.builtIn) {
+                      <li class="vorgabe">
+                        <div class="zeile">
+                          <span class="name">{{ m.name }}</span>
+                          <span class="marke" title="Applies while nothing is ticked.">default</span>
+                        </div>
+                        <p class="was">{{ m.does }}</p>
+                      </li>
+                    }
+                  }
+                </ul>
+                <p class="hint">Untick all to fall back to the defaults.</p>
               } @else if (o.methods) {
                 <ul class="varianten">
                   @for (m of o.methods; track m.id) {
@@ -298,6 +326,8 @@ export class Regeloptionen {
   protected readonly waehlt = signal<string | null>(null);
   /** Wie viele Regeln und Optionen der Laufzeit noch keinen Artikel im Stapel haben. */
   protected readonly fehlen = signal(0);
+  /** Was je Kante zur Wahl steht (`choices` vom Server). */
+  protected readonly wahl = signal<Record<string, { id: string; name: string; does: string }[]>>({});
 
   constructor() {
     effect(() => {
@@ -312,10 +342,42 @@ export class Regeloptionen {
       const r = await this.api.campaignRules(id);
       this.sorten.set(r.sorts);
       this.fehlen.set(r.missing ?? 0);
+      this.wahl.set(r.choices ?? {});
     } catch (error) {
       this.fehler.set(error instanceof ApiError ? error.message : 'The options could not be loaded.');
     } finally {
       this.laedt.set(false);
+    }
+  }
+
+  /** Ist dieses Verfahren gewählt? (Die gewählten nennt der Server unter `methods`.) */
+  protected gewaehlt(o: RuleOptionState, id: string): boolean {
+    return (o.methods ?? []).some((m) => m.id === id && !m.builtIn);
+  }
+
+  /**
+   * **Ein Verfahren an- oder abwählen** (Mehrfachwahl): die Kante von der
+   * Kampagne auf den Artikel setzen oder wegnehmen und wie aus der Maske
+   * speichern. Ohne Häkchen gelten die Vorgaben.
+   */
+  protected async schalte(o: RuleOptionState, id: string, an: boolean): Promise<void> {
+    if (this.waehlt() || !o.relation) return;
+    this.waehlt.set(`${o.key}:${id}`);
+    this.fehler.set(null);
+    try {
+      const { refs: _refs, fromTemplate: _ft, ...k } = (await this.api.entity(this.kampagne())) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      const alt = (k.relations ?? []) as Relation[];
+      const hat = alt.some((r) => r.type === o.relation && r.to === id);
+      if (hat === an) return;
+      const relations = an
+        ? [...alt, { id: `${k.id}~${o.relation}-${Date.now().toString(36)}`, type: o.relation, to: id, props: {} }]
+        : alt.filter((r) => !(r.type === o.relation && r.to === id));
+      await this.api.putEntity({ ...(k as Entity), relations });
+      await this.lade(this.kampagne());
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'The option could not be saved.');
+    } finally {
+      this.waehlt.set(null);
     }
   }
 
