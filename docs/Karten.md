@@ -74,7 +74,7 @@ eine Wand — was vor den Sorten gezeichnet wurde, bleibt, was es war; der
 alte Schalter `open: true` des Prototyps wird als `state: 'open'` gelesen.
 
 ```json
-{ "id": "w-1", "kind": "door", "x1": 0.5, "y1": 0.4, "x2": 0.5, "y2": 0.5, "state": "closed" }
+{ "id": "w-1", "kind": "door", "x1": 0.5, "y1": 0.4, "x2": 0.5, "y2": 0.5, "state": "closed", "width": 0.012 }
 ```
 
 **Gezeichnet werden die Sperren bei jedem Licht**, nicht nur im Dunkeln —
@@ -84,12 +84,60 @@ Der Server schickt ihnen nur die Sperren am Rand des Aufgedeckten, eine
 geschlossene Geheimtür als Wand und eine verschlossene als zu
 (`redactWalls`) — dass sie klemmt, merkt man beim Versuch.
 
-Am Werkzeug (Gruppe *Walls*, W): **Draw** tippt Punkt um Punkt, rastet an
-den Gitterecken ein, Enter oder derselbe Punkt noch einmal beendet; **Set
+Am Werkzeug (Gruppe *Walls*, W): **Draw** tippt Punkt um Punkt, Enter oder
+derselbe Punkt noch einmal beendet; **Points** zieht eine Ecke, **Set
 kind** macht eine angetippte Sperre zur gewählten Art, **Lock** schliesst
 eine Tür ab oder auf, **Erase** nimmt eine weg. Geöffnet wird in der
 Auswahl: ein Klick auf die Tür. Eine Tür, die man nur über ein Menü
 aufbekommt, bleibt am Tisch zu.
+
+### Zeichnen: Formen, Türen, Einrasten, Schneiden (T-304)
+
+Gerechnet in `packages/model/src/mapdraw.ts`, gezeichnet in
+`apps/web/src/app/karten/karte.ts` (Schalter in `karten/editor.ts`).
+
+- **Eine Form ist eine Folge von Sperren** und kein eigener Eintrag:
+  Linienzug, Linie, Rechteck, Ellipse und Polygon (`DRAW_SHAPES`) werden
+  beim Fertigstellen zu Strecken in `Map.walls` (`shapeOutline`,
+  `outlineWalls`). Sicht, Licht und Zugplan lesen dieselbe Liste wie
+  vorher — eine Form als eigene Sorte Sperre müsste jede Rechnung zweimal
+  fragen. Der Schalter **Closed** schliesst den Linienzug; Rechteck,
+  Ellipse (24 Ecken, `ELLIPSE_STEPS`) und Polygon sind immer geschlossen,
+  die Linie nie.
+- **Eine Tür ist ein Viereck über der Öffnung:** gezogen als Linie (zwei
+  Punkte), die Dicke kommt dazu — `width` am Eintrag, in Anteilen der
+  Breite, beim Zeichnen ein Teil eines Feldes (Vorgabe 25 %), ohne Angabe
+  `DOOR_WIDTH`. Geklickt wird das Viereck (`doorRect`), gerechnet die
+  Mittellinie: die Dicke ist Griff und Bild, keine zweite Sperre.
+- **Einrasten mit Stärke** (`snapPoint`): an einen vorhandenen Punkt, eine
+  Gitterecke (Quadrate) oder eine Linie, so weit, wie der Regler sagt —
+  in **Bildschirmpunkten**, also beim Zoomen gleich, am Telefon um 1,6
+  weiter. Der Punkt geht vor der Ecke, die Ecke vor der Linie. Alt oder
+  langes Drücken setzt ohne Einrasten.
+- **Schneiden** (Schalter *Cut walls*, Vorgabe an): eine Tür oder ein
+  Fenster über einer Wand teilt die Wand (`cutWalls`); die Teile enden
+  genau an den Rändern der Öffnung. Getroffen ist, was auf der Geraden der
+  Öffnung liegt (ein paar Bildschirmpunkte Spiel) und sich mit ihr
+  überlappt; eine Tür in einer Tür schneidet nicht. Wird die Öffnung
+  gelöscht, **bietet** die Seite an, die Wand wieder zusammenzufügen
+  (`joinAround`) — nicht still: vielleicht war die Lücke gewollt.
+- **Punkte zeigen und ziehen** (`wallPoints`, `moveWallPoint`): jedes Ende
+  an derselben Stelle wandert mit, zwei Wände an einer Ecke bleiben
+  verbunden; wird eine Sperre zum Punkt, fällt sie weg.
+
+Die Schalter gehören dem Werkzeug und nicht der Karte: der Browser merkt
+sie sich (`localStorage`), eine Karte trägt sie nicht.
+
+### Das Gitter auf der Karte setzen (T-304)
+
+Gruppe *Grid* (G): **Set origin** legt zwei Gitterlinien auf einen Punkt
+(`gridOrigin`), **Pick a square** nimmt zwei gegenüberliegende Ecken eines
+Feldes und daraus Grösse (Mittel aus Breite und Höhe) und Versatz
+(`gridFromCell`); Regler und Zahlen stellen fein nach. Geschrieben werden
+die Felder, die es gibt — `gridShape`, `gridSize`, `gridOffsetX`,
+`gridOffsetY` (`setGrid`) —, zuerst als **Vorschau** in der Seite, mit
+*Save grid* an der Karte. Wer die Gruppe mit einer Vorschau verlässt, wird
+gefragt.
 
 ### Türen am Tisch
 
