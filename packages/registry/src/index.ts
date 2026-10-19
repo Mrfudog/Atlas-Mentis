@@ -45,6 +45,10 @@ export const settings: Record<string, string> = {
      ohne eigene Form: Seitenlänge des Grundquadrats je Grösse (eine
      Grösse, die hier fehlt, behält das Rechteck oben), und die Zonen nach
      Spalten. Das Zusatzquadrat rechnet der Statblock (`carryExtra`). */
+  /* **Das Tragblatt aus Bausteinen** (REQ-356): JSON, gemalt unter Rules &
+     options › Inventory. Leer heisst noch nicht gemalt — dann gilt das
+     Blatt aus den beiden Zeilen darunter (`legacyCarrySheet`). */
+  carrySheet: '',
   carrySquares: 'tiny:3, small:4, medium:5, large:6',
   carryZones: '0-1:bonus action, 2-4:action, 5-8:turn, 9-10:round',
   /* Wie schnell etwas von einem Körperplatz kommt — und ein Behälter an

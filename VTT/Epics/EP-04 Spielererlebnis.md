@@ -20,7 +20,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | Feature | Stories | Punkte | Stand |
 |---|---|---|---|
 | [[F-025 Spieleransicht & Telefon]] — Die Seite aus Sicht der Spielenden, auch am Telefon. | 5 | 13 | 4 teils · 1 offen |
-| [[F-026 Inventar]] — Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, Gruppeninventar, Gegenstände als Instanz. | 22 | 54 | 6 steht · 4 teils · 12 offen |
+| [[F-026 Inventar]] — Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, Gruppeninventar, Gegenstände als Instanz. | 23 | 59 | 7 steht · 4 teils · 12 offen |
 | [[F-027 Eigene Inhalte der Spielenden]] — Notizen, Ziele, Lore-Artikel, die Spielende selbst anlegen. | 3 | 6 | 1 teils · 2 offen |
 | [[F-028 Chat]] — Fäden zwischen Leitung und Spielenden, daraus Kampagneninhalt. | 3 | 10 | 3 offen |
 | [[F-078 Beute]] — Beute vorbereiten, während der Sitzung öffnen und von Spielenden nehmen lassen. | 1 | 3 | 1 offen |

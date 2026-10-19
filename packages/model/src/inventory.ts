@@ -4,13 +4,11 @@
  * Drei Rechnungen, alle beim Lesen (D8) und keine davon gespeichert:
  *
  *  - **Das Tragraster** einer Kreatur, deren Inventar keine eigene Form
- *    hat: links ein Grundquadrat nach Grösse (Tiny 3 … Large 6), rechts ein
- *    Zusatzquadrat 0 … 5, das der Statblock rechnet (`Statblock.carryExtra`,
- *    eine Rechnung wie der Zauber-SG). Wie gross welche Grösse ist und
- *    welche Spalte welche Zone hat, steht als Einstellung — eine Kampagne
- *    mit einem anderen Blatt ist eine andere Zeile, kein Codewechsel.
- *  - **Die Zonen nach Spalten** (`0-1:bonus action, 2-4:action`): dieselbe
- *    Schreibweise für das Tragraster und für die Vorlagen der Behälter.
+ *    hat: seit REQ-356 aus den Bausteinen des Tragblatts, die für sie
+ *    gelten, aneinandergefügt (`carrySheet.ts`) — Grösse, Stärke oder was
+ *    eine Bedingung sonst nennt. Das Blatt steht als Einstellung; eine
+ *    Kampagne mit einem anderen Blatt ist eine andere Zeile, kein
+ *    Codewechsel. Die älteren Einstellungen nach Spalten liest es weiter.
  *  - **Die Ziehstufe die Kette hinauf**: ein Stück in einem Behälter
  *    braucht das Langsamere aus seiner Zone und der Stufe des Behälters
  *    + 1. Ein Behälter an einem Körperplatz nimmt die Stufe des Platzes
@@ -58,62 +56,6 @@ export function parseCarrySquares(spec: string | undefined | null): Record<strin
   return out;
 }
 
-/** Eine Zahl auf eine Spanne klemmen; keine Zahl heisst die Untergrenze. */
-export function clampExtra(n: unknown, min = 0, max = 5): number {
-  const z = Number(n);
-  if (!Number.isFinite(z)) return min;
-  return Math.max(min, Math.min(max, Math.trunc(z)));
-}
-
-export interface CarryGrid {
-  /** Die Form, wie `Inventory.grid` sie schreibt: `#` ist ein Feld. */
-  rows: string[];
-  /** Seitenlänge des Grundquadrats (aus der Grösse). */
-  base: number;
-  /** Seitenlänge des Zusatzquadrats (aus dem Statblock). */
-  extra: number;
-  /** Ab welcher Spalte das Zusatzquadrat steht. */
-  extraAt: number;
-}
-
-/**
- * **Das Tragraster aus Grösse und Statblock** (REQ-215).
- *
- * Wie auf dem Blatt: das Grundquadrat links oben, so breit wie das grösste
- * Grundquadrat der Einstellung (also 6), daneben das Zusatzquadrat, so
- * breit wie sein Höchstwert (5) — 11 × 6. Was ausserhalb der beiden
- * Quadrate liegt, ist gesperrt (`.`), damit die Spalten und damit die
- * Zonen bei jeder Grösse dieselben bleiben.
- *
- * Eine Grösse, die die Einstellung nicht kennt (huge, gargantuan, oder gar
- * keine), gibt **kein** Raster — dann gilt das Rechteck wie bisher.
- */
-export function carryGrid(
-  size: string | undefined | null,
-  extra: unknown,
-  squares: Record<string, number>,
-  extraMax = 5,
-): CarryGrid | null {
-  const base = squares[String(size ?? '').toLowerCase()];
-  if (!base) return null;
-  const links = Math.max(...Object.values(squares));
-  const rechtsMax = Math.max(0, Math.trunc(extraMax));
-  const zusatz = clampExtra(extra, 0, rechtsMax);
-  const breite = links + rechtsMax;
-  const hoehe = Math.max(links, rechtsMax);
-  const rows: string[] = [];
-  for (let y = 0; y < hoehe; y++) {
-    let r = '';
-    for (let x = 0; x < breite; x++) {
-      const inBasis = x < base && y < base;
-      const inZusatz = x >= links && x - links < zusatz && y < zusatz;
-      r += inBasis || inZusatz ? '#' : '.';
-    }
-    rows.push(r);
-  }
-  return { rows, base, extra: zusatz, extraAt: links };
-}
-
 /** Die Zonen nach Spalten als Spalte → Stufe: `0-1:action` → `{0: 'action', 1: 'action'}`. */
 export function zonesByColumn(spec: string | undefined | null): Record<number, string> {
   const spalte: Record<number, string> = {};
@@ -127,67 +69,12 @@ export function zonesByColumn(spec: string | undefined | null): Record<number, s
   return spalte;
 }
 
-/**
- * Die Gegenrichtung (REQ-355): Spalte → Stufe wieder als Einstellung,
- * benachbarte Spalten mit derselben Stufe als Spanne (`0-1:action, 2:turn`).
- * Eine Spalte ohne Stufe fehlt — sie hat dann keine Zone.
- */
-export function formatColumnZones(zonen: Readonly<Record<number, string | undefined>>): string {
-  const spalten = Object.keys(zonen).map(Number).filter((x) => Number.isInteger(x) && x >= 0 && zonen[x]).sort((a, b) => a - b);
-  const teile: string[] = [];
-  let i = 0;
-  while (i < spalten.length) {
-    const von = spalten[i]!;
-    let bis = von;
-    while (i + 1 < spalten.length && spalten[i + 1] === bis + 1 && zonen[spalten[i + 1]!] === zonen[von]) bis = spalten[++i]!;
-    teile.push(`${von === bis ? von : `${von}-${bis}`}:${zonen[von]!}`);
-    i++;
-  }
-  return teile.join(', ');
-}
-
 /** Schlüssel und Wert wieder als Einstellung (`tiny:3, small:4`); leere Werte fallen weg. */
 export function formatPairs(paare: Readonly<Record<string, string | number>>): string {
   return Object.entries(paare)
     .filter(([k, v]) => k.trim() !== '' && String(v).trim() !== '')
     .map(([k, v]) => `${k.trim()}:${String(v).trim()}`)
     .join(', ');
-}
-
-/** Eine Behältervorlage als Einstellung, wie `parseContainerPreset` sie liest. */
-export function formatContainerPreset(grid: readonly string[], zonen: Readonly<Record<number, string | undefined>>): string {
-  const z = formatColumnZones(zonen);
-  return grid.join('/') + (z ? ` | ${z}` : '');
-}
-
-/**
- * **Zonen nach Spalten** (`0-1:bonus action, 2-4:action`) für eine Form.
- * Gesperrte Felder bekommen keine Zone: ein Feld, auf dem nichts liegen
- * kann, kostet nichts.
- */
-export function columnZones(spec: string | undefined | null, rows: readonly string[]): Record<string, string> {
-  const spalte = zonesByColumn(spec);
-  const out: Record<string, string> = {};
-  rows.forEach((r, y) => {
-    for (let x = 0; x < r.length; x++) {
-      if (EMPTY.has(r.charAt(x))) continue;
-      const z = spalte[x];
-      if (z) out[`${x},${y}`] = z;
-    }
-  });
-  return out;
-}
-
-/**
- * Eine Behältervorlage aus einer Einstellung `container:<Name>`:
- * `.###../######/.###.. | 0-1:action, 2-3:turn`. Zeilen mit `/`, nach dem
- * Strich die Zonen nach Spalten (darf fehlen).
- */
-export function parseContainerPreset(spec: string | undefined | null): { grid: string[]; zones: Record<string, string> } | null {
-  const [form, zonen] = String(spec ?? '').split('|');
-  const grid = String(form ?? '').split('/').map((r) => r.trim()).filter((r) => r !== '');
-  if (!grid.length) return null;
-  return { grid, zones: columnZones(zonen, grid) };
 }
 
 /** Das Langsamere zweier Stufen auf der Leiter; eine unbekannte zählt nicht. */

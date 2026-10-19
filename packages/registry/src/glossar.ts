@@ -39,6 +39,24 @@ export interface AppTerm {
 /** Die Wörter, mit denen die App über sich selbst spricht. */
 const APP: AppTerm[] = [
   {
+    term: 'Carry block',
+    aliases: ['Carry sheet', 'Carry grid'],
+    sort: 'app',
+    definition: 'A piece of the carry sheet: a painted grid with its own zones and the conditions under which a creature gets it — a size, a strength, any statblock field.',
+    effect: 'Every block whose conditions hold is joined to the others, left to right, into one carry grid.',
+    example: 'A small creature with STR 16 gets “Size: small” (4×4) and “Strength +3” (3×3) side by side: one grid of 7×4.',
+    translations: { de: 'Tragbaustein' },
+    see: '/campaign?tab=rules',
+  },
+  {
+    term: 'Draw zone',
+    aliases: ['Zone (inventory)'],
+    sort: 'app',
+    definition: 'Cells of a carry block or container that cost the same time to draw from — free action, bonus action, action, turn, round.',
+    effect: 'A piece costs the slowest zone it covers; each container further in adds one step.',
+    translations: { de: 'Zugriffszone' },
+  },
+  {
     term: 'Type',
     aliases: ['Article type', 'Kind of article'],
     sort: 'app',

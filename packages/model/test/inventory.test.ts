@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  carryGrid, clampExtra, columnZones, drawStage, handActions, inHand, nextDraw, parseCarrySquares,
-  parseContainerPreset, parsePairs, slowerDraw, zonesByColumn, formatColumnZones, formatPairs, formatContainerPreset,
+  drawStage, handActions, inHand, nextDraw, parseCarrySquares, parsePairs, slowerDraw, zonesByColumn, formatPairs,
 } from '../src/inventory.js';
 import { derivedValue } from '../src/calc.js';
 
@@ -15,30 +14,6 @@ describe('Das Tragraster aus Grösse und Statblock (REQ-215, D54)', () => {
     expect(parsePairs('a:1,, b , c: 2')).toEqual({ a: '1', c: '2' });
   });
 
-  it('legt Grund- und Zusatzquadrat nebeneinander, 11 × 6 wie das Blatt', () => {
-    const g = carryGrid('Medium', 3, GROESSEN)!;
-    expect(g).toMatchObject({ base: 5, extra: 3, extraAt: 6 });
-    expect(g.rows).toEqual([
-      '#####.###..',
-      '#####.###..',
-      '#####.###..',
-      '#####......',
-      '#####......',
-      '...........',
-    ]);
-  });
-
-  it('klemmt das Zusatzquadrat auf 0 … 5', () => {
-    expect(carryGrid('large', 9, GROESSEN)!.extra).toBe(5);
-    expect(carryGrid('tiny', -2, GROESSEN)!.extra).toBe(0);
-    expect(clampExtra(undefined)).toBe(0);
-  });
-
-  it('gibt ohne bekannte Grösse kein Raster — dann gilt das Rechteck', () => {
-    expect(carryGrid('huge', 2, GROESSEN)).toBeNull();
-    expect(carryGrid(undefined, 2, GROESSEN)).toBeNull();
-  });
-
   it('rechnet das Zusatzquadrat am Statblock wie den Zauber-SG', () => {
     const feld = { type: 'number' as const, derived: 'mod(str)', min: 0, max: 5 };
     const karten = { Statblock: { size: 'medium' }, Abilities: { str: 16 } };
@@ -46,46 +21,13 @@ describe('Das Tragraster aus Grösse und Statblock (REQ-215, D54)', () => {
   });
 });
 
-describe('Zonen nach Spalten', () => {
-  it('gibt jedem freien Feld die Zone seiner Spalte', () => {
-    const g = carryGrid('small', 1, GROESSEN)!;
-    const z = columnZones(ZONEN, g.rows);
-    expect(z['0,0']).toBe('bonus action');
-    expect(z['3,3']).toBe('action');
-    expect(z['6,0']).toBe('turn');
-    expect(z['5,0']).toBeUndefined(); // gesperrt
-    expect(z['4,0']).toBeUndefined(); // ausserhalb des Grundquadrats
-  });
-
-  it('liest eine Behältervorlage mit Form und Zonen', () => {
-    const p = parseContainerPreset('.###../######/######/######/.###.. | 0-1:action, 2-3:turn, 4-5:round')!;
-    expect(p.grid).toHaveLength(5);
-    expect(p.zones['0,0']).toBeUndefined();
-    expect(p.zones['0,1']).toBe('action');
-    expect(p.zones['3,0']).toBe('turn');
-    expect(p.zones['5,2']).toBe('round');
-    expect(parseContainerPreset('####/####')!.zones).toEqual({});
-    expect(parseContainerPreset('')).toBeNull();
-  });
-});
-
-describe('Die Einstellungen zurückschreiben (REQ-355)', () => {
-  it('fasst benachbarte Spalten zu Spannen zusammen und liest sich zurück', () => {
+describe('Einstellungen als Paare', () => {
+  it('liest Zonen nach Spalten und schreibt Paare so, wie sie gelesen werden', () => {
     const z = zonesByColumn(ZONEN);
     expect(z[0]).toBe('bonus action');
     expect(z[10]).toBe('round');
-    expect(formatColumnZones(z)).toBe(ZONEN);
-    expect(formatColumnZones({ 0: 'action', 1: 'turn', 2: 'action', 4: 'action' })).toBe('0:action, 1:turn, 2:action, 4:action');
-    expect(formatColumnZones({})).toBe('');
-  });
-
-  it('schreibt Paare und Behältervorlagen so, wie sie gelesen werden', () => {
     expect(formatPairs({ tiny: 3, small: '4', huge: '' })).toBe('tiny:3, small:4');
     expect(parseCarrySquares(formatPairs({ tiny: 3, medium: 5 }))).toEqual({ tiny: 3, medium: 5 });
-    const spec = formatContainerPreset(['.##.', '####'], { 0: 'action', 1: 'action', 2: 'turn', 3: 'turn' });
-    expect(spec).toBe('.##./#### | 0-1:action, 2-3:turn');
-    expect(parseContainerPreset(spec)!.zones['0,1']).toBe('action');
-    expect(formatContainerPreset(['##'], {})).toBe('##');
   });
 });
 

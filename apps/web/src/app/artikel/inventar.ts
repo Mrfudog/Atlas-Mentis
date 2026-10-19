@@ -1,11 +1,11 @@
 import { Component, ElementRef, Injectable, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
-  carryGrid,
+  assembleCarry,
+  carryFieldValue,
+  carrySheetOf,
   coins,
-  columnZones,
   containerShape,
-  derivedValue,
   entityName,
   filled,
   firstFreeSpot,
@@ -15,8 +15,7 @@ import {
   itemShape,
   loadStage,
   moveHeld,
-  parseCarrySquares,
-  parseContainerPreset,
+  parseContainerTemplate,
   pieceInShape,
   pieceZone,
   reserve,
@@ -25,9 +24,11 @@ import {
   slotsUsed,
   type GridPiece,
   type Shape,
+  zoneMap,
 } from '@nw/model';
 import type { Entity, Relation } from '@nw/model';
 import { Api, ApiError, type InventarLage } from '../kern/api';
+import { zonenFarbe as farbeDerZone } from '../kern/zonenfarbe';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
@@ -399,16 +400,17 @@ export class Inventar {
 
   protected readonly leiter = computed<string[]>(() => this.bestand.registry()?.enums?.['DrawTime']?.values ?? []);
 
-  /** Das Tragraster nach dem Blatt, nur unter einer Kreatur mit Statblock (D54). */
+  /**
+   * Das Tragraster nach dem Blatt, nur unter einer Kreatur mit Statblock
+   * (D54): die Bausteine, die für sie gelten, aneinandergefügt (REQ-356).
+   */
   private readonly tragraster = computed(() => {
     const sb = this.statblock();
     const r = this.bestand.registry();
     if (!sb || !r) return null;
-    const core = (sb.components?.['Statblock'] ?? {}) as Record<string, unknown>;
     const pd = r.interfaces['Statblock']?.schema?.properties?.['carryExtra'];
-    const extra = pd ? derivedValue(pd, core, sb.components, sb.relations ?? []) : 0;
-    const max = typeof pd?.max === 'number' ? pd.max : 5;
-    return carryGrid(String(core['size'] ?? ''), extra, parseCarrySquares(this.settings()['carrySquares']), max);
+    const blatt = carrySheetOf(this.settings(), typeof pd?.max === 'number' ? pd.max : 5);
+    return assembleCarry(blatt, carryFieldValue(r, sb.components ?? {}, sb.relations ?? []));
   });
 
   protected readonly kiste = computed<Shape>(() =>
@@ -420,14 +422,14 @@ export class Inventar {
     ),
   );
 
-  /** Die Zonen: die eigenen, sonst beim Tragraster die Spalten aus dem Blatt. */
+  /** Die Zonen: die eigenen, sonst die der Bausteine des Tragrasters. */
   private readonly zonen = computed<Record<string, string>>(() => {
     const z = this.karte()['zones'];
     if (z && typeof z === 'object' && Object.keys(z).length) return z as Record<string, string>;
     const eigen = this.karte()['grid'];
     if (Array.isArray(eigen) && eigen.length) return {};
     const tg = this.tragraster();
-    return tg ? columnZones(this.settings()['carryZones'], tg.rows) : {};
+    return tg?.zones ?? {};
   });
   protected readonly zonenDa = computed(() => Object.keys(this.zonen()).length > 0);
 
@@ -590,8 +592,7 @@ export class Inventar {
   // ------------------------------------------------------------ zeigen
 
   protected zonenFarbe(zone: string): string {
-    const i = this.leiter().indexOf(zone);
-    return i < 0 ? 'transparent' : `hsl(${110 - i * 27} 40% ${88 - i * 4}% / 0.9)`;
+    return farbeDerZone(zone, this.leiter()) ?? 'transparent';
   }
 
   protected zellLabel(z: { x: number; y: number; zone: string; stueck: Stueck | null; offen: boolean }): string {
@@ -841,8 +842,8 @@ export class Inventar {
   }
 
   protected vorlage(name: string): void {
-    const v = parseContainerPreset(this.settings()[`container:${name}`]);
-    if (v) void this.karteSetzen({ grid: v.grid, zones: v.zones });
+    const v = parseContainerTemplate(this.settings()[`container:${name}`]);
+    if (v) void this.karteSetzen({ grid: v.rows, zones: zoneMap(v.rows, v.zones) });
   }
 
   /** Die eigene Form weg: es gilt wieder das Tragraster oder das Rechteck. */
