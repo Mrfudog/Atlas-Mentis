@@ -77,3 +77,34 @@ describe('the Knowledge tab (T-286)', () => {
     expect((await post('brak', '/api/knowledge/of/axt', { fields: ['Recipe.dc'] })).statusCode).toBe(403);
   });
 });
+
+describe('the page of a knowledge (T-287)', () => {
+  it('writes out what it brings together for whoever knows it, and only that it exists for others', async () => {
+    await post('leitung', '/api/knowledge/of/axt', { name: 'How to knap bone', fields: ['Recipe.dc'], bundles: ['kn-orcs'] });
+    const brak = (await get('brak', '/api/knowledge/kn-orcs/contents')).json();
+    expect(brak.known).toBe(true);
+    expect(brak.infos).toEqual([
+      expect.objectContaining({ name: 'How to knap bone', articles: [expect.objectContaining({ id: 'axt', cells: [expect.objectContaining({ ref: 'Recipe.dc', text: '14' })] })] }),
+    ]);
+    /* Nur die abgedeckten Felder, nicht die übrigen der Blaupause. */
+    expect(JSON.stringify(brak)).not.toContain('2 days');
+    expect((await get('lia', '/api/knowledge/kn-orcs/contents')).json()).toMatchObject({ known: false, infos: [] });
+    expect((await get('leitung', '/api/knowledge/kn-orcs/contents')).json().known).toBe(true);
+  });
+
+  it('lists the articles an information for a group holds for', async () => {
+    await repo.putEntity(art('grok', 'Creature', 'Grok', 'creature-0001', { components: { Creature: { species: 'orc' } }, relations: [] }));
+    await repo.putEntity(
+      art('info-orc', 'Information', 'Orc names', 'information-0001', {
+        components: { Information: { fields: ['Identity.name'], applies: { types: ['Creature'], where: [{ field: 'Creature.species', has: ['orc'] }] } } },
+      }),
+    );
+    const kn = (await repo.getEntity('kn-orcs'))!;
+    await repo.putEntity({ ...kn, relations: [...(kn.relations ?? []), { id: 'kn~3', type: 'includes', to: 'info-orc', props: {} }] });
+    const w = (await get('brak', '/api/knowledge/kn-orcs/contents')).json();
+    const i = w.infos.find((x: { id: string }) => x.id === 'info-orc');
+    expect(i.applies).toContain('Creature');
+    expect(i.articles.map((a: { id: string }) => a.id)).toEqual(['grok']);
+  });
+});
+

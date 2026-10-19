@@ -8,6 +8,7 @@
  *   POST   /api/knowledge/of/:id      — eine neue Information für ihn
  *   PUT    /api/knowledge/info/:info  — Name, Felder, Bündel ändern
  *   DELETE /api/knowledge/info/:info  — eine Information entfernen
+ *   GET    /api/knowledge/:id/contents — was ein Wissen vereint (T-287)
  *
  * **Eine neue Information ändert den Artikel nicht:** sie gilt für ihn
  * über ihre Geltung (`applies.article`) und liegt in der Ebene der
@@ -20,7 +21,13 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type {
   validateEntity} from '@nw/model';
 import {
+  appliesHolds,
   appliesText,
+  ancestryLine,
+  fieldText,
+  informationsIn,
+  knows,
+  unitsFor,
   bundlesWith,
   currentCampaign,
   entityName,
@@ -263,5 +270,67 @@ export function registerWissen(app: FastifyInstance, deps: WissenDeps): void {
     if (f) return reply.code(403).send({ error: f });
     await repo.deleteEntity(info.id);
     return { ok: true };
+  });
+
+  /**
+   * **Was ein Wissen vereint** (T-287, REQ-353): je Information die Artikel
+   * mit genau den Feldern, die sie abdeckt — so, wie dieser Betrachter sie
+   * liest (gesiebt und zurückgehalten wie jede Route). Wer das Wissen nicht
+   * hat, bekommt nur, dass es es gibt; die Leitung sieht alles. Eine
+   * Information für eine Gruppe nennt bis zu `JE_GRUPPE` passende Artikel
+   * und zählt die übrigen.
+   */
+  const JE_GRUPPE = 30;
+  app.get<{ Params: { id: string } }>('/api/knowledge/:id/contents', async (request, reply) => {
+    const stand = await roh();
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    const roh1 = stand.map.get(request.params.id);
+    const [buendel] = roh1 && primaryInterface(roh1) === KNOWLEDGE_TYPE ? await sieve(request, [roh1], stand.map) : [];
+    if (!roh1 || !buendel) return reply.code(404).send({ error: 'Kein Wissen.' });
+    const istLeitung = !!(await leitung(request, stand));
+    const known = istLeitung || knows(stand.map, roh1, user.actorIds ?? []);
+    if (!known) return { knowledge: { id: roh1.id, name: entityName(buendel) }, known: false, infos: [] };
+    const registry = await repo.getRegistry();
+    const reihe = (id: string) => ancestryLine(id, stand.map);
+    const infos = await sieve(request, informationsIn(stand.map, roh1), stand.map);
+    const raus = [];
+    for (const info of infos) {
+      const roheInfo = stand.map.get(info.id) ?? info;
+      const karte = (roheInfo.components?.[INFO_COMPONENT] ?? {}) as Record<string, unknown>;
+      const felder = liste(karte['fields']);
+      const geltung = infoApplies(roheInfo);
+      let ziele: Entity[];
+      if (geltung && !geltung.types?.length && !geltung.where?.length && geltung.article) {
+        ziele = [stand.map.get(geltung.article)].filter((x): x is Entity => !!x);
+      } else if (geltung) {
+        ziele = stand.alle.filter((e) => e.id !== roheInfo.id && primaryInterface(e) !== INFO_COMPONENT && appliesHolds(registry, geltung, e, [], reihe));
+      } else {
+        ziele = stand.alle.filter((e) => (e.relations ?? []).some((r) => r.type === 'knowledge' && r.to === roheInfo.id));
+      }
+      const gezeigt = await sieve(request, ziele.slice(0, JE_GRUPPE), stand.map);
+      const deckt = (comp: string, prop: string) => felder.includes(comp) || felder.includes(`${comp}.${prop}`);
+      raus.push({
+        id: info.id,
+        name: entityName(info),
+        ...(geltung && !geltung.article ? { applies: appliesText(geltung, (id) => entityName(stand.map.get(id))) } : {}),
+        articles: gezeigt.map((a) => {
+          const mode = unitsFor(registry, primaryInterface(a));
+          const cells: { ref: string; label: string; text: string; long: boolean }[] = [];
+          for (const [comp, k] of Object.entries(a.components ?? {})) {
+            for (const [prop, wert] of Object.entries((k ?? {}) as Record<string, unknown>)) {
+              if (!deckt(comp, prop)) continue;
+              const schema = registry.interfaces[comp]?.schema?.properties?.[prop];
+              const text = fieldText(registry, schema, wert, mode);
+              if (!text) continue;
+              cells.push({ ref: `${comp}.${prop}`, label: schema?.title ?? prop, text, long: schema?.format === 'long' });
+            }
+          }
+          return { id: a.id, name: entityName(a), type: primaryInterface(a), cells };
+        }),
+        more: Math.max(0, ziele.length - JE_GRUPPE),
+      });
+    }
+    return { knowledge: { id: roh1.id, name: entityName(buendel) }, known: true, infos: raus };
   });
 }

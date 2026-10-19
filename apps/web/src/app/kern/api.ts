@@ -449,6 +449,19 @@ export interface Wissensreiter {
   bundles: { id: string; name: string; canEdit: boolean; knownBy: { id: string; name: string }[] }[];
 }
 
+/** Was ein Wissen vereint (`GET /api/knowledge/:id/contents`, T-287). */
+export interface Wisseninhalt {
+  knowledge: { id: string; name: string };
+  known: boolean;
+  infos: {
+    id: string;
+    name: string;
+    applies?: string;
+    articles: { id: string; name: string; type: string; cells: { ref: string; label: string; text: string; long: boolean }[] }[];
+    more: number;
+  }[];
+}
+
 /** Eine Ebene, aus der eine Fassung kommt (`GET /api/entities/:id/versions`). */
 export interface FassungsEbene {
   id: string;
@@ -1629,6 +1642,10 @@ export class Api {
   }
   updateInformation(info: string, body: { name?: string; fields?: string[]; bundles?: string[]; newBundle?: string; article: string }): Promise<Wissensreiter> {
     return this.call(`/api/knowledge/info/${encodeURIComponent(info)}`, { method: 'PUT', body: JSON.stringify(body) });
+  }
+  /** Was ein Wissen vereint, gesiebt für diesen Betrachter (T-287). */
+  knowledgeContents(id: string): Promise<Wisseninhalt> {
+    return this.call(`/api/knowledge/${encodeURIComponent(id)}/contents`);
   }
   deleteInformation(info: string): Promise<{ ok: true }> {
     return this.call(`/api/knowledge/info/${encodeURIComponent(info)}`, { method: 'DELETE' });

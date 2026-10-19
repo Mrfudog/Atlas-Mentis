@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-knowledge-page",
+      "date": "2026-10-19",
+      "title": "Read a knowledge in one place",
+      "text": "The page of a knowledge now writes out everything it brings together — each information with its articles and exactly the fields it covers. Players read what their character knows there; whoever does not know it sees only that it exists.",
+      "area": "Knowledge",
+      "link": "/rules",
+      "query": { "type": "Knowledge" }
+    },
+    {
       "id": "2026-10-19-knowledge-box",
       "date": "2026-10-19",
       "title": "A Knowledge box on every article",

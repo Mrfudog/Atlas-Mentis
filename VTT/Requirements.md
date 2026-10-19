@@ -28,12 +28,12 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
-| 1 | 55 | 174 | 40 steht · 9 teils · 2 offen · 2 ersetzt · 2 verworfen |
+| 1 | 55 | 174 | 41 steht · 9 teils · 1 offen · 2 ersetzt · 2 verworfen |
 | 2 | 116 | 381 | 64 steht · 18 teils · 26 offen · 5 ersetzt · 3 verworfen |
 | 3 | 119 | 341 | 61 steht · 24 teils · 33 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **354** | **1246** | 179 steht · 53 teils · 106 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **354** | **1246** | 180 steht · 53 teils · 105 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -391,7 +391,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-350]] | Eine Information gilt für eine Gruppe von Artikeln | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 1 | 3 | done | steht |
 | [[REQ-351]] | Wissen über Herkunft, Hintergrund, Klasse und Talent | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 1 | 3 | done | steht |
 | [[REQ-352]] | Reiter Knowledge am Artikel | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 1 | 3 | done | steht |
-| [[REQ-353]] | Die Seite eines Wissens zeigt alles, was es vereint | Spieler | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 1 | 3 | defined | offen |
+| [[REQ-353]] | Die Seite eines Wissens zeigt alles, was es vereint | Spieler | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 1 | 3 | done | steht |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 3 | defined | offen |
 
 ## Verlauf

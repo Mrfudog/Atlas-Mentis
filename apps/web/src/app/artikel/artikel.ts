@@ -94,6 +94,7 @@ import { Quelleninhalt } from './quelleninhalt';
 import { KampagnenReiter } from './ebenen-reiter';
 import { EbenenMarke } from './ebenen-marke';
 import { Wissenskasten } from './wissenskasten';
+import { Wissensseite } from './wissensseite';
 import { Klasse } from '../klassen/klasse';
 import { Herkunft } from '../klassen/herkunft';
 import { Regeloptionen } from './regeloptionen';
@@ -196,6 +197,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     KampagnenReiter,
     EbenenMarke,
     Wissenskasten,
+    Wissensseite,
     Regeloptionen,
     Wuerfe,
     Ansichtsbaum,
@@ -811,6 +813,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                     @if (ladenwaren(); as lw) {
                       <nw-laden [waren]="lw" [id]="e.id" />
                     }
+                  }
+                  @case ('wissen') {
+                    <nw-wissensseite [id]="e.id" />
                   }
                   @case ('liegen') {
                     <nw-liegengelassen [sitzung]="e" />

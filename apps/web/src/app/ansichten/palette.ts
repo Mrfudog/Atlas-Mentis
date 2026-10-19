@@ -70,6 +70,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'turn', name: 'Your turn', icon: '⏵', tip: 'Every action of the creature by action type, with Used and New turn; what the hands block stays visible with the reason.', seite: true },
       { el: 'spells', name: 'Spells', icon: '✧', tip: 'Spellcasting: ability, attack, save DC, slots; every spell by level with Cast.', seite: true },
       { el: 'inventory', name: 'Inventory', icon: '🎒', tip: 'The inventory it carries and what that holds.', seite: true },
+      { el: 'knowledgeContents', name: 'Knowledge contents', icon: '🧠', tip: 'On a knowledge: every information it brings together, written out with the fields the viewer may read. Draws nothing elsewhere.', seite: true },
       { el: 'crafting', name: 'Crafting', icon: '⚒', tip: 'On a recipe the workbench, on a trade its tools and recipes, on a tool or character what it can craft. Draws nothing elsewhere.', seite: true },
       { el: 'campaign', name: 'Campaign', icon: '⚑', tip: 'What the campaign has shown this character: handouts, sessions, quests, people, maps — only what visibility and knowledge allow.', seite: true },
     ],
