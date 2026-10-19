@@ -22,6 +22,9 @@ export function bildAdresse(wert: unknown, groesse: 'thumb' | 'full' = 'full', v
   const w = wert.trim();
   if (!w) return null;
   if (/^https?:\/\//i.test(w)) return w;
+  /* Ein Kartenbild unter dem Nebel (T-312): der Server hat die Adresse
+     schon gesetzt, beschnitten auf das Aufgedeckte, mit Stand darin. */
+  if (/^\/api\/maps\/[^/?#]+\/image\?[\w=&%.~-]*$/.test(w)) return groesse === 'thumb' ? `${w}&size=thumb` : w;
   /* Eine Ablage-Id, die kein Artikel ist, gibt es nicht mehr — alles
      andere ist die Id eines Asset-Artikels. */
   if (!/^[\w~.:-]+$/.test(w)) return null;
