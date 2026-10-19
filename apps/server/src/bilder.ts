@@ -47,6 +47,8 @@ export interface BilderDeps {
   darfSchreiben: (request: FastifyRequest, id: string) => Promise<boolean>;
   /** Darf dieses Konto anlegen? (dieselbe Frage wie die Wache vor `POST /api/entities`) */
   darfAnlegen: (request: FastifyRequest) => Promise<boolean>;
+  /** Liegt das Bild für diesen Betrachter unter dem Nebel einer Karte? (T-312, `kartenbild.ts`) */
+  unterNebel?: (request: FastifyRequest, id: string) => Promise<boolean>;
 }
 
 interface AssetInfo {
@@ -294,6 +296,10 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
     const e = await geltend(da, stand.map);
     const [gesehen] = await sieve(request, [e], stand.map);
     if (!gesehen) return reply.code(404).send({ error: 'Nicht gefunden' });
+    /* **Unter dem Nebel bleibt das Original zurück** (T-312, E-041): wer
+       eine Karte mit diesem Bild nur beschnitten bekommt, bekommt es hier
+       auch nicht — sonst holte er es sich an der Karte vorbei. */
+    if (deps.unterNebel && (await deps.unterNebel(request, e.id))) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Die Karte des Artikels, nicht der gesiebten Fassung: ob jemand das
        Bild sieht, entscheidet die Sichtbarkeit, nicht das Wissen um `ref`. */
     const info = infoVon(e);
