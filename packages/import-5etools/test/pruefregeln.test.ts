@@ -86,7 +86,7 @@ describe('Importer-Regeln aus der Artikelprüfung (T-089)', () => {
     const levitate = finde('Levitate');
     expect(deep.relations.filter((r) => r.type === 'casts')).toMatchObject([{ to: levitate.id, props: { mode: 'innate', uses: '1/day', ability: 'cha' } }]);
     /* Das Attribut des Blocks gilt für feste und gewählte Zauber (T-309). */
-    expect(deep.components['Choices']?.['choices']).toMatchObject([{ kind: 'spell', count: 1, ability: 'cha', from: { interfaces: ['Spell'] }, note: 'level 0, class Wizard' }]);
+    expect(deep.components['Choices']?.['choices']).toMatchObject([{ kind: 'spell', count: 1, ability: 'cha', from: { interfaces: ['Spell'], where: { component: 'Spell', property: 'level', value: [0] } }, note: 'level 0, class Wizard' }]);
   });
 
   it('macht aus mehreren Zauberlisten eine Möglichkeit und hängt die Zauber daran', () => {

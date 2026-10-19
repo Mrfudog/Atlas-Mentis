@@ -105,3 +105,35 @@ describe('choiceDuplicates (T-299)', () => {
     expect(newChoiceDuplicates(undefined, alt, bestand)).toHaveLength(1);
   });
 });
+
+describe('spells are locked too (T-309)', () => {
+  const klasse = art('class-w', 'Class', {
+    Class: { spellAbility: 'int', casterProgression: 'full' },
+    Choices: { choices: [{ id: 'cantrips', kind: 'spell', count: 2, from: { interfaces: ['Spell'] } }] },
+  });
+  const herkunft = art(
+    'anc-t',
+    'Ancestry',
+    { Choices: { choices: [{ id: 'cantrip', kind: 'spell', count: 1, from: { interfaces: ['Spell'] } }] } },
+    [{ id: 'k', type: 'casts', to: 'sp-thaum', props: { mode: 'innate', ability: 'cha' } }],
+  );
+  const zauber = ['sp-thaum', 'sp-light', 'sp-bolt'].map((id) => art(id, 'Spell', { Spell: { level: 0 } }));
+  const b = new Map([klasse, herkunft, ...zauber].map((e) => [e.id, e]));
+  const c = (picks: string[]): Entity =>
+    art('pc', 'PlayerCharacter', {}, [
+      { id: 'a', type: 'hasAncestry', to: 'anc-t' },
+      { id: 'k', type: 'hasClass', to: 'class-w', props: { level: 1 } },
+      { id: 'w1', type: 'chose', to: 'anc-t', props: { choice: 'cantrip', picks: ['sp-light'] } },
+      { id: 'w2', type: 'chose', to: 'class-w', props: { choice: 'cantrips', picks } },
+    ]);
+
+  it('locks a spell the origin casts and one an earlier choice took', () => {
+    const f = c([]);
+    const at = choicesAtCharacter(f, b).find((x) => x.source.entity.id === 'class-w')!;
+    const h = heldBefore(f, b, at);
+    expect(heldValue(h, 'sp-thaum', b)).toMatchObject({ fixed: true, from: 'Ancestry (anc-t)' });
+    expect(heldValue(h, 'sp-light', b)).toMatchObject({ fixed: false });
+    expect(heldValue(h, 'sp-bolt', b)).toBeUndefined();
+    expect(choiceDuplicates(c(['sp-light', 'sp-bolt']), b).map((d) => d.pick)).toEqual(['sp-light']);
+  });
+});
