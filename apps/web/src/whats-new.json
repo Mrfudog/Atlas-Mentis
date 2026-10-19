@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-carry-grid-editor",
+      "date": "2026-10-19",
+      "title": "Set up the carry grid by drawing it",
+      "text": "Rules & options › Inventory now draws Basil’s sheet: pick the grid side per creature size, set the zone of each column on the grid, paint container templates and choose what dropping, stowing and body slots cost.",
+      "area": "Inventory",
+      "link": "/campaign",
+      "query": { "tab": "rules" }
+    },
+    {
       "id": "2026-10-19-knowledge-page",
       "date": "2026-10-19",
       "title": "Read a knowledge in one place",

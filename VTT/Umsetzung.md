@@ -23,14 +23,14 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 180 steht · 53 teils · 105 offen · 10 ersetzt · 6 verworfen — 354 Stories in 79 Features und 12 Epics.
+Zusammen: 181 steht · 53 teils · 105 offen · 10 ersetzt · 6 verworfen — 355 Stories in 79 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 53 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 43 | 27 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 40 | 5 steht · 9 teils · 26 offen |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 41 | 6 steht · 9 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 26 | 13 steht · 1 teils · 12 offen |
@@ -384,6 +384,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | [[REQ-327]] | Packen am Telefon | 2 | **offen** |  |
 | [[REQ-328]] | Ablage für nicht Verstautes | 2 | **offen** |  |
 | [[REQ-333]] | Vorgaben für Formen und Stapel | 2 | **offen** |  |
+| [[REQ-355]] | Tragraster, Zonen und Behälter einstellen | 2 | **steht** | Rules & options › Inventory: Grössen, Zonen je Spalte, Behältervorlagen gemalt, Fallenlassen/Verstauen, Körperplätze (T-289). |
 
 ### F-027 Eigene Inhalte der Spielenden
 

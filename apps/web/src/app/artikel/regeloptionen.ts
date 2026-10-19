@@ -6,6 +6,7 @@ import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
 import { ExperimenteSchalter } from '../lab/experimente-schalter';
 import { Text } from './text';
+import { Tragraster } from './tragraster';
 
 /**
  * **Rules & options** (T-190): die Regeloptionen einer Kampagne, nach
@@ -21,7 +22,7 @@ import { Text } from './text';
  */
 @Component({
   selector: 'nw-regeloptionen',
-  imports: [RouterLink, KurzLink, ExperimenteSchalter, Text],
+  imports: [RouterLink, KurzLink, ExperimenteSchalter, Text, Tragraster],
   template: `
     <section class="regeln" aria-labelledby="regeln-titel">
       <header class="kopf">
@@ -122,6 +123,9 @@ import { Text } from './text';
                     <li class="hint">None — add one to the campaign with “{{ o.relation }}”.</li>
                   }
                 </ul>
+              } @else if (o.key === 'carrying' && darfRegister()) {
+                <!-- Basils Blatt einstellen statt Zeilen lesen (REQ-355). -->
+                <nw-tragraster />
               } @else if (o.value?.length && o.scope === 'installation') {
                 <ul class="werte">
                   @for (w of o.value; track w) {
@@ -279,6 +283,12 @@ export class Regeloptionen {
     const u = this.session.user();
     const rolle = u?.roles?.[this.kampagne()];
     return !!u && (u.isAdmin || rolle === 'gm' || rolle === 'co-gm');
+  });
+
+  /** Darf das Register schreiben: die Verwaltung und die Leitung (`gm`) dieser Kampagne. Anzeige, der Server prüft. */
+  protected readonly darfRegister = computed(() => {
+    const u = this.session.user();
+    return !!u && (u.isAdmin || u.roles?.[this.kampagne()] === 'gm');
   });
 
   protected readonly sorten = signal<RuleSortState[]>([]);

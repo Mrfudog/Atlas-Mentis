@@ -114,12 +114,8 @@ export function carryGrid(
   return { rows, base, extra: zusatz, extraAt: links };
 }
 
-/**
- * **Zonen nach Spalten** (`0-1:bonus action, 2-4:action`) für eine Form.
- * Gesperrte Felder bekommen keine Zone: ein Feld, auf dem nichts liegen
- * kann, kostet nichts.
- */
-export function columnZones(spec: string | undefined | null, rows: readonly string[]): Record<string, string> {
+/** Die Zonen nach Spalten als Spalte → Stufe: `0-1:action` → `{0: 'action', 1: 'action'}`. */
+export function zonesByColumn(spec: string | undefined | null): Record<number, string> {
   const spalte: Record<number, string> = {};
   for (const [k, v] of Object.entries(parsePairs(spec))) {
     const m = /^(\d+)(?:\s*-\s*(\d+))?$/.exec(k);
@@ -128,6 +124,49 @@ export function columnZones(spec: string | undefined | null, rows: readonly stri
     const bis = m[2] === undefined ? von : Number(m[2]);
     for (let x = Math.min(von, bis); x <= Math.max(von, bis); x++) spalte[x] = v;
   }
+  return spalte;
+}
+
+/**
+ * Die Gegenrichtung (REQ-355): Spalte → Stufe wieder als Einstellung,
+ * benachbarte Spalten mit derselben Stufe als Spanne (`0-1:action, 2:turn`).
+ * Eine Spalte ohne Stufe fehlt — sie hat dann keine Zone.
+ */
+export function formatColumnZones(zonen: Readonly<Record<number, string | undefined>>): string {
+  const spalten = Object.keys(zonen).map(Number).filter((x) => Number.isInteger(x) && x >= 0 && zonen[x]).sort((a, b) => a - b);
+  const teile: string[] = [];
+  let i = 0;
+  while (i < spalten.length) {
+    const von = spalten[i]!;
+    let bis = von;
+    while (i + 1 < spalten.length && spalten[i + 1] === bis + 1 && zonen[spalten[i + 1]!] === zonen[von]) bis = spalten[++i]!;
+    teile.push(`${von === bis ? von : `${von}-${bis}`}:${zonen[von]!}`);
+    i++;
+  }
+  return teile.join(', ');
+}
+
+/** Schlüssel und Wert wieder als Einstellung (`tiny:3, small:4`); leere Werte fallen weg. */
+export function formatPairs(paare: Readonly<Record<string, string | number>>): string {
+  return Object.entries(paare)
+    .filter(([k, v]) => k.trim() !== '' && String(v).trim() !== '')
+    .map(([k, v]) => `${k.trim()}:${String(v).trim()}`)
+    .join(', ');
+}
+
+/** Eine Behältervorlage als Einstellung, wie `parseContainerPreset` sie liest. */
+export function formatContainerPreset(grid: readonly string[], zonen: Readonly<Record<number, string | undefined>>): string {
+  const z = formatColumnZones(zonen);
+  return grid.join('/') + (z ? ` | ${z}` : '');
+}
+
+/**
+ * **Zonen nach Spalten** (`0-1:bonus action, 2-4:action`) für eine Form.
+ * Gesperrte Felder bekommen keine Zone: ein Feld, auf dem nichts liegen
+ * kann, kostet nichts.
+ */
+export function columnZones(spec: string | undefined | null, rows: readonly string[]): Record<string, string> {
+  const spalte = zonesByColumn(spec);
   const out: Record<string, string> = {};
   rows.forEach((r, y) => {
     for (let x = 0; x < r.length; x++) {
