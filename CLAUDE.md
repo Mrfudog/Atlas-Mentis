@@ -129,7 +129,12 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   einen Text oder steht unter `without`, T-205) und das Konto mit seinen API-Tokens (`konto/`), dazu der
   **Ansichtseditor** (`ansichten/`: Zeichner `baum.ts`, Designer, Liste,
   Ansichtswahl am Artikel; Logik in `packages/model/src/viewScope.ts`,
-  T-268, seit T-276 der einzige Editor für Ansichten); die
+  T-268, seit T-276 der einzige Editor für Ansichten), dazu die
+  **Kapitel** einer Seite (`muster/kapitel.ts`, T-277: Artikel-, Charakter-
+  und Typseite; am Telefon Reiter mit `?k=`, am Desktop gerahmte Bereiche,
+  breit links, schmal rechts, Admin und Log darunter; **Admin** an jeder
+  Artikelart mit Ebene, Sichtbarkeit samt geltender Stufe `refs.audience`,
+  Wissen, Fassungen); die
   Oberfläche hält **keinen Bestand** (W7). Licht und Dunkelsicht mit
   `packages/model/src/lighting.ts` (T-216);
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer

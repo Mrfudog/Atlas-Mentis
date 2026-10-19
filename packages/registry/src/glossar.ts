@@ -157,6 +157,15 @@ const APP: AppTerm[] = [
     translations: { de: 'Ansichtsdesigner' },
   },
   {
+    term: 'Page chapter',
+    aliases: ['Admin chapter'],
+    sort: 'app',
+    definition: 'A part of an article, character or type page with a title and a count — on an article Fields, Relations, Linked here, Admin and Log.',
+    effect: 'On a phone each chapter is a tab and the address keeps the chosen one (?k=…); on a wider screen they are framed areas side by side. A chapter with nothing in it is not shown. Admin, on every article, shows its layers, who can see it and why, what is known about it and its versions.',
+    translations: { de: 'Kapitel (Seite)' },
+    see: '/handbook',
+  },
+  {
     term: 'Adjusted arrangement',
     aliases: ['Adjusted'],
     sort: 'app',
