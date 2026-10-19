@@ -29,6 +29,7 @@ export * from './effects.js';
 export * from './proficiency.js';
 export * from './duplicates.js';
 export * from './stats.js';
+export * from './spellcasting.js';
 export * from './abilities.js';
 export * from './equipment.js';
 export * from './slots.js';

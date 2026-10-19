@@ -1506,6 +1506,16 @@ Doppelung, die erst durch eine spätere Änderung entsteht, wird gemeldet
 und nicht still gelöscht: welche der beiden Wahlen weichen soll, weiss nur,
 wer sie getroffen hat.
 
+**Ein Zauber kommt von irgendwoher** (T-309). Bis dahin zauberte eine
+Figur, was von Hand an ihr stand — der Magier aus dem Assistenten zauberte
+also nicht, obwohl seine Klasse sagte, dass und womit er es tut. Jetzt ist
+das Zauberwirken eine Rechnung über die Quellen wie die Übungen: die Klasse
+bringt Attribut und Plätze, Herkunft, Talent, Merkmal und Gegenstand ihre
+Zauber, und jede Quelle zaubert mit dem Attribut, das das Regelwerk ihr
+gibt — der Tiefling-Magier wirkt Thaumaturgy mit CHA und Magic Missile mit
+INT. Dass es eine Stelle gibt, die das Attribut sagt, hält den Weg offen
+für ein eigenes System, in dem die Spielerin ihr Hauptattribut wählt.
+
 **Mit den Attributen ging es genauso** (T-272). Der Assistent legt die
 Grundwerte am Statblock ab, und die Boni aus Herkunft und Hintergrund
 rechnete `chosenResult` — aber kein Leser nahm sie, der Bogen zeigte STR

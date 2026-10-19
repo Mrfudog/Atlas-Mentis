@@ -123,7 +123,7 @@ describe('who casts a spell is an edge (M2)', () => {
     expect(relationAccepts(casts, 'Faction', 'Spell', seedRegistry)).toBe(true);
     expect(relationAccepts(casts, 'Rule', 'Spell', seedRegistry)).toBe(true);
     expect(relationAccepts(casts, 'Statblock', 'Feature', seedRegistry)).toBe(false);
-    expect(Object.keys(casts.props?.properties ?? {})).toEqual(['mode', 'uses', 'level', 'charges', 'fromLevel']);
+    expect(Object.keys(casts.props?.properties ?? {})).toEqual(['mode', 'uses', 'ability', 'level', 'charges', 'fromLevel']);
   });
 
   it('is stored forward only, and is not a field at either end', () => {
