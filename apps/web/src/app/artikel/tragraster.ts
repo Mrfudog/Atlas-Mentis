@@ -161,7 +161,7 @@ const ATTRIBUTE = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
         <p class="hint">Offered when a container is set up — with its shape and its zones.</p>
         @for (v of d.vorlagen; track $index; let i = $index) {
           <details class="baustein" [open]="offen().has('v:' + i)" (toggle)="aufklappen('v:' + i, $any($event.target).open)">
-            <summary><b>{{ v.name }}</b> <span class="hint">{{ v.rows[0]?.length ?? 0 }}×{{ v.rows.length }}, {{ v.zones.length }} {{ v.zones.length === 1 ? 'zone' : 'zones' }}</span></summary>
+            <summary><b>{{ v.name }}</b> <span class="hint">{{ v.rows[0]?.length ?? 0 }}×{{ v.rows.length }}, {{ v.zones.length }} zone{{ v.zones.length === 1 ? '' : 's' }}</span></summary>
             <div class="zeile">
               <input type="text" class="name" [value]="v.name" aria-label="Template name" (change)="vorlage(i, { name: $any($event.target).value })" />
               <button type="button" class="klein" (click)="vorlageWeg(i)" [attr.aria-label]="'Remove ' + v.name">Remove</button>
@@ -368,7 +368,7 @@ export class Tragraster {
       if (c.max !== undefined) return `${name} ≤ ${c.max}`;
       return name;
     });
-    return `${groesse} · ${wann.length ? wann.join(', ') : 'always'} · ${b.zones.length} ${b.zones.length === 1 ? 'zone' : 'zones'}`;
+    return `${groesse} · ${wann.length ? wann.join(', ') : 'always'} · ${b.zones.length} zone${b.zones.length === 1 ? '' : 's'}`;
   }
 
   protected reihe(n: number): number[] {
