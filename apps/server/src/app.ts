@@ -154,6 +154,7 @@ import { registerKarten } from './karten.js';
 import { registerKartenliste } from './kartenliste.js';
 import { registerRegeloptionen } from './regeloptionen.js';
 import { registerGlossar } from './glossar.js';
+import { registerWissen } from './wissen.js';
 import { registerSichtbarkeit } from './sichtbarkeit.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
 import { registerTueren } from './tueren.js';
@@ -1169,6 +1170,8 @@ export function buildApp({
     if (/^\/api\/entities\/[^/]+\/equipment$/.test(url) && request.method === 'POST') return;
     /* Das Handwerk (T-128): die Routen prüfen Figur, Rolle und Regel selbst. */
     if (url === '/api/crafting' || url.startsWith('/api/crafting/')) return;
+    /* Der Reiter Knowledge (T-286): Leitung und Schreibrecht prüft die Route selbst. */
+    if (url.startsWith('/api/knowledge/')) return;
     /* Filtergruppen (T-137): eigene schreibt jedes Konto, die der
        Kampagne die Leitung — die Routen prüfen beides selbst. */
     if (url === '/api/filters' || url.startsWith('/api/filters/')) return;
@@ -2950,6 +2953,19 @@ export function buildApp({
   registerRegeloptionen(app, { repo, roh, sieve });
   /* Das Glossar (T-242): Wörter der App und sichtbare Glossarartikel, mit Nennungen. */
   registerGlossar(app, { roh, sieve });
+  /* Der Reiter Knowledge am Artikel (T-286): Informationen und ihre Bündel. */
+  registerWissen(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve,
+    schreibeGeprueft: (e) => schreibeGeprueft(e),
+    kampagnenEbene,
+    darfSchreiben: async (request, id) => {
+      const user = await viewerOf(request);
+      return !!user && mayWrite(user, await ownedBy(user), id);
+    },
+  });
   /* Die Sichtbarkeit je Gruppe an der Kampagne (T-252, E-098). */
   registerSichtbarkeit(app, {
     repo,

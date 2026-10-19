@@ -85,6 +85,7 @@ export interface Stueck {
     | 'kanten'
     | 'handwerk'
     | 'laden'
+    | 'wissen'
     | 'bild'
     | 'karte'
     | 'liegen'
@@ -366,6 +367,10 @@ export function anordnen(
       /* Die Waren eines Ladens (T-129): gerechnet am Server (`refs.shop`). */
       case 'wares':
         out.push({ id: el.id, art: 'laden' });
+        break;
+      /* Was ein Wissen vereint (T-287): die Komponente fragt selbst. */
+      case 'knowledgeContents':
+        out.push({ id: el.id, art: 'wissen' });
         break;
       /* Die Teile eines Kapitels oder einer Szene (T-108): die Komponente
          fragt selbst und zeichnet nichts, wo nichts hängt. */

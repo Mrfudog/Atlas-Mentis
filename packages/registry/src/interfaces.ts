@@ -1099,6 +1099,10 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'rules',
     label: 'Knowledge',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags'],
+    /* **Was es vereint, ausgeschrieben** (T-287, REQ-353): je Information
+       die Artikel mit genau ihren Feldern, gesiebt am Server — die Stelle,
+       an der Spielende ihr Wissen abrufen. */
+    views: { full: { adjust: { extra: [{ id: 'kn-contents', el: 'knowledgeContents' }] } } },
   },
 
   /**
