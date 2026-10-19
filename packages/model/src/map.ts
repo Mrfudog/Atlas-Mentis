@@ -985,6 +985,59 @@ export function setFog(e: Entity, an: boolean): Entity {
   return mitReveal(e, rohReveal(e), an);
 }
 
+/**
+ * **Ist alles aufgedeckt?** (E-041, T-312) Ohne Nebel ja; mit Nebel nur,
+ * wenn ein Rechteck die ganze Karte deckt (so schreibt es *Reveal all*,
+ * `revealAll`). Erst dann geht das volle Kartenbild an Spielende — viele
+ * Formen, die zusammen alles decken, zählen nicht: das nachzurechnen wäre
+ * eine Flächenrechnung, und ein Rest von einem Pixel ist ein Rest.
+ */
+export function fullyRevealed(e: Entity): boolean {
+  if (!fogOn(e)) return true;
+  const eps = 1e-4;
+  return revealShapes(e).some((s) => s.kind === 'rect' && s.x <= eps && s.y <= eps && s.x + s.w >= 1 - eps && s.y + s.h >= 1 - eps);
+}
+
+const px = (v: number): string => (Math.round(v * 1000) / 1000).toString();
+
+/**
+ * **Die Maske des Aufgedeckten als SVG** (T-312): weiss, was aufgedeckt
+ * ist, durchsichtig der Rest — in Pixeln eines Bildes von `w` mal `h`.
+ * Der Server legt sie über das Kartenbild (`dest-in`) und gibt Spielenden
+ * nur, was darunter liegt. Gerechnet wird wie `inShape`: Kreis und Strich
+ * in einem Raum, in dem y mal `ar` gilt, darum die Gruppe mit
+ * `scale(w, h/ar)` — so ist die Maske dieselbe Fläche, nach der der Server
+ * Marker siebt, auch wenn `ar` nicht zum Bild passt.
+ */
+export function revealMaskSvg(shapes: readonly RevealShape[], w: number, h: number): string {
+  const teile: string[] = [];
+  const clips: string[] = [];
+  const poly = (pts: ReadonlyArray<readonly [number, number]>): string => pts.map(([x, y]) => `${px(x * w)},${px(y * h)}`).join(' ');
+  shapes.forEach((s, i) => {
+    if (s.kind === 'rect') teile.push(`<rect x="${px(s.x * w)}" y="${px(s.y * h)}" width="${px(s.w * w)}" height="${px(s.h * h)}"/>`);
+    else if (s.kind === 'poly') {
+      if (s.within) {
+        clips.push(`<clipPath id="c${i}"><polygon points="${poly(s.within)}"/></clipPath>`);
+        teile.push(`<polygon points="${poly(s.pts)}" clip-path="url(#c${i})"/>`);
+      } else teile.push(`<polygon points="${poly(s.pts)}"/>`);
+    } else {
+      const ar = s.ar > 0 ? s.ar : 1;
+      const raum = `transform="scale(${px(w)} ${px(h / ar)})"`;
+      if (s.kind === 'circle') teile.push(`<g ${raum}><circle cx="${s.x}" cy="${s.y * ar}" r="${s.r}"/></g>`);
+      else if (s.pts.length === 1) teile.push(`<g ${raum}><circle cx="${s.pts[0]![0]}" cy="${s.pts[0]![1] * ar}" r="${s.r}"/></g>`);
+      else {
+        const d = s.pts.map(([x, y], j) => `${j ? 'L' : 'M'}${x} ${y * ar}`).join(' ');
+        teile.push(`<g ${raum}><path d="${d}" fill="none" stroke="#fff" stroke-width="${2 * s.r}" stroke-linecap="round" stroke-linejoin="round"/></g>`);
+      }
+    }
+  });
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+    (clips.length ? `<defs>${clips.join('')}</defs>` : '') +
+    `<g fill="#fff">${teile.join('')}</g></svg>`
+  );
+}
+
 // ------------------------------------------------------- Regeln am Tisch
 
 /** Wie der Nebel gilt (T-204, `Campaign.fog`): für die ganze Gruppe gleich, oder je Figur. */
@@ -1101,8 +1154,9 @@ export function revealFor(map: Entity, fog: FogMode, own: (id: EntityId) => bool
  *   ist. Gilt der Nebel je Figur (T-204), zählt nur, was der Betrachter
  *   aufgedeckt sieht (`revealFor`), und nur das geht hinaus. Ausgenommen sind die eigenen — das Gruppen-Token (`party`) und
  *   was `keep` nennt (die Figuren der Gruppe): wer im Dunkeln steht, steht
- *   trotzdem auf der Karte. Das Bild selbst geht ganz hinaus und wird im
- *   Browser zugedeckt (E-041).
+ *   trotzdem auf der Karte. Das Kartenbild beschneidet der Server danach
+ *   (`kartenbild.ts`, T-312, E-041): bis alles aufgedeckt ist
+ *   (`fullyRevealed`), zeigen die Blätter auf ein Bild nur des Aufgedeckten.
  * - **Die Sperren** (T-118): nur, was am Aufgedeckten liegt; eine
  *   geschlossene Geheimtür ist eine Wand (`redactWalls`).
  *

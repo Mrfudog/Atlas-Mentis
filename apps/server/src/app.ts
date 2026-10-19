@@ -155,6 +155,7 @@ import { inDieGruppe } from './gruppe.js';
 import { spielerEbenen, spielerEbeneVon, sorgeSpielerEbene } from './spielerebene.js';
 import { gewaehlteEbene } from './schreibebene.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
+import { kartenbildAdressen, registerKartenbild, traegtBeschnitt } from './kartenbild.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
 import { registerKartenliste } from './kartenliste.js';
@@ -1532,15 +1533,20 @@ export function buildApp({
       .filter((e) => articleVisible(alle, e, auge))
       .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields))
       .map((e) =>
-        isMap(e)
-          ? redactMap(e, {
-              gm: seesUnfinished(alle, e, auge),
-              sees: siehtZiel,
-              /* Unter dem Nebel (REQ-139) bleiben die eigenen stehen: die
-                 Figuren der Gruppe und wer zu ihr gehört. */
-              keep: (id) => inParty(alle, id),
-              ...nebelFuer(),
-            })
+        isMap(e) && !seesUnfinished(alle, e, auge)
+          ? /* Das Kartenbild nur, soweit aufgedeckt (T-312, E-041): die
+               Blätter zeigen auf eine beschnittene Adresse (`kartenbild.ts`). */
+            kartenbildAdressen(
+              redactMap(e, {
+                gm: false,
+                sees: siehtZiel,
+                /* Unter dem Nebel (REQ-139) bleiben die eigenen stehen: die
+                   Figuren der Gruppe und wer zu ihr gehört. */
+                keep: (id) => inParty(alle, id),
+                ...nebelFuer(),
+              }),
+              (id) => assetVersion(alle.get(id)),
+            )
           : e,
       );
   }
@@ -3585,7 +3591,10 @@ export function buildApp({
   });
 
   /* Bilder hochladen und ausliefern (T-114): `bilder.ts`. */
+  /* Das Kartenbild unter dem Nebel, beschnitten (T-312). */
+  const kartenbild = registerKartenbild(app, { repo, store: assets, roh, sieve, geltend });
   const bilder = registerBilder(app, {
+    unterNebel: (request, id) => kartenbild.zurueckgehalten(request, id),
     repo,
     store: assets,
     viewerOf,
@@ -3678,6 +3687,12 @@ export function buildApp({
     const gesperrt = await reservierteSperre(repo, await viewerOf(request), await repo.getEntity(entity.id), entity);
     /* 423 und nicht 409: ein 409 heisst in der Maske „neu laden und zusammenführen". */
     if (gesperrt) return { code: 423, body: { error: gesperrt } };
+
+    /* Eine beschnittene Adresse (T-312) ist keine Bildquelle: zurückgeschrieben
+       stünde an der Karte ein Bild, das nur für einen Nebelstand gilt. */
+    if (isMap(entity) && traegtBeschnitt(entity)) {
+      return { code: 400, body: { error: 'Ein beschnittenes Kartenbild ist keine Bildquelle.' } };
+    }
 
     /* **Im Kampf zieht niemand frei** (T-198, Runde 2): läuft auf dieser
        Karte eine Begegnung, bewegen Spielende Tokens nur über den Zugplan. */

@@ -63,7 +63,8 @@
           "text": [
             "Create the session under Play, put the scene, the encounter and the map you need on it, and set what you prepare to ready when players may see it.",
             "During play the session says which map, encounter and scene run; Play shows them to the table.",
-            "Taking a map into play (Take into play on Play, or Start encounter) makes the session's own copy of it — a map in play: tokens, fog and the fight live there, the prepared map stays untouched, and the next session on the same map starts fresh. Players see it only once you press Release to players, with the fog already on. Afterwards the map's page lists every table under Played, to look at again."
+            "Taking a map into play (Take into play on Play, or Start encounter) makes the session's own copy of it — a map in play: tokens, fog and the fight live there, the prepared map stays untouched, and the next session on the same map starts fresh. Players see it only once you press Release to players, with the fog already on. Afterwards the map's page lists every table under Played, to look at again.",
+            "While the fog is on, players get only the revealed part of the map image — the server cuts it out, and the full picture goes to them once everything is revealed (Reveal all) or the fog is off."
           ]
         },
         {

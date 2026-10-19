@@ -327,6 +327,10 @@ Bild; eine Karte ist 5–30 MB. Wie viel insgesamt liegt:
 Volume einhängen und `daten/bilder` dorthin verlegen (Dateien umkopieren,
 Pfad im Compose) — an den Artikeln ändert sich nichts.
 
+**Kartenbilder unter dem Nebel** (T-312) rechnet der Server beschnitten
+und hält sie im Speicher: `MAP_CROP_CACHE_MB` (Vorgabe 256) begrenzt
+diesen Zwischenspeicher; nach einem Neustart wird neu gerechnet.
+
 **Auf einem Server, der vor T-114 eingerichtet wurde**, fehlt der nächtliche
 Cron für die Bilder; `bootstrap.sh` noch einmal laufen lassen (ungefährlich,
 Passwörter bleiben) oder als `deploy` mit `crontab -e` diese Zeile dazu:
