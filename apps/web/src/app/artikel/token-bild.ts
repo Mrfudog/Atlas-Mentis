@@ -102,7 +102,7 @@ export function ringStil(look: TokenLook | undefined, px: number): Record<string
                   @for (r of RINGE; track r.id) {
                     <label class="rand" [class.an]="(d.frame.ring ?? 'plain') === r.id" [title]="r.label">
                       <input type="radio" name="rand" [value]="r.id" [checked]="(d.frame.ring ?? 'plain') === r.id" (change)="setzeRing(r.id)" />
-                      <span class="muster" [style.background]="r.paint" [class.ohne]="!r.width"></span>
+                      <span class="huelle"><span class="muster" [style.background]="r.paint" [class.ohne]="!r.width"></span></span>
                       <span class="name">{{ r.label }}</span>
                     </label>
                   }
@@ -252,7 +252,13 @@ export function ringStil(look: TokenLook | undefined, px: number): Record<string
     .rand:focus-within {
       outline: 2px solid var(--gold);
     }
+    /* Der Schatten an der Hülle: an der Maske selbst schnitte sie ihn ab, und ein heller Rand verschwände auf hellem Grund. */
+    .huelle {
+      display: block;
+      filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.55));
+    }
     .muster {
+      display: block;
       width: 28px;
       height: 28px;
       border-radius: 50%;

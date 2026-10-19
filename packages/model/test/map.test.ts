@@ -349,11 +349,13 @@ describe('placing on the map (T-301)', () => {
         { id: 's1', name: 'The Demogorgon', type: 'Statblock' },
         { id: 'c1', name: '"The Demogorgon"', type: 'Creature' },
         { id: 'i1', name: 'Goblin', type: 'Item' },
+        { id: 's2', name: 'The Demogorgon (MTF)', type: 'Statblock' },
+        { id: 'r1', name: 'Goblin (legendary group)', type: 'Rule' },
       ],
       chain,
     );
-    expect(g.map((x) => x.best.id)).toEqual(['c1', 'i1']);
-    expect(g[0]!.others.map((x) => x.id)).toEqual(['s1', 'a1']);
+    expect(g.map((x) => x.best.id)).toEqual(['c1', 'i1', 'r1']);
+    expect(g[0]!.others.map((x) => x.id)).toEqual(['s1', 's2', 'a1']);
   });
   it('removes one marker and nothing else', async () => {
     const { removeMarker, MARKER_RELATION } = await import('../src/index.js');
