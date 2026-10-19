@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   carryGrid, clampExtra, columnZones, drawStage, handActions, inHand, nextDraw, parseCarrySquares,
-  parseContainerPreset, parsePairs, slowerDraw,
+  parseContainerPreset, parsePairs, slowerDraw, zonesByColumn, formatColumnZones, formatPairs, formatContainerPreset,
 } from '../src/inventory.js';
 import { derivedValue } from '../src/calc.js';
 
@@ -66,6 +66,26 @@ describe('Zonen nach Spalten', () => {
     expect(p.zones['5,2']).toBe('round');
     expect(parseContainerPreset('####/####')!.zones).toEqual({});
     expect(parseContainerPreset('')).toBeNull();
+  });
+});
+
+describe('Die Einstellungen zurückschreiben (REQ-355)', () => {
+  it('fasst benachbarte Spalten zu Spannen zusammen und liest sich zurück', () => {
+    const z = zonesByColumn(ZONEN);
+    expect(z[0]).toBe('bonus action');
+    expect(z[10]).toBe('round');
+    expect(formatColumnZones(z)).toBe(ZONEN);
+    expect(formatColumnZones({ 0: 'action', 1: 'turn', 2: 'action', 4: 'action' })).toBe('0:action, 1:turn, 2:action, 4:action');
+    expect(formatColumnZones({})).toBe('');
+  });
+
+  it('schreibt Paare und Behältervorlagen so, wie sie gelesen werden', () => {
+    expect(formatPairs({ tiny: 3, small: '4', huge: '' })).toBe('tiny:3, small:4');
+    expect(parseCarrySquares(formatPairs({ tiny: 3, medium: 5 }))).toEqual({ tiny: 3, medium: 5 });
+    const spec = formatContainerPreset(['.##.', '####'], { 0: 'action', 1: 'action', 2: 'turn', 3: 'turn' });
+    expect(spec).toBe('.##./#### | 0-1:action, 2-3:turn');
+    expect(parseContainerPreset(spec)!.zones['0,1']).toBe('action');
+    expect(formatContainerPreset(['##'], {})).toBe('##');
   });
 });
 
