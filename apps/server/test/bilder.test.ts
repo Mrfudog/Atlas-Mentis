@@ -370,6 +370,42 @@ describe('a creature without an image shows the image of its statblock (T-211)',
   });
 });
 
+describe('tokens (T-297)', () => {
+  /* Ein Kreis auf Durchsichtigem — wie ein fertiges Token. */
+  const rundesPng = (n = 64) =>
+    sharp({ create: { width: n, height: n, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+      .composite([{ input: Buffer.from(`<svg width="${n}" height="${n}"><circle cx="${n / 2}" cy="${n / 2}" r="${n / 2 - 2}" fill="#a33"/></svg>`) }])
+      .png()
+      .toBuffer();
+
+  it('recognises a ready-made round token on upload, and a square image is not one', async () => {
+    const { hoch } = await aufbau();
+    const rund = (await hoch('Mira', { kind: 'token' }, { name: 't.png', type: 'image/png', data: await rundesPng() })).json() as Hochgeladen;
+    expect(rund.components?.['Asset']).toMatchObject({ round: true });
+    const eckig = (await hoch('Mira', {}, { name: 'e.png', type: 'image/png', data: await png(40, 40) })).json() as Hochgeladen;
+    expect((eckig.components?.['Asset'] as { round?: boolean }).round).toBeUndefined();
+  });
+
+  it('names the token of the statblock at the creature, with its look and whether it may be adjusted', async () => {
+    const { hoch, hole, repo } = await aufbau();
+    const t = (await hoch('Mira', { for: 'c_offen', kind: 'token' }, { name: 't.png', type: 'image/png', data: await rundesPng() })).json() as Hochgeladen;
+    await repo.putEntity({
+      id: 'sb_volo',
+      interfaces: ['Statblock'],
+      name: 'sb_volo',
+      components: { Identity: { name: 'sb_volo', id: 'statblock-sbv', aliases: [] }, Statblock: { token: t.id } },
+      relations: [
+        { id: 'sbv~l', type: 'inLayer', to: 'ly_nebel', props: {} },
+        { id: 'sbv~b', type: 'belongsTo', to: 'c_offen', props: {} },
+      ],
+    });
+    const mira = (await hole('Mira', '/api/entities/c_offen')).json() as { refs: { token?: { id: string; from?: string; adjustable: boolean; look: { round: boolean } } } };
+    expect(mira.refs.token).toMatchObject({ id: t.id, from: 'sb_volo', adjustable: true, look: { round: true, frame: { x: 50, y: 50, zoom: 1 } } });
+    const sela = (await hole('Sela', '/api/entities/c_offen')).json() as { refs: { token?: { adjustable: boolean } } };
+    expect(sela.refs.token?.adjustable).toBe(false);
+  });
+});
+
 describe('the storage of the asset store (T-211)', () => {
   it('tells the admin how much lies there, and nobody else', async () => {
     const { hoch, als } = await aufbau();

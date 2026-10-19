@@ -442,6 +442,15 @@ abgeleitete Wert (D8). Eine Wache aus der Vorlage „Guard" hat damit das
 Bild der Vorlage, solange niemand ihr ein eigenes gibt — dann gilt ihres.
 Ein kopiertes Bild bliebe stehen, wenn jemand das der Vorlage austauscht.
 
+**Ein Token ist ein Bild in einem Kreis — oder schon rund** (T-297). Die
+Tokens aus 5e.tools bringen Ring und Schatten mit; schnitte die Karte sie
+noch einmal in einen Kreis mit eigenem Rand, läge der Schatten am Rand und
+das Gesicht neben der Mitte. Also sagt das Bild, ob es schon rund ist
+(`Asset.round`, beim Hochladen an den durchsichtigen Ecken erkannt), und
+wo nicht, wo sein Kreis sitzt (`Asset.frame`). Beides steht **am Bild**
+und nicht am Statblock: dreissig Wachen aus einer Vorlage haben ein Token,
+und wer es einmal zurechtrückt, rückt es für alle zurecht.
+
 Gezeigt wird ein Bild mit dem Block **`image`**, und wie gross, sagt der
 Ort und nicht ein Wähler: in der Listenzeile ein Daumennagel, auf der
 Karte die Vorschau, auf der Seite das ganze Bild. Eine Spieleransicht gibt

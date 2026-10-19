@@ -189,6 +189,7 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
       'Asset.width': bild.width,
       'Asset.height': bild.height,
       'Asset.bytes': bild.bytes,
+      ...(bild.round ? { 'Asset.round': true } : {}),
     };
     const kind = (felder['kind'] ?? '').trim();
     if (kind) fields['Asset.kind'] = kind;
@@ -375,6 +376,7 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
           width: bild.width,
           height: bild.height,
           bytes: bild.bytes,
+          round: bild.round,
         },
       },
     } as Entity;

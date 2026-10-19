@@ -85,3 +85,33 @@ describe('articleImage (T-211)', () => {
     expect(assetVersion(undefined)).toBe('');
   });
 });
+
+describe('token frame (T-297)', () => {
+  it('reads the frame with defaults and limits', async () => {
+    const { tokenFrame, tokenLook } = await import('../src/index.js');
+    expect(tokenFrame(undefined)).toEqual({ x: 50, y: 50, zoom: 1 });
+    expect(tokenFrame({ x: 140, y: -3, zoom: 9 })).toEqual({ x: 100, y: 0, zoom: 4 });
+    expect(tokenLook(e('a', ['Asset'], { Asset: { ref: 'x.webp', round: true, width: 560, height: 560 } }))).toEqual({
+      round: true,
+      frame: { x: 50, y: 50, zoom: 1 },
+      width: 560,
+      height: 560,
+    });
+  });
+  it('places the image so the chosen point sits in the middle, without showing empty edges', async () => {
+    const { tokenPlacement } = await import('../src/index.js');
+    /* Ein Quadrat ohne Zoom deckt den Kreis genau. */
+    expect(tokenPlacement({ frame: { x: 50, y: 50, zoom: 1 } })).toEqual({ left: 0, top: 0, width: 1, height: 1 });
+    /* Doppelt gezoomt auf die obere linke Viertelsmitte. */
+    expect(tokenPlacement({ frame: { x: 25, y: 25, zoom: 2 } })).toEqual({ left: 0, top: 0, width: 2, height: 2 });
+    expect(tokenPlacement({ frame: { x: 75, y: 50, zoom: 2 } })).toEqual({ left: -1, top: -0.5, width: 2, height: 2 });
+    /* Ein Querformat: die Höhe deckt, die Breite reicht weiter; ganz rechts heisst bündig rechts. */
+    expect(tokenPlacement({ frame: { x: 100, y: 50, zoom: 1 }, width: 200, height: 100 })).toEqual({ left: -1, top: 0, width: 2, height: 1 });
+  });
+  it('a round token has transparent corners', async () => {
+    const { looksRound } = await import('../src/index.js');
+    const kreis = (x: number, y: number) => ((x - 50) ** 2 + (y - 50) ** 2 <= 50 ** 2 ? 255 : 0);
+    expect(looksRound(kreis, 100, 100)).toBe(true);
+    expect(looksRound(() => 255, 100, 100)).toBe(false);
+  });
+});

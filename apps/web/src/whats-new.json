@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-adjust-token",
+      "date": "2026-10-19",
+      "title": "Tokens as they are, and Adjust token",
+      "text": "Ready-made round tokens now stand on the map as they are, without a second circle cut over them. Statblocks and creatures show their token on their page; “Adjust token” moves and zooms an image in its circle, or marks it as ready-made.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
       "id": "2026-10-19-rule-builder-rule-text",
       "date": "2026-10-19",
       "title": "Rules show their rule text",

@@ -64,6 +64,9 @@ export class Bestand {
   /** Das Bild je geöffnetem Artikel, wie der Server es rechnet (`refs.image`, T-211) — auch das geerbte des Statblocks. */
   private readonly _bild = signal<ReadonlyMap<string, NonNullable<Bezuege['image']>>>(new Map());
   readonly bild = this._bild.asReadonly();
+  /** Das Token je geöffnetem Artikel (`refs.token`, T-297). */
+  private readonly _token = signal<ReadonlyMap<string, NonNullable<Bezuege['token']>>>(new Map());
+  readonly token = this._token.asReadonly();
   /** Artikel aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
   private readonly _vergleich = signal<ReadonlySet<string>>(new Set());
   readonly vergleich = this._vergleich.asReadonly();
@@ -216,6 +219,13 @@ export class Bestand {
         this._laden.update((m) => {
           const n = new Map(m);
           if (refs?.shop) n.set(id, refs.shop);
+          else n.delete(id);
+          return n;
+        });
+        this._token.update((m) => {
+          if (!refs?.token && !m.has(id)) return m;
+          const n = new Map(m);
+          if (refs?.token) n.set(id, refs.token);
           else n.delete(id);
           return n;
         });

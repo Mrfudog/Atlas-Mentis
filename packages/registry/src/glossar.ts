@@ -39,6 +39,14 @@ export interface AppTerm {
 /** Die Wörter, mit denen die App über sich selbst spricht. */
 const APP: AppTerm[] = [
   {
+    term: 'Token',
+    aliases: ['Ready-made token', 'Token frame'],
+    sort: 'app',
+    definition: 'The round image of a creature on the map — the token of its statblock. A ready-made token (round, with its own ring) is shown as it is; any other image sits in a circle at its token frame.',
+    effect: '“Adjust token” on the statblock or creature moves and zooms the frame, or marks the image as a ready-made token; it is saved on the image, so every statblock with it looks the same.',
+    translations: { de: 'Token' },
+  },
+  {
     term: 'Type',
     aliases: ['Article type', 'Kind of article'],
     sort: 'app',

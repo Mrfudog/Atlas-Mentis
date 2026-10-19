@@ -20,6 +20,7 @@ import { mkdir, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/pro
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import sharp from 'sharp';
+import { looksRound } from '@nw/model';
 
 export interface StoredAsset {
   body: Readable;
@@ -210,6 +211,8 @@ export interface Aufbereitet {
   width: number;
   height: number;
   bytes: number;
+  /** Ein fertiges Rundtoken (T-297): durchsichtige Ecken um einen Kreis. */
+  round: boolean;
 }
 
 export class KeinBild extends Error {}
@@ -250,6 +253,14 @@ export async function aufbereiten(roh: Buffer): Promise<Aufbereitet> {
     .resize({ width: THUMB_PX, height: THUMB_PX, fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 80 })
     .toBuffer();
+  /* Ein fertiges Token (T-297) erkennt man an seinen Ecken: durchsichtig
+     um einen Kreis. Gelesen an der Vorschau — sie hat die Ecken auch und
+     ist klein. */
+  let round = false;
+  if (fertig.hasAlpha) {
+    const { data: px, info } = await sharp(thumbData).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    round = looksRound((x, y) => px[(y * info.width + x) * info.channels + 3] ?? 255, info.width, info.height);
+  }
   return {
     ref: `${hash}.${art.ext}`,
     thumb: thumbKey(`${hash}.${art.ext}`),
@@ -259,6 +270,7 @@ export async function aufbereiten(roh: Buffer): Promise<Aufbereitet> {
     width,
     height,
     bytes: data.length,
+    round,
   };
 }
 

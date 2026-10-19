@@ -63,6 +63,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
     cat: 'Game',
     items: [
       { el: 'stats', name: 'Key stats', icon: '♥', tip: 'AC, hit points, speed, initiative, passive Perception and CR as one row of tiles.' },
+      { el: 'token', name: 'Token', icon: '◉', tip: 'The token as it stands on the map — of the statblock, or of the statblock of a creature —, with Adjust token for whoever may edit the image.' },
       { el: 'statblock', name: 'Statblock', icon: '⚔', tip: 'The statblock as in the book.' },
       { el: 'spell', name: 'Spell', icon: '✦', tip: 'A spell as in the book.' },
       { el: 'item', name: 'Item', icon: '⚱', tip: 'An item as in the book.' },

@@ -20,6 +20,7 @@ import { Statblock } from '../artikel/statblock';
 import { Zauber } from '../artikel/zauber';
 import { Gegenstand } from '../artikel/gegenstand';
 import { Kennzahlen } from '../artikel/kennzahlen';
+import { TokenBild } from '../artikel/token-bild';
 import { Lesen } from '../lesen/lesen';
 
 /** Ein Wert, wie ihn ein Element zeigt. */
@@ -54,7 +55,7 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-ansichtsbaum',
-  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, Lesen],
+  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Lesen],
   template: `
     <ng-template #knoten let-el>
       @switch (el.el) {
@@ -117,6 +118,9 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
         }
         @case ('stats') {
           <nw-kennzahlen [artikel]="artikel()" />
+        }
+        @case ('token') {
+          <nw-token [artikel]="artikel()" />
         }
         @case ('spell') {
           <nw-zauber [artikel]="artikel()" [scopes]="scopes()" />

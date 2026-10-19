@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TurnPlan } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -235,6 +235,8 @@ export interface Bezuege {
   image?: { id: string; version?: string; from?: string };
   /** Die Version jeder Bilddatei, die der Artikel nennt (T-211) — mit ihr darf der Browser das Bild behalten. */
   assets?: Record<string, string>;
+  /** Das Token (T-297): am Statblock seins, an der Kreatur das ihres Statblocks (`from`) — mit Aussehen und ob man es einstellen darf. */
+  token?: { id: string; version?: string; from?: string; look: TokenLook; adjustable: boolean };
 }
 
 /** Wer einen Fertigungswert gesetzt hat (`craftCheck`): die Quelle oder ein Träger einer `craftsWith`-Kante. */
@@ -2074,7 +2076,8 @@ export interface ZugLage {
 export interface KartenKontext {
   parents: { id: string; name: string }[];
   children: { id: string; name: string; frame: { x: number; y: number; w: number; h: number } }[];
-  targets: Record<string, { name: string; type: string; image?: string }>;
+  /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
+  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
