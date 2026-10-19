@@ -429,7 +429,18 @@ bei jeder Datei, ob ihr Artikel sichtbar ist — dieselbe Frage wie überall.
 
 Die Datei heisst nach ihrem Inhalt (`<sha256>.png`). Dasselbe Bild zweimal
 hochgeladen liegt einmal da, eine Datei ändert sich nie, und darum darf der
-Browser sie behalten, solange er nach diesem Namen fragt.
+Browser sie behalten, solange er nach diesem Namen fragt. Darum nennt der
+Server mit jeder Listenzeile und jedem Artikel die **Version** der Bilder
+darin (`imageVersion`, `refs.assets`, T-211): ohne sie fragt der Browser
+bei jeder Liste jedes Vorschaubild neu nach, und eine Seite mit fünfzig
+Zeilen wartet auf fünfzig Rundreisen.
+
+**Eine Kreatur ohne eigenes Bild zeigt das ihres Statblocks** (T-211) —
+sein Bild, sonst seinen Token, auch aus der Vorlage einer Instanz. Das
+ist keine Kopie: gerechnet wird beim Lesen (`articleImage`), wie jeder
+abgeleitete Wert (D8). Eine Wache aus der Vorlage „Guard" hat damit das
+Bild der Vorlage, solange niemand ihr ein eigenes gibt — dann gilt ihres.
+Ein kopiertes Bild bliebe stehen, wenn jemand das der Vorlage austauscht.
 
 Gezeigt wird ein Bild mit dem Block **`image`**, und wie gross, sagt der
 Ort und nicht ein Wähler: in der Listenzeile ein Daumennagel, auf der

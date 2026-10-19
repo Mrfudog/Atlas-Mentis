@@ -1436,7 +1436,7 @@ export class Artikel implements SchnellKontext {
       beschreibung: this.beschreibung(),
       beschreibungZeigen: !!this.vglBeschreibung(),
       rest: !!v?.rest,
-      bild: bildDes(e, r),
+      bild: bildDes(e, r, this.bestand.bild().get(e.id)),
     });
   });
 

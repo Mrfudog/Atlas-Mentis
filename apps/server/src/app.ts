@@ -15,6 +15,9 @@ import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 import {
+  articleImage,
+  assetVersion,
+  statblocksOf,
   BulkRequestSchema,
   EntitySchema,
   RegistrySchema,
@@ -2085,6 +2088,47 @@ export function buildApp({
     }
   }
 
+  /**
+   * **Die Bilder eines Artikels** (T-211): `image` ist, was er als sein
+   * Bild zeigt (`articleImage` — an einer Kreatur ohne eigenes das ihres
+   * Statblocks), `assets` die Version jeder Bilddatei, die er nennt. Mit
+   * der Version in der Adresse darf der Browser ein Bild behalten; ohne
+   * fragt er bei jedem Öffnen neu. Nur, was der Betrachter sieht — ein
+   * verborgenes Bild hat für ihn keine Version und kein Ziel.
+   */
+  async function bilderVon(
+    request: FastifyRequest,
+    e: Entity,
+  ): Promise<{ image?: { id: string; version?: string; from?: string }; assets?: Record<string, string> }> {
+    const registry = await repo.getRegistry();
+    const stand = await roh();
+    const bild = articleImage(registry, e, stand.map, (id) => statblocksOf(stand.alle, id));
+    const ids = new Set<string>();
+    for (const [typ, karte] of Object.entries(e.components ?? {})) {
+      const props = registry.interfaces[typ]?.schema?.properties ?? {};
+      for (const [k, v] of Object.entries(karte ?? {})) {
+        if (props[k]?.format !== 'asset') continue;
+        for (const w of Array.isArray(v) ? v : [v]) if (typeof w === 'string' && w && stand.map.has(w)) ids.add(w);
+      }
+    }
+    const fremd = bild && !/^https?:\/\//i.test(bild.id) ? bild.id : null;
+    if (fremd && stand.map.has(fremd)) ids.add(fremd);
+    const gesehen = new Set(
+      ids.size ? (await sieve(request, [...ids].map((i) => stand.map.get(i)!), stand.map)).map((x) => x.id) : [],
+    );
+    const assets: Record<string, string> = {};
+    for (const i of gesehen) {
+      const v = assetVersion(stand.map.get(i));
+      if (v) assets[i] = v;
+    }
+    const raus: { image?: { id: string; version?: string; from?: string }; assets?: Record<string, string> } = {};
+    if (bild && (!fremd || gesehen.has(fremd))) {
+      raus.image = { id: bild.id, ...(assets[bild.id] ? { version: assets[bild.id] } : {}), ...(bild.from ? { from: bild.from } : {}) };
+    }
+    if (Object.keys(assets).length) raus.assets = assets;
+    return raus;
+  }
+
   async function bezuegeVon(
     request: FastifyRequest,
     e: Entity,
@@ -3028,6 +3072,7 @@ export function buildApp({
     const shop = await ladenwaren(request, einer, stand.map);
     const refs = {
       ...(await bezuegeVon(request, einer)),
+      ...(await bilderVon(request, einer)),
       ...(ready ? { ready } : {}),
       ...(vergleich ? { compare: true } : {}),
       ...(reading ? { reading } : {}),

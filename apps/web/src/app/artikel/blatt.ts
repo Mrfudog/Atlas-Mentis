@@ -55,7 +55,7 @@ import { Bild, bildDes } from './bild';
           <h2>{{ st.text }}</h2>
         }
         @case ('bild') {
-          <nw-bild [wert]="st.bild!.wert" [groesse]="ansicht() === 'full' ? 'full' : 'thumb'" [caption]="st.bild!.caption" [alt]="st.bild!.alt" [oeffnen]="false" />
+          <nw-bild [wert]="st.bild!.wert" [version]="st.bild!.version" [groesse]="ansicht() === 'full' ? 'full' : 'thumb'" [caption]="st.bild!.caption" [alt]="st.bild!.alt" [oeffnen]="false" />
         }
         @case ('karte') {
           @if (st.bild; as b) {
@@ -230,7 +230,7 @@ export class Blatt {
       forArticle(layoutFor(r, this.ansicht(), primaryInterface(e)).layout, e),
       view?.empty === 'show' ? mitLeeren(r, e, zellen) : zellen,
       prosaVon(r, e),
-      { beschreibung: view?.description === false ? null : (d ?? null), rest: !!view?.rest, bild: bildDes(e, r) },
+      { beschreibung: view?.description === false ? null : (d ?? null), rest: !!view?.rest, bild: bildDes(e, r, this.bestand.bild().get(e.id)) },
       /* Ein Blatt hat keine Reiter: die Regeloptionen (T-190) stehen als Felder. */
     ).map((st) => (st.art === 'regeln' ? { ...st, art: 'felder' as const } : st));
   });

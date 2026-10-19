@@ -113,6 +113,7 @@
             "An article as a page of a book. “Edit” changes it; on an article you cannot write, Edit makes your own version in a layer of yours. Click a named article for its quick view; “Open article” goes there.",
             "Under the title, Layer names the layer the article is in; the layers of its other versions stand beside it — click one to open that version. After them: why you see it — in play in the running campaign, from a compare layer (not in play), enabled as extra content, or in no layer. The quick view and the lists name the layer too, a list only when it is not the campaign’s own.",
             "“Print” puts the article on an A4 sheet. Versions of the same article in other layers can be compared side by side.",
+            "A creature without an image of its own shows the image of its statblock, or its token. Give it an image and that one shows instead.",
             "GMs see a Knowledge box at the side: which pieces of information exist about this article — on it, for it, or for a whole group — the fields each covers and the knowledge it belongs to. “+ Information” picks fields by group and ticks or names a knowledge; who knows it is set on the knowledge.",
             "A knowledge’s page writes out everything it brings together: each information with the articles it is about and exactly the fields it covers — read as you may read them. Players find what their character knows in one place."
           ]
