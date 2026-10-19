@@ -1938,7 +1938,12 @@ die Zahl, und wer die Regel ändert, ändert die Formel an einer Stelle. Eine
 Einstellung wäre ein ungeprüfter Text ohne Ort, an dem man die Zahl sieht.
 Die Grundquadrate je Grösse und die Zonen nach Spalten sind dagegen
 Einstellungen (`carrySquares`, `carryZones`): sie sind das Blatt der
-Kampagne und rechnen nichts. Ein Stück, das nach einem Schrumpfen
+Kampagne und rechnen nichts. Eingestellt werden sie trotzdem nicht als
+Text, sondern gemalt (REQ-355, Rules & options › Inventory): wer die Zone
+einer Spalte am gezeichneten Raster wählt, sieht, wo das Grundquadrat
+endet — „5-8:turn“ sagt das nicht. Geschrieben wird dieselbe Zeile, die
+das Inventar liest; eine zweite Form daneben wäre eine zweite Wahrheit.
+Ein Stück, das nach einem Schrumpfen
 ausserhalb der Form liegt, behält seine Lage; es liegt im Fach, bis es
 jemand neu hinlegt, und hat bis dahin keine Ziehstufe.
 

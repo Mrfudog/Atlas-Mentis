@@ -561,7 +561,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
 
-**Gezeichnet** (aus `Party`): `image`, `description`, `fields`, `inventory`, `crafting`, `relations`
+**Gezeichnet** (aus `Party`): `description`, `fields`, `inventory`, `crafting`, `relations`
 
 ### Place
 
@@ -2422,7 +2422,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Statblock`): `image`, `statblock`, `fields` (ohne Statblock, Abilities, Proficiencies), `prose`, `usedBy`, `relations`
+**Gezeichnet** (aus `Statblock`): `statblock`, `fields` (ohne Statblock, Abilities, Proficiencies), `prose`, `usedBy`, `relations`
 
 ### Subclass
 
