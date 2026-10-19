@@ -27,7 +27,8 @@
         {
           "heading": "Moving your token",
           "text": [
-            "Outside an encounter, drag your own character's token. Depending on the campaign it moves at once, or it leaves a dashed proposal that the GM confirms (✓) or rejects (✗). During an encounter, your token moves through the turn plan."
+            "Outside an encounter, drag your own character's token. Depending on the campaign it moves at once, or it leaves a dashed proposal that the GM confirms (✓) or rejects (✗); everyone who sees the token sees the proposal. During an encounter, your token moves through the turn plan.",
+            "Which tokens you may drag is the campaign's choice (Rules & options › Who moves tokens): none, your own characters, the whole party, the party and its allies in an encounter, or every token. GMs: Tokens › “Movement: own · confirm” shows the setting and changes it right on the map."
           ]
         },
         {

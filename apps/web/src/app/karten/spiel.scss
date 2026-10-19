@@ -19,3 +19,31 @@
 .freigabe:not(.an) {
   border-color: var(--accent);
 }
+
+/* Wer zieht (T-290): ein kleines Blatt unter der Leiste, nicht ein Dialog — die Karte bleibt im Blick. */
+.bewegung-blatt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  margin-top: 0.3rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.bewegung-blatt label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+}
+.bewegung-blatt .hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+.bewegung-blatt .fehler {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--accent);
+}

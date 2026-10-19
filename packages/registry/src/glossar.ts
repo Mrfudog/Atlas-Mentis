@@ -65,6 +65,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Token' },
   },
   {
+    term: 'Move proposal',
+    aliases: ['Who moves tokens', 'Movement (map)'],
+    sort: 'app',
+    definition: 'A token move that waits for the GM: dragged by a player when the campaign has the GM confirm moves, drawn dashed from the token to where it would go.',
+    effect: 'Which tokens players may drag at all — none, their own, the party, party and allies, or every token — is the campaign option “Who moves tokens”; the GM confirms (✓) or rejects (✗) a proposal, and only then the token moves.',
+    translations: { de: 'Zugvorschlag' },
+  },
+  {
     term: 'Wall',
     aliases: ['Barrier', 'Door', 'Window'],
     sort: 'app',

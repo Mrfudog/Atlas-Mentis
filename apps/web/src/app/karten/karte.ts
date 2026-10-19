@@ -91,6 +91,8 @@ import {
   shapeOutline,
   snapPoint,
   wallPoints,
+  RULE_OPTIONS,
+  withRuleVariant,
 } from '@nw/model';
 import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
 import { Api, type GespieltZeile, type KartenKontext } from '../kern/api';
@@ -401,7 +403,33 @@ interface Zeiger {
               @if (spielTokens()) {
                 <button type="button" (click)="spielTokensWeg()" title="Remove the tokens placed for play; prepared markers and the party stay">Clear play tokens</button>
               }
+              <!-- **Wer zieht** (T-290, E-040): der Stand der Kampagne, und ein Klick öffnet ihn als Blatt. -->
+              @if (kampfLeitung() && kontext()?.campaign) {
+                <button type="button" class="bewegung-knopf" [class.an]="bewegungOffen()" [attr.aria-expanded]="bewegungOffen()" (click)="bewegungOffen.set(!bewegungOffen())" title="Who may move tokens in this campaign, and whether you confirm moves">
+                  Movement: {{ bewegungText() }}
+                </button>
+              }
             </div>
+            @if (bewegungOffen() && kampfLeitung()) {
+              <div class="bewegung-blatt" role="group" aria-label="Movement settings">
+                <label>
+                  Who moves tokens
+                  <select (change)="bewegungSetzen('tokenMove', $any($event.target).value)" [disabled]="bewegungSpeichert()" aria-label="Who moves tokens">
+                    @for (o of TOKEN_MOVE_WAHL; track o.key) {
+                      <option [value]="o.key" [selected]="regeln().tokenMove === o.key">{{ o.label }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  <input type="checkbox" [checked]="regeln().moves === 'confirm'" [disabled]="bewegungSpeichert()" (change)="bewegungSetzen('moves', $any($event.target).checked ? 'confirm' : 'free')" />
+                  I confirm moves first
+                </label>
+                @if (bewegungFehler(); as f) {
+                  <p class="fehler" role="alert">{{ f }}</p>
+                }
+                <p class="hint">Applies to this campaign at once. Out of an encounter; in one, the turn plan applies. More under <a [routerLink]="['/artikel', kontext()!.campaign]">Rules &amp; options</a>.</p>
+              </div>
+            }
           }
 
           @if (aktiv() === 'nebel' && darfSchreiben()) {
@@ -942,8 +970,8 @@ interface Zeiger {
             } @else {
               · drag a marker to move it
             }
-          } @else if (eigeneHier().length && !imKampf()) {
-            · {{ regeln().moves === 'confirm' ? 'drag your token to propose a move to the GM' : 'drag your token to move it' }}
+          } @else if (ziehbarHier().length && !imKampf()) {
+            · {{ regeln().moves === 'confirm' ? 'drag a token to propose a move to the GM' : 'drag a token to move it' }}
           }
         }
       </p>
@@ -1089,7 +1117,7 @@ export class Karte {
       const k = this.kontext();
       /* Eine Begegnung: ihr Zug wandert, oder ein Kampf beginnt hier. */
       const betrifft =
-        ev.type === 'Map' || ev.type === 'Encounter' || ev.id === k?.turn?.encounter || ev.id === k?.party?.id || !!k?.targets[ev.id] || !!k?.children.some((c) => c.id === ev.id);
+        ev.type === 'Map' || ev.type === 'Encounter' || ev.type === 'Campaign' || ev.id === k?.campaign || ev.id === k?.turn?.encounter || ev.id === k?.party?.id || !!k?.targets[ev.id] || !!k?.children.some((c) => c.id === ev.id);
       if (betrifft && ev.id !== this.id()) void this.kontextHolen(this.id());
     });
     /* Ein Zugvorschlag kommt, wird bestätigt oder verworfen (T-204). */
@@ -1131,7 +1159,7 @@ export class Karte {
     return redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
   });
   /** Die Kartenregeln der Kampagne (T-204); ohne Antwort die Vorgaben. */
-  protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', revealOnMove: false, doors: 'players', tokenSizes: 'rules' });
+  protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', tokenMove: 'own', revealOnMove: false, doors: 'players', tokenSizes: 'rules' });
   /** Führt die Kampagne den Nebel je Figur? */
   protected readonly jeFigur = computed(() => this.regeln().fog === 'player');
   /** Für wen aufgedeckt wird und wessen Sicht „Player view“ zeigt (nur je Figur). */
@@ -1144,8 +1172,44 @@ export class Karte {
     const ids = [...new Set(markersOf(e).filter((m) => m.kind === 'play' || m.kind === 'party').map((m) => m.to))];
     return ids.map((id) => ({ id, name: ziele[id]?.name ?? this.bestand.name()(id) ?? id }));
   });
-  /** Die eigenen Figuren mit Token hier (T-204) — die zieht der Betrachter selbst. */
+  /** Die eigenen Figuren mit Token hier (T-204). */
   protected readonly eigeneHier = computed(() => this.kontext()?.own ?? []);
+  /** Die Stufen „wer zieht" mit ihren Namen aus der Regeloption (T-290) — eine Liste, nicht zwei. */
+  protected readonly TOKEN_MOVE_WAHL = (RULE_OPTIONS.find((o) => o.key === 'tokenMove')?.variants ?? []).map((v) => ({ key: v.key, label: v.label }));
+  protected readonly bewegungOffen = signal(false);
+  protected readonly bewegungSpeichert = signal(false);
+  protected readonly bewegungFehler = signal<string | null>(null);
+  /** „own · confirm" — der Stand am Knopf. */
+  protected readonly bewegungText = computed(() => {
+    const r = this.regeln();
+    return `${r.tokenMove}${r.moves === 'confirm' ? ' · confirm' : ''}`;
+  });
+
+  /**
+   * **Absprung aus der Karte** (T-290): eine Regeloption der Kampagne
+   * direkt setzen — wie „Use this" unter Rules & options (`withRuleVariant`,
+   * `PUT /api/entities/:id`); Schreibrecht und `validateEntity` prüft der
+   * Server. Die Spielenden bekommen es live über die Kampagne.
+   */
+  protected async bewegungSetzen(option: 'tokenMove' | 'moves', wert: string): Promise<void> {
+    const id = this.kontext()?.campaign;
+    if (!id || this.bewegungSpeichert()) return;
+    this.bewegungSpeichert.set(true);
+    this.bewegungFehler.set(null);
+    try {
+      const { refs: _r, fromTemplate: _f, ...k } = (await this.api.entity(id)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      const neu = withRuleVariant(k as Entity, option, wert);
+      if (neu) await this.api.putEntity(neu);
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.bewegungFehler.set(err instanceof Error ? `The setting could not be saved: ${err.message}` : 'The setting could not be saved.');
+    } finally {
+      this.bewegungSpeichert.set(false);
+    }
+  }
+
+  /** Was der Betrachter ziehen darf (T-290, `Campaign.tokenMove`) — der Server rechnet es. */
+  protected readonly ziehbarHier = computed(() => this.kontext()?.movable ?? this.eigeneHier());
   /** Offene Zugvorschläge, mit dem Punkt, an dem das Token steht. */
   protected readonly vorschlaege = computed(() => {
     const e = this.angezeigt();
@@ -1237,7 +1301,7 @@ export class Karte {
       if (lauf === this.kontextLauf) {
         this.kontext.set(k);
         /* Der eigene Vorschlag ist entschieden (T-204): der Hinweis darauf geht. */
-        if (this.hinweis() === VORSCHLAG_GESENDET && !(k.proposals ?? []).some((v) => (k.own ?? []).includes(v.actor))) this.hinweis.set(null);
+        if (this.hinweis() === VORSCHLAG_GESENDET && !(k.proposals ?? []).some((v) => (k.movable ?? k.own ?? []).includes(v.actor))) this.hinweis.set(null);
       }
     } catch {
       /* Ohne Zusammenhang bleibt die Karte eine Karte: keine Brotkrumen,
@@ -1562,11 +1626,12 @@ export class Karte {
   protected greifen(ev: PointerEvent, m: MapMarker): void {
     ev.stopPropagation();
     this.nachZug = false;
-    /* **Die eigene Figur zieht, wer sie führt** (T-204) — auch ohne die
+    /* **Ein Token zieht, wen die Kampagne lässt** (T-204, T-290:
+       `tokenMove`, gerechnet am Server als `movable`) — auch ohne die
        Karte zu schreiben, über `POST /api/maps/:id/move`; wie, sagt die
        Kampagne (`moves`). Wer nicht leitet und bestätigen lassen muss,
        geht denselben Weg, auch wenn er die Karte schreibt. */
-    const eigen = this.eigeneHier().includes(m.to) && !this.spielersicht();
+    const eigen = this.ziehbarHier().includes(m.to) && !this.spielersicht();
     const selbst = eigen && (!this.darfSchreiben() || (!this.session.leitung() && this.regeln().moves === 'confirm'));
     if ((!this.darfSchreiben() && !eigen) || this.werkzeug() !== 'keins' || ev.button !== 0) return;
     /* **Im Kampf zieht der Plan** (T-198, Runde 2): Spielende bewegen ein
