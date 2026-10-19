@@ -36,7 +36,8 @@ export type BuilderStep =
   | { id: 'details'; kind: 'details' };
 
 /** Die Reihenfolge der Quellen: Abstammung, Hintergrund, Klasse, und was sie öffnen. */
-const RANG: Record<string, number> = { hasAncestry: 0, hasBackground: 1, hasClass: 2, subclass: 3, grants: 4, chose: 5 };
+export const CHOICE_SOURCE_ORDER: Readonly<Record<string, number>> = { hasAncestry: 0, hasBackground: 1, hasClass: 2, subclass: 3, grants: 4, chose: 5 };
+const RANG = CHOICE_SOURCE_ORDER;
 
 /**
  * Der Schlüssel einer Wahl an einer Figur: `quelle#wahl`, bei einem

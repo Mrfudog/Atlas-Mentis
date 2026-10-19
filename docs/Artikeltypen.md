@@ -186,7 +186,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
+  - **Overview** — `image`, `token`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
   - **Combat** — `turn`, `composed`
   - **Spells** — `spells`
   - **Gear** — `inventory`
@@ -691,7 +691,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
+  - **Overview** — `image`, `token`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
   - **Combat** — `turn`, `composed`
   - **Spells** — `spells`
   - **Gear** — `inventory`
@@ -2422,7 +2422,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Statblock`): `image`, `statblock`, `fields` (ohne Statblock, Abilities, Proficiencies), `prose`, `usedBy`, `relations`
+**Gezeichnet** (aus `Statblock`): `image`, `token`, `statblock`, `fields` (ohne Statblock, Abilities, Proficiencies), `prose`, `usedBy`, `relations`
 
 ### Subclass
 
@@ -2931,7 +2931,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `kind` *image | map | token | prop*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*
+- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `kind` *image | map | token | prop*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*, `round` *boolean*, `frame` *object*
 
 **Geerbte Felder**
 

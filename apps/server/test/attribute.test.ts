@@ -166,3 +166,48 @@ describe('a player creates her character from the articles (T-080)', () => {
     expect(fremd.statusCode).not.toBe(201);
   });
 });
+
+describe('a choice may not take what the character already has (T-299)', () => {
+  it('refuses a skill the background already gives, and accepts another', async () => {
+    const regel = (id: string, typ: string, extra: Entity['components'] = {}): Entity => ({
+      id,
+      interfaces: [typ],
+      name: id,
+      components: { Identity: ident(id, id, typ), Status: { status: 'ready' }, ...extra },
+      relations: [],
+    });
+    const klasse = regel('cl_1', 'Class', {
+      Choices: { choices: [{ id: 'skills', kind: 'proficiency', count: 1, from: { values: ['Athletics', 'Survival'] } }] },
+    });
+    const hintergrund = regel('bg_1', 'Background', { Proficiencies: { proficient: ['Survival'] } });
+    const repo = new InMemoryRepository(
+      { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_nebel' } },
+      [runde([]), gruppe, klasse, regel('an_1', 'Ancestry'), hintergrund],
+    );
+    const app = buildApp({ repo });
+    await repo.putUser({ id: 'u_sela', name: 'Sela', passwordHash: await hashPassword(PASSWORT), isAdmin: false, actorIds: [], roles: { camp_nebel: 'player' } });
+    const login = await app.inject({ method: 'POST', url: '/api/login', payload: { name: 'Sela', password: PASSWORT } });
+    const cookie = `nw_session=${login.cookies.find((x) => x.name === 'nw_session')!.value}`;
+    const anlegen = (pick: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/entities',
+        headers: { cookie },
+        payload: {
+          type: 'PlayerCharacter',
+          name: 'Ilka',
+          relations: [
+            { type: 'hasBackground', to: 'bg_1' },
+            { type: 'hasClass', to: 'cl_1', props: { level: 1 } },
+            { type: 'chose', to: 'cl_1', props: { choice: 'skills', picks: [pick] } },
+          ],
+        },
+      });
+    const doppelt = await anlegen('Survival');
+    expect(doppelt.statusCode).toBe(422);
+    expect((doppelt.json() as { issues: { code: string; message: string }[] }).issues).toEqual([
+      expect.objectContaining({ code: 'choice_duplicate', message: expect.stringMatching(/Survival already comes from Background/) }),
+    ]);
+    expect((await anlegen('Athletics')).statusCode).toBe(201);
+  });
+});

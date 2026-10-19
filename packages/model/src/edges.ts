@@ -184,7 +184,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
   },
   {
     key: 'rollLog',
-    label: 'Rolls log',
+    label: 'Log of rolls',
     area: 'character',
     does: 'shows a creature’s rolls together with the rolls on its statblock, and credits a roll on a statblock to the character it belongs to (T-172)',
     uses: {
@@ -271,9 +271,11 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [M + 'builder.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
       [M + 'hitpoints.ts']: ['hasClass'],
       [M + 'choices.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
+      /* Was die Figur schon hat, wählt sie nicht noch einmal (T-299). */
+      [M + 'duplicates.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
       [M + 'abilities.ts']: ['abilityPool', 'allowsMethod'],
       [M + 'equipment.ts']: ['allowsEquipment', 'hasBackground', 'hasClass'],
-      [S + 'app.ts']: ['abilityPool', 'allowsEquipment', 'allowsMethod', 'carries', 'holds'],
+      [S + 'app.ts']: ['abilityPool', 'allowsEquipment', 'allowsMethod', 'carries', 'chose', 'holds'],
       [W + 'figur/assistent.ts']: ['belongsTo', 'chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       [W + 'artikel/klasseneintrag.ts']: ['chose', 'hasAncestry', 'hasBackground', 'hasClass'],
       [W + 'artikel/artikel.ts']: ['chose', 'hasClass'],
