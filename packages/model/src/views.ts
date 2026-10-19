@@ -126,12 +126,15 @@ export function whenHolds(
   when: LayoutWhen | undefined,
   entity: Pick<Entity, 'components' | 'relations'> & { interfaces?: readonly string[] },
   incoming: readonly { type: string }[] = [],
+  /** Die Reihe eines Kantenziels (die Unterart, dann ihre Grundart, T-285) — für `to`. */
+  lineOf?: (id: string) => readonly string[],
 ): boolean {
   if (!when) return true;
   const { field, has, empty, relation, type } = when;
   if (type && (entity.interfaces ?? []).includes(type)) return true;
   if (!field && !relation && !when.incoming) return !type;
-  if (relation && (entity.relations ?? []).some((r) => r.type === relation)) return true;
+  const ziel = (to: string) => !when.to?.length || when.to.includes(to) || (lineOf?.(to) ?? []).some((x) => when.to!.includes(x));
+  if (relation && (entity.relations ?? []).some((r) => r.type === relation && ziel(r.to))) return true;
   /* Die Gegenrichtung ist eine Abfrage (T-268): wer sie nicht mitgibt, bekommt „nein". */
   if (when.incoming && incoming.some((r) => r.type === when.incoming)) return true;
   if (!field) return false;

@@ -867,7 +867,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'knownBy',
     label: 'known by',
     inverseLabel: 'knows',
-    means: 'Information or knowledge is known by a creature, party or faction (from a rank); they list what they know.',
+    means: 'Information or knowledge is known by a creature, party or faction (from a rank) — or by every character with an ancestry, background, class, subclass or feat; they list what they know.',
     /* Eine einzelne Information **oder ein Bündel**: dieselbe Kante, weil
        es dieselbe Frage ist. Wer ein Bündel kennt, kennt alles darin. */
     from: ['Information', 'Knowledge'],
@@ -876,7 +876,11 @@ export const relations: Record<string, RelationDef> = {
     //
     // „Die Spieler dieser Kampagne“ sind eine Rolle am Konto, kein Träger:
     // `audience: players` sagt es. `Group` als vierter Träger ist weg (A8).
-    to: ['Creature', 'Party', 'Faction'],
+    //
+    // Herkunft, Hintergrund, Klasse, Unterklasse und Talent (T-285,
+    // REQ-351): jede Figur, die das ist oder gewählt hat, weiss es — ein
+    // Schritt weit, wie Gruppe und Fraktion (`knowledgeHolders`).
+    to: ['Creature', 'Party', 'Faction', 'Ancestry', 'Background', 'Class', 'Subclass', 'Feat'],
     /* An eine Fraktion darf die Zuteilung einen **Mindestrang** nennen
        (`Faction.ranks`): wer auf dieser Sprosse oder höher steht, weiss es.
        Ohne Rang weiss es jedes Mitglied. An einer Figur oder Gruppe sagt
