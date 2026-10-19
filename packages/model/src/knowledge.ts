@@ -31,9 +31,11 @@
  * diese Abfrage über die Kanten.
  */
 
+import { ancestryLine } from './choices.js';
 import { PARTICIPATES, redactParticipants } from './initiative.js';
-import type { Entity, EntityId, Registry } from './types.js';
+import type { Entity, EntityId, Registry, ViewApplies } from './types.js';
 import { entityName, entriesOf, entryRef } from './entity.js';
+import { appliesHolds } from './viewScope.js';
 
 /** Die Kantenart, die einen Artikel mit seinen Informationen verbindet. */
 export const KNOWLEDGE_RELATION = 'knowledge';
@@ -99,12 +101,52 @@ function edges(entity: Entity | undefined, type: string): EntityId[] {
   return (entity?.relations ?? []).filter((r) => r.type === type).map((r) => r.to);
 }
 
-/** Die Informationen, die an diesem Artikel hängen — in Reihenfolge der Kanten. */
-export function informationsOf(entities: Map<EntityId, Entity>, article: Entity): Entity[] {
+/**
+ * **Die Geltung einer Information** (T-285, REQ-350): für welche Artikel
+ * sie gilt, in der Form der Ansichten (`ViewApplies`) — „jede Kreatur mit
+ * Herkunft Orc". Ohne Geltung gilt sie nur dort, wo ein Artikel sie über
+ * `knowledge` nennt, wie bisher.
+ */
+export function infoApplies(info: Entity): ViewApplies | null {
+  const a = info.components?.[INFO_COMPONENT]?.['applies'];
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
+  const v = a as ViewApplies;
+  return v.types?.length || v.where?.length || v.article ? v : null;
+}
+
+/* Die Informationen mit Geltung, einmal je Bestand gesucht: es sind
+   wenige, gefragt wird je Artikel — bei einer Liste 24 000 Mal (W7).
+   Ein Bestand, der wächst oder schrumpft, wird neu durchsucht. */
+const regelCache = new WeakMap<ReadonlyMap<EntityId, Entity>, { size: number; infos: Entity[] }>();
+export function ruleInformations(entities: ReadonlyMap<EntityId, Entity>): Entity[] {
+  const da = regelCache.get(entities);
+  if (da && da.size === entities.size) return da.infos;
+  const infos = [...entities.values()].filter((e) => (e.interfaces ?? []).includes(INFO_COMPONENT) && infoApplies(e));
+  regelCache.set(entities, { size: entities.size, infos });
+  return infos;
+}
+
+/**
+ * Die Informationen, die an diesem Artikel hängen — in Reihenfolge der
+ * Kanten —, und mit `registry` dazu die, deren Geltung ihn trifft (T-285).
+ * Eine Unterart zählt für ihre Grundart: „Herkunft Orc" trifft auch
+ * „Orc (Mountain)" (`ancestryLine`).
+ */
+export function informationsOf(entities: Map<EntityId, Entity>, article: Entity, registry?: Pick<Registry, 'interfaces'>): Entity[] {
   const out: Entity[] = [];
   for (const id of edges(article, KNOWLEDGE_RELATION)) {
     const info = entities.get(id);
     if (info) out.push(info);
+  }
+  if (registry) {
+    const regeln = ruleInformations(entities);
+    if (regeln.length && !(article.interfaces ?? []).includes(INFO_COMPONENT)) {
+      const reihe = (id: string) => ancestryLine(id, entities);
+      for (const info of regeln) {
+        if (out.includes(info)) continue;
+        if (appliesHolds(registry, infoApplies(info)!, article, [], reihe)) out.push(info);
+      }
+    }
   }
   return out;
 }
@@ -155,6 +197,23 @@ export function knowledgeHolders(
     const viewer = entities.get(one);
     if (!viewer) continue;
     for (const partyId of edges(viewer, PARTY_RELATION)) holders.add(partyId);
+    /* **Was die Figur ist, weiss sie** (T-285, REQ-351): ihre Herkunft
+       samt Grundart, ihr Hintergrund, ihre Klassen und Unterklassen und
+       was sie gewählt hat (ein Talent) — ein Schritt weit wie die Gruppe.
+       Ein Wissen, das der Herkunft Orc zugeteilt ist, weiss jede Figur mit
+       dieser Herkunft. */
+    for (const r of viewer.relations ?? []) {
+      if (r.type === 'hasAncestry') for (const id of ancestryLine(r.to, entities)) holders.add(id);
+      else if (r.type === 'hasBackground') holders.add(r.to);
+      else if (r.type === 'hasClass') {
+        holders.add(r.to);
+        const sub = r.props?.['subclass'];
+        if (typeof sub === 'string' && sub) holders.add(sub);
+      } else if (r.type === 'chose') {
+        const picks = Array.isArray(r.props?.['picks']) ? (r.props['picks'] as unknown[]) : [];
+        for (const p of picks) if (typeof p === 'string' && entities.has(p)) holders.add(p);
+      }
+    }
     /* Die Fraktion zählt auch einen Schritt weit — den Rang prüft `knows`
        an der Zuteilung, denn hier ist nur die Frage, wer gemeint ist. */
     for (const factionId of edges(viewer, FACTION_RELATION)) holders.add(factionId);
@@ -265,13 +324,13 @@ export function informationsIn(entities: Map<EntityId, Entity>, bundle: Entity):
  * die Gruppierung ordnet sie nur, sie erweitert sie nie.
  */
 export function knowledgeGroups(
-  _registry: Pick<Registry, 'interfaces'>,
+  registry: Pick<Registry, 'interfaces'>,
   entities: Map<EntityId, Entity>,
   article: Entity,
   allFields: FieldRef[],
   viewerId?: EntityId | readonly EntityId[],
 ): KnowledgeGroup[] {
-  const infos = informationsOf(entities, article);
+  const infos = informationsOf(entities, article, registry);
   const claimedFields = new Set<FieldRef>();
 
   const groups: KnowledgeGroup[] = infos.map((info) => {
@@ -385,7 +444,7 @@ export function redactEntity(
   let feldErlaubt = (component: string, property: string, _eintrag?: string): boolean =>
     !gmBlank.has(property) && !gmJe.get(component)?.has(property);
   let erlaubt: (ref: FieldRef) => boolean = (ref) => !nurSL(ref);
-  if (informationsOf(entities, article).length) {
+  if (informationsOf(entities, article, registry).length) {
     const allFields: FieldRef[] = [];
     for (const [component, card] of Object.entries(article.components ?? {})) {
       for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
