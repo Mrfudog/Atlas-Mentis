@@ -1,4 +1,5 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { rollText, type RollEntry } from '@nw/model';
 import { Api, type WurfLog } from '../kern/api';
@@ -18,15 +19,23 @@ import { WurfZiel } from '../kern/wurfziel';
  */
 @Component({
   selector: 'nw-wuerfe',
-  imports: [RouterLink],
+  imports: [RouterLink, NgTemplateOutlet],
   template: `
-    <details class="log" (toggle)="offen.set($any($event.target).open)">
-      <summary>
-        <h2>Log</h2>
-        @if (log(); as l) {
-          <span class="zahl">{{ l.total }}</span>
-        }
-      </summary>
+    @if (geoeffnet() === undefined) {
+      <details class="log" (toggle)="offen.set($any($event.target).open)">
+        <summary>
+          <h2>Log</h2>
+          @if (log(); as l) {
+            <span class="zahl">{{ l.total }}</span>
+          }
+        </summary>
+        <ng-container [ngTemplateOutlet]="inhalt" />
+      </details>
+    } @else {
+      <!-- Im Kapitel „Log" (T-277): die Kopfzeile ist die des Kapitels. -->
+      <ng-container [ngTemplateOutlet]="inhalt" />
+    }
+    <ng-template #inhalt>
       <form class="frei" (submit)="$event.preventDefault(); frei()">
         <input type="text" [value]="ausdruck()" (input)="ausdruck.set($any($event.target).value)" placeholder="1d20+3" aria-label="Dice expression" />
         <button type="submit" [disabled]="!ausdruck().trim()">Roll</button>
@@ -90,10 +99,10 @@ import { WurfZiel } from '../kern/wurfziel';
         } @else {
           <p class="leer">No rolls yet.</p>
         }
-      } @else if (offen() && !fehler()) {
+      } @else if (an() && !fehler()) {
         <p class="leer">Loading…</p>
       }
-    </details>
+    </ng-template>
   `,
   styles: `
     :host {
@@ -198,12 +207,15 @@ import { WurfZiel } from '../kern/wurfziel';
 export class Wuerfe {
   /** Der Artikel, dessen Log hier steht. */
   readonly artikel = input.required<string>();
+  /** Steht es in einem Kapitel (T-277), sagt das Kapitel, ob es offen ist — ohne eigenes Aufklappen. */
+  readonly geoeffnet = input<boolean | undefined>(undefined);
 
   private readonly api = inject(Api);
   protected readonly ziel = inject(WurfZiel);
   protected readonly rollText = rollText;
 
   protected readonly offen = signal(false);
+  protected readonly an = computed(() => this.geoeffnet() ?? this.offen());
   protected readonly log = signal<WurfLog | null>(null);
   protected readonly fehler = signal<string | null>(null);
   protected readonly laedt = signal(false);
@@ -215,7 +227,7 @@ export class Wuerfe {
   constructor() {
     /* Geholt wird erst beim Aufklappen, und neu, wenn Artikel oder Filter wechseln. */
     effect(() => {
-      const an = this.offen();
+      const an = this.an();
       const id = this.artikel();
       const by = this.wer();
       const session = this.sitzung();
