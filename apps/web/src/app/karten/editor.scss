@@ -1,0 +1,82 @@
+/* Der Karteneditor (T-304) — eigene Datei, weil karte.scss am Budget für
+   Komponentenstile steht. */
+
+/* Die Schalter rechts in der Leiste: zusammen, damit sie beim Umbrechen beisammen bleiben. */
+.unterleiste.editor .schalter {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--line);
+}
+.unterleiste.editor .wert {
+  min-width: 3.2rem;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.unterleiste.editor input[type='range'] {
+  width: 7rem;
+  vertical-align: middle;
+}
+
+/* Die Ecken der Sperren: ein Punkt, greifbar mit „Points“. */
+.punkt {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: #c0392b;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4);
+}
+.punkt.greifbar {
+  width: 13px;
+  height: 13px;
+}
+
+/* Woran der Zeiger einrastet: ein Ring, je Ziel in einer Farbe. */
+.fang {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.fang.an-grid {
+  border-style: dashed;
+}
+.fang.an-line {
+  border-radius: 3px;
+}
+
+/* Die Tür ist ein Viereck so lang wie die Öffnung (T-304); die Grösse kommt aus dem Zeichnen. */
+.tuer {
+  min-width: 14px;
+  min-height: 10px;
+}
+
+/* Am Telefon liegen die Werkzeuge unten (T-304): dort ist der Daumen. */
+@media (max-width: 640px) {
+  .werkzeugleiste {
+    order: 2;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    justify-content: space-around;
+  }
+  .spalte {
+    order: 1;
+  }
+  .seite {
+    order: 3;
+  }
+  .unterleiste.editor .schalter {
+    padding-left: 0;
+    border-left: 0;
+  }
+}

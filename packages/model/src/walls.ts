@@ -85,7 +85,18 @@ export interface MapWall {
   y2: number;
   /** Nur an Türen (`door`, `secret`); sonst fehlt es. */
   state?: DoorState;
+  /**
+   * **Die Dicke einer Tür** (T-304), in Anteilen der Kartenbreite: die Tür
+   * ist ein schmales Viereck über der Öffnung, das man anklickt. Sicht,
+   * Licht und Schritt lesen weiter die Mittellinie (x1…y2) — die Dicke ist
+   * Griff und Bild, keine zweite Sperre. Nur an Türen; fehlt sie, gilt
+   * `DOOR_WIDTH`.
+   */
+  width?: number;
 }
+
+/** Die Dicke einer Tür ohne Angabe, in Anteilen der Breite (T-304). */
+export const DOOR_WIDTH = 0.012;
 
 function zahl(v: unknown): number {
   const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v.replace(',', '.')) : NaN;
@@ -120,6 +131,8 @@ function sperreAus(x: unknown, i: number): MapWall | null {
     /* Der Prototyp schrieb `open: true`; gelesen wird beides. */
     const st = s['state'];
     w.state = st === 'open' || st === 'locked' ? st : st === 'closed' ? 'closed' : s['open'] === true ? 'open' : 'closed';
+    const breit = zahl(s['width']);
+    if (breit > 0) w.width = breit;
   }
   return w;
 }
@@ -139,13 +152,26 @@ const r4 = (v: number): number => Math.round(v * 10000) / 10000;
 /** Eine Sperre, wie sie gespeichert wird: gerundet, `state` nur an Türen. */
 function roh(w: MapWall): Record<string, unknown> {
   const out: Record<string, unknown> = { id: w.id, kind: w.kind, x1: r4(w.x1), y1: r4(w.y1), x2: r4(w.x2), y2: r4(w.y2) };
-  if (isDoor(w)) out['state'] = w.state ?? 'closed';
+  if (isDoor(w)) {
+    out['state'] = w.state ?? 'closed';
+    if (w.width && w.width > 0) out['width'] = r4(w.width);
+  }
   return out;
 }
 
 function mitWalls(e: Entity, walls: unknown[]): Entity {
   const karte = { ...((e.components?.['Map'] ?? {}) as Record<string, unknown>), walls };
   return { ...e, components: { ...e.components, Map: karte } };
+}
+
+/**
+ * **Die ganze Liste neu** (T-304): Schneiden und Zusammenfügen ändern
+ * mehrere Sperren auf einmal. Was sich nicht lesen liess, bleibt stehen,
+ * wie es war — es still wegzuwerfen wäre ein Verlust, den niemand sieht.
+ */
+export function setWalls(e: Entity, walls: readonly MapWall[]): Entity {
+  const unlesbar = rohWalls(e).filter((x, i) => !sperreAus(x, i));
+  return mitWalls(e, [...unlesbar, ...walls.filter((w) => w.x1 !== w.x2 || w.y1 !== w.y2).map(roh)]);
 }
 
 /** Sperren dazu — ein gezogener Linienzug sind mehrere. Strecken ohne Länge fallen weg. */
@@ -177,8 +203,8 @@ function aendern(e: Entity, id: string, f: (w: MapWall) => MapWall): Entity {
 /** Die Art einer Sperre wechseln. Eine neue Tür ist zu. */
 export function setWallKind(e: Entity, id: string, kind: WallKind): Entity {
   return aendern(e, id, (w) => {
-    const { state, ...rest } = w;
-    return wallKind(kind).door ? { ...rest, kind, state: state ?? 'closed' } : { ...rest, kind };
+    const { state, width, ...rest } = w;
+    return wallKind(kind).door ? { ...rest, kind, state: state ?? 'closed', ...(width ? { width } : {}) } : { ...rest, kind };
   });
 }
 

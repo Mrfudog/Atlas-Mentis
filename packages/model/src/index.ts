@@ -44,6 +44,7 @@ export * from './parts.js';
 export * from './edges.js';
 export * from './map.js';
 export * from './walls.js';
+export * from './mapdraw.js';
 export * from './lighting.js';
 export * from './kartenseite.js';
 export * from './crafting.js';

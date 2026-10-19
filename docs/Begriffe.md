@@ -515,6 +515,16 @@ dann eine Zeile, und keine Abfrage muss sie kennen. Die **Geheimtür** ist
 eine Tür, die der Server den Spielenden als Wand schickt, bis sie offen
 ist — nicht eine Wand mit einem Vermerk, den die Seite verbergen müsste.
 
+**Eine Form ist eine Folge von Sperren** (T-304). Ein Rechteck, ein Kreis,
+ein Polygon werden beim Fertigstellen zu Strecken; es gibt keinen Eintrag
+„Rechteck“ in `Map.walls`. Sonst müsste jede Rechnung, die Sperren liest —
+Sichtpolygon, Licht, Zugplan —, auch Formen verstehen, und die erste, die
+es vergässe, liesse den Blick durch eine Ellipse. Dasselbe gilt für die
+**Tür als Viereck**: das Viereck ist, was man anklickt, gerechnet wird die
+Linie. Und **Schneiden** ändert die Wände selbst, statt eine Lücke zu
+merken: was gespeichert ist, ist, was hält. Darum endet ein Wandstück
+genau am Rand der Tür — so findet das Zusammenfügen es wieder.
+
 **Aufgedeckt wird, was man sieht, und gespeichert, was man gesehen hat.**
 Das Sichtpolygon wird beim Zug gerechnet und als Form in `Map.reveal`
 geschrieben; es gibt keine zweite Liste „gerade sichtbar“. Was eine Figur
