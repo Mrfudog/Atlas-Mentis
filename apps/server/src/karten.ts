@@ -151,7 +151,10 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const roheKarte = await geltend(gefunden, stand.map);
     /* Alle Karten auf einmal gesiebt: Brotkrumen, Unterkarten und das
        Gruppen-Token fragen dieselben, und das Sieb ist der teure Teil. */
-    const karten = await sieve(request, stand.alle.filter(isMap), stand.map);
+    /* Karten im Spiel (T-289) tragen aufgelöst die Rahmen und Marker ihrer
+       Vorlage — als Unterkarte oder Standort der Gruppe zählt nur die
+       Vorlage, und die Karte selbst. */
+    const karten = await sieve(request, stand.alle.filter((e) => isMap(e) && (!isPlayInstance(e) || e.id === gefunden.id)), stand.map);
     const sichtbar = new Map(karten.map((k) => [k.id, k]));
     const karte = sichtbar.get(roheKarte.id);
     if (!karte || !isMap(karte)) return reply.code(404).send({ error: 'Nicht gefunden' });
