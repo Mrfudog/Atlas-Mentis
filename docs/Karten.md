@@ -385,6 +385,32 @@ Rechtsklick, der ohne Rückfrage etwas löscht, ist der Klick, den man auf
 einem Laptop-Touchpad aus Versehen macht. Der Weg hinaus steht im selben
 Dialog, mit Rückfrage.
 
+### Assets: fix oder verschiebbar (T-306)
+
+In der Seite heisst ein Möbel **Asset**: Tokens › **Add asset** setzt
+eines (dasselbe Bild darf zehnmal dastehen, es rastet nicht), Tokens ›
+**Asset** stellt ein angetipptes ein — Breite in Feldern, Höhe ÷ Breite,
+Drehung (⟲ ⟳ in 15°-Schritten), **Movable in play** und **Blocks**.
+
+- **Vorgabe fix.** Ein Asset bewegt sich in Play nicht, auch für die
+  Leitung nicht: die richtet es in der **Bearbeitung** ein (auf der Seite
+  der Karte, wer sie schreibt — dort ist jedes zieh-, dreh- und
+  skalierbar). Mit `movable` schiebt es in Play die Leitung immer und
+  Spielende, wenn die Kampagne sie mehr als die eigene Figur ziehen lässt
+  (`tokenMove` `party`, `allies`, `all`) und Züge nicht erst bestätigt —
+  ein Vorschlag nennt eine Figur, und eine Kiste ist keine. Geschrieben
+  wird an der offenen Karte, im Spiel also an der Instanz (T-289), nicht
+  an der Vorlage.
+- **Was es hält** (`blocks`): eine Sperrart ausser Türen — Wand (Schrank:
+  Schritt, Blick, Licht), Fenster, Hindernis (Kiste: nur der Schritt),
+  unsichtbare Wand. Der gedrehte Umriss wird **beim Lesen** zu vier
+  Sperren dieser Art (`assetWalls`); in `Map.walls` steht nichts davon,
+  sonst wanderte die Sperre nicht mit der Kiste. Sicht, Licht und der Weg
+  eines Zuges rechnen damit (`blockingWalls`), der Server prüft den Schritt
+  der Spielenden gegen dieselben Sperren.
+- **Licht** wie an jedem Marker (Fog › Light source, an/aus) — eine
+  Laterne, die als Schrank sperrt, leuchtet aus sich heraus.
+
 ---
 
 Mit dem Werkzeug *Sub-map* lässt sich ein gesetzter Rahmen auch wieder
@@ -701,8 +727,9 @@ abziehen, Initiative und „wer ist dran" als Bedingung, Hex-Raster, Wände
 - **Zonen** in der Seite (REQ-193, 208) — der Prototyp kann sie, die
   Seite zeichnet sie noch nicht. Sperren und Sichtlinie stehen seit
   T-118, Licht, Dunkelsicht und laufende Sicht seit T-216.
-- **Rahmen aufziehen** und Marker einstellen (Art, Grösse, Drehung,
-  versteckt) mit der Maus; heute über die Kanten im Bearbeiten.
+- **Rahmen aufziehen** und Marker einstellen (Art, versteckt) mit der
+  Maus; heute über die Kanten im Bearbeiten. Assets stellt Tokens › Asset
+  ein (T-306).
 - **Kacheln** für grosse Karten (REQ-138, `Map.tiles`).
 - **Mehrere Tokens auf einmal** verschieben.
 - **Spielende ziehen die eigene Figur** (E-040).

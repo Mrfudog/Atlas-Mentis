@@ -995,6 +995,15 @@ export const relations: Record<string, RelationDef> = {
            behält ihre Radien — aus ist sie nur gerade. Gilt auch für das
            Licht, das das Ziel trägt (die Fackel in der Hand). */
         lightOff: { type: 'boolean', title: 'Light switched off' },
+        /* Fix oder verschiebbar (T-306): ein Asset (`scenery`) steht fest,
+           bis die Leitung es in der Bearbeitung verschiebt; mit `movable`
+           wandert es auch in Play — an der Instanz, nicht an der Vorlage.
+           An der Kante, weil dieselbe Kiste hier Kulisse und dort Hindernis
+           ist, das man schiebt. */
+        movable: { type: 'boolean', title: 'Movable in play' },
+        /* Was das Asset hält (T-306), als Sperrart (`WALL_KINDS`): sein
+           Umriss wird beim Lesen zu Sperren dieser Art. Leer: nichts. */
+        blocks: { type: 'string', title: 'Blocks like', enum: ['wall', 'window', 'chasm', 'invisible'] },
         /* Versteckt (REQ-209): Spielende sehen das Token nicht, bis es
            aufgedeckt wird — von Hand oder entlang eines bestätigten Pfads.
            `stealth` ist, was die passive Wahrnehmung schlagen muss: der

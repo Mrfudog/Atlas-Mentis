@@ -44,6 +44,7 @@ import { resolveInstance } from './instance.js';
 import { statblockFor } from './initiative.js';
 import { partyMembers } from './kartenseite.js';
 import {
+  assetWalls,
   inPolygon,
   MAP_COMPONENT,
   mapSettings,
@@ -231,13 +232,58 @@ const LICHT_SPEICHER = new WeakMap<readonly MapWall[], Map<string, Poly>>();
 const WALLS_ROH = new WeakMap<object, MapWall[]>();
 
 /** Die Sperren einer Karte, je rohe Liste nur einmal gelesen — so trifft der Zwischenspeicher. */
-function sperrenVon(map: Entity): MapWall[] {
+function gezeichneteSperren(map: Entity): MapWall[] {
   const roh = (map.components?.[MAP_COMPONENT] as { walls?: unknown } | undefined)?.walls;
   if (!roh || typeof roh !== 'object') return mapWalls(map);
   let w = WALLS_ROH.get(roh);
   if (!w) {
     w = mapWalls(map);
     WALLS_ROH.set(roh, w);
+  }
+  return w;
+}
+
+/** Je gezeichneter Liste die mit den Umrissen der Assets — an den Markerkanten, also neu, sobald eine Kiste wandert. */
+const MIT_ASSETS = new WeakMap<readonly MapWall[], WeakMap<object, { k: string; w: MapWall[] }>>();
+/** Je Liste die ohne ein Asset (die Laterne leuchtet aus ihrem eigenen Umriss heraus). */
+const OHNE = new WeakMap<readonly MapWall[], Map<string, MapWall[]>>();
+
+/**
+ * **Die Sperren, die gelten** (T-306): die gezeichneten und die Umrisse der
+ * Assets, die etwas halten (`assetWalls`). Ohne Asset mit Sperre ist es
+ * dieselbe Liste wie vorher — der Zwischenspeicher der Lichter trifft weiter.
+ */
+function sperrenVon(map: Entity, nat?: Size): MapWall[] {
+  const basis = gezeichneteSperren(map);
+  const rels = map.relations;
+  if (!nat || !rels?.length) return basis;
+  let je = MIT_ASSETS.get(basis);
+  if (!je) {
+    je = new WeakMap();
+    MIT_ASSETS.set(basis, je);
+  }
+  const k = `${nat.w}x${nat.h}:${mapSettings(map).gridSize}`;
+  const da = je.get(rels);
+  if (da && da.k === k) return da.w;
+  const a = assetWalls(map, nat);
+  const w = a.length ? [...basis, ...a] : basis;
+  je.set(rels, { k, w });
+  return w;
+}
+
+/** Die Sperren ohne die des Assets `relId` — dieselbe Liste, wenn es keine hat. */
+function ohneAsset(walls: MapWall[], relId: string): MapWall[] {
+  const p = `asset:${relId}:`;
+  if (!walls.some((w) => w.id.startsWith(p))) return walls;
+  let m = OHNE.get(walls);
+  if (!m) {
+    m = new Map();
+    OHNE.set(walls, m);
+  }
+  let w = m.get(relId);
+  if (!w) {
+    w = walls.filter((x) => !x.id.startsWith(p));
+    m.set(relId, w);
   }
   return w;
 }
@@ -275,11 +321,11 @@ export interface LitArea {
 
 export function litAreas(map: Entity, nat: Size, carried: Readonly<Record<EntityId, FeetLight>> = {}): LitArea[] {
   const ar = nat.w > 0 ? nat.h / nat.w : 1;
-  const walls = sperrenVon(map);
+  const walls = sperrenVon(map, nat);
   return mapLights(map, nat, carried).map((l) => ({
     id: l.id,
-    bright: lightPolygon(walls, l, ar, l.bright),
-    dim: lightPolygon(walls, l, ar, l.dim),
+    bright: lightPolygon(ohneAsset(walls, l.id), l, ar, l.bright),
+    dim: lightPolygon(ohneAsset(walls, l.id), l, ar, l.dim),
   }));
 }
 
@@ -364,7 +410,7 @@ export function figureView(
   carried: Readonly<Record<EntityId, FeetLight>> = {},
 ): FigureView {
   const ar = nat.w > 0 ? nat.h / nat.w : 1;
-  const walls = sperrenVon(map);
+  const walls = sperrenVon(map, nat);
   const sicht = sightPolygon(walls, from, ar);
   if (mapLighting(map) !== 'dark') return { seen: sicht.length > 2 ? [{ pts: sicht }] : [], darkvision: null, lights: [] };
   const seen: SeenArea[] = [];
@@ -374,7 +420,7 @@ export function figureView(
   const lights: string[] = [];
   if (sicht.length > 2) {
     for (const l of mapLights(map, nat, carried)) {
-      const p = lightPolygon(walls, l, ar, l.dim);
+      const p = lightPolygon(ohneAsset(walls, l.id), l, ar, l.dim);
       if (p.length < 3 || !beruehren(p, l, sicht, from)) continue;
       seen.push({ pts: p, within: sicht });
       lights.push(l.id);
