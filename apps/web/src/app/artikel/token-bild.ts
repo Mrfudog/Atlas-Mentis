@@ -5,7 +5,7 @@ import { Bestand } from '../kern/bestand';
 import { bildAdresse } from './bild';
 
 /**
- * **Ein Bild als Token** (T-286) — eine Rechnung für Karte, Artikel und
+ * **Ein Bild als Token** (T-297) — eine Rechnung für Karte, Artikel und
  * den Dialog „Adjust token", damit alle drei dasselbe zeigen.
  *
  * Ein **fertiges Rundtoken** (`Asset.round`, wie die aus 5e.tools) bringt
@@ -29,7 +29,7 @@ export function tokenStil(look: TokenLook | undefined): Record<string, string> {
 }
 
 /**
- * **Das Token am Artikel** (T-286, Element `token`): am Statblock sein
+ * **Das Token am Artikel** (T-297, Element `token`): am Statblock sein
  * eigenes, an der Kreatur das ihres Statblocks — so, wie es auf der Karte
  * steht. Wer das Bild schreibt, stellt hier ein („Adjust token"):
  * Ausschnitt verschieben und zoomen, oder sagen, dass es ein fertiges

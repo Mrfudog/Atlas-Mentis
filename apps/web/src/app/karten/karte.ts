@@ -1117,7 +1117,7 @@ export class Karte {
         px,
         bild: ziel?.image ? bildAdresse(ziel.image, 'thumb', ziel.version ?? '') : null,
         /* Ein fertiges Rundtoken ohne eigenen Kreis, jedes andere Bild im
-           Ausschnitt seines Assets (T-286). Möbel liegen, wie sie sind. */
+           Ausschnitt seines Assets (T-297). Möbel liegen, wie sie sind. */
         rund: m.kind !== 'scenery' && !!ziel?.image && !!ziel.look?.round,
         bildStil: m.kind !== 'scenery' ? tokenStil(ziel?.look) : {},
         /* Der Zeiger auf dem, der dran ist (REQ-144): dasselbe Token,

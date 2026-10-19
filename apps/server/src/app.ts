@@ -2109,7 +2109,7 @@ export function buildApp({
     const registry = await repo.getRegistry();
     const stand = await roh();
     const bild = articleImage(registry, e, stand.map, (id) => statblocksOf(stand.alle, id));
-    /* **Das Token** (T-286): am Statblock sein eigenes, an der Kreatur das
+    /* **Das Token** (T-297): am Statblock sein eigenes, an der Kreatur das
        ihres Statblocks — beide durch die Vorlage gelesen. Mit seinem
        Aussehen (`tokenLook`) und ob dieser Betrachter es einstellen darf:
        eingestellt wird am Bild, also schreibt, wer das Bild schreibt. */

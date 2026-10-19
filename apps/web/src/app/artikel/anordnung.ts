@@ -323,7 +323,7 @@ export function anordnen(
         out.push({ id: el.id, art: 'stats' });
         break;
       case 'token':
-        /* Das Token (T-286) holt sich, was es braucht (`refs.token`). */
+        /* Das Token (T-297) holt sich, was es braucht (`refs.token`). */
         out.push({ id: el.id, art: 'token' });
         break;
       case 'description': {

@@ -370,7 +370,7 @@ describe('a creature without an image shows the image of its statblock (T-211)',
   });
 });
 
-describe('tokens (T-286)', () => {
+describe('tokens (T-297)', () => {
   /* Ein Kreis auf Durchsichtigem — wie ein fertiges Token. */
   const rundesPng = (n = 64) =>
     sharp({ create: { width: n, height: n, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })

@@ -91,7 +91,7 @@ export interface MarkerZiel {
   image?: string;
   /** Die Version der Bilddatei (T-211): mit ihr darf der Browser das Token behalten. */
   version?: string;
-  /** Wie das Bild als Token gezeigt wird (T-286): fertiges Rundtoken oder Ausschnitt. */
+  /** Wie das Bild als Token gezeigt wird (T-297): fertiges Rundtoken oder Ausschnitt. */
   look?: TokenLook;
 }
 

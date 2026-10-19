@@ -1,4 +1,4 @@
--- Tokens: fertige Rundtokens und Ausschnitt am Bild (T-286).
+-- Tokens: fertige Rundtokens und Ausschnitt am Bild (T-297).
 --
 -- 1. `Asset.round` — das Bild ist schon ein rundes Token mit eigenem Ring
 --    und Schatten (wie die aus 5e.tools): gezeigt, wie es ist.

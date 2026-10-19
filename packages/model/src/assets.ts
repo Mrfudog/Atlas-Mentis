@@ -173,14 +173,14 @@ export function articleImage(
   return null;
 }
 
-/** Der Ausschnitt eines Tokens (T-286): Mitte in Prozent des Bildes, Zoom ab 1. */
+/** Der Ausschnitt eines Tokens (T-297): Mitte in Prozent des Bildes, Zoom ab 1. */
 export interface TokenFrame {
   x: number;
   y: number;
   zoom: number;
 }
 
-/** Wie ein Bild als Token gezeigt wird (T-286). */
+/** Wie ein Bild als Token gezeigt wird (T-297). */
 export interface TokenLook {
   /** Ein fertiges Rundtoken: so zeigen, wie es ist — ohne eigenen Kreis. */
   round: boolean;
@@ -201,7 +201,7 @@ export function tokenFrame(v: unknown): TokenFrame {
   return { x: zwischen(f['x'], 0, 100, 50), y: zwischen(f['y'], 0, 100, 50), zoom: zwischen(f['zoom'], 1, TOKEN_ZOOM_MAX, 1) };
 }
 
-/** Wie das Bild `asset` als Token gezeigt wird (T-286) — aus seiner Karte `Asset`. */
+/** Wie das Bild `asset` als Token gezeigt wird (T-297) — aus seiner Karte `Asset`. */
 export function tokenLook(asset: Entity | undefined): TokenLook {
   const a = (asset?.components?.[ASSET_TYPE] ?? {}) as Record<string, unknown>;
   const zahl = (v: unknown) => (typeof v === 'number' && v > 0 ? v : undefined);
@@ -211,7 +211,7 @@ export function tokenLook(asset: Entity | undefined): TokenLook {
 }
 
 /**
- * **Wo das Bild im Kreis liegt** (T-286), in Bruchteilen des Kreises
+ * **Wo das Bild im Kreis liegt** (T-297), in Bruchteilen des Kreises
  * (Durchmesser 1): so gross, dass es den Kreis deckt (wie `cover`), mal
  * Zoom, und so verschoben, dass der gewählte Punkt in der Mitte steht —
  * aber nie so weit, dass am Rand das Leere durchscheint. Ohne Masse gilt

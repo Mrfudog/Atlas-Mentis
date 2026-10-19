@@ -517,7 +517,7 @@ export type LayoutElementKind =
    */
   | 'stats'
   /**
-   * **Das Token** (T-286): am Statblock sein eigenes, an der Kreatur das
+   * **Das Token** (T-297): am Statblock sein eigenes, an der Kreatur das
    * ihres Statblocks — so, wie es auf der Karte steht, mit „Adjust token"
    * für wer das Bild schreibt. Wo keins ist, zeichnet es nichts.
    */

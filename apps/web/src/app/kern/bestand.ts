@@ -64,7 +64,7 @@ export class Bestand {
   /** Das Bild je geöffnetem Artikel, wie der Server es rechnet (`refs.image`, T-211) — auch das geerbte des Statblocks. */
   private readonly _bild = signal<ReadonlyMap<string, NonNullable<Bezuege['image']>>>(new Map());
   readonly bild = this._bild.asReadonly();
-  /** Das Token je geöffnetem Artikel (`refs.token`, T-286). */
+  /** Das Token je geöffnetem Artikel (`refs.token`, T-297). */
   private readonly _token = signal<ReadonlyMap<string, NonNullable<Bezuege['token']>>>(new Map());
   readonly token = this._token.asReadonly();
   /** Artikel aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */

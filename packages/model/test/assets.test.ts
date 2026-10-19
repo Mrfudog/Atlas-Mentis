@@ -86,7 +86,7 @@ describe('articleImage (T-211)', () => {
   });
 });
 
-describe('token frame (T-286)', () => {
+describe('token frame (T-297)', () => {
   it('reads the frame with defaults and limits', async () => {
     const { tokenFrame, tokenLook } = await import('../src/index.js');
     expect(tokenFrame(undefined)).toEqual({ x: 50, y: 50, zoom: 1 });

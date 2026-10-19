@@ -211,7 +211,7 @@ export interface Aufbereitet {
   width: number;
   height: number;
   bytes: number;
-  /** Ein fertiges Rundtoken (T-286): durchsichtige Ecken um einen Kreis. */
+  /** Ein fertiges Rundtoken (T-297): durchsichtige Ecken um einen Kreis. */
   round: boolean;
 }
 
@@ -253,7 +253,7 @@ export async function aufbereiten(roh: Buffer): Promise<Aufbereitet> {
     .resize({ width: THUMB_PX, height: THUMB_PX, fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 80 })
     .toBuffer();
-  /* Ein fertiges Token (T-286) erkennt man an seinen Ecken: durchsichtig
+  /* Ein fertiges Token (T-297) erkennt man an seinen Ecken: durchsichtig
      um einen Kreis. Gelesen an der Vorschau — sie hat die Ecken auch und
      ist klein. */
   let round = false;
