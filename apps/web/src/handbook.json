@@ -81,6 +81,14 @@
           ]
         },
         {
+          "heading": "Drawing a map",
+          "text": [
+            "Open the map and set its grid first: Grid (G) › Pick a square on two corners of one square on the image, adjust the offset if the lines sit beside the image's, then Save grid.",
+            "Walls (W): draw the rooms with Rectangle or Polygon, corridors with a closed or open Polyline; Snap keeps the corners together. Then pick Door and draw each door across its opening — with Cut walls on, the wall underneath ends at the door's edges.",
+            "Check with Player view: doors are boxes the players can click, and the walls hold sight and light. Points moves a corner later; erasing a door offers to close the wall again."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."

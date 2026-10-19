@@ -554,7 +554,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-26 Stories · 113 Punkte · 13 steht · 1 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
+27 Stories · 126 Punkte · 13 steht · 1 teils · 13 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -601,6 +601,7 @@ Effekte, Bedingungen und Wechselwirkungen von Regeln auswerten. — [[F-046 Rege
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-018]] | Wirkungen von Regeln beschreiben | Spielleitung | 1 | 2 | offen |
+| [[REQ-357]] | Regelgraphen wirken am Tisch | Spielleitung | 3 | 13 | offen |
 | [[REQ-017]] | Begriffe je Regelsystem auswerten | Spielleitung | 4 | 5 | offen |
 | [[REQ-095]] | Gewährtes anwenden | Spieler | 4 | 8 | offen |
 | [[REQ-290]] | Wechselwirkungen von Regeln auswerten | Spielleitung | 4 | 8 | offen |

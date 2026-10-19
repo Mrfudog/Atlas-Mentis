@@ -50,7 +50,6 @@ import {
   planReach,
   tokenCell,
   opportunityAttacks,
-  addWalls,
   isDoor,
   mapWalls,
   nearestWall,
@@ -58,7 +57,6 @@ import {
   removeWall,
   revealAlong,
   setWallKind,
-  snapToGrid,
   wallKind,
   WALL_KINDS,
   figureView,
@@ -66,8 +64,22 @@ import {
   LIGHTING_LEVELS,
   mapLighting,
   setLighting,
+  addWallsCut,
+  canJoinAround,
+  DOOR_WIDTH,
+  drawShape,
+  gridFromCell,
+  gridOrigin,
+  moveWallPoint,
+  nearestPoint,
+  outlineWalls,
+  removeJoined,
+  setGrid,
+  shapeOutline,
+  snapPoint,
+  wallPoints,
 } from '@nw/model';
-import type { Cell, DoorState, Entity, Frame, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
+import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
 import { Api, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -80,6 +92,7 @@ import { Ladeanzeige } from '../kern/ladeanzeige';
 import { tipptGerade } from '../kern/suche';
 import { DUNKEL_FARBE, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type Schnitt } from './nebel';
 import { KartenSeitenleiste, ZIEH_TYP } from './seitenleiste';
+import { EditorStand, FINGER_FAKTOR, LANG_DRUECKEN_MS, STAERKE_MAX, STAERKE_MIN } from './editor';
 
 /**
  * **Was der Zugplan auf der Karte zeigt** (T-198). Die Karte rechnet
@@ -118,7 +131,22 @@ const RAD_PAUSE = 90;
 /** Ein Finger ist breiter als ein Mauszeiger: kleiner wird ein Marker nicht. */
 const MARKER_MIN = 26;
 
-type Werkzeug = 'keins' | 'messen' | 'setzen' | 'tokenWeg' | 'aufdecken' | 'pinsel' | 'zudecken' | 'wand' | 'wandArt' | 'schloss' | 'wandWeg' | 'licht';
+type Werkzeug =
+  | 'keins'
+  | 'messen'
+  | 'setzen'
+  | 'tokenWeg'
+  | 'aufdecken'
+  | 'pinsel'
+  | 'zudecken'
+  | 'wand'
+  | 'wandArt'
+  | 'schloss'
+  | 'wandWeg'
+  | 'punkte'
+  | 'licht'
+  | 'gitterUrsprung'
+  | 'gitterZelle';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
@@ -129,7 +157,7 @@ const SPERRE_TREFFER = 14;
 const PINSEL = [1, 2, 4, 8] as const;
 
 /** Die Gruppen der Werkzeugleiste (T-203). */
-type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'nebel' | 'waende' | 'notizen' | 'zeichnen';
+type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'nebel' | 'waende' | 'gitter' | 'notizen' | 'zeichnen';
 interface GruppenDef {
   key: Gruppe;
   label: string;
@@ -154,6 +182,7 @@ const GRUPPEN: readonly GruppenDef[] = [
   { key: 'messen', label: 'Measure', title: 'Tap two points to measure', sym: '↔', taste: 'M' },
   { key: 'nebel', label: 'Fog', title: 'Fog of war: reveal and hide what the players see', sym: '☁', taste: 'F', leitung: true },
   { key: 'waende', label: 'Walls', title: 'Walls, doors, windows and obstacles', sym: '▥', taste: 'W', leitung: true },
+  { key: 'gitter', label: 'Grid', title: 'Set the grid on the map: origin, square size, shape', sym: '#', taste: 'G', leitung: true },
   { key: 'notizen', label: 'Notes', title: 'Notes on the map', sym: '✎', taste: 'N', leitung: true, spaeter: 'T-203' },
   { key: 'zeichnen', label: 'Draw', title: 'Draw on the map', sym: '✐', taste: 'D', leitung: true, spaeter: '—' },
 ];
@@ -340,7 +369,7 @@ interface Zeiger {
           @if (aktiv() === 'waende' && darfSchreiben()) {
             <!-- **Sperren** (T-118, docs/Karten.md › Sperren): Linienzug zeichnen, Art
                  wechseln, Tür verschliessen, wegnehmen. Türen öffnet man in der Auswahl. -->
-            <div class="unterleiste" role="toolbar" aria-label="Walls">
+            <div class="unterleiste editor" role="toolbar" aria-label="Walls">
               <label>
                 Kind
                 <select (change)="wandArtWaehlen($any($event.target).value)" aria-label="Kind of wall to draw or set">
@@ -349,13 +378,91 @@ interface Zeiger {
                   }
                 </select>
               </label>
-              <button type="button" [class.an]="werkzeug() === 'wand'" [attr.aria-pressed]="werkzeug() === 'wand'" (click)="waehle('wand')" title="Tap point after point; the line snaps to the grid. Enter or tap the last point again to finish.">Draw</button>
+              <!-- **Formen** (T-304): eine Tür ist immer eine Linie über der Öffnung, ihr Viereck kommt aus der Dicke. -->
+              @if (!wandIstTuer()) {
+                <label>
+                  Shape
+                  <select (change)="formWaehlen($any($event.target).value)" aria-label="Shape to draw">
+                    @for (f of ed.FORMEN; track f.key) {
+                      <option [value]="f.key" [selected]="f.key === ed.form()" [title]="f.does">{{ f.label }}</option>
+                    }
+                  </select>
+                </label>
+                @if (formDef().closed === 'toggle') {
+                  <label title="Finish joins the last point to the first">
+                    <input type="checkbox" [checked]="ed.geschlossen()" (change)="ed.setzen('closed', $any($event.target).checked)" />
+                    Closed
+                  </label>
+                }
+              } @else {
+                <label title="How thick the door is, in a share of a square — the box you click">
+                  Thickness
+                  <input type="number" class="zahl" min="5" max="100" step="5" [value]="ed.tuerDicke()" (change)="ed.setzen('doorWidth', +$any($event.target).value || 25)" aria-label="Door thickness in percent of a square" />
+                  %
+                </label>
+              }
+              <button type="button" [class.an]="werkzeug() === 'wand'" [attr.aria-pressed]="werkzeug() === 'wand'" (click)="waehle('wand')" title="Tap point after point. Enter or tap the last point again to finish; Alt or a long press places a point without snapping.">Draw</button>
+              <button type="button" [class.an]="werkzeug() === 'punkte'" [attr.aria-pressed]="werkzeug() === 'punkte'" (click)="waehle('punkte')" title="Drag a corner point; walls meeting there move with it">Points</button>
               <button type="button" [class.an]="werkzeug() === 'wandArt'" [attr.aria-pressed]="werkzeug() === 'wandArt'" (click)="waehle('wandArt')" title="Tap a wall to make it the kind chosen on the left">Set kind</button>
               <button type="button" [class.an]="werkzeug() === 'schloss'" [attr.aria-pressed]="werkzeug() === 'schloss'" (click)="waehle('schloss')" title="Tap a door to lock or unlock it">Lock</button>
               <button type="button" [class.an]="werkzeug() === 'wandWeg'" [attr.aria-pressed]="werkzeug() === 'wandWeg'" (click)="waehle('wandWeg')" title="Tap a wall to remove it">Erase</button>
               @if (wandPunkte().length) {
-                <button type="button" (click)="wandFertig()" [disabled]="wandPunkte().length < 2">Finish ({{ wandPunkte().length - 1 }})</button>
+                <button type="button" (click)="wandFertig()" [disabled]="wandPunkte().length < 2">Finish ({{ wandPunkte().length }})</button>
                 <button type="button" (click)="wandPunkte.set([])">Cancel</button>
+              }
+              <span class="schalter">
+                <label title="A door or window drawn over a wall splits the wall at its edges">
+                  <input type="checkbox" [checked]="ed.schneiden()" (change)="ed.setzen('cut', $any($event.target).checked)" />
+                  Cut walls
+                </label>
+                <label title="Show the corner points of all walls">
+                  <input type="checkbox" [checked]="ed.punkte()" (change)="ed.setzen('points', $any($event.target).checked)" />
+                  Show points
+                </label>
+                <label title="Snap to existing points, grid corners and lines">
+                  <input type="checkbox" [checked]="ed.einrasten()" (change)="ed.setzen('snap', $any($event.target).checked)" />
+                  Snap
+                </label>
+                @if (ed.einrasten()) {
+                  <label title="How far a point is pulled, in screen pixels">
+                    Strength
+                    <input type="range" [min]="STAERKE_MIN" [max]="STAERKE_MAX" step="1" [value]="ed.staerke()" (input)="ed.setzen('strength', +$any($event.target).value)" aria-label="Snap strength in pixels" />
+                    <span class="wert">{{ ed.staerke() }} px</span>
+                  </label>
+                }
+              </span>
+            </div>
+          }
+
+          @if (aktiv() === 'gitter' && darfSchreiben()) {
+            <!-- **Das Gitter auf der Karte setzen** (T-304): die Vorschau zeigt sofort, gespeichert wird mit „Save“. -->
+            <div class="unterleiste editor" role="toolbar" aria-label="Grid">
+              <label>
+                Shape
+                <select (change)="gitterAendern({ gridShape: $any($event.target).value })" aria-label="Grid shape">
+                  @for (g of GRID_SHAPES; track g) {
+                    <option [value]="g" [selected]="g === einst()?.gridShape">{{ g }}</option>
+                  }
+                </select>
+              </label>
+              <label title="Width of one square in pixels of the map image">
+                Size
+                <input type="range" min="10" max="300" step="0.5" [value]="einst()?.gridSize" (input)="gitterAendern({ gridSize: +$any($event.target).value })" aria-label="Square size slider" />
+                <input type="number" class="zahl" min="4" step="0.5" [value]="einst()?.gridSize" (change)="gitterAendern({ gridSize: +$any($event.target).value })" aria-label="Square size in pixels" />
+              </label>
+              <label>
+                X
+                <input type="number" class="zahl" step="0.5" [value]="einst()?.gridOffsetX" (change)="gitterAendern({ gridOffsetX: +$any($event.target).value })" aria-label="Grid offset X in pixels" />
+              </label>
+              <label>
+                Y
+                <input type="number" class="zahl" step="0.5" [value]="einst()?.gridOffsetY" (change)="gitterAendern({ gridOffsetY: +$any($event.target).value })" aria-label="Grid offset Y in pixels" />
+              </label>
+              <button type="button" [class.an]="werkzeug() === 'gitterUrsprung'" [attr.aria-pressed]="werkzeug() === 'gitterUrsprung'" (click)="waehle('gitterUrsprung')" title="Tap a point where two grid lines cross on the image">Set origin</button>
+              <button type="button" [class.an]="werkzeug() === 'gitterZelle'" [attr.aria-pressed]="werkzeug() === 'gitterZelle'" (click)="waehle('gitterZelle')" title="Tap two opposite corners of one square on the image">Pick a square</button>
+              @if (gitterEntwurf()) {
+                <button type="button" class="haupt" (click)="gitterSpeichern()">Save grid</button>
+                <button type="button" (click)="gitterEntwurf.set(null)">Discard</button>
               }
             </div>
           }
@@ -472,10 +579,23 @@ interface Zeiger {
                         <title>{{ w.titel }}</title>
                       </line>
                     }
-                    @if (sb.entwurf) {
-                      <polyline [attr.class]="'sperre entwurf k-' + wandArt()" [attr.points]="sb.entwurf" vector-effect="non-scaling-stroke" />
+                    @if (sb.entwurf; as en) {
+                      @if (en.zu) {
+                        <polygon [attr.class]="'sperre entwurf k-' + wandArt()" [attr.points]="en.pts" vector-effect="non-scaling-stroke" />
+                      } @else {
+                        <polyline [attr.class]="'sperre entwurf k-' + wandArt()" [attr.points]="en.pts" vector-effect="non-scaling-stroke" />
+                      }
                     }
                   </svg>
+                  @for (p of sb.punkte; track $index) {
+                    <span class="punkt" [class.greifbar]="werkzeug() === 'punkte'" [style.left.%]="p.x * 100" [style.top.%]="p.y * 100" aria-hidden="true"></span>
+                  }
+                  @if (fang(); as f) {
+                    <span class="fang" [class]="'fang an-' + f.to" [style.left.%]="f.pt.x * 100" [style.top.%]="f.pt.y * 100" aria-hidden="true"></span>
+                  }
+                }
+                @if (zelleA(); as z) {
+                  <span class="fang an-grid" [style.left.%]="z.x * 100" [style.top.%]="z.y * 100" aria-hidden="true"></span>
                 }
                 @for (t of tueren(); track t.id) {
                   <button
@@ -487,6 +607,8 @@ interface Zeiger {
                     [class.still]="!t.klickbar"
                     [style.left.%]="t.x * 100"
                     [style.top.%]="t.y * 100"
+                    [style.width.px]="t.lang"
+                    [style.height.px]="t.dick"
                     [style.transform]="'translate(-50%, -50%) rotate(' + t.winkel + 'deg)'"
                     [title]="t.titel"
                     [attr.aria-label]="t.titel"
@@ -640,7 +762,13 @@ interface Zeiger {
         } @else if (werkzeug() === 'zudecken') {
           Drag a rectangle — what lies in it is covered again.
         } @else if (werkzeug() === 'wand') {
-          {{ wandPunkte().length ? 'Tap the next point — Enter, or the last point again, finishes; Esc cancels.' : 'Tap where the ' + wandArtName() + ' starts.' }}
+          {{ wandText() }}
+        } @else if (werkzeug() === 'punkte') {
+          Drag a corner point to move it; walls meeting there move with it. Alt or a long press: no snapping.
+        } @else if (werkzeug() === 'gitterUrsprung') {
+          Tap a point where two grid lines cross on the image.
+        } @else if (werkzeug() === 'gitterZelle') {
+          {{ zelleA() ? 'Now tap the opposite corner of the same square.' : 'Tap one corner of a square on the image.' }}
         } @else if (werkzeug() === 'wandArt') {
           Tap a wall to make it a {{ wandArtName() }}.
         } @else if (werkzeug() === 'schloss') {
@@ -680,7 +808,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -872,9 +1000,11 @@ export class Karte {
     const e = this.karte();
     return e ? entityName(e) : '';
   });
+  /** Die Einstellungen der Karte — mit dem Gitter-Entwurf darüber, solange einer dasteht (T-304, Vorschau). */
   protected readonly einst = computed(() => {
     const e = this.karte();
-    return e ? mapSettings(e) : null;
+    const d = this.gitterEntwurf();
+    return e ? mapSettings(d ? setGrid(e, d) : e) : null;
   });
   protected readonly darfSchreiben = computed(() => this.session.darfSchreiben()(this.id()));
 
@@ -1234,6 +1364,20 @@ export class Karte {
     if (!b || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
     this.zeiger.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     b.setPointerCapture?.(ev.pointerId);
+    this.druckBeginn = ev.timeStamp;
+    /* **Einen Punkt ziehen** (T-304): unter dem Finger eine Ecke, sonst schiebt es die Karte. */
+    if (this.werkzeug() === 'punkte' && this.zeiger.size === 1) {
+      const pt = this.punkt(ev);
+      const e = this.karte();
+      const ar = this.seitenverhaeltnis();
+      const p = pt && e ? nearestPoint(wallPoints(mapWalls(e), ar), pt, ar, this.trefferRadius(ev.pointerType)) : null;
+      if (p) {
+        this.punktGriff = ev.pointerId;
+        this.punktZug.set({ von: p, nach: p });
+        this.schwenk = null;
+        return;
+      }
+    }
     /* Ein Formwerkzeug zieht mit einem Finger eine Form; zwei Finger
        zoomen trotzdem. */
     if (ZIEHT_FORM.has(this.werkzeug()) && this.zeiger.size === 1) {
@@ -1263,6 +1407,15 @@ export class Karte {
       if (pt) this.zug.set({ id: g.id, pt });
       return;
     }
+    const pz = this.punktZug();
+    if (pz && this.punktGriff === ev.pointerId) {
+      const pt = this.punkt(ev);
+      if (!pt) return;
+      const f = this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse', pz.von);
+      this.fang.set(f.to ? f : null);
+      this.punktZug.set({ von: pz.von, nach: f.pt });
+      return;
+    }
     const st = this.strich();
     if (st && st.pointer === ev.pointerId) {
       const pt = this.punkt(ev);
@@ -1290,9 +1443,13 @@ export class Karte {
       const pt = this.punkt(ev);
       if (pt) this.messB.set(pt);
     }
-    if (this.werkzeug() === 'wand' && this.wandPunkte().length && ev.pointerType === 'mouse') {
+    if (this.werkzeug() === 'wand' && ev.pointerType === 'mouse') {
       const pt = this.punkt(ev);
-      if (pt) this.wandZeiger.set(this.eingerastet(pt));
+      if (pt) {
+        const f = this.einrasten(pt, ev.altKey, false);
+        this.fang.set(f.to ? f : null);
+        if (this.wandPunkte().length) this.wandZeiger.set(f.pt);
+      }
     }
     if (!this.zeiger.has(ev.pointerId)) return;
     this.zeiger.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
@@ -1346,6 +1503,15 @@ export class Karte {
     }
     const war = this.zeiger.size;
     this.zeiger.delete(ev.pointerId);
+    const pz = this.punktZug();
+    if (pz && this.punktGriff === ev.pointerId) {
+      this.punktGriff = null;
+      this.punktZug.set(null);
+      this.fang.set(null);
+      const e = this.karte();
+      if (e && (pz.von.x !== pz.nach.x || pz.von.y !== pz.nach.y)) void this.schreiben(moveWallPoint(e, pz.von, pz.nach, this.seitenverhaeltnis()));
+      return;
+    }
     const st = this.strich();
     if (st && st.pointer === ev.pointerId) {
       this.strich.set(null);
@@ -1363,6 +1529,10 @@ export class Karte {
 
   protected abbrechen(ev: PointerEvent): void {
     this.zeiger.delete(ev.pointerId);
+    if (this.punktGriff === ev.pointerId) {
+      this.punktGriff = null;
+      this.punktZug.set(null);
+    }
     if (this.strich()?.pointer === ev.pointerId) this.strich.set(null);
     this.schwenk = null;
     if (this.griff?.pointer === ev.pointerId) {
@@ -1458,6 +1628,10 @@ export class Karte {
   /** Eine Gruppe wählen; dieselbe noch einmal führt zurück zur Auswahl. */
   protected gruppeWaehlen(g: Gruppe): void {
     const neu = this.aktiv() === g ? 'auswahl' : g;
+    if (this.aktiv() === 'gitter' && neu !== 'gitter' && this.gitterEntwurf()) {
+      if (confirm('Save the grid you set? Cancel discards it.')) this.gitterSpeichern();
+      else this.gitterEntwurf.set(null);
+    }
     this.aktiv.set(neu);
     this.waehle('keins');
     this.werkzeug.set(neu === 'messen' ? 'messen' : 'keins');
@@ -1474,6 +1648,9 @@ export class Karte {
     this.strich.set(null);
     this.wandPunkte.set([]);
     this.wandZeiger.set(null);
+    this.zelleA.set(null);
+    this.punktZug.set(null);
+    this.fang.set(null);
   }
 
   private antippen(ev: PointerEvent): void {
@@ -1499,11 +1676,39 @@ export class Karte {
       if (ziel) this.spielTokenSetzen(ziel, pt);
       else this.setzenBei.set(pt);
     } else if (this.werkzeug() === 'wand') {
-      this.wandPunkt(pt);
-    } else if (this.werkzeug() === 'wandArt' || this.werkzeug() === 'wandWeg') {
+      const lang = ev.pointerType !== 'mouse' && ev.timeStamp - this.druckBeginn > LANG_DRUECKEN_MS;
+      this.wandPunkt(this.einrasten(pt, ev.altKey || lang, ev.pointerType !== 'mouse').pt);
+    } else if (this.werkzeug() === 'wandArt') {
       const e = this.karte();
       const w = this.sperreBei(pt);
-      if (e && w) void this.schreiben(this.werkzeug() === 'wandWeg' ? removeWall(e, w.id) : setWallKind(e, w.id, this.wandArt()));
+      if (e && w) void this.schreiben(setWallKind(e, w.id, this.wandArt()));
+    } else if (this.werkzeug() === 'wandWeg') {
+      const e = this.karte();
+      const w = this.sperreBei(pt);
+      if (!e || !w) return;
+      /* Zusammenfügen ist ein Angebot (T-304): vielleicht war die Öffnung gewollt. */
+      const ar = this.seitenverhaeltnis();
+      const tol = this.schnittToleranz();
+      const fuegen = canJoinAround(e, w.id, ar, tol) && confirm('Join the wall again across the opening?');
+      void this.schreiben(fuegen ? removeJoined(e, w.id, ar, tol) : removeWall(e, w.id));
+    } else if (this.werkzeug() === 'gitterUrsprung') {
+      const nat = this.nat();
+      const s = this.einst();
+      if (nat && s) this.gitterAendern({ ...gridOrigin(pt, nat, s.gridSize), ...(s.gridShape === 'none' ? { gridShape: 'square' as const } : {}) });
+    } else if (this.werkzeug() === 'gitterZelle') {
+      const a = this.zelleA();
+      const nat = this.nat();
+      if (!a || !nat) {
+        this.zelleA.set(pt);
+        return;
+      }
+      this.zelleA.set(null);
+      const g = gridFromCell(a, pt, nat);
+      if (!g) {
+        this.hinweis.set('The two corners are too close — tap opposite corners of one square.');
+        return;
+      }
+      this.gitterAendern({ ...g, ...(this.einst()?.gridShape === 'none' ? { gridShape: 'square' as const } : {}) });
     } else if (this.werkzeug() === 'schloss') {
       const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
       if (t) void this.tuerKlick(t);
@@ -1745,11 +1950,81 @@ export class Karte {
     this.wandArt.set(wallKind(k).key);
   }
 
-  /** Auf Quadraten rastet ein Punkt an der nächsten Gitterecke ein (`snapToGrid`). */
-  private eingerastet(pt: Pt): Pt {
+  // ---------------------------------------------- Karteneditor (T-304)
+
+  /** Form, Schalter und Stärke des Editors, gemerkt je Browser. */
+  protected readonly ed = new EditorStand();
+  protected readonly STAERKE_MIN = STAERKE_MIN;
+  protected readonly STAERKE_MAX = STAERKE_MAX;
+  protected readonly GRID_SHAPES: readonly GridShape[] = ['none', 'square', 'hex'];
+  protected readonly wandIstTuer = computed(() => wallKind(this.wandArt()).door);
+  protected readonly formDef = computed(() => drawShape(this.ed.formFuer(this.wandArt())));
+  /** Woran der Zeiger gerade einrastet — ein Ring an der Stelle. */
+  protected readonly fang = signal<{ pt: Pt; to: string | null } | null>(null);
+  /** Der Punkt, der gerade gezogen wird, und wohin. */
+  protected readonly punktZug = signal<{ von: Pt; nach: Pt } | null>(null);
+  private punktGriff: number | null = null;
+  private druckBeginn = 0;
+  /** Die erste Ecke beim Abgreifen eines Feldes. */
+  protected readonly zelleA = signal<Pt | null>(null);
+  /** Das Gitter, wie es gerade eingestellt wird — Vorschau, bis „Save grid“. */
+  protected readonly gitterEntwurf = signal<GridPatch | null>(null);
+
+  protected formWaehlen(k: string): void {
+    this.ed.setzen('form', drawShape(k).key);
+    this.wandPunkte.set([]);
+  }
+
+  /** So weit trifft ein Antippen einen Punkt; ein Finger weiter als die Maus. */
+  private trefferRadius(pointerType: string): number {
+    return (SPERRE_TREFFER * (pointerType === 'mouse' ? 1 : FINGER_FAKTOR)) / this.breite();
+  }
+
+  /** Wie nah eine Öffnung an der Geraden einer Wand liegen muss, um sie zu schneiden: ein paar Bildschirmpunkte. */
+  private schnittToleranz(): number {
+    return Math.max(0.0005, 4 / this.breite());
+  }
+
+  /**
+   * **Einrasten mit Stärke** (T-304, `snapPoint`): an vorhandene Punkte,
+   * Gitterecken und Linien, so weit, wie der Regler sagt — in Bildschirm-
+   * punkten, also beim Zoomen gleich. `roh` (Alt, langes Drücken) setzt
+   * den Punkt, wo er ist; `ohne` ist der Punkt, der gerade gezogen wird.
+   */
+  private einrasten(pt: Pt, roh: boolean, finger: boolean, ohne?: Pt): { pt: Pt; to: 'point' | 'grid' | 'line' | null } {
+    if (roh || !this.ed.einrasten()) return { pt, to: null };
     const s = this.einst();
     const geo = s ? gridGeometry(s, this.nat()) : null;
-    return geo?.shape === 'square' ? snapToGrid(pt, geo) : pt;
+    const e = this.karte();
+    const ar = this.seitenverhaeltnis();
+    const gleich = (q: Pt): boolean => !!ohne && q.x === ohne.x && q.y === ohne.y;
+    const walls = (e ? mapWalls(e) : []).filter((w) => !gleich({ x: w.x1, y: w.y1 }) && !gleich({ x: w.x2, y: w.y2 }));
+    const punkte = [...wallPoints(e ? mapWalls(e) : [], ar), ...this.wandPunkte()].filter((q) => !gleich(q));
+    const px = this.ed.staerke() * (finger ? FINGER_FAKTOR : 1);
+    return snapPoint(pt, { grid: geo, points: punkte, walls }, px / this.breite(), ar);
+  }
+
+  protected readonly wandText = computed(() => {
+    const n = this.wandPunkte().length;
+    const f = this.formDef();
+    if (!n) return this.wandIstTuer() ? 'Tap one edge of the opening, then the other — the door spans it.' : `Tap where the ${this.wandArtName()} starts.`;
+    if (f.points === 2) return f.key === 'line' ? 'Tap the end point.' : 'Tap the opposite corner.';
+    return 'Tap the next point — Enter, or the last point again, finishes; Esc cancels.';
+  });
+
+  /** Das Gitter einstellen — erst als Vorschau. */
+  protected gitterAendern(patch: GridPatch): void {
+    const sauber = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined && !(typeof v === 'number' && !Number.isFinite(v))));
+    this.gitterEntwurf.set({ ...(this.gitterEntwurf() ?? {}), ...sauber });
+  }
+
+  protected gitterSpeichern(): void {
+    const e = this.karte();
+    const d = this.gitterEntwurf();
+    if (!e || !d) return;
+    void this.schreiben(setGrid(e, d)).then(() => {
+      if (!this.mangel()) this.gitterEntwurf.set(null);
+    });
   }
 
   /** Die Sperre unter dem Finger, wenn eine nah genug liegt. */
@@ -1759,9 +2034,8 @@ export class Karte {
     return nearestWall(mapWalls(e), pt, this.seitenverhaeltnis(), SPERRE_TREFFER / this.breite(), nur);
   }
 
-  /** Ein Punkt mehr im Linienzug; derselbe noch einmal beendet ihn. */
-  private wandPunkt(roh: Pt): void {
-    const p = this.eingerastet(roh);
+  /** Ein Punkt mehr in der Form; derselbe noch einmal beendet sie. Linie, Rechteck und Ellipse sind nach zwei fertig. */
+  private wandPunkt(p: Pt): void {
     const ps = this.wandPunkte();
     const letzter = ps.at(-1);
     if (letzter && Math.hypot(letzter.x - p.x, (letzter.y - p.y) * this.seitenverhaeltnis()) < SPERRE_TREFFER / this.breite()) {
@@ -1769,6 +2043,7 @@ export class Karte {
       return;
     }
     this.wandPunkte.set([...ps, p]);
+    if (this.formDef().points === 2 && ps.length + 1 >= 2) this.wandFertig();
   }
 
   /** Den Linienzug speichern: je Strecke eine Sperre der gewählten Art. */
@@ -1779,31 +2054,44 @@ export class Karte {
     this.wandZeiger.set(null);
     if (!e || ps.length < 2) return;
     const kind = this.wandArt();
-    const tuer = wallKind(kind).door;
-    const neu: MapWall[] = ps.slice(1).map((b, i) => ({
-      id: `w-${crypto.randomUUID().slice(0, 12)}`,
-      kind,
-      x1: ps[i]!.x,
-      y1: ps[i]!.y,
-      x2: b.x,
-      y2: b.y,
-      ...(tuer ? { state: 'closed' as const } : {}),
-    }));
-    void this.schreiben(addWalls(e, neu));
+    const nat = this.nat();
+    const s = this.einst();
+    /* Die Dicke einer Tür in Anteilen der Breite: ein Teil eines Feldes, ohne Gitter die Vorgabe. */
+    const dicke = wallKind(kind).door ? (nat && s && s.gridShape !== 'none' ? (s.gridSize * this.ed.tuerDicke()) / 100 / nat.w : DOOR_WIDTH) : undefined;
+    const neueId = (): string => `w-${crypto.randomUUID().slice(0, 12)}`;
+    const neu = outlineWalls(shapeOutline(this.ed.formFuer(kind), ps, this.ed.geschlossen()), kind, neueId, dicke);
+    if (!neu.length) return;
+    const r = addWallsCut(e, neu, { cut: this.ed.schneiden(), ar: this.seitenverhaeltnis(), tol: this.schnittToleranz(), newId: neueId });
+    void this.schreiben(r.entity).then(() => {
+      if (r.cut && !this.mangel()) this.hinweis.set(r.cut === 1 ? 'The wall underneath was cut at the opening.' : `${r.cut} walls underneath were cut at the opening.`);
+    });
   }
 
   /** Was die Leitung von den Sperren sieht: jede Linie, nach Art gefärbt, dazu der Entwurf. */
   protected readonly sperrenBild = computed(() => {
     const e = this.karte();
     if (!e || !this.nat() || !this.alsLeitung()) return null;
-    const linien = mapWalls(e).map((w) => {
+    const ar = this.seitenverhaeltnis();
+    /* Ein Punkt, der gerade gezogen wird, nimmt seine Wände mit (Vorschau, T-304). */
+    const pz = this.punktZug();
+    const walls = pz ? mapWalls(moveWallPoint(e, pz.von, pz.nach, ar)) : mapWalls(e);
+    const linien = walls.map((w) => {
       const offen = isDoor(w) && w.state === 'open';
       return { ...w, offen, titel: `${wallKind(w.kind).label}${isDoor(w) ? ` (${w.state ?? 'closed'})` : ''} — ${wallKind(w.kind).does}` };
     });
     const ps = this.wandPunkte();
     const z = this.wandZeiger();
-    const entwurf = ps.length ? [...ps, ...(z ? [z] : [])].map((p) => `${p.x},${p.y}`).join(' ') : null;
-    return linien.length || entwurf ? { linien, entwurf } : null;
+    let entwurf: { pts: string; zu: boolean } | null = null;
+    if (ps.length) {
+      const roh = [...ps, ...(z ? [z] : [])];
+      const form = this.ed.formFuer(this.wandArt());
+      const fest = drawShape(form).points === 2;
+      const u = fest && roh.length >= 2 ? shapeOutline(form, roh, false) : { pts: roh, closed: shapeOutline(form, roh, this.ed.geschlossen()).closed };
+      if (u.pts.length) entwurf = { pts: u.pts.map((p) => `${p.x},${p.y}`).join(' '), zu: u.closed };
+    }
+    const zeigen = this.ed.punkte() || this.werkzeug() === 'punkte';
+    const punkte = zeigen ? wallPoints(walls, ar) : [];
+    return linien.length || entwurf || punkte.length ? { linien, entwurf, punkte } : null;
   });
 
   /**
@@ -1828,12 +2116,16 @@ export class Karte {
         /* Im Zugplan wählt ein Antippen Weg oder Ziel; sonst ist eine Tür ein Knopf. */
         const klickbar = (w === 'keins' && darf && !planWaehlt) || (lt && w === 'schloss');
         const tun = !klickbar ? '' : w === 'schloss' ? (state === 'locked' ? ' — tap to unlock' : ' — tap to lock') : state === 'open' ? ' — tap to close' : ' — tap to open';
+        /* **Die Tür als Viereck** (T-304): so lang wie die Öffnung, so dick wie ihre Breite — gross genug für einen Finger. */
+        const b = this.breite();
         return {
           id: t.id,
           kind: t.kind,
           state,
           x: (t.x1 + t.x2) / 2,
           y: (t.y1 + t.y2) / 2,
+          lang: Math.max(14, Math.hypot(t.x2 - t.x1, (t.y2 - t.y1) * ar) * b),
+          dick: Math.max(10, (t.width ?? DOOR_WIDTH) * b),
           winkel: (Math.atan2((t.y2 - t.y1) * ar, t.x2 - t.x1) * 180) / Math.PI,
           klickbar,
           titel: `${wallKind(t.kind).label}, ${state}${tun}`,

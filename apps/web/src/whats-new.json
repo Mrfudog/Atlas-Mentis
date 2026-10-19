@@ -9,6 +9,14 @@
       "link": "/world"
     },
     {
+      "id": "2026-10-19-map-editor",
+      "date": "2026-10-19",
+      "title": "Draw walls as shapes, doors as boxes, set the grid on the map",
+      "text": "Walls can be drawn as a line, polyline (open or closed), rectangle, ellipse or polygon. Doors are boxes across the opening that players click, and a door drawn over a wall cuts it. Snap to points, grid corners and lines with an adjustable strength, show and drag corner points, and set the grid right on the image with Grid › Pick a square.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
       "id": "2026-10-19-token-tools",
       "date": "2026-10-19",
       "title": "Remove markers, place the creature, borders for tokens",
