@@ -27,6 +27,11 @@ import {
   slotQuery,
   type ItemSlot,
   choicesAtCharacter,
+  choiceDuplicates,
+  duplicateText,
+  heldBefore,
+  heldValue,
+  type HeldValue,
   chosenResult,
   enumOptions,
   gainedFeatures,
@@ -60,6 +65,8 @@ import { Session } from '../kern/session';
 import { KurzLink } from '../kern/kurzansicht';
 import { Text } from '../artikel/text';
 import { ansichtWeg } from '../klassen/ansicht-weg';
+import { EbenenMarke } from '../artikel/ebenen-marke';
+import { Stapel } from '../kern/stapel';
 
 interface Moeglichkeit {
   /** Was in die Antwort kommt: Artikel-Id, Name oder Schlüssel. */
@@ -152,7 +159,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
  */
 @Component({
   selector: 'nw-assistent',
-  imports: [RouterLink, KurzLink, Text, NgTemplateOutlet],
+  imports: [RouterLink, KurzLink, Text, NgTemplateOutlet, EbenenMarke],
   template: `
     <div class="buch">
       <nav aria-label="Breadcrumb" class="brot">
@@ -167,6 +174,13 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
         }
       </nav>
       <h1>{{ bearbeiten() ? 'Edit character' : aufstieg() ? 'Level up' : 'New character' }}</h1>
+      <!-- Die Ebene der Figur (T-251, T-299): an einer gespeicherten die Marke wie
+           auf der Artikelseite, beim Anlegen die Ebene, in die sie kommt. -->
+      @if (gespeichert() && figur(); as f) {
+        <nw-ebenen-marke [artikel]="f" />
+      } @else if (!gespeichert() && stapel.schreib(); as w) {
+        <p class="dim zielebene">Layer: <strong>{{ w.layer?.name ?? 'no layer' }}</strong> — change it under “Writes to” in the header.</p>
+      }
       <!-- Creator oder Full edit (T-194): dieselbe Figur, zwei Masken. -->
       @if (bearbeiten() && figur(); as f) {
         <div class="umschalter" role="group" aria-label="Edit view">
@@ -779,6 +793,11 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                       <input class="suche" type="search" placeholder="Filter…" [value]="filterVon(s.id)" (input)="filtere(s.id, $any($event.target).value)" />
                     }
                     <p class="dim">{{ antwort(s).length }} of {{ s.at.choice.count ?? 1 }} chosen</p>
+                    <!-- Was ein früherer Schritt schon gibt, ist hier gesperrt; eine
+                         spätere Doppelung wird gemeldet, nicht geleert (T-299). -->
+                    @for (d of doppelt(s); track d) {
+                      <p class="fehler" role="alert">{{ d }}</p>
+                    }
                     @if (s.at.choice.repeat) {
                       <!-- Derselbe Wert mehrmals (T-107): +1 zweimal auf dasselbe ist +2. -->
                       <ul class="karten">
@@ -809,16 +828,19 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                     <ul class="karten">
                       @for (m of gefiltert(liste, s.id); track m.wert) {
                         <li>
-                          <label [class.an]="antwort(s).includes(m.wert)">
+                          @let da = schonDa(s, m.wert);
+                          <label [class.an]="antwort(s).includes(m.wert)" [class.gesperrt]="!!da && !antwort(s).includes(m.wert)" [class.doppelt]="!!da && antwort(s).includes(m.wert)">
                             <input
                               [type]="(s.at.choice.count ?? 1) > 1 ? 'checkbox' : 'radio'"
                               [name]="s.id"
                               [checked]="antwort(s).includes(m.wert)"
-                              [disabled]="!antwort(s).includes(m.wert) && (s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)"
+                              [disabled]="!antwort(s).includes(m.wert) && (!!da || ((s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)))"
                               (change)="kreuze(s, m.wert)"
                             />
                             <span class="name"><nw-text [text]="m.label" inline /></span>
-                            @if (m.hinweis) {
+                            @if (da) {
+                              <span class="dim woher">from {{ da.from }}</span>
+                            } @else if (m.hinweis) {
                               <span class="dim">{{ m.hinweis }}</span>
                             }
                           </label>
@@ -931,6 +953,14 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
     .verfahren label.an {
       border-color: var(--accent);
       background: var(--hover);
+    }
+    /* Schon da (T-299): gesperrt mit Herkunft, gewählt und doppelt rot umrandet. */
+    .karten label.gesperrt {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .karten label.doppelt {
+      border-color: var(--warn);
     }
     /* Der Info-Knopf sitzt in der Karte oben rechts (T-162): der Name
        setzt das Häkchen, der Knopf zeigt den Artikel. */
@@ -1284,6 +1314,7 @@ export class Assistent {
   private readonly session = inject(Session);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  protected readonly stapel = inject(Stapel);
 
   /** Die Figur beim Stufenaufstieg, so wie sie gespeichert ist. */
   protected readonly figur = signal<Entity | null>(null);
@@ -1582,7 +1613,9 @@ export class Assistent {
       this.api
         .entity(id)
         .then((e) => {
-          const { refs: _r, ...f } = e as Entity & { refs?: unknown };
+          const { refs, ...f } = e;
+          /* Die Namen der Bezüge — darunter die Ebene für die Marke (T-299). */
+          if (refs) this.bestand.bezuegeAufnehmen(refs);
           this.figur.set(f);
           this.entwurf.set(f);
           /* Der Name steht in `Identity` (`entityName`); `name` kann leer sein. */
@@ -1976,6 +2009,34 @@ export class Assistent {
     this.springe();
   }
 
+  /**
+   * **Was jede Wahl schon hat** (T-299): fest Gegebenes und die Antworten
+   * früherer Schritte, je Wahl (`heldBefore`). Einmal je Entwurf gerechnet,
+   * nicht je Möglichkeit.
+   */
+  private readonly gehabt = computed(() => {
+    const d = this.entwurf();
+    const q = this.quellen();
+    return new Map(choicesAtCharacter(d, q).map((at) => [choiceKey(at), heldBefore(d, q, at)] as const));
+  });
+  /** Die Doppelungen im Entwurf, als Sätze je Wahl. */
+  private readonly doppelungen = computed(() => {
+    const q = this.quellen();
+    const raus = new Map<string, string[]>();
+    for (const d of choiceDuplicates(this.entwurf(), q)) raus.set(d.choice, [...(raus.get(d.choice) ?? []), duplicateText(d, q)]);
+    return raus;
+  });
+
+  /** Ist dieser Wert für die Wahl schon da — und woher? */
+  protected schonDa(s: WahlSchritt, wert: string): HeldValue | undefined {
+    const h = this.gehabt().get(choiceKey(s.at));
+    return h?.size ? heldValue(h, wert, this.quellen()) : undefined;
+  }
+
+  protected doppelt(s: WahlSchritt): string[] {
+    return this.doppelungen().get(choiceKey(s.at)) ?? [];
+  }
+
   protected antwort(s: Extract<BuilderStep, { kind: 'choice' }>): string[] {
     return s.at.picks ?? [];
   }
@@ -2107,6 +2168,7 @@ export class Assistent {
         return !this.pruefung().problem;
       }
       case 'choice':
+        if (this.doppelt(s).length) return false;
         return (s.at.picks?.length ?? 0) >= (s.at.choice.count ?? 1) || this.spaeterGelegt().has(choiceKey(s.at)) || (!!s.at.picks?.length && !s.at.choice.from);
     }
   }
@@ -2144,6 +2206,8 @@ export class Assistent {
       }
       case 'choice': {
         if (this.fertigSchritt(s)) return null;
+        const doppelt = this.doppelt(s);
+        if (doppelt.length) return doppelt.join(' ');
         const fehlt = (s.at.choice.count ?? 1) - (s.at.picks?.length ?? 0);
         return `${fehlt} still to choose.`;
       }
