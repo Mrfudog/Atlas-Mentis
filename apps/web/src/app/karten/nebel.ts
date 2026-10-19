@@ -175,3 +175,33 @@ export function schichtMalen(ctx: NebelKontext, breite: number, hoehe: number, f
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }
+
+/**
+ * **Dunkelsicht in Graustufen** (T-305, REQ-140): im Dunkeln sieht eine
+ * Figur ohne Licht nur so weit wie ihre Dunkelsicht, und das ohne Farbe.
+ * Die Leinwand liegt mit `mix-blend-mode: saturation` über dem Kartenbild:
+ * wo sie grau ist, nimmt sie dem Bild darunter die Farbe und lässt die
+ * Helligkeit. Was ein Licht erhellt (`lichter`), bleibt farbig — es wird
+ * wieder herausgeschnitten. Polygone wie bei `schichtMalen` in `0 0 1 ar`.
+ */
+export function grauMalen(ctx: NebelKontext, breite: number, hoehe: number, sicht: ReadonlyArray<Pfad>, lichter: ReadonlyArray<Pfad>): void {
+  const s = breite;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, breite, hoehe);
+  const formen = sicht.filter((f) => f.length > 2);
+  if (!formen.length) return;
+  ctx.fillStyle = '#808080';
+  ctx.beginPath();
+  for (const f of formen) pfad(ctx, f, s);
+  ctx.fill();
+  const hell = lichter.filter((f) => f.length > 2);
+  if (hell.length) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    for (const f of hell) pfad(ctx, f, s);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}

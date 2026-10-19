@@ -64,7 +64,8 @@
           "text": [
             "Fog › Lighting sets the map bright, dim or dark. Light source: set bright and dim light in squares, then tap a token or marker — it sheds that light, blocked by walls but not by windows. 0 and 0 takes the light away.",
             "In the dark, a character sees only what its darkvision reaches (from Senses on its statblock) and the lights it can see; moves and opened doors reveal just that. Players see darkness over the map with lights and their darkvision cut out.",
-            "On a fogged map, players see brightly what their character sees right now, and what was revealed before dimmed."
+            "On a fogged map, players see brightly what their character sees right now, and what was revealed before dimmed.",
+            "In the dark, what only darkvision reaches is shown in greyscale; lit areas keep their colour. An item with Bright light (a torch, a lantern) lights the token of the character holding it in hand, and lights itself when placed as a marker. Light on/off switches a light off and on again without losing its radius."
           ]
         },
         {

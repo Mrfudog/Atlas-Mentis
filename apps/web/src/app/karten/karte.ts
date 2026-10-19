@@ -64,6 +64,9 @@ import {
   wallKind,
   WALL_KINDS,
   figureView,
+  lightIsOff,
+  markerHasLight,
+  setLightOff,
   litAreas,
   LIGHTING_LEVELS,
   mapLighting,
@@ -94,7 +97,7 @@ import { Brett, type Mangel } from '../boards/brett';
 import { BoardSuche } from '../boards/suche';
 import { Ladeanzeige } from '../kern/ladeanzeige';
 import { tipptGerade } from '../kern/suche';
-import { DUNKEL_FARBE, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type Schnitt } from './nebel';
+import { DUNKEL_FARBE, grauMalen, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type Schnitt } from './nebel';
 import { KartenSeitenleiste, ZIEH_TYP } from './seitenleiste';
 import { EditorStand, FINGER_FAKTOR, LANG_DRUECKEN_MS, STAERKE_MAX, STAERKE_MIN } from './editor';
 
@@ -149,6 +152,7 @@ type Werkzeug =
   | 'wandWeg'
   | 'punkte'
   | 'licht'
+  | 'lichtSchalter'
   | 'gitterUrsprung'
   | 'gitterZelle';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
@@ -403,6 +407,7 @@ interface Zeiger {
                 </select>
               </label>
               <button type="button" [class.an]="werkzeug() === 'licht'" [attr.aria-pressed]="werkzeug() === 'licht'" (click)="waehle('licht')" title="Tap a token or marker to give it the light set here; 0 and 0 takes it away">Light source</button>
+              <button type="button" [class.an]="werkzeug() === 'lichtSchalter'" [attr.aria-pressed]="werkzeug() === 'lichtSchalter'" (click)="waehle('lichtSchalter')" title="Tap a light to switch it off or on again; its radius stays">Light on/off</button>
               @if (werkzeug() === 'licht') {
                 <label>
                   Bright
@@ -603,6 +608,11 @@ interface Zeiger {
                     <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
                   </a>
                 }
+                @if (grau()) {
+                  <!-- Dunkelsicht in Graustufen (T-305): nimmt dem Bild darunter die Farbe
+                       (mix-blend-mode: saturation), wo nur die Dunkelsicht hinreicht. -->
+                  <canvas #grauLeinwand class="nebel grau" aria-hidden="true"></canvas>
+                }
                 @if (schatten()) {
                   <!-- Licht und Dunkelheit (T-216): unter dem Nebel, Lichter und Dunkelsicht
                        schneiden heraus. -->
@@ -759,7 +769,7 @@ interface Zeiger {
                     [title]="m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
-                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : kurzansicht($event, m.to)"
+                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : kurzansicht($event, m.to)"
                   >
                     @if (m.bild) {
                       <img [src]="m.bild" alt="" draggable="false" [style]="m.bildStil" />
@@ -829,6 +839,8 @@ interface Zeiger {
           Tap a marker to take it off the map. The article stays; the party token is not a marker.
         } @else if (werkzeug() === 'licht') {
           Tap a token or marker: it sheds {{ lichtHell() }} squares of bright and {{ lichtMatt() }} of dim light.
+        } @else if (werkzeug() === 'lichtSchalter') {
+          Tap a light to switch it off or on. A torch in a figure's hand lights its token; an item placed as a marker lights itself.
         } @else {
           @if (spielersicht()) {
             Player view ·
@@ -892,6 +904,7 @@ export class Karte {
   private readonly innen = viewChild<ElementRef<HTMLElement>>('innen');
   private readonly nebelLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('nebelLeinwand');
   private readonly schattenLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('schattenLeinwand');
+  private readonly grauLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('grauLeinwand');
   private readonly sichtLeinwand = viewChild<ElementRef<HTMLCanvasElement>>('sichtLeinwand');
 
   constructor() {
@@ -964,6 +977,17 @@ export class Karte {
       schichtMalen(ctx, b, h, sch.farbe, sch.deckt, sch.schnitte);
     };
     effect(() => schicht(this.schattenLeinwand()?.nativeElement, this.schatten()));
+    effect(() => {
+      const g = this.grau();
+      const c = this.grauLeinwand()?.nativeElement;
+      const ctx = g && c ? c.getContext('2d') : null;
+      if (!g || !c || !ctx) return;
+      const b = nebelBreite(this.nat()?.w ?? 0);
+      const h = Math.max(1, Math.round(b * g.ar));
+      if (c.width !== b) c.width = b;
+      if (c.height !== h) c.height = h;
+      grauMalen(ctx, b, h, g.sicht, g.lichter);
+    });
     effect(() => schicht(this.sichtLeinwand()?.nativeElement, this.laufendeSicht()));
     /* Das Fenster misst, wie gross Zoom 1 ist — es ändert sich mit dem
        Fenster und nicht mit dem Zoom. */
@@ -2404,6 +2428,19 @@ export class Karte {
   protected readonly lichtHell = signal(4);
   protected readonly lichtMatt = signal(8);
   /** Einem Marker Licht geben (`marker.props.light`/`dim`); 0 und 0 nimmt es weg. */
+  /** Getragene Lichter in Fuss je Markerziel (T-305): Fackel in der Hand, Laterne als Marker. */
+  protected readonly getragen = computed(() => this.kontext()?.lights ?? {});
+  /** Ein Licht aus- oder wieder anmachen (T-305, `lightOff`); ohne Licht tut es nichts. */
+  protected lichtSchalten(relId: string): void {
+    const e = this.karte();
+    const m = e ? markersOf(e).find((x) => x.rel.id === relId) : undefined;
+    if (!e || !m) return;
+    if (!markerHasLight(m, this.getragen())) {
+      this.hinweis.set('This marker sheds no light. Give it one with Light source, or an item with Bright light.');
+      return;
+    }
+    void this.schreiben(setLightOff(e, relId, !lightIsOff(m.rel.props as Record<string, unknown> | undefined)));
+  }
   /** Einen Marker wegnehmen (T-301) — die Kante, nicht den Artikel. */
   protected tokenWeg(relId: string): void {
     const e = this.karte();
@@ -2427,7 +2464,7 @@ export class Karte {
    * **Wessen Sicht gezeichnet wird** (T-216): für Spielende die eigenen
    * Figuren und das Gruppen-Token; in der Spielersicht der Leitung die
    * gewählte Figur, sonst das Gruppen-Token und die Spielercharaktere. Die
-   * Leitung selbst sieht alles.
+   * Leitung selbst sieht alles. Bei Nebel je Figur ohne das Gruppen-Token.
    */
   private readonly betrachter = computed<Set<string>>(() => {
     if (this.alsLeitung()) return new Set();
@@ -2440,7 +2477,12 @@ export class Karte {
       const figuren = (e ? markersOf(e) : []).filter((m) => m.kind === 'play' && ziele[m.to]?.type === 'PlayerCharacter').map((m) => m.to);
       return new Set([...gruppe, ...figuren]);
     }
-    return new Set([...this.eigeneHier(), ...gruppe]);
+    /* Nebel je Figur (T-204): dann sieht jede ihre eigene Sicht, und das
+       Gruppen-Token zählt nur, wenn keine eigene Figur auf der Karte steht
+       (T-305 — die Spielersicht ist die Vereinigung der eigenen Figuren). */
+    const eigen = this.eigeneHier();
+    if (this.jeFigur() && eigen.length) return new Set(eigen);
+    return new Set([...eigen, ...gruppe]);
   });
   /** Was jede dieser Figuren gerade sieht — am Token, wie es eben gezogen wird. */
   private readonly sichten = computed(() => {
@@ -2451,7 +2493,7 @@ export class Karte {
     const dv = this.kontext()?.darkvision ?? {};
     return this.marker()
       .filter((m) => wer.has(m.to) && (m.kind === 'play' || m.kind === 'party'))
-      .map((m) => figureView(e, m, n, dv[m.to] ?? 0));
+      .map((m) => figureView(e, m, n, dv[m.to] ?? 0, this.getragen()));
   });
   /**
    * **Die Dunkelheit** (T-216, REQ-140): auf einer dämmrigen oder dunklen
@@ -2468,7 +2510,7 @@ export class Karte {
     const ar = this.seitenverhaeltnis();
     const lt = this.alsLeitung();
     const auf = (p: ReadonlyArray<readonly [number, number]>) => p.map(([x, y]) => [x, y * ar] as const);
-    const licht = litAreas(e, n);
+    const licht = litAreas(e, n, this.getragen());
     const dunkelsicht = this.sichten().flatMap((v) => (v.darkvision ? [v.darkvision] : []));
     return {
       ar,
@@ -2479,6 +2521,23 @@ export class Karte {
         { formen: licht.map((l) => auf(l.bright)), staerke: 1 },
       ],
     };
+  });
+  /**
+   * **Dunkelsicht in Graustufen** (T-305, REQ-140): auf einer dunklen Karte
+   * ist, was nur die Dunkelsicht der eigenen Figur erreicht, ohne Farbe;
+   * was ein Licht erhellt, bleibt farbig. Die Leitung sieht die Karte, wie
+   * sie ist — in der Spielersicht (und „View as") sieht sie es wie die
+   * Spielenden.
+   */
+  protected readonly grau = computed(() => {
+    const e = this.angezeigt();
+    const n = this.nat();
+    if (!e || !n || mapLighting(e) !== 'dark') return null;
+    const sicht = this.sichten().flatMap((v) => (v.darkvision ? [v.darkvision] : []));
+    if (!sicht.length) return null;
+    const ar = this.seitenverhaeltnis();
+    const auf = (p: ReadonlyArray<readonly [number, number]>) => p.map(([x, y]) => [x, y * ar] as const);
+    return { ar, sicht: sicht.map(auf), lichter: litAreas(e, n, this.getragen()).map((l) => auf(l.dim)) };
   });
   /**
    * **Die laufende Sicht** (T-216, wie Owlbears „Dynamic Fog“): auf einer
