@@ -20,6 +20,7 @@ import { Bestand } from '../kern/bestand';
 import { BEREICHE } from '../kern/bereiche';
 import { RegisterArbeit, articles, carry, inPlayText } from './arbeit';
 import { RegFeld } from './feld';
+import { Kapitel, Kapitelteil } from '../muster/kapitel';
 import {
   ancestorsOf,
   childrenOf,
@@ -57,7 +58,7 @@ interface Gruppe {
  */
 @Component({
   selector: 'nw-reg-typ',
-  imports: [RouterLink, RegFeld],
+  imports: [RouterLink, RegFeld, Kapitel, Kapitelteil],
   template: `
     @if (def(); as d) {
       <div class="typkopf">
@@ -80,8 +81,10 @@ interface Gruppe {
         }
       </div>
 
-      <section class="kasten" aria-label="This type">
-        <h3>This type</h3>
+      <!-- Die Kapitel der Typseite (T-277): am Telefon Reiter, am Desktop
+           Felder links breit, Kurzangaben und Kanten rechts schmal. -->
+      <nw-kapitel>
+      <nw-kapitelteil key="type" titel="This type" lage="seite">
         <label class="f">
           <span>Label</span>
           <input type="text" [value]="d.label ?? ''" [placeholder]="name()" [disabled]="!darf()"
@@ -122,10 +125,10 @@ interface Gruppe {
           </select>
         </label>
         <p class="hint">Measures are stored in their own unit and converted on read; this overrides the campaign setting for this type and its subtypes.</p>
-      </section>
+      </nw-kapitelteil>
 
-      <section class="kasten" aria-label="Own fields">
-        <h3>Its own fields <span class="dim">· {{ eigene().length ? eigene().length + (eigene().length === 1 ? ' field' : ' fields') : 'nothing of its own' }}</span></h3>
+      <nw-kapitelteil key="fields" titel="Own fields" lage="haupt" [zahl]="eigene().length"
+                      [hinweis]="eigene().length ? '' : 'nothing of its own'">
         @for (k of eigene(); track k) {
           <div class="frow">
             <code class="fk">{{ k }}{{ pflicht(name(), k) ? '*' : '' }}</code>
@@ -149,11 +152,11 @@ interface Gruppe {
             <button type="submit">+ Field</button>
           </form>
         }
-      </section>
+      </nw-kapitelteil>
 
-      @if (gruppen().length || verlinkt().length || kanten().genannt.length || kanten().allgemein) {
-        <section class="kasten" aria-label="Inherited">
-          <h3>Inherited <span class="dim">· {{ gruppen().length }} {{ gruppen().length === 1 ? 'type' : 'types' }}, {{ geerbteFelder() }} {{ geerbteFelder() === 1 ? 'field' : 'fields' }}</span></h3>
+      <nw-kapitelteil key="inherited" titel="Inherited" lage="haupt" [zahl]="gruppen().length"
+                      [zeigen]="!!(gruppen().length || verlinkt().length || darf())"
+                      [hinweis]="geerbteFelder() + (geerbteFelder() === 1 ? ' field' : ' fields')">
           @for (g of gruppen(); track g.typ) {
             <div class="teil">
               <div class="fhead" role="button" tabindex="0" [attr.aria-expanded]="offen(name() + '::' + g.typ)"
@@ -222,32 +225,6 @@ interface Gruppe {
             </div>
           }
 
-          @if (kanten().genannt.length || kanten().allgemein) {
-            <div class="teil kanten">
-              <div class="fhead" role="button" tabindex="0" [attr.aria-expanded]="offen(name() + '::kanten')"
-                (click)="klappen(name() + '::kanten')" (keydown.enter)="klappen(name() + '::kanten')">
-                <span class="twist">{{ offen(name() + '::kanten') ? '▾' : '▸' }}</span>
-                <b>Edges from here</b>
-                <span class="pill" title="Not fields: an edge points at another article and is stored in one direction. The other way round is a query.">edge · its own article</span>
-                <span class="dim">{{ kanten().genannt.length ? kanten().genannt.length + ' kinds' : 'none that name this type' }}</span>
-              </div>
-              <div class="partfields" [hidden]="!offen(name() + '::kanten')">
-                @for (r of kanten().genannt; track r.type) {
-                  <div class="frow lesen">
-                    <a class="fk" [routerLink]="[]" [queryParams]="{ tab: 'edges', edge: r.type }">{{ r.type }}</a>
-                    <span>{{ r.label }}</span>
-                    <span class="holds">→ {{ (r.to ?? ['*']).join(', ') }}</span>
-                    <span class="pill">{{ r.cardinality === 'one' ? 'one' : 'many' }}{{ r.owned ? ' · owned' : '' }}</span>
-                  </div>
-                }
-                @if (kanten().allgemein) {
-                  <p class="hint">Plus {{ kanten().allgemein }} edge kinds that hit every type (*) — they say nothing about this one.</p>
-                }
-              </div>
-            </div>
-          }
-        </section>
-      }
 
       @if (darf()) {
         <div class="addbar">
@@ -260,10 +237,26 @@ interface Gruppe {
           </select>
         </div>
       }
+      </nw-kapitelteil>
 
-      @if (!d.abstract) {
-        <section class="kasten" aria-label="Views">
-          <h3>Views</h3>
+      <!-- Kanten sind keine Felder: ein eigenes Kapitel, am Desktop zugeklappt wie die geerbten. -->
+      <nw-kapitelteil key="edges" titel="Edges from here" lage="seite" [zu]="true" [zahl]="kanten().genannt.length"
+                      [zeigen]="!!(kanten().genannt.length || kanten().allgemein)">
+        <p class="hint">Not fields: an edge points at another article and is stored in one direction. The other way round is a query.</p>
+        @for (r of kanten().genannt; track r.type) {
+          <div class="frow lesen">
+            <a class="fk" [routerLink]="[]" [queryParams]="{ tab: 'edges', edge: r.type }">{{ r.type }}</a>
+            <span>{{ r.label }}</span>
+            <span class="holds">→ {{ (r.to ?? ['*']).join(', ') }}</span>
+            <span class="pill">{{ r.cardinality === 'one' ? 'one' : 'many' }}{{ r.owned ? ' · owned' : '' }}</span>
+          </div>
+        }
+        @if (kanten().allgemein) {
+          <p class="hint">Plus {{ kanten().allgemein }} edge kinds that hit every type (*) — they say nothing about this one.</p>
+        }
+      </nw-kapitelteil>
+
+      <nw-kapitelteil key="views" titel="Views" lage="voll" [zahl]="ansichten().length" [zeigen]="!d.abstract">
           <p class="hint">
             The views that apply to {{ label(name()) }} and why — <b>overview</b> in a link or list row, <b>quick</b> on a card,
             <b>full</b> on its page, <b>print</b> on paper, and your own. The most specific one of a group wins; “Design” opens the
@@ -287,8 +280,8 @@ interface Gruppe {
               </div>
             }
           </div>
-        </section>
-      }
+      </nw-kapitelteil>
+      </nw-kapitel>
 
       @if (darf()) {
         <div class="knoepfe">
