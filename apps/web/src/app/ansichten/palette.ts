@@ -13,7 +13,9 @@ export interface PaletteEintrag {
   neu?: boolean;
   /**
    * Zeichnet nur die Artikelseite (und der Druck), nicht eine gestaltete
-   * Ansicht für sich — dort steht an seiner Stelle ein Hinweis.
+   * Ansicht für sich — dort steht an seiner Stelle ein Hinweis, und die
+   * Palette sagt „Article page only“ (T-310; ein Test prüft, dass alles
+   * andere `nw-ansichtsbaum` zeichnet).
    */
   seite?: boolean;
   /** Darf stehen, aber noch kein Ort zeichnet es; was es trüge, steht im Rest. */
@@ -48,9 +50,10 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'tileGroup', name: 'Tile group', icon: '▦', tip: 'Fields as tiles: label above, value large.', werte: true, neu: true },
       { el: 'quote', name: 'Quote', icon: '❝', tip: 'A field as a quote — a voice, a motto.', werte: true, neu: true },
       { el: 'badges', name: 'Badges', icon: '◉', tip: 'Values as badges — tags, conditions, properties.', werte: true, neu: true },
-      { el: 'edgeTable', name: 'Table from edges', icon: '⊞', tip: 'One row per edge: its target and the edge’s own values.', werte: true, neu: true },
+      { el: 'edgeTable', name: 'Table from edges', icon: '⊞', tip: 'One row per edge: its target and the edge’s own values. For the rows of a table: Table.', werte: true, neu: true },
+      { el: 'table', name: 'Table', icon: '⚄', tip: 'The rows of a table with its die column and Roll — the roll is saved in the rolls log and its row marked.', neu: true },
       { el: 'prose', name: 'Long text', icon: '☰', tip: 'Long texts (paragraphs, secrets, read-aloud), each under its title.', werte: true },
-      { el: 'image', name: 'Image', icon: '▣', tip: 'The image of the article, with its caption.', seite: true },
+      { el: 'image', name: 'Image', icon: '▣', tip: 'The image of the article, with its caption.' },
       { el: 'relations', name: 'Relations', icon: '↔', tip: 'Its edges with their targets. The article page has them in its side column.', seite: true },
       { el: 'linked', name: 'Linked article', icon: '⛓', tip: 'The fields of what hangs on an asField edge (the statblock of a creature), editable in place; without one, Create and From a template.', seite: true },
       { el: 'composed', name: 'Sections', icon: '§', tip: 'What it is composed of (traits, actions …), per section.', seite: true },

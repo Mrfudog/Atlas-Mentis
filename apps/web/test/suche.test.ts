@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { signal } from '@angular/core';
+import { signal, ɵresolveComponentResources as stileAufloesen } from '@angular/core';
 import { DeferBlockBehavior, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { SucheComponent } from '../src/app/suche/suche';
@@ -59,7 +59,10 @@ function taste(el: Element, key: string, mehr: KeyboardEventInit = {}): Keyboard
 
 describe('the search everywhere (T-138)', () => {
   let fragen: SuchFrage[];
-  beforeEach(() => {
+  beforeEach(async () => {
+    /* Die Vorschau zeichnet mit dem Baum (T-310), und der mit Statblock und
+       Zauber — deren Stildateien liest diese Prüfumgebung nicht; leer reicht. */
+    await stileAufloesen(() => Promise.resolve(''));
     vi.useFakeTimers();
     localStorage.clear();
     fragen = [];

@@ -2,13 +2,15 @@ import { Component, computed, inject, input } from '@angular/core';
 import {
   elementTakes,
   entriesOf,
+  drawnByTree,
   fieldTitle,
-  layoutFor,
+  forArticle,
+  pickView,
   primaryInterface,
   proseFields,
   typeChain,
 } from '@nw/model';
-import type { Entity, LayoutElement, Registry, VarScopes } from '@nw/model';
+import type { Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Text } from '../artikel/text';
 import { Statblock } from '../artikel/statblock';
@@ -16,6 +18,7 @@ import { Zauber } from '../artikel/zauber';
 import { Gegenstand } from '../artikel/gegenstand';
 import { Kennzahlen } from '../artikel/kennzahlen';
 import { TokenBild } from '../artikel/token-bild';
+import { Ansichtsbaum } from '../ansichten/baum';
 
 /** Was die Kachel aus einem Element des Layouts macht. */
 type Stueck =
@@ -27,7 +30,9 @@ type Stueck =
   | { art: 'statblock' | 'spell' | 'item'; id: string }
   /* Die Kennzahlen (T-206): AC, HP, Bewegung … als Kacheln. */
   | { art: 'stats'; id: string }
-  | { art: 'token'; id: string };
+  | { art: 'token'; id: string }
+  /* Was nur der Baum zeichnet (T-310): Behälter, Tabellen — oder eine ganze gestaltete Ansicht. */
+  | { art: 'baum'; id: string; layout: LayoutElement[] };
 
 /* Was die Kachel nicht noch einmal zeigt: der Name steht im Kopf, Nummer,
    Sichtbarkeit und Quelle gehören auf die Artikelseite. */
@@ -37,7 +42,7 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
  * Ein Artikel auf einer Kachel des Boards — in der Ansicht, die die Kachel
  * gewählt hat (`overview` oder `quick`, REQ-161).
  *
- * **Gezeichnet wird die Anordnung der Art** (`layoutFor`, die
+ * **Gezeichnet wird die Anordnung der Art** (`pickView` → `layoutFor`, die
  * `extends`-Kette hoch), nicht eine Vorlage je Artikelart: ein Statblock
  * zeigt auf der Karte seine Zahlen, weil er es an sich sagt, und eine Szene
  * ihren Absatz, weil die Grundanordnung von `quick` es sagt. Was ein
@@ -49,7 +54,7 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-kachel',
-  imports: [Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild],
+  imports: [Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Ansichtsbaum],
   template: `
     @for (s of stuecke(); track s.id) {
       @switch (s.art) {
@@ -85,6 +90,9 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
         }
         @case ('item') {
           <nw-gegenstand [artikel]="artikel()" />
+        }
+        @case ('baum') {
+          <nw-ansichtsbaum [artikel]="artikel()" [layout]="s.layout" [register]="register()" [rueck]="rueck()" />
         }
         @case ('teile') {
           @for (g of s.gruppen; track g.label) {
@@ -143,6 +151,10 @@ export class Kachel {
   readonly ansicht = input.required<string>();
   /** Ein anderes Register als das geladene — der Entwurf in der Vorschau des Registers (T-110). */
   readonly register = input<Registry | null>(null);
+  /** Was auf den Artikel zeigt — für Geltungen und Pfade über eingehende Kanten (T-268). */
+  readonly rueck = input<readonly IncomingEdge[]>([]);
+  /** Genau diese Ansicht (die Vorschau im Register), nicht die genaueste ihrer Gruppe. */
+  readonly genau = input(false);
 
   private readonly bestand = inject(Bestand);
   private readonly reg = computed(() => this.register() ?? this.bestand.registry());
@@ -159,12 +171,16 @@ export class Kachel {
     const e = this.artikel();
     if (!r) return [];
     const typ = primaryInterface(e);
-    const view = r.views[this.ansicht()];
+    /* Die Ansicht der Kachel ist ein Ort: es gilt die genaueste ihrer Gruppe (T-310). */
+    const wahl = pickView(e, r, this.ansicht(), { incoming: this.rueck(), exact: this.genau(), fallback: 'quick' });
+    /* Eine gestaltete zeichnet ihr Baum ganz — Felder über Kanten kennt nur er. */
+    if (wahl.designed) return [{ art: 'baum', id: wahl.key, layout: wahl.layout }];
+    const view = r.views[wahl.key];
     /* Was die Ansicht sagt (T-110): leere Felder zeigen, Ungenanntes am Ende. */
     const opt = { leer: view?.empty === 'show', genommen: new Set<string>() };
     const out: Stueck[] = [];
-    for (const el of layoutFor(r, this.ansicht(), typ).layout) {
-      const s = this.stueck(r, e, typ, el, opt);
+    for (const el of forArticle(wahl.layout, e, this.rueck())) {
+      const s: Stueck | null = drawnByTree(el) ? { art: 'baum', id: el.id, layout: [el] } : this.stueck(r, e, typ, el, opt);
       if (s) out.push(s);
     }
     if (view?.rest) {

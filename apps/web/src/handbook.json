@@ -77,7 +77,8 @@
           "heading": "Designing a view",
           "text": [
             "Registry › Views lists every view; Design opens one in the view designer — from a type’s page with that type chosen, from an article with “Design this view” in Full edit. The preview stands on top; add elements from the palette, move them with ↑ ↓ → ← or by dragging, and give each its values — follow an edge to show fields of linked articles, such as the wares of the shop a creature keeps.",
-            "Saving asks where the change goes: every article, the whole type (its own arrangement, or adjusted — only the difference, so new fields of the view still come), only this article, or a new view with a condition. The most specific view that applies wins; board cards and the Views row offer every one that applies."
+            "Saving asks where the change goes: every article, the whole type (its own arrangement, or adjusted — only the difference, so new fields of the view still come), only this article, or a new view with a condition. The most specific view that applies wins — everywhere: the popup on a named article and on a map marker, the preview beside a list, a board card, the article page and the print ask the same question. Board cards and the View row above an article offer every one that applies.",
+            "For the rows of a random table use the element Table: its die column and Roll, which saves the roll in the rolls log and marks the row. Table from edges shows edges and their targets, not rows. Elements marked “article page only” are drawn by the page and the print; a designed view shows a note in their place."
           ]
         },
         {
