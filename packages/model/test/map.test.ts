@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  mayMoveToken,
   cellAt,
   movedTokens,
   clearPlayTokens,
@@ -309,13 +310,25 @@ describe('Nebel je Figur und Kartenregeln (T-204)', () => {
   });
 
   it('liest die Regeln der Kampagne mit Vorgaben; die Karte schlägt beim Aufdecken die Kampagne', () => {
-    expect(mapRulesOf(null)).toEqual({ fog: 'party', moves: 'free', revealOnMove: false, doors: 'players', tokenSizes: 'rules' });
-    expect(mapRulesOf(k({ fog: 'player', moves: 'confirm', revealOnMove: true }))).toEqual({ fog: 'player', moves: 'confirm', revealOnMove: true, doors: 'players', tokenSizes: 'rules' });
+    expect(mapRulesOf(null)).toEqual({ fog: 'party', moves: 'free', tokenMove: 'own', revealOnMove: false, doors: 'players', tokenSizes: 'rules' });
+    expect(mapRulesOf(k({ fog: 'player', moves: 'confirm', revealOnMove: true }))).toEqual({ fog: 'player', moves: 'confirm', tokenMove: 'own', revealOnMove: true, doors: 'players', tokenSizes: 'rules' });
     expect(mapRulesOf(k({ doors: 'gm' })).doors).toBe('gm');
     expect(mapRulesOf(k({ tokenSizes: 'tinyHalf' })).tokenSizes).toBe('tinyHalf');
     expect(mapRulesOf(k({ fog: 'quatsch' })).fog).toBe('party');
     expect(mapRulesOf(k({ revealOnMove: true }), karte({ revealOnMove: false })).revealOnMove).toBe(false);
     expect(mapRulesOf(k({}), karte({ revealOnMove: true })).revealOnMove).toBe(true);
+  });
+
+  it('wer zieht (T-290): jede Stufe nimmt die engere mit, `none` nichts', () => {
+    expect(mapRulesOf(k({ tokenMove: 'allies' })).tokenMove).toBe('allies');
+    expect(mapRulesOf(k({ tokenMove: 'quatsch' })).tokenMove).toBe('own');
+    const wer = { own: new Set(['pc']), party: new Set(['pc', 'esel']), allies: new Set(['hund']) };
+    const darf = (mode: Parameters<typeof mayMoveToken>[0]) => ['pc', 'esel', 'hund', 'gob'].filter((t) => mayMoveToken(mode, t, wer));
+    expect(darf('none')).toEqual([]);
+    expect(darf('own')).toEqual(['pc']);
+    expect(darf('party')).toEqual(['pc', 'esel']);
+    expect(darf('allies')).toEqual(['pc', 'esel', 'hund']);
+    expect(darf('all')).toEqual(['pc', 'esel', 'hund', 'gob']);
   });
 
   it('hält `for` beim Lesen und Schreiben einer Form', () => {

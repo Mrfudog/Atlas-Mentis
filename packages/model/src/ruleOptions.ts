@@ -329,6 +329,21 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
+    /* Wer zieht (T-290, E-040), gelesen über `mapRulesOf` und `mayMoveToken`. */
+    key: 'tokenMove',
+    sort: 'map',
+    label: 'Who moves tokens',
+    does: 'Which tokens players may drag on a map. The GM always moves every token; whether a move waits for the GM is “Player moves”. In an encounter, the same tokens move through the turn plan.',
+    source: { field: 'tokenMove' },
+    variants: [
+      { key: 'none', label: 'Only the GM', does: 'Players move no token, not even their own.' },
+      { key: 'own', label: 'Own characters', does: 'A player moves the characters they play.' },
+      { key: 'party', label: 'The party', does: 'A player moves every member of the party, and the party token.' },
+      { key: 'allies', label: 'Party and allies', does: 'As the party, plus whoever an encounter lists on the party’s side (Ally).' },
+      { key: 'all', label: 'Every token', does: 'A player moves every token they can see on the map.' },
+    ],
+  },
+  {
     key: 'revealOnMove',
     sort: 'map',
     label: 'Moves reveal the way',
@@ -589,6 +604,8 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return mapRulesOf(campaign).fog;
     case 'moves':
       return mapRulesOf(campaign).moves;
+    case 'tokenMove':
+      return mapRulesOf(campaign).tokenMove;
     case 'revealOnMove':
       return mapRulesOf(campaign).revealOnMove;
     case 'doors':
