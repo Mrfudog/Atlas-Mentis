@@ -52,6 +52,7 @@ import {
   mapRulesOf,
   mapSettings,
   movedTokens,
+  carriedLights,
   darkvisionFor,
   revealSeenAlong,
   mapWalls,
@@ -302,7 +303,7 @@ export function wegAufdecken(
   const pts = geo ? s.path.map((c) => cellPoint(geo, c)) : [von, ...(s.to ? [s.to] : [])];
   /* Im Dunkeln (T-216) reicht der Blick so weit wie die Dunkelsicht aus dem
      Statblock der Figur, dazu die Lichter, die sie sieht. */
-  return revealSeenAlong(karte, pts, nat, () => `s-${randomUUID()}`, figur, darkvisionFor(bestand, figur));
+  return revealSeenAlong(karte, pts, nat, () => `s-${randomUUID()}`, figur, darkvisionFor(bestand, figur), carriedLights(bestand, karte));
 }
 
 export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {

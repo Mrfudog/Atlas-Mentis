@@ -38,6 +38,7 @@ import {
   segDistance,
   setDoorState,
   revealView,
+  carriedLights,
   darkvisionFor,
   wallMid,
   wallsClear,
@@ -85,7 +86,7 @@ export function tuerAufdecken(karte: Entity, tuer: string, nat: { w: number; h: 
     const ziel = bestand.get(m.to);
     const gruppe = m.kind === 'party' || (ziel?.relations ?? []).some((r) => r.type === PARTY_RELATION);
     if (!gruppe || !wallsClear(sperren, m, mitte, ar, 'sight')) continue;
-    neu = revealView(neu, m, nat, () => `s-${randomUUID()}`, m.to, darkvisionFor(bestand, m.to));
+    neu = revealView(neu, m, nat, () => `s-${randomUUID()}`, m.to, darkvisionFor(bestand, m.to), carriedLights(bestand, karte));
   }
   return neu;
 }

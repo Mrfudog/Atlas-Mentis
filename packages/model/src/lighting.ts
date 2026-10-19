@@ -25,10 +25,21 @@
  * Sonderfällen; eine Klammer prüft `inShape` mit zwei Fragen, und die
  * Leinwand zeichnet sie mit `clip()`.
  *
+ * **Lichter, die etwas trägt** (T-305, REQ-140): ein Gegenstand sagt, wie
+ * weit er leuchtet (`Item.lightBright`, `Item.lightDim` in Fuss, wie die
+ * Regel es schreibt — „hell 20 ft, dämmrig weitere 20"). Liegt er als
+ * Marker auf der Karte (der Fackelhalter, die Laterne als Kulisse), leuchtet
+ * der Marker; hält eine Figur ihn **in der Hand** (`inHand`), leuchtet ihr
+ * Token, die Gruppe so hell wie ihr hellstes Mitglied. Gerechnet beim Lesen
+ * (`carriedLights`, D8) — wer die Fackel verstaut, löscht sie. Ein Radius
+ * an der Markerkante schlägt den des Gegenstands, und `lightOff` an der
+ * Kante macht jedes Licht des Markers aus (an/aus in Play).
+ *
  * Kein Framework, kein DOM: die Seite zeichnet, das Modell rechnet.
  */
 
 import { primaryInterface } from './entity.js';
+import { inHand } from './inventory.js';
 import { resolveInstance } from './instance.js';
 import { statblockFor } from './initiative.js';
 import { partyMembers } from './kartenseite.js';
@@ -87,29 +98,169 @@ function feldBreite(s: MapSettings, nat: Size): number {
   return nat.w > 0 ? s.gridSize / nat.w : 0;
 }
 
+/** Ein Licht in Fuss, wie es ein Gegenstand trägt: `dim` ist der ganze Radius. */
+export interface FeetLight {
+  bright: number;
+  dim: number;
+}
+
+/** Ein Mass in Fuss aus einem Feld (`"20"`, `"20 ft"`, `"6 m"`); Unlesbares 0. */
+function fussAus(v: unknown): number {
+  if (typeof v === 'number') return v > 0 ? v : 0;
+  const m = parseScale(String(v ?? ''));
+  if (!m) return 0;
+  const u = m.unit.toLowerCase().replace(/\.$/, '');
+  if (!u || u === 'ft' || u === 'feet' || u === 'foot' || u === 'fuss') return m.value;
+  if (u === 'm' || u === 'meter' || u === 'metre') return (m.value / 1.5) * 5;
+  return 0;
+}
+
+/**
+ * **Wie weit ein Gegenstand leuchtet** (T-305): `Item.lightBright` hell,
+ * `Item.lightDim` dämmrig **darüber hinaus** (so schreibt es die Regel),
+ * aufgelöst gegen seine Vorlage — ein Stück im Inventar ist eine Instanz.
+ */
+export function itemLight(entities: Lookup, id: EntityId): FeetLight | null {
+  const e = entities.get(id);
+  if (!e) return null;
+  const k = (resolveInstance(entities, e).components ?? {})['Item'] as { lightBright?: unknown; lightDim?: unknown } | undefined;
+  const hell = fussAus(k?.lightBright);
+  const weiter = fussAus(k?.lightDim);
+  return hell || weiter ? { bright: hell, dim: hell + weiter } : null;
+}
+
+function heller(a: FeetLight | null, b: FeetLight | null): FeetLight | null {
+  if (!a) return b;
+  if (!b) return a;
+  return { bright: Math.max(a.bright, b.bright), dim: Math.max(a.dim, b.dim) };
+}
+
+/**
+ * **Was eine Figur in der Hand leuchten lässt** (T-305): die Gegenstände an
+ * den Händen ihres Inventars (`carries` → `holds` mit `inHand`), das
+ * Hellste davon. Eine Gruppe leuchtet wie ihr hellstes Mitglied — ihr Token
+ * steht für alle, wie bei der Dunkelsicht.
+ */
+export function carriedLight(entities: Lookup, id: EntityId): FeetLight | null {
+  const e = entities.get(id);
+  if (!e) return null;
+  if (primaryInterface(e) === 'Party') {
+    return partyMembers(entities, id).reduce<FeetLight | null>((best, m) => heller(best, carriedLight(entities, m.id)), null);
+  }
+  let best: FeetLight | null = null;
+  for (const c of e.relations ?? []) {
+    if (c.type !== 'carries') continue;
+    for (const h of entities.get(c.to)?.relations ?? []) {
+      if (h.type !== 'holds' || !inHand((h.props ?? {}) as { slot?: string; tier?: string })) continue;
+      best = heller(best, itemLight(entities, h.to));
+    }
+  }
+  return best;
+}
+
+/**
+ * **Die getragenen Lichter einer Karte** (T-305), je Ziel eines Markers:
+ * ein Gegenstand als Marker leuchtet selbst, eine Figur oder Gruppe mit
+ * dem, was sie in der Hand hält. Der Server rechnet es (er hat den Bestand)
+ * und gibt es der Seite mit; beide zeichnen damit dasselbe.
+ */
+export function carriedLights(entities: Lookup, map: Entity): Record<EntityId, FeetLight> {
+  const out: Record<EntityId, FeetLight> = {};
+  for (const m of markersOf(map)) {
+    if (out[m.to]) continue;
+    const l = m.kind === 'play' || m.kind === 'party' ? heller(carriedLight(entities, m.to), itemLight(entities, m.to)) : itemLight(entities, m.to);
+    if (l) out[m.to] = l;
+  }
+  return out;
+}
+
+/** Ist das Licht dieses Markers ausgemacht (`marker.props.lightOff`, an/aus in Play)? */
+export function lightIsOff(props: Record<string, unknown> | undefined): boolean {
+  return props?.['lightOff'] === true;
+}
+
 /**
  * **Die Lichter der Karte** (REQ-140): jeder Marker mit `light` oder `dim`
  * (in Feldern). `dim` ist der ganze Radius — wer nur `light` sagt, hat
- * keine Dämmerung darum.
+ * keine Dämmerung darum. Ohne Radius an der Kante leuchtet, was das Ziel
+ * trägt (`carried`, in Fuss, T-305); `lightOff` macht beides aus.
  */
-export function mapLights(map: Entity, nat: Size): MapLight[] {
+export function mapLights(map: Entity, nat: Size, carried: Readonly<Record<EntityId, FeetLight>> = {}): MapLight[] {
   const f = feldBreite(mapSettings(map), nat);
   if (!(f > 0)) return [];
   return markersOf(map).flatMap((m) => {
     const p = (m.rel.props ?? {}) as Record<string, unknown>;
+    if (lightIsOff(p)) return [];
     const hell = feld(p['light']);
     const matt = Math.max(feld(p['dim']), hell);
-    if (!matt) return [];
-    return [{ id: m.rel.id, to: m.to, x: m.x, y: m.y, bright: hell * f, dim: matt * f }];
+    if (matt) return [{ id: m.rel.id, to: m.to, x: m.x, y: m.y, bright: hell * f, dim: matt * f }];
+    const t = carried[m.to];
+    if (!t) return [];
+    const b = feetToFraction(map, nat, t.bright);
+    const d = Math.max(feetToFraction(map, nat, t.dim), b);
+    return d > 0 ? [{ id: m.rel.id, to: m.to, x: m.x, y: m.y, bright: b, dim: d }] : [];
   });
 }
 
+/** Einen Marker leuchten lassen oder ausmachen (`lightOff`) — an der Kante, die Radien bleiben. */
+export function setLightOff(map: Entity, relId: string, off: boolean): Entity {
+  const relations = (map.relations ?? []).map((r) => {
+    if (r.id !== relId) return r;
+    const { lightOff: _o, ...rest } = (r.props ?? {}) as Record<string, unknown>;
+    return { ...r, props: off ? { ...rest, lightOff: true } : rest };
+  });
+  return { ...map, relations };
+}
+
+/** Leuchtet dieser Marker überhaupt (an der Kante oder durch sein Ziel), ob an oder aus? */
+export function markerHasLight(m: { to: EntityId; rel: { props?: Record<string, unknown> } }, carried: Readonly<Record<EntityId, FeetLight>> = {}): boolean {
+  const p = m.rel.props ?? {};
+  return feld(p['light']) > 0 || feld(p['dim']) > 0 || !!carried[m.to];
+}
+
 const r4 = (v: number): number => Math.round(v * 10000) / 10000;
+
+/**
+ * **Zwischengespeicherte Lichtflächen** (T-305, Leistung): ein Licht, das
+ * nicht wandert, erreicht dasselbe, solange die Sperren dieselben sind —
+ * beim Ziehen eines Tokens ändert sich nur die Markerkante, `Map.walls`
+ * bleibt dasselbe Objekt. Der Schlüssel ist diese Liste (schwach gehalten,
+ * sie geht mit der Karte), darin Ort, Radius und Seitenverhältnis.
+ */
+const LICHT_SPEICHER = new WeakMap<readonly MapWall[], Map<string, Poly>>();
+const WALLS_ROH = new WeakMap<object, MapWall[]>();
+
+/** Die Sperren einer Karte, je rohe Liste nur einmal gelesen — so trifft der Zwischenspeicher. */
+function sperrenVon(map: Entity): MapWall[] {
+  const roh = (map.components?.[MAP_COMPONENT] as { walls?: unknown } | undefined)?.walls;
+  if (!roh || typeof roh !== 'object') return mapWalls(map);
+  let w = WALLS_ROH.get(roh);
+  if (!w) {
+    w = mapWalls(map);
+    WALLS_ROH.set(roh, w);
+  }
+  return w;
+}
 
 /** Was ein Licht von `from` aus erreicht, in Anteilen der Karte — wie `sightPolygon`, gegen die Sperren, die Licht halten. */
 export function lightPolygon(walls: readonly MapWall[], from: Pt, ar: number, radius: number): Poly {
   const a = ar > 0 ? ar : 1;
   if (!(radius > 0)) return [];
+  let speicher = LICHT_SPEICHER.get(walls);
+  if (!speicher) {
+    speicher = new Map();
+    LICHT_SPEICHER.set(walls, speicher);
+  }
+  const k = `${from.x},${from.y},${a},${radius}`;
+  const da = speicher.get(k);
+  if (da) return da;
+  const p = lichtRechnen(walls, from, a, radius);
+  if (speicher.size > 500) speicher.clear();
+  speicher.set(k, p);
+  return p;
+}
+
+function lichtRechnen(walls: readonly MapWall[], from: Pt, a: number, radius: number): Poly {
   return visionPolygon({ x: from.x, y: from.y * a }, wallSegs(walls, 'light', a), { w: 1, h: a }, radius).map(
     ([x, y]) => [r4(x), r4(y / a)] as [number, number],
   );
@@ -122,10 +273,10 @@ export interface LitArea {
   dim: Poly;
 }
 
-export function litAreas(map: Entity, nat: Size): LitArea[] {
+export function litAreas(map: Entity, nat: Size, carried: Readonly<Record<EntityId, FeetLight>> = {}): LitArea[] {
   const ar = nat.w > 0 ? nat.h / nat.w : 1;
-  const walls = mapWalls(map);
-  return mapLights(map, nat).map((l) => ({
+  const walls = sperrenVon(map);
+  return mapLights(map, nat, carried).map((l) => ({
     id: l.id,
     bright: lightPolygon(walls, l, ar, l.bright),
     dim: lightPolygon(walls, l, ar, l.dim),
@@ -205,9 +356,15 @@ function beruehren(a: Poly, ma: Pt, b: Poly, mb: Pt): boolean {
  * Sperre; im Dunkeln so weit wie ihre Dunkelsicht (`darkvisionFeet`), dazu
  * von jedem Licht der Teil, der auch in ihrem Sichtpolygon liegt.
  */
-export function figureView(map: Entity, from: Pt, nat: Size, darkvisionFeet = 0): FigureView {
+export function figureView(
+  map: Entity,
+  from: Pt,
+  nat: Size,
+  darkvisionFeet = 0,
+  carried: Readonly<Record<EntityId, FeetLight>> = {},
+): FigureView {
   const ar = nat.w > 0 ? nat.h / nat.w : 1;
-  const walls = mapWalls(map);
+  const walls = sperrenVon(map);
   const sicht = sightPolygon(walls, from, ar);
   if (mapLighting(map) !== 'dark') return { seen: sicht.length > 2 ? [{ pts: sicht }] : [], darkvision: null, lights: [] };
   const seen: SeenArea[] = [];
@@ -216,7 +373,7 @@ export function figureView(map: Entity, from: Pt, nat: Size, darkvisionFeet = 0)
   if (dv.length > 2) seen.push({ pts: dv });
   const lights: string[] = [];
   if (sicht.length > 2) {
-    for (const l of mapLights(map, nat)) {
+    for (const l of mapLights(map, nat, carried)) {
       const p = lightPolygon(walls, l, ar, l.dim);
       if (p.length < 3 || !beruehren(p, l, sicht, from)) continue;
       seen.push({ pts: p, within: sicht });
@@ -242,9 +399,10 @@ export function revealView(
   newId: () => string,
   fuer?: EntityId | null,
   darkvisionFeet = 0,
+  carried: Readonly<Record<EntityId, FeetLight>> = {},
 ): Entity {
   let neu = map;
-  for (const a of figureView(map, from, nat, darkvisionFeet).seen) {
+  for (const a of figureView(map, from, nat, darkvisionFeet, carried).seen) {
     if (schonDa(neu, a, fuer)) continue;
     neu = revealArea(neu, { id: newId(), kind: 'poly', pts: a.pts, ...(a.within ? { within: a.within } : {}), ...(fuer ? { for: fuer } : {}) });
   }
@@ -265,13 +423,14 @@ export function revealSeenAlong(
   newId: () => string,
   fuer?: EntityId | null,
   darkvisionFeet = 0,
+  carried: Readonly<Record<EntityId, FeetLight>> = {},
 ): Entity {
   if (!pts.length) return map;
   if (mapLighting(map) !== 'dark') return revealAlong(map, pts, nat, newId, fuer);
   const schritt = Math.max(1, Math.ceil((pts.length - 1) / 5));
   let neu = map;
   pts.forEach((p, i) => {
-    if (i % schritt === 0 || i === pts.length - 1) neu = revealView(neu, p, nat, newId, fuer, darkvisionFeet);
+    if (i % schritt === 0 || i === pts.length - 1) neu = revealView(neu, p, nat, newId, fuer, darkvisionFeet, carried);
   });
   return neu;
 }

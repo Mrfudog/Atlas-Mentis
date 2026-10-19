@@ -2102,6 +2102,8 @@ export interface KartenKontext {
   proposals?: { plan: string; actor: string; actorName: string; by: string; to: { x: number; y: number } }[];
   /** Dunkelsicht in Fuss je Figur, deren Sicht die Seite zeichnet (T-216). Fehlt bei einem älteren Server. */
   darkvision?: Record<string, number>;
+  /** Getragene Lichter in Fuss je Markerziel (T-305, `carriedLights`). */
+  lights?: Record<string, { bright: number; dim: number }>;
 }
 
 /** Die Seitenleiste der Karte (`GET /api/maps/:id/side`, T-203). */

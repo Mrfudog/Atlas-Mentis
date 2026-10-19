@@ -73,6 +73,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Sperre' },
   },
   {
+    term: 'Light source',
+    aliases: ['Light on/off', 'Carried light'],
+    sort: 'app',
+    definition: 'Something on the map that sheds bright and dim light: a marker given a radius, an item placed as a marker (a torch bracket, a lantern), or an item a character holds in hand (Item › Bright light, Dim light beyond).',
+    effect: 'Light reaches up to the next wall that blocks light. In the dark, players see lit areas in colour and what only darkvision reaches in greyscale. Light on/off switches a light without losing its radius.',
+    translations: { de: 'Lichtquelle' },
+  },
+  {
     term: 'Snap',
     aliases: ['Snapping', 'Snap strength'],
     sort: 'app',

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-sight-and-light",
+      "date": "2026-10-19",
+      "title": "Darkvision in greyscale, torches in hand, lights on and off",
+      "text": "On a dark map, what only darkvision reaches is now shown in greyscale, while lit areas keep their colour. Give an item Bright light and Dim light beyond: placed as a marker it lights itself, and held in a character's hand it lights that token. Fog › Light on/off switches any light without losing its radius.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-19-chapters",
       "date": "2026-10-19",
       "title": "Pages in chapters: tabs on the phone, framed areas on the desktop",

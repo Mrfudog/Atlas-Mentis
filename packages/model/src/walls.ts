@@ -275,23 +275,6 @@ export function snapToGrid(p: Pt, geo: { size: number; ox: number; oy: number; w
 
 // ------------------------------------------------------------ Sichtpolygon
 
-/** Wie weit ein Strahl ab `o` in Richtung `d` reicht, bis er eine der Strecken trifft. */
-function strahl(ox: number, oy: number, dx: number, dy: number, segs: readonly Seg[], max: number): number {
-  let t = max;
-  for (const s of segs) {
-    const sx = s.x2 - s.x1;
-    const sy = s.y2 - s.y1;
-    const den = dx * sy - dy * sx;
-    if (Math.abs(den) < 1e-12) continue;
-    const qx = s.x1 - ox;
-    const qy = s.y1 - oy;
-    const tt = (qx * sy - qy * sx) / den;
-    const u = (qx * dy - qy * dx) / den;
-    if (tt >= 0 && u >= -1e-9 && u <= 1 + 1e-9 && tt < t) t = tt;
-  }
-  return t;
-}
-
 /** Fast auf einer Geraden mit den Nachbarn: fällt weg — ein Polygon an einer Wand entlang ist sonst hundert Punkte. */
 function ausduennen(pts: Array<[number, number]>): Array<[number, number]> {
   if (pts.length <= 3) return pts;
@@ -349,11 +332,38 @@ export function visionPolygon(
   }
   if (Number.isFinite(r)) for (let k = 0; k < 64; k++) winkel.push(-Math.PI + (k * 2 * Math.PI) / 64);
   const sortiert = [...new Set(winkel.map((a) => (a <= -Math.PI ? a + 2 * Math.PI : a > Math.PI ? a - 2 * Math.PI : a)))].sort((a, b) => a - b);
+  /* Die Strecken einmal als Zahlenreihe (T-305): je Strahl dieselben
+     Schnitte, aber ohne Objektzugriffe — mit 200 Sperren ist das am
+     Telefon der Unterschied zwischen ruckeln und ziehen. */
+  const n = alle.length;
+  const sx1 = new Float64Array(n);
+  const sy1 = new Float64Array(n);
+  const sdx = new Float64Array(n);
+  const sdy = new Float64Array(n);
+  alle.forEach((s, i) => {
+    sx1[i] = s.x1 - ox;
+    sy1[i] = s.y1 - oy;
+    sdx[i] = s.x2 - s.x1;
+    sdy[i] = s.y2 - s.y1;
+  });
+  const max = Number.isFinite(r) ? r : 1e9;
   const pts: Array<[number, number]> = [];
   for (const a of sortiert) {
     const dx = Math.cos(a);
     const dy = Math.sin(a);
-    const t = strahl(ox, oy, dx, dy, alle, Number.isFinite(r) ? r : 1e9);
+    let t = max;
+    for (let i = 0; i < n; i++) {
+      const ex = sdx[i]!;
+      const ey = sdy[i]!;
+      const den = dx * ey - dy * ex;
+      if (den > -1e-12 && den < 1e-12) continue;
+      const qx = sx1[i]!;
+      const qy = sy1[i]!;
+      const tt = (qx * ey - qy * ex) / den;
+      if (tt < 0 || tt >= t) continue;
+      const u = (qx * dy - qy * dx) / den;
+      if (u >= -1e-9 && u <= 1 + 1e-9) t = tt;
+    }
     pts.push([ox + dx * t, oy + dy * t]);
   }
   return ausduennen(pts);

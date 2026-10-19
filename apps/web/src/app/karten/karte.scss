@@ -429,6 +429,11 @@ button {
 .nebel.ganz {
   background: #1d1a17;
 }
+/* Dunkelsicht in Graustufen (T-305): die graue Fläche nimmt dem Bild
+   darunter die Farbe und lässt die Helligkeit (nebel.ts › grauMalen). */
+.nebel.grau {
+  mix-blend-mode: saturation;
+}
 .vorschau {
   position: absolute;
   border: 2px dashed var(--gold);

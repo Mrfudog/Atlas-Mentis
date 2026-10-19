@@ -1508,6 +1508,25 @@ export const fieldGroups = {
            Kachelinventar mit `rows`. Beide dürfen dastehen, weil nur eines
            von beiden zur Zeit gilt. */
         weight: { type: 'number', unit: 'lb', title: 'Weight' },
+        /* **Wie weit er leuchtet** (T-305, REQ-140), wie die Regel es
+           schreibt: hell in einem Radius, dämmrig darüber hinaus. Als
+           Marker auf der Karte leuchtet der Gegenstand selbst, in der Hand
+           einer Figur ihr Token (`carriedLights`). In Fuss, weil das Buch
+           in Fuss schreibt; umgerechnet wird beim Lesen (D8). */
+        lightBright: {
+          type: 'string',
+          format: 'measure',
+          unit: 'ft',
+          title: 'Bright light',
+          description: 'Radius of bright light it sheds — on the map as a marker, or in a figure\'s hand.',
+        },
+        lightDim: {
+          type: 'string',
+          format: 'measure',
+          unit: 'ft',
+          title: 'Dim light beyond',
+          description: 'Dim light for this much further beyond the bright radius (a torch: 20 ft bright, 20 ft more dim).',
+        },
       },
     },
   },
