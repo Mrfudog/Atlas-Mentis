@@ -85,7 +85,7 @@ interface Stueck {
               <nw-kennzahlen [artikel]="e" />
             }
             @case ('bild') {
-              <nw-bild [wert]="s.bild!.wert" groesse="thumb" [caption]="s.bild!.caption" [alt]="s.bild!.alt || name(e)" />
+              <nw-bild [wert]="s.bild!.wert" [version]="s.bild!.version" groesse="thumb" [caption]="s.bild!.caption" [alt]="s.bild!.alt || name(e)" />
             }
             @case ('felder') {
               <dl>
@@ -325,7 +325,7 @@ export class Vorschau {
     for (const el of flach(forArticle(layoutFor(r, ansicht, typ).layout, e))) {
       if (el.el === 'image') {
         /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
-        const bild = bildDes(e, r);
+        const bild = bildDes(e, r, this.bestand.bild().get(e.id));
         if (bild) raus.push({ kind: 'bild', key: el.id, bild });
       } else if (el.el === 'stats') {
         /* Die Kennzahlen (T-206) — sie holen ihren Statblock selbst. */

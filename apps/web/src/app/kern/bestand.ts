@@ -22,11 +22,13 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { entityName } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import { Live, type ArtikelEreignis } from './live';
+import { BildStand } from '../artikel/bild';
 import { Api, ApiError, type Bezuege, type Fertigungswerte, type Ladenwaren, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
   private readonly api = inject(Api);
+  private readonly bildStand = inject(BildStand);
 
   /* **Was offen ist, bleibt aktuell** (T-116): ändert sich ein geöffneter
      Artikel am Server, wird er neu geholt — gesiebt wie beim Öffnen. Eine
@@ -59,6 +61,9 @@ export class Bestand {
   /** Was ein Laden führt, und zu welchem Preis (`refs.shop`, T-129). */
   private readonly _laden = signal<ReadonlyMap<string, Ladenwaren>>(new Map());
   readonly laden = this._laden.asReadonly();
+  /** Das Bild je geöffnetem Artikel, wie der Server es rechnet (`refs.image`, T-211) — auch das geerbte des Statblocks. */
+  private readonly _bild = signal<ReadonlyMap<string, NonNullable<Bezuege['image']>>>(new Map());
+  readonly bild = this._bild.asReadonly();
   /** Artikel aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
   private readonly _vergleich = signal<ReadonlySet<string>>(new Set());
   readonly vergleich = this._vergleich.asReadonly();
@@ -214,6 +219,16 @@ export class Bestand {
           else n.delete(id);
           return n;
         });
+        this._bild.update((m) => {
+          if (!refs?.image && !m.has(id)) return m;
+          const n = new Map(m);
+          if (refs?.image) n.set(id, refs.image);
+          else n.delete(id);
+          return n;
+        });
+        /* Die Versionen der Bilder, die er nennt (T-211): jedes `nw-bild`
+           mit dieser Id fragt dann mit `?v=`, und der Browser behält es. */
+        for (const [a, v] of Object.entries(refs?.assets ?? {})) if (this.bildStand.version()(a) !== v) this.bildStand.merke(a, v);
         this._fertig.update((m) => {
           const n = new Map(m);
           if (refs?.ready) n.set(id, refs.ready.at);

@@ -231,6 +231,10 @@ export interface Bezuege {
   craft?: Fertigungswerte;
   /** Was ein Laden führt, und zu welchem Preis (T-129). */
   shop?: Ladenwaren;
+  /** Das Bild des Artikels, wie der Server es rechnet (`articleImage`, T-211): an einer Kreatur ohne eigenes das ihres Statblocks (`from`). */
+  image?: { id: string; version?: string; from?: string };
+  /** Die Version jeder Bilddatei, die der Artikel nennt (T-211) — mit ihr darf der Browser das Bild behalten. */
+  assets?: Record<string, string>;
 }
 
 /** Wer einen Fertigungswert gesetzt hat (`craftCheck`): die Quelle oder ein Träger einer `craftsWith`-Kante. */
@@ -773,6 +777,8 @@ export interface ListenZeile {
   cols: Record<string, unknown>;
   /** Das Vorschaubild — Asset-Id oder Adresse —, wenn `overview` der Art eines zeigt (T-114). */
   image?: string;
+  /** Die Version der Bilddatei (T-211): mit ihr darf der Browser das Vorschaubild behalten. */
+  imageVersion?: string;
   /** An einem Bild die Masse der Datei (T-201). */
   asset?: AssetMeta;
   tags?: string[];
@@ -1408,7 +1414,7 @@ export class Api {
   ruleArticles(): Promise<Entity[]> {
     return this.call<Entity[]>('/api/rule-articles');
   }
-  campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[]; missing?: number }> {
+  campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[]; missing?: number; choices?: Record<string, { id: string; name: string; does: string }[]> }> {
     return this.call(`/api/campaigns/${encodeURIComponent(id)}/rules`);
   }
   /** Regelset und Gruppen der laufenden Kampagne, mit den Inventaren, zwischen denen Sachen wandern (T-127). */
@@ -2123,6 +2129,8 @@ export interface KartenZeile {
   id: string;
   name: string;
   image: string;
+  /** Die Version des Kartenbilds (T-211). */
+  imageVersion?: string;
   kind: string;
   tags: string[];
   layers: { id: string; name: string }[];

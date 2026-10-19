@@ -8,7 +8,8 @@
  * jede Gegenrichtung (K): gespeichert wird nur der Verweis beim Verwender.
  */
 
-import { ownFields, typeChain } from './entity.js';
+import { ownFields, primaryInterface, typeChain } from './entity.js';
+import { resolveInstance } from './instance.js';
 import type { Entity, LinkTarget, Registry } from './types.js';
 
 export const ASSET_TYPE = 'Asset';
@@ -116,6 +117,67 @@ export function assetMeta(e: Entity): AssetMeta {
     ...(bytes ? { bytes } : {}),
     backend: typeof a['backend'] === 'string' && a['backend'] ? a['backend'] : 'app',
   };
+}
+
+/**
+ * **Die Version einer Bilddatei** (T-119, T-211): der Hash vor der Endung
+ * von `Asset.ref`. Mit ihr in der Adresse (`?v=`) darf der Browser das
+ * Bild für immer behalten — ohne fragt er jedes Mal nach. `''`, wenn das
+ * Asset keine Datei in der Ablage hat.
+ */
+export function assetVersion(e: Entity | undefined): string {
+  const ref = (e?.components?.[ASSET_TYPE] as { ref?: unknown } | undefined)?.ref;
+  return typeof ref === 'string' && ref && !/^https?:\/\//i.test(ref) ? (ref.split('.')[0] ?? '') : '';
+}
+
+/** Was ein Artikel als sein Bild zeigt, und woher es kommt. */
+export interface ArticleImage {
+  /** Asset-Id oder Adresse. */
+  id: string;
+  /** Der Statblock, von dem eine Kreatur ihr Bild hat (T-211) — fehlt, wenn es das eigene ist. */
+  from?: string;
+}
+
+const bildIn = (e: Entity, feld: 'Image.image' | 'Statblock.token'): string => {
+  const [karte, k] = feld.split('.') as [string, string];
+  const w = (e.components?.[karte] as Record<string, unknown> | undefined)?.[k];
+  return typeof w === 'string' ? w.trim() : '';
+};
+
+/**
+ * **Das Bild eines Artikels** (T-114, T-211): an einem Asset das Asset
+ * selbst, sonst `Image.image`. **Eine Kreatur ohne eigenes Bild zeigt das
+ * ihres Statblocks** — sein `Image.image`, sonst seinen Token, beides auch
+ * aus der Vorlage einer Instanz (`resolveInstance`). Gerechnet beim Lesen
+ * (D8): gespeichert wird an der Kreatur nichts, und ein eigenes Bild
+ * schlägt das geerbte. `statblocks` nennt die Statblöcke, die an ihr
+ * hängen (`belongsTo` drüben) — die Gegenrichtung ist eine Abfrage, und
+ * wer fragt, weiss, wie er sie am billigsten stellt.
+ */
+export function articleImage(
+  registry: Pick<Registry, 'interfaces'>,
+  e: Entity,
+  entities: ReadonlyMap<string, Entity>,
+  statblocks: (creatureId: string) => Entity[] = () => [],
+): ArticleImage | null {
+  const kette = typeChain(registry, primaryInterface(e));
+  if (kette.includes(ASSET_TYPE) && typeof (e.components?.[ASSET_TYPE] as { ref?: unknown } | undefined)?.ref === 'string') return { id: e.id };
+  const eigen = bildIn(e, 'Image.image');
+  if (eigen) return { id: eigen };
+  if (!kette.includes('Creature')) return null;
+  for (const sb of statblocks(e.id)) {
+    const gelesen = resolveInstance(entities, sb);
+    const w = bildIn(gelesen, 'Image.image') || bildIn(gelesen, 'Statblock.token');
+    if (w) return { id: w, from: sb.id };
+  }
+  return null;
+}
+
+/** Die Statblöcke, die an dieser Kreatur hängen (`belongsTo` vom Statblock her). */
+export function statblocksOf(entities: Iterable<Entity>, creatureId: string): Entity[] {
+  const raus: Entity[] = [];
+  for (const x of entities) if ((x.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === creatureId)) raus.push(x);
+  return raus;
 }
 
 const ggt = (a: number, b: number): number => (b ? ggt(b, a % b) : a);

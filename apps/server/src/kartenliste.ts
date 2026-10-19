@@ -15,7 +15,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { entityName, isMap, LAYER_RELATION, mapImage, mapTree, mapUses, primaryInterface, type Entity } from '@nw/model';
+import { assetVersion, entityName, isMap, LAYER_RELATION, mapImage, mapTree, mapUses, primaryInterface, type Entity } from '@nw/model';
 
 interface Stand {
   alle: Entity[];
@@ -33,6 +33,8 @@ export interface KartenZeile {
   name: string;
   /** Das Kartenbild (`Image.image`), leer ohne. */
   image: string;
+  /** Seine Version (T-211), wenn der Betrachter das Bild sieht: mit ihr darf der Browser es behalten. */
+  imageVersion?: string;
   kind: string;
   tags: string[];
   layers: { id: string; name: string }[];
@@ -59,6 +61,16 @@ export function registerKartenliste(app: FastifyInstance, deps: KartenlisteDeps)
         )
       ).map((e) => [e.id, entityName(e)]),
     );
+    /* Die Versionen der Kartenbilder (T-211) — nur, wo der Betrachter das Bild sieht. */
+    const bilder = new Set(
+      (
+        await sieve(
+          request,
+          [...new Set(karten.map(mapImage))].map((id) => stand.map.get(id)).filter((e): e is Entity => !!e),
+          stand.map,
+        )
+      ).map((e) => e.id),
+    );
     const maps: KartenZeile[] = mapTree(karten).map(({ map, depth, parent }) => {
       const info = (map.components?.['Map'] ?? {}) as { kind?: unknown };
       const tags = (map.components?.['Tags'] as { tags?: unknown } | undefined)?.tags;
@@ -66,6 +78,7 @@ export function registerKartenliste(app: FastifyInstance, deps: KartenlisteDeps)
         id: map.id,
         name: entityName(map),
         image: mapImage(map),
+        ...(bilder.has(mapImage(map)) && assetVersion(stand.map.get(mapImage(map))) ? { imageVersion: assetVersion(stand.map.get(mapImage(map))) } : {}),
         kind: typeof info.kind === 'string' ? info.kind : '',
         tags: Array.isArray(tags) ? tags.filter((t): t is string => typeof t === 'string') : [],
         layers: (map.relations ?? [])

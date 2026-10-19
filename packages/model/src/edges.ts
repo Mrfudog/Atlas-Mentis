@@ -138,10 +138,12 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'images',
     label: 'Image versions and uses',
     area: 'versions',
-    does: 'finds where an image is shown — in a field, on a map sheet or through an edge —, makes a new version of an image that keeps its class, tags, visibility and layer, and puts an image on the statblock of a creature as its token',
+    does: 'finds where an image is shown — in a field, on a map sheet or through an edge —, makes a new version of an image that keeps its class, tags, visibility and layer, puts an image on the statblock of a creature as its token, and shows the image of its statblock on a creature that has none of its own',
     uses: {
       /* T-119: eine Fassung zeigt das Bild nicht, sie stammt davon ab. */
-      [M + 'assets.ts']: ['inLayer', 'variantOf'],
+      [M + 'assets.ts']: ['belongsTo', 'inLayer', 'variantOf'],
+      /* T-211: das Vorschaubild einer Kreatur kommt aus ihrem Statblock. */
+      [S + 'liste.ts']: ['belongsTo'],
       /* T-201: „Use as token" sucht den Statblock der Kreatur über `belongsTo`. */
       [S + 'bilder.ts']: ['belongsTo', 'inLayer', 'variantOf'],
       /* „Replace › as a new version" schickt das alte Bild mit. */

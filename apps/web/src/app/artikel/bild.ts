@@ -63,7 +63,12 @@ export class BildStand {
  * an einem Asset die eigene Datei — sein Bild ist es selbst —, sonst
  * `Image.image`. Unterschrift und Alternativtext gehen mit.
  */
-export function bildDes(e: Entity, r: Registry): { wert: string; caption: string; alt: string; version?: string } | null {
+export function bildDes(
+  e: Entity,
+  r: Registry,
+  /** Was der Server als Bild rechnet (`refs.image`, T-211): an einer Kreatur ohne eigenes das ihres Statblocks. */
+  gerechnet?: { id: string; version?: string } | null,
+): { wert: string; caption: string; alt: string; version?: string } | null {
   const karte = (e.components?.['Image'] ?? {}) as { image?: unknown; caption?: unknown; alt?: unknown };
   const caption = typeof karte.caption === 'string' ? karte.caption : '';
   const alt = typeof karte.alt === 'string' ? karte.alt : '';
@@ -71,7 +76,11 @@ export function bildDes(e: Entity, r: Registry): { wert: string; caption: string
   if (typeof asset?.ref === 'string' && asset.ref && typeChain(r, primaryInterface(e)).includes('Asset')) {
     return { wert: e.id, caption, alt, version: bildVersion(e) };
   }
-  return typeof karte.image === 'string' && karte.image.trim() ? { wert: karte.image.trim(), caption, alt } : null;
+  if (typeof karte.image === 'string' && karte.image.trim()) {
+    const wert = karte.image.trim();
+    return { wert, caption, alt, ...(gerechnet?.id === wert && gerechnet.version ? { version: gerechnet.version } : {}) };
+  }
+  return gerechnet ? { wert: gerechnet.id, caption, alt, ...(gerechnet.version ? { version: gerechnet.version } : {}) } : null;
 }
 
 /** Ein Bild, aus einem Asset-Feld. `groesse: 'thumb'` holt die Vorschau (480 px). */
@@ -197,7 +206,7 @@ export function klassenName(k: string): string {
         @for (z of treffer(); track z.id) {
           <li>
             <button type="button" (click)="gewaehlt.emit(z.id)" [attr.aria-label]="'Choose ' + z.name">
-              <nw-bild [wert]="z.id" groesse="thumb" [oeffnen]="false" [alt]="z.name" />
+              <nw-bild [wert]="z.id" [version]="z.imageVersion" groesse="thumb" [oeffnen]="false" [alt]="z.name" />
               <span>{{ z.name }}</span>
             </button>
           </li>

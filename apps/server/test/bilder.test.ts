@@ -332,6 +332,44 @@ describe('preparing an image', () => {
   });
 });
 
+describe('a creature without an image shows the image of its statblock (T-211)', () => {
+  const statblock = (id: string, an: string, bild: string): Entity => ({
+    id,
+    interfaces: ['Statblock'],
+    name: id,
+    components: { Identity: { name: id, id: `statblock-${id}`, aliases: [] }, Image: { image: bild } },
+    relations: [
+      { id: `${id}~l`, type: 'inLayer', to: 'ly_nebel', props: {} },
+      { id: `${id}~b`, type: 'belongsTo', to: an, props: {} },
+    ],
+  });
+
+  it('in the article (refs.image, with version) and in the list row', async () => {
+    const { hoch, hole, repo } = await aufbau();
+    const a = (await hoch('Mira', { for: 'c_offen' }, { name: 'volo.png', type: 'image/png', data: await png() })).json() as Hochgeladen;
+    await repo.putEntity(statblock('sb_volo', 'c_offen', a.id));
+    const v = info(a).ref.split('.')[0];
+    const artikel = (await hole('Sela', '/api/entities/c_offen')).json() as { refs: { image?: unknown; assets?: Record<string, string> } };
+    expect(artikel.refs.image).toEqual({ id: a.id, version: v, from: 'sb_volo' });
+    const liste = (await hole('Sela', '/api/list?type=Creature')).json() as { rows: { id: string; image?: string; imageVersion?: string }[] };
+    expect(liste.rows.find((z) => z.id === 'c_offen')).toMatchObject({ image: a.id, imageVersion: v });
+    /* Am Statblock selbst nennt `assets` die Version des Feldes. */
+    const sb = (await hole('Sela', '/api/entities/sb_volo')).json() as { refs: { assets?: Record<string, string> } };
+    expect(sb.refs.assets).toEqual({ [a.id]: v });
+  });
+
+  it('not when the viewer may not see the image', async () => {
+    const { hoch, hole, repo } = await aufbau();
+    const a = (await hoch('Mira', { for: 'c_geheim' }, { name: 'f.png', type: 'image/png', data: await png() })).json() as Hochgeladen;
+    await repo.putEntity(statblock('sb_volo', 'c_offen', a.id));
+    const artikel = (await hole('Sela', '/api/entities/c_offen')).json() as { refs: { image?: unknown } };
+    expect(artikel.refs.image).toBeUndefined();
+    const liste = (await hole('Sela', '/api/list?type=Creature')).json() as { rows: { id: string; image?: string }[] };
+    expect(liste.rows.find((z) => z.id === 'c_offen')?.image).toBeUndefined();
+    expect(((await hole('Mira', '/api/entities/c_offen')).json() as { refs: { image?: { id: string } } }).refs.image?.id).toBe(a.id);
+  });
+});
+
 describe('the storage of the asset store (T-211)', () => {
   it('tells the admin how much lies there, and nobody else', async () => {
     const { hoch, als } = await aufbau();
