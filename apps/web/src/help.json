@@ -171,9 +171,10 @@
           ]
         },
         {
-          "title": "Views of an article (experiment)",
+          "title": "Views of an article",
           "text": [
-            "With the View designer experiment on, a row “View” above the article lists every view that applies to it, the most specific first. Full is the page as always; any other draws its own layout. “Design this view” opens the designer beside the article: save as this view, as a new view only for this article, or as a new view with conditions."
+            "In Full edit, a row “Views” above the article lists every view that applies to it, the most specific first (while reading, the row shows once a designed view applies). Full is the page as always; any other draws its own layout.",
+            "“Design this view” opens the view designer beside the article — on a phone as a sheet from below — and the page above shows the draft. Pick another view to start from under Design. Save for every article, for the whole type (its own arrangement, or adjusted: only the difference), for this article only, or as a new view with a condition."
           ]
         }
       ]
@@ -224,9 +225,9 @@
           ]
         },
         {
-          "title": "Views on a card (experiment)",
+          "title": "Views on a card",
           "text": [
-            "With the View designer experiment on, a card’s view menu offers every view that applies to its article — for example “Shop” on a creature that keeps a shop."
+            "A card’s view menu offers the designed views that apply to its article — for example “Shop” on a creature that keeps a shop — and after them the usual ones."
           ]
         }
       ]
@@ -264,10 +265,12 @@
           ]
         },
         {
-          "title": "View designer (experiment)",
+          "title": "View designer",
           "text": [
-            "With the experiment “View designer” on (Rules & options › Experiments), Registry › Views lists every view with its group, what it applies to and how many articles get it. “Design” opens a view as a tree: add elements from the palette, move them with ← → ↑ ×, and give each its values — also from linked articles, by following an edge.",
-            "“Applies to” says which articles get the view: types, conditions on field values or edges, or one article. The views places ask for (Overview, Quick, Full, Print) stay as they are; designing one saves a new view."
+            "Registry › Views lists every view with its group, what it applies to and how many articles get it; “Design” opens it in the view designer — the one editor for views. The preview stands on top. Below, the palette by kind, the structure as an indented tree and, on the right, the configuration and values of the selected element.",
+            "Move elements with ↑ ↓, → into the container above (a section, columns, a tab …) and ← out again, or drag them. Collapse a container to keep the tree short. Values can come from linked articles, by following an edge; “Leave out” and “Only when” say what an element skips and where it shows.",
+            "“Save for …” says where the change goes: every article (the view itself, with its name, order, the rest at the end and empty fields), the whole type — its own arrangement, or adjusted, which keeps the view and saves only the difference —, only one article, or a new view with a condition. Overview, Quick, Full, Print and Search can be rebuilt but not deleted.",
+            "A type’s page lists the views that apply to it, and from where; “Design” opens the designer with the type chosen."
           ]
         }
       ]

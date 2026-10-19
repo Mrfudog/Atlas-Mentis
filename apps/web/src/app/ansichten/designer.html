@@ -1,56 +1,80 @@
 <div class="designer" [class.kompakt]="kompakt()">
   <div class="kopfzeile">
+    @if (kompakt()) {
+      <label class="f">
+        <span class="lbl">Design</span>
+        <select (change)="wechsel.emit(optionWert($event))" aria-label="View to design">
+          @for (v of alleAnsichten(); track v.key) {
+            <option [value]="v.key" [selected]="v.key === schluessel()">{{ v.label }}</option>
+          }
+        </select>
+      </label>
+    }
     <label class="f name">
       <span class="lbl">View</span>
-      <input type="text" [value]="label()" (input)="label.set(optionWert($event))" aria-label="Name of the view" />
+      <input type="text" [value]="label()" [disabled]="!darf() || speichernAls() === 'type'" (input)="label.set(optionWert($event))" aria-label="Name of the view" />
     </label>
-    <label class="f">
-      <span class="lbl">Group</span>
-      <input type="text" list="nw-gruppen" [value]="gruppe()" (input)="gruppe.set(optionWert($event))" aria-label="Group (where it is shown)" />
-      <datalist id="nw-gruppen">
-        @for (g of gruppen; track g) {
-          <option [value]="g"></option>
-        }
-      </datalist>
-    </label>
-    <p class="sub">Applies to <b>{{ geltungText() }}</b>
+    @if (gestaltet() || alsGestaltet()) {
+      <label class="f">
+        <span class="lbl">Group</span>
+        <input type="text" list="nw-gruppen" [value]="gruppe()" [disabled]="!darf()" (input)="gruppe.set(optionWert($event))" aria-label="Group (where it is shown)" />
+        <datalist id="nw-gruppen">
+          @for (g of gruppen; track g) {
+            <option [value]="g"></option>
+          }
+        </datalist>
+      </label>
+    }
+    <p class="sub">
+      @if (schluessel(); as k) {
+        <code>{{ k }}</code> ·
+      }
+      Applies to <b>{{ geltungText() }}</b>
       @if (gilt() !== null) {
         — {{ gilt() ? '✓ applies to ' + probeName() : '✗ does not apply to ' + probeName() }}
       }
     </p>
+    @if (ort()) {
+      <p class="sub ort">{{ ort() }}</p>
+    }
   </div>
 
-  @if (ausVorlage()) {
-    <p class="hinweis">
-      {{ def()?.label }} is one of the views a place asks for; it is changed in Registry › Views as before. What you build here is
-      saved as a <b>new</b> view.
-    </p>
+  @if (!darf()) {
+    <p class="hinweis">You can read this view. Changing it is for the administration and the GM of the running campaign.</p>
   }
 
   @if (!kompakt()) {
     <section class="karte vorschau" aria-label="Preview">
       <div class="zeile">
         <b class="h3">Preview</b>
-        @if (probe(); as p) {
-          <span class="sub">on <a [routerLink]="['/artikel', p.id]">{{ probeName() }}</a></span>
-        }
-        <input type="search" class="probe-suche" placeholder="Preview on … (search an article)" aria-label="Preview on an article"
-               [value]="beispielSuche()" (input)="sucheBeispiel(optionWert($event))" />
-      </div>
-      @if (beispielTreffer().length) {
-        <ul class="treffer">
-          @for (t of beispielTreffer(); track t.id) {
-            <li><button type="button" class="pal" (click)="waehleBeispiel(t.id)">{{ t.name }} <span class="sub">{{ t.type }}</span></button></li>
+        @if (alsGestaltet()) {
+          @if (probe(); as p) {
+            <span class="sub">on <a [routerLink]="['/artikel', p.id]">{{ probeName() }}</a></span>
           }
-        </ul>
-      }
-      @if (probe(); as p) {
-        <div class="blatt">
-          <h2 class="probe-name">{{ probeName() }}</h2>
-          <nw-ansichtsbaum [artikel]="p" [layout]="baum()" [rueck]="probeRueck()" />
-        </div>
-      } @else {
-        <p class="hinweis">Search an article to preview the view on it.</p>
+          <input type="search" class="probe-suche" placeholder="Preview on … (search an article)" aria-label="Preview on an article"
+                 [value]="beispielSuche()" (input)="sucheBeispiel(optionWert($event))" />
+        } @else {
+          <span class="sub">as the place draws it</span>
+        }
+      </div>
+      @if (alsGestaltet()) {
+        @if (beispielTreffer().length) {
+          <ul class="treffer">
+            @for (t of beispielTreffer(); track t.id) {
+              <li><button type="button" class="pal" (click)="waehleBeispiel(t.id)">{{ t.name }} <span class="sub">{{ t.type }}</span></button></li>
+            }
+          </ul>
+        }
+        @if (probe(); as p) {
+          <div class="blatt">
+            <h2 class="probe-name">{{ probeName() }}</h2>
+            <nw-ansichtsbaum [artikel]="p" [layout]="entwurfsBaum()" [rueck]="probeRueck()" />
+          </div>
+        } @else {
+          <p class="hinweis">Search an article to preview the view on it.</p>
+        }
+      } @else if (schluessel(); as k) {
+        <nw-reg-vorschau [ansicht]="k" [register]="entwurfsRegister()" [typ]="speichernAls() === 'type' ? zielTyp() : (typ() ?? null)" />
       }
     </section>
   }
@@ -61,27 +85,32 @@
         <b class="h3">Elements</b>
         <span class="sub">adds into the selected container, or after the selected element</span>
         @for (g of palette; track g.cat) {
-          <div class="lbl kat">{{ g.cat }}</div>
-          @for (p of g.items; track p.el) {
-            <button type="button" class="pal" (click)="dazu(p.el)" [title]="p.tip">
-              <span class="ico" aria-hidden="true">{{ p.icon }}</span><span class="pname">{{ p.name }}</span>
-              @if (p.neu) {
-                <span class="neu">new</span>
-              }
-            </button>
-          }
+          <details class="kat" [open]="g.cat !== 'Pages'">
+            <summary class="lbl">{{ g.cat }}</summary>
+            @for (p of g.items; track p.el) {
+              <button type="button" class="pal" (click)="dazu(p.el)" [title]="p.tip" [disabled]="!darf()">
+                <span class="ico" aria-hidden="true">{{ p.icon }}</span><span class="pname">{{ p.name }}</span>
+                @if (p.neu) {
+                  <span class="neu">new</span>
+                }
+                @if (p.seite) {
+                  <span class="nurseite" title="Drawn by the article page and the print; a designed view shows a note in its place">page</span>
+                }
+              </button>
+            }
+          </details>
         }
       </aside>
     }
 
     <section class="karte struktur" aria-label="Structure">
       <div class="zeile">
-        <b class="h3">Structure</b><span class="sub">select an element to configure it</span>
+        <b class="h3">Structure</b><span class="sub">select an element to configure it · drag to move</span>
       </div>
       @if (kompakt()) {
         <label class="f">
           <span class="lbl">+ Element</span>
-          <select (change)="dazu(optionWert($event)); $any($event.target).value = ''" aria-label="Add an element">
+          <select (change)="dazu(optionWert($event)); $any($event.target).value = ''" aria-label="Add an element" [disabled]="!darf()">
             <option value="">Add …</option>
             @for (g of palette; track g.cat) {
               <optgroup [label]="g.cat">
@@ -95,54 +124,82 @@
       }
       <ul class="baum" role="tree" aria-label="Elements of the view">
         @for (z of zeilen(); track z.el.id) {
-          <li role="treeitem" [attr.aria-selected]="gewaehlt() === z.el.id" [class.an]="gewaehlt() === z.el.id"
-              [style.padding-left.rem]="0.4 + z.tiefe * 1.1">
+          <li role="treeitem" [attr.aria-selected]="gewaehlt() === z.el.id" [attr.aria-expanded]="z.kinder ? !z.zu : null"
+              [attr.aria-level]="z.tiefe + 1" [class.an]="gewaehlt() === z.el.id" [class.reiter]="istReiter(z.el)"
+              [style.--tiefe]="z.tiefe" [attr.draggable]="darf()"
+              (dragstart)="gezogen.set(z.el.id)" (dragover)="$event.preventDefault()" (drop)="fallen(z.el, $event)">
+            @if (z.kinder) {
+              <button type="button" class="klapp" (click)="umklappen(z.el.id, $event)" [attr.aria-label]="(z.zu ? 'Open ' : 'Close ') + z.name">{{ z.zu ? '▸' : '▾' }}</button>
+            } @else {
+              <span class="klapp" aria-hidden="true"></span>
+            }
             <button type="button" class="knoten" (click)="gewaehlt.set(z.el.id)">
-              <span class="ico" aria-hidden="true">{{ z.icon }}</span><b>{{ z.name }}</b><span class="sum">{{ z.sum }}</span>
+              <span class="ico" aria-hidden="true">{{ z.icon }}</span><b>{{ z.name }}</b>
+              <span class="sum">{{ z.sum }}{{ z.zu ? ' · ' + z.kinder + ' inside' : '' }}</span>
             </button>
-            <span class="griffe">
-              <button type="button" (click)="bewege(z.el.id, 'out', $event)" aria-label="Move out of the container" title="Out of the container">←</button>
-              <button type="button" (click)="bewege(z.el.id, 'into', $event)" aria-label="Move into the element above" title="Into the container above">→</button>
-              <button type="button" (click)="bewege(z.el.id, 'up', $event)" aria-label="Move up" title="Up">↑</button>
-              <button type="button" (click)="bewege(z.el.id, 'remove', $event)" aria-label="Remove" title="Remove">×</button>
-            </span>
+            @if (darf()) {
+              <span class="griffe">
+                @if (kann(z.el.id, 'out')) {
+                  <button type="button" (click)="bewege(z.el.id, 'out', $event)" aria-label="Move out of the container" title="Out of the container">←</button>
+                }
+                @if (kann(z.el.id, 'into')) {
+                  <button type="button" (click)="bewege(z.el.id, 'into', $event)" aria-label="Move into the container above" title="Into the container above">→</button>
+                }
+                <button type="button" [disabled]="!kann(z.el.id, 'up')" (click)="bewege(z.el.id, 'up', $event)" aria-label="Move up" title="Up">↑</button>
+                <button type="button" [disabled]="!kann(z.el.id, 'down')" (click)="bewege(z.el.id, 'down', $event)" aria-label="Move down" title="Down">↓</button>
+                <button type="button" (click)="bewege(z.el.id, 'remove', $event)" aria-label="Remove" title="Remove">×</button>
+              </span>
+            }
           </li>
         } @empty {
           <li class="sub">Empty — add an element.</li>
         }
       </ul>
+      <details class="json">
+        <summary>As JSON</summary>
+        <textarea rows="8" aria-label="Arrangement as JSON" [value]="json()" [disabled]="!darf()" (change)="jsonSetzen(optionWert($event))"></textarea>
+        <p class="sub">A list of layout elements. The server checks it.</p>
+      </details>
     </section>
 
     <aside class="karte konfig" aria-label="Configuration">
       @if (auswahl(); as el) {
-        <b class="h3">{{ elementName(el) }}</b>
-        @if (el.el === 'heading' || el.el === 'text' || el.el === 'section' || el.el === 'collapsible' || el.el === 'carousel' || el.el === 'edgeTable') {
+        <b class="h3">{{ elementName(el) }}</b> <code class="sub">{{ el.id }}</code>
+        <p class="sub">{{ elementTip(el) }}</p>
+        @if (nurSeite(el) && alsGestaltet()) {
+          <p class="hinweis">Drawn by the article page and the print; in a designed view a note stands in its place.</p>
+        }
+        @if (mitTitel(el)) {
           <label class="f">
-            <span class="lbl">{{ el.el === 'text' ? 'Text' : el.el === 'edgeTable' ? 'Caption' : 'Title' }}</span>
-            <input type="text" [value]="el.text ?? ''" (input)="setze({ text: optionWert($event) || null })" />
+            <span class="lbl">{{ el.el === 'text' ? 'Text' : el.el === 'edgeTable' ? 'Caption' : istReiter(el) ? 'Tab label' : 'Title' }}</span>
+            <input type="text" [value]="el.text ?? ''" [disabled]="!darf()" (input)="setze({ text: optionWert($event) || null })" />
           </label>
         }
-        @if (el.el === 'columns') {
+        @if (el.el === 'tabs') {
+          <button type="button" class="klein" [disabled]="!darf()" (click)="reiterDazu()">+ tab</button>
+          <p class="sub">Select a tab to name it; → moves an element into the last tab above it.</p>
+        }
+        @if (el.el === 'columns' || el.el === 'fields') {
           <label class="f">
             <span class="lbl">Columns</span>
-            <input type="number" min="0" max="6" [value]="el.columns ?? 0" (input)="setze({ columns: +optionWert($event) || null })" />
+            <input type="number" min="0" max="6" [value]="el.columns ?? 0" [disabled]="!darf()" (input)="setze({ columns: +optionWert($event) || null })" />
           </label>
-          <p class="sub">0: as many as it holds. On a phone always one.</p>
+          <p class="sub">0: {{ el.el === 'columns' ? 'as many as it holds' : 'as the place sets it' }}. On a phone always one.</p>
         }
         @if (el.el === 'collapsible') {
-          <label class="haken"><input type="checkbox" [checked]="!!el.open" (change)="setze({ open: $any($event.target).checked || null })" /> open at first</label>
+          <label class="haken"><input type="checkbox" [checked]="!!el.open" [disabled]="!darf()" (change)="setze({ open: $any($event.target).checked || null })" /> open at first</label>
         }
         @if (el.el === 'reader') {
           <div class="lbl">Contents</div>
           <div class="chips">
             @for (o of ['left', 'top', 'off']; track o) {
-              <button type="button" class="chipb" [attr.aria-pressed]="(el.toc ?? 'left') === o" (click)="setze({ toc: o === 'left' ? null : o })">{{ o }}</button>
+              <button type="button" class="chipb" [disabled]="!darf()" [attr.aria-pressed]="(el.toc ?? 'left') === o" (click)="setze({ toc: o === 'left' ? null : o })">{{ o }}</button>
             }
           </div>
           <div class="lbl">Values at the margin</div>
           <div class="chips">
             @for (o of ['right', 'bottom', 'none']; track o) {
-              <button type="button" class="chipb" [attr.aria-pressed]="(el.side ?? 'right') === o" (click)="setze({ side: o === 'right' ? null : o })">{{ o }}</button>
+              <button type="button" class="chipb" [disabled]="!darf()" [attr.aria-pressed]="(el.side ?? 'right') === o" (click)="setze({ side: o === 'right' ? null : o })">{{ o }}</button>
             }
           </div>
         }
@@ -151,11 +208,11 @@
             <div class="lbl">Values from</div>
             <p class="pfad"><code>{{ pfadText() }}</code>
               @if (el.path?.length) {
-                <button type="button" class="klein" (click)="schrittWeg()" aria-label="Remove the last step">×</button>
+                <button type="button" class="klein" [disabled]="!darf()" (click)="schrittWeg()" aria-label="Remove the last step">×</button>
               }
             </p>
-            @if (weiter().length) {
-              <select (change)="schritt(optionWert($event)); $any($event.target).value = ''" aria-label="Follow an edge">
+            @if (weiter().length && el.el !== 'fields' && el.el !== 'prose' && el.el !== 'rules') {
+              <select (change)="schritt(optionWert($event)); $any($event.target).value = ''" aria-label="Follow an edge" [disabled]="!darf()">
                 <option value="">Follow an edge …</option>
                 @for (o of weiter(); track $index) {
                   <option [value]="$index">{{ o.label }}</option>
@@ -166,24 +223,66 @@
               <p class="sub">One row per {{ el.path?.length ? 'article at the end' : 'edge — follow one first' }}; edge values as columns:</p>
               <div class="chips">
                 @for (p of kantenProps(); track p) {
-                  <button type="button" class="chipb" [attr.aria-pressed]="(el.props ?? []).includes(p)" (click)="propUmschalten(p)">{{ p }}</button>
+                  <button type="button" class="chipb" [disabled]="!darf()" [attr.aria-pressed]="(el.props ?? []).includes(p)" (click)="propUmschalten(p)">{{ p }}</button>
                 }
               </div>
             }
+            @if (el.el === 'fields' || el.el === 'prose') {
+              <label class="haken">
+                <input type="checkbox" [checked]="el.fields === 'all' || (el.el === 'prose' && el.fields === undefined)" [disabled]="!darf()"
+                       (change)="alleFelder($any($event.target).checked)" />
+                Every {{ el.el === 'prose' ? 'long text' : 'field' }} the type has <span class="sub">— what an earlier element shows stays there</span>
+              </label>
+            }
             @if (istListe(el.fields)) {
               <ul class="gewaehlt">
-                @for (f of el.fields; track f) {
-                  <li><code>{{ f }}</code><button type="button" class="klein" (click)="wertWeg(f)" [attr.aria-label]="'Remove ' + f">×</button></li>
+                @for (f of el.fields; track f; let i = $index) {
+                  <li><span>{{ text(f) }}</span>
+                    <button type="button" class="klein" [disabled]="!darf() || i === 0" (click)="wertFrueher(i)" [attr.aria-label]="'Earlier: ' + f">↑</button>
+                    <button type="button" class="klein" [disabled]="!darf()" (click)="wertWeg(f)" [attr.aria-label]="'Remove ' + f">×</button></li>
+                } @empty {
+                  <li class="sub">Nothing yet — this element shows nothing.</li>
                 }
               </ul>
             }
-            <input type="search" placeholder="Add a value …" aria-label="Search values" [value]="wertSuche()" (input)="wertSuche.set(optionWert($event))" />
-            <div class="verfuegbar">
-              @for (a of verfuegbar(); track a.ref) {
-                <button type="button" class="pal" (click)="wertDazu(a.ref)"><code>{{ a.ref }}</code><span class="sub">{{ a.von }}</span></button>
-              }
-            </div>
+            @if (el.except?.length) {
+              <div class="chips">
+                <span class="lbl">Leave out</span>
+                @for (f of el.except!; track f) {
+                  <span class="pill">{{ text(f) }} <button type="button" class="klein" [disabled]="!darf()" (click)="ausnahmeWeg(f)" [attr.aria-label]="'Show ' + f + ' again'">×</button></span>
+                }
+              </div>
+            }
+            @if (darf()) {
+              <div class="chips" role="radiogroup" aria-label="Add to">
+                <button type="button" class="chipb" role="radio" [attr.aria-checked]="wertZiel() === 'fields'" [attr.aria-pressed]="wertZiel() === 'fields'"
+                        [disabled]="el.fields === 'all'" (click)="wertZiel.set('fields')">+ value</button>
+                <button type="button" class="chipb" role="radio" [attr.aria-checked]="wertZiel() === 'except'" [attr.aria-pressed]="wertZiel() === 'except'"
+                        (click)="wertZiel.set('except')">+ leave out</button>
+              </div>
+              <input type="search" placeholder="Search a type or field …" aria-label="Search values" [value]="wertSuche()" (input)="wertSuche.set(optionWert($event))" />
+              <div class="verfuegbar">
+                @for (a of verfuegbar(); track a.ref) {
+                  <button type="button" class="pal" (click)="wertDazu(a.ref)"><code>{{ a.ref }}</code><span class="sub">{{ a.von }}</span></button>
+                }
+              </div>
+            }
           </div>
+        }
+        @if (!istReiter(el)) {
+          <details class="wenn" [open]="!!el.when">
+            <summary>Only when … <span class="sub">{{ el.when ? '' : 'always' }}</span></summary>
+            <label class="f"><span class="lbl">Field</span>
+              <input type="text" [value]="el.when?.field ?? ''" [disabled]="!darf()" placeholder="Encounter.kind" (change)="wennSetzen({ field: optionWert($event).trim() || undefined })" /></label>
+            <label class="f"><span class="lbl">holds one of</span>
+              <input type="text" [value]="(el.when?.has ?? []).join(', ')" [disabled]="!darf()" placeholder="combat, social" (change)="wennSetzen({ has: liste(optionWert($event)) })" /></label>
+            <label class="haken"><input type="checkbox" [checked]="!!el.when?.empty" [disabled]="!darf()" (change)="wennSetzen({ empty: $any($event.target).checked || undefined })" /> or is empty</label>
+            <label class="f"><span class="lbl">or has an edge</span>
+              <input type="text" [value]="el.when?.relation ?? ''" [disabled]="!darf()" placeholder="edge kind" (change)="wennSetzen({ relation: optionWert($event).trim() || undefined })" /></label>
+            <label class="f"><span class="lbl">or is target of an edge</span>
+              <input type="text" [value]="el.when?.incoming ?? ''" [disabled]="!darf()" placeholder="shopkeeper" (change)="wennSetzen({ incoming: optionWert($event).trim() || undefined })" /></label>
+            <p class="sub">The element shows only on articles that match; what it would have shown falls to a later element that takes all fields.</p>
+          </details>
         }
       } @else {
         <p class="sub">Select an element in the structure.</p>
@@ -191,74 +290,144 @@
     </aside>
   </div>
 
-  <section class="karte geltung" aria-label="Applies to">
-    <b class="h3">Applies to</b>
-    <div class="chips">
-      @for (t of geltung().types ?? []; track t) {
-        <span class="pill">{{ reg()?.interfaces?.[t]?.label ?? t }} <button type="button" class="klein" (click)="typWeg(t)" [attr.aria-label]="'Remove ' + t">×</button></span>
+  <section class="karte geltung" aria-label="Save for">
+    <b class="h3">Save for …</b>
+    <div class="chips" role="radiogroup" aria-label="Save for">
+      @if (!gestaltet()) {
+        <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'view'" [attr.aria-pressed]="speichernAls() === 'view'" (click)="speichernAls.set('view')">every article (the view itself)</button>
+        <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'type'" [attr.aria-pressed]="speichernAls() === 'type'" (click)="speichernAls.set('type'); zielTyp() || zielTyp.set(probeTyp())">the whole type</button>
       }
-      <select (change)="typDazu(optionWert($event)); $any($event.target).value = ''" aria-label="Add a type">
-        <option value="">+ type (with its subtypes)</option>
-        @for (t of alleTypen(); track t) {
-          <option [value]="t">{{ reg()?.interfaces?.[t]?.label ?? t }}</option>
-        }
-      </select>
-    </div>
-    @for (w of geltung().where ?? []; track $index; let i = $index) {
-      <div class="bedingung">
-        <span class="lbl">and</span>
-        <select #art (change)="bedingungSetzen(i, art.value, '')" aria-label="Kind of condition">
-          <option value="incoming" [selected]="bedingungsArt(w) === 'incoming'">is target of edge</option>
-          <option value="relation" [selected]="bedingungsArt(w) === 'relation'">has edge</option>
-          <option value="field" [selected]="bedingungsArt(w) === 'field'">field value</option>
-        </select>
-        @if (bedingungsArt(w) === 'field') {
-          <select #feld (change)="bedingungSetzen(i, 'field', feld.value, werte.value)" aria-label="Field">
-            <option value="">field …</option>
-            @for (f of felderDerTypen(); track f) {
-              <option [value]="f" [selected]="w.field === f">{{ f }}</option>
-            }
-          </select>
-          <input #werte type="text" placeholder="= value, value" [value]="(w.has ?? []).join(', ')" (change)="bedingungSetzen(i, 'field', w.field ?? '', werte.value)" aria-label="Values" />
-        } @else {
-          <select #kante (change)="bedingungSetzen(i, bedingungsArt(w), kante.value)" aria-label="Edge">
-            <option value="">edge …</option>
-            @for (k of alleKanten(); track k.type) {
-              <option [value]="k.type" [selected]="(w.relation ?? w.incoming) === k.type">{{ k.label }}</option>
-            }
-          </select>
-        }
-        <button type="button" class="klein" (click)="bedingungWeg(i)" aria-label="Remove condition">×</button>
-      </div>
-    }
-    @if (geltung().article; as a) {
-      <p><span class="pill">only {{ bestand.name()(a) ?? a }} <button type="button" class="klein" (click)="artikelWeg()" aria-label="Not only this article">×</button></span></p>
-    }
-    <button type="button" class="klein" (click)="bedingungDazu()">+ condition (field value, edge)</button>
-    <p class="sub">The most specific view wins where one is needed: only this article › condition › type › every article. Where you pick (a board card), every view that applies is offered.</p>
-  </section>
-
-  <div class="speichern">
-    <b>Save as …</b>
-    <div class="chips" role="radiogroup" aria-label="Save as">
-      @if (schluessel() && !ausVorlage()) {
+      @if (schluessel() && gestaltet()) {
         <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'this'" [attr.aria-pressed]="speichernAls() === 'this'" (click)="speichernAls.set('this')">this view (all it applies to)</button>
       }
-      @if (probe(); as p) {
-        <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'article'" [attr.aria-pressed]="speichernAls() === 'article'" (click)="speichernAls.set('article')">new view, only {{ probeName() }}</button>
+      @if (probe()) {
+        <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'article'" [attr.aria-pressed]="speichernAls() === 'article'" (click)="speichernAls.set('article')">only {{ probeName() }}</button>
       }
-      <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'condition'" [attr.aria-pressed]="speichernAls() === 'condition'" (click)="speichernAls.set('condition')">new view, with the conditions above</button>
+      <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'condition'" [attr.aria-pressed]="speichernAls() === 'condition'" (click)="speichernAls.set('condition')">all with a condition (new view)</button>
     </div>
+
+    @if (speichernAls() === 'view') {
+      <p class="sub">What every type shows in this view, unless it says otherwise. A whole type takes its new fields by itself; a single field stays a single field.</p>
+    } @else if (speichernAls() === 'type') {
+      <div class="zeile">
+        <select (change)="zielTyp.set(optionWert($event))" aria-label="Type">
+          @for (t of anordnungsTypen(); track t) {
+            <option [value]="t" [selected]="t === zielTyp()">{{ typLabel(t) }}</option>
+          }
+        </select>
+        <label class="haken"><input type="checkbox" [checked]="angepasst()" (change)="angepasst.set($any($event.target).checked)" />
+          adjusted — keep the view and save only the difference</label>
+      </div>
+      <p class="sub">
+        @if (angepasst()) {
+          New elements and fields of the view still come. {{ anpassung() ? '' : 'This draft does more than an adjustment can say (an element changed or moved inside) — save it as the type’s own arrangement.' }}
+        } @else {
+          Its own arrangement replaces the view for {{ typLabel(zielTyp()) }}; subtypes inherit it.
+        }
+      </p>
+      @if (angepasst()) {
+        <div class="chips">
+          <span class="lbl">Never shown for this type</span>
+          @for (f of versteckt(); track f) {
+            <span class="pill">{{ text(f) }} <button type="button" class="klein" (click)="versteckWeg(f)" [attr.aria-label]="'Show ' + f + ' again'">×</button></span>
+          }
+          <select (change)="versteckDazu(optionWert($event)); $any($event.target).value = ''" aria-label="Hide a field">
+            <option value="">+ hide …</option>
+            @for (f of felderDerTypen(); track f) {
+              <option [value]="f">{{ f }}</option>
+            }
+          </select>
+        </div>
+      }
+    } @else if (speichernAls() === 'article') {
+      <p class="sub">A new view in the group <b>{{ gruppe() }}</b> for {{ probeName() }} alone — the most specific one wins.</p>
+    } @else {
+      <div class="chips">
+        @for (t of geltung().types ?? []; track t) {
+          <span class="pill">{{ typLabel(t) }} <button type="button" class="klein" (click)="typWeg(t)" [attr.aria-label]="'Remove ' + t">×</button></span>
+        }
+        <select (change)="typDazu(optionWert($event)); $any($event.target).value = ''" aria-label="Add a type">
+          <option value="">+ type (with its subtypes)</option>
+          @for (t of alleTypen(); track t) {
+            <option [value]="t">{{ typLabel(t) }}</option>
+          }
+        </select>
+      </div>
+      @for (w of geltung().where ?? []; track $index; let i = $index) {
+        <div class="bedingung">
+          <span class="lbl">and</span>
+          <select #art (change)="bedingungSetzen(i, art.value, '')" aria-label="Kind of condition">
+            <option value="incoming" [selected]="bedingungsArt(w) === 'incoming'">is target of edge</option>
+            <option value="relation" [selected]="bedingungsArt(w) === 'relation'">has edge</option>
+            <option value="field" [selected]="bedingungsArt(w) === 'field'">field value</option>
+          </select>
+          @if (bedingungsArt(w) === 'field') {
+            <select #feld (change)="bedingungSetzen(i, 'field', feld.value, werte.value)" aria-label="Field">
+              <option value="">field …</option>
+              @for (f of felderDerTypen(); track f) {
+                <option [value]="f" [selected]="w.field === f">{{ f }}</option>
+              }
+            </select>
+            <input #werte type="text" placeholder="= value, value" [value]="(w.has ?? []).join(', ')" (change)="bedingungSetzen(i, 'field', w.field ?? '', werte.value)" aria-label="Values" />
+          } @else {
+            <select #kante (change)="bedingungSetzen(i, bedingungsArt(w), kante.value)" aria-label="Edge">
+              <option value="">edge …</option>
+              @for (k of alleKanten(); track k.type) {
+                <option [value]="k.type" [selected]="(w.relation ?? w.incoming) === k.type">{{ k.label }}</option>
+              }
+            </select>
+          }
+          <button type="button" class="klein" (click)="bedingungWeg(i)" aria-label="Remove condition">×</button>
+        </div>
+      }
+      @if (geltung().article; as a) {
+        <p><span class="pill">only {{ bestand.name()(a) ?? a }} <button type="button" class="klein" (click)="artikelWeg()" aria-label="Not only this article">×</button></span></p>
+      }
+      <button type="button" class="klein" (click)="bedingungDazu()">+ condition (field value, edge)</button>
+    }
+    <p class="sub">The most specific view wins where one is needed: only this article › condition › type › every article. Where you pick (a board card, the view bar of an article), every view that applies is offered.</p>
+  </section>
+
+  @if (!kompakt()) {
+    <details class="karte einstellungen" [open]="!gestaltet()">
+      <summary class="h3">View settings</summary>
+      @if (speichernAls() === 'type') {
+        <p class="sub">These belong to the view; a type saves only its arrangement.</p>
+      }
+      <label class="f">
+        <span class="lbl">Order</span>
+        <input type="number" [value]="order() ?? 99" [disabled]="!darf() || speichernAls() === 'type'" (change)="order.set(+optionWert($event))" />
+      </label>
+      <p class="sub">Where the view stands among the others — in the choice on a board tile, in the view bar and when printing.</p>
+      <label class="haken">
+        <input type="checkbox" [checked]="rest()" [disabled]="!darf() || speichernAls() === 'type'" (change)="rest.set($any($event.target).checked)" />
+        Fields no element takes stand at the end
+      </label>
+      <p class="sub">On: nothing an article has is lost from this view, even a field added tomorrow. Off: the view shows exactly what its elements name.</p>
+      <label class="haken">
+        <input type="checkbox" [checked]="leer()" [disabled]="!darf() || speichernAls() === 'type'" (change)="leer.set($any($event.target).checked)" />
+        Show empty fields (as “—”)
+      </label>
+      <p class="sub">Off: an article shows only what it has. On: every field the elements take stands there, filled or not — useful on a sheet you fill in at the table.</p>
+    </details>
+  }
+
+  <div class="speichern">
     <div class="knoepfe">
-      <button type="button" class="pri" [disabled]="arbeit.speichert()" (click)="speichern()">{{ arbeit.speichert() ? 'Saving…' : 'Save' }}</button>
+      @if (darf()) {
+        <button type="button" class="pri" [disabled]="arbeit.speichert()" (click)="speichern()">{{ arbeit.speichert() ? 'Saving…' : 'Save' }}</button>
+      }
       <button type="button" (click)="fertig.emit(null)">Close</button>
       @if (kompakt() && schluessel()) {
-        <a class="knopf" [routerLink]="['/registry']" [queryParams]="{ tab: 'views', view: schluessel(), design: 1 }">Open in the designer ↗</a>
+        <a class="knopf" [routerLink]="['/registry']" [queryParams]="{ tab: 'views', view: schluessel(), design: 1, type: probeTyp() || null }">Open in the registry ↗</a>
       }
-      @if (!kompakt() && schluessel() && !ausVorlage()) {
+      @if (!kompakt() && darf() && schluessel() && !ortsansicht()) {
         <button type="button" class="weg" (click)="loeschen()">Delete view</button>
       }
     </div>
+    @if (ortsansicht()) {
+      <p class="sub">{{ def()?.label }} is a view a place asks for: it can be rebuilt, not deleted.</p>
+    }
     @if (arbeit.fehler(); as f) {
       <p class="fehler" role="alert">{{ f }}</p>
     }

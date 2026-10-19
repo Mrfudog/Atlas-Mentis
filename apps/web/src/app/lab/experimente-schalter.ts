@@ -28,20 +28,6 @@ import { Experimente } from '../kern/experimente';
           <a class="knopf" routerLink="/lab/rules">Open the rule builder</a>
         }
       </article>
-      <article class="option">
-        <label class="schalter">
-          <input type="checkbox" [checked]="exp.viewDesigner()" [disabled]="schaltet()" (change)="setzeAnsicht($event)" />
-          <span class="name">View designer</span>
-          <span class="marke">experiment</span>
-        </label>
-        <p class="was">
-          Design views from sections, columns, tiles and values of linked articles, and say which articles they apply to. Articles and
-          board cards then offer every view that applies.
-        </p>
-        @if (exp.viewDesigner()) {
-          <a class="knopf" routerLink="/registry" [queryParams]="{ tab: 'views' }">Open Registry › Views</a>
-        }
-      </article>
       @if (fehler(); as f) {
         <p class="fehler" role="alert">{{ f }}</p>
       }
@@ -89,10 +75,6 @@ export class ExperimenteSchalter {
 
   protected setze(ev: Event): Promise<void> {
     return this.schalte(ev, (an) => this.exp.setzeRuleBuilder(an));
-  }
-
-  protected setzeAnsicht(ev: Event): Promise<void> {
-    return this.schalte(ev, (an) => this.exp.setzeViewDesigner(an));
   }
 
   private async schalte(ev: Event, setze: (an: boolean) => Promise<void>): Promise<void> {

@@ -1,11 +1,11 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { appliesText, countElements, isDesignedView, viewGroup, viewKeys } from '@nw/model';
+import { appliesText, countElements, viewGroup, viewKeys } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit } from '../register/arbeit';
 
 /**
- * **Registry › Views als Liste** (T-268): jede Ansicht mit Gruppe,
+ * **Registry › Views als Liste** (T-268, T-276): jede Ansicht mit Gruppe,
  * Geltung, wie viele Artikel sie bekommen und wie viele Elemente sie hat.
  * Gezählt hat der Server (`/api/registry/usage`, nur gestaltete Ansichten
  * mit Geltung); die übrigen gelten für jeden Artikel ihres Orts.
@@ -33,16 +33,14 @@ import { RegisterArbeit } from '../register/arbeit';
             <span role="cell">{{ z.count }}</span>
             <span role="cell">{{ z.els }}</span>
             <span role="cell" class="knoepfe">
-              <a class="knopf" [routerLink]="[]" [queryParams]="{ tab: 'views', view: z.key, design: 1 }">Design</a>
-              @if (!z.designed) {
-                <a class="knopf" [routerLink]="[]" [queryParams]="{ tab: 'views', view: z.key, design: null }">Edit as before</a>
-              }
+              <a class="knopf" [routerLink]="[]" [queryParams]="{ tab: 'views', view: z.key, design: null }">Design</a>
             </span>
           </div>
         }
       </div>
       <p class="dim">
-        Overview, Quick, Full, Print and Search are the views places ask for; designing one of them makes a new view next to it.
+        Overview, Quick, Full, Print and Search are the views places ask for: they can be rebuilt, not deleted. A type that
+        says its own for one shows it on its page under Views.
       </p>
     </section>
   `,
@@ -104,7 +102,6 @@ export class Ansichtsliste {
         applies: appliesText(def.applies, (id) => name(id)),
         count: def.applies ? (gezaehlt[key]?.toLocaleString('en') ?? '…') : 'all',
         els: countElements(def.layout),
-        designed: isDesignedView(def),
       };
     });
   });

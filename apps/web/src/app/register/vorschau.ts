@@ -5,7 +5,7 @@ import { Api, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Blatt } from '../artikel/blatt';
 import { Kachel } from '../boards/kachel';
-import { eintragText } from './anordnung';
+import { eintragText } from '../ansichten/palette';
 
 /**
  * **Die Vorschau im Register** (T-110): eine Ansicht an einem wählbaren
@@ -74,6 +74,7 @@ import { eintragText } from './anordnung';
       }
     </div>
   `,
+  styleUrl: './vorschau.scss',
 })
 export class RegVorschau {
   readonly ansicht = input.required<string>();

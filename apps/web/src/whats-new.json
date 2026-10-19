@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-one-view-editor",
+      "date": "2026-10-19",
+      "title": "One editor for every view",
+      "text": "The view designer is now the editor for every view — Registry › Views, “Design” on a type’s page, and “Design this view” in an article’s Full edit, with the preview on the open article. Arrange elements as an indented tree, nest them in columns, sections or tabs, and save for every article, the whole type, or one article.",
+      "area": "Registry",
+      "link": "/registry",
+      "query": { "tab": "views" }
+    },
+    {
       "id": "2026-10-19-rule-builder-builds-on",
       "date": "2026-10-19",
       "title": "Rules show the glossary terms they build on",

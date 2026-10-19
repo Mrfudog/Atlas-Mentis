@@ -284,17 +284,8 @@ button.weg {
   border-radius: 4px;
   cursor: pointer;
 }
-.ansicht .fhead {
-  cursor: default;
-  background: transparent;
-  border-bottom: 1px solid var(--line2);
-  border-radius: 0;
-}
 .fhead .klein {
   margin-left: auto;
-}
-.ansicht .fhead .klein + .klein {
-  margin-left: 0;
 }
 .verlinkt .fhead {
   background: transparent;
@@ -317,13 +308,29 @@ button.weg {
 .partfields {
   padding: 0.3rem 0 0.3rem 1.6rem;
 }
-.ansicht {
-  margin-top: 0.25rem;
+/* Die Ansichten einer Art (T-276): eine Zeile je geltender Ansicht, „Design" öffnet den Designer. */
+.ansichten-tabelle .az {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1.2fr) 6rem minmax(8rem, 2fr) minmax(8rem, 1.4fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--line2);
 }
-.ansicht textarea {
-  margin-top: 0.4rem;
-  font-family: ui-monospace, monospace;
-  font-size: 0.85rem;
+.ansichten-tabelle .az.k {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+@media (max-width: 760px) {
+  .ansichten-tabelle .az {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ansichten-tabelle .az.k {
+    display: none;
+  }
 }
 
 /* Die Einstellungen eines Feldes, unter seiner Zeile. */

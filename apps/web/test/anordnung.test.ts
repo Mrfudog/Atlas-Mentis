@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, LayoutElement, Registry } from '@nw/model';
 import { anordnen, feldZellen, mitLeeren, prosaVon } from '../src/app/artikel/anordnung';
-import { eintragText, freieId } from '../src/app/register/anordnung';
+import { eintragText } from '../src/app/ansichten/palette';
 
 const reg = {
   interfaces: {
@@ -136,15 +136,6 @@ describe('Element map (T-115)', () => {
 });
 
 describe('Editor-Helfer', () => {
-  it('vergibt eine freie Id, auch über Reiter und geerbte Elemente hinweg', () => {
-    const l: LayoutElement[] = [
-      { id: 'fields-1', el: 'fields' },
-      { id: 't', el: 'tabs', tabs: [{ id: 'x', label: 'X', layout: [{ id: 'fields-2', el: 'fields' }] }] },
-    ];
-    expect(freieId(l, 'fields')).toBe('fields-3');
-    expect(freieId([], 'fields', ['fields-1'])).toBe('fields-2');
-  });
-
   it('liest einen Eintrag als Typ und Feld', () => {
     expect(eintragText(reg, 'Spell.level')).toBe('Spell › Spell level');
     expect(eintragText(reg, 'Spell')).toBe('Spell (all fields)');
