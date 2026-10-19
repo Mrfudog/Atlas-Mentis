@@ -280,7 +280,10 @@ export interface ValidationIssue {
     | 'overrides_other_type'
     /* Zwei Einträge eines Feldes mit derselben `id` (REQ-238): was an
        der Id hängt, wüsste nicht, welcher gemeint ist. */
-    | 'entry_id_twice';
+    | 'entry_id_twice'
+    /* Eine Wahl der Figur nimmt, was sie schon hat (T-299,
+       `newChoiceDuplicates`) — gemeldet vom Server, nicht von hier. */
+    | 'choice_duplicate';
   message: string;
   /** Die Art, deren Karte es betrifft. */
   component?: string;

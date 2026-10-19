@@ -27,6 +27,7 @@ export * from './classes.js';
 export * from './choices.js';
 export * from './effects.js';
 export * from './proficiency.js';
+export * from './duplicates.js';
 export * from './stats.js';
 export * from './abilities.js';
 export * from './equipment.js';

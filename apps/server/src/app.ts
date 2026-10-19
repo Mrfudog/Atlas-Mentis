@@ -127,8 +127,10 @@ import {
   answersOf as antwortenVon,
   characterProfile,
   type CharacterProfile,
+  newChoiceDuplicates,
+  duplicateText,
 } from '@nw/model';
-import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry } from '@nw/model';
+import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
 import { seedRegistry } from '@nw/registry';
 import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
@@ -206,6 +208,19 @@ const OWNING_RELATIONS = new Set(['carries', 'holds', 'crafting']);
 const PLAYER_CHARACTER = 'PlayerCharacter';
 const STATBLOCK_RELATION = 'belongsTo';
 const FIGUR_KANTEN = new Set(['carries']);
+
+/**
+ * **Keine Wahl nimmt, was die Figur schon hat** (T-299): dieselbe Rechnung
+ * wie im Assistenten (`newChoiceDuplicates`). Abgewiesen wird nur, was
+ * dieses Speichern neu doppelt macht — eine ältere Figur bleibt
+ * speicherbar.
+ */
+function doppelteWahlen(vorher: Entity | undefined, nachher: Entity, bestand: readonly Entity[]): ValidationIssue[] {
+  if (!(nachher.relations ?? []).some((r) => r.type === 'chose')) return [];
+  const byId = new Map(bestand.map((e) => [e.id, e]));
+  byId.set(nachher.id, nachher);
+  return newChoiceDuplicates(vorher, nachher, byId).map((d) => ({ code: 'choice_duplicate', relation: 'chose', message: duplicateText(d, byId) }));
+}
 
 /**
  * **Behälter in einem Inventar** (T-127): wer ein Inventar hat, hat auch
@@ -3518,7 +3533,7 @@ export function buildApp({
         pruefling = resolveInstance(alle, entity);
         zuSchreiben = thinInstance(alle, entity);
       }
-      const issues = validateEntity(registry, pruefling, { knownTypes: known, stageOf: stageBases([...stand.alle, entity]) });
+      const issues = [...validateEntity(registry, pruefling, { knownTypes: known, stageOf: stageBases([...stand.alle, entity]) }), ...doppelteWahlen(undefined, entity, stand.alle)];
       if (issues.length) {
         return { code: 422, body: { error: 'Validierung fehlgeschlagen', issues } };
       }
@@ -3747,7 +3762,7 @@ export function buildApp({
       zuSchreiben = thinInstance(alle, entity);
     }
 
-    const issues = validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen });
+    const issues = [...validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen }), ...doppelteWahlen(liste.find((e) => e.id === entity.id), entity, liste)];
     if (issues.length) return { issues };
     if (vorher) await vorher();
     return {

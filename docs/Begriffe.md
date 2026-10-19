@@ -1490,6 +1490,15 @@ Klassenwechsel auseinanderlaufen; also rechnet `proficienciesOf` beim
 Lesen alle Quellen zusammen und sagt je Übung, woher sie kommt — und wer
 fragt, ob jemand geübt ist, fragt diese eine Funktion.
 
+**Was schon da ist, wird nicht noch einmal gewählt** (T-299). Der
+Assistent bot in jeder Wahl die ganze Liste an, auch die Sprache, die die
+Herkunft schon gab — und eine doppelte Übung ist eine verlorene. Gesperrt
+wird mit derselben Rechnung, die sagt, woher eine Übung kommt
+(`proficienciesOf`), und „früher" ist die Reihenfolge der Schritte. Eine
+Doppelung, die erst durch eine spätere Änderung entsteht, wird gemeldet
+und nicht still gelöscht: welche der beiden Wahlen weichen soll, weiss nur,
+wer sie getroffen hat.
+
 **Mit den Attributen ging es genauso** (T-272). Der Assistent legt die
 Grundwerte am Statblock ab, und die Boni aus Herkunft und Hintergrund
 rechnete `chosenResult` — aber kein Leser nahm sie, der Bogen zeigte STR
