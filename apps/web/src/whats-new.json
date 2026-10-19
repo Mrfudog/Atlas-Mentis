@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-untick-rule-methods",
+      "date": "2026-10-19",
+      "title": "Tick and untick methods in Rules & options",
+      "text": "Ability score methods, starting equipment methods and material substitutions now list every one in play with a tick — switch each on or off right on Rules & options. With none ticked, the defaults apply.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": { "tab": "rules" }
+    },
+    {
       "id": "2026-10-19-knowledge-page",
       "date": "2026-10-19",
       "title": "Read a knowledge in one place",
