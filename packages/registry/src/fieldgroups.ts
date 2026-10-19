@@ -1916,6 +1916,27 @@ export const fieldGroups = {
         width: { type: 'number', title: 'Width in px' },
         height: { type: 'number', title: 'Height in px' },
         bytes: { type: 'number', title: 'Bytes' },
+        /* **Ein fertiges Token** (T-286): ein rundes Bild mit eigenem Ring
+           und Schatten, die Ecken durchsichtig — wie die Tokens aus
+           5e.tools. Es wird gezeigt, wie es ist; ein eigener Kreis darüber
+           schnitte den Ring an und schöbe den Schatten in die Mitte.
+           Erkannt beim Hochladen (`aufbereiten`), änderbar in „Adjust
+           token". */
+        round: {
+          type: 'boolean',
+          title: 'Ready-made token',
+          description: 'Already a round token with its own frame: shown as it is, not cut into a circle.',
+        },
+        /* **Der Ausschnitt eines Tokens** (T-286): wo der Kreis auf dem
+           Bild sitzt — Mitte in Prozent der Breite und Höhe, Zoom ab 1.
+           Am Bild und nicht am Statblock: dasselbe Token zeigen viele
+           Statblöcke (jede Instanz einer Vorlage), und der Ausschnitt ist
+           eine Eigenschaft des Bildes. */
+        frame: {
+          type: 'object',
+          title: 'Token frame',
+          description: 'Where the circle of a token sits on this image: centre x and y in percent, and zoom. Set with “Adjust token”.',
+        },
       },
     },
   },

@@ -15,6 +15,7 @@ import { Statblock } from '../artikel/statblock';
 import { Zauber } from '../artikel/zauber';
 import { Gegenstand } from '../artikel/gegenstand';
 import { Kennzahlen } from '../artikel/kennzahlen';
+import { TokenBild } from '../artikel/token-bild';
 
 /** Was die Kachel aus einem Element des Layouts macht. */
 type Stueck =
@@ -25,7 +26,8 @@ type Stueck =
   /* Wie im Buch (W2): der Baustein der Artikelseite, derselbe Satz. */
   | { art: 'statblock' | 'spell' | 'item'; id: string }
   /* Die Kennzahlen (T-206): AC, HP, Bewegung … als Kacheln. */
-  | { art: 'stats'; id: string };
+  | { art: 'stats'; id: string }
+  | { art: 'token'; id: string };
 
 /* Was die Kachel nicht noch einmal zeigt: der Name steht im Kopf, Nummer,
    Sichtbarkeit und Quelle gehören auf die Artikelseite. */
@@ -47,7 +49,7 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-kachel',
-  imports: [Text, Statblock, Zauber, Gegenstand, Kennzahlen],
+  imports: [Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild],
   template: `
     @for (s of stuecke(); track s.id) {
       @switch (s.art) {
@@ -74,6 +76,9 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
         }
         @case ('stats') {
           <nw-kennzahlen [artikel]="artikel()" />
+        }
+        @case ('token') {
+          <nw-token [artikel]="artikel()" />
         }
         @case ('spell') {
           <nw-zauber [artikel]="artikel()" [scopes]="scopes()" />
@@ -220,6 +225,7 @@ export class Kachel {
       case 'spell':
       case 'item':
       case 'stats':
+      case 'token':
         return { art: el.el, id: el.id };
       default:
         return null;

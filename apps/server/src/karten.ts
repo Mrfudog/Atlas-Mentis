@@ -22,6 +22,9 @@
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  assetVersion,
+  tokenLook,
+  type TokenLook,
   currentCampaign,
   darkvisionFor,
   encounterOnMap,
@@ -86,6 +89,10 @@ export interface MarkerZiel {
   name: string;
   type: string;
   image?: string;
+  /** Die Version der Bilddatei (T-211): mit ihr darf der Browser das Token behalten. */
+  version?: string;
+  /** Wie das Bild als Token gezeigt wird (T-286): fertiges Rundtoken oder Ausschnitt. */
+  look?: TokenLook;
 }
 
 export interface KartenKontext {
@@ -190,7 +197,15 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const targets: Record<string, MarkerZiel> = {};
     for (const z of ziele) {
       const bild = tokenVon.get(z.id) ?? bildVon(z);
-      targets[z.id] = { name: entityName(z), type: primaryInterface(z), ...(bild ? { image: bild } : {}) };
+      const asset = bild ? stand.map.get(bild) : undefined;
+      const v = assetVersion(asset);
+      targets[z.id] = {
+        name: entityName(z),
+        type: primaryInterface(z),
+        ...(bild ? { image: bild } : {}),
+        ...(v ? { version: v } : {}),
+        ...(asset ? { look: tokenLook(asset) } : {}),
+      };
     }
 
     /* **Wo die Gruppe steht** (REQ-136): ihr Token oder das einer ihrer

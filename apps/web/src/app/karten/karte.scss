@@ -330,6 +330,17 @@ button {
   object-fit: cover;
   pointer-events: none;
 }
+/* Ein fertiges Rundtoken (T-286) bringt Ring und Schatten selbst mit: kein
+   eigener Kreis, kein Rand, nichts abgeschnitten. Der Zug-Ring bleibt. */
+.marker.rund {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+.marker.rund img {
+  object-fit: contain;
+}
 .marker:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;

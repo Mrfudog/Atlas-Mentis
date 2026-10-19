@@ -65,6 +65,7 @@ export interface Stueck {
   art:
     | 'statblock'
     | 'stats'
+    | 'token'
     | 'spell'
     | 'item'
     | 'beschreibung'
@@ -320,6 +321,10 @@ export function anordnen(
         /* Die Kennzahlen (T-206) nehmen kein Feld aus der Tabelle: sie sind
            ein Auszug, und der Bogen oder die Tabelle zeigt dieselben Werte. */
         out.push({ id: el.id, art: 'stats' });
+        break;
+      case 'token':
+        /* Das Token (T-286) holt sich, was es braucht (`refs.token`). */
+        out.push({ id: el.id, art: 'token' });
         break;
       case 'description': {
         const text = opt.beschreibung;

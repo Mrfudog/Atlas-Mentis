@@ -1,3 +1,4 @@
+import { tokenStil } from '../artikel/token-bild';
 import {
   Component,
   DestroyRef,
@@ -570,6 +571,7 @@ interface Zeiger {
                     [class.ziel]="m.ziel === true"
                     [class.fern]="m.ziel === false"
                     [class.selbst]="m.selbst"
+                    [class.rund]="m.rund"
                     [style.left.%]="m.x * 100"
                     [style.top.%]="m.y * 100"
                     [style.width.px]="m.px"
@@ -581,7 +583,7 @@ interface Zeiger {
                     (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : kurzansicht($event, m.to)"
                   >
                     @if (m.bild) {
-                      <img [src]="m.bild" alt="" draggable="false" />
+                      <img [src]="m.bild" alt="" draggable="false" [style]="m.bildStil" />
                     } @else {
                       <span>{{ kuerzel(m.name) }}</span>
                     }
@@ -1113,7 +1115,11 @@ export class Karte {
         y: pt.y,
         name,
         px,
-        bild: ziel?.image ? bildAdresse(ziel.image, 'thumb') : null,
+        bild: ziel?.image ? bildAdresse(ziel.image, 'thumb', ziel.version ?? '') : null,
+        /* Ein fertiges Rundtoken ohne eigenen Kreis, jedes andere Bild im
+           Ausschnitt seines Assets (T-286). Möbel liegen, wie sie sind. */
+        rund: m.kind !== 'scenery' && !!ziel?.image && !!ziel.look?.round,
+        bildStil: m.kind !== 'scenery' ? tokenStil(ziel?.look) : {},
         /* Der Zeiger auf dem, der dran ist (REQ-144): dasselbe Token,
            ein Ring mehr — und gestrichelt der Nächste. */
         dran: !!zug?.current && m.to === zug.current,

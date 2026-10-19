@@ -298,6 +298,8 @@ export const interfaces: Record<string, InterfaceDef> = {
               label: 'Overview',
               layout: [
                 { id: 'c-img', el: 'image' },
+                /* Das Token ihres Statblocks, zum Einstellen (T-286). */
+                { id: 'c-token', el: 'token' },
                 { id: 'c-desc', el: 'description' },
                 /* **Der Statblock steht hier und nicht hinter einem
                    Sprung.** Seine Felder gehören zu dem, was man gerade
@@ -722,6 +724,8 @@ export const interfaces: Record<string, InterfaceDef> = {
         /* Das Bild obenan (T-211): seit dem Lauf der 5e.tools-Bilder hat
            fast jeder Statblock eins, und der Bogen zeigt es nicht. */
         { id: 's-img', el: 'image' },
+        /* Das Token, wie es auf der Karte steht, zum Einstellen (T-286). */
+        { id: 's-token', el: 'token' },
         { id: 's-sb', el: 'statblock' },
         { id: 's-f', el: 'fields', fields: 'all', except: ['Statblock', 'Abilities', 'Proficiencies'] },
         { id: 's-b', el: 'prose', fields: 'all' },

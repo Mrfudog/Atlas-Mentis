@@ -517,6 +517,12 @@ export type LayoutElementKind =
    */
   | 'stats'
   /**
+   * **Das Token** (T-286): am Statblock sein eigenes, an der Kreatur das
+   * ihres Statblocks — so, wie es auf der Karte steht, mit „Adjust token"
+   * für wer das Bild schreibt. Wo keins ist, zeichnet es nichts.
+   */
+  | 'token'
+  /**
    * **Die Teile in ihrer Reihenfolge** (T-108, E14): was mit Rang an einem
    * Kapitel, einer Szene oder einem Arc hängt — Überschriften, Absätze,
    * Vorlesetexte, Verweise, Szenen —, gezeichnet wie im Buch. Wo nichts
