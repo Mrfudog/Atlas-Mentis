@@ -713,6 +713,26 @@ und aufklappbar. Werte über Kanten (`path`) halten die Daten, wo sie
 hingehören: der Preis steht an der `sells`-Kante des Ladens, und die
 Ansicht des Wirts liest ihn dort, statt ihn zu kopieren.
 
+### Ein Editor, und Speichern fragt wohin (T-276)
+
+Es gab drei Stellen, an denen man eine Ansicht änderte: Registry › Views
+(die Ansicht selbst), den Kasten Views an der Typseite (die Anordnung
+einer Art) und den Designer (gestaltete Ansichten). Dieselbe Sache — wie
+ein Artikel aussieht — hatte drei Masken, und die Leitung fand am Artikel
+keine. Jetzt ist es **ein** Editor, und die Frage, die vorher die Wahl der
+Maske war, steht beim Speichern: für jeden Artikel, für den ganzen Typ,
+für diesen Artikel, oder unter einer Bedingung. Die Typseite zeigt nur
+noch, was gilt und woher; wer ändert, landet im Designer mit dem Typ
+gewählt.
+
+Warum die **Anpassung** bleibt, obwohl der Designer einen ganzen Baum
+zeigt: eine Abschrift bliebe beim Alten stehen, wenn die Ansicht sich
+ändert; eine Anpassung sagt nur die Abweichung und nimmt das Neue mit.
+Der Designer zeigt darum den Baum, wie er gilt, und rechnet beim
+Speichern zurück, was davon Abweichung ist. Was sich so nicht sagen lässt,
+sagt er — still eine Abschrift zu speichern hiesse, die Anpassung zu
+verlieren, ohne dass es jemand merkt.
+
 ---
 
 ## Block
