@@ -9,6 +9,15 @@
       "link": "/maps"
     },
     {
+      "id": "2026-10-19-carry-blocks-handling",
+      "date": "2026-10-19",
+      "title": "Carry blocks: easier selecting, ordering and removing",
+      "text": "Selected cells are hatched grey and the grid no longer moves while you select; the page scrolls beside it. Blocks and zones move up and down, blocks are removed from their header, and a bar at the bottom keeps Save in reach while changes are unsaved.",
+      "area": "Inventory",
+      "link": "/campaign",
+      "query": { "tab": "rules" }
+    },
+    {
       "id": "2026-10-19-character-locks",
       "date": "2026-10-19",
       "title": "No double picks in the character assistant",

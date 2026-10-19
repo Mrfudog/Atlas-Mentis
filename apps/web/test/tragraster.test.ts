@@ -107,6 +107,22 @@ describe('nw-tragraster', () => {
     expect(neu.gridSize).toBe('70');
   });
 
+  it('starts a new block for no one, and removes it from the header', async () => {
+    const { fixture, el } = await erzeuge();
+    const bilanz = el.querySelector('.bilanz')?.textContent;
+    [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === '+ Block')!.click();
+    fixture.detectChanges();
+    const neu = [...el.querySelectorAll('details.baustein')].find((d) => d.querySelector('summary b')?.textContent === 'New block')!;
+    expect(neu.querySelector('summary')?.textContent).toContain('Size: nothing ticked');
+    /* Er gilt für niemanden, also ändert sich die Vorschau nicht. */
+    expect(el.querySelector('.bilanz')?.textContent).toBe(bilanz);
+    expect(el.querySelector('.knoepfe.offen')?.textContent).toContain('Unsaved changes');
+    (neu.querySelector('summary button[aria-label^="Remove block"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect([...el.querySelectorAll('details.baustein summary b')].map((b) => b.textContent)).not.toContain('New block');
+    expect(el.querySelector('.knoepfe.offen')).toBeNull();
+  });
+
   it('refuses two templates with the same name', async () => {
     const { fixture, el, schreibe } = await erzeuge();
     const namen = el.querySelectorAll('input[aria-label="Template name"]');
@@ -138,13 +154,19 @@ describe('nw-zonenmaler', () => {
     const { fixture, el, raus } = maler([{ id: 'z1', draw: 'action', cells: ['0,0', '1,0'] }]);
     for (const k of ['1,0', '2,0']) zelle(el, k).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     fixture.detectChanges();
-    expect(el.textContent).toContain('Clear selection (2)');
+    expect(el.querySelector('.zahl')?.textContent).toBe('2 selected');
     const neu = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('Zone from selection'))!;
     neu.click();
     expect(raus.at(-1)).toEqual({
       rows: ['###', '###'],
       zones: [{ id: 'z1', draw: 'action', cells: ['0,0'] }, { id: 'z2', draw: 'free action', cells: ['1,0', '2,0'] }],
     });
+  });
+
+  it('moves a zone up the list', () => {
+    const { el, raus } = maler([{ id: 'z1', draw: 'action', cells: ['0,0'] }, { id: 'z2', draw: 'turn', cells: ['1,0'] }]);
+    (el.querySelector('button[aria-label="Move zone turn up"]') as HTMLButtonElement).click();
+    expect((raus.at(-1) as { zones: { id: string }[] }).zones.map((z) => z.id)).toEqual(['z2', 'z1']);
   });
 
   it('closes selected cells and drops them from every zone', () => {

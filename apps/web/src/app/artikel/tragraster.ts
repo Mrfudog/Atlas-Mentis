@@ -102,22 +102,28 @@ const ATTRIBUTE = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
         </p>
 
         <h5>Blocks</h5>
-        <p class="hint">Each block has its own shape and zones and applies when all its conditions hold. Order is left to right.</p>
+        <p class="hint">Each block has its own shape and zones and applies when all its conditions hold. The list order is the order left to right.</p>
         @for (b of d.blocks; track b.id; let i = $index) {
           <details class="baustein" [open]="offen().has(b.id)" (toggle)="aufklappen(b.id, $any($event.target).open)">
             <summary>
               <b>{{ b.label || 'Block' }}</b>
               <span class="hint">{{ blockText(b) }}</span>
+              @if (!b.when.length) {
+                <span class="marke warn">applies to every creature</span>
+              }
               @if (gilt().has(b.id)) {
                 <span class="marke an">in the preview</span>
               }
+              <!-- Ordnen und Entfernen auch zugeklappt (Leitung 19.10.); ein Klick hier klappt nicht auf. -->
+              <span class="kopfknoepfe">
+                <button type="button" class="klein" [disabled]="i === 0" (click)="$event.preventDefault(); schiebe(i, -1)" [attr.aria-label]="'Move ' + b.label + ' up (further left)'">↑</button>
+                <button type="button" class="klein" [disabled]="i === d.blocks.length - 1" (click)="$event.preventDefault(); schiebe(i, 1)" [attr.aria-label]="'Move ' + b.label + ' down (further right)'">↓</button>
+                <button type="button" class="klein" (click)="$event.preventDefault(); blockWeg(i)" [attr.aria-label]="'Remove block ' + b.label">Remove</button>
+              </span>
             </summary>
             <div class="zeile">
               <input type="text" class="name" [value]="b.label" aria-label="Block name" (change)="block(i, { label: $any($event.target).value })" />
-              <button type="button" class="klein" [disabled]="i === 0" (click)="schiebe(i, -1)" aria-label="Move left">↑</button>
-              <button type="button" class="klein" [disabled]="i === d.blocks.length - 1" (click)="schiebe(i, 1)" aria-label="Move right">↓</button>
               <button type="button" class="klein" (click)="kopiere(i)">Duplicate</button>
-              <button type="button" class="klein" (click)="blockWeg(i)" [attr.aria-label]="'Remove block ' + b.label">Remove</button>
             </div>
             <div class="bedingungen">
               <span class="hint">Applies when</span>
@@ -211,7 +217,12 @@ const ATTRIBUTE = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
         @if (fehler(); as f) {
           <p class="fehler" role="alert">{{ f }}</p>
         }
-        <div class="zeile knoepfe">
+        <!-- Bleibt unten im Bild, solange etwas nicht gespeichert ist: Entfernen
+             und Ändern wirken erst mit „Save" (Leitung 19.10.). -->
+        <div class="zeile knoepfe" [class.offen]="geaendert()">
+          @if (geaendert()) {
+            <span class="hint">Unsaved changes</span>
+          }
           <button type="button" class="pri" [disabled]="!geaendert() || laeuft()" (click)="speichern()">{{ laeuft() ? 'Saving…' : 'Save grid settings' }}</button>
           <button type="button" [disabled]="!geaendert() || laeuft()" (click)="zuruecksetzen()">Discard changes</button>
           @if (gespeichert()) {
@@ -244,6 +255,9 @@ const ATTRIBUTE = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
     .marke.an { color: var(--accent); font-size: 0.8rem; }
     .plaetze label { display: inline-flex; gap: 0.3rem; align-items: center; }
     .knoepfe { margin-top: 0.6rem; }
+    .knoepfe.offen { position: sticky; bottom: 0; z-index: 2; align-self: stretch; padding: 0.5rem 0; background: var(--bg); border-top: 1px solid var(--line); }
+    .kopfknoepfe { margin-left: auto; display: inline-flex; gap: 0.3rem; }
+    .marke.warn { color: var(--warn); font-size: 0.8rem; }
     .fehler { color: var(--warn); }
   `,
 })
@@ -366,7 +380,7 @@ export class Tragraster {
       if (c.min !== undefined && c.max !== undefined) return c.min === c.max ? `${name} ${c.min}` : `${name} ${c.min}–${c.max}`;
       if (c.min !== undefined) return `${name} ≥ ${c.min}`;
       if (c.max !== undefined) return `${name} ≤ ${c.max}`;
-      return name;
+      return `${name}: nothing ticked`;
     });
     return `${groesse} · ${wann.length ? wann.join(', ') : 'always'} · ${b.zones.length} zone${b.zones.length === 1 ? '' : 's'}`;
   }
@@ -422,7 +436,11 @@ export class Tragraster {
     const d = this.entwurf();
     if (!d) return;
     const id = this.neueId('block');
-    this.setze({ blocks: [...d.blocks, { id, label: 'New block', when: [], rows: openRows(3, 3), zones: [] }] });
+    /* Ein neuer Baustein fragt nach der Grösse, ohne einen Wert zu nennen —
+       er gilt für niemanden, bis jemand einen ankreuzt. Ohne Bedingung
+       gälte er für jede Kreatur, und ein versehentliches „+ Block" gäbe
+       allen ein Feld mehr. */
+    this.setze({ blocks: [...d.blocks, { id, label: 'New block', when: [{ field: 'Statblock.size' }], rows: openRows(3, 3), zones: [] }] });
     this.aufklappen(id, true);
   }
 
