@@ -70,6 +70,7 @@ export function appliesHolds(
   applies: ViewApplies | undefined,
   entity: Gelesen,
   incoming: readonly { type: string }[] = [],
+  lineOf?: (id: string) => readonly string[],
 ): boolean {
   if (!applies) return true;
   if (applies.article && applies.article !== entity.id) return false;
@@ -77,7 +78,7 @@ export function appliesHolds(
     const kette = typeChain(registry, entity.interfaces?.[0] ?? '');
     if (!applies.types.some((t) => kette.includes(t) || (entity.interfaces ?? []).includes(t))) return false;
   }
-  return (applies.where ?? []).every((w) => whenHolds(w, entity, incoming));
+  return (applies.where ?? []).every((w) => whenHolds(w, entity, incoming, lineOf));
 }
 
 /** Eine Bedingung in Worten — für die Liste im Register und das „warum". */
@@ -85,7 +86,7 @@ export function whenText(w: LayoutWhen): string {
   const teile: string[] = [];
   if (w.type) teile.push(`is ${w.type}`);
   if (w.field) teile.push(w.has?.length ? `${w.field} = ${w.has.join(' or ')}` : w.empty ? `${w.field} is empty` : `${w.field} is set`);
-  if (w.relation) teile.push(`has edge ${w.relation}`);
+  if (w.relation) teile.push(w.to?.length ? `${w.relation} ${w.to.join(' or ')}` : `has edge ${w.relation}`);
   if (w.incoming) teile.push(`is ${w.incoming} of something`);
   return teile.join(' or ') || 'always';
 }

@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-18. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-19. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -12,12 +12,12 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 176 steht · 53 teils · 104 offen · 10 ersetzt · 6 verworfen — 349 Stories in 79 Features und 12 Epics.
+Zusammen: 178 steht · 53 teils · 107 offen · 10 ersetzt · 6 verworfen — 354 Stories in 79 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 53 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
-| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 38 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
+| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 43 | 25 steht · 5 teils · 10 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 40 | 5 steht · 9 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
@@ -155,7 +155,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen)
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-352 Reiter Knowledge am Artikel (offen) · REQ-353 Die Seite eines Wissens zeigt alles, was es vereint (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -192,6 +192,11 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | REQ-178 | Decknamen | 3 | **steht** | `Identity.cover` |
 | REQ-179 | Zeigen, dass es mehr gibt | 4 | **steht** | „…and 3 more things" |
 | REQ-203 | Wissen nach Rang in einer Fraktion | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
+| REQ-350 | Eine Information gilt für eine Gruppe von Artikeln | 1 | **steht** | T-285: Information.applies (Typen, Bedingungen auf Felder und Kanten, Kante auf einen Artikel samt Unterarten) |
+| REQ-351 | Wissen über Herkunft, Hintergrund, Klasse und Talent | 1 | **steht** | T-285: knownBy auch an Ancestry, Background, Class, Subclass, Feat; die Figur zählt sie zu ihren Trägern |
+| REQ-352 | Reiter Knowledge am Artikel | 1 | **offen** |  |
+| REQ-353 | Die Seite eines Wissens zeigt alles, was es vereint | 1 | **offen** |  |
+| REQ-354 | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | 2 | **offen** |  |
 
 ### F-013 Schreibrechte & Freigabe
 
@@ -977,6 +982,8 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-145** (1, teils, Medien & Assets) — Ablage in der Seite — *Assets als Artikel; Ablage im Artefakt*
 - **REQ-344** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
 - **REQ-346** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
+- **REQ-352** (1, offen, Zugang & Betrieb) — Reiter Knowledge am Artikel
+- **REQ-353** (1, offen, Zugang & Betrieb) — Die Seite eines Wissens zeigt alles, was es vereint
 - **REQ-041** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **REQ-072** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **REQ-079** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
@@ -1020,6 +1027,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-338** (2, offen, Spielererlebnis) — Körperplätze als Plan des Moduls
 - **REQ-339** (2, offen, Spielererlebnis) — Tragende Ausrüstung an der Figur
 - **REQ-345** (2, teils, Oberfläche & Navigation) — Schwebende Werkzeugleiste für eine Auswahl — *Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt*
+- **REQ-354** (2, offen, Zugang & Betrieb) — Wissenspunkte bei eigener Herkunft und eigenem Hintergrund
 - **REQ-007** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **REQ-022** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **REQ-025** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*

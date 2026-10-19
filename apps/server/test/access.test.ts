@@ -1047,8 +1047,10 @@ describe('knowledge shared with the party', () => {
     expect(JSON.stringify((await lesen(leer)).json())).not.toContain('hinter dem Fass');
   });
 
-  it('knows three holders and no fourth', () => {
-    expect(seedRegistry.relations.knownBy.to).toEqual(['Creature', 'Party', 'Faction']);
+  it('knows three holders, what a character is (T-285), and no carrier of accounts', () => {
+    /* Träger sind Figur, Gruppe, Fraktion (A8); dazu, was eine Figur ist
+       oder gewählt hat (REQ-351) — nie etwas, das Konten trägt. */
+    expect(seedRegistry.relations.knownBy.to).toEqual(['Creature', 'Party', 'Faction', 'Ancestry', 'Background', 'Class', 'Subclass', 'Feat']);
     expect(seedRegistry.interfaces.Group).toBeUndefined();
     /* Die Gruppe hängt an ihrer Kampagne, genau einer. */
     expect(seedRegistry.relations.partyOf.to).toEqual(['Campaign']);

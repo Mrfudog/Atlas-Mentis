@@ -15,7 +15,7 @@ Epic: [[EP-02 Zugang & Betrieb]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-9 Stories · 25 Punkte · 7 steht · 1 ersetzt · 1 verworfen
+14 Stories · 40 Punkte · 9 steht · 3 offen · 1 ersetzt · 1 verworfen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -28,4 +28,9 @@ Epic: [[EP-02 Zugang & Betrieb]]
 | [[REQ-178]] Decknamen | Spielleitung | 3 | steht |
 | [[REQ-179]] Zeigen, dass es mehr gibt | Spieler | 4 | steht |
 | [[REQ-203]] Wissen nach Rang in einer Fraktion | Spielleitung | 2 | steht |
+| [[REQ-350]] Eine Information gilt für eine Gruppe von Artikeln | Spielleitung | 1 | steht |
+| [[REQ-351]] Wissen über Herkunft, Hintergrund, Klasse und Talent | Spielleitung | 1 | steht |
+| [[REQ-352]] Reiter Knowledge am Artikel | Spielleitung | 1 | offen |
+| [[REQ-353]] Die Seite eines Wissens zeigt alles, was es vereint | Spieler | 1 | offen |
+| [[REQ-354]] Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | 2 | offen |
 <!-- stories:ende -->

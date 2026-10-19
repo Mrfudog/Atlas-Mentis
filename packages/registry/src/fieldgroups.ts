@@ -1857,6 +1857,15 @@ export const fieldGroups = {
            einmal der Blockanker: ein Geheimnis von dreien freizugeben
            heisst, genau dieses freizugeben. */
         fields: { type: 'array', title: 'Fields', items: { type: 'string' } },
+        /* **Für welche Artikel sie gilt** (T-285, REQ-350): in der Form der
+           Ansichten (`ViewApplies`: Typen, Bedingungen auf Felder und
+           Kanten, auch eine Kante auf einen Artikel samt Unterarten). Ohne
+           Angabe gilt sie, wo ein Artikel sie über `knowledge` nennt. */
+        applies: {
+          type: 'object',
+          title: 'Applies to',
+          description: 'A group of articles this information holds for — types and conditions, like a view. Empty: only the article that lists it.',
+        },
         /* Nur Anzeige und Sortierung. Was jemand sehen darf, entscheiden die
            Kanten — ein Rang hier wäre eine zweite, widersprechende Quelle. */
         tier: {
