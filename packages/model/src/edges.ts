@@ -155,6 +155,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     does: 'decides which fields a viewer learns — what a creature, its party or its faction (from a rank) knows, and what its ancestry, background, class, subclass or chosen feat knows (T-285); information that holds for a group of articles counts at each of them; and which combatants players may see',
     uses: {
       [M + 'knowledge.ts']: ['chose', 'hasAncestry', 'hasBackground', 'hasClass', 'includes', 'knowledge', 'knownBy', 'memberOf', 'memberOfParty', 'participates', 'partyOf'],
+      /* Der Kasten Knowledge (T-286): Informationen eines Artikels, ihre Bündel, neu in der Ebene der Kampagne. */
+      [S + 'wissen.ts']: ['inLayer', 'includes', 'knowledge', 'knownBy'],
     },
   },
   {

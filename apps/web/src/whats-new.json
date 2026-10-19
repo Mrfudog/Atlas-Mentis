@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-knowledge-box",
+      "date": "2026-10-19",
+      "title": "A Knowledge box on every article",
+      "text": "GMs set at the side of an article which information exists about it — fields picked by group — and which knowledge it belongs to, or start a new knowledge right there. Works on rulebook articles too: the article itself stays unchanged.",
+      "area": "Knowledge",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-19-knowledge-for-groups",
       "date": "2026-10-19",
       "title": "Knowledge for whole groups and by ancestry",

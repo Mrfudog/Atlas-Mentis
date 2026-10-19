@@ -93,6 +93,7 @@ import { Lesen } from '../lesen/lesen';
 import { Quelleninhalt } from './quelleninhalt';
 import { KampagnenReiter } from './ebenen-reiter';
 import { EbenenMarke } from './ebenen-marke';
+import { Wissenskasten } from './wissenskasten';
 import { Klasse } from '../klassen/klasse';
 import { Herkunft } from '../klassen/herkunft';
 import { Regeloptionen } from './regeloptionen';
@@ -194,6 +195,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Herkunft,
     KampagnenReiter,
     EbenenMarke,
+    Wissenskasten,
     Regeloptionen,
     Wuerfe,
     Ansichtsbaum,
@@ -977,6 +979,10 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
               </section>
             }
             <nw-fassungen [artikel]="e.id" [basis]="e" [fassungen]="fassungen()" (gewechselt)="gewechselt($event)" />
+            <!-- Wer was über diesen Artikel weiss (T-286) — nur die Leitung, der Server sagt es. -->
+            @if (session.leitung() && !bearbeitet() && art(e) !== 'Information' && art(e) !== 'Knowledge') {
+              <nw-wissenskasten [artikel]="e" />
+            }
             <!-- Ein Bild (T-119): wo es gezeigt wird, seine Fassungen, „Replace image". -->
             @if (istBild(e)) {
               <nw-bildpanel [artikel]="e" (gewechselt)="gewechselt($event)" />
