@@ -69,6 +69,7 @@ von Hand ändern.
 | [Karten.md](Karten.md) | Zeichenebenen, Sperren, Unterkarten; die Karte in der Seite; der Zugplan (T-198) | gilt | Hand |
 | [vorschlaege/Karten-VTT-Vergleich.md](vorschlaege/Karten-VTT-Vergleich.md) | Was andere VTTs an der Karte können und was wir übernehmen (T-203) | Vorschlag | Hand |
 | [vorschlaege/Regel-Builder.md](vorschlaege/Regel-Builder.md) | Versuch: Regeln als Knoten (Auslöser → Bedingung → Folge), hinter einem Schalter (T-270, E-102) | Versuch, Bericht | Hand |
+| [vorschlaege/Regeln-Uebersicht.md](vorschlaege/Regeln-Uebersicht.md) | Alle Regeln in Gruppen: was Einstellung oder Rechenwerk bleibt, was Graph wird, welche Bausteine fehlen (T-270, E-102) | Vorschlag | Hand |
 | [Regelsysteme.md](Regelsysteme.md) | Regelsysteme als Behälter (T-132) | Entscheidungsvorlage, E-044 | Hand |
 | [Spieltisch.md](Spieltisch.md) | Wie der Spieltisch im Prototyp entstand | Herkunft (Prototyp, eingefroren D59) | Hand |
 | [Durchgang.md](Durchgang.md) | Abgleich Register ↔ Konzept, mit Entscheidungen | Herkunft, Entscheidungen gelten | Hand |
