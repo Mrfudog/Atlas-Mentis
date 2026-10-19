@@ -45,6 +45,8 @@ function bestand(): Entity[] {
     regel('r_units', 'Units', 'rule', 'units', 'r_sys_units'),
     { id: 'am_geheim', name: 'Heroic', interfaces: ['AbilityMethod'], components: { ...ident('Heroic', 'abilitymethod-0001', 'idea'), AbilityMethod: { method: 'roll', dice: '4d6kh3' } }, relations: [im('am_geheim')] },
     { id: 'am_offen', name: 'Fixed', interfaces: ['AbilityMethod'], components: { ...ident('Fixed', 'abilitymethod-0002'), AbilityMethod: { method: 'array', scores: [15, 14, 13, 12, 10, 8] } }, relations: [im('am_offen')] },
+    /* Im Stapel, aber nicht gewählt: steht zur Wahl. */
+    { id: 'am_buy', name: 'Point buy 30', interfaces: ['AbilityMethod'], components: { ...ident('Point buy 30', 'abilitymethod-0003'), AbilityMethod: { method: 'pointBuy', budget: 30 } }, relations: [im('am_buy')] },
   ];
 }
 
@@ -109,5 +111,15 @@ describe('GET /api/rule-articles (T-270)', () => {
     /* Spielende sehen das Unfertige nicht. */
     const sela = (await get('Sela', '/api/rule-articles')).json() as Entity[];
     expect(sela.some((e) => e.id === 'r_slots')).toBe(false);
+  });
+
+  it('nennt je Mehrfachwahl, was zur Wahl steht — gewählt oder nicht, nur Sichtbares (Leitung 19.10.)', async () => {
+    const { get } = await aufbau();
+    const gwen = (await get('Gwen', '/api/campaigns/camp_a/rules')).json();
+    expect(gwen.choices.allowsMethod.map((m: { id: string }) => m.id).sort()).toEqual(['am_buy', 'am_geheim', 'am_offen']);
+    expect(gwen.choices.allowsMethod.find((m: { id: string }) => m.id === 'am_buy').does).toContain('30');
+    /* Spielende sehen das unfertige Verfahren nicht, auch nicht zur Wahl. */
+    const sela = (await get('Sela', '/api/campaigns/camp_a/rules')).json();
+    expect(sela.choices.allowsMethod.map((m: { id: string }) => m.id).sort()).toEqual(['am_buy', 'am_offen']);
   });
 });

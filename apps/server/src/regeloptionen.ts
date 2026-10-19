@@ -10,7 +10,7 @@
  * `ruleOptionsOf` ins Modul, die Route bleibt.
  */
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { entityName, missingRuleArticles, primaryInterface, ruleArticleKey, ruleArticleKind, ruleOptionsOf, type Entity } from '@nw/model';
+import { entityName, missingRuleArticles, primaryInterface, ruleArticleKey, ruleArticleKind, ruleOptionsOf, typeChain, type Entity } from '@nw/model';
 import type { Repository } from './repo.js';
 
 interface Stand {
@@ -68,6 +68,36 @@ export function registerRegeloptionen(app: FastifyInstance, deps: RegeloptionenD
     const byId = new Map(verfahren.map((e) => [e.id, e]));
     const gesiebt: Entity = { ...kampagne, relations: (kampagne.relations ?? []).filter((r) => !VERFAHREN.has(r.type) || byId.has(r.to)) };
 
+    /* **Was zur Wahl steht** (Mehrfachwahl abwählen, Leitung 19.10.): je
+       Kante jeder Artikel im Stapel, den sie nennen darf (`relations.to`,
+       die `extends`-Kette hoch) — mit demselben Satz, den ein gewählter
+       trägt. Gerechnet über eine gedachte Kampagne, die alle nennt: so
+       sagt `ruleOptionsOf` dasselbe wie für die gewählten. */
+    const passend = (e: Entity, rel: string) => {
+      const ziele = registry.relations[rel]?.to ?? [];
+      const kette = typeChain(registry, primaryInterface(e));
+      return ziele.some((t) => kette.includes(t));
+    };
+    const moegliche = await sieve(
+      request,
+      [...stand.map.values()].filter((e) => [...VERFAHREN].some((rel) => passend(e, rel))),
+      stand.map,
+    );
+    const alleKampagne: Entity = {
+      ...kampagne,
+      relations: [
+        ...(kampagne.relations ?? []).filter((r) => !VERFAHREN.has(r.type)),
+        ...[...VERFAHREN].flatMap((rel) => moegliche.filter((e) => passend(e, rel)).map((e) => ({ id: `${rel}~${e.id}`, type: rel, to: e.id, props: {} }))),
+      ],
+    };
+    const alleById = new Map(moegliche.map((e) => [e.id, e]));
+    const choices: Record<string, { id: string; name: string; does: string }[]> = {};
+    for (const sorte of ruleOptionsOf(alleKampagne, { byId: alleById, settings: registry.settings ?? null, articles: artikel })) {
+      for (const o of sorte.options) {
+        if (o.relation && o.methods) choices[o.relation] = o.methods.filter((m) => !m.builtIn).map((m) => ({ id: m.id, name: m.name, does: m.does }));
+      }
+    }
+
     return {
       campaign: { id: kampagne.id, name: entityName(kampagne) },
       sorts: ruleOptionsOf(gesiebt, {
@@ -75,6 +105,7 @@ export function registerRegeloptionen(app: FastifyInstance, deps: RegeloptionenD
         settings: registry.settings ?? null,
         articles: artikel,
       }),
+      choices,
       /* Was die Laufzeit kann und noch keinen Artikel hat — die Seite sagt es der Leitung. */
       missing: missingRuleArticles(artikel).length,
     };
