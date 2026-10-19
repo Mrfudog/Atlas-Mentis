@@ -69,8 +69,11 @@ import {
   hitChance,
   isMap,
   markersOf,
+  mayMoveToken,
   moveMarker,
   naturalD20,
+  partiesOf,
+  resolvePlay,
   planBudget,
   planText,
   primaryInterface,
@@ -86,7 +89,9 @@ import {
   type PlanThreat,
   type PlanTile,
   type GridGeometry,
+  type MapRules,
   type ReactionSpent,
+  type TokenMovers,
   type RollPayload,
   type TurnPlan,
   type validateEntity,
@@ -192,6 +197,33 @@ export function seiteVon(stand: Stand, kampf: Entity | null, id: string): 'party
   if ((e.relations ?? []).some((r) => r.type === PARTY_RELATION)) return 'party';
   const kante = (kampf?.relations ?? []).find((r) => r.type === PARTICIPATES && r.to === id);
   return (kante?.props as { ally?: unknown } | undefined)?.ally === true ? 'party' : 'foe';
+}
+
+/**
+ * **Wen ein Konto ziehen darf, gerechnet** (T-290, E-040): seine Figuren,
+ * die Gruppe der laufenden Kampagne samt Mitgliedern (`memberOfParty`) und
+ * wer auf der Seite der Gruppe steht — die Tokens dieser Karte nach
+ * `seiteVon`, mit dem Kampf, der hier läuft (eine Begegnung im Spiel
+ * aufgelöst: ihre Teilnehmer stehen an der Vorlage, T-289). Die Tokens
+ * kommen von **der** Karte, die man hineingibt; wo es um Spielende geht,
+ * ist das die gesiebte. Die Frage selbst stellt `mayMoveToken`.
+ */
+export function zieher(stand: Stand, kampagne: Entity | null, karte: Entity, eigene: Iterable<string>): TokenMovers {
+  const party = new Set<string>();
+  for (const g of kampagne ? partiesOf(stand.map, kampagne.id) : []) {
+    party.add(g.id);
+    for (const e of stand.alle) if ((e.relations ?? []).some((r) => r.type === PARTY_RELATION && r.to === g.id)) party.add(e.id);
+  }
+  const gefunden = encounterOnMap(stand.alle, karte.id);
+  const kampf = gefunden ? resolvePlay(stand.map, gefunden) : null;
+  const allies = new Set<string>();
+  for (const m of markersOf(karte)) if (m.kind !== 'scenery' && seiteVon(stand, kampf, m.to) === 'party') allies.add(m.to);
+  return { own: new Set(eigene), party, allies };
+}
+
+/** Darf das Token gezogen werden — die Leitung immer, sonst nach der Stufe der Kampagne (T-290). */
+export function darfZiehen(leitet: boolean, regeln: MapRules, ziel: string, wer: TokenMovers): boolean {
+  return leitet || mayMoveToken(regeln.tokenMove, ziel, wer);
 }
 
 /** Die Nahkampfreichweite einer Kreatur aus ihren Kacheln; ohne Angriff 5 ft. */
@@ -324,21 +356,42 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     return { user, stand, roheKarte, karte, kampagne, leitet };
   }
 
-  /** Für wen der Betrachter planen darf: eigene Figuren mit Token hier; die Leitung für jede Kreatur mit Statblock. */
-  function figuren(stand: Stand, karte: Entity, user: User, leitet: boolean): Entity[] {
+  /**
+   * Für wen der Betrachter planen darf: eigene Figuren mit Token hier; die
+   * Leitung für jede Kreatur mit Statblock. **Wen die Kampagne ziehen
+   * lässt** (T-290, `tokenMove`), dafür plant auch eine Spielerin — im Kampf
+   * zieht sie Gruppe und Verbündete so über den Plan; bestätigt wird er
+   * ohnehin. `none` nimmt den Plan der eigenen Figur nicht: ein Zug im Kampf
+   * ist mehr als Bewegung, und die Leitung bestätigt ihn.
+   */
+  function figuren(stand: Stand, karte: Entity, user: User, leitet: boolean, kampagne: Entity | null): Entity[] {
     const eigene = new Set(user.actorIds ?? []);
+    const wer = zieher(stand, kampagne, karte, eigene);
+    const regeln = mapRulesOf(kampagne);
     const ids = [...new Set(markersOf(karte).map((m) => m.to))];
     return ids
       .map((i) => stand.map.get(i))
       .filter((e): e is Entity => !!e)
-      .filter((e) => eigene.has(e.id) || (leitet && !!statblockVon(stand.alle, e)));
+      .filter((e) => eigene.has(e.id) || ((leitet || mayMoveToken(regeln.tokenMove, e.id, wer)) && !!statblockVon(stand.alle, e)));
+  }
+
+  /**
+   * Der Name einer Figur, wie der Betrachter ihn sieht — seit T-290 plant
+   * und zieht eine Spielerin auch Figuren, die nicht ihre sind, und deren
+   * Deckname (REQ-178) ist ein Feld wie jedes.
+   */
+  async function nameFuer(request: FastifyRequest, e: Entity, leitet: boolean, bestand: Map<string, Entity>): Promise<string> {
+    if (leitet) return entityName(e);
+    const [g] = await sieve(request, [e], bestand);
+    return g ? entityName(g) : e.id;
   }
 
   app.get<{ Params: { id: string }; Querystring: { actor?: string } }>('/api/maps/:id/turn-plan', async (request, reply) => {
     const l = await lage(request, request.params.id);
     if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
-    const { user, stand, roheKarte, karte, leitet } = l;
-    const moegliche = figuren(stand, karte, user, leitet);
+    const { user, stand, roheKarte, karte, kampagne, leitet } = l;
+    const moegliche = figuren(stand, karte, user, leitet, kampagne);
+    const nameVon = new Map((leitet || !moegliche.length ? moegliche : await sieve(request, moegliche, stand.map)).map((e) => [e.id, entityName(e)]));
     const figur = moegliche.find((e) => e.id === request.query.actor) ?? moegliche.find((e) => (user.actorIds ?? []).includes(e.id)) ?? moegliche[0] ?? null;
     const kampf = encounterOnMap(stand.alle, roheKarte.id);
 
@@ -386,11 +439,11 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     return {
       leitet,
       encounter: kampf ? { id: kampf.id } : null,
-      actors: moegliche.map((e) => ({ id: e.id, name: entityName(e), own: eigene.has(e.id), rel: markersOf(karte).find((m) => m.to === e.id)?.rel.id ?? null })),
+      actors: moegliche.map((e) => ({ id: e.id, name: nameVon.get(e.id) ?? e.id, own: eigene.has(e.id), rel: markersOf(karte).find((m) => m.to === e.id)?.rel.id ?? null })),
       actor: figur
         ? {
             id: figur.id,
-            name: entityName(figur),
+            name: nameVon.get(figur.id) ?? figur.id,
             speed,
             rel: markersOf(karte).find((m) => m.to === figur.id)?.rel.id ?? null,
             reaction: await reaktionDa(repo, stand, roheKarte.id, figur.id, kampf),
@@ -415,7 +468,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
       const { user, stand, roheKarte, karte, kampagne, leitet } = l;
       const b = request.body ?? {};
-      const figur = figuren(stand, karte, user, leitet).find((e) => e.id === b.actor);
+      const figur = figuren(stand, karte, user, leitet, kampagne).find((e) => e.id === b.actor);
       if (!figur) return reply.code(403).send({ error: 'Planen darf, wer die Figur führt oder am Tisch leitet — und sie braucht ein Token auf dieser Karte.' });
       const steps = (Array.isArray(b.steps) ? b.steps : []).slice(0, 30).map(cleanStep).filter((s): s is PlanStep => !!s);
       if (!steps.length) return reply.code(422).send({ error: 'Ein Plan braucht mindestens einen Schritt.' });
@@ -435,7 +488,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         plan: planId || `tp-${randomUUID().slice(0, 12)}`,
         map: karte.id,
         actor: figur.id,
-        actorName: entityName(figur),
+        actorName: await nameFuer(request, figur, leitet, stand.map),
         by: { id: user.id, name: user.name },
         steps,
         state: 'planned',
@@ -450,9 +503,12 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   );
 
   /**
-   * **Die eigene Figur ziehen** (T-204, `POST /api/maps/:id/move`
+   * **Ein Token ziehen** (T-204, T-290, `POST /api/maps/:id/move`
    * `{rel, to, nat?, path?, feet?}`): ausserhalb eines Kampfes, auch wenn
-   * die Karte nicht schreibt, wer sie führt. Die Kampagne sagt, wie
+   * die Karte nicht schreibt, wer zieht — welche Tokens, sagt
+   * `Campaign.tokenMove` (`darfZiehen`). Geschrieben wird nur die Stelle
+   * dieses einen Tokens, an der Karte, die man offen hat (auch einer
+   * Karteninstanz, T-289). Die Kampagne sagt, wie
    * (`mapRulesOf`): `free` zieht sofort, `confirm` legt einen Vorschlag als
    * Zugplan mit einem Schritt an — die Leitung bestätigt ihn wie jeden
    * (`decide`). Aufgedeckt wird, wenn die Regel es sagt, beim Ziehen
@@ -467,7 +523,11 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const b = request.body ?? {};
       const marker = markersOf(roheKarte).find((m) => m.rel.id === b.rel);
       if (!marker || !markersOf(karte).some((m) => m.rel.id === marker.rel.id)) return reply.code(404).send({ error: 'Das Token gibt es hier nicht.' });
-      if (!leitet && !(user.actorIds ?? []).includes(marker.to)) return reply.code(403).send({ error: 'Ziehen darf, wer die Figur führt.' });
+      /* **Wer zieht, sagt die Kampagne** (T-290, `tokenMove`) — gefragt an
+         der gesiebten Karte: wer ein Token nicht sieht, zieht es nicht. */
+      const regeln = mapRulesOf(kampagne, roheKarte);
+      if (!darfZiehen(leitet, regeln, marker.to, zieher(stand, kampagne, karte, user.actorIds ?? [])))
+        return reply.code(403).send({ error: 'This campaign does not let you move that token.' });
       if (!leitet && encounterOnMap(stand.alle, roheKarte.id)) return reply.code(423).send({ error: 'During an encounter, tokens move through the turn plan.' });
       const roh = (b.to ?? {}) as { x?: unknown; y?: unknown };
       const tx = Number(roh.x);
@@ -482,7 +542,6 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const gerade = geo ? Math.round(feetBetween(geo, marker, to)) : 0;
       const schritt = cleanStep({ id: 's1', kind: 'move', path: b.path, feet: b.feet, to }, 0) ?? { id: 's1', kind: 'move' as const, path: [], feet: gerade, to };
       if (schritt.kind !== 'move') return reply.code(422).send({ error: 'Kein Zug' });
-      const regeln = mapRulesOf(kampagne, roheKarte);
       /* **Was den Schritt hält, hält ihn** (T-118): eine Wand, eine
          geschlossene Tür, ein Fenster, ein Abgrund zwischen Token und Ziel.
          Geprüft wird der Weg, den der Zug nimmt — die Felder, sonst die
@@ -506,7 +565,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
           plan: alt?.plan ?? `tp-${randomUUID().slice(0, 12)}`,
           map: roheKarte.id,
           actor: marker.to,
-          actorName: figur ? entityName(figur) : marker.to,
+          actorName: figur ? await nameFuer(request, figur, leitet, stand.map) : marker.to,
           by: { id: user.id, name: user.name },
           steps: [schritt],
           state: 'planned',
