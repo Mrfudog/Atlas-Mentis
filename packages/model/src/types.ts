@@ -707,6 +707,12 @@ export interface LayoutWhen {
   empty?: boolean;
   relation?: string;
   /**
+   * Mit `relation`: die Kante muss auf einen dieser Artikel zeigen
+   * (T-285) — „hat Herkunft Orc". Eine Unterart zählt mit, wenn der
+   * Aufrufer ihre Reihe kennt (`subraceOf`, `whenHolds(…, lineOf)`).
+   */
+  to?: string[];
+  /**
    * Eine Kante dieser Art **zeigt auf** den Artikel (T-268): „hat einen
    * Shop" ist `incoming: 'shopkeeper'`, denn die Kante steht am Shop.
    * Gelesen nur, wo der Aufrufer die Rückbezüge mitgibt.

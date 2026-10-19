@@ -911,10 +911,21 @@ Zuteilungen einzeln nachzieht.
 Artikel     --knowledge--> Information        (owned: stirbt mit dem Artikel)
 Knowledge   --includes-->  Information
 Information | Knowledge --knownBy--> Creature | Party | Faction
+                                     | Ancestry | Background | Class | Subclass | Feat
 ```
 
 Ein Bündel in einem Bündel zählt nicht: ein Schritt weit, dieselbe Regel wie
 bei den Haltern. Sonst reichte eine Freigabe weiter, als jemand gemeint hat.
+
+**Wissen über viele Artikel ist eine Regel, kein Stapel Kopien** (T-285).
+„Was Orcs auszeichnet" betrifft jeden Orc — hundert angehängte
+Informationen wären hundert Stellen, die beim nächsten Orc fehlen. Also
+darf eine Information sagen, wofür sie gilt, in derselben Form wie eine
+Ansicht (`applies`), und gilt dann an jedem passenden Artikel. Und **wer**
+es weiss, muss keine Liste von Figuren sein: ein Wissen der Herkunft Orc
+weiss jede Figur, die diese Herkunft hat — heute aus Klasse, Herkunft und
+Hintergrund, später auch aus Wissenspunkten bei einer selbst erstellten
+Herkunft (REQ-354).
 
 > **Nicht mehr:** es gab einen `KnowledgeLevel` — einen *Stand*, dem Figuren
 > über `atLevel` angehörten. Das war ein zweiter Weg zu „wer weiss das",

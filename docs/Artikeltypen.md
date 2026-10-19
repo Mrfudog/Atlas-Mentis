@@ -1425,6 +1425,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -1484,6 +1485,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -1545,6 +1547,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -1759,6 +1762,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -1883,7 +1887,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `fields` *array*, `tier` *open | rumour | secret*
+- `fields` *array*, `applies` *object*, `tier` *open | rumour | secret*
 
 **Geerbte Felder**
 
@@ -1901,7 +1905,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
-- `knownBy` → Creature | Party | Faction — „known by"
+- `knownBy` → Creature | Party | Faction | Ancestry | Background | Class | Subclass | Feat — „known by"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -2037,7 +2041,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
-- `knownBy` → Creature | Party | Faction — „known by"
+- `knownBy` → Creature | Party | Faction | Ancestry | Background | Class | Subclass | Feat — „known by"
 - `includes` → Information — „includes"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2469,6 +2473,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
