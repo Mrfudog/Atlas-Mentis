@@ -27,6 +27,7 @@ import {
   tokenLook,
   type TokenLook,
   currentCampaign,
+  carriedLights,
   darkvisionFor,
   encounterOnMap,
   entityName,
@@ -123,6 +124,12 @@ export interface KartenKontext {
    * Statblock (`darkvisionFor`, D8) — gespeichert wird sie nirgends neu.
    */
   darkvision: Record<string, number>;
+  /**
+   * **Getragene Lichter in Fuss** (T-305) je Ziel eines Markers: ein
+   * Gegenstand als Marker, die Fackel in der Hand einer Figur
+   * (`carriedLights`, D8). Nur Radien — was die Figur trägt, sagt es nicht.
+   */
+  lights: Record<string, { bright: number; dim: number }>;
 }
 
 /** Die Seitenleiste der Karte (T-203): die Gruppe, und für die Leitung die Begegnungen der Sitzung. */
@@ -291,7 +298,8 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       const dv = darkvisionFor(stand.map, m.to);
       if (dv > 0) darkvision[m.to] = dv;
     }
-    return { parents, children: kinder, targets, party, turn, combatants, rules, own, proposals, darkvision } satisfies KartenKontext;
+    const lights = carriedLights(stand.map, karte);
+    return { parents, children: kinder, targets, party, turn, combatants, rules, own, proposals, darkvision, lights } satisfies KartenKontext;
   });
 
   /**
