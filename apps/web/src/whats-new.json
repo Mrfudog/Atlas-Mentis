@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-carry-blocks",
+      "date": "2026-10-19",
+      "title": "Carry sheet from blocks with real zones",
+      "text": "Rules & options › Inventory now builds the carry grid from blocks: paint zones as cells with a duration, set when a block applies (size, strength or any statblock field) and see the joined grid for any size and STR. Zones are easier to tell apart, in the inventory too.",
+      "area": "Inventory",
+      "link": "/campaign",
+      "query": { "tab": "rules" }
+    },
+    {
       "id": "2026-10-19-adjust-token",
       "date": "2026-10-19",
       "title": "Tokens as they are, and Adjust token",

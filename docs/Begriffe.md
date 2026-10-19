@@ -1945,13 +1945,17 @@ wächst. Das Zusatzquadrat steht als **Feld mit Rechnung am Statblock**
 Nachbarn des Statblocks wie der Zauber-SG und ein Angriff, der Bogen zeigt
 die Zahl, und wer die Regel ändert, ändert die Formel an einer Stelle. Eine
 Einstellung wäre ein ungeprüfter Text ohne Ort, an dem man die Zahl sieht.
-Die Grundquadrate je Grösse und die Zonen nach Spalten sind dagegen
-Einstellungen (`carrySquares`, `carryZones`): sie sind das Blatt der
-Kampagne und rechnen nichts. Eingestellt werden sie trotzdem nicht als
-Text, sondern gemalt (REQ-355, Rules & options › Inventory): wer die Zone
-einer Spalte am gezeichneten Raster wählt, sieht, wo das Grundquadrat
-endet — „5-8:turn“ sagt das nicht. Geschrieben wird dieselbe Zeile, die
-das Inventar liest; eine zweite Form daneben wäre eine zweite Wahrheit.
+Die Form selbst ist dagegen eine Einstellung, das **Tragblatt**: sie ist
+das Blatt der Kampagne und rechnet nichts. Es besteht aus **Bausteinen**
+(REQ-356) — je einer gemalten Form mit eigenen Zonen und Bedingungen auf
+Felder des Statblocks. Zuerst waren es ein Quadrat je Grösse und Zonen
+nach Spalten; aber eine Zone ist ein Ort auf dem Blatt und keine Spalte,
+und eine Bedingung „Grösse“ ist nur eine von vielen, die ein Tisch stellen
+will. Was gilt, wird **aneinandergefügt**: das Zusatzquadrat stand rechts
+vom grössten Grundquadrat, und eine kleine Kreatur hatte dazwischen eine
+Lücke — zwei Raster, wo eines gemeint war. Eingestellt wird es gemalt
+(Rules & options › Inventory), mit einer Vorschau, die Grösse und STR
+nimmt und zeigt, was daraus wird.
 Ein Stück, das nach einem Schrumpfen
 ausserhalb der Form liegt, behält seine Lage; es liegt im Fach, bis es
 jemand neu hinlegt, und hat bis dahin keine Ziehstufe.

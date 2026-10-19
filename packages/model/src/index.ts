@@ -19,6 +19,7 @@ export * from './initiative.js';
 export * from './movement.js';
 export * from './sight.js';
 export * from './inventory.js';
+export * from './carrySheet.js';
 export * from './timeline.js';
 export * from './summary.js';
 export * from './usage.js';

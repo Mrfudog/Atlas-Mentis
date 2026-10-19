@@ -15,7 +15,7 @@ Epic: [[EP-04 Spielererlebnis]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-22 Stories · 54 Punkte · 6 steht · 4 teils · 12 offen
+23 Stories · 59 Punkte · 7 steht · 4 teils · 12 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -41,4 +41,5 @@ Epic: [[EP-04 Spielererlebnis]]
 | [[REQ-328]] Ablage für nicht Verstautes | Spieler | 2 | offen |
 | [[REQ-333]] Vorgaben für Formen und Stapel | Spielleitung | 2 | offen |
 | [[REQ-355]] Tragraster, Zonen und Behälter einstellen | Spielleitung | 2 | steht |
+| [[REQ-356]] Tragblatt aus Bausteinen mit Zonen und Bedingungen | Spielleitung | 2 | steht |
 <!-- stories:ende -->
