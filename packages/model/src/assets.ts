@@ -178,6 +178,38 @@ export interface TokenFrame {
   x: number;
   y: number;
   zoom: number;
+  /** Der Rand um ein ausgeschnittenes Bild (T-301): eine Id aus `TOKEN_RINGS`; ohne gilt `plain`. */
+  ring?: string;
+}
+
+/**
+ * **Die Ränder eines Tokens** (T-301): um ein Bild, das erst im Kreis zum
+ * Token wird — ein fertiges Rundtoken bringt seinen Rand selbst mit.
+ * `width` ist ein Bruchteil des Durchmessers, `paint` ein CSS-Hintergrund
+ * (Farbe oder Verlauf). Eine Liste in Daten und keine Fallunterscheidung:
+ * eigene Ränder (Bild, Farben) kommen später als weitere Einträge dazu,
+ * und gespeichert wird nur die Id.
+ */
+export interface TokenRing {
+  id: string;
+  label: string;
+  width: number;
+  paint: string;
+}
+export const TOKEN_RINGS: readonly TokenRing[] = [
+  { id: 'plain', label: 'Plain', width: 0.035, paint: '#f7f1e3' },
+  { id: 'none', label: 'None', width: 0, paint: 'transparent' },
+  { id: 'gold', label: 'Gold', width: 0.07, paint: 'linear-gradient(135deg, #fff3b0, #d4a017 30%, #8a6212 55%, #f6e27a 80%, #b8860b)' },
+  { id: 'silver', label: 'Silver', width: 0.07, paint: 'linear-gradient(135deg, #ffffff, #b8bec4 30%, #6d747b 55%, #e6e9ec 80%, #9aa1a8)' },
+  { id: 'bronze', label: 'Bronze', width: 0.07, paint: 'linear-gradient(135deg, #f3c9a0, #b06a2c 30%, #6b3a14 55%, #e0a46c 80%, #8c4f1e)' },
+  { id: 'crimson', label: 'Crimson', width: 0.06, paint: 'linear-gradient(135deg, #e4574a, #8c1c13 50%, #c23a2c)' },
+  { id: 'emerald', label: 'Emerald', width: 0.06, paint: 'linear-gradient(135deg, #5fd09a, #146b45 50%, #2fa36d)' },
+  { id: 'shadow', label: 'Shadow', width: 0.06, paint: 'linear-gradient(135deg, #5a5a5a, #111 50%, #3a3a3a)' },
+];
+
+/** Der Rand nach Id; unbekannt oder ohne heisst `plain`. */
+export function tokenRing(id: string | undefined): TokenRing {
+  return TOKEN_RINGS.find((r) => r.id === id) ?? TOKEN_RINGS[0]!;
 }
 
 /** Wie ein Bild als Token gezeigt wird (T-297). */
@@ -198,7 +230,8 @@ export const TOKEN_ZOOM_MAX = 4;
 /** Ausschnitt mit Vorgaben und Grenzen: Mitte 50/50, Zoom 1. Unsinn fällt auf die Vorgabe. */
 export function tokenFrame(v: unknown): TokenFrame {
   const f = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
-  return { x: zwischen(f['x'], 0, 100, 50), y: zwischen(f['y'], 0, 100, 50), zoom: zwischen(f['zoom'], 1, TOKEN_ZOOM_MAX, 1) };
+  const ring = typeof f['ring'] === 'string' && TOKEN_RINGS.some((r) => r.id === f['ring']) ? (f['ring'] as string) : undefined;
+  return { x: zwischen(f['x'], 0, 100, 50), y: zwischen(f['y'], 0, 100, 50), zoom: zwischen(f['zoom'], 1, TOKEN_ZOOM_MAX, 1), ...(ring ? { ring } : {}) };
 }
 
 /** Wie das Bild `asset` als Token gezeigt wird (T-297) — aus seiner Karte `Asset`. */

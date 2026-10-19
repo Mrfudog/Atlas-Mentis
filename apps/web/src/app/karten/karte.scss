@@ -341,6 +341,25 @@ button {
 .marker.rund img {
   object-fit: contain;
 }
+/* Der gewählte Rand (T-301) liegt als Ring über dem Bild, statt des
+   schlichten Randes des Markers. */
+.marker.beringt {
+  border-width: 0;
+}
+.marker.beringt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: var(--ring-w, 0);
+  background: var(--ring-bg, transparent);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
 .marker:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;

@@ -1,4 +1,4 @@
-import { tokenStil } from '../artikel/token-bild';
+import { ringStil, tokenStil } from '../artikel/token-bild';
 import {
   Component,
   DestroyRef,
@@ -54,6 +54,7 @@ import {
   isDoor,
   mapWalls,
   nearestWall,
+  removeMarker,
   removeWall,
   revealAlong,
   setWallKind,
@@ -117,7 +118,7 @@ const RAD_PAUSE = 90;
 /** Ein Finger ist breiter als ein Mauszeiger: kleiner wird ein Marker nicht. */
 const MARKER_MIN = 26;
 
-type Werkzeug = 'keins' | 'messen' | 'setzen' | 'aufdecken' | 'pinsel' | 'zudecken' | 'wand' | 'wandArt' | 'schloss' | 'wandWeg' | 'licht';
+type Werkzeug = 'keins' | 'messen' | 'setzen' | 'tokenWeg' | 'aufdecken' | 'pinsel' | 'zudecken' | 'wand' | 'wandArt' | 'schloss' | 'wandWeg' | 'licht';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
@@ -277,6 +278,9 @@ interface Zeiger {
                   Place combatants ({{ offeneTeilnehmer().length }})
                 </button>
               }
+              <button type="button" [class.an]="werkzeug() === 'tokenWeg'" [attr.aria-pressed]="werkzeug() === 'tokenWeg'" (click)="waehle('tokenWeg')" title="Tap a marker to take it off the map">
+                Remove
+              </button>
               @if (spielTokens()) {
                 <button type="button" (click)="spielTokensWeg()" title="Remove the tokens placed for play; prepared markers and the party stay">Clear play tokens</button>
               }
@@ -359,7 +363,7 @@ interface Zeiger {
           @if (werkzeug() === 'setzen' && setzenBei()) {
             <div class="setzen">
               <p>Which article does the marker stand for?</p>
-              <nw-board-suche [ohne]="schonDa()" (gewaehlt)="setzen($event)" />
+              <nw-board-suche [ohne]="schonDa()" [gruppieren]="true" (gewaehlt)="setzen($event)" />
               <button type="button" (click)="setzenBei.set(null)">Cancel</button>
             </div>
           }
@@ -572,15 +576,18 @@ interface Zeiger {
                     [class.fern]="m.ziel === false"
                     [class.selbst]="m.selbst"
                     [class.rund]="m.rund"
+                    [class.beringt]="!!m.ring"
                     [style.left.%]="m.x * 100"
                     [style.top.%]="m.y * 100"
                     [style.width.px]="m.px"
                     [style.height.px]="m.kind === 'scenery' ? m.px * m.ratio : m.px"
                     [style.transform]="m.rot ? 'translate(-50%, -50%) rotate(' + m.rot + 'deg)' : null"
+                    [style.--ring-w]="m.ring?.['--ring-w'] ?? null"
+                    [style.--ring-bg]="m.ring?.['--ring-bg'] ?? null"
                     [title]="m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
-                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : kurzansicht($event, m.to)"
+                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : kurzansicht($event, m.to)"
                   >
                     @if (m.bild) {
                       <img [src]="m.bild" alt="" draggable="false" [style]="m.bildStil" />
@@ -640,6 +647,8 @@ interface Zeiger {
           Tap a door to lock or unlock it.
         } @else if (werkzeug() === 'wandWeg') {
           Tap a wall to remove it.
+        } @else if (werkzeug() === 'tokenWeg') {
+          Tap a marker to take it off the map. The article stays; the party token is not a marker.
         } @else if (werkzeug() === 'licht') {
           Tap a token or marker: it sheds {{ lichtHell() }} squares of bright and {{ lichtMatt() }} of dim light.
         } @else {
@@ -1120,6 +1129,8 @@ export class Karte {
            Ausschnitt seines Assets (T-297). Möbel liegen, wie sie sind. */
         rund: m.kind !== 'scenery' && !!ziel?.image && !!ziel.look?.round,
         bildStil: m.kind !== 'scenery' ? tokenStil(ziel?.look) : {},
+        /* Der Rand des Bildes (T-301) — nur um ein ausgeschnittenes. */
+        ring: m.kind !== 'scenery' && ziel?.image ? ringStil(ziel.look, px) : null,
         /* Der Zeiger auf dem, der dran ist (REQ-144): dasselbe Token,
            ein Ring mehr — und gestrichelt der Nächste. */
         dran: !!zug?.current && m.to === zug.current,
@@ -1984,6 +1995,12 @@ export class Karte {
   protected readonly lichtHell = signal(4);
   protected readonly lichtMatt = signal(8);
   /** Einem Marker Licht geben (`marker.props.light`/`dim`); 0 und 0 nimmt es weg. */
+  /** Einen Marker wegnehmen (T-301) — die Kante, nicht den Artikel. */
+  protected tokenWeg(relId: string): void {
+    const e = this.karte();
+    if (e) void this.schreiben(removeMarker(e, relId));
+  }
+
   protected lichtGeben(relId: string): void {
     const e = this.karte();
     if (!e) return;

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-token-tools",
+      "date": "2026-10-19",
+      "title": "Remove markers, place the creature, borders for tokens",
+      "text": "On the map, Remove takes a marker off again. Add marker lists one line per name with the creature first — the statblock and image are behind +. Adjust token now changes the image and picks a border: gold, silver, bronze and more.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
       "id": "2026-10-19-character-locks",
       "date": "2026-10-19",
       "title": "No double picks in the character assistant",

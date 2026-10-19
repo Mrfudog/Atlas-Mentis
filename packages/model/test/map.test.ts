@@ -338,3 +338,36 @@ describe('Nebel je Figur und Kartenregeln (T-204)', () => {
     expect(revealShapes(redactMap(karte(), { gm: true, sees: () => true, fog: 'player' }))).toHaveLength(2);
   });
 });
+
+describe('placing on the map (T-301)', () => {
+  it('groups by name and puts the creature first, then the statblock, then the image', async () => {
+    const { placementGroups } = await import('../src/index.js');
+    const chain = (t: string) => (t === 'PlayerCharacter' ? ['PlayerCharacter', 'Creature'] : [t]);
+    const g = placementGroups(
+      [
+        { id: 'a1', name: '"The Demogorgon" (token)', type: 'Asset' },
+        { id: 's1', name: 'The Demogorgon', type: 'Statblock' },
+        { id: 'c1', name: '"The Demogorgon"', type: 'Creature' },
+        { id: 'i1', name: 'Goblin', type: 'Item' },
+      ],
+      chain,
+    );
+    expect(g.map((x) => x.best.id)).toEqual(['c1', 'i1']);
+    expect(g[0]!.others.map((x) => x.id)).toEqual(['s1', 'a1']);
+  });
+  it('removes one marker and nothing else', async () => {
+    const { removeMarker, MARKER_RELATION } = await import('../src/index.js');
+    const karte = {
+      id: 'm',
+      interfaces: ['Map'],
+      name: 'm',
+      components: {},
+      relations: [
+        { id: 'r1', type: MARKER_RELATION, to: 'a', props: { x: 0.1, y: 0.1 } },
+        { id: 'r2', type: MARKER_RELATION, to: 'b', props: { x: 0.2, y: 0.2 } },
+        { id: 'r3', type: 'inLayer', to: 'ly', props: {} },
+      ],
+    };
+    expect(removeMarker(karte, 'r1').relations.map((r) => r.id)).toEqual(['r2', 'r3']);
+  });
+});

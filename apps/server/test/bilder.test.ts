@@ -400,7 +400,7 @@ describe('tokens (T-297)', () => {
       ],
     });
     const mira = (await hole('Mira', '/api/entities/c_offen')).json() as { refs: { token?: { id: string; from?: string; adjustable: boolean; look: { round: boolean } } } };
-    expect(mira.refs.token).toMatchObject({ id: t.id, from: 'sb_volo', adjustable: true, look: { round: true, frame: { x: 50, y: 50, zoom: 1 } } });
+    expect(mira.refs.token).toMatchObject({ id: t.id, from: 'sb_volo', statblock: 'sb_volo', changeable: true, adjustable: true, look: { round: true, frame: { x: 50, y: 50, zoom: 1 } } });
     const sela = (await hole('Sela', '/api/entities/c_offen')).json() as { refs: { token?: { adjustable: boolean } } };
     expect(sela.refs.token?.adjustable).toBe(false);
   });
