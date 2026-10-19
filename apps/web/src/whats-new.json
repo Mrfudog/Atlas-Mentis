@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-knowledge-for-groups",
+      "date": "2026-10-19",
+      "title": "Knowledge for whole groups and by ancestry",
+      "text": "An information can now hold for a group of articles — every orc, say — with “Applies to”, the way a view applies. Knowledge can be given to an ancestry, background, class, subclass or feat: every character who has it knows.",
+      "area": "Knowledge",
+      "link": "/rules",
+      "query": { "type": "Knowledge" }
+    },
+    {
       "id": "2026-10-19-one-view-editor",
       "date": "2026-10-19",
       "title": "One editor for every view",
