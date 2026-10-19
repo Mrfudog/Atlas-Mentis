@@ -682,7 +682,7 @@ export class FassungsAbzeichen {
     .kasten h2 {
       margin: 0;
       font-family: var(--caps);
-      font-size: 1.1rem;
+      font-size: 1rem;
       color: var(--accent);
     }
     .kanten {

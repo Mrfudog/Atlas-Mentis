@@ -31,14 +31,19 @@ interface Chip {
  * darum nicht da, und die Fassungen sind die, die dieser Betrachter sieht
  * (`GET /api/entities/:id/versions`). Am Telefon einzeilig, die Namen
  * gekürzt; der ganze Name steht im Tooltip.
+ *
+ * Seit T-277 steht die ganze Marke im Kapitel **Admin** jeder Artikelseite;
+ * am Kopf bleibt mit `kurz` nur die Ebene dieser Fassung.
  */
 @Component({
   selector: 'nw-ebenen-marke',
   imports: [RouterLink],
   template: `
-    <p class="marke" aria-label="Layer">
-      <span class="leg">{{ chips().length > 1 ? 'Layers' : 'Layer' }}</span>
-      @for (c of chips(); track c.key) {
+    <p class="marke" [class.kurz]="kurz()" aria-label="Layer">
+      @if (!kurz()) {
+        <span class="leg">{{ chips().length > 1 ? 'Layers' : 'Layer' }}</span>
+      }
+      @for (c of gezeigt(); track c.key) {
         <a
           class="chip"
           [class.aktuell]="c.aktuell"
@@ -52,8 +57,10 @@ interface Chip {
       @if (!chips().length && ohneEbene()) {
         <span class="chip leer">no layer</span>
       }
-      @if (grund(); as g) {
-        <span class="grund" [title]="g">{{ g }}</span>
+      @if (!kurz()) {
+        @if (grund(); as g) {
+          <span class="grund" [title]="g">{{ g }}</span>
+        }
       }
     </p>
   `,
@@ -108,6 +115,10 @@ interface Chip {
     .grund {
       font-style: italic;
     }
+    .kurz .chip {
+      font-size: 0.75rem;
+      max-width: 10rem;
+    }
     /* Am Telefon eine Zeile: Namen gekürzt, der Grund als letztes, was Platz hat. */
     @media (max-width: 640px) {
       .marke {
@@ -135,6 +146,9 @@ interface Chip {
 export class EbenenMarke {
   readonly artikel = input.required<Entity>();
   readonly fassungen = input<Fassungen | null>(null);
+  /** Nur das Kürzel am Kopf (T-277): die Ebene dieser Fassung, ohne Grund
+   *  und ohne die übrigen — die ganze Marke steht im Kapitel „Admin“. */
+  readonly kurz = input(false);
 
   private readonly bestand = inject(Bestand);
   private readonly stapel = inject(Stapel);
@@ -169,6 +183,8 @@ export class EbenenMarke {
     }
     return raus;
   });
+
+  protected readonly gezeigt = computed(() => (this.kurz() ? this.chips().filter((c) => c.aktuell) : this.chips()));
 
   /** Liegt er in keiner Ebene — nicht bloss in einer, deren Namen er nicht sehen darf? */
   protected readonly ohneEbene = computed(() => !(this.artikel().relations ?? []).some((r) => r.type === LAYER_RELATION));

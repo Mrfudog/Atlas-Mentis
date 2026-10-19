@@ -164,6 +164,11 @@ code {
   color: var(--dim);
   font-size: 0.9rem;
 }
+/* In der schmalen Spalte der Typseite (T-277): Beschriftung über der Eingabe. */
+nw-kapitelteil[lage='seite'] .f {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.2rem;
+}
 .f.haken {
   grid-template-columns: auto 1fr;
   justify-content: start;

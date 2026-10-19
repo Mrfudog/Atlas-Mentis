@@ -60,6 +60,7 @@ import {
   originParts,
   currentCampaign,
   campaignVisibility,
+  effectiveAudience,
   inStack,
   adaptedVersion,
   rehang,
@@ -3136,7 +3137,12 @@ export function buildApp({
     const reading = await leseZiel(einer);
     const craft = await fertigungswert(request, einer, stand.map);
     const shop = await ladenwaren(request, einer, stand.map);
+    /* Die geltende Stufe und woher sie kommt (T-252), für das Kapitel
+       „Admin" (T-277): sagt der Artikel keine, sagt es seine Gruppe. */
+    const registry = await repo.getRegistry();
+    const audience = effectiveAudience(stand.map, einer, campaignVisibility(stand.map, registry, currentCampaign(stand.map, registry.settings ?? null)));
     const refs = {
+      audience,
       ...(await bezuegeVon(request, einer)),
       ...(await bilderVon(request, einer)),
       ...(ready ? { ready } : {}),

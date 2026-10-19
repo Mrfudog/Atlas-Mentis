@@ -124,6 +124,9 @@ interface Entwurf {
     }
   `,
   styles: `
+    /* Wie die übrigen Kästen im Kapitel „Admin" (T-277). */
+    .kasten { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .kasten h2 { margin: 0; font-family: var(--caps); font-size: 1rem; color: var(--accent); }
     .info { border-top: 1px dotted var(--line); padding-top: 0.4rem; }
     .info header { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; align-items: baseline; }
     .felder, .buendel { margin: 0.15rem 0; overflow-wrap: anywhere; }

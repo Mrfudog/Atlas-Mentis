@@ -219,6 +219,8 @@ export interface Bezuege {
    * fertigen Stands, `old`, ob die Antwort dieser Stand ist (`?stand=ready`).
    */
   ready?: { at: string; old: boolean };
+  /** Die geltende Sichtbarkeitsstufe und woher sie kommt (T-252, T-277) — nur am ganzen Artikel. */
+  audience?: { audience: string; source: 'article' | 'campaign' | 'layer' | 'default'; rule?: string };
   /** „Im Buch lesen" (T-091): die Ebene mit Text und die Stelle — der Abschnitt selbst oder die Seite. */
   reading?: LeseZiel;
   /** Eine Fassung aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
