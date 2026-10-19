@@ -11,6 +11,7 @@ import {
   BOOK_CARDS,
   choicesOf,
   choiceText,
+  drawnByTree,
   effectText,
   elementTakes,
   entriesOf,
@@ -99,7 +100,9 @@ export interface Stueck {
     /** Die Zauber einer Figur (T-246). */
     | 'zauberliste'
     /** Was die Kampagne einer Figur gezeigt hat (T-247). */
-    | 'kampagne';
+    | 'kampagne'
+    /** Was nur der Baum zeichnet (T-310): Behälter, Tabellenzeilen, Werte des Designers. */
+    | 'baum';
   text?: string;
   /** Der Reiter, in dem das Stück steht (T-247); ohne steht es über allen. */
   reiter?: string;
@@ -110,6 +113,8 @@ export interface Stueck {
   /** `verlinkt`: nur diese Arten am anderen Ende, oder alle ausser diesen (T-125). */
   nur?: string[];
   ausser?: string[];
+  /** `baum`: das Element, das `nw-ansichtsbaum` zeichnet. */
+  layout?: LayoutElement[];
 }
 
 /** Reiter gibt es auf einem Blatt nicht: ihre Gruppen stehen nacheinander. */
@@ -459,7 +464,16 @@ export function anordnen(
       case 'campaign':
         out.push({ id: el.id, art: 'kampagne' });
         break;
+      case 'table':
+        /* Die Zeilen einer Tabelle mit Würfelspalte und „Roll" (T-310) —
+           sie stehen dann nicht noch einmal als Feld im Rest. */
+        felderDa.add('Table.rows');
+        felderDa.add('Table.columns');
+        out.push({ id: el.id, art: 'baum', layout: [el] });
+        break;
       default:
+        /* Behälter und Werte des Designers zeichnet der Baum (T-310). */
+        if (drawnByTree(el)) out.push({ id: el.id, art: 'baum', layout: [el] });
         /* Board, Haltung … zeichnet noch niemand (W4 und
            später). Was sie tragen, steht im Rest, wo die Ansicht ihn will. */
         break;

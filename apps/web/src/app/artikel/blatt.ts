@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { LAYER_RELATION, forArticle, layoutFor, primaryInterface, relationDef } from '@nw/model';
-import type { Entity, Registry, VarScopes } from '@nw/model';
+import { LAYER_RELATION, forArticle, pickView, relationDef } from '@nw/model';
+import type { Entity, IncomingEdge, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Abschnitte } from './abschnitte';
 import { anordnen, feldZellen, mitLeeren, prosaVon } from './anordnung';
@@ -13,13 +13,15 @@ import { TokenBild } from './token-bild';
 import { Text } from './text';
 import { Zauber } from './zauber';
 import { Bild, bildDes } from './bild';
+import { Ansichtsbaum } from '../ansichten/baum';
 
 /**
  * **Ein Artikel in einer Ansicht, als Blatt** (T-110): der Druck und die
  * Vorschau im Register. Nur lesen — bearbeitet wird auf der Artikelseite.
  *
  * Gezeichnet wird wie dort: die Anordnung der Art für **diese** Ansicht
- * (`layoutFor`), zugeteilt in `anordnen`, mit dem, was die Ansicht sagt —
+ * (`pickView`, T-310: im Druck die genaueste der Gruppe `print`; eine
+ * gestaltete zeichnet ihr Baum), zugeteilt in `anordnen`, mit dem, was die Ansicht sagt —
  * leere Felder (`empty`) und den Rest am Ende (`rest`). Was ein Element
  * verlangt, das hier noch keine Form hat (Bogen, Karte), bleibt weg.
  *
@@ -27,10 +29,13 @@ import { Bild, bildDes } from './bild';
  */
 @Component({
   selector: 'nw-blatt',
-  imports: [RouterLink, Text, Statblock, Kennzahlen, TokenBild, Zauber, Gegenstand, Abschnitte, Fluss, Bild],
+  imports: [RouterLink, Text, Statblock, Kennzahlen, TokenBild, Zauber, Gegenstand, Abschnitte, Fluss, Bild, Ansichtsbaum],
   template: `
     @for (st of stuecke(); track st.id) {
       @switch (st.art) {
+        @case ('baum') {
+          <nw-ansichtsbaum [artikel]="artikel()" [layout]="st.layout ?? []" [register]="register()" [rueck]="rueck()" />
+        }
         @case ('statblock') {
           <nw-statblock [artikel]="artikel()" />
         }
@@ -214,6 +219,10 @@ export class Blatt {
   readonly ansicht = input.required<string>();
   /** Ein anderes Register als das geladene — der Entwurf in der Vorschau des Registers. */
   readonly register = input<Registry | null>(null);
+  /** Genau diese Ansicht (die Vorschau im Register), nicht die genaueste ihrer Gruppe (T-310). */
+  readonly genau = input(false);
+  /** Was auf den Artikel zeigt — für Geltungen und Pfade über eingehende Kanten. */
+  readonly rueck = input<readonly IncomingEdge[]>([]);
 
   private readonly bestand = inject(Bestand);
   private readonly reg = computed(() => this.register() ?? this.bestand.registry());
@@ -227,11 +236,14 @@ export class Blatt {
     const r = this.reg();
     const e = this.artikel();
     if (!r) return [];
-    const view = r.views[this.ansicht()];
+    const wahl = pickView(e, r, this.ansicht(), { incoming: this.rueck(), exact: this.genau(), fallback: 'print' });
+    /* Eine gestaltete zeichnet ihr Baum ganz — Felder über Kanten kennt nur er. */
+    if (wahl.designed) return [{ id: wahl.key, art: 'baum' as const, layout: wahl.layout }];
+    const view = r.views[wahl.key];
     const zellen = feldZellen(r, e, this.bestand.name());
     const d = (e.components?.['Description'] as { description?: string } | undefined)?.description;
     return anordnen(
-      forArticle(layoutFor(r, this.ansicht(), primaryInterface(e)).layout, e),
+      forArticle(wahl.layout, e, this.rueck()),
       view?.empty === 'show' ? mitLeeren(r, e, zellen) : zellen,
       prosaVon(r, e),
       { beschreibung: view?.description === false ? null : (d ?? null), rest: !!view?.rest, bild: bildDes(e, r, this.bestand.bild().get(e.id)) },

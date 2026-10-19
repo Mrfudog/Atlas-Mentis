@@ -1649,7 +1649,31 @@ flowchart LR
 Gespeichert wird eine gewöhnliche Zeile in `view_def` (`config` als JSON) —
 keine Migration, kein neuer Seed. Gestaltete Ansichten zeichnet
 `nw-ansichtsbaum`; die Ansichten der Orte und die Anordnungen der Arten
-zeichnet die Seite wie bisher. Gezählt, wie viele
+zeichnet die Seite wie bisher.
+
+**Gewählt wird an einer Stelle** (T-310): `pickView(artikel, register,
+ort, { incoming, exact, fallback })` gibt Schlüssel, Anordnung (über
+`layoutFor`), Herkunft und ob sie gestaltet ist. Ein Ort ist eine Gruppe —
+es gilt die genaueste darin; nennt `ort` eine gestaltete Ansicht, gilt
+genau sie, und `exact` nimmt auch eine Ortsansicht beim Wort (die Wahl oben
+am Artikel, die Vorschau im Register, `?view=` im Druck). Kurzansicht
+(Popup, Kompendium, Kartenmarker, Suche), Board-Kachel, Artikelseite und
+Druck fragen dort; `layoutFor` rufen nur noch Stellen, die nach dem **Typ**
+fragen (Designer, Typseite, Listenspalten, „hat die Art ein Element") — ein
+Test zählt sie (`packages/model/test/pickView.test.ts`). Was nur der Baum
+kennt (`drawnByTree`: die Behälter, `tileGroup`, `quote`, `badges`,
+`edgeTable`, `table`), zeichnet `nw-ansichtsbaum` an seiner Stelle, auch
+in einer Ortsansicht; eine gestaltete zeichnet er ganz. Die
+Listenspalten (`listColumns`, `overview`) bleiben eine Frage des Typs:
+eine Tabelle hat für alle Zeilen dieselben Spalten.
+
+**Das Element `table`** zeichnet die Zeilen einer Tabelle (`Table.rows`)
+mit Würfelspalte und „Roll" (`rollTableOf`, `rowForRoll` in
+`rollTable.ts`): die Spanne steht in der ersten Zelle („2–3", „00" ist
+100), bei einem Würfeltopf ohne Spalten wird sie aus den Gewichten
+gezählt — gerechnet, nicht gespeichert (D8). Gewürfelt wird am Server, der
+Wurf steht im Log des Artikels (T-172). `edgeTable` zeigt Kanten und ihre
+Ziele, nicht Zeilen. Gezählt, wie viele
 Artikel eine Ansicht bekommen, wird am Server (`/api/registry/usage`,
 `views`), im Stapel.
 

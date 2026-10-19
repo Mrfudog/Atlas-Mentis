@@ -8,7 +8,6 @@ import {
   edgeEffects,
   edgeEffectText,
   forArticle,
-  layoutFor,
   LAYER_RELATION,
   typeChain,
   entityName,
@@ -29,7 +28,7 @@ import {
   isMap,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
-import { isDesignedView, layoutFor as anordnungFuer, spellcastingOf, viewFor, viewsFor, withCastRelations } from '@nw/model';
+import { pickView, spellcastingOf, withCastRelations } from '@nw/model';
 import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
@@ -420,13 +419,12 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
               </p>
             }
 
-            <!-- Die Leiste „Views" (T-268, T-276, E-103): die Ansichten, die für diesen Artikel gelten.
-                 Im Full edit für alle, die das Register ändern; beim Lesen, sobald eine gestaltete
-                 gilt — sonst steht der Artikel da wie immer. -->
+            <!-- Die Leiste „Views" (T-268, T-276, T-310): die Ansichten, die für diesen Artikel gelten,
+                 beim Lesen immer, im Full edit für alle, die das Register ändern. Die Wahl steht in ?view=. -->
             @if (ansichtsLeiste()) {
               <nw-ansichtswahl [artikel]="e" [rueck]="rueckKanten()" [aktiv]="geltendeAnsicht()"
                                [darfGestalten]="session.darfRegister()" [offen]="gestaltet()" (offenChange)="gestalten($event)"
-                               (waehle)="ansichtGewaehlt.set($event)" />
+                               (waehle)="waehleAnsicht($event)" />
             }
             <article class="blatt">
               <div>
@@ -728,7 +726,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   {{ offeneVerweise().join(', ') }}
                 </p>
               }
-              <!-- Gezeichnet wird die Anordnung der Art (layoutFor): was ein
+              <!-- Gezeichnet wird die Anordnung der Art (pickView → layoutFor): was ein
                    Element nicht kennt, zeichnet hier noch niemand; was kein
                    Element zeichnet, steht am Ende (rest). -->
               <!-- Reiter (T-247): die Gruppen einer Kreatur stehen nicht
@@ -750,6 +748,10 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   }
                   @case ('kampagne') {
                     <nw-figur-kampagne [artikel]="e" />
+                  }
+                  @case ('baum') {
+                    <!-- Behälter, Tabellenzeilen und Werte des Designers (T-310). -->
+                    <nw-ansichtsbaum [artikel]="e" [layout]="st.layout ?? []" [rueck]="rueckKanten()" />
                   }
                   @case ('statblock') {
                     <nw-statblock [artikel]="e" [fassungen]="vergleich()" />
@@ -941,7 +943,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
               <section class="kasten gestalten" aria-label="Design this view">
                 <h2>View · {{ bestand.registry()?.views?.[geltendeAnsicht()]?.label ?? geltendeAnsicht() }}</h2>
                 <nw-ansichtsdesigner [schluessel]="geltendeAnsicht()" [beispiel]="e" [typ]="art(e)" [kompakt]="true"
-                                     (entwurf)="ansichtsEntwurf.set($event)" (fertig)="ansichtGestaltet($event)" (wechsel)="ansichtGewaehlt.set($event)" />
+                                     (entwurf)="ansichtsEntwurf.set($event)" (fertig)="ansichtGestaltet($event)" (wechsel)="waehleAnsicht($event)" />
               </section>
             }
             @if (kanten().length || abwKanten().length) {
@@ -1096,6 +1098,8 @@ export class Artikel implements SchnellKontext {
   /** `?sub=`, `?opt=`: die gewählten Unterklassen oder Spielarten der Übersicht (T-191). */
   readonly sub = input<string | undefined>(undefined);
   readonly opt = input<string | undefined>(undefined);
+  /** `?view=`: die oben gewählte Ansicht (T-310) — nur für diese Anzeige, gespeichert wird nichts. */
+  readonly viewParam = input<string | undefined>(undefined, { alias: 'view' });
 
   protected readonly bestand = inject(Bestand);
   private readonly stapel = inject(Stapel);
@@ -1107,8 +1111,15 @@ export class Artikel implements SchnellKontext {
 
   // ------------------------------------------------- Ansichten (T-268)
 
-  /** Die am Artikel gewählte Ansicht; `null` heisst: die genaueste der Gruppe `full`. */
-  protected readonly ansichtGewaehlt = signal<string | null>(null);
+  /** Die am Artikel gewählte Ansicht (`?view=`); `null` heisst: die genaueste der Gruppe `full`. */
+  protected readonly ansichtGewaehlt = computed<string | null>(() => this.viewParam() ?? null);
+  /** Eine Ansicht wählen (T-310): sie steht in der Adresse; die Vorgabe nimmt `?view` heraus. */
+  protected waehleAnsicht(key: string | null): void {
+    const e = this.artikel();
+    const r = this.bestand.registry();
+    const vorgabe = e && r ? pickView(e, r, 'full', { incoming: this.rueckKanten() }).key : 'full';
+    void this.router.navigate([], { queryParams: { view: key && key !== vorgabe ? key : null }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
   /** Die Leiste „Design this view" ist offen. */
   protected readonly gestaltet = signal(false);
   /** Ihr Entwurf — die Seite zeichnet ihn, solange sie offen ist. */
@@ -1118,15 +1129,8 @@ export class Artikel implements SchnellKontext {
     const a = this.ansichtsEntwurf();
     return this.gestaltet() && a && !a.gestaltet ? a.register : null;
   });
-  /** Gilt an diesem Artikel eine gestaltete Ansicht? Dann steht die Leiste auch beim Lesen. */
-  private readonly gestalteteGilt = computed(() => {
-    const e = this.artikel();
-    const r = this.bestand.registry();
-    return !!e && !!r && viewsFor(e, r, { incoming: this.rueckKanten() }).some((v) => isDesignedView(r.views[v.key]));
-  });
-  protected readonly ansichtsLeiste = computed(
-    () => (this.bearbeitet() && this.session.darfRegister()) || (!this.bearbeitet() && (this.gestaltet() || this.gestalteteGilt())),
-  );
+  /** Die Leiste steht beim Lesen immer (T-310), im Full edit für alle, die das Register ändern. */
+  protected readonly ansichtsLeiste = computed(() => !this.bearbeitet() || this.session.darfRegister());
   /** „Design this view": aus dem Full edit heraus erst die Maske schliessen — sie zeichnet die Vorschau nicht. */
   protected gestalten(an: boolean): void {
     if (an && this.bearbeitet()) {
@@ -1144,7 +1148,7 @@ export class Artikel implements SchnellKontext {
     const r = this.bestand.registry();
     if (!e || !r) return 'full';
     const k = this.ansichtGewaehlt();
-    return k && r.views[k] ? k : viewFor(e, r, 'full', { incoming: this.rueckKanten() });
+    return pickView(e, r, k && r.views[k] ? k : 'full', { incoming: this.rueckKanten(), exact: !!k }).key;
   });
   /** Was statt der Seite steht: eine andere Ansicht als `full`, oder der Entwurf der Leiste. */
   protected readonly andereAnsicht = computed<LayoutElement[] | null>(() => {
@@ -1155,12 +1159,12 @@ export class Artikel implements SchnellKontext {
     if (a?.gestaltet) return a.baum;
     const k = this.geltendeAnsicht();
     /* Ohne Geltung zeichnet `full` die Seite selbst (mit dem Entwurf, `anordnung`). */
-    return k === 'full' ? null : anordnungFuer(a?.register ?? r, k, e.interfaces?.[0] ?? '').layout;
+    return k === 'full' ? null : pickView(e, a?.register ?? r, k, { incoming: this.rueckKanten(), exact: true }).layout;
   });
   protected ansichtGestaltet(key: string | null): void {
     this.gestaltet.set(false);
     this.ansichtsEntwurf.set(null);
-    if (key) this.ansichtGewaehlt.set(key);
+    if (key) this.waehleAnsicht(key);
   }
 
   constructor() {
@@ -1169,7 +1173,6 @@ export class Artikel implements SchnellKontext {
     effect(() => {
       this.id();
       untracked(() => {
-        this.ansichtGewaehlt.set(null);
         this.gestaltet.set(false);
         this.ansichtsEntwurf.set(null);
       });
@@ -1429,7 +1432,7 @@ export class Artikel implements SchnellKontext {
     const gelesen = (e.relations ?? []).some((k) => k.type === 'hasClass' || k.type === 'hasAncestry')
       ? withCastRelations(e, spellcastingOf(e, undefined, this.bestand.voll()))
       : e;
-    return forArticle(layoutFor(this.entwurfsRegister() ?? r, 'full', primaryInterface(e)).layout, gelesen);
+    return forArticle(pickView(e, this.entwurfsRegister() ?? r, 'full', { exact: true }).layout, gelesen, this.rueckKanten());
   });
 
   protected readonly stuecke = computed<Stueck[]>(() => {

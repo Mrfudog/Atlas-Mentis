@@ -23,17 +23,15 @@ import {
   primaryInterface,
   snapTo,
   isDesignedView,
-  layoutFor,
   viewKeys,
   viewsFor,
   withAnchors,
 } from '@nw/model';
-import type { BoardAnchor, BoardPlacement, Entity, Relation } from '@nw/model';
+import type { BoardAnchor, BoardPlacement, Entity, IncomingEdge, Relation } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { Brett, chainAbove, isBoard, storyOf, type Mangel } from './brett';
 import { Kachel } from './kachel';
-import { Ansichtsbaum } from '../ansichten/baum';
 import { BoardSuche } from './suche';
 import { SCHNELL_KONTEXT, type SchnellKontext } from '../artikel/schnell';
 
@@ -111,7 +109,7 @@ interface Bzug {
  */
 @Component({
   selector: 'nw-board',
-  imports: [RouterLink, Kachel, BoardSuche, Ansichtsbaum],
+  imports: [RouterLink, Kachel, BoardSuche],
   templateUrl: './board.html',
   styleUrl: './board.scss',
   /* Was aus der Suche neu angelegt wird, folgt der Ebene des Boards (T-131). */
@@ -521,17 +519,9 @@ export class Board implements SchnellKontext {
       .map((v) => v.key);
     return [...gestaltete, ...this.ansichten()];
   }
-  protected rueckVon(e: Entity): { type: string; from: string }[] {
-    return (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id }));
+  protected rueckVon(e: Entity): IncomingEdge[] {
+    return (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id, props: b.relation.props }));
   }
-  protected gestaltet(key: string): boolean {
-    return isDesignedView(this.bestand.registry()?.views[key]);
-  }
-  protected gestaltetesLayout(key: string, e: Entity) {
-    const r = this.bestand.registry();
-    return r ? layoutFor(r, key, primaryInterface(e)).layout : [];
-  }
-
   /** Kampagne › Kapitel › Sitzung — und je Sprosse ihr Board, wenn sie eines hat. */
   protected readonly pfad = computed(() => {
     const b = this.board();

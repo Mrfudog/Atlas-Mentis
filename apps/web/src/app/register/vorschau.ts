@@ -62,9 +62,9 @@ import { eintragText } from '../ansichten/palette';
             <button type="button" class="klein" (click)="artikelId.set('')">Another</button>
           </div>
           @if (alsBlatt()) {
-            <nw-blatt [artikel]="e" [ansicht]="ansicht()" [register]="registerVon()" />
+            <nw-blatt [artikel]="e" [ansicht]="ansicht()" [register]="registerVon()" [genau]="true" />
           } @else {
-            <nw-kachel [artikel]="e" [ansicht]="ansicht()" [register]="registerVon()" />
+            <nw-kachel [artikel]="e" [ansicht]="ansicht()" [register]="registerVon()" [genau]="true" />
           }
         </div>
       } @else if (artikelId()) {

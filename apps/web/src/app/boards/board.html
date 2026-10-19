@@ -242,12 +242,8 @@
                   }
                   <div class="kinhalt">
                     @if (k.ziel) {
-                      @if (gestaltet(k.ansicht)) {
-                        <!-- Eine gestaltete Ansicht (T-268): ihr Baum, mit Werten verknüpfter Artikel. -->
-                        <nw-ansichtsbaum [artikel]="k.ziel" [layout]="gestaltetesLayout(k.ansicht, k.ziel)" [rueck]="rueckVon(k.ziel)" />
-                      } @else {
-                        <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" />
-                      }
+                      <!-- Die Kachel wählt die Ansicht (T-310, pickView): eine gestaltete zeichnet ihren Baum. -->
+                      <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" [rueck]="rueckVon(k.ziel)" />
                     } @else if (k.kurz) {
                       <p class="laedt">Loading…</p>
                     }
