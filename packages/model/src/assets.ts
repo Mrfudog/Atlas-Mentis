@@ -228,17 +228,49 @@ export function tokenPlacement(look: Pick<TokenLook, 'frame' | 'width' | 'height
   return { left, top, width: W, height: H };
 }
 
-/** Ist das Bild ein fertiges Rundtoken? Die vier Ecken durchsichtig (Alpha unter 16) — ein Kreis auf Durchsichtigem. */
+/**
+ * **Ist das Bild ein fertiges Rundtoken?** (T-297) Gesucht wird der
+ * deckende Bereich (ein kleines Wesen hat ein kleines Token mit viel
+ * Durchsichtigem drumherum); in dessen Quadrat — von oben links, denn der
+ * Schatten fällt nach unten rechts — müssen die Ecken durchsichtig sein
+ * **und** ein Ring knapp innerhalb des Randes rundum deckend: der Rahmen,
+ * den ein Token mitbringt. Die Ecken allein sagen es nicht: eine
+ * freigestellte Figur hat sie auch, aber keinen geschlossenen Ring.
+ */
 export function looksRound(alphaAt: (x: number, y: number) => number, width: number, height: number): boolean {
-  if (width < 8 || height < 8) return false;
-  const r = Math.max(1, Math.round(Math.min(width, height) * 0.04));
+  if (width < 16 || height < 16) return false;
+  let x0 = width;
+  let y0 = height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (alphaAt(x, y) < 200) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return false;
+  const d = Math.min(x1 - x0 + 1, y1 - y0 + 1);
+  if (d < 16) return false;
+  const r = Math.max(1, Math.round(d * 0.06));
   const ecken = [
-    [r, r],
-    [width - 1 - r, r],
-    [r, height - 1 - r],
-    [width - 1 - r, height - 1 - r],
+    [x0 + r, y0 + r],
+    [x0 + d - 1 - r, y0 + r],
+    [x0 + r, y0 + d - 1 - r],
   ] as const;
-  return ecken.every(([x, y]) => alphaAt(x, y) < 16);
+  if (!ecken.every(([x, y]) => alphaAt(x, y) < 16)) return false;
+  /* 24 Punkte auf einem Kreis bei 90 % des Halbmessers: alle deckend. */
+  const cx = x0 + (d - 1) / 2;
+  const cy = y0 + (d - 1) / 2;
+  const rr = (d / 2) * 0.9;
+  for (let i = 0; i < 24; i++) {
+    const w = (i / 24) * 2 * Math.PI;
+    if (alphaAt(Math.round(cx + rr * Math.cos(w)), Math.round(cy + rr * Math.sin(w))) < 200) return false;
+  }
+  return true;
 }
 
 /** Die Statblöcke, die an dieser Kreatur hängen (`belongsTo` vom Statblock her). */

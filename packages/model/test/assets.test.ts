@@ -113,5 +113,11 @@ describe('token frame (T-297)', () => {
     const kreis = (x: number, y: number) => ((x - 50) ** 2 + (y - 50) ** 2 <= 50 ** 2 ? 255 : 0);
     expect(looksRound(kreis, 100, 100)).toBe(true);
     expect(looksRound(() => 255, 100, 100)).toBe(false);
+    /* Eine freigestellte Figur: Ecken durchsichtig, aber kein geschlossener Ring. */
+    const figur = (x: number, y: number) => (Math.abs(x - 50) < 20 && y > 10 ? 255 : 0);
+    expect(looksRound(figur, 100, 100)).toBe(false);
+    /* Ein kleines Token mitten in viel Durchsichtigem (ein winziges Wesen). */
+    const klein = (x: number, y: number) => ((x - 50) ** 2 + (y - 50) ** 2 <= 30 ** 2 ? 255 : 0);
+    expect(looksRound(klein, 100, 100)).toBe(true);
   });
 });
