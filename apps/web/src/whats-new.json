@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-rule-builder-rule-text",
+      "date": "2026-10-19",
+      "title": "Rules show their rule text",
+      "text": "In the rule builder (experiment), a rule shows what it does in words and, below, the text of the spell, feat or rule it is based on, linked to its book.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
       "id": "2026-10-19-carry-grid-editor",
       "date": "2026-10-19",
       "title": "Set up the carry grid by drawing it",

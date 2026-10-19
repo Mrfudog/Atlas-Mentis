@@ -34,7 +34,20 @@ import {
 import { Api, ApiError } from '../kern/api';
 import { Experimente } from '../kern/experimente';
 import { Glossar } from '../kern/glossar';
+import { Text } from '../artikel/text';
 import { Session } from '../kern/session';
+
+/** Der lesbare Text eines Quellartikels: Beschreibung und die Prosa-Felder, in Reihenfolge. */
+function artikelText(a: Entity): string {
+  const teile: string[] = [];
+  const d = a.components?.['Description']?.['description'];
+  if (typeof d === 'string' && d.trim()) teile.push(d.trim());
+  for (const wert of Object.values(a.components?.['Prose'] ?? {})) {
+    if (typeof wert === 'string' && wert.trim()) teile.push(wert.trim());
+    else if (Array.isArray(wert)) for (const x of wert) if (x && typeof x === 'object' && typeof (x as { value?: unknown }).value === 'string') teile.push((x as { value: string }).value);
+  }
+  return teile.join('\n\n');
+}
 
 /** Werte mit eigener Spalte im Probelauf; der Rest steht unter „More values". */
 const EIGENE_SPALTEN = new Set(['hp', 'reach', 'reactionFree']);
@@ -60,7 +73,7 @@ type Ziehen =
  */
 @Component({
   selector: 'nw-regel-builder',
-  imports: [RouterLink],
+  imports: [RouterLink, Text],
   template: `
     <main class="lab">
       <header class="kopf">
@@ -166,10 +179,23 @@ type Ziehen =
               }
             </p>
           }
-          <label class="text"
-            >Text
-            <textarea rows="3" [value]="textVon(g.id)" (change)="setzeText(g.id, $any($event.target).value)"></textarea>
-          </label>
+          <!-- Der Regeltext (T-270): was die Regel sagt, und darunter der Text der Artikel, auf die sie verweist. -->
+          <section class="regeltext" aria-label="Rule text">
+            <nw-text [text]="textVon(g.id)" />
+            @for (q of quellen(); track q.id) {
+              <div class="quelle">
+                <p class="hint">From <a [routerLink]="['/artikel', q.id]">{{ q.name }}</a>{{ q.publikation ? ' · ' + q.publikation : '' }}</p>
+                <nw-text [text]="q.text" />
+              </div>
+            }
+          </section>
+          <details class="bearbeiten">
+            <summary>Edit text</summary>
+            <label class="text"
+              >Text
+              <textarea rows="4" [value]="textVon(g.id)" (change)="setzeText(g.id, $any($event.target).value)"></textarea>
+            </label>
+          </details>
           @if (optionen().length) {
             <details class="optionen" open>
               <summary>Options of this rule ({{ optionen().length }})</summary>
@@ -816,6 +842,26 @@ type Ziehen =
         grid-template-columns: minmax(0, 1fr);
       }
     }
+    .regeltext {
+      border-left: 3px solid var(--line);
+      padding: 0.2rem 0 0.2rem 0.8rem;
+      margin: 0.4rem 0;
+      max-width: 60rem;
+    }
+    .quelle {
+      margin-top: 0.6rem;
+      padding-top: 0.4rem;
+      border-top: 1px dashed var(--line);
+    }
+    .quelle .hint {
+      margin: 0 0 0.2rem;
+      font-size: 0.85rem;
+    }
+    .bearbeiten summary {
+      cursor: pointer;
+      color: var(--link);
+      min-height: 32px;
+    }
     .begriffe {
       display: flex;
       flex-wrap: wrap;
@@ -867,6 +913,8 @@ export class RegelBuilder {
   protected readonly artikel = signal<Entity[]>([]);
   /** Die Regeln als Graphen, aus den Artikeln gelesen; bearbeitet wird hier, gespeichert in den Artikel. */
   protected readonly regeln = signal<RuleGraph[]>([]);
+  /** Die Artikel, auf die der Text der gewählten Regel verweist, mit ihrem Text (T-270). */
+  protected readonly quellen = signal<{ id: string; name: string; text: string; publikation?: string }[]>([]);
   /** Geänderte Texte je Artikel (Regel oder Option), bis „Save". */
   protected readonly texte = signal<Map<string, string>>(new Map());
   protected readonly aktivId = signal<string | null>(null);
@@ -1033,6 +1081,7 @@ export class RegelBuilder {
 
   protected waehle(id: string): void {
     this.aktivId.set(id);
+    void this.ladeQuellen(id);
     this.knotenWahl.set(null);
     this.drahtWahl.set(null);
     /* Eine neue Regel steht ganz da: verkleinert, bis sie in die Breite passt. */
@@ -1053,6 +1102,34 @@ export class RegelBuilder {
   protected aendereRegel(teil: Partial<Pick<RuleGraph, 'name' | 'enabled' | 'engine'>>): void {
     const id = this.aktivId();
     if (id) this.aendere(id, (g) => ({ ...g, ...teil }));
+  }
+
+  /**
+   * **Der Text der Quellen** (T-270): der Artikel der Regel nennt im Text,
+   * worauf er beruht (`Based on [[…]]`); die Antwort löst die Verweise auf
+   * (`refs.links`), und von jedem Ziel steht sein Text da — Beschreibung
+   * und Prosa, wie die Artikelseite sie zeigt.
+   */
+  private async ladeQuellen(id: string): Promise<void> {
+    this.quellen.set([]);
+    if (!id) return;
+    try {
+      const e = await this.api.entity(id);
+      const ziele = [...new Set(Object.values(e.refs?.links ?? {}).flatMap((l) => l.map((x) => x.id)))].slice(0, 6);
+      if (!ziele.length || this.aktivId() !== id) return;
+      const arts = await this.api.entitiesById(ziele);
+      if (this.aktivId() !== id) return;
+      this.quellen.set(
+        arts.map((a) => ({
+          id: a.id,
+          name: entityName(a),
+          text: artikelText(a),
+          ...(typeof a.components?.['Source']?.['publication'] === 'string' ? { publikation: String(a.components['Source']['publication']) } : {}),
+        })),
+      );
+    } catch {
+      /* Ohne Quellen steht nur der eigene Text da. */
+    }
   }
 
   /** Der Text eines Artikels, wie er gerade bearbeitet wird. */

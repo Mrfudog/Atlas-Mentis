@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { articleWithGraph, ruleGraphWords, evalRuleExpr, exampleRuleGraphs, graphFromArticle, isRuleGraph, ruleGraphProblems, runRules, RULE_ENGINES, type Entity, type RuleCreature, type RuleGraph } from '../src/index.js';
+import { articleWithGraph, describeRuleGraph, ruleGraphWords, evalRuleExpr, exampleRuleGraphs, graphFromArticle, isRuleGraph, ruleGraphProblems, runRules, RULE_ENGINES, type Entity, type RuleCreature, type RuleGraph } from '../src/index.js';
 
 /* Regel-Builder, Versuch (T-270). Erfundene Kreaturen. */
 
@@ -190,5 +190,17 @@ describe('ruleGraphWords (T-270)', () => {
     expect(ruleGraphWords(g('counterspell'))).toEqual(['reach', 'reaction', 'spell slot']);
     expect(ruleGraphWords(g('concentration'))).toEqual(['concentration', 'damage roll', 'hit points']);
     expect(ruleGraphWords(g('somatic-hand'))).toEqual(['somatic component', 'spell slot']);
+  });
+});
+
+describe('describeRuleGraph (T-270)', () => {
+  it('sagt je Folge in einem Satz, wann sie greift', () => {
+    const g = (id: string) => exampleRuleGraphs().find((x) => x.id === id)!;
+    expect(describeRuleGraph(g('hellish-rebuke'))).toBe(
+      'When a creature is hit by an attack, if self is target, self knows “Hellish Rebuke”, self.reactionFree = 1 and distance <= 60: offer reaction “Hellish Rebuke” to self (target: actor).',
+    );
+    const shield = describeRuleGraph(g('shield'));
+    expect(shield).toContain('self.slots1 >= 1: offer reaction “Shield (+5 AC until your next turn)”');
+    expect(shield).toContain('not self.slots1 >= 1: apply “Shield unavailable: no 1st-level slot” to self.');
   });
 });
