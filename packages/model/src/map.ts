@@ -301,8 +301,9 @@ export function startPrepared(map: Entity, encounter: EntityId): Entity {
  * **Was auf die Karte soll, gruppiert** (T-301). Ein Wesen steht oft
  * mehrfach da: als Kreatur, als Statblock, als Token-Bild — „The
  * Demogorgon", „\"The Demogorgon\" (token)". Zusammen gehört, was nach
- * Name gleich heisst (ohne Anführungszeichen, Gross/klein und den Zusatz
- * „(token)"); vorn steht das Relevanteste — **Kreatur, dann Statblock,
+ * Name gleich heisst (ohne Anführungszeichen, Gross/klein, den Zusatz
+ * „(token)" und ein Quellenkürzel in Klammern wie „(MTF)" — das sind
+ * Fassungen derselben Sache); vorn steht das Relevanteste — **Kreatur, dann Statblock,
  * dann Bild** —, die übrigen bleiben zur Wahl. Die Reihenfolge der Gruppen
  * ist die der Treffer.
  */
@@ -316,9 +317,11 @@ export function placementGroups<T extends { id: string; name: string; type: stri
   };
   const schluessel = (n: string) =>
     n
-      .toLowerCase()
       .replace(/["“”„'’]/g, '')
-      .replace(/\s*\(token\)\s*$/, '')
+      .replace(/\s*\(token\)\s*$/i, '')
+      /* Ein Kürzel ohne Leerzeichen mit Grossbuchstaben: (MTF), (DoSI), (ToB1-2023) — nicht „(legendary group)". */
+      .replace(/\s*\((?=[^)]*[A-Z])[A-Za-z0-9-]{2,12}\)\s*$/, '')
+      .toLowerCase()
       .replace(/\s+/g, ' ')
       .trim();
   const gruppen = new Map<string, T[]>();
