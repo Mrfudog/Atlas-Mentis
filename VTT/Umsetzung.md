@@ -385,7 +385,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | [[REQ-328]] | Ablage für nicht Verstautes | 2 | **offen** |  |
 | [[REQ-333]] | Vorgaben für Formen und Stapel | 2 | **offen** |  |
 | [[REQ-355]] | Tragraster, Zonen und Behälter einstellen | 2 | **steht** | Rules & options › Inventory: Grössen, Zonen je Spalte, Behältervorlagen gemalt, Fallenlassen/Verstauen, Körperplätze (T-291). |
-| [[REQ-356]] | Tragblatt aus Bausteinen mit Zonen und Bedingungen | 2 | **steht** | Einstellung carrySheet: Bausteine mit Form, Zonen und Bedingungen, aneinandergefügt (assembleCarry); Editor mit Vorschau für Grösse und STR, Zonenmaler auch für Behältervorlagen (T-293). |
+| [[REQ-356]] | Tragblatt aus Bausteinen mit Zonen und Bedingungen | 2 | **steht** | Einstellung carrySheet: Bausteine mit Form, Zonen und Bedingungen, aneinandergefügt (assembleCarry); Editor mit Vorschau für Grösse und STR, Zonenmaler auch für Behältervorlagen (T-298). |
 
 ### F-027 Eigene Inhalte der Spielenden
 
