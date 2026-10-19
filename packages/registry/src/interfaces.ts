@@ -719,6 +719,9 @@ export const interfaces: Record<string, InterfaceDef> = {
          Statblock sonst trägt (Marken, Stand, Quelle …), steht weiter in
          der Feldtabelle darunter. */
       full: [
+        /* Das Bild obenan (T-211): seit dem Lauf der 5e.tools-Bilder hat
+           fast jeder Statblock eins, und der Bogen zeigt es nicht. */
+        { id: 's-img', el: 'image' },
         { id: 's-sb', el: 'statblock' },
         { id: 's-f', el: 'fields', fields: 'all', except: ['Statblock', 'Abilities', 'Proficiencies'] },
         { id: 's-b', el: 'prose', fields: 'all' },
@@ -811,6 +814,8 @@ export const interfaces: Record<string, InterfaceDef> = {
      dieselben Beziehungen wie eine Figur. */
     views: {
       full: [
+        /* Die Gruppe nimmt `Image` und zeigte es nirgends (T-211). */
+        { id: 'p-img', el: 'image' },
         { id: 'p-desc', el: 'description' },
         { id: 'p-f', el: 'fields', fields: 'all' },
         { id: 'p-inv', el: 'inventory' },

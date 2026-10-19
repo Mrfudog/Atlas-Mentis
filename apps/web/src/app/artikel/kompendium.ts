@@ -321,7 +321,7 @@ const OFFEN = 8;
                     <td class="name">
                       <!-- Das Vorschaubild, wenn die Übersicht der Art eines zeigt (T-114). -->
                       @if (z.image) {
-                        <nw-bild class="daumen" [wert]="z.image" groesse="thumb" [oeffnen]="false" alt="" />
+                        <nw-bild class="daumen" [wert]="z.image" [version]="z.imageVersion" groesse="thumb" [oeffnen]="false" alt="" />
                       }
                       <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
                       <!-- Am Telefon führt die Zeile gleich zum Artikel; die Karte

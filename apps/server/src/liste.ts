@@ -23,7 +23,9 @@
  */
 
 import {
+  articleImage,
   assetMeta,
+  assetVersion,
   type AssetMeta,
   areaOf,
   allOf,
@@ -83,6 +85,8 @@ interface IndexZeile {
   cols: Record<string, unknown>;
   /** Das Vorschaubild (T-114): die Asset-Id oder Adresse — nur, wenn `overview` ein Bild zeigt. */
   image?: string;
+  /** Die Version der Bilddatei (T-211): mit ihr darf der Browser das Bild behalten. */
+  imageVersion?: string;
   /** An einem Bild die Masse der Datei (T-201): Galerie und Liste zeigen sie, ohne den Artikel zu holen. */
   asset?: AssetMeta;
   tags: string[];
@@ -183,6 +187,13 @@ export function buildListIndex(
     return t;
   };
 
+  /* Für das Bild einer Zeile (T-211): das Asset hinter der Id, um seine
+     Version zu nennen, und die Statblöcke einer Kreatur — beides aus dem
+     Gesiebten, also nichts, was der Betrachter nicht sähe. */
+  const byId = new Map(visible.map((e) => [e.id, e]));
+  const statblocks = (id: string) =>
+    (ein.get(id) ?? []).filter((k) => k.type === 'belongsTo').map((k) => byId.get(k.from)).filter((x): x is Entity => !!x);
+
   const rows: IndexZeile[] = [];
   for (const e of visible) {
     /* Eine Instanz steht in keiner Liste (D82): sie gehört ihrer Kreatur. */
@@ -226,7 +237,7 @@ export function buildListIndex(
         .toLowerCase(),
       users: nutzer.get(e.id)?.size ?? 0,
       cols,
-      ...(art.bild ? bildVon(e, art.chain, names) : {}),
+      ...(art.bild ? bildVon(registry, e, byId, statblocks) : {}),
       ...(art.chain.includes('Asset') ? { asset: assetMeta(e) } : {}),
       tags: tagsOf(e),
       ...facettenWerte(art.facets, e, names, ein, ctx),
@@ -315,19 +326,26 @@ function zeigtBild(registry: Registry, typ: string): boolean {
 }
 
 /**
- * **Das Vorschaubild einer Zeile** (T-114): an einem Asset das Asset
- * selbst, sonst `Image.image`. Ein Asset, das der Betrachter nicht sieht
- * (es steht nicht in `names`), bleibt weg — die Zeile zeigte sonst ein
- * Bild, das der Server dann verweigert.
+ * **Das Vorschaubild einer Zeile** (T-114): `articleImage` — das Asset
+ * selbst, `Image.image`, an einer Kreatur ohne eigenes das ihres
+ * Statblocks (T-211). Ein Asset, das der Betrachter nicht sieht (es steht
+ * nicht im Gesiebten), bleibt weg — die Zeile zeigte sonst ein Bild, das
+ * der Server dann verweigert. **Mit Version** (`imageVersion`): sonst darf
+ * der Browser das Vorschaubild nicht behalten und fragt bei jeder Liste
+ * neu — bei fünfzig Zeilen fünfzig Rundreisen.
  */
-function bildVon(e: Entity, kette: string[], names: Map<string, string>): { image?: string } {
-  const asset = e.components?.['Asset'] as { ref?: unknown } | undefined;
-  if (kette.includes('Asset') && typeof asset?.ref === 'string' && asset.ref) return { image: e.id };
-  const wert = (e.components?.['Image'] as { image?: unknown } | undefined)?.image;
-  if (typeof wert !== 'string' || !wert.trim()) return {};
-  const w = wert.trim();
-  if (/^https?:\/\//i.test(w)) return { image: w };
-  return names.has(w) ? { image: w } : {};
+function bildVon(
+  registry: Registry,
+  e: Entity,
+  byId: ReadonlyMap<string, Entity>,
+  statblocks: (id: string) => Entity[],
+): { image?: string; imageVersion?: string } {
+  const b = articleImage(registry, e, byId, statblocks);
+  if (!b) return {};
+  if (/^https?:\/\//i.test(b.id)) return { image: b.id };
+  if (!byId.has(b.id)) return {};
+  const v = assetVersion(byId.get(b.id));
+  return { image: b.id, ...(v ? { imageVersion: v } : {}) };
 }
 
 // ------------------------------------------------------------------ Abfrage
@@ -435,6 +453,8 @@ export interface ListResult {
     cols: Record<string, unknown>;
     /** Das Vorschaubild (T-114). */
     image?: string;
+    /** Die Version der Bilddatei (T-211): mit ihr darf der Browser das Bild behalten. */
+    imageVersion?: string;
     /** An einem Bild die Masse der Datei (T-201). */
     asset?: AssetMeta;
     tags?: string[];
@@ -704,6 +724,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       ...(z.users ? { users: z.users } : {}),
       cols: z.cols,
       ...(z.image ? { image: z.image } : {}),
+      ...(z.imageVersion ? { imageVersion: z.imageVersion } : {}),
       ...(z.asset ? { asset: z.asset } : {}),
       ...(z.tags.length ? { tags: z.tags } : {}),
       ...(unbekannt.has(z.id) ? { usable: 'unknown' as const } : {}),
@@ -915,6 +936,8 @@ export interface SearchRow {
   publishers: string[];
   source: string;
   image?: string;
+  /** Die Version der Bilddatei (T-211): mit ihr darf der Browser das Bild behalten. */
+  imageVersion?: string;
   usable?: 'unknown';
 }
 
@@ -993,6 +1016,7 @@ export function search(
         publishers: [...new Set(ids.map(verlagVon).filter(Boolean))],
         source: z.source,
         ...(z.image ? { image: z.image } : {}),
+      ...(z.imageVersion ? { imageVersion: z.imageVersion } : {}),
         ...(z.usable ? { usable: z.usable } : {}),
       };
     }),
