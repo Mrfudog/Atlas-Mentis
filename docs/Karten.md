@@ -475,11 +475,31 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
 - **Zurückgehalten wird am Server** (`redactMap`): Marker unter dem Nebel
   gehen nicht an Spielende, ausser dem Gruppen-Token und den Figuren der
   Gruppe — wer im Dunkeln steht, steht trotzdem auf der Karte. Rahmen von
-  Unterkarten nur, wenn ihre Mitte oder eine Ecke aufgedeckt ist. **Das
-  Bild selbst** geht noch ganz hinaus und wird im Browser zugedeckt; dass
-  der Server es Spielenden beschnitten liefert, bis alles aufgedeckt ist,
-  ist entschieden (E-041) und eine eigene Aufgabe nach T-289. Was wirklich
-  geheim ist, gehört auf ein Blatt `gmOnly` — das geht nicht hinaus.
+  Unterkarten nur, wenn ihre Mitte oder eine Ecke aufgedeckt ist.
+- **Das Bild beschneidet der Server** (T-312, E-041,
+  `apps/server/src/kartenbild.ts`). Solange der Nebel an ist und nicht
+  alles aufgedeckt (`fullyRevealed`: ein Rechteck über die ganze Karte,
+  wie *Reveal all* es schreibt, oder Nebel aus), zeigen `Image.image` und
+  die Blätter für Spielende nicht auf das Asset, sondern auf
+  `/api/maps/:id/image?sheet=<blatt>&fog=<stand>` — das Bild mit der Maske
+  des Aufgedeckten (`revealMaskSvg`, dieselbe Fläche wie `inShape`), der
+  Rest durchsichtig, in der Grösse des Originals. Gerechnet wird aus der
+  gesiebten Karte, also bei Nebel je Figur aus dem, was **diese** Figur
+  aufgedeckt hat. Das Original gibt `/api/assets/:id` Spielenden nicht,
+  solange es unter einem Nebel liegt, den sie sehen (auch nicht als
+  Vorschau). Der **Stand** ist ein Hash aus Bildversion, Blatt und den
+  sichtbaren Formen: Spielende mit gleichem Aufgedecktem teilen ihn, der
+  Server rechnet ein Bild je Stand einmal (Zwischenspeicher im Speicher,
+  `MAP_CROP_CACHE_MB`, Vorgabe 256), und der Browser behält es. Gebündelt
+  wird beim Aufdecken selbst — ein Pinselstrich wird beim Loslassen
+  gespeichert, also lädt der Beamer ein neues Bild je Strich. Eine
+  beschnittene Adresse als Bild zurückzuschreiben lehnt der Server ab.
+  **Grenzen:** ein Bild, das nur als Adresse woanders liegt (`https://…`),
+  kann der Server nicht beschneiden — es geht weiter, wie es ist; und eine
+  Vorlage, die Spielende sehen und die keinen Nebel trägt, zeigt ihr Bild
+  ganz (die Vorlage einer Karte im Spiel auf `gm` stellen). Kachelweise
+  (REQ-138) kommt mit den Kacheln. Was wirklich geheim ist, gehört
+  weiter auf ein Blatt `gmOnly` — das geht gar nicht hinaus.
 - **Die Leitung sieht halb hindurch.** Mit *Player view* sieht sie die
   Karte, wie Spielende sie bekommen: Nebel deckend, ohne Blätter der
   Leitung, ohne versteckte Marker — dieselbe Rechnung (`redactMap`), im

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-fog-cropped-image",
+      "date": "2026-10-19",
+      "title": "Under the fog, players get only what is revealed",
+      "text": "While the fog is on, the map image players receive is cut to what has been revealed — the rest is not hidden in the browser, it is simply not sent. The full picture follows once you reveal everything or turn the fog off.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-19-sight-and-light",
       "date": "2026-10-19",
       "title": "Darkvision in greyscale, torches in hand, lights on and off",
