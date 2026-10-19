@@ -41,6 +41,7 @@
 import { randomUUID, getRandomValues } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  blockingWalls,
   cellAt,
   cellPoint,
   cleanNat,
@@ -55,7 +56,6 @@ import {
   carriedLights,
   darkvisionFor,
   revealSeenAlong,
-  mapWalls,
   wallsClear,
   fogOn,
   opportunityAttacks,
@@ -69,6 +69,7 @@ import {
   hitChance,
   isMap,
   markersOf,
+  mayMoveAsset,
   mayMoveToken,
   moveMarker,
   naturalD20,
@@ -526,9 +527,15 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       /* **Wer zieht, sagt die Kampagne** (T-290, `tokenMove`) — gefragt an
          der gesiebten Karte: wer ein Token nicht sieht, zieht es nicht. */
       const regeln = mapRulesOf(kampagne, roheKarte);
-      if (!darfZiehen(leitet, regeln, marker.to, zieher(stand, kampagne, karte, user.actorIds ?? [])))
-        return reply.code(403).send({ error: 'This campaign does not let you move that token.' });
-      if (!leitet && encounterOnMap(stand.alle, roheKarte.id)) return reply.code(423).send({ error: 'During an encounter, tokens move through the turn plan.' });
+      /* **Ein Asset ist fix, bis es `movable` sagt** (T-306): in Play
+         schiebt es auch die Leitung nicht — sie verschiebt es in der
+         Bearbeitung. Ein verschiebbares schieben Spielende nach
+         `mayMoveAsset`, auch im Kampf (eine Kiste hat keinen Zug). */
+      const asset = marker.kind === 'scenery';
+      if (asset && !marker.movable) return reply.code(403).send({ error: 'This asset is fixed. Move it while editing the map.' });
+      if (asset ? !leitet && !mayMoveAsset(regeln) : !darfZiehen(leitet, regeln, marker.to, zieher(stand, kampagne, karte, user.actorIds ?? [])))
+        return reply.code(403).send({ error: asset ? 'This campaign does not let you move that asset.' : 'This campaign does not let you move that token.' });
+      if (!asset && !leitet && encounterOnMap(stand.alle, roheKarte.id)) return reply.code(423).send({ error: 'During an encounter, tokens move through the turn plan.' });
       const roh = (b.to ?? {}) as { x?: unknown; y?: unknown };
       const tx = Number(roh.x);
       const ty = Number(roh.y);
@@ -548,14 +555,15 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
          Gerade. Die Leitung zieht weiter durch alles. */
       if (!leitet) {
         const ar = nat && nat.w > 0 ? nat.h / nat.w : 1;
-        const sperren = mapWalls(roheKarte);
+        /* Assets, die den Schritt halten, halten ihn auch (T-306) — das gezogene nicht sich selbst. */
+        const sperren = blockingWalls(roheKarte, nat, marker.rel.id);
         const punkte = geo && schritt.path.length > 1 ? schritt.path.map((c) => cellPoint(geo, c)) : [{ x: marker.x, y: marker.y }, to];
         for (let i = 1; i < punkte.length; i++) {
           if (!wallsClear(sperren, punkte[i - 1]!, punkte[i]!, ar, 'move')) return reply.code(422).send({ error: 'A wall is in the way.' });
         }
       }
 
-      if (!leitet && regeln.moves === 'confirm') {
+      if (!asset && !leitet && regeln.moves === 'confirm') {
         /* Ein offener Vorschlag derselben Figur, der nur zieht, wird ersetzt —
            ein Zugplan mit Aktionen bleibt, wie er ist. */
         const alt = (await plaeneDerKarte(repo, roheKarte.id)).find(
@@ -579,7 +587,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       }
 
       let neu = moveMarker(roheKarte, marker.rel.id, to);
-      if (regeln.revealOnMove && fogOn(roheKarte) && nat) neu = wegAufdecken(neu, marker.to, schritt, marker, nat, stand.map);
+      if (!asset && regeln.revealOnMove && fogOn(roheKarte) && nat) neu = wegAufdecken(neu, marker.to, schritt, marker, nat, stand.map);
       const r = await schreibeGeprueft(neu);
       if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
       return { moved: marker.rel.id, to };

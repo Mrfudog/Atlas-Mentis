@@ -44,7 +44,10 @@ function bestand(kampagne: Record<string, unknown>, kampf: boolean): Entity[] {
         { id: 'mk_mira', type: 'marker', to: 'pc_mira', props: { x: 0.2, y: 0.2, kind: 'play' } },
         { id: 'mk_esel', type: 'marker', to: 'cr_esel', props: { x: 0.3, y: 0.3, kind: 'play' } },
         { id: 'mk_hund', type: 'marker', to: 'cr_hund', props: { x: 0.4, y: 0.4, kind: 'play' } },
-        { id: 'mk_gob', type: 'marker', to: 'cr_gob', props: { x: 0.5, y: 0.5, kind: 'play' } }] },
+        { id: 'mk_gob', type: 'marker', to: 'cr_gob', props: { x: 0.5, y: 0.5, kind: 'play' } },
+        /* Assets (T-306): eine Kiste, die man schiebt, und ein Fass, das steht. */
+        { id: 'mk_kiste', type: 'marker', to: 'map_1', props: { x: 0.6, y: 0.6, kind: 'scenery', movable: true } },
+        { id: 'mk_fass', type: 'marker', to: 'map_1', props: { x: 0.7, y: 0.7, kind: 'scenery' } }] },
   ];
   if (kampf) {
     alle.push({ id: 'enc_1', name: 'Überfall', interfaces: ['Encounter'], components: { ...ident('Überfall', 'encounter-0001'), Encounter: { round: 1, turn: 0 } },
@@ -77,7 +80,7 @@ async function aufbau(kampagne: Record<string, unknown> = {}, kampf = false) {
     app.inject({ method, url, ...(payload ? { payload } : {}), headers: { cookie: await cookie(name) } });
   const zieh = (name: string, rel: string) => rufe(name, 'POST', '/api/maps/map_1/move', { rel, to: { x: 0.8, y: 0.8 } });
   const stelle = async (rel: string) => markersOf((await repo.getEntity('map_1'))!).find((m) => m.rel.id === rel)!;
-  const kontext = async (name: string) => (await rufe(name, 'GET', '/api/maps/map_1/context')).json() as { movable: string[]; campaign: string | null; proposals: { actor: string; plan: string }[] };
+  const kontext = async (name: string) => (await rufe(name, 'GET', '/api/maps/map_1/context')).json() as { movable: string[]; movableAssets: string[]; campaign: string | null; proposals: { actor: string; plan: string }[] };
   return { rufe, zieh, stelle, kontext };
 }
 
@@ -148,5 +151,36 @@ describe('Wer Tokens zieht (T-290)', () => {
     const [v] = (await kontext('Gwen')).proposals;
     expect((await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${v!.plan}/decide`, { decision: 'reject' })).statusCode).toBe(200);
     expect((await stelle('mk_rook')).x).toBe(0.1);
+  });
+
+  it('Assets (T-306): ein fixes schiebt in Play niemand, ein verschiebbares die Leitung immer, Spielende nach der Stufe', async () => {
+    const eng = await aufbau();
+    expect((await eng.zieh('Gwen', 'mk_fass')).statusCode).toBe(403);
+    expect((await eng.zieh('Gwen', 'mk_kiste')).statusCode).toBe(200);
+    expect((await eng.stelle('mk_kiste')).x).toBe(0.8);
+    /* `own`: eine Kiste gehört keiner Figur. */
+    expect((await eng.zieh('Sela', 'mk_kiste')).statusCode).toBe(403);
+    expect((await eng.kontext('Sela')).movableAssets).toEqual([]);
+    expect((await eng.kontext('Gwen')).movableAssets).toEqual(['mk_kiste']);
+    const weit = await aufbau({ tokenMove: 'party' });
+    expect((await weit.kontext('Sela')).movableAssets).toEqual(['mk_kiste']);
+    expect((await weit.zieh('Sela', 'mk_fass')).statusCode).toBe(403);
+    expect((await weit.zieh('Sela', 'mk_kiste')).statusCode).toBe(200);
+    /* Mit Bestätigung kein Vorschlag für eine Kiste — sie bleibt der Leitung. */
+    const bestaetigt = await aufbau({ tokenMove: 'all', moves: 'confirm' });
+    expect((await bestaetigt.zieh('Sela', 'mk_kiste')).statusCode).toBe(403);
+    expect((await bestaetigt.zieh('Gwen', 'mk_kiste')).statusCode).toBe(200);
+  });
+
+  it('ein Asset, das den Schritt hält, hält ihn für Spielende auch (T-306)', async () => {
+    const { rufe, stelle } = await aufbau({ tokenMove: 'all' });
+    /* Ein Hindernis quer zwischen Rook (0.1) und dem Ziel (0.3). */
+    const k = (await rufe('Gwen', 'GET', '/api/entities/map_1')).json() as Entity;
+    k.relations = [...(k.relations ?? []), { id: 'mk_zaun', type: 'marker', to: 'map_1', props: { x: 0.2, y: 0.1, kind: 'scenery', size: 1, ratio: 3, blocks: 'chasm' } }];
+    expect((await rufe('Gwen', 'PUT', '/api/entities/map_1', k)).statusCode).toBe(200);
+    const nat = { w: 1000, h: 1000 };
+    expect((await rufe('Sela', 'POST', '/api/maps/map_1/move', { rel: 'mk_rook', to: { x: 0.3, y: 0.1 }, nat })).statusCode).toBe(422);
+    expect((await stelle('mk_rook')).x).toBe(0.1);
+    expect((await rufe('Sela', 'POST', '/api/maps/map_1/move', { rel: 'mk_rook', to: { x: 0.1, y: 0.4 }, nat })).statusCode).toBe(200);
   });
 });
