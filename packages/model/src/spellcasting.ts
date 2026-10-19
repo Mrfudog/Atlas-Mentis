@@ -30,7 +30,7 @@
  * **Was am Statblock steht, geht vor**: `spellAbility` und `spellSlots`
  * dort sind eine Festlegung (eine NSC-Vorlage, eine Hausregel).
  *
- * Ein eigenes System (T-310, à la DC20: die Spielerin wählt ein Hauptattribut
+ * Ein eigenes System (T-311, à la DC20: die Spielerin wählt ein Hauptattribut
  * für alles Zaubern und Angreifen) ersetzt später genau eine Stelle:
  * `abilityFor`. Die Plätze nach `casterProgression` sind die Tabelle des
  * Regelwerks (PHB, Multiclass Spellcaster) und stehen darum hier.
@@ -125,7 +125,7 @@ function castingField(e: Entity | undefined, feld: 'spellAbility' | 'casterProgr
 
 /**
  * **Mit welchem Attribut diese Quelle zaubert** — die eine Stelle, die ein
- * eigenes System ersetzt (T-310). Nach D&D: was die Kante oder Wahl nennt,
+ * eigenes System ersetzt (T-311). Nach D&D: was die Kante oder Wahl nennt,
  * sonst die Quelle, sonst das Hauptattribut der Figur.
  */
 function abilityFor(genannt: unknown, quelle: string | undefined, haupt: string | null): string | undefined {
