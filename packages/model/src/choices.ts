@@ -55,6 +55,12 @@ export interface ChoiceFrom {
   where?: { component: string; property: string; value?: unknown };
   /** Nur Artikel mit dieser Kante: `{type: 'subclassOf', to: <Klasse>}`. */
   edge?: { type: string; to: EntityId };
+  /**
+   * Nur Artikel, auf die dieser Artikel mit dieser Kante zeigt (T-309):
+   * `{type: 'spellList', from: <Klasse>}` — die Zauberliste der Klasse.
+   * Die Gegenrichtung von `edge`.
+   */
+  listedBy?: { type: string; from: EntityId };
   /** Benannte Möglichkeiten; die Antwort hält den Schlüssel. */
   options?: { key: string; label: string }[];
 }

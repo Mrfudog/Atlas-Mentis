@@ -272,7 +272,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [M + 'hitpoints.ts']: ['hasClass'],
       [M + 'choices.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       /* Was die Figur schon hat, wählt sie nicht noch einmal (T-299). */
-      [M + 'duplicates.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [M + 'duplicates.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'holds'],
       [M + 'abilities.ts']: ['abilityPool', 'allowsMethod'],
       [M + 'equipment.ts']: ['allowsEquipment', 'hasBackground', 'hasClass'],
       [S + 'app.ts']: ['abilityPool', 'allowsEquipment', 'allowsMethod', 'carries', 'chose', 'holds'],

@@ -13,6 +13,8 @@
  *   Werkzeuge, Sprachen, Waffen- und Rüstungsarten — eine Liste). Eine Wahl
  *   der Expertise sperrt nur gegen Expertise; sie verlangt die Übung ja.
  * - `feat`: Talente ohne `Feat.repeatable`.
+ * - `spell` (T-309): Zauber nach Namen — was eine Quelle fest wirkt
+ *   (`casts`) und was eine frühere Wahl nahm.
  *
  * Gespeichert wird davon nichts (D8). Ändert jemand eine frühere Wahl, wird
  * die spätere nicht still geleert, sondern als Doppelung gemeldet
@@ -28,6 +30,7 @@ import { CHOICE_SOURCE_ORDER as RANG, choiceKey } from './builder.js';
 import { choicesAtCharacter, type ChoiceAtCharacter } from './choices.js';
 import { entityName } from './entity.js';
 import { proficienciesOf } from './proficiency.js';
+import { spellcastingOf } from './spellcasting.js';
 import type { Entity, EntityId } from './types.js';
 
 /** Was schon da ist, und woher. */
@@ -53,7 +56,7 @@ export interface ChoiceDuplicate {
 }
 
 /** Die Sorten, in denen gesperrt wird. */
-type Sorte = 'proficient' | 'expertise' | 'feat';
+type Sorte = 'proficient' | 'expertise' | 'feat' | 'spell';
 
 const WEG: Record<string, string> = {
   hasAncestry: 'Ancestry',
@@ -71,6 +74,8 @@ const norm = (s: string) => s.trim().toLowerCase();
 function sorteVon(at: ChoiceAtCharacter): Sorte | null {
   const k = at.choice.kind ?? 'proficiency';
   if (k === 'feat') return 'feat';
+  /* Zauber nach Namen (T-309): derselbe Zauber aus einem anderen Buch ist derselbe. */
+  if (k === 'spell') return 'spell';
   if (k !== 'proficiency') return null;
   return /expertise/i.test(`${at.choice.id} ${at.choice.note ?? ''}`) ? 'expertise' : 'proficient';
 }
@@ -97,7 +102,7 @@ function geordnet(character: Entity, byId: ReadonlyMap<EntityId, Entity>): Choic
 
 /** Was fest da ist, je Sorte: Name (klein) → Herkunft. */
 function festes(character: Entity, byId: ReadonlyMap<EntityId, Entity>): Record<Sorte, Map<string, HeldValue>> {
-  const raus: Record<Sorte, Map<string, HeldValue>> = { proficient: new Map(), expertise: new Map(), feat: new Map() };
+  const raus: Record<Sorte, Map<string, HeldValue>> = { proficient: new Map(), expertise: new Map(), feat: new Map(), spell: new Map() };
   const herkunft = (id: EntityId, via: string) => `${WEG[via] ?? 'Feature'} (${entityName(byId.get(id)) || id})`;
   for (const e of proficienciesOf(character, undefined, byId).entries) {
     if (e.kind === 'saves') continue;
@@ -109,6 +114,12 @@ function festes(character: Entity, byId: ReadonlyMap<EntityId, Entity>): Record<
     if (e.kind === 'expertise' && !raus.proficient.has(norm(e.name))) {
       raus.proficient.set(norm(e.name), { value: e.name, from: herkunft(s.id, s.via), source: s.id, fixed: true });
     }
+  }
+  /* Zauber, die eine Quelle fest bringt (`casts`, T-309) — nicht, was gewählt ist. */
+  for (const z of spellcastingOf(character, undefined, byId).spells) {
+    if (z.choice || z.via === 'character' || z.via === 'statblock' || z.via === 'holds') continue;
+    const name = entityName(byId.get(z.spell)) || z.spell;
+    if (!raus.spell.has(norm(name))) raus.spell.set(norm(name), { value: name, from: herkunft(z.source, z.via), source: z.source, fixed: true });
   }
   /* Talente, die eine Quelle fest gewährt: dieselben Quellen wie die Wahlen. */
   const quellen = new Map<EntityId, string>();

@@ -10,7 +10,7 @@
  */
 
 import type { Choice, Entity } from '@nw/model';
-import { choiceId, typeChain } from '@nw/model';
+import { choiceId, maxSpellLevel, typeChain } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
@@ -386,12 +386,22 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown, nurWenn?: { choic
                (REQ-238); der Filter steht als Satz in `note`. */
             const c = (s as Knoten | null)?.['choose'];
             if (typeof c === 'string') {
+              /* Der Filter als Angabe, wo er sich lesen lässt (T-309): `level=0`
+                 wird der Grad, `class=Wizard` die Zauberliste der Klasse, wenn
+                 sie schon bekannt ist. Der Satz bleibt in `note`. */
+              const teile = Object.fromEntries(c.split('|').map((t) => t.split('=') as [string, string]));
+              const grade = /^[0-9;]+$/.test(teile['level'] ?? '') ? teile['level']!.split(';').map(Number) : undefined;
+              const klasse = teile['class'] && !teile['class'].includes(';') ? wb.finde('class', [teile['class']]) : undefined;
               wahl(wb, ent, 'spells', {
                 kind: 'spell',
                 level: ab && ab >= 1 && ab <= 20 ? ab : undefined,
                 count: Number((s as Knoten)['count'] ?? 1),
                 ability: attr,
-                from: { interfaces: ['Spell'] },
+                from: {
+                  interfaces: ['Spell'],
+                  ...(klasse ? { listedBy: { type: 'spellList', from: klasse.id } } : {}),
+                  ...(grade ? { where: { component: 'Spell', property: 'level', value: grade } } : {}),
+                },
                 ...(nurWenn ? { onlyIf: nurWenn } : {}),
                 note: [c.split('|').map((t) => t.replace('=', ' ').replace(/;/g, ' or ')).join(', '), uses].filter(Boolean).join(' · '),
               });
@@ -525,6 +535,64 @@ function klassentabelle(wb: Werkbank, klasse: Entity, e: Knoten, feld: 'classTab
 }
 
 const FORTSCHRITT: Record<string, string> = { full: 'full', '1/2': 'half', '1/3': 'third', pact: 'pact', artificer: 'artificer' };
+
+/**
+ * **Welche Zauber eine Klasse wählen lässt** (T-309): aus
+ * `cantripProgression` (Zaubertricks), `spellsKnownProgression` (bekannte
+ * Zauber, Barde, Hexenmeister …), `spellsKnownProgressionFixed` (was je
+ * Stufe dazukommt — das Zauberbuch des Magiers) und, ohne Buch,
+ * `preparedSpellsProgression` (2024: vorbereitete Zauber). Je Stufe, auf
+ * der die Zahl wächst, eine Wahl `kind: 'spell'` mit dem Zuwachs, aus der
+ * Zauberliste dieses Artikels (`listedBy`, `spellList`) und bis zu dem
+ * Grad, den die Klasse dort wirkt. Ein `preparedSpells`-Satz (2014: Stufe
+ * + Attribut) ist keine Wahl beim Bau — vorbereitet wird am Tisch.
+ *
+ * Rein: der Lauf und `scripts/zauberwahl-nachziehen.mjs` rechnen dasselbe.
+ */
+export function zauberwahlen(e: Knoten, id: string, taken: Iterable<string> = []): Choice[] {
+  const prog = FORTSCHRITT[String(e['casterProgression'] ?? '')];
+  const ab = typeof e['spellcastingAbility'] === 'string' && ATTR.includes(e['spellcastingAbility']) ? e['spellcastingAbility'] : undefined;
+  const ids = [...taken];
+  const raus: Choice[] = [];
+  const zahlen = (v: unknown): number[] => (Array.isArray(v) ? v.map((x) => Number(x) || 0) : []);
+  /* Was eine Stufe gibt, auf der die Klasse noch nichts wirkt, wandert zur ersten, auf der sie es tut. */
+  let offen = 0;
+  const neu = (text: string, stufe: number, zuwachs: number, grade: number[], mode: 'known' | 'prepared', note: string) => {
+    if (stufe === 1) offen = 0;
+    if (!grade.length) {
+      offen += Math.max(0, zuwachs);
+      return;
+    }
+    const count = zuwachs + offen;
+    offen = 0;
+    if (count <= 0) return;
+    const c: Choice = {
+      id: choiceId(text, ids),
+      kind: 'spell',
+      ...(stufe > 1 ? { level: stufe } : {}),
+      count,
+      mode,
+      ...(ab ? { ability: ab } : {}),
+      from: {
+        interfaces: ['Spell'],
+        listedBy: { type: 'spellList', from: id },
+        where: { component: 'Spell', property: 'level', value: grade },
+      },
+      note,
+    };
+    ids.push(c.id);
+    raus.push(c);
+  };
+  /* Aus einer Summe je Stufe (3, 3, 3, 4 …) der Zuwachs je Stufe. */
+  const zuwachs = (summen: number[]) => summen.map((n, i) => n - (i ? summen[i - 1]! : 0));
+  const bis = (stufe: number) => Array.from({ length: Math.max(0, maxSpellLevel(prog, stufe)) }, (_, i) => i + 1);
+  zuwachs(zahlen(e['cantripProgression'])).forEach((n, i) => neu('cantrips', i + 1, n, [0], 'known', 'cantrips'));
+  const fest = zahlen(e['spellsKnownProgressionFixed']);
+  if (fest.length) fest.forEach((n, i) => neu('spellbook', i + 1, n, bis(i + 1), 'known', 'spells for your spellbook'));
+  else if (Array.isArray(e['spellsKnownProgression'])) zuwachs(zahlen(e['spellsKnownProgression'])).forEach((n, i) => neu('spells', i + 1, n, bis(i + 1), 'known', 'spells known'));
+  else if (Array.isArray(e['preparedSpellsProgression'])) zuwachs(zahlen(e['preparedSpellsProgression'])).forEach((n, i) => neu('prepared', i + 1, n, bis(i + 1), 'prepared', 'prepared spells'));
+  return raus;
+}
 
 /** Die Kanten `grants` aus `classFeatures` / `subclassFeatures`. */
 function gewaehrt(wb: Werkbank, ent: Entity, roh: unknown, tag: 'classFeature' | 'subclassFeature'): void {
@@ -686,6 +754,7 @@ export const CHARAKTERBAU: Zuordnung[] = [
       }
       fortschritt(wb, ent, e['featProgression'], 'feat');
       fortschritt(wb, ent, e['optionalfeatureProgression'], 'feature');
+      zauberwahlenAnhaengen(wb, ent, e);
       klassentabelle(wb, ent, e);
       lore(wb, ent, 'classFluff', e);
     },
@@ -719,6 +788,8 @@ export const CHARAKTERBAU: Zuordnung[] = [
       fortschritt(wb, ent, e['optionalfeatureProgression'], 'feature');
       klassentabelle(wb, ent, e, 'subclassTableGroups');
       zusatzzauber(wb, ent, e['additionalSpells']);
+      /* Eldritch Knight, Arcane Trickster: die Unterklasse zaubert (T-309). */
+      zauberwahlenAnhaengen(wb, ent, e);
       const f = wb.fluff('subclassFluff', String(e['name']), String(e['source']));
       if (f) wb.lore(ent, wb.text(f['entries']));
     },
@@ -899,3 +970,11 @@ function abstammung(wb: Werkbank, ent: Entity, e: Knoten, fluff: string): void {
   if (f) wb.lore(ent, wb.text(f['entries']));
 }
 
+
+/** Die Zauberwahlen an die Karte `Choices` hängen (T-309). */
+function zauberwahlenAnhaengen(wb: Werkbank, ent: Entity, e: Knoten): void {
+  const karte = wb.karte(ent, 'Choices');
+  const alle = (karte['choices'] as Choice[] | undefined) ?? [];
+  const dazu = zauberwahlen(e, ent.id, alle.map((c) => c.id));
+  if (dazu.length) karte['choices'] = [...alle, ...dazu];
+}

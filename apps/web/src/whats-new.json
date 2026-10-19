@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-choose-spells",
+      "date": "2026-10-19",
+      "title": "Choose cantrips and spells in the character assistant",
+      "text": "Spellcasting classes now ask for their cantrips and spells — a wizard's spellbook, a bard's spells known, prepared spells in the 2024 rules — from the class spell list and up to the level you cast. Level up adds the new ones; a spell you already have is locked.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
       "id": "2026-10-19-spellcasting-from-sources",
       "date": "2026-10-19",
       "title": "Spellcasting from your class and origin",
