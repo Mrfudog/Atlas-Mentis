@@ -124,10 +124,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Konto in `/api/me/prefs`, Punkt in der Kopfleiste; T-157), die **Hilfe je Seite**
   (`hilfe/`, das „?“ der Kopfleiste: Texte aus `apps/web/src/help.json` je
   Route und die What's-new-Einträge mit Link auf die Seite; jede Route hat
-  einen Text oder steht unter `without`, T-205) und das Konto mit seinen API-Tokens (`konto/`), dazu als Versuch der
-  **Ansichtsdesigner** (`ansichten/`: Zeichner `baum.ts`, Designer,
+  einen Text oder steht unter `without`, T-205) und das Konto mit seinen API-Tokens (`konto/`), dazu der
+  **Ansichtseditor** (`ansichten/`: Zeichner `baum.ts`, Designer, Liste,
   Ansichtswahl am Artikel; Logik in `packages/model/src/viewScope.ts`,
-  T-268); die
+  T-268, seit T-276 der einzige Editor für Ansichten); die
   Oberfläche hält **keinen Bestand** (W7). Licht und Dunkelsicht mit
   `packages/model/src/lighting.ts` (T-216);
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
@@ -372,9 +372,14 @@ wiederkommen, werden sie neu geschrieben.
   Felder und Kanten — auch eingehende —, oder genau ein Artikel) tragen.
   `viewsFor` rechnet die geltenden, genaueste zuerst (Artikel › Bedingung ›
   Typ › global); wo eine gebraucht wird, gilt die genaueste, wo gewählt
-  wird (Kachel, Reihe „View" am Artikel), stehen alle. Noch ein Versuch
-  hinter `experiments.viewDesigner`: ohne ihn bieten die Orte gestaltete
-  Ansichten nicht an, und jede Seite zeichnet wie bisher.
+  wird (Kachel, Leiste „Views" am Artikel), stehen alle.
+  **Ein Editor** (T-276): der Designer (`ansichten/designer.ts`) bearbeitet
+  jede Ansicht — Registry › Views, „Design" an der Typseite (mit
+  vorgewähltem Typ), „Design this view" im Full edit des Artikels. Beim
+  Speichern sagt er, wohin: die Ansicht selbst (jeder Artikel), der ganze
+  Typ (eigene Anordnung oder angepasst), nur dieser Artikel, oder eine neue
+  Ansicht mit Bedingung. Die Typseite zeigt nur noch, welche Ansichten
+  gelten und woher — kein zweiter Editor.
 - **Die Anordnung wohnt am Typ** (`InterfaceDef.views`), nicht an der
   Ansicht: eine Kreatur zeigt ihren Bogen, ein Rezept seine Werkbank, ohne
   dass jemand etwas auswählt. Untertypen erben sie (`layoutFor` läuft die
@@ -386,14 +391,18 @@ wiederkommen, werden sie neu geschrieben.
   Ansicht sich ändert, und ist darum der Normalfall. Gezeigt wird die
   Schnittmenge aus Ansicht und Artikel; leere Felder (`empty`) und
   Ungenanntes am Ende (`rest`) sagt die Ansicht. Zugeteilt wird einmal
-  (`anordnen`), für Artikelseite, Druck und Registervorschau.
+  (`anordnen`), für Artikelseite, Druck und Registervorschau. Der Designer
+  rechnet die Anpassung aus dem Baum zurück (`adjustFrom`): was sie nicht
+  sagen kann (ein Element anders eingestellt oder verschoben), speichert er
+  nur als eigene Anordnung.
   **Eine gestaltete Ansicht trägt ihre Anordnung selbst** (T-268): einen
   Baum aus Elementen (`children` an `section`, `columns`, `carousel`,
   `collapsible`), deren Werte auch über Kanten kommen (`path`,
   `shopkeeper › Shop › sells › Item`). Sie ist die Ausnahme für das, was
   keine Art ist (ein Wirt ist eine Kreatur mit Laden); was für alle einer
-  Art gilt, bleibt an der Art. Die Ansichten der Orte überschreibt der
-  Designer nicht — aus ihnen entsteht eine neue.
+  Art gilt, bleibt an der Art. Reiter (`tabs`) stehen im Baum des
+  Designers als Knoten `tab` (`tabsAsTree`/`treeAsTabs`) und werden wieder
+  als `tabs` gespeichert.
 - **Ein Typ darf ein geerbtes Feld umbenennen** (`InterfaceDef.titles`,
   `Typ.feld` → Beschriftung, die `extends`-Kette hoch geerbt wie `area`).
   `Time.until` heisst an einem Auftrag „Deadline" und an einem Ereignis

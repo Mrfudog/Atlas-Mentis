@@ -34,7 +34,6 @@ import { Session } from '../kern/session';
 import { Brett, chainAbove, isBoard, storyOf, type Mangel } from './brett';
 import { Kachel } from './kachel';
 import { Ansichtsbaum } from '../ansichten/baum';
-import { Experimente } from '../kern/experimente';
 import { BoardSuche } from './suche';
 import { SCHNELL_KONTEXT, type SchnellKontext } from '../artikel/schnell';
 
@@ -134,22 +133,18 @@ export class Board implements SchnellKontext {
   protected readonly bestand = inject(Bestand);
   private readonly session = inject(Session);
   private readonly brett = inject(Brett);
-  /** Der Ansichtsdesigner (T-268): mit ihm bietet die Kachel jede geltende Ansicht. */
-  protected readonly exp = inject(Experimente);
 
   constructor() {
     void this.bestand.load();
-    void this.exp.lade();
     effect(() => {
       void this.bestand.oeffnen(this.id(), false, false);
     });
     /* Die Artikel auf den Kacheln kommen erst, wenn sie auf dem Board
        liegen — ganz, aber ohne Rückbezüge; die zeigt keine Kachel. */
     effect(() => {
-      /* Mit dem Ansichtsdesigner auch die Rückbezüge: „hat einen Shop" ist
-         eine Kante, die auf die Kreatur zeigt (T-268). */
-      const rueck = this.exp.viewDesigner();
-      for (const k of this.kanten()) void this.bestand.oeffnen(k.to, false, rueck);
+      /* Mit den Rückbezügen: „hat einen Shop" ist eine Kante, die auf die
+         Kreatur zeigt, und gestaltete Ansichten fragen danach (T-268). */
+      for (const k of this.kanten()) void this.bestand.oeffnen(k.to, false, true);
     });
     /* Was die Seitenspalte nennt (verbundene Artikel) und der Pfad über dem
        Board (die Geschichte) kommen aus der Liste am Server (W7) — Namen und
@@ -513,23 +508,24 @@ export class Board implements SchnellKontext {
   });
 
   /**
-   * **Was diese Kachel zur Wahl stellt** (T-268, E-103): mit dem
-   * Ansichtsdesigner jede Ansicht, die für ihren Artikel gilt —
-   * genaueste zuerst; ohne ihn dieselbe Liste wie bisher.
+   * **Was diese Kachel zur Wahl stellt** (T-268, T-276, E-103): die
+   * gestalteten Ansichten, die für ihren Artikel gelten, genaueste zuerst,
+   * und dahinter dieselbe Liste wie immer.
    */
   protected ansichtenFuer(e: Entity | undefined): string[] {
     const r = this.bestand.registry();
-    if (!r || !e || !this.exp.viewDesigner()) return this.ansichten();
+    if (!r || !e) return this.ansichten();
     const rueck = (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id }));
-    return viewsFor(e, r, { incoming: rueck })
-      .filter((v) => isDesignedView(r.views[v.key]) || (v.key !== 'full' && v.key !== 'print'))
+    const gestaltete = viewsFor(e, r, { incoming: rueck })
+      .filter((v) => isDesignedView(r.views[v.key]))
       .map((v) => v.key);
+    return [...gestaltete, ...this.ansichten()];
   }
   protected rueckVon(e: Entity): { type: string; from: string }[] {
     return (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id }));
   }
   protected gestaltet(key: string): boolean {
-    return this.exp.viewDesigner() && isDesignedView(this.bestand.registry()?.views[key]);
+    return isDesignedView(this.bestand.registry()?.views[key]);
   }
   protected gestaltetesLayout(key: string, e: Entity) {
     const r = this.bestand.registry();

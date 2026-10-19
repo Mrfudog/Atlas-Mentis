@@ -7,8 +7,8 @@ import { Bestand } from '../kern/bestand';
  * **Welche Ansichten für diesen Artikel gelten** (T-268, E-103): eine
  * Reihe Knöpfe über der Artikelseite, genaueste zuerst, mit dem Grund im
  * Titel. „Full" ist die Seite wie bisher; jede andere zeichnet ihren Baum.
- * Daneben „Design this view" für die, die das Register ändern dürfen.
- * Nur hinter dem Schalter `experiments.viewDesigner`.
+ * Daneben „Design this view" für die, die das Register ändern dürfen —
+ * es öffnet den Ansichtseditor in der Leiste (T-276).
  */
 @Component({
   selector: 'nw-ansichtswahl',

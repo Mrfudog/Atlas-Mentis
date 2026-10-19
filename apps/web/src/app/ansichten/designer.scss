@@ -1,4 +1,4 @@
-/* Der Ansichtsdesigner (T-268), nach der Tafel „View designer" im Canvas. */
+/* Der Ansichtseditor (T-268, T-276), nach der Tafel „View designer" im Canvas. */
 :host {
   display: block;
 }
@@ -152,6 +152,51 @@ select {
   align-items: center;
   gap: 0.3rem;
   border-bottom: 1px solid var(--line2);
+  /* Einzug je Ebene, mit einer Linie, die zeigt, wem ein Kind gehört. */
+  padding-left: calc(0.2rem + var(--tiefe, 0) * 1.2rem);
+  background-image: linear-gradient(var(--line2), var(--line2));
+  background-size: 1px 100%;
+  background-position: calc(var(--tiefe, 0) * 1.2rem - 0.5rem) 0;
+  background-repeat: no-repeat;
+}
+.baum li[style*='--tiefe: 0'] {
+  background-image: none;
+}
+.baum li.reiter .knoten b {
+  font-style: italic;
+}
+.klapp {
+  flex: 0 0 1.6rem;
+  min-width: 1.6rem;
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dim);
+}
+.nurseite {
+  font-size: 0.65rem;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 0.25rem;
+}
+.kat > summary {
+  cursor: pointer;
+  margin: 0.4rem 0 0.2rem;
+}
+.json textarea {
+  width: 100%;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+.json summary,
+.wenn summary,
+.einstellungen summary {
+  cursor: pointer;
+}
+.gewaehlt li > span {
+  flex: 1;
 }
 .baum li.an {
   background: var(--accent-soft);
@@ -273,7 +318,11 @@ select {
   flex-wrap: wrap;
 }
 .kompakt .knoten {
-  flex-basis: 100%;
+  flex: 1 1 calc(100% - 2rem);
+}
+.kompakt .baum li {
+  padding-left: calc(0.2rem + var(--tiefe, 0) * 0.7rem);
+  background-position: calc(var(--tiefe, 0) * 0.7rem - 0.3rem) 0;
 }
 .kompakt .griffe {
   margin-left: auto;

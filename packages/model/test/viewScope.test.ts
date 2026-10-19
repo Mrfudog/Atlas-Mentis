@@ -5,7 +5,12 @@ import {
   followPath,
   freeElementId,
   incomingIndex,
+  adjustFrom,
+  canMove,
   insertElement,
+  moveToElement,
+  tabsAsTree,
+  treeAsTabs,
   isDesignedView,
   moveTree,
   pathText,
@@ -154,6 +159,79 @@ describe('der Baum des Designers (T-268)', () => {
     const l = forArticle([{ id: 's', el: 'section', children: [{ id: 'k', el: 'text', when: { incoming: 'shopkeeper' } }] }], durnan, rueck.get(durnan.id));
     expect(l[0]!.children!.length).toBe(1);
     expect(forArticle([{ id: 's', el: 'section', children: [{ id: 'k', el: 'text', when: { incoming: 'shopkeeper' } }] }], varo)[0]!.children).toEqual([]);
+  });
+});
+
+describe('der Baum des Designers: Reiter, ↓ und Anpassung (T-276)', () => {
+  const mitReitern: LayoutElement[] = [
+    { id: 'kopf', el: 'heading' },
+    { id: 'reiter', el: 'tabs', tabs: [
+      { id: 't1', label: 'Stats', layout: [{ id: 'f', el: 'fields', fields: ['Statblock'] }] },
+      { id: 't2', label: 'Story', layout: [] },
+    ] },
+  ];
+  it('Reiter werden Knoten und wieder Reiter', () => {
+    const baum = tabsAsTree(mitReitern);
+    expect(baum[1]!.children!.map((k) => [k.el, k.text])).toEqual([['tab', 'Stats'], ['tab', 'Story']]);
+    expect(baum[1]!.tabs).toBeUndefined();
+    expect(treeAsTabs(baum)).toEqual(mitReitern);
+  });
+  it('→ in eine Reiterleiste heisst: in ihren letzten Reiter; ← aus dem Reiter hinter die Leiste', () => {
+    const baum = tabsAsTree([...mitReitern, { id: 'q', el: 'quote' }]);
+    expect(canMove(baum, 'q', 'into')).toBe(true);
+    const rein = moveTree(baum, 'q', 'into');
+    expect(rein[1]!.children![1]!.children!.map((e) => e.id)).toEqual(['q']);
+    const raus = moveTree(rein, 'q', 'out');
+    expect(raus.map((e) => e.id)).toEqual(['kopf', 'reiter', 'q']);
+    /* Ein Reiter verlässt seine Leiste nicht, und nichts anderes steht direkt in ihr. */
+    expect(canMove(baum, 't1', 'out')).toBe(false);
+    expect(canMove(baum, 'kopf', 'into')).toBe(false);
+  });
+  it('↓ und was nicht geht', () => {
+    const baum = tabsAsTree(mitReitern);
+    expect(moveTree(baum, 'kopf', 'down').map((e) => e.id)).toEqual(['reiter', 'kopf']);
+    expect(canMove(baum, 'reiter', 'down')).toBe(false);
+    expect(moveTree(baum, 'reiter', 'down')).toEqual(baum);
+  });
+  it('ein neuer Reiter kommt in die Leiste, ein Element in ihren letzten Reiter', () => {
+    const baum = tabsAsTree(mitReitern);
+    const mitTab = insertElement(baum, { id: 't3', el: 'tab' as LayoutElement['el'], text: 'More', children: [] }, 'reiter');
+    expect(mitTab[1]!.children!.map((k) => k.id)).toEqual(['t1', 't2', 't3']);
+    const mitText = insertElement(baum, { id: 'x', el: 'text' }, 'reiter');
+    expect(mitText[1]!.children![1]!.children!.map((k) => k.id)).toEqual(['x']);
+  });
+  it('Ziehen: hinein, dahinter, nie in sich selbst', () => {
+    const baum: LayoutElement[] = [
+      { id: 'a', el: 'section', children: [{ id: 'b', el: 'fields' }] },
+      { id: 'c', el: 'quote' },
+    ];
+    expect(moveToElement(baum, 'c', 'a', 'into')[0]!.children!.map((e) => e.id)).toEqual(['b', 'c']);
+    expect(moveToElement(baum, 'b', 'c', 'after').map((e) => e.id)).toEqual(['a', 'c', 'b']);
+    expect(moveToElement(baum, 'a', 'b', 'into')).toEqual(baum);
+    expect(moveToElement(baum, 'c', 'c', 'after')).toEqual(baum);
+  });
+  it('adjustFrom sagt die Abweichung, und applyAdjust gibt den Baum zurück', () => {
+    const basis: LayoutElement[] = [
+      { id: 'h', el: 'heading' },
+      { id: 'f', el: 'fields', fields: ['Identity'] },
+      { id: 'p', el: 'prose' },
+    ];
+    const baum: LayoutElement[] = [
+      { id: 'q', el: 'quote', fields: ['Description.description'] },
+      { id: 'f', el: 'fields', fields: ['Identity', 'Status.status'] },
+      { id: 'h', el: 'heading' },
+    ];
+    const adj = adjustFrom(basis, baum)!;
+    expect(adj.drop).toEqual(['p']);
+    expect(adj.add).toEqual({ f: ['Status.status'] });
+    expect(adj.extra!.map((e) => e.id)).toEqual(['q']);
+    expect(adj.order).toEqual(['q', 'f', 'h']);
+    /* Unverändert: keine Abweichung. */
+    expect(adjustFrom(basis, basis)).toEqual({});
+  });
+  it('was sich nicht als Anpassung sagen lässt, gibt null', () => {
+    const basis: LayoutElement[] = [{ id: 'h', el: 'heading', text: 'A' }];
+    expect(adjustFrom(basis, [{ id: 'h', el: 'heading', text: 'B' }])).toBeNull();
   });
 });
 

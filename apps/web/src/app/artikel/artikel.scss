@@ -545,3 +545,15 @@ p.leer {
   color: var(--dim);
   font-size: 0.95rem;
 }
+/* „Design this view" (T-276): am Telefon ein Blatt von unten, die Seite darüber bleibt die Vorschau. */
+@media (max-width: 760px) {
+  .gestalten {
+    position: fixed;
+    inset: auto 0 0;
+    max-height: 62vh;
+    overflow-y: auto;
+    z-index: 40;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 18px rgb(0 0 0 / 0.25);
+  }
+}

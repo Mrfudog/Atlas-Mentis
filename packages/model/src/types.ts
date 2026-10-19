@@ -560,8 +560,8 @@ export type LayoutElementKind =
   /*
    * **Gestaltete Ansichten** (T-268, E-103): Behälter, die andere Elemente
    * in `children` tragen, und Werte, die über `path` auch Felder
-   * verknüpfter Artikel zeigen. Gezeichnet nur hinter dem Schalter
-   * `experiments.viewDesigner`; eine Anordnung ohne sie zeichnet wie bisher.
+   * verknüpfter Artikel zeigen. Gezeichnet von `nw-ansichtsbaum`; eine
+   * Anordnung ohne sie zeichnet die Seite wie bisher.
    */
   /** Ein Abschnitt mit Überschrift (`text`) über seinen Kindern. */
   | 'section'

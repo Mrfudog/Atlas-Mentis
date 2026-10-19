@@ -1619,19 +1619,49 @@ flowchart LR
 ```
 
 Gespeichert wird eine gewöhnliche Zeile in `view_def` (`config` als JSON) —
-keine Migration, kein neuer Seed. Gezeichnet, gewählt und gestaltet wird
-nur hinter dem Schalter `experiments.viewDesigner` (je Konto, Rules &
-options › Experiments); ohne ihn bieten die Orte gestaltete Ansichten nicht
-an (`designed: false`) und jede Seite zeichnet wie bisher. Die Ansichten der
-Orte (Overview, Quick, Full, Print, Search) werden im Designer nicht
-überschrieben: aus ihnen entsteht eine **neue** Ansicht. Gezählt, wie viele
+keine Migration, kein neuer Seed. Gestaltete Ansichten zeichnet
+`nw-ansichtsbaum`; die Ansichten der Orte und die Anordnungen der Arten
+zeichnet die Seite wie bisher. Gezählt, wie viele
 Artikel eine Ansicht bekommen, wird am Server (`/api/registry/usage`,
 `views`), im Stapel.
 
-Noch offen (Folgeaufgaben): die grossen Blöcke (Statblock, Zauber,
-Gegenstand, Bogen) als Ansichten aus diesen Elementen, Counter, Dots,
-Ability row, Steps, Charakterassistent als Ansicht der Gruppe Edit, die
-Leiste als Blatt von unten am Telefon.
+### Ein Editor für alle Ansichten (T-276)
+
+Der Designer ist seit T-276 der einzige Editor; Registry › Views (die
+Liste), „Design" an der Typseite und „Design this view" im Full edit eines
+Artikels (am Telefon ein Blatt von unten, die Seite darüber zeichnet den
+Entwurf) öffnen ihn. Was er speichert, sagt die Frage **„Save for …"**:
+
+| Wahl | Schreibt | Wofür |
+|---|---|---|
+| every article | `views[key]`: Anordnung, Name, `order`, `rest`, `empty` | die Ansicht selbst, für jede Art, die nichts Eigenes sagt |
+| the whole type | `interfaces[T].views[key]`: eigene Liste, oder **angepasst** `{ adjust }` | die Art und ihre Untertypen |
+| this view | `views[key]` einer gestalteten Ansicht | alles, wofür sie gilt |
+| only this article | neue Zeile, `applies: { types, article }` | genau einen Artikel |
+| all with a condition | neue Zeile mit `applies` | Typen und Bedingungen |
+
+**Angepasst** heisst: der Designer zeigt die geerbte Anordnung mit der
+Anpassung darüber, und beim Speichern rechnet `adjustFrom(basis, baum,
+hide)` die Abweichung zurück — `drop`, `add`, `extra`, `order`, `hide`
+bleibt. Lässt sich der Baum so nicht sagen, gibt es `null`, und der
+Designer verlangt die eigene Anordnung. Die Ansichten der Orte
+(`PLACE_VIEWS`) lassen sich umbauen, nicht löschen; eine andere zu
+löschen nimmt die Anordnungen der Arten für sie mit.
+
+**Der Baum im Designer:** Reiter (`tabs: [{ id, label, layout }]`) stehen
+als Element `tabs` mit je Reiter einem Knoten `tab` darunter
+(`tabsAsTree`, zurück mit `treeAsTabs`) — so ordnet man in Reitern mit
+denselben Griffen. Die Griffe (`moveTree`): ↑ ↓, → in das Element
+darüber, wenn es ein Behälter ist, der es nimmt (in eine Reiterleiste: in
+ihren letzten Reiter), ← hinaus (aus einem Reiter hinter die Leiste);
+`canMove` sagt, was geht, und nur das steht da. Ziehen ist ein Zusatz
+(`moveToElement`: hinein oder dahinter, nie in sich selbst).
+
+Noch offen (Folgeaufgaben): Kapitel als Reiter/Rahmen (T-277), die grossen
+Blöcke (Statblock, Zauber, Gegenstand, Bogen) als Ansichten aus diesen
+Elementen, Counter, Dots, Ability row, Steps, Charakterassistent als
+Ansicht der Gruppe Edit; Seiten-Elemente (Bogen, Reiter …) zeichnet in einer
+gestalteten Ansicht noch die Seite und nicht `nw-ansichtsbaum`.
 
 **Eine Listenzeile ist `overview`** (W7): welche Spalten das Kompendium
 für eine Art zeigt und wonach es filtert, sagen die `fields`-Elemente ihrer
@@ -2018,7 +2048,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-18: 60 Artikelarten, 25 Grundtypen, 69 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-19: 60 Artikelarten, 25 Grundtypen, 69 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 

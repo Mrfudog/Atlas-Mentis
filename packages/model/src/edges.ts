@@ -552,7 +552,7 @@ export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [W + 'register/typ.ts']: ['carries', 'holds'],
   [W + 'register/arbeit.ts']: ['carries'],
   [W + 'artikel/anordnung.ts']: ['crafting'],
-  [W + 'register/anordnung.ts']: ['crafting'],
+  [W + 'ansichten/palette.ts']: ['crafting'],
   /* Die Sorte „crafting" der Regeloptionen (T-190), wie das Modul in T-132 heissen wird. */
   [M + 'ruleOptions.ts']: ['crafting'],
   /* Die Herkunft eines Preisschritts heisst wie die Kante, aus der er kommt (T-129). */

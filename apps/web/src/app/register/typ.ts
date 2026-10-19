@@ -4,24 +4,22 @@ import {
   areaOf,
   articlesTaking,
   fieldTitle,
-  isAdjust,
+  appliesText,
+  isDesignedView,
   layoutFor,
   linkedTypes,
   ownFields,
-  ownLayout,
   relationsFrom,
   typeChain,
   typeList,
+  viewGroup,
   viewKeys,
 } from '@nw/model';
-import type { InterfaceDef, LayoutAdjust, LayoutElement, Registry, TypeLayout } from '@nw/model';
+import type { InterfaceDef, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { BEREICHE } from '../kern/bereiche';
 import { RegisterArbeit, articles, carry, inPlayText } from './arbeit';
 import { RegFeld } from './feld';
-import { RegAnordnung } from './anordnung';
-import { RegAnpassung } from './anpassung';
-import { RegVorschau } from './vorschau';
 import {
   ancestorsOf,
   childrenOf,
@@ -59,7 +57,7 @@ interface Gruppe {
  */
 @Component({
   selector: 'nw-reg-typ',
-  imports: [RouterLink, RegFeld, RegAnordnung, RegAnpassung, RegVorschau],
+  imports: [RouterLink, RegFeld],
   template: `
     @if (def(); as d) {
       <div class="typkopf">
@@ -267,52 +265,28 @@ interface Gruppe {
         <section class="kasten" aria-label="Views">
           <h3>Views</h3>
           <p class="hint">
-            How an article of this type is drawn in each view — <b>overview</b> in a link or list row, <b>quick</b> on a
-            card, <b>full</b> on its page, <b>print</b> on paper, and your own views. Every type shows what the view says
-            (Registry › Views) until it says otherwise: <b>adjusted</b> keeps the view and changes a little — new fields
-            of the view still come —, an <b>own arrangement</b> replaces it. Subtypes inherit either.
+            The views that apply to {{ label(name()) }} and why — <b>overview</b> in a link or list row, <b>quick</b> on a card,
+            <b>full</b> on its page, <b>print</b> on paper, and your own. The most specific one of a group wins; “Design” opens the
+            view designer with this type chosen, where it is changed for every article, for this type (its own or adjusted) or
+            under a condition.
           </p>
-          @for (v of ansichten(); track v.key) {
-            <div class="ansicht">
-              <div class="fhead">
-                <b>{{ v.label }}</b>
-                <span class="pill">{{ herkunft(v) }}</span>
-                <span class="dim">{{ v.kurz }}</span>
-                @if (darf()) {
-                  <button type="button" class="klein" (click)="ansichtOeffnen(v.key)">{{ entwurf()?.key === v.key ? 'Close' : 'Edit' }}</button>
-                }
-              </div>
-              @if (entwurf()?.key === v.key) {
-                <div class="wahl">
-                  <label class="haken"><input type="radio" [name]="'modus-' + v.key" [checked]="modus() === 'view'" (change)="modusSetzen('view')" />
-                    As {{ v.von && v.von !== name() ? label(v.von) + ' shows it' : 'the view says' }}</label>
-                  <label class="haken"><input type="radio" [name]="'modus-' + v.key" [checked]="modus() === 'adjust'" (change)="modusSetzen('adjust')" />
-                    Adjusted for {{ label(name()) }}</label>
-                  <label class="haken"><input type="radio" [name]="'modus-' + v.key" [checked]="modus() === 'own'" (change)="modusSetzen('own')" />
-                    Its own arrangement</label>
-                </div>
-                @if (modus() === 'own') {
-                  <nw-reg-anordnung [layout]="eigeneListe()" [darf]="darf()" [typen]="kette()" (geaendert)="entwurfWert($event)" />
-                } @else if (modus() === 'adjust') {
-                  <nw-reg-anpassung [basis]="basis()" [adjust]="anpassung()" [darf]="darf()" [typen]="kette()"
-                    (geaendert)="entwurfWert({ adjust: $event })" />
-                } @else {
-                  <p class="hint">Nothing of its own: the arrangement comes from {{ v.von && v.von !== name() ? label(v.von) : 'the view' }}.</p>
-                }
-                <details>
-                  <summary>As JSON</summary>
-                  <textarea rows="8" aria-label="Arrangement as JSON" [value]="json()" (change)="jsonSetzen($any($event.target).value)"></textarea>
-                  <p class="hint">A list of layout elements, or <code>{{ '{' }} "adjust": {{ '{' }} … {{ '}' }} {{ '}' }}</code>. The server checks it.</p>
-                </details>
-                <h4>Preview</h4>
-                <nw-reg-vorschau [ansicht]="v.key" [register]="vorschauRegister()" [typ]="name()" />
-                <div class="knoepfe">
-                  <button type="button" class="pri" [disabled]="arbeit.speichert()" (click)="ansichtSpeichern()">Save</button>
-                  <button type="button" (click)="entwurf.set(null)">Discard</button>
-                </div>
-              }
+          <div class="ansichten-tabelle" role="table" aria-label="Views of this type">
+            <div role="row" class="az k">
+              <span role="columnheader">View</span><span role="columnheader">Group</span>
+              <span role="columnheader">Applies</span><span role="columnheader">From</span><span role="columnheader"></span>
             </div>
-          }
+            @for (v of ansichten(); track v.key) {
+              <div role="row" class="az">
+                <span role="cell"><b>{{ v.label }}</b></span>
+                <span role="cell">{{ v.gruppe }}</span>
+                <span role="cell">{{ v.gilt }}</span>
+                <span role="cell" class="dim">{{ v.herkunft }}</span>
+                <span role="cell">
+                  <a class="knopf klein" [routerLink]="['/registry']" [queryParams]="{ tab: 'views', view: v.key, type: name() }">Design</a>
+                </span>
+              </div>
+            }
+          </div>
         </section>
       }
 
@@ -339,7 +313,6 @@ export class RegTyp {
   protected readonly bereiche = BEREICHE;
   protected readonly feldOffen = signal<string | null>(null);
   /** Der Entwurf einer Ansicht dieser Art: `null` heisst „wie die Ansicht" (T-110). */
-  protected readonly entwurf = signal<{ key: string; wert: TypeLayout | null } | null>(null);
 
   private readonly reg = computed(() => this.bestand.registry() as Registry | null);
   protected readonly def = computed(() => this.reg()?.interfaces[this.name()]);
@@ -419,13 +392,28 @@ export class RegTyp {
     return typeList(r).filter((t) => !direkt.includes(t) && !wouldCycle(r, this.name(), t));
   });
 
+  /**
+   * **Die Ansichten, die für diese Art gelten** (T-276): je Ansicht ohne
+   * Geltung, woher ihre Anordnung kommt (die Art, ein Obertyp, die
+   * Ansicht); je gestalteter, ob ihre Geltung die Art nennt.
+   */
   protected readonly ansichten = computed(() => {
     const r = this.reg();
     if (!r) return [];
-    return viewKeys(r).map((key) => {
-      const { layout, from, mode } = layoutFor(r, key, this.name());
-      return { key, label: r.views[key]?.label ?? key, von: from, mode, layout, kurz: kurzLayout(layout) };
-    });
+    const kette = typeChain(r, this.name());
+    const raus: { key: string; label: string; gruppe: string; gilt: string; herkunft: string }[] = [];
+    for (const key of viewKeys(r)) {
+      const def = r.views[key]!;
+      if (isDesignedView(def)) {
+        const typen = def.applies?.types ?? [];
+        if (typen.length && !typen.some((t) => kette.includes(t))) continue;
+        raus.push({ key, label: def.label, gruppe: viewGroup(key, def), gilt: appliesText(def.applies, (id) => this.bestand.name()(id)), herkunft: 'designed view' });
+        continue;
+      }
+      const { from, mode } = layoutFor(r, key, this.name());
+      raus.push({ key, label: def.label, gruppe: key, gilt: from ? `${this.label(from)} and its subtypes` : 'every article', herkunft: this.herkunft({ von: from, mode }) });
+    }
+    return raus;
   });
 
   /** Warum er nicht gehen kann — oder nichts. */
@@ -633,102 +621,6 @@ export class RegTyp {
     return `from ${this.label(v.von)}${v.mode === 'adjusted' ? ' (adjusted)' : ''}`;
   }
 
-  /**
-   * Was geerbt würde, sagte diese Art nichts für die Ansicht — die
-   * Grundlage einer Anpassung (`layoutFor` ohne die eigene Zeile).
-   */
-  protected geerbt(key: string): LayoutElement[] {
-    const r = this.reg();
-    if (!r) return [];
-    const n = this.name();
-    const d = r.interfaces[n];
-    if (!d) return [];
-    const views = { ...(d.views ?? {}) };
-    delete views[key];
-    return layoutFor({ ...r, interfaces: { ...r.interfaces, [n]: { ...d, views } } }, key, n).layout;
-  }
-
-  /** Die Typen, deren Felder diese Art trägt — was „Add field" hier anbietet. */
-  protected readonly kette = computed(() => (this.reg() ? typeChain(this.reg()!, this.name()) : []));
-  /** Die Grundlage der offenen Anpassung. */
-  protected readonly basis = computed(() => {
-    const k = this.entwurf()?.key;
-    return k ? this.geerbt(k) : [];
-  });
-
-  protected ansichtOeffnen(key: string): void {
-    if (this.entwurf()?.key === key) {
-      this.entwurf.set(null);
-      return;
-    }
-    const eigen = this.def()?.views?.[key];
-    this.entwurf.set({ key, wert: ownLayout(eigen) ? structuredClone(eigen!) : null });
-  }
-  protected readonly modus = computed<'view' | 'adjust' | 'own'>(() => {
-    const w = this.entwurf()?.wert;
-    return !w ? 'view' : isAdjust(w) ? 'adjust' : 'own';
-  });
-  protected readonly anpassung = computed<LayoutAdjust>(() => {
-    const w = this.entwurf()?.wert;
-    return isAdjust(w) ? w.adjust : {};
-  });
-  protected readonly eigeneListe = computed<LayoutElement[]>(() => {
-    const w = this.entwurf()?.wert;
-    return Array.isArray(w) ? w : [];
-  });
-  protected readonly json = computed(() => JSON.stringify(this.entwurf()?.wert ?? null, null, 2));
-  /** Die Ansicht, wie sie mit dem Entwurf wäre — für die Vorschau. */
-  protected readonly vorschauRegister = computed<Registry | null>(() => {
-    const r = this.reg();
-    const e = this.entwurf();
-    const d = r?.interfaces[this.name()];
-    if (!r || !e || !d) return r;
-    const views = { ...(d.views ?? {}) };
-    if (e.wert && ownLayout(e.wert)) views[e.key] = e.wert;
-    else delete views[e.key];
-    return { ...r, interfaces: { ...r.interfaces, [this.name()]: { ...d, views } } };
-  });
-
-  /** Den Modus wechseln: eine eigene Liste beginnt als Abschrift dessen, was gerade gilt. */
-  protected modusSetzen(m: 'view' | 'adjust' | 'own'): void {
-    const e = this.entwurf();
-    if (!e) return;
-    if (m === 'view') this.entwurf.set({ key: e.key, wert: null });
-    else if (m === 'adjust') this.entwurf.set({ key: e.key, wert: { adjust: isAdjust(e.wert) ? e.wert.adjust : {} } });
-    else {
-      const r = this.vorschauRegister();
-      this.entwurf.set({ key: e.key, wert: r ? structuredClone(layoutFor(r, e.key, this.name()).layout) : [] });
-    }
-  }
-  protected entwurfWert(wert: TypeLayout): void {
-    this.entwurf.update((e) => (e ? { ...e, wert } : e));
-  }
-  protected jsonSetzen(text: string): void {
-    let w: unknown;
-    try {
-      w = JSON.parse(text);
-    } catch {
-      this.arbeit.fehler.set('The arrangement is not valid JSON.');
-      return;
-    }
-    if (w !== null && !Array.isArray(w) && !isAdjust(w as TypeLayout)) {
-      this.arbeit.fehler.set('An arrangement is a list of elements [ … ] or { "adjust": { … } }.');
-      return;
-    }
-    this.entwurfWert(w as TypeLayout);
-  }
-  protected ansichtSpeichern(): void {
-    const e = this.entwurf();
-    if (!e) return;
-    void this.typAendern((d) => {
-      const v = { ...(d.views ?? {}) };
-      if (e.wert && ownLayout(e.wert)) v[e.key] = e.wert;
-      else delete v[e.key];
-      if (Object.keys(v).length) d.views = v;
-      else delete d.views;
-    }).then((ok) => ok && this.entwurf.set(null));
-  }
-
   protected entfernen(): void {
     if (this.entfernenGrund()) return;
     const n = this.name();
@@ -742,19 +634,4 @@ export class RegTyp {
         }),
     });
   }
-}
-
-/** Ein Layout in einer Zeile: `heading · fields (all but Secrets) · prose`. */
-function kurzLayout(layout: LayoutElement[]): string {
-  if (!layout.length) return 'nothing arranged';
-  return layout
-    .map((el) => {
-      if (el.el === 'fields') {
-        const was = el.fields === 'all' || !el.fields ? 'all' : el.fields.join(', ') || 'none';
-        return `fields (${was}${el.except?.length ? ' but ' + el.except.join(', ') : ''})`;
-      }
-      if (el.el === 'tabs') return `tabs (${(el.tabs ?? []).map((t) => t.label).join(', ')})`;
-      return el.el;
-    })
-    .join(' · ');
 }

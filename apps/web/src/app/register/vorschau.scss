@@ -1,0 +1,37 @@
+/* Die Vorschau im Register (T-110), seit T-276 im Ansichtseditor. */
+.vorschau-reg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.vorschau-reg .zeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.treffer {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.wo p {
+  margin: 0.2rem 0;
+}
+.probe {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem;
+  background: var(--surface);
+}
+.probe.blatt-probe {
+  background: var(--paper);
+}
+.probe-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
