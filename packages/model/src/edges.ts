@@ -416,6 +416,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [W + 'karten/karte.ts']: ['instanceOf', 'marker'],
       /* Die Seitenleiste (T-203): die Gruppe und die Begegnungen der Sitzung — im Spiel die Instanzen (T-289). */
       [M + 'kartenseite.ts']: ['instanceOf', 'memberOfParty', 'onMap', 'partOf', 'participates'],
+      /* Getragene Lichter (T-305): die Fackel in der Hand einer Figur leuchtet auf der Karte. */
+      [M + 'lighting.ts']: ['carries', 'holds'],
       /* Eine Begegnung beginnen (T-203): ihre Karte, wenn keine genannt ist. */
       [S + 'kampfstart.ts']: ['onMap'],
     },

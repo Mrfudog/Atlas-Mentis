@@ -213,7 +213,35 @@ nebel.ts):
    dem Nebel. Die Dunkelsicht dafür schickt der Kartenkontext
    (`darkvision`, je eigener Figur und Gruppen-Token; für die Leitung je
    Spiel-Token). In der Spielersicht der Leitung gilt die gewählte Figur,
-   sonst das Gruppen-Token.
+   sonst das Gruppen-Token. Bei Nebel je Figur (`Campaign.fog: player`)
+   zählt das Gruppen-Token nicht, solange eine eigene Figur dasteht — die
+   Spielersicht ist die Vereinigung der eigenen Figuren (T-305).
+3. **Dunkelsicht in Graustufen** (T-305): auf einer dunklen Karte nimmt
+   eine dritte Leinwand (`grauMalen`, `mix-blend-mode: saturation`) dem
+   Bild die Farbe, wo nur die Dunkelsicht hinreicht; was ein Licht
+   erhellt, bleibt farbig. Die Leitung sieht die Karte, wie sie ist; in der
+   Spielersicht und mit „View as" (T-269) wie die Spielenden.
+
+### Lichter an Gegenständen, an und aus (T-305)
+
+- **Ein Gegenstand leuchtet** mit `Item.lightBright` (hell, in Fuss) und
+  `Item.lightDim` (dämmrig **darüber hinaus**, wie die Regel schreibt: eine
+  Fackel 20 ft hell, weitere 20 ft dämmrig). Liegt er als Marker auf der
+  Karte (Kulisse: der Fackelhalter, die Laterne), leuchtet der Marker;
+  hält eine Figur ihn **in der Hand** (Platz `mainHand`/`offHand`, `inHand`),
+  leuchtet ihr Token, ein Gruppen-Token wie sein hellstes Mitglied
+  (`itemLight`, `carriedLight`, `carriedLights`). Gerechnet beim Lesen
+  (D8): wer die Fackel verstaut, löscht sie. Der Kartenkontext schickt die
+  Radien (`lights`, je Markerziel), Zug und Tür am Server rechnen gleich.
+- **Ein Radius an der Kante schlägt den des Gegenstands** — dieselbe
+  Laterne darf auf einer Karte weiter leuchten.
+- **An und aus** (`marker.props.lightOff`, Fog › Light on/off): die Radien
+  bleiben, das Licht ist nur gerade aus — auch das getragene.
+- **Leistung:** die Strahlen rechnen über Zahlenreihen statt Objekte, und
+  die Fläche eines Lichts wird je Sperrenliste zwischengespeichert
+  (`lightPolygon`) — beim Ziehen eines Tokens ändern sich die Sperren nicht.
+  Gemessen mit 200 Sperren und vier Lichtern: eine Sicht samt Dunkelsicht
+  rund 6 ms am Rechner (`sichtlicht.test.ts` prüft unter 60 ms).
 
 Noch nicht: Tokens im Dunkeln, die die Figur nicht sieht, stehen für
 Spielende weiter da (zurückgehalten wird nur unter dem Nebel).

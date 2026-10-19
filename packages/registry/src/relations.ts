@@ -991,6 +991,10 @@ export const relations: Record<string, RelationDef> = {
         // ein anderes ist. Also steht der Radius an der Kante (REQ-140).
         light: { type: 'number', title: 'Bright light in squares' },
         dim: { type: 'number', title: 'Dim light in squares' },
+        /* An/aus in Play (T-305): die Laterne bleibt, wo sie steht, und
+           behält ihre Radien — aus ist sie nur gerade. Gilt auch für das
+           Licht, das das Ziel trägt (die Fackel in der Hand). */
+        lightOff: { type: 'boolean', title: 'Light switched off' },
         /* Versteckt (REQ-209): Spielende sehen das Token nicht, bis es
            aufgedeckt wird — von Hand oder entlang eines bestätigten Pfads.
            `stealth` ist, was die passive Wahrnehmung schlagen muss: der

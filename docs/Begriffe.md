@@ -544,6 +544,15 @@ Licht- und Sichtpolygon — sie wird nicht ausgerechnet, sondern als Polygon
 mit Klammer (`within`) gespeichert: zwei Fragen beim Prüfen, ein `clip()`
 beim Zeichnen.
 
+**Eine Fackel leuchtet aus dem Gegenstand** (T-305). Wie weit, ist eine
+Eigenschaft der Fackel (`Item.lightBright`, `lightDim`) und steht deshalb
+am Gegenstand und nicht an jeder Figur, die eine hält; *dass* sie leuchtet,
+folgt daraus, wo sie liegt — in der Hand ja, im Rucksack nein. Das wird
+beim Lesen gerechnet und nicht als Schalter an der Figur gespeichert, der
+beim Verstauen stehen bliebe. Ausmachen (`lightOff`) ist dagegen ein
+Zustand am Tisch und steht an der Markerkante, wie der Radius einer
+Laterne.
+
 **Wo ein Bild verwendet wird**, steht nirgends — es ist die Gegenrichtung
 der Verweise, und die ist eine Abfrage. Sie zeigt nur, was man sehen
 darf: „wird noch an drei Orten gezeigt" verriete drei Artikel, auch ohne
