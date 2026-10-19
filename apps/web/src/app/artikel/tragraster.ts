@@ -28,7 +28,7 @@ const VORLAGE = 'container:';
 const ZUSATZ_MAX = 5;
 
 /**
- * **Das Tragraster einstellen** (REQ-355, T-289): Basils Blatt ohne
+ * **Das Tragraster einstellen** (REQ-355, T-291): Basils Blatt ohne
  * Einstellungszeilen. Je Kreaturgrösse die Seitenlänge, die Zonen je
  * Spalte gleich am gezeichneten Raster, die Behältervorlagen gemalt, und
  * was Fallenlassen, Verstauen und die Körperplätze kosten (D54, D58).

@@ -373,7 +373,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | REQ-327 | Packen am Telefon | 2 | **offen** |  |
 | REQ-328 | Ablage für nicht Verstautes | 2 | **offen** |  |
 | REQ-333 | Vorgaben für Formen und Stapel | 2 | **offen** |  |
-| REQ-355 | Tragraster, Zonen und Behälter einstellen | 2 | **steht** | Rules & options › Inventory: Grössen, Zonen je Spalte, Behältervorlagen gemalt, Fallenlassen/Verstauen, Körperplätze (T-289). |
+| REQ-355 | Tragraster, Zonen und Behälter einstellen | 2 | **steht** | Rules & options › Inventory: Grössen, Zonen je Spalte, Behältervorlagen gemalt, Fallenlassen/Verstauen, Körperplätze (T-291). |
 
 ### F-027 Eigene Inhalte der Spielenden
 
