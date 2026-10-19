@@ -828,7 +828,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                     <ul class="karten">
                       @for (m of gefiltert(liste, s.id); track m.wert) {
                         <li>
-                          @let da = schonDa(s, m.wert);
+                          @let da = schonDa(s, m.wert, m.label);
                           <label [class.an]="antwort(s).includes(m.wert)" [class.gesperrt]="!!da && !antwort(s).includes(m.wert)" [class.doppelt]="!!da && antwort(s).includes(m.wert)">
                             <input
                               [type]="(s.at.choice.count ?? 1) > 1 ? 'checkbox' : 'radio'"
@@ -1899,7 +1899,18 @@ export class Assistent {
         liste = offeredOptions(s.at.choice, choicesOf(s.at.source.entity), { feats: this.talente() }).map((o) => ({ wert: o.key, label: o.label }));
       } else if (f.options?.length) liste = f.options.map((o) => ({ wert: o.key, label: `(${o.key}) ${o.label}` }));
       else if (f.values?.length) liste = f.values.map((v) => ({ wert: v, label: v }));
-      else if (f.interfaces?.length) {
+      else if (f.interfaces?.length && f.listedBy) {
+        /* Aus der Zauberliste der Klasse (T-309): die Gegenrichtung der Kante
+           ist eine Facette der Liste (`in.spellList`), der Grad eine zweite. */
+        const werte = f.where ? (Array.isArray(f.where.value) ? f.where.value : f.where.value !== undefined ? [f.where.value] : []).map(String) : [];
+        const r = await this.api.list({
+          type: f.interfaces[0],
+          f: [`in.${f.listedBy.type}:${f.listedBy.from}`, ...(f.where && werte.length ? [`${f.where.component}.${f.where.property}:${werte.join('|')}`] : [])],
+          limit: 500,
+          sort: 'name',
+        });
+        liste = r.rows.filter(fertig).map((z) => ({ wert: z.id, label: z.name, hinweis: z.source.split(' p. ')[0] ?? '', id: z.id }));
+      } else if (f.interfaces?.length) {
         let rows = await this.zeilenMitFilter(f.interfaces, f.where, f.edge?.type);
         if (f.edge) rows = rows.filter((z) => z.rels?.[f.edge!.type]?.includes(f.edge!.to));
         /* Die Marken schlagen vor (wie `LinkTarget.tags`): finden sie nichts, gilt die ganze Art. */
@@ -2028,9 +2039,11 @@ export class Assistent {
   });
 
   /** Ist dieser Wert für die Wahl schon da — und woher? */
-  protected schonDa(s: WahlSchritt, wert: string): HeldValue | undefined {
+  protected schonDa(s: WahlSchritt, wert: string, label?: string): HeldValue | undefined {
     const h = this.gehabt().get(choiceKey(s.at));
-    return h?.size ? heldValue(h, wert, this.quellen()) : undefined;
+    if (!h?.size) return undefined;
+    /* Ein angebotener Zauber ist nicht geladen: dann zählt sein Name (T-309). */
+    return heldValue(h, wert, this.quellen()) ?? (label ? h.get(label.trim().toLowerCase()) : undefined);
   }
 
   protected doppelt(s: WahlSchritt): string[] {
