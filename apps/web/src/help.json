@@ -8,6 +8,7 @@
           "heading": "Which map you see",
           "text": [
             "Play shows the map the session has as “Map on the table”. Switch the session at the top; “All maps” opens any other map without changing what the table sees.",
+            "A map on the table is a map in play — its own copy for this session: tokens and fog live there, the map itself stays as prepared. Open a map and press Take into play (GM) to put it on the table; Start encounter does the same for an encounter and its map. Players see a map in play only after Release to players, with the fog already on.",
             "Zoom with + and −, the mouse wheel or two fingers. A sub-map that fills the view is entered; zooming out past the edge leads back to the map above."
           ]
         },

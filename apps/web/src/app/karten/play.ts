@@ -16,6 +16,11 @@ import { Zugplaner } from './zugplaner';
  * Unterkarte hineinzoomt, schaut hinein, und der Tisch bleibt, wo er ist.
  * `?session=` wählt eine andere Sitzung. Ändert die Leitung `activeMap`,
  * kommt das über den Live-Kanal (T-116), und die Seite fragt neu.
+ *
+ * **Auf dem Tisch liegt eine Instanz** (T-289): „Take into play" macht aus
+ * der Vorlage die Karte dieser Sitzung. Spielende sehen sie erst nach der
+ * Freigabe — bis dahin steht hier „No map is on the table", und die
+ * Freigabe kommt als Artikel-Ereignis über den Live-Kanal.
  */
 @Component({
   selector: 'nw-play',
@@ -58,7 +63,7 @@ import { Zugplaner } from './zugplaner';
       } @else if (karteId(); as id) {
         <!-- Der Zugplan (T-198): die Leiste sagt der Karte, was sie zeigt,
              und die Karte meldet zurück, was angetippt wurde. -->
-        <nw-karte [id]="id" ort="play" [sitzung]="tisch()?.session ?? null" [gross]="true" [planung]="zp.planung()" (planTipp)="zp.tipp($event)" (planWarnungen)="zp.warnungen.set($event)" />
+        <nw-karte [id]="id" ort="play" [sitzung]="tisch()?.session ?? null" [gross]="true" [planung]="zp.planung()" (planTipp)="zp.tipp($event)" (planWarnungen)="zp.warnungen.set($event)" (insSpiel)="genommen()" />
         <nw-zugplaner #zp [karte]="id" />
       } @else {
         <section class="ohne">
@@ -166,7 +171,23 @@ export class Play {
       const t = this.tisch();
       if (!t || z.id === t.session || !t.session) this.holen(this.session());
     });
-    inject(DestroyRef).onDestroy(ab);
+    /* Eine Karte, die erst jetzt sichtbar wird (Freigabe, T-289) oder
+       verschwindet: neu fragen, was auf dem Tisch liegt. */
+    const abKarte = inject(Live).onArtikel((e) => {
+      const t = this.tisch();
+      if (!t) return;
+      if ((e.type === 'Map' && !t.map) || e.id === t.map) this.holen(this.session());
+    });
+    inject(DestroyRef).onDestroy(() => {
+      ab();
+      abKarte();
+    });
+  }
+
+  /** Die Leitung hat die Karte ins Spiel genommen: die Sitzung zeigt jetzt auf die Instanz. */
+  protected genommen(): void {
+    void this.router.navigate(['/play'], { queryParams: { session: this.tisch()?.session ?? null, map: null } });
+    this.holen(this.session());
   }
 
   private lauf = 0;

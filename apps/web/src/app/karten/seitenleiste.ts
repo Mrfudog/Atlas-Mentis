@@ -1,9 +1,10 @@
 import { Component, DestroyRef, effect, inject, input, output, signal, untracked } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Api, type KartenSeite } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { BegriffLink, Glossar } from '../kern/glossar';
 import { Live } from '../kern/live';
+import { Session } from '../kern/session';
 
 /** Der Datentyp beim Ziehen aus der Seitenleiste auf die Bühne. */
 export const ZIEH_TYP = 'text/x-nw-artikel';
@@ -257,6 +258,8 @@ export class KartenSeitenleiste {
   readonly vorbereiten = output<{ encounter: string; ids: string[] }>();
 
   private readonly api = inject(Api);
+  private readonly session = inject(Session);
+  private readonly router = inject(Router);
   protected readonly seite = signal<KartenSeite | null>(null);
   protected readonly geladen = signal(false);
   private lauf = 0;
@@ -302,7 +305,14 @@ export class KartenSeitenleiste {
     this.startet.set(e.id);
     this.fehler.set(null);
     try {
-      await this.api.startEncounter(e.id, { map: this.karte(), session: this.seite()?.session?.id ?? this.sitzung() });
+      const r = await this.api.startEncounter(e.id, { map: this.karte(), session: this.seite()?.session?.id ?? this.sitzung() });
+      /* Begonnen wird eine Instanz (T-289), oft auf einer neuen Instanz der
+         Karte: die schreibt die Leitung (`/api/me`), und Play folgt dem Tisch. */
+      await this.session.load(true);
+      if (r.map && r.map !== this.karte() && this.router.url.startsWith('/play')) {
+        await this.router.navigate(['/play'], { queryParams: { session: r.session, map: null } });
+        return;
+      }
       await this.holen(this.karte(), this.sitzung());
     } catch (err) {
       this.fehler.set(err instanceof Error ? err.message : 'The encounter did not start.');

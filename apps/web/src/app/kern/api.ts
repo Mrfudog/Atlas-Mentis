@@ -1511,7 +1511,7 @@ export class Api {
     return this.call<KartenKontext>(`/api/maps/${encodeURIComponent(id)}/context`);
   }
   /** Eine Begegnung beginnen (T-203): Initiative, vorplatzierte Tokens aufdecken, die Sitzung führt sie. */
-  startEncounter(id: string, body: { map?: string; session?: string | null }): Promise<{ encounter: string; revealed: number; session: string | null }> {
+  startEncounter(id: string, body: { map?: string; session?: string | null }): Promise<{ encounter: string; map: string | null; revealed: number; session: string | null }> {
     return this.call(`/api/encounters/${encodeURIComponent(id)}/start`, { method: 'POST', body: JSON.stringify(body) });
   }
   /** Die Seitenleiste der Karte (T-203): Gruppe, und für die Leitung die Begegnungen der Sitzung. */
@@ -1563,6 +1563,15 @@ export class Api {
     return this.call(`/api/maps/${encodeURIComponent(map)}/door`, { method: 'POST', body: JSON.stringify(body) });
   }
   /** Welche Karte auf dem Tisch liegt (`SessionState.activeMap`, T-115). */
+  /** Eine Karte oder Begegnung in die Sitzung nehmen (T-289): als Instanz, die Sitzung zeigt danach darauf. */
+  takeIntoPlay(body: { session?: string | null; map?: string; encounter?: string }): Promise<{ map: string | null; encounter: string | null; session: string | null }> {
+    const { session, ...rest } = body;
+    return this.call('/api/play/take', { method: 'POST', body: JSON.stringify(session ? { ...rest, session } : rest) });
+  }
+  /** „Played" an einer Karte oder Begegnung (T-289): ihre gespielten Stände. */
+  played(id: string): Promise<{ template: string; rows: GespieltZeile[] }> {
+    return this.call(`/api/maps/${encodeURIComponent(id)}/played`);
+  }
   play(session?: string): Promise<Tisch> {
     return this.call<Tisch>(`/api/play${session ? `?session=${encodeURIComponent(session)}` : ''}`);
   }
@@ -2121,10 +2130,27 @@ export interface KartenSeite {
 /** Was auf dem Tisch liegt (`GET /api/play`, T-115). */
 export interface Tisch {
   campaign: { id: string; name: string } | null;
-  sessions: { id: string; name: string; activeMap: string | null; mapName: string | null }[];
+  sessions: { id: string; name: string; activeMap: string | null; mapName: string | null; inPlay: boolean }[];
   session: string | null;
   map: string | null;
+  /** Ist die Karte auf dem Tisch eine Instanz (T-289) oder noch die Vorlage? */
+  inPlay: boolean;
   maps: { id: string; name: string }[];
+}
+
+/** Eine Zeile unter „Played" (T-289): ein gespielter Stand einer Karte oder Begegnung. */
+export interface GespieltZeile {
+  id: string;
+  name: string;
+  kind: 'map' | 'encounter';
+  at: string;
+  session: string | null;
+  sessionName: string | null;
+  encounters: string[];
+  encounterNames: { id: string; name: string }[];
+  map: string | null;
+  mapName: string | null;
+  released: boolean;
 }
 
 /** Eine Zeile der Kartenliste (`GET /api/maps`, T-202): als Baum, mit Bild, Marken und Ebenen. */

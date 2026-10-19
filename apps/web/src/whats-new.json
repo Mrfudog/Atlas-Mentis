@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-maps-in-play",
+      "date": "2026-10-19",
+      "title": "Maps in play: release to players, fog per session, look back later",
+      "text": "Taking a map or an encounter into play now makes the session's own copy: tokens, fog and the fight stay there, and the map itself stays as you prepared it. Players see the map only after Release to players, with the fog already on. On the map's page, Played lists every past table with its date, session and encounter.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-19-choose-spells",
       "date": "2026-10-19",
       "title": "Choose cantrips and spells in the character assistant",
