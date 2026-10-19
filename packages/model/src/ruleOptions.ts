@@ -352,6 +352,18 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
+    /* Platz eines Tokens (T-317), gelesen über `mapRulesOf` und `tokenSpan`. */
+    key: 'tokenSizes',
+    sort: 'map',
+    label: 'Token sizes',
+    does: 'How many squares a token covers by the size on its statblock. A token can set its own size (Tokens › Size), half squares included.',
+    source: { field: 'tokenSizes' },
+    variants: [
+      { key: 'rules', label: 'As the rules', does: 'Tiny, small and medium one square, large 2×2, huge 3×3, gargantuan 4×4.' },
+      { key: 'tinyHalf', label: 'Tiny half a square', does: 'As the rules, but a tiny creature covers half a square, so four fit in one.' },
+    ],
+  },
+  {
     key: 'playerRolls',
     sort: 'table',
     label: 'Player rolls visible to',

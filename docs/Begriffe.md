@@ -525,6 +525,14 @@ Linie. Und **Schneiden** ändert die Wände selbst, statt eine Lücke zu
 merken: was gespeichert ist, ist, was hält. Darum endet ein Wandstück
 genau am Rand der Tür — so findet das Zusammenfügen es wieder.
 
+**Ein Token nimmt seinen Platz, und der Platz steht an einer Stelle**
+(T-317). Wie gross ein Token gezeichnet wird und worauf es einrastet, ist
+dieselbe Zahl (`tokenSpan`): am Token, wenn jemand sie dort setzt, sonst
+aus dem Statblock. Zwei Zahlen — eine fürs Bild, eine fürs Gitter — liessen
+einen Oger zwei Felder breit auf einem Feld stehen. Die Tabelle gehört der
+Kampagne und nicht dem Code, denn ob ein Winzling ein halbes Feld nimmt,
+ist eine Hausregel.
+
 **Aufgedeckt wird, was man sieht, und gespeichert, was man gesehen hat.**
 Das Sichtpolygon wird beim Zug gerechnet und als Form in `Map.reveal`
 geschrieben; es gibt keine zweite Liste „gerade sichtbar“. Was eine Figur
