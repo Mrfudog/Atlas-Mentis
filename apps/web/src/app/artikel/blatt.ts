@@ -9,6 +9,7 @@ import { Fluss } from './fluss';
 import { Gegenstand } from './gegenstand';
 import { Statblock } from './statblock';
 import { Kennzahlen } from './kennzahlen';
+import { TokenBild } from './token-bild';
 import { Text } from './text';
 import { Zauber } from './zauber';
 import { Bild, bildDes } from './bild';
@@ -26,7 +27,7 @@ import { Bild, bildDes } from './bild';
  */
 @Component({
   selector: 'nw-blatt',
-  imports: [RouterLink, Text, Statblock, Kennzahlen, Zauber, Gegenstand, Abschnitte, Fluss, Bild],
+  imports: [RouterLink, Text, Statblock, Kennzahlen, TokenBild, Zauber, Gegenstand, Abschnitte, Fluss, Bild],
   template: `
     @for (st of stuecke(); track st.id) {
       @switch (st.art) {
@@ -35,6 +36,9 @@ import { Bild, bildDes } from './bild';
         }
         @case ('stats') {
           <nw-kennzahlen [artikel]="artikel()" />
+        }
+        @case ('token') {
+          <nw-token [artikel]="artikel()" />
         }
         @case ('spell') {
           <nw-zauber [artikel]="artikel()" [scopes]="scopes()" />

@@ -18,6 +18,8 @@ import {
   articleImage,
   assetVersion,
   statblocksOf,
+  tokenLook,
+  type TokenLook,
   BulkRequestSchema,
   EntitySchema,
   RegistrySchema,
@@ -2099,10 +2101,28 @@ export function buildApp({
   async function bilderVon(
     request: FastifyRequest,
     e: Entity,
-  ): Promise<{ image?: { id: string; version?: string; from?: string }; assets?: Record<string, string> }> {
+  ): Promise<{
+    image?: { id: string; version?: string; from?: string };
+    assets?: Record<string, string>;
+    token?: { id: string; version?: string; from?: string; look: TokenLook; adjustable: boolean };
+  }> {
     const registry = await repo.getRegistry();
     const stand = await roh();
     const bild = articleImage(registry, e, stand.map, (id) => statblocksOf(stand.alle, id));
+    /* **Das Token** (T-297): am Statblock sein eigenes, an der Kreatur das
+       ihres Statblocks — beide durch die Vorlage gelesen. Mit seinem
+       Aussehen (`tokenLook`) und ob dieser Betrachter es einstellen darf:
+       eingestellt wird am Bild, also schreibt, wer das Bild schreibt. */
+    const kette = typeChain(registry, primaryInterface(e));
+    const boegen = kette.includes('Statblock') ? [{ sb: e, from: undefined }] : kette.includes('Creature') ? statblocksOf(stand.alle, e.id).map((sb) => ({ sb, from: sb.id })) : [];
+    let tok: { id: string; from?: string } | null = null;
+    for (const { sb, from } of boegen) {
+      const t = (resolveInstance(stand.map, sb).components?.['Statblock'] as { token?: unknown } | undefined)?.token;
+      if (typeof t === 'string' && t.trim() && stand.map.has(t.trim())) {
+        tok = { id: t.trim(), ...(from ? { from } : {}) };
+        break;
+      }
+    }
     const ids = new Set<string>();
     for (const [typ, karte] of Object.entries(e.components ?? {})) {
       const props = registry.interfaces[typ]?.schema?.properties ?? {};
@@ -2113,6 +2133,7 @@ export function buildApp({
     }
     const fremd = bild && !/^https?:\/\//i.test(bild.id) ? bild.id : null;
     if (fremd && stand.map.has(fremd)) ids.add(fremd);
+    if (tok) ids.add(tok.id);
     const gesehen = new Set(
       ids.size ? (await sieve(request, [...ids].map((i) => stand.map.get(i)!), stand.map)).map((x) => x.id) : [],
     );
@@ -2121,11 +2142,20 @@ export function buildApp({
       const v = assetVersion(stand.map.get(i));
       if (v) assets[i] = v;
     }
-    const raus: { image?: { id: string; version?: string; from?: string }; assets?: Record<string, string> } = {};
+    const raus: Awaited<ReturnType<typeof bilderVon>> = {};
     if (bild && (!fremd || gesehen.has(fremd))) {
       raus.image = { id: bild.id, ...(assets[bild.id] ? { version: assets[bild.id] } : {}), ...(bild.from ? { from: bild.from } : {}) };
     }
     if (Object.keys(assets).length) raus.assets = assets;
+    if (tok && gesehen.has(tok.id)) {
+      const user = await viewerOf(request);
+      raus.token = {
+        ...tok,
+        ...(assets[tok.id] ? { version: assets[tok.id] } : {}),
+        look: tokenLook(stand.map.get(tok.id)),
+        adjustable: !!user && mayWrite(user, await ownedBy(user), tok.id),
+      };
+    }
     return raus;
   }
 

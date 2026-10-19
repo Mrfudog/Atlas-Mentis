@@ -173,6 +173,74 @@ export function articleImage(
   return null;
 }
 
+/** Der Ausschnitt eines Tokens (T-297): Mitte in Prozent des Bildes, Zoom ab 1. */
+export interface TokenFrame {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+/** Wie ein Bild als Token gezeigt wird (T-297). */
+export interface TokenLook {
+  /** Ein fertiges Rundtoken: so zeigen, wie es ist — ohne eigenen Kreis. */
+  round: boolean;
+  frame: TokenFrame;
+  width?: number;
+  height?: number;
+}
+
+const zwischen = (v: unknown, min: number, max: number, sonst: number): number =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : sonst;
+
+/** Die Grenzen des Zooms — darüber wird ein Token ein Pixelbrei. */
+export const TOKEN_ZOOM_MAX = 4;
+
+/** Ausschnitt mit Vorgaben und Grenzen: Mitte 50/50, Zoom 1. Unsinn fällt auf die Vorgabe. */
+export function tokenFrame(v: unknown): TokenFrame {
+  const f = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  return { x: zwischen(f['x'], 0, 100, 50), y: zwischen(f['y'], 0, 100, 50), zoom: zwischen(f['zoom'], 1, TOKEN_ZOOM_MAX, 1) };
+}
+
+/** Wie das Bild `asset` als Token gezeigt wird (T-297) — aus seiner Karte `Asset`. */
+export function tokenLook(asset: Entity | undefined): TokenLook {
+  const a = (asset?.components?.[ASSET_TYPE] ?? {}) as Record<string, unknown>;
+  const zahl = (v: unknown) => (typeof v === 'number' && v > 0 ? v : undefined);
+  const w = zahl(a['width']);
+  const h = zahl(a['height']);
+  return { round: a['round'] === true, frame: tokenFrame(a['frame']), ...(w ? { width: w } : {}), ...(h ? { height: h } : {}) };
+}
+
+/**
+ * **Wo das Bild im Kreis liegt** (T-297), in Bruchteilen des Kreises
+ * (Durchmesser 1): so gross, dass es den Kreis deckt (wie `cover`), mal
+ * Zoom, und so verschoben, dass der gewählte Punkt in der Mitte steht —
+ * aber nie so weit, dass am Rand das Leere durchscheint. Ohne Masse gilt
+ * ein Quadrat. Karte, Artikel und der Dialog rechnen damit dasselbe.
+ */
+export function tokenPlacement(look: Pick<TokenLook, 'frame' | 'width' | 'height'>): { left: number; top: number; width: number; height: number } {
+  const w = look.width ?? 1;
+  const h = look.height ?? 1;
+  const s = look.frame.zoom / Math.min(w, h);
+  const W = w * s;
+  const H = h * s;
+  const left = Math.min(0, Math.max(1 - W, 0.5 - (look.frame.x / 100) * W));
+  const top = Math.min(0, Math.max(1 - H, 0.5 - (look.frame.y / 100) * H));
+  return { left, top, width: W, height: H };
+}
+
+/** Ist das Bild ein fertiges Rundtoken? Die vier Ecken durchsichtig (Alpha unter 16) — ein Kreis auf Durchsichtigem. */
+export function looksRound(alphaAt: (x: number, y: number) => number, width: number, height: number): boolean {
+  if (width < 8 || height < 8) return false;
+  const r = Math.max(1, Math.round(Math.min(width, height) * 0.04));
+  const ecken = [
+    [r, r],
+    [width - 1 - r, r],
+    [r, height - 1 - r],
+    [width - 1 - r, height - 1 - r],
+  ] as const;
+  return ecken.every(([x, y]) => alphaAt(x, y) < 16);
+}
+
 /** Die Statblöcke, die an dieser Kreatur hängen (`belongsTo` vom Statblock her). */
 export function statblocksOf(entities: Iterable<Entity>, creatureId: string): Entity[] {
   const raus: Entity[] = [];

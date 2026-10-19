@@ -59,6 +59,7 @@ import { BildPanel } from '../bilder/bildpanel';
 import { KartenPanel } from '../karten/kartenpanel';
 import { Statblock } from './statblock';
 import { Kennzahlen } from './kennzahlen';
+import { TokenBild } from './token-bild';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Laden } from './laden';
@@ -172,7 +173,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Wahl,
     Mehrfach,
     Statblock,
-    Kennzahlen,
+    Kennzahlen, TokenBild,
     Zauber,
     Gegenstand,
     Laden, Liegengelassen, Werkstatt,
@@ -755,6 +756,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   }
                   @case ('stats') {
                     <nw-kennzahlen [artikel]="e" />
+                  }
+                  @case ('token') {
+                    <nw-token [artikel]="e" />
                   }
                   @case ('spell') {
                     <nw-zauber [artikel]="e" [scopes]="scopes()" [fassungen]="vergleich()" />
