@@ -106,9 +106,14 @@ export function zonesFromMap(map: Readonly<Record<string, string>>, prefix = 'z'
   return [...je.entries()].map(([draw, cells], i) => ({ id: `${prefix}${i + 1}`, draw, cells }));
 }
 
-/** Gilt die Bedingung für diesen Wert? Ohne Wert gilt keine. */
+/**
+ * Gilt die Bedingung für diesen Wert? Ohne Wert gilt keine — und eine, die
+ * weder Werte noch Spanne nennt, auch nicht: sie ist noch nicht fertig
+ * gesagt, und „gilt für alle" wäre die falsche Vorgabe dafür.
+ */
 export function conditionHolds(c: CarryCondition, value: unknown): boolean {
   if (value === undefined || value === null || value === '') return false;
+  if (!c.is?.length && typeof c.min !== 'number' && typeof c.max !== 'number') return false;
   if (c.is?.length) {
     const v = String(value).trim().toLowerCase();
     if (!c.is.some((w) => String(w).trim().toLowerCase() === v)) return false;

@@ -34,6 +34,8 @@ describe('Das Tragblatt aus Bausteinen (REQ-356)', () => {
     expect(conditionHolds({ field: 'f', min: 1, max: 2 }, 3)).toBe(false);
     expect(conditionHolds({ field: 'f', min: 1 }, '2')).toBe(true);
     expect(conditionHolds({ field: 'f' }, undefined)).toBe(false);
+    /* Eine Bedingung ohne Werte ist nicht fertig gesagt: sie gilt für niemanden. */
+    expect(conditionHolds({ field: 'f' }, 'medium')).toBe(false);
   });
 
   it('nimmt eine Zone als Felder mit einer Dauer; gesperrte Felder haben keine', () => {

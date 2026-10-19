@@ -28,12 +28,16 @@ const MAX = 20;
       <label>Width <input type="number" min="1" [max]="max" [value]="breite()" (change)="masse(+$any($event.target).value, rows().length)" /></label>
       <label>Height <input type="number" min="1" [max]="max" [value]="rows().length" (change)="masse(breite(), +$any($event.target).value)" /></label>
       <button type="button" class="klein" (click)="alle()">Select all</button>
-      @if (auswahl().size) {
-        <button type="button" class="klein" (click)="auswahl.set(leer())">Clear selection ({{ auswahl().size }})</button>
-        <button type="button" class="klein" (click)="sperre(true)">Close cells</button>
-        <button type="button" class="klein" (click)="sperre(false)">Open cells</button>
-      }
     </div>
+    <!-- Die Leiste steht immer gleich da: was erst mit der Auswahl erschiene,
+         schöbe das Raster unter dem Finger weg (Leitung 19.10.). -->
+    <div class="werkzeug">
+      <span class="zahl" aria-live="polite">{{ auswahl().size }} selected</span>
+      <button type="button" class="klein" [disabled]="!auswahl().size" (click)="auswahl.set(leer())">Clear selection</button>
+      <button type="button" class="klein" [disabled]="!auswahl().size" (click)="sperre(true)">Close cells</button>
+      <button type="button" class="klein" [disabled]="!auswahl().size" (click)="sperre(false)">Open cells</button>
+    </div>
+    <p class="hint">Click or drag over cells to select them; selected cells are hatched grey.</p>
 
     <div class="raster" [style.--spalten]="breite()" role="grid" [attr.aria-label]="label()"
          (pointermove)="ziehe($event)" (pointerup)="modus = null" (pointerleave)="modus = null" (pointercancel)="modus = null">
@@ -59,35 +63,38 @@ const MAX = 20;
           </select>
           <small>{{ z.cells.length }} {{ z.cells.length === 1 ? 'cell' : 'cells' }}</small>
           <button type="button" class="klein" (click)="waehleZone(z)">Select</button>
-          @if (auswahl().size) {
-            <button type="button" class="klein" (click)="gib(i)">Add selection</button>
-            <button type="button" class="klein" (click)="nimm(i)">Remove selection</button>
-          }
+          <button type="button" class="klein" [disabled]="!auswahl().size" (click)="gib(i)">Add selection</button>
+          <button type="button" class="klein" [disabled]="!auswahl().size" (click)="nimm(i)">Remove selection</button>
+          <button type="button" class="klein" [disabled]="i === 0" (click)="schiebe(i, -1)" [attr.aria-label]="'Move zone ' + (z.label || z.draw) + ' up'">↑</button>
+          <button type="button" class="klein" [disabled]="i === zones().length - 1" (click)="schiebe(i, 1)" [attr.aria-label]="'Move zone ' + (z.label || z.draw) + ' down'">↓</button>
           <button type="button" class="klein" (click)="loesche(i)" [attr.aria-label]="'Delete zone ' + (z.label || z.draw)">×</button>
         </div>
       }
-      @if (auswahl().size) {
-        <div class="zeile-zone neu">
-          <select aria-label="Duration of the new zone" (change)="neueDauer.set($any($event.target).value)">
-            @for (l of leiter(); track l) {
-              <option [value]="l" [selected]="l === dauerNeu()">{{ l }}</option>
-            }
-          </select>
-          <button type="button" class="klein" (click)="neueZone()">+ Zone from selection</button>
-        </div>
-      } @else if (!zones().length) {
-        <p class="hint">Select cells — click or drag — to make a zone.</p>
-      }
+      <div class="zeile-zone neu">
+        <select aria-label="Duration of the new zone" (change)="neueDauer.set($any($event.target).value)">
+          @for (l of leiter(); track l) {
+            <option [value]="l" [selected]="l === dauerNeu()">{{ l }}</option>
+          }
+        </select>
+        <button type="button" class="klein" [disabled]="!auswahl().size" (click)="neueZone()">+ Zone from selection</button>
+      </div>
     </div>
   `,
   styles: `
     :host { display: flex; flex-direction: column; gap: 0.35rem; }
     .werkzeug, .zeile-zone { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; align-items: center; }
     input[type='number'] { width: 3.6rem; }
-    .raster { display: grid; grid-template-columns: repeat(var(--spalten), minmax(1.5rem, 2rem)); gap: 2px; max-width: 100%; overflow-x: auto; touch-action: none; user-select: none; }
-    .feld { aspect-ratio: 1; min-height: 1.4rem; padding: 0; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); cursor: pointer; }
+    .zahl { min-width: 5.5rem; color: var(--dim); font-size: 0.9rem; }
+    /* Nur die Felder fangen den Finger: daneben scrollt die Seite weiter. */
+    .raster { display: grid; grid-template-columns: repeat(var(--spalten), minmax(1.5rem, 2rem)); gap: 2px; width: fit-content; max-width: 100%; overflow-x: auto; user-select: none; }
+    .feld { aspect-ratio: 1; min-height: 1.4rem; padding: 0; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); cursor: pointer; touch-action: none; }
     .feld.aus { background-color: transparent !important; border-style: dotted; opacity: 0.6; }
-    .feld.gewaehlt { outline: 2px solid var(--fg, currentColor); outline-offset: -3px; }
+    /* Gewählt: grau schraffiert — Grau trägt keine Zone (kern/zonenfarbe.ts). */
+    .feld.gewaehlt, .feld.aus.gewaehlt {
+      background-image: repeating-linear-gradient(45deg, hsl(0 0% 40% / 0.75) 0 3px, transparent 3px 6px);
+      box-shadow: inset 0 0 0 2px hsl(0 0% 35%);
+      opacity: 1;
+    }
     .zonen { display: flex; flex-direction: column; gap: 0.25rem; }
     .muster { display: inline-block; width: 0.9rem; height: 0.9rem; border: 1px solid var(--line); border-radius: 2px; }
     .zname { width: 8rem; }
@@ -246,6 +253,13 @@ export class Zonenmaler {
   protected nimm(i: number): void {
     const sel = this.auswahl();
     this.gibAus(this.rows(), this.zones().map((z, j) => (j === i ? { ...z, cells: z.cells.filter((c) => !sel.has(c)) } : z)));
+  }
+
+  protected schiebe(i: number, um: number): void {
+    const l = [...this.zones()];
+    const [z] = l.splice(i, 1);
+    l.splice(i + um, 0, z!);
+    this.gibAus(this.rows(), l);
   }
 
   protected loesche(i: number): void {
