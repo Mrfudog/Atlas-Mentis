@@ -49,6 +49,7 @@ import {
   sessionState,
   turnOf,
   mapRulesOf,
+  mayMoveAsset,
   partyMembers,
   sessionEncounters,
   sideFigure,
@@ -122,6 +123,12 @@ export interface KartenKontext {
    * Server (`darfZiehen`); die Seite fragt nicht selbst.
    */
   movable: string[];
+  /**
+   * **Welche Assets der Betrachter in Play schiebt** (T-306): die Kanten
+   * (nicht die Ziele — zwei Kisten zeigen auf dasselbe Bild) der Assets mit
+   * `movable`, für die Leitung jedes, für Spielende nach `mayMoveAsset`.
+   */
+  movableAssets: string[];
   /** Die laufende Kampagne, deren Regeln gelten — dorthin springt „Movement" der Leitung (T-290). */
   campaign: string | null;
   /** Offene Zugvorschläge, gestrichelt für jeden, der das Token sieht (T-204, T-290). */
@@ -303,6 +310,8 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
        dasteht, zieht niemand ausser der Leitung. */
     const wer = zieher(stand, kampagne, karte, meine);
     const movable = aufDerKarte.filter((id) => darfZiehen(leitetKarte, rules, id, wer));
+    const movableAssets =
+      leitetKarte || mayMoveAsset(rules) ? markersOf(karte).filter((m) => m.kind === 'scenery' && m.movable).map((m) => m.rel.id) : [];
     /* Ein Vorschlag steht für jeden da, der das Token sieht (T-290: „für
        alle sichtbar") — mit dem Namen, den der Betrachter kennt. */
     const proposals: ZugVorschlag[] = (await plaeneDerKarte(repo, roheKarte.id))
@@ -322,7 +331,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
-    return { parents, children: kinder, targets, party, turn, combatants, rules, own, movable, campaign: kampagne?.id ?? null, proposals, darkvision, lights } satisfies KartenKontext;
+    return { parents, children: kinder, targets, party, turn, combatants, rules, own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights } satisfies KartenKontext;
   });
 
   /**

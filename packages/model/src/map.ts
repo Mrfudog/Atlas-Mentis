@@ -16,7 +16,7 @@
 import type { Pt } from './sight.js';
 import type { Entity, EntityId, Relation } from './types.js';
 import { initiativeOrder, PARTICIPATES, type ParticipantProps } from './initiative.js';
-import { hasSightWalls, mapWalls, redactWalls, sightPolygon } from './walls.js';
+import { hasSightWalls, mapWalls, redactWalls, sightPolygon, wallKind, type MapWall, type WallKind } from './walls.js';
 
 export const MAP_TYPE = 'Map';
 /** Die Karte, die `MapInfo` trägt — benannt nach der Art, die die Felder erklärt. */
@@ -201,6 +201,10 @@ export interface MapMarker {
   hidden: boolean;
   /** Vorplatziert für diese Begegnung (`props.encounter`, T-203); leer: nicht. */
   prepared: EntityId | '';
+  /** Ein Asset (`scenery`) darf in Play verschoben werden (`props.movable`, T-306); Vorgabe: fix. */
+  movable: boolean;
+  /** Was das Asset hält, als Sperrart (`props.blocks`, T-306); leer: nichts. */
+  blocks: WallKind | '';
 }
 
 export function markerOf(rel: Relation): MapMarker {
@@ -219,6 +223,8 @@ export function markerOf(rel: Relation): MapMarker {
     note: typeof p['note'] === 'string' ? p['note'] : '',
     hidden: p['hidden'] === true,
     prepared: typeof p['encounter'] === 'string' ? p['encounter'] : '',
+    movable: p['movable'] === true,
+    blocks: typeof p['blocks'] === 'string' && p['blocks'] && !wallKind(p['blocks']).door ? wallKind(p['blocks']).key : '',
   };
 }
 
@@ -247,6 +253,95 @@ export function addMarker(map: Entity, to: EntityId, at: Pt, id: string, kind: M
   return {
     ...map,
     relations: [...(map.relations ?? []), { id, type: MARKER_RELATION, to, props: { x: r4(at.x), y: r4(at.y), kind } }],
+  };
+}
+
+// ----------------------------------------------------------------- Assets
+
+/**
+ * **Fix oder verschiebbar** (T-306): ein Asset auf der Karte (Marker
+ * `scenery` — Kiste, Tisch, Laterne) ist **fix**, solange `movable` es
+ * nicht anders sagt. In der Bearbeitung (Artikelseite der Karte) zieht,
+ * dreht und skaliert die Leitung jedes; in Play bewegt sich nur, was
+ * `movable` ist. Ein Token einer Figur ist immer verschiebbar — wer es
+ * zieht, sagt `tokenMove` (T-290).
+ */
+export function markerMovable(m: Pick<MapMarker, 'kind' | 'movable'>): boolean {
+  return m.kind !== 'scenery' || m.movable;
+}
+
+/**
+ * **Wer ein verschiebbares Asset in Play schiebt** (T-306): die Leitung
+ * immer; Spielende, wenn die Kampagne sie mehr als die eigene Figur ziehen
+ * lässt (`party`, `allies`, `all`) und Züge nicht erst bestätigt werden —
+ * eine Kiste gehört keiner Figur, und ein Vorschlag nennt eine Figur.
+ */
+export function mayMoveAsset(rules: Pick<MapRules, 'tokenMove' | 'moves'>): boolean {
+  return rules.moves !== 'confirm' && (rules.tokenMove === 'party' || rules.tokenMove === 'allies' || rules.tokenMove === 'all');
+}
+
+/** Die vier Ecken eines Assets in Anteilen der Karte, gedreht um seine Mitte. */
+export function assetCorners(m: Pick<MapMarker, 'x' | 'y' | 'size' | 'ratio' | 'rot'>, gridSize: number, nat: Size): Pt[] {
+  if (!(nat.w > 0 && nat.h > 0 && gridSize > 0)) return [];
+  const w = gridSize * m.size;
+  const h = w * m.ratio;
+  const cx = m.x * nat.w;
+  const cy = m.y * nat.h;
+  const a = (m.rot * Math.PI) / 180;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return [
+    [-w / 2, -h / 2],
+    [w / 2, -h / 2],
+    [w / 2, h / 2],
+    [-w / 2, h / 2],
+  ].map(([dx, dy]) => ({ x: (cx + dx! * c - dy! * s) / nat.w, y: (cy + dx! * s + dy! * c) / nat.h }));
+}
+
+/**
+ * **Was ein Asset hält** (T-306): sein Umriss als vier Sperren der Art,
+ * die `blocks` nennt — eine Kiste (`chasm`, „Obstacle") hält den Schritt
+ * und nicht den Blick, ein Schrank (`wall`) beides. Gerechnet beim Lesen
+ * aus Ort, Grösse und Drehung (D8); in `Map.walls` steht nichts davon,
+ * sonst wanderte die Sperre nicht mit der Kiste. `except` lässt ein Asset
+ * weg — das, das gerade zieht oder leuchtet.
+ */
+export function assetWalls(map: Entity, nat: Size | null | undefined, except?: string): MapWall[] {
+  if (!nat) return [];
+  const g = mapSettings(map).gridSize;
+  return markersOf(map).flatMap((m) => {
+    if (m.kind !== 'scenery' || !m.blocks || m.rel.id === except) return [];
+    const e = assetCorners(m, g, nat);
+    return e.map((p, i) => {
+      const q = e[(i + 1) % e.length]!;
+      return { id: `asset:${m.rel.id}:${i}`, kind: m.blocks as WallKind, x1: p.x, y1: p.y, x2: q.x, y2: q.y };
+    });
+  });
+}
+
+/** Die Sperren, die gelten: gezeichnete (`Map.walls`) und die Umrisse der Assets (T-306). */
+export function blockingWalls(map: Entity, nat: Size | null | undefined, except?: string): MapWall[] {
+  const a = assetWalls(map, nat, except);
+  return a.length ? [...mapWalls(map), ...a] : mapWalls(map);
+}
+
+/**
+ * **Ein Asset einstellen** (T-306): Felder an der Markerkante setzen; `null`
+ * nimmt eines weg (die Vorgabe gilt wieder). Nur für `scenery` — an einem
+ * Token tut es nichts.
+ */
+export function setAssetProps(map: Entity, relId: string, patch: Readonly<Record<string, unknown>>): Entity {
+  return {
+    ...map,
+    relations: (map.relations ?? []).map((r) => {
+      if (r.id !== relId || r.type !== MARKER_RELATION || markerOf(r).kind !== 'scenery') return r;
+      const props = { ...((r.props ?? {}) as Record<string, unknown>) };
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === null || v === undefined || v === false || v === '') delete props[k];
+        else props[k] = v;
+      }
+      return { ...r, props };
+    }),
   };
 }
 
@@ -1123,7 +1218,7 @@ export function moveRevealRadius(settings: MapSettings, nat: Size): number {
  */
 export function sightReveal(map: Entity, from: Pt, nat: Size, id: string, fuer?: EntityId | null): Entity {
   const ar = nat.w > 0 ? nat.h / nat.w : 1;
-  const pts = sightPolygon(mapWalls(map), from, ar);
+  const pts = sightPolygon(blockingWalls(map, nat), from, ar);
   if (pts.length < 3) return map;
   return revealArea(map, { id, kind: 'poly', pts, ...(fuer ? { for: fuer } : {}) });
 }

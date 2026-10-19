@@ -571,6 +571,14 @@ beim Verstauen stehen bliebe. Ausmachen (`lightOff`) ist dagegen ein
 Zustand am Tisch und steht an der Markerkante, wie der Radius einer
 Laterne.
 
+**Ein Asset ist fix, bis es etwas anderes sagt** (T-306). Eine Kiste,
+die bei jedem Ziehen an einer Figur mitrutscht, ist Kulisse, die man
+ständig zurückstellt; also steht `movable` an der Kante und fehlt als
+Vorgabe. Was sie hält, ist **eine Sperrart** und kein neues Wort: ihr
+Umriss wird beim Lesen zu Sperren der Art, die `blocks` nennt — eine
+eigene Liste von Asset-Sperren in `Map.walls` bliebe stehen, wenn die
+Kiste wandert.
+
 **Wo ein Bild verwendet wird**, steht nirgends — es ist die Gegenrichtung
 der Verweise, und die ist eine Abfrage. Sie zeigt nur, was man sehen
 darf: „wird noch an drei Orten gezeigt" verriete drei Artikel, auch ohne

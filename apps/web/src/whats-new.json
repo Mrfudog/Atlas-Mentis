@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-map-assets",
+      "date": "2026-10-19",
+      "title": "Assets on the map: fixed or movable",
+      "text": "Place crates, tables and lanterns with Tokens › Add asset, then size, turn and set them with Tokens › Asset. Assets stay put in play unless you mark them Movable in play, and each can block movement, sight or both — a crate stops feet, a cupboard stops eyes too.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-19-who-moves-tokens",
       "date": "2026-10-19",
       "title": "Choose who moves tokens on the map",

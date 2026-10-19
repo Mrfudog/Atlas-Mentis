@@ -2101,6 +2101,8 @@ export interface KartenKontext {
   own?: string[];
   /** Was der Betrachter ziehen darf, nach `Campaign.tokenMove` (T-290) — gerechnet am Server. */
   movable?: string[];
+  /** Die Assets (Kanten-Ids), die der Betrachter in Play schiebt (T-306) — gerechnet am Server. */
+  movableAssets?: string[];
   /** Die laufende Kampagne, deren Regeln gelten (T-290: Absprung „Movement"). */
   campaign?: string | null;
   /** Offene Zugvorschläge, für jeden, der das Token sieht (T-204, T-290). */
