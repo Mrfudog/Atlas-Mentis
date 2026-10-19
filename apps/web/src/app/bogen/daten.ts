@@ -1,5 +1,5 @@
 import { EnvironmentInjector, Injectable, computed, effect, inject, untracked, type Signal } from '@angular/core';
-import { characterStats, entityName, handState, hasProficiency, inHand, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, turnActions, turnRows } from '@nw/model';
+import { castRelations, characterStats, entityName, handState, hasProficiency, inHand, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, spellcastingOf, turnActions, turnRows } from '@nw/model';
 import type { CharacterStats, Entity, HandState, HeldItem, KnownSpell, ProficiencyList, Relation, SheetHeader, TurnRow } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -16,7 +16,7 @@ export interface FigurLage {
   kopf: Signal<SheetHeader | null>;
   gehalten: Signal<HeldItem[]>;
   haende: Signal<HandState>;
-  /** Die `casts`-Kanten der Figur und ihres Statblocks, mit dem Zauber, wo er da ist. */
+  /** Die Zauber der Figur als Kanten `casts` (eigene und gerechnete, T-309), mit dem Zauber, wo er da ist. */
   zauber: Signal<{ kante: Relation; spell: Entity | undefined }[]>;
   /** Gold bei der Figur und bei der Gruppe, in Kupfer (T-245 baut weiter). */
   kupfer: Signal<{ beiDir: number | null; gruppe: number | null }>;
@@ -91,10 +91,13 @@ export class FigurDaten {
       return g ? (b.voll().get(g)?.relations ?? []).find((k) => k.type === 'carries')?.to : undefined;
     });
 
-    const castsKanten = computed(() => [
-      ...(figur()?.relations ?? []).filter((k) => k.type === 'casts'),
-      ...(statblock()?.relations ?? []).filter((k) => k.type === 'casts'),
-    ]);
+    /* Die Zauber aus allen Quellen (T-309): Klasse, Herkunft, Talente,
+       Gegenstände und Wahlen, dazu was von Hand an Figur und Statblock
+       steht — gerechnet, als Kanten `casts` gelesen. */
+    const castsKanten = computed(() => {
+      const e = figur();
+      return e ? castRelations(spellcastingOf(e, statblock(), b.voll())) : [];
+    });
 
     const klassenIds = computed(() => (figur()?.relations ?? []).filter((k) => k.type === 'hasClass').map((k) => k.to));
 

@@ -209,7 +209,11 @@ export class Zauberliste {
         const komponenten = (Array.isArray(sp['components']) ? (sp['components'] as string[]) : []).map((x) => x.toUpperCase());
         const ritual = sp['ritual'] === true;
         const mode = String(kante.props?.['mode'] ?? '');
-        const quelle = [mode, eigene.has(kante.id) ? '' : 'statblock'].filter(Boolean).join(' · ');
+        /* Woher (T-309): die Quelle einer gerechneten Kante, sonst Figur oder Statblock. */
+        const von = typeof kante.props?.['source'] === 'string' && kante.props['via'] !== 'character' && kante.props['via'] !== 'statblock'
+          ? nameOf(kante.props['source'] as string) ?? ''
+          : eigene.has(kante.id) ? '' : 'statblock';
+        const quelle = [mode, von, this.attributText(kante.props?.['ability'])].filter(Boolean).join(' · ');
         return [
           {
             id: kante.to,
@@ -232,6 +236,24 @@ export class Zauberliste {
       });
   });
   protected readonly grade = computed(() => spellsByLevel(this.zeilen()));
+
+  /**
+   * **Ein anderes Attribut als der Kopf** (T-309): der Zaubertrick der
+   * Herkunft wirkt mit CHA, die Klasse mit INT — dann stehen SG und
+   * Angriff dieses Attributs an der Zeile.
+   */
+  private attributText(ability: unknown): string {
+    if (typeof ability !== 'string' || !ability) return '';
+    const sb = this.lage().werte()?.statblock;
+    const kopf = String(sb?.components?.['Statblock']?.['spellAbility'] ?? '').toLowerCase();
+    if (ability.toLowerCase() === kopf) return '';
+    const wert = Number(sb?.components?.['Abilities']?.[ability.toLowerCase()]);
+    const prof = Number(sb?.components?.['Statblock']?.['prof']);
+    if (!Number.isFinite(wert) || !Number.isFinite(prof)) return ability.toUpperCase();
+    const mod = Math.floor((wert - 10) / 2);
+    const atk = prof + mod;
+    return `${ability.toUpperCase()} · DC ${8 + atk} · ${atk >= 0 ? '+' : ''}${atk}`;
+  }
 
   protected unterzeile(z: ZauberZeile): string {
     return [z.school, z.quelle].filter(Boolean).join(' · ');

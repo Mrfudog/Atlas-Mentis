@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-spellcasting-from-sources",
+      "date": "2026-10-19",
+      "title": "Spellcasting from your class and origin",
+      "text": "A spellcaster's header and Spells tab now fill themselves: the class gives the ability and the slots for your level, and origin, feats, features, items you hold and spells you chose add their spells — each with its source and, where it differs, its own ability.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
       "id": "2026-10-19-token-tools",
       "date": "2026-10-19",
       "title": "Remove markers, place the creature, borders for tokens",
