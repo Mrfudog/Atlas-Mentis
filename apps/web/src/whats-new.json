@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-token-tools",
+      "date": "2026-10-19",
+      "title": "Remove markers, place the creature, borders for tokens",
+      "text": "On the map, Remove takes a marker off again. Add marker lists one line per name with the creature first — the statblock and image are behind +. Adjust token now changes the image and picks a border: gold, silver, bronze and more.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
       "id": "2026-10-19-carry-blocks-handling",
       "date": "2026-10-19",
       "title": "Carry blocks: easier selecting, ordering and removing",

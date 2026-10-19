@@ -2119,7 +2119,7 @@ export function buildApp({
   ): Promise<{
     image?: { id: string; version?: string; from?: string };
     assets?: Record<string, string>;
-    token?: { id: string; version?: string; from?: string; look: TokenLook; adjustable: boolean };
+    token?: { statblock: string; changeable: boolean; id?: string; version?: string; from?: string; look?: TokenLook; adjustable?: boolean };
   }> {
     const registry = await repo.getRegistry();
     const stand = await roh();
@@ -2162,14 +2162,27 @@ export function buildApp({
       raus.image = { id: bild.id, ...(assets[bild.id] ? { version: assets[bild.id] } : {}), ...(bild.from ? { from: bild.from } : {}) };
     }
     if (Object.keys(assets).length) raus.assets = assets;
-    if (tok && gesehen.has(tok.id)) {
+    /* Welcher Statblock das Token trägt, und ob dieser Betrachter dort ein
+       anderes Bild setzen darf (T-301: „Change image" schreibt
+       `Statblock.token`). Ohne Token wird es nur genannt, wo man eins setzen
+       darf — sonst zeichnet das Element nichts. */
+    const traeger = boegen.find((b) => (tok?.from ? b.sb.id === tok.from : true))?.sb;
+    if (traeger) {
       const user = await viewerOf(request);
-      raus.token = {
-        ...tok,
-        ...(assets[tok.id] ? { version: assets[tok.id] } : {}),
-        look: tokenLook(stand.map.get(tok.id)),
-        adjustable: !!user && mayWrite(user, await ownedBy(user), tok.id),
-      };
+      const besitz = user ? await ownedBy(user) : undefined;
+      const changeable = !!user && mayWrite(user, besitz!, traeger.id);
+      if (tok && gesehen.has(tok.id)) {
+        raus.token = {
+          statblock: traeger.id,
+          changeable,
+          ...tok,
+          ...(assets[tok.id] ? { version: assets[tok.id] } : {}),
+          look: tokenLook(stand.map.get(tok.id)),
+          adjustable: !!user && mayWrite(user, besitz!, tok.id),
+        };
+      } else if (!tok && changeable) {
+        raus.token = { statblock: traeger.id, changeable };
+      }
     }
     return raus;
   }

@@ -91,6 +91,9 @@ describe('token frame (T-297)', () => {
     const { tokenFrame, tokenLook } = await import('../src/index.js');
     expect(tokenFrame(undefined)).toEqual({ x: 50, y: 50, zoom: 1 });
     expect(tokenFrame({ x: 140, y: -3, zoom: 9 })).toEqual({ x: 100, y: 0, zoom: 4 });
+    /* Ein Rand aus der Liste bleibt, ein unbekannter fällt weg. */
+    expect(tokenFrame({ ring: 'gold' })).toEqual({ x: 50, y: 50, zoom: 1, ring: 'gold' });
+    expect(tokenFrame({ ring: '<script>' })).toEqual({ x: 50, y: 50, zoom: 1 });
     expect(tokenLook(e('a', ['Asset'], { Asset: { ref: 'x.webp', round: true, width: 560, height: 560 } }))).toEqual({
       round: true,
       frame: { x: 50, y: 50, zoom: 1 },

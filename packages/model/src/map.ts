@@ -297,6 +297,46 @@ export function startPrepared(map: Entity, encounter: EntityId): Entity {
 }
 
 /** Die Spiel-Tokens weg (nach dem Kampf); Vorbereitetes, Vorplatziertes und die Gruppe bleiben. */
+/**
+ * **Was auf die Karte soll, gruppiert** (T-301). Ein Wesen steht oft
+ * mehrfach da: als Kreatur, als Statblock, als Token-Bild — „The
+ * Demogorgon", „\"The Demogorgon\" (token)". Zusammen gehört, was nach
+ * Name gleich heisst (ohne Anführungszeichen, Gross/klein und den Zusatz
+ * „(token)"); vorn steht das Relevanteste — **Kreatur, dann Statblock,
+ * dann Bild** —, die übrigen bleiben zur Wahl. Die Reihenfolge der Gruppen
+ * ist die der Treffer.
+ */
+export function placementGroups<T extends { id: string; name: string; type: string }>(
+  rows: readonly T[],
+  chainOf: (type: string) => readonly string[],
+): { key: string; best: T; others: T[] }[] {
+  const rang = (t: string) => {
+    const k = chainOf(t);
+    return k.includes('Creature') ? 0 : k.includes('Statblock') ? 1 : k.includes('Asset') ? 2 : 3;
+  };
+  const schluessel = (n: string) =>
+    n
+      .toLowerCase()
+      .replace(/["“”„'’]/g, '')
+      .replace(/\s*\(token\)\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const gruppen = new Map<string, T[]>();
+  for (const r of rows) {
+    const k = schluessel(r.name);
+    (gruppen.get(k) ?? gruppen.set(k, []).get(k)!).push(r);
+  }
+  return [...gruppen].map(([key, alle]) => {
+    const sortiert = [...alle].sort((a, b) => rang(a.type) - rang(b.type));
+    return { key, best: sortiert[0]!, others: sortiert.slice(1) };
+  });
+}
+
+/** **Einen Marker wegnehmen** (T-301): die eine Kante, sonst nichts — die Gruppe steht nicht als Marker da. */
+export function removeMarker(map: Entity, relId: string): Entity {
+  return { ...map, relations: (map.relations ?? []).filter((r) => !(r.type === MARKER_RELATION && r.id === relId)) };
+}
+
 export function clearPlayTokens(map: Entity): Entity {
   return {
     ...map,

@@ -10,7 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { areaOf, entityName, primaryInterface, typeList } from '@nw/model';
+import { areaOf, entityName, placementGroups, primaryInterface, typeChain, typeList } from '@nw/model';
 import type { Entity } from '@nw/model';
 import { Bestand, schmal } from '../kern/bestand';
 import { AusgeblendetHinweis } from '../kern/ausgeblendet';
@@ -57,6 +57,45 @@ const TREFFER = 30;
       <p class="fehler" role="alert">The search failed: {{ f }}</p>
     } @else {
       <ul>
+        @if (gruppieren()) {
+          <!-- Auf der Karte (T-301): je Name eine Zeile, vorn das Relevanteste
+               — Kreatur, Statblock, Bild —, die übrigen hinter „+n". -->
+          @for (g of gruppen(); track g.key) {
+            <li>
+              <div class="gruppe">
+                <button type="button" (click)="gewaehlt.emit(g.best)">
+                  <b>{{ name(g.best) }}</b>
+                  <span>{{ artLabel(g.best) }}</span>
+                </button>
+                @if (g.others.length) {
+                  <button
+                    type="button"
+                    class="mehr"
+                    (click)="umschalten(g.key)"
+                    [attr.aria-expanded]="offen().has(g.key)"
+                    [attr.aria-label]="(offen().has(g.key) ? 'Hide' : 'Show') + ' ' + g.others.length + ' more for ' + name(g.best)"
+                  >
+                    {{ offen().has(g.key) ? '−' : '+' + g.others.length }}
+                  </button>
+                }
+              </div>
+              @if (offen().has(g.key)) {
+                <ul class="andere">
+                  @for (o of g.others; track o.id) {
+                    <li>
+                      <button type="button" (click)="gewaehlt.emit(o)">
+                        <b>{{ name(o) }}</b>
+                        <span>{{ artLabel(o) }}</span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </li>
+          } @empty {
+            <li class="leer">{{ laedt() ? 'Searching…' : 'Nothing matches — or it is already on the map.' }}</li>
+          }
+        } @else {
         @for (t of treffer(); track t.id) {
           <li>
             <button type="button" (click)="gewaehlt.emit(t)">
@@ -66,6 +105,7 @@ const TREFFER = 30;
           </li>
         } @empty {
           <li class="leer">{{ laedt() ? 'Searching…' : 'Nothing matches — or it is already on the board.' }}</li>
+        }
         }        <!-- Was es noch nicht gibt, gleich anlegen und hinlegen (T-131). -->
         @if (suche().trim() && !laedt() && anlegbar()) {
           <li class="neu">
@@ -134,6 +174,27 @@ const TREFFER = 30;
     button:hover,
     button:focus-visible {
       background: var(--hover);
+    }
+    .gruppe {
+      display: flex;
+      gap: 0.25rem;
+    }
+    .gruppe > button:first-child {
+      flex: 1;
+      min-width: 0;
+    }
+    .gruppe .mehr {
+      flex: none;
+      width: auto;
+      min-width: 2.75rem;
+      justify-content: center;
+      border: 1px solid var(--line);
+    }
+    .andere {
+      margin: 0 0 0.25rem 1rem;
+      max-height: none;
+      border-left: 2px solid var(--line);
+      padding-left: 0.5rem;
     }
     select {
       flex: 0 1 12rem;
@@ -232,6 +293,26 @@ export class BoardSuche {
       .finally(() => {
         if (nr === this.lauf) this.laedt.set(false);
       });
+  }
+
+  /** Gruppieren nach Name (T-301) — die Karte will das Wesen, nicht drei Fassungen davon. */
+  readonly gruppieren = input(false);
+  protected readonly offen = signal<ReadonlySet<string>>(new Set());
+  protected readonly gruppen = computed(() => {
+    const r = this.bestand.registry();
+    const ohne = this.ohne();
+    const zeilen = this.gefunden()
+      .filter((e) => !ohne.has(e.id))
+      .map((e) => ({ id: e.id, name: entityName(e), type: primaryInterface(e), e }));
+    return placementGroups(zeilen, (t) => (r ? typeChain(r, t) : [t]))
+      .slice(0, TREFFER)
+      .map((g) => ({ key: g.key, best: g.best.e, others: g.others.map((o) => o.e) }));
+  });
+  protected umschalten(key: string): void {
+    const n = new Set(this.offen());
+    if (n.has(key)) n.delete(key);
+    else n.add(key);
+    this.offen.set(n);
   }
 
   protected readonly treffer = computed(() => {

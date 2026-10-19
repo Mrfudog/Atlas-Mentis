@@ -449,7 +449,14 @@ das Gesicht neben der Mitte. Also sagt das Bild, ob es schon rund ist
 (`Asset.round`, beim Hochladen an den durchsichtigen Ecken erkannt), und
 wo nicht, wo sein Kreis sitzt (`Asset.frame`). Beides steht **am Bild**
 und nicht am Statblock: dreissig Wachen aus einer Vorlage haben ein Token,
-und wer es einmal zurechtrückt, rückt es für alle zurecht.
+und wer es einmal zurechtrückt, rückt es für alle zurecht. Auch der
+**Rand** steht dort (`frame.ring`), als Id aus einer Liste (`TOKEN_RINGS`):
+eigene Ränder sind dann weitere Einträge, keine neue Fallunterscheidung.
+
+**Beim Platzieren zählt das Wesen, nicht seine Fassungen** (T-301): wer
+„Demogorgon“ sucht, meint die Kreatur. Gleich Benanntes steht als eine
+Zeile da (`placementGroups`), vorn Kreatur, dann Statblock, dann Bild —
+die übrigen hinter „+“.
 
 Gezeigt wird ein Bild mit dem Block **`image`**, und wie gross, sagt der
 Ort und nicht ein Wähler: in der Listenzeile ein Daumennagel, auf der

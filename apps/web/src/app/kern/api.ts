@@ -236,7 +236,7 @@ export interface Bezuege {
   /** Die Version jeder Bilddatei, die der Artikel nennt (T-211) — mit ihr darf der Browser das Bild behalten. */
   assets?: Record<string, string>;
   /** Das Token (T-297): am Statblock seins, an der Kreatur das ihres Statblocks (`from`) — mit Aussehen und ob man es einstellen darf. */
-  token?: { id: string; version?: string; from?: string; look: TokenLook; adjustable: boolean };
+  token?: { statblock: string; changeable: boolean; id?: string; version?: string; from?: string; look?: TokenLook; adjustable?: boolean };
 }
 
 /** Wer einen Fertigungswert gesetzt hat (`craftCheck`): die Quelle oder ein Träger einer `craftsWith`-Kante. */
