@@ -59,7 +59,7 @@ const ZUSATZ_MAX = 5;
         </div>
 
         <h5>Zones</h5>
-        <p class="hint">Pick per column how long it takes to get something from there. Dark: the base square of “{{ vorschau() }}”; light: the extra square from Strength (up to {{ zusatzMax() }}).</p>
+        <p class="hint">Pick per column how long it takes to get something from there. Solid: the base square of “{{ vorschau() }}”; hatched: the extra square from Strength (up to {{ zusatzMax() }}).</p>
         <div class="raster" [style.--spalten]="breite()">
           @for (x of spalten(); track x) {
             <select class="spalte" [attr.aria-label]="'Zone of column ' + (x + 1)" (change)="zone(x, $any($event.target).value)">
@@ -73,7 +73,7 @@ const ZUSATZ_MAX = 5;
             @for (x of spalten(); track x) {
               <span class="feld" [class.basis]="x < basis() && y < basis()" [class.zusatz]="x >= links() && y < zusatzMax()"
                     [class.aus]="!(x < basis() && y < basis()) && !(x >= links() && y < zusatzMax())"
-                    [style.background]="farbe(d.zonen[x])" [attr.title]="d.zonen[x] ?? 'no zone'"></span>
+                    [style.background-color]="farbe(d.zonen[x])" [attr.title]="(d.zonen[x] ?? 'no zone') + (x >= links() ? ' · extra square' : '')"></span>
             }
           }
         </div>
@@ -111,7 +111,7 @@ const ZUSATZ_MAX = 5;
               }
               @for (y of reihe(v.grid.length); track y) {
                 @for (x of reihe(breiteVon(v)); track x) {
-                  <button type="button" class="feld" [class.aus]="!offen(v, x, y)" [style.background]="offen(v, x, y) ? farbe(v.zonen[x]) : null"
+                  <button type="button" class="feld" [class.aus]="!offen(v, x, y)" [style.background-color]="offen(v, x, y) ? farbe(v.zonen[x]) : null"
                           [attr.aria-label]="'Cell ' + (x + 1) + ',' + (y + 1)" [attr.aria-pressed]="offen(v, x, y)" (click)="kippe(i, x, y)"></button>
                 }
               }
@@ -171,7 +171,8 @@ const ZUSATZ_MAX = 5;
     }
   `,
   styles: `
-    .tragraster { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.4rem; }
+    .tragraster { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; margin-top: 0.4rem; }
+    .tragraster > .raster { align-self: stretch; }
     h5 { margin: 0.7rem 0 0; font-size: 0.95rem; }
     .hint { color: var(--dim); margin: 0; font-size: 0.9rem; }
     .groessen, .zeile, .plaetze { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; align-items: center; }
@@ -182,8 +183,9 @@ const ZUSATZ_MAX = 5;
     .raster { display: grid; grid-template-columns: repeat(var(--spalten), minmax(1.6rem, 2.2rem)); gap: 2px; max-width: 100%; overflow-x: auto; }
     .spalte { font-size: 0.7rem; padding: 0; min-width: 0; width: 100%; }
     .feld { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 2px; padding: 0; min-height: 1.4rem; background: var(--surface); }
-    .feld.zusatz:not(.basis) { opacity: 0.55; }
-    .feld.aus { background: transparent !important; border-style: dotted; opacity: 0.6; }
+    /* Das Zusatzquadrat schraffiert statt blasser: die Farbe sagt die Zone, und die soll gleich bleiben. */
+    .feld.zusatz:not(.basis) { background-image: repeating-linear-gradient(45deg, var(--line) 0 2px, transparent 2px 6px); }
+    .feld.aus { background-color: transparent !important; background-image: none; border-style: dotted; opacity: 0.6; }
     button.feld { cursor: pointer; }
     .legende { display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--dim); }
     .legende i { display: inline-block; width: 0.8rem; height: 0.8rem; margin-right: 0.25rem; vertical-align: -0.1rem; border: 1px solid var(--line); }
