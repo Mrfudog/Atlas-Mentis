@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-19-map-grid-loupe-tokens",
+      "date": "2026-10-19",
+      "title": "Fine-tune and colour the grid, a loupe for placing, tokens that fill their squares",
+      "text": "Grid now has arrows for size and offset and a fine slider, a colour, an opacity and Show grid. Hold on the map while placing a point and a loupe opens. Tokens snap to the grid and cover the squares their size needs, half squares included; Played on a map opens each map in play straight in Play.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
       "id": "2026-10-19-sight-and-light",
       "date": "2026-10-19",
       "title": "Darkvision in greyscale, torches in hand, lights on and off",

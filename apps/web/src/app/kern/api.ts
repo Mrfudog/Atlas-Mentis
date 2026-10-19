@@ -2088,7 +2088,8 @@ export interface KartenKontext {
   parents: { id: string; name: string }[];
   children: { id: string; name: string; frame: { x: number; y: number; w: number; h: number } }[];
   /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
-  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook }>;
+  /** `size`: die Grösse des Statblocks (T-317), für den Platz des Tokens. */
+  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;

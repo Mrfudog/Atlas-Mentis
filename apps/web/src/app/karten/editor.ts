@@ -38,8 +38,6 @@ export const STAERKE_MIN = 4;
 export const STAERKE_MAX = 40;
 /** Ein Finger trifft ungenauer als ein Mauszeiger: am Telefon fängt derselbe Regler weiter. */
 export const FINGER_FAKTOR = 1.6;
-/** So lange liegt ein Finger, bis der Punkt ohne Einrasten gesetzt wird (wie Alt mit der Maus). */
-export const LANG_DRUECKEN_MS = 450;
 
 /**
  * **Die Schalter des Karteneditors** (T-304): Form, „Closed“, Schneiden,

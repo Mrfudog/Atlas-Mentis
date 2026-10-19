@@ -309,9 +309,10 @@ describe('Nebel je Figur und Kartenregeln (T-204)', () => {
   });
 
   it('liest die Regeln der Kampagne mit Vorgaben; die Karte schlägt beim Aufdecken die Kampagne', () => {
-    expect(mapRulesOf(null)).toEqual({ fog: 'party', moves: 'free', revealOnMove: false, doors: 'players' });
-    expect(mapRulesOf(k({ fog: 'player', moves: 'confirm', revealOnMove: true }))).toEqual({ fog: 'player', moves: 'confirm', revealOnMove: true, doors: 'players' });
+    expect(mapRulesOf(null)).toEqual({ fog: 'party', moves: 'free', revealOnMove: false, doors: 'players', tokenSizes: 'rules' });
+    expect(mapRulesOf(k({ fog: 'player', moves: 'confirm', revealOnMove: true }))).toEqual({ fog: 'player', moves: 'confirm', revealOnMove: true, doors: 'players', tokenSizes: 'rules' });
     expect(mapRulesOf(k({ doors: 'gm' })).doors).toBe('gm');
+    expect(mapRulesOf(k({ tokenSizes: 'tinyHalf' })).tokenSizes).toBe('tinyHalf');
     expect(mapRulesOf(k({ fog: 'quatsch' })).fog).toBe('party');
     expect(mapRulesOf(k({ revealOnMove: true }), karte({ revealOnMove: false })).revealOnMove).toBe(false);
     expect(mapRulesOf(k({}), karte({ revealOnMove: true })).revealOnMove).toBe(true);
