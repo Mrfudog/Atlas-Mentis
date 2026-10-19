@@ -1059,6 +1059,10 @@ export const fieldGroups = {
               onlyIf: { type: 'object', title: 'Only if' },
               /* Gilt, bis jemand anders antwortet. */
               default: { type: 'array', items: { type: 'string' }, title: 'Default' },
+              /* Bei `spell` (T-309): mit welchem Attribut der gewählte Zauber
+                 wirkt (sonst das der Quelle) und wie er gilt. */
+              ability: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
+              mode: { type: 'string', title: 'How it is cast', enum: ['prepared', 'known', 'innate'] },
               note: { type: 'string', title: 'Note' },
             },
           },

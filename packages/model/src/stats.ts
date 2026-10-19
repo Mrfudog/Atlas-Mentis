@@ -21,6 +21,7 @@
 
 import { abilityMod } from './calc.js';
 import { characterLevel, choicesAtCharacter, choiceSources } from './choices.js';
+import { spellcastingOf } from './spellcasting.js';
 import { effectsAt, type ActiveEffect } from './effects.js';
 import { hitPointLevels, maxHitPoints } from './hitpoints.js';
 import { proficienciesOf, proficiencyNames } from './proficiency.js';
@@ -275,6 +276,11 @@ export function characterStats(character: Entity, statblock: Entity | undefined,
     if (acWert !== null && (acFest !== null || acW.add.length || acW.set.length)) neu['ac'] = acWert;
     if (tempoEnd) neu['speed'] = tempoEnd;
     if (sinneEnd) neu['senses'] = sinneEnd;
+    /* Das Zauberwirken aus den Klassen (T-309), wo der Statblock nichts festlegt. */
+    const zw = spellcastingOf(character, statblock, byId);
+    if (zw.ability && !(typeof sb['spellAbility'] === 'string' && sb['spellAbility'])) neu['spellAbility'] = zw.ability;
+    if (zw.slots.some((n) => n > 0) && !(Array.isArray(sb['spellSlots']) && sb['spellSlots'].length)) neu['spellSlots'] = zw.slots;
+    if (zw.casterLevel > 0 && zahl(sb['casterLevel']) === null) neu['casterLevel'] = zw.casterLevel;
     gelesen = { ...statblock, components: { ...statblock.components, Statblock: neu, Abilities: abil, Proficiencies: pr } };
   }
 

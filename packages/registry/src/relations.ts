@@ -171,6 +171,10 @@ export const relations: Record<string, RelationDef> = {
           enum: ['prepared', 'known', 'innate', 'item'],
         },
         uses: { type: 'string', suggest: true, title: 'Uses' },
+        /* Mit welchem Attribut (T-309): das Regelwerk sagt es je Quelle —
+           der Tiefling wirkt mit CHA, auch wenn er Magier ist. Ohne Angabe
+           das Attribut der Quelle, sonst das der Figur. */
+        ability: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
         level: { type: 'number', min: 0, max: 9, title: 'At level' },
         charges: { type: 'number', min: 0, title: 'Charges per cast' },
         fromLevel: { type: 'number', min: 1, max: 20, title: 'From level' },

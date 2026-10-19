@@ -278,7 +278,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [S + 'app.ts']: ['abilityPool', 'allowsEquipment', 'allowsMethod', 'carries', 'chose', 'holds'],
       [W + 'figur/assistent.ts']: ['belongsTo', 'chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       [W + 'artikel/klasseneintrag.ts']: ['chose', 'hasAncestry', 'hasBackground', 'hasClass'],
-      [W + 'artikel/artikel.ts']: ['chose', 'hasClass'],
+      [W + 'artikel/artikel.ts']: ['chose', 'hasAncestry', 'hasClass'],
     },
   },
   {
@@ -533,11 +533,13 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'sheet',
     label: 'Player sheet',
     area: 'play',
-    does: 'draws the header of a character — hit dice from its classes, gold from its inventory and its party’s, spellcasting from the spells it casts, handouts it knows — and blocks what its hands do not allow: spells without a free hand, an untrained shield, an off-hand attack without a light weapon',
+    does: 'draws the header of a character — hit dice from its classes, gold from its inventory and its party’s, spellcasting from its classes and every source that casts (T-309), handouts it knows — and blocks what its hands do not allow: spells without a free hand, an untrained shield, an off-hand attack without a light weapon',
     uses: {
       /* T-247: die Trefferwürfel je Klassenstufe. */
       [M + 'sheet.ts']: ['hasClass'],
-      [W + 'bogen/daten.ts']: ['carries', 'casts', 'composedOf', 'hasClass', 'hasProperty', 'holds', 'memberOfParty'],
+      /* T-309: Zauber und Plätze aus Klasse, Herkunft, Talenten, Gegenständen und Wahlen. */
+      [M + 'spellcasting.ts']: ['carries', 'casts', 'chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'holds'],
+      [W + 'bogen/daten.ts']: ['carries', 'composedOf', 'hasClass', 'hasProperty', 'holds', 'memberOfParty'],
       /* Die Zauberlisten der eigenen Klassen (T-246). */
       [W + 'bogen/zauberliste.ts']: ['hasClass'],
       /* Handouts: Wissen, das an der Figur oder ihrer Gruppe hängt (T-247). */

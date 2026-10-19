@@ -93,6 +93,9 @@ export interface Choice {
    * stehen sofort da.
    */
   default?: string[];
+  /** Bei `spell` (T-309): das Attribut des gewählten Zaubers (sonst das der Quelle) und wie er gilt. */
+  ability?: string;
+  mode?: 'prepared' | 'known' | 'innate';
   note?: string;
 }
 

@@ -361,6 +361,9 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown, nurWenn?: { choic
   for (const block of liste(roh)) {
     const fest: string[] = [];
     const b = block as Knoten;
+    /* Mit welchem Attribut (T-309): `ability: "cha"`; eine Wahl
+       (`{choose: [...]}`) bleibt offen — dann gilt das der Quelle. */
+    const attr = typeof b['ability'] === 'string' && ATTR.includes(b['ability']) ? b['ability'] : undefined;
     for (const modus of ['innate', 'known', 'prepared', 'expanded'] as const) {
       const nachStufe = b[modus] as Record<string, unknown> | undefined;
       if (!nachStufe) continue;
@@ -387,6 +390,7 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown, nurWenn?: { choic
                 kind: 'spell',
                 level: ab && ab >= 1 && ab <= 20 ? ab : undefined,
                 count: Number((s as Knoten)['count'] ?? 1),
+                ability: attr,
                 from: { interfaces: ['Spell'] },
                 ...(nurWenn ? { onlyIf: nurWenn } : {}),
                 note: [c.split('|').map((t) => t.replace('=', ' ').replace(/;/g, ' or ')).join(', '), uses].filter(Boolean).join(' · '),
@@ -397,6 +401,7 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown, nurWenn?: { choic
               wahl(wb, ent, 'spells', {
                 kind: 'spell',
                 count: Number((c as Knoten)['count'] ?? 1),
+                ability: attr,
                 from: { interfaces: ['Spell'] },
                 ...(nurWenn ? { onlyIf: nurWenn } : {}),
                 note: [`one of ${liste((c as Knoten)['from']).map(String).join(', ')}`, uses].filter(Boolean).join(' · '),
@@ -416,6 +421,7 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown, nurWenn?: { choic
             continue;
           }
           const props: Record<string, unknown> = { mode: modus === 'expanded' ? 'known' : modus };
+          if (attr) props['ability'] = attr;
           if (uses) props['uses'] = uses;
           if (ab && ab >= 1 && ab <= 20) props['fromLevel'] = ab;
           wb.kante(ent, 'casts', ziel.id, props);
@@ -423,7 +429,7 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown, nurWenn?: { choic
       }
     }
     if (nurWenn && fest.length) {
-      wahl(wb, ent, 'spells', { kind: 'spell', count: fest.length, from: { interfaces: ['Spell'] }, default: fest, onlyIf: nurWenn, note: 'given with this option' });
+      wahl(wb, ent, 'spells', { kind: 'spell', count: fest.length, from: { interfaces: ['Spell'] }, default: fest, onlyIf: nurWenn, ability: attr, note: 'given with this option' });
     }
   }
 }

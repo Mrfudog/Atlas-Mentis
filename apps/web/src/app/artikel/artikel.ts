@@ -29,7 +29,7 @@ import {
   isMap,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
-import { isDesignedView, layoutFor as anordnungFuer, viewFor, viewsFor } from '@nw/model';
+import { isDesignedView, layoutFor as anordnungFuer, spellcastingOf, viewFor, viewsFor, withCastRelations } from '@nw/model';
 import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
@@ -1424,7 +1424,12 @@ export class Artikel implements SchnellKontext {
     const r = this.reg();
     if (!e || !r) return [];
     /* Was `when` an diesem Artikel ausschliesst, fällt weg (T-184). */
-    return forArticle(layoutFor(this.entwurfsRegister() ?? r, 'full', primaryInterface(e)).layout, e);
+    /* Eine Figur, wie sie gelesen wird (T-309): ihre Zauber aus Klasse und
+       Herkunft zählen für den Reiter „Spells“ wie eigene Kanten `casts`. */
+    const gelesen = (e.relations ?? []).some((k) => k.type === 'hasClass' || k.type === 'hasAncestry')
+      ? withCastRelations(e, spellcastingOf(e, undefined, this.bestand.voll()))
+      : e;
+    return forArticle(layoutFor(this.entwurfsRegister() ?? r, 'full', primaryInterface(e)).layout, gelesen);
   });
 
   protected readonly stuecke = computed<Stueck[]>(() => {
