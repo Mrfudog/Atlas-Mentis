@@ -64,6 +64,13 @@
           ]
         },
         {
+          "heading": "Assets on the map",
+          "text": [
+            "On the map's own page (editing), Tokens › Add asset places a crate, a table or a lantern; Tokens › Asset sets the one you tap: size in squares, height ÷ width, rotation, Movable in play, and Blocks — like a wall, a window, an obstacle or an invisible wall. Drag any asset there to move it.",
+            "Assets are fixed by default. In Play, only an asset marked Movable in play can be dragged — always by the GM, and by players when the campaign lets them move more than their own character and moves need no confirmation. It moves on the map in play, not on the original. Give an asset light with Fog › Light source."
+          ]
+        },
+        {
           "heading": "Light and darkvision",
           "text": [
             "Fog › Lighting sets the map bright, dim or dark. Light source: set bright and dim light in squares, then tap a token or marker — it sheds that light, blocked by walls but not by windows. 0 and 0 takes the light away.",

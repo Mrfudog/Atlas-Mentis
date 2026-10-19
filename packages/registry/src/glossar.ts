@@ -81,6 +81,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Sperre' },
   },
   {
+    term: 'Map asset',
+    aliases: ['Fixed asset', 'Movable asset', 'Movable in play'],
+    sort: 'app',
+    definition: 'Scenery placed on a map — a crate, a table, a lantern: drawn as it is, sized in squares, turned freely. Fixed by default; marked “Movable in play”, it can be pushed during play.',
+    effect: 'While editing the map, every asset can be dragged, turned and sized (Tokens › Asset). In play only movable ones move — by the GM always, by players when the campaign lets them move more than their own character. “Blocks” makes its outline a wall of a kind: an obstacle holds movement, a wall sight and light too.',
+    translations: { de: 'Asset auf der Karte' },
+  },
+  {
     term: 'Light source',
     aliases: ['Light on/off', 'Carried light'],
     sort: 'app',

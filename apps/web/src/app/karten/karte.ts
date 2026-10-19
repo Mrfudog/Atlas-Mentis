@@ -16,6 +16,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import {
   addMarker,
+  blockingWalls,
   clearPlayTokens,
   coverAll,
   coverArea,
@@ -67,6 +68,7 @@ import {
   hasSightWalls,
   lightIsOff,
   markerHasLight,
+  setAssetProps,
   setLightOff,
   litAreas,
   LIGHTING_LEVELS,
@@ -152,6 +154,7 @@ type Werkzeug =
   | 'setzen'
   | 'tokenWeg'
   | 'tokenGroesse'
+  | 'asset'
   | 'aufdecken'
   | 'pinsel'
   | 'zudecken'
@@ -377,6 +380,15 @@ interface Zeiger {
               <button type="button" [class.an]="werkzeug() === 'setzen'" [attr.aria-pressed]="werkzeug() === 'setzen'" (click)="waehle('setzen')" title="Tap the map where the marker goes">
                 Add marker
               </button>
+              <!-- **Assets** (T-306): Kiste, Tisch, Laterne — liegen, wie man sie hinlegt, und sind fix, bis „Movable in play“ es anders sagt. -->
+              @if (bearbeitung()) {
+                <button type="button" [class.an]="werkzeug() === 'setzen' && setzenArt() === 'scenery'" [attr.aria-pressed]="werkzeug() === 'setzen' && setzenArt() === 'scenery'" (click)="assetSetzen()" title="Tap the map where the asset goes — a crate, a table, a lantern">
+                  Add asset
+                </button>
+                <button type="button" [class.an]="werkzeug() === 'asset'" [attr.aria-pressed]="werkzeug() === 'asset'" (click)="waehle('asset')" title="Tap an asset to size, turn, fix or free it and say what it blocks">
+                  Asset
+                </button>
+              }
               @if (offeneTeilnehmer().length) {
                 <button type="button" (click)="teilnehmerSetzen()" [title]="'Put ' + offeneTeilnehmer().length + ' combatants of ' + (kontext()?.turn?.name ?? 'the fight') + ' on the map'">
                   Place combatants ({{ offeneTeilnehmer().length }})
@@ -410,6 +422,39 @@ interface Zeiger {
                 </button>
               }
             </div>
+            @if (werkzeug() === 'asset' && gewaehltesAsset(); as a) {
+              <div class="asset-blatt" role="group" aria-label="Asset settings">
+                <strong>{{ a.name }}</strong>
+                <label>
+                  Squares wide
+                  <input type="number" class="zahl" min="0.25" max="40" step="0.25" [value]="a.size" (change)="assetSetzenProp(a.rel.id, { size: +$any($event.target).value || 1 })" aria-label="Width in squares" />
+                </label>
+                <label>
+                  Height ÷ width
+                  <input type="number" class="zahl" min="0.1" max="10" step="0.1" [value]="a.ratio" (change)="assetSetzenProp(a.rel.id, { ratio: +$any($event.target).value || 1 })" aria-label="Height divided by width" />
+                </label>
+                <label>
+                  Rotation
+                  <input type="number" class="zahl" min="-360" max="360" step="15" [value]="a.rot" (change)="assetSetzenProp(a.rel.id, { rot: (+$any($event.target).value || 0) % 360 })" aria-label="Rotation in degrees" />
+                </label>
+                <button type="button" (click)="assetSetzenProp(a.rel.id, { rot: (a.rot - 15) % 360 })" aria-label="Turn left 15°" title="Turn left 15°">⟲</button>
+                <button type="button" (click)="assetSetzenProp(a.rel.id, { rot: (a.rot + 15) % 360 })" aria-label="Turn right 15°" title="Turn right 15°">⟳</button>
+                <label title="Fixed assets stay where they are in play; movable ones can be pushed — by the GM always, by players if the campaign lets them move more than their own figure.">
+                  <input type="checkbox" [checked]="a.movable" (change)="assetSetzenProp(a.rel.id, { movable: $any($event.target).checked })" />
+                  Movable in play
+                </label>
+                <label title="What the asset's outline blocks, like a wall of that kind">
+                  Blocks
+                  <select (change)="assetSetzenProp(a.rel.id, { blocks: $any($event.target).value || null })" aria-label="What the asset blocks">
+                    <option value="" [selected]="!a.blocks">nothing</option>
+                    @for (k of ASSET_SPERREN; track k.key) {
+                      <option [value]="k.key" [selected]="a.blocks === k.key">{{ k.label }} — {{ k.does }}</option>
+                    }
+                  </select>
+                </label>
+                <p class="hint">Light: Fog › Light source. Drag the asset to move it.</p>
+              </div>
+            }
             @if (bewegungOffen() && kampfLeitung()) {
               <div class="bewegung-blatt" role="group" aria-label="Movement settings">
                 <label>
@@ -611,8 +656,8 @@ interface Zeiger {
 
           @if (werkzeug() === 'setzen' && setzenBei()) {
             <div class="setzen">
-              <p>Which article does the marker stand for?</p>
-              <nw-board-suche [ohne]="schonDa()" [gruppieren]="true" (gewaehlt)="setzen($event)" />
+              <p>{{ setzenArt() === 'scenery' ? 'Which asset goes here? The same one may stand many times.' : 'Which article does the marker stand for?' }}</p>
+              <nw-board-suche [ohne]="setzenArt() === 'scenery' ? nurKarte() : schonDa()" [gruppieren]="true" (gewaehlt)="setzen($event)" />
               <button type="button" (click)="setzenBei.set(null)">Cancel</button>
             </div>
           }
@@ -846,6 +891,7 @@ interface Zeiger {
                     [class.selbst]="m.selbst"
                     [class.rund]="m.rund"
                     [class.beringt]="!!m.ring"
+                    [class.gewaehlt]="werkzeug() === 'asset' && assetWahl() === m.rel.id"
                     [style.left.%]="m.x * 100"
                     [style.top.%]="m.y * 100"
                     [style.width.px]="m.px"
@@ -856,7 +902,7 @@ interface Zeiger {
                     [title]="m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
-                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : kurzansicht($event, m.to)"
+                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : werkzeug() === 'asset' ? assetWaehlen(m) : kurzansicht($event, m.to)"
                   >
                     @if (m.bild) {
                       <img [src]="m.bild" alt="" draggable="false" [style]="m.bildStil" />
@@ -919,7 +965,7 @@ interface Zeiger {
         } @else if (werkzeug() === 'messen') {
           {{ messung()?.text || 'Tap a start point, then an end point.' }}
         } @else if (werkzeug() === 'setzen') {
-          {{ setzenZiel() ? 'Tap the map where ' + setzenName() + ' goes.' : setzenBei() ? 'Pick the article below.' : 'Tap the map where the marker goes.' }}
+          {{ setzenZiel() ? 'Tap the map where ' + setzenName() + ' goes.' : setzenBei() ? 'Pick the article below.' : setzenArt() === 'scenery' ? 'Tap the map where the asset goes.' : 'Tap the map where the marker goes.' }}
         } @else if (werkzeug() === 'aufdecken') {
           Drag a rectangle to reveal it to the players.
         } @else if (werkzeug() === 'pinsel') {
@@ -942,6 +988,8 @@ interface Zeiger {
           Tap a wall to remove it.
         } @else if (werkzeug() === 'tokenGroesse') {
           Tap a token: it covers {{ groesseWahl() === null ? 'the squares its statblock size needs' : groesseWahl() + ' × ' + groesseWahl() + ' squares' }}.
+        } @else if (werkzeug() === 'asset') {
+          {{ gewaehltesAsset() ? 'Set the asset above; tap another to switch.' : 'Tap an asset to set it up. Drag one to move it.' }}
         } @else if (werkzeug() === 'tokenWeg') {
           Tap a marker to take it off the map. The article stays; the party token is not a marker.
         } @else if (werkzeug() === 'licht') {
@@ -1631,18 +1679,31 @@ export class Karte {
        Karte zu schreiben, über `POST /api/maps/:id/move`; wie, sagt die
        Kampagne (`moves`). Wer nicht leitet und bestätigen lassen muss,
        geht denselben Weg, auch wenn er die Karte schreibt. */
+    /* **Assets** (T-306): in der Bearbeitung zieht, wer die Karte schreibt,
+       jedes — auch mit dem Werkzeug „Asset“; unter Play nur ein
+       verschiebbares, und immer über den Server (`movableAssets`), der an
+       der offenen Karte schreibt (der Instanz, T-289). */
+    if (m.kind === 'scenery') {
+      if (ev.button !== 0 || (this.werkzeug() !== 'keins' && this.werkzeug() !== 'asset')) return;
+      if (this.bearbeitung()) {
+        this.griff = { id: m.rel.id, to: m.to, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y }, selbst: false, span: null };
+      } else if (this.ort() === 'play' && m.movable && (this.kontext()?.movableAssets ?? []).includes(m.rel.id) && !this.spielersicht()) {
+        this.griff = { id: m.rel.id, to: m.to, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y }, selbst: true, span: null };
+      } else return;
+      (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId);
+      return;
+    }
     const eigen = this.ziehbarHier().includes(m.to) && !this.spielersicht();
     const selbst = eigen && (!this.darfSchreiben() || (!this.session.leitung() && this.regeln().moves === 'confirm'));
     if ((!this.darfSchreiben() && !eigen) || this.werkzeug() !== 'keins' || ev.button !== 0) return;
     /* **Im Kampf zieht der Plan** (T-198, Runde 2): Spielende bewegen ein
        Token dann nur über den Zugplan — der Server prüft dasselbe
        (`zugSperre`); die Leitung zieht weiter, mit Hinweis. */
-    if (this.imKampf() && !this.kampfLeitung() && m.kind !== 'scenery') {
+    if (this.imKampf() && !this.kampfLeitung()) {
       this.hinweis.set('During the encounter, your token moves through the turn plan.');
       return;
     }
-    /* Möbel rasten nicht: sie liegen, wie man sie hinlegt. */
-    const span = m.kind === 'scenery' ? null : this.tokenPlatz(m.to, m.ownSize);
+    const span = this.tokenPlatz(m.to, m.ownSize);
     this.griff = { id: m.rel.id, to: m.to, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y }, selbst, span };
     (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId);
   }
@@ -1820,7 +1881,9 @@ export class Karte {
            geht, sieht, wo er war — mit Sperren auf der Karte, was er von
            dort sieht (`revealAlong`), sonst so breit wie der Pinsel. */
         const nat = this.nat();
-        if (this.pfadAufdecken() && this.nebelAn()) {
+        /* Ein Asset deckt nichts auf (T-306): es sieht nicht. */
+        const istAsset = markersOf(this.karte()!).some((m) => m.rel.id === g.id && m.kind === 'scenery');
+        if (!istAsset && this.pfadAufdecken() && this.nebelAn()) {
           neu = nat ? revealAlong(neu, [g.von, z.pt], nat, () => `s-${crypto.randomUUID()}`, g.to) : revealArea(neu, this.strichForm([g.von, z.pt], g.to));
         }
         const ausserhalb = this.imKampf() && this.kampfLeitung();
@@ -1988,6 +2051,8 @@ export class Karte {
     this.messFest.set(false);
     this.setzenBei.set(null);
     this.setzenZiel.set(null);
+    this.setzenArt.set('static');
+    this.assetWahl.set(null);
     this.strich.set(null);
     this.wandPunkte.set([]);
     this.wandZeiger.set(null);
@@ -2084,7 +2149,7 @@ export class Karte {
     const geo = gridGeometry(s, this.nat());
     if (!geo) return null;
     const ms = markersOf(e);
-    const grid = planGrid(geo, ms, plan.rel ?? '', mapWalls(e));
+    const grid = planGrid(geo, ms, plan.rel ?? '', blockingWalls(e, this.nat()));
     if (!grid) return null;
     const ich = ms.find((m) => m.rel.id === plan.rel);
     const token = ich ? tokenCell(geo, grid, ich) : null;
@@ -2175,7 +2240,50 @@ export class Karte {
     if (!e || !pt) return;
     this.setzenBei.set(null);
     this.werkzeug.set('keins');
+    /* Ein Asset rastet nicht (es liegt, wie man es hinlegt) und ist fix (T-306). */
+    if (this.setzenArt() === 'scenery') {
+      const id = `r-${crypto.randomUUID()}`;
+      void this.schreiben(addMarker(e, ziel.id, pt, id, 'scenery'));
+      this.setzenArt.set('static');
+      this.werkzeug.set('asset');
+      this.assetWahl.set(id);
+      return;
+    }
     void this.schreiben(addMarker(e, ziel.id, this.tokenRasten(pt, this.tokenPlatz(ziel.id, null)), `r-${crypto.randomUUID()}`));
+  }
+
+  // ------------------------------------------------------ Assets (T-306)
+
+  /** Was „Add marker“ setzt: einen Marker oder ein Asset (`scenery`). */
+  protected readonly setzenArt = signal<'static' | 'scenery'>('static');
+  /** Nur die Karte selbst ist ausgeschlossen: dieselbe Kiste darf zehnmal dastehen. */
+  protected readonly nurKarte = computed<ReadonlySet<string>>(() => new Set([this.id()]));
+  /** Die Sperrarten, die ein Asset halten kann — alle ausser Türen. */
+  protected readonly ASSET_SPERREN = WALL_KINDS.filter((k) => !k.door);
+  /**
+   * **Bearbeitung oder Spiel** (T-306): auf der Seite der Karte wird sie
+   * vorbereitet — jedes Asset zieh-, dreh- und skalierbar; unter Play
+   * bewegt sich nur, was `movable` ist.
+   */
+  protected readonly bearbeitung = computed(() => this.ort() === 'artikel' && this.darfSchreiben() && !this.spielersicht());
+  protected readonly assetWahl = signal<string | null>(null);
+  protected readonly gewaehltesAsset = computed(() => {
+    const id = this.assetWahl();
+    return id ? (this.marker().find((m) => m.rel.id === id && m.kind === 'scenery') ?? null) : null;
+  });
+  protected assetSetzen(): void {
+    const an = this.werkzeug() === 'setzen' && this.setzenArt() === 'scenery';
+    this.waehle(an ? 'setzen' : 'keins');
+    if (an) return this.setzenArt.set('static');
+    this.werkzeug.set('setzen');
+    this.setzenArt.set('scenery');
+  }
+  protected assetWaehlen(m: MapMarker): void {
+    if (m.kind === 'scenery') this.assetWahl.set(m.rel.id);
+  }
+  protected assetSetzenProp(relId: string, patch: Record<string, unknown>): void {
+    const e = this.karte();
+    if (e) void this.schreiben(setAssetProps(e, relId, patch));
   }
 
   // ------------------------------------------------- Tokens am Gitter (T-317)
@@ -2925,7 +3033,8 @@ export class Karte {
     const nat = this.nat();
     this.mangel.set(null);
     this.speichert.set(true);
-    if (this.regeln().moves !== 'confirm') this.entwurf.set(moveMarker(e, rel, to));
+    const asset = markersOf(e).some((m) => m.rel.id === rel && m.kind === 'scenery');
+    if (asset || this.regeln().moves !== 'confirm') this.entwurf.set(moveMarker(e, rel, to));
     try {
       const r = await this.api.moveToken(this.id(), { rel, to, ...(nat ? { nat } : {}) });
       if (r.proposal) this.hinweis.set(VORSCHLAG_GESENDET);
