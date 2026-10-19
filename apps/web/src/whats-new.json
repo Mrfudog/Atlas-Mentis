@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-who-moves-tokens",
+      "date": "2026-10-19",
+      "title": "Choose who moves tokens on the map",
+      "text": "A campaign now says which tokens players may drag: none, their own characters, the party, the party and its allies, or every token — and whether you confirm each move first. As GM, Tokens › Movement on the map shows the setting and changes it at once; a pending move is shown dashed to the whole table.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-19-fog-cropped-image",
       "date": "2026-10-19",
       "title": "Under the fog, players get only what is revealed",

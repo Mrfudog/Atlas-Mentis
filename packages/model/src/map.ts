@@ -1046,10 +1046,19 @@ export type FogMode = 'party' | 'player';
 export type MoveMode = 'free' | 'confirm';
 /** Wer Türen öffnet (T-118, `Campaign.doors`): Spielende an ihrer Figur, oder nur die Leitung. */
 export type DoorMode = 'players' | 'gm';
+/**
+ * **Wer Tokens zieht** (T-290, E-040, `Campaign.tokenMove`): niemand ausser
+ * der Leitung, die eigenen Figuren, die der Gruppe, dazu die Verbündeten,
+ * oder jedes Token der Karte. Jede Stufe schliesst die engere ein.
+ */
+export type TokenMove = 'none' | 'own' | 'party' | 'allies' | 'all';
+export const TOKEN_MOVES: readonly TokenMove[] = ['none', 'own', 'party', 'allies', 'all'];
 
 export interface MapRules {
   fog: FogMode;
   moves: MoveMode;
+  /** Wer ausser der Leitung Tokens zieht (T-290); bestätigt wird nach `moves`. */
+  tokenMove: TokenMove;
   /** Deckt ein Zug den Weg auf? Die Karte darf es überschreiben (`Map.revealOnMove`). */
   revealOnMove: boolean;
   doors: DoorMode;
@@ -1071,10 +1080,36 @@ export function mapRulesOf(campaign: Entity | null | undefined, map?: Entity | n
   return {
     fog: k['fog'] === 'player' ? 'player' : 'party',
     moves: k['moves'] === 'confirm' ? 'confirm' : 'free',
+    tokenMove: TOKEN_MOVES.includes(k['tokenMove'] as TokenMove) ? (k['tokenMove'] as TokenMove) : 'own',
     revealOnMove: typeof eigen === 'boolean' ? eigen : k['revealOnMove'] === true,
     doors: k['doors'] === 'gm' ? 'gm' : 'players',
     tokenSizes: k['tokenSizes'] === 'tinyHalf' ? 'tinyHalf' : 'rules',
   };
+}
+
+/** Wen ein Betrachter zur Frage `mayMoveToken` mitbringt — jede Menge schon gerechnet. */
+export interface TokenMovers {
+  /** Die Figuren, die das Konto führt (`app_user_actor`). */
+  own: ReadonlySet<EntityId>;
+  /** Die Gruppe der Kampagne und ihre Mitglieder (`memberOfParty`). */
+  party: ReadonlySet<EntityId>;
+  /** Wer auf der Seite der Gruppe steht (`participates.props.ally`, Spielerfiguren). */
+  allies: ReadonlySet<EntityId>;
+}
+
+/**
+ * **Darf dieses Token gezogen werden?** (T-290, E-040) — die eine Stelle,
+ * an der Server und Seite die Stufe lesen. Die Leitung fragt nicht: sie
+ * zieht immer. `none` lässt auch die eigene Figur stehen; jede weitere
+ * Stufe nimmt die engere mit. Ob der Zug sofort gilt oder ein Vorschlag
+ * ist, sagt `moves` — das ist eine zweite Frage.
+ */
+export function mayMoveToken(mode: TokenMove, target: EntityId, who: TokenMovers): boolean {
+  if (mode === 'none') return false;
+  if (mode === 'all' || who.own.has(target)) return true;
+  if (mode === 'own') return false;
+  /* Verbündete schliessen die Gruppe ein. */
+  return who.party.has(target) || (mode === 'allies' && who.allies.has(target));
 }
 
 /** Wie breit ein Zug aufdeckt, in Anteilen der Breite: zwei Felder (wie der Pinsel vorgegeben). */

@@ -2097,9 +2097,13 @@ export interface KartenKontext {
   combatants: { id: string; name: string; placed: boolean }[];
   /** Die Kartenregeln der Kampagne (T-204). Fehlt bei einem älteren Server. */
   rules?: MapRules;
-  /** Die eigenen Figuren mit Token hier — die darf der Betrachter ziehen (T-204). */
+  /** Die eigenen Figuren mit Token hier (T-204). */
   own?: string[];
-  /** Offene Zugvorschläge: für die Leitung alle, für Spielende die eigenen (T-204). */
+  /** Was der Betrachter ziehen darf, nach `Campaign.tokenMove` (T-290) — gerechnet am Server. */
+  movable?: string[];
+  /** Die laufende Kampagne, deren Regeln gelten (T-290: Absprung „Movement"). */
+  campaign?: string | null;
+  /** Offene Zugvorschläge, für jeden, der das Token sieht (T-204, T-290). */
   proposals?: { plan: string; actor: string; actorName: string; by: string; to: { x: number; y: number } }[];
   /** Dunkelsicht in Fuss je Figur, deren Sicht die Seite zeichnet (T-216). Fehlt bei einem älteren Server. */
   darkvision?: Record<string, number>;

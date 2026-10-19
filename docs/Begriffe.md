@@ -494,6 +494,16 @@ Liste im Code. Dass es zwei Dinge bleiben, ist Absicht: dasselbe Bild darf
 zwei Karten tragen, eine mit Raster für den Kampf und eine ohne für die
 Reise.
 
+**Wer zieht, ist eine Stufe und keine Liste** (T-290, E-040). Die
+Leitung wollte an der Kampagne sagen, wer ziehen darf — eigene Figuren,
+die der Gruppe, Verbündete oder alle. Eine Liste erlaubter Tokens an der
+Karte wäre die zweite Stelle, die beim nächsten Gefährten nachgezogen
+werden muss; die Stufe rechnet aus dem, was ohnehin dasteht (Konto,
+Gruppe, Seite an der Begegnung). Jede Stufe schliesst die engere ein,
+weil niemand den Hund ziehen lassen will, die eigene Figur aber nicht.
+Ob die Leitung bestätigt, war schon eine Einstellung (`moves`) — sie
+blieb, statt neben `tokenMoveConfirm` ein zweites Mal dazustehen.
+
 **Wer was aufgedeckt sieht, ist eine Frage an die Form** (T-204). Ein
 Nebel je Figur hätte auch je Figur eine Liste aufgedeckter Formen sein
 können — dann stünde dasselbe Stück Gang so oft da, wie Figuren es

@@ -508,6 +508,15 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   `confirm` legt einen Vorschlag an — gestrichelt vom Token zum Ziel, mit
   ✓ und ✗ für die Leitung, gespeichert als Zugplan mit einem Schritt
   (T-198), live über den Kanal. Im Kampf gilt ohnehin der Zugplan.
+- **Wer zieht** (`Campaign.tokenMove`, T-290, E-040): nur die Leitung,
+  die eigenen Figuren (Vorgabe), die Gruppe, dazu die Verbündeten (wer an
+  der Begegnung `Ally` trägt) oder jedes Token. Der Server rechnet es
+  (`mayMoveToken`) und schickt der Seite die ziehbaren (`movable`); im
+  Kampf plant man für dieselben über den Zugplan. In der Werkzeuggruppe
+  *Tokens* zeigt die Leitung der Knopf *Movement: own · confirm* den
+  Stand und öffnet ihn als kleines Blatt — geändert wird an der
+  Kampagne, für alle sofort. Den Vorschlag sieht jeder, der das Token
+  sieht.
 - **Gezeichnet auf einer Leinwand** (T-204): der Nebel war ein
   SVG-Rechteck mit `mask="url(#…)"`; unter `<base href="/">` löst nicht
   jeder Browser den Verweis gegen das eigene Dokument auf, und dann deckte

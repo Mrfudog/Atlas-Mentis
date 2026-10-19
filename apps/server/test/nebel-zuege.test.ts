@@ -101,7 +101,7 @@ describe('Nebel je Gruppe oder je Figur (T-204)', () => {
   it('der Kontext nennt die Regeln und die eigenen Figuren', async () => {
     const { rufe } = await aufbau({ fog: 'player', moves: 'confirm', revealOnMove: true });
     const k = (await rufe('Sela', 'GET', '/api/maps/map_1/context')).json();
-    expect(k.rules).toEqual({ fog: 'player', moves: 'confirm', revealOnMove: true, doors: 'players', tokenSizes: 'rules' });
+    expect(k.rules).toEqual({ fog: 'player', moves: 'confirm', tokenMove: 'own', revealOnMove: true, doors: 'players', tokenSizes: 'rules' });
     expect(k.own).toEqual(['pc_rook']);
     expect(k.proposals).toEqual([]);
   });
@@ -142,7 +142,8 @@ describe('Züge ausserhalb eines Kampfes (T-204)', () => {
     const gm = (await rufe('Gwen', 'GET', '/api/maps/map_1/context')).json();
     expect(gm.proposals).toEqual([{ plan, actor: 'pc_rook', actorName: 'Rook', by: 'Sela', to: { x: 0.3, y: 0.1 } }]);
     expect((await rufe('Sela', 'GET', '/api/maps/map_1/context')).json().proposals).toHaveLength(1);
-    expect((await rufe('Tam', 'GET', '/api/maps/map_1/context')).json().proposals).toEqual([]);
+    /* Seit T-290 sieht den Vorschlag jeder, der das Token sieht — gestrichelt, entschieden wird nicht. */
+    expect((await rufe('Tam', 'GET', '/api/maps/map_1/context')).json().proposals).toHaveLength(1);
 
     /* Ein zweiter Zug ersetzt den offenen Vorschlag, statt einen weiteren anzulegen. */
     const zwei = await rufe('Sela', 'POST', '/api/maps/map_1/move', { rel: 'mk_rook', to: { x: 0.32, y: 0.1 }, nat: { w: 1400, h: 840 } });

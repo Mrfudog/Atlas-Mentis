@@ -60,7 +60,7 @@ import {
   type PlanStep,
 } from '@nw/model';
 import type { Repository } from './repo.js';
-import { plaeneDerKarte } from './zugplan.js';
+import { darfZiehen, plaeneDerKarte, zieher } from './zugplan.js';
 
 const SESSION_TYPE = 'Session';
 
@@ -114,9 +114,17 @@ export interface KartenKontext {
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
   /** Die Kartenregeln der Kampagne (T-204): Nebel je Gruppe oder Figur, Züge, Aufdecken beim Zug — ohne `Map.revealOnMove`, das liest die Seite an der Karte. */
   rules: MapRules;
-  /** Die Figuren des Betrachters mit Token auf dieser Karte — die darf er ziehen (T-204). */
+  /** Die Figuren des Betrachters mit Token auf dieser Karte (T-204). */
   own: string[];
-  /** Offene Zugvorschläge: für die Leitung alle, für Spielende die ihrer Figuren (T-204). */
+  /**
+   * **Was der Betrachter ziehen darf** (T-290): die Ziele der Tokens, die
+   * `Campaign.tokenMove` ihm lässt — für die Leitung jedes. Gerechnet am
+   * Server (`darfZiehen`); die Seite fragt nicht selbst.
+   */
+  movable: string[];
+  /** Die laufende Kampagne, deren Regeln gelten — dorthin springt „Movement" der Leitung (T-290). */
+  campaign: string | null;
+  /** Offene Zugvorschläge, gestrichelt für jeden, der das Token sieht (T-204, T-290). */
   proposals: ZugVorschlag[];
   /** Nur für die Leitung: wer am Kampf teilnimmt, und ob er hier schon ein Token hat. */
   combatants: { id: string; name: string; placed: boolean }[];
@@ -290,12 +298,19 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const rules = mapRulesOf(kampagne);
     const meine = new Set(await eigeneFiguren(request));
     const own = [...new Set(markersOf(karte).map((m) => m.to))].filter((id) => meine.has(id));
+    const aufDerKarte = [...new Set(markersOf(karte).filter((m) => m.kind !== 'scenery').map((m) => m.to))];
+    /* **Wer zieht** (T-290): gefragt an der gesiebten Karte — was nicht
+       dasteht, zieht niemand ausser der Leitung. */
+    const wer = zieher(stand, kampagne, karte, meine);
+    const movable = aufDerKarte.filter((id) => darfZiehen(leitetKarte, rules, id, wer));
+    /* Ein Vorschlag steht für jeden da, der das Token sieht (T-290: „für
+       alle sichtbar") — mit dem Namen, den der Betrachter kennt. */
     const proposals: ZugVorschlag[] = (await plaeneDerKarte(repo, roheKarte.id))
       .filter((p) => p.state === 'planned' && p.steps.length === 1 && p.steps[0]!.kind === 'move' && !!p.steps[0]!.to)
-      .filter((p) => leitetKarte || meine.has(p.actor))
+      .filter((p) => leitetKarte || !!targets[p.actor])
       .map((p) => {
         const s = p.steps[0] as Extract<PlanStep, { kind: 'move' }>;
-        return { plan: p.plan, actor: p.actor, actorName: p.actorName, by: p.by.name, to: s.to! };
+        return { plan: p.plan, actor: p.actor, actorName: leitetKarte ? p.actorName : (targets[p.actor]?.name ?? p.actorName), by: p.by.name, to: s.to! };
       });
     /* **Dunkelsicht** (T-216): die Seite rechnet die laufende Sicht selbst
        (`figureView`) und braucht dafür die Reichweite der Figur. */
@@ -307,7 +322,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
-    return { parents, children: kinder, targets, party, turn, combatants, rules, own, proposals, darkvision, lights } satisfies KartenKontext;
+    return { parents, children: kinder, targets, party, turn, combatants, rules, own, movable, campaign: kampagne?.id ?? null, proposals, darkvision, lights } satisfies KartenKontext;
   });
 
   /**

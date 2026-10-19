@@ -3005,6 +3005,17 @@ export const fieldGroups = {
           enum: ['free', 'confirm'],
           default: 'free',
         },
+        /* **Wer Tokens zieht** (T-290, E-040): ausser der Leitung niemand,
+           die eigenen Figuren, die der Gruppe, dazu die Verbündeten
+           (`participates.props.ally`) oder jedes Token. Ob ein Zug sofort
+           gilt, sagt weiter `moves`. Gelesen über `mapRulesOf`/`mayMoveToken`. */
+        tokenMove: {
+          type: 'string',
+          title: 'Who moves tokens',
+          description: 'Which tokens players may move on a map: none, their own characters, the party, the party and its allies, or every token. The GM always moves everything.',
+          enum: ['none', 'own', 'party', 'allies', 'all'],
+          default: 'own',
+        },
         revealOnMove: {
           type: 'boolean',
           title: 'Moves reveal the way',
