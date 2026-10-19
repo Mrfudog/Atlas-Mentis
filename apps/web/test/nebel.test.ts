@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DUNKEL_FARBE, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type NebelKontext } from '../src/app/karten/nebel';
+import { DUNKEL_FARBE, grauMalen, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type NebelKontext } from '../src/app/karten/nebel';
 
 /** Ein Kontext, der mitschreibt, was gezeichnet wird, mit welchem Modus. */
 function aufnahme(): NebelKontext & { log: string[] } {
@@ -116,5 +116,24 @@ describe('Licht hinter einer Klammer (T-216)', () => {
     const i = k.log.indexOf('save');
     expect(k.log.slice(i).filter((x) => ['save', 'clip', 'restore'].includes(x))).toEqual(['save', 'clip', 'restore']);
     expect(k.log.indexOf('clip')).toBeLessThan(k.log.indexOf('fill destination-out'));
+  });
+});
+
+describe('Dunkelsicht in Graustufen (T-305)', () => {
+  it('füllt die Dunkelsicht grau und schneidet die Lichter wieder heraus', () => {
+    const k = aufnahme();
+    const dv: Array<readonly [number, number]> = [[0, 0], [0.5, 0], [0.5, 0.5]];
+    const licht: Array<readonly [number, number]> = [[0.1, 0.1], [0.2, 0.1], [0.2, 0.2]];
+    grauMalen(k, 100, 100, [dv], [licht]);
+    expect(k.log[0]).toBe('clear 0 0 100 100');
+    expect(k.log).toContain('fill source-over');
+    expect(k.log.indexOf('fill source-over')).toBeLessThan(k.log.indexOf('fill destination-out'));
+    expect(k.globalCompositeOperation).toBe('source-over');
+  });
+
+  it('ohne Dunkelsicht bleibt die Leinwand leer', () => {
+    const k = aufnahme();
+    grauMalen(k, 100, 100, [], [[[0, 0], [1, 0], [1, 1]]]);
+    expect(k.log).toEqual(['clear 0 0 100 100']);
   });
 });

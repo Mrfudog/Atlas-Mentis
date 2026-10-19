@@ -216,6 +216,11 @@ nebel.ts):
    sonst das Gruppen-Token. Bei Nebel je Figur (`Campaign.fog: player`)
    zählt das Gruppen-Token nicht, solange eine eigene Figur dasteht — die
    Spielersicht ist die Vereinigung der eigenen Figuren (T-305).
+   **Auch ohne Nebel endet die Sicht an der Wand** (T-305): hält auf der
+   Karte etwas den Blick, oder ist sie dunkel, deckt die Schicht für
+   Spielende fast ganz zu, was ihre Figuren gerade nicht sehen — ein
+   Licht hinter einer geschlossenen Tür bleibt dunkel. Mit Nebel bleibt es
+   beim Gedämpften (das Gedächtnis).
 3. **Dunkelsicht in Graustufen** (T-305): auf einer dunklen Karte nimmt
    eine dritte Leinwand (`grauMalen`, `mix-blend-mode: saturation`) dem
    Bild die Farbe, wo nur die Dunkelsicht hinreicht; was ein Licht

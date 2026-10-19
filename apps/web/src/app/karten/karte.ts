@@ -64,6 +64,7 @@ import {
   wallKind,
   WALL_KINDS,
   figureView,
+  hasSightWalls,
   lightIsOff,
   markerHasLight,
   setLightOff,
@@ -2544,17 +2545,25 @@ export class Karte {
    * Karte mit Nebel hell, was die eigene Figur gerade sieht; das einmal
    * Aufgedeckte gedämpft. Ohne Figur auf der Karte nichts — dann bleibt das
    * Aufgedeckte hell wie bisher.
+   *
+   * **Auch ohne Nebel endet die Sicht an der Wand** (T-305): hält auf der
+   * Karte etwas den Blick, oder ist sie dunkel, deckt die Schicht für
+   * Spielende alles ausserhalb dessen, was ihre Figuren gerade sehen —
+   * dann gibt es kein Gedächtnis, also fast ganz zu. Ein Licht hinter einer
+   * geschlossenen Tür bleibt so dunkel.
    */
   protected readonly laufendeSicht = computed(() => {
     const e = this.angezeigt();
     const v = this.sichten();
-    if (!e || !fogOn(e) || !v.length) return null;
+    if (!e || !v.length) return null;
+    const nebelAn = fogOn(e);
+    if (!nebelAn && !hasSightWalls(e) && mapLighting(e) !== 'dark') return null;
     const ar = this.seitenverhaeltnis();
     const auf = (p: ReadonlyArray<readonly [number, number]>) => p.map(([x, y]) => [x, y * ar] as const);
     return {
       ar,
-      farbe: NEBEL_FARBE,
-      deckt: 0.55,
+      farbe: nebelAn ? NEBEL_FARBE : DUNKEL_FARBE,
+      deckt: nebelAn ? 0.55 : 0.94,
       schnitte: [
         {
           formen: v.flatMap((x) => x.seen.filter((a) => !a.within).map((a) => auf(a.pts))),
