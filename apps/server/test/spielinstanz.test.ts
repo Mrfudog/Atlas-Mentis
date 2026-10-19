@@ -326,18 +326,35 @@ describe("starting an encounter from its template (T-289)", () => {
   });
 });
 
-describe('maps in play elsewhere (T-289)', () => {
-  it('are not in the map list and draw no second frame on the map above', async () => {
+describe("maps in play elsewhere (T-289)", () => {
+  it("are not in the map list and draw no second frame on the map above", async () => {
     const { hole, nimm, repo } = await aufbau();
-    await repo.putEntity(art('welt', 'Map', 'Welt'));
-    const g = (await repo.getEntity('gruft'))!;
-    await repo.putEntity({ ...g, relations: [...(g.relations ?? []), { id: 'in1', type: 'insideMap', to: 'welt', props: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 } }] });
-    const id = await nimm('s_1', 'gruft');
-    const liste = (await hole('Mira', '/api/maps')).json() as { maps: { id: string; children?: { id: string }[] }[] };
+    await repo.putEntity(art("welt", "Map", "Welt"));
+    const g = (await repo.getEntity("gruft"))!;
+    await repo.putEntity({
+      ...g,
+      relations: [
+        ...(g.relations ?? []),
+        {
+          id: "in1",
+          type: "insideMap",
+          to: "welt",
+          props: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 },
+        },
+      ],
+    });
+    const id = await nimm("s_1", "gruft");
+    const liste = (await hole("Mira", "/api/maps")).json() as {
+      maps: { id: string; children?: { id: string }[] }[];
+    };
     expect(JSON.stringify(liste)).not.toContain(id);
-    const welt = (await hole('Mira', '/api/maps/welt/context')).json() as { children: { id: string }[] };
-    expect(welt.children.map((c) => c.id)).toEqual(['gruft']);
-    const inst = (await hole('Mira', `/api/maps/${id}/context`)).json() as { parents: { id: string }[] };
-    expect(inst.parents.map((p) => p.id)).toEqual(['welt']);
+    const welt = (await hole("Mira", "/api/maps/welt/context")).json() as {
+      children: { id: string }[];
+    };
+    expect(welt.children.map((c) => c.id)).toEqual(["gruft"]);
+    const inst = (await hole("Mira", `/api/maps/${id}/context`)).json() as {
+      parents: { id: string }[];
+    };
+    expect(inst.parents.map((p) => p.id)).toEqual(["welt"]);
   });
 });
