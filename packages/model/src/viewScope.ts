@@ -13,9 +13,9 @@
  * sagt (`InterfaceDef.views`).
  */
 
-import type { Entity, LayoutElement, LayoutWhen, Registry, ViewApplies, ViewDef, ViewPathStep } from './types.js';
+import type { Entity, LayoutAdjust, LayoutElement, LayoutWhen, Registry, ViewApplies, ViewDef, ViewPathStep } from './types.js';
 import { primaryInterface, typeChain } from './entity.js';
-import { layoutFor, viewKeys, whenHolds } from './views.js';
+import { applyAdjust, layoutFor, viewKeys, whenHolds } from './views.js';
 
 /** Wie genau eine Ansicht gilt; die Reihenfolge ist die Rangfolge. */
 export const VIEW_SCOPES = ['article', 'condition', 'type', 'global'] as const;
@@ -45,8 +45,9 @@ export function viewGroup(key: string, def: ViewDef | undefined): string {
 
 /**
  * **Gestaltet?** Eine Ansicht mit Gruppe oder Geltung kommt aus dem
- * Designer (T-268). Ohne den Schalter `experiments.viewDesigner` bieten die
- * Orte sie nicht an — so zeichnet jede Seite wie bisher.
+ * Designer (T-268) und zeichnet ihren Baum selbst (`nw-ansichtsbaum`); die
+ * Ansichten der Orte und ihre Anordnungen je Art zeichnet die Seite wie
+ * bisher. `viewsFor(…, { designed: false })` fragt ohne sie.
  */
 export function isDesignedView(def: ViewDef | undefined): boolean {
   return !!def && (def.group !== undefined || def.applies !== undefined);
@@ -246,6 +247,53 @@ export function isContainer(el: Pick<LayoutElement, 'el'>): boolean {
   return CONTAINER_ELEMENTS.includes(el.el);
 }
 
+/**
+ * **Ein Reiter als Knoten** (T-276): im Baum des Designers steht ein
+ * Element `tabs` mit je Reiter einem Knoten `tab` darunter, dessen Kinder
+ * seine Anordnung sind — so ordnet man in Reitern mit denselben Griffen wie
+ * in einer Section. Gespeichert wird wieder `tabs: [{ id, label, layout }]`
+ * (`treeAsTabs`); den Knoten `tab` gibt es nur im Designer.
+ */
+export const TAB_NODE = 'tab';
+
+/** Hält dieses Element im Baum des Designers Kinder? Behälter, Reiter und ihre Leiste. */
+export function holdsChildren(el: Pick<LayoutElement, 'el'>): boolean {
+  return isContainer(el) || el.el === 'tabs' || (el.el as string) === TAB_NODE;
+}
+
+/** Darf `kind` in `behaelter` stehen? In `tabs` nur Reiter, Reiter nur in `tabs`. */
+function passt(behaelter: Pick<LayoutElement, 'el'>, kind: Pick<LayoutElement, 'el'>): boolean {
+  if (!holdsChildren(behaelter)) return false;
+  return (behaelter.el === 'tabs') === ((kind.el as string) === TAB_NODE);
+}
+
+/** `tabs` mit Reitern → Knoten mit Kindern (für den Designer). */
+export function tabsAsTree(layout: readonly LayoutElement[]): LayoutElement[] {
+  return layout.map((alt) => {
+    const el: LayoutElement = { ...alt };
+    if (el.children) el.children = tabsAsTree(el.children);
+    if (el.el === 'tabs') {
+      el.children = (el.tabs ?? []).map((t) => ({ id: t.id, el: TAB_NODE as LayoutElement['el'], text: t.label, children: tabsAsTree(t.layout) }));
+      delete el.tabs;
+    }
+    return el;
+  });
+}
+
+/** Zurück: die Knoten `tab` unter `tabs` werden wieder `tabs: [{ id, label, layout }]`. */
+export function treeAsTabs(tree: readonly LayoutElement[]): LayoutElement[] {
+  return tree.map((alt) => {
+    const el: LayoutElement = { ...alt };
+    if (el.el === 'tabs') {
+      el.tabs = (el.children ?? [])
+        .filter((k) => (k.el as string) === TAB_NODE)
+        .map((k) => ({ id: k.id, label: k.text ?? 'Tab', layout: treeAsTabs(k.children ?? []) }));
+      delete el.children;
+    } else if (el.children) el.children = treeAsTabs(el.children);
+    return el;
+  });
+}
+
 /** Wo ein Element im Baum steht: die Liste, die es hält, und sein Platz darin. */
 function finde(
   liste: LayoutElement[],
@@ -274,45 +322,157 @@ export function findElement(tree: readonly LayoutElement[], id: string): LayoutE
   return f?.liste[f.i];
 }
 
+export type TreeMove = 'out' | 'into' | 'up' | 'down' | 'remove';
+
 /**
- * **Die vier Griffe des Designers** (T-268): ← aus dem Behälter hinaus
- * (hinter ihn), → in das Element darüber (wenn es ein Behälter ist), ↑ eins
- * nach oben, × weg. Jeder gibt einen neuen Baum; was nicht geht, gibt den
- * alten unverändert zurück.
+ * **Was ein Griff an diesem Element kann** (T-276) — der Designer zeigt
+ * nur, was geht: → nur, wenn das Element darüber ein Behälter ist, der es
+ * nimmt; ← nur, wenn es verschachtelt ist.
  */
-export function moveTree(tree: readonly LayoutElement[], id: string, op: 'out' | 'into' | 'up' | 'remove'): LayoutElement[] {
+export function canMove(tree: readonly LayoutElement[], id: string, op: TreeMove): boolean {
+  const f = finde(tree as LayoutElement[], id);
+  if (!f) return false;
+  const el = f.liste[f.i]!;
+  if (op === 'remove') return true;
+  if (op === 'up') return f.i > 0;
+  if (op === 'down') return f.i < f.liste.length - 1;
+  if (op === 'into') {
+    const davor = f.liste[f.i - 1];
+    if (!davor) return false;
+    if (passt(davor, el)) return true;
+    /* In eine Reiterleiste: in ihren letzten Reiter. */
+    return davor.el === 'tabs' && (el.el as string) !== TAB_NODE && !!davor.children?.length;
+  }
+  /* out: ein Reiter verlässt seine Leiste nicht. */
+  return !!f.eltern && (el.el as string) !== TAB_NODE;
+}
+
+/**
+ * **Die Griffe des Designers** (T-268, T-276): ← aus dem Behälter hinaus
+ * (hinter ihn; aus einem Reiter hinter die Reiterleiste), → in das Element
+ * darüber (wenn es ein Behälter ist), ↑ ↓ eins weiter, × weg. Jeder gibt
+ * einen neuen Baum; was nicht geht (`canMove`), gibt den alten unverändert
+ * zurück.
+ */
+export function moveTree(tree: readonly LayoutElement[], id: string, op: TreeMove): LayoutElement[] {
+  if (!canMove(tree, id, op)) return kopie(tree);
   const neu = kopie(tree);
-  const f = finde(neu, id);
-  if (!f) return neu;
+  const f = finde(neu, id)!;
   const [el] = f.liste.splice(f.i, 1) as [LayoutElement];
   if (op === 'remove') return neu;
-  if (op === 'up') {
-    if (f.i === 0) return kopie(tree);
-    f.liste.splice(f.i - 1, 0, el);
+  if (op === 'up' || op === 'down') {
+    f.liste.splice(op === 'up' ? f.i - 1 : f.i + 1, 0, el);
     return neu;
   }
   if (op === 'into') {
-    const davor = f.liste[f.i - 1];
-    if (!davor || !isContainer(davor)) return kopie(tree);
-    (davor.children ??= []).push(el);
+    const davor = f.liste[f.i - 1]!;
+    const ziel = passt(davor, el) ? davor : davor.children![davor.children!.length - 1]!;
+    (ziel.children ??= []).push(el);
     return neu;
   }
-  /* out */
-  if (!f.eltern) return kopie(tree);
-  const oben = finde(neu, f.eltern.id)!;
+  /* out — aus einem Reiter hinaus heisst: hinter die Reiterleiste. */
+  let anker = f.eltern!;
+  if ((anker.el as string) === TAB_NODE) anker = finde(neu, anker.id)!.eltern ?? anker;
+  const oben = finde(neu, anker.id)!;
   oben.liste.splice(oben.i + 1, 0, el);
   return neu;
 }
 
-/** Ein Element einfügen: in den gewählten Behälter, sonst hinter das gewählte, sonst ans Ende. */
+/**
+ * **Ziehen** (T-276, zusätzlich zu den Griffen): das Element in einen
+ * Behälter (`into`) oder hinter ein anderes (`after`). In sich selbst oder
+ * ein eigenes Kind lässt es sich nicht ziehen; was nicht passt, bleibt.
+ */
+export function moveToElement(tree: readonly LayoutElement[], id: string, target: string, where: 'into' | 'after'): LayoutElement[] {
+  const quelle = findElement(tree, id);
+  if (!quelle || id === target || (quelle.children && findElement(quelle.children, target))) return kopie(tree);
+  const neu = kopie(tree);
+  const f = finde(neu, id)!;
+  const [el] = f.liste.splice(f.i, 1) as [LayoutElement];
+  const t = finde(neu, target);
+  if (!t) return kopie(tree);
+  const ziel = t.liste[t.i]!;
+  if (where === 'into' && passt(ziel, el)) (ziel.children ??= []).push(el);
+  else if (where === 'after' && (t.eltern ? passt(t.eltern, el) : (el.el as string) !== TAB_NODE)) t.liste.splice(t.i + 1, 0, el);
+  else return kopie(tree);
+  return neu;
+}
+
+/**
+ * Ein Element einfügen: in den gewählten Behälter, sonst hinter das
+ * gewählte, sonst ans Ende. In eine Reiterleiste kommt ein Reiter; was
+ * kein Reiter ist, kommt in ihren letzten Reiter.
+ */
 export function insertElement(tree: readonly LayoutElement[], el: LayoutElement, at?: string | null): LayoutElement[] {
   const neu = kopie(tree);
   const f = at ? finde(neu, at) : null;
   if (!f) return [...neu, el];
   const ziel = f.liste[f.i]!;
-  if (isContainer(ziel)) (ziel.children ??= []).push(el);
+  if (passt(ziel, el)) (ziel.children ??= []).push(el);
+  else if (ziel.el === 'tabs' && ziel.children?.length) (ziel.children[ziel.children.length - 1]!.children ??= []).push(el);
+  else if ((el.el as string) === TAB_NODE && f.eltern && passt(f.eltern, el)) f.liste.splice(f.i + 1, 0, el);
+  else if ((el.el as string) === TAB_NODE) return kopie(tree);
   else f.liste.splice(f.i + 1, 0, el);
   return neu;
+}
+
+/** Alle Ids eines Baums, auch in Kindern und Reitern. */
+function alleIds(tree: readonly LayoutElement[], raus = new Map<string, LayoutElement>()): Map<string, LayoutElement> {
+  for (const el of tree) {
+    raus.set(el.id, el);
+    if (el.children) alleIds(el.children, raus);
+    for (const t of el.tabs ?? []) alleIds(t.layout, raus);
+  }
+  return raus;
+}
+
+/** Gleich, ohne auf die Reihenfolge der Schlüssel zu achten. */
+function gleich(a: unknown, b: unknown): boolean {
+  const norm = (x: unknown): unknown =>
+    Array.isArray(x)
+      ? x.map(norm)
+      : x && typeof x === 'object'
+        ? Object.fromEntries(
+            Object.entries(x as Record<string, unknown>)
+              .filter(([, v]) => v !== undefined)
+              .sort(([k1], [k2]) => (k1 < k2 ? -1 : 1))
+              .map(([k, v]) => [k, norm(v)]),
+          )
+        : x;
+  return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
+}
+
+/**
+ * **Eine Anordnung als Anpassung sagen** (T-276): aus der geerbten
+ * Anordnung (`basis`) und dem, was der Designer daraus gemacht hat
+ * (`tree`, gespeicherte Form mit `tabs`), die Abweichung — weggelassene
+ * Elemente (`drop`), Felder, die ein Element dazunimmt (`add`), Elemente,
+ * die nur hier stehen (`extra`), die Reihenfolge (`order`). `hide` bleibt,
+ * wie es war. Lässt sich der Baum so nicht sagen (ein Element anders
+ * eingestellt, verschoben, Felder umsortiert), gibt es `null`: dann ist es
+ * eine eigene Anordnung.
+ */
+export function adjustFrom(basis: readonly LayoutElement[], tree: readonly LayoutElement[], hide?: readonly string[]): LayoutAdjust | null {
+  const inBasis = alleIds(basis);
+  const inTree = alleIds(tree);
+  const adj: LayoutAdjust = {};
+  const drop = [...inBasis.keys()].filter((id) => !inTree.has(id));
+  if (drop.length) adj.drop = drop;
+  if (hide?.length) adj.hide = [...hide];
+  const add: Record<string, string[]> = {};
+  for (const [id, el] of inTree) {
+    const b = inBasis.get(id);
+    if (!b || (el.el !== 'fields' && el.el !== 'prose') || !Array.isArray(el.fields)) continue;
+    const vorher = Array.isArray(b.fields) ? b.fields : [];
+    const dazu = el.fields.filter((x) => !vorher.includes(x));
+    if (dazu.length) add[id] = dazu;
+  }
+  if (Object.keys(add).length) adj.add = add;
+  const extra = tree.filter((el) => !inBasis.has(el.id));
+  if (extra.length) adj.extra = kopie(extra);
+  if (gleich(applyAdjust(basis, adj), tree)) return adj;
+  adj.order = tree.map((el) => el.id);
+  return gleich(applyAdjust(basis, adj), tree) ? adj : null;
 }
 
 /** Ein Element ändern (nach `id`); `null` in `patch` nimmt eine Angabe weg. */
