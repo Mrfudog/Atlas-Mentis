@@ -23,7 +23,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | [[F-043 Bücher & Leseansicht]] — Eine Ebene als Buch lesen, Kapitel aus Teilen. | 1 | 8 | 1 steht |
 | [[F-044 Klassen]] — Klassenansicht mit Stufentabelle und Unterklassen. | 1 | 3 | 1 steht |
 | [[F-045 Zauber]] — Zauber als Artikel, Zauberlisten. | 2 | 5 | 1 steht · 1 offen |
-| [[F-046 Regelauswertung]] — Effekte, Bedingungen und Wechselwirkungen von Regeln auswerten. | 6 | 44 | 6 offen |
+| [[F-046 Regelauswertung]] — Effekte, Bedingungen und Wechselwirkungen von Regeln auswerten. | 7 | 57 | 7 offen |
 | [[F-047 Handwerk]] — Rezepte, Material, Fortschritt, Blaupausen lernen. | 5 | 14 | 5 steht |
 | [[F-048 Regelsysteme & Module]] — Regelsysteme und Module als Ebenen, je Sorte ein Modul, gewählt an der Kampagne; Homebrew-Regeln; Rahmen wie Taverne. | 4 | 21 | 4 offen |
 | [[F-049 Masse & Einheiten]] — Masse beim Lesen umrechnen, auch im Fliesstext. | 1 | 2 | 1 offen |
@@ -38,7 +38,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../../docs/Regelsysteme.md), [Datenmodell.md](../../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** [[REQ-018]] Wirkungen von Regeln beschreiben (offen) · [[REQ-092]] Zauber als Artikel (offen) · [[REQ-227]] Masse im Fliesstext umrechnen (offen) · [[REQ-287]] Regelsysteme und Module als Ebenen (offen) · [[REQ-289]] Homebrew-Regeln erfassen (offen) · [[REQ-313]] Zustände als Artikel (teils) · [[REQ-319]] Inventarregeln als wählbares Modul (offen)
+**Offen mit Prio 1–3:** [[REQ-018]] Wirkungen von Regeln beschreiben (offen) · [[REQ-092]] Zauber als Artikel (offen) · [[REQ-227]] Masse im Fliesstext umrechnen (offen) · [[REQ-287]] Regelsysteme und Module als Ebenen (offen) · [[REQ-289]] Homebrew-Regeln erfassen (offen) · [[REQ-313]] Zustände als Artikel (teils) · [[REQ-319]] Inventarregeln als wählbares Modul (offen) · [[REQ-357]] Regelgraphen wirken am Tisch (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
