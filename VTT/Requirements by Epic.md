@@ -134,7 +134,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-43 Stories · 132 Punkte · 25 steht · 5 teils · 10 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+43 Stories · 132 Punkte · 27 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -169,8 +169,8 @@ Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder dar
 | [[REQ-038]] | Wer einen Artikel sieht | Spielleitung | 1 | 2 | steht |
 | [[REQ-350]] | Eine Information gilt für eine Gruppe von Artikeln | Spielleitung | 1 | 3 | steht |
 | [[REQ-351]] | Wissen über Herkunft, Hintergrund, Klasse und Talent | Spielleitung | 1 | 3 | steht |
-| [[REQ-352]] | Reiter Knowledge am Artikel | Spielleitung | 1 | 3 | offen |
-| [[REQ-353]] | Die Seite eines Wissens zeigt alles, was es vereint | Spieler | 1 | 3 | offen |
+| [[REQ-352]] | Reiter Knowledge am Artikel | Spielleitung | 1 | 3 | steht |
+| [[REQ-353]] | Die Seite eines Wissens zeigt alles, was es vereint | Spieler | 1 | 3 | steht |
 | [[REQ-040]] | Wissen zuteilen | Spielleitung | 2 | 3 | steht |
 | [[REQ-156]] | Sichtbarkeit vererben | – | 2 | 2 | verworfen |
 | [[REQ-177]] | Einzelne Felder freigeben | Spielleitung | 2 | 3 | steht |

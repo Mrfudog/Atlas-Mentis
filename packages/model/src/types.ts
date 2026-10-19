@@ -479,6 +479,8 @@ export type LayoutElementKind =
   | 'crafting'
   /** Die Waren eines Ladens mit ihren Preisen und deren Herkunft (T-129). */
   | 'wares'
+  /** Was ein Wissen vereint, ausgeschrieben und gesiebt (T-287). */
+  | 'knowledgeContents'
   | 'board'
   | 'initiative'
   | 'quests'

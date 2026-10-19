@@ -1033,6 +1033,13 @@ Hintergrund, Klasse, Unterklasse und Talent zeigen, und
 `knowledgeHolders` zählt für eine Figur ihre Herkunft samt Grundart, ihren
 Hintergrund, ihre Klassen samt Unterklasse und gewählte Artikel (`chose`)
 — ein Schritt weit, wie Gruppe und Fraktion.
+**Verteilt wird am Artikel, gelesen am Wissen** (T-286, T-287): der Kasten
+Knowledge in der Seitenspalte jedes Artikels (Leitung, `/api/knowledge/of/:id`)
+legt Informationen an, die über `applies.article` für ihn gelten — der
+Artikel selbst bleibt unverändert, auch in einem fremden Regelwerk —, und
+hängt sie an Bündel; die Seite eines `Knowledge` zeichnet mit dem Element
+`knowledgeContents` alles, was es vereint, je Information die Artikel mit genau den
+abgedeckten Feldern, gesiebt am Server (`/api/knowledge/:id/contents`).
 
 `Information.fields` nennt, was sie beansprucht: `Typ` (alle Felder des
 Typs), `Typ.feld`, `Typ.feld#id` (ein Eintrag). **Was keine Information
@@ -2154,7 +2161,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Information` | `Secrets` `Facts` | `fields` `applies` `tier` | `knownBy` | `knowledge` `includes` `loot` | — |
 | `Inventory` | — | `capacity` `copper` `grid` `zones` | `holds` | `carries` | full |
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `hasProperty` `partOf` | — |
-| `Knowledge` | — | — | `knownBy` `includes` | — | — |
+| `Knowledge` | — | — | `knownBy` `includes` | — | full |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
 | `MaterialGroup` | `Rule` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `needs` | — |
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | full |

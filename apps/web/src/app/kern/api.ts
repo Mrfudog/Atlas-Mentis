@@ -431,6 +431,37 @@ export type Handwerk =
       orders: { id: string; name: string; actor: string; progress: number; outcome: string }[];
     };
 
+/** Was der Reiter Knowledge zeigt (`GET /api/knowledge/of/:id`, T-286). */
+export interface Wissensreiter {
+  article: { id: string; name: string };
+  infos: {
+    id: string;
+    name: string;
+    fields: string[];
+    tier: string;
+    /** `attached` über `knowledge`, `article` Geltung genau dieser, `group` eine Regel für viele. */
+    scope: 'attached' | 'article' | 'group';
+    applies?: string;
+    bundles: { id: string; name: string }[];
+    knownBy: { id: string; name: string }[];
+    canEdit: boolean;
+  }[];
+  bundles: { id: string; name: string; canEdit: boolean; knownBy: { id: string; name: string }[] }[];
+}
+
+/** Was ein Wissen vereint (`GET /api/knowledge/:id/contents`, T-287). */
+export interface Wisseninhalt {
+  knowledge: { id: string; name: string };
+  known: boolean;
+  infos: {
+    id: string;
+    name: string;
+    applies?: string;
+    articles: { id: string; name: string; type: string; cells: { ref: string; label: string; text: string; long: boolean }[] }[];
+    more: number;
+  }[];
+}
+
 /** Eine Ebene, aus der eine Fassung kommt (`GET /api/entities/:id/versions`). */
 export interface FassungsEbene {
   id: string;
@@ -1601,6 +1632,23 @@ export class Api {
   /** Die Vorgabe-Schreibebene in der laufenden Kampagne (T-164) — als `player` die eigene Spielerebene. */
   defaultLayer(): Promise<{ layer: { id: string; name: string; player: boolean } | null; campaign: { id: string; name: string } | null }> {
     return this.call('/api/layers/default');
+  }
+  /** Der Reiter Knowledge (T-286): die Informationen eines Artikels und die Bündel. */
+  knowledgeOf(id: string): Promise<Wissensreiter> {
+    return this.call(`/api/knowledge/of/${encodeURIComponent(id)}`);
+  }
+  addInformation(id: string, body: { name?: string; fields: string[]; bundles: string[]; newBundle?: string }): Promise<Wissensreiter> {
+    return this.call(`/api/knowledge/of/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(body) });
+  }
+  updateInformation(info: string, body: { name?: string; fields?: string[]; bundles?: string[]; newBundle?: string; article: string }): Promise<Wissensreiter> {
+    return this.call(`/api/knowledge/info/${encodeURIComponent(info)}`, { method: 'PUT', body: JSON.stringify(body) });
+  }
+  /** Was ein Wissen vereint, gesiebt für diesen Betrachter (T-287). */
+  knowledgeContents(id: string): Promise<Wisseninhalt> {
+    return this.call(`/api/knowledge/${encodeURIComponent(id)}/contents`);
+  }
+  deleteInformation(info: string): Promise<{ ok: true }> {
+    return this.call(`/api/knowledge/info/${encodeURIComponent(info)}`, { method: 'DELETE' });
   }
   /** Die Schreibebene in der laufenden Kampagne und die Ebenen zur Wahl (T-161). */
   writeLayer(): Promise<Schreibstand> {
