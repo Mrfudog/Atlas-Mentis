@@ -22,6 +22,8 @@ import { Gegenstand } from '../artikel/gegenstand';
 import { Kennzahlen } from '../artikel/kennzahlen';
 import { TokenBild } from '../artikel/token-bild';
 import { Lesen } from '../lesen/lesen';
+import { Tabellenzeilen } from '../artikel/tabellenzeilen';
+import { Bild, bildDes } from '../artikel/bild';
 
 /** Ein Wert, wie ihn ein Element zeigt. */
 interface Wert {
@@ -46,16 +48,19 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
 /**
  * **Eine gestaltete Ansicht zeichnen** (T-268, E-103): der Baum aus
  * Elementen — Behälter (Section, Columns, Carousel, Collapsible) und
- * Werte (Tile group, Quote, Badges, Table from edges, Felder), auch über
- * Kanten (`path`). Gebraucht von der Artikelseite (gewählte Ansicht), der
- * Kachel auf dem Board und der Vorschau des Designers.
+ * Werte (Tile group, Quote, Badges, Table from edges, Table, Felder, Bild),
+ * auch über Kanten (`path`). Gebraucht von der Artikelseite (gewählte
+ * Ansicht), der Kachel auf dem Board, der Kurzansicht (Popup, Kompendium,
+ * Kartenmarker), dem Druck und der Vorschau des Designers — ganz für eine
+ * gestaltete Ansicht, sonst für die Elemente, die nur er kennt
+ * (`drawnByTree`, T-310).
  *
  * Zurückgehalten hat der Server (`redactEntity`); auch verknüpfte Artikel
  * kommen über ihn (`Bestand.holen`), also steht da, was gesehen werden darf.
  */
 @Component({
   selector: 'nw-ansichtsbaum',
-  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Lesen],
+  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Lesen, Tabellenzeilen, Bild],
   template: `
     <ng-template #knoten let-el>
       @switch (el.el) {
@@ -111,6 +116,11 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
         @case ('description') {
           @if (beschreibung(); as d) {
             <nw-text class="satz" [text]="d" [scopes]="scopes()" />
+          }
+        }
+        @case ('image') {
+          @if (bild(); as b) {
+            <nw-bild [wert]="b.wert" [version]="b.version" groesse="thumb" [caption]="b.caption" [alt]="b.alt || titel()" />
           }
         }
         @case ('statblock') {
@@ -179,6 +189,12 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
                 </tbody>
               </table>
             }
+          }
+        }
+        @case ('table') {
+          <!-- Die Zeilen einer Tabelle (T-310) — des Artikels, oder über einen Pfad die am Ende. -->
+          @for (t of tabellenVon(el); track t.id) {
+            <nw-tabellenzeilen [artikel]="t" [titel]="el.text || (t.id === artikel().id ? undefined : name(t))" [scopes]="scopes()" />
           }
         }
         @case ('tileGroup') {
@@ -265,6 +281,11 @@ export class Ansichtsbaum {
     const vars = this.artikel().components?.['Vars'] as { bindings?: Record<string, string> } | undefined;
     return { entity: vars?.bindings, campaign: this.reg()?.vars };
   });
+  /** Das Bild des Artikels (T-310) — wie in der Kurzansicht. */
+  protected readonly bild = computed(() => {
+    const r = this.reg();
+    return r ? bildDes(this.artikel(), r, this.bestand.bild().get(this.artikel().id)) : null;
+  });
   protected readonly beschreibung = computed(
     () => (this.artikel().components?.['Description'] as { description?: string } | undefined)?.description ?? '',
   );
@@ -331,6 +352,20 @@ export class Ansichtsbaum {
       werte: el.fields === undefined && el.el === 'edgeTable' ? [] : this.werte(r, h.entity, el),
       props: h.props,
     }));
+  }
+
+  /** Die Tabellen eines Elements `table`: der Artikel selbst, oder die am Ende seines Pfads. */
+  protected tabellenVon(el: LayoutElement): Entity[] {
+    const r = this.reg();
+    if (!r) return [];
+    return followPath(r, this.artikel(), el.path, {
+      get: (id) => (id === this.artikel().id ? this.artikel() : this.bestand.voll().get(id)),
+      incoming: (id) => this.eingehend(id),
+    }).map((h) => h.entity);
+  }
+
+  protected name(e: Entity): string {
+    return entityName(e);
   }
 
   /** Wie `treffer`, ohne Artikel, die nichts zu zeigen haben. */

@@ -193,7 +193,7 @@
         {
           "title": "Views of an article",
           "text": [
-            "In Full edit, a row “Views” above the article lists every view that applies to it, the most specific first (while reading, the row shows once a designed view applies). Full is the page as always; any other draws its own layout.",
+            "A row “View” above every article — on its page and when opened from World, Story, Rules or Play — lists every view that applies to it, the most specific first. Full is the page as always; pick another to see the article in it. The choice stays in the address (?view=) and is not saved; in Full edit the row stands for whoever may change the registry.",
             "“Design this view” opens the view designer beside the article — on a phone as a sheet from below — and the page above shows the draft. Pick another view to start from under Design. Save for every article, for the whole type (its own arrangement, or adjusted: only the difference), for this article only, or as a new view with a condition."
           ]
         }
@@ -247,7 +247,7 @@
         {
           "title": "Views on a card",
           "text": [
-            "A card’s view menu offers the designed views that apply to its article — for example “Shop” on a creature that keeps a shop — and after them the usual ones."
+            "A card’s view menu offers the designed views that apply to its article — for example “Shop” on a creature that keeps a shop — and after them the usual ones. A card on Quick shows the most specific quick view that applies, as the popup does."
           ]
         }
       ]

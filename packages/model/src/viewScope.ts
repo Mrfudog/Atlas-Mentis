@@ -157,6 +157,47 @@ export function viewFor(
   return viewsFor(entity, registry, opts).find((v) => v.group === group)?.key ?? group;
 }
 
+/** Was `pickView` sagt: welche Ansicht, ihre Anordnung für diese Art und woher. */
+export interface ViewPick {
+  key: string;
+  layout: LayoutElement[];
+  /** Die Art, an der die Anordnung steht; `null` heisst: die der Ansicht selbst. */
+  from: string | null;
+  mode: 'view' | 'own' | 'adjusted';
+  /** Aus dem Designer (Gruppe oder Geltung) — dann zeichnet sie ihren Baum ganz. */
+  designed: boolean;
+}
+
+/**
+ * **Die eine Stelle, an der gewählt wird** (T-310, E-103): für einen
+ * Artikel und einen Ort (`quick`, `overview`, `full`, `print`, `search`
+ * oder eine eigene Gruppe) die geltende Ansicht und ihre Anordnung.
+ *
+ * Ein Ort ist eine Gruppe: es gilt die genaueste Ansicht darin
+ * (`viewFor`), sonst die des Ortes selbst. Nennt `place` eine gestaltete
+ * Ansicht, gilt genau sie; `exact` nimmt auch eine Ortsansicht beim Wort —
+ * so die Wahl oben am Artikel, wo „Quick" Quick heisst. Fehlt die Ansicht
+ * im Register, gilt `fallback`.
+ *
+ * Popup, Kompendium-Vorschau, Board-Kachel, Artikelseite und Druck fragen
+ * hier und nicht bei `layoutFor` — sonst sähe eine im Designer gestaltete
+ * Kurzansicht nur, wer die Artikelseite öffnet.
+ */
+export function pickView(
+  entity: Gelesen,
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  place: string,
+  opts: { incoming?: readonly { type: string }[]; exact?: boolean; fallback?: string } = {},
+): ViewPick {
+  const def = registry.views[place];
+  let key = def && (opts.exact || isDesignedView(def)) ? place : viewFor(entity, registry, place, { incoming: opts.incoming });
+  if (!registry.views[key] && opts.fallback && registry.views[opts.fallback]) {
+    key = viewFor(entity, registry, opts.fallback, { incoming: opts.incoming });
+  }
+  const { layout, from, mode } = layoutFor(registry, key, entity.interfaces?.[0] ?? '');
+  return { key, layout, from, mode, designed: isDesignedView(registry.views[key]) };
+}
+
 /** Wie viele Artikel eine Ansicht bekommen — für die Liste im Register. */
 export function appliesCount(
   registry: Pick<Registry, 'interfaces'>,
@@ -246,6 +287,19 @@ export const CONTAINER_ELEMENTS: readonly string[] = ['section', 'columns', 'car
 
 export function isContainer(el: Pick<LayoutElement, 'el'>): boolean {
   return CONTAINER_ELEMENTS.includes(el.el);
+}
+
+/**
+ * **Was nur der Baum zeichnet** (T-310): die Behälter und die Werte, die
+ * der Designer brachte, und die Zeilen einer Tabelle. Steht eins davon in
+ * einer Anordnung, die eine Karte (Vorschau, Kachel, Druck) sonst selbst
+ * zeichnet, zeichnet es `nw-ansichtsbaum` an seiner Stelle — ein
+ * Collapsible in der Kurzansicht ist sonst einfach weg.
+ */
+export const TREE_ELEMENTS: readonly string[] = [...CONTAINER_ELEMENTS, 'tileGroup', 'quote', 'badges', 'edgeTable', 'table'];
+
+export function drawnByTree(el: Pick<LayoutElement, 'el'>): boolean {
+  return TREE_ELEMENTS.includes(el.el);
 }
 
 /**

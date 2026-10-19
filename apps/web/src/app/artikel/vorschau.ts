@@ -7,13 +7,14 @@ import {
   entityName,
   entriesOf,
   fieldTitle,
+  drawnByTree,
   forArticle,
-  layoutFor,
+  pickView,
   primaryInterface,
   proseFields,
   typeChain,
 } from '@nw/model';
-import type { Entity, LayoutElement, Registry, VarScopes } from '@nw/model';
+import type { Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { QuelleText } from '../kern/quellen';
 import { Text } from './text';
@@ -21,12 +22,15 @@ import { Bild, bildDes } from './bild';
 import { ansichtWeg } from '../klassen/ansicht-weg';
 import { Kennzahlen } from './kennzahlen';
 import { TokenBild } from './token-bild';
+import { Ansichtsbaum } from '../ansichten/baum';
 
 /** Was die Seitenspalte und die Überschrift schon sagen. */
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source', 'Status', 'Tags'];
 
 interface Stueck {
-  kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild' | 'kennzahlen' | 'token';
+  kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild' | 'kennzahlen' | 'token' | 'baum';
+  /** Ein Element, das nur der Baum zeichnet (T-310): Collapsible, Columns, Table … */
+  baum?: LayoutElement[];
   key: string;
   bild?: { wert: string; caption: string; alt: string; version?: string };
   text?: string;
@@ -41,16 +45,18 @@ interface Stueck {
  *
  * **Der Ort wählt die Ansicht** (CLAUDE.md): eine Karte neben der Liste ist
  * `quick`, wie eine Karte auf dem Board. Gezeichnet wird die Anordnung, die
- * die Art für `quick` sagt (`layoutFor`) — der Statblock seine Felder und
+ * für den Artikel gilt (`pickView`, T-310: auch eine im Designer gestaltete
+ * der Gruppe `quick`) — der Statblock seine Felder und
  * seine Teile, ein Ort Bild, Beschreibung und Passagen. Kein Sonderfall je
- * Art. „Open article" führt zur Artikelseite (`full`).
+ * Art. Was nur der Baum kennt (ein Collapsible, eine Tabelle), zeichnet
+ * `nw-ansichtsbaum` an seiner Stelle. „Open article" führt zur Artikelseite (`full`).
  *
  * Dieselbe Karte steht im Popup der Kurzansicht (`nw-kurzpopup`, T-093) —
  * überall, wo ein Artikel genannt wird.
  */
 @Component({
   selector: 'nw-vorschau',
-  imports: [RouterLink, Text, QuelleText, KurzLink, Bild, Kennzahlen, TokenBild],
+  imports: [RouterLink, Text, QuelleText, KurzLink, Bild, Kennzahlen, TokenBild, Ansichtsbaum],
   template: `
     <aside class="vorschau" [class.eingebettet]="eingebettet()" aria-label="Preview">
       @if (!eingebettet()) {
@@ -84,6 +90,9 @@ interface Stueck {
             }
             @case ('token') {
               <nw-token [artikel]="e" />
+            }
+            @case ('baum') {
+              <nw-ansichtsbaum [artikel]="e" [layout]="s.baum!" [rueck]="rueckKanten()" />
             }
             @case ('kennzahlen') {
               <nw-kennzahlen [artikel]="e" />
@@ -287,6 +296,11 @@ export class Vorschau {
   private readonly reg = computed<Registry | null>(() => this.bestand.registry());
   protected readonly artikel = computed<Entity | undefined>(() => this.bestand.voll().get(this.id()));
 
+  /** Was auf den Artikel zeigt — für Bedingungen und Pfade über eingehende Kanten. */
+  protected readonly rueckKanten = computed<IncomingEdge[]>(() =>
+    (this.bestand.rueckbezuege().get(this.id()) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id, props: b.relation.props })),
+  );
+
   protected name(e: Entity): string {
     return entityName(e);
   }
@@ -321,13 +335,18 @@ export class Vorschau {
     const raus: Stueck[] = [];
     const flach = (layout: LayoutElement[]): LayoutElement[] =>
       layout.flatMap((el) => (el.el === 'tabs' ? flach(el.tabs?.[0]?.layout ?? []) : [el]));
+    /* Welche Ansicht gilt (T-310): die genaueste der Gruppe, sonst `quick`. */
+    const wahl = pickView(e, r, this.ansicht(), { incoming: this.rueckKanten(), fallback: 'quick' });
     /* Was die Ansicht sagt (T-110): leere Felder zeigen, Ungenanntes am Ende. */
-    const ansicht = r.views[this.ansicht()] ? this.ansicht() : 'quick';
-    const view = r.views[ansicht];
+    const view = r.views[wahl.key];
     const leer = view?.empty === 'show';
     const genommen = new Set<string>();
-    for (const el of flach(forArticle(layoutFor(r, ansicht, typ).layout, e))) {
-      if (el.el === 'image') {
+    /* Eine gestaltete zeichnet ihr Baum ganz — Felder über Kanten kennt nur er. */
+    if (wahl.designed) return [{ kind: 'baum', key: wahl.key, baum: wahl.layout }];
+    for (const el of flach(forArticle(wahl.layout, e, this.rueckKanten()))) {
+      if (drawnByTree(el)) {
+        raus.push({ kind: 'baum', key: el.id, baum: [el] });
+      } else if (el.el === 'image') {
         /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
         const bild = bildDes(e, r, this.bestand.bild().get(e.id));
         if (bild) raus.push({ kind: 'bild', key: el.id, bild });

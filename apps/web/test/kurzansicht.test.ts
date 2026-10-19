@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Component, signal } from '@angular/core';
+import { Component, signal, ɵresolveComponentResources as stileAufloesen } from '@angular/core';
 import { DeferBlockBehavior, TestBed } from '@angular/core/testing';
 import { Router, provideRouter, RouterLink } from '@angular/router';
 import { HOVER_AUF_MS, HOVER_ZU_MS, KurzLink, Kurzansicht } from '../src/app/kern/kurzansicht';
@@ -43,7 +43,10 @@ function aufbauen() {
 }
 
 describe('quick view popup', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    /* Die Karte zeichnet mit dem Baum (T-310), und der mit Statblock und
+       Zauber — deren Stildateien liest diese Prüfumgebung nicht; leer reicht. */
+    await stileAufloesen(() => Promise.resolve(''));
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [Wirt],

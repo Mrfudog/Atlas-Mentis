@@ -750,6 +750,18 @@ und aufklappbar. Werte über Kanten (`path`) halten die Daten, wo sie
 hingehören: der Preis steht an der `sells`-Kante des Ladens, und die
 Ansicht des Wirts liest ihn dort, statt ihn zu kopieren.
 
+### Eine Frage, überall dieselbe (T-310)
+
+Die gestaltete Kurzansicht stand nur auf der Artikelseite: Popup,
+Kompendium und Kachel fragten die Art (`layoutFor`) und nicht, was für den
+Artikel gilt. Jede Zeichenstelle hatte ihre eigene Wahl, und die neue
+Regel erreichte nur die, an die jemand gedacht hatte. Jetzt gibt es eine
+Funktion (`pickView`), und ein Test sagt, wer `layoutFor` noch direkt
+ruft — wer eine neue Zeichenstelle baut, findet die Frage schon
+beantwortet. Die Wahl oben am Artikel steht in der Adresse und nicht am
+Konto: sie ist eine Frage an diese Anzeige, und gespeichert hiesse, dass
+der nächste Verweis auf denselben Artikel unerwartet anders aussieht.
+
 ### Ein Editor, und Speichern fragt wohin (T-276)
 
 Es gab drei Stellen, an denen man eine Ansicht änderte: Registry › Views

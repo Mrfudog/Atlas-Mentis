@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { entityName, primaryInterface, viewKeys } from '@nw/model';
+import { entityName, primaryInterface, viewKeys, viewsFor } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Blatt } from './blatt';
 
@@ -36,7 +36,7 @@ import { Blatt } from './blatt';
         <h1>{{ name() }}</h1>
         <p class="art">{{ art() }}</p>
         <div class="linie" aria-hidden="true"></div>
-        <nw-blatt [artikel]="e" [ansicht]="ansicht()" />
+        <nw-blatt [artikel]="e" [ansicht]="ansicht()" [genau]="!!view()" />
       </article>
     } @else if (bestand.fehlt().has(id())) {
       <p class="leer">This article is not here, or not for you.</p>
@@ -149,7 +149,9 @@ export class Druck {
   protected readonly artikel = computed(() => this.bestand.voll().get(this.id()));
   protected readonly ansichten = computed(() => {
     const r = this.bestand.registry();
-    return r ? viewKeys(r) : [];
+    const e = this.artikel();
+    /* Was für diesen Artikel gilt, genaueste zuerst (T-310) — auch gestaltete. */
+    return r && e ? viewsFor(e, r).map((v) => v.key) : r ? viewKeys(r) : [];
   });
   protected readonly ansicht = computed(() => {
     const v = this.view();

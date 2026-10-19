@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-19-views-everywhere",
+      "date": "2026-10-19",
+      "title": "Designed views everywhere, a view row on every article, rows of a table",
+      "text": "A view you design now shows wherever its place asks for it — the popup on a named article or map marker, the preview beside a list, board cards and the print. Every article has a View row on top to see it in any view that applies, and the new element Table shows the rows of a random table with Roll.",
+      "area": "Views",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-19-choose-spells",
       "date": "2026-10-19",
       "title": "Choose cantrips and spells in the character assistant",
