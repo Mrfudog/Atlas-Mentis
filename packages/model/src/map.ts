@@ -78,6 +78,14 @@ export interface MapSettings {
   scale: string;
   baseHidden: boolean;
   baseGmOnly: boolean;
+  /** Farbe der Gitterlinien (`#rrggbb`); leer: das Braun der Vorgabe (T-314). */
+  gridColor: string;
+  /** Deckkraft der Gitterlinien, 0 bis 1. */
+  gridOpacity: number;
+  /** Gitter nicht zeichnen — gemessen und eingerastet wird weiter. */
+  gridHidden: boolean;
+  /** Tokens rasten beim Loslassen am Gitter (T-317). */
+  snapTokens: boolean;
 }
 
 export function isMap(e: Entity | undefined): boolean {
@@ -96,6 +104,10 @@ export function mapSettings(e: Entity): MapSettings {
     scale: typeof k['scale'] === 'string' && k['scale'].trim() ? k['scale'].trim() : '1,5 m',
     baseHidden: k['baseHidden'] === true,
     baseGmOnly: k['baseGmOnly'] === true,
+    gridColor: typeof k['gridColor'] === 'string' && /^#[0-9a-f]{6}$/i.test(k['gridColor'].trim()) ? k['gridColor'].trim().toLowerCase() : '',
+    gridOpacity: zwischen(zahl(k['gridOpacity'], 0.5), 0, 1),
+    gridHidden: k['gridHidden'] === true,
+    snapTokens: k['snapTokens'] !== false,
   };
 }
 
@@ -180,6 +192,8 @@ export interface MapMarker {
   kind: MarkerKind;
   /** Breite in Feldern. */
   size: number;
+  /** Die Grösse, die das Token selbst sagt (`props.size`); `null`: es folgt seinem Statblock (T-317). */
+  ownSize: number | null;
   rot: number;
   /** Höhe durch Breite — nur ein Möbel ist nicht rund. */
   ratio: number;
@@ -199,6 +213,7 @@ export function markerOf(rel: Relation): MapMarker {
     y: zwischen(zahl(p['y'], 0.5), 0, 1),
     kind,
     size: Math.max(0.25, zahl(p['size'], 1)),
+    ownSize: Number.isFinite(zahl(p['size'], NaN)) ? Math.max(0.25, zahl(p['size'], 1)) : null,
     rot: zahl(p['rot'], 0),
     ratio: zahl(p['ratio'], 1) > 0 ? zahl(p['ratio'], 1) : 1,
     note: typeof p['note'] === 'string' ? p['note'] : '',
@@ -985,7 +1000,11 @@ export interface MapRules {
   /** Deckt ein Zug den Weg auf? Die Karte darf es überschreiben (`Map.revealOnMove`). */
   revealOnMove: boolean;
   doors: DoorMode;
+  /** Wie viele Felder ein Token nach der Grösse seines Statblocks einnimmt (T-317). */
+  tokenSizes: TokenSizes;
 }
+/** `rules`: tiny ein Feld wie die Regeln 2014; `tinyHalf`: tiny ein halbes. */
+export type TokenSizes = 'rules' | 'tinyHalf';
 
 /**
  * **Die Kartenregeln einer Kampagne** (T-204, Regeloptionen T-190): Nebel
@@ -1001,6 +1020,7 @@ export function mapRulesOf(campaign: Entity | null | undefined, map?: Entity | n
     moves: k['moves'] === 'confirm' ? 'confirm' : 'free',
     revealOnMove: typeof eigen === 'boolean' ? eigen : k['revealOnMove'] === true,
     doors: k['doors'] === 'gm' ? 'gm' : 'players',
+    tokenSizes: k['tokenSizes'] === 'tinyHalf' ? 'tinyHalf' : 'rules',
   };
 }
 

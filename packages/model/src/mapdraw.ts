@@ -17,21 +17,15 @@
  * Kein Framework, kein DOM: die Seite zeichnet, das Modell rechnet.
  */
 
-import type { MapSettings, Size } from "./map.js";
-import type { Pt } from "./sight.js";
-import type { Entity } from "./types.js";
-import {
-  isDoor,
-  mapWalls,
-  setWalls,
-  wallKind,
-  type MapWall,
-  type WallKind,
-} from "./walls.js";
+import { cellAt, cellCentre, type GridGeometry, type MapSettings, type Size, type TokenSizes } from './map.js';
+import { SIZE_SPAN, type CreatureSize } from './movement.js';
+import type { Pt } from './sight.js';
+import type { Entity } from './types.js';
+import { isDoor, mapWalls, setWalls, wallKind, type MapWall, type WallKind } from './walls.js';
 
 // ------------------------------------------------------------------ Formen
 
-export type DrawShape = "line" | "polyline" | "polygon" | "rect" | "ellipse";
+export type DrawShape = 'line' | 'polyline' | 'polygon' | 'rect' | 'ellipse';
 
 export interface DrawShapeDef {
   key: DrawShape;
@@ -39,7 +33,7 @@ export interface DrawShapeDef {
   /** Wie viele Punkte die Form fertig machen; `null`: so viele, wie man tippt. */
   points: 2 | null;
   /** `toggle`: der Schalter „Closed“ entscheidet; sonst steht es fest. */
-  closed: "always" | "never" | "toggle";
+  closed: 'always' | 'never' | 'toggle';
   does: string;
 }
 
@@ -51,52 +45,52 @@ export interface DrawShapeDef {
  */
 export const DRAW_SHAPES: readonly DrawShapeDef[] = [
   {
-    key: "polyline",
-    label: "Polyline",
+    key: 'polyline',
+    label: 'Polyline',
     points: null,
-    closed: "toggle",
-    does: "Point after point; Closed joins the last point to the first.",
+    closed: 'toggle',
+    does: 'Point after point; Closed joins the last point to the first.',
   },
   {
-    key: "line",
-    label: "Line",
+    key: 'line',
+    label: 'Line',
     points: 2,
-    closed: "never",
-    does: "One straight line between two points.",
+    closed: 'never',
+    does: 'One straight line between two points.',
   },
   {
-    key: "rect",
-    label: "Rectangle",
+    key: 'rect',
+    label: 'Rectangle',
     points: 2,
-    closed: "always",
-    does: "Two opposite corners; always closed.",
+    closed: 'always',
+    does: 'Two opposite corners; always closed.',
   },
   {
-    key: "ellipse",
-    label: "Ellipse",
+    key: 'ellipse',
+    label: 'Ellipse',
     points: 2,
-    closed: "always",
-    does: "Two corners of the box around it; stored as a closed polygon.",
+    closed: 'always',
+    does: 'Two corners of the box around it; stored as a closed polygon.',
   },
   {
-    key: "polygon",
-    label: "Polygon",
+    key: 'polygon',
+    label: 'Polygon',
     points: null,
-    closed: "always",
-    does: "Point after point; Finish always closes it.",
+    closed: 'always',
+    does: 'Point after point; Finish always closes it.',
   },
 ];
 
 const FORMEN = new Map(DRAW_SHAPES.map((f) => [f.key, f]));
 
 export function drawShape(key: unknown): DrawShapeDef {
-  return FORMEN.get(key as DrawShape) ?? FORMEN.get("polyline")!;
+  return FORMEN.get(key as DrawShape) ?? FORMEN.get('polyline')!;
 }
 
 /** Ob die Form geschlossen wird — fest an der Form oder nach dem Schalter. */
 export function shapeClosed(shape: DrawShape, toggle: boolean): boolean {
   const f = drawShape(shape);
-  return f.closed === "always" || (f.closed === "toggle" && toggle);
+  return f.closed === 'always' || (f.closed === 'toggle' && toggle);
 }
 
 /** Wie viele Ecken eine Ellipse bekommt: genug für einen runden Raum, wenig genug für das Sichtpolygon. */
@@ -108,21 +102,16 @@ export const ELLIPSE_STEPS = 24;
  * `ELLIPSE_STEPS` Ecken in ihrem Kasten. Zu wenig Punkte geben eine leere
  * Liste.
  */
-export function shapeOutline(
-  shape: DrawShape,
-  pts: readonly Pt[],
-  closedToggle = false,
-): { pts: Pt[]; closed: boolean } {
+export function shapeOutline(shape: DrawShape, pts: readonly Pt[], closedToggle = false): { pts: Pt[]; closed: boolean } {
   const closed = shapeClosed(shape, closedToggle);
-  if (shape === "line")
-    return { pts: pts.length >= 2 ? [pts[0]!, pts[1]!] : [], closed: false };
-  if (shape === "rect" || shape === "ellipse") {
+  if (shape === 'line') return { pts: pts.length >= 2 ? [pts[0]!, pts[1]!] : [], closed: false };
+  if (shape === 'rect' || shape === 'ellipse') {
     if (pts.length < 2) return { pts: [], closed };
     const [a, b] = [pts[0]!, pts[1]!];
     const [x0, x1] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
     const [y0, y1] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
     if (x1 - x0 <= 0 || y1 - y0 <= 0) return { pts: [], closed };
-    if (shape === "rect")
+    if (shape === 'rect')
       return {
         pts: [
           { x: x0, y: y0 },
@@ -155,12 +144,7 @@ export function shapeOutline(
  * geschlossen auch die letzte zurück zum ersten Punkt. Strecken ohne Länge
  * fallen weg. Eine Tür bekommt `state: 'closed'` und ihre Dicke.
  */
-export function outlineWalls(
-  outline: { pts: readonly Pt[]; closed: boolean },
-  kind: WallKind,
-  newId: () => string,
-  doorWidth?: number,
-): MapWall[] {
+export function outlineWalls(outline: { pts: readonly Pt[]; closed: boolean }, kind: WallKind, newId: () => string, doorWidth?: number): MapWall[] {
   const p = outline.pts;
   if (p.length < 2) return [];
   const paare: Array<[Pt, Pt]> = p.slice(1).map((b, i) => [p[i]!, b]);
@@ -177,7 +161,7 @@ export function outlineWalls(
       y2: b.y,
       ...(tuer
         ? {
-            state: "closed" as const,
+            state: 'closed' as const,
             ...(doorWidth && doorWidth > 0 ? { width: doorWidth } : {}),
           }
         : {}),
@@ -191,11 +175,7 @@ export function outlineWalls(
  * die halbe Dicke verbreitert — in Anteilen der Karte, fertig zum Zeichnen.
  * Geklickt wird das Viereck, gerechnet die Linie.
  */
-export function doorRect(
-  w: Pick<MapWall, "x1" | "y1" | "x2" | "y2" | "width">,
-  ar: number,
-  fallback: number,
-): Pt[] {
+export function doorRect(w: Pick<MapWall, 'x1' | 'y1' | 'x2' | 'y2' | 'width'>, ar: number, fallback: number): Pt[] {
   const a = ar > 0 ? ar : 1;
   const dx = w.x2 - w.x1;
   const dy = (w.y2 - w.y1) * a;
@@ -218,7 +198,7 @@ export function doorRect(
 export interface SnapTargets {
   /** Das Gitter in Bildpunkten (wie `gridGeometry`); nur Quadrate haben Ecken, an denen Wände stehen. */
   grid?: {
-    shape: "square" | "hex";
+    shape: 'square' | 'hex';
     size: number;
     ox: number;
     oy: number;
@@ -234,11 +214,10 @@ export interface SnapTargets {
 export interface Snapped {
   pt: Pt;
   /** Woran er eingerastet ist; `null`: er blieb, wo er war. */
-  to: "point" | "grid" | "line" | null;
+  to: 'point' | 'grid' | 'line' | null;
 }
 
-const abstand = (a: Pt, b: Pt, ar: number): number =>
-  Math.hypot(a.x - b.x, (a.y - b.y) * ar);
+const abstand = (a: Pt, b: Pt, ar: number): number => Math.hypot(a.x - b.x, (a.y - b.y) * ar);
 
 /**
  * **Einrasten mit Stärke** (T-304): `radius` ist der Fangradius in Anteilen
@@ -248,12 +227,7 @@ const abstand = (a: Pt, b: Pt, ar: number): number =>
  * anschliesst, will genau diese Ecke, und eine Gitterecke ist genauer als
  * irgendeine Stelle auf einer Linie. Radius 0 heisst: kein Einrasten.
  */
-export function snapPoint(
-  p: Pt,
-  t: SnapTargets,
-  radius: number,
-  ar: number,
-): Snapped {
+export function snapPoint(p: Pt, t: SnapTargets, radius: number, ar: number): Snapped {
   const a = ar > 0 ? ar : 1;
   if (!(radius > 0)) return { pt: p, to: null };
   let best: Pt | null = null;
@@ -265,9 +239,9 @@ export function snapPoint(
       best = q;
     }
   }
-  if (best) return { pt: { x: best.x, y: best.y }, to: "point" };
+  if (best) return { pt: { x: best.x, y: best.y }, to: 'point' };
   const g = t.grid;
-  if (g && g.shape === "square" && g.w > 0 && g.h > 0 && g.size > 0) {
+  if (g && g.shape === 'square' && g.w > 0 && g.h > 0 && g.size > 0) {
     const px = p.x * g.w;
     const py = p.y * g.h;
     const gx = g.ox + Math.round((px - g.ox) / g.size) * g.size;
@@ -276,7 +250,7 @@ export function snapPoint(
       x: Math.min(1, Math.max(0, gx / g.w)),
       y: Math.min(1, Math.max(0, gy / g.h)),
     };
-    if (abstand(p, q, a) <= radius) return { pt: q, to: "grid" };
+    if (abstand(p, q, a) <= radius) return { pt: q, to: 'grid' };
   }
   let linie: Pt | null = null;
   d = radius;
@@ -288,26 +262,18 @@ export function snapPoint(
       linie = q;
     }
   }
-  return linie ? { pt: linie, to: "line" } : { pt: p, to: null };
+  return linie ? { pt: linie, to: 'line' } : { pt: p, to: null };
 }
 
 /** Der Fusspunkt von `p` auf der Strecke `w` (Anteile). */
-function aufLinie(
-  p: Pt,
-  w: Pick<MapWall, "x1" | "y1" | "x2" | "y2">,
-  ar: number,
-): Pt {
+function aufLinie(p: Pt, w: Pick<MapWall, 'x1' | 'y1' | 'x2' | 'y2'>, ar: number): Pt {
   const t = param(p, w, ar);
   const u = Math.min(1, Math.max(0, t));
   return { x: w.x1 + u * (w.x2 - w.x1), y: w.y1 + u * (w.y2 - w.y1) };
 }
 
 /** Wo `p` auf der Geraden durch `w` liegt: 0 am Anfang, 1 am Ende. */
-function param(
-  p: Pt,
-  w: Pick<MapWall, "x1" | "y1" | "x2" | "y2">,
-  ar: number,
-): number {
+function param(p: Pt, w: Pick<MapWall, 'x1' | 'y1' | 'x2' | 'y2'>, ar: number): number {
   const dx = w.x2 - w.x1;
   const dy = (w.y2 - w.y1) * ar;
   const l = dx * dx + dy * dy;
@@ -317,11 +283,7 @@ function param(
 // ------------------------------------------------------------------ Punkte
 
 /** Die Enden aller Sperren, je Stelle einmal — die Punkte, die der Editor zeigt und ziehen lässt. */
-export function wallPoints(
-  walls: readonly MapWall[],
-  ar: number,
-  tol = 1e-6,
-): Pt[] {
+export function wallPoints(walls: readonly MapWall[], ar: number, tol = 1e-6): Pt[] {
   const out: Pt[] = [];
   for (const w of walls) {
     for (const q of [
@@ -335,12 +297,7 @@ export function wallPoints(
 }
 
 /** Der Punkt am nächsten bei `p`, wenn er näher als `max` liegt (Anteile der Breite). */
-export function nearestPoint(
-  points: readonly Pt[],
-  p: Pt,
-  ar: number,
-  max: number,
-): Pt | null {
+export function nearestPoint(points: readonly Pt[], p: Pt, ar: number, max: number): Pt | null {
   let best: Pt | null = null;
   let d = max;
   for (const q of points) {
@@ -358,13 +315,7 @@ export function nearestPoint(
  * wandert nach `to` — zwei Wände, die sich an einer Ecke treffen, bleiben
  * verbunden. Wird eine Sperre dabei zum Punkt, fällt sie weg.
  */
-export function moveWallPoint(
-  e: Entity,
-  from: Pt,
-  to: Pt,
-  ar: number,
-  tol = 1e-6,
-): Entity {
+export function moveWallPoint(e: Entity, from: Pt, to: Pt, ar: number, tol = 1e-6): Entity {
   const walls = mapWalls(e);
   let bewegt = false;
   const neu = walls.map((w) => {
@@ -388,7 +339,7 @@ export function moveWallPoint(
 
 /** Welche Arten eine Wand darunter schneiden: was eine Öffnung ist — Türen und Fenster. */
 export function cutsWalls(kind: WallKind): boolean {
-  return wallKind(kind).door || kind === "window";
+  return wallKind(kind).door || kind === 'window';
 }
 
 /** Was geschnitten wird: alles, was keine Öffnung ist. Eine Tür in einer Tür schneidet nicht. */
@@ -397,12 +348,7 @@ function wirdGeschnitten(w: MapWall): boolean {
 }
 
 /** Liegt `c` auf der Geraden von `w` (beide Enden näher als `tol`)? */
-function aufGerader(
-  c: Pick<MapWall, "x1" | "y1" | "x2" | "y2">,
-  w: MapWall,
-  ar: number,
-  tol: number,
-): boolean {
+function aufGerader(c: Pick<MapWall, 'x1' | 'y1' | 'x2' | 'y2'>, w: MapWall, ar: number, tol: number): boolean {
   /* Die Gerade, nicht nur die Strecke: eine Tür, die über das Ende einer Wand hinausragt, schneidet sie trotzdem. */
   const auf = (p: Pt): boolean => {
     const t = param(p, w, ar);
@@ -422,7 +368,7 @@ function aufGerader(
  */
 export function cutWalls(
   walls: readonly MapWall[],
-  cutter: Pick<MapWall, "id" | "kind" | "x1" | "y1" | "x2" | "y2">,
+  cutter: Pick<MapWall, 'id' | 'kind' | 'x1' | 'y1' | 'x2' | 'y2'>,
   ar: number,
   tol: number,
   newId: () => string,
@@ -432,11 +378,7 @@ export function cutWalls(
   let cut = 0;
   const out: MapWall[] = [];
   for (const w of walls) {
-    if (
-      w.id === cutter.id ||
-      !wirdGeschnitten(w) ||
-      !aufGerader(cutter, w, a, tol)
-    ) {
+    if (w.id === cutter.id || !wirdGeschnitten(w) || !aufGerader(cutter, w, a, tol)) {
       out.push(w);
       continue;
     }
@@ -477,7 +419,7 @@ export function cutWalls(
  */
 export function joinAround(
   walls: readonly MapWall[],
-  door: Pick<MapWall, "id" | "x1" | "y1" | "x2" | "y2">,
+  door: Pick<MapWall, 'id' | 'x1' | 'y1' | 'x2' | 'y2'>,
   ar: number,
   tol: number,
 ): { walls: MapWall[]; joined: boolean } {
@@ -490,8 +432,7 @@ export function joinAround(
       if (w.id === door.id || w.id === ohne || !wirdGeschnitten(w)) continue;
       const e1 = { x: w.x1, y: w.y1 };
       const e2 = { x: w.x2, y: w.y2 };
-      const fern =
-        abstand(e1, p, a) <= tol ? e2 : abstand(e2, p, a) <= tol ? e1 : null;
+      const fern = abstand(e1, p, a) <= tol ? e2 : abstand(e2, p, a) <= tol ? e1 : null;
       if (!fern || !aufGerader(door, w, a, tol)) continue;
       return { w, fern };
     }
@@ -509,9 +450,7 @@ export function joinAround(
       y2: wb.fern.y,
     };
     return {
-      walls: walls.flatMap((w) =>
-        w.id === wa.w.id ? [eins] : w.id === wb.w.id ? [] : [w],
-      ),
+      walls: walls.flatMap((w) => (w.id === wa.w.id ? [eins] : w.id === wb.w.id ? [] : [w])),
       joined: true,
     };
   }
@@ -550,25 +489,15 @@ export function addWallsCut(
 }
 
 /** Kann das Wegnehmen dieser Sperre eine Wand wieder zusammenfügen? (Dann fragt die Seite.) */
-export function canJoinAround(
-  e: Entity,
-  id: string,
-  ar: number,
-  tol: number,
-): boolean {
+export function canJoinAround(e: Entity, id: string, ar: number, tol: number): boolean {
   const walls = mapWalls(e);
   const d = walls.find((w) => w.id === id);
-  if (!d || !(isDoor(d) || d.kind === "window")) return false;
+  if (!d || !(isDoor(d) || d.kind === 'window')) return false;
   return joinAround(walls, d, ar, tol).joined;
 }
 
 /** Eine Öffnung wegnehmen und die Wand darum wieder zusammenfügen. */
-export function removeJoined(
-  e: Entity,
-  id: string,
-  ar: number,
-  tol: number,
-): Entity {
+export function removeJoined(e: Entity, id: string, ar: number, tol: number): Entity {
   const walls = mapWalls(e);
   const d = walls.find((w) => w.id === id);
   if (!d) return e;
@@ -582,7 +511,7 @@ export function removeJoined(
 // ------------------------------------------------------------------ Gitter
 
 export type GridPatch = Partial<
-  Pick<MapSettings, "gridShape" | "gridSize" | "gridOffsetX" | "gridOffsetY">
+  Pick<MapSettings, 'gridShape' | 'gridSize' | 'gridOffsetX' | 'gridOffsetY' | 'gridColor' | 'gridOpacity' | 'gridHidden' | 'snapTokens'>
 >;
 
 const r2 = (v: number): number => Math.round(v * 100) / 100;
@@ -623,14 +552,83 @@ export function gridOrigin(p: Pt, nat: Size, size: number): GridPatch {
 /** Die Gittereinstellungen der Karte ändern (`Map.gridShape` …); was die Vorschau zeigt, schreibt dasselbe. */
 export function setGrid(e: Entity, patch: GridPatch): Entity {
   const karte = {
-    ...((e.components?.["Map"] ?? {}) as Record<string, unknown>),
+    ...((e.components?.['Map'] ?? {}) as Record<string, unknown>),
   };
-  if (patch.gridShape) karte["gridShape"] = patch.gridShape;
-  if (patch.gridSize !== undefined && Number.isFinite(patch.gridSize))
-    karte["gridSize"] = Math.max(4, r2(patch.gridSize));
-  if (patch.gridOffsetX !== undefined && Number.isFinite(patch.gridOffsetX))
-    karte["gridOffsetX"] = r2(patch.gridOffsetX);
-  if (patch.gridOffsetY !== undefined && Number.isFinite(patch.gridOffsetY))
-    karte["gridOffsetY"] = r2(patch.gridOffsetY);
+  if (patch.gridShape) karte['gridShape'] = patch.gridShape;
+  if (patch.gridSize !== undefined && Number.isFinite(patch.gridSize)) karte['gridSize'] = Math.max(4, r2(patch.gridSize));
+  if (patch.gridOffsetX !== undefined && Number.isFinite(patch.gridOffsetX)) karte['gridOffsetX'] = r2(patch.gridOffsetX);
+  if (patch.gridOffsetY !== undefined && Number.isFinite(patch.gridOffsetY)) karte['gridOffsetY'] = r2(patch.gridOffsetY);
+  if (patch.gridColor !== undefined) {
+    if (/^#[0-9a-f]{6}$/i.test(patch.gridColor)) karte['gridColor'] = patch.gridColor.toLowerCase();
+    else delete karte['gridColor'];
+  }
+  if (patch.gridOpacity !== undefined && Number.isFinite(patch.gridOpacity)) karte['gridOpacity'] = Math.min(1, Math.max(0, r2(patch.gridOpacity)));
+  if (patch.gridHidden !== undefined) karte['gridHidden'] = patch.gridHidden;
+  if (patch.snapTokens !== undefined) karte['snapTokens'] = patch.snapTokens;
   return { ...e, components: { ...e.components, Map: karte } };
+}
+
+/**
+ * **Die Farbe der Gitterlinien** (T-314) als CSS-Farbe: die gewählte mit
+ * ihrer Deckkraft, sonst das Braun der Vorgabe. Ausgeblendet: `null`.
+ */
+export function gridStroke(s: Pick<MapSettings, 'gridColor' | 'gridOpacity' | 'gridHidden'>): string | null {
+  if (s.gridHidden || s.gridOpacity <= 0) return null;
+  const hex = s.gridColor || '#3c2814';
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${Math.round(s.gridOpacity * 100) / 100})`;
+}
+
+// ------------------------------------------------------------------ Tokens
+
+/**
+ * **Der Platz eines Tokens in Feldern** (T-317): was das Token selbst sagt
+ * (`props.size`, auch ein halbes Feld), sonst die Grösse seines Statblocks
+ * nach der Tabelle der Kampagne (`tokenSizes`), sonst ein Feld. Dieselbe
+ * Zahl zeichnet das Token und rastet es ein — ein Oger, der zwei Felder
+ * breit gezeichnet und auf eines gerastet würde, stünde halb im Nachbarn.
+ */
+export function tokenSpan(own: number | null, size: string | null | undefined, rule: TokenSizes = 'rules'): number {
+  if (own !== null && own > 0) return own;
+  const k = String(size ?? '')
+    .trim()
+    .toLowerCase() as CreatureSize;
+  if (rule === 'tinyHalf' && k === 'tiny') return 0.5;
+  return SIZE_SPAN[k] ?? 1;
+}
+
+/** Die Grössen, die man am Token wählen kann (Tokens › Size). */
+export const TOKEN_SPANS: readonly number[] = [0.25, 0.5, 1, 1.5, 2, 3, 4, 5, 6];
+
+/**
+ * **Ein Token am Gitter einrasten** (T-317): der Mittelpunkt so, dass der
+ * Platz (`span` Felder breit) auf dem Gitter liegt — ein Feld in der Mitte
+ * eines Feldes, zwei Felder auf einer Ecke, ein halbes Feld in einem
+ * Viertel. Ganze Plätze rasten an ganzen Feldern, gebrochene an halben
+ * (ein Viertelfeld an Vierteln). Auf Hex in die Mitte des Feldes; ohne
+ * Gitter bleibt der Punkt.
+ */
+export function snapTokenCentre(p: Pt, geo: GridGeometry | null, span: number): Pt {
+  if (!geo || geo.w <= 0 || geo.h <= 0) return p;
+  const sp = span > 0 ? span : 1;
+  if (geo.shape === 'hex') return cellCentre(geo, cellAt(geo, p));
+  const schritt = Number.isInteger(sp) ? 1 : Number.isInteger(sp * 2) ? 0.5 : 0.25;
+  const achse = (v: number, o: number, laenge: number): number => {
+    const zellen = (v * laenge - o) / geo.size;
+    const links = Math.round((zellen - sp / 2) / schritt) * schritt;
+    return Math.min(1, Math.max(0, (o + (links + sp / 2) * geo.size) / laenge));
+  };
+  return { x: achse(p.x, geo.ox, geo.w), y: achse(p.y, geo.oy, geo.h) };
+}
+
+/** Die Grösse eines Tokens setzen (`props.size`); `null` nimmt sie weg — dann gilt sein Statblock. */
+export function setMarkerSize(map: Entity, relId: string, size: number | null): Entity {
+  return {
+    ...map,
+    relations: (map.relations ?? []).map((r) => {
+      if (r.id !== relId) return r;
+      const { size: _alt, ...props } = (r.props ?? {}) as Record<string, unknown>;
+      return { ...r, props: size !== null && size > 0 ? { ...props, size } : props };
+    }),
+  };
 }

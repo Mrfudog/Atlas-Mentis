@@ -2100,6 +2100,15 @@ export const fieldGroups = {
         gridSize: { type: 'number', title: 'Grid size in px', default: 70 },
         gridOffsetX: { type: 'number', title: 'Grid offset X', default: 0 },
         gridOffsetY: { type: 'number', title: 'Grid offset Y', default: 0 },
+        /* **Wie das Gitter aussieht** (T-314): Farbe (Farbton und Sättigung
+           über die Farbwahl), Deckkraft, und ob es gezeichnet wird.
+           Ausgeblendet misst und rastet es weiter — es fehlt nur das Bild. */
+        gridColor: { type: 'string', format: 'color', title: 'Grid colour', description: 'Colour of the grid lines; empty is the default brown.' },
+        gridOpacity: { type: 'number', title: 'Grid opacity', min: 0, max: 1, default: 0.5, description: 'How strongly the grid lines show, from 0 (invisible) to 1.' },
+        gridHidden: { type: 'boolean', title: 'Grid hidden', default: false, description: 'Draw no grid lines. Measuring and snapping still use the grid.' },
+        /* **Tokens rasten am Gitter** (T-317): ihr Platz liegt auf ganzen
+           oder halben Feldern. Aus, und sie stehen, wo man sie loslässt. */
+        snapTokens: { type: 'boolean', title: 'Tokens snap to the grid', default: true, description: 'A dropped token lands so that its space covers whole (or half) squares.' },
         /* Eine Karte ist metrisch gemessen, auch wenn die Regeln in Fuss
            rechnen: das Raster steht in Metern da, und wer „1,5" schreibt,
            meint Meter. */
@@ -3010,6 +3019,15 @@ export const fieldGroups = {
           description: 'Who opens and closes doors on the map: players at a door next to their character, or only the GM. Locked doors stay shut either way.',
           enum: ['players', 'gm'],
           default: 'players',
+        },
+        /* **Platz eines Tokens nach Grösse** (T-317): wie viele Felder ein
+           Token einnimmt, wenn es selbst nichts sagt. */
+        tokenSizes: {
+          type: 'string',
+          title: 'Token sizes',
+          description: 'How many squares a token covers by the size of its statblock, unless the token says otherwise.',
+          enum: ['rules', 'tinyHalf'],
+          default: 'rules',
         },
       },
     },

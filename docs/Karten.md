@@ -112,8 +112,15 @@ Gerechnet in `packages/model/src/mapdraw.ts`, gezeichnet in
 - **Einrasten mit Stärke** (`snapPoint`): an einen vorhandenen Punkt, eine
   Gitterecke (Quadrate) oder eine Linie, so weit, wie der Regler sagt —
   in **Bildschirmpunkten**, also beim Zoomen gleich, am Telefon um 1,6
-  weiter. Der Punkt geht vor der Ecke, die Ecke vor der Linie. Alt oder
-  langes Drücken setzt ohne Einrasten.
+  weiter. Der Punkt geht vor der Ecke, die Ecke vor der Linie. Alt setzt
+  ohne Einrasten.
+- **Die Lupe** (T-315): in jedem Werkzeug, das einen Punkt setzt (Draw,
+  Points, Set origin, Pick a square, Add marker), öffnet **Halten** eine
+  Lupe über dem Finger — Kartenbild, Gitter und Sperren dreifach, ein
+  Fadenkreuz in der Mitte, der Einrastring dazu. Ziehen zielt, Loslassen
+  setzt dort, wie ein Antippen. Wer vor dem Aufgehen zieht, schiebt die
+  Karte; ein zweiter Finger schliesst sie. Gezeichnet im Browser, nichts
+  davon wird gespeichert.
 - **Schneiden** (Schalter *Cut walls*, Vorgabe an): eine Tür oder ein
   Fenster über einer Wand teilt die Wand (`cutWalls`); die Teile enden
   genau an den Rändern der Öffnung. Getroffen ist, was auf der Geraden der
@@ -138,6 +145,41 @@ die Felder, die es gibt — `gridShape`, `gridSize`, `gridOffsetX`,
 `gridOffsetY` (`setGrid`) —, zuerst als **Vorschau** in der Seite, mit
 *Save grid* an der Karte. Wer die Gruppe mit einer Vorschau verlässt, wird
 gefragt.
+
+**Fein einstellen** (T-314): Pfeile für Grösse (0,05 px) und Versatz
+(0,5 px), mit Umschalt zehnmal so weit; der Grössenregler reicht nur
+±10 % um die Grösse beim Öffnen (Schritt 0,01 px) — über 10 bis 300 px
+war eine Grösse zwischen 15,3 und 15,4 nicht zu treffen. Eine getippte
+oder abgegriffene Grösse wird die neue Mitte.
+
+**Aussehen** (T-314): `gridColor` (`#rrggbb`, Farbton und Sättigung aus
+der Farbwahl; leer das Braun der Vorgabe), `gridOpacity` (0–1, Vorgabe
+0,5) und `gridHidden`. Ausgeblendet fehlt nur das Bild: gemessen,
+eingerastet und geplant wird weiter auf dem Gitter (`gridStroke`).
+
+### Tokens am Gitter (T-317)
+
+**Der Platz eines Tokens in Feldern** (`tokenSpan`): was das Token selbst
+sagt (`marker.props.size`, Tokens › Size, auch 0,5 oder 1,5), sonst die
+Grösse seines Statblocks nach der Tabelle der Kampagne
+(`Campaign.tokenSizes`: `rules` — tiny, small, medium ein Feld, large 2,
+huge 3, gargantuan 4 — oder `tinyHalf` mit tiny als halbem Feld), sonst
+ein Feld. Der Server gibt die Grösse je Ziel im Kartenkontext mit
+(`targets[id].size`, gesiebt gelesen). Dieselbe Zahl zeichnet das Token
+und rastet es ein.
+
+**Einrasten** (`Map.snapTokens`, Vorgabe an; `snapTokenCentre`): beim
+Ziehen, Setzen und Platzieren landet der Mittelpunkt so, dass der Platz
+auf dem Gitter liegt — ein Feld in der Feldmitte, zwei Felder auf einer
+Ecke; gebrochene Plätze rasten an halben (oder Viertel-)Feldern. Auf Hex
+in die Feldmitte. Möbel (`scenery`) rasten nicht. Der Zugplan rechnet
+weiter in ganzen Feldern nach Statblock (D58).
+
+### Gespielte Stände an der Karte (T-316)
+
+„Played“ an der Vorlage (T-289) steht offen; jeder Stand hat **Open in
+Play** (`/play?map=<stand>&session=<sitzung>`), ebenso der Hinweis „Map in
+play“ auf der Seite eines Standes.
 
 ### Türen am Tisch
 

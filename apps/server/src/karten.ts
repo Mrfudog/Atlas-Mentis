@@ -23,6 +23,7 @@
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  statblockSize,
   assetVersion,
   tokenLook,
   type TokenLook,
@@ -97,6 +98,8 @@ export interface MarkerZiel {
   version?: string;
   /** Wie das Bild als Token gezeigt wird (T-297): fertiges Rundtoken oder Ausschnitt. */
   look?: TokenLook;
+  /** Die Grösse des Statblocks (T-317) — daraus rechnet die Seite den Platz des Tokens (`tokenSpan`). */
+  size?: string;
 }
 
 export interface KartenKontext {
@@ -202,10 +205,14 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       (e) => primaryInterface(e) === 'Statblock' && (e.relations ?? []).some((r) => r.type === 'belongsTo' && zielSet.has(r.to)),
     );
     const tokenVon = new Map<string, string>();
+    const groesseVon = new Map<string, string>();
     for (const sb of boegen.length ? await sieve(request, boegen, stand.map) : []) {
       const t = (sb.components?.['Statblock'] as { token?: unknown } | undefined)?.token;
       const wem = (boegen.find((b) => b.id === sb.id)?.relations ?? []).find((r) => r.type === 'belongsTo' && zielSet.has(r.to))?.to;
       if (wem && typeof t === 'string' && t.trim() && !tokenVon.has(wem)) tokenVon.set(wem, t.trim());
+      /* Gesiebt gelesen: was Spielende von der Grösse nicht wissen, ist ein Feld. */
+      const g = wem ? statblockSize(stand.map, sb) : null;
+      if (wem && g && !groesseVon.has(wem)) groesseVon.set(wem, g);
     }
     const targets: Record<string, MarkerZiel> = {};
     for (const z of ziele) {
@@ -218,6 +225,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         ...(bild ? { image: bild } : {}),
         ...(v ? { version: v } : {}),
         ...(asset ? { look: tokenLook(asset) } : {}),
+        ...(groesseVon.has(z.id) ? { size: groesseVon.get(z.id)! } : {}),
       };
     }
 

@@ -83,6 +83,11 @@ import {
   outlineWalls,
   removeJoined,
   setGrid,
+  gridStroke,
+  setMarkerSize,
+  snapTokenCentre,
+  tokenSpan,
+  TOKEN_SPANS,
   shapeOutline,
   snapPoint,
   wallPoints,
@@ -100,7 +105,7 @@ import { Ladeanzeige } from '../kern/ladeanzeige';
 import { tipptGerade } from '../kern/suche';
 import { DUNKEL_FARBE, grauMalen, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type Schnitt } from './nebel';
 import { KartenSeitenleiste, ZIEH_TYP } from './seitenleiste';
-import { EditorStand, FINGER_FAKTOR, LANG_DRUECKEN_MS, STAERKE_MAX, STAERKE_MIN } from './editor';
+import { EditorStand, FINGER_FAKTOR, STAERKE_MAX, STAERKE_MIN } from './editor';
 
 /**
  * **Was der Zugplan auf der Karte zeigt** (T-198). Die Karte rechnet
@@ -144,6 +149,7 @@ type Werkzeug =
   | 'messen'
   | 'setzen'
   | 'tokenWeg'
+  | 'tokenGroesse'
   | 'aufdecken'
   | 'pinsel'
   | 'zudecken'
@@ -162,6 +168,13 @@ const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudec
 const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
 const SPERRE_TREFFER = 14;
+/** Die Werkzeuge, die einen Punkt setzen — in ihnen öffnet Halten die Lupe (T-315). */
+const LUPE_WERKZEUGE: ReadonlySet<Werkzeug> = new Set(['wand', 'punkte', 'gitterUrsprung', 'gitterZelle', 'setzen']);
+/** So lange hält man, bis die Lupe aufgeht. */
+const LUPE_MS = 280;
+/** Halbmesser der Lupe am Schirm, und wie stark sie vergrössert. */
+const LUPE_R = 70;
+const LUPE_ZOOM = 3;
 /** Pinselbreiten in Feldern. */
 const PINSEL = [1, 2, 4, 8] as const;
 
@@ -296,9 +309,13 @@ interface Zeiger {
           @if (darfSchreiben() && !freigegeben()) {
             <span class="marke">Not released — players do not see this map</span>
           }
+          @if (ort() === 'artikel') {
+            · <a class="spielen" [routerLink]="['/play']" [queryParams]="spielQuery(id(), g.session)">Open in Play</a>
+          }
         </p>
       } @else if (ort() === 'artikel' && gespieltListe().length) {
-        <details class="gespielt-liste">
+        <!-- Offen (T-316): wer die Vorlage ansieht, will meist zu einem ihrer Stände. -->
+        <details class="gespielt-liste" open>
           <summary>Played ({{ gespieltListe().length }})</summary>
           <ul>
             @for (r of gespieltListe(); track r.id) {
@@ -313,6 +330,7 @@ interface Zeiger {
                 @if (darfSchreiben() && !r.released) {
                   <span class="marke">not released</span>
                 }
+                · <a class="spielen" [routerLink]="['/play']" [queryParams]="spielQuery(r.id, r.session)" [attr.aria-label]="'Open ' + (datum(r.at) || r.name) + ' in Play'">Open in Play</a>
               </li>
             }
           </ul>
@@ -365,6 +383,21 @@ interface Zeiger {
               <button type="button" [class.an]="werkzeug() === 'tokenWeg'" [attr.aria-pressed]="werkzeug() === 'tokenWeg'" (click)="waehle('tokenWeg')" title="Tap a marker to take it off the map">
                 Remove
               </button>
+              <!-- **Platz eines Tokens** (T-317): in Feldern, auch halbe; „by size“ folgt dem Statblock. -->
+              <button type="button" [class.an]="werkzeug() === 'tokenGroesse'" [attr.aria-pressed]="werkzeug() === 'tokenGroesse'" (click)="waehle('tokenGroesse')" title="Tap a token to give it the size chosen here">
+                Size
+              </button>
+              @if (werkzeug() === 'tokenGroesse') {
+                <label>
+                  Squares
+                  <select (change)="groesseWahl.set($any($event.target).value ? +$any($event.target).value : null)" aria-label="Token size in squares">
+                    <option value="" [selected]="groesseWahl() === null">by size (statblock)</option>
+                    @for (n of TOKEN_SPANS; track n) {
+                      <option [value]="n" [selected]="groesseWahl() === n">{{ n }} × {{ n }}</option>
+                    }
+                  </select>
+                </label>
+              }
               @if (spielTokens()) {
                 <button type="button" (click)="spielTokensWeg()" title="Remove the tokens placed for play; prepared markers and the party stay">Clear play tokens</button>
               }
@@ -501,21 +534,46 @@ interface Zeiger {
                   }
                 </select>
               </label>
-              <label title="Width of one square in pixels of the map image">
+              <!-- **Fein einstellen** (T-314): der Regler reicht ±10 % um den Wert beim Öffnen, die Pfeile
+                   gehen in kleinen Schritten (Umschalt: zehnmal so gross). -->
+              <span class="feld" role="group" aria-label="Square size">
                 Size
-                <input type="range" min="10" max="300" step="0.5" [value]="einst()?.gridSize" (input)="gitterAendern({ gridSize: +$any($event.target).value })" aria-label="Square size slider" />
-                <input type="number" class="zahl" min="4" step="0.5" [value]="einst()?.gridSize" (change)="gitterAendern({ gridSize: +$any($event.target).value })" aria-label="Square size in pixels" />
-              </label>
-              <label>
+                <button type="button" class="pfeil" (click)="gitterSchritt('gridSize', -0.05, $event)" aria-label="Smaller squares" title="Smaller (Shift: ×10)">−</button>
+                <input type="range" [min]="groesseSpanne().min" [max]="groesseSpanne().max" step="0.01" [value]="einst()?.gridSize" (input)="gitterAendern({ gridSize: +$any($event.target).value })" aria-label="Square size, fine" />
+                <button type="button" class="pfeil" (click)="gitterSchritt('gridSize', 0.05, $event)" aria-label="Larger squares" title="Larger (Shift: ×10)">+</button>
+                <input type="number" class="zahl" min="4" step="0.01" [value]="einst()?.gridSize" (change)="gitterGroesseTippen(+$any($event.target).value)" aria-label="Square size in pixels" />
+              </span>
+              <span class="feld" role="group" aria-label="Grid offset">
                 X
+                <button type="button" class="pfeil" (click)="gitterSchritt('gridOffsetX', -0.5, $event)" aria-label="Grid left" title="Left (Shift: ×10)">◀</button>
                 <input type="number" class="zahl" step="0.5" [value]="einst()?.gridOffsetX" (change)="gitterAendern({ gridOffsetX: +$any($event.target).value })" aria-label="Grid offset X in pixels" />
-              </label>
-              <label>
+                <button type="button" class="pfeil" (click)="gitterSchritt('gridOffsetX', 0.5, $event)" aria-label="Grid right" title="Right (Shift: ×10)">▶</button>
                 Y
+                <button type="button" class="pfeil" (click)="gitterSchritt('gridOffsetY', -0.5, $event)" aria-label="Grid up" title="Up (Shift: ×10)">▲</button>
                 <input type="number" class="zahl" step="0.5" [value]="einst()?.gridOffsetY" (change)="gitterAendern({ gridOffsetY: +$any($event.target).value })" aria-label="Grid offset Y in pixels" />
-              </label>
+                <button type="button" class="pfeil" (click)="gitterSchritt('gridOffsetY', 0.5, $event)" aria-label="Grid down" title="Down (Shift: ×10)">▼</button>
+              </span>
               <button type="button" [class.an]="werkzeug() === 'gitterUrsprung'" [attr.aria-pressed]="werkzeug() === 'gitterUrsprung'" (click)="waehle('gitterUrsprung')" title="Tap a point where two grid lines cross on the image">Set origin</button>
               <button type="button" [class.an]="werkzeug() === 'gitterZelle'" [attr.aria-pressed]="werkzeug() === 'gitterZelle'" (click)="waehle('gitterZelle')" title="Tap two opposite corners of one square on the image">Pick a square</button>
+              <!-- **Aussehen** (T-314): Farbe (Farbton und Sättigung in der Farbwahl), Deckkraft, ausblenden. -->
+              <span class="schalter">
+                <label title="Draw the grid lines; measuring and snapping work either way">
+                  <input type="checkbox" [checked]="!einst()?.gridHidden" (change)="gitterAendern({ gridHidden: !$any($event.target).checked })" />
+                  Show grid
+                </label>
+                <label title="Colour of the grid lines">
+                  Colour
+                  <input type="color" [value]="einst()?.gridColor || '#3c2814'" (input)="gitterAendern({ gridColor: $any($event.target).value })" aria-label="Grid colour" />
+                </label>
+                <label title="How strongly the grid shows">
+                  Opacity
+                  <input type="range" min="0" max="1" step="0.05" [value]="einst()?.gridOpacity" (input)="gitterAendern({ gridOpacity: +$any($event.target).value })" aria-label="Grid opacity" />
+                </label>
+                <label title="A dropped token lands so that its space covers whole (or half) squares">
+                  <input type="checkbox" [checked]="einst()?.snapTokens" (change)="gitterAendern({ snapTokens: $any($event.target).checked })" />
+                  Tokens snap to the grid
+                </label>
+              </span>
               @if (gitterEntwurf()) {
                 <button type="button" class="haupt" (click)="gitterSpeichern()">Save grid</button>
                 <button type="button" (click)="gitterEntwurf.set(null)">Discard</button>
@@ -770,7 +828,7 @@ interface Zeiger {
                     [title]="m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
-                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : kurzansicht($event, m.to)"
+                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : kurzansicht($event, m.to)"
                   >
                     @if (m.bild) {
                       <img [src]="m.bild" alt="" draggable="false" [style]="m.bildStil" />
@@ -781,6 +839,24 @@ interface Zeiger {
                       <b class="etikett">{{ m.etikett }}</b>
                     }
                   </button>
+                }
+                @if (lupeBild(); as l) {
+                  <!-- **Die Lupe** (T-315): über dem Finger, vergrössert, mit Fadenkreuz in der Mitte. -->
+                  <div class="lupe" [class.unten]="l.unten" [style.left.%]="l.x * 100" [style.top.%]="l.y * 100" [style.width.px]="l.d" [style.height.px]="l.d" [style]="l.stil" aria-hidden="true">
+                    @if (sperrenBild(); as sb) {
+                      <svg [attr.viewBox]="l.viewBox" preserveAspectRatio="none">
+                        @for (w of sb.linien; track w.id) {
+                          <line [attr.class]="'sperre k-' + w.kind" [attr.x1]="w.x1" [attr.y1]="w.y1" [attr.x2]="w.x2" [attr.y2]="w.y2" vector-effect="non-scaling-stroke" />
+                        }
+                        @if (sb.entwurf; as en) {
+                          <polyline [attr.class]="'sperre entwurf k-' + wandArt()" [attr.points]="en.pts" vector-effect="non-scaling-stroke" />
+                        }
+                        @if (l.ring; as r) {
+                          <ellipse class="lupe-ring" [attr.cx]="r.cx" [attr.cy]="r.cy" [attr.rx]="r.rx" [attr.ry]="r.ry" vector-effect="non-scaling-stroke" />
+                        }
+                      </svg>
+                    }
+                  </div>
                 }
               </div>
             </div>
@@ -836,6 +912,8 @@ interface Zeiger {
           Tap a door to lock or unlock it.
         } @else if (werkzeug() === 'wandWeg') {
           Tap a wall to remove it.
+        } @else if (werkzeug() === 'tokenGroesse') {
+          Tap a token: it covers {{ groesseWahl() === null ? 'the squares its statblock size needs' : groesseWahl() + ' × ' + groesseWahl() + ' squares' }}.
         } @else if (werkzeug() === 'tokenWeg') {
           Tap a marker to take it off the map. The article stays; the party token is not a marker.
         } @else if (werkzeug() === 'licht') {
@@ -1053,7 +1131,7 @@ export class Karte {
     return redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
   });
   /** Die Kartenregeln der Kampagne (T-204); ohne Antwort die Vorgaben. */
-  protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', revealOnMove: false, doors: 'players' });
+  protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', revealOnMove: false, doors: 'players', tokenSizes: 'rules' });
   /** Führt die Kampagne den Nebel je Figur? */
   protected readonly jeFigur = computed(() => this.regeln().fog === 'player');
   /** Für wen aufgedeckt wird und wessen Sicht „Player view“ zeigt (nur je Figur). */
@@ -1331,6 +1409,11 @@ export class Karte {
   // ------------------------------------------------------------ Wege
 
   /** Wohin eine andere Karte führt: auf ihre Artikelseite, oder in Play bleiben. */
+  /** In Play öffnen (T-316): die Karte, und die Sitzung des Standes, wenn er eine hat. */
+  protected spielQuery(map: string, session: string | null | undefined): Record<string, string> {
+    return session ? { map, session } : { map };
+  }
+
   protected weg(id: string): { link: string[]; query: Record<string, string> | null } {
     return this.ort() === 'play' ? { link: ['/play'], query: { map: id } } : { link: ['/artikel', id], query: null };
   }
@@ -1350,26 +1433,37 @@ export class Karte {
 
   // -------------------------------------------------------------- Gitter
 
-  protected readonly gitter = computed(() => {
+  protected readonly gitter = computed(() => this.gitterMuster(this.faktor()));
+
+  /**
+   * **Das Gitter als Hintergrund** in `f` Schirmpunkten je Bildpunkt — für die
+   * Karte und, vergrössert, für die Lupe (T-315). Farbe und Deckkraft aus
+   * der Karte (`gridStroke`, T-314); ausgeblendet: keines.
+   */
+  private gitterMuster(f: number): { bild: string; groesse: string; lage: string; w: number; h: number; ox: number; oy: number } | null {
     const s = this.einst();
     const geo = s ? gridGeometry(s, this.nat()) : null;
-    if (!geo) return null;
-    const f = this.faktor();
+    const farbe = s ? gridStroke(s) : null;
+    if (!geo || !farbe) return null;
     const w = geo.size * f;
     const lage = `${geo.ox * f}px ${geo.oy * f}px`;
     if (geo.shape === 'square') {
       return {
-        bild: 'linear-gradient(to right, var(--gitter) 1px, transparent 1px), linear-gradient(to bottom, var(--gitter) 1px, transparent 1px)',
+        bild: `linear-gradient(to right, ${farbe} 1px, transparent 1px), linear-gradient(to bottom, ${farbe} 1px, transparent 1px)`,
         groesse: `${w}px ${w}px`,
         lage,
+        w,
+        h: w,
+        ox: geo.ox * f,
+        oy: geo.oy * f,
       };
     }
     const h = geo.rowHeight * f * 1.5;
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 100 173.2" preserveAspectRatio="none">` +
-      `<path d="${HEX_TILE_PATH}" fill="none" stroke="rgba(60,40,20,0.5)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>`;
-    return { bild: `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`, groesse: `${w}px ${h}px`, lage };
-  });
+      `<path d="${HEX_TILE_PATH}" fill="none" stroke="${farbe}" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>`;
+    return { bild: `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`, groesse: `${w}px ${h}px`, lage, w, h, ox: geo.ox * f, oy: geo.oy * f };
+  }
 
   // -------------------------------------------------------------- Marker
 
@@ -1389,7 +1483,9 @@ export class Karte {
       const ziel = ziele[m.to];
       const name = ziel?.name ?? this.bestand.name()(m.to) ?? '?';
       const pt = z && z.id === m.rel.id ? z.pt : m;
-      const px = Math.min(max, Math.max(MARKER_MIN, s.gridSize * m.size * f));
+      /* Der Platz in Feldern (T-317): am Token, sonst nach Statblock; Möbel behalten ihre Breite. */
+      const span = m.kind === 'scenery' ? m.size : this.tokenPlatz(m.to, m.ownSize);
+      const px = Math.min(max, Math.max(MARKER_MIN, s.gridSize * span * f));
       return {
         ...m,
         x: pt.x,
@@ -1461,7 +1557,7 @@ export class Karte {
   }
 
   private nachZug = false;
-  private griff: { id: string; to: string; sx: number; sy: number; zieht: boolean; pointer: number; von: Pt; selbst: boolean } | null = null;
+  private griff: { id: string; to: string; sx: number; sy: number; zieht: boolean; pointer: number; von: Pt; selbst: boolean; span: number | null } | null = null;
 
   protected greifen(ev: PointerEvent, m: MapMarker): void {
     ev.stopPropagation();
@@ -1480,7 +1576,9 @@ export class Karte {
       this.hinweis.set('During the encounter, your token moves through the turn plan.');
       return;
     }
-    this.griff = { id: m.rel.id, to: m.to, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y }, selbst };
+    /* Möbel rasten nicht: sie liegen, wie man sie hinlegt. */
+    const span = m.kind === 'scenery' ? null : this.tokenPlatz(m.to, m.ownSize);
+    this.griff = { id: m.rel.id, to: m.to, sx: ev.clientX, sy: ev.clientY, zieht: false, pointer: ev.pointerId, von: { x: m.x, y: m.y }, selbst, span };
     (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId);
   }
 
@@ -1506,7 +1604,7 @@ export class Karte {
     if (!b || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
     this.zeiger.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     b.setPointerCapture?.(ev.pointerId);
-    this.druckBeginn = ev.timeStamp;
+    if (this.zeiger.size > 1) this.lupeAus();
     /* **Einen Punkt ziehen** (T-304): unter dem Finger eine Ecke, sonst schiebt es die Karte. */
     if (this.werkzeug() === 'punkte' && this.zeiger.size === 1) {
       const pt = this.punkt(ev);
@@ -1516,9 +1614,23 @@ export class Karte {
       if (p) {
         this.punktGriff = ev.pointerId;
         this.punktZug.set({ von: p, nach: p });
+        /* Am Finger gleich mit Lupe: er deckt die Ecke zu, die er zieht. */
+        if (ev.pointerType !== 'mouse') this.lupe.set(p);
         this.schwenk = null;
         return;
       }
+    }
+    /* **Die Lupe** (T-315): in einem Setz-Werkzeug öffnet Halten sie; Ziehen davor schiebt die Karte. */
+    if (LUPE_WERKZEUGE.has(this.werkzeug()) && this.zeiger.size === 1) {
+      const start = this.punkt(ev);
+      const id = ev.pointerId;
+      this.lupeAus();
+      this.lupeZeiger = { id, x: ev.clientX, y: ev.clientY };
+      this.lupeUhr = setTimeout(() => {
+        if (this.lupeZeiger?.id !== id || !start) return;
+        this.schwenk = null;
+        this.lupeZeigen(start, ev.altKey, ev.pointerType !== 'mouse');
+      }, LUPE_MS);
     }
     /* Ein Formwerkzeug zieht mit einem Finger eine Form; zwei Finger
        zoomen trotzdem. */
@@ -1546,7 +1658,7 @@ export class Karte {
       if (!g.zieht && Math.hypot(ev.clientX - g.sx, ev.clientY - g.sy) < ZIEHEN_AB) return;
       g.zieht = true;
       const pt = this.punkt(ev);
-      if (pt) this.zug.set({ id: g.id, pt });
+      if (pt) this.zug.set({ id: g.id, pt: g.span === null ? pt : this.tokenRasten(pt, g.span) });
       return;
     }
     const pz = this.punktZug();
@@ -1556,7 +1668,18 @@ export class Karte {
       const f = this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse', pz.von);
       this.fang.set(f.to ? f : null);
       this.punktZug.set({ von: pz.von, nach: f.pt });
+      if (this.lupe()) this.lupe.set(pt);
       return;
+    }
+    const lz = this.lupeZeiger;
+    if (lz && lz.id === ev.pointerId) {
+      if (this.lupe()) {
+        const pt = this.punkt(ev);
+        if (pt) this.lupeZeigen(pt, ev.altKey, ev.pointerType !== 'mouse');
+        return;
+      }
+      /* Vor der Lupe gezogen: das ist Schieben, keine Lupe mehr. */
+      if (Math.hypot(ev.clientX - lz.x, ev.clientY - lz.y) >= ZIEHEN_AB) this.lupeAus();
     }
     const st = this.strich();
     if (st && st.pointer === ev.pointerId) {
@@ -1645,8 +1768,20 @@ export class Karte {
     }
     const war = this.zeiger.size;
     this.zeiger.delete(ev.pointerId);
+    const lz = this.lupeZeiger;
+    if (lz && lz.id === ev.pointerId) {
+      const l = this.lupe();
+      this.lupeAus();
+      if (l && !this.punktZug()) {
+        /* Gesetzt wird, wo das Fadenkreuz steht — wie ein Antippen dort. */
+        this.schwenk = null;
+        this.setzenAn(l, ev);
+        return;
+      }
+    }
     const pz = this.punktZug();
     if (pz && this.punktGriff === ev.pointerId) {
+      this.lupe.set(null);
       this.punktGriff = null;
       this.punktZug.set(null);
       this.fang.set(null);
@@ -1671,6 +1806,7 @@ export class Karte {
 
   protected abbrechen(ev: PointerEvent): void {
     this.zeiger.delete(ev.pointerId);
+    if (this.lupeZeiger?.id === ev.pointerId) this.lupeAus();
     if (this.punktGriff === ev.pointerId) {
       this.punktGriff = null;
       this.punktZug.set(null);
@@ -1797,7 +1933,11 @@ export class Karte {
 
   private antippen(ev: PointerEvent): void {
     const pt = this.punkt(ev);
-    if (!pt) return;
+    if (pt) this.setzenAn(pt, ev);
+  }
+
+  /** Was ein Antippen an `pt` tut — auch das Loslassen in der Lupe (T-315). */
+  private setzenAn(pt: Pt, ev: { altKey: boolean; pointerType: string }): void {
     if (this.planung()?.mode === 'move') {
       const w = this.wegZu(pt);
       const nat = this.nat();
@@ -1818,8 +1958,7 @@ export class Karte {
       if (ziel) this.spielTokenSetzen(ziel, pt);
       else this.setzenBei.set(pt);
     } else if (this.werkzeug() === 'wand') {
-      const lang = ev.pointerType !== 'mouse' && ev.timeStamp - this.druckBeginn > LANG_DRUECKEN_MS;
-      this.wandPunkt(this.einrasten(pt, ev.altKey || lang, ev.pointerType !== 'mouse').pt);
+      this.wandPunkt(this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse').pt);
     } else if (this.werkzeug() === 'wandArt') {
       const e = this.karte();
       const w = this.sperreBei(pt);
@@ -1850,6 +1989,7 @@ export class Karte {
         this.hinweis.set('The two corners are too close — tap opposite corners of one square.');
         return;
       }
+      if (g.gridSize) this.groesseBasis.set(g.gridSize);
       this.gitterAendern({ ...g, ...(this.einst()?.gridShape === 'none' ? { gridShape: 'square' as const } : {}) });
     } else if (this.werkzeug() === 'schloss') {
       const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
@@ -1970,7 +2110,29 @@ export class Karte {
     if (!e || !pt) return;
     this.setzenBei.set(null);
     this.werkzeug.set('keins');
-    void this.schreiben(addMarker(e, ziel.id, pt, `r-${crypto.randomUUID()}`));
+    void this.schreiben(addMarker(e, ziel.id, this.tokenRasten(pt, this.tokenPlatz(ziel.id, null)), `r-${crypto.randomUUID()}`));
+  }
+
+  // ------------------------------------------------- Tokens am Gitter (T-317)
+
+  /** Wie viele Felder ein Token einnimmt: am Token, sonst nach Statblock und Kampagne. */
+  private tokenPlatz(to: string, own: number | null): number {
+    return tokenSpan(own, this.kontext()?.targets[to]?.size, this.regeln().tokenSizes);
+  }
+
+  /** Ein Token einrasten, wenn die Karte es sagt (`Map.snapTokens`) und ein Gitter hat. */
+  private tokenRasten(pt: Pt, span: number): Pt {
+    const s = this.einst();
+    if (!s?.snapTokens) return pt;
+    return snapTokenCentre(pt, gridGeometry(s, this.nat()), span);
+  }
+
+  protected readonly TOKEN_SPANS = TOKEN_SPANS;
+  /** Die Grösse, die „Size“ an ein angetipptes Token gibt; `null`: wieder nach Statblock. */
+  protected readonly groesseWahl = signal<number | null>(null);
+  protected groesseGeben(relId: string): void {
+    const e = this.karte();
+    if (e) void this.schreiben(setMarkerSize(e, relId, this.groesseWahl()));
   }
 
   // ------------------------------------------------------- Spiel-Tokens
@@ -2055,7 +2217,7 @@ export class Karte {
     const e = this.karte();
     this.setzenZiel.set(null);
     this.werkzeug.set('keins');
-    if (e) void this.schreiben(addMarker(e, id, pt, `r-${crypto.randomUUID()}`, 'play'));
+    if (e) void this.schreiben(addMarker(e, id, this.tokenRasten(pt, this.tokenPlatz(id, null)), `r-${crypto.randomUUID()}`, 'play'));
   }
 
   /** Aus der Seitenleiste aufs Feld gezogen (HTML-Ziehen; am Telefon „Place“). */
@@ -2106,7 +2268,71 @@ export class Karte {
   /** Der Punkt, der gerade gezogen wird, und wohin. */
   protected readonly punktZug = signal<{ von: Pt; nach: Pt } | null>(null);
   private punktGriff: number | null = null;
-  private druckBeginn = 0;
+  // ---------------------------------------------------------- Lupe (T-315)
+
+  /** Wo das Fadenkreuz der Lupe steht; `null`: keine Lupe. */
+  protected readonly lupe = signal<Pt | null>(null);
+  private lupeUhr: ReturnType<typeof setTimeout> | null = null;
+  private lupeZeiger: { id: number; x: number; y: number } | null = null;
+
+  private lupeZeigen(pt: Pt, roh: boolean, finger: boolean): void {
+    this.lupe.set(pt);
+    if (this.werkzeug() === 'wand') {
+      const f = this.einrasten(pt, roh, finger);
+      this.fang.set(f.to ? f : null);
+      if (this.wandPunkte().length) this.wandZeiger.set(f.pt);
+    }
+  }
+
+  private lupeAus(): void {
+    if (this.lupeUhr) clearTimeout(this.lupeUhr);
+    this.lupeUhr = null;
+    this.lupeZeiger = null;
+    if (this.lupe()) {
+      this.lupe.set(null);
+      this.fang.set(null);
+    }
+  }
+
+  /**
+   * **Was die Lupe zeigt:** das Kartenbild und das Gitter, `LUPE_ZOOM` mal
+   * grösser, um das Fadenkreuz — dazu Sperren, Entwurf und Einrastring als
+   * SVG im Ausschnitt. Über dem Finger, am oberen Rand darunter.
+   */
+  protected readonly lupeBild = computed(() => {
+    const p = this.lupe();
+    const b = this.breite();
+    const h = this.hoehe();
+    const bild = this.grundbild();
+    if (!p || !h || !bild) return null;
+    const W = b * LUPE_ZOOM;
+    const H = h * LUPE_ZOOM;
+    const cx = p.x * W - LUPE_R;
+    const cy = p.y * H - LUPE_R;
+    const g = this.gitterMuster(this.faktor() * LUPE_ZOOM);
+    const ebenen = [...(g ? [g.bild] : []), `url("${this.adresse(bild)}")`];
+    /* Ein Quadratgitter sind zwei Verläufe in einer Angabe: Grösse und Lage brauchen je zwei. */
+    const groessen = [...(g ? g.bild.startsWith('linear') ? [g.groesse, g.groesse] : [g.groesse] : []), `${W}px ${H}px`];
+    const lagen = [...(g ? (g.bild.startsWith('linear') ? [0, 1] : [0]).map(() => `${g.ox - cx}px ${g.oy - cy}px`) : []), `${-cx}px ${-cy}px`];
+    const wx = (2 * LUPE_R) / W;
+    const wy = (2 * LUPE_R) / H;
+    const f = this.fang();
+    return {
+      stil: {
+        'background-image': ebenen.join(', '),
+        'background-size': groessen.join(', '),
+        'background-position': lagen.join(', '),
+        'background-repeat': [...ebenen.slice(0, -1).flatMap((e) => (e.startsWith('linear') ? ['repeat', 'repeat'] : ['repeat'])), 'no-repeat'].slice(-groessen.length).join(', '),
+      },
+      viewBox: `${p.x - wx / 2} ${p.y - wy / 2} ${wx} ${wy}`,
+      unten: p.y * h < 2 * LUPE_R + 60,
+      x: p.x,
+      y: p.y,
+      ring: f ? { cx: f.pt.x, cy: f.pt.y, rx: 7 / W, ry: 7 / H } : null,
+      d: 2 * LUPE_R,
+    };
+  });
+
   /** Die erste Ecke beim Abgreifen eines Feldes. */
   protected readonly zelleA = signal<Pt | null>(null);
   /** Das Gitter, wie es gerade eingestellt wird — Vorschau, bis „Save grid“. */
@@ -2154,6 +2380,35 @@ export class Karte {
     return 'Tap the next point — Enter, or the last point again, finishes; Esc cancels.';
   });
 
+  /** Die Grösse, um die der feine Regler schwingt (±10 %): fest, solange man an ihm zieht (T-314). */
+  private readonly groesseBasis = signal<number | null>(null);
+  protected readonly groesseSpanne = computed(() => {
+    const b = this.groesseBasis() ?? this.karteGroesse();
+    return { min: Math.max(4, Math.round(b * 0.9 * 100) / 100), max: Math.round(b * 1.1 * 100) / 100 };
+  });
+  private readonly karteGroesse = computed(() => {
+    const e = this.karte();
+    return e ? mapSettings(e).gridSize : 70;
+  });
+
+  /** Ein Schritt mit den Pfeilen; Umschalt macht ihn zehnmal so gross. */
+  protected gitterSchritt(feld: 'gridSize' | 'gridOffsetX' | 'gridOffsetY', d: number, ev: MouseEvent): void {
+    const s = this.einst();
+    if (!s) return;
+    const neu = Math.round((s[feld] + d * (ev.shiftKey ? 10 : 1)) * 100) / 100;
+    this.gitterAendern({ [feld]: feld === 'gridSize' ? Math.max(4, neu) : neu });
+    /* Läuft die Grösse aus dem Regler, wandert er mit. */
+    const sp = this.groesseSpanne();
+    if (feld === 'gridSize' && (neu < sp.min || neu > sp.max)) this.groesseBasis.set(neu);
+  }
+
+  /** Eine getippte oder abgegriffene Grösse setzt auch die Mitte des feinen Reglers. */
+  protected gitterGroesseTippen(v: number): void {
+    if (!(v >= 4)) return;
+    this.groesseBasis.set(v);
+    this.gitterAendern({ gridSize: v });
+  }
+
   /** Das Gitter einstellen — erst als Vorschau. */
   protected gitterAendern(patch: GridPatch): void {
     const sauber = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined && !(typeof v === 'number' && !Number.isFinite(v))));
@@ -2165,7 +2420,10 @@ export class Karte {
     const d = this.gitterEntwurf();
     if (!e || !d) return;
     void this.schreiben(setGrid(e, d)).then(() => {
-      if (!this.mangel()) this.gitterEntwurf.set(null);
+      if (!this.mangel()) {
+        this.gitterEntwurf.set(null);
+        this.groesseBasis.set(null);
+      }
     });
   }
 

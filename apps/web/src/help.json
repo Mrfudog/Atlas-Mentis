@@ -43,14 +43,17 @@
           "text": [
             "Walls (W): pick a kind and a shape — polyline (Closed joins the end to the start), line, rectangle, ellipse or polygon — then Draw: tap point after point, Enter or the last point again finishes. Set kind, Lock and Erase act on the wall you tap. Walls and closed doors block movement and sight; windows and obstacles block movement only. Players see only doors; a closed secret door is a wall to them.",
             "A door is drawn as a line across the opening and becomes a box of the thickness you set; that box is what you click. With “Cut walls” on, a door or window drawn over a wall splits it at its edges; erasing the door offers to join the wall again.",
-            "Snap pulls a point to an existing point, a grid corner or a wall line within the strength set (screen pixels); Alt, or a long press on a phone, places it freely. Show points marks every corner; Points lets you drag one, and the walls meeting there move with it.",
+            "Snap pulls a point to an existing point, a grid corner or a wall line within the strength set (screen pixels); Alt places it freely. Show points marks every corner; Points lets you drag one, and the walls meeting there move with it.",
+            "Hold on the map in Draw, Points, Set origin, Pick a square or Add marker and a loupe opens above your finger: drag to aim the crosshair, let go to place the point there.",
             "Tap a door in Select to open or close it. Players open a door next to their token if the campaign allows (Rules & options › Doors); locked doors stay shut."
           ]
         },
         {
           "heading": "Setting the grid",
           "text": [
-            "Grid (G): choose square or hex, then set it on the image — Set origin taps a point where two lines cross, Pick a square taps two opposite corners of one square and takes its size. Size and the X/Y offset can be fine-tuned with the slider and numbers. The grid shows at once; Save grid stores it, Discard goes back."
+            "Grid (G): choose square or hex, then set it on the image — Set origin taps a point where two lines cross, Pick a square taps two opposite corners of one square and takes its size. The grid shows at once; Save grid stores it, Discard goes back.",
+            "Fine-tune with the arrows (Shift: ten times as far) and the size slider, which moves within ±10 % of the size; type a number for big jumps. Show grid, Colour and Opacity change how it looks — hidden, it still measures and snaps.",
+            "Tokens snap to the grid (on by default): a dropped token lands so that it covers whole squares — large creatures 2×2, huge 3×3. Tokens › Size gives a token its own size, half squares included; “by size” follows its statblock. Rules & options › Token sizes says whether a tiny creature takes half a square."
           ]
         },
         {
