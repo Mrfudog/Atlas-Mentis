@@ -92,9 +92,10 @@
         {
           "heading": "Drawing a map",
           "text": [
-            "Open the map and set its grid first: Grid (G) › Pick a square on two corners of one square on the image, adjust the offset if the lines sit beside the image's, then Save grid.",
+            "Open the map and set its grid first: Grid (G) › Pick a square on two corners of one square on the image, then line it up with the arrows (Shift for bigger steps) and the fine size slider, and Save grid. Colour, Opacity and Show grid change how it looks. On a phone, hold to open the loupe and aim with the crosshair.",
             "Walls (W): draw the rooms with Rectangle or Polygon, corridors with a closed or open Polyline; Snap keeps the corners together. Then pick Door and draw each door across its opening — with Cut walls on, the wall underneath ends at the door's edges.",
-            "Check with Player view: doors are boxes the players can click, and the walls hold sight and light. Points moves a corner later; erasing a door offers to close the wall again."
+            "Check with Player view: doors are boxes the players can click, and the walls hold sight and light. Points moves a corner later; erasing a door offers to close the wall again.",
+            "Put the tokens on: with Tokens snap to the grid on they cover their squares — set a token's own size with Tokens › Size. Played lists the maps in play from this map; Open in Play goes straight to one."
           ]
         },
         {
