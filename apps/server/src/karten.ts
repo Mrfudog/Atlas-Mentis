@@ -7,7 +7,8 @@
  *   und wo die Gruppe steht. Die Karte selbst kommt wie jeder Artikel aus
  *   `/api/entities/:id` — gesiebt, mit `redactMap`.
  * - `GET /api/play` — die Sitzungen der laufenden Kampagne und die Karte,
- *   die an der laufenden liegt (`SessionState.activeMap`).
+ *   die an der laufenden liegt (`SessionState.activeMap`) — seit T-289
+ *   eine Instanz der Vorlage, die Spielende erst nach der Freigabe sehen.
  *
  * **Gesiebt wird wie überall** (`sieve`): eine Unterkarte, die jemand nicht
  * sehen darf, hat keinen Rahmen auf seiner Karte, und das Gruppen-Token
@@ -34,6 +35,7 @@ import {
   frameRevealed,
   INSIDE_MAP_RELATION,
   isMap,
+  isPlayInstance,
   mapAncestors,
   markersOf,
   PARTY_RELATION,
@@ -41,6 +43,7 @@ import {
   participantLabel,
   partyPosition,
   primaryInterface,
+  resolvePlay,
   sessionState,
   turnOf,
   mapRulesOf,
@@ -234,8 +237,10 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
        laufende mit `onMap` hierher. */
     let turn: KartenKontext['turn'] = null;
     let combatants: KartenKontext['combatants'] = [];
-    const kampfRoh = encounterOnMap(stand.alle, karte.id);
-    const [kampf] = kampfRoh ? await sieve(request, [kampfRoh], stand.map) : [];
+    /* Eine Begegnung im Spiel (T-289) aufgelöst: ihre Teilnehmer stehen an der Vorlage. */
+    const kampfGefunden = encounterOnMap(stand.alle, karte.id);
+    const kampfRoh = kampfGefunden ? resolvePlay(stand.map, kampfGefunden) : null;
+    const [kampf] = kampfGefunden ? await sieve(request, [kampfGefunden], stand.map) : [];
     if (kampfRoh && kampf) {
       const gm = leitetKarte && (await leitet(request, kampfRoh, stand.map));
       const { current, next } = turnOf(stand.map, kampfRoh);
@@ -384,6 +389,8 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         name: entityName(e),
         activeMap: id,
         mapName: id ? entityName(karten.get(id)) : null,
+        /* Liegt eine Karte im Spiel (T-289) oder noch die Vorlage? */
+        inPlay: id ? isPlayInstance(karten.get(id)) : false,
         sort: typeof t.sort === 'number' ? t.sort : Number.NEGATIVE_INFINITY,
         nummer: String((e.components?.['Identity'] as { id?: unknown } | undefined)?.id ?? ''),
       };
@@ -398,7 +405,10 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       sessions: zeilen.map(({ sort: _s, nummer: _n, ...z }) => z),
       session: gewaehlt?.id ?? null,
       map: gewaehlt?.activeMap ?? null,
+      inPlay: gewaehlt?.inPlay ?? false,
+      /* Zur Wahl stehen Vorlagen; eine Karte im Spiel steht an ihrer Sitzung (T-289). */
       maps: [...karten.values()]
+        .filter((k) => !isPlayInstance(k))
         .map((k) => ({ id: k.id, name: entityName(k) }))
         .sort((a, b) => a.name.localeCompare(b.name, 'de')),
     };
