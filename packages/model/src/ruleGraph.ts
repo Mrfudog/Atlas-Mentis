@@ -440,6 +440,40 @@ export function exampleRuleGraphs(): RuleGraph[] {
   ];
 }
 
+/* ------------------------------------------------------------ Lesbar */
+
+/**
+ * **Die Regel in Worten** (T-270): je Folge ein Satz — „When a creature is
+ * hit by an attack, if self is target and self knows “Shield”: offer
+ * reaction …". Der Weg vom Auslöser zur Folge sammelt die Bedingungen, ein
+ * Nein-Ausgang steht als „not …". Eigene Worte aus dem Graphen, kein
+ * Buchtext — der steht im Artikel, auf den die Regel verweist.
+ */
+export function describeRuleGraph(g: RuleGraph): string {
+  const nodes = new Map(g.nodes.map((n) => [n.id, n]));
+  const saetze: string[] = [];
+  for (const start of g.nodes.filter((n) => n.kind === 'trigger')) {
+    /* Tiefensuche über die Drähte; jeder Weg trägt seine Bedingungen. */
+    const stapel: { id: string; bed: string[]; besucht: Set<string> }[] = [{ id: start.id, bed: [], besucht: new Set([start.id]) }];
+    while (stapel.length) {
+      const { id, bed, besucht } = stapel.pop()!;
+      const n = nodes.get(id);
+      if (!n) continue;
+      if (n.kind === 'outcome') {
+        const wenn = bed.length ? `, if ${bed.slice(0, -1).join(', ')}${bed.length > 1 ? ' and ' : ''}${bed[bed.length - 1]}` : '';
+        saetze.push(`${describeRuleNode(start)}${wenn}: ${describeRuleNode(n).replace(/^./, (c) => c.toLowerCase())}.`);
+        continue;
+      }
+      for (const w of g.wires.filter((x) => x.from === id)) {
+        if (besucht.has(w.to)) continue;
+        const neu = n.kind === 'condition' ? [...bed, w.port === 'no' ? `not ${describeRuleNode(n)}` : describeRuleNode(n)] : bed;
+        stapel.push({ id: w.to, bed: neu, besucht: new Set([...besucht, w.to]) });
+      }
+    }
+  }
+  return saetze.reverse().join(' ');
+}
+
 /* ------------------------------------------------------------ Begriffe */
 
 /** Welche Spielbegriffe ein Auslöser voraussetzt (Wörter, wie das Glossar sie führt). */

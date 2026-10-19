@@ -34,6 +34,11 @@
  * - **Buchebenen werden nie beschrieben** — ein Neuladen ersetzt sie. Der
  *   Lauf bricht ab, wenn ein Ziel eine eingelesene Ebene ist (`kind: book`).
  *
+ * `--update-texts` schreibt angelegten (nicht übernommenen) Artikeln Text
+ * und Grundlage neu — etwa wenn der Plan einer Regel `basedOn` oder `text`
+ * nachträgt. Sonst ändert es nichts an ihnen; einen selbst geschriebenen
+ * Text ersetzt es nur mit `--force-texts`.
+ *
  * Ein zweiter Lauf legt nichts doppelt an: was angelegt wurde, steht in der
  * Zustandsdatei (Vorgabe `<plan>.state.json`, ebenfalls ausserhalb).
  * Ausgegeben werden Schlüssel, Ids und Zahlen — die Ausgabe darf ins
@@ -56,7 +61,7 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && !process.env.NODE_US
 }
 
 const REPO = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), '..'));
-const { RULE_ENGINES, RULE_OPTIONS, RULE_SORTS, exampleRuleGraphs } = await import(resolve(REPO, 'packages/model/dist/index.js'));
+const { RULE_ENGINES, RULE_OPTIONS, RULE_SORTS, describeRuleGraph, exampleRuleGraphs } = await import(resolve(REPO, 'packages/model/dist/index.js'));
 
 const BASE = (process.env.ATLAS_URL || 'https://dev.ttrpg.fuchsbau.io').replace(/\/+$/, '');
 const TOKEN = process.env.ATLAS_DEV_TOKEN || '';
@@ -213,18 +218,61 @@ const soll = [
     key: null,
     eltern: `system:${g.engine}`,
     label: g.name,
-    does: `An example rule of the rule builder: ${g.name}.`,
+    /* Die Regel in eigenen Worten aus dem Graphen; den Buchtext zeigt der Artikel, auf den sie verweist. */
+    does: describeRuleGraph(g),
     namen: [],
     graph: { enabled: g.enabled, nodes: g.nodes, wires: g.wires },
   })),
 ];
 for (const k of Object.keys(eintraege)) if (!soll.some((s) => s.schluessel === k)) stirb(`Unbekannter Eintrag im Plan: ${k}`);
 
-const zahl = { angelegt: 0, uebernommen: 0, schon: 0 };
+/** Der Text eines Artikels: der Satz aus dem Katalog oder Graphen, dazu der Verweis auf seine Grundlage. */
+async function textFuer(s, e) {
+  const basis = [...(e.basedOn ?? [])];
+  if (!e.basedOn) for (const n of s.namen) {
+    const id = await buchartikel(n);
+    if (id) {
+      basis.push(id);
+      break;
+    }
+  }
+  const verweise = [];
+  let publikation = e.publication;
+  for (const id of basis) {
+    const b = ok(await api(`/api/entities/${encodeURIComponent(id)}`), `Grundlage ${id}`);
+    /* Ein Verweis nennt die Nummer (M11), nicht die interne Id. */
+    verweise.push(`[[${b.components?.Identity?.id ?? id}|${b.components?.Identity?.name ?? b.name ?? id}]]`);
+    publikation ??= b.components?.Source?.publication;
+  }
+  const satz = e.text ?? s.does;
+  return { basis, publikation, text: verweise.length ? `${satz}\n\nBased on ${verweise.join(', ')}.` : satz };
+}
+
+const zahl = { angelegt: 0, uebernommen: 0, schon: 0, texte: 0 };
 for (const s of soll) {
   const e = eintraege[s.schluessel] ?? {};
   if (zustand.ids[s.schluessel]) {
     zahl.schon += 1;
+    /* `--update-texts`: angelegte Artikel bekommen Text und Grundlage neu — nur die Beschreibung, sonst nichts. */
+    const id = zustand.ids[s.schluessel];
+    if (flag('--update-texts') && !(e.use) && !id.startsWith('(neu')) {
+      const { refs: _r, fromTemplate: _t, ...art } = ok(await api(`/api/entities/${encodeURIComponent(id)}`), `Artikel ${id}`);
+      const { text, publikation } = await textFuer(s, e);
+      const alt = art.components?.Description?.description;
+      /* Was jemand selbst geschrieben hat, bleibt: ersetzt wird nur ein leerer Text oder der alte Platzhalter. */
+      const eigen = typeof alt === 'string' && alt.trim() && !/^An example rule of the rule builder:/.test(alt) && !flag('--force-texts');
+      if (alt !== text && eigen) console.log(`bleibt ${s.schluessel} (${id}): eigener Text`);
+      else if (alt !== text) {
+        console.log(`Text ${s.schluessel} (${id})`);
+        const components = {
+          ...art.components,
+          Description: { ...(art.components?.Description ?? {}), description: text },
+          ...(publikation ? { Source: { ...(art.components?.Source ?? {}), publication: publikation } } : {}),
+        };
+        if (!trocken) ok(await api(`/api/entities/${encodeURIComponent(id)}`, { ...art, components }, 'PUT'), `Text ${s.schluessel}`);
+        zahl.texte += 1;
+      }
+    }
     continue;
   }
   const elternId = s.eltern ? zustand.ids[s.eltern] : null;
@@ -254,24 +302,7 @@ for (const s of soll) {
   ziel ??= vorgabe;
   if (ziel !== '(neu)') await pruefeZiel(ziel);
 
-  const basis = [];
-  for (const id of e.basedOn ?? []) basis.push(id);
-  if (!e.basedOn) for (const n of s.namen) {
-    const id = await buchartikel(n);
-    if (id) {
-      basis.push(id);
-      break;
-    }
-  }
-  const verweise = [];
-  let publikation = e.publication;
-  for (const id of basis) {
-    const b = ok(await api(`/api/entities/${encodeURIComponent(id)}`), `Grundlage ${id}`);
-    /* Ein Verweis nennt die Nummer (M11), nicht die interne Id. */
-    verweise.push(`[[${b.components?.Identity?.id ?? id}|${b.components?.Identity?.name ?? b.name ?? id}]]`);
-    publikation ??= b.components?.Source?.publication;
-  }
-  const text = verweise.length ? `${s.does}\n\nBased on ${verweise.join(', ')}.` : s.does;
+  const { basis, text, publikation } = await textFuer(s, e);
   const fields = {
     'Rule.kind': s.kind,
     ...(s.key ? { 'Rule.key': s.key } : {}),
@@ -295,4 +326,4 @@ for (const s of soll) {
   zahl.angelegt += 1;
 }
 sichere();
-console.log(`${trocken ? 'Probe: ' : ''}${zahl.angelegt} angelegt, ${zahl.uebernommen} übernommen, ${zahl.schon} schon da.`);
+console.log(`${trocken ? 'Probe: ' : ''}${zahl.angelegt} angelegt, ${zahl.uebernommen} übernommen, ${zahl.schon} schon da${zahl.texte ? `, ${zahl.texte} Texte neu` : ''}.`);
