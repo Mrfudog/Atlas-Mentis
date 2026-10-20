@@ -213,11 +213,11 @@ nächste Abschnitt.
 `packages/model/src/lighting.ts`, REQ-140.
 
 - **Die Karte sagt, wie hell es ist** (`Map.lighting`: `bright`, `dim`,
-  `dark`; ohne Angabe hell). Gesetzt unter Fog › Lighting.
+  `dark`; ohne Angabe hell). Gesetzt unter Light › Lighting.
 - **Ein Licht ist ein Marker mit Radius** (`marker.props.light` hell,
   `dim` der ganze Radius, beides in Feldern; `mapLights`). Kein eigener
   Artikel: dieselbe Laterne leuchtet auf einer Stadtkarte anders weit als
-  auf einer Kampfkarte. Gesetzt mit Fog › Light source (ein Token
+  auf einer Kampfkarte. Gesetzt mit Light › Light source (ein Token
   antippen; 0 und 0 nimmt das Licht weg). Was ein Licht erreicht, ist das
   Sichtpolygon gegen die Sperren, die **Licht** halten (`lightPolygon`,
   `litAreas`).
@@ -255,9 +255,11 @@ nebel.ts):
    dem Nebel. Die Dunkelsicht dafür schickt der Kartenkontext
    (`darkvision`, je eigener Figur und Gruppen-Token; für die Leitung je
    Spiel-Token). In der Spielersicht der Leitung gilt die gewählte Figur,
-   sonst das Gruppen-Token. Bei Nebel je Figur (`Campaign.fog: player`)
-   zählt das Gruppen-Token nicht, solange eine eigene Figur dasteht — die
-   Spielersicht ist die Vereinigung der eigenen Figuren (T-305).
+   sonst das Gruppen-Token. **Die Sicht gilt den Spielertokens**
+   (T-305, die Leitung 20.10.): das Gruppen-Token zählt nur, solange keine
+   Figur der Spielenden auf der Karte steht — für die laufende Sicht wie
+   fürs Aufdecken an einer geöffneten Tür. Die Spielersicht ist die
+   Vereinigung der eigenen Figuren.
    **Auch ohne Nebel endet die Sicht an der Wand** (T-305): hält auf der
    Karte etwas den Blick, oder ist sie dunkel, deckt die Schicht für
    Spielende fast ganz zu, was ihre Figuren gerade nicht sehen — ein
@@ -271,6 +273,9 @@ nebel.ts):
 
 ### Lichter an Gegenständen, an und aus (T-305)
 
+**Licht ist ein eigenes Werkzeug** (Light, Taste L): Helligkeit der Karte,
+Light source und Light on/off stehen dort und nicht mehr unter Fog.
+
 - **Ein Gegenstand leuchtet** mit `Item.lightBright` (hell, in Fuss) und
   `Item.lightDim` (dämmrig **darüber hinaus**, wie die Regel schreibt: eine
   Fackel 20 ft hell, weitere 20 ft dämmrig). Liegt er als Marker auf der
@@ -282,7 +287,7 @@ nebel.ts):
   Radien (`lights`, je Markerziel), Zug und Tür am Server rechnen gleich.
 - **Ein Radius an der Kante schlägt den des Gegenstands** — dieselbe
   Laterne darf auf einer Karte weiter leuchten.
-- **An und aus** (`marker.props.lightOff`, Fog › Light on/off): die Radien
+- **An und aus** (`marker.props.lightOff`, Light › Light on/off): die Radien
   bleiben, das Licht ist nur gerade aus — auch das getragene.
 - **Leistung:** die Strahlen rechnen über Zahlenreihen statt Objekte, und
   die Fläche eines Lichts wird je Sperrenliste zwischengespeichert
@@ -422,7 +427,7 @@ Drehung (⟲ ⟳ in 15°-Schritten), **Movable in play** und **Blocks**.
   sonst wanderte die Sperre nicht mit der Kiste. Sicht, Licht und der Weg
   eines Zuges rechnen damit (`blockingWalls`), der Server prüft den Schritt
   der Spielenden gegen dieselben Sperren.
-- **Licht** wie an jedem Marker (Fog › Light source, an/aus) — eine
+- **Licht** wie an jedem Marker (Light › Light source, an/aus) — eine
   Laterne, die als Schrank sperrt, leuchtet aus sich heraus.
 
 ---
