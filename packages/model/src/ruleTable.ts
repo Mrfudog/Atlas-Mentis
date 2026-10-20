@@ -200,6 +200,7 @@ export interface ReachHolder {
 export function reachExits(
   steps: readonly PlanStep[],
   holders: readonly ReachHolder[],
+  per = 5,
 ): {
   step: string;
   index: number;
@@ -226,7 +227,7 @@ export function reachExits(
       const b = s.path[k + 1]!;
       for (const h of holders) {
         if (schon.has(h.id)) continue;
-        if (cellFeet(a, h.cell) <= h.reach && cellFeet(b, h.cell) > h.reach) {
+        if (cellFeet(a, h.cell, per) <= h.reach && cellFeet(b, h.cell, per) > h.reach) {
           schon.add(h.id);
           out.push({ step: s.id, index: k, holder: h.id, from: a, disengaged });
         }

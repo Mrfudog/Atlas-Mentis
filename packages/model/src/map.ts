@@ -14,7 +14,8 @@
  */
 
 import type { Pt } from './sight.js';
-import type { Entity, EntityId, Relation } from './types.js';
+import type { Entity, EntityId, Registry, Relation, UnitDef } from './types.js';
+import { unitByCode } from './units.js';
 import { initiativeOrder, PARTICIPATES, type ParticipantProps } from './initiative.js';
 import { floorView, hasFloors, mapFloors, redactFloors, withFloorView } from './floors.js';
 import { hasSightWalls, mapWalls, redactWalls, sightPolygon, wallKind, type MapWall, type WallKind } from './walls.js';
@@ -673,13 +674,19 @@ export interface GridGeometry {
   oy: number;
   w: number;
   h: number;
+  /**
+   * **Fuss je Feld** aus dem Massstab (T-321, `scaleFeet`): damit rechnen
+   * Bewegung, Reichweite und Licht. Ohne lesbaren Massstab 5 — ein Feld
+   * der Regeln.
+   */
+  cellFeet: number;
 }
 
 /**
  * Das Gitter in Bildpunkten des Kartenbildes. Ohne Bildgrösse oder ohne
  * Gitter keines — dann misst die Karte auch nicht in Feldern.
  */
-export function gridGeometry(s: MapSettings, nat: Size | null): GridGeometry | null {
+export function gridGeometry(s: MapSettings, nat: Size | null, units?: UnitTable): GridGeometry | null {
   if (s.gridShape === 'none' || !nat || !(nat.w > 0) || !(nat.h > 0)) return null;
   const g = s.gridSize;
   return {
@@ -690,18 +697,62 @@ export function gridGeometry(s: MapSettings, nat: Size | null): GridGeometry | n
     oy: ((s.gridOffsetY % g) + g) % g,
     w: nat.w,
     h: nat.h,
+    cellFeet: scaleFeet(s.scale, units) ?? 5,
   };
 }
 
 /**
  * **Das Hexmuster** als eine Kachel, die sich wiederholt — spitze Seite
  * oben, die zweite Reihe um eine halbe Breite versetzt. Ein Pfad mit
- * `viewBox` 0 0 100 173.2, gezeichnet in `size × 1.5·rowHeight`. Ein
- * Muster statt einzeln gezeichneter Felder: sonst hinge die Zahl der Knoten
- * an der Bildgrösse.
+ * `viewBox` 0 0 100 `HEX_TILE_H`, gezeichnet in `size × 1.5·rowHeight`.
+ * Ein Muster statt einzeln gezeichneter Felder: sonst hinge die Zahl der
+ * Knoten an der Bildgrösse.
+ *
+ * Die Kachel trägt das Hex der ersten Reihe ganz und von der zweiten nur,
+ * was das erste nicht schon zeichnet: die senkrechte Kante bei x = 50
+ * zwischen zwei versetzten Hexen. Bis T-321 standen dort die Senkrechten
+ * bei x = 0 und x = 100 — das sind in der zweiten Reihe die **Mitten** der
+ * Hexe, und die Linien liefen von der oberen Ecke bis ins Innere. Die
+ * Senkrechten bei x = 0 und x = 100 der ersten Reihe liegen auf dem
+ * Kachelrand: jede Kachel zeichnet die Hälfte des Strichs, zusammen ist es
+ * einer (`hexTileSegments`, geprüft in `map.test.ts`).
  */
-export const HEX_TILE_PATH =
-  'M50 0 L100 28.9 L100 86.6 L50 115.5 L0 86.6 L0 28.9 Z M100 86.6 L100 144.3 M0 86.6 L0 144.3 M50 115.5 L50 173.2';
+const HEX_KANTE = 100 / Math.sqrt(3);
+/** Höhe der Hexkachel in Einheiten der `viewBox` (Breite 100): anderthalb Hexhöhen. */
+export const HEX_TILE_H = 3 * HEX_KANTE;
+const hz = (v: number): string => String(Math.round(v * 1000) / 1000);
+export const HEX_TILE_PATH = (() => {
+  const k = HEX_KANTE;
+  const ecken: [number, number][] = [
+    [50, 0],
+    [100, k / 2],
+    [100, (3 * k) / 2],
+    [50, 2 * k],
+    [0, (3 * k) / 2],
+    [0, k / 2],
+  ];
+  const hex = ecken.map(([x, y], i) => `${i ? 'L' : 'M'}${hz(x)} ${hz(y)}`).join(' ');
+  return `${hex} Z M50 ${hz(2 * k)} L50 ${hz(3 * k)}`;
+})();
+
+/** Die Strecken der Hexkachel, in Einheiten ihrer `viewBox` — zum Prüfen und Zählen. */
+export function hexTileSegments(): { x1: number; y1: number; x2: number; y2: number }[] {
+  const out: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  let start: [number, number] | null = null;
+  let at: [number, number] | null = null;
+  for (const m of HEX_TILE_PATH.matchAll(/([MLZ])\s*(?:(-?[\d.]+)\s+(-?[\d.]+))?/g)) {
+    if (m[1] === 'Z') {
+      if (at && start) out.push({ x1: at[0], y1: at[1], x2: start[0], y2: start[1] });
+      at = start;
+      continue;
+    }
+    const p: [number, number] = [Number(m[2]), Number(m[3])];
+    if (m[1] === 'M') start = p;
+    else if (at) out.push({ x1: at[0], y1: at[1], x2: p[0], y2: p[1] });
+    at = p;
+  }
+  return out;
+}
 
 /** Hex in axialen Koordinaten (q, r): spitze Seite oben, Reihe r. */
 interface Hex {
@@ -772,6 +823,48 @@ export function parseScale(scale: string): { value: number; unit: string } | nul
   const value = Number(m[1]!.replace(',', '.'));
   if (!(value > 0)) return null;
   return { value, unit: (m[2] ?? '').trim() };
+}
+
+/** Die Einheiten des Registers (`packages/registry/src/units.ts`). */
+export type UnitTable = Registry['units'];
+
+/**
+ * **Massstäbe zur Auswahl** (T-321): was ein Feld in der Welt ist. Der
+ * Massstab bleibt Text mit Zahl und Einheit (`Map.scale`) — frei
+ * geschrieben geht weiter, die Liste ist nur der kurze Weg.
+ */
+export const SCALE_PRESETS: readonly string[] = ['5 ft', '10 ft', '1,5 m', '1 mi', '6 mi'];
+
+/** Längen ohne Register: dieselben Zeilen wie in `units.ts`, für Server und Tests, die keines mitgeben. */
+const LAENGEN: Record<string, Pick<UnitDef, 'code' | 'quantity' | 'system' | 'base' | 'aliases'>> = {
+  ft: { code: 'ft', quantity: 'length', system: 'imperial', base: 0.3048, aliases: ['feet', 'foot', 'fuss'] },
+  mi: { code: 'mi', quantity: 'length', system: 'imperial', base: 1609.344, aliases: ['mile', 'miles'] },
+  m: { code: 'm', quantity: 'length', system: 'metric', base: 1, aliases: ['meter', 'metre'] },
+  km: { code: 'km', quantity: 'length', system: 'metric', base: 1000 },
+};
+
+/**
+ * **Fuss je Feld aus dem Massstab** (T-321, D8: umgerechnet beim Lesen).
+ * Die Einheit kommt aus dem Register (`units.ts`, mit ihren Schreibweisen:
+ * `mile`, `miles`, `Meilen`); ohne mitgegebenes Register aus den vier
+ * Längen ft, mi, m, km. Metrisch gilt die Tischregel, nicht die Physik:
+ * **1,5 m sind ein Feld von 5 ft** (die Regeln schreiben 1,5 m dafür,
+ * nicht 1,524), also 1 km = 3333 ft. Ohne Zahl oder ohne Längeneinheit
+ * („1 day") `null` — dann rechnet der Aufrufer mit seiner Vorgabe.
+ */
+export function scaleFeet(scale: string, units?: UnitTable): number | null {
+  const m = parseScale(scale);
+  if (!m) return null;
+  const unit = unitByCode({ units: units && Object.keys(units).length ? units : (LAENGEN as Registry['units']) }, m.unit);
+  if (!unit || unit.quantity !== 'length') return null;
+  const meter = m.value * unit.base;
+  return unit.system === 'metric' ? (meter / 1.5) * 5 : meter / 0.3048;
+}
+
+/** „1 hex = 6 mi" — der Massstab, wie die Leiste ihn sagt; ohne Gitter je Feld. */
+export function scaleLabel(s: Pick<MapSettings, 'gridShape' | 'scale'>): string {
+  if (!s.scale) return '';
+  return `1 ${s.gridShape === 'hex' ? 'hex' : 'square'} = ${s.scale}`;
 }
 
 export interface Measurement {

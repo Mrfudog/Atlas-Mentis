@@ -387,7 +387,7 @@ export function planGrid(geo: GridGeometry, markers: readonly MapMarker[], selfR
   const fx = (x: number) => (x * geo.w - geo.ox) / geo.size;
   const fy = (y: number) => (y * geo.h - geo.oy) / geo.size;
   const segs = walls.filter((w) => wallBlocks(w).move).map((w) => ({ x1: fx(w.x1), y1: fy(w.y1), x2: fx(w.x2), y2: fy(w.y2) }));
-  return { cols, rows, walls: segs, blocked, square: 5 };
+  return { cols, rows, walls: segs, blocked, square: geo.cellFeet };
 }
 
 /** Das Feld eines Tokens, ins Raster geklemmt. */
@@ -415,14 +415,15 @@ export function cellPoint(geo: GridGeometry, c: Cell): Pt {
 
 /**
  * Wie weit zwei Punkte auseinander sind, in Fuss, nach der Rasterregel —
- * für die Reichweite eines Angriffs. Gezählt wird nach der Regel 5-10-5.
+ * für die Reichweite eines Angriffs. Gezählt wird nach der Regel 5-10-5,
+ * je Feld so viele Fuss, wie der Massstab sagt (`cellFeet`, T-321).
  */
 export function feetBetween(geo: GridGeometry, a: Pt, b: Pt): number {
   const ca = cellAt(geo, a);
   const cb = cellAt(geo, b);
   const dx = Math.abs(ca.x - cb.x);
   const dy = Math.abs(ca.y - cb.y);
-  return (Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2)) * 5;
+  return (Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2)) * geo.cellFeet;
 }
 
 /** Wo der Plan das Token zuletzt hinstellt — das Ende der letzten Bewegung. */
@@ -479,11 +480,11 @@ export function cleanNat(raw: unknown): { w: number; h: number } | null {
 
 // ------------------------------------------------------------ Reaktionen
 
-/** Wie weit zwei Felder auseinander sind, in Fuss (5-10-5). */
-export function cellFeet(a: Cell, b: Cell): number {
+/** Wie weit zwei Felder auseinander sind, in Fuss (5-10-5); `per` Fuss je Feld (T-321). */
+export function cellFeet(a: Cell, b: Cell, per = 5): number {
   const dx = Math.abs(a.x - b.x);
   const dy = Math.abs(a.y - b.y);
-  return (Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2)) * 5;
+  return (Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2)) * per;
 }
 
 /**
@@ -494,7 +495,7 @@ export function cellFeet(a: Cell, b: Cell): number {
  * Weg hebt es auf, wie im Spielerhandbuch und in BG3; danach gesetzt hilft
  * es dem Weg davor nicht.
  */
-export function opportunityAttacks(steps: readonly PlanStep[], threats: readonly PlanThreat[]): Provocation[] {
+export function opportunityAttacks(steps: readonly PlanStep[], threats: readonly PlanThreat[], per = 5): Provocation[] {
   const out: Provocation[] = [];
   const schon = new Set<string>();
   let geloest = false;
@@ -509,7 +510,7 @@ export function opportunityAttacks(steps: readonly PlanStep[], threats: readonly
       const b = s.path[k + 1]!;
       for (const t of threats) {
         if (schon.has(t.id)) continue;
-        if (cellFeet(a, t.cell) <= t.reach && cellFeet(b, t.cell) > t.reach) {
+        if (cellFeet(a, t.cell, per) <= t.reach && cellFeet(b, t.cell, per) > t.reach) {
           schon.add(t.id);
           out.push({ step: s.id, index: k, reactor: t.id, reactorName: t.name });
         }

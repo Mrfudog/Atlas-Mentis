@@ -820,10 +820,10 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const regeln = await regelnAmTisch(stand, kampagne);
     /* Die Leitung führt aus: gegen die ganze Karte, auch verborgene Gegner. */
     const provs =
-      geo && !regeln ? opportunityAttacks(plan.steps, bedrohteFelder(roheEbene, geo, bedrohungen(stand, roheEbene, figur.id, kampf))) : [];
+      geo && !regeln ? opportunityAttacks(plan.steps, bedrohteFelder(roheEbene, geo, bedrohungen(stand, roheEbene, figur.id, kampf)), geo.cellFeet) : [];
     const tisch = regeln && geo ? await tischKreaturen(repo, stand, roheEbene, geo, kampf) : [];
     const selbst = tisch.find((c) => c.id === figur.id);
-    const exits = regeln && selbst ? reachExits(plan.steps, tisch.filter((c) => c.id !== figur.id).map((c) => ({ id: c.id, cell: { x: c.x, y: c.y }, reach: c.values['reach'] ?? 5 }))) : [];
+    const exits = regeln && selbst ? reachExits(plan.steps, tisch.filter((c) => c.id !== figur.id).map((c) => ({ id: c.id, cell: { x: c.x, y: c.y }, reach: c.values['reach'] ?? 5 })), geo?.cellFeet) : [];
     const namen = new Map(tisch.map((c) => [c.id, c.name]));
     const gefragt = new Set(plan.asked ?? []);
     const results: PlanResult[] = [...(plan.results ?? [])];

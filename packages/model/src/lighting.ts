@@ -52,6 +52,7 @@ import {
   markersOf,
   parseScale,
   revealAlong,
+  scaleFeet,
   revealArea,
   revealShapes,
   type MapSettings,
@@ -344,19 +345,13 @@ export function litAreas(map: Entity, nat: Size, carried: Readonly<Record<Entity
 }
 
 /**
- * **Fuss je Feld** aus dem Massstab der Karte: „1,5 m" sind fünf Fuss (die
- * Regel rechnet ein Feld als 5 ft. und schreibt 1,5 m dafür, nicht 4,92),
- * „10 ft" zehn. Ohne lesbaren Massstab gilt das Feld als 5 ft.
+ * **Fuss je Feld** aus dem Massstab der Karte (`scaleFeet`, T-321): „1,5 m"
+ * sind fünf Fuss (die Regel rechnet ein Feld als 5 ft. und schreibt 1,5 m
+ * dafür, nicht 4,92), „10 ft" zehn, „1 mi" 5280. Ohne lesbaren Massstab
+ * gilt das Feld als 5 ft.
  */
 export function feetPerSquare(s: MapSettings): number {
-  const m = parseScale(s.scale);
-  if (!m) return 5;
-  const u = m.unit.toLowerCase().replace(/\.$/, '');
-  if (u === 'ft' || u === 'feet' || u === 'foot' || u === 'fuss') return m.value;
-  if (u === 'm' || u === 'meter' || u === 'metre') return (m.value / 1.5) * 5;
-  if (u === 'km') return ((m.value * 1000) / 1.5) * 5;
-  if (u === 'mi' || u === 'mile' || u === 'miles') return m.value * 5280;
-  return 5;
+  return scaleFeet(s.scale) ?? 5;
 }
 
 /** Eine Strecke in Fuss als Radius in Anteilen der Breite. */
