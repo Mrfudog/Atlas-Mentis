@@ -25,7 +25,10 @@ import {
   fogOn,
   frameNear,
   gridGeometry,
+  HEX_TILE_H,
   HEX_TILE_PATH,
+  SCALE_PRESETS,
+  scaleLabel,
   isMap,
   isPlayInstance,
   isReleased,
@@ -844,6 +847,16 @@ interface Zeiger {
                 <input type="number" class="zahl" step="0.5" [value]="einst()?.gridOffsetY" (change)="gitterAendern({ gridOffsetY: +$any($event.target).value })" aria-label="Grid offset Y in pixels" />
                 <button type="button" class="pfeil" (click)="gitterSchritt('gridOffsetY', 0.5, $event)" aria-label="Grid down" title="Down (Shift: ×10)">▼</button>
               </span>
+              <!-- **Massstab je Feld** (T-321): Liste oder frei, Zahl und Einheit; auf einer Ebene gilt er für sie. -->
+              <label class="feld" title="What one square or hex is in the world — movement, reach, light and measuring use it">
+                {{ einst()?.gridShape === 'hex' ? '1 hex' : '1 square' }} =
+                <input type="text" class="massstab" list="nw-massstab" [value]="einst()?.scale" (change)="gitterAendern({ scale: $any($event.target).value })" aria-label="Scale per square" />
+                <datalist id="nw-massstab">
+                  @for (m of SCALE_PRESETS; track m) {
+                    <option [value]="m"></option>
+                  }
+                </datalist>
+              </label>
               <button type="button" [class.an]="werkzeug() === 'gitterUrsprung'" [attr.aria-pressed]="werkzeug() === 'gitterUrsprung'" (click)="waehle('gitterUrsprung')" title="Tap a point where two grid lines cross on the image">Set origin</button>
               <button type="button" [class.an]="werkzeug() === 'gitterZelle'" [attr.aria-pressed]="werkzeug() === 'gitterZelle'" (click)="waehle('gitterZelle')" title="Tap two opposite corners of one square on the image">Pick a square</button>
               <!-- **Aussehen** (T-314): Farbe (Farbton und Sättigung in der Farbwahl), Deckkraft, ausblenden. -->
@@ -1307,8 +1320,8 @@ interface Zeiger {
           @if (nebelAn()) {
             Fog of war ·
           }
-          @if (einst()?.scale; as sc) {
-            1 square = {{ sc }}
+          @if (massstabText(); as sc) {
+            {{ sc }}
           }
           @if (marker().length) {
             · {{ marker().length }} {{ marker().length === 1 ? 'marker' : 'markers' }}
@@ -2143,7 +2156,7 @@ export class Karte {
     }
     const h = geo.rowHeight * f * 1.5;
     const svg =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 100 173.2" preserveAspectRatio="none">` +
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 100 ${HEX_TILE_H}" preserveAspectRatio="none">` +
       `<path d="${HEX_TILE_PATH}" fill="none" stroke="${farbe}" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>`;
     return { bild: `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`, groesse: `${w}px ${h}px`, lage, w, h, ox: geo.ox * f, oy: geo.oy * f };
   }
@@ -2859,7 +2872,7 @@ export class Karte {
     });
     const folge: PlanStep[] = [...plan.steps];
     if (w) folge.push({ id: '__vorschau', kind: 'move', path: w.path, feet: w.feet });
-    const warnungen = opportunityAttacks(folge, drohen).map((p) => {
+    const warnungen = opportunityAttacks(folge, drohen, geo.cellFeet).map((p) => {
       const weg = folge.find((x) => x.id === p.step);
       const c = weg?.kind === 'move' ? weg.path[p.index]! : pr.start;
       const pt = cellPoint(geo, c);
@@ -3089,6 +3102,12 @@ export class Karte {
   protected readonly STAERKE_MIN = STAERKE_MIN;
   protected readonly STAERKE_MAX = STAERKE_MAX;
   protected readonly GRID_SHAPES: readonly GridShape[] = ['none', 'square', 'hex'];
+  protected readonly SCALE_PRESETS = SCALE_PRESETS;
+  /** „1 hex = 6 mi" — der Massstab der gezeigten Ebene (T-321). */
+  protected readonly massstabText = computed(() => {
+    const s = this.einst();
+    return s ? scaleLabel(s) : '';
+  });
   protected readonly wandIstTuer = computed(() => wallKind(this.wandArt()).door);
   protected readonly formDef = computed(() => drawShape(this.ed.formFuer(this.wandArt())));
   /** Woran der Zeiger gerade einrastet — ein Ring an der Stelle. */

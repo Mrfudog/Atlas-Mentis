@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-hex-grid-and-scale",
+      "date": "2026-10-20",
+      "title": "Clean hex grids and a scale per square",
+      "text": "Hex grids now draw only the edges of each hex — no more lines running into a hex. Grid › 1 square = (or 1 hex =) sets what one cell is: 5 ft, 10 ft, 1 mi, 6 mi or your own; movement, reach, light and measuring use it, per floor too, and the bar under the map shows it.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-20-map-tools-per-kind",
       "date": "2026-10-20",
       "title": "Map tools per map kind, and Link map is back",
