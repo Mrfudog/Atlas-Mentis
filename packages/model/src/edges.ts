@@ -270,6 +270,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     uses: {
       [M + 'builder.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
       [M + 'hitpoints.ts']: ['hasClass'],
+      /* Stufen je Klasse, Mehrklassen nach D&D (T-319). */
+      [M + 'multiclass.ts']: ['hasClass'],
       [M + 'choices.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'subraceOf'],
       /* Was die Figur schon hat, wählt sie nicht noch einmal (T-299). */
       [M + 'duplicates.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'holds'],
