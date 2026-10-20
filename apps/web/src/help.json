@@ -16,10 +16,11 @@
         {
           "heading": "Tools",
           "text": [
-            "The tool bar on the left holds the tools in groups: Select (S), Tokens (T), Measure (M) and Fog (F). Pick a group and its tools appear above the map; pick it again, or press Esc, to go back to Select. « hides the tool names, » shows them again.",
+            "The tool bar on the left holds the tools in groups: Select (S), Tokens (T), Measure (M), Floors (E) and Fog (F). Pick a group and its tools appear above the map; pick it again, or press Esc, to go back to Select. « hides the tool names, » shows them again.",
             "Select: drag a marker to move it, tap it for its quick view. Measure: tap two points. Tokens (GM): Add marker — tap where it goes, then pick the article: one line per name, the creature first (then statblock, then image), + shows the others. Remove — tap a marker to take it off the map.",
             "Place combatants puts the creatures of the running encounter on the map, Clear play tokens removes them again — prepared markers and the party stay.",
             "Fullscreen (or Shift+F) gives the map the whole screen; Esc leaves it.",
+            "Floors (E): a map with several floors — storeys, a cellar, tower levels — shows Floor at the top to switch between them. Stairs, ladders, bridges and portals are the square markers: tap one to see where it leads, Show the other floor, or Take a token standing on it through. A token on stairs you can see through sees both floors. GMs add floors and passages under Floors.",
             "Table shows the party beside the map: hit points and conditions, ◎ centres the map on a token. The GM places a character with Place or by dragging its row onto the map, and sees the encounters of the session with Place for the combatants not yet on the map.",
             "Before an encounter starts, Prepare sets its combatants on the map faded and hidden from the players; drag them where they belong. ▶ Start rolls initiative for whoever has none (into the log), reveals the prepared tokens and makes the encounter the one the session runs.",
             "Player view (GM) shows the map as the players see it: fogged parts covered, hidden markers left out."
