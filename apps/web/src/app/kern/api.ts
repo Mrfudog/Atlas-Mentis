@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TurnPlan } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1516,6 +1516,14 @@ export class Api {
   startEncounter(id: string, body: { map?: string; session?: string | null }): Promise<{ encounter: string; map: string | null; revealed: number; session: string | null }> {
     return this.call(`/api/encounters/${encodeURIComponent(id)}/start`, { method: 'POST', body: JSON.stringify(body) });
   }
+  /** Der Initiative-Tracker (T-022): die Reihe, wie dieser Betrachter sie sieht — gesiebt am Server. */
+  tracker(id: string): Promise<TrackerView & { off?: boolean }> {
+    return this.call(`/api/encounters/${encodeURIComponent(id)}/tracker`);
+  }
+  /** Eine Änderung am Tracker: Zug, Initiative, Trefferpunkte, Effekt, Teilnehmer. */
+  trackerOp(id: string, op: TrackerOp): Promise<{ ok: true }> {
+    return this.call(`/api/encounters/${encodeURIComponent(id)}/tracker`, { method: 'POST', body: JSON.stringify(op) });
+  }
   /** Die Seitenleiste der Karte (T-203): Gruppe, und für die Leitung die Begegnungen der Sitzung. */
   mapSide(id: string, session?: string | null): Promise<KartenSeite> {
     const q = session ? `?session=${encodeURIComponent(session)}` : '';
@@ -2153,6 +2161,8 @@ export interface Tisch {
   map: string | null;
   /** Ist die Karte auf dem Tisch eine Instanz (T-289) oder noch die Vorlage? */
   inPlay: boolean;
+  /** Die Begegnung, die die Sitzung führt (T-022), wenn der Betrachter sie sieht. */
+  encounter: string | null;
   maps: { id: string; name: string }[];
 }
 

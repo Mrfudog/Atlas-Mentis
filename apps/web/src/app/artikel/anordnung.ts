@@ -88,6 +88,8 @@ export interface Stueck {
     | 'handwerk'
     | 'laden'
     | 'wissen'
+    /** Der Initiative-Tracker einer Begegnung (T-022). */
+    | 'initiative'
     | 'bild'
     | 'karte'
     | 'liegen'
@@ -377,6 +379,11 @@ export function anordnen(
       /* Die Waren eines Ladens (T-129): gerechnet am Server (`refs.shop`). */
       case 'wares':
         out.push({ id: el.id, art: 'laden' });
+        break;
+      /* Der Initiative-Tracker (T-022): die Reihe fragt der Tracker selbst,
+         gesiebt am Server. */
+      case 'initiative':
+        out.push({ id: el.id, art: 'initiative' });
         break;
       /* Was ein Wissen vereint (T-287): die Komponente fragt selbst. */
       case 'knowledgeContents':

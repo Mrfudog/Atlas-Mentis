@@ -104,6 +104,14 @@
           ]
         },
         {
+          "heading": "Running a fight",
+          "text": [
+            "Before the session, decide under Campaign › Rules & options › Combat what players see of the tracker: cover names or names, foes' health as nothing, a word or numbers, which effects, and whether foes' actions show; pick the columns and the quick actions for your rows under Change options.",
+            "At the table, ▶ Start on the encounter (Table panel of the map, the encounter's page or the tracker) rolls initiative and runs it in the session; Play shows the tracker below the map. Next turn moves on and counts effects down; Damage and Heal change hit points; + Effect ties a condition or note to a number of rounds, counting at the start or end of whichever combatant's turn you pick.",
+            "Players follow on their phones: they see the party, and each foe once its turn has come. A player whose character is up presses End my turn. End marks the encounter done; the order stays as it was."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."
