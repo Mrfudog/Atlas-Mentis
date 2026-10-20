@@ -2846,7 +2846,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `gridColor` *color*, `gridOpacity` *0…1*, `gridHidden` *boolean*, `snapTokens` *boolean*, `scale` *measure in m*, `lighting` *bright | dim | dark*, `fog` *boolean*, `released` *boolean*, `reveal` *array*, `revealOnMove` *boolean*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
+- `sheets` *array*, `floors` *array*, `floorReveal` *object*, `floorReleased` *object*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `gridColor` *color*, `gridOpacity` *0…1*, `gridHidden` *boolean*, `snapTokens` *boolean*, `scale` *measure in m*, `lighting` *bright | dim | dark*, `fog` *boolean*, `released` *boolean*, `reveal` *array*, `revealOnMove` *boolean*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
 
 **Geerbte Felder**
 

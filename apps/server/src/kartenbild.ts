@@ -36,6 +36,10 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import sharp from 'sharp';
 import {
   BASE_SHEET,
+  GROUND_FLOOR,
+  floorView,
+  mapFloors,
+  withFloorView,
   MAP_COMPONENT,
   assetVersion,
   fogOn,
@@ -77,11 +81,42 @@ export function nebelStand(map: Entity, sheet: string, version: string): string 
  * nicht alles aufgedeckt ist. Adressen nach aussen bleiben, wie sie sind.
  */
 export function kartenbildAdressen(map: Entity, version: (assetId: string) => string): Entity {
-  if (!isMap(map) || fullyRevealed(map)) return map;
-  const tausch = (id: string, wert: unknown): unknown =>
-    typeof wert === 'string' && wert.trim() && !/^https?:\/\//i.test(wert.trim())
+  if (!isMap(map)) return map;
+  /* **Je Ebene** (T-307): jede hat ihren Nebel und ihre Bilder. */
+  let e = map;
+  for (const f of mapFloors(map)) {
+    const v = floorView(e, f.id);
+    if (!fullyRevealed(v)) e = withFloorView(e, f.id, ebenenAdressen(v, f.id, version));
+  }
+  return e;
+}
+
+/** Der Schlüssel eines Blattes über alle Ebenen: an der ersten das Blatt, sonst `ebene~blatt`. */
+export function blattSchluessel(floor: string, sheet: string): string {
+  return floor === GROUND_FLOOR ? sheet : `${floor}~${sheet}`;
+}
+
+/** Ebene und Blatt aus dem Schlüssel. */
+export function ausSchluessel(key: string): { floor: string; sheet: string } {
+  const i = key.indexOf('~');
+  return i < 0 ? { floor: GROUND_FLOOR, sheet: key } : { floor: key.slice(0, i), sheet: key.slice(i + 1) };
+}
+
+/** Alle Blätter aller Ebenen, mit Schlüssel und der Ebene, unter deren Nebel sie liegen. */
+export function alleBlaetter(map: Entity): Array<{ key: string; image: string; view: Entity }> {
+  return mapFloors(map).flatMap((f) => {
+    const view = floorView(map, f.id);
+    return mapSheets(view).map((s) => ({ key: blattSchluessel(f.id, s.id), image: s.image, view }));
+  });
+}
+
+function ebenenAdressen(map: Entity, floor: string, version: (assetId: string) => string): Entity {
+  const tausch = (blatt: string, wert: unknown): unknown => {
+    const id = blattSchluessel(floor, blatt);
+    return typeof wert === 'string' && wert.trim() && !/^https?:\/\//i.test(wert.trim())
       ? kartenbildAdresse(map.id, id, nebelStand(map, id, version(wert.trim())))
       : wert;
+  };
   const components = { ...map.components };
   const bild = components['Image'] as Record<string, unknown> | undefined;
   if (bild && 'image' in bild) components['Image'] = { ...bild, image: tausch(BASE_SHEET, bild['image']) };
@@ -100,9 +135,7 @@ export function kartenbildAdressen(map: Entity, version: (assetId: string) => st
 
 /** Trägt die Karte irgendwo eine beschnittene Adresse? Dann ist sie für diesen Betrachter unter Nebel. */
 export function traegtBeschnitt(map: Entity): boolean {
-  if (istKartenbildAdresse((map.components?.['Image'] as { image?: unknown } | undefined)?.image)) return true;
-  const sheets = (map.components?.[MAP_COMPONENT] as { sheets?: unknown } | undefined)?.sheets;
-  return Array.isArray(sheets) && sheets.some((s) => istKartenbildAdresse((s as { image?: unknown } | null)?.image));
+  return alleBlaetter(map).some((b) => istKartenbildAdresse(b.image));
 }
 
 /**
@@ -179,9 +212,9 @@ export function registerKartenbild(app: FastifyInstance, deps: KartenbildDeps): 
         for (const e of stand.alle) {
           if (!isMap(e)) continue;
           const k = await geltend(e, stand.map);
-          if (!fogOn(k) || fullyRevealed(k)) continue;
-          for (const s of mapSheets(k)) {
-            if (!s.image || /^https?:\/\//i.test(s.image)) continue;
+          if (!fogOn(k)) continue;
+          for (const s of alleBlaetter(k)) {
+            if (!s.image || /^https?:\/\//i.test(s.image) || fullyRevealed(s.view)) continue;
             raus.set(s.image, [...(raus.get(s.image) ?? []), k]);
           }
         }
@@ -215,8 +248,11 @@ export function registerKartenbild(app: FastifyInstance, deps: KartenbildDeps): 
       const blatt = request.query.sheet || BASE_SHEET;
       /* Welches Blatt der Betrachter hat (ein Blatt der Leitung hat er
          nicht), und woher das Bild kommt — aus der ungesiebten Karte. */
-      const hat = mapSheets(gesiebt).find((s) => s.id === blatt && s.image);
-      const quelle = mapSheets(karte).find((s) => s.id === blatt)?.image ?? '';
+      const hatBlatt = alleBlaetter(gesiebt).find((s) => s.key === blatt && s.image);
+      const hat = hatBlatt ? { image: hatBlatt.image } : undefined;
+      /* Der Nebel ist der der Ebene, auf der das Blatt liegt (T-307). */
+      const ebeneGesiebt = hatBlatt?.view ?? gesiebt;
+      const quelle = alleBlaetter(karte).find((s) => s.key === blatt)?.image ?? '';
       if (!hat || !quelle || /^https?:\/\//i.test(quelle)) return nichts();
       const asset = stand.map.get(quelle);
       const registry = await repo.getRegistry();
@@ -231,7 +267,7 @@ export function registerKartenbild(app: FastifyInstance, deps: KartenbildDeps): 
          Betrachter keine beschnittene Adresse — fragt er trotzdem hier,
          bekommt er das ganze Bild (gerechnet ist da nichts). */
       const beschnitten = istKartenbildAdresse(hat.image);
-      const stempel = beschnitten ? nebelStand(gesiebt, blatt, version) : 'full';
+      const stempel = beschnitten ? nebelStand(ebeneGesiebt, blatt, version) : 'full';
       const vorschau = request.query.size === 'thumb';
       const etag = `"${version}-${stempel}${vorschau ? '-t' : ''}"`;
       const fest = request.query.fog === stempel;
@@ -253,7 +289,7 @@ export function registerKartenbild(app: FastifyInstance, deps: KartenbildDeps): 
             const teile: Buffer[] = [];
             for await (const t of datei.body) teile.push(Buffer.from(t as Buffer));
             const daten = Buffer.concat(teile);
-            if (beschnitten) return beschneiden(daten, gesiebt, vorschau);
+            if (beschnitten) return beschneiden(daten, ebeneGesiebt, vorschau);
             if (!vorschau) return { data: daten, mime: String((asset.components?.['Asset'] as { mime?: unknown } | undefined)?.mime ?? 'application/octet-stream') };
             const t = await sharp(daten, { pages: 1 }).resize({ width: THUMB_PX, height: THUMB_PX, fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
             return { data: t, mime: 'image/webp' };

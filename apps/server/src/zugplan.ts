@@ -72,6 +72,14 @@ import {
   mayMoveAsset,
   mayMoveToken,
   moveMarker,
+  floorOfMarker,
+  GROUND_FLOOR,
+  floorView,
+  goThrough,
+  onFloor,
+  onPassage,
+  passageEnds,
+  PASSAGE_EXACT,
   naturalD20,
   partiesOf,
   resolvePlay,
@@ -515,7 +523,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
    * (`decide`). Aufgedeckt wird, wenn die Regel es sagt, beim Ziehen
    * bzw. beim Bestätigen. Im Kampf gilt der Zugplan (423).
    */
-  app.post<{ Params: { id: string }; Body: { rel?: unknown; to?: unknown; nat?: unknown; path?: unknown; feet?: unknown } | null }>(
+  app.post<{ Params: { id: string }; Body: { rel?: unknown; to?: unknown; nat?: unknown; path?: unknown; feet?: unknown; via?: unknown } | null }>(
     '/api/maps/:id/move',
     async (request, reply) => {
       const l = await lage(request, request.params.id);
@@ -536,6 +544,28 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if (asset ? !leitet && !mayMoveAsset(regeln) : !darfZiehen(leitet, regeln, marker.to, zieher(stand, kampagne, karte, user.actorIds ?? [])))
         return reply.code(403).send({ error: asset ? 'This campaign does not let you move that asset.' : 'This campaign does not let you move that token.' });
       if (!asset && !leitet && encounterOnMap(stand.alle, roheKarte.id)) return reply.code(423).send({ error: 'During an encounter, tokens move through the turn plan.' });
+      /* **Je Ebene** (T-307): Gitter, Sperren und Nebel sind die der Ebene,
+         auf der das Token steht. */
+      const ebene = floorOfMarker(roheKarte, marker.rel.id);
+      const roheEbene = floorView(roheKarte, ebene);
+
+      /* **Durchgehen** (T-307): das Token steht auf einem Übergang und
+         wechselt auf dessen Ziel. Wer es ziehen darf, darf es durchgehen
+         lassen; mit Bestätigung durch die Leitung wartet auch das. */
+      if (typeof b.via === 'string' && b.via) {
+        if (asset) return reply.code(422).send({ error: 'An asset does not take a passage.' });
+        const ende = passageEnds(roheEbene, ebene).find((e) => e.relId === b.via && onPassage(e, marker, PASSAGE_EXACT, 1));
+        /* Spielende kennen nur Übergänge, die ihre Karte trägt. */
+        if (!ende || (!leitet && !passageEnds(floorView(karte, ebene), ebene).some((e) => e.relId === ende.relId))) return reply.code(404).send({ error: 'There is no passage here.' });
+        if (!leitet && regeln.moves === 'confirm') return reply.code(423).send({ error: 'Moves wait for the GM to confirm them.' });
+        if (ende.toMap !== roheKarte.id) return reply.code(422).send({ error: 'This portal leads to another map.' });
+        const durch = goThrough(roheKarte, marker.rel.id, ende);
+        if (!durch) return reply.code(422).send({ error: 'This passage leads nowhere.' });
+        const r = await schreibeGeprueft(durch);
+        if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
+        return { moved: marker.rel.id, floor: ende.toFloor, to: ende.toAt };
+      }
+
       const roh = (b.to ?? {}) as { x?: unknown; y?: unknown };
       const tx = Number(roh.x);
       const ty = Number(roh.y);
@@ -544,7 +574,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const nat = cleanNat(b.nat);
       const figur = stand.map.get(marker.to);
       /* Ohne Felder vom Browser: die Gerade, in Fuss gemessen, wenn die Karte ein Gitter hat. */
-      const einst = mapSettings(roheKarte);
+      const einst = mapSettings(roheEbene);
       const geo = nat ? gridGeometry(einst, nat) : null;
       const gerade = geo ? Math.round(feetBetween(geo, marker, to)) : 0;
       const schritt = cleanStep({ id: 's1', kind: 'move', path: b.path, feet: b.feet, to }, 0) ?? { id: 's1', kind: 'move' as const, path: [], feet: gerade, to };
@@ -556,7 +586,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if (!leitet) {
         const ar = nat && nat.w > 0 ? nat.h / nat.w : 1;
         /* Assets, die den Schritt halten, halten ihn auch (T-306) — das gezogene nicht sich selbst. */
-        const sperren = blockingWalls(roheKarte, nat, marker.rel.id);
+        const sperren = blockingWalls(roheEbene, nat, marker.rel.id);
         const punkte = geo && schritt.path.length > 1 ? schritt.path.map((c) => cellPoint(geo, c)) : [{ x: marker.x, y: marker.y }, to];
         for (let i = 1; i < punkte.length; i++) {
           if (!wallsClear(sperren, punkte[i - 1]!, punkte[i]!, ar, 'move')) return reply.code(422).send({ error: 'A wall is in the way.' });
@@ -587,7 +617,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       }
 
       let neu = moveMarker(roheKarte, marker.rel.id, to);
-      if (!asset && regeln.revealOnMove && fogOn(roheKarte) && nat) neu = wegAufdecken(neu, marker.to, schritt, marker, nat, stand.map);
+      if (!asset && regeln.revealOnMove && fogOn(roheKarte) && nat) neu = onFloor(neu, ebene, (v) => wegAufdecken(v, marker.to, schritt, marker, nat, stand.map));
       const r = await schreibeGeprueft(neu);
       if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
       return { moved: marker.rel.id, to };
@@ -675,9 +705,13 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const hidden =
       (kampagne?.components?.['Campaign'] as { playerRolls?: unknown } | undefined)?.playerRolls === 'gm' && plan.by.id !== von.id;
     const kampf = encounterOnMap(stand.alle, roheKarte.id);
-    const geo = plan.nat ? gridGeometry(mapSettings(roheKarte), plan.nat) : null;
+    /* Gerechnet auf der Ebene der Figur (T-307): ihr Gitter, ihre Gegner. */
+    const relDa = markersOf(roheKarte).find((m) => m.to === figur.id)?.rel.id;
+    const ebene = relDa ? floorOfMarker(roheKarte, relDa) : GROUND_FLOOR;
+    const roheEbene = floorView(roheKarte, ebene);
+    const geo = plan.nat ? gridGeometry(mapSettings(roheEbene), plan.nat) : null;
     /* Die Leitung führt aus: gegen die ganze Karte, auch verborgene Gegner. */
-    const provs = geo ? opportunityAttacks(plan.steps, bedrohteFelder(roheKarte, geo, bedrohungen(stand, roheKarte, figur.id, kampf))) : [];
+    const provs = geo ? opportunityAttacks(plan.steps, bedrohteFelder(roheEbene, geo, bedrohungen(stand, roheEbene, figur.id, kampf))) : [];
     const gefragt = new Set(plan.asked ?? []);
     const results: PlanResult[] = [...(plan.results ?? [])];
     let karte = roheKarte;
@@ -706,7 +740,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
           karte = moveMarker(karte, rel, s.to);
           /* **Aufdecken beim Zug** (T-204): der Weg, so wie er ging — die
              Felder, sonst die Gerade —, für die Figur, die ihn ging. */
-          if (aufdecken && plan.nat && von) karte = wegAufdecken(karte, figur.id, s, von, plan.nat, stand.map);
+          if (aufdecken && plan.nat && von) karte = onFloor(karte, ebene, (v) => wegAufdecken(v, figur.id, s, von, plan.nat!, stand.map));
         }
         results.push({ step: s.id, text: `Moved ${s.feet} ft.` });
         continue;

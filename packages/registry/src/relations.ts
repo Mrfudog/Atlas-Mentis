@@ -973,7 +973,7 @@ export const relations: Record<string, RelationDef> = {
         kind: {
           type: 'string',
           title: 'Token kind',
-          enum: ['static', 'scenery', 'party', 'quest', 'play'],
+          enum: ['static', 'scenery', 'party', 'quest', 'play', 'passage'],
           default: 'static',
         },
         size: { type: 'number', title: 'Size in squares', default: 1 },
@@ -1017,6 +1017,19 @@ export const relations: Record<string, RelationDef> = {
            der Kante, weil dieselbe Kreatur auf einer anderen Karte für eine
            andere Begegnung stehen kann. */
         encounter: { type: 'string', format: 'link', target: { interfaces: ['Encounter'] }, title: 'Prepared for encounter' },
+        /* **Ebene und Übergang** (T-307, E-108). `floor`: auf welcher Ebene
+           der Karte der Marker steht (leer: der ersten). Ein Marker
+           `kind: 'passage'` ist ein Übergang — Treppe, Leiter, Brücke,
+           Portal; die Kante zeigt auf die Zielkarte (dieselbe für Treppen),
+           `toFloor`/`toX`/`toY` sagen Ebene und Punkt dort. `sight`:
+           durchsehen oder nur durchgehen; `oneWay`: kein Weg zurück. */
+        floor: { type: 'string', title: 'Floor' },
+        passage: { type: 'string', title: 'Passage', enum: ['stairs', 'ladder', 'bridge', 'portal'] },
+        toFloor: { type: 'string', title: 'Leads to floor' },
+        toX: { type: 'number', title: 'Leads to X (0–1)' },
+        toY: { type: 'number', title: 'Leads to Y (0–1)' },
+        sight: { type: 'string', title: 'Sight through it', enum: ['through', 'none'], default: 'through' },
+        oneWay: { type: 'boolean', title: 'One way' },
       },
     },
   },
