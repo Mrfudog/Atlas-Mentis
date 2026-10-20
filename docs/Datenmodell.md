@@ -1703,16 +1703,34 @@ Entwurf) öffnen ihn. Was er speichert, sagt die Frage **„Save for …"**:
 | Wahl | Schreibt | Wofür |
 |---|---|---|
 | every article | `views[key]`: Anordnung, Name, `order`, `rest`, `empty` | die Ansicht selbst, für jede Art, die nichts Eigenes sagt |
-| the whole type | `interfaces[T].views[key]`: eigene Liste, oder **angepasst** `{ adjust }` | die Art und ihre Untertypen |
+| every article of T | `interfaces[T].views[key]`: **angepasst** `{ adjust }`, wo es geht, sonst eigene Liste | die Art und ihre Untertypen |
 | this view | `views[key]` einer gestalteten Ansicht | alles, wofür sie gilt |
 | only this article | neue Zeile, `applies: { types, article }` | genau einen Artikel |
 | all with a condition | neue Zeile mit `applies` | Typen und Bedingungen |
 
-**Angepasst** heisst: der Designer zeigt die geerbte Anordnung mit der
-Anpassung darüber, und beim Speichern rechnet `adjustFrom(basis, baum,
-hide)` die Abweichung zurück — `drop`, `add`, `extra`, `order`, `hide`
-bleibt. Lässt sich der Baum so nicht sagen, gibt es `null`, und der
-Designer verlangt die eigene Anordnung. Die Ansichten der Orte
+**Kommt man von einem Typ, ändert man diesen Typ** (T-318): öffnet die
+Typseite, die Leiste am Artikel oder `?type=` den Designer, ist „every
+article of T" mit genau diesem Typ vorgewählt — auch wenn er für die
+Ansicht noch nichts Eigenes sagt. Vorher stand dann „every article" da, und
+die Änderung landete an jedem Artikel.
+
+**Angepasst, wo es geht — gesagt, nicht gefragt** (T-318): der Designer
+zeigt die geltende Anordnung, und beim Speichern rechnet `adjustFrom(basis,
+baum, hide)` die Abweichung zurück — `drop`, `add`, `extra`, `order`,
+`hide` bleibt. Lässt sich der Baum so nicht sagen (ein Element in einen
+Behälter verschoben oder anders eingestellt), wird es die eigene Anordnung,
+und die Zeile unter „Save for" sagt es. Eine Anpassung ohne Abweichung
+lässt den Typ wieder der Ansicht folgen. Ein Häkchen dafür gab es; mit ihm
+schlug das Speichern still fehl, wo der Entwurf mehr tat, als eine
+Anpassung sagen kann. Unter „More" bleiben „fixed" (immer eigene Anordnung;
+vorgewählt, wenn der Typ schon eine hat) und „Use the general view" (die
+Zeile des Typs geht).
+
+**Was in einer Ansicht gilt, steht beisammen** (T-318): Registry › Views
+nennt unter jeder Ansicht die Typen mit Eigenem (angepasst oder eigene
+Anordnung) und die gestalteten Ansichten ihrer Gruppe (`ansichtsTeile`), der
+Designer dieselben als Zeile „In this view" — eine Typanordnung stand vorher
+nur auf der Seite ihres Typs. Die Ansichten der Orte
 (`PLACE_VIEWS`) lassen sich umbauen, nicht löschen; eine andere zu
 löschen nimmt die Anordnungen der Arten für sie mit.
 
