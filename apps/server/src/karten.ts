@@ -38,6 +38,10 @@ import {
   INSIDE_MAP_RELATION,
   isMap,
   isPlayInstance,
+  mapNavigationOn,
+  playedInfo,
+  playTemplateId,
+  sessionInstance,
   mapAncestors,
   markersOf,
   PARTY_RELATION,
@@ -106,6 +110,16 @@ export interface MarkerZiel {
 export interface KartenKontext {
   parents: { id: string; name: string }[];
   children: { id: string; name: string; frame: Frame }[];
+  /**
+   * Darf der Betrachter von hier zu einer anderen Karte zoomen (T-308)?
+   * Aus heisst: keine Brotkrumen, keine Rahmen — die Seite fällt auch nicht
+   * auf die Kante der Karte zurück.
+   */
+  navigation: boolean;
+  /** Der Schalter der Sitzung selbst (`Session.mapNavigation`) — für den Knopf der Leitung. */
+  mapNavigation: boolean;
+  /** Die Sitzung einer Karte im Spiel, deren Schalter gilt; sonst `null`. */
+  session: string | null;
   targets: Record<string, MarkerZiel>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /**
@@ -179,24 +193,58 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     /* Karten im Spiel (T-289) tragen aufgelöst die Rahmen und Marker ihrer
        Vorlage — als Unterkarte oder Standort der Gruppe zählt nur die
        Vorlage, und die Karte selbst. */
-    const karten = await sieve(request, stand.alle.filter((e) => isMap(e) && (!isPlayInstance(e) || e.id === gefunden.id)), stand.map);
+    /* Dazu die Instanzen derselben Sitzung (T-308): wer in Play zoomt,
+       landet in der Karte dieser Sitzung und nicht in der Vorlage. */
+    const instanz = isPlayInstance(gefunden);
+    const spielSitzung = instanz ? playedInfo(gefunden).session : null;
+    const karten = await sieve(
+      request,
+      stand.alle.filter(
+        (e) => isMap(e) && (!isPlayInstance(e) || e.id === gefunden.id || (!!spielSitzung && playedInfo(e).session === spielSitzung)),
+      ),
+      stand.map,
+    );
     const sichtbar = new Map(karten.map((k) => [k.id, k]));
     const karte = sichtbar.get(roheKarte.id);
     if (!karte || !isMap(karte)) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const leitetKarte = await leitet(request, roheKarte, stand.map);
 
-    const parents = mapAncestors(sichtbar, karte).map((e) => ({ id: e.id, name: entityName(e) }));
-    const children = karten
-      .filter((k) => k.id !== karte.id)
-      .flatMap((k) => {
-        const rel = (k.relations ?? []).find((r) => r.type === INSIDE_MAP_RELATION && r.to === karte.id);
-        const frame = frameOf(rel);
-        return frame ? [{ id: k.id, name: entityName(k), frame }] : [];
-      })
-      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    /* **Zwischen Karten wechseln** (T-308): auf einer Karte im Spiel nur,
+       wenn die Sitzung es erlaubt (`mapNavigation`, Vorgabe aus), und dann
+       nur in Instanzen dieser Sitzung, die der Betrachter sieht — eine
+       nicht freigegebene hat das Sieb schon genommen (`heldBackMap`). Die
+       Leitung navigiert immer und landet in der Instanz, wenn es eine gibt,
+       sonst in der Vorlage. Abseits des Spiels gilt die Sichtbarkeit allein. */
+    const erlaubt = mapNavigationOn(spielSitzung ? stand.map.get(spielSitzung) : undefined);
+    const navigation = !instanz || leitetKarte || erlaubt;
+    const ziel = (vorlage: Entity): Entity | null => {
+      if (!instanz) return vorlage;
+      const i = sessionInstance(stand.map, vorlage.id, spielSitzung);
+      const gesehen = i ? sichtbar.get(i.id) : undefined;
+      if (gesehen) return gesehen;
+      return leitetKarte ? vorlage : null;
+    };
+    const vorlageId = instanz ? playTemplateId(stand.map, gefunden) : karte.id;
+    const parents = navigation
+      ? mapAncestors(sichtbar, karte).flatMap((e) => {
+          const z = ziel(e);
+          return z ? [{ id: z.id, name: entityName(z) }] : [];
+        })
+      : [];
+    const children = !navigation
+      ? []
+      : karten
+          .filter((k) => k.id !== karte.id && !isPlayInstance(k))
+          .flatMap((k) => {
+            const rel = (k.relations ?? []).find((r) => r.type === INSIDE_MAP_RELATION && (r.to === karte.id || r.to === vorlageId));
+            const frame = frameOf(rel);
+            const z = frame ? ziel(k) : null;
+            return frame && z ? [{ id: z.id, name: entityName(z), frame }] : [];
+          })
+          .sort((a, b) => a.name.localeCompare(b.name, 'de'));
     /* **Unter dem Nebel kein Rahmen** (REQ-139): eine Unterkarte im
        Verdeckten verriete, dass dort etwas ist. Es zählt, ob die Mitte
        oder eine Ecke aufgedeckt ist. */
-    const leitetKarte = await leitet(request, roheKarte, stand.map);
     const ohneNebel = !fogOn(karte) || leitetKarte;
     const kinder = ohneNebel ? children : children.filter((k) => frameRevealed(karte, k.frame));
 
@@ -331,7 +379,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
-    return { parents, children: kinder, targets, party, turn, combatants, rules, own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights } satisfies KartenKontext;
+    return { parents, children: kinder, navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights } satisfies KartenKontext;
   });
 
   /**

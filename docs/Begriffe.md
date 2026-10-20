@@ -1925,6 +1925,16 @@ nichts; ein gespielter Abend ist ein Stand, zu dem man zurück will („wie sah
 die Gruft aus, als sie flohen?") — gesucht wird er an der Karte, und nur
 dort steht er.
 
+**Zwischen Karten wechselt, wen die Sitzung lässt** (T-308). Eine Gruft
+hat einen Keller als Unterkarte; wer am Tisch hineinzoomt, sieht, was
+darunter liegt — auch wenn die Gruppe nie hinuntergeht. Darum bleiben
+Spielende auf der Karte auf dem Tisch, bis die Leitung es anders schaltet,
+und auch dann führt ein Rahmen nur in eine Karte, die diese Sitzung schon
+im Spiel und freigegeben hat: die Vorlage ist Vorbereitung, und
+Vorbereitung sieht man nicht durch ein Schlüsselloch. Der Schalter steht
+an der Sitzung, weil er sagt, was gerade läuft — an der Karte gälte er in
+jeder Runde, die sie spielt.
+
 **Ein Stück im Inventar ist eine Instanz** (T-150). Was eine Figur in die
 Hand bekommt — gekauft, erbeutet, gefertigt, geschenkt —, ist nicht der
 Gegenstand aus dem Buch, sondern ein Stück davon: ein eigener Artikel mit

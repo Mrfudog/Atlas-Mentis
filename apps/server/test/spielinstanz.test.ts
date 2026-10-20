@@ -358,3 +358,92 @@ describe("maps in play elsewhere (T-289)", () => {
     expect(inst.parents.map((p) => p.id)).toEqual(["welt"]);
   });
 });
+
+describe("changing maps in play (T-308)", () => {
+  /** Welt › Gruft (auf dem Tisch) › Nische, die Gruft ohne Nebel freigegeben. */
+  async function mitUnterkarten() {
+    const a = await aufbau();
+    const { repo, nimm } = a;
+    await repo.putEntity(art("welt", "Map", "Welt"));
+    await repo.putEntity(
+      art("nische", "Map", "Nische", {}, [
+        { id: "in2", type: "insideMap", to: "gruft", props: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 } },
+      ]),
+    );
+    const g = (await repo.getEntity("gruft"))!;
+    await repo.putEntity({
+      ...g,
+      relations: [
+        ...(g.relations ?? []),
+        { id: "in1", type: "insideMap", to: "welt", props: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 } },
+      ],
+    });
+    const freigeben = async (id: string) => {
+      const e = (await repo.getEntity(id))!;
+      await repo.putEntity({
+        ...e,
+        components: { ...e.components, Map: { ...(e.components["Map"] as object), fog: false, released: true } },
+      });
+    };
+    const schalten = async (an: boolean) => {
+      const s = (await repo.getEntity("s_1"))!;
+      await repo.putEntity({
+        ...s,
+        components: { ...s.components, Session: { ...(s.components["Session"] as object), mapNavigation: an } },
+      });
+    };
+    const gruft = await nimm("s_1", "gruft");
+    await freigeben(gruft);
+    return { ...a, gruft, freigeben, schalten };
+  }
+  type Kontext = {
+    navigation: boolean;
+    mapNavigation: boolean;
+    session: string | null;
+    parents: { id: string }[];
+    children: { id: string }[];
+  };
+
+  it("is off by default: players stay on the map on the table, frames are only picture", async () => {
+    const { hole, gruft } = await mitUnterkarten();
+    const sp = (await hole("Sela", `/api/maps/${gruft}/context`)).json() as Kontext;
+    expect(sp).toMatchObject({ navigation: false, mapNavigation: false, session: "s_1", parents: [], children: [] });
+    /* Die Leitung navigiert immer — in die Vorlage, solange es keine Instanz gibt. */
+    const gm = (await hole("Mira", `/api/maps/${gruft}/context`)).json() as Kontext;
+    expect(gm.navigation).toBe(true);
+    expect(gm.parents.map((p) => p.id)).toEqual(["welt"]);
+    expect(gm.children.map((c) => c.id)).toEqual(["nische"]);
+  });
+
+  it("when switched on, leads players only into maps released in this session", async () => {
+    const { hole, nimm, gruft, freigeben, schalten } = await mitUnterkarten();
+    await schalten(true);
+    let sp = (await hole("Sela", `/api/maps/${gruft}/context`)).json() as Kontext;
+    expect(sp).toMatchObject({ navigation: true, mapNavigation: true, parents: [], children: [] });
+
+    const nische = await nimm("s_1", "nische");
+    sp = (await hole("Sela", `/api/maps/${gruft}/context`)).json() as Kontext;
+    expect(sp.children).toEqual([]);
+    await freigeben(nische);
+    const welt = await nimm("s_1", "welt");
+    await freigeben(welt);
+    sp = (await hole("Sela", `/api/maps/${gruft}/context`)).json() as Kontext;
+    expect(sp.children.map((c) => c.id)).toEqual([nische]);
+    expect(sp.parents.map((p) => p.id)).toEqual([welt]);
+    /* Die Leitung landet jetzt ebenso in der Instanz und nicht in der Vorlage. */
+    const gm = (await hole("Mira", `/api/maps/${gruft}/context`)).json() as Kontext;
+    expect(gm.children.map((c) => c.id)).toEqual([nische]);
+
+    /* Wieder aus: zurück auf die Karte auf dem Tisch. */
+    await schalten(false);
+    sp = (await hole("Sela", `/api/maps/${gruft}/context`)).json() as Kontext;
+    expect(sp).toMatchObject({ navigation: false, parents: [], children: [] });
+  });
+
+  it("leaves maps outside play as they were", async () => {
+    const { hole } = await mitUnterkarten();
+    const gm = (await hole("Mira", "/api/maps/gruft/context")).json() as Kontext;
+    expect(gm).toMatchObject({ navigation: true, session: null });
+    expect(gm.children.map((c) => c.id)).toEqual(["nische"]);
+  });
+});

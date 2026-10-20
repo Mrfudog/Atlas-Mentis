@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-19. 86 Schnittstellen, 69 Kantenarten.
+Stand 2026-10-20. 86 Schnittstellen, 69 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -1106,7 +1106,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `activeScene` *link → Scene*, `activeEncounter` *link → Encounter*, `activeMap` *link → Map*, `nowPlaying` *string*, `moves` *array*, `log` *array*, `partyNote` *long*, `stewardship` *gm | table*
+- `activeScene` *link → Scene*, `activeEncounter` *link → Encounter*, `activeMap` *link → Map*, `mapNavigation` *boolean*, `nowPlaying` *string*, `moves` *array*, `log` *array*, `partyNote` *long*, `stewardship` *gm | table*
 
 **Geerbte Felder**
 

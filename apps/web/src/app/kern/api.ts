@@ -2087,6 +2087,12 @@ export interface ZugLage {
 export interface KartenKontext {
   parents: { id: string; name: string }[];
   children: { id: string; name: string; frame: { x: number; y: number; w: number; h: number } }[];
+  /** Darf der Betrachter von hier zu einer anderen Karte zoomen (T-308)? Fehlt bei einem älteren Server. */
+  navigation?: boolean;
+  /** Der Schalter der Sitzung (`Session.mapNavigation`), an einer Karte im Spiel. */
+  mapNavigation?: boolean;
+  /** Die Sitzung einer Karte im Spiel; sonst `null`. */
+  session?: string | null;
   /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
   /** `size`: die Grösse des Statblocks (T-317), für den Platz des Tokens. */
   targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string }>;
