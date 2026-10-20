@@ -580,8 +580,11 @@ nennt die Nummer (`[[spell-0601|Fireball]]`), und ein Bestand aus einem
 älteren Lauf trägt für denselben Artikel oft eine andere. Eine Nummer, die
 im Bestand ein anderer trägt, wird eine neue, und jeder Verweis in den
 neuen Artikeln nennt die Nummer, die sein Ziel im Bestand trägt; der
-Bestand selbst bleibt. Die Zeile sagt `… davon mit angeglichener Nummer
-oder angeglichenen Verweisen`.
+Bestand selbst bleibt. Kollidiert in einer Reihe (`chapter-…`) auch nur
+eine Nummer, bekommt die ganze Reihe der neuen Artikel neue Nummern in der
+Folge der Datei — Kapitel und Arcs stehen nach ihrer Nummer, und sonst
+stünde „Chapter 1" hinter dem Anhang (T-296). Die Zeile sagt `… davon mit
+angeglichener Nummer oder angeglichenen Verweisen`.
 
 **Nur die Neuzugänge** (`additions`, `--only-new --additions`, T-087):
 die Datei nennt in `additions`, was nicht zum Grundstand gehört (2024,
