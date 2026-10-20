@@ -302,6 +302,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'rulesAtTable',
+    label: 'Rules at the table',
+    area: 'character',
+    does: 'tells a rule graph in the turn plan what a creature knows by name — its spells, choices, actions, class and origin, and what those grant (REQ-357)',
+    uses: {
+      [M + 'ruleTable.ts']: ['casts', 'chose', 'composedOf', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+    },
+  },
+  {
     key: 'effects',
     label: 'Effects on the numbers',
     area: 'character',

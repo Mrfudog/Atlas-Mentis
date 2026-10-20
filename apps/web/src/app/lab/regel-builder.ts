@@ -66,7 +66,8 @@ type Ziehen =
  * Graph wie in n8n oder Node-RED — Auslöser → Bedingung → Folge —, gerechnet
  * mit `runRules` aus dem Modellpaket. Der Probelauf zeigt nur an: es wird
  * nichts am Tisch gespeichert und keine Initiative geändert. Gespeichert
- * werden nur die Graphen, als Einstellungen des eigenen Kontos.
+ * werden die Graphen an ihren Regelartikeln (`Rule.graph`); am Tisch laufen
+ * sie, wenn die Kampagne es sagt (Rules from graphs, REQ-357).
  *
  * Die Leinwand ist eigenes SVG — eine Bibliothek dafür wäre für einen
  * Versuch mehr Abhängigkeit als Nutzen.
@@ -308,6 +309,7 @@ type Ziehen =
                         <option value="compare" [selected]="'compare' === (n.test.kind)">Compare numbers</option>
                         <option value="knows" [selected]="'knows' === (n.test.kind)">Knows by name</option>
                         <option value="same" [selected]="'same' === (n.test.kind)">Same creature</option>
+                        <option value="sameSide" [selected]="'sameSide' === (n.test.kind)">Same side</option>
                       </select>
                     </label>
                     @switch (n.test.kind) {
@@ -337,6 +339,27 @@ type Ziehen =
                           </select>
                         </label>
                         <label>Knows <input type="text" [value]="$any(n.test).name" (change)="setzeTest(n.id, { name: $any($event.target).value })" /></label>
+                      }
+                      @case ('sameSide') {
+                        <label
+                          ><select (change)="setzeTest(n.id, { a: $any($event.target).value })">
+                            @for (r of rollen; track r) {
+                              <option [value]="r" [selected]="r === ($any(n.test).a)">{{ r }}</option>
+                            }
+                          </select></label
+                        >
+                        <label class="haken"
+                          ><input type="checkbox" [checked]="!!$any(n.test).not" (change)="setzeTest(n.id, { not: $any($event.target).checked })" /> is
+                          not on the side of</label
+                        >
+                        <label
+                          ><select (change)="setzeTest(n.id, { b: $any($event.target).value })">
+                            @for (r of rollen; track r) {
+                              <option [value]="r" [selected]="r === ($any(n.test).b)">{{ r }}</option>
+                            }
+                          </select></label
+                        >
+                        <p class="hint">The party and its allies are one side, everyone else the other. Unknown sides decide nothing.</p>
                       }
                       @case ('same') {
                         <label
@@ -383,6 +406,12 @@ type Ziehen =
                           <input type="text" [value]="f.wert" (change)="setzeFolge(n.id, f.key, $any($event.target).value)" />
                         }
                       </label>
+                    }
+                    @if (n.then.kind === 'offerReaction') {
+                      <label class="haken"
+                        ><input type="checkbox" [checked]="!!n.then.strike" (change)="setzeSchlag(n.id, $any($event.target).checked)" /> Accepting
+                        makes a melee attack</label
+                      >
                     }
                   }
                 }
@@ -438,6 +467,7 @@ type Ziehen =
                 <tr>
                   <th>Name</th>
                   <th>Knows (comma-separated)</th>
+                  <th>Side</th>
                   <th>x</th>
                   <th>y</th>
                   <th>HP</th>
@@ -453,6 +483,12 @@ type Ziehen =
                     <td><input type="text" [value]="c.name" (change)="setzeKreatur(c.id, { name: $any($event.target).value })" /></td>
                     <td>
                       <input type="text" [value]="c.knows.join(', ')" (change)="setzeKreatur(c.id, { knows: liste($any($event.target).value) })" />
+                    </td>
+                    <td>
+                      <select (change)="setzeKreatur(c.id, { side: $any($event.target).value })" [attr.aria-label]="'Side of ' + c.name">
+                        <option value="party" [selected]="c.side === 'party'">Party</option>
+                        <option value="foe" [selected]="c.side === 'foe'">Foe</option>
+                      </select>
                     </td>
                     <td><input type="number" class="zahl" [value]="c.x" (change)="setzeKreatur(c.id, { x: +$any($event.target).value })" /></td>
                     <td><input type="number" class="zahl" [value]="c.y" (change)="setzeKreatur(c.id, { y: +$any($event.target).value })" /></td>
@@ -935,7 +971,7 @@ export class RegelBuilder {
 
   /** Erfundene Kreaturen für den Probelauf — keine Artikel, nichts gespeichert. */
   protected readonly kreaturen = signal<RuleCreature[]>([
-    { id: 'a', name: 'Creature A', knows: [], values: { hp: 20, maxHp: 20, reach: 5, reactionFree: 1, freeHands: 0, disengaged: 0 }, x: 30, y: 0 },
+    { id: 'a', name: 'Creature A', knows: [], values: { hp: 20, maxHp: 20, reach: 5, reactionFree: 1, freeHands: 0, disengaged: 0 }, x: 30, y: 0, side: 'foe' },
     {
       id: 'b',
       name: 'Creature B',
@@ -943,6 +979,7 @@ export class RegelBuilder {
       values: { hp: 15, maxHp: 15, reach: 5, reactionFree: 1, slots1: 2, concentrating: 1, freeHands: 1 },
       x: 0,
       y: 0,
+      side: 'party',
     },
     {
       id: 'c',
@@ -951,8 +988,9 @@ export class RegelBuilder {
       values: { hp: 30, maxHp: 30, reach: 10, reactionFree: 1, slots3: 1 },
       x: 25,
       y: 5,
+      side: 'party',
     },
-    { id: 'd', name: 'Creature D', knows: ['Regeneration', 'Uncanny Dodge'], values: { hp: 40, maxHp: 60, reach: 10, reactionFree: 1, fireOrAcid: 0 }, x: 100, y: 0 },
+    { id: 'd', name: 'Creature D', knows: ['Regeneration', 'Uncanny Dodge'], values: { hp: 40, maxHp: 60, reach: 10, reactionFree: 1, fireOrAcid: 0 }, x: 100, y: 0, side: 'foe' },
   ]);
   protected readonly ereignis = signal<RuleEvent>({ on: 'hit', actor: 'a', target: 'b' });
   protected readonly ergebnis = signal<RuleRunResult | null>(null);
@@ -1310,7 +1348,9 @@ export class RegelBuilder {
         ? { kind: 'compare', left: 'distance', op: '<=', right: '5' }
         : art === 'knows'
           ? { kind: 'knows', who: 'self', name: '' }
-          : { kind: 'same', a: 'self', b: 'target' };
+          : art === 'sameSide'
+            ? { kind: 'sameSide', a: 'self', b: 'actor', not: true }
+            : { kind: 'same', a: 'self', b: 'target' };
     this.setze(id, (n) => (n.kind === 'condition' ? { ...n, test } : n));
   }
 
@@ -1360,6 +1400,15 @@ export class RegelBuilder {
 
   protected setzeFolge(id: string, key: string, wert: string): void {
     this.setze(id, (n) => (n.kind === 'outcome' ? { ...n, then: { ...n.then, [key]: wert } as RuleOutcome } : n));
+  }
+
+  /** Annehmen ist ein Nahkampfangriff gegen „Aimed at“ (REQ-357) — oder nur „genommen“. */
+  protected setzeSchlag(id: string, an: boolean): void {
+    this.setze(id, (n) => {
+      if (n.kind !== 'outcome' || n.then.kind !== 'offerReaction') return n;
+      const { strike: _s, ...rest } = n.then;
+      return { ...n, then: an ? { ...rest, strike: true } : rest };
+    });
   }
 
   protected loescheKnoten(id: string): void {
@@ -1575,7 +1624,7 @@ export class RegelBuilder {
     let i = cs.length;
     while (cs.some((c) => c.id === `k${i}`)) i++;
     const buchstabe = String.fromCharCode(65 + (cs.length % 26));
-    this.kreaturen.set([...cs, { id: `k${i}`, name: `Creature ${buchstabe}`, knows: [], values: { hp: 10, reach: 5, reactionFree: 1 }, x: 0, y: 0 }]);
+    this.kreaturen.set([...cs, { id: `k${i}`, name: `Creature ${buchstabe}`, knows: [], values: { hp: 10, reach: 5, reactionFree: 1 }, x: 0, y: 0, side: 'foe' }]);
   }
 
   protected entferneKreatur(id: string): void {

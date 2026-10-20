@@ -21,8 +21,8 @@ import { Experimente } from '../kern/experimente';
           <span class="marke">experiment</span>
         </label>
         <p class="was">
-          Build rules from nodes — trigger, condition, outcome — and try them on a made-up event. Only shown, nothing is saved to the
-          table.
+          Build rules from nodes — trigger, condition, outcome — and try them on a made-up event. Whether the rules act in the turn plan
+          is the campaign option “Rules from graphs” under At the table.
         </p>
         @if (exp.ruleBuilder()) {
           <a class="knopf" routerLink="/lab/rules">Open the rule builder</a>

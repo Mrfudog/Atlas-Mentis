@@ -390,6 +390,20 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
+    /* Regeln am Tisch (REQ-357): die Graphen der Regelartikel im Zugplan,
+       gelesen über `ruleGraphsOn`. An heisst auch: die Gelegenheitsattacke
+       kommt aus ihrer Regel und nicht aus dem Code. */
+    key: 'ruleGraphs',
+    sort: 'table',
+    label: 'Rules from graphs',
+    does: 'Whether the rule graphs of the rules in play react to the turn plan: they offer reactions like Shield or an opportunity attack, and note what else follows. Edited in the rule builder.',
+    source: { field: 'ruleGraphs' },
+    variants: [
+      { key: 'off', label: 'Off', does: 'Graphs run only in the rule builder. Opportunity attacks come from the built-in rule.' },
+      { key: 'on', label: 'At the table', does: 'Graphs run in the turn plan and lead: an opportunity attack comes from its rule article, not from the built-in rule.' },
+    ],
+  },
+  {
     key: 'compareFor',
     sort: 'table',
     label: 'Compare layers visible to',
@@ -614,7 +628,7 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       const roh = campaign?.components?.['Campaign']?.[feld];
       /* Die übrigen Vorgaben stehen am Register (`CampaignInfo`): Talente ja, Würfe für den Tisch. */
       if (roh !== undefined && roh !== null && roh !== '') return roh;
-      return feld === 'feats' ? true : feld === 'playerRolls' ? 'table' : feld === 'compareFor' ? 'gm' : undefined;
+      return feld === 'feats' ? true : feld === 'playerRolls' ? 'table' : feld === 'compareFor' ? 'gm' : feld === 'ruleGraphs' ? 'off' : undefined;
     }
   }
 }

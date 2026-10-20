@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-rules-at-the-table",
+      "date": "2026-10-20",
+      "title": "Rules from graphs act in the turn plan",
+      "text": "Turn on Rules from graphs under a campaign’s Rules & options › At the table, and the rule articles in play react to the turn plan: they offer reactions like Shield or an opportunity attack when someone leaves a reach, is attacked, hit or damaged, and note what else follows. The opportunity attack then comes from its rule article, which you can change in the rule builder.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-20-views-per-type",
       "date": "2026-10-20",
       "title": "Views: change one type without touching the rest",

@@ -96,6 +96,14 @@ export interface Provocation {
   index: number;
   reactor: string;
   reactorName: string;
+  /* Ein Angebot einer Regel (REQ-357, `offersFrom`): welche Regel, was sie
+     anbietet und gegen wen; `strike` heisst, Annehmen ist ein
+     Nahkampfangriff. Ohne `rule` ist es die eingebaute Gelegenheitsattacke. */
+  rule?: string;
+  ruleName?: string;
+  offer?: string;
+  against?: string;
+  strike?: boolean;
 }
 
 /** Wer reagieren könnte: ein Token der Gegenseite, sein Feld und seine Reichweite in Fuss. */
@@ -138,8 +146,17 @@ export interface TurnPlan {
   pending?: Provocation;
   /** Bei `reacting`: so viele Schritte sind schon ausgeführt. */
   done?: number;
-  /** Wer in diesem Zug schon gefragt wurde — jeder einmal. */
+  /** Wer in diesem Zug schon gefragt wurde — jeder einmal. Mit Regeln: je Angebot ein Schlüssel. */
   asked?: string[];
+  /** Bei `reacting` mitten in einem Angriff (REQ-357): was schon gewürfelt ist. */
+  cursor?: PlanCursor;
+}
+
+/** Wo ein Angriff stand, als eine Regel dazwischen fragte — damit nichts zweimal gewürfelt wird. */
+export interface PlanCursor {
+  step: string;
+  roll?: { total: number | null; crit?: 'crit' | 'fumble'; hit: boolean | null; ac: number | null };
+  damage?: number | null;
 }
 
 export const TURNPLAN_EVENT = 'turnplan';
