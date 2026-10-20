@@ -119,6 +119,11 @@ export interface Repository {
   version(): Promise<string>;
   /** Wie viele Artikel es gibt — ohne sie alle zu laden. */
   countEntities(): Promise<number>;
+  /** Den gehaltenen Bestand loslassen (T-296): wer gleich zehntausende
+   *  Artikel schreibt, will ihn nicht bei jedem Schreiben nachgeführt
+   *  haben — das kopierte jedes Mal die ganze Liste und zählte zweimal die
+   *  Tabelle. Das nächste Lesen liest neu. */
+  releaseHeld?(): void;
   /** Wie gross die Datenbank auf der Platte ist (Bytes) — nur, wo es eine
    *  gibt; ein grosser Lauf misst vorher und nachher (T-296). */
   databaseBytes?(): Promise<number>;

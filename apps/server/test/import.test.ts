@@ -248,6 +248,31 @@ describe('pnpm --filter @nw/server run import', () => {
       expect(await repo.countEntities()).toBe(4);
     });
 
+    it('gibt einer Reihe, in der eine Nummer kollidiert, ganz neue Nummern in der Folge der Datei (T-296)', async () => {
+      const kap = (id: string, nummer: string): Entity => ({
+        id, interfaces: ['Rule'], name: id,
+        components: { Identity: { name: id, id: nummer }, Status: { status: 'ready' } },
+        relations: [{ id: `${id}-inLayer`, type: 'inLayer', to: ebene.id }],
+      });
+      const repo = await mitKonto([ebene, kap('alt', 'rule-0002')]);
+      const r = await runImport(repo, { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, kap('eins', 'rule-0001'), kap('zwei', 'rule-0002'), kap('drei', 'rule-0003')] }, { onlyNew: true });
+      expect(r.geschrieben).toBe(3);
+      const nummer = async (id: string) => ((await repo.getEntity(id))!.components['Identity'] as { id: string }).id;
+      expect([await nummer('eins'), await nummer('zwei'), await nummer('drei')]).toEqual(['rule-0004', 'rule-0005', 'rule-0006']);
+      expect(await nummer('alt')).toBe('rule-0002');
+    });
+
+    it('lässt den gehaltenen Bestand vor dem Schreiben los, nicht beim Probelauf (T-296)', async () => {
+      const repo = await mitKonto([ebene]);
+      const losgelassen: number[] = [];
+      Object.assign(repo, { releaseHeld: () => losgelassen.push(1) });
+      const datei = { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, inEbene(regel('x', 'X'))] };
+      await runImport(repo, datei, { onlyNew: true, dryRun: true });
+      expect(losgelassen).toHaveLength(0);
+      await runImport(repo, datei, { onlyNew: true });
+      expect(losgelassen).toHaveLength(1);
+    });
+
     it('sagt je Ebene, was neu ist (T-296)', async () => {
       const repo = await mitKonto([ebene]);
       const probe = await runImport(repo, { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, inEbene(regel('x', 'X')), inEbene(regel('y', 'Y')), regel('z', 'Z')] }, { onlyNew: true, dryRun: true });
@@ -310,10 +335,12 @@ describe('pnpm --filter @nw/server run import', () => {
       expect(r).toMatchObject({ geschrieben: 2, angeglichen: 2 });
       const fb24 = (await repo.getEntity('fb24'))!;
       const is24 = (await repo.getEntity('is24'))!;
-      /* spell-0002 ist besetzt: der neue bekommt die nächste hinter allen. */
+      /* spell-0002 ist besetzt: der neue bekommt die nächste hinter allen —
+         und mit ihm jeder neue derselben Reihe, damit die Folge der Datei
+         bleibt (T-296). */
       expect(fb24.components['Identity']).toMatchObject({ id: 'spell-0008' });
-      expect(is24.components['Identity']).toMatchObject({ id: 'spell-0003' });
-      expect((fb24.components['Prose'] as { paragraph: { value: string }[] }).paragraph[0]!.value).toBe('Like [[spell-0007|Fireball]]; see [[spell-0003|Ice Storm (XPHB)]].');
+      expect(is24.components['Identity']).toMatchObject({ id: 'spell-0009' });
+      expect((fb24.components['Prose'] as { paragraph: { value: string }[] }).paragraph[0]!.value).toBe('Like [[spell-0007|Fireball]]; see [[spell-0009|Ice Storm (XPHB)]].');
       expect((is24.components['Prose'] as { paragraph: { value: string }[] }).paragraph[0]!.value).toBe('After [[spell-0008|Fireball (XPHB)]].');
       expect((await repo.getEntity('fremd'))?.components['Identity']).toMatchObject({ id: 'spell-0002' });
     });
