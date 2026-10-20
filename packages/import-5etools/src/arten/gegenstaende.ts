@@ -430,6 +430,18 @@ export function ausgeschrieben(stand: Datenstand): Knoten[] {
   return [...aus.values()];
 }
 
+/**
+ * **Der Aufpreis einer Variante** (T-300): `valueExpression` in den beiden
+ * Formen, die `ausgeschrieben` rechnet, sonst `valueMult`. Was anders
+ * aussieht, bleibt ohne Aufpreis, statt falsch gerechnet zu werden.
+ */
+export function aufpreis(i: Knoten): { add?: number; mult?: number } {
+  const ausdruck = /^\[\[baseItem\.value\]\]\s*([+*])\s*(\d+(?:\.\d+)?)$/.exec(String(i['valueExpression'] ?? '').trim());
+  if (ausdruck) return ausdruck[1] === '+' ? { add: Number(ausdruck[2]) } : { mult: Number(ausdruck[2]) };
+  const m = Number(i['valueMult']);
+  return i['valueMult'] !== undefined && Number.isFinite(m) ? { mult: m } : {};
+}
+
 export const GEGENSTAENDE: Zuordnung[] = [
   gegenstand('baseitem'),
   gegenstand('item'),
@@ -452,6 +464,16 @@ export const GEGENSTAENDE: Zuordnung[] = [
         }
       }
       wb.feld(ent, 'Item', 'appliesTo', [...new Set(gilt)]);
+      /* **Als Enhancement** (T-300, E-107): Namensteile und Aufpreis, damit
+         die Leitung sie an ein Stück hängen kann und Name und Preis
+         gerechnet werden. Der Aufpreis aus derselben Rechnung wie bei den
+         ausgeschriebenen Paaren: `[[baseItem.value]] + 10000` ist ein
+         Betrag, `* 2` oder `valueMult` ein Faktor. */
+      if (typeof i['namePrefix'] === 'string' && i['namePrefix']) wb.feld(ent, 'Item', 'namePrefix', i['namePrefix']);
+      if (typeof i['nameSuffix'] === 'string' && i['nameSuffix']) wb.feld(ent, 'Item', 'nameSuffix', i['nameSuffix']);
+      const a = aufpreis(i);
+      if (a.add !== undefined) wb.feld(ent, 'Item', 'priceAdd', a.add);
+      if (a.mult !== undefined) wb.feld(ent, 'Item', 'priceMult', a.mult);
       /* `{=bonusWeapon}` ist ein Platzhalter, den 5e.tools beim Lesen füllt;
          die Werte stehen am selben Eintrag. */
       /* `{=baseName}` ist der Grundgegenstand, den es hier nicht gibt — die
@@ -461,7 +483,7 @@ export const GEGENSTAENDE: Zuordnung[] = [
         s.replace(/\{=(\w+)(?:\/[^}]*)?\}/g, (m, k: string) => (i[k] !== undefined ? String(i[k]) : ersatz[k] ?? m));
       text(wb, ent, { ...i, entries: i['entries'], additionalEntries: undefined }, ersetze);
       for (const k of Object.keys(i)) {
-        if (!GENUTZT_ITEM.includes(k) && !['namePrefix', 'nameSuffix', 'source', 'page', 'srd', 'basicRules', 'reprintedAs', 'srd52', 'basicRules2024', 'lootTables', 'nameRemove', 'hasRefs'].includes(k)) {
+        if (!GENUTZT_ITEM.includes(k) && !['namePrefix', 'nameSuffix', 'valueExpression', 'source', 'page', 'srd', 'basicRules', 'reprintedAs', 'srd52', 'basicRules2024', 'lootTables', 'nameRemove', 'hasRefs'].includes(k)) {
           wb.notiz(`inherits.${k} nicht übernommen`);
         }
       }

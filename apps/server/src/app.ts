@@ -54,6 +54,12 @@ import {
   partiesOf,
   inventoryRulesOf,
   stowingRuleOf,
+  ENCHANTED_RELATION,
+  enhancementRefusal,
+  enhancementsByOf,
+  itemPricingOf,
+  withEnhancement,
+  pieceName,
   tableMovedOn,
   STATUS_COMPONENT,
   classParts,
@@ -143,7 +149,8 @@ import { rechtAn, registerVerwaltung, siehtVergleich } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerQuelleninhalt } from './quelleninhalt.js';
 import { registerHandwerk } from './handwerk.js';
-import { registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
+import { leitetTisch, registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
+import { registerAufwertung } from './aufwertung.js';
 import { registerFiltergruppen } from './filtergruppen.js';
 import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
@@ -1216,6 +1223,8 @@ export function buildApp({
     if (/^\/api\/encounters\/[^/]+\/tracker$/.test(url) && request.method === 'POST') return;
     /* Eine Karte oder Begegnung ins Spiel nehmen (T-289): die Route prüft die Leitung selbst (`spielinstanz.ts`). */
     if (url === '/api/play/take' && request.method === 'POST') return;
+    /* Enhancements an einem Stück (T-300): die Route prüft Leitung und Kampagnenregel selbst (`aufwertung.ts`). */
+    if (/^\/api\/entities\/[^/]+\/enhancements(\/[^/]+)?$/.test(url) && (request.method === 'POST' || request.method === 'DELETE')) return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -1451,7 +1460,9 @@ export function buildApp({
               ? vergleich && !sicht.inStack(e) && sicht.inCompare(e)
               : sicht.unactivated(e).length > 0,
       )
-      .map((e) => readInstance(roh, e));
+      /* Ein Stück mit Enhancements bekommt Name, Preis und Boni gerechnet
+         dazu (T-300, D8), nach der Preisregel der Kampagne. */
+      .map((e) => withEnhancement(roh, readInstance(roh, e), e, itemPricingOf(kampagne)));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
        Artikel gesiebt wird: welche Information ein Feld beansprucht und
@@ -2117,7 +2128,7 @@ export function buildApp({
             inventory: inv,
             edge: r.id,
             item: r.to,
-            name: entityName(map.get(r.to)),
+            name: map.get(r.to) ? pieceName(map, map.get(r.to)!) : entityName(undefined),
             qty: Math.max(1, Math.trunc(Number(r.props?.['qty']) || 1)),
             ...(buybackPrice(map.get(r.to), map) !== undefined ? { price: buybackPrice(map.get(r.to), map) } : {}),
           })),
@@ -2244,7 +2255,8 @@ export function buildApp({
     const ziele = paare.filter((x): x is readonly [string, Entity] => !!x);
     const names: Record<string, string> = {};
     const gesiebt = new Set((ziele.length ? await sieve(request, ziele.map(([, z]) => z), stand.map) : []).map((z) => z.id));
-    for (const [i, z] of ziele) if (gesiebt.has(z.id)) names[i] = entityName(z);
+    /* Ein Stück mit Enhancements heisst, wie es gerechnet wird (T-300). */
+    for (const [i, z] of ziele) if (gesiebt.has(z.id)) names[i] = (z.relations ?? []).some((r) => r.type === ENCHANTED_RELATION) ? pieceName(stand.map, z) : entityName(z);
     const texte = new Set<string>();
     verweiseIn(e.components, texte);
     const links: Record<string, { id: string; name: string }[]> = {};
@@ -3627,6 +3639,18 @@ export function buildApp({
   /* Karten und Begegnungen im Spiel als Instanz (T-289): „In Play nehmen“ und „Played“. */
   const spielDeps = { repo, viewerOf, roh, sieve, kampagnenEbene, schreibeGeprueft: (e: Entity) => schreibeGeprueft(e) };
   registerSpielinstanz(app, spielDeps);
+  /* Enhancements an einem Stück (T-300): +1, versilbert … */
+  registerAufwertung(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve,
+    darfSchreiben: async (request, id) => {
+      const user = await viewerOf(request);
+      return !!user && mayWrite(user, await ownedBy(user), id);
+    },
+    schreibeGeprueft: (e) => schreibeGeprueft(e),
+  });
   registerKampfstart(app, { repo, feed: live, viewerOf, roh, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e), insSpiel: insSpiel(spielDeps) });
   /* Der Initiative-Tracker (T-022): die Reihe gesiebt, Züge und Effekte durch die Leitung. */
   registerTracker(app, { repo, viewerOf, roh, geltend, sieve: (request, entities, bestand) => sieve(request, entities, bestand), schreibeGeprueft: (e) => schreibeGeprueft(e) });
@@ -3709,6 +3733,32 @@ export function buildApp({
       const kampagneJetzt = currentCampaign(new Map(alleJetzt.map((e) => [e.id, e])), (await repo.getRegistry()).settings ?? null);
       const sperre = zugSperre(await viewerOf(request), alleJetzt, vorherRoh, entity, kampagneJetzt?.id ?? null);
       if (sperre) return { code: 423, body: { error: sperre } };
+    }
+
+    /* **Enhancements hängt die Leitung an** (T-300, E-107): auch über den
+       gewöhnlichen Schreibweg, sonst schriebe sich eine Spielerin über ihr
+       Inventar einen +1-Dolch. Verglichen wird mit dem aufgelösten Stand —
+       was das Stück von seiner Vorlage liest, kommt aus der Maske zurück
+       und ist nicht neu. */
+    if ([vorherRoh, entity].some((e) => (e?.relations ?? []).some((r) => r.type === ENCHANTED_RELATION))) {
+      const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const ziele = (e: Entity | null | undefined) =>
+        new Set((e?.relations ?? []).filter((r) => r.type === ENCHANTED_RELATION).map((r) => r.to));
+      const vorher = ziele(vorherRoh ? resolveInstance(bestand, vorherRoh) : null);
+      const nachher = ziele(entity);
+      const neu = [...nachher].filter((z) => !vorher.has(z));
+      if (neu.length || [...vorher].some((z) => !nachher.has(z))) {
+        const wer = await viewerOf(request);
+        const kampagneJetzt = currentCampaign(bestand, (await repo.getRegistry()).settings ?? null);
+        const darf = !!wer && (leitetTisch(wer, kampagneJetzt?.id ?? null) || enhancementsByOf(kampagneJetzt) === 'players');
+        if (!darf) return { code: 403, body: { error: 'Enhancements hängt die Leitung an.' } };
+        const ohne = { ...entity, relations: (entity.relations ?? []).filter((r) => !(r.type === ENCHANTED_RELATION && neu.includes(r.to))) };
+        bestand.set(entity.id, ohne);
+        for (const z of neu) {
+          const nein = enhancementRefusal(bestand, ohne, z);
+          if (nein) return { code: 400, body: { error: nein } };
+        }
+      }
     }
 
     /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht

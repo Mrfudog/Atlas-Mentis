@@ -1926,6 +1926,41 @@ Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
 - Am Server kommt eine Instanz aufgelöst an, mit `fromTemplate` (Vorlage und
   die Felder, die von dort kommen) — nur gelesen, nie gespeichert.
 
+**Enhancement — ein +1-Dolch ist ein Dolch mit einer Regel daran** (T-300,
+E-107). Die Bücher kennen „+1 Weapon", „Silvered Weapon", „Adamantine
+Armor": Regeln, die an *jeden* passenden Gegenstand kommen. Jedes Paar
+auszuschreiben wären tausende Artikel, und die eigene Kombination
+(versilbert *und* +1) gäbe es trotzdem nicht. Die Regel an den Dolch selbst
+zu hängen machte jeden Dolch zu einem +1-Dolch. Also bekommt die Figur ein
+**Stück** — eine Instanz von „Dagger", wie jedes Stück im Inventar — und an
+dieses Stück kommt die Regel mit der Kante `enchantedWith`.
+
+Das Wort ist **Enhancement** und nicht „Item property": so heisst seit D48
+schon die Art `ItemProperty` (Finesse, Heavy), und ein Wort für zwei Sachen
+ist so schlecht wie zwei Wörter für eine. Eine eigene Art ist es nicht: ein
+Gegenstand mit `appliesTo` *ist* eines, so wie der Importer die Varianten
+immer schon angelegt hat.
+
+Was das Stück heisst und kostet, wird **gerechnet** und nie gespeichert —
+stünde der Preis in seiner Karte, hielte das Ausdünnen ihn für eine
+Abweichung, und eine Korrektur am Dolch erreichte das Stück nie mehr. Der
+**Aufpreis** (Surcharge) sagt, wie ein Enhancement den Grundpreis ändert: ein
+Betrag (`priceAdd`), ein Faktor (`priceMult`), sonst sein eigener Preis.
+Welche Rechnung gilt, sagt die Kampagne (`itemPricing`: kombiniert,
+Grundpreis, nicht gerechnet) — manche Tische handeln magische Gegenstände
+nicht nach Liste.
+
+| | Name | Preis | Seltenheit | Angriff/Schaden |
+| --- | --- | --- | --- | --- |
+| Dagger | Dagger | 2 gp | — | — |
+| + „+1 Weapon" (Präfix „+1 ", + 1,000 gp, uncommon, +1) | +1 Dagger | 1,002 gp | uncommon | +1 |
+| + „Silvered" (Präfix „Silvered ", + 100 gp) | **+1 Silvered Dagger** | **1,102 gp** | uncommon | +1 |
+| dasselbe mit `itemPricing: base` | +1 Silvered Dagger | 2 gp | uncommon | +1 |
+
+Anhängen tut die Leitung. Ob Spielende es beim Handwerk dürfen, entscheidet
+später die Kampagne (`enhancementsBy`); die Einstellung steht schon da, das
+Handwerk bietet es noch nicht an.
+
 Ein Statblock gehört damit **einer** Kreatur (`belongsTo` ist wieder `one`).
 
 **Eine Karte am Tisch ist eine Instanz** (T-289, E-039, E-041). Dieselbe

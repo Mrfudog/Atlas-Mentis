@@ -1575,6 +1575,21 @@ export class Api {
   }
   /** Welche Karte auf dem Tisch liegt (`SessionState.activeMap`, T-115). */
   /** Eine Karte oder Begegnung in die Sitzung nehmen (T-289): als Instanz, die Sitzung zeigt danach darauf. */
+  /** Was sich an dieses Stück hängen liesse, und ob man darf (T-300). */
+  enhancements(piece: string): Promise<{ may: boolean; piece: boolean; options: { id: string; name: string; fits: boolean; surcharge?: string }[] }> {
+    return this.call(`/api/entities/${encodeURIComponent(piece)}/enhancements`);
+  }
+
+  /** Ein Enhancement an ein Stück hängen (T-300). */
+  addEnhancement(piece: string, enhancement: string): Promise<Entity> {
+    return this.call(`/api/entities/${encodeURIComponent(piece)}/enhancements`, { method: 'POST', body: JSON.stringify({ enhancement }) });
+  }
+
+  /** Ein Enhancement abnehmen (T-300). */
+  removeEnhancement(piece: string, enhancement: string): Promise<Entity> {
+    return this.call(`/api/entities/${encodeURIComponent(piece)}/enhancements/${encodeURIComponent(enhancement)}`, { method: 'DELETE' });
+  }
+
   takeIntoPlay(body: { session?: string | null; map?: string; encounter?: string }): Promise<{ map: string | null; encounter: string | null; session: string | null }> {
     const { session, ...rest } = body;
     return this.call('/api/play/take', { method: 'POST', body: JSON.stringify(session ? { ...rest, session } : rest) });

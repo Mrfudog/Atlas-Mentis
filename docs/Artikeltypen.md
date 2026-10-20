@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-20. 86 Schnittstellen, 69 Kantenarten.
+Stand 2026-10-20. 86 Schnittstellen, 70 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -26,7 +26,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -45,6 +45,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
+- `enchantedWith` → Item — „enhanced with"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -57,6 +58,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `equips` → „equipped by"
 - GlossaryTerm — `explains` → „explained by"
+- Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
@@ -394,7 +396,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 
 **Geerbte Felder**
 
@@ -416,6 +418,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
+- `enchantedWith` → Item — „enhanced with"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -428,6 +431,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `equips` → „equipped by"
 - GlossaryTerm — `explains` → „explained by"
+- Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
@@ -458,7 +462,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -477,6 +481,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
+- `enchantedWith` → Item — „enhanced with"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -489,6 +494,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `equips` → „equipped by"
 - GlossaryTerm — `explains` → „explained by"
+- Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
@@ -768,7 +774,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -787,6 +793,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
+- `enchantedWith` → Item — „enhanced with"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -799,6 +806,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `equips` → „equipped by"
 - GlossaryTerm — `explains` → „explained by"
+- Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
@@ -931,7 +939,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*
+- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `itemPricing` *combined | base | none*, `enhancementsBy` *gm | players*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*
 
 **Geerbte Felder**
 

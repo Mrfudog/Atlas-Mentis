@@ -1482,6 +1482,33 @@ export const fieldGroups = {
            wie `weapon`, `armor`, `ammunition`, `sword`. Das konkrete
            +1-Langschwert entsteht am Tisch als Instanz des Grundgegenstands. */
         appliesTo: { type: 'array', title: 'Variant applies to', items: { type: 'string' } },
+        /* **Ein Gegenstand mit `appliesTo` ist ein Enhancement** (T-300,
+           E-107): er kommt mit der Kante `enchantedWith` an ein Stück eines
+           Grundgegenstands. Wie das Stück dann heisst und was es kostet,
+           wird beim Lesen gerechnet (`enhanceItem`, D8) — hier steht nur
+           die Regel: Namensteile und Aufpreis. */
+        namePrefix: {
+          type: 'string',
+          title: 'Name prefix',
+          description: 'Put in front of the base item\'s name on a piece with this enhancement, such as "+1 " or "Silvered ".',
+        },
+        nameSuffix: {
+          type: 'string',
+          title: 'Name suffix',
+          description: 'Put after the base item\'s name on a piece with this enhancement, such as " of Warning".',
+        },
+        priceAdd: {
+          type: 'number',
+          min: 0,
+          title: 'Surcharge in copper',
+          description: 'What this enhancement adds to the base item\'s price, in copper. Without a surcharge or factor, its own price is the surcharge.',
+        },
+        priceMult: {
+          type: 'number',
+          min: 0,
+          title: 'Price factor',
+          description: 'Multiplies the base item\'s price, before surcharges are added (2 doubles it).',
+        },
         /* **Nicht dasselbe wie `rarity`.** Die ist die Seltenheit des
            magischen Gegenstands („selten", „legendär"); das hier ist, wie
            schwer er zu *kaufen* ist — im Vault die Hausregel-Leiter
@@ -2943,6 +2970,27 @@ export const fieldGroups = {
           title: 'Inventory rules',
           enum: ['grid', 'weight', 'slots'],
           default: 'grid',
+        },
+        /* **Wie Gegenstände mit Enhancements kosten** (T-300, E-107):
+           Grundpreis und Aufpreise zusammen, nur der Grundpreis, oder gar
+           nicht gerechnet (dann setzt die Leitung ihn von Hand). Gelesen
+           über `itemPricingOf`. */
+        itemPricing: {
+          type: 'string',
+          title: 'Item prices',
+          description: 'How the price of a piece with enhancements (+1, silvered …) is worked out: base price plus surcharges, base price only, or not calculated.',
+          enum: ['combined', 'base', 'none'],
+          default: 'combined',
+        },
+        /* **Wer Enhancements anhängt** (T-300 Punkt 4): vorbereitet für
+           das Handwerk; heute hängt nur die Leitung an. Gelesen über
+           `enhancementsByOf`. */
+        enhancementsBy: {
+          type: 'string',
+          title: 'Enhancements added by',
+          description: 'Who may put an enhancement on a piece. Players only once crafting offers it; until then, the GM.',
+          enum: ['gm', 'players'],
+          default: 'gm',
         },
         /* **Wie lange Unverstautes liegen darf** (T-140): beliebig lange,
            bis die Sitzung endet, oder bis der Tisch weiterzieht (Szene,

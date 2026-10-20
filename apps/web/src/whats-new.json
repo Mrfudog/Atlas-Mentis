@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-20-enhancements",
+      "date": "2026-10-20",
+      "title": "+1, silvered, adamantine: enhancements on a piece",
+      "text": "Open a piece in a character's inventory and add an enhancement such as +1 Weapon or Silvered: the piece then reads “+1 Silvered Dagger” and its price, rarity and bonuses are worked out from the dagger and the enhancements. Choose under Rules & options › Items whether prices combine, use the base price or are not calculated.",
+      "area": "Inventory",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-20-floors-and-passages",
       "date": "2026-10-20",
       "title": "Floors and passages: towers, cellars, portals",
