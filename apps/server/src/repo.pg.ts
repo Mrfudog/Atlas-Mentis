@@ -552,6 +552,11 @@ export class PgRepository implements Repository {
     return rows[0] ? PgRepository.toUser(rows[0]) : undefined;
   }
 
+  async databaseBytes(): Promise<number> {
+    const { rows } = await this.pool.query<{ n: string }>('select pg_database_size(current_database())::text as n');
+    return Number(rows[0]?.n ?? 0);
+  }
+
   async listUsers(): Promise<User[]> {
     const { rows } = await this.pool.query<Row>(
       `${PgRepository.USER_SELECT} group by u.id order by u.name`,

@@ -655,6 +655,19 @@ eine neue Ebene, und die ist in keiner Kampagne aufgeschaltet** — nach dem
 Lauf auf der Kampagnenseite das Häkchen setzen, sonst stehen seine
 Artikel in keiner Liste (die Listen sagen es mit „Turn on").
 
+**Je Ebene gezählt** (T-296): ein Lauf `only-new` (auch der Probelauf)
+schreibt unter seine Zeile `Neu je Ebene:` — je Ebene, was neu ist, nach
+Art. So berichtet ein Lauf über viele Quellen je Buch, ohne je Buch ein
+Lauf zu sein. Wie viel Platz Datenbank und Ablage brauchen, sagt
+`GET /api/assets/storage` (nur Verwaltung: Dateien und Bytes der Ablage,
+freier Platz des Datenträgers, `databaseBytes`). Den Buchtext aller Bücher
+und Abenteuer bringt ein Lauf mit `types` =
+`Story,Arc,Chapter,Scene,Place,ReadAloudText,Paragraph,Heading,Embed,Map,Encounter`
+— ohne `types` kämen geteilte Merkmale als Waisen mit (unten). Der
+Einleser liest dabei auch ältere Datenstände, deren Buch- und
+Abenteuerdateien den Text ohne Hülle tragen (`{ "data": [...] }`, das
+Kürzel im Dateinamen) — aus ihnen kam vorher kein einziges Kapitel.
+
 **Eine neue Art nachtragen** (T-175, die Orte aus dem Buchtext): `only-new`
 mit `types` = `Place` und den Quellen, deren Text schon steht. Ohne
 `types` brächte ein Lauf über wenige Quellen auch geteilte Merkmale mit,

@@ -354,6 +354,7 @@ export async function runImport(
     const zeilen = [optionen.onlyNew
       ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).${angeglichenText}${anhangText}`
       : `Probelauf, nichts geschrieben${ebenenText ? ` — ${ebenenText}` : ''}: ${zuSchreiben.length} Artikel würden geschrieben, ${weg.length} gelöscht${weg.length ? ` (${jeArt(weg)})` : ''}.`];
+    if (optionen.onlyNew && zuSchreiben.length) zeilen.push(jeEbene(zuSchreiben, danach));
     if (geloest.length) zeilen.push(`${geloest.length} Instanzen würden von ihrer Vorlage gelöst: ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
     if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'würden ins Leere zeigen'));
     return { text: zeilen.join('\n'), geschrieben: 0, geloescht: 0, ...(optionen.onlyNew ? { uebersprungen, angeglichen } : {}), verwaisteKanten };
@@ -391,6 +392,7 @@ export async function runImport(
   const zeilen = [optionen.onlyNew
     ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).${angeglichenText}${anhangText}`
     : `${ebenenText ? `${ebenenText}: ` : ''}${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht (${jeArt(weg)})` : ''}.`];
+  if (optionen.onlyNew && zuSchreiben.length) zeilen.push(jeEbene(zuSchreiben, danach));
   if (geloest.length) zeilen.push(`${geloest.length} Instanzen von ihrer gelöschten Vorlage gelöst (sie tragen jetzt, was sie lasen): ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
   if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'zeigen jetzt ins Leere'));
   if (verwaist.length) zeilen.push(`Figuren, die es nicht mehr gibt, an Konten:\n  ${verwaist.join('\n  ')}`);
@@ -642,6 +644,25 @@ function jeArt(liste: Entity[]): string {
   const n = new Map<string, number>();
   for (const e of liste) n.set(e.interfaces?.[0] ?? '?', (n.get(e.interfaces?.[0] ?? '?') ?? 0) + 1);
   return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t, k]) => `${t} ${k}`).join(', ');
+}
+
+/**
+ * **Was je Ebene neu ist** (T-296): ein Lauf über viele Quellen sagt sonst
+ * nur eine Summe, und wer je Buch berichten muss, bräuchte je Buch einen
+ * Lauf. Je Ebene eine Zeile, die grösste zuerst, darin je Art.
+ */
+export function jeEbene(neu: Entity[], alle: Map<string, Entity>): string {
+  const nachEbene = new Map<string, Entity[]>();
+  for (const e of neu) {
+    const ebene = (e.relations ?? []).find((r) => r.type === 'inLayer')?.to ?? '';
+    nachEbene.set(ebene, [...(nachEbene.get(ebene) ?? []), e]);
+  }
+  const zeilen = [...nachEbene].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([ebene, liste]) => {
+    const l = alle.get(ebene);
+    const name = ebene ? `${l ? entityName(l) : ebene} (${ebene})` : 'ohne Ebene';
+    return `  ${name}: ${liste.length} — ${jeArt(liste)}`;
+  });
+  return `Neu je Ebene:\n${zeilen.join('\n')}`;
 }
 
 function kantenText(kanten: string[], was: string): string {

@@ -119,6 +119,9 @@ export interface Repository {
   version(): Promise<string>;
   /** Wie viele Artikel es gibt — ohne sie alle zu laden. */
   countEntities(): Promise<number>;
+  /** Wie gross die Datenbank auf der Platte ist (Bytes) — nur, wo es eine
+   *  gibt; ein grosser Lauf misst vorher und nachher (T-296). */
+  databaseBytes?(): Promise<number>;
   getEntity(id: string): Promise<Entity | undefined>;
   /** Schreibt und zählt die Revision hoch. Mit `expectRevision` atomar
    *  geprüft — wirft `RevisionConflict`, ohne etwas zu schreiben. */
