@@ -46,9 +46,13 @@ const RAHMEN_VORGABE = 0.12;
 const HOECHSTENS = 12;
 
 export type GridShape = 'none' | 'square' | 'hex';
-/** `passage`: ein Übergang auf eine andere Ebene oder Karte (T-307, `floors.ts`). */
-export type MarkerKind = 'static' | 'scenery' | 'party' | 'quest' | 'play' | 'passage';
-export const MARKER_KINDS: readonly MarkerKind[] = ['static', 'scenery', 'party', 'quest', 'play', 'passage'];
+/**
+ * `passage`: ein Übergang auf eine andere Ebene oder Karte (T-307, `floors.ts`).
+ * `light`: ein Licht ohne Artikel (T-320) — eine Fackel an der Wand, ein
+ * Lichtschacht; es zeigt wie ein Übergang auf seine eigene Karte.
+ */
+export type MarkerKind = 'static' | 'scenery' | 'party' | 'quest' | 'play' | 'passage' | 'light';
+export const MARKER_KINDS: readonly MarkerKind[] = ['static', 'scenery', 'party', 'quest', 'play', 'passage', 'light'];
 
 export interface Frame {
   x: number;

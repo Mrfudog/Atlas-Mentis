@@ -47,7 +47,9 @@ function bestand(kampagne: Record<string, unknown>, kampf: boolean): Entity[] {
         { id: 'mk_gob', type: 'marker', to: 'cr_gob', props: { x: 0.5, y: 0.5, kind: 'play' } },
         /* Assets (T-306): eine Kiste, die man schiebt, und ein Fass, das steht. */
         { id: 'mk_kiste', type: 'marker', to: 'map_1', props: { x: 0.6, y: 0.6, kind: 'scenery', movable: true } },
-        { id: 'mk_fass', type: 'marker', to: 'map_1', props: { x: 0.7, y: 0.7, kind: 'scenery' } }] },
+        { id: 'mk_fass', type: 'marker', to: 'map_1', props: { x: 0.7, y: 0.7, kind: 'scenery' } },
+        /* Ein freies Licht (T-320): zeigt auf die Karte, ist kein Token. */
+        { id: 'mk_licht', type: 'marker', to: 'map_1', props: { x: 0.9, y: 0.1, kind: 'light', light: 2, dim: 4 } }] },
   ];
   if (kampf) {
     alle.push({ id: 'enc_1', name: 'Überfall', interfaces: ['Encounter'], components: { ...ident('Überfall', 'encounter-0001'), Encounter: { round: 1, turn: 0 } },
@@ -129,6 +131,14 @@ describe('Wer Tokens zieht (T-290)', () => {
     const { zieh, kontext } = await aufbau({ tokenMove: 'all' });
     expect((await zieh('Sela', 'mk_gob')).statusCode).toBe(200);
     expect((await kontext('Sela')).movable.length).toBe(5);
+  });
+
+  it('ein freies Licht (T-320) zieht nur die Leitung, auch bei `all`', async () => {
+    const { zieh, kontext, stelle } = await aufbau({ tokenMove: 'all' });
+    expect((await kontext('Sela')).movable).not.toContain('map_1');
+    expect((await zieh('Sela', 'mk_licht')).statusCode).toBe(403);
+    expect((await zieh('Gwen', 'mk_licht')).statusCode).toBe(200);
+    expect((await stelle('mk_licht')).x).toBe(0.8);
   });
 
   it('mit Bestätigung schreibt erst die Freigabe — und den Vorschlag sieht jeder am Tisch', async () => {

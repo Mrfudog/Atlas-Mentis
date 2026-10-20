@@ -224,8 +224,15 @@ nächste Abschnitt.
 - **Ein Licht ist ein Marker mit Radius** (`marker.props.light` hell,
   `dim` der ganze Radius, beides in Feldern; `mapLights`). Kein eigener
   Artikel: dieselbe Laterne leuchtet auf einer Stadtkarte anders weit als
-  auf einer Kampfkarte. Gesetzt mit Light › Light source (ein Token
-  antippen; 0 und 0 nimmt das Licht weg). Was ein Licht erreicht, ist das
+  auf einer Kampfkarte. Gesetzt mit Light › Light source (ein Token,
+  Asset oder Marker antippen; 0 und 0 nimmt das Licht weg).
+  **Ein Licht ohne Artikel** (T-320) — eine Fackel an der Wand, ein
+  Lichtschacht — ist ein Marker `kind: 'light'`, der wie ein Übergang auf
+  seine eigene Karte zeigt (`addLight`): Light source und auf eine freie
+  Stelle tippen. Spielende sehen nur seinen Schein, keinen Marker; ziehen
+  tut es nur die Leitung. Solange „Light" offen ist, zeigt die Karte der
+  Leitung die Reichweite jedes Lichts als Kreis — auf einer hellen Karte
+  sähe man sonst nicht, ob ein Licht gesetzt ist. Was ein Licht erreicht, ist das
   Sichtpolygon gegen die Sperren, die **Licht** halten (`lightPolygon`,
   `litAreas`).
 - **Die Dunkelsicht steht am Statblock** (`senses`, „darkvision 60 ft.")

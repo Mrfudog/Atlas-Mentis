@@ -2360,6 +2360,16 @@ lauernde Wache auf, die versteckt bleiben soll (REQ-209). Der Vermerk
 steht an der Kante und nicht an der Kreatur, weil dieselbe Kreatur auf
 einer anderen Karte für eine andere Begegnung bereitstehen kann.
 
+**Ein Licht an der Wand ist ein Marker, kein Artikel** (T-320). Eine
+Fackel in einer Halterung hat keinen Namen, den jemand nachschlägt, und
+keine Werte; ein Artikel „Fackel 3" für jede wäre Bestand ohne Inhalt. Ein
+Marker muss aber auf etwas zeigen — also zeigt das freie Licht
+(`kind: light`) auf seine eigene Karte, wie es ein Übergang schon tut. Die
+Art sagt, dass dahinter kein Artikel steht: kein Kurzansicht-Popup, kein
+Token, das jemand nach `tokenMove` zieht, und für Spielende nur der Schein.
+Wer eine Laterne mit Namen und Preis will, legt das Item als Marker hin;
+es leuchtet nach seinem eigenen Licht.
+
 ## Zug, Tempo und Zone auf der Karte
 
 **Ein Zug ist kein Feld der Kreatur.** Dass der Kämpfer schon 20 Fuss

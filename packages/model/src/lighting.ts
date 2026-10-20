@@ -47,6 +47,7 @@ import {
   assetWalls,
   inPolygon,
   MAP_COMPONENT,
+  MARKER_RELATION,
   mapSettings,
   markersOf,
   parseScale,
@@ -201,6 +202,19 @@ export function mapLights(map: Entity, nat: Size, carried: Readonly<Record<Entit
     const d = Math.max(feetToFraction(map, nat, t.dim), b);
     return d > 0 ? [{ id: m.rel.id, to: m.to, x: m.x, y: m.y, bright: b, dim: d }] : [];
   });
+}
+
+/**
+ * **Ein Licht frei auf die Karte** (T-320): ein Marker `light`, der auf
+ * die Karte selbst zeigt — ein Licht braucht keinen Artikel, und eine
+ * Fackel an der Wand ist keiner. Radien in Feldern wie an jedem Marker.
+ */
+export function addLight(map: Entity, at: Pt, id: string, bright: number, dim: number): Entity {
+  const r = (v: number): number => Math.round(Math.min(1, Math.max(0, v)) * 10000) / 10000;
+  const props: Record<string, unknown> = { x: r(at.x), y: r(at.y), kind: 'light' };
+  if (bright > 0) props['light'] = bright;
+  if (Math.max(dim, bright) > 0) props['dim'] = Math.max(dim, bright);
+  return { ...map, relations: [...(map.relations ?? []), { id, type: MARKER_RELATION, to: map.id, props }] };
 }
 
 /** Einen Marker leuchten lassen oder ausmachen (`lightOff`) — an der Kante, die Radien bleiben. */

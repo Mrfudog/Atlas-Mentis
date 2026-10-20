@@ -353,7 +353,8 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const rules = mapRulesOf(kampagne);
     const meine = new Set(await eigeneFiguren(request));
     const own = [...new Set(markersOf(karte).map((m) => m.to))].filter((id) => meine.has(id));
-    const aufDerKarte = [...new Set(markersOf(karte).filter((m) => m.kind !== 'scenery').map((m) => m.to))];
+    /* Ein Übergang und ein freies Licht (T-320) zeigen auf die Karte selbst — kein Token, das jemand zieht. */
+    const aufDerKarte = [...new Set(markersOf(karte).filter((m) => m.kind !== 'scenery' && m.kind !== 'passage' && m.kind !== 'light').map((m) => m.to))];
     /* **Wer zieht** (T-290): gefragt an der gesiebten Karte — was nicht
        dasteht, zieht niemand ausser der Leitung. */
     const wer = zieher(stand, kampagne, karte, meine);
