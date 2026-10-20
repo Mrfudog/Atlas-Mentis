@@ -286,6 +286,12 @@ interface Zeiger {
             <button type="button" class="freigabe" [class.an]="freigegeben()" [attr.aria-pressed]="freigegeben()" (click)="freigeben(!freigegeben())" [title]="freigegeben() ? 'Players see this map. Click to take it back from them.' : 'Players do not see this map yet. Release it — the fog applies at once.'">
               {{ freigegeben() ? 'Released' : 'Release to players' }}
             </button>
+            @if (kontext()?.session) {
+              <!-- **Zwischen Karten wechseln** (T-308): ein Schalter an der Sitzung, Vorgabe aus. -->
+              <button type="button" class="freigabe" [class.an]="kontext()!.mapNavigation" [attr.aria-pressed]="kontext()!.mapNavigation" [disabled]="navigationSpeichert()" (click)="navigationSetzen(!kontext()!.mapNavigation)" [title]="kontext()!.mapNavigation ? 'Players may zoom into sub-maps and out to the map above — only maps released in this session. Click to keep them on this map.' : 'Players stay on this map; frames are only picture for them. Click to let them zoom to other released maps.'">
+                {{ kontext()!.mapNavigation ? 'Players change maps' : 'Players stay here' }}
+              </button>
+            }
           } @else if (darfSchreiben() && ort() === 'play' && sitzung() && karte() && !istInstanz()) {
             <button type="button" class="freigabe" (click)="insSpielNehmen()" title="Put this map on the table of the session as a map in play: tokens and fog live there, the map itself stays as it is">
               Take into play
@@ -1165,7 +1171,7 @@ export class Karte {
       const k = this.kontext();
       /* Eine Begegnung: ihr Zug wandert, oder ein Kampf beginnt hier. */
       const betrifft =
-        ev.type === 'Map' || ev.type === 'Encounter' || ev.type === 'Campaign' || ev.id === k?.campaign || ev.id === k?.turn?.encounter || ev.id === k?.party?.id || !!k?.targets[ev.id] || !!k?.children.some((c) => c.id === ev.id);
+        ev.type === 'Map' || ev.type === 'Encounter' || ev.type === 'Campaign' || ev.id === k?.campaign || (!!k?.session && ev.id === k.session) || ev.id === k?.turn?.encounter || ev.id === k?.party?.id || !!k?.targets[ev.id] || !!k?.children.some((c) => c.id === ev.id);
       if (betrifft && ev.id !== this.id()) void this.kontextHolen(this.id());
     });
     /* Ein Zugvorschlag kommt, wird bestätigt oder verworfen (T-204). */
@@ -1329,6 +1335,25 @@ export class Karte {
     const karte = { ...((e.components?.['Map'] ?? {}) as Record<string, unknown>), released: an };
     void this.schreiben({ ...e, components: { ...e.components, Map: karte } });
   }
+  protected readonly navigationSpeichert = signal(false);
+  /** Den Schalter der Sitzung setzen (`Session.mapNavigation`, T-308); der Server siebt danach. */
+  protected async navigationSetzen(an: boolean): Promise<void> {
+    const id = this.kontext()?.session;
+    if (!id || this.navigationSpeichert()) return;
+    this.navigationSpeichert.set(true);
+    try {
+      const { refs: _r, fromTemplate: _f, ...s } = (await this.api.entity(id)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      const c = s.components ?? {};
+      /* Ältere Sitzungen tragen `SessionState` (T-202); geschrieben wird, wo es schon steht. */
+      const karteName = c['Session'] || !c['SessionState'] ? 'Session' : 'SessionState';
+      await this.api.putEntity({ ...s, components: { ...c, [karteName]: { ...((c[karteName] ?? {}) as Record<string, unknown>), mapNavigation: an } } } as Entity);
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.hinweis.set(err instanceof Error ? `The setting could not be saved: ${err.message}` : 'The setting could not be saved.');
+    } finally {
+      this.navigationSpeichert.set(false);
+    }
+  }
   protected async insSpielNehmen(): Promise<void> {
     try {
       const r = await this.api.takeIntoPlay({ session: this.sitzung(), map: this.id() });
@@ -1457,7 +1482,8 @@ export class Karte {
       zoom: this.zoom(),
       direction: richtung,
       children: this.kontext()?.children ?? [],
-      parent: this.kontext()?.parents.at(-1)?.id ?? parentMapRelation(e)?.to,
+      /* Aus (T-308): kein Rückfall auf die Kante — der Server hat entschieden. */
+      parent: this.kontext()?.parents.at(-1)?.id ?? (this.kontext()?.navigation === false ? undefined : parentMapRelation(e)?.to),
       nat: this.nat(),
       viewport: this.fenster(),
       ...(visible ? { visible } : {}),

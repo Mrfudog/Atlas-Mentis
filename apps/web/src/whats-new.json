@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-change-maps-in-play",
+      "date": "2026-10-20",
+      "title": "Decide whether players may change maps in play",
+      "text": "On a map in play, players now stay on the table map by default — sub-map frames are only picture. Press Players stay here to let them zoom into sub-maps and out to the map above; they reach only maps released in this session.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-19-map-assets",
       "date": "2026-10-19",
       "title": "Assets on the map: fixed or movable",
