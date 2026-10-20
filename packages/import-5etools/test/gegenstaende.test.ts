@@ -24,6 +24,9 @@ function datenstand(): Datenstand {
   const magicvariant: Knoten[] = [
     { name: '+1 Aim Weapon', source: 'DMG', type: 'GV', requires: [{ weapon: true }], inherits: { bonusWeaponAttack: '+1', entries: [] } },
     { name: 'Keen Wood', source: 'DMG', type: 'GV', requires: [{ type: 'SCF' }], inherits: { bonusSpellDamage: '+1', bonusWeaponDamage: '+2', entries: [] } },
+    /* Erfundene Varianten mit Namensteil und Aufpreis (T-300). */
+    { name: 'Glinting Weapon', source: 'DMG', type: 'GV', requires: [{ weapon: true }], inherits: { namePrefix: 'Glinting ', valueExpression: '[[baseItem.value]] + 5000', entries: [] } },
+    { name: 'Heavy Plate Trim', source: 'DMG', type: 'GV', requires: [{ armor: true }], inherits: { nameSuffix: ' with Trim', valueMult: 3, entries: [] } },
   ];
   return {
     arten: new Map([['itemEntry', itemEntry], ['item', item], ['itemGroup', itemGroup], ['magicvariant', magicvariant]]),
@@ -73,5 +76,15 @@ describe('Gegenstände beim Einlesen (T-089)', () => {
     ]);
     /* An Armschienen gilt der Bonus der Figur, nicht dem Gegenstand. */
     expect(wirkungen(finde('Archer Cuffs'))).toEqual([{ id: 'weapon-damage', target: 'weapon.damage', op: 'add', value: 2 }]);
+  });
+
+  it('schreibt Varianten als Enhancement: Namensteile und Aufpreis (T-300)', () => {
+    const glanz = finde('Glinting Weapon').components['Item'] as Record<string, unknown>;
+    expect(glanz['namePrefix']).toBe('Glinting ');
+    expect(glanz['priceAdd']).toBe(5000);
+    expect(glanz['priceMult']).toBeUndefined();
+    const trim = finde('Heavy Plate Trim').components['Item'] as Record<string, unknown>;
+    expect(trim['nameSuffix']).toBe(' with Trim');
+    expect(trim['priceMult']).toBe(3);
   });
 });
