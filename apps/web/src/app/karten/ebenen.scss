@@ -1,0 +1,89 @@
+/* **Übergänge** (T-307): ein Quadrat mit Symbol — kein Kreis, denn hier
+   steht niemand, hier geht es weiter. Das gespiegelte Ende (die Treppe von
+   oben gesehen) gestrichelt. */
+.uebergang {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 2px solid var(--surface);
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+  font: 700 1rem/1 var(--sans);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+.uebergang.k-portal {
+  border-radius: 50%;
+  background: #4b3a7a;
+}
+.uebergang.gespiegelt {
+  border-style: dashed;
+}
+.uebergang.offen {
+  outline: 3px solid var(--accent);
+}
+.uebergang-karte {
+  position: absolute;
+  transform: translate(-50%, 22px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 12rem;
+  max-width: min(18rem, 80vw);
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.3);
+  font: 0.85rem var(--sans);
+}
+.uebergang-karte label {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.ebenenwahl {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+.unterleiste.ebenen .ebenengruppe {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  padding-right: 0.4rem;
+  border-right: 1px solid var(--line);
+}
+.unterleiste.ebenen small {
+  opacity: 0.7;
+  margin-left: 0.25rem;
+}
+.ebene-einstellen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  font: 0.85rem var(--sans);
+}
+.ebene-einstellen label {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+.ebene-einstellen input[type='text'] {
+  width: 10rem;
+  max-width: 40vw;
+}

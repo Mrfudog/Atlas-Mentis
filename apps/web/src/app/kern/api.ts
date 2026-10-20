@@ -1549,11 +1549,12 @@ export class Api {
   /**
    * **Die eigene Figur ziehen** (T-204): `free` zieht sofort (`moved`),
    * `confirm` legt einen Vorschlag an (`proposal`), den die Leitung bestätigt.
+   * Mit `via` (T-307) geht das Token durch einen Übergang, auf dem es steht.
    */
   moveToken(
     map: string,
-    body: { rel: string; to: { x: number; y: number }; nat?: { w: number; h: number }; path?: { x: number; y: number }[]; feet?: number },
-  ): Promise<{ moved?: string; proposal?: TurnPlan }> {
+    body: { rel: string; to?: { x: number; y: number }; via?: string; nat?: { w: number; h: number }; path?: { x: number; y: number }[]; feet?: number },
+  ): Promise<{ moved?: string; proposal?: TurnPlan; floor?: string }> {
     return this.call(`/api/maps/${encodeURIComponent(map)}/move`, { method: 'POST', body: JSON.stringify(body) });
   }
   /**

@@ -420,7 +420,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'maps',
     label: 'Maps',
     area: 'play',
-    does: 'draws the map with its markers and the frames of its sub-maps, zooms through them, shows where the party stands, puts the combatants of the encounter fought there on it and rings whose turn it is, lists the party and the session’s encounters beside it (T-203) — and keeps hidden markers, markers on unseen articles and markers under the fog from players (T-115, T-117)',
+    does: 'draws the map with its markers and the frames of its sub-maps, zooms through them, shows where the party stands, puts the combatants of the encounter fought there on it and rings whose turn it is, keeps markers, walls and fog per floor and leads tokens through stairs and portals (T-307), lists the party and the session’s encounters beside it (T-203) — and keeps hidden markers, markers on unseen articles and markers under the fog from players (T-115, T-117)',
     uses: {
       [M + 'map.ts']: ['insideMap', 'mapOf', 'marker', 'onMap', 'participates'],
       [S + 'karten.ts']: ['belongsTo', 'insideMap', 'instanceOf', 'memberOfParty', 'participates'],
@@ -429,6 +429,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [M + 'kartenseite.ts']: ['instanceOf', 'memberOfParty', 'onMap', 'partOf', 'participates'],
       /* Getragene Lichter (T-305): die Fackel in der Hand einer Figur leuchtet auf der Karte. */
       [M + 'lighting.ts']: ['carries', 'holds'],
+      /* Ebenen und Übergänge (T-307): Marker je Ebene, ein Übergang ist ein Marker auf die Zielkarte. */
+      [M + 'floors.ts']: ['marker'],
       /* Eine Begegnung beginnen (T-203): ihre Karte, wenn keine genannt ist. */
       [S + 'kampfstart.ts']: ['onMap'],
     },

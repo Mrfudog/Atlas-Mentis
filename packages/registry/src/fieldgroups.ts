@@ -2083,6 +2083,21 @@ export const fieldGroups = {
         sheets: { type: 'array', title: 'Drawing layers', items: { type: 'object' } },
         /* Was am untersten Blatt einstellbar ist, steht an der Karte — es
            hat keinen eigenen Eintrag in `sheets`, weil es die Karte *ist*. */
+        /* **Ebenen einer Karte** (T-307, E-108): Stockwerke, Keller,
+           Turmgeschosse — eine flache Liste, keine Stapelnummer. Je Ebene
+           `id`, `name`, `structure` (Gebäudeteil), `elevation`
+           ({from, to} in Fuss), `gmOnly`, eigenes Bild (`image`) und die
+           Felder, die die erste Ebene hier an der Karte trägt (Gitter,
+           Massstab, Blätter, Sperren, Licht). Die erste Ebene ist die
+           Karte selbst; was eine Ebene mit einer anderen verbindet, sind
+           Übergänge (Marker `passage`), nie die Reihenfolge. */
+        floors: { type: 'array', title: 'Floors', items: { type: 'object' }, description: 'Further floors of this map — each with its own image, grid, scale, walls and layers. The map itself is the first floor.' },
+        /* Der Stand am Tisch je Ebene, neben den Ebenen: aufgedeckt
+           (`{ebene: [Formen]}`) und zurückgehalten (`{ebene: false}`). An
+           einer Instanz (T-289) kopiert ein Aufdecken so nicht alle Ebenen
+           der Vorlage mit. */
+        floorReveal: { type: 'object', title: 'Uncovered areas per floor' },
+        floorReleased: { type: 'object', title: 'Floors held back', description: 'Floors set to false here are not shown to players until released.' },
         baseHidden: { type: 'boolean', title: 'Hide the base image' },
         baseGmOnly: { type: 'boolean', title: 'Base image is GM only' },
         kind: {

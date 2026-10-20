@@ -95,7 +95,22 @@ import {
   wallPoints,
   RULE_OPTIONS,
   withRuleVariant,
+  GROUND_FLOOR,
+  PASSAGE_EXACT,
+  PASSAGE_KINDS,
+  addFloor,
+  elevationLabel,
+  floorGroups,
+  floorView,
+  mapFloors,
+  passageEnds,
+  removeFloor,
+  setFloorReleased,
+  sightInto,
+  updateFloor,
+  withFloorView,
 } from '@nw/model';
+import type { Passage, PassageKind } from '@nw/model';
 import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
 import { Api, type GespieltZeile, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -105,6 +120,7 @@ import { Session } from '../kern/session';
 import { bildAdresse } from '../artikel/bild';
 import { Brett, type Mangel } from '../boards/brett';
 import { BoardSuche } from '../boards/suche';
+import { BildWahl } from '../artikel/bild';
 import { Ladeanzeige } from '../kern/ladeanzeige';
 import { tipptGerade } from '../kern/suche';
 import { DUNKEL_FARBE, grauMalen, NEBEL_FARBE, nebelBreite, nebelMalen, schichtMalen, type NebelForm, type Schnitt } from './nebel';
@@ -166,7 +182,8 @@ type Werkzeug =
   | 'licht'
   | 'lichtSchalter'
   | 'gitterUrsprung'
-  | 'gitterZelle';
+  | 'gitterZelle'
+  | 'uebergang';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
@@ -184,7 +201,7 @@ const LUPE_ZOOM = 3;
 const PINSEL = [1, 2, 4, 8] as const;
 
 /** Die Gruppen der Werkzeugleiste (T-203). */
-type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'notizen' | 'zeichnen';
+type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'notizen' | 'zeichnen';
 interface GruppenDef {
   key: Gruppe;
   label: string;
@@ -207,6 +224,9 @@ const GRUPPEN: readonly GruppenDef[] = [
   { key: 'auswahl', label: 'Select', title: 'Select and move markers, open their quick view', sym: '↖', taste: 'S' },
   { key: 'tokens', label: 'Tokens', title: 'Add markers, place combatants, clear play tokens', sym: '◉', taste: 'T', leitung: true },
   { key: 'messen', label: 'Measure', title: 'Tap two points to measure', sym: '↔', taste: 'M' },
+  /* **Ebenen** (T-307, E-108): Stockwerke, Keller, Turmgeschosse, und die
+     Übergänge dazwischen. Spielende sehen die Gruppe, sobald es mehr als eine Ebene gibt. */
+  { key: 'ebenen', label: 'Floors', title: 'Floors of this map, and the stairs, ladders and portals between them', sym: '⧉', taste: 'E' },
   { key: 'nebel', label: 'Fog', title: 'Fog of war: reveal and hide what the players see', sym: '☁', taste: 'F', leitung: true },
   /* Licht ist ein eigenes Werkzeug (T-305, die Leitung 20.10.): wie hell
      die Karte ist und welche Marker leuchten, hat mit dem Nebel nichts zu tun. */
@@ -245,7 +265,7 @@ interface Zeiger {
  */
 @Component({
   selector: 'nw-karte',
-  imports: [RouterLink, BoardSuche, Ladeanzeige, KartenSeitenleiste],
+  imports: [RouterLink, BoardSuche, BildWahl, Ladeanzeige, KartenSeitenleiste],
   template: `
     <div class="karte" [class.gross]="gross()" [class.voll]="vollbild()" [class.ersatz]="ersatzVollbild()">
       <div class="leiste">
@@ -264,6 +284,21 @@ interface Zeiger {
             <button type="button" (click)="stufe(1)" aria-label="Zoom in" title="Zoom in — a sub-map that fills the view is entered">+</button>
             <button type="button" (click)="einpassen()" title="Fit the whole map">Fit</button>
           </span>
+          @if (ebenen().length > 1) {
+            <!-- **Die Ebene wechseln** (T-307): gruppiert nach Gebäudeteil, nach Höhe. -->
+            <label class="ebenenwahl" title="Which floor of the map you see">
+              Floor
+              <select (change)="ebeneZeigen($any($event.target).value)" aria-label="Floor">
+                @for (g of ebenenGruppen(); track g.structure) {
+                  <optgroup [label]="g.structure || name()">
+                    @for (f of g.floors; track f.id) {
+                      <option [value]="f.id" [selected]="f.id === ebene()">{{ f.name }}{{ f.elevation ? ' · ' + elevationLabel(f.elevation) : '' }}</option>
+                    }
+                  </optgroup>
+                }
+              </select>
+            </label>
+          }
           @if (blaetter().length > 1) {
             <button type="button" [attr.aria-expanded]="blaetterOffen()" (click)="blaetterOffen.set(!blaetterOffen())">Layers</button>
           }
@@ -514,6 +549,102 @@ interface Zeiger {
               <button type="button" (click)="allesAuf()">Reveal all</button>
               <button type="button" (click)="allesZu()">Cover all</button>
             </div>
+          }
+
+          @if (aktiv() === 'ebenen') {
+            <div class="unterleiste ebenen" role="toolbar" aria-label="Floors">
+              <!-- **Ebenen** (T-307, E-108): eine flache Liste, gruppiert nach Gebäudeteil und nach Höhe sortiert. -->
+              @for (g of ebenenGruppen(); track g.structure) {
+                <span class="ebenengruppe" role="group" [attr.aria-label]="g.structure || name()">
+                  @if (g.structure) {
+                    <b>{{ g.structure }}</b>
+                  }
+                  @for (f of g.floors; track f.id) {
+                    <button type="button" [class.an]="f.id === ebene()" [attr.aria-pressed]="f.id === ebene()" (click)="ebeneZeigen(f.id)" [title]="f.name + (f.elevation ? ', ' + elevationLabel(f.elevation) : '')">
+                      {{ f.name }}
+                      @if (f.elevation) {
+                        <small>{{ elevationLabel(f.elevation) }}</small>
+                      }
+                      @if (f.gmOnly) {
+                        <span class="marke">GM</span>
+                      } @else if (!f.released) {
+                        <span class="marke">held back</span>
+                      }
+                    </button>
+                  }
+                </span>
+              }
+              @if (ebenenLeitung()) {
+                <button type="button" (click)="ebeneDazu()" title="Add a floor — a storey, a cellar, a tower level — with its own image, grid and walls">+ Floor</button>
+                <button type="button" [class.an]="werkzeug() === 'uebergang'" [attr.aria-pressed]="werkzeug() === 'uebergang'" (click)="uebergangBeginnen()" title="Tap where the stairs, ladder, bridge or portal is, then where it leads">Add passage</button>
+                @if (werkzeug() === 'uebergang') {
+                  <label>
+                    Kind
+                    <select (change)="uebergangArt.set($any($event.target).value)" aria-label="Kind of passage">
+                      @for (k of PASSAGE_KINDS; track k) {
+                        <option [value]="k" [selected]="k === uebergangArt()">{{ k }}</option>
+                      }
+                    </select>
+                  </label>
+                  @if (uebergangA()) {
+                    <label>
+                      Leads to
+                      <select (change)="uebergangZielWaehlen($any($event.target).value)" aria-label="Where the passage leads">
+                        <option value="" [selected]="!uebergangZiel()">— choose —</option>
+                        @for (f of ebenen(); track f.id) {
+                          <option [value]="f.id" [selected]="uebergangZiel() === f.id">{{ f.name }}{{ f.structure ? ' (' + f.structure + ')' : '' }}</option>
+                        }
+                        <option value="__karte" [selected]="uebergangZiel() === '__karte'">another map…</option>
+                      </select>
+                    </label>
+                  }
+                }
+              }
+            </div>
+            @if (ebenenLeitung() && werkzeug() === 'uebergang' && uebergangZiel() === '__karte') {
+              <div class="ebene-einstellen">
+                <nw-board-suche [ohne]="nurKarten()" (gewaehlt)="uebergangKarte($event)" />
+              </div>
+            }
+            @if (ebenenLeitung() && werkzeug() !== 'uebergang' && ebeneJetzt(); as f) {
+              <div class="ebene-einstellen" role="group" aria-label="This floor">
+                <label>
+                  Name
+                  <input type="text" [value]="f.name" (change)="ebeneAendern({ name: $any($event.target).value || null })" />
+                </label>
+                <label title="The part of the building — the bar groups floors by it">
+                  Building part
+                  <input type="text" [value]="f.structure" placeholder="e.g. West tower" (change)="ebeneAendern({ structure: $any($event.target).value || null })" />
+                </label>
+                <label title="Height range in feet — shows which floors of two towers lie level with each other">
+                  From ft
+                  <input #von type="number" class="zahl" [value]="f.elevation?.from ?? ''" (change)="hoeheAendern(von.value, bis.value)" />
+                </label>
+                <label>
+                  to ft
+                  <input #bis type="number" class="zahl" [value]="f.elevation?.to ?? ''" (change)="hoeheAendern(von.value, bis.value)" />
+                </label>
+                @if (!f.ground) {
+                  <label title="Never shown to players — notes, a secret level">
+                    <input type="checkbox" [checked]="f.gmOnly" (change)="ebeneAendern({ gmOnly: $any($event.target).checked })" />
+                    GM only
+                  </label>
+                  <label title="Players do not see this floor until you release it">
+                    <input type="checkbox" [checked]="!f.released" (change)="ebeneFreigeben(!$any($event.target).checked)" />
+                    Held back
+                  </label>
+                  <button type="button" (click)="ebeneWeg()">Remove floor</button>
+                }
+              </div>
+              @if (!f.ground) {
+                <div class="ebene-einstellen">
+                  <!-- Das Bild der Ebene — Gitter und Massstab stellt die Gruppe „Grid“ für diese Ebene ein. -->
+                  <nw-bildwahl [wert]="f.image" [fuer]="id()" label="Floor image" klasse="map" (wertChange)="ebeneAendern({ image: $event || null })" />
+                </div>
+              } @else {
+                <p class="hinweis">The first floor is the map itself: its image, grid and walls. Each further floor has its own image, grid, scale and walls — set them with Grid and Walls while it is shown.</p>
+              }
+            }
           }
 
           @if (aktiv() === 'licht' && darfSchreiben()) {
@@ -891,6 +1022,58 @@ interface Zeiger {
                     <span>{{ kuerzel(p.name) }}</span>
                   </button>
                 }
+                @for (u of uebergaenge(); track u.key) {
+                  <!-- **Übergänge** (T-307): Treppe, Leiter, Brücke, Portal — ein Antippen zeigt Ziel und „Go through“. -->
+                  <button
+                    type="button"
+                    class="uebergang"
+                    [class]="'uebergang k-' + u.kind"
+                    [class.gespiegelt]="u.mirrored"
+                    [class.offen]="uebergangWahl() === u.key"
+                    [style.left.%]="u.at.x * 100"
+                    [style.top.%]="u.at.y * 100"
+                    [title]="u.titel"
+                    [attr.aria-label]="u.titel"
+                    (pointerdown)="$event.stopPropagation()"
+                    (click)="uebergangKlick($event, u.key)"
+                  >
+                    <span aria-hidden="true">{{ UEBERGANG_SYM[u.kind] }}</span>
+                  </button>
+                }
+                @if (uebergangOffen(); as u) {
+                  <div class="uebergang-karte" role="dialog" [attr.aria-label]="u.titel" [style.left.%]="u.at.x * 100" [style.top.%]="u.at.y * 100" (pointerdown)="$event.stopPropagation()">
+                    <b>{{ u.titel }}</b>
+                    @if (u.anderswo) {
+                      <a [routerLink]="weg(u.toMap).link" [queryParams]="weg(u.toMap).query">Open {{ u.ziel }}</a>
+                    } @else {
+                      <button type="button" class="klein" (click)="ebeneZeigen(u.toFloor)">Show {{ u.ziel }}</button>
+                      @for (m of aufUebergang(); track m.rel.id) {
+                        <button type="button" class="klein" [disabled]="speichert()" (click)="durchgehen(m.rel.id, u)">Take {{ m.name }} through</button>
+                      } @empty {
+                        <small>Drop a token on it to go through.</small>
+                      }
+                    }
+                    @if (ebenenLeitung()) {
+                      <label>
+                        <select (change)="uebergangSetzen(u.relId, { passage: $any($event.target).value })" aria-label="Kind of passage">
+                          @for (k of PASSAGE_KINDS; track k) {
+                            <option [value]="k" [selected]="k === u.kind">{{ k }}</option>
+                          }
+                        </select>
+                      </label>
+                      <label title="See through it like stairs, or only walk through">
+                        <input type="checkbox" [checked]="u.sight === 'through'" (change)="uebergangSetzen(u.relId, { sight: $any($event.target).checked ? null : 'none' })" />
+                        View through
+                      </label>
+                      <label title="Only from where it was placed to where it leads — no way back">
+                        <input type="checkbox" [checked]="u.oneWay" (change)="uebergangSetzen(u.relId, { oneWay: $any($event.target).checked })" />
+                        One way
+                      </label>
+                      <button type="button" class="klein" (click)="uebergangWeg(u.relId)">Remove</button>
+                    }
+                    <button type="button" class="klein" (click)="uebergangWahl.set(null)" aria-label="Close">×</button>
+                  </div>
+                }
                 @for (m of marker(); track m.rel.id) {
                   <button
                     type="button"
@@ -996,6 +1179,8 @@ interface Zeiger {
           {{ zelleA() ? 'Now tap the opposite corner of the same square.' : 'Tap one corner of a square on the image.' }}
         } @else if (werkzeug() === 'wandArt') {
           Tap a wall to make it a {{ wandArtName() }}.
+        } @else if (werkzeug() === 'uebergang') {
+          {{ !uebergangA() ? 'Tap where the passage is.' : !uebergangZiel() ? 'Choose where it leads.' : uebergangZiel() === '__karte' ? 'Pick the map the portal leads to.' : 'Tap where it leads on ' + ebeneName(uebergangZiel()) + '.' }}
         } @else if (werkzeug() === 'schloss') {
           Tap a door to lock or unlock it.
         } @else if (werkzeug() === 'wandWeg') {
@@ -1039,7 +1224,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -1111,7 +1296,25 @@ export class Karte {
         this.setzenBei.set(null);
         this.gezeigt.set({});
         this.kontext.set(null);
+        this.ebeneWahl.set(GROUND_FLOOR);
+        this.uebergangWahl.set(null);
         void this.bestand.oeffnen(id, false, false);
+      });
+    });
+    /* **Eine andere Ebene, ein anderes Bild** (T-307): gemessen wird neu —
+       aber nur, wenn sich das Bild ändert; dasselbe Bild lädt nicht noch
+       einmal, und die Karte bliebe ungemessen. */
+    let bildVorher: string | null = null;
+    effect(() => {
+      const b = this.grundbild();
+      untracked(() => {
+        if (bildVorher !== null && b !== bildVorher) {
+          this.nat.set(null);
+          this.bildFehlt.set(false);
+          this.messA.set(null);
+          this.messB.set(null);
+        }
+        bildVorher = b;
       });
     });
     /* Kommt der Artikel neu (gespeichert, oder später ein Ereignis aus dem
@@ -1205,21 +1408,241 @@ export class Karte {
   });
   /** Solange ein Schreiben läuft, gilt der Entwurf — ein Marker springt sonst zurück. */
   private readonly entwurf = signal<Entity | null>(null);
-  protected readonly karte = computed(() => this.entwurf() ?? this.gespeichert());
+  /** Die ganze Karte, mit allen Ebenen (T-307). */
+  private readonly ganz = computed(() => this.entwurf() ?? this.gespeichert());
+  /**
+   * **Die Ebene, die gezeigt wird** (T-307, E-108). Gerechnet und
+   * gezeichnet wird je Ebene: `karte` ist ihre Projektion (`floorView`) —
+   * Bild, Gitter, Sperren, Nebel und Marker dieser Ebene —, und `schreiben`
+   * schreibt sie in die ganze Karte zurück (`withFloorView`).
+   */
+  protected readonly ebeneWahl = signal<string>(GROUND_FLOOR);
+  protected readonly ebene = computed(() => {
+    const w = this.ebeneWahl();
+    return this.ebenen().some((f) => f.id === w) ? w : GROUND_FLOOR;
+  });
+  protected readonly karte = computed(() => {
+    const e = this.ganz();
+    return e ? floorView(e, this.ebene()) : undefined;
+  });
+  /** Eine geänderte Ebene in die ganze Karte. */
+  private voll(e: Entity): Entity {
+    const g = this.ganz();
+    return g ? withFloorView(g, this.ebene(), e) : e;
+  }
   /**
    * **Was gezeichnet wird.** Für Spielende hat der Server schon
    * zurückgehalten (`redactMap`); die Leitung sieht mit „Player view"
    * dasselbe, gerechnet mit derselben Funktion — als Vorschau, nicht als
    * Schranke: was sie hier hat, durfte sie ohnehin.
    */
-  protected readonly angezeigt = computed(() => {
-    const e = this.karte();
+  private readonly angezeigtGanz = computed(() => {
+    const e = this.ganz();
     if (!e || !this.spielersicht()) return e;
     /* Nebel je Figur (T-204): die Sicht der gewählten Figur, ohne Wahl nur
        das für alle Aufgedeckte. */
     const fuer = this.nebelFuer();
     return redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
   });
+  protected readonly angezeigt = computed(() => {
+    const e = this.angezeigtGanz();
+    return e ? floorView(e, this.ebene()) : e;
+  });
+
+  // ---------------------------------------------------------------- Ebenen
+
+  /** Die Ebenen, die dieser Betrachter hat — in der Spielersicht ohne die der Leitung. */
+  protected readonly ebenen = computed(() => {
+    const e = this.angezeigtGanz();
+    return e ? mapFloors(e) : [];
+  });
+  /** Die Leiste: nach Gebäudeteil, darin nach Höhe (E-108). */
+  protected readonly ebenenGruppen = computed(() => floorGroups(this.ebenen()));
+  protected readonly ebeneJetzt = computed(() => this.ebenen().find((f) => f.id === this.ebene()) ?? null);
+  protected readonly elevationLabel = elevationLabel;
+  protected ebeneName(id: string): string {
+    const f = this.ebenen().find((x) => x.id === id);
+    return f ? f.name + (f.structure ? ' (' + f.structure + ')' : '') : 'a floor not shown';
+  }
+  /** Ebenen bearbeiten: wer die Karte schreibt, nicht in der Spielersicht. */
+  protected readonly ebenenLeitung = computed(() => this.darfSchreiben() && !this.spielersicht());
+
+  protected ebeneZeigen(id: string): void {
+    this.ebeneWahl.set(id);
+    this.uebergangWahl.set(null);
+  }
+  protected ebeneDazu(): void {
+    const g = this.ganz();
+    if (!g) return;
+    const name = prompt('Name of the new floor', `Floor ${this.ebenen().length + 1}`);
+    if (!name?.trim()) return;
+    const id = `floor-${crypto.randomUUID().slice(0, 8)}`;
+    const jetzt = this.ebeneJetzt();
+    void this.schreibenGanz(addFloor(g, id, { name, structure: jetzt?.structure ?? '' })).then(() => this.ebeneWahl.set(id));
+  }
+  /** Was die Ebene über sich sagt; `null` nimmt es weg. */
+  protected ebeneAendern(patch: Record<string, unknown>): void {
+    const g = this.ganz();
+    if (g) void this.schreibenGanz(updateFloor(g, this.ebene(), patch));
+  }
+  protected hoeheAendern(von: string, bis: string): void {
+    const a = von.trim() === '' ? null : Number(von.replace(',', '.'));
+    const b = bis.trim() === '' ? null : Number(bis.replace(',', '.'));
+    const ok = (v: number | null) => v === null || Number.isFinite(v);
+    if (!ok(a) || !ok(b)) return;
+    this.ebeneAendern({ elevation: a === null && b === null ? null : { from: a ?? b, to: b ?? a } });
+  }
+  protected ebeneFreigeben(an: boolean): void {
+    const g = this.ganz();
+    if (g) void this.schreibenGanz(setFloorReleased(g, this.ebene(), an));
+  }
+  protected ebeneWeg(): void {
+    const g = this.ganz();
+    const f = this.ebeneJetzt();
+    if (!g || !f || f.ground) return;
+    if (!confirm(`Remove the floor "${f.name}" with its markers, walls and the passages leading to it?`)) return;
+    void this.schreibenGanz(removeFloor(g, f.id)).then(() => this.ebeneWahl.set(GROUND_FLOOR));
+  }
+
+  // ------------------------------------------------------------- Übergänge
+
+  protected readonly PASSAGE_KINDS = PASSAGE_KINDS;
+  protected readonly UEBERGANG_SYM: Record<PassageKind, string> = { stairs: '⇅', ladder: '☷', bridge: '═', portal: '◎' };
+  /** Die Enden auf dieser Ebene, auch die gespiegelten der Übergänge in beide Richtungen. */
+  protected readonly uebergaenge = computed(() => {
+    const e = this.angezeigtGanz();
+    if (!e) return [];
+    const namen = this.kontext()?.targets ?? {};
+    return passageEnds(e, this.ebene()).map((p) => {
+      const anderswo = p.toMap !== e.id;
+      const ziel = anderswo ? (namen[p.toMap]?.name ?? this.bestand.name()(p.toMap) ?? 'another map') : this.ebeneName(p.toFloor);
+      const art = p.kind.charAt(0).toUpperCase() + p.kind.slice(1);
+      return {
+        ...p,
+        key: p.relId + (p.mirrored ? '~' : ''),
+        anderswo,
+        ziel,
+        titel: `${art} to ${ziel}${p.oneWay ? ' — one way' : ''}${p.sight === 'none' ? ' — no view through' : ''}${p.note ? ' — ' + p.note : ''}`,
+      };
+    });
+  });
+  /** Das angetippte Ende. */
+  protected readonly uebergangWahl = signal<string | null>(null);
+  protected readonly uebergangOffen = computed(() => this.uebergaenge().find((u) => u.key === this.uebergangWahl()) ?? null);
+  /** Wer auf dem angetippten Ende steht und durch darf. */
+  protected readonly aufUebergang = computed(() => {
+    const u = this.uebergangOffen();
+    if (!u || u.anderswo) return [];
+    const zieht = new Set(this.ziehbarHier());
+    return this.marker().filter(
+      (m) => (m.kind === 'play' || m.kind === 'party') && Math.hypot(m.x - u.at.x, m.y - u.at.y) <= PASSAGE_EXACT && (this.alsLeitung() || zieht.has(m.to)),
+    );
+  });
+  protected uebergangKlick(ev: Event, key: string): void {
+    ev.stopPropagation();
+    this.uebergangWahl.set(this.uebergangWahl() === key ? null : key);
+  }
+  /** Durchgehen (T-307): der Server versetzt das Token, die Seite folgt ihm auf die Zielebene. */
+  protected async durchgehen(rel: string, u: Passage): Promise<void> {
+    if (this.speichert()) return;
+    this.speichert.set(true);
+    this.mangel.set(null);
+    try {
+      await this.api.moveToken(this.id(), { rel, via: u.relId });
+      await this.bestand.oeffnen(this.id(), true, false);
+      this.ebeneZeigen(u.toFloor);
+    } catch (err) {
+      this.mangel.set({ text: err instanceof Error ? err.message : 'The token did not go through.', einzeln: [] });
+    } finally {
+      this.speichert.set(false);
+    }
+  }
+  /** Einen Übergang einstellen — Art, Sicht, Einbahn; `null` nimmt es weg. */
+  protected uebergangSetzen(relId: string, patch: Record<string, unknown>): void {
+    const g = this.ganz();
+    if (!g) return;
+    const relations = (g.relations ?? []).map((r) => {
+      if (r.id !== relId) return r;
+      const props = { ...((r.props ?? {}) as Record<string, unknown>) };
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === null || v === false || v === '') delete props[k];
+        else props[k] = v;
+      }
+      return { ...r, props };
+    });
+    void this.schreibenGanz({ ...g, relations });
+  }
+  protected uebergangWeg(relId: string): void {
+    const g = this.ganz();
+    if (!g || !confirm('Remove this passage? Both ends go.')) return;
+    this.uebergangWahl.set(null);
+    void this.schreibenGanz({ ...g, relations: (g.relations ?? []).filter((r) => r.id !== relId) });
+  }
+
+  /** Einen Übergang setzen: erst das Ende hier, dann das Ziel — eine Ebene (und ihr Punkt) oder eine andere Karte. */
+  protected readonly uebergangArt = signal<PassageKind>('stairs');
+  protected readonly uebergangA = signal<{ floor: string; pt: Pt } | null>(null);
+  protected readonly uebergangZiel = signal<string>('');
+  protected readonly nurKarten = computed(() => new Set([this.id()]));
+  protected uebergangBeginnen(): void {
+    this.waehle('uebergang');
+    this.uebergangA.set(null);
+    this.uebergangZiel.set('');
+  }
+  private uebergangTippen(pt: Pt): void {
+    const a = this.uebergangA();
+    if (!a) {
+      this.uebergangA.set({ floor: this.ebene(), pt });
+      return;
+    }
+    const ziel = this.uebergangZiel();
+    if (!ziel || ziel === '__karte' || this.ebene() !== ziel) return;
+    this.uebergangAnlegen(this.id(), ziel, pt);
+  }
+  /** Das Ziel gewählt: eine Ebene dieser Karte — dann dorthin wechseln und den Punkt tippen. */
+  protected uebergangZielWaehlen(ziel: string): void {
+    this.uebergangZiel.set(ziel);
+    if (ziel && ziel !== '__karte') this.ebeneWahl.set(ziel);
+  }
+  /** Ein Portal auf eine andere Karte: es führt auf deren erste Ebene, in die Mitte. */
+  protected uebergangKarte(e: Entity): void {
+    if (!isMap(e)) {
+      this.hinweis.set('Pick a map — a portal leads to a map.');
+      return;
+    }
+    this.uebergangAnlegen(e.id, GROUND_FLOOR, { x: 0.5, y: 0.5 });
+  }
+  private uebergangAnlegen(toMap: string, toFloor: string, to: Pt): void {
+    const g = this.ganz();
+    const a = this.uebergangA();
+    if (!g || !a) return;
+    const r4 = (v: number) => Math.round(v * 10000) / 10000;
+    const props: Record<string, unknown> = {
+      kind: 'passage',
+      passage: this.uebergangArt(),
+      x: r4(a.pt.x),
+      y: r4(a.pt.y),
+      toX: r4(to.x),
+      toY: r4(to.y),
+      ...(a.floor !== GROUND_FLOOR ? { floor: a.floor } : {}),
+      ...(toFloor !== GROUND_FLOOR ? { toFloor } : {}),
+    };
+    const rel = { id: `r-${crypto.randomUUID()}`, type: 'marker', to: toMap, props };
+    this.uebergangA.set(null);
+    this.uebergangZiel.set('');
+    this.waehle('keins');
+    void this.schreibenGanz({ ...g, relations: [...(g.relations ?? []), rel] }).then(() => this.ebeneWahl.set(a.floor));
+  }
+  /** Ein Token, das nah an einem Ende losgelassen wird, steht genau darauf — dann geht es durch. */
+  private aufEnde(pt: Pt): Pt {
+    const nat = this.nat();
+    const s = this.einst();
+    if (!nat || !s || nat.w <= 0) return pt;
+    const reich = (0.5 * s.gridSize) / nat.w;
+    const ar = nat.h / nat.w;
+    const ende = this.uebergaenge().find((u) => Math.hypot(pt.x - u.at.x, (pt.y - u.at.y) * ar) <= reich);
+    return ende ? ende.at : pt;
+  }
   /** Die Kartenregeln der Kampagne (T-204); ohne Antwort die Vorgaben. */
   protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', tokenMove: 'own', revealOnMove: false, doors: 'players', tokenSizes: 'rules' });
   /** Führt die Kampagne den Nebel je Figur? */
@@ -1625,7 +2048,7 @@ export class Karte {
     const max = this.breite() * 0.3;
     const plan = this.planung();
     const pr = this.planRaster();
-    return markersOf(e).map((m: MapMarker) => {
+    return markersOf(e).filter((m) => m.kind !== 'passage').map((m: MapMarker) => {
       const ziel = ziele[m.to];
       const name = ziel?.name ?? this.bestand.name()(m.to) ?? '?';
       const pt = z && z.id === m.rel.id ? z.pt : m;
@@ -1818,7 +2241,7 @@ export class Karte {
       if (!g.zieht && Math.hypot(ev.clientX - g.sx, ev.clientY - g.sy) < ZIEHEN_AB) return;
       g.zieht = true;
       const pt = this.punkt(ev);
-      if (pt) this.zug.set({ id: g.id, pt: g.span === null ? pt : this.tokenRasten(pt, g.span) });
+      if (pt) this.zug.set({ id: g.id, pt: g.span === null ? pt : this.aufEnde(this.tokenRasten(pt, g.span)) });
       return;
     }
     const pz = this.punktZug();
@@ -2060,7 +2483,9 @@ export class Karte {
   // ------------------------------------------------------------ Werkzeuge
 
   /** Die Gruppen, die dieser Betrachter in der Leiste hat. */
-  protected readonly gruppen = computed(() => GRUPPEN.filter((g) => !g.spaeter && (!g.leitung || this.darfSchreiben())));
+  protected readonly gruppen = computed(() =>
+    GRUPPEN.filter((g) => !g.spaeter && (!g.leitung || this.darfSchreiben()) && (g.key !== 'ebenen' || this.darfSchreiben() || this.ebenen().length > 1)),
+  );
   protected readonly aktiv = signal<Gruppe>('auswahl');
   /** Nur die Symbole: die Leiste schmal, mehr Karte. */
   protected readonly leisteZu = signal(false);
@@ -2155,6 +2580,8 @@ export class Karte {
       }
       if (g.gridSize) this.groesseBasis.set(g.gridSize);
       this.gitterAendern({ ...g, ...(this.einst()?.gridShape === 'none' ? { gridShape: 'square' as const } : {}) });
+    } else if (this.werkzeug() === 'uebergang') {
+      this.uebergangTippen(pt);
     } else if (this.werkzeug() === 'schloss') {
       const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
       if (t) void this.tuerKlick(t);
@@ -2934,7 +3361,8 @@ export class Karte {
    */
   private readonly betrachter = computed<Set<string>>(() => {
     if (this.alsLeitung()) return new Set();
-    const e = this.karte();
+    /* Alle Ebenen (T-307): wer oben auf der Treppe steht, sieht auch hier. */
+    const e = this.angezeigtGanz();
     const marker = e ? markersOf(e) : [];
     const gruppe = marker.filter((m) => m.kind === 'party').map((m) => m.to);
     /* **Die Sicht gilt den Spielertokens** (T-305, die Leitung 20.10.):
@@ -2957,9 +3385,15 @@ export class Karte {
     const wer = this.betrachter();
     if (!e || !n || !wer.size) return [];
     const dv = this.kontext()?.darkvision ?? {};
-    return this.marker()
+    const hier = this.marker()
       .filter((m) => wer.has(m.to) && (m.kind === 'play' || m.kind === 'party'))
       .map((m) => figureView(e, m, n, dv[m.to] ?? 0, this.getragen()));
+    /* **Sicht über Übergänge** (T-307): wer auf einer anderen Ebene auf
+       einer Treppe steht, durch die man sieht, sieht hier ab ihrem
+       Gegenstück — mit den Sperren und im Massstab dieser Ebene. */
+    const ganz = this.angezeigtGanz();
+    const drueben = ganz ? sightInto(ganz, this.ebene()).filter((x) => wer.has(x.to)) : [];
+    return [...hier, ...drueben.map((x) => figureView(e, x.from, n, dv[x.to] ?? 0, this.getragen()))];
   });
   /**
    * **Die Dunkelheit** (T-216, REQ-140): auf einer dämmrigen oder dunklen
@@ -3068,7 +3502,7 @@ export class Karte {
     this.mangel.set(null);
     this.speichert.set(true);
     const asset = markersOf(e).some((m) => m.rel.id === rel && m.kind === 'scenery');
-    if (asset || this.regeln().moves !== 'confirm') this.entwurf.set(moveMarker(e, rel, to));
+    if (asset || this.regeln().moves !== 'confirm') this.entwurf.set(this.voll(moveMarker(e, rel, to)));
     try {
       const r = await this.api.moveToken(this.id(), { rel, to, ...(nat ? { nat } : {}) });
       if (r.proposal) this.hinweis.set(VORSCHLAG_GESENDET);
@@ -3097,6 +3531,10 @@ export class Karte {
    * wieder, was der Server hat.
    */
   private async schreiben(e: Entity): Promise<void> {
+    return this.schreibenGanz(this.voll(e));
+  }
+  /** Die ganze Karte schreiben — Ebenen und Übergänge (T-307). */
+  private async schreibenGanz(e: Entity): Promise<void> {
     if (this.speichert()) return;
     this.entwurf.set(e);
     this.mangel.set(null);

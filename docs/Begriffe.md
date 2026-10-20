@@ -1935,6 +1935,21 @@ Vorbereitung sieht man nicht durch ein Schlüsselloch. Der Schalter steht
 an der Sitzung, weil er sagt, was gerade läuft — an der Karte gälte er in
 jeder Runde, die sie spielt.
 
+**Stockwerke sind Ebenen einer Karte, verbunden nur über Übergänge**
+(T-307, E-108). Ein Turm mit Keller ist *eine* Karte: gespielt wird er
+gemeinsam, mit einer Instanz und einem Nebelstand je Geschoss. Je Stockwerk
+eine eigene Karte hätte Sichtbarkeit und Wiederverwendung umsonst gebracht
+— und dafür mehrere Instanzen, die zusammen entstehen müssen, und Sicht
+über Artikelgrenzen. Eine Stapelnummer gibt es nicht: zwei ungleich hohe
+Türme hätten keine gemeinsame Zählung (ein Geschoss des einen entspricht
+zweien des anderen). Darum trägt eine Ebene einen Gebäudeteil und einen
+Höhenbereich, und was womit verbunden ist, sagt allein der Übergang —
+Treppe, Leiter, Brücke, Portal. Jede Ebene hat ihren eigenen Massstab: ein
+Übergang verbindet zwei Punkte, nicht zwei Koordinatensysteme, und Sicht
+und Bewegung rechnen auf jeder Seite in der Ebene, in der sie gerade sind.
+Die Gegenseite eines Übergangs ist ein gespiegeltes Ende und kein zweiter
+Marker — ein Paar wäre zwei Stellen, die auseinanderlaufen.
+
 **Ein Stück im Inventar ist eine Instanz** (T-150). Was eine Figur in die
 Hand bekommt — gekauft, erbeutet, gefertigt, geschenkt —, ist nicht der
 Gegenstand aus dem Buch, sondern ein Stück davon: ein eigener Artikel mit

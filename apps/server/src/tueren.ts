@@ -32,6 +32,9 @@ import {
   isMap,
   mapRulesOf,
   mapSettings,
+  floorOfWall,
+  floorView,
+  onFloor,
   mapWalls,
   markersOf,
   PARTY_RELATION,
@@ -114,13 +117,18 @@ export function registerTueren(app: FastifyInstance, deps: TuerenDeps): void {
       const leitet = leitetTisch(user, kampagne?.id ?? null);
 
       const b = request.body ?? {};
-      const tuer = mapWalls(roheKarte).find((w) => w.id === b.wall && isDoor(w));
+      /* **Je Ebene** (T-307): die Tür steht auf einer Ebene der Karte, und
+         dort zählen Sperren, Gitter, Tokens und Nebel. */
+      const ebene = floorOfWall(roheKarte, String(b.wall ?? ''));
+      const roheGanz = roheKarte;
+      const roheEbene = floorView(roheKarte, ebene);
+      const tuer = mapWalls(roheEbene).find((w) => w.id === b.wall && isDoor(w));
       /* Spielende kennen nur die Türen, die ihre Karte als Tür trägt — eine geschlossene Geheimtür ist dort eine Wand. */
-      if (!tuer || (!leitet && !mapWalls(karte).some((w) => w.id === tuer.id && isDoor(w)))) return reply.code(404).send({ error: 'There is no door here.' });
+      if (!tuer || (!leitet && !mapWalls(floorView(karte, ebene)).some((w) => w.id === tuer.id && isDoor(w)))) return reply.code(404).send({ error: 'There is no door here.' });
       const state = b.state as DoorState;
       if (!ZUSTAENDE.includes(state)) return reply.code(422).send({ error: 'state: open, closed or locked' });
       const nat = cleanNat(b.nat);
-      const regeln = mapRulesOf(kampagne, roheKarte);
+      const regeln = mapRulesOf(kampagne, roheGanz);
 
       if (!leitet) {
         if (regeln.doors !== 'players') return reply.code(403).send({ error: 'Only the GM opens doors in this campaign.' });
@@ -129,16 +137,18 @@ export function registerTueren(app: FastifyInstance, deps: TuerenDeps): void {
         /* Daneben stehen: eine eigene Figur, anderthalb Felder von der Tür. */
         if (!nat) return reply.code(422).send({ error: 'nat: {w, h} — the size of the map image' });
         const ar = nat.h / nat.w;
-        const reich = (TUER_REICHWEITE * mapSettings(roheKarte).gridSize) / nat.w;
+        const reich = (TUER_REICHWEITE * mapSettings(roheEbene).gridSize) / nat.w;
         const eigene = new Set(user.actorIds ?? []);
         const seg = { x1: tuer.x1, y1: tuer.y1 * ar, x2: tuer.x2, y2: tuer.y2 * ar };
-        const dabei = markersOf(roheKarte).some((m) => eigene.has(m.to) && !m.hidden && segDistance({ x: m.x, y: m.y * ar }, seg) <= reich);
+        const dabei = markersOf(roheEbene).some((m) => eigene.has(m.to) && !m.hidden && segDistance({ x: m.x, y: m.y * ar }, seg) <= reich);
         if (!dabei) return reply.code(403).send({ error: 'Your character has to stand at the door.' });
       }
 
       if (tuer.state === state) return { wall: tuer.id, state };
-      let neu = setDoorState(roheKarte, tuer.id, state);
-      if (state === 'open' && nat && fogOn(roheKarte) && regeln.revealOnMove) neu = tuerAufdecken(neu, tuer.id, nat, stand.map);
+      const neu = onFloor(roheGanz, ebene, (v) => {
+        const offen = setDoorState(v, tuer.id, state);
+        return state === 'open' && nat && fogOn(v) && regeln.revealOnMove ? tuerAufdecken(offen, tuer.id, nat, stand.map) : offen;
+      });
       const r = await schreibeGeprueft(neu);
       if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
       return { wall: tuer.id, state };
