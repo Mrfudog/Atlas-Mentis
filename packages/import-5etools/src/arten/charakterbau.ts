@@ -727,7 +727,9 @@ export const CHARAKTERBAU: Zuordnung[] = [
               : `${k.toUpperCase()} ${String(v)}`,
           )
           .join(', ');
-      wb.feld(ent, C, 'multiclassRequirement', reqText(req));
+      /* 2024 nennt keine `requirements`: dann gilt 13 im Hauptattribut
+         (T-319) — eine Liste von Möglichkeiten, je Möglichkeit alle Werte. */
+      wb.feld(ent, C, 'multiclassRequirement', reqText(req) || hauptVoraussetzung(e['primaryAbility']));
       const mp = (mc['proficienciesGained'] as Knoten | undefined) ?? {};
       uebungen(wb, ent, { armor: mp['armor'], weapon: mp['weapons'], tool: mp['tools'], skill: mp['skills'] }, 'multiclassProficient', 'multiclass');
       if (ent.components['Proficiencies']?.['multiclassProficient']) {
@@ -977,4 +979,18 @@ function zauberwahlenAnhaengen(wb: Werkbank, ent: Entity, e: Knoten): void {
   const alle = (karte['choices'] as Choice[] | undefined) ?? [];
   const dazu = zauberwahlen(e, ent.id, alle.map((c) => c.id));
   if (dazu.length) karte['choices'] = [...alle, ...dazu];
+}
+
+/**
+ * **Die Mehrklassen-Voraussetzung aus dem Hauptattribut** (T-319, Regeln
+ * 2024): `[{str: true}, {dex: true}]` heisst eines davon („STR 13 or
+ * DEX 13"), `[{str: true, cha: true}]` beides („STR 13, CHA 13").
+ */
+export function hauptVoraussetzung(roh: unknown): string {
+  const wege = liste(roh)
+    .map((x) => Object.keys((x ?? {}) as Knoten).filter((a) => ATTR.includes(a)))
+    .filter((w) => w.length);
+  if (!wege.length) return '';
+  if (wege.length === 1) return wege[0]!.map((a) => `${a.toUpperCase()} 13`).join(', ');
+  return wege.map((w) => w.map((a) => `${a.toUpperCase()} 13`).join(' and ')).join(' or ');
 }

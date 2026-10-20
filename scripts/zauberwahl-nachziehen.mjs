@@ -52,10 +52,14 @@ const schluessel = (name, quelle) => `${String(name).replace(/\s*\([A-Z0-9]+\)\s
 const artikel = new Map();
 const namen = new Map();
 for (const typ of ['Class', 'Subclass']) {
-  const l = await api(`/api/list?type=${typ}&limit=2000&allLayers=1`);
-  for (const z of l.rows) {
-    artikel.set(`${typ}:${schluessel(z.name, z.source ?? '')}`, z.id);
-    namen.set(z.id, z.name);
+  /* Die Liste gibt höchstens 200 je Blatt: blättern. */
+  for (let offset = 0; ; offset += 200) {
+    const l = await api(`/api/list?type=${typ}&limit=200&offset=${offset}&allLayers=1`);
+    for (const z of l.rows) {
+      artikel.set(`${typ}:${schluessel(z.name, z.source ?? '')}`, z.id);
+      namen.set(z.id, z.name);
+    }
+    if (!l.rows.length || offset + l.rows.length >= l.total) break;
   }
 }
 
