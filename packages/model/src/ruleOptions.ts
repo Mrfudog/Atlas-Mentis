@@ -28,7 +28,7 @@ import { craftRulesOf } from './crafting.js';
 import { allowedEquipmentMethods, type EquipmentMethod } from './equipment.js';
 import { hitPointRuleOf } from './hitpoints.js';
 import { inventoryRulesOf } from './inventory.js';
-import { mapRulesOf } from './map.js';
+import { mapRulesOf, mapToolTable } from './map.js';
 import { stowingRuleOf } from './stowing.js';
 import { substitutionsOf, substitutionText } from './substitutes.js';
 import { entityName } from './entity.js';
@@ -344,6 +344,14 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
+    /* Werkzeuge je Kartentyp (T-320), gelesen über `mapToolsOf`; eine Tabelle statt Varianten. */
+    key: 'mapTools',
+    sort: 'map',
+    label: 'Map tools',
+    does: 'Which tools a map offers, by map kind: walls, fog and light belong on battle maps, linking sub-maps on world and region maps. A kind left unchanged keeps the default.',
+    source: { field: 'mapTools' },
+  },
+  {
     key: 'revealOnMove',
     sort: 'map',
     label: 'Moves reveal the way',
@@ -624,6 +632,8 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return mapRulesOf(campaign).revealOnMove;
     case 'doors':
       return mapRulesOf(campaign).doors;
+    case 'mapTools':
+      return Object.entries(mapToolTable(campaign)).map(([k, g]) => `${k}: ${g.length ? g.join(', ') : 'none'}`);
     default: {
       const roh = campaign?.components?.['Campaign']?.[feld];
       /* Die übrigen Vorgaben stehen am Register (`CampaignInfo`): Talente ja, Würfe für den Tisch. */

@@ -141,6 +141,13 @@ describe('Wer Tokens zieht (T-290)', () => {
     expect((await stelle('mk_licht')).x).toBe(0.8);
   });
 
+  it('der Kartenkontext nennt die Werkzeuge der Kartenart (T-320, `Campaign.mapTools`)', async () => {
+    /* Der Hof hat keine Art: er gilt als region, wie das Register vorgibt. */
+    expect(((await (await aufbau()).rufe('Gwen', 'GET', '/api/maps/map_1/context')).json() as { tools: string[] }).tools).toEqual(['frames', 'markers', 'assets']);
+    const eigen = await aufbau({ mapTools: { region: ['fog', 'walls'] } });
+    expect(((await eigen.rufe('Gwen', 'GET', '/api/maps/map_1/context')).json() as { tools: string[] }).tools).toEqual(['fog', 'walls']);
+  });
+
   it('mit Bestätigung schreibt erst die Freigabe — und den Vorschlag sieht jeder am Tisch', async () => {
     const { rufe, zieh, stelle, kontext } = await aufbau({ tokenMove: 'party', moves: 'confirm' });
     const r = await zieh('Sela', 'mk_mira');

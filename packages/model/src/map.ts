@@ -1188,6 +1188,76 @@ export function mapRulesOf(campaign: Entity | null | undefined, map?: Entity | n
   };
 }
 
+// ------------------------------------------------------ Werkzeuge je Kartentyp
+
+/** Die Arten einer Karte (`Map.kind`); ohne Angabe gilt die Vorgabe des Registers. */
+export type MapKind = 'world' | 'region' | 'settlement' | 'district' | 'building' | 'battle';
+export const MAP_KINDS: readonly MapKind[] = ['world', 'region', 'settlement', 'district', 'building', 'battle'];
+/** Die Vorgabe von `Map.kind` im Register. */
+const KARTENART_VORGABE: MapKind = 'region';
+
+/** Die Art einer Karte. */
+export function mapKindOf(map: Entity | null | undefined): MapKind {
+  const k = (map?.components?.[MAP_COMPONENT] as { kind?: unknown } | undefined)?.kind;
+  return MAP_KINDS.includes(k as MapKind) ? (k as MapKind) : KARTENART_VORGABE;
+}
+
+/**
+ * **Die Werkzeuggruppen einer Karte** (T-320): was die Leiste je
+ * Kartentyp zeigt. Auswahl, Messen und Ebenen stehen immer da; Wege und
+ * Reise haben noch kein Werkzeug auf der Karte und stehen darum nicht hier.
+ */
+export type MapToolGroup = 'walls' | 'fog' | 'light' | 'grid' | 'tokens' | 'assets' | 'frames' | 'markers';
+export const MAP_TOOL_GROUPS: readonly { key: MapToolGroup; label: string; does: string }[] = [
+  { key: 'walls', label: 'Walls & doors', does: 'Draw walls, doors, windows and obstacles.' },
+  { key: 'fog', label: 'Fog', does: 'Reveal and hide what the players see.' },
+  { key: 'light', label: 'Light & darkness', does: 'How bright the map is, and the lights on it.' },
+  { key: 'grid', label: 'Grid', does: 'Set the grid on the image.' },
+  { key: 'tokens', label: 'Tokens', does: 'Combatants and play tokens, their size and who moves them.' },
+  { key: 'assets', label: 'Assets', does: 'Crates, tables, lanterns placed on the map.' },
+  { key: 'frames', label: 'Sub-map links', does: 'Frame part of the map and link the map you zoom into there.' },
+  { key: 'markers', label: 'Markers', does: 'Markers for places, people and things on the map.' },
+];
+
+/**
+ * **Die Vorgabe** (die Leitung 20.10.): auf einer Kampfkarte Wände, Nebel,
+ * Licht, Gitter, Tokens, Assets und Marker; auf jeder anderen
+ * Unterkarten, Marker und Assets — Nebel lässt sich dort einschalten.
+ */
+export function defaultMapTools(kind: MapKind): readonly MapToolGroup[] {
+  return kind === 'battle' ? ['walls', 'fog', 'light', 'grid', 'tokens', 'assets', 'markers'] : ['frames', 'markers', 'assets'];
+}
+
+/**
+ * **Welche Werkzeuggruppen die Kampagne für diese Kartenart zeigt**
+ * (`Campaign.mapTools`, `{ battle: ['walls', …], world: […] }`). Fehlt die
+ * Art in der Einstellung, gilt die Vorgabe; eine leere Liste heisst: keine.
+ */
+export function mapToolsOf(campaign: Entity | null | undefined, kind: MapKind): ReadonlySet<MapToolGroup> {
+  const roh = (campaign?.components?.['Campaign'] as { mapTools?: unknown } | undefined)?.mapTools;
+  const eintrag = roh && typeof roh === 'object' && !Array.isArray(roh) ? (roh as Record<string, unknown>)[kind] : undefined;
+  const liste = Array.isArray(eintrag) ? eintrag : defaultMapTools(kind);
+  const gruppen = new Set<string>(MAP_TOOL_GROUPS.map((g) => g.key));
+  return new Set(liste.filter((g): g is MapToolGroup => typeof g === 'string' && gruppen.has(g)));
+}
+
+/** Alle Arten auf einmal, für die Einstellung und den Kartenkontext. */
+export function mapToolTable(campaign: Entity | null | undefined): Record<MapKind, MapToolGroup[]> {
+  return Object.fromEntries(MAP_KINDS.map((k) => [k, [...mapToolsOf(campaign, k)]])) as Record<MapKind, MapToolGroup[]>;
+}
+
+/** Eine Werkzeuggruppe für eine Kartenart ein- oder ausschalten (`Campaign.mapTools`). */
+export function withMapTool(campaign: Entity, kind: MapKind, group: MapToolGroup, on: boolean): Entity {
+  const k = (campaign.components?.['Campaign'] ?? {}) as Record<string, unknown>;
+  const tabelle = mapToolTable(campaign);
+  const jetzt = new Set(tabelle[kind]);
+  if (on) jetzt.add(group);
+  else jetzt.delete(group);
+  const alt = k['mapTools'] && typeof k['mapTools'] === 'object' && !Array.isArray(k['mapTools']) ? (k['mapTools'] as Record<string, unknown>) : {};
+  const geordnet = MAP_TOOL_GROUPS.map((g) => g.key).filter((g) => jetzt.has(g));
+  return { ...campaign, components: { ...campaign.components, Campaign: { ...k, mapTools: { ...alt, [kind]: geordnet } } } };
+}
+
 /** Wen ein Betrachter zur Frage `mayMoveToken` mitbringt — jede Menge schon gerechnet. */
 export interface TokenMovers {
   /** Die Figuren, die das Konto führt (`app_user_actor`). */

@@ -2370,6 +2370,17 @@ Token, das jemand nach `tokenMove` zieht, und für Spielende nur der Schein.
 Wer eine Laterne mit Namen und Preis will, legt das Item als Marker hin;
 es leuchtet nach seinem eigenen Licht.
 
+**Welche Werkzeuge eine Karte zeigt, sagt die Kampagne, nicht die Karte**
+(T-320). Eine Weltkarte braucht keine Wände und eine Kampfkarte keine
+Unterkarten — aber welche Gruppe auf welcher Art steht, ist eine
+Arbeitsweise der Leitung und für alle Karten einer Art dieselbe. Darum
+steht die Tabelle an der Kampagne (`Campaign.mapTools`) und nicht als
+Feld an jeder Karte: dreissig Kampfkarten hätten sonst dreissig Mal
+dieselbe Liste, und die einunddreissigste vergässe sie. Die Liste nimmt
+nichts weg, was gilt: eingeschalteter Nebel und eine dunkle Karte
+behalten ihre Werkzeuge, sonst sässe die Leitung vor einer Karte, deren
+Nebel sie nicht mehr aufdecken kann.
+
 ## Zug, Tempo und Zone auf der Karte
 
 **Ein Zug ist kein Feld der Kreatur.** Dass der Kämpfer schon 20 Fuss

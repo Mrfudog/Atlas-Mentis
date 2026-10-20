@@ -332,6 +332,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Übergang' },
   },
   {
+    term: 'Map tools',
+    aliases: ['Tools per map kind', 'Sub-maps', 'Link map', 'Unlink'],
+    sort: 'app',
+    definition: 'Which tool groups the tool bar of a map shows, set per map kind for the campaign: walls, fog and light on battle maps, linking sub-maps on world and region maps.',
+    effect: 'Change it under Rules & options › Map tools, or with ⚙ Tools on the map for its kind. Fog that is on and a map that is not bright keep their tools. Sub-maps › Link map drags a frame and links the map you zoom into there.',
+    translations: { de: 'Kartenwerkzeuge' },
+  },
+  {
     term: 'Party & encounters',
     aliases: ['Table'],
     sort: 'app',
