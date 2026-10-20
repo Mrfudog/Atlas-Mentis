@@ -252,10 +252,6 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         <div class="werkzeugzeile">
           <span class="meta">{{ meta() }}</span>
           <div class="werkzeuge">
-            <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
-            @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
-              <a class="knopf" [routerLink]="['/characters', e.id, 'level-up']">Level up</a>
-            }
             <!-- Der Druck (T-110): die Ansicht print auf einem Blatt A4. -->
             @if (!bearbeitet()) {
               <a class="knopf" [routerLink]="['/artikel', e.id, 'print']">Print</a>

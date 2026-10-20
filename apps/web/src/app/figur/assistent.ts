@@ -3,7 +3,6 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   answerChoice,
-  answeredKeys,
   offeredOptions,
   choicesOf,
   checkPurchase,
@@ -27,6 +26,9 @@ import {
   slotQuery,
   type ItemSlot,
   choicesAtCharacter,
+  canAddClass,
+  changeClassLevel,
+  classLevelRows,
   choiceDuplicates,
   duplicateText,
   heldBefore,
@@ -38,7 +40,6 @@ import {
   pointBuyRange,
   pointBuySpent,
   pruneAnswers,
-  setClassLevel,
   setPick,
   type AbilityMethod,
   optionEffects,
@@ -154,8 +155,9 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
  * (`chosenResult`, D8), damit eine Änderung an der Abstammung jede Figur
  * erreicht.
  *
- * Unter `/characters/:id/level-up` ist der Entwurf die gespeicherte Figur
- * mit einer Stufe mehr; dieselben Schritte, ohne was schon beantwortet ist.
+ * Einen eigenen Stufenaufstieg gibt es nicht mehr (T-319): an einer
+ * gespeicherten Figur (`/characters/:id/edit`) steigt sie im Klassen-Schritt
+ * je Klasse, und was die neue Stufe fragt, sind Schritte wie jede Wahl.
  */
 @Component({
   selector: 'nw-assistent',
@@ -168,12 +170,12 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
         @if (gespeichert() && figur(); as f) {
           <a [routerLink]="['/artikel', f.id]">{{ name() || 'Character' }}</a>
           <span aria-hidden="true">›</span>
-          <span>{{ bearbeiten() ? 'Edit' : 'Level up' }}</span>
+          <span>Edit</span>
         } @else {
           <span>New character</span>
         }
       </nav>
-      <h1>{{ bearbeiten() ? 'Edit character' : aufstieg() ? 'Level up' : 'New character' }}</h1>
+      <h1>{{ bearbeiten() ? 'Edit character' : 'New character' }}</h1>
       <!-- Die Ebene der Figur (T-251, T-299): an einer gespeicherten die Marke wie
            auf der Artikelseite, beim Anlegen die Ebene, in die sie kommt. -->
       @if (gespeichert() && figur(); as f) {
@@ -297,6 +299,47 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                         <a [routerLink]="ansicht(s.type, w)" target="_blank">More about this {{ s.type === 'Class' ? 'class' : s.type.toLowerCase() }} ↗</a>
                       </p>
                     }
+                  }
+                  <!-- Stufen je Klasse (T-319): hier steigt die Figur, auch in einer
+                       weiteren Klasse nach den Mehrklassen-Regeln; was eine Stufe fragt,
+                       steht darunter als Wahl — kein eigener Level-up. -->
+                  @if (s.type === 'Class' && gewaehlt(s)) {
+                    <section class="stufen" aria-label="Class levels">
+                      <h3>Levels <span class="dim">· character level {{ gesamtStufe() }}</span></h3>
+                      <ul class="stufenliste">
+                        @for (z of klassenStufen(); track z.id) {
+                          <li>
+                            <div class="stufenzeile">
+                              <span class="name">{{ z.name }}</span>
+                              <span class="zaehler">
+                                <button type="button" [attr.aria-label]="'Lower ' + z.name" [disabled]="!z.canLower" (click)="stufe(z.id, -1)">−</button>
+                                <output [attr.aria-label]="z.name + ' level'">{{ z.level }}</output>
+                                <button type="button" [attr.aria-label]="'Raise ' + z.name" [disabled]="!z.canRaise" (click)="stufe(z.id, 1)">+</button>
+                              </span>
+                            </div>
+                            @if (z.neu.length) {
+                              <p class="dim">New at level {{ z.level }}: {{ z.neu.join(', ') }}</p>
+                            }
+                          </li>
+                        }
+                      </ul>
+                      <details class="weitere" (toggle)="$any($event.target).open && ladeKlassenVoll()">
+                        <summary>Add a class (multiclass)</summary>
+                        <p class="dim">By the rules you need the minimum scores of every class you have and of the new one.</p>
+                        <ul class="weitere-liste">
+                          @for (k of weitereKlassen(); track k.id) {
+                            <li>
+                              <button type="button" class="leise" [disabled]="!!k.grund" (click)="stufe(k.id, 1)">+ {{ k.name }}</button>
+                              @if (k.grund) {
+                                <span class="dim">{{ k.grund }}</span>
+                              }
+                            </li>
+                          } @empty {
+                            <li class="dim">Loading…</li>
+                          }
+                        </ul>
+                      </details>
+                    </section>
                   }
                   <!-- Was die Wahl selbst fragt, steht gleich darunter (T-193): Barbar › Fertigkeiten. -->
                   @if (s.nested?.length) {
@@ -460,41 +503,6 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                 </p>
                 @if (tpProblem(); as p) {
                   <p class="dim">{{ p }}</p>
-                }
-              }
-
-              @case ('level') {
-                <p>Which class gains a level?</p>
-                <ul class="karten" role="radiogroup">
-                  @for (k of klassenDerFigur(); track k.id) {
-                    <li>
-                      <label [class.an]="aufstiegKlasse() === k.id">
-                        <input type="radio" name="aufstieg" [checked]="aufstiegKlasse() === k.id" (change)="steige(k.id)" />
-                        <span class="name">{{ k.name }}</span>
-                        <span class="dim">level {{ k.stufe }} → {{ k.stufe + 1 }}</span>
-                      </label>
-                    </li>
-                  }
-                </ul>
-                @if (aufstiegKlasse()) {
-                  <h3>New at level {{ neueStufe() }}</h3>
-                  @if (neueMerkmale().length) {
-                    <ul class="neu">
-                      @for (f of neueMerkmale(); track f.id) {
-                        <li>
-                          <a [routerLink]="['/artikel', f.id]" target="_blank">{{ f.name }}</a>
-                          @if (f.von) {
-                            <span class="dim">— {{ f.von }}</span>
-                          }
-                        </li>
-                      }
-                    </ul>
-                  } @else {
-                    <p class="dim">No new features at this level.</p>
-                  }
-                  @if (schritte().length > 1) {
-                    <p class="dim">Next: {{ schritte().length - 1 }} choice{{ schritte().length === 2 ? '' : 's' }} to make.</p>
-                  }
                 }
               }
 
@@ -714,7 +722,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
               }
               @if (letzter()) {
                 <button type="button" class="pri" [disabled]="!fertigSchritt(s) || speichert()" (click)="speichern()">
-                  {{ speichert() ? 'Saving…' : bearbeiten() ? 'Save' : aufstieg() ? 'Level up' : 'Create character' }}
+                  {{ speichert() ? 'Saving…' : bearbeiten() ? 'Save' : 'Create character' }}
                 </button>
               } @else {
                 <button type="button" class="pri" (click)="weiterPruefen(s)">Next</button>
@@ -1162,6 +1170,43 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
       border-color: var(--accent);
       background: var(--hover);
     }
+    /* Stufen je Klasse (T-319). */
+    .stufen {
+      margin: 1rem 0;
+      padding: 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+    .stufen h3 {
+      margin-top: 0;
+    }
+    .stufenliste,
+    .weitere-liste {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .stufenliste > li + li {
+      border-top: 1px solid var(--line);
+      margin-top: 0.4rem;
+      padding-top: 0.4rem;
+    }
+    .stufenzeile {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .weitere {
+      margin-top: 0.75rem;
+    }
+    .weitere-liste li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.4rem;
+      min-height: 36px;
+    }
     .zaehler {
       margin-left: auto;
       display: inline-flex;
@@ -1316,12 +1361,11 @@ export class Assistent {
   private readonly route = inject(ActivatedRoute);
   protected readonly stapel = inject(Stapel);
 
-  /** Die Figur beim Stufenaufstieg, so wie sie gespeichert ist. */
+  /** Die gespeicherte Figur, wie sie vor dem Bearbeiten war. */
   protected readonly figur = signal<Entity | null>(null);
   /** Am fertigen Charakter (T-194): Edit ist der Assistent, mit allen Schritten. */
   protected readonly bearbeiten = computed(() => this.route.snapshot.data['mode'] === 'edit');
-  protected readonly aufstieg = computed(() => !!this.route.snapshot.paramMap.get('id') && !this.bearbeiten());
-  /** Eine gespeicherte Figur: Aufstieg oder Bearbeiten. */
+  /** Eine gespeicherte Figur, im Assistenten bearbeitet. */
   protected readonly gespeichert = computed(() => !!this.route.snapshot.paramMap.get('id'));
   protected readonly entwurf = signal<Entity>(LEER);
   /** Die Artikel, die der Entwurf nennt, ganz — daraus kommen die Wahlen. */
@@ -1411,21 +1455,9 @@ export class Assistent {
     () => !!this.bestand.registry() && this.geladenVerfahren() && (!this.gespeichert() || (!!this.figur() && this.statblockGeladen())),
   );
 
-  /**
-   * Was die gespeicherte Figur schon beantwortet hat: beim Aufstieg kein
-   * Schritt mehr — je Gewährung, also fragt die Steigerung auf Stufe 8
-   * neu, auch wenn die auf Stufe 4 beantwortet ist (T-107).
-   */
-  private readonly beantwortet = computed(() => {
-    const f = this.figur();
-    return f ? answeredKeys(f, this.quellen()) : new Set<string>();
-  });
-
   protected readonly schritte = computed<BuilderStep[]>(() =>
     builderSteps(this.entwurf(), this.quellen(), {
-      levelUp: this.aufstieg(),
       edit: this.bearbeiten(),
-      done: this.aufstieg() ? this.beantwortet() : undefined,
       rules: { feats: this.talente() },
       nest: true,
     }),
@@ -1466,26 +1498,29 @@ export class Assistent {
   });
   /**
    * **Eine Figur von vor T-194**: keine Stufe trägt einen Wert, am
-   * Statblock steht aber ein Maximum. Beim Aufstieg zählt dann nur die neue
-   * Stufe, auf das alte Maximum — sonst würfelte sie ihre ganze Laufbahn neu.
+   * Statblock steht aber ein Maximum. Steigt sie (T-319), zählen nur die
+   * neuen Stufen, auf das alte Maximum — sonst würfelte sie ihre ganze
+   * Laufbahn neu.
    */
   private readonly ohneStufenwerte = computed(() => {
     const f = this.figur();
     return !!f && this.altesMax() !== undefined && !(f.relations ?? []).some((r) => r.type === 'hasClass' && Array.isArray(r.props?.['hp']));
   });
   protected readonly tpAlle = computed(() => hitPointLevels(this.entwurf(), this.quellen()));
-  /** Die Stufen, nach denen der Schritt fragt. */
+  /** Die Stufen, nach denen der Schritt fragt — bei einer Figur von vor T-194 nur die neuen. */
   protected readonly tpStufen = computed<HitPointLevel[]>(() => {
     const alle = this.tpAlle();
-    if (!this.aufstieg() || !this.ohneStufenwerte()) return alle;
-    return alle.filter((l) => l.classId === this.aufstiegKlasse() && l.level === this.neueStufe());
+    if (!this.ohneStufenwerte()) return alle;
+    const gespeichert = new Map((this.figur()?.relations ?? []).filter((r) => r.type === 'hasClass').map((r) => [r.to, Number(r.props?.['level']) || 1] as const));
+    return alle.filter((l) => l.level > (gespeichert.get(l.classId) ?? 0));
   });
   protected readonly tpProblem = computed(() => hitPointProblem(this.tpStufen(), this.tpRegel()));
   /** Das neue Maximum; `null`, solange eine Stufe offen ist. */
   protected readonly tpMax = computed<number | null>(() => {
-    if (this.aufstieg() && this.ohneStufenwerte()) {
-      const l = this.tpStufen()[0];
-      return l?.value ? this.altesMax()! + Math.max(1, l.value + this.konMod()) : null;
+    if (this.ohneStufenwerte()) {
+      const neu = this.tpStufen();
+      if (neu.some((l) => !l.value)) return null;
+      return this.altesMax()! + neu.reduce((n, l) => n + Math.max(1, l.value! + this.konMod()), 0);
     }
     return maxHitPoints(this.tpAlle(), this.kon());
   });
@@ -1565,29 +1600,6 @@ export class Assistent {
     if (!m && this.bearbeiten() && this.attribute().every((a) => this.werte()[a] !== undefined)) return null;
     if (!m) return 'Choose a method.';
     return assignmentProblem(this.werte(), this.attribute(), m, this.vorrat()?.values);
-  });
-
-  protected readonly klassenDerFigur = computed(() => {
-    const f = this.figur();
-    return (f?.relations ?? [])
-      .filter((r) => r.type === 'hasClass')
-      .map((r) => ({ id: r.to, name: this.quellen().get(r.to)?.name ?? r.to, stufe: Number(r.props?.['level']) || 1 }));
-  });
-  protected readonly aufstiegKlasse = signal('');
-  protected readonly neueStufe = computed(
-    () => Number(this.entwurf().relations?.find((r) => r.type === 'hasClass' && r.to === this.aufstiegKlasse())?.props?.['level']) || 1,
-  );
-  /** Was die neue Stufe bringt (T-095): die Merkmale von Klasse und Unterklasse genau auf ihr. */
-  protected readonly neueMerkmale = computed(() => {
-    const q = this.quellen();
-    const k = this.aufstiegKlasse();
-    if (!k) return [];
-    return gainedFeatures(this.entwurf(), q, k).map((f) => ({
-      id: f.id,
-      /* Der Name steht in `Identity` (`entityName`); `name` kann leer sein. */
-      name: (q.has(f.id) ? entityName(q.get(f.id)) : '') || this.bestand.name()(f.id) || f.id,
-      von: f.source === k ? '' : q.has(f.source) ? entityName(q.get(f.source)) : '',
-    }));
   });
 
   /** Was beim Speichern noch offen bleibt — es bleibt an der Figur offen (`pendingChoices`). */
@@ -2149,12 +2161,52 @@ export class Assistent {
     }
   }
 
-  protected steige(klasse: string): void {
-    const f = this.figur();
-    if (!f) return;
-    this.aufstiegKlasse.set(klasse);
-    const jetzt = Number(f.relations?.find((r) => r.type === 'hasClass' && r.to === klasse)?.props?.['level']) || 1;
-    this.entwurf.set(setClassLevel(f, klasse, jetzt + 1));
+  // ---------------------------------------------------------- Stufen je Klasse (T-319)
+
+  /** Die Attribute samt Boni — die Mehrklassen-Voraussetzung prüft die Endwerte. */
+  private readonly endwerte = computed(() => {
+    const raus: Record<string, number | undefined> = {};
+    for (const a of this.attribute()) {
+      const w = this.werte()[a];
+      raus[a] = w === undefined ? undefined : w + (this.bonus()[a] ?? 0);
+    }
+    return raus;
+  });
+  protected readonly gesamtStufe = computed(() => classLevelRows(this.entwurf()).reduce((n, z) => n + z.level, 0));
+  protected readonly klassenStufen = computed(() => {
+    const q = this.quellen();
+    const e = this.entwurf();
+    return classLevelRows(e).map((z) => ({
+      ...z,
+      name: (q.has(z.id) ? entityName(q.get(z.id)) : '') || this.bestand.name()(z.id) || z.id,
+      /* Was genau diese Stufe bringt (T-095). */
+      neu: gainedFeatures(e, q, z.id).map((f) => (q.has(f.id) ? entityName(q.get(f.id)) : '') || this.bestand.name()(f.id) || f.id),
+    }));
+  });
+  /** Die übrigen Klassen ganz — ihre Voraussetzung steht im Artikel. */
+  private readonly klassenVoll = signal<ReadonlyMap<string, Entity>>(new Map());
+  protected async ladeKlassenVoll(): Promise<void> {
+    if (this.klassenVoll().size) return;
+    const ids = (this.kandidaten()['Class'] ?? []).map((m) => m.wert);
+    const voll = new Map<string, Entity>();
+    for (let i = 0; i < ids.length; i += 100) for (const e of await this.api.entitiesById(ids.slice(i, i + 100))) voll.set(e.id, e);
+    this.klassenVoll.set(voll);
+  }
+  protected readonly weitereKlassen = computed(() => {
+    const voll = this.klassenVoll();
+    if (!voll.size) return [];
+    const alle = new Map([...this.quellen(), ...voll]);
+    const e = this.entwurf();
+    const dabei = new Set(classLevelRows(e).map((z) => z.id));
+    return (this.kandidaten()['Class'] ?? [])
+      .filter((m) => !dabei.has(m.wert))
+      .map((m) => ({ id: m.wert, name: m.label, grund: canAddClass(e, m.wert, alle, this.endwerte()) }));
+  });
+
+  /** Eine Klasse um eine Stufe ändern oder dazunehmen; die neuen Wahlen folgen als Schritte. */
+  protected stufe(klasse: string, delta: 1 | -1): void {
+    const alle = new Map([...this.quellen(), ...this.klassenVoll()]);
+    this.entwurf.set(changeClassLevel(this.entwurf(), klasse, delta, alle));
   }
 
   protected erledigt(s: BuilderStep): boolean {
@@ -2167,8 +2219,9 @@ export class Assistent {
         return !!this.entwurf().relations?.some((r) => r.type === s.edge) && this.wahlSchritte(s.nested ?? []).every((w) => this.fertigSchritt(w));
       case 'abilities':
         return !this.attributsproblem();
+      /* Den Schritt gibt es im Assistenten nicht mehr (T-319). */
       case 'level':
-        return !!this.aufstiegKlasse();
+        return true;
       case 'details':
         return !!this.name().trim();
       case 'hitpoints':
@@ -2227,7 +2280,7 @@ export class Assistent {
       case 'equipment':
         return this.fertigSchritt(s) ? null : (this.ausrMethode() ? this.pruefung().problem : null) || 'Not every equipment choice is made yet.';
       case 'level':
-        return this.fertigSchritt(s) ? null : 'Choose the class that gains a level.';
+        return null;
       case 'details':
         return this.fertigSchritt(s) ? null : 'Give the character a name.';
       case 'hitpoints':

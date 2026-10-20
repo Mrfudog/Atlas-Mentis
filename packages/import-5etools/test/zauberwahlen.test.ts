@@ -4,7 +4,7 @@
  * Die Zahlen sind erfunden — nur ihre Form folgt 5e.tools.
  */
 import { describe, expect, it } from 'vitest';
-import { zauberwahlen } from '../src/arten/charakterbau.js';
+import { hauptVoraussetzung, zauberwahlen } from '../src/arten/charakterbau.js';
 
 describe('zauberwahlen (T-309)', () => {
   it('turns cantrips and a spellbook into choices from the class spell list', () => {
@@ -36,5 +36,14 @@ describe('zauberwahlen (T-309)', () => {
     const vorbereitet = zauberwahlen({ casterProgression: '1/2', preparedSpellsProgression: [2, 3] }, 'c');
     /* Stufe 1 wirkt ein Halbzauberer noch nichts: die Wahl kommt auf Stufe 2, mit allem bis dahin. */
     expect(vorbereitet.map((c) => [c.id, c.level, c.count, c.mode])).toEqual([['prepared', 2, 3, 'prepared']]);
+  });
+});
+
+describe('hauptVoraussetzung (T-319)', () => {
+  it('reads the 2024 primary ability as the multiclass minimum', () => {
+    expect(hauptVoraussetzung([{ str: true }])).toBe('STR 13');
+    expect(hauptVoraussetzung([{ str: true }, { dex: true }])).toBe('STR 13 or DEX 13');
+    expect(hauptVoraussetzung([{ str: true, cha: true }])).toBe('STR 13, CHA 13');
+    expect(hauptVoraussetzung(undefined)).toBe('');
   });
 });

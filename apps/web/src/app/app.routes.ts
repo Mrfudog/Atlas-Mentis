@@ -157,12 +157,9 @@ export const routes: Routes = [
     loadComponent: () => import('./figur/assistent').then((m) => m.Assistent),
     title: 'New character · Atlas Mentis',
   },
-  {
-    path: 'characters/:id/level-up',
-    canActivate: [wache],
-    loadComponent: () => import('./figur/assistent').then((m) => m.Assistent),
-    title: 'Level up · Atlas Mentis',
-  },
+  /* Kein eigener Level-up mehr (T-319): die Stufen stehen im Assistenten
+     je Klasse; eine alte Adresse führt dorthin. */
+  { path: 'characters/:id/level-up', redirectTo: 'characters/:id/edit' },
   /* Edit an einer Figur ist der Assistent (T-194); „Full edit" ist die Feldmaske. */
   {
     path: 'characters/:id/edit',
