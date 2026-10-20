@@ -415,7 +415,11 @@ const nummerVon = (e: Entity): string => {
  *
  * Darum, nur an den neuen Artikeln:
  *  1. Eine Nummer, die im Bestand schon ein anderer trägt, wird eine neue
- *     — hinter der höchsten, die Bestand oder Datei kennt.
+ *     — hinter der höchsten, die Bestand oder Datei kennt. Und dann jede
+ *     neue Nummer derselben Reihe (`chapter-…`), in der Folge der Datei:
+ *     Kapitel und Arcs stehen nach ihrer Nummer, und nähme nur die
+ *     kollidierende eine neue, stünde „Chapter 1" hinter dem Anhang
+ *     (T-296, gesehen an Curse of Strahd).
  *  2. Jeder Verweis `[[nummer|…]]` nennt danach die Nummer, die sein Ziel
  *     im Bestand trägt oder jetzt bekommt.
  *  3. Ein Verweis auf einen Artikel der Datei, der weder im Bestand steht
@@ -456,16 +460,22 @@ export function nummernAngleichen(ausDatei: Entity[], bestand: Entity[], neu: En
     const n = nummerVon(e);
     if (n && !imBestand.has(e.id) && !kommt.has(e.id)) fehlt.set(n, e.name);
   }
+  const reihe = (n: string): string => /^(.*)-(\d+)$/.exec(n)?.[1] ?? n;
+  const umReihen = new Set<string>();
+  for (const e of neu) {
+    const n = nummerVon(e);
+    const wer = n ? besetzt.get(n) : undefined;
+    if (n && wer && wer !== e.id) umReihen.add(reihe(n));
+  }
   for (const e of neu) {
     const n = nummerVon(e);
     if (!n) continue;
     const wer = besetzt.get(n);
-    if (!wer || wer === e.id) {
+    if ((!wer || wer === e.id) && !umReihen.has(reihe(n))) {
       besetzt.set(n, e.id);
       continue;
     }
-    const m = /^(.*)-(\d+)$/.exec(n);
-    const prefix = m ? m[1]! : n;
+    const prefix = reihe(n);
     const frisch = (hoechste.get(prefix) ?? 0) + 1;
     hoechste.set(prefix, frisch);
     const neueNummer = `${prefix}-${String(frisch).padStart(4, '0')}`;
