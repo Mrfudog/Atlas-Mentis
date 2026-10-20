@@ -1635,6 +1635,25 @@ auf die Idee, die Waffe wegzustecken. Die Sperre rechnet das Modell aus
 dem, was gehalten wird (`handState`); das Ausrüsten selbst kommt mit dem
 Inventar (T-244) und speist dieselbe Funktion.
 
+### Der Initiative-Tracker ist ein eigenes System
+
+**Die Kampagne stellt ihn ein, nicht der Schirm** (T-022): was Spielende
+von der Reihe sehen — Deckname oder Name, Gesundheit gar nicht, als Wort
+oder als Zahl, welche Effekte, ob die Aktionen der Gegner —, steht als
+Feld an der Kampagne (`combat`, `initNames`, `initHealth`, `initEffects`,
+`initActions`) und wird am Server gesiebt, in jeder Route gleich. Ein
+Schalter am Tracker selbst wäre die zweite Stelle, und der Beamer zeigte
+dann, was das Telefon nicht soll. Abschaltbar ist er, weil eine Runde, die
+am Tisch mit Karten zählt, keinen zweiten Zähler will.
+
+**Ein Effekt ist ein Eintrag mit Dauer an der Kante**, kein eigener
+Artikel: „bis zum Ende von Vex' nächstem Zug" ist ein Anker, ein Zeitpunkt
+und eine Zahl (D53), und der Zugwechsel zählt sie. **Verzögern ist eine
+Initiative**, keine Marke „wartet": wer verzögert, steht danach eben
+weiter hinten, und eine Marke hätte eine zweite Reihe neben der Reihe
+bedeutet. **Zurück zählt nichts zurück** — wer zu früh weitertippt, nimmt
+den Zug zurück, aber ein abgelaufener Effekt käme nur geraten wieder.
+
 ### Klasse, Stufe und was gewährt wird
 
 Klasse, Unterklasse, Abstammung und Hintergrund sind **Regeln mit eigenen

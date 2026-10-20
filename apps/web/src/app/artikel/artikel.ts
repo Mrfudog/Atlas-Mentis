@@ -95,6 +95,7 @@ import { KampagnenReiter } from './ebenen-reiter';
 import { EbenenMarke } from './ebenen-marke';
 import { Wissenskasten } from './wissenskasten';
 import { Wissensseite } from './wissensseite';
+import { Initiative } from '../karten/initiative';
 import { Klasse } from '../klassen/klasse';
 import { Herkunft } from '../klassen/herkunft';
 import { Regeloptionen } from './regeloptionen';
@@ -208,6 +209,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     EbenenMarke,
     Wissenskasten,
     Wissensseite,
+    Initiative,
     Regeloptionen,
     Wuerfe,
     Ansichtsbaum,
@@ -838,6 +840,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   }
                   @case ('wissen') {
                     <nw-wissensseite [id]="e.id" />
+                  }
+                  @case ('initiative') {
+                    <nw-initiative [begegnung]="e.id" />
                   }
                   @case ('liegen') {
                     <nw-liegengelassen [sitzung]="e" />

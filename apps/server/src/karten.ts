@@ -470,11 +470,16 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const karten = new Map(
       (await sieve(request, stand.alle.filter(isMap), stand.map)).map((k) => [k.id, k]),
     );
+    const begegnungen = new Set(
+      (await sieve(request, stand.alle.filter((e) => primaryInterface(e) === 'Encounter'), stand.map)).map((e) => e.id),
+    );
     const zeile = (e: Entity) => {
       /* Die Maske schreibt in `Session`, ältere Bestände tragen `SessionState` (T-202). */
       const st = sessionState(e) as { activeMap?: unknown };
       const t = (e.components?.['Time'] ?? {}) as { sort?: unknown };
       const id = typeof st.activeMap === 'string' && karten.has(st.activeMap) ? st.activeMap : null;
+      /* Die Begegnung, die die Sitzung führt (T-022) — für den Tracker; nur, wenn sie zu sehen ist. */
+      const kampf = (st as { activeEncounter?: unknown }).activeEncounter;
       return {
         id: e.id,
         name: entityName(e),
@@ -482,6 +487,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         mapName: id ? entityName(karten.get(id)) : null,
         /* Liegt eine Karte im Spiel (T-289) oder noch die Vorlage? */
         inPlay: id ? isPlayInstance(karten.get(id)) : false,
+        encounter: typeof kampf === 'string' && begegnungen.has(kampf) ? kampf : null,
         sort: typeof t.sort === 'number' ? t.sort : Number.NEGATIVE_INFINITY,
         nummer: String((e.components?.['Identity'] as { id?: unknown } | undefined)?.id ?? ''),
       };
@@ -490,13 +496,14 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       .map(zeile)
       .sort((a, b) => b.sort - a.sort || b.nummer.localeCompare(a.nummer) || a.id.localeCompare(b.id));
     const gewaehlt =
-      zeilen.find((z) => z.id === request.query.session) ?? zeilen.find((z) => z.activeMap) ?? null;
+      zeilen.find((z) => z.id === request.query.session) ?? zeilen.find((z) => z.activeMap || z.encounter) ?? null;
     return {
       campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null,
       sessions: zeilen.map(({ sort: _s, nummer: _n, ...z }) => z),
       session: gewaehlt?.id ?? null,
       map: gewaehlt?.activeMap ?? null,
       inPlay: gewaehlt?.inPlay ?? false,
+      encounter: gewaehlt?.encounter ?? null,
       /* Zur Wahl stehen Vorlagen; eine Karte im Spiel steht an ihrer Sitzung (T-289). */
       maps: [...karten.values()]
         .filter((k) => !isPlayInstance(k))

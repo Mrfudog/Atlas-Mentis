@@ -18,6 +18,7 @@ export * from './stack.js';
 export * from './attack.js';
 export * from './book.js';
 export * from './initiative.js';
+export * from './tracker.js';
 export * from './movement.js';
 export * from './sight.js';
 export * from './inventory.js';

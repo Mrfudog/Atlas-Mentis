@@ -352,6 +352,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Übergang' },
   },
   {
+    term: 'Initiative tracker',
+    aliases: ['Tracker', 'Next turn', 'Delay', 'Effect with a duration'],
+    sort: 'app',
+    definition: 'The order of a running encounter in Play and on the encounter: whose turn it is, the round, hit points and effects with a duration. The GM moves the turns; a player ends their own.',
+    effect: 'Next turn counts down the effects tied to the end of the current turn and the start of the next. What players see of foes — names, health, effects, actions — the campaign sets under Rules & options › Combat.',
+    translations: { de: 'Initiative-Tracker' },
+  },
+  {
     term: 'Map in play',
     aliases: ['Released', 'Release to players', 'Take into play', 'Played'],
     sort: 'app',

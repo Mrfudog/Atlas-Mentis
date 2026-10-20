@@ -412,9 +412,11 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'initiative',
     label: 'Initiative',
     area: 'play',
-    does: 'orders the combatants of an encounter, with the party’s members and each creature’s statblock',
+    does: 'orders the combatants of an encounter, with the party’s members and each creature’s statblock; the tracker moves turns, counts effects down and lists the statblock’s actions (T-022)',
     uses: {
       [M + 'initiative.ts']: ['belongsTo', 'memberOfParty', 'participates'],
+      /* Der Tracker (T-022): Züge und Effekte an den Teilnehmern, die Aktionen vom Statblock. */
+      [M + 'tracker.ts']: ['composedOf', 'participates'],
     },
   },
   {
