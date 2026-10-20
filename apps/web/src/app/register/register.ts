@@ -11,6 +11,7 @@ import { techName } from './regeln';
 import { RegTyp } from './typ';
 import { Ansichtsliste } from '../ansichten/liste';
 import { Ansichtsdesigner } from '../ansichten/designer';
+import { wahlAnsichten } from '../ansichten/uebersicht';
 
 type Reiter = 'types' | 'edges' | 'lists' | 'views';
 
@@ -140,6 +141,14 @@ type Reiter = 'types' | 'edges' | 'lists' | 'views';
         } @else if (reiter() === 'lists' && list()) {
           <nw-reg-liste [name]="list()!" [darf]="darf()" />
         } @else if (reiter() === 'views' && ((design() === 'new' && darf()) || view())) {
+          <!-- Die Ansichten oben zur Wahl (T-318): die Liste links ist im Register meist die lange Typenliste. -->
+          <nav class="ansichtswahl" aria-label="Views">
+            @for (v of wahl(); track v.key) {
+              <a [routerLink]="[]" [queryParams]="{ tab: 'views', view: v.key, type: type() ?? null, design: null }"
+                 [class.an]="v.key === view()" [attr.aria-current]="v.key === view() ? 'true' : null">{{ v.label }}</a>
+            }
+            <a [routerLink]="[]" [queryParams]="{ tab: 'views', view: null, type: null, design: null }">All views</a>
+          </nav>
           <!-- Der Ansichtseditor (T-268, T-276): der einzige — für jede Ansicht, auch die der Orte. -->
           <nw-ansichtsdesigner [schluessel]="design() === 'new' ? null : (view() ?? null)" [typ]="type() ?? null" [darf]="darf()"
                                (fertig)="designFertig($event)" />
@@ -174,7 +183,8 @@ type Reiter = 'types' | 'edges' | 'lists' | 'views';
       </div>
     }
   `,
-  styleUrl: './register.scss',
+  /* Die Ansichtswahl (T-318) in einer eigenen Datei: das Budget je Datei. */
+  styleUrls: ['./register.scss', './ansichtswahl.scss'],
   /* Die Bausteine darin (Typ, Feld, Kante, Liste) teilen einen Stil. Ohne
      Kapselung steht er einmal in der Seite statt viermal; er gilt nur
      unter `nw-register`. */
@@ -249,6 +259,11 @@ export class Register {
           ? 'e.g. Handout'
           : 'e.g. Weather',
   );
+  /** Die Ansichten oben über dem Designer (T-318). */
+  protected readonly wahl = computed(() => {
+    const r = this.bestand.registry();
+    return r ? wahlAnsichten(r) : [];
+  });
   protected readonly ansichtsListe = computed(() => {
     const r = this.bestand.registry();
     return r ? viewKeys(r) : [];

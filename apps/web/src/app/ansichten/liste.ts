@@ -1,6 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { appliesText, countElements, viewGroup, viewKeys } from '@nw/model';
+import { appliesText, countElements, isDesignedView, viewGroup, viewKeys } from '@nw/model';
+import { ansichtsTeile } from './uebersicht';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit } from '../register/arbeit';
 
@@ -33,14 +34,37 @@ import { RegisterArbeit } from '../register/arbeit';
             <span role="cell">{{ z.count }}</span>
             <span role="cell">{{ z.els }}</span>
             <span role="cell" class="knoepfe">
-              <a class="knopf" [routerLink]="[]" [queryParams]="{ tab: 'views', view: z.key, design: null }">Design</a>
+              <a class="knopf" [routerLink]="[]" [queryParams]="{ tab: 'views', view: z.key, type: null, design: null }">Design</a>
             </span>
           </div>
+          <!-- Was darin je Typ und gestaltet gilt (T-318) — dort findet man eine Typanordnung wieder;
+               zugeklappt, denn an „overview" sagen vierzig Typen Eigenes. -->
+          @if (z.teile.length) {
+            <div role="row" class="zeile unter">
+              <span role="cell" class="breit">
+                <button type="button" class="klapp" [attr.aria-expanded]="offen().has(z.key)" (click)="umschalten(z.key)">
+                  {{ offen().has(z.key) ? '▾' : '▸' }} {{ z.zusammen }}
+                </button>
+              </span>
+            </div>
+          }
+          @for (t of offen().has(z.key) ? z.teile : []; track t.view + (t.type ?? '')) {
+            <div role="row" class="zeile unter">
+              <span role="cell">↳ {{ t.label }}</span>
+              <span role="cell">{{ t.art === 'type' ? 'type' : 'designed' }}</span>
+              <span role="cell">{{ t.wie }}</span>
+              <span role="cell"></span>
+              <span role="cell"></span>
+              <span role="cell" class="knoepfe">
+                <a class="knopf" [routerLink]="[]" [queryParams]="{ tab: 'views', view: t.view, type: t.type, design: null }">Design</a>
+              </span>
+            </div>
+          }
         }
       </div>
       <p class="dim">
-        Overview, Quick, Full, Print and Search are the views places ask for: they can be rebuilt, not deleted. A type that
-        says its own for one shows it on its page under Views.
+        Overview, Quick, Full, Print and Search are the views places ask for: they can be rebuilt, not deleted. Under each
+        view stand the types that say their own for it (adjusted or their own arrangement) and the designed views of its group.
       </p>
     </section>
   `,
@@ -61,6 +85,22 @@ import { RegisterArbeit } from '../register/arbeit';
       align-items: center;
       padding: 0.35rem 0;
       border-bottom: 1px solid var(--line2);
+    }
+    .breit {
+      grid-column: 1 / -1;
+    }
+    .klapp {
+      all: unset;
+      cursor: pointer;
+      color: var(--accent);
+    }
+    .klapp:focus-visible {
+      outline: 2px solid var(--accent);
+    }
+    .zeile.unter {
+      font-size: 0.9rem;
+      padding-left: 1rem;
+      color: var(--dim);
     }
     .zeile.k {
       font-size: 0.72rem;
@@ -88,14 +128,31 @@ export class Ansichtsliste {
   private readonly bestand = inject(Bestand);
   private readonly arbeit = inject(RegisterArbeit);
 
+  /** Aufgeklappte Ansichten (T-318). */
+  protected readonly offen = signal<ReadonlySet<string>>(new Set());
+  protected umschalten(k: string): void {
+    const n = new Set(this.offen());
+    if (n.has(k)) n.delete(k);
+    else n.add(k);
+    this.offen.set(n);
+  }
+
   protected readonly zeilen = computed(() => {
     const r = this.bestand.registry();
     if (!r) return [];
     const gezaehlt = this.arbeit.usage()?.views ?? {};
     const name = this.bestand.name();
-    return viewKeys(r).map((key) => {
+    /* Gestaltete Ansichten einer anderen Ansicht stehen unter ihr, nicht noch einmal oben. */
+    const unter = (key: string) => {
+      const d = r.views[key];
+      const g = viewGroup(key, d);
+      return isDesignedView(d) && g !== key && !!r.views[g] && !isDesignedView(r.views[g]);
+    };
+    return viewKeys(r).filter((k) => !unter(k)).map((key) => {
       const def = r.views[key]!;
       return {
+        teile: ansichtsTeile(r, key, (id) => name(id)).filter((t) => t.art !== 'general'),
+        zusammen: zaehlText(ansichtsTeile(r, key, (id) => name(id))),
         key,
         label: def.label,
         group: viewGroup(key, def),
@@ -105,4 +162,16 @@ export class Ansichtsliste {
       };
     });
   });
+}
+
+/** „12 types say their own · 1 designed view" — die zugeklappte Zeile (T-318). */
+function zaehlText(teile: { art: string }[]): string {
+  const typen = teile.filter((t) => t.art === 'type').length;
+  const gestaltet = teile.filter((t) => t.art === 'designed').length;
+  return [
+    typen ? `${typen} ${typen === 1 ? 'type says' : 'types say'} their own` : '',
+    gestaltet ? `${gestaltet} designed ${gestaltet === 1 ? 'view' : 'views'}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
