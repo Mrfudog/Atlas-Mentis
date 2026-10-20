@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view, umsetzung]
 status: derived
-updated: 2026-10-19
+updated: 2026-10-20
 source: ../docs/Anforderungen.md
 ---
 
@@ -11,7 +11,7 @@ source: ../docs/Anforderungen.md
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-19. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-20. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -23,7 +23,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 182 steht · 53 teils · 106 offen · 10 ersetzt · 6 verworfen — 357 Stories in 79 Features und 12 Epics.
+Zusammen: 182 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen — 357 Stories in 79 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -33,7 +33,7 @@ Zusammen: 182 steht · 53 teils · 106 offen · 10 ersetzt · 6 verworfen — 35
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 42 | 7 steht · 9 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 27 | 13 steht · 1 teils · 13 offen |
+| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 27 | 13 steht · 2 teils · 12 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
@@ -578,7 +578,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (offen)
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -622,7 +622,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | [[REQ-095]] | Gewährtes anwenden | 4 | **offen** |  |
 | [[REQ-096]] | Einschränkungen prüfen | 5 | **offen** |  |
 | [[REQ-290]] | Wechselwirkungen von Regeln auswerten | 4 | **offen** | für später |
-| [[REQ-357]] | Regelgraphen wirken am Tisch | 3 | **offen** |  |
+| [[REQ-357]] | Regelgraphen wirken am Tisch | 3 | **teils** | Option Rules from graphs (Campaign.ruleGraphs): der Zugplan sendet leavesReach, attacked, hit/missed, damaged; Reaktionen werden angeboten, die Gelegenheitsattacke kommt aus ihrer Regel. Offen: castsSpell, picksUpObject, turnStart, Folgen mit Wirkung, Fassungen. |
 
 ### F-047 Handwerk
 
@@ -1097,4 +1097,4 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-330]]** (3, offen, Medien & Assets) — Inventory image an einen Gegenstand binden
 - **[[REQ-332]]** (3, offen, Spielererlebnis) — Beute öffnen und nehmen
 - **[[REQ-340]]** (3, offen, Spielererlebnis) — Raster und Zonen eines Trägers in der Maske
-- **[[REQ-357]]** (3, offen, Regeln & Nachschlagen) — Regelgraphen wirken am Tisch
+- **[[REQ-357]]** (3, teils, Regeln & Nachschlagen) — Regelgraphen wirken am Tisch — *Option Rules from graphs (Campaign.ruleGraphs): der Zugplan sendet leavesReach, attacked, hit/missed, damaged; Reaktionen werden angeboten, die Gelegenheitsattacke kommt aus ihrer Regel. Offen: castsSpell, picksUpObject, turnStart, Folgen mit Wirkung, Fassungen.*

@@ -256,14 +256,21 @@ Bestehende Auslöser brauchen **mehr am Event**:
 
 Jeder Schritt ist für sich nutzbar.
 
-1. **Ereignisquelle und Vorschläge im Zugplan** (Laufzeit). Erst die Reaktionen
-   aus C, die nicht doppelt sind: Hellish Rebuke, Snatch Punisher, Uncanny
-   Dodge, Shield, Counterspell.
+1. **Ereignisquelle und Vorschläge im Zugplan** (Laufzeit). *Steht seit
+   20.10.* (`ruleTable.ts`, Option „Rules from graphs“): der Zug sendet
+   `leavesReach`, `attacked`, `hit`/`missed` und `damaged`; Hellish Rebuke,
+   Uncanny Dodge, Shield und Sentinel (sein dritter Teil) werden angeboten.
+   Noch ohne Ereignisquelle: `castsSpell` (Counterspell, Somatic — Zauber
+   sind keine Kacheln des Zugplans), `picksUpObject` (Snatch Punisher),
+   `turnStart`/`turnEnd` (die Initiative). Dazu kamen `sameSide` und `strike`
+   (Annehmen ist ein Nahkampfangriff).
 2. **Der Graph führt** bei OA, Reaktion zurück und 0 TP (entschieden 19.10.,
    zuerst als Versuch): ist der Graph der Kampagne an, bietet nur er an, sonst
-   der Code wie bisher.
+   der Code wie bisher. *Für die Gelegenheitsattacke steht es seit 20.10.*;
+   Reaktion zurück und 0 TP folgen mit `turnStart` und mit Folgen, die
+   schreiben dürfen (Schritt 3).
 3. **Bausteine für Sentinel**: `usesAction`, `attackKind`, `canSee`,
-   `sameSide`, Dauer an Folgen. Danach Sentinel 2014 und 2024 als je ein
+   Dauer an Folgen (`sameSide` steht). Danach Sentinel 2014 und 2024 als je ein
    Artikel in PHB und XPHB, mit dem Vergleich daneben.
 4. **Graph am Artikel**: ein Element `ruleGraph` auf der Artikelseite (lesen,
    bearbeiten, „Open in rule builder“, „Create rule“ an einem Talent ohne

@@ -1932,6 +1932,24 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
   die nach Gewicht zählt, sieht keine Rastereinstellungen.
 - **Mit T-132** schaut `ruleOptionsOf` je Sorte ins gewählte Modul (ein
   lesbarer Regelartikel); Route und Reiter bleiben.
+- **Regeln am Tisch** (REQ-357, `packages/model/src/ruleTable.ts`): mit
+  `Campaign.ruleGraphs = 'on'` (Rules & options › At the table › Rules
+  from graphs; Vorgabe `off`, Migration 112) hören die Graphen der
+  Regelartikel im Stapel auf den Zugplan. Der Zug sendet Ereignisse —
+  `leavesReach` je verlassene Reichweite (`reachExits`), `attacked` vor
+  dem Wurf, `hit`/`missed` danach, `damaged` mit dem Schaden —, und
+  `runRules` rechnet am Server je Kreatur der Karte (`tischKreaturen`:
+  Feld, Reichweite, Seite, Reaktion, was sie beim Namen kennt —
+  `knownNames`; Abstand im Raster, `tableDistance`). Eine angebotene
+  Reaktion hält den Zug an wie der Gelegenheitsangriff (`pending` mit
+  `rule`, `offer`, `strike`); was schon gewürfelt ist, steht im `cursor`
+  und wird nicht wiederholt. Jede andere Folge ist ein Satz im Ergebnis
+  des Zugs; geschrieben wird nichts (`offersFrom`). **Der Graph führt:**
+  ist die Option an, gibt es keinen eingebauten Gelegenheitsangriff mehr —
+  er kommt aus der Regel „Opportunity attack", und ohne sie fragt niemand.
+  Aus gilt der Code wie bisher, nie beide. Neu dafür im Graphen: die
+  Bedingung `sameSide` (Gruppe und Verbündete gegen den Rest, `seiteVon`)
+  und `strike` an einer Reaktion (Annehmen ist ein Nahkampfangriff).
 
 ### 10.2 Glossar und Handbuch (T-242, T-225)
 
@@ -2200,7 +2218,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | — |
-| `Campaign` | `Story` `VisibilityRules` | `compareFor` `languages` `feats` `hitPoints` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `craftLearning` `craftLearnRarity` `playerRolls` `fog` `moves` `tokenMove` `revealOnMove` `doors` `tokenSizes` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` `VisibilityRules` | `compareFor` `languages` `feats` `hitPoints` `inventory` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `craftLearning` `craftLearnRarity` `playerRolls` `ruleGraphs` `fog` `moves` `tokenMove` `revealOnMove` `doors` `tokenSizes` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `mapNavigation` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |

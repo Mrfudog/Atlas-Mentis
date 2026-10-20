@@ -15,7 +15,7 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-7 Stories · 57 Punkte · 7 offen
+7 Stories · 57 Punkte · 1 teils · 6 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -25,5 +25,5 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 | [[REQ-095]] Gewährtes anwenden | Spieler | 4 | offen |
 | [[REQ-096]] Einschränkungen prüfen | Spielleitung | 5 | offen |
 | [[REQ-290]] Wechselwirkungen von Regeln auswerten | Spielleitung | 4 | offen |
-| [[REQ-357]] Regelgraphen wirken am Tisch | Spielleitung | 3 | offen |
+| [[REQ-357]] Regelgraphen wirken am Tisch | Spielleitung | 3 | teils |
 <!-- stories:ende -->
