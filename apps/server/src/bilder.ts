@@ -272,12 +272,16 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
    * Bytes und was der Datenträger noch frei hat — nur für die Verwaltung
    * der Installation, denn wie voll eine Umgebung ist, geht den Tisch
    * nichts an. Ein grosser Lauf (5e.tools-Bilder) fragt vorher hier.
+   * Dazu die Grösse der Datenbank (`databaseBytes`, T-296): sie liegt auf
+   * demselben Datenträger, und ein Lauf mit Buchtext wächst dort, nicht
+   * in der Ablage.
    */
   app.get('/api/assets/storage', async (request, reply) => {
     const user = await viewerOf(request);
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
     if (!user.isAdmin) return reply.code(403).send({ error: 'Nur für die Verwaltung.' });
-    return store.usage();
+    const platz = await store.usage();
+    return repo.databaseBytes ? { ...platz, databaseBytes: await repo.databaseBytes() } : platz;
   });
 
   /**

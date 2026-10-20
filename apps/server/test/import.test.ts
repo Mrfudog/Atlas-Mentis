@@ -248,6 +248,12 @@ describe('pnpm --filter @nw/server run import', () => {
       expect(await repo.countEntities()).toBe(4);
     });
 
+    it('sagt je Ebene, was neu ist (T-296)', async () => {
+      const repo = await mitKonto([ebene]);
+      const probe = await runImport(repo, { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, inEbene(regel('x', 'X')), inEbene(regel('y', 'Y')), regel('z', 'Z')] }, { onlyNew: true, dryRun: true });
+      expect(probe.text).toMatch(/Neu je Ebene:\n {2}D&D 5e \(2014\) \(e5_layer\): 2 — Rule 2\n {2}ohne Ebene: 1 — Rule 1/);
+    });
+
     it('ergänzt einen neuen Artikel neben bestehenden und sagt im Probelauf dasselbe, ohne zu schreiben', async () => {
       const repo = await mitKonto([ebene, inEbene(regel('a', 'A, geändert'))]);
       const mehr = { ...datei, entities: [...datei.entities, inEbene(regel('c', 'C'))] };

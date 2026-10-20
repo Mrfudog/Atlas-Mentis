@@ -206,35 +206,7 @@ export function lies(datenPfad: string): Datenstand {
  * Datenstand ohne Abenteuer ist kein Fehler.
  */
 export function liesAbenteuer(datenPfad: string): Map<string, Abenteuer> {
-  const out = new Map<string, Abenteuer>();
-  const koepfe = new Map<string, Knoten>();
-  try {
-    const j = JSON.parse(readFileSync(join(datenPfad, 'adventures.json'), 'utf8')) as Record<string, Knoten[]>;
-    for (const a of j['adventure'] ?? []) koepfe.set(String(a['id'] ?? '').toLowerCase(), a);
-  } catch {
-    return out;
-  }
-  let dateien: string[];
-  try {
-    dateien = readdirSync(join(datenPfad, 'adventure')).filter((f) => /^adventure-.*\.json$/.test(f)).sort();
-  } catch {
-    return out;
-  }
-  for (const f of dateien) {
-    let j: Record<string, Knoten[]>;
-    try {
-      j = JSON.parse(readFileSync(join(datenPfad, 'adventure', f), 'utf8')) as Record<string, Knoten[]>;
-    } catch {
-      continue;
-    }
-    for (const a of j['adventureData'] ?? []) {
-      const id = String(a['id'] ?? a['source'] ?? '');
-      const kopf = koepfe.get(id.toLowerCase());
-      if (!id || !kopf || !Array.isArray(a['data'])) continue;
-      out.set(id.toLowerCase(), { id: String(kopf['id'] ?? id), kopf, daten: a['data'] as Knoten[] });
-    }
-  }
-  return out;
+  return liesTexte(datenPfad, 'adventures.json', 'adventure', 'adventure', 'adventureData');
 }
 
 /**
@@ -268,7 +240,12 @@ function liesTexte(datenPfad: string, kopfDatei: string, kopfSchluessel: string,
     } catch {
       continue;
     }
-    for (const a of j[datenSchluessel] ?? []) {
+    /* Ältere Stände (der Fork `5e-tools-2014-src`, v1.210) tragen den
+       Text ohne Hülle: `{ data: [...] }`, das Kürzel steht nur im
+       Dateinamen (`adventure-cos.json`). Ohne diesen Fall kam aus ihnen
+       kein einziges Kapitel (T-296). */
+    const eintraege: Knoten[] = j[datenSchluessel] ?? (Array.isArray(j['data']) ? [{ id: f.slice(ordner.length + 1, -'.json'.length), data: j['data'] }] : []);
+    for (const a of eintraege) {
       const id = String(a['id'] ?? a['source'] ?? '');
       const kopf = koepfe.get(id.toLowerCase());
       if (!id || !kopf || !Array.isArray(a['data'])) continue;
