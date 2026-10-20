@@ -71,8 +71,9 @@ const ZUSTAENDE: readonly DoorState[] = ['open', 'closed', 'locked'];
 
 /**
  * Was man durch eine eben geöffnete Tür sieht: für jede Figur der Gruppe
- * (ein Token, dessen Ziel in einer Gruppe ist, oder das Gruppen-Token), die
- * die Mitte der Tür ohne Sperre dazwischen sieht, ihr Sichtpolygon.
+ * (ein Token, dessen Ziel in einer Gruppe ist; das Gruppen-Token nur ohne
+ * Figuren auf der Karte), die die Mitte der Tür ohne Sperre dazwischen
+ * sieht, ihr Sichtpolygon.
  */
 export function tuerAufdecken(karte: Entity, tuer: string, nat: { w: number; h: number }, bestand: ReadonlyMap<string, Entity>): Entity {
   const sperren = mapWalls(karte);
@@ -81,10 +82,14 @@ export function tuerAufdecken(karte: Entity, tuer: string, nat: { w: number; h: 
   const ar = nat.w > 0 ? nat.h / nat.w : 1;
   const mitte = wallMid(t);
   let neu = karte;
-  for (const m of markersOf(karte)) {
-    if (m.hidden || m.prepared) continue;
-    const ziel = bestand.get(m.to);
-    const gruppe = m.kind === 'party' || (ziel?.relations ?? []).some((r) => r.type === PARTY_RELATION);
+  const marker = markersOf(karte).filter((m) => !m.hidden && !m.prepared);
+  const figur = (m: (typeof marker)[number]): boolean =>
+    m.kind !== 'party' && (bestand.get(m.to)?.relations ?? []).some((r) => r.type === PARTY_RELATION);
+  /* Die Sicht gilt den Spielertokens (T-305): das Gruppen-Token deckt nur
+     auf, solange keine Figur der Gruppe auf der Karte steht. */
+  const mitFiguren = marker.some(figur);
+  for (const m of marker) {
+    const gruppe = figur(m) || (m.kind === 'party' && !mitFiguren);
     if (!gruppe || !wallsClear(sperren, m, mitte, ar, 'sight')) continue;
     neu = revealView(neu, m, nat, () => `s-${randomUUID()}`, m.to, darkvisionFor(bestand, m.to), carriedLights(bestand, karte));
   }
