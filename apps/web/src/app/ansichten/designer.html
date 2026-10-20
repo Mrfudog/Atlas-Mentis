@@ -39,6 +39,18 @@
     }
   </div>
 
+  <!-- Was in dieser Ansicht gilt (T-318): die allgemeine, je Typ, die gestalteten ihrer Gruppe. -->
+  @if (!kompakt() && teile().length > 1) {
+    <nav class="teile" aria-label="In this view">
+      <span class="lbl">In this view</span>
+      @for (t of teile(); track t.view + (t.type ?? '')) {
+        <a class="chipb" [routerLink]="[]" [queryParams]="{ tab: 'views', view: t.view, type: t.type, design: null }"
+           [attr.aria-current]="t.view === schluessel() && (t.type ?? '') === (speichernAls() === 'type' ? zielTyp() : (typ() ?? '')) ? 'true' : null"
+           [title]="t.wie">{{ t.art === 'general' ? 'General' : t.label }} <span class="sub">{{ t.art === 'general' ? '' : t.wie }}</span></a>
+      }
+    </nav>
+  }
+
   @if (!darf()) {
     <p class="hinweis">You can read this view. Changing it is for the administration and the GM of the running campaign.</p>
   }
@@ -84,8 +96,10 @@
       <aside class="karte palette" aria-label="Elements">
         <b class="h3">Elements</b>
         <span class="sub">adds into the selected container, or after the selected element</span>
-        @for (g of palette; track g.cat) {
-          <details class="kat" [open]="g.cat !== 'Pages'">
+        <input type="search" class="element-suche" placeholder="Find an element …" aria-label="Find an element"
+               [value]="elementSuche()" (input)="elementSuche.set(optionWert($event))" />
+        @for (g of paletteGefiltert(); track g.cat) {
+          <details class="kat" [open]="g.cat !== 'Pages' || !!elementSuche().trim()">
             <summary class="lbl">{{ g.cat }}</summary>
             @for (p of g.items; track p.el) {
               <button type="button" class="pal" (click)="dazu(p.el)" [title]="p.tip" [disabled]="!darf()">
@@ -99,6 +113,8 @@
               </button>
             }
           </details>
+        } @empty {
+          <p class="sub">No element matches.</p>
         }
       </aside>
     }
@@ -295,7 +311,7 @@
     <div class="chips" role="radiogroup" aria-label="Save for">
       @if (!gestaltet()) {
         <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'view'" [attr.aria-pressed]="speichernAls() === 'view'" (click)="speichernAls.set('view')">every article (the view itself)</button>
-        <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'type'" [attr.aria-pressed]="speichernAls() === 'type'" (click)="speichernAls.set('type'); zielTyp() || zielTyp.set(probeTyp())">the whole type</button>
+        <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'type'" [attr.aria-pressed]="speichernAls() === 'type'" (click)="speichernAls.set('type'); zielTyp() || zielTyp.set(probeTyp())">every article of {{ zielTyp() || probeTyp() ? typLabel(zielTyp() || probeTyp()) : 'a type' }}</button>
       }
       @if (schluessel() && gestaltet()) {
         <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'this'" [attr.aria-pressed]="speichernAls() === 'this'" (click)="speichernAls.set('this')">this view (all it applies to)</button>
@@ -310,22 +326,30 @@
       <p class="sub">What every type shows in this view, unless it says otherwise. A whole type takes its new fields by itself; a single field stays a single field.</p>
     } @else if (speichernAls() === 'type') {
       <div class="zeile">
-        <select (change)="zielTyp.set(optionWert($event))" aria-label="Type">
-          @for (t of anordnungsTypen(); track t) {
-            <option [value]="t" [selected]="t === zielTyp()">{{ typLabel(t) }}</option>
-          }
-        </select>
-        <label class="haken"><input type="checkbox" [checked]="angepasst()" (change)="angepasst.set($any($event.target).checked)" />
-          adjusted — keep the view and save only the difference</label>
+        <label class="f">
+          <span class="lbl">Type</span>
+          <select (change)="zielTyp.set(optionWert($event))" aria-label="Type">
+            @for (t of anordnungsTypen(); track t) {
+              <option [value]="t" [selected]="t === zielTyp()">{{ typLabel(t) }}</option>
+            }
+          </select>
+        </label>
       </div>
       <p class="sub">
-        @if (angepasst()) {
-          New elements and fields of the view still come. {{ anpassung() ? '' : 'This draft does more than an adjustment can say (an element changed or moved inside) — save it as the type’s own arrangement.' }}
-        } @else {
-          Its own arrangement replaces the view for {{ typLabel(zielTyp()) }}; subtypes inherit it.
+        Only {{ typLabel(zielTyp()) }} and its subtypes change; every other article keeps the general view.
+        @switch (speicherArt()) {
+          @case ('adjust') {
+            Saved as an <b>adjustment</b>: only the difference — later changes to the general view still reach {{ typLabel(zielTyp()) }}.
+          }
+          @case ('own') {
+            Saved as <b>its own arrangement</b>{{ fest() ? '' : ' (this draft does more than an adjustment can say — an element moved into a container or set differently)' }}: later changes to the general view no longer reach {{ typLabel(zielTyp()) }}.
+          }
+          @case ('general') {
+            The draft is the same as the general view: saving lets {{ typLabel(zielTyp()) }} follow it again.
+          }
         }
       </p>
-      @if (angepasst()) {
+      @if (speicherArt() === 'adjust') {
         <div class="chips">
           <span class="lbl">Never shown for this type</span>
           @for (f of versteckt(); track f) {
@@ -339,6 +363,14 @@
           </select>
         </div>
       }
+      <details class="mehr">
+        <summary class="sub">More</summary>
+        <label class="haken"><input type="checkbox" [checked]="fest()" (change)="fest.set($any($event.target).checked)" />
+          fixed — save as its own arrangement even where an adjustment would do</label>
+        @if (zielHatEigenes() && darf()) {
+          <button type="button" class="klein" (click)="allgemeinWieder()">Use the general view for {{ typLabel(zielTyp()) }}</button>
+        }
+      </details>
     } @else if (speichernAls() === 'article') {
       <p class="sub">A new view in the group <b>{{ gruppe() }}</b> for {{ probeName() }} alone — the most specific one wins.</p>
     } @else {
