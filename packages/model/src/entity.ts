@@ -20,6 +20,9 @@ import type {
 
 export function entityName(entity: Entity | undefined): string {
   if (!entity) return 'Ohne Namen';
+  /* Ein Stück mit Enhancements heisst, wie es gerechnet wird (T-300):
+     „+1 Silvered Dagger", nicht „Dagger". Nur am ausgelieferten Artikel. */
+  if (entity.enhanced?.name) return entity.enhanced.name;
   const ausKarte = entity.components?.['Identity']?.['name'];
   return entity.name || (typeof ausKarte === 'string' ? ausKarte : '') || 'Ohne Namen';
 }

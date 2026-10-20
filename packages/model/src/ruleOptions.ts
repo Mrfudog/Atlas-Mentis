@@ -27,6 +27,7 @@ import { allowedMethods, type AbilityMethod } from './abilities.js';
 import { craftRulesOf } from './crafting.js';
 import { allowedEquipmentMethods, type EquipmentMethod } from './equipment.js';
 import { hitPointRuleOf } from './hitpoints.js';
+import { enhancementsByOf, itemPricingOf } from './enhancement.js';
 import { inventoryRulesOf } from './inventory.js';
 import { mapRulesOf } from './map.js';
 import { stowingRuleOf } from './stowing.js';
@@ -34,7 +35,7 @@ import { substitutionsOf, substitutionText } from './substitutes.js';
 import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
 
-export type RuleSortKey = 'inventory' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'map' | 'table';
+export type RuleSortKey = 'inventory' | 'items' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'map' | 'table';
 
 export interface RuleSortDef {
   key: RuleSortKey;
@@ -48,6 +49,7 @@ export const RULE_SORTS: readonly RuleSortDef[] = [
   { key: 'equipment', label: 'Starting equipment', does: 'What a new character starts the game with.' },
   { key: 'character', label: 'Character options', does: 'What a character may pick beyond class, ancestry and background.' },
   { key: 'inventory', label: 'Inventory', does: 'How the table counts what characters carry, and how fast they get it out.' },
+  { key: 'items', label: 'Items', does: 'How pieces with enhancements such as +1 or silvered are priced, and who may enhance them.' },
   { key: 'crafting', label: 'Crafting', does: 'What a crafting check does when it succeeds, fails or rolls a natural 20 or 1.' },
   { key: 'travel', label: 'Travel', does: 'What travel costs in food, light and watches.' },
   { key: 'units', label: 'Units', does: 'In which measures distances and weights are shown.' },
@@ -190,6 +192,30 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     source: { settings: ['carrySheet', 'carrySquares', 'carryZones', 'slotDraw', 'handActions', 'inventoryCols', 'inventoryRows', 'container:*'] },
     rules: ['Grid Inventory'],
     when: { field: 'inventory', is: ['grid'] },
+  },
+  {
+    key: 'itemPricing',
+    sort: 'items',
+    label: 'Item prices',
+    does: 'How the price of a piece with enhancements is worked out.',
+    source: { field: 'itemPricing' },
+    rules: ['Magic Item Rarity', 'Buying a Magic Item'],
+    variants: [
+      { key: 'combined', label: 'Combined', does: 'Base price, times any price factor, plus every surcharge: a dagger with +1 and silvered costs the dagger, the +1 and the silvering.' },
+      { key: 'base', label: 'Base price', does: 'A piece costs what its base item costs; enhancements add nothing.' },
+      { key: 'none', label: 'Not calculated', does: 'No price is worked out for a piece with enhancements; the GM sets one by hand.' },
+    ],
+  },
+  {
+    key: 'enhancementsBy',
+    sort: 'items',
+    label: 'Enhancements added by',
+    does: 'Who may put an enhancement on a piece.',
+    source: { field: 'enhancementsBy' },
+    variants: [
+      { key: 'gm', label: 'The GM', does: 'Only the GM adds or removes enhancements, in the inventory or on the piece.' },
+      { key: 'players', label: 'Players too', does: 'Players may enhance their own pieces as well — prepared for crafting, which does not offer it yet.' },
+    ],
   },
   {
     key: 'craftFailure',
@@ -600,6 +626,10 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return inventoryRulesOf(campaign);
     case 'stowing':
       return stowingRuleOf(campaign);
+    case 'itemPricing':
+      return itemPricingOf(campaign);
+    case 'enhancementsBy':
+      return enhancementsByOf(campaign);
     case 'craftFailure':
       return craftRulesOf(campaign).failure;
     case 'craftCritSuccess':

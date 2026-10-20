@@ -14,6 +14,8 @@
  * mehrere Arten teilten, ist ein Obertyp geworden.
  */
 
+import type { EnhancedItem } from './enhancement.js';
+
 /** Opaque entity id. No pack, type or version encoded in it (D15 / REQ-163). */
 export type EntityId = string;
 
@@ -903,6 +905,12 @@ export interface Entity {
    * es nicht), und was gleich steht wie die Vorlage, fällt mit.
    */
   fromTemplate?: { template: EntityId; fields: string[] };
+  /**
+   * Nur gelesen, nie gespeichert (T-300, D8): an einem Stück mit
+   * Enhancements der gerechnete Name, Preis, Seltenheit und Boni
+   * (`enhanceItem`). Beim Schreiben fällt es weg wie `fromTemplate`.
+   */
+  enhanced?: EnhancedItem;
 }
 
 /** One edge seen from its target. */

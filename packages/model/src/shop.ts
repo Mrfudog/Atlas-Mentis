@@ -49,6 +49,7 @@ import { entityName } from './entity.js';
 import { itemPrice } from './equipment.js';
 import { factionRanks } from './knowledge.js';
 import { followsTemplate, isInstance, resolveInstance, templateOf } from './instance.js';
+import { piecePrice, type ItemPricing } from './enhancement.js';
 import { overridersIndex, resolveArticle } from './stack.js';
 import type { Entity, EntityId, Registry } from './types.js';
 
@@ -359,8 +360,13 @@ export function buyWare(
  * offen (E-045); diese Stelle ist die eine, die es dann rechnet. Eine
  * Instanz zählt mit dem Preis ihrer Vorlage, solange sie keinen eigenen hat.
  */
-export function buybackPrice(item: Entity | undefined, entities?: ReadonlyMap<EntityId, Entity>): number | undefined {
-  const list = itemPrice(item && entities ? resolveInstance(entities, item) : item);
+export function buybackPrice(
+  item: Entity | undefined,
+  entities?: ReadonlyMap<EntityId, Entity>,
+  pricing: ItemPricing = 'combined',
+): number | undefined {
+  /* Ein Stück mit Enhancements zählt mit seinem gerechneten Preis (T-300). */
+  const list = item && entities ? piecePrice(entities, item, pricing) : itemPrice(item);
   return list === undefined ? undefined : Math.floor(list / 2);
 }
 
