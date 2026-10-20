@@ -2703,6 +2703,18 @@ export const fieldGroups = {
           type: 'string', format: 'link', title: 'Map on the table',
           target: { interfaces: ['Map'] },
         },
+        /* **Zwischen Karten wechseln** (T-308): ob Spielende in Play in eine
+           Unterkarte hinein- und zur Karte darüber hinauszoomen dürfen —
+           und dann nur in Karten, die die Leitung in dieser Sitzung
+           freigegeben hat. Vorgabe aus: Spielende bleiben auf der Karte
+           auf dem Tisch, Rahmen sind für sie Bild. Es steht an der
+           Sitzung, weil es läuft, und nicht an der Karte. */
+        mapNavigation: {
+          type: 'boolean',
+          title: 'Players may change maps',
+          default: false,
+          description: 'In play, players may zoom into a sub-map or out to the map above — only into maps released in this session. Off: players stay on the map on the table.',
+        },
         nowPlaying: { type: 'string', title: 'Now playing' },
         /* **Der Zug auf der Karte** (REQ-206, D56): je Token das Tempo
            dieses Zuges, was davon verbraucht ist und die Parität der

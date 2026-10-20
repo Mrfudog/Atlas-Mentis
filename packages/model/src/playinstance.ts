@@ -152,6 +152,22 @@ export function sessionInstance(
   return null;
 }
 
+/**
+ * **Dürfen Spielende zwischen Karten wechseln?** (T-308) Der Schalter
+ * `mapNavigation` an der Sitzung, Vorgabe aus. Gelesen in beiden Karten
+ * der Sitzung (`Session`, ältere `SessionState`, T-202). Die Leitung fragt
+ * er nicht — sie navigiert immer.
+ */
+export function mapNavigationOn(session: Entity | undefined | null): boolean {
+  if (!session) return false;
+  const c = session.components ?? {};
+  const wert =
+    (c["Session"] as { mapNavigation?: unknown } | undefined)?.mapNavigation ??
+    (c["SessionState"] as { mapNavigation?: unknown } | undefined)
+      ?.mapNavigation;
+  return wert === true;
+}
+
 /** Die Vorlage einer Instanz im Spiel, sonst der Artikel selbst. */
 export function playTemplateId(entities: Lookup, e: Entity): EntityId {
   return isPlayInstance(e) ? (templateOf(entities, e)?.id ?? e.id) : e.id;

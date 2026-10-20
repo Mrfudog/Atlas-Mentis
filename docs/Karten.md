@@ -329,6 +329,20 @@ sieht. Und zurück geht es genauso: wer auf einer Unterkarte ganz
 hinauszoomt, landet auf der Karte darüber. Ohne das wäre das Hineinzoomen
 eine Einbahnstrasse.
 
+**In Play nur, wenn die Sitzung es erlaubt** (T-308). Auf einer Karte im
+Spiel bleiben Spielende, wo der Tisch ist: der Schalter
+`Session.mapNavigation` (Vorgabe aus, in der Kartenleiste der Leitung
+„Players stay here" / „Players change maps") sagt, ob sie zoomen dürfen.
+Aus schickt der Kontext ihnen weder Brotkrumen noch Rahmen
+(`navigation: false`), und die Seite fällt beim Hinauszoomen auch nicht
+auf die Kante der Karte zurück — Rahmen sind Bild. An führen Rahmen und
+Brotkrumen **nur in Instanzen derselben Sitzung**, die freigegeben sind;
+eine Vorlage, die nicht im Spiel ist, ist für sie kein Ziel. Die Leitung
+navigiert immer, im Spiel in die Instanz der Sitzung, wenn es eine gibt,
+sonst in die Vorlage. Gesiebt wird am Server (`/api/maps/:id/context`).
+Abseits des Spiels (eine Vorlage, in der Vorbereitung) gilt die
+Sichtbarkeit allein.
+
 Gemessen wird das Sichtfenster, **gerechnet** das Bild. Beim Zeichnen hängt
 das neue Bild noch nicht im Baum — es zu messen ergäbe null, und dann wäre
 jeder Rahmen winzig, obwohl er den halben Schirm füllt. Die Breite des
