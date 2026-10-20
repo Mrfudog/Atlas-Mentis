@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Api, type Tisch } from '../kern/api';
 import { Live } from '../kern/live';
 import { WurfZiel } from '../kern/wurfziel';
+import { Initiative } from './initiative';
 import { Karte } from './karte';
 import { Zugplaner } from './zugplaner';
 
@@ -24,7 +25,7 @@ import { Zugplaner } from './zugplaner';
  */
 @Component({
   selector: 'nw-play',
-  imports: [RouterLink, Karte, Zugplaner],
+  imports: [RouterLink, Initiative, Karte, Zugplaner],
   /* Würfe auf diesem Schirm gehören zur Sitzung am Tisch (T-172). */
   providers: [WurfZiel],
   template: `
@@ -65,7 +66,12 @@ import { Zugplaner } from './zugplaner';
              und die Karte meldet zurück, was angetippt wurde. -->
         <nw-karte [id]="id" ort="play" [sitzung]="tisch()?.session ?? null" [gross]="true" [planung]="zp.planung()" (planTipp)="zp.tipp($event)" (planWarnungen)="zp.warnungen.set($event)" (insSpiel)="genommen()" />
         <nw-zugplaner #zp [karte]="id" />
-      } @else {
+      }
+      <!-- Der Initiative-Tracker (T-022): die Begegnung, die die Sitzung führt — auch ohne Karte. -->
+      @if (tisch()?.encounter; as enc) {
+        <nw-initiative class="tracker" [begegnung]="enc" />
+      }
+      @if (tisch() && !fehler() && !karteId()) {
         <section class="ohne">
           <p>
             No map is on the table.
@@ -122,6 +128,9 @@ import { Zugplaner } from './zugplaner';
     }
     .leer {
       color: var(--dim);
+    }
+    .tracker {
+      margin-top: 0.75rem;
     }
     /* Vollbild der Karte (T-203): die ganze Seite, damit der Zugplan dabei bleibt — ohne Kopf. */
     .seite:fullscreen {

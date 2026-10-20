@@ -7,7 +7,7 @@
  *
  * Die Sorten sind dieselben, die T-132 als Module baut (`inventory`,
  * `crafting`, `abilities`, `equipment`, `character`, `travel`, `units`,
- * `map` (T-204), dazu `table` für das, was keine Spielregel, aber Tischregel ist). Kommt
+ * `map` (T-204), `combat` (T-022), dazu `table` für das, was keine Spielregel, aber Tischregel ist). Kommt
  * das Modul, ändert sich nur, **woher** `ruleOptionsOf` den Wert nimmt —
  * die Seite bleibt.
  *
@@ -27,14 +27,16 @@ import { allowedMethods, type AbilityMethod } from './abilities.js';
 import { craftRulesOf } from './crafting.js';
 import { allowedEquipmentMethods, type EquipmentMethod } from './equipment.js';
 import { hitPointRuleOf } from './hitpoints.js';
+import { enhancementsByOf, itemPricingOf } from './enhancement.js';
 import { inventoryRulesOf } from './inventory.js';
 import { mapRulesOf, mapToolTable } from './map.js';
 import { stowingRuleOf } from './stowing.js';
+import { initiativeRulesOf } from './tracker.js';
 import { substitutionsOf, substitutionText } from './substitutes.js';
 import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
 
-export type RuleSortKey = 'inventory' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'map' | 'table';
+export type RuleSortKey = 'inventory' | 'items' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'map' | 'combat' | 'table';
 
 export interface RuleSortDef {
   key: RuleSortKey;
@@ -48,10 +50,12 @@ export const RULE_SORTS: readonly RuleSortDef[] = [
   { key: 'equipment', label: 'Starting equipment', does: 'What a new character starts the game with.' },
   { key: 'character', label: 'Character options', does: 'What a character may pick beyond class, ancestry and background.' },
   { key: 'inventory', label: 'Inventory', does: 'How the table counts what characters carry, and how fast they get it out.' },
+  { key: 'items', label: 'Items', does: 'How pieces with enhancements such as +1 or silvered are priced, and who may enhance them.' },
   { key: 'crafting', label: 'Crafting', does: 'What a crafting check does when it succeeds, fails or rolls a natural 20 or 1.' },
   { key: 'travel', label: 'Travel', does: 'What travel costs in food, light and watches.' },
   { key: 'units', label: 'Units', does: 'In which measures distances and weights are shown.' },
   { key: 'map', label: 'On the map', does: 'What the fog of war hides from whom, and how tokens move outside an encounter.' },
+  { key: 'combat', label: 'Combat', does: 'Whether the initiative tracker runs, and what players see of it.' },
   { key: 'table', label: 'At the table', does: 'Who sees what during play.' },
 ];
 
@@ -190,6 +194,30 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     source: { settings: ['carrySheet', 'carrySquares', 'carryZones', 'slotDraw', 'handActions', 'inventoryCols', 'inventoryRows', 'container:*'] },
     rules: ['Grid Inventory'],
     when: { field: 'inventory', is: ['grid'] },
+  },
+  {
+    key: 'itemPricing',
+    sort: 'items',
+    label: 'Item prices',
+    does: 'How the price of a piece with enhancements is worked out.',
+    source: { field: 'itemPricing' },
+    rules: ['Magic Item Rarity', 'Buying a Magic Item'],
+    variants: [
+      { key: 'combined', label: 'Combined', does: 'Base price, times any price factor, plus every surcharge: a dagger with +1 and silvered costs the dagger, the +1 and the silvering.' },
+      { key: 'base', label: 'Base price', does: 'A piece costs what its base item costs; enhancements add nothing.' },
+      { key: 'none', label: 'Not calculated', does: 'No price is worked out for a piece with enhancements; the GM sets one by hand.' },
+    ],
+  },
+  {
+    key: 'enhancementsBy',
+    sort: 'items',
+    label: 'Enhancements added by',
+    does: 'Who may put an enhancement on a piece.',
+    source: { field: 'enhancementsBy' },
+    variants: [
+      { key: 'gm', label: 'The GM', does: 'Only the GM adds or removes enhancements, in the inventory or on the piece.' },
+      { key: 'players', label: 'Players too', does: 'Players may enhance their own pieces as well — prepared for crafting, which does not offer it yet.' },
+    ],
   },
   {
     key: 'craftFailure',
@@ -385,6 +413,85 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
       { key: 'rules', label: 'As the rules', does: 'Tiny, small and medium one square, large 2×2, huge 3×3, gargantuan 4×4.' },
       { key: 'tinyHalf', label: 'Tiny half a square', does: 'As the rules, but a tiny creature covers half a square, so four fit in one.' },
     ],
+  },
+  {
+    /* Der Initiative-Tracker (T-022), gelesen über `initiativeRulesOf`. */
+    key: 'combat',
+    sort: 'combat',
+    label: 'Initiative tracker',
+    does: 'Whether encounters run in the initiative tracker in Play: order, turns, rounds and effects with a duration.',
+    source: { field: 'combat' },
+    rules: ['Initiative', 'Combat'],
+    variants: [
+      { key: 'on', label: 'On', does: 'Play shows the tracker of the running encounter; the GM moves the turns, players follow.' },
+      { key: 'off', label: 'Off', does: 'No tracker. Encounters still start and roll initiative; the table keeps the order itself.' },
+    ],
+  },
+  {
+    key: 'initNames',
+    sort: 'combat',
+    label: 'Unidentified foes shown as',
+    does: 'What players read for a foe they have not identified. Identified foes show their name either way.',
+    source: { field: 'initNames' },
+    variants: [
+      { key: 'cover', label: 'Cover name', does: 'The cover name of the creature (“Robed figure”), numbered when several share it.' },
+      { key: 'real', label: 'Name at the table', does: 'The name the GM gave the combatant, or the creature’s name.' },
+    ],
+    when: { field: 'combat', is: ['on'] },
+  },
+  {
+    key: 'initHealth',
+    sort: 'combat',
+    label: 'Foes’ health shown to players',
+    does: 'How precisely players see the hit points of anyone outside the party. The party always sees its own numbers.',
+    source: { field: 'initHealth' },
+    variants: [
+      { key: 'none', label: 'Nothing', does: 'Players see no health of foes.' },
+      { key: 'coarse', label: 'Coarse', does: 'A word: unhurt, bloodied (below the maximum) or down.' },
+      { key: 'exact', label: 'Exact', does: 'Hit points and maximum as numbers.' },
+    ],
+    when: { field: 'combat', is: ['on'] },
+  },
+  {
+    key: 'initEffects',
+    sort: 'combat',
+    label: 'Effects shown to players',
+    does: 'Which conditions and notes with a duration players see in the tracker. Effects the GM marks hidden never show.',
+    source: { field: 'initEffects' },
+    variants: [
+      { key: 'all', label: 'All', does: 'The effects of every combatant players see.' },
+      { key: 'party', label: 'Party and allies', does: 'Only the effects on the party and its allies.' },
+      { key: 'none', label: 'None', does: 'No effects in the players’ view of the tracker.' },
+    ],
+    when: { field: 'combat', is: ['on'] },
+  },
+  {
+    key: 'initActions',
+    sort: 'combat',
+    label: 'Foes’ actions shown to players',
+    does: 'Whether players see the names of the actions and traits on a foe’s statblock, once its turn has come. Needs the Actions column.',
+    source: { field: 'initActions' },
+    variants: [
+      { key: 'hidden', label: 'Only the GM', does: 'The GM sees every combatant’s actions; players only their own.' },
+      { key: 'shown', label: 'Players too', does: 'Players see the action names of every foe that has shown up in the order.' },
+    ],
+    when: { field: 'combat', is: ['on'] },
+  },
+  {
+    key: 'initColumns',
+    sort: 'combat',
+    label: 'Tracker columns',
+    does: 'Which columns the tracker shows: initiative, armour class, hit points, effects, actions. Changed under “Change options”.',
+    source: { field: 'initColumns' },
+    when: { field: 'combat', is: ['on'] },
+  },
+  {
+    key: 'initQuickActions',
+    sort: 'combat',
+    label: 'Tracker quick actions',
+    does: 'Which buttons the GM has on each row: damage, heal, add effect, delay, reroll, remove. Changed under “Change options”.',
+    source: { field: 'initQuickActions' },
+    when: { field: 'combat', is: ['on'] },
   },
   {
     key: 'playerRolls',
@@ -608,6 +715,10 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return inventoryRulesOf(campaign);
     case 'stowing':
       return stowingRuleOf(campaign);
+    case 'itemPricing':
+      return itemPricingOf(campaign);
+    case 'enhancementsBy':
+      return enhancementsByOf(campaign);
     case 'craftFailure':
       return craftRulesOf(campaign).failure;
     case 'craftCritSuccess':
@@ -634,6 +745,20 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return mapRulesOf(campaign).doors;
     case 'mapTools':
       return Object.entries(mapToolTable(campaign)).map(([k, g]) => `${k}: ${g.length ? g.join(', ') : 'none'}`);
+    case 'combat':
+      return initiativeRulesOf(campaign).combat;
+    case 'initNames':
+      return initiativeRulesOf(campaign).names;
+    case 'initHealth':
+      return initiativeRulesOf(campaign).health;
+    case 'initEffects':
+      return initiativeRulesOf(campaign).effects;
+    case 'initActions':
+      return initiativeRulesOf(campaign).enemyActions;
+    case 'initColumns':
+      return initiativeRulesOf(campaign).columns;
+    case 'initQuickActions':
+      return initiativeRulesOf(campaign).quickActions;
     default: {
       const roh = campaign?.components?.['Campaign']?.[feld];
       /* Die übrigen Vorgaben stehen am Register (`CampaignInfo`): Talente ja, Würfe für den Tisch. */

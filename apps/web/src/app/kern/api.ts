@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, MapToolGroup, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TurnPlan } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, MapToolGroup, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1516,6 +1516,14 @@ export class Api {
   startEncounter(id: string, body: { map?: string; session?: string | null }): Promise<{ encounter: string; map: string | null; revealed: number; session: string | null }> {
     return this.call(`/api/encounters/${encodeURIComponent(id)}/start`, { method: 'POST', body: JSON.stringify(body) });
   }
+  /** Der Initiative-Tracker (T-022): die Reihe, wie dieser Betrachter sie sieht — gesiebt am Server. */
+  tracker(id: string): Promise<TrackerView & { off?: boolean }> {
+    return this.call(`/api/encounters/${encodeURIComponent(id)}/tracker`);
+  }
+  /** Eine Änderung am Tracker: Zug, Initiative, Trefferpunkte, Effekt, Teilnehmer. */
+  trackerOp(id: string, op: TrackerOp): Promise<{ ok: true }> {
+    return this.call(`/api/encounters/${encodeURIComponent(id)}/tracker`, { method: 'POST', body: JSON.stringify(op) });
+  }
   /** Die Seitenleiste der Karte (T-203): Gruppe, und für die Leitung die Begegnungen der Sitzung. */
   mapSide(id: string, session?: string | null): Promise<KartenSeite> {
     const q = session ? `?session=${encodeURIComponent(session)}` : '';
@@ -1567,6 +1575,21 @@ export class Api {
   }
   /** Welche Karte auf dem Tisch liegt (`SessionState.activeMap`, T-115). */
   /** Eine Karte oder Begegnung in die Sitzung nehmen (T-289): als Instanz, die Sitzung zeigt danach darauf. */
+  /** Was sich an dieses Stück hängen liesse, und ob man darf (T-300). */
+  enhancements(piece: string): Promise<{ may: boolean; piece: boolean; options: { id: string; name: string; fits: boolean; surcharge?: string }[] }> {
+    return this.call(`/api/entities/${encodeURIComponent(piece)}/enhancements`);
+  }
+
+  /** Ein Enhancement an ein Stück hängen (T-300). */
+  addEnhancement(piece: string, enhancement: string): Promise<Entity> {
+    return this.call(`/api/entities/${encodeURIComponent(piece)}/enhancements`, { method: 'POST', body: JSON.stringify({ enhancement }) });
+  }
+
+  /** Ein Enhancement abnehmen (T-300). */
+  removeEnhancement(piece: string, enhancement: string): Promise<Entity> {
+    return this.call(`/api/entities/${encodeURIComponent(piece)}/enhancements/${encodeURIComponent(enhancement)}`, { method: 'DELETE' });
+  }
+
   takeIntoPlay(body: { session?: string | null; map?: string; encounter?: string }): Promise<{ map: string | null; encounter: string | null; session: string | null }> {
     const { session, ...rest } = body;
     return this.call('/api/play/take', { method: 'POST', body: JSON.stringify(session ? { ...rest, session } : rest) });
@@ -2155,6 +2178,8 @@ export interface Tisch {
   map: string | null;
   /** Ist die Karte auf dem Tisch eine Instanz (T-289) oder noch die Vorlage? */
   inPlay: boolean;
+  /** Die Begegnung, die die Sitzung führt (T-022), wenn der Betrachter sie sieht. */
+  encounter: string | null;
   maps: { id: string; name: string }[];
 }
 

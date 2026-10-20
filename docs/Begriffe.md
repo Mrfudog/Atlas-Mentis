@@ -1635,6 +1635,25 @@ auf die Idee, die Waffe wegzustecken. Die Sperre rechnet das Modell aus
 dem, was gehalten wird (`handState`); das Ausrüsten selbst kommt mit dem
 Inventar (T-244) und speist dieselbe Funktion.
 
+### Der Initiative-Tracker ist ein eigenes System
+
+**Die Kampagne stellt ihn ein, nicht der Schirm** (T-022): was Spielende
+von der Reihe sehen — Deckname oder Name, Gesundheit gar nicht, als Wort
+oder als Zahl, welche Effekte, ob die Aktionen der Gegner —, steht als
+Feld an der Kampagne (`combat`, `initNames`, `initHealth`, `initEffects`,
+`initActions`) und wird am Server gesiebt, in jeder Route gleich. Ein
+Schalter am Tracker selbst wäre die zweite Stelle, und der Beamer zeigte
+dann, was das Telefon nicht soll. Abschaltbar ist er, weil eine Runde, die
+am Tisch mit Karten zählt, keinen zweiten Zähler will.
+
+**Ein Effekt ist ein Eintrag mit Dauer an der Kante**, kein eigener
+Artikel: „bis zum Ende von Vex' nächstem Zug" ist ein Anker, ein Zeitpunkt
+und eine Zahl (D53), und der Zugwechsel zählt sie. **Verzögern ist eine
+Initiative**, keine Marke „wartet": wer verzögert, steht danach eben
+weiter hinten, und eine Marke hätte eine zweite Reihe neben der Reihe
+bedeutet. **Zurück zählt nichts zurück** — wer zu früh weitertippt, nimmt
+den Zug zurück, aber ein abgelaufener Effekt käme nur geraten wieder.
+
 ### Klasse, Stufe und was gewährt wird
 
 Klasse, Unterklasse, Abstammung und Hintergrund sind **Regeln mit eigenen
@@ -1906,6 +1925,41 @@ Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
   ein eigener Statblock ohne Vorlage bleibt stehen, nur seine Kante geht.
 - Am Server kommt eine Instanz aufgelöst an, mit `fromTemplate` (Vorlage und
   die Felder, die von dort kommen) — nur gelesen, nie gespeichert.
+
+**Enhancement — ein +1-Dolch ist ein Dolch mit einer Regel daran** (T-300,
+E-107). Die Bücher kennen „+1 Weapon", „Silvered Weapon", „Adamantine
+Armor": Regeln, die an *jeden* passenden Gegenstand kommen. Jedes Paar
+auszuschreiben wären tausende Artikel, und die eigene Kombination
+(versilbert *und* +1) gäbe es trotzdem nicht. Die Regel an den Dolch selbst
+zu hängen machte jeden Dolch zu einem +1-Dolch. Also bekommt die Figur ein
+**Stück** — eine Instanz von „Dagger", wie jedes Stück im Inventar — und an
+dieses Stück kommt die Regel mit der Kante `enchantedWith`.
+
+Das Wort ist **Enhancement** und nicht „Item property": so heisst seit D48
+schon die Art `ItemProperty` (Finesse, Heavy), und ein Wort für zwei Sachen
+ist so schlecht wie zwei Wörter für eine. Eine eigene Art ist es nicht: ein
+Gegenstand mit `appliesTo` *ist* eines, so wie der Importer die Varianten
+immer schon angelegt hat.
+
+Was das Stück heisst und kostet, wird **gerechnet** und nie gespeichert —
+stünde der Preis in seiner Karte, hielte das Ausdünnen ihn für eine
+Abweichung, und eine Korrektur am Dolch erreichte das Stück nie mehr. Der
+**Aufpreis** (Surcharge) sagt, wie ein Enhancement den Grundpreis ändert: ein
+Betrag (`priceAdd`), ein Faktor (`priceMult`), sonst sein eigener Preis.
+Welche Rechnung gilt, sagt die Kampagne (`itemPricing`: kombiniert,
+Grundpreis, nicht gerechnet) — manche Tische handeln magische Gegenstände
+nicht nach Liste.
+
+| | Name | Preis | Seltenheit | Angriff/Schaden |
+| --- | --- | --- | --- | --- |
+| Dagger | Dagger | 2 gp | — | — |
+| + „+1 Weapon" (Präfix „+1 ", + 1,000 gp, uncommon, +1) | +1 Dagger | 1,002 gp | uncommon | +1 |
+| + „Silvered" (Präfix „Silvered ", + 100 gp) | **+1 Silvered Dagger** | **1,102 gp** | uncommon | +1 |
+| dasselbe mit `itemPricing: base` | +1 Silvered Dagger | 2 gp | uncommon | +1 |
+
+Anhängen tut die Leitung. Ob Spielende es beim Handwerk dürfen, entscheidet
+später die Kampagne (`enhancementsBy`); die Einstellung steht schon da, das
+Handwerk bietet es noch nicht an.
 
 Ein Statblock gehört damit **einer** Kreatur (`belongsTo` ist wieder `one`).
 

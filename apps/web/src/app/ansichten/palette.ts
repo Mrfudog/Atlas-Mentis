@@ -76,6 +76,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'inventory', name: 'Inventory', icon: '🎒', tip: 'The inventory it carries and what that holds.', seite: true },
       { el: 'knowledgeContents', name: 'Knowledge contents', icon: '🧠', tip: 'On a knowledge: every information it brings together, written out with the fields the viewer may read. Draws nothing elsewhere.', seite: true },
       { el: 'crafting', name: 'Crafting', icon: '⚒', tip: 'On a recipe the workbench, on a trade its tools and recipes, on a tool or character what it can craft. Draws nothing elsewhere.', seite: true },
+      { el: 'initiative', name: 'Initiative tracker', icon: '⚔', tip: 'On an encounter: order, turn and round, hit points and effects with a duration — as much as the viewer may see. Draws nothing elsewhere.', seite: true },
       { el: 'campaign', name: 'Campaign', icon: '⚑', tip: 'What the campaign has shown this character: handouts, sessions, quests, people, maps — only what visibility and knowledge allow.', seite: true },
     ],
   },

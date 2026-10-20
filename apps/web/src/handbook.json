@@ -84,6 +84,14 @@
           ]
         },
         {
+          "heading": "Giving a character a +1 dagger",
+          "text": [
+            "Give the character a dagger as usual — bought, looted or handed over, it arrives as their own piece. Open the piece (from the inventory) and, under Enhancements, choose Add enhancement: +1 Weapon. Add Silvered too if you like; only enhancements whose “Variant applies to” fits are offered first, and one that does not fit is refused.",
+            "The piece now reads “+1 Silvered Dagger”: its name, rarity and bonuses are worked out from the dagger and the enhancements, and so is its price — dagger 2 gp, plus 1,000 gp for +1 Weapon, plus 100 gp for silvering: 1,102 gp. Nothing of that is stored; change the dagger or an enhancement and every piece follows.",
+            "Which price counts is a campaign rule (Rules & options › Items › Item prices): combined, base price only, or not calculated. Who may add enhancements is a rule there too — the GM, unless you let players do it for their own pieces."
+          ]
+        },
+        {
           "heading": "Designing a view",
           "text": [
             "Registry › Views lists every view; Design opens one in the view designer — from a type’s page with that type chosen, from an article with “Design this view” in Full edit. The preview stands on top; add elements from the palette, move them with ↑ ↓ → ← or by dragging, and give each its values — follow an edge to show fields of linked articles, such as the wares of the shop a creature keeps.",
@@ -102,6 +110,14 @@
             "Furnish it with assets: Tokens › Add asset puts a crate, a table or a lantern down (the same one may stand many times), and Tokens › Asset sets the one you tap — size, height ÷ width, rotation, Movable in play, and what it Blocks (a crate as an obstacle holds movement, a cupboard as a wall holds sight and light too). Assets are fixed by default: in play only movable ones move, and they move on the map in play, not on this map.",
             "Floors (E): a tower, a cellar, a ship's decks are floors of one map. + Floor adds one with its own image, grid, scale and walls — set them with Grid and Walls while it is shown. Give each floor a building part (West tower) and a height range in feet: the bar groups by building part and sorts by height, so a storey of one tower can sit level with two of another. GM only keeps a floor from the players for good, Held back until you release it.",
             "Add passage connects floors: tap where the stairs, ladder, bridge or portal is, choose where it leads, then tap the spot on that floor — or pick another map for a portal. Tap a passage to set View through (stand on it and see the other side, like stairs) or only walk through, and One way (no way back). A token dropped on a passage stands on it; tap the passage and Take … through to move it to the other side."
+          ]
+        },
+        {
+          "heading": "Running a fight",
+          "text": [
+            "Before the session, decide under Campaign › Rules & options › Combat what players see of the tracker: cover names or names, foes' health as nothing, a word or numbers, which effects, and whether foes' actions show; pick the columns and the quick actions for your rows under Change options.",
+            "At the table, ▶ Start on the encounter (Table panel of the map, the encounter's page or the tracker) rolls initiative and runs it in the session; Play shows the tracker below the map. Next turn moves on and counts effects down; Damage and Heal change hit points; + Effect ties a condition or note to a number of rounds, counting at the start or end of whichever combatant's turn you pick.",
+            "Players follow on their phones: they see the party, and each foe once its turn has come. A player whose character is up presses End my turn. End marks the encounter done; the order stays as it was."
           ]
         },
         {
