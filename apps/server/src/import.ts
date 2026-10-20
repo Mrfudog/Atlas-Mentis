@@ -365,6 +365,9 @@ export async function runImport(
      schon tragen — umgekehrt bräche das Schreiben an ihr ab. Bricht ein
      Lauf mittendrin ab, bringt derselbe Befehl noch einmal den Rest. */
   const liegen = await schreibeRegister(repo, d.registry, registry);
+  /* Gelesen ist alles; nachgeführt werden muss beim Schreiben nichts
+     (T-296: sonst je Artikel die ganze Liste kopiert, quadratisch). */
+  repo.releaseHeld?.();
   let geloescht = 0;
   for (const alt of weg) {
     if (await repo.deleteEntity(alt.id)) geloescht += 1;

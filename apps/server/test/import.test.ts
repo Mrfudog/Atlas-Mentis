@@ -262,6 +262,17 @@ describe('pnpm --filter @nw/server run import', () => {
       expect(await nummer('alt')).toBe('rule-0002');
     });
 
+    it('lässt den gehaltenen Bestand vor dem Schreiben los, nicht beim Probelauf (T-296)', async () => {
+      const repo = await mitKonto([ebene]);
+      const losgelassen: number[] = [];
+      Object.assign(repo, { releaseHeld: () => losgelassen.push(1) });
+      const datei = { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, inEbene(regel('x', 'X'))] };
+      await runImport(repo, datei, { onlyNew: true, dryRun: true });
+      expect(losgelassen).toHaveLength(0);
+      await runImport(repo, datei, { onlyNew: true });
+      expect(losgelassen).toHaveLength(1);
+    });
+
     it('sagt je Ebene, was neu ist (T-296)', async () => {
       const repo = await mitKonto([ebene]);
       const probe = await runImport(repo, { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, inEbene(regel('x', 'X')), inEbene(regel('y', 'Y')), regel('z', 'Z')] }, { onlyNew: true, dryRun: true });
