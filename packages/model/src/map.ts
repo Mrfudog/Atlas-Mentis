@@ -16,6 +16,7 @@
 import type { Pt } from './sight.js';
 import type { Entity, EntityId, Relation } from './types.js';
 import { initiativeOrder, PARTICIPATES, type ParticipantProps } from './initiative.js';
+import { floorView, hasFloors, mapFloors, redactFloors, withFloorView } from './floors.js';
 import { hasSightWalls, mapWalls, redactWalls, sightPolygon, wallKind, type MapWall, type WallKind } from './walls.js';
 
 export const MAP_TYPE = 'Map';
@@ -45,8 +46,9 @@ const RAHMEN_VORGABE = 0.12;
 const HOECHSTENS = 12;
 
 export type GridShape = 'none' | 'square' | 'hex';
-export type MarkerKind = 'static' | 'scenery' | 'party' | 'quest' | 'play';
-export const MARKER_KINDS: readonly MarkerKind[] = ['static', 'scenery', 'party', 'quest', 'play'];
+/** `passage`: ein Übergang auf eine andere Ebene oder Karte (T-307, `floors.ts`). */
+export type MarkerKind = 'static' | 'scenery' | 'party' | 'quest' | 'play' | 'passage';
+export const MARKER_KINDS: readonly MarkerKind[] = ['static', 'scenery', 'party', 'quest', 'play', 'passage'];
 
 export interface Frame {
   x: number;
@@ -1290,20 +1292,31 @@ export function revealFor(map: Entity, fog: FogMode, own: (id: EntityId) => bool
  * - **Die Sperren** (T-118): nur, was am Aufgedeckten liegt; eine
  *   geschlossene Geheimtür ist eine Wand (`redactWalls`).
  *
+ * - **Die Ebenen** (T-307, E-108): `gmOnly` und zurückgehaltene gehen
+ *   samt Markern weg (`redactFloors`); jede übrige wird für sich gesiebt —
+ *   mit ihrem Nebel und ihren Sperren.
+ *
  * Gefragt wird beim Lesen (D8); gespeichert bleibt die Karte, wie sie ist.
  */
-export function redactMap(
-  map: Entity,
-  opts: {
-    gm: boolean;
-    sees: (id: EntityId) => boolean;
-    keep?: (id: EntityId) => boolean;
-    /** Nebel je Figur (T-204): dann zählen nur Formen ohne `for` und die, für die `own` ja sagt. */
-    fog?: FogMode;
-    own?: (id: EntityId) => boolean;
-  },
-): Entity {
+export interface RedactMapOptions {
+  gm: boolean;
+  sees: (id: EntityId) => boolean;
+  keep?: (id: EntityId) => boolean;
+  /** Nebel je Figur (T-204): dann zählen nur Formen ohne `for` und die, für die `own` ja sagt. */
+  fog?: FogMode;
+  own?: (id: EntityId) => boolean;
+}
+
+export function redactMap(map: Entity, opts: RedactMapOptions): Entity {
   if (opts.gm || !isMap(map)) return map;
+  if (!hasFloors(map)) return redactFloorView(map, opts);
+  let e = redactFloors(map);
+  for (const f of mapFloors(e)) e = withFloorView(e, f.id, redactFloorView(floorView(e, f.id), opts));
+  return e;
+}
+
+/** Eine Ebene (oder eine Karte ohne weitere) sieben. */
+function redactFloorView(map: Entity, opts: RedactMapOptions): Entity {
   map = revealFor(map, opts.fog ?? 'party', opts.own ?? (() => false));
   const nebel = fogOn(map);
   const relations = (map.relations ?? []).filter((r) => {

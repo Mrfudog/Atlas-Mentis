@@ -18,6 +18,13 @@ sucht den Fehler an der falschen Stelle:
 - **Zeichenebene** — ein Blatt auf *einer* Karte. Sie sagt, *was auf dem
   Bild liegt*: Gelände, Beschriftung, Ruinen, Schnee.
 
+Dazu kommt seit T-307 ein drittes:
+
+- **Kartenebene** (Stockwerk, Geschoss) — `Map.floors`. Sie sagt, *in
+  welchem Stock man steht*: Keller, Erdgeschoss, Turmspitze. Jede hat ihr
+  eigenes Bild, Gitter, ihre Sperren und Blätter; in der Leiste heissen sie
+  „Floors“. Siehe [Stockwerke und Portale](#stockwerke-und-portale-t-307).
+
 Im Schema heissen die zweiten deshalb `sheets` (Kartenblätter) und nicht
 `layers`. In der Kartenleiste steht trotzdem „Layers“, weil dort nichts zu
 verwechseln ist — man steht auf einer Karte, und eine Inhaltsebene hat auf
@@ -319,6 +326,93 @@ eine Kette von Rahmen, und ein Klick hinein ist der Zoom.
 Alles in Anteilen, nie in Bildpunkten — dieselbe Entscheidung wie bei Nebel
 und Tokens. Eine Karte, die neu ausgeschnitten wird, verlöre sonst jeden
 Rahmen.
+
+---
+
+## Stockwerke und Portale (T-307)
+
+Ein Turm, ein Keller, ein Schiff mit drei Decks: **eine Karte, mehrere
+Ebenen** (E-108). Unterkarten (oben) sind für einen anderen Massstab —
+Region, Stadt, Haus —, nicht für gestapelte Geschosse, die gemeinsam
+gespielt werden.
+
+**Eine flache Liste, keine Stapelnummer.** Je Ebene ein Name, ein
+Gebäudeteil (`structure`: Halle, Westturm, Ostturm) und optional ein
+Höhenbereich (`elevation`, von–bis in Fuss). Welche Ebenen verbunden sind,
+sagen **allein die Übergänge**, nie die Reihenfolge. So decken sich zwei
+ungleich hohe Türme ab:
+
+| Ebene | Gebäudeteil | Höhe |
+|---|---|---|
+| West 1 | West tower | 0–20 ft |
+| East 1 | East tower | 0–10 ft |
+| East 2 | East tower | 10–20 ft |
+
+West 1 liegt neben East 1 *und* East 2 (`elevationsOverlap`); eine Brücke
+von West 1 nach East 2 ist ein Übergang wie jeder andere. Die Leiste
+gruppiert nach Gebäudeteil und sortiert darin nach Höhe (`floorGroups`);
+zwei Bereiche auf derselben Höhe dürfen auch eine Ebene sein — ein Bild mit
+beiden Turmsockeln.
+
+**Die erste Ebene ist die Karte selbst** („Ground"): ihr Bild ist
+`Image.image`, Gitter, Sperren und Blätter stehen, wo sie vor T-307
+standen. Bestehende Karten sind darum ohne Umschreiben Karten mit einer
+Ebene (Migration 112 zieht das Register nach und zählt sie). Jede weitere
+Ebene trägt in `Map.floors` **dieselben Felder** — eigenes Bild, eigenes
+Gitter, **eigener Massstab** (ein Turm kleiner, ein Keller grösser), eigene
+Sperren und Blätter, eigenes Licht (`lighting`). Ein Marker steht auf der
+Ebene, die `props.floor` nennt, ohne Angabe auf der ersten.
+
+**Gerechnet wird je Ebene über eine Projektion** (`floorView`): eine
+Ebene sieht aus wie eine Karte ohne weitere Ebenen, mit ihrem Bild, Gitter,
+Nebel und nur ihren Markern. Sicht, Licht, Messen, Aufdecken, Türen,
+Zugplan und Zurückhalten rechnen damit unverändert; `withFloorView`
+schreibt eine geänderte Ebene in die Karte zurück.
+
+**Nebel und Freigabe sind Stand am Tisch** und stehen neben den Ebenen:
+`Map.floorReveal` (je Ebene die aufgedeckten Formen) und
+`Map.floorReleased` (`false` hält eine Ebene zurück). An einer Instanz
+(T-289) kopiert ein Aufdecken im Keller so nicht alle Ebenen der Vorlage
+in die Instanz. Eine Ebene mit `gmOnly` geht nie an Spielende, eine
+zurückgehaltene erst nach „Held back“ aus — beide samt ihren Markern und
+den Übergängen, die dorthin führen (`redactFloors`; ein Treppenpfeil in
+ein verborgenes Geschoss verriete es). Das beschnittene Kartenbild
+(T-312) gilt je Ebene: die Adresse nennt `ebene~blatt`.
+
+### Übergänge
+
+Ein Übergang ist **eine Markerart** (`kind: 'passage'`) mit Ziel
+{Karte, Ebene, Punkt}: die Kante zeigt auf die Zielkarte (dieselbe für
+Treppe und Leiter), `toFloor`, `toX`, `toY` sagen Ebene und Punkt dort.
+Gestalten: `stairs`, `ladder`, `bridge`, `portal`. Gesetzt wird mit
+Floors › Add passage: das Ende hier antippen, „Leads to“ wählen, das Ende
+dort antippen — oder „another map…“ für ein Portal auf eine andere Karte
+(es führt auf deren erste Ebene, in die Mitte).
+
+- **Beide Richtungen** (Vorgabe): am Ziel steht ein **gespiegeltes Ende**
+  (`passageEnds`, gestrichelt), kein zweiter Marker — ein Paar von Hand zu
+  pflegen hiesse, dass eines wandert und das andere nicht.
+- **Einbahn** (`oneWay`): kein gespiegeltes Ende, also kein Weg und kein
+  Blick zurück.
+- **Durchsehen oder nur durchgehen** (`sight: through | none`): wer auf
+  einem Ende steht, durch das man sieht, sieht auch vom Zielpunkt aus —
+  auf der Zielebene, mit deren Sperren und **in deren Massstab**
+  (`sightInto`). Ein Portal mit `none` zeigt nichts von drüben.
+
+**Durchgehen:** ein Token, das man nah an einem Ende loslässt (ein halbes
+Feld), steht genau darauf. Antippen des Übergangs zeigt das Ziel, „Show
+…“ und „Take … through“: `POST /api/maps/:id/move` mit `via` versetzt
+das Token auf Zielebene und Zielpunkt (`goThrough`) — wer es ziehen darf,
+darf es durchgehen lassen; mit Bestätigung durch die Leitung (`moves:
+confirm`) und im Kampf wartet auch das. Ein Portal auf eine andere Karte
+versetzt nichts: das Token gehört dort einer anderen Instanz; der Knopf
+öffnet die Karte.
+
+**Später:** Sicht zwischen Ebenen nur über Übergänge — ein Fenster nach
+aussen, der Blick vom Turmdach in den Hof wird ein eigener Übergang
+„Ausblick“. Das Aufdecken beim Ankommen oben (heute deckt erst der nächste
+Zug auf) und das Versetzen in die Instanz einer anderen Karte kommen
+danach.
 
 ---
 

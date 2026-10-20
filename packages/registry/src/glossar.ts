@@ -316,6 +316,22 @@ const APP: AppTerm[] = [
     translations: { de: 'Vorlage und Instanz' },
   },
   {
+    term: 'Floor',
+    aliases: ['Floors', 'Storey', 'Building part', 'Held back'],
+    sort: 'app',
+    definition: 'One level of a map — a storey, a cellar, a tower level — with its own image, grid, scale and walls. Floors are a flat list with a building part and a height range in feet; the map itself is the first floor.',
+    effect: 'The bar groups floors by building part and sorts them by height. Floors are connected only by passages. A GM-only floor never reaches players; a held-back one reaches them once released.',
+    translations: { de: 'Ebene einer Karte' },
+  },
+  {
+    term: 'Passage',
+    aliases: ['Stairs', 'Ladder', 'Bridge', 'Portal', 'One way', 'View through'],
+    sort: 'app',
+    definition: 'A marker that leads to another floor of the map or to another map — stairs, a ladder, a bridge or a portal — with a point it leads to.',
+    effect: 'A token standing on it can be taken through. With View through it also sees from the other end, on that floor and at its scale; One way leaves no way back.',
+    translations: { de: 'Übergang' },
+  },
+  {
     term: 'Map in play',
     aliases: ['Released', 'Release to players', 'Take into play', 'Played'],
     sort: 'app',
