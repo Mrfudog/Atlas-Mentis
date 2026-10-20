@@ -184,7 +184,7 @@ const LUPE_ZOOM = 3;
 const PINSEL = [1, 2, 4, 8] as const;
 
 /** Die Gruppen der Werkzeugleiste (T-203). */
-type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'nebel' | 'waende' | 'gitter' | 'notizen' | 'zeichnen';
+type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'notizen' | 'zeichnen';
 interface GruppenDef {
   key: Gruppe;
   label: string;
@@ -208,6 +208,9 @@ const GRUPPEN: readonly GruppenDef[] = [
   { key: 'tokens', label: 'Tokens', title: 'Add markers, place combatants, clear play tokens', sym: '◉', taste: 'T', leitung: true },
   { key: 'messen', label: 'Measure', title: 'Tap two points to measure', sym: '↔', taste: 'M' },
   { key: 'nebel', label: 'Fog', title: 'Fog of war: reveal and hide what the players see', sym: '☁', taste: 'F', leitung: true },
+  /* Licht ist ein eigenes Werkzeug (T-305, die Leitung 20.10.): wie hell
+     die Karte ist und welche Marker leuchten, hat mit dem Nebel nichts zu tun. */
+  { key: 'licht', label: 'Light', title: 'Lighting of the map, light sources, lights on and off', sym: '☀', taste: 'L', leitung: true },
   { key: 'waende', label: 'Walls', title: 'Walls, doors, windows and obstacles', sym: '▥', taste: 'W', leitung: true },
   { key: 'gitter', label: 'Grid', title: 'Set the grid on the map: origin, square size, shape', sym: '#', taste: 'G', leitung: true },
   { key: 'notizen', label: 'Notes', title: 'Notes on the map', sym: '✎', taste: 'N', leitung: true, spaeter: 'T-203' },
@@ -458,7 +461,7 @@ interface Zeiger {
                     }
                   </select>
                 </label>
-                <p class="hint">Light: Fog › Light source. Drag the asset to move it.</p>
+                <p class="hint">Light: Light › Light source. Drag the asset to move it.</p>
               </div>
             }
             @if (bewegungOffen() && kampfLeitung()) {
@@ -510,7 +513,12 @@ interface Zeiger {
               </label>
               <button type="button" (click)="allesAuf()">Reveal all</button>
               <button type="button" (click)="allesZu()">Cover all</button>
-              <!-- **Licht** (T-216, REQ-140): wie hell die Karte ist, und welche Marker leuchten. -->
+            </div>
+          }
+
+          @if (aktiv() === 'licht' && darfSchreiben()) {
+            <div class="unterleiste" role="toolbar" aria-label="Light">
+              <!-- **Licht** (T-216, REQ-140, T-305): wie hell die Karte ist, und welche Marker leuchten. -->
               <label title="How bright the map is. In the dark, the players see only lights and what their darkvision reaches.">
                 Lighting
                 <select (change)="helligkeitSetzen($any($event.target).value)" aria-label="Lighting of this map">
@@ -2919,28 +2927,28 @@ export class Karte {
   }
 
   /**
-   * **Wessen Sicht gezeichnet wird** (T-216): für Spielende die eigenen
-   * Figuren und das Gruppen-Token; in der Spielersicht der Leitung die
-   * gewählte Figur, sonst das Gruppen-Token und die Spielercharaktere. Die
-   * Leitung selbst sieht alles. Bei Nebel je Figur ohne das Gruppen-Token.
+   * **Wessen Sicht gezeichnet wird** (T-216, T-305): für Spielende die
+   * eigenen Figuren; in der Spielersicht der Leitung die gewählte Figur,
+   * sonst die Spielercharaktere. Das Gruppen-Token nur, wenn keine Figur
+   * dasteht. Die Leitung selbst sieht alles.
    */
   private readonly betrachter = computed<Set<string>>(() => {
     if (this.alsLeitung()) return new Set();
     const e = this.karte();
-    const gruppe = (e ? markersOf(e) : []).filter((m) => m.kind === 'party').map((m) => m.to);
+    const marker = e ? markersOf(e) : [];
+    const gruppe = marker.filter((m) => m.kind === 'party').map((m) => m.to);
+    /* **Die Sicht gilt den Spielertokens** (T-305, die Leitung 20.10.):
+       gerechnet wird aus den Figuren der Spielenden; das Gruppen-Token
+       zählt nur, solange keine davon auf der Karte steht — sonst sähe die
+       Gruppe von einem Punkt aus, an dem niemand steht. */
+    const oderGruppe = (figuren: string[]): Set<string> => new Set(figuren.length ? figuren : gruppe);
     if (this.spielersicht() && this.darfSchreiben()) {
       const fuer = this.nebelFuer();
       if (fuer) return new Set([fuer]);
       const ziele = this.kontext()?.targets ?? {};
-      const figuren = (e ? markersOf(e) : []).filter((m) => m.kind === 'play' && ziele[m.to]?.type === 'PlayerCharacter').map((m) => m.to);
-      return new Set([...gruppe, ...figuren]);
+      return oderGruppe(marker.filter((m) => m.kind === 'play' && ziele[m.to]?.type === 'PlayerCharacter').map((m) => m.to));
     }
-    /* Nebel je Figur (T-204): dann sieht jede ihre eigene Sicht, und das
-       Gruppen-Token zählt nur, wenn keine eigene Figur auf der Karte steht
-       (T-305 — die Spielersicht ist die Vereinigung der eigenen Figuren). */
-    const eigen = this.eigeneHier();
-    if (this.jeFigur() && eigen.length) return new Set(eigen);
-    return new Set([...eigen, ...gruppe]);
+    return oderGruppe(this.eigeneHier());
   });
   /** Was jede dieser Figuren gerade sieht — am Token, wie es eben gezogen wird. */
   private readonly sichten = computed(() => {

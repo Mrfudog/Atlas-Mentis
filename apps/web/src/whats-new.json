@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-light-tool",
+      "date": "2026-10-20",
+      "title": "Light has its own tool; sight comes from player tokens",
+      "text": "Lighting, Light source and Light on/off now sit under their own map tool, Light (key L), instead of Fog. What players see is worked out from their characters' tokens; the party token only counts while none of them stands on the map.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-20-change-maps-in-play",
       "date": "2026-10-20",
       "title": "Decide whether players may change maps in play",
@@ -44,7 +52,7 @@
       "id": "2026-10-19-sight-and-light",
       "date": "2026-10-19",
       "title": "Darkvision in greyscale, torches in hand, lights on and off",
-      "text": "On a dark map, what only darkvision reaches is now shown in greyscale, while lit areas keep their colour. Give an item Bright light and Dim light beyond: placed as a marker it lights itself, and held in a character's hand it lights that token. Fog › Light on/off switches any light without losing its radius.",
+      "text": "On a dark map, what only darkvision reaches is now shown in greyscale, while lit areas keep their colour. Give an item Bright light and Dim light beyond: placed as a marker it lights itself, and held in a character's hand it lights that token. Light › Light on/off switches any light without losing its radius.",
       "area": "Maps",
       "link": "/play"
     },
