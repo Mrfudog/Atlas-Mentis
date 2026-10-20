@@ -32,7 +32,7 @@
  */
 
 import { ancestryLine } from './choices.js';
-import { PARTICIPATES, redactParticipants } from './initiative.js';
+import { PARTICIPATES, redactParticipants, type PlayerViewRules } from './initiative.js';
 import type { Entity, EntityId, Registry, ViewApplies } from './types.js';
 import { entityName, entriesOf, entryRef } from './entity.js';
 import { appliesHolds } from './viewScope.js';
@@ -405,6 +405,8 @@ export function redactEntity(
   article: Entity,
   viewerId?: EntityId | readonly EntityId[],
   gmFields: string[] = ['Secrets.secret', 'Tactics.tactics', 'Encounter.solution', 'Encounter.hint'],
+  /** Was die Kampagne Spielenden von der Initiative zeigt (T-022, `initiativeRulesOf`). */
+  participantView?: PlayerViewRules,
 ): Entity {
   if (!viewerId) return article;
   const gmSet = new Set(gmFields);
@@ -516,7 +518,7 @@ export function redactEntity(
   const kampf = article.relations?.some((r) => r.type === PARTICIPATES);
   const karte = ((article.components ?? {})['Encounter'] ?? {}) as { round?: number; turn?: number };
   const relations = kampf
-    ? redactParticipants(entities, article.relations!, { round: karte.round, turn: karte.turn })
+    ? redactParticipants(entities, article.relations!, { round: karte.round, turn: karte.turn }, participantView)
     : article.relations;
   /* REQ-226, D58: die Zugnummer zählt die ganze Reihe, auch was verborgen
      ist oder noch nicht erschien — sie geht nicht hinaus; wer dran ist,

@@ -1,0 +1,477 @@
+/**
+ * **Der Initiative-Tracker** (T-022, REQ-115, REQ-128, REQ-211–213,
+ * REQ-226): ein eigenes System des Kampfes, das die Kampagne einstellt und
+ * abschaltet. Kein Framework, keine Darstellung — der Server rechnet hier
+ * die Züge und siebt, die Oberfläche zeichnet, was ankommt.
+ *
+ * Die Teilnehmer bleiben `participates`-Kanten an der Begegnung (D53),
+ * `Encounter.round` und `Encounter.turn` sagen, wo der Kampf steht. Ein
+ * Zugwechsel zählt die Einträge mit Dauer herunter (`tickEntries`): erst
+ * das Ende des laufenden Zuges, dann der Anfang des nächsten. Dieselbe
+ * Zählung nutzt die Regelwirkung (T-275); wie ein Zustand rechnet (RK,
+ * Schaden), steht nicht hier.
+ */
+import { entityName, primaryInterface } from './entity.js';
+import {
+  PARTICIPATES,
+  initiativeOrder,
+  inParty,
+  participantStats,
+  statblockFor,
+  tickEntries,
+  type FightState,
+  type ParticipantProps,
+  type PlayerViewRules,
+  type TimedEntry,
+  type TurnPoint,
+  expiresAt,
+  isNote,
+  hpWord,
+} from './initiative.js';
+import { resolveInstance } from './instance.js';
+import type { Entity, EntityId, Relation } from './types.js';
+
+type Lookup = ReadonlyMap<EntityId, Entity>;
+
+/** Die Spalten des Trackers (`Campaign.initColumns`). */
+export const TRACKER_COLUMNS = ['init', 'ac', 'hp', 'effects', 'actions'] as const;
+export type TrackerColumn = (typeof TRACKER_COLUMNS)[number];
+
+/** Die Knöpfe je Zeile für die Leitung (`Campaign.initQuickActions`). */
+export const QUICK_ACTIONS = ['damage', 'heal', 'effect', 'delay', 'reroll', 'remove'] as const;
+export type QuickAction = (typeof QUICK_ACTIONS)[number];
+
+/**
+ * **Die Einstellung der Kampagne** (Rules & options › Combat). Was
+ * fehlt, gilt wie vor T-022: Deckname, Gesundheit als Wort, alle offenen
+ * Einträge.
+ */
+export interface InitiativeRules extends Required<PlayerViewRules> {
+  /** Das Kampfsystem: aus heisst kein Tracker, weder für die Leitung noch für Spielende. */
+  combat: 'on' | 'off';
+  /** Die Aktionen der Gegner (die Regeln am Statblock): nur die Leitung, oder auch Spielende, sobald der Zug kam. */
+  enemyActions: 'hidden' | 'shown';
+  columns: TrackerColumn[];
+  quickActions: QuickAction[];
+}
+
+export const DEFAULT_INITIATIVE_RULES: InitiativeRules = {
+  combat: 'on',
+  names: 'cover',
+  health: 'coarse',
+  effects: 'all',
+  enemyActions: 'hidden',
+  columns: ['init', 'ac', 'hp', 'effects'],
+  quickActions: ['damage', 'heal', 'effect', 'delay', 'remove'],
+};
+
+const eines = <T extends string>(wert: unknown, erlaubt: readonly T[], sonst: T): T =>
+  typeof wert === 'string' && (erlaubt as readonly string[]).includes(wert) ? (wert as T) : sonst;
+const liste = <T extends string>(wert: unknown, erlaubt: readonly T[], sonst: T[]): T[] =>
+  Array.isArray(wert) ? erlaubt.filter((x) => wert.includes(x)) : [...sonst];
+
+/** Die Initiative-Regeln einer Kampagne (`Campaign.combat`, `init*`). */
+export function initiativeRulesOf(campaign: Entity | null | undefined): InitiativeRules {
+  const c = (campaign?.components?.['Campaign'] ?? {}) as Record<string, unknown>;
+  const d = DEFAULT_INITIATIVE_RULES;
+  return {
+    combat: eines(c['combat'], ['on', 'off'], d.combat),
+    names: eines(c['initNames'], ['cover', 'real'], d.names),
+    health: eines(c['initHealth'], ['none', 'coarse', 'exact'], d.health),
+    effects: eines(c['initEffects'], ['all', 'party', 'none'], d.effects),
+    enemyActions: eines(c['initActions'], ['hidden', 'shown'], d.enemyActions),
+    columns: liste(c['initColumns'], TRACKER_COLUMNS, d.columns),
+    quickActions: liste(c['initQuickActions'], QUICK_ACTIONS, d.quickActions),
+  };
+}
+
+/* ------------------------------------------------------------ Züge */
+
+const karteVon = (e: Entity): Record<string, unknown> => (e.components?.['Encounter'] ?? {}) as Record<string, unknown>;
+
+/** Runde und Zug einer Begegnung. */
+export function fightOf(encounter: Entity): Required<FightState> {
+  const k = karteVon(encounter);
+  return { round: Number(k['round']) || 0, turn: Number(k['turn']) || 0 };
+}
+
+function mitKampf(encounter: Entity, relations: Relation[], fight: Partial<FightState> & { phase?: string }): Entity {
+  return {
+    ...encounter,
+    relations,
+    components: { ...encounter.components, Encounter: { ...karteVon(encounter), ...fight } },
+  };
+}
+
+const propsVon = (r: Relation): ParticipantProps => (r.props ?? {}) as ParticipantProps;
+
+/**
+ * Nach einer Änderung an der Reihe (Initiative, Teilnehmer dazu oder weg)
+ * bleibt dran, wer dran war: `turn` ist ein Index, also wird er neu
+ * gesucht. Ist der weg, rückt der nächste an seine Stelle.
+ */
+function behalteZug(entities: Lookup, vorher: Entity, relations: Relation[]): Entity {
+  const { round, turn } = fightOf(vorher);
+  const alt = initiativeOrder(entities, vorher.relations ?? []);
+  const neu = initiativeOrder(entities, relations);
+  const dran = alt[turn]?.id;
+  let idx = dran ? neu.findIndex((r) => r.id === dran) : -1;
+  if (idx < 0) idx = Math.min(turn, Math.max(0, neu.length - 1));
+  return mitKampf(vorher, relations, round > 0 ? { turn: idx } : {});
+}
+
+/**
+ * **Der nächste Zug**: das Ende des laufenden zählt herunter, dann der
+ * Anfang des nächsten; nach dem letzten beginnt die nächste Runde. Vor
+ * Runde 1 beginnt der Kampf mit dem ersten in der Reihe.
+ */
+export function nextTurn(entities: Lookup, encounter: Entity): Entity {
+  let rel = [...(encounter.relations ?? [])];
+  const order = initiativeOrder(entities, rel);
+  if (!order.length) return encounter;
+  let { round, turn } = fightOf(encounter);
+  if (round > 0) {
+    const jetzt = order[turn];
+    if (jetzt) rel = tickEntries(rel, jetzt.id, 'end');
+    turn += 1;
+    if (turn >= order.length) {
+      turn = 0;
+      round += 1;
+    }
+  } else {
+    round = 1;
+    turn = 0;
+  }
+  /* Die Reihe neu, denn ein abgelaufener Eintrag ändert sie nicht — die
+     Kanten-Ids bleiben, der Index gilt weiter. */
+  const naechster = initiativeOrder(entities, rel)[turn];
+  if (naechster) rel = tickEntries(rel, naechster.id, 'start');
+  return mitKampf(encounter, rel, { round, turn, phase: 'running' });
+}
+
+/**
+ * **Der vorige Zug** — zum Berichtigen, wenn jemand zu früh weitergetippt
+ * hat. Er zählt nichts zurück: was abgelaufen ist, ist weg, und das ist
+ * ehrlicher als ein Zurückrechnen, das bei Einträgen ohne Gedächtnis
+ * raten müsste.
+ */
+export function previousTurn(entities: Lookup, encounter: Entity): Entity {
+  const order = initiativeOrder(entities, encounter.relations ?? []);
+  let { round, turn } = fightOf(encounter);
+  if (round < 1 || !order.length) return encounter;
+  if (turn > 0) turn -= 1;
+  else if (round > 1) {
+    round -= 1;
+    turn = order.length - 1;
+  } else return encounter;
+  return mitKampf(encounter, [...(encounter.relations ?? [])], { round, turn });
+}
+
+/**
+ * **Verzögern** (REQ-128): wer dran ist, rückt einen Platz nach hinten,
+ * und der nächste ist dran. Gespeichert wird nur die Initiative — eine
+ * Zahl zwischen den beiden, hinter die er rückt —, kein eigener Stand:
+ * „verzögert" ist ein Ort in der Reihe und keine Marke. Stehen die beiden
+ * dahinter gleich, rückt er hinter beide.
+ */
+export function delayTurn(entities: Lookup, encounter: Entity): Entity {
+  const rel = encounter.relations ?? [];
+  const order = initiativeOrder(entities, rel);
+  const { round, turn } = fightOf(encounter);
+  const jetzt = order[turn];
+  const naechster = order[turn + 1];
+  if (round < 1 || !jetzt || !naechster) return encounter;
+  const init = (r: Relation | undefined) => Number(propsVon(r ?? ({} as Relation)).init);
+  const n = Number.isFinite(init(naechster)) ? init(naechster) : 0;
+  const danach = order[turn + 2];
+  const a = danach && Number.isFinite(init(danach)) ? init(danach) : n - 1;
+  const neuInit = a < n ? (n + a) / 2 : n - 0.5;
+  const neu = rel.map((r) => (r.id === jetzt.id ? { ...r, props: { ...propsVon(r), init: neuInit } } : r));
+  /* Der Index bleibt — an ihm steht jetzt der nächste, und sein Zug fängt an. */
+  const raus = initiativeOrder(entities, neu)[turn];
+  return mitKampf(encounter, raus ? tickEntries(neu, raus.id, 'start') : neu, {});
+}
+
+/** Der Wurf eines Teilnehmers: W20 plus Geschicklichkeit des Statblocks (wie `startEncounter`). */
+export function initiativeMod(entities: Lookup, to: EntityId): number {
+  const t = entities.get(to);
+  const sb = t ? statblockFor(entities, t) : null;
+  const dex = Number(((sb ? resolveInstance(entities, sb).components?.['Abilities'] : undefined) as { dex?: unknown } | undefined)?.dex);
+  return Number.isFinite(dex) ? Math.floor((dex - 10) / 2) : 0;
+}
+
+/** Was der Tracker an einer Begegnung ändert (`POST /api/encounters/:id/tracker`). */
+export type TrackerOp =
+  | { op: 'next' }
+  | { op: 'previous' }
+  | { op: 'delay' }
+  | { op: 'end' }
+  | { op: 'init'; edge: string; value?: number; reroll?: boolean }
+  | { op: 'hp'; edge: string; delta?: number; value?: number }
+  | { op: 'effect'; edge: string; entry: TimedEntry }
+  | { op: 'removeEffect'; edge: string; index: number }
+  | { op: 'flags'; edge: string; revealed?: boolean; identified?: boolean; ally?: boolean }
+  | { op: 'add'; to: EntityId; init?: number; ally?: boolean; label?: string }
+  | { op: 'remove'; edge: string };
+
+export interface TrackerDeps {
+  /** 1 bis 20. */
+  d20: () => number;
+  /** Eine neue Kanten-Id. */
+  newId: () => string;
+}
+
+/** Ein Eintrag, wie er gespeichert wird: nur, was er sagt. */
+function sauberEintrag(e: TimedEntry): TimedEntry | null {
+  const raus: TimedEntry = {};
+  if (typeof e.rule === 'string' && e.rule) raus.rule = e.rule;
+  else if (typeof e.text === 'string' && e.text.trim()) raus.text = e.text.trim();
+  else return null;
+  const n = Number(e.rounds);
+  if (e.rounds != null && Number.isFinite(n) && n > 0) raus.rounds = Math.floor(n);
+  if (typeof e.anchor === 'string' && e.anchor) raus.anchor = e.anchor;
+  if (e.at === 'start' || e.at === 'end') raus.at = e.at;
+  if (typeof e.source === 'string' && e.source.trim()) raus.source = e.source.trim();
+  if (e.hidden) raus.hidden = true;
+  return raus;
+}
+
+/**
+ * **Eine Änderung am Tracker** — gibt die Begegnung mit der Änderung
+ * zurück, oder einen Grund, warum nicht. Geschrieben wird sie vom Aufrufer,
+ * durch `validateEntity`.
+ */
+export function applyTrackerOp(
+  entities: Lookup,
+  encounter: Entity,
+  op: TrackerOp,
+  deps: TrackerDeps,
+): { encounter: Entity } | { error: string } {
+  const rel = encounter.relations ?? [];
+  const kante = 'edge' in op ? rel.find((r) => r.id === op.edge && r.type === PARTICIPATES) : undefined;
+  if ('edge' in op && !kante) return { error: 'No such combatant in this encounter.' };
+  const setze = (patch: (p: ParticipantProps) => ParticipantProps): Relation[] =>
+    rel.map((r) => (r === kante ? { ...r, props: patch(propsVon(r)) as Relation['props'] } : r));
+  switch (op.op) {
+    case 'next':
+      return { encounter: nextTurn(entities, encounter) };
+    case 'previous':
+      return { encounter: previousTurn(entities, encounter) };
+    case 'delay':
+      return { encounter: delayTurn(entities, encounter) };
+    case 'end':
+      return { encounter: mitKampf(encounter, [...rel], { phase: 'done' }) };
+    case 'init': {
+      const wert = op.reroll ? deps.d20() + initiativeMod(entities, kante!.to) : Number(op.value);
+      if (!Number.isFinite(wert)) return { error: 'Initiative must be a number.' };
+      return { encounter: behalteZug(entities, encounter, setze((p) => ({ ...p, init: wert }))) };
+    }
+    case 'hp': {
+      const p = propsVon(kante!);
+      const max = participantStats(entities, kante!).hpMax;
+      const basis = Number.isFinite(Number(p.hp)) && p.hp != null ? Number(p.hp) : (max ?? 0);
+      let hp = op.value != null ? Number(op.value) : basis + Number(op.delta ?? 0);
+      if (!Number.isFinite(hp)) return { error: 'Hit points must be a number.' };
+      /* Heilen hört am Maximum auf; Schaden darf unter null — „wie tief" sagt der Tisch. */
+      if (op.value == null && Number(op.delta) > 0 && max != null) hp = Math.min(hp, Math.max(max, basis));
+      return { encounter: mitKampf(encounter, setze((x) => ({ ...x, hp })), {}) };
+    }
+    case 'effect': {
+      const e = sauberEintrag(op.entry ?? {});
+      if (!e) return { error: 'An effect is a condition or a note.' };
+      if (e.anchor && !rel.some((r) => r.id === e.anchor && r.type === PARTICIPATES)) return { error: 'The effect counts on a combatant who is not in this encounter.' };
+      return { encounter: mitKampf(encounter, setze((p) => ({ ...p, conditions: [...(p.conditions ?? []), e] })), {}) };
+    }
+    case 'removeEffect': {
+      const liste = propsVon(kante!).conditions ?? [];
+      if (!(op.index >= 0 && op.index < liste.length)) return { error: 'No such effect.' };
+      return { encounter: mitKampf(encounter, setze((p) => ({ ...p, conditions: liste.filter((_, i) => i !== op.index) })), {}) };
+    }
+    case 'flags': {
+      const patch: Partial<ParticipantProps> = {};
+      for (const k of ['revealed', 'identified', 'ally'] as const) if (typeof op[k] === 'boolean') patch[k] = op[k];
+      return { encounter: behalteZug(entities, encounter, setze((p) => ({ ...p, ...patch }))) };
+    }
+    case 'add': {
+      if (!entities.get(op.to)) return { error: 'No such creature.' };
+      const props: ParticipantProps = {};
+      const init = Number(op.init);
+      props.init = op.init != null && Number.isFinite(init) ? init : deps.d20() + initiativeMod(entities, op.to);
+      if (op.ally) props.ally = true;
+      if (op.label?.trim()) props.label = op.label.trim();
+      const neu = { id: deps.newId(), type: PARTICIPATES, to: op.to, props } as Relation;
+      return { encounter: behalteZug(entities, encounter, [...rel, neu]) };
+    }
+    case 'remove': {
+      /* Einträge, die an seinem Zug zählten, verlieren ihren Anker: sie zählen dann am eigenen Zug. */
+      const neu = rel
+        .filter((r) => r !== kante)
+        .map((r) => {
+          const c = propsVon(r).conditions;
+          if (r.type !== PARTICIPATES || !c?.some((x) => x.anchor === kante!.id)) return r;
+          return { ...r, props: { ...propsVon(r), conditions: c.map(({ anchor, ...x }) => (anchor === kante!.id ? x : { ...x, anchor })) } } as Relation;
+        });
+      return { encounter: behalteZug(entities, encounter, neu) };
+    }
+  }
+}
+
+/* ------------------------------------------------------------ Ansicht */
+
+export interface TrackerEffect {
+  /** Stelle in `conditions` — die Leitung entfernt damit. */
+  index: number;
+  name: string;
+  /** Der Artikel des Zustands, wenn es einer ist. */
+  rule?: EntityId;
+  note: boolean;
+  rounds?: number;
+  /** Wann er abläuft: Runde, an wessen Zug, Anfang oder Ende. */
+  expires?: { round: number; who: string; at: TurnPoint };
+  source?: string;
+  hidden?: boolean;
+}
+
+export interface TrackerRow {
+  edge: string;
+  /** Der Artikel — leer, wo die Spielenden ihn nicht kennen. */
+  to: EntityId | '';
+  name: string;
+  init: number | null;
+  party: boolean;
+  ally: boolean;
+  current: boolean;
+  /** Führt der Betrachter diese Figur? Dann beendet er ihren Zug selbst (vom Server gesetzt). */
+  own?: boolean;
+  /** Nur, wo die Spalte steht und der Betrachter es sehen darf. */
+  ac?: number;
+  hp?: number;
+  hpMax?: number;
+  hpState?: 'unhurt' | 'bloodied' | 'down';
+  effects: TrackerEffect[];
+  /** Die Regeln am Statblock (`composedOf`), Namen. */
+  actions?: string[];
+  /** Nur für die Leitung. */
+  revealed?: boolean;
+  identified?: boolean;
+  note?: string;
+}
+
+export interface TrackerView {
+  id: EntityId;
+  name: string;
+  round: number;
+  phase: string;
+  /** Leitet der Betrachter? Dann ist die Reihe ganz und die Knöpfe stehen. */
+  gm: boolean;
+  rules: InitiativeRules;
+  rows: TrackerRow[];
+}
+
+/** Die Namen der Regeln am Statblock eines Teilnehmers — gelesen aus dem, was der Betrachter sieht. */
+export function participantActions(entities: Lookup, to: EntityId): string[] {
+  const t = entities.get(to);
+  const sb = t ? statblockFor(entities, t) : null;
+  if (!sb) return [];
+  const rel = resolveInstance(entities, sb).relations ?? [];
+  return rel.filter((r) => r.type === 'composedOf').flatMap((r) => {
+    const z = entities.get(r.to);
+    return z ? [entityName(z)] : [];
+  });
+}
+
+/**
+ * **Die Reihe, wie der Betrachter sie sieht.** Für die Leitung aus der
+ * rohen Begegnung; für Spielende aus der **schon gesiebten** (`redactEntity`
+ * mit `PlayerViewRules`) — hier wird nichts zurückgehalten, was nicht schon
+ * weg ist, nur gezeichnet. Die Spalten der Kampagne gelten für beide.
+ */
+export function trackerView(
+  entities: Lookup,
+  encounter: Entity,
+  rules: InitiativeRules,
+  gm: boolean,
+  /** Die Aktionen je Teilnehmerkante; ohne: aus `entities`. Spielende kennen den Artikel eines Unerkannten nicht, der Server schon. */
+  actionsOf?: (edge: string) => string[],
+): TrackerView {
+  const rel = encounter.relations ?? [];
+  const order = initiativeOrder(entities, rel);
+  const fight = fightOf(encounter);
+  const spalte = new Set(rules.columns);
+  const dranId = gm && fight.round > 0 ? order[fight.turn]?.id : undefined;
+  const ids = order.map((r) => r.id);
+  const nameVon = (r: Relation): string => {
+    const p = propsVon(r);
+    if (p.label) return p.label;
+    return r.to ? entityName(entities.get(r.to)) : 'Unknown creature';
+  };
+  const namen = new Map(order.map((r) => [r.id, nameVon(r)]));
+  const rows = order.map((r): TrackerRow => {
+    const p = propsVon(r);
+    const party = !!r.to && inParty(entities, r.to);
+    const row: TrackerRow = {
+      edge: r.id,
+      to: r.to ?? '',
+      name: namen.get(r.id)!,
+      init: p.init != null && Number.isFinite(Number(p.init)) ? Number(p.init) : null,
+      party,
+      ally: !!p.ally,
+      current: gm ? r.id === dranId : !!p.current,
+      effects: [],
+    };
+    if (spalte.has('ac') && (gm || party) && r.to) {
+      const ac = participantStats(entities, r).ac;
+      if (ac != null) row.ac = ac;
+    }
+    if (spalte.has('hp')) {
+      const max = gm && r.to ? participantStats(entities, r).hpMax : p.hpMax;
+      if (gm || p.hp != null) {
+        if (p.hp != null) row.hp = Number(p.hp);
+        if (max != null) row.hpMax = Number(max);
+      }
+      if (gm && !party) row.hpState = hpWord(p.hp, max);
+      else if (p.hpState) row.hpState = p.hpState;
+    }
+    if (spalte.has('effects')) {
+      row.effects = (p.conditions ?? []).map((c, index): TrackerEffect => {
+        const ab = expiresAt(c, r.id, ids, fight.round, fight.turn);
+        const ziel = c.rule ? entities.get(c.rule) : undefined;
+        return {
+          index,
+          name: isNote(c) ? (c.text ?? '') : ziel ? entityName(ziel) : (c.name ?? c.rule ?? '?'),
+          ...(c.rule && ziel ? { rule: c.rule } : {}),
+          note: isNote(c),
+          ...(c.rounds != null ? { rounds: Number(c.rounds) } : {}),
+          ...(ab && gm ? { expires: { round: ab.round, who: namen.get(ab.anchor) ?? '?', at: ab.at } } : {}),
+          ...(c.source ? { source: c.source } : {}),
+          ...(c.hidden ? { hidden: true } : {}),
+        };
+      });
+    }
+    /* Die Aktionen: die Leitung immer; Spielende die der Gegner nur, wenn
+       die Kampagne es sagt — und einer steht für sie erst da, wenn sein Zug
+       kam (D58, schon gesiebt). */
+    if (spalte.has('actions') && (gm || party || rules.enemyActions === 'shown')) {
+      const a = actionsOf ? actionsOf(r.id) : r.to ? participantActions(entities, r.to) : [];
+      if (a.length) row.actions = a;
+    }
+    if (gm) {
+      row.revealed = !!p.revealed;
+      row.identified = !!p.identified;
+      if (p.note) row.note = p.note;
+    }
+    return row;
+  });
+  return {
+    id: encounter.id,
+    name: entityName(encounter),
+    round: fight.round,
+    phase: String(karteVon(encounter)['phase'] ?? 'planned'),
+    gm,
+    rules,
+    rows,
+  };
+}
+
+/** Ist das eine Begegnung? */
+export const isEncounter = (e: Entity | undefined): boolean => !!e && primaryInterface(e) === 'Encounter';

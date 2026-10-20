@@ -146,6 +146,20 @@ export function hpWord(hp: number | undefined, max: number | undefined): HpWord 
 
 type Lookup = ReadonlyMap<EntityId, Entity>;
 
+/**
+ * **Was die Spielenden von der Reihe sehen**, wie die Kampagne es sagt
+ * (T-022, `Campaign.initNames`, `initHealth`, `initEffects`). Die
+ * Gruppe sieht ihre eigenen Zahlen immer.
+ */
+export interface PlayerViewRules {
+  /** Unerkannte Gegner: Deckname (REQ-178) oder Tischname. */
+  names?: 'cover' | 'real';
+  /** Trefferpunkte der übrigen: keine, als Wort (`hpWord`), als Zahl. */
+  health?: 'none' | 'coarse' | 'exact';
+  /** Einträge mit Dauer: von allen, nur der Gruppe und Verbündeten, keine. */
+  effects?: 'all' | 'party' | 'none';
+}
+
 /** Der Statblock einer Kreatur (`belongsTo`), oder sie selbst, wenn sie einer ist. */
 export function statblockFor(entities: Lookup, e: Entity): Entity | null {
   if (e.interfaces?.[0] === 'Statblock') return e;
@@ -247,12 +261,22 @@ export function turnHasCome(order: readonly Relation[], edgeId: string, fight: F
  *   statt des Tischnamens, und kein Verweis auf den Artikel;
  * - Trefferpunkte nur von der Gruppe als Zahl, von allen anderen als Wort;
  * - Einträge mit `hidden` und die Notiz der Leitung an der Kante nie.
+ *
+ * **Was die Kampagne sagt** (T-022, `view`, gelesen über
+ * `initiativeRulesOf`): `names: 'real'` zeigt den Tischnamen statt des
+ * Decknamens (den Verweis auf den Artikel weiterhin erst mit
+ * `identified`), `health` die Trefferpunkte der übrigen gar nicht, als Wort
+ * oder als Zahl, `effects` die Einträge aller, nur der eigenen Seite oder
+ * keine. Ohne Angabe gilt, was vor T-022 galt.
  */
 export function redactParticipants(
   entities: Lookup,
   relations: readonly Relation[],
   fight?: FightState,
+  view: PlayerViewRules = {},
 ): Relation[] {
+  const gesundheit = view.health ?? 'coarse';
+  const effekte = view.effects ?? 'all';
   const raus: Relation[] = [];
   const order = fight ? initiativeOrder(entities, relations) : [];
   const runde = Number(fight?.round) || 0;
@@ -285,7 +309,9 @@ export function redactParticipants(
     const p = (r.props ?? {}) as ParticipantProps;
     const gruppe = inParty(entities, r.to);
     if (!zeigt(r)) continue;
-    const conditions = (Array.isArray(p.conditions) ? p.conditions : []).filter((c) => !c.hidden);
+    const seite = gruppe || !!p.ally;
+    const conditions =
+      effekte === 'none' || (effekte === 'party' && !seite) ? [] : (Array.isArray(p.conditions) ? p.conditions : []).filter((c) => !c.hidden);
     const neu: ParticipantProps = {
       init: p.init,
       ally: p.ally,
@@ -299,9 +325,14 @@ export function redactParticipants(
     if (gruppe) {
       Object.assign(neu, { label: p.label, hp: p.hp, hpMax: participantStats(entities, r).hpMax, note: p.note });
     } else {
-      neu.hpState = hpWord(p.hp, participantStats(entities, r).hpMax);
+      const max = participantStats(entities, r).hpMax;
+      if (gesundheit === 'exact') Object.assign(neu, { hp: p.hp, hpMax: max });
+      else if (gesundheit === 'coarse') neu.hpState = hpWord(p.hp, max);
       if (p.identified) neu.label = p.label;
-      else {
+      else if (view.names === 'real') {
+        neu.label = tableName(entities, r);
+        to = '';
+      } else {
         const basis = deckOf(r);
         const k = (decknamen.get(basis) ?? 0) + 1;
         decknamen.set(basis, k);

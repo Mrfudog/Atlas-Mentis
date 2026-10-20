@@ -3019,6 +3019,30 @@ export const fieldGroups = {
           enum: ['off', 'on'],
           default: 'off',
         },
+        /* **Der Initiative-Tracker** (T-022): ein eigenes System des
+           Kampfes. `combat` schaltet ihn ab; die übrigen sagen, was
+           Spielende von der Reihe sehen (gesiebt am Server,
+           `redactParticipants`), welche Spalten stehen und welche Knöpfe
+           die Leitung je Zeile hat. Gelesen über `initiativeRulesOf`. */
+        combat: { type: 'string', title: 'Initiative tracker', enum: ['on', 'off'], default: 'on' },
+        initNames: { type: 'string', title: 'Unidentified foes shown as', enum: ['cover', 'real'], default: 'cover' },
+        initHealth: { type: 'string', title: 'Foes’ health shown to players', enum: ['none', 'coarse', 'exact'], default: 'coarse' },
+        initEffects: { type: 'string', title: 'Effects shown to players', enum: ['all', 'party', 'none'], default: 'all' },
+        initActions: { type: 'string', title: 'Foes’ actions shown to players', enum: ['hidden', 'shown'], default: 'hidden' },
+        initColumns: {
+          type: 'array',
+          title: 'Tracker columns',
+          description: 'Which columns the initiative tracker shows, for the GM and the players alike.',
+          items: { type: 'string' },
+          enum: ['init', 'ac', 'hp', 'effects', 'actions'],
+        },
+        initQuickActions: {
+          type: 'array',
+          title: 'Tracker quick actions',
+          description: 'Which buttons the GM has on each row of the initiative tracker.',
+          items: { type: 'string' },
+          enum: ['damage', 'heal', 'effect', 'delay', 'reroll', 'remove'],
+        },
         /* **Die Karte am Tisch** (T-204). `fog`: ein Nebel für die ganze
            Gruppe, oder je Figur — dann sieht jede, was sie selbst (oder
            ihre Gruppe) aufgedeckt hat, und die Leitung die Vereinigung.
