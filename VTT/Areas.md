@@ -2,7 +2,7 @@
 tags: [vtt, epics, view]
 aliases: [Epics]
 status: derived
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Epics
@@ -21,7 +21,7 @@ Die Funktionsbereiche von früher sind die **Epics** (E-049): je Epic ein Bereic
 | [[EP-04 Spielererlebnis]] | Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene Inhalte, Inventar, Chat. | 6 | 42 | 109 | 7 steht · 9 teils · 26 offen |
 | [[EP-05 Kampagne & Sitzungen]] | Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitung, Begegnungen, Abenteuer übernehmen, Party, Ladebildschirm. | 8 | 31 | 106 | 17 steht · 3 teils · 11 offen |
 | [[EP-06 Welt & Lore]] | Bereich World: Orte, Fraktionen, Gottheiten, Lore, Kalender und Zeitleisten, Beziehungen, Läden und Wirtschaft. | 5 | 17 | 63 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [[EP-07 Regeln & Nachschlagen]] | Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zustände, Handwerk, Regelsysteme und die Auswertung von Regeln. | 8 | 27 | 126 | 13 steht · 1 teils · 13 offen |
+| [[EP-07 Regeln & Nachschlagen]] | Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zustände, Handwerk, Regelsysteme und die Auswertung von Regeln. | 8 | 27 | 126 | 13 steht · 2 teils · 12 offen |
 | [[EP-08 Live-Spiel]] | Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, Würfel, Werkzeuge am Tisch. | 5 | 28 | 98 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [[EP-09 Karten]] | Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und Zonen, Gebiete, Reisen, Karteneditor. | 7 | 28 | 124 | 18 steht · 6 teils · 4 offen |
 | [[EP-10 Medien & Assets]] | Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Druck und Ausfuhr, PDF. | 5 | 21 | 81 | 4 steht · 3 teils · 14 offen |

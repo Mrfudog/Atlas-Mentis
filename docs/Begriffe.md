@@ -2510,6 +2510,25 @@ Begriffsstand des Konzepts 0.5 beschreibt (Entity, Component,
 ContentBlock) und als überholt markiert ist. Wie es mit Stories, Features
 und What's new zusammenfindet, ist E-055.
 
+## Regel, Graph und Angebot
+
+Eine **Regel** ist ein Artikel (`Rule`), und was sie am Tisch tut, ist ihr
+**Graph** (`Rule.graph`): Auslöser → Bedingung → Folge. Kein zehntes Wort —
+der Graph ist ein Feld des Artikels, wie die Formen eines Boards am Board.
+Am Tisch (REQ-357) wird aus einer Folge ein **Angebot** oder ein
+**Hinweis**, nie eine Änderung: die Reaktion nimmt jemand an oder lässt
+sie, den Effekt setzt die Leitung. Eine Regel, die selbst schreibt, wäre
+eine Regel, die sich irren darf, ohne dass es jemand sieht.
+
+**Der Graph führt, wo er dasselbe sagt wie der Code** (Leitung,
+19.10.2026): ist „Rules from graphs" an, kommt die Gelegenheitsattacke aus
+ihrem Regelartikel und nicht mehr aus `opportunityAttacks`. Beide zugleich
+hiesse, dieselbe Reaktion zweimal anzubieten; nur den Code hiesse, eine
+Hausregel dazu nicht ändern zu können. Was der Graph nicht kann — wer wo
+steht, wessen Reichweite ein Weg verlässt —, rechnet weiter der Code und
+reicht es als Ereignis hinein (E-102: Rechnung im Code, Automation in
+Daten).
+
 ## Board, Schirm und Werkbank
 
 Drei Orte der Oberfläche, keine Wörter des Modells. Ein **Board** gehört

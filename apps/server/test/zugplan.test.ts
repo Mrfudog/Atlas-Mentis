@@ -8,7 +8,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
-import { markersOf, type Entity } from '@nw/model';
+import { exampleRuleGraphs, markersOf, type Entity, type RuleGraph } from '@nw/model';
 import { buildApp } from '../src/app.js';
 import { LocalChangeFeed } from '../src/live.js';
 import { InMemoryRepository } from '../src/repo.js';
@@ -261,5 +261,97 @@ describe('Zugplan, Runde 2: kein freies Ziehen im Kampf (T-198)', () => {
     await repo.grantLayer(ids['Sela']!, 'ly_a');
     await mitKampf(repo, 0);
     expect((await rufe('Sela', 'PUT', '/api/entities/map_1', await gezogen(repo))).statusCode).toBe(200);
+  });
+});
+
+/* ------------------------------------------------------------ Regeln am Tisch (REQ-357) */
+
+/** Die Kampagne lässt die Graphen laufen; dazu Regelartikel mit Graph in ihrer Ebene. */
+async function mitRegeln(repo: InMemoryRepository, graphen: { id: string; name: string; graph: RuleGraph }[]) {
+  const camp = (await repo.getEntity('camp_a'))!;
+  await repo.putEntity({ ...camp, components: { ...camp.components, Campaign: { ...camp.components['Campaign'], ruleGraphs: 'on' } } });
+  for (const g of graphen) {
+    await repo.putEntity({
+      id: g.id,
+      name: g.name,
+      interfaces: ['Rule'],
+      components: { ...ident(g.name, `rule-${g.id}`), Rule: { kind: 'rule', graph: { enabled: true, nodes: g.graph.nodes, wires: g.graph.wires } } },
+      relations: [im(g.id)],
+    });
+  }
+}
+
+const beispiel = (id: string) => exampleRuleGraphs().find((g) => g.id === id)!;
+
+/** Wer angegriffen wird, darf parieren — eine erfundene Regel ohne Schlag. */
+const PARADE: RuleGraph = {
+  id: 'parade',
+  name: 'Parry',
+  enabled: true,
+  nodes: [
+    { id: 't', kind: 'trigger', x: 0, y: 0, on: 'attacked' },
+    { id: 'c', kind: 'condition', x: 0, y: 0, test: { kind: 'same', a: 'self', b: 'target' } },
+    { id: 'o', kind: 'outcome', x: 0, y: 0, then: { kind: 'offerReaction', name: 'Parry', to: 'self', against: 'actor' } },
+  ],
+  wires: [{ from: 't', to: 'c' }, { from: 'c', to: 'o', port: 'yes' }],
+};
+
+describe('Zugplan: Regeln am Tisch (REQ-357)', () => {
+  it('der Graph führt: die Gelegenheitsattacke kommt aus ihrer Regel', async () => {
+    const { rufe, repo } = await aufbau();
+    await mitRegeln(repo, [{ id: 'r_oa', name: 'Opportunity attack', graph: beispiel('opportunity-attack') }]);
+    await nebeneinander(repo);
+    const plan = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [WEG], nat: NAT })).json().plan;
+    const r = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/decide`, { decision: 'confirm' })).json();
+    expect(r).toMatchObject({ state: 'reacting', pending: { reactor: 'cr_gob', rule: 'r_oa', ruleName: 'Opportunity attack', offer: 'Opportunity attack', strike: true, against: 'pc_rook' } });
+    const a = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/react`, { attack: true })).json();
+    expect(a.state).toBe('confirmed');
+    expect(a.results[0].text).toMatch(/^Opportunity attack: Unarmed Strike → Rook: (hit|miss)/);
+    expect(await repo.listEvents({ name: 'reaction' })).toHaveLength(1);
+  });
+
+  it('ohne die Regel fragt niemand, Disengage gibt einen Hinweis statt eines Angebots', async () => {
+    const { rufe, repo } = await aufbau();
+    await mitRegeln(repo, []);
+    await nebeneinander(repo);
+    const plan = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [WEG], nat: NAT })).json().plan;
+    expect((await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/decide`, { decision: 'confirm' })).json().state).toBe('confirmed');
+
+    await mitRegeln(repo, [{ id: 'r_oa', name: 'Opportunity attack', graph: beispiel('opportunity-attack') }]);
+    await nebeneinander(repo);
+    const los = { id: 'd', kind: 'act', tile: 'std:disengage', name: 'Disengage', cost: 'action' };
+    const zwei = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [los, WEG], nat: NAT })).json().plan;
+    const r = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${zwei}/decide`, { decision: 'confirm' })).json();
+    expect(r.state).toBe('confirmed');
+    expect(r.results.map((x: { text: string }) => x.text)).toContain('Opportunity attack: Rook gets “Leaves without provoking (Disengage)”');
+  });
+
+  it('eine Reaktion mitten im Angriff: angeboten, genommen, und der Angriff läuft weiter', async () => {
+    const { rufe, repo } = await aufbau();
+    await mitRegeln(repo, [{ id: 'r_parry', name: 'Parry', graph: PARADE }]);
+    await nebeneinander(repo);
+    const hieb = { id: 'h', kind: 'act', tile: 'ac_axe', name: 'Handaxe', cost: 'action', target: 'cr_gob', targetName: 'Goblin' };
+    const plan = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [hieb], nat: NAT })).json().plan;
+    const r = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/decide`, { decision: 'confirm' })).json();
+    expect(r).toMatchObject({ state: 'reacting', pending: { reactor: 'cr_gob', offer: 'Parry', step: 'h' }, cursor: { step: 'h' } });
+    /* Noch nichts gewürfelt: angegriffen kommt vor dem Wurf. */
+    expect(await repo.listEvents({ name: 'roll' })).toHaveLength(0);
+    const a = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/react`, { attack: true })).json();
+    expect(a.state).toBe('confirmed');
+    expect(a.cursor).toBeUndefined();
+    expect(a.results.map((x: { text: string }) => x.text)).toEqual(['Goblin uses Parry against Rook.', expect.stringMatching(/^Handaxe → Goblin: (hit|miss)/)]);
+    expect(await repo.listEvents({ name: 'reaction' })).toHaveLength(1);
+  });
+
+  it('aus heisst: der eingebaute Gelegenheitsangriff, auch wenn Regelartikel da sind', async () => {
+    const { rufe, repo } = await aufbau();
+    await mitRegeln(repo, [{ id: 'r_parry', name: 'Parry', graph: PARADE }]);
+    const camp = (await repo.getEntity('camp_a'))!;
+    await repo.putEntity({ ...camp, components: { ...camp.components, Campaign: { ruleGraphs: 'off' } } });
+    await nebeneinander(repo);
+    const plan = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [WEG], nat: NAT })).json().plan;
+    const r = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/decide`, { decision: 'confirm' })).json();
+    expect(r.pending).toMatchObject({ reactor: 'cr_gob' });
+    expect(r.pending.rule).toBeUndefined();
   });
 });

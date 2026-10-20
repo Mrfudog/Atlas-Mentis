@@ -32,7 +32,7 @@ describe('runRules', () => {
   it('Hellish Rebuke: getroffen, kennt den Zauber, Reaktion frei → bietet an', () => {
     const a = kreatur('a', { x: 30 });
     const b = kreatur('b', { knows: ['Hellish Rebuke'] });
-    const r = runRules([hellish], { on: 'hit', actor: 'a', target: 'b' }, [a, b]);
+    const r = runRules([hellish], { on: 'damaged', actor: 'a', target: 'b' }, [a, b]);
     expect(r.firings).toHaveLength(1);
     expect(r.firings[0]!.self).toBe('b');
     expect(r.firings[0]!.text).toBe('B may react with “Hellish Rebuke” against A');
@@ -40,7 +40,7 @@ describe('runRules', () => {
 
   it('ohne freie Reaktion, zu weit weg oder ohne den Zauber feuert nichts', () => {
     const a = kreatur('a', { x: 30 });
-    const ev = { on: 'hit' as const, actor: 'a', target: 'b' };
+    const ev = { on: 'damaged' as const, actor: 'a', target: 'b' };
     expect(runRules([hellish], ev, [a, kreatur('b', { knows: ['Hellish Rebuke'], values: { reactionFree: 0 } })]).firings).toEqual([]);
     expect(runRules([hellish], ev, [kreatur('a', { x: 90 }), kreatur('b', { knows: ['Hellish Rebuke'] })]).firings).toEqual([]);
     expect(runRules([hellish], ev, [a, kreatur('b')]).firings).toEqual([]);
@@ -49,20 +49,22 @@ describe('runRules', () => {
   it('ein anderes Ereignis lässt die Regel liegen, eine abgeschaltete auch', () => {
     const b = kreatur('b', { knows: ['Hellish Rebuke'] });
     expect(runRules([hellish], { on: 'attacked', actor: 'a', target: 'b' }, [kreatur('a'), b]).firings).toEqual([]);
-    expect(runRules([{ ...hellish, enabled: false }], { on: 'hit', actor: 'a', target: 'b' }, [kreatur('a'), b]).firings).toEqual([]);
+    expect(runRules([{ ...hellish, enabled: false }], { on: 'damaged', actor: 'a', target: 'b' }, [kreatur('a'), b]).firings).toEqual([]);
   });
 
   it('Snatch Punisher: wer in Reichweite aufhebt, fängt sich einen Angriff', () => {
-    const dieb = kreatur('dieb', { x: 5 });
-    const wache = kreatur('wache', { knows: ['Snatch Punisher'] });
-    const fern = kreatur('fern', { knows: ['Snatch Punisher'], x: 40 });
-    const r = runRules([snatch], { on: 'picksUpObject', actor: 'dieb' }, [dieb, wache, fern]);
+    const dieb = kreatur('dieb', { x: 5, side: 'foe' });
+    const wache = kreatur('wache', { knows: ['Snatch Punisher'], side: 'party' });
+    const fern = kreatur('fern', { knows: ['Snatch Punisher'], x: 40, side: 'party' });
+    const freund = kreatur('freund', { knows: ['Snatch Punisher'], side: 'foe' });
+    const r = runRules([snatch], { on: 'picksUpObject', actor: 'dieb' }, [dieb, wache, fern, freund]);
     expect(r.firings.map((f) => f.self)).toEqual(['wache']);
+    expect(r.firings[0]!.outcome).toMatchObject({ kind: 'offerReaction', strike: true });
   });
 
   it('ein fehlender Wert entscheidet nichts und bietet nichts an', () => {
     const b = kreatur('b', { knows: ['Hellish Rebuke'], values: {} });
-    const r = runRules([hellish], { on: 'hit', actor: 'a', target: 'b' }, [kreatur('a'), b]);
+    const r = runRules([hellish], { on: 'damaged', actor: 'a', target: 'b' }, [kreatur('a'), b]);
     expect(r.firings).toEqual([]);
     expect(r.runs.find((x) => x.self === 'b')!.steps.at(-1)!.result).toBeNull();
   });
@@ -81,6 +83,25 @@ describe('runRules', () => {
     };
     const r = runRules([g], { on: 'turnStart', actor: 'a' }, [kreatur('a', { values: { hp: 0 } })]);
     expect(r.firings.map((f) => f.text)).toEqual(['A cannot act: down']);
+  });
+
+  it('sameSide: ohne Seite nicht zu entscheiden, sonst nach Seite', () => {
+    const g: RuleGraph = {
+      id: 's',
+      name: 'S',
+      enabled: true,
+      nodes: [
+        { id: 't', kind: 'trigger', x: 0, y: 0, on: 'leavesReach' },
+        { id: 'c', kind: 'condition', x: 0, y: 0, test: { kind: 'sameSide', a: 'self', b: 'actor', not: true } },
+        { id: 'o', kind: 'outcome', x: 0, y: 0, then: { kind: 'offerReaction', name: 'Hit', to: 'self', against: 'actor', strike: true } },
+      ],
+      wires: [{ from: 't', to: 'c' }, { from: 'c', to: 'o', port: 'yes' }],
+    };
+    const ev = { on: 'leavesReach' as const, actor: 'a' };
+    expect(runRules([g], ev, [kreatur('a'), kreatur('b')]).firings).toEqual([]);
+    expect(runRules([g], ev, [kreatur('a', { side: 'party' }), kreatur('b', { side: 'foe' })]).firings.map((f) => f.self)).toEqual(['b']);
+    /* `selves` engt ein, wer gefragt wird; `distance` misst, wie der Aufrufer will. */
+    expect(runRules([g], ev, [kreatur('a', { side: 'party' }), kreatur('b', { side: 'foe' }), kreatur('c', { side: 'foe' })], { selves: ['c'] }).firings.map((f) => f.self)).toEqual(['c']);
   });
 
   it('ein Kreis läuft nicht ewig', () => {
@@ -185,7 +206,7 @@ describe('Graph am Regelartikel (T-270)', () => {
 describe('ruleGraphWords (T-270)', () => {
   it('nennt die Begriffe, auf denen eine Regel aufbaut', () => {
     const g = (id: string) => exampleRuleGraphs().find((x) => x.id === id)!;
-    expect(ruleGraphWords(g('hellish-rebuke'))).toEqual(['attack roll', 'reach', 'reaction']);
+    expect(ruleGraphWords(g('hellish-rebuke'))).toEqual(['damage roll', 'hit points', 'reach', 'reaction']);
     expect(ruleGraphWords(g('opportunity-attack'))).toEqual(['disengage', 'opportunity attack', 'reach', 'reaction']);
     expect(ruleGraphWords(g('counterspell'))).toEqual(['reach', 'reaction', 'spell slot']);
     expect(ruleGraphWords(g('concentration'))).toEqual(['concentration', 'damage roll', 'hit points']);
@@ -197,7 +218,7 @@ describe('describeRuleGraph (T-270)', () => {
   it('sagt je Folge in einem Satz, wann sie greift', () => {
     const g = (id: string) => exampleRuleGraphs().find((x) => x.id === id)!;
     expect(describeRuleGraph(g('hellish-rebuke'))).toBe(
-      'When a creature is hit by an attack, if self is target, self knows “Hellish Rebuke”, self.reactionFree = 1 and distance <= 60: offer reaction “Hellish Rebuke” to self (target: actor).',
+      'When a creature takes damage, if self is target, self knows “Hellish Rebuke”, self.reactionFree = 1 and distance <= 60: offer reaction “Hellish Rebuke” to self (target: actor).',
     );
     const shield = describeRuleGraph(g('shield'));
     expect(shield).toContain('self.slots1 >= 1: offer reaction “Shield (+5 AC until your next turn)”');

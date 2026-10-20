@@ -3010,6 +3010,15 @@ export const fieldGroups = {
           enum: ['table', 'gm'],
           default: 'table',
         },
+        /* **Regeln am Tisch** (REQ-357): laufen die Regelgraphen im
+           Zugplan? An führt der Graph — auch die Gelegenheitsattacke kommt
+           dann aus ihrer Regel. Gelesen über `ruleGraphsOn`. */
+        ruleGraphs: {
+          type: 'string',
+          title: 'Rules from graphs',
+          enum: ['off', 'on'],
+          default: 'off',
+        },
         /* **Die Karte am Tisch** (T-204). `fog`: ein Nebel für die ganze
            Gruppe, oder je Figur — dann sieht jede, was sie selbst (oder
            ihre Gruppe) aufgedeckt hat, und die Leitung die Vereinigung.

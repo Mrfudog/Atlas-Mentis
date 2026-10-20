@@ -63,16 +63,29 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
             }
           </header>
 
-          <!-- Gelegenheitsangriff (Runde 2): wer reagieren darf, wird gefragt — auch bei zugeklappter Leiste. -->
+          <!-- Gelegenheitsangriff (Runde 2) oder das Angebot einer Regel (REQ-357):
+               wer reagieren darf, wird gefragt — auch bei zugeklappter Leiste. -->
           @for (p of fragen(); track p.plan) {
-            <div class="frage" role="alertdialog" [attr.aria-label]="'Opportunity attack by ' + p.pending!.reactorName">
-              <b>Opportunity attack?</b>
-              {{ p.actorName }} leaves the reach of {{ p.pending!.reactorName }}.
-              <span class="knoepfe">
-                <button type="button" class="primaer" [disabled]="sendet()" (click)="reagieren(p, true)">Attack</button>
-                <button type="button" [disabled]="sendet()" (click)="reagieren(p, false)">Let go</button>
-              </span>
-            </div>
+            @let q = p.pending!;
+            @if (q.rule) {
+              <div class="frage" role="alertdialog" [attr.aria-label]="(q.offer ?? q.ruleName) + ' by ' + q.reactorName">
+                <b>{{ q.offer ?? q.ruleName }}?</b>
+                {{ q.reactorName }} may react ({{ q.ruleName }}).
+                <span class="knoepfe">
+                  <button type="button" class="primaer" [disabled]="sendet()" (click)="reagieren(p, true)">{{ q.strike ? 'Attack' : 'Use' }}</button>
+                  <button type="button" [disabled]="sendet()" (click)="reagieren(p, false)">{{ q.strike ? 'Let go' : 'Skip' }}</button>
+                </span>
+              </div>
+            } @else {
+              <div class="frage" role="alertdialog" [attr.aria-label]="'Opportunity attack by ' + q.reactorName">
+                <b>Opportunity attack?</b>
+                {{ p.actorName }} leaves the reach of {{ q.reactorName }}.
+                <span class="knoepfe">
+                  <button type="button" class="primaer" [disabled]="sendet()" (click)="reagieren(p, true)">Attack</button>
+                  <button type="button" [disabled]="sendet()" (click)="reagieren(p, false)">Let go</button>
+                </span>
+              </div>
+            }
           }
 
           @if (offen()) {
@@ -689,13 +702,18 @@ export class Zugplaner {
   }
 
   protected zustand(p: TurnPlan): string {
-    if (p.state === 'reacting') return `waiting: opportunity attack by ${p.pending?.reactorName ?? '?'}?`;
+    if (p.state === 'reacting') return `waiting: ${this.reaktionWort(p)} by ${p.pending?.reactorName ?? '?'}?`;
     return p.state === 'planned' ? 'waiting for you' : p.state === 'confirmed' ? `confirmed by ${p.decidedBy?.name ?? 'GM'}` : 'rejected';
+  }
+
+  /** Was gefragt wird: das Angebot einer Regel (REQ-357) oder der eingebaute Gelegenheitsangriff. */
+  private reaktionWort(p: TurnPlan): string {
+    return p.pending?.rule ? (p.pending.offer ?? p.pending.ruleName ?? 'a reaction') : 'opportunity attack';
   }
 
   protected planStand(p: TurnPlan): string {
     if (p.state === 'planned') return 'Sent — waiting for the GM to confirm.';
-    if (p.state === 'reacting') return `Moving — ${p.pending?.reactorName ?? 'someone'} may take an opportunity attack.`;
+    if (p.state === 'reacting') return `Waiting — ${p.pending?.reactorName ?? 'someone'} may react: ${this.reaktionWort(p)}.`;
     if (p.state === 'rejected') return `The GM rejected your last turn${p.note ? `: “${p.note}”` : '.'}`;
     return `Last turn: ${(p.results ?? []).map((r) => r.text).join(' · ') || 'done'}`;
   }

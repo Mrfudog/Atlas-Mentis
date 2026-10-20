@@ -47,11 +47,14 @@ export type RuleTest =
   /** Eine Rolle kennt etwas (Zauber, Fähigkeit) beim Namen. */
   | { kind: 'knows'; who: RuleRole; name: string }
   /** Zwei Rollen sind dieselbe Kreatur (oder nicht). */
-  | { kind: 'same'; a: RuleRole; b: RuleRole; not?: boolean };
+  | { kind: 'same'; a: RuleRole; b: RuleRole; not?: boolean }
+  /** Zwei Rollen stehen auf derselben Seite (oder nicht) — Gruppe gegen Gegner (REQ-357). */
+  | { kind: 'sameSide'; a: RuleRole; b: RuleRole; not?: boolean };
 
 /** Was eine Regel auslöst — im Versuch nur angezeigt. */
 export type RuleOutcome =
-  | { kind: 'offerReaction'; name: string; to: RuleRole; against: RuleRole }
+  /** `strike`: wer annimmt, greift `against` mit seinem besten Nahkampfangriff an (REQ-357). */
+  | { kind: 'offerReaction'; name: string; to: RuleRole; against: RuleRole; strike?: boolean }
   | { kind: 'applyEffect'; name: string; to: RuleRole }
   | { kind: 'blockAction'; action: string; reason: string; to: RuleRole }
   | { kind: 'changeValue'; field: string; expr: string; to: RuleRole };
@@ -106,6 +109,16 @@ export interface RuleCreature {
   /** Stellung in Fuss — daraus `distance`. */
   x: number;
   y: number;
+  /** Die Seite (`party`, `foe`) — für `sameSide`; ohne Angabe nicht zu entscheiden. */
+  side?: string;
+}
+
+/** Wie ein Lauf rechnet, wo er am Tisch läuft (REQ-357). */
+export interface RuleRunOptions {
+  /** Abstand in Fuss; ohne Angabe die Gerade. Am Tisch zählt das Raster (5-10-5). */
+  distance?: (a: RuleCreature, b: RuleCreature) => number;
+  /** Nur diese Kreaturen sind `self` — „wessen Reichweite verlassen wird“ sagt das Ereignis. */
+  selves?: readonly string[];
 }
 
 export interface RuleEvent {
@@ -151,12 +164,12 @@ interface Scope {
   actor: RuleCreature | undefined;
   target: RuleCreature | undefined;
   amount?: number;
+  metric?: (a: RuleCreature, b: RuleCreature) => number;
 }
 
 const who = (s: Scope, r: RuleRole): RuleCreature | undefined => s[r];
 
-const dist = (a: RuleCreature | undefined, b: RuleCreature | undefined): number | undefined =>
-  a && b ? Math.round(Math.hypot(a.x - b.x, a.y - b.y)) : undefined;
+const gerade = (a: RuleCreature, b: RuleCreature): number => Math.round(Math.hypot(a.x - b.x, a.y - b.y));
 
 /**
  * Die Namen, die eine Rechnung kennt: `distance` (Selbst zum Handelnden),
@@ -165,10 +178,9 @@ const dist = (a: RuleCreature | undefined, b: RuleCreature | undefined): number 
 export function ruleVariables(s: Scope): Record<string, number> {
   const v: Record<string, number> = {};
   if (s.amount !== undefined && Number.isFinite(s.amount)) v['amount'] = s.amount;
-  const d = dist(s.self, s.actor);
-  if (d !== undefined) v['distance'] = d;
-  const dt = dist(s.self, s.target);
-  if (dt !== undefined) v['distanceToTarget'] = dt;
+  const m = s.metric ?? gerade;
+  if (s.actor) v['distance'] = m(s.self, s.actor);
+  if (s.target) v['distanceToTarget'] = m(s.self, s.target);
   for (const r of RULE_ROLES) {
     const c = who(s, r);
     if (!c) continue;
@@ -228,6 +240,12 @@ export function evalRuleTest(test: RuleTest, s: Scope): boolean | null {
       if (!a || !b) return test.not ? true : false;
       return test.not ? a.id !== b.id : a.id === b.id;
     }
+    case 'sameSide': {
+      const a = who(s, test.a);
+      const b = who(s, test.b);
+      if (!a?.side || !b?.side) return null;
+      return test.not ? a.side !== b.side : a.side === b.side;
+    }
   }
 }
 
@@ -240,11 +258,12 @@ export function describeRuleNode(n: RuleNode): string {
       const t = n.test;
       if (t.kind === 'compare') return `${t.left} ${t.op} ${t.right}`;
       if (t.kind === 'knows') return `${t.who} knows “${t.name}”`;
+      if (t.kind === 'sameSide') return `${t.a} ${t.not ? 'is not on the side of' : 'is on the side of'} ${t.b}`;
       return `${t.a} ${t.not ? 'is not' : 'is'} ${t.b}`;
     }
     case 'outcome': {
       const o = n.then;
-      if (o.kind === 'offerReaction') return `Offer reaction “${o.name}” to ${o.to} (target: ${o.against})`;
+      if (o.kind === 'offerReaction') return `Offer reaction “${o.name}” to ${o.to} (target: ${o.against}${o.strike ? ', a melee attack' : ''})`;
       if (o.kind === 'applyEffect') return `Apply “${o.name}” to ${o.to}`;
       if (o.kind === 'blockAction') return `Block “${o.action}” for ${o.to}: ${o.reason}`;
       return `Set ${o.to}.${o.field} = ${o.expr}`;
@@ -286,7 +305,7 @@ const MAX_STEPS = 200;
  * **Der Probelauf:** welche Regeln bei diesem Ereignis für welche Kreatur
  * feuern und was sie anbieten. Nur Anzeige — es wird nichts gespeichert.
  */
-export function runRules(rules: readonly RuleGraph[], event: RuleEvent, creatures: readonly RuleCreature[]): RuleRunResult {
+export function runRules(rules: readonly RuleGraph[], event: RuleEvent, creatures: readonly RuleCreature[], opts: RuleRunOptions = {}): RuleRunResult {
   const byId = new Map(creatures.map((c) => [c.id, c]));
   const out: RuleRunResult = { firings: [], runs: [], problems: [] };
   for (const g of rules) {
@@ -296,7 +315,14 @@ export function runRules(rules: readonly RuleGraph[], event: RuleEvent, creature
     const starts = g.nodes.filter((n) => n.kind === 'trigger' && n.on === event.on);
     if (!starts.length) continue;
     for (const self of creatures) {
-      const scope: Scope = { self, actor: byId.get(event.actor), target: event.target ? byId.get(event.target) : undefined, amount: event.amount };
+      if (opts.selves && !opts.selves.includes(self.id)) continue;
+      const scope: Scope = {
+        self,
+        actor: byId.get(event.actor),
+        target: event.target ? byId.get(event.target) : undefined,
+        amount: event.amount,
+        ...(opts.distance ? { metric: opts.distance } : {}),
+      };
       const run: RuleRun = { rule: g.id, self: self.id, steps: [] };
       const besucht = new Set<string>();
       const queue = starts.map((n) => n.id);
@@ -351,7 +377,7 @@ export function isRuleGraph(v: unknown): v is RuleGraph {
 type Knoten = [id: string, was: RuleTriggerKey | RuleTest | RuleOutcome, spalte: number, reihe: number];
 type Draht = [from: string, to: string, port?: 'yes' | 'no'];
 
-const istTest = (v: RuleTest | RuleOutcome): v is RuleTest => v.kind === 'compare' || v.kind === 'knows' || v.kind === 'same';
+const istTest = (v: RuleTest | RuleOutcome): v is RuleTest => v.kind === 'compare' || v.kind === 'knows' || v.kind === 'same' || v.kind === 'sameSide';
 
 /** Ein Beispiel aus Knoten im Raster (230 × 140) — damit die Beispiele lesbar bleiben. */
 function bau(id: string, name: string, engine: RuleEngineKey, knoten: Knoten[], draehte: Draht[]): RuleGraph {
@@ -373,7 +399,9 @@ function bau(id: string, name: string, engine: RuleEngineKey, knoten: Knoten[], 
 const cmp = (left: string, op: RuleComparator, right: string): RuleTest => ({ kind: 'compare', left, op, right });
 const kennt = (name: string, who: RuleRole = 'self'): RuleTest => ({ kind: 'knows', who, name });
 const ist = (a: RuleRole, b: RuleRole, not = false): RuleTest => ({ kind: 'same', a, b, ...(not ? { not: true } : {}) });
+const seite = (a: RuleRole, b: RuleRole, not = false): RuleTest => ({ kind: 'sameSide', a, b, ...(not ? { not: true } : {}) });
 const reaktion = (name: string, against: RuleRole = 'actor'): RuleOutcome => ({ kind: 'offerReaction', name, to: 'self', against });
+const schlag = (name: string, against: RuleRole = 'actor'): RuleOutcome => ({ kind: 'offerReaction', name, to: 'self', against, strike: true });
 const effekt = (name: string, to: RuleRole = 'self'): RuleOutcome => ({ kind: 'applyEffect', name, to });
 
 /**
@@ -386,20 +414,20 @@ const effekt = (name: string, to: RuleRole = 'self'): RuleOutcome => ({ kind: 'a
 export function exampleRuleGraphs(): RuleGraph[] {
   return [
     bau('hellish-rebuke', 'Hellish Rebuke', 'reactions',
-      [['t', 'hit', 0, 0], ['c1', ist('self', 'target'), 1, 0], ['c2', kennt('Hellish Rebuke'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
+      [['t', 'damaged', 0, 0], ['c1', ist('self', 'target'), 1, 0], ['c2', kennt('Hellish Rebuke'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
        ['c4', cmp('distance', '<=', '60'), 1, 1], ['o', reaktion('Hellish Rebuke'), 2, 1]],
       [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'o', 'yes']]),
     bau('snatch-punisher', 'Snatch Punisher', 'reactions',
-      [['t', 'picksUpObject', 0, 0], ['c1', ist('self', 'actor', true), 1, 0], ['c2', kennt('Snatch Punisher'), 2, 0], ['c3', cmp('distance', '<=', 'self.reach'), 3, 0],
-       ['c4', cmp('self.reactionFree', '=', '1'), 1, 1], ['o', reaktion('Melee attack'), 2, 1]],
+      [['t', 'picksUpObject', 0, 0], ['c1', seite('self', 'actor', true), 1, 0], ['c2', kennt('Snatch Punisher'), 2, 0], ['c3', cmp('distance', '<=', 'self.reach'), 3, 0],
+       ['c4', cmp('self.reactionFree', '=', '1'), 1, 1], ['o', schlag('Melee attack'), 2, 1]],
       [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'o', 'yes']]),
     bau('opportunity-attack', 'Opportunity attack', 'movement',
-      [['t', 'leavesReach', 0, 0], ['c1', ist('self', 'actor', true), 1, 0], ['c2', cmp('actor.disengaged', '=', '1'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
-       ['c4', cmp('distance', '<=', 'self.reach'), 3, 1], ['o', reaktion('Opportunity attack'), 2, 1], ['o2', effekt('Leaves without provoking (Disengage)', 'actor'), 2, 2]],
+      [['t', 'leavesReach', 0, 0], ['c1', seite('self', 'actor', true), 1, 0], ['c2', cmp('actor.disengaged', '=', '1'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
+       ['c4', cmp('distance', '<=', 'self.reach'), 3, 1], ['o', schlag('Opportunity attack'), 2, 1], ['o2', effekt('Leaves without provoking (Disengage)', 'actor'), 2, 2]],
       [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'no'], ['c2', 'o2', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'o', 'yes']]),
     bau('sentinel', 'Sentinel', 'reactions',
-      [['t', 'attacked', 0, 0], ['c1', ist('self', 'actor', true), 1, 0], ['c2', ist('self', 'target', true), 2, 0], ['c3', kennt('Sentinel'), 3, 0],
-       ['c4', cmp('distance', '<=', 'self.reach'), 1, 1], ['c5', cmp('self.reactionFree', '=', '1'), 2, 1], ['o', reaktion('Sentinel: melee attack'), 3, 1]],
+      [['t', 'attacked', 0, 0], ['c1', seite('self', 'actor', true), 1, 0], ['c2', ist('self', 'target', true), 2, 0], ['c3', kennt('Sentinel'), 3, 0],
+       ['c4', cmp('distance', '<=', 'self.reach'), 1, 1], ['c5', cmp('self.reactionFree', '=', '1'), 2, 1], ['o', schlag('Sentinel: melee attack'), 3, 1]],
       [['t', 'c1'], ['c1', 'c2', 'yes'], ['c2', 'c3', 'yes'], ['c3', 'c4', 'yes'], ['c4', 'c5', 'yes'], ['c5', 'o', 'yes']]),
     bau('shield', 'Shield', 'spellcasting',
       [['t', 'hit', 0, 0], ['c1', ist('self', 'target'), 1, 0], ['c2', kennt('Shield'), 2, 0], ['c3', cmp('self.reactionFree', '=', '1'), 3, 0],
