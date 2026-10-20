@@ -68,6 +68,8 @@ import {
   hasSightWalls,
   lightIsOff,
   markerHasLight,
+  addLight,
+  mapLights,
   setAssetProps,
   setLightOff,
   litAreas,
@@ -302,22 +304,24 @@ interface Zeiger {
           @if (blaetter().length > 1) {
             <button type="button" [attr.aria-expanded]="blaetterOffen()" (click)="blaetterOffen.set(!blaetterOffen())">Layers</button>
           }
+          <!-- Am Telefon stehen Sicht und Freigabe in einem Menü (T-320): die Karte braucht den Platz. -->
+          <button type="button" class="menue-knopf" [class.an]="menueOffen()" [attr.aria-expanded]="menueOffen()" (click)="menueOffen.set(!menueOffen())" title="View, release and the party beside the map">
+            <span aria-hidden="true">⋯</span> View
+          </button>
+          <span class="mehr" [class.offen]="menueOffen()">
           @if (darfSchreiben()) {
-            <button type="button" [class.an]="spielersicht()" [attr.aria-pressed]="spielersicht()" (click)="spielersicht.set(!spielersicht())" title="See the map as the players do">
-              Player view
-            </button>
-            @if (jeFigur() && figurenHier().length) {
-              <!-- Nebel je Figur (T-204): für wen aufgedeckt wird und wessen Sicht „Player view“ zeigt. -->
-              <label class="fuer" title="Fog is per character: what you reveal is for this character, and Player view shows what it sees">
-                For
-                <select (change)="nebelFuer.set($any($event.target).value || null)" aria-label="Reveal for, and see as">
-                  <option value="" [selected]="!nebelFuer()">everyone</option>
-                  @for (f of figurenHier(); track f.id) {
-                    <option [value]="f.id" [selected]="nebelFuer() === f.id">{{ f.name }}</option>
-                  }
-                </select>
-              </label>
-            }
+            <!-- **Ein Wähler „View as“** (T-320, wie „View as“ im Kopf, T-269): Leitung, alle
+                 Spielenden oder eine Figur. Je Figur aufgedeckt (T-204) wird für die, als die man schaut. -->
+            <label class="fuer" [class.an]="spielersicht()" title="See the map as the GM, as all players, or as one character — with fog per character, what you reveal then is for that character">
+              View as
+              <select (change)="ansehenAls($any($event.target).value)" aria-label="View the map as">
+                <option value="gm" [selected]="!spielersicht()">GM</option>
+                <option value="all" [selected]="spielersicht() && !nebelFuer()">all players</option>
+                @for (f of figurenHier(); track f.id) {
+                  <option [value]="f.id" [selected]="spielersicht() && nebelFuer() === f.id">{{ f.name }}</option>
+                }
+              </select>
+            </label>
           }
           @if (darfSchreiben() && istInstanz()) {
             <!-- **Freigabe** (T-289, E-041): bis dahin ist die Karte für Spielende nicht vorhanden. -->
@@ -335,9 +339,10 @@ interface Zeiger {
               Take into play
             </button>
           }
-          <button type="button" [class.an]="seiteOffen()" [attr.aria-expanded]="seiteOffen()" (click)="seiteUm()" title="Party and encounters beside the map">
-            <span aria-hidden="true">☰</span> Table
+          <button type="button" [class.an]="seiteOffen()" [attr.aria-expanded]="seiteOffen()" (click)="seiteUm()" title="The party and the encounters of this map, beside it">
+            <span aria-hidden="true">☰</span> Party &amp; encounters
           </button>
+          </span>
           <button type="button" class="vollbild" [class.an]="vollbild()" [attr.aria-pressed]="vollbild()" (click)="vollbildUm()" [title]="vollbild() ? 'Leave fullscreen (Esc)' : 'Fullscreen (Shift+F)'">
             <span aria-hidden="true">{{ vollbild() ? '⤡' : '⤢' }}</span>
             {{ vollbild() ? 'Exit fullscreen' : 'Fullscreen' }}
@@ -442,19 +447,21 @@ interface Zeiger {
                 Remove
               </button>
               <!-- **Platz eines Tokens** (T-317): in Feldern, auch halbe; „by size“ folgt dem Statblock. -->
-              <button type="button" [class.an]="werkzeug() === 'tokenGroesse'" [attr.aria-pressed]="werkzeug() === 'tokenGroesse'" (click)="waehle('tokenGroesse')" title="Tap a token to give it the size chosen here">
-                Size
+              <!-- „Token size“ (T-320): „Size“ allein sagte nicht, wessen Grösse und wovon. -->
+              <button type="button" [class.an]="werkzeug() === 'tokenGroesse'" [attr.aria-pressed]="werkzeug() === 'tokenGroesse'" (click)="waehle('tokenGroesse')" title="How many squares a token covers. Choose the size, then tap the token.">
+                Token size
               </button>
               @if (werkzeug() === 'tokenGroesse') {
-                <label>
-                  Squares
+                <label title="How many squares the token covers; “by size” follows the statblock (Medium 1×1, Large 2×2, Huge 3×3, Gargantuan 4×4)">
+                  Covers
                   <select (change)="groesseWahl.set($any($event.target).value ? +$any($event.target).value : null)" aria-label="Token size in squares">
                     <option value="" [selected]="groesseWahl() === null">by size (statblock)</option>
                     @for (n of TOKEN_SPANS; track n) {
-                      <option [value]="n" [selected]="groesseWahl() === n">{{ n }} × {{ n }}</option>
+                      <option [value]="n" [selected]="groesseWahl() === n">{{ n }} × {{ n }} squares</option>
                     }
                   </select>
                 </label>
+                <span class="hint">How many squares the token covers; “by size” follows the statblock (Medium 1×1, Large 2×2 …). The dashed square shows it — tap a token to apply.</span>
               }
               @if (spielTokens()) {
                 <button type="button" (click)="spielTokensWeg()" title="Remove the tokens placed for play; prepared markers and the party stay">Clear play tokens</button>
@@ -658,8 +665,11 @@ interface Zeiger {
                   }
                 </select>
               </label>
-              <button type="button" [class.an]="werkzeug() === 'licht'" [attr.aria-pressed]="werkzeug() === 'licht'" (click)="waehle('licht')" title="Tap a token or marker to give it the light set here; 0 and 0 takes it away">Light source</button>
+              <button type="button" [class.an]="werkzeug() === 'licht'" [attr.aria-pressed]="werkzeug() === 'licht'" (click)="waehle('licht')" title="Tap the map to place a light there, or a token, asset or marker to give it this light; 0 and 0 takes it away">Light source</button>
               <button type="button" [class.an]="werkzeug() === 'lichtSchalter'" [attr.aria-pressed]="werkzeug() === 'lichtSchalter'" (click)="waehle('lichtSchalter')" title="Tap a light to switch it off or on again; its radius stays">Light on/off</button>
+              @if (helligkeit() === 'bright') {
+                <span class="hint">The map is bright: lights change nothing until Lighting is dim or dark.</span>
+              }
               @if (werkzeug() === 'licht') {
                 <label>
                   Bright
@@ -1074,6 +1084,19 @@ interface Zeiger {
                     <button type="button" class="klein" (click)="uebergangWahl.set(null)" aria-label="Close">×</button>
                   </div>
                 }
+                @if (lichtKreise().length) {
+                  <!-- Wie weit ein Licht reicht (T-320), nur für die Leitung in „Light“. -->
+                  <div class="lichtkreise" aria-hidden="true">
+                    @for (l of lichtKreise(); track l.id) {
+                      <span class="lichtkreis matt" [style.left.%]="l.x * 100" [style.top.%]="l.y * 100" [style.width.%]="l.dw * 100" [style.height.%]="l.dh * 100"></span>
+                      <span class="lichtkreis" [style.left.%]="l.x * 100" [style.top.%]="l.y * 100" [style.width.%]="l.hw * 100" [style.height.%]="l.hh * 100"></span>
+                    }
+                  </div>
+                }
+                @for (g of groessenVorschau(); track g.id) {
+                  <!-- Die gewählte Grösse am Token (T-320), bevor man es antippt. -->
+                  <span class="groessen-vorschau" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [style.width.px]="g.px" [style.height.px]="g.px" aria-hidden="true"></span>
+                }
                 @for (m of marker(); track m.rel.id) {
                   <button
                     type="button"
@@ -1088,6 +1111,7 @@ interface Zeiger {
                     [class.selbst]="m.selbst"
                     [class.rund]="m.rund"
                     [class.beringt]="!!m.ring"
+                    [class.leuchtet]="m.leuchtet"
                     [class.gewaehlt]="werkzeug() === 'asset' && assetWahl() === m.rel.id"
                     [style.left.%]="m.x * 100"
                     [style.top.%]="m.y * 100"
@@ -1099,9 +1123,11 @@ interface Zeiger {
                     [title]="m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
-                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : werkzeug() === 'asset' ? assetWaehlen(m) : kurzansicht($event, m.to)"
+                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : werkzeug() === 'asset' ? assetWaehlen(m) : kurzansicht($event, m.to, m.rel.id)"
                   >
-                    @if (m.bild) {
+                    @if (m.kind === 'light') {
+                      <span aria-hidden="true">☀</span>
+                    } @else if (m.bild) {
                       <img [src]="m.bild" alt="" draggable="false" [style]="m.bildStil" />
                     } @else {
                       <span>{{ kuerzel(m.name) }}</span>
@@ -1110,6 +1136,13 @@ interface Zeiger {
                       <b class="etikett">{{ m.etikett }}</b>
                     }
                   </button>
+                }
+                @if (markerWahlBild(); as w) {
+                  <!-- **Ein gewähltes Token** (T-320): wegnehmen hier oder mit Entf, ohne erst das Werkzeug zu suchen. -->
+                  <div class="token-aktionen" role="group" [attr.aria-label]="w.name" [style.left.%]="w.x * 100" [style.top.%]="w.y * 100" (pointerdown)="$event.stopPropagation()">
+                    <button type="button" class="klein" (click)="tokenWeg(w.rel.id)" title="Take this token off the map (Delete)">Remove</button>
+                    <button type="button" class="klein" (click)="markerWahl.set(null)" aria-label="Close">×</button>
+                  </div>
                 }
                 @if (lupeBild(); as l) {
                   <!-- **Die Lupe** (T-315): über dem Finger, vergrössert, mit Fadenkreuz in der Mitte. -->
@@ -1186,18 +1219,18 @@ interface Zeiger {
         } @else if (werkzeug() === 'wandWeg') {
           Tap a wall to remove it.
         } @else if (werkzeug() === 'tokenGroesse') {
-          Tap a token: it covers {{ groesseWahl() === null ? 'the squares its statblock size needs' : groesseWahl() + ' × ' + groesseWahl() + ' squares' }}.
+          Token size — tap a token: it covers {{ groesseWahl() === null ? 'the squares its statblock size needs' : groesseWahl() + ' × ' + groesseWahl() + ' squares' }}.
         } @else if (werkzeug() === 'asset') {
           {{ gewaehltesAsset() ? 'Set the asset above; tap another to switch.' : 'Tap an asset to set it up. Drag one to move it.' }}
         } @else if (werkzeug() === 'tokenWeg') {
-          Tap a marker to take it off the map. The article stays; the party token is not a marker.
+          Tap a marker to take it off the map. The article stays; the party token is not a marker. Or tap a token in Select and press Delete.
         } @else if (werkzeug() === 'licht') {
-          Tap a token or marker: it sheds {{ lichtHell() }} squares of bright and {{ lichtMatt() }} of dim light.
+          Tap the map to place a light, or a token, asset or marker to make it shine: {{ lichtHell() }} squares of bright and {{ lichtMatt() }} of dim light.
         } @else if (werkzeug() === 'lichtSchalter') {
           Tap a light to switch it off or on. A torch in a figure's hand lights its token; an item placed as a marker lights itself.
         } @else {
           @if (spielersicht()) {
-            Player view ·
+            Viewing as {{ nebelFuerName() || 'all players' }} ·
           }
           @if (zugText(); as z) {
             {{ z }} ·
@@ -1224,7 +1257,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -1647,9 +1680,21 @@ export class Karte {
   protected readonly regeln = computed<MapRules>(() => this.kontext()?.rules ?? { fog: 'party', moves: 'free', tokenMove: 'own', revealOnMove: false, doors: 'players', tokenSizes: 'rules' });
   /** Führt die Kampagne den Nebel je Figur? */
   protected readonly jeFigur = computed(() => this.regeln().fog === 'player');
-  /** Für wen aufgedeckt wird und wessen Sicht „Player view“ zeigt (nur je Figur). */
+  /** Für wen aufgedeckt wird und wessen Sicht „View as“ zeigt (je Figur). */
   protected readonly nebelFuer = signal<string | null>(null);
+  /** Das Menü der Ansicht am Telefon (T-320). */
+  protected readonly menueOffen = signal(false);
+  /**
+   * **„View as“** (T-320): `gm` die eigene Sicht, `all` die Spielenden
+   * zusammen, sonst eine Figur — vorher zwei Knöpfe („Player view“ und
+   * „For“) für eine Frage.
+   */
+  protected ansehenAls(wert: string): void {
+    this.spielersicht.set(wert !== 'gm');
+    this.nebelFuer.set(wert === 'gm' || wert === 'all' ? null : wert);
+  }
   /** Die Figuren auf der Karte, für die man aufdecken kann: Spiel-Tokens und die Gruppe. */
+  protected readonly nebelFuerName = computed(() => this.figurenHier().find((f) => f.id === this.nebelFuer())?.name ?? '');
   protected readonly figurenHier = computed(() => {
     const e = this.karte();
     if (!e) return [];
@@ -2048,9 +2093,12 @@ export class Karte {
     const max = this.breite() * 0.3;
     const plan = this.planung();
     const pr = this.planRaster();
-    return markersOf(e).filter((m) => m.kind !== 'passage').map((m: MapMarker) => {
-      const ziel = ziele[m.to];
-      const name = ziel?.name ?? this.bestand.name()(m.to) ?? '?';
+    /* Ein freies Licht (T-320) ist für Spielende nur sein Schein, kein Marker. */
+    const lt = this.alsLeitung();
+    const getragen = this.getragen();
+    return markersOf(e).filter((m) => m.kind !== 'passage' && (m.kind !== 'light' || lt)).map((m: MapMarker) => {
+      const ziel = m.kind === 'light' ? undefined : ziele[m.to];
+      const name = m.kind === 'light' ? 'Light' : (ziel?.name ?? this.bestand.name()(m.to) ?? '?');
       const pt = z && z.id === m.rel.id ? z.pt : m;
       /* Der Platz in Feldern (T-317): am Token, sonst nach Statblock; Möbel behalten ihre Breite. */
       const span = m.kind === 'scenery' ? m.size : this.tokenPlatz(m.to, m.ownSize);
@@ -2082,6 +2130,8 @@ export class Karte {
             ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) <= plan.range
             : null,
         etikett: plan && plan.rel !== m.rel.id ? (plan.labels[m.to] ?? '') : '',
+        /* Wer leuchtet, sieht die Leitung am Marker (T-320) — auch auf einer hellen Karte. */
+        leuchtet: lt && markerHasLight(m, getragen) && !lightIsOff(m.rel.props as Record<string, unknown> | undefined),
       };
     });
   });
@@ -2102,7 +2152,7 @@ export class Karte {
   }
 
   /** Antippen öffnet die Kurzansicht (`quick`) — nicht nach einem Ziehen. */
-  protected kurzansicht(ev: MouseEvent, id: string): void {
+  protected kurzansicht(ev: MouseEvent, id: string, relId?: string): void {
     if (this.nachZug) {
       this.nachZug = false;
       return;
@@ -2118,12 +2168,25 @@ export class Karte {
       this.planTipp.emit({ kind: 'target', id, name: m.name, feet: pr ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) : null });
       return;
     }
+    /* Ein freies Licht hat keinen Artikel (T-320): antippen wählt es nur. */
+    if (relId && this.marker().some((x) => x.rel.id === relId && x.kind === 'light')) {
+      if (this.darfSchreiben()) this.markerWahl.set(relId);
+      return;
+    }
     if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
       void this.router.navigate(['/artikel', id]);
       return;
     }
     this.kurz.oeffnen(id, ev.currentTarget as HTMLElement);
+    if (relId && this.darfSchreiben() && !this.spielersicht()) this.markerWahl.set(relId);
   }
+
+  /** Das zuletzt angetippte Token, für „Remove“ an ihm und die Entf-Taste (T-320). */
+  protected readonly markerWahl = signal<string | null>(null);
+  protected readonly markerWahlBild = computed(() => {
+    const id = this.markerWahl();
+    return id && this.werkzeug() === 'keins' ? (this.marker().find((m) => m.rel.id === id) ?? null) : null;
+  });
 
   private nachZug = false;
   private griff: { id: string; to: string; sx: number; sy: number; zieht: boolean; pointer: number; von: Pt; selbst: boolean; span: number | null } | null = null;
@@ -2186,6 +2249,7 @@ export class Karte {
     const b = this.buehne()?.nativeElement;
     if (!b || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
     this.zeiger.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    this.markerWahl.set(null);
     b.setPointerCapture?.(ev.pointerId);
     if (this.zeiger.size > 1) this.lupeAus();
     /* **Einen Punkt ziehen** (T-304): unter dem Finger eine Ecke, sonst schiebt es die Karte. */
@@ -2468,6 +2532,12 @@ export class Karte {
       ev.preventDefault();
       return;
     }
+    /* Entf nimmt das gewählte Token weg (T-320). */
+    if ((ev.key === 'Delete' || ev.key === 'Backspace') && this.markerWahlBild() && this.darfSchreiben()) {
+      this.tokenWeg(this.markerWahl()!);
+      ev.preventDefault();
+      return;
+    }
     if (ev.shiftKey && ev.key.toLowerCase() === 'f') {
       void this.vollbildUm();
       ev.preventDefault();
@@ -2580,6 +2650,8 @@ export class Karte {
       }
       if (g.gridSize) this.groesseBasis.set(g.gridSize);
       this.gitterAendern({ ...g, ...(this.einst()?.gridShape === 'none' ? { gridShape: 'square' as const } : {}) });
+    } else if (this.werkzeug() === 'licht') {
+      this.lichtSetzen(pt);
     } else if (this.werkzeug() === 'uebergang') {
       this.uebergangTippen(pt);
     } else if (this.werkzeug() === 'schloss') {
@@ -2764,6 +2836,16 @@ export class Karte {
   protected readonly TOKEN_SPANS = TOKEN_SPANS;
   /** Die Grösse, die „Size“ an ein angetipptes Token gibt; `null`: wieder nach Statblock. */
   protected readonly groesseWahl = signal<number | null>(null);
+  /** Was „Token size“ an jedem Token ergäbe (T-320): ein gestricheltes Quadrat. */
+  protected readonly groessenVorschau = computed(() => {
+    const s = this.einst();
+    if (this.werkzeug() !== 'tokenGroesse' || !s) return [];
+    const f = this.faktor();
+    const wahl = this.groesseWahl();
+    return this.marker()
+      .filter((m) => m.kind !== 'scenery' && m.kind !== 'light')
+      .map((m) => ({ id: m.rel.id, x: m.x, y: m.y, px: s.gridSize * (wahl ?? this.tokenPlatz(m.to, null)) * f }));
+  });
   protected groesseGeben(relId: string): void {
     const e = this.karte();
     if (e) void this.schreiben(setMarkerSize(e, relId, this.groesseWahl()));
@@ -3337,6 +3419,7 @@ export class Karte {
   /** Einen Marker wegnehmen (T-301) — die Kante, nicht den Artikel. */
   protected tokenWeg(relId: string): void {
     const e = this.karte();
+    if (this.markerWahl() === relId) this.markerWahl.set(null);
     if (e) void this.schreiben(removeMarker(e, relId));
   }
 
@@ -3345,6 +3428,11 @@ export class Karte {
     if (!e) return;
     const hell = Math.max(0, this.lichtHell());
     const matt = Math.max(0, this.lichtMatt());
+    /* Ein freies Licht ohne Radius ist nichts mehr (T-320). */
+    if (!hell && !matt && markersOf(e).some((m) => m.rel.id === relId && m.kind === 'light')) {
+      void this.schreiben(removeMarker(e, relId));
+      return;
+    }
     const relations = (e.relations ?? []).map((r) => {
       if (r.id !== relId) return r;
       const { light: _l, dim: _d, ...rest } = (r.props ?? {}) as Record<string, unknown>;
@@ -3352,6 +3440,35 @@ export class Karte {
     });
     void this.schreiben({ ...e, relations });
   }
+
+  /**
+   * **Ein Licht frei setzen** (T-320): wer mit „Light source“ neben jedes
+   * Token tippt, setzt eine Lichtquelle ohne Artikel (`addLight`) — vorher
+   * tat das nichts, und ein Licht gab es nur an einem Marker.
+   */
+  private lichtSetzen(pt: Pt): void {
+    const e = this.karte();
+    const hell = Math.max(0, this.lichtHell());
+    const matt = Math.max(0, this.lichtMatt());
+    if (!e) return;
+    if (!hell && !matt) {
+      this.hinweis.set('Set Bright or Dim above 0 to place a light.');
+      return;
+    }
+    void this.schreiben(addLight(e, pt, `r-${crypto.randomUUID()}`, hell, matt));
+  }
+  /**
+   * **Wie weit die Lichter reichen** (T-320) — für die Leitung, solange die
+   * Gruppe „Light“ offen ist: ein Kreis je Licht, innen hell, aussen
+   * dämmrig, ohne Sperren. Auf einer hellen Karte sähe man sonst nichts.
+   */
+  protected readonly lichtKreise = computed(() => {
+    const e = this.angezeigt();
+    const n = this.nat();
+    if (!e || !n || this.aktiv() !== 'licht' || !this.alsLeitung()) return [];
+    const ar = this.seitenverhaeltnis() || 1;
+    return mapLights(e, n, this.getragen()).map((l) => ({ id: l.id, x: l.x, y: l.y, hw: l.bright * 2, hh: (l.bright * 2) / ar, dw: l.dim * 2, dh: (l.dim * 2) / ar }));
+  });
 
   /**
    * **Wessen Sicht gezeichnet wird** (T-216, T-305): für Spielende die
@@ -3535,13 +3652,31 @@ export class Karte {
   }
   /** Die ganze Karte schreiben — Ebenen und Übergänge (T-307). */
   private async schreibenGanz(e: Entity): Promise<void> {
-    if (this.speichert()) return;
+    /* **Nichts geht verloren, während gespeichert wird** (T-320): zwei
+       Tokens schnell hintereinander wegnehmen nahm nur das erste — das
+       zweite Schreiben fiel still weg. Jetzt wartet der letzte Stand (er
+       baut auf dem Entwurf auf, enthält also beide Änderungen) und geht
+       danach mit der Revision, die das erste Schreiben hinterliess. */
     this.entwurf.set(e);
+    if (this.speichert()) {
+      this.wartet = e;
+      return;
+    }
     this.mangel.set(null);
     this.speichert.set(true);
-    const fehler = await this.brett.schreiben(e);
-    this.mangel.set(fehler);
+    let naechstes: Entity | null = e;
+    while (naechstes) {
+      const fehler = await this.brett.schreiben(naechstes);
+      this.mangel.set(fehler);
+      naechstes = this.wartet;
+      this.wartet = null;
+      if (naechstes && fehler) naechstes = null;
+      const rev = this.gespeichert()?.revision;
+      if (naechstes && rev !== undefined) naechstes = { ...naechstes, revision: rev };
+    }
     this.entwurf.set(null);
     this.speichert.set(false);
   }
+  /** Der Stand, der nach dem laufenden Schreiben geht (T-320). */
+  private wartet: Entity | null = null;
 }
