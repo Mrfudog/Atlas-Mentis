@@ -1,0 +1,20 @@
+/* Die Ansichten oben (T-318). */
+.ansichtswahl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+}
+.ansichtswahl a {
+  padding: 0.2rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+.ansichtswahl a.an {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}

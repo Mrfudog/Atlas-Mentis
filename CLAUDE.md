@@ -383,9 +383,12 @@ wiederkommen, werden sie neu geschrieben.
   **Ein Editor** (T-276): der Designer (`ansichten/designer.ts`) bearbeitet
   jede Ansicht — Registry › Views, „Design" an der Typseite (mit
   vorgewähltem Typ), „Design this view" im Full edit des Artikels. Beim
-  Speichern sagt er, wohin: die Ansicht selbst (jeder Artikel), der ganze
-  Typ (eigene Anordnung oder angepasst), nur dieser Artikel, oder eine neue
-  Ansicht mit Bedingung. Die Typseite zeigt nur noch, welche Ansichten
+  Speichern sagt er, wohin: die Ansicht selbst (jeder Artikel), jeder
+  Artikel eines Typs — **vorgewählt der Typ, von dem man kommt**, und
+  angepasst, wo es geht, sonst eigene Anordnung, ohne Häkchen (T-318) —,
+  nur dieser Artikel, oder eine neue Ansicht mit Bedingung. Was in einer
+  Ansicht je Typ und gestaltet gilt, steht unter ihr in Registry › Views
+  und im Designer („In this view"). Die Typseite zeigt nur noch, welche Ansichten
   gelten und woher — kein zweiter Editor.
 - **Die Anordnung wohnt am Typ** (`InterfaceDef.views`), nicht an der
   Ansicht: eine Kreatur zeigt ihren Bogen, ein Rezept seine Werkbank, ohne

@@ -193,7 +193,7 @@ const APP: AppTerm[] = [
     sort: 'app',
     aliases: ['View editor'],
     definition: 'The one editor for views: a view as a tree of elements — sections, columns, tabs, tile groups, carousels, collapsibles, quotes, badges, tables from edges, the rows of a table, the page elements — each with its values, also from linked articles.',
-    effect: 'Registry › Views, “Design” on a type’s page, or “Design this view” on an article. Saving asks where the change goes: every article, the whole type (own or adjusted), one article, or a new view with a condition.',
+    effect: 'Registry › Views, “Design” on a type’s page, or “Design this view” on an article. Saving asks where the change goes: every article, every article of a type (preselected: the type you came from), one article, or a new view with a condition. Elements can be searched.',
     translations: { de: 'Ansichtsdesigner' },
   },
   {
@@ -210,7 +210,7 @@ const APP: AppTerm[] = [
     aliases: ['Adjusted'],
     sort: 'app',
     definition: 'What a type says for a view as a difference to what it inherits: elements left out, fields an element adds, elements only here, another order, fields never shown.',
-    effect: 'New elements and fields of the view still reach the type; an own arrangement replaces the view and keeps what it was. The view designer saves an adjustment when “adjusted” is ticked under “the whole type”.',
+    effect: 'New elements and fields of the view still reach the type; an own arrangement replaces the view and keeps what it was. The view designer saves an adjustment for “every article of a type” wherever one can say the change, and its own arrangement otherwise — the line under “Save for” says which.',
     translations: { de: 'Anpassung' },
   },
   {

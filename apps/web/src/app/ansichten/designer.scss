@@ -332,3 +332,35 @@ select {
 .lbl {
   text-align: left;
 }
+/* Was in dieser Ansicht gilt (T-318): allgemein, je Typ, gestaltete. */
+.teile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+a.chipb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+a.chipb[aria-current='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+a.chipb[aria-current='true'] .sub {
+  color: inherit;
+}
+.element-suche {
+  width: 100%;
+  box-sizing: border-box;
+}
+.mehr {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}

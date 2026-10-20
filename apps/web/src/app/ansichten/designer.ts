@@ -37,6 +37,7 @@ import { techName } from '../register/regeln';
 import { RegVorschau } from '../register/vorschau';
 import { Ansichtsbaum } from './baum';
 import { GRUPPEN, ORTE, PALETTE, eintrag, eintragText } from './palette';
+import { anpassungLeer, ansichtsTeile, sagtEigenes } from './uebersicht';
 
 /** Eine Zeile des Baums, flach gezeichnet mit Einzug. */
 interface Zeile {
@@ -124,9 +125,13 @@ export class Ansichtsdesigner {
   /** Zugeklappte Unterbäume, nach Id. */
   protected readonly zu = signal<ReadonlySet<string>>(new Set());
   protected readonly speichernAls = signal<Speichern>('view');
-  /** Für „der ganze Typ": welcher, und ob nur die Abweichung (angepasst). */
+  /** Für „jeder Artikel dieses Typs": welcher (T-318: vorgewählt der, von dem man kommt). */
   protected readonly zielTyp = signal('');
-  protected readonly angepasst = signal(true);
+  /** Fest: die eigene Anordnung des Typs, auch wo eine Anpassung reichte — er folgt der
+   *  allgemeinen Ansicht dann nicht mehr. Sonst wird angepasst, wo es geht (T-318). */
+  protected readonly fest = signal(false);
+  /** Die Suche in den Elementen (T-318): die Palette ist lang. */
+  protected readonly elementSuche = signal('');
   /** Was eine Anpassung nie zeigt (`LayoutAdjust.hide`). */
   protected readonly versteckt = signal<string[]>([]);
   protected readonly wertSuche = signal('');
@@ -213,7 +218,7 @@ export class Ansichtsdesigner {
     this.leer.set(def?.empty === 'show');
     this.versteckt.set([]);
     this.zielTyp.set(t ?? '');
-    this.angepasst.set(true);
+    this.fest.set(false);
     if (!def || isDesignedView(def)) {
       this.gruppe.set(def ? (def.group ?? k ?? '') : 'quick');
       this.geltung.set(structuredClone(def?.applies ?? (t ? { types: [t] } : {})));
@@ -222,17 +227,19 @@ export class Ansichtsdesigner {
       if (def?.applies?.article && !this.beispiel()) this.waehleBeispiel(def.applies.article);
       return;
     }
-    /* Eine Ansicht ohne Geltung: was für diesen Typ gilt — von ihm, einem Obertyp oder der Ansicht. */
+    /* Eine Ansicht ohne Geltung: was für diesen Typ gilt — von ihm, einem Obertyp oder der Ansicht.
+       **Kommt man von einem Typ, ändert man diesen Typ** (T-318): vorgewählt ist er selbst,
+       auch wenn er noch nichts Eigenes sagt — sonst landete die Änderung in der Ansicht und
+       damit an jedem Artikel. */
     this.gruppe.set(k!);
     this.geltung.set(t ? { types: [t] } : {});
-    const lf = t ? layoutFor(r, k!, t) : null;
-    if (lf?.from) {
-      const eigen = r.interfaces[lf.from]?.views?.[k!];
-      this.zielTyp.set(lf.from);
-      this.angepasst.set(isAdjust(eigen));
+    if (t && r.interfaces[t]) {
+      const eigen = r.interfaces[t]?.views?.[k!];
+      this.zielTyp.set(t);
+      this.fest.set(ownLayout(eigen) && !isAdjust(eigen));
       if (isAdjust(eigen)) this.versteckt.set([...(eigen.adjust.hide ?? [])]);
       this.speichernAls.set('type');
-      this.baum.set(tabsAsTree(structuredClone(layoutFor(r, k!, lf.from).layout)));
+      this.baum.set(tabsAsTree(structuredClone(layoutFor(r, k!, t).layout)));
     } else {
       this.speichernAls.set('view');
       this.baum.set(tabsAsTree(structuredClone(def.layout ?? [])));
@@ -467,7 +474,7 @@ export class Ansichtsdesigner {
   );
   protected readonly geltungText = computed(() => {
     if (this.speichernAls() === 'view') return 'every article (the view itself)';
-    if (this.speichernAls() === 'type') return `${this.typLabel(this.zielTyp())} and its subtypes${this.angepasst() ? ', adjusted' : ', its own arrangement'}`;
+    if (this.speichernAls() === 'type') return `every article of ${this.typLabel(this.zielTyp())} and its subtypes`;
     if (this.speichernAls() === 'article') return `only ${this.probeName()}`;
     return appliesText(this.geltung(), (id) => this.bestand.name()(id));
   });
@@ -541,13 +548,39 @@ export class Ansichtsdesigner {
     return layoutFor({ ...r, interfaces: { ...r.interfaces, [typ]: { ...d, views } } }, key, typ).layout;
   }
 
-  /** Die Anpassung des Entwurfs, oder `null`, wenn er sich so nicht sagen lässt. */
+  /** Die Anpassung des Entwurfs, oder `null`, wenn er sich so nicht sagen lässt (oder fest gespeichert wird). */
   protected readonly anpassung = computed(() => {
     const r = this.reg();
     const k = this.schluessel();
     const t = this.zielTyp();
-    if (!r || !k || !t || this.speichernAls() !== 'type' || !this.angepasst()) return null;
+    if (!r || !k || !t || this.speichernAls() !== 'type' || this.fest()) return null;
     return adjustFrom(this.basisFuer(r, k, t), treeAsTabs(this.baum()), this.versteckt());
+  });
+  /** Wie der Typ gespeichert wird — gesagt, nicht gefragt (T-318): angepasst, wo es geht. */
+  protected readonly speicherArt = computed<'adjust' | 'own' | 'general'>(() => {
+    const a = this.anpassung();
+    if (!a) return 'own';
+    return anpassungLeer(a) ? 'general' : 'adjust';
+  });
+  /** Sagt der Zieltyp für diese Ansicht schon Eigenes? Dann gibt es „Use the general view". */
+  protected readonly zielHatEigenes = computed(() => {
+    const k = this.schluessel();
+    return !!k && sagtEigenes(this.reg()?.interfaces[this.zielTyp()]?.views?.[k]);
+  });
+  /** Was in dieser Ansicht gilt (T-318): allgemein, je Typ, gestaltete ihrer Gruppe. */
+  protected readonly teile = computed(() => {
+    const r = this.reg();
+    const k = this.schluessel();
+    if (!r || !k || this.gestaltet()) return [];
+    return ansichtsTeile(r, k, (id) => this.bestand.name()(id));
+  });
+  /** Die Palette nach der Suche (T-318): Name, Element und Erklärung. */
+  protected readonly paletteGefiltert = computed(() => {
+    const q = this.elementSuche().trim().toLocaleLowerCase();
+    if (!q) return this.palette;
+    return this.palette
+      .map((g) => ({ ...g, items: g.items.filter((p) => [p.name, p.el, p.tip].some((x) => x?.toLocaleLowerCase().includes(q))) }))
+      .filter((g) => g.items.length);
   });
 
   /** Die Ansichtszeile, wie sie mit dem Entwurf wäre (Name, Reihenfolge, Rest, leere Felder). */
@@ -572,7 +605,7 @@ export class Ansichtsdesigner {
     const d = r.interfaces[t];
     if (!d) return r;
     const a = this.anpassung();
-    const wert = this.angepasst() && a ? { adjust: a } : layout;
+    const wert = a ? { adjust: a } : layout;
     return { ...r, interfaces: { ...r.interfaces, [t]: { ...d, views: { ...(d.views ?? {}), [k]: wert } } } };
   });
 
@@ -633,17 +666,15 @@ export class Ansichtsdesigner {
     }
     if (als === 'type' && k) {
       const t = this.zielTyp();
+      /* Angepasst, wo es geht; was eine Anpassung nicht sagen kann (ein Element in einen
+         Behälter verschoben, anders eingestellt), wird die eigene Anordnung (T-318). */
       const a = this.anpassung();
-      if (this.angepasst() && !a) {
-        this.arbeit.fehler.set('An adjustment can drop, reorder and add elements and add fields — this draft does more. Save it as the type’s own arrangement.');
-        return;
-      }
-      const wert = this.angepasst() ? { adjust: a! } : layout;
+      const wert = a ? { adjust: a } : layout;
       const ok = await this.arbeit.aendern('interfaces', (ifs) => {
         const d = ifs[t];
         if (!d) return `There is no type ${t}.`;
         const v = { ...(d.views ?? {}) };
-        if (ownLayout(wert)) v[k] = wert;
+        if (sagtEigenes(wert)) v[k] = wert;
         else delete v[k];
         if (Object.keys(v).length) d.views = v;
         else delete d.views;
@@ -684,6 +715,28 @@ export class Ansichtsdesigner {
       views[fest] = def;
     });
     if (ok) this.fertig.emit(fest);
+  }
+
+  /** Der Typ folgt wieder der allgemeinen Ansicht (T-318): seine Zeile für sie geht. */
+  protected allgemeinWieder(): void {
+    const k = this.schluessel();
+    const t = this.zielTyp();
+    if (!k || !t || !this.darf()) return;
+    this.arbeit.fragen({
+      titel: `Use the general ${this.def()?.label ?? k} view for ${this.typLabel(t)}?`,
+      text: [`What ${this.typLabel(t)} says for this view goes; its articles show the general view (or what a parent type says) again.`],
+      ja: 'Use the general view',
+      tun: async () => {
+        const ok = await this.arbeit.aendern('interfaces', (ifs) => {
+          const d = ifs[t];
+          if (!d?.views) return undefined;
+          delete d.views[k];
+          if (!Object.keys(d.views).length) delete d.views;
+          return undefined;
+        });
+        if (ok) this.fertig.emit(k);
+      },
+    });
   }
 
   /** Löschen: nie eine Ansicht der Orte; mit ihr gehen die Anordnungen der Arten für sie. */

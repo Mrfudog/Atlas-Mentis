@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-views-per-type",
+      "date": "2026-10-20",
+      "title": "Views: change one type without touching the rest",
+      "text": "Designing a view from a type now changes only that type — “every article of Table” is chosen for you, and the designer saves an adjustment where it can and the type’s own arrangement otherwise, without a checkbox. Registry › Views lists under each view the types that say their own and the designed views, the views stand in a row at the top, and the elements can be searched.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
       "id": "2026-10-20-light-tool",
       "date": "2026-10-20",
       "title": "Light has its own tool; sight comes from player tokens",
