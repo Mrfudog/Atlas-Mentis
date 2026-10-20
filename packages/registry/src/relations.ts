@@ -463,6 +463,20 @@ export const relations: Record<string, RelationDef> = {
     to: ['ItemProperty'],
   },
 
+  /**
+   * **Ein Stück mit einem Enhancement** (T-300, E-107): der +1-Dolch einer
+   * Figur ist ein Stück von „Dagger" mit dieser Kante auf „+1 Weapon".
+   * Mehrere je Stück; geprüft gegen `Item.appliesTo` (`enhancementRefusal`).
+   */
+  enchantedWith: {
+    type: 'enchantedWith',
+    label: 'enhanced with',
+    inverseLabel: 'enhances',
+    means: 'A piece of an item carries an enhancement such as +1 Weapon or Silvered; its name, price and bonuses are worked out from both.',
+    from: ['Item'],
+    to: ['Item'],
+  },
+
   /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
      Art, und `kind` sagt, was für eine — eine Kante, die auf den Namen
      einer verschwundenen Art zeigt, gilt für nichts. */

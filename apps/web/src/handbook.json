@@ -84,6 +84,14 @@
           ]
         },
         {
+          "heading": "Giving a character a +1 dagger",
+          "text": [
+            "Give the character a dagger as usual — bought, looted or handed over, it arrives as their own piece. Open the piece (from the inventory) and, under Enhancements, choose Add enhancement: +1 Weapon. Add Silvered too if you like; only enhancements whose “Variant applies to” fits are offered first, and one that does not fit is refused.",
+            "The piece now reads “+1 Silvered Dagger”: its name, rarity and bonuses are worked out from the dagger and the enhancements, and so is its price — dagger 2 gp, plus 1,000 gp for +1 Weapon, plus 100 gp for silvering: 1,102 gp. Nothing of that is stored; change the dagger or an enhancement and every piece follows.",
+            "Which price counts is a campaign rule (Rules & options › Items › Item prices): combined, base price only, or not calculated. Who may add enhancements is a rule there too — the GM, unless you let players do it for their own pieces."
+          ]
+        },
+        {
           "heading": "Designing a view",
           "text": [
             "Registry › Views lists every view; Design opens one in the view designer — from a type’s page with that type chosen, from an article with “Design this view” in Full edit. The preview stands on top; add elements from the palette, move them with ↑ ↓ → ← or by dragging, and give each its values — follow an edge to show fields of linked articles, such as the wares of the shop a creature keeps.",
