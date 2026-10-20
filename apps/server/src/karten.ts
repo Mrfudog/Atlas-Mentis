@@ -63,6 +63,9 @@ import {
   type Frame,
   type MapRules,
   type PlanStep,
+  mapKindOf,
+  mapToolsOf,
+  type MapToolGroup,
 } from '@nw/model';
 import type { Repository } from './repo.js';
 import { darfZiehen, plaeneDerKarte, zieher } from './zugplan.js';
@@ -129,6 +132,8 @@ export interface KartenKontext {
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
   /** Die Kartenregeln der Kampagne (T-204): Nebel je Gruppe oder Figur, Züge, Aufdecken beim Zug — ohne `Map.revealOnMove`, das liest die Seite an der Karte. */
   rules: MapRules;
+  /** Die Werkzeuggruppen für die Art dieser Karte (T-320, `Campaign.mapTools`). */
+  tools: MapToolGroup[];
   /** Die Figuren des Betrachters mit Token auf dieser Karte (T-204). */
   own: string[];
   /**
@@ -353,7 +358,8 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const rules = mapRulesOf(kampagne);
     const meine = new Set(await eigeneFiguren(request));
     const own = [...new Set(markersOf(karte).map((m) => m.to))].filter((id) => meine.has(id));
-    const aufDerKarte = [...new Set(markersOf(karte).filter((m) => m.kind !== 'scenery').map((m) => m.to))];
+    /* Ein Übergang und ein freies Licht (T-320) zeigen auf die Karte selbst — kein Token, das jemand zieht. */
+    const aufDerKarte = [...new Set(markersOf(karte).filter((m) => m.kind !== 'scenery' && m.kind !== 'passage' && m.kind !== 'light').map((m) => m.to))];
     /* **Wer zieht** (T-290): gefragt an der gesiebten Karte — was nicht
        dasteht, zieht niemand ausser der Leitung. */
     const wer = zieher(stand, kampagne, karte, meine);
@@ -379,7 +385,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
-    return { parents, children: kinder, navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights } satisfies KartenKontext;
+    return { parents, children: kinder, navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights } satisfies KartenKontext;
   });
 
   /**

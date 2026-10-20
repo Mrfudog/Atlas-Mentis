@@ -2414,6 +2414,27 @@ lauernde Wache auf, die versteckt bleiben soll (REQ-209). Der Vermerk
 steht an der Kante und nicht an der Kreatur, weil dieselbe Kreatur auf
 einer anderen Karte für eine andere Begegnung bereitstehen kann.
 
+**Ein Licht an der Wand ist ein Marker, kein Artikel** (T-320). Eine
+Fackel in einer Halterung hat keinen Namen, den jemand nachschlägt, und
+keine Werte; ein Artikel „Fackel 3" für jede wäre Bestand ohne Inhalt. Ein
+Marker muss aber auf etwas zeigen — also zeigt das freie Licht
+(`kind: light`) auf seine eigene Karte, wie es ein Übergang schon tut. Die
+Art sagt, dass dahinter kein Artikel steht: kein Kurzansicht-Popup, kein
+Token, das jemand nach `tokenMove` zieht, und für Spielende nur der Schein.
+Wer eine Laterne mit Namen und Preis will, legt das Item als Marker hin;
+es leuchtet nach seinem eigenen Licht.
+
+**Welche Werkzeuge eine Karte zeigt, sagt die Kampagne, nicht die Karte**
+(T-320). Eine Weltkarte braucht keine Wände und eine Kampfkarte keine
+Unterkarten — aber welche Gruppe auf welcher Art steht, ist eine
+Arbeitsweise der Leitung und für alle Karten einer Art dieselbe. Darum
+steht die Tabelle an der Kampagne (`Campaign.mapTools`) und nicht als
+Feld an jeder Karte: dreissig Kampfkarten hätten sonst dreissig Mal
+dieselbe Liste, und die einunddreissigste vergässe sie. Die Liste nimmt
+nichts weg, was gilt: eingeschalteter Nebel und eine dunkle Karte
+behalten ihre Werkzeuge, sonst sässe die Leitung vor einer Karte, deren
+Nebel sie nicht mehr aufdecken kann.
+
 ## Zug, Tempo und Zone auf der Karte
 
 **Ein Zug ist kein Feld der Kreatur.** Dass der Kämpfer schon 20 Fuss

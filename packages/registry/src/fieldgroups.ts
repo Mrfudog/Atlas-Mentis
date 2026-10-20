@@ -3148,6 +3148,14 @@ export const fieldGroups = {
           enum: ['rules', 'tinyHalf'],
           default: 'rules',
         },
+        /* **Werkzeuge je Kartentyp** (T-320): je `Map.kind` die Gruppen
+           der Werkzeugleiste. Fehlt eine Art, gilt die Vorgabe
+           (`defaultMapTools`); gelesen über `mapToolsOf`. */
+        mapTools: {
+          type: 'object',
+          title: 'Map tools',
+          description: 'Which tool groups the map shows for each map kind. A kind left out keeps the default: walls, fog, light, grid, tokens, assets and markers on battle maps; sub-map links, markers and assets on the others.',
+        },
       },
     },
   },

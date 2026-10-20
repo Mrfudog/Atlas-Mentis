@@ -224,8 +224,15 @@ nächste Abschnitt.
 - **Ein Licht ist ein Marker mit Radius** (`marker.props.light` hell,
   `dim` der ganze Radius, beides in Feldern; `mapLights`). Kein eigener
   Artikel: dieselbe Laterne leuchtet auf einer Stadtkarte anders weit als
-  auf einer Kampfkarte. Gesetzt mit Light › Light source (ein Token
-  antippen; 0 und 0 nimmt das Licht weg). Was ein Licht erreicht, ist das
+  auf einer Kampfkarte. Gesetzt mit Light › Light source (ein Token,
+  Asset oder Marker antippen; 0 und 0 nimmt das Licht weg).
+  **Ein Licht ohne Artikel** (T-320) — eine Fackel an der Wand, ein
+  Lichtschacht — ist ein Marker `kind: 'light'`, der wie ein Übergang auf
+  seine eigene Karte zeigt (`addLight`): Light source und auf eine freie
+  Stelle tippen. Spielende sehen nur seinen Schein, keinen Marker; ziehen
+  tut es nur die Leitung. Solange „Light" offen ist, zeigt die Karte der
+  Leitung die Reichweite jedes Lichts als Kreis — auf einer hellen Karte
+  sähe man sonst nicht, ob ein Licht gesetzt ist. Was ein Licht erreicht, ist das
   Sichtpolygon gegen die Sperren, die **Licht** halten (`lightPolygon`,
   `litAreas`).
 - **Die Dunkelsicht steht am Statblock** (`senses`, „darkvision 60 ft.")
@@ -318,8 +325,13 @@ vorwärts, die Karte nennt ihre Umgebung. An der Kante steht der Rahmen
 (`x`, `y`, `w`, `h` in Anteilen), also **wo** auf der grossen Karte die
 kleine liegt.
 
-Der Rahmen wird mit dem Werkzeug *Sub-map* aufgezogen und nicht in die Mitte
-gelegt. Eine Karte, die zeigt, wo sie liegt, ist der halbe Zweck der
+Der Rahmen wird mit dem Werkzeug *Sub-maps › Link map* aufgezogen und nicht
+in die Mitte gelegt (T-320): Rahmen ziehen, die Karte wählen, die dort
+liegt — geschrieben wird an ihr (`insideMap` mit dem Rahmen; eine alte
+Kante wird ersetzt, denn eine Karte liegt in genau einer). *Unlink* nimmt
+die Kante wieder weg; die Karte bleibt. Zur Wahl stehen alle Karten ausser
+dieser und denen darüber — sonst entstünde ein Kreis. Eine Karte im Spiel
+verlinkt nichts, das tut ihre Vorlage. Eine Karte, die zeigt, wo sie liegt, ist der halbe Zweck der
 Verschachtelung: `world > continent > settlement > district > battle` ist
 eine Kette von Rahmen, und ein Klick hinein ist der Zoom.
 
@@ -573,12 +585,28 @@ Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
   und Zeichnen sind in `GRUPPEN` vorgesehen und stehen erst mit ihrem
   Werkzeug da. Die Tasten gelten unter Play, im Vollbild oder mit dem
   Fokus in der Karte, nie beim Tippen. Über der Bühne bleibt, was die
-  Sicht einstellt: Zoom, Blätter, Spielersicht, „For“, Vollbild.
+  Sicht einstellt: Zoom, Blätter, „View as“ (GM · all players · eine
+  Figur, T-320 — vorher „Player view“ und „For“), Vollbild.
+- **Werkzeuge je Kartentyp** (T-320, `Campaign.mapTools`, `mapToolsOf`):
+  welche Gruppen die Leiste zeigt, sagt die Kampagne je `Map.kind`. Ohne
+  Einstellung: auf `battle` Wände, Nebel, Licht, Gitter, Tokens, Assets
+  und Marker; auf allen anderen Unterkarten (*Sub-maps*), Marker und
+  Assets — Nebel lässt sich einschalten. Eine Karte ohne Art ist `region`,
+  wie das Register vorgibt. Auswahl, Messen und Ebenen stehen immer da;
+  Wege und Reise haben noch kein Werkzeug auf der Karte. **Was auf der
+  Karte schon gilt, bleibt bearbeitbar:** Nebel, der an ist, und eine
+  Karte, die nicht hell ist, behalten ihre Gruppe — sonst liesse sich der
+  Nebel nicht mehr aufdecken. Eingestellt wird unter Rules & options ›
+  Map tools (eine Tabelle Art × Gruppe) oder an der Leiste mit „⚙ Tools“
+  für die Art der offenen Karte.
+- **Am Telefon** (T-320) liegt die Leiste als eine Zeile fest am unteren
+  Rand unter der Karte (`position: sticky`), die Unterwerkzeuge darüber;
+  Sicht, Freigabe und „Party & encounters“ stehen hinter „⋯ View“.
 - **Vollbild** (Umschalt+F): unter Play geht die ganze Seite ins Vollbild
   (`.vollbild-ziel`), damit der Zugplan dabei bleibt; auf der
   Artikelseite die Karte allein. Ohne Fullscreen API (iPhone) legt sich
   die Karte über die Seite; Esc verlässt beides.
-- **Die Seitenleiste** („Table“, unter Play offen, auf der Artikelseite
+- **Die Seitenleiste** („Party & encounters“, bis T-320 „Table“, unter Play offen, auf der Artikelseite
   zu; `seitenleiste.ts`, `GET /api/maps/:id/side`): die Figuren der Gruppe
   der laufenden Kampagne mit Trefferpunkten (Stand an der Figur, Maximum
   am Statblock) und Zuständen — ◎ zentriert die Karte auf ihr Token,

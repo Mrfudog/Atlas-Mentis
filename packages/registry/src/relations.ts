@@ -987,7 +987,7 @@ export const relations: Record<string, RelationDef> = {
         kind: {
           type: 'string',
           title: 'Token kind',
-          enum: ['static', 'scenery', 'party', 'quest', 'play', 'passage'],
+          enum: ['static', 'scenery', 'party', 'quest', 'play', 'passage', 'light'],
           default: 'static',
         },
         size: { type: 'number', title: 'Size in squares', default: 1 },

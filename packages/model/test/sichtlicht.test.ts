@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addLight,
   addWalls,
   carriedLight,
   carriedLights,
@@ -133,5 +134,21 @@ describe('Sicht bis zur Wand oder geschlossenen Tür (T-305)', () => {
     for (let i = 0; i < 5; i++) figureView(k, { x: 0.5, y: 0.5 }, nat, 60);
     const ms = (performance.now() - t0) / 5;
     expect(ms).toBeLessThan(60);
+  });
+});
+
+/* Ein Licht frei auf der Karte (T-320): ein Marker `light` auf die Karte selbst. */
+describe('addLight (T-320)', () => {
+  it('places a light without an article, pointing at its own map', () => {
+    const k = addLight(karte(), { x: 0.2, y: 0.3 }, 'l1', 2, 4);
+    const m = markersOf(k).find((x) => x.rel.id === 'l1')!;
+    expect(m.kind).toBe('light');
+    expect(m.to).toBe('k1');
+    expect(mapLights(k, nat)).toEqual([{ id: 'l1', to: 'k1', x: 0.2, y: 0.3, bright: 0.2, dim: 0.4 }]);
+  });
+  it('dim reaches at least as far as bright, and a light can be switched off', () => {
+    const k = addLight(karte(), { x: 0.5, y: 0.5 }, 'l1', 3, 0);
+    expect(mapLights(k, nat)[0]!.dim).toBeCloseTo(0.3);
+    expect(mapLights(setLightOff(k, 'l1', true), nat)).toEqual([]);
   });
 });

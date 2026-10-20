@@ -17,13 +17,15 @@
           "heading": "Tools",
           "text": [
             "The tool bar on the left holds the tools in groups: Select (S), Tokens (T), Measure (M), Floors (E) and Fog (F). Pick a group and its tools appear above the map; pick it again, or press Esc, to go back to Select. « hides the tool names, » shows them again.",
-            "Select: drag a marker to move it, tap it for its quick view. Measure: tap two points. Tokens (GM): Add marker — tap where it goes, then pick the article: one line per name, the creature first (then statblock, then image), + shows the others. Remove — tap a marker to take it off the map.",
+            "Which groups a map shows depends on its kind, as the campaign sets it: battle maps get Walls, Fog, Light, Grid and Tokens; world, region and other maps get Sub-maps, markers and assets. GMs change it with ⚙ Tools at the end of the bar (for this kind) or under Rules & options › Map tools (all kinds).",
+            "Sub-maps › Link map: drag a frame, pick the map that lies there — zooming in then leads to it; Unlink removes it.",
+            "Select: drag a marker to move it, tap it for its quick view. Measure: tap two points. Tokens (GM): Add marker — tap where it goes, then pick the article: one line per name, the creature first (then statblock, then image), + shows the others. Remove — tap a marker to take it off the map; or tap a token in Select and use Remove above it, or press Delete.",
             "Place combatants puts the creatures of the running encounter on the map, Clear play tokens removes them again — prepared markers and the party stay.",
             "Fullscreen (or Shift+F) gives the map the whole screen; Esc leaves it.",
             "Floors (E): a map with several floors — storeys, a cellar, tower levels — shows Floor at the top to switch between them. Stairs, ladders, bridges and portals are the square markers: tap one to see where it leads, Show the other floor, or Take a token standing on it through. A token on stairs you can see through sees both floors. GMs add floors and passages under Floors.",
-            "Table shows the party beside the map: hit points and conditions, ◎ centres the map on a token. The GM places a character with Place or by dragging its row onto the map, and sees the encounters of the session with Place for the combatants not yet on the map.",
+            "Party & encounters shows the party beside the map: hit points and conditions, ◎ centres the map on a token. The GM places a character with Place or by dragging its row onto the map, and sees the encounters of the session with Place for the combatants not yet on the map.",
             "Before an encounter starts, Prepare sets its combatants on the map faded and hidden from the players; drag them where they belong. ▶ Start rolls initiative for whoever has none (into the log), reveals the prepared tokens and makes the encounter the one the session runs.",
-            "Player view (GM) shows the map as the players see it: fogged parts covered, hidden markers left out."
+            "View as (GM) shows the map as the GM, as all players or as one character: fogged parts covered, hidden markers left out. On a phone the tools stay below the map at the bottom of the screen, and View, release and Party & encounters sit behind ⋯ View."
           ]
         },
         {
@@ -49,7 +51,7 @@
           "text": [
             "Fog is revealed by the GM, not by creatures. You do not need to place a creature: pick Fog in the tool bar, switch “Fog on”, then reveal by hand — Reveal drags a rectangle, Brush paints (choose the width), Hide covers an area again, Reveal all and Cover all do the whole map.",
             "“Reveal along moves” says whether moving a token on a fogged map reveals the way it went: the campaign sets the default under Rules & options › On the map, and each map may say on or off.",
-            "If the campaign keeps fog per character, choose under “For” whom you reveal for; “Player view” then shows what that character sees. Without a choice, what you reveal is for everyone."
+            "If the campaign keeps fog per character, choose the character under “View as”: you see what it sees, and what you reveal is for it. As GM or all players, what you reveal is for everyone."
           ]
         },
         {
@@ -67,7 +69,8 @@
           "text": [
             "Grid (G): choose square or hex, then set it on the image — Set origin taps a point where two lines cross, Pick a square taps two opposite corners of one square and takes its size. The grid shows at once; Save grid stores it, Discard goes back.",
             "Fine-tune with the arrows (Shift: ten times as far) and the size slider, which moves within ±10 % of the size; type a number for big jumps. Show grid, Colour and Opacity change how it looks — hidden, it still measures and snaps.",
-            "Tokens snap to the grid (on by default): a dropped token lands so that it covers whole squares — large creatures 2×2, huge 3×3. Tokens › Size gives a token its own size, half squares included; “by size” follows its statblock. Rules & options › Token sizes says whether a tiny creature takes half a square."
+            "Tokens snap to the grid (on by default): a dropped token lands so that it covers whole squares — large creatures 2×2, huge 3×3.",
+            "Tokens › Token size gives a token its own size — how many squares it covers, half squares included; “by size” follows its statblock (Medium 1×1, Large 2×2 …), and a dashed square shows the choice before you tap. Rules & options › Token sizes says whether a tiny creature takes half a square."
           ]
         },
         {
@@ -86,7 +89,7 @@
         {
           "heading": "Light and darkvision",
           "text": [
-            "Light › Lighting sets the map bright, dim or dark. Light source: set bright and dim light in squares, then tap a token or marker — it sheds that light, blocked by walls but not by windows. 0 and 0 takes the light away.",
+            "Light › Lighting sets the map bright, dim or dark. Light source: set bright and dim light in squares, then tap the map to place a light there, or a token, asset or marker to make it shine — blocked by walls but not by windows. 0 and 0 takes the light away. While Light is open, circles show how far each light reaches; on a bright map lights change nothing until Lighting is dim or dark.",
             "In the dark, a character sees only what its darkvision reaches (from Senses on its statblock) and the lights it can see; moves and opened doors reveal just that. Players see darkness over the map with lights and their darkvision cut out.",
             "On a fogged map, players see brightly what their character sees right now, and what was revealed before dimmed. Sight comes from the player characters' tokens; the party token counts only while none of them is on the map.",
             "With walls, players see only up to the next wall or closed door, fog or not. In the dark, what only darkvision reaches is shown in greyscale; lit areas keep their colour. An item with Bright light (a torch, a lantern) lights the token of the character holding it in hand, and lights itself when placed as a marker. Light on/off switches a light off and on again without losing its radius."

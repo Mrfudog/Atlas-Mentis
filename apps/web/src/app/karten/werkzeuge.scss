@@ -1,0 +1,133 @@
+/* Karte: Werkzeuge, gewähltes Token und Lichter (T-320). */
+/* Das gewählte Token (T-320): „Remove“ über ihm, ohne das Werkzeug zu suchen. */
+.token-aktionen {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 22px));
+  z-index: 6;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+  white-space: nowrap;
+}
+
+/* Ein freies Licht (T-320) und der Schein der Lichter für die Leitung. */
+.marker.k-light {
+  background: #f3c64a;
+  color: #5a3d00;
+  border-color: #5a3d00;
+}
+.marker.leuchtet {
+  box-shadow:
+    0 0 0 3px rgb(243 198 74 / 0.85),
+    0 1px 4px rgb(0 0 0 / 0.45);
+}
+.lichtkreis {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid rgb(243 198 74 / 0.9);
+  background: rgb(243 198 74 / 0.18);
+  pointer-events: none;
+}
+.lichtkreis.matt {
+  border-style: dashed;
+  background: rgb(243 198 74 / 0.08);
+}
+.lichtkreise {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.groessen-vorschau {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 2px dashed var(--accent);
+  border-radius: 4px;
+  background: rgb(140 28 19 / 0.08);
+  pointer-events: none;
+}
+.unterleiste .hint {
+  flex-basis: 100%;
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+/* Das Menü der Ansicht (T-320): am Desktop stehen die Knöpfe in der Zeile. */
+.menue-knopf {
+  display: none;
+}
+.mehr {
+  display: contents;
+}
+.fuer.an select {
+  border-color: var(--accent);
+}
+
+/* **Am Telefon** (T-320): die Werkzeuge unter der Karte, fest am unteren
+   Rand — eine Zeile, die waagrecht scrollt, darüber die Unterwerkzeuge
+   der gewählten Gruppe. Sicht und Freigabe stehen hinter „⋯ View“. */
+@media (max-width: 640px) {
+  .menue-knopf {
+    display: inline-flex;
+  }
+  .mehr {
+    display: none;
+  }
+  .mehr.offen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    flex-basis: 100%;
+  }
+  .werkzeugleiste {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 0.2rem;
+    padding: 0.25rem;
+    scrollbar-width: none;
+  }
+  .werkzeugleiste button {
+    flex: none;
+    flex-direction: column;
+    gap: 0;
+    min-height: 44px;
+    min-width: 52px;
+    padding: 0.15rem 0.35rem;
+    justify-content: center;
+  }
+  .werkzeugleiste .txt {
+    font-size: 0.7rem;
+  }
+  .spalte > .buehne,
+  .spalte > .lupe-hinweis {
+    order: 0;
+  }
+  .spalte > .unterleiste,
+  .spalte > .asset-blatt,
+  .spalte > .bewegung-blatt {
+    order: 1;
+  }
+  .spalte > .unterleiste {
+    position: sticky;
+    bottom: 56px;
+    z-index: 4;
+    max-height: 40dvh;
+    overflow-y: auto;
+  }
+  .spalte > * {
+    order: 2;
+  }
+}
+.rahmen.wegnehmen {
+  border-color: var(--accent);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+.werkzeug-knopf {
+  color: var(--dim);
+}

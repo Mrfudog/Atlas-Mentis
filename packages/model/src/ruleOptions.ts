@@ -29,7 +29,7 @@ import { allowedEquipmentMethods, type EquipmentMethod } from './equipment.js';
 import { hitPointRuleOf } from './hitpoints.js';
 import { enhancementsByOf, itemPricingOf } from './enhancement.js';
 import { inventoryRulesOf } from './inventory.js';
-import { mapRulesOf } from './map.js';
+import { mapRulesOf, mapToolTable } from './map.js';
 import { stowingRuleOf } from './stowing.js';
 import { initiativeRulesOf } from './tracker.js';
 import { substitutionsOf, substitutionText } from './substitutes.js';
@@ -370,6 +370,14 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
       { key: 'allies', label: 'Party and allies', does: 'As the party, plus whoever an encounter lists on the party’s side (Ally).' },
       { key: 'all', label: 'Every token', does: 'A player moves every token they can see on the map.' },
     ],
+  },
+  {
+    /* Werkzeuge je Kartentyp (T-320), gelesen über `mapToolsOf`; eine Tabelle statt Varianten. */
+    key: 'mapTools',
+    sort: 'map',
+    label: 'Map tools',
+    does: 'Which tools a map offers, by map kind: walls, fog and light belong on battle maps, linking sub-maps on world and region maps. A kind left unchanged keeps the default.',
+    source: { field: 'mapTools' },
   },
   {
     key: 'revealOnMove',
@@ -735,6 +743,8 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return mapRulesOf(campaign).revealOnMove;
     case 'doors':
       return mapRulesOf(campaign).doors;
+    case 'mapTools':
+      return Object.entries(mapToolTable(campaign)).map(([k, g]) => `${k}: ${g.length ? g.join(', ') : 'none'}`);
     case 'combat':
       return initiativeRulesOf(campaign).combat;
     case 'initNames':
