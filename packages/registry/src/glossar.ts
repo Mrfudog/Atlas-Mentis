@@ -336,6 +336,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Vorlage und Instanz' },
   },
   {
+    term: 'Scale',
+    aliases: ['Map scale', 'Square size', 'Hex size'],
+    sort: 'app',
+    definition: 'What one square or hex of a map is in the world — a number and a unit such as 5 ft, 10 ft, 1,5 m, 1 mi or 6 mi. Each floor of a map has its own.',
+    effect: 'Movement, reach, light, darkvision and measuring count with it; 1,5 m counts as a 5 ft square. Without a length unit (1 day) a square counts as 5 ft and measuring shows the text.',
+    translations: { de: 'Massstab' },
+  },
+  {
     term: 'Floor',
     aliases: ['Floors', 'Storey', 'Building part', 'Held back'],
     sort: 'app',

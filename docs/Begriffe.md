@@ -2004,6 +2004,13 @@ und Bewegung rechnen auf jeder Seite in der Ebene, in der sie gerade sind.
 Die Gegenseite eines Übergangs ist ein gespiegeltes Ende und kein zweiter
 Marker — ein Paar wäre zwei Stellen, die auseinanderlaufen.
 
+**Der Massstab ist Text, die Fuss werden gerechnet** (T-321). „6 mi" je
+Hex steht so an der Karte, wie es jemand gemeint hat; dass das 31 680 Fuss
+sind, rechnet das Lesen über die Einheiten des Registers (D8). Ein
+gespeichertes `feetPerSquare` daneben wäre die zweite Zahl, die nach dem
+ersten Umstellen der Einheit nicht mehr stimmt. Die Tischregel bleibt
+dabei die Regel: 1,5 m sind ein Feld von 5 ft, nicht 4,92.
+
 **Ein Stück im Inventar ist eine Instanz** (T-150). Was eine Figur in die
 Hand bekommt — gekauft, erbeutet, gefertigt, geschenkt —, ist nicht der
 Gegenstand aus dem Buch, sondern ein Stück davon: ein eigener Artikel mit

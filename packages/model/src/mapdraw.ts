@@ -511,7 +511,7 @@ export function removeJoined(e: Entity, id: string, ar: number, tol: number): En
 // ------------------------------------------------------------------ Gitter
 
 export type GridPatch = Partial<
-  Pick<MapSettings, 'gridShape' | 'gridSize' | 'gridOffsetX' | 'gridOffsetY' | 'gridColor' | 'gridOpacity' | 'gridHidden' | 'snapTokens'>
+  Pick<MapSettings, 'gridShape' | 'gridSize' | 'gridOffsetX' | 'gridOffsetY' | 'gridColor' | 'gridOpacity' | 'gridHidden' | 'snapTokens' | 'scale'>
 >;
 
 const r2 = (v: number): number => Math.round(v * 100) / 100;
@@ -565,6 +565,13 @@ export function setGrid(e: Entity, patch: GridPatch): Entity {
   if (patch.gridOpacity !== undefined && Number.isFinite(patch.gridOpacity)) karte['gridOpacity'] = Math.min(1, Math.max(0, r2(patch.gridOpacity)));
   if (patch.gridHidden !== undefined) karte['gridHidden'] = patch.gridHidden;
   if (patch.snapTokens !== undefined) karte['snapTokens'] = patch.snapTokens;
+  /* Der Massstab je Feld (T-321): Zahl und Einheit als Text, wie er
+     dasteht; leer fällt auf die Vorgabe des Registers zurück. */
+  if (patch.scale !== undefined) {
+    const sc = patch.scale.trim().slice(0, 40);
+    if (sc) karte['scale'] = sc;
+    else delete karte['scale'];
+  }
   return { ...e, components: { ...e.components, Map: karte } };
 }
 

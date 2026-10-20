@@ -164,6 +164,30 @@ der Farbwahl; leer das Braun der Vorgabe), `gridOpacity` (0–1, Vorgabe
 0,5) und `gridHidden`. Ausgeblendet fehlt nur das Bild: gemessen,
 eingerastet und geplant wird weiter auf dem Gitter (`gridStroke`).
 
+**Massstab je Feld** (T-321): `Map.scale` ist Text mit Zahl und Einheit —
+„5 ft", „10 ft", „1,5 m", „1 mi", „6 mi" stehen zur Auswahl
+(`SCALE_PRESETS`), frei geschrieben geht weiter („1 day"). Eingestellt in
+*Grid* neben der Form, mit der Vorschau gespeichert; auf einer Ebene
+(T-307) gilt er für sie. Die Leiste sagt „1 hex = 6 mi". Umgerechnet wird
+**beim Lesen** (D8): `scaleFeet` nimmt die Einheit aus dem Register
+(`units.ts`, mit ihren Schreibweisen) und gibt Fuss je Feld; metrisch nach
+der Tischregel (1,5 m ein Feld von 5 ft). Das Gitter trägt die Zahl als
+`GridGeometry.cellFeet`, und damit rechnen Bewegungsraster, Reichweite,
+Gelegenheitsangriffe, Licht und Dunkelsicht; ohne Längeneinheit gilt das
+Feld als 5 ft, das Messen zeigt dann den Text („2 hexes · 2 day").
+Bestehende Karten behalten ihren Massstab, wie er dasteht — ohne Angabe
+die Vorgabe „1,5 m" —, also ändert sich an ihnen nichts.
+
+**Das Hexmuster** (T-321) ist eine Kachel (`HEX_TILE_PATH`, Breite 100,
+Höhe `HEX_TILE_H` = 1,5 Hexhöhen): das Hex der ersten Reihe und die
+senkrechte Kante bei x = 50, wo sich zwei Hexe der versetzten Reihe
+treffen. Bis T-321 standen dort Senkrechten bei x = 0 und 100 — in der
+zweiten Reihe die Mitten der Hexe, also Linien von der Ecke ins Innere.
+Die Senkrechten der ersten Reihe liegen auf dem Kachelrand; jede Kachel
+zeichnet eine Hälfte des Strichs. Der Test `hexmassstab.test.ts` legt die
+Kachel über ein 3×3-Feld: jede Strecke endet an Ecken und ist eine Kante,
+alle 38 Kanten sind gezeichnet, doppelt nur am Kachelrand.
+
 ### Tokens am Gitter (T-317)
 
 **Der Platz eines Tokens in Feldern** (`tokenSpan`): was das Token selbst

@@ -117,6 +117,9 @@
 .unterleiste input.zahl {
   width: 4.5em;
 }
+.unterleiste input.massstab {
+  width: 6em;
+}
 
 /* Vollbild (T-203): die Bühne nimmt, was bleibt. Ohne Fullscreen API legt
    sich die Karte über die Seite (`.ersatz`). */

@@ -303,7 +303,7 @@ describe('Gitter gestalten (T-314)', () => {
 });
 
 describe('Tokens am Gitter (T-317)', () => {
-  const geo = { shape: 'square' as const, size: 100, rowHeight: 100, ox: 0, oy: 0, w: 1000, h: 1000 };
+  const geo = { shape: 'square' as const, size: 100, rowHeight: 100, cellFeet: 5, ox: 0, oy: 0, w: 1000, h: 1000 };
 
   it('der Platz: am Token, sonst nach Statblock und Kampagne, sonst ein Feld', () => {
     expect(tokenSpan(1.5, 'huge')).toBe(1.5);
