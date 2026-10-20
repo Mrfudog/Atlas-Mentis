@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-levels-in-the-assistant",
+      "date": "2026-10-20",
+      "title": "Level up per class in the character assistant",
+      "text": "Edit a character and raise any of its classes with + in the class step, or add another class — multiclassing checks the minimum scores by the rules. The new level's features, choices and hit points follow as steps; there is no separate level-up page any more.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
       "id": "2026-10-20-views-per-type",
       "date": "2026-10-20",
       "title": "Views: change one type without touching the rest",
@@ -92,7 +100,7 @@
       "id": "2026-10-19-choose-spells",
       "date": "2026-10-19",
       "title": "Choose cantrips and spells in the character assistant",
-      "text": "Spellcasting classes now ask for their cantrips and spells — a wizard's spellbook, a bard's spells known, prepared spells in the 2024 rules — from the class spell list and up to the level you cast. Level up adds the new ones; a spell you already have is locked.",
+      "text": "Spellcasting classes now ask for their cantrips and spells — a wizard's spellbook, a bard's spells known, prepared spells in the 2024 rules — from the class spell list and up to the level you cast. A new level adds the new ones; a spell you already have is locked.",
       "area": "Characters",
       "link": "/characters/new"
     },
