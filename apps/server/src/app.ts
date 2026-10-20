@@ -92,6 +92,7 @@ import {
   isInstance,
   readInstance,
   redactEntity,
+  initiativeRulesOf,
   redactMap,
   mapRulesOf,
   PARTY_RELATION,
@@ -166,6 +167,7 @@ import { registerSichtbarkeit } from './sichtbarkeit.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
 import { registerTueren } from './tueren.js';
 import { registerKampfstart } from './kampfstart.js';
+import { registerTracker } from './initiative.js';
 import { insSpiel, registerSpielinstanz } from './spielinstanz.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
@@ -1210,6 +1212,8 @@ export function buildApp({
     if (/^\/api\/maps\/[^/]+\/door$/.test(url) && request.method === 'POST') return;
     /* Eine Begegnung beginnen (T-203): die Route prüft die Leitung selbst (`kampfstart.ts`). */
     if (/^\/api\/encounters\/[^/]+\/start$/.test(url) && request.method === 'POST') return;
+    /* Der Initiative-Tracker (T-022): die Route prüft Leitung und eigenen Zug selbst (`initiative.ts`). */
+    if (/^\/api\/encounters\/[^/]+\/tracker$/.test(url) && request.method === 'POST') return;
     /* Eine Karte oder Begegnung ins Spiel nehmen (T-289): die Route prüft die Leitung selbst (`spielinstanz.ts`). */
     if (url === '/api/play/take' && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
@@ -1529,9 +1533,11 @@ export function buildApp({
       }
       return nebel;
     };
+    /* Was die Kampagne Spielenden von der Initiative zeigt (T-022). */
+    const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
     return entities
       .filter((e) => articleVisible(alle, e, auge))
-      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields))
+      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln))
       .map((e) =>
         isMap(e) && !seesUnfinished(alle, e, auge)
           ? /* Das Kartenbild nur, soweit aufgedeckt (T-312, E-041): die
@@ -3622,6 +3628,8 @@ export function buildApp({
   const spielDeps = { repo, viewerOf, roh, sieve, kampagnenEbene, schreibeGeprueft: (e: Entity) => schreibeGeprueft(e) };
   registerSpielinstanz(app, spielDeps);
   registerKampfstart(app, { repo, feed: live, viewerOf, roh, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e), insSpiel: insSpiel(spielDeps) });
+  /* Der Initiative-Tracker (T-022): die Reihe gesiebt, Züge und Effekte durch die Leitung. */
+  registerTracker(app, { repo, viewerOf, roh, geltend, sieve: (request, entities, bestand) => sieve(request, entities, bestand), schreibeGeprueft: (e) => schreibeGeprueft(e) });
   /* Karten finden (T-202): die Liste unter Play › Maps und wo eine Karte vorkommt. */
   registerKartenliste(app, { roh, sieve });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
