@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { withRuleVariant, type Entity, type Relation, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
+import { MAP_KINDS, MAP_TOOL_GROUPS, mapToolTable, withMapTool, withRuleVariant, type Entity, type MapKind, type MapToolGroup, type Relation, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
@@ -151,6 +151,33 @@ import { Tragraster } from './tragraster';
                     <li class="hint">None — add one to the campaign with “{{ o.relation }}”.</li>
                   }
                 </ul>
+              } @else if (o.key === 'mapTools' && tabelle(); as t) {
+                <!-- **Werkzeuge je Kartentyp** (T-320): eine Zeile je Art, eine Spalte je Gruppe. -->
+                <div class="tabelle-rahmen">
+                  <table class="werkzeuge">
+                    <thead>
+                      <tr>
+                        <th scope="col">Map kind</th>
+                        @for (g of GRUPPEN; track g.key) {
+                          <th scope="col" [title]="g.does">{{ g.label }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (k of ARTEN; track k) {
+                        <tr>
+                          <th scope="row">{{ k }}</th>
+                          @for (g of GRUPPEN; track g.key) {
+                            <td>
+                              <input type="checkbox" [checked]="t[k].includes(g.key)" [disabled]="!darfSchreiben() || waehlt() !== null"
+                                     [attr.aria-label]="g.label + ' on ' + k + ' maps'" (change)="werkzeug(k, g.key, $any($event.target).checked)" />
+                            </td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
               } @else if (o.key === 'carrying' && darfRegister()) {
                 <!-- Basils Blatt einstellen statt Zeilen lesen (REQ-355). -->
                 <nw-tragraster />
@@ -293,6 +320,22 @@ import { Tragraster } from './tragraster';
       font-size: 0.8rem;
       min-height: 28px;
     }
+    .tabelle-rahmen {
+      overflow-x: auto;
+    }
+    table.werkzeuge {
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    table.werkzeuge th,
+    table.werkzeuge td {
+      padding: 0.2rem 0.45rem;
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+    }
+    table.werkzeuge th[scope='row'] {
+      text-align: left;
+    }
   `,
 })
 export class Regeloptionen {
@@ -326,6 +369,14 @@ export class Regeloptionen {
   protected readonly waehlt = signal<string | null>(null);
   /** Wie viele Regeln und Optionen der Laufzeit noch keinen Artikel im Stapel haben. */
   protected readonly fehlen = signal(0);
+  protected readonly ARTEN = MAP_KINDS;
+  protected readonly GRUPPEN = MAP_TOOL_GROUPS;
+  /** Die Kampagne selbst, für die Tabelle „Map tools“ (T-320). */
+  private readonly kampagneArtikel = signal<Entity | null>(null);
+  protected readonly tabelle = computed(() => {
+    const k = this.kampagneArtikel();
+    return k ? mapToolTable(k) : null;
+  });
   /** Was je Kante zur Wahl steht (`choices` vom Server). */
   protected readonly wahl = signal<Record<string, { id: string; name: string; does: string }[]>>({});
 
@@ -341,6 +392,10 @@ export class Regeloptionen {
     try {
       const r = await this.api.campaignRules(id);
       this.sorten.set(r.sorts);
+      if (r.sorts.some((s) => s.options.some((o) => o.key === 'mapTools'))) {
+        const { refs: _r, fromTemplate: _f, ...k } = (await this.api.entity(id)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+        this.kampagneArtikel.set(k as Entity);
+      }
       this.fehlen.set(r.missing ?? 0);
       this.wahl.set(r.choices ?? {});
     } catch (error) {
@@ -373,6 +428,22 @@ export class Regeloptionen {
         ? [...alt, { id: `${k.id}~${o.relation}-${Date.now().toString(36)}`, type: o.relation, to: id, props: {} }]
         : alt.filter((r) => !(r.type === o.relation && r.to === id));
       await this.api.putEntity({ ...(k as Entity), relations });
+      await this.lade(this.kampagne());
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'The option could not be saved.');
+    } finally {
+      this.waehlt.set(null);
+    }
+  }
+
+  /** Eine Werkzeuggruppe für eine Kartenart schalten (T-320) — an der Kampagne, wie „Use this“. */
+  protected async werkzeug(art: MapKind, g: MapToolGroup, an: boolean): Promise<void> {
+    if (this.waehlt()) return;
+    this.waehlt.set(`mapTools:${art}`);
+    this.fehler.set(null);
+    try {
+      const { refs: _refs, fromTemplate: _ft, ...k } = (await this.api.entity(this.kampagne())) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      await this.api.putEntity(withMapTool(k as Entity, art, g, an));
       await this.lade(this.kampagne());
     } catch (error) {
       this.fehler.set(error instanceof ApiError ? error.message : 'The option could not be saved.');

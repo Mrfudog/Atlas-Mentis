@@ -97,6 +97,12 @@ import {
   wallPoints,
   RULE_OPTIONS,
   withRuleVariant,
+  INSIDE_MAP_RELATION,
+  MAP_TOOL_GROUPS,
+  mapKindOf,
+  withMapTool,
+  type MapToolGroup,
+  type Relation,
   GROUND_FLOOR,
   PASSAGE_EXACT,
   PASSAGE_KINDS,
@@ -185,9 +191,11 @@ type Werkzeug =
   | 'lichtSchalter'
   | 'gitterUrsprung'
   | 'gitterZelle'
-  | 'uebergang';
+  | 'uebergang'
+  | 'rahmen'
+  | 'rahmenWeg';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
-const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken']);
+const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
 const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
@@ -199,11 +207,13 @@ const LUPE_MS = 280;
 /** Halbmesser der Lupe am Schirm, und wie stark sie vergrössert. */
 const LUPE_R = 70;
 const LUPE_ZOOM = 3;
+/** Auf vier Stellen, wie jede Lage an einer Kante. */
+const r4 = (v: number): number => Math.round(Math.min(1, Math.max(0, v)) * 10000) / 10000;
 /** Pinselbreiten in Feldern. */
 const PINSEL = [1, 2, 4, 8] as const;
 
 /** Die Gruppen der Werkzeugleiste (T-203). */
-type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'notizen' | 'zeichnen';
+type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'unterkarten' | 'notizen' | 'zeichnen';
 interface GruppenDef {
   key: Gruppe;
   label: string;
@@ -215,6 +225,8 @@ interface GruppenDef {
   leitung?: boolean;
   /** Vorgesehen, aber noch ohne Werkzeug — die Aufgabe, die es bringt. Steht nicht in der Leiste. */
   spaeter?: string;
+  /** Die Werkzeuggruppen der Kampagne (`Campaign.mapTools`, T-320), von denen eine eingeschaltet sein muss. */
+  braucht?: readonly MapToolGroup[];
 }
 /**
  * **Die Werkzeugleiste** nach dem Vergleich (docs/vorschlaege/Karten-VTT-Vergleich.md):
@@ -224,17 +236,19 @@ interface GruppenDef {
  */
 const GRUPPEN: readonly GruppenDef[] = [
   { key: 'auswahl', label: 'Select', title: 'Select and move markers, open their quick view', sym: '↖', taste: 'S' },
-  { key: 'tokens', label: 'Tokens', title: 'Add markers, place combatants, clear play tokens', sym: '◉', taste: 'T', leitung: true },
+  { key: 'tokens', label: 'Tokens', title: 'Add markers, place combatants, clear play tokens', sym: '◉', taste: 'T', leitung: true, braucht: ['tokens', 'markers', 'assets'] },
   { key: 'messen', label: 'Measure', title: 'Tap two points to measure', sym: '↔', taste: 'M' },
   /* **Ebenen** (T-307, E-108): Stockwerke, Keller, Turmgeschosse, und die
      Übergänge dazwischen. Spielende sehen die Gruppe, sobald es mehr als eine Ebene gibt. */
   { key: 'ebenen', label: 'Floors', title: 'Floors of this map, and the stairs, ladders and portals between them', sym: '⧉', taste: 'E' },
-  { key: 'nebel', label: 'Fog', title: 'Fog of war: reveal and hide what the players see', sym: '☁', taste: 'F', leitung: true },
+  { key: 'nebel', label: 'Fog', title: 'Fog of war: reveal and hide what the players see', sym: '☁', taste: 'F', leitung: true, braucht: ['fog'] },
   /* Licht ist ein eigenes Werkzeug (T-305, die Leitung 20.10.): wie hell
      die Karte ist und welche Marker leuchten, hat mit dem Nebel nichts zu tun. */
-  { key: 'licht', label: 'Light', title: 'Lighting of the map, light sources, lights on and off', sym: '☀', taste: 'L', leitung: true },
-  { key: 'waende', label: 'Walls', title: 'Walls, doors, windows and obstacles', sym: '▥', taste: 'W', leitung: true },
-  { key: 'gitter', label: 'Grid', title: 'Set the grid on the map: origin, square size, shape', sym: '#', taste: 'G', leitung: true },
+  { key: 'licht', label: 'Light', title: 'Lighting of the map, light sources, lights on and off', sym: '☀', taste: 'L', leitung: true, braucht: ['light'] },
+  { key: 'waende', label: 'Walls', title: 'Walls, doors, windows and obstacles', sym: '▥', taste: 'W', leitung: true, braucht: ['walls'] },
+  { key: 'gitter', label: 'Grid', title: 'Set the grid on the map: origin, square size, shape', sym: '#', taste: 'G', leitung: true, braucht: ['grid'] },
+  /* **Unterkarten** (T-320): einen Rahmen ziehen, die Karte wählen, in die man dort hineinzoomt. */
+  { key: 'unterkarten', label: 'Sub-maps', title: 'Link a map to a frame on this one, to zoom into it', sym: '⊡', taste: 'K', leitung: true, braucht: ['frames'] },
   { key: 'notizen', label: 'Notes', title: 'Notes on the map', sym: '✎', taste: 'N', leitung: true, spaeter: 'T-203' },
   { key: 'zeichnen', label: 'Draw', title: 'Draw on the map', sym: '✐', taste: 'D', leitung: true, spaeter: '—' },
 ];
@@ -418,19 +432,66 @@ interface Zeiger {
               <span class="txt">{{ g.label }}</span>
             </button>
           }
+          @if (kampfLeitung() && kontext()?.campaign) {
+            <!-- **Werkzeuge je Kartentyp** (T-320): der Absprung zur Einstellung der Kampagne. -->
+            <button type="button" class="werkzeug-knopf" [class.an]="werkzeugBlatt()" [attr.aria-expanded]="werkzeugBlatt()" aria-label="Tools for this map kind" [title]="'Which tools ' + kartenArt() + ' maps show in this campaign'" (click)="werkzeugBlatt.set(!werkzeugBlatt())">
+              <span class="sym" aria-hidden="true">⚙</span>
+              <span class="txt">Tools</span>
+            </button>
+          }
           <button type="button" class="einklappen" (click)="leisteZu.set(!leisteZu())" [attr.aria-expanded]="!leisteZu()" [attr.aria-label]="leisteZu() ? 'Show tool names' : 'Hide tool names'" [title]="leisteZu() ? 'Show tool names' : 'Hide tool names'">
             <span aria-hidden="true">{{ leisteZu() ? '»' : '«' }}</span>
           </button>
         </div>
 
         <div class="spalte">
+          @if (werkzeugBlatt() && kampfLeitung()) {
+            <div class="bewegung-blatt" role="group" [attr.aria-label]="'Tools on ' + kartenArt() + ' maps'">
+              <b>Tools on {{ kartenArt() }} maps</b>
+              @for (g of WERKZEUG_GRUPPEN; track g.key) {
+                <label [title]="g.does">
+                  <input type="checkbox" [checked]="werkzeugEingestellt().has(g.key)" [disabled]="werkzeugSpeichert()" (change)="werkzeugSetzen(g.key, $any($event.target).checked)" />
+                  {{ g.label }}
+                </label>
+              }
+              @if (bewegungFehler(); as f) {
+                <p class="fehler" role="alert">{{ f }}</p>
+              }
+              <p class="hint">For every {{ kartenArt() }} map of this campaign; the map's kind is set in its fields. Fog that is on and a map that is not bright keep their tools. All kinds at once under <a [routerLink]="['/artikel', kontext()!.campaign]">Rules &amp; options</a> › Map tools.</p>
+            </div>
+          }
+          @if (aktiv() === 'unterkarten' && darfSchreiben()) {
+            <!-- **Unterkarten verlinken** (T-320): Rahmen ziehen, Karte wählen — hineinzoomen führt dann dorthin. -->
+            <div class="unterleiste" role="toolbar" aria-label="Sub-maps">
+              <button type="button" [class.an]="werkzeug() === 'rahmen'" [attr.aria-pressed]="werkzeug() === 'rahmen'" (click)="waehle('rahmen')" title="Drag a frame over the part of this map, then pick the map you zoom into there">Link map</button>
+              <button type="button" [class.an]="werkzeug() === 'rahmenWeg'" [attr.aria-pressed]="werkzeug() === 'rahmenWeg'" (click)="waehle('rahmenWeg')" title="Tap a frame to unlink its map; the map itself stays">Unlink</button>
+              @if (rahmenNeu()) {
+                <label>
+                  Map
+                  <select (change)="rahmenZiel.set($any($event.target).value || null)" aria-label="Map to link in this frame">
+                    <option value="" [selected]="!rahmenZiel()">choose a map…</option>
+                    @for (k of rahmenWahl(); track k.id) {
+                      <option [value]="k.id" [selected]="rahmenZiel() === k.id">{{ k.name }}{{ k.kind ? ' · ' + k.kind : '' }}</option>
+                    }
+                  </select>
+                </label>
+                <button type="button" [disabled]="!rahmenZiel() || rahmenSpeichert()" (click)="rahmenVerlinken()">Link</button>
+                <button type="button" (click)="rahmenNeu.set(null)">Cancel</button>
+              }
+              @if (rahmenFehler(); as f) {
+                <span class="fehler" role="alert">{{ f }}</span>
+              }
+            </div>
+          }
           @if (aktiv() === 'tokens' && darfSchreiben()) {
             <div class="unterleiste" role="toolbar" aria-label="Tokens">
-              <button type="button" [class.an]="werkzeug() === 'setzen'" [attr.aria-pressed]="werkzeug() === 'setzen'" (click)="waehle('setzen')" title="Tap the map where the marker goes">
-                Add marker
-              </button>
+              @if (werkzeuge().has('markers') || werkzeuge().has('tokens')) {
+                <button type="button" [class.an]="werkzeug() === 'setzen'" [attr.aria-pressed]="werkzeug() === 'setzen'" (click)="waehle('setzen')" title="Tap the map where the marker goes">
+                  Add marker
+                </button>
+              }
               <!-- **Assets** (T-306): Kiste, Tisch, Laterne — liegen, wie man sie hinlegt, und sind fix, bis „Movable in play“ es anders sagt. -->
-              @if (bearbeitung()) {
+              @if (bearbeitung() && werkzeuge().has('assets')) {
                 <button type="button" [class.an]="werkzeug() === 'setzen' && setzenArt() === 'scenery'" [attr.aria-pressed]="werkzeug() === 'setzen' && setzenArt() === 'scenery'" (click)="assetSetzen()" title="Tap the map where the asset goes — a crate, a table, a lantern">
                   Add asset
                 </button>
@@ -438,7 +499,7 @@ interface Zeiger {
                   Asset
                 </button>
               }
-              @if (offeneTeilnehmer().length) {
+              @if (offeneTeilnehmer().length && werkzeuge().has('tokens')) {
                 <button type="button" (click)="teilnehmerSetzen()" [title]="'Put ' + offeneTeilnehmer().length + ' combatants of ' + (kontext()?.turn?.name ?? 'the fight') + ' on the map'">
                   Place combatants ({{ offeneTeilnehmer().length }})
                 </button>
@@ -448,6 +509,7 @@ interface Zeiger {
               </button>
               <!-- **Platz eines Tokens** (T-317): in Feldern, auch halbe; „by size“ folgt dem Statblock. -->
               <!-- „Token size“ (T-320): „Size“ allein sagte nicht, wessen Grösse und wovon. -->
+              @if (werkzeuge().has('tokens')) {
               <button type="button" [class.an]="werkzeug() === 'tokenGroesse'" [attr.aria-pressed]="werkzeug() === 'tokenGroesse'" (click)="waehle('tokenGroesse')" title="How many squares a token covers. Choose the size, then tap the token.">
                 Token size
               </button>
@@ -463,11 +525,12 @@ interface Zeiger {
                 </label>
                 <span class="hint">How many squares the token covers; “by size” follows the statblock (Medium 1×1, Large 2×2 …). The dashed square shows it — tap a token to apply.</span>
               }
+              }
               @if (spielTokens()) {
                 <button type="button" (click)="spielTokensWeg()" title="Remove the tokens placed for play; prepared markers and the party stay">Clear play tokens</button>
               }
               <!-- **Wer zieht** (T-290, E-040): der Stand der Kampagne, und ein Klick öffnet ihn als Blatt. -->
-              @if (kampfLeitung() && kontext()?.campaign) {
+              @if (kampfLeitung() && kontext()?.campaign && werkzeuge().has('tokens')) {
                 <button type="button" class="bewegung-knopf" [class.an]="bewegungOffen()" [attr.aria-expanded]="bewegungOffen()" (click)="bewegungOffen.set(!bewegungOffen())" title="Who may move tokens in this campaign, and whether you confirm moves">
                   Movement: {{ bewegungText() }}
                 </button>
@@ -889,8 +952,10 @@ interface Zeiger {
                     [style.top.%]="k.frame.y * 100"
                     [style.width.%]="k.frame.w * 100"
                     [style.height.%]="k.frame.h * 100"
-                    [title]="k.nah ? 'Zoom in once more to enter ' + k.name : 'Enter ' + k.name"
+                    [class.wegnehmen]="werkzeug() === 'rahmenWeg'"
+                    [title]="werkzeug() === 'rahmenWeg' ? 'Unlink ' + k.name : k.nah ? 'Zoom in once more to enter ' + k.name : 'Enter ' + k.name"
                     (pointerdown)="$event.stopPropagation()"
+                    (click)="werkzeug() === 'rahmenWeg' && rahmenLoesen($event, k.id, k.name)"
                   >
                     <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
                   </a>
@@ -1222,6 +1287,10 @@ interface Zeiger {
           Token size — tap a token: it covers {{ groesseWahl() === null ? 'the squares its statblock size needs' : groesseWahl() + ' × ' + groesseWahl() + ' squares' }}.
         } @else if (werkzeug() === 'asset') {
           {{ gewaehltesAsset() ? 'Set the asset above; tap another to switch.' : 'Tap an asset to set it up. Drag one to move it.' }}
+        } @else if (werkzeug() === 'rahmen') {
+          Link map — drag a frame over the part of this map, then pick the map you zoom into there.
+        } @else if (werkzeug() === 'rahmenWeg') {
+          Unlink — tap a frame; its map stays, it is just no longer inside this one.
         } @else if (werkzeug() === 'tokenWeg') {
           Tap a marker to take it off the map. The article stays; the party token is not a marker. Or tap a token in Select and press Delete.
         } @else if (werkzeug() === 'licht') {
@@ -2554,8 +2623,51 @@ export class Karte {
 
   /** Die Gruppen, die dieser Betrachter in der Leiste hat. */
   protected readonly gruppen = computed(() =>
-    GRUPPEN.filter((g) => !g.spaeter && (!g.leitung || this.darfSchreiben()) && (g.key !== 'ebenen' || this.darfSchreiben() || this.ebenen().length > 1)),
+    GRUPPEN.filter(
+      (g) =>
+        !g.spaeter &&
+        (!g.leitung || this.darfSchreiben()) &&
+        (g.key !== 'ebenen' || this.darfSchreiben() || this.ebenen().length > 1) &&
+        (!g.braucht || g.braucht.some((t) => this.werkzeuge().has(t))),
+    ),
   );
+  /**
+   * **Die Werkzeuge dieser Kartenart** (T-320, `Campaign.mapTools`): die
+   * Leitung stellt sie an der Kampagne ein. Was schon auf der Karte gilt,
+   * bleibt bearbeitbar — Nebel, der an ist, und eine Karte, die nicht hell
+   * ist —, sonst liesse er sich nicht mehr aufdecken.
+   */
+  protected readonly werkzeuge = computed<ReadonlySet<MapToolGroup>>(() => {
+    const t = new Set<MapToolGroup>(this.kontext()?.tools ?? MAP_TOOL_GROUPS.map((g) => g.key));
+    if (this.nebelAn()) t.add('fog');
+    if (this.helligkeit() !== 'bright') t.add('light');
+    /* Eine Karte im Spiel verlinkt keine Unterkarten — das tut ihre Vorlage. */
+    if (this.istInstanz()) t.delete('frames');
+    return t;
+  });
+  protected readonly kartenArt = computed(() => mapKindOf(this.karte()));
+  protected readonly WERKZEUG_GRUPPEN = MAP_TOOL_GROUPS;
+  /** Das Blatt „Tools for … maps“ (T-320) an der Leiste. */
+  protected readonly werkzeugBlatt = signal(false);
+  protected readonly werkzeugSpeichert = signal(false);
+  /** Was die Kampagne für diese Art eingestellt hat — ohne die Ausnahmen oben. */
+  protected readonly werkzeugEingestellt = computed(() => new Set(this.kontext()?.tools ?? []));
+  /** Eine Gruppe für diese Kartenart ein- oder ausschalten — an der Kampagne, wie „Movement“ (T-290). */
+  protected async werkzeugSetzen(g: MapToolGroup, an: boolean): Promise<void> {
+    const id = this.kontext()?.campaign;
+    if (!id || this.werkzeugSpeichert()) return;
+    this.werkzeugSpeichert.set(true);
+    this.bewegungFehler.set(null);
+    try {
+      const { refs: _r, fromTemplate: _f, ...k } = (await this.api.entity(id)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      await this.api.putEntity(withMapTool(k as Entity, this.kartenArt(), g, an));
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.bewegungFehler.set(err instanceof Error ? `The setting could not be saved: ${err.message}` : 'The setting could not be saved.');
+    } finally {
+      this.werkzeugSpeichert.set(false);
+    }
+  }
   protected readonly aktiv = signal<Gruppe>('auswahl');
   /** Nur die Symbole: die Leiste schmal, mehr Karte. */
   protected readonly leisteZu = signal(false);
@@ -3346,8 +3458,71 @@ export class Karte {
     /* Ein Antippen ist kein Rechteck. */
     if (k.w < 0.005 && k.h < 0.005) return;
     const fuer = this.fuerWen();
+    if (w === 'rahmen') {
+      this.rahmenNeu.set(k);
+      this.rahmenZiel.set(null);
+      void this.kartenLaden();
+      return;
+    }
     if (w === 'aufdecken') void this.schreiben(revealArea(e, { id: `s-${crypto.randomUUID()}`, kind: 'rect', ...k, ...(fuer ? { for: fuer } : {}) }));
     else if (w === 'zudecken') void this.schreiben(coverArea(e, k));
+  }
+
+  // ------------------------------------------------------- Unterkarten (T-320)
+
+  /** Der gezogene Rahmen, bis eine Karte gewählt ist. */
+  protected readonly rahmenNeu = signal<{ x: number; y: number; w: number; h: number } | null>(null);
+  protected readonly rahmenZiel = signal<string | null>(null);
+  protected readonly rahmenSpeichert = signal(false);
+  protected readonly rahmenFehler = signal<string | null>(null);
+  private readonly karten = signal<{ id: string; name: string; kind?: string }[]>([]);
+  /** Was in den Rahmen darf: jede Karte ausser dieser und denen darüber — sonst ein Kreis. */
+  protected readonly rahmenWahl = computed(() => {
+    const raus = new Set([this.id(), ...(this.kontext()?.parents ?? []).map((p) => p.id)]);
+    return this.karten()
+      .filter((k) => !raus.has(k.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+  private async kartenLaden(): Promise<void> {
+    if (this.karten().length) return;
+    try {
+      this.karten.set((await this.api.maps()).maps.map((k) => ({ id: k.id, name: k.name, ...(k.kind ? { kind: k.kind } : {}) })));
+    } catch {
+      this.rahmenFehler.set('The maps could not be loaded.');
+    }
+  }
+  /**
+   * **Eine Karte in den Rahmen** — geschrieben wird an der Unterkarte: ihre
+   * Kante `insideMap` mit dem Rahmen (Kanten nur vorwärts). Eine Karte
+   * liegt in genau einer; eine alte Kante wird ersetzt.
+   */
+  protected async rahmenVerlinken(): Promise<void> {
+    const f = this.rahmenNeu();
+    const ziel = this.rahmenZiel();
+    if (!f || !ziel || this.rahmenSpeichert()) return;
+    await this.unterkarteSchreiben(ziel, (rel) => [
+      ...rel.filter((r) => r.type !== INSIDE_MAP_RELATION),
+      { id: `${ziel}~insideMap-${Date.now().toString(36)}`, type: INSIDE_MAP_RELATION, to: this.id(), props: { x: r4(f.x), y: r4(f.y), w: r4(f.w), h: r4(f.h) } },
+    ]);
+    this.rahmenNeu.set(null);
+  }
+  protected async rahmenLoesen(ev: Event, id: string, name: string): Promise<void> {
+    ev.preventDefault();
+    if (!confirm(`Unlink ${name}? The map stays; it is just no longer inside this one.`)) return;
+    await this.unterkarteSchreiben(id, (rel) => rel.filter((r) => !(r.type === INSIDE_MAP_RELATION && r.to === this.id())));
+  }
+  private async unterkarteSchreiben(id: string, neu: (rel: Relation[]) => Relation[]): Promise<void> {
+    this.rahmenSpeichert.set(true);
+    this.rahmenFehler.set(null);
+    try {
+      const { refs: _r, fromTemplate: _f, ...k } = (await this.api.entity(id)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      await this.api.putEntity({ ...(k as Entity), relations: neu(k.relations ?? []) });
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.rahmenFehler.set(err instanceof Error ? `Not saved: ${err.message}` : 'Not saved.');
+    } finally {
+      this.rahmenSpeichert.set(false);
+    }
   }
 
   protected nebelSchalten(an: boolean): void {

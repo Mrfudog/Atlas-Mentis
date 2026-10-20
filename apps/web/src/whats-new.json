@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-map-tools-per-kind",
+      "date": "2026-10-20",
+      "title": "Map tools per map kind, and Link map is back",
+      "text": "Battle maps show walls, fog, light and grid; world and region maps show Sub-maps, markers and assets. Set which tools each map kind shows under Rules & options › Map tools, or with ⚙ Tools on the map. Sub-maps › Link map drags a frame and links the map you zoom into there.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-20-map-lights-and-tokens",
       "date": "2026-10-20",
       "title": "Maps: place lights anywhere, remove tokens reliably",

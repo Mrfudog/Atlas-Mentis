@@ -17,6 +17,8 @@
           "heading": "Tools",
           "text": [
             "The tool bar on the left holds the tools in groups: Select (S), Tokens (T), Measure (M), Floors (E) and Fog (F). Pick a group and its tools appear above the map; pick it again, or press Esc, to go back to Select. « hides the tool names, » shows them again.",
+            "Which groups a map shows depends on its kind, as the campaign sets it: battle maps get Walls, Fog, Light, Grid and Tokens; world, region and other maps get Sub-maps, markers and assets. GMs change it with ⚙ Tools at the end of the bar (for this kind) or under Rules & options › Map tools (all kinds).",
+            "Sub-maps › Link map: drag a frame, pick the map that lies there — zooming in then leads to it; Unlink removes it.",
             "Select: drag a marker to move it, tap it for its quick view. Measure: tap two points. Tokens (GM): Add marker — tap where it goes, then pick the article: one line per name, the creature first (then statblock, then image), + shows the others. Remove — tap a marker to take it off the map; or tap a token in Select and use Remove above it, or press Delete.",
             "Place combatants puts the creatures of the running encounter on the map, Clear play tokens removes them again — prepared markers and the party stay.",
             "Fullscreen (or Shift+F) gives the map the whole screen; Esc leaves it.",

@@ -123,3 +123,11 @@
     order: 2;
   }
 }
+.rahmen.wegnehmen {
+  border-color: var(--accent);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+.werkzeug-knopf {
+  color: var(--dim);
+}

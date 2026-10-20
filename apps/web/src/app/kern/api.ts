@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TurnPlan } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, MapToolGroup, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TurnPlan } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -2104,6 +2104,8 @@ export interface KartenKontext {
   combatants: { id: string; name: string; placed: boolean }[];
   /** Die Kartenregeln der Kampagne (T-204). Fehlt bei einem älteren Server. */
   rules?: MapRules;
+  /** Die Werkzeuggruppen für die Art dieser Karte (T-320). Fehlt bei einem älteren Server. */
+  tools?: MapToolGroup[];
   /** Die eigenen Figuren mit Token hier (T-204). */
   own?: string[];
   /** Was der Betrachter ziehen darf, nach `Campaign.tokenMove` (T-290) — gerechnet am Server. */
