@@ -27,3 +27,40 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 | [[REQ-290]] Wechselwirkungen von Regeln auswerten | Spielleitung | 4 | offen |
 | [[REQ-357]] Regelgraphen wirken am Tisch | Spielleitung | 3 | teils |
 <!-- stories:ende -->
+
+## Reichweite und Vorteil im Zugplan (T-351)
+
+Stand 21.10.2026. Der Zugplan prüft die Reichweite eines Angriffs **am
+Server**, nicht nur in der Maske, und würfelt mit Vorteil oder Nachteil
+aus drei Quellen: den Wirkungen am Angreifer (`attack`), den Wirkungen am
+Ziel (`attacked`, nach Abstand `attacked.near`/`attacked.far` — Prone),
+und der langen Reichweite. Zustände wirken über die Wirkungen an ihrem
+`Condition`-Artikel; was dort steht, gilt, ohne Code je Zustand.
+
+```mermaid
+flowchart LR
+  M[Maske: zugplaner.ts] -->|rangeBand| M
+  M -->|Plan einreichen| E[Server: Einreichen]
+  E -->|ausserReichweite: 422 mit Hinweis| M
+  E --> L[(Plan planned)]
+  L -->|Confirm & roll| A[Server: ausfuehren]
+  A -->|abstandImPlan, rangeBand| R{Reichweite}
+  R -->|out| X[kein Wurf, Zeile im Ergebnis]
+  R -->|normal / long| W[attackRollMode]
+  Z[Condition-Artikel: Effects] -->|Vitals.conditions, Initiative| S[creatureStats.totals.grants]
+  S --> W
+  W -->|2d20kh1 / 2d20kl1| Log[Würfellog und Ergebnis]
+```
+
+- Reichweite: `rangeBand` (`packages/model/src/zugplan.ts`) — bis `range`
+  normal, bis `longRange` lang, darüber ausser Reichweite; ohne Gitter
+  oder Token prüft niemand.
+- Abstand: `abstandImPlan` (`apps/server/src/zugplan.ts`), gemessen vom
+  Ende des Wegs davor, 5-10-5 wie die Maske.
+- Modus: `attackRollMode` (`packages/model/src/actions.ts`), Vorteil und
+  Nachteil heben sich auf.
+- Vorschau: `GET /api/maps/:id/turn-plan` gibt je Ziel `chances` mit dem
+  Modus aus den Wirkungen, `long` für die lange Reichweite, `modes` und
+  `feet`.
+- Die Zustandsartikel auf dev: Protokoll
+  `docs/Nachtarbeit/2026-10-21-T-351.md`.

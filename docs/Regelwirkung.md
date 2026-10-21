@@ -88,11 +88,22 @@ das Merkmal eine Wirkung trägt.
   (`TimedEntry.action`), den die Initiative herunterzählt; Help und Hide
   sind beim nächsten Angriff verbraucht.
 
+- **Reichweite am Server** (T-351): Einreichen lehnt einen Angriff ausser
+  Reichweite ab (422, mit Hinweis), gemessen vom Ende des Wegs davor
+  (`abstandImPlan`, `rangeBand`); Ausführen misst neu, wo die Tokens dann
+  stehen, und würfelt ausser Reichweite nicht. Ohne Gitter prüft niemand.
+- **Lange Reichweite mit Nachteil** (T-351): `attackRollMode` nimmt die
+  lange Reichweite als eine Quelle von Nachteil; das Würfellog sagt
+  „(disadvantage, long range)".
+- **Zustände geben Vorteil und Nachteil** (T-351) über die Wirkungen ihres
+  `Condition`-Artikels: `attack`, `attacked`, und nach Abstand
+  `attacked.near` (bis 5 ft) und `attacked.far` — Prone. Die Vorschau im
+  Zugplan zeigt die Chance mit dem Modus (`modes`, `long`).
+
 Noch nicht: der Tracker (Damage/Heal) kennt keine Schadensart und zieht
-den Betrag weiter ohne Abwehr ab; lange Reichweite ohne Nachteil und die
-Reichweitenprüfung am Server (Punkt 8); Zustände mit Vorteil/Nachteil
-brauchen Wirkungen an ihren Artikeln (`attack`/`attacked`), die auf dev
-noch nicht stehen.
+den Betrag weiter ohne Abwehr ab; Wirkungen, die nur unter einer
+Bedingung gelten (Restrained: Nachteil auf DEX-Rettungswürfe, Paralyzed:
+Krit in 5 ft), brauchen noch eigene Ziele.
 
 ## Prüfen nach einem Release
 
@@ -102,4 +113,7 @@ noch nicht stehen.
    Zustand „Grappled" setzen → Tempo 0; einen Zug mit Angriff bestätigen →
    TP des Ziels in der Initiative sinken; Dodge planen → nächster Angriff
    gegen die Figur mit Nachteil.
+   Einen Bogenschuss über die lange Reichweite planen → „with
+   disadvantage"; einen Schlag auf ein entferntes Ziel einreichen → 422
+   „out of range"; Zustand „Prone" am Ziel → aus 5 ft Vorteil.
 3. Diese Tabelle nachziehen, wenn eine Lücke geschlossen ist.

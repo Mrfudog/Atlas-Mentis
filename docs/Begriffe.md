@@ -1913,6 +1913,16 @@ Initiative** an, wie ein Zustand, mit der Dauer der Regel — die Initiative
 zählt ihn herunter, und wer würfelt, liest ihn als Vorteil oder Nachteil.
 So gibt es für „wie lange gilt das" eine Stelle, nicht zwei.
 
+**Die Reichweite prüft, wer würfelt** (T-351). Die Maske lehnte einen
+Schuss ausser Reichweite ab, der Server nahm ihn trotzdem an — wer die
+API rief oder eine alte Maske hatte, schoss über die ganze Karte. Jetzt
+rechnen beide mit derselben Funktion (`rangeBand`), und der Server misst
+beim Ausführen noch einmal, wo die Tokens dann stehen: das Ziel kann
+seither gegangen sein. Die lange Reichweite ist eine Quelle von Nachteil
+wie ein Zustand, und ein Zustand ist eine Wirkung an seinem Artikel —
+Prone sagt mit `attacked.near` und `attacked.far` selbst, dass es auf den
+Abstand ankommt, statt dass der Code Prone beim Namen kennt.
+
 **Der Assistent zählt keine Schritte auf, er liest sie** (T-080). Fest ist
 nur, was das Modell selbst vorgibt: drei Kanten (Abstammung, Hintergrund,
 Klasse), sechs Werte, ein Name. Dazwischen steht je offene Wahl der
