@@ -11,6 +11,7 @@
  */
 import type { Entity, EntityId, Relation } from './types.js';
 import { resolveInstance } from './instance.js';
+import { creatureStats } from './stats.js';
 
 export type TurnPoint = 'start' | 'end';
 
@@ -174,6 +175,10 @@ export function statblockFor(entities: Lookup, e: Entity): Entity | null {
  * Rüstungsklasse und TP-Maximum vom Statblock — der Instanz, mit der
  * Vorlage darunter (REQ-211). Die Kante hält nur den Stand im Kampf; ein
  * abgeschriebenes Maximum (`props.hpMax`) gilt nur, wo kein Statblock hängt.
+ *
+ * **Gelesen wie am Bogen** (T-275): `creatureStats` — getragene Rüstung,
+ * Wirkungen der Gegenstände und der Zustände, auch derer, die nur hier in
+ * der Initiative stehen (`props.conditions` mit `rule`).
  */
 export function participantStats(
   entities: Lookup,
@@ -181,15 +186,19 @@ export function participantStats(
 ): { ac?: number; hpMax?: number } {
   const props = (relation.props ?? {}) as ParticipantProps;
   const t = entities.get(relation.to);
-  const sb = t ? statblockFor(entities, t) : null;
-  const card = sb ? ((resolveInstance(entities, sb).components ?? {})['Statblock'] ?? {}) : {};
-  const ac = Number((card as { ac?: unknown }).ac);
-  const hp = Number((card as { hp?: unknown }).hp);
   const alt = Number(props.hpMax);
+  const st = t ? creatureStats(t, entities, { conditions: entryConditions(props.conditions) }) : null;
+  const ac = st?.ac.value ?? null;
+  const hp = st?.hp.value ?? null;
   return {
-    ac: Number.isFinite(ac) ? ac : undefined,
-    hpMax: Number.isFinite(hp) ? hp : Number.isFinite(alt) ? alt : undefined,
+    ac: ac !== null && Number.isFinite(ac) ? ac : undefined,
+    hpMax: hp !== null && Number.isFinite(hp) ? hp : Number.isFinite(alt) ? alt : undefined,
   };
+}
+
+/** Die Zustände (`rule`) unter den Einträgen eines Teilnehmers. */
+export function entryConditions(entries: readonly TimedEntry[] | undefined): EntityId[] {
+  return (entries ?? []).map((e) => e.rule).filter((r): r is string => typeof r === 'string' && !!r);
 }
 
 /** Steht der Teilnehmer auf der Seite der Gruppe? Die Gruppe selbst und wer in einer ist. */

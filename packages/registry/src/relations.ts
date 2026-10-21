@@ -216,13 +216,14 @@ export const relations: Record<string, RelationDef> = {
    * **Was ein Statblock in der Hand hat** (M5): der Goblin führt Krummsäbel
    * und Kurzbogen. Ein Verweis auf den Gegenstand aus dem Buch und kein
    * Inventar — das hat eine Figur am Tisch (`carries`), nicht eine Vorlage.
+   * Gelesen wird sie für die Wirkungen der geführten Gegenstände (T-275,
+   * `itemsAt`); Waffen als Angriffe des Statblocks stehen noch aus.
    */
   equips: {
     type: 'equips',
     label: 'equips',
     inverseLabel: 'equipped by',
     means: 'A statblock has an item equipped; the item lists who wears or wields it.',
-    intended: 'Count equipped items: armour and shields should set AC, weapons should become attacks on the statblock.',
     from: ['Statblock'],
     to: ['Item'],
   },

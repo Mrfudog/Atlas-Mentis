@@ -94,6 +94,9 @@ import {
   planText,
   primaryInterface,
   resolveInstance,
+  creatureStats,
+  entryConditions,
+  type ParticipantProps,
   rollDice,
   speedModes,
   tilesFor,
@@ -171,10 +174,16 @@ export function statblockVon(alle: readonly Entity[], e: Entity): Entity | null 
   return alle.find((o) => primaryInterface(o) === 'Statblock' && (o.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === e.id)) ?? null;
 }
 
-/** Die Karten des Statblocks als eine (`Statblock` und `Abilities`), wie der Bogen sie liest. */
+/**
+ * Die Karten des Statblocks als eine (`Statblock` und `Abilities`), wie der
+ * Bogen sie liest — **gelesen** (T-275): mit Rüstung, Wirkungen und
+ * Zuständen der Kreatur, der er gehört (`creatureStats`).
+ */
 function werte(map: Map<string, Entity>, sb: Entity | null): Card {
   if (!sb) return {};
-  const c = resolveInstance(map, sb).components ?? {};
+  const wem = (sb.relations ?? []).find((r) => r.type === 'belongsTo')?.to;
+  const kreatur = (wem ? map.get(wem) : undefined) ?? sb;
+  const c = (creatureStats(kreatur, map).statblock ?? resolveInstance(map, sb)).components ?? {};
   return { ...((c['Abilities'] ?? {}) as Card), ...((c['Statblock'] ?? {}) as Card) };
 }
 
@@ -205,10 +214,19 @@ export function kachelnVon(map: Map<string, Entity>, sb: Entity | null, sichtbar
   return tilesFor(stats, aktionen);
 }
 
-/** Die Rüstungsklasse eines Ziels, vom Statblock. */
-function rkVon(stand: Stand, e: Entity): number | null {
-  const ac = Number(werte(stand.map, statblockVon(stand.alle, e))['ac']);
-  return Number.isFinite(ac) && ac > 0 ? ac : null;
+/**
+ * Die Rüstungsklasse eines Ziels, gelesen wie am Bogen (T-275): getragene
+ * Rüstung, Wirkungen, Zustände — auch die aus der Initiative.
+ */
+function rkVon(stand: Stand, e: Entity, kampf: Entity | null = null): number | null {
+  const ac = creatureStats(e, stand.map, { conditions: zustaendeImKampf(kampf, e.id) }).ac.value;
+  return ac !== null && Number.isFinite(ac) && ac > 0 ? ac : null;
+}
+
+/** Die Zustände, die die Initiative an `id` führt (`participates.props.conditions`). */
+function zustaendeImKampf(kampf: Entity | null, id: string): string[] {
+  const k = (kampf?.relations ?? []).find((r) => r.type === PARTICIPATES && r.to === id);
+  return k ? entryConditions((k.props as ParticipantProps | undefined)?.conditions) : [];
 }
 
 /** Je Plan-Id der jüngste Eintrag, neueste zuerst. */

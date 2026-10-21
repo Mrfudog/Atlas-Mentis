@@ -6,9 +6,9 @@ import {
   isEmbedParagraph,
   levelFeatures,
   linkIndex,
-  proficiencyBonus,
   soleLinks,
 } from "../src/classes.js";
+import { proficiencyBonus } from "../src/calc.js";
 import type { Entity } from "../src/types.js";
 
 /* Ein Zauberer im Kleinen, wie ihn der Importer schreibt (W6). */

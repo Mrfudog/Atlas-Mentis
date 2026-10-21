@@ -11,6 +11,14 @@
  * stellen (`choiceSources`). In den Statblock wird nichts geschrieben:
  * abgelegte Handschuhe nehmen die 19 sofort wieder weg.
  *
+ * **Angewandt** (T-275, Punkt 1): `characterStats` rechnet daraus RK,
+ * Tempo, Resistenzen, Immunitäten und die Schwelle des kritischen Treffers
+ * in den gelesenen Statblock; dazu kommen die Zustände der Kreatur
+ * (`Vitals.conditions`, die Einträge der Initiative) und was ein Statblock
+ * über `equips` führt. Die Rechnung bleibt hier, bis eine Regel-Engine sie
+ * übernimmt (E-102) — als Automation „Wirkung anwenden" braucht sie nur
+ * diese Eingaben.
+ *
  * Die alten Zahlenfelder am Gegenstand (`bonusAc`, `bonusWeapon`,
  * `bonusSpellAttack`, `bonusSave`) bleiben vorerst und zählen beim Lesen als
  * Wirkung mit (`effectsOf`).
@@ -19,7 +27,12 @@
 import { choiceSources } from './choices.js';
 import type { Entity, EntityId } from './types.js';
 
-export const EFFECT_OPS = ['add', 'set', 'grant'] as const;
+/**
+ * `add` zählt dazu, `set` hebt auf mindestens (bei der Krit-Schwelle: senkt
+ * auf höchstens), `grant` gewährt ein Wort, `limit` deckelt — „Speed 0"
+ * eines gepackten Ziels (T-275).
+ */
+export const EFFECT_OPS = ['add', 'set', 'grant', 'limit'] as const;
 export type EffectOp = (typeof EFFECT_OPS)[number];
 
 /** Wann eine Wirkung eines Gegenstands gilt. Die Liste steht am Feld. */
@@ -66,6 +79,10 @@ export const EFFECT_TARGETS: Record<string, string> = {
   proficiency: 'proficiency',
   expertise: 'expertise',
   saveProficiency: 'saving throw proficiency',
+  /* Vorteil und Nachteil (T-275, Punkt 3): `grant` mit `advantage` oder
+     `disadvantage` — auf eigene Angriffe, auf Angriffe gegen die Kreatur. */
+  attack: 'attack rolls',
+  attacked: 'attack rolls against it',
 };
 
 /** Ein Eintrag von `Effects.effects`. */
@@ -164,10 +181,24 @@ export interface ActiveEffect {
  * `byId` hält die Artikel schon aufgelöst (eine Instanz mit ihrer Vorlage
  * darunter, `resolveInstance`) — die Rechnung liest nur.
  */
-export function effectsAt(character: Entity, byId: ReadonlyMap<EntityId, Entity>): ActiveEffect[] {
-  const raus: ActiveEffect[] = [];
-  const gesehen = new Set<EntityId>([character.id]);
+/** Ein Stück an der Figur, mit seinem Zustand und der Kante, die es hält. */
+export interface ItemAt {
+  item: Entity;
+  state: ItemState;
+  /** Die `holds`-Kante; bei `equips` die Kante des Statblocks. */
+  via: 'holds' | 'equips';
+}
 
+/**
+ * **Die Stücke an einer Figur**, mit ihrem Zustand: über `carries` →
+ * Inventar → `holds` (mit `tier`, `slot` und `attuned` an der Kante); ein
+ * Behälter mit eigenem Inventar reicht seinen Inhalt als „dabei, nicht
+ * getragen" weiter. Was ein Statblock über `equips` führt (eine Vorlage hat
+ * kein Inventar, M5), gilt als getragen und eingestimmt.
+ */
+export function itemsAt(character: Entity, byId: ReadonlyMap<EntityId, Entity>, statblock?: Entity): ItemAt[] {
+  const raus: ItemAt[] = [];
+  const gesehen = new Set<EntityId>([character.id]);
   const inventar = (traeger: Entity, aussen: ItemState | null) => {
     for (const c of traeger.relations ?? []) {
       if (c.type !== 'carries') continue;
@@ -181,21 +212,65 @@ export function effectsAt(character: Entity, byId: ReadonlyMap<EntityId, Entity>
         gesehen.add(item.id);
         const tier = String(h.props?.['tier'] ?? 'pack');
         const dabei = tier !== 'ground' && tier !== 'stored';
-        const zustand: ItemState = aussen
+        const state: ItemState = aussen
           ? { carried: aussen.carried && dabei, worn: false, attuned: false }
           : {
               carried: dabei,
               worn: tier === 'held' || tier === 'worn' || (dabei && typeof h.props?.['slot'] === 'string' && !!h.props['slot']),
               attuned: h.props?.['attuned'] === true,
             };
-        for (const effect of effectsOf(item)) {
-          if (effectApplies(effectWhen(effect, item), zustand)) raus.push({ effect, source: item.id, via: 'holds' });
-        }
-        inventar(item, zustand);
+        raus.push({ item, state, via: 'holds' });
+        inventar(item, state);
       }
     }
   };
   inventar(character, null);
+  for (const r of statblock?.relations ?? []) {
+    if (r.type !== 'equips') continue;
+    const item = byId.get(r.to);
+    if (!item || gesehen.has(item.id)) continue;
+    gesehen.add(item.id);
+    raus.push({ item, state: { carried: true, worn: true, attuned: true }, via: 'equips' });
+  }
+  return raus;
+}
+
+/** Was `effectsAt` ausser der Figur noch liest. */
+export interface EffectsAtOptions {
+  /** Ihr Statblock: was er über `equips` führt, wirkt wie getragen. */
+  statblock?: Entity;
+  /**
+   * Zustände dazu, die nicht in `Vitals.conditions` stehen — die Einträge
+   * eines Teilnehmers der Initiative (`participates.props.conditions`).
+   */
+  conditions?: readonly EntityId[];
+}
+
+/** Die Zustände, die an einer Kreatur stehen (`Vitals.conditions`). */
+export function conditionIdsOf(creature: Entity | undefined): EntityId[] {
+  const roh = creature?.components?.['Vitals']?.['conditions'];
+  return Array.isArray(roh) ? roh.filter((x): x is string => typeof x === 'string' && !!x) : [];
+}
+
+/**
+ * **Was an der Figur gerade wirkt** — beim Lesen (D8). Gegenstände über
+ * `itemsAt`, mit ihrem Zustand. Klasse, Abstammung, Hintergrund, Talente,
+ * gewährte Merkmale und die **Zustände** (`Vitals.conditions` und
+ * `options.conditions`, T-275) bringen ihre Wirkungen ohne Bedingung mit,
+ * sobald sie an der Figur gelten.
+ *
+ * `byId` hält die Artikel schon aufgelöst (eine Instanz mit ihrer Vorlage
+ * darunter, `resolveInstance`) — die Rechnung liest nur.
+ */
+export function effectsAt(character: Entity, byId: ReadonlyMap<EntityId, Entity>, options: EffectsAtOptions = {}): ActiveEffect[] {
+  const raus: ActiveEffect[] = [];
+  const gesehen = new Set<EntityId>([character.id]);
+  for (const { item, state, via } of itemsAt(character, byId, options.statblock)) {
+    gesehen.add(item.id);
+    for (const effect of effectsOf(item)) {
+      if (effectApplies(effectWhen(effect, item), state)) raus.push({ effect, source: item.id, via });
+    }
+  }
 
   /* Was die Figur ist und kann: dieselben Quellen wie ihre Wahlen, dazu,
      was diese auf ihrer Stufe gewähren. `self` gilt auch hier nicht. */
@@ -210,6 +285,7 @@ export function effectsAt(character: Entity, byId: ReadonlyMap<EntityId, Entity>
       if (r.type === 'grants' && (Number(r.props?.['level']) || 1) <= q.level) dazu(byId.get(r.to), 'grants');
     }
   }
+  for (const id of [...conditionIdsOf(character), ...(options.conditions ?? [])]) dazu(byId.get(id), 'condition');
   return raus;
 }
 
@@ -227,10 +303,12 @@ export interface EffectTotals {
   set: Record<string, number | string>;
   /** Je Ziel die gewährten Wörter (`resist: ['fire']`). */
   grants: Record<string, string[]>;
+  /** Je Ziel die Obergrenze (`speed.*: 0`), die kleinste gilt. */
+  limit: Record<string, number>;
 }
 
 export function effectTotals(effects: readonly ActiveEffect[]): EffectTotals {
-  const raus: EffectTotals = { abilities: {}, add: {}, set: {}, grants: {} };
+  const raus: EffectTotals = { abilities: {}, add: {}, set: {}, grants: {}, limit: {} };
   for (const { effect: e } of effects) {
     const zahl = typeof e.value === 'number' ? e.value : Number(e.value);
     const istZahl = e.value !== undefined && e.value !== '' && Number.isFinite(zahl);
@@ -247,6 +325,8 @@ export function effectTotals(effects: readonly ActiveEffect[]): EffectTotals {
       if (!istZahl) raus.set[e.target] ??= String(e.value);
       else if (typeof alt !== 'number') raus.set[e.target] = zahl;
       else raus.set[e.target] = e.target === 'critThreshold' ? Math.min(alt, zahl) : Math.max(alt, zahl);
+    } else if (e.op === 'limit' && istZahl) {
+      raus.limit[e.target] = Math.min(raus.limit[e.target] ?? Infinity, zahl);
     } else if (e.op === 'grant' && e.value !== undefined && e.value !== '') {
       const liste = (raus.grants[e.target] ??= []);
       if (!liste.includes(String(e.value))) liste.push(String(e.value));
@@ -285,6 +365,9 @@ export function effectText(e: Effect): string {
   else if (e.target.startsWith('speed.') && e.op === 'set' && !Number.isFinite(n)) satz = `${name} equal to ${EFFECT_TARGETS[`speed.${v}`] ?? v}`;
   else if (e.target.startsWith('speed.') && e.op === 'add') satz = `${vorzeichen} ft. ${name}`;
   else if (e.target.startsWith('speed.') && e.op === 'set') satz = `${name} ${v} ft.`;
+  else if (e.op === 'limit' && e.target.startsWith('speed.')) satz = `${name} at most ${v} ft.`;
+  else if (e.op === 'limit') satz = `${name} at most ${v}`;
+  else if (e.op === 'grant' && (e.target === 'attack' || e.target === 'attacked')) satz = `${v} on ${name}`;
   else if (e.op === 'set') satz = `${name} becomes ${v}`;
   else if (e.op === 'add') satz = `${vorzeichen} ${e.target === 'ac' ? name : `to ${name}`}`;
   else if (e.op === 'grant') satz = e.target === 'conditionImmune' ? `immunity to ${v}` : `${name} to ${v}`;
