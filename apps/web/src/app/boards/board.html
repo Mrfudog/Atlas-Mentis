@@ -382,24 +382,24 @@
                     [class.ziehbar]="darfSchreiben() && !k.platz.locked"
                     (pointerdown)="greifen($event, k, 'schieben')"
                   >
-                    @if (k.abfrage) {
-                      <!-- Die Abfrage-Kachel (T-340): Titel und Einstellungen statt Art und Ansicht. -->
-                      <span class="kart">Query</span>
-                      <span class="kname abfrage-titel">{{ k.rel.props?.['title'] || 'Query' }}</span>
+                    @if (k.abfrage || k.struktur) {
+                      <!-- Abfrage- und Struktur-Kachel (T-340, T-341): Titel und Einstellungen statt Art und Ansicht. -->
+                      <span class="kart">{{ k.struktur ? 'Structure' : 'Query' }}</span>
+                      <span class="kname abfrage-titel">{{ k.rel.props?.['title'] || (k.struktur ? 'Structure' : 'Query') }}</span>
                       @if (darfSchreiben()) {
                         <button
                           type="button"
                           class="weg"
                           [class.an]="abfrageOffen() === k.rel.id"
                           [attr.aria-pressed]="abfrageOffen() === k.rel.id"
-                          [attr.aria-label]="'Settings of ' + (k.rel.props?.['title'] || 'Query')"
-                          title="Source and display"
+                          [attr.aria-label]="'Settings of ' + (k.rel.props?.['title'] || (k.struktur ? 'Structure' : 'Query'))"
+                          [title]="k.struktur ? 'Start, edges and form' : 'Source and display'"
                           (click)="abfrageOffen.set(abfrageOffen() === k.rel.id ? null : k.rel.id)"
                         >
                           ⚙
                         </button>
-                        <button type="button" class="weg gm" [class.an]="!!k.platz.hidden" (click)="verbergen(k.rel)" [attr.aria-pressed]="!!k.platz.hidden" aria-label="GM only: query card" title="GM only — not sent to players">GM</button>
-                        <button type="button" class="weg" (click)="wegnehmen(k.rel)" aria-label="Take the query card off the board" title="Take off the board">×</button>
+                        <button type="button" class="weg gm" [class.an]="!!k.platz.hidden" (click)="verbergen(k.rel)" [attr.aria-pressed]="!!k.platz.hidden" [attr.aria-label]="k.struktur ? 'GM only: structure card' : 'GM only: query card'" title="GM only — not sent to players">GM</button>
+                        <button type="button" class="weg" (click)="wegnehmen(k.rel)" [attr.aria-label]="k.struktur ? 'Take the structure card off the board' : 'Take the query card off the board'" title="Take off the board">×</button>
                       }
                     } @else {
                     <span class="kart">{{ typLabel(k.kurz) }}</span>
@@ -456,6 +456,20 @@
                         [spielend]="!darfSchreiben()"
                         (aendern)="aendern(k.rel.id, $event)"
                       />
+                    </div>
+                  } @else if (k.struktur) {
+                    <div class="kinhalt">
+                      <!-- Die Struktur (T-341) erst laden, wenn sie zu sehen ist (T-348: Startpaket). -->
+                      @defer (on viewport) {
+                        <nw-struktur-kachel
+                          [rel]="k.rel"
+                          [einstellen]="darfSchreiben() && abfrageOffen() === k.rel.id"
+                          [spielend]="!darfSchreiben()"
+                          (aendern)="aendern(k.rel.id, $event)"
+                        />
+                      } @placeholder {
+                        <p class="laedt">Structure…</p>
+                      }
                     </div>
                   } @else if (k.kurz) {
                     <a

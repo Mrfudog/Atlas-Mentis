@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -842,6 +842,9 @@ export interface SuchFrage {
   compare?: boolean;
 }
 
+/** Die Struktur (T-341, `GET /api/structure/:id`): Knoten und Linien, gesiebt am Server. */
+export type StrukturAntwort = StructureGraph & { edges: string[]; depth: number };
+
 /** Was eine Abfrage-Kachel bringt (T-340, `GET /api/boards/:board/query/:rel`). */
 export interface AbfrageAntwort {
   title: string;
@@ -1365,6 +1368,15 @@ export class Api {
   /** Wohin dieser Betrachter gehört (T-342): Kampagne, Rolle, Board, Landeplatz, Figur. */
   home(): Promise<Heim> {
     return this.call<Heim>('/api/home', {}, false);
+  }
+  /** Die Struktur (T-341): Organigramm oder Netz vom Artikel aus — gesiebt am Server. */
+  structure(id: string, frage: { edges?: readonly string[]; depth?: number; layout?: string } = {}): Promise<StrukturAntwort> {
+    const q = new URLSearchParams();
+    if (frage.edges?.length) q.set('edges', frage.edges.join(','));
+    if (frage.depth !== undefined) q.set('depth', String(frage.depth));
+    if (frage.layout) q.set('layout', frage.layout);
+    const s = q.toString();
+    return this.call<StrukturAntwort>(`/api/structure/${encodeURIComponent(id)}${s ? `?${s}` : ''}`);
   }
   /** Die Abfrage-Kachel (T-340): was sie diesem Betrachter bringt — gesiebt am Server. */
   boardQuery(board: string, rel: string): Promise<AbfrageAntwort> {

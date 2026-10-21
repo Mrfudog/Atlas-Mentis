@@ -32,6 +32,7 @@ import {
   placementOf,
   placementsOf,
   isQueryPlacement,
+  isStructurePlacement,
   placementView,
   primaryInterface,
   snapTo,
@@ -46,6 +47,7 @@ import { Session } from '../kern/session';
 import { Brett, chainAbove, isBoard, storyOf, type Mangel } from './brett';
 import { Kachel } from './kachel';
 import { Abfrage } from './abfrage';
+import { StrukturKachel } from './struktur-kachel';
 import { BoardSuche } from './suche';
 import { SCHNELL_KONTEXT, type SchnellKontext } from '../artikel/schnell';
 import { BildWahl, bildAdresse } from '../artikel/bild';
@@ -60,12 +62,14 @@ import { Karte as KartenAnsicht } from '../karten/karte';
  * Optionen in der Zeile über der Leinwand. Was ein Werkzeug anlegt, ist
  * eine Form am Board (`Board.shapes`) oder eine Kante (`placed`).
  */
-type Werkzeug = 'auswahl' | 'artikel' | 'abfrage' | 'text' | 'bild' | 'zeichnen' | 'karte' | 'hintergrund' | 'bereich';
+type Werkzeug = 'auswahl' | 'artikel' | 'abfrage' | 'struktur' | 'text' | 'bild' | 'zeichnen' | 'karte' | 'hintergrund' | 'bereich';
 const WERKZEUGE: { key: Werkzeug; sym: string; label: string; title: string; schreibt: boolean }[] = [
   { key: 'auswahl', sym: '↖', label: 'Select', title: 'Select, move and resize; drag the empty canvas to pan', schreibt: false },
   { key: 'artikel', sym: '▤', label: 'Article', title: 'Place an article as a card', schreibt: true },
   /* Die Abfrage-Kachel (T-340): eine Auswahl statt eines Artikels. */
   { key: 'abfrage', sym: '⚄', label: 'Query', title: 'A card that lists, draws or shows articles from types, tags, layers or a filter', schreibt: true },
+  /* Die Struktur-Kachel (T-341): Organigramm oder Beziehungsnetz vom Startartikel. */
+  { key: 'struktur', sym: '⌥', label: 'Structure', title: 'A card that draws a faction, place or family as an organisation chart or relationship web', schreibt: true },
   { key: 'text', sym: 'T', label: 'Text', title: 'Click the canvas to place a heading, paragraph, list or quote', schreibt: true },
   { key: 'bild', sym: '▧', label: 'Image', title: 'Upload an image or choose one from the assets', schreibt: true },
   { key: 'zeichnen', sym: '✎', label: 'Draw', title: 'Freehand, line, arrow, rectangle, ellipse', schreibt: true },
@@ -124,6 +128,8 @@ interface Karte {
   liegtIn: string | null;
   /** Eine Abfrage-Kachel (T-340): sie zeigt eine Auswahl, keinen Artikel. */
   abfrage?: boolean;
+  /** Eine Struktur-Kachel (T-341): Organigramm oder Netz, kein Artikel. */
+  struktur?: boolean;
 }
 
 /** Ein Rechteck, das gerade auf der Leinwand gezogen wird (T-073). */
@@ -188,7 +194,7 @@ interface Bzug {
  */
 @Component({
   selector: 'nw-board',
-  imports: [RouterLink, Kachel, Abfrage, BoardSuche, BildWahl, Text, Blatt, KartenAnsicht],
+  imports: [RouterLink, Kachel, Abfrage, StrukturKachel, BoardSuche, BildWahl, Text, Blatt, KartenAnsicht],
   templateUrl: './board.html',
   styleUrls: ['./board.scss', './werkzeuge.scss'],
   /* Was aus der Suche neu angelegt wird, folgt der Ebene des Boards (T-131). */
@@ -331,7 +337,9 @@ export class Board implements SchnellKontext {
     return b ? placementsOf(b) : [];
   });
   /** Die Kacheln mit einem Artikel — eine Abfrage-Kachel zeigt auf das Board selbst. */
-  protected readonly kanten = computed<Relation[]>(() => this.platzierungen().filter((r) => !isQueryPlacement(r)));
+  protected readonly kanten = computed<Relation[]>(() =>
+    this.platzierungen().filter((r) => !isQueryPlacement(r) && !isStructurePlacement(r)),
+  );
   /** Welche Abfrage-Kachel ihre Einstellungen zeigt (⚙). */
   protected readonly abfrageOffen = signal<string | null>(null);
 
@@ -349,7 +357,7 @@ export class Board implements SchnellKontext {
     const z = this.zug();
     const anker = this.anker();
     return this.platzierungen().map((rel) => {
-      if (isQueryPlacement(rel)) {
+      if (isQueryPlacement(rel) || isStructurePlacement(rel)) {
         const liegt = placementOf(rel);
         const platz = z && z.id === rel.id ? z.jetzt : this.mitBereich(liegt, anchorAreaOf(anker, liegt));
         return {
@@ -360,7 +368,7 @@ export class Board implements SchnellKontext {
           ansicht: '',
           bereich: 'abfrage',
           liegtIn: anchorAreaOf(anker, z && z.id === rel.id ? z.von : liegt),
-          abfrage: true,
+          ...(isStructurePlacement(rel) ? { struktur: true } : { abfrage: true }),
         };
       }
       const ziel = voll.get(rel.to);
@@ -781,6 +789,25 @@ export class Board implements SchnellKontext {
     this.kantenSchreiben([...this.alleKanten(), neu]);
   }
 
+  /** Eine neue Struktur-Kachel (T-341): eine Kante des Boards auf sich selbst, der Start noch leer. */
+  protected strukturHinlegen(): void {
+    const b = this.board();
+    if (!b) return;
+    const buehne = this.buehne()?.nativeElement;
+    const sichtbar = buehne ? buehne.clientWidth / this.zoom() : undefined;
+    const platz = nextPlacement({ ...b, relations: this.platzierungen() }, 420, 380, sichtbar);
+    const neu: Relation = {
+      id: `r-${crypto.randomUUID()}`,
+      type: PLACED_RELATION,
+      to: b.id,
+      props: { x: platz.x, y: platz.y, w: platz.w, h: platz.h, z: Math.max(platz.z, this.obenauf() + 1), title: 'Structure', structure: {} },
+    };
+    this.gewaehlt.set(neu.id);
+    this.abfrageOffen.set(neu.id);
+    this.werkzeug.set('auswahl');
+    this.kantenSchreiben([...this.alleKanten(), neu]);
+  }
+
   protected wegnehmen(rel: Relation): void {
     this.kantenSchreiben(this.alleKanten().filter((r) => r.id !== rel.id));
   }
@@ -893,6 +920,10 @@ export class Board implements SchnellKontext {
        ein Schritt ohne Entscheidung. */
     if (w === 'abfrage') {
       this.abfrageHinlegen();
+      return;
+    }
+    if (w === 'struktur') {
+      this.strukturHinlegen();
       return;
     }
     this.werkzeug.set(this.werkzeug() === w ? 'auswahl' : w);

@@ -163,6 +163,7 @@ import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
 import { registerAbfrage } from './abfrage.js';
+import { registerStruktur } from './struktur.js';
 import { registerKampagnenboard } from './kampagnenboard.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
@@ -3130,6 +3131,8 @@ export function buildApp({
       return !!user && mayWrite(user, await ownedBy(user), id);
     },
   });
+  /* Die Struktur (T-341): Organigramm und Beziehungsnetz, gesiebt je Betrachter. */
+  registerStruktur(app, { viewerOf, roh, sieve });
   /* Liegengelassen (T-140): Sitzungsende und Aufheben. */
   registerLiegen(app, {
     repo,
@@ -3173,7 +3176,7 @@ export function buildApp({
   });
   app.addHook('onClose', async () => kanal.close());
 
-  app.get<{ Params: { id: string }; Querystring: { stand?: string } }>('/api/entities/:id', async (request, reply) => {
+  app.get<{ Params: { id: string }; Querystring: { stand?: string; allLayers?: string } }>('/api/entities/:id', async (request, reply) => {
     const stand = await roh();
     const gefunden = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
     if (!gefunden) return reply.code(404).send({ error: 'Nicht gefunden' });
@@ -3208,6 +3211,13 @@ export function buildApp({
     if (!gesiebt) {
       [gesiebt] = await sieve(request, [zeige], stand.map, undefined, 'compare');
       vergleich = !!gesiebt;
+    }
+    /* **Alle Ebenen** (T-284, `allLayers=1`): die Verwaltung fragt nach
+       einem Artikel, dessen Ebene nicht aufgeschaltet ist — wie die
+       Massenänderung (T-182), gesiebt, als wäre sie es. Ohne den Schalter
+       bleibt es beim Stapel (E2). */
+    if (!gesiebt && (request.query.allLayers === '1' || request.query.allLayers === 'true') && (await viewerOf(request))?.isAdmin) {
+      [gesiebt] = await sieve(request, [zeige], stand.map, undefined, 'unactivated');
     }
     const einer = gesiebt;
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
@@ -3681,7 +3691,7 @@ export function buildApp({
     store: assets,
     viewerOf,
     roh,
-    sieve,
+    sieve: (request, entities, bestand, stapel) => sieve(request, entities, bestand, undefined, stapel),
     geltend,
     anlegen,
     schreiben,

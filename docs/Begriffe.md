@@ -740,6 +740,19 @@ am selben Ort anfängt. Die **Basis-Leiste** daneben ist kein zweites Menü,
 sondern der kurze Weg zurück — Board, die eigene Figur, Karten, Suche,
 Wissen —, denn wer mitspielt, sucht nicht im Kompendium.
 
+**Eine Struktur-Kachel** (T-341) zeigt eine Fraktion, einen Ort, eine
+Familie so, wie die Kanten sie schon sagen: wer Mitglied ist und mit
+welchem Rang, welcher Zirkel zu ihr gehört, was sie beherrscht, wen sie
+wie sieht. Darum gibt es kein Feld „Organigramm“ — es wäre die zweite
+Stelle für dieselben Mitgliedschaften und läge beim ersten Eintritt
+falsch. Gespeichert wird nur, *wovon aus* und *welche Kanten*; Baum und
+Netz rechnet der Server, je Betrachter, über das, was dieser sehen darf.
+Eine Struktur, die im Browser kürzte, hätte der Spielerin den Zirkel
+schon geschickt — und eine, die nur den verborgenen Knoten wegliesse,
+liesse seine Mitglieder in der Luft hängen und verriete ihn so. Ein Typ
+„Familie“ ist sie nicht: eine Familie ist eine Fraktion mit `kind:
+family`, und wer zu ihr gehört, sagt `memberOf`.
+
 **Die Leinwand hat keinen Rand.** `width` und `height` waren die Grösse
 des Boards; jetzt sind sie die Mindestgrösse, und wie gross es ist, wird
 beim Lesen aus dem gerechnet, was darauf liegt (`boardExtent`, D8). Eine

@@ -29,6 +29,9 @@ import {
   typeList,
   viewKeys,
   whenText,
+  STRUCTURE_DEFAULT_EDGES,
+  STRUCTURE_DEPTH,
+  STRUCTURE_EDGES,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, LayoutWhen, Registry, TreeMove, ViewApplies, ViewDef, ViewPathStep } from '@nw/model';
 import { Bestand } from '../kern/bestand';
@@ -330,6 +333,18 @@ export class Ansichtsdesigner {
     let neu = holdsChildren(ziel) ? moveToElement(vorher, id, ziel.id, 'into') : vorher;
     if (neu === vorher || JSON.stringify(neu) === JSON.stringify(vorher)) neu = moveToElement(vorher, id, ziel.id, 'after');
     this.baum.set(neu);
+  }
+
+  /* Die Struktur (T-341): Kanten zum Ankreuzen, leer heisst die Vorgabe. */
+  protected readonly STRUKTUR_KANTEN = STRUCTURE_EDGES;
+  protected readonly STRUKTUR_TIEFE = STRUCTURE_DEPTH;
+  protected strukturKanten(el: LayoutElement): readonly string[] {
+    return el.edges?.length ? el.edges : STRUCTURE_DEFAULT_EDGES;
+  }
+  protected strukturKante(el: LayoutElement, type: string, an: boolean): void {
+    const ist = this.strukturKanten(el).filter((t) => t !== type);
+    const neu = an ? [...ist, type] : ist;
+    this.setze({ edges: neu.length ? neu : null });
   }
 
   protected setze(patch: Partial<Record<keyof LayoutElement, unknown>>): void {

@@ -541,14 +541,16 @@ export const relations: Record<string, RelationDef> = {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    means: 'An article is part of a larger one (a room of a house, a scene of an arc, a book of a group); the larger one lists what it contains, in rank order.',
+    means: 'An article is part of a larger one (a room of a house, a scene of an arc, a book of a group, a circle of a faction); the larger one lists what it contains, in rank order.',
     /* `Encounter` (T-082): eine Begegnung hängt an ihrer Szene oder ihrem
        Kapitel — so stand es am Typ, die Kante liess es nicht zu. */
     /* `Rule` (T-270): eine Option hängt an ihrer Regel, die Regel an ihrem System. */
-    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter', 'Layer', 'Chapter', 'BookPart', 'Rule'],
+    /* `Faction` (T-341): eine Unterfraktion hängt an ihrer Fraktion — der
+       Zirkel ist Teil der Wacht, und die Struktur zeichnet ihn darunter. */
+    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter', 'Layer', 'Chapter', 'BookPart', 'Rule', 'Faction'],
     /* `Layer` (E-022 b, T-088): eine Ebene hängt an ihrer Gruppe — einer
        Ebene mit `kind: 'group'`. Eine Ebene darf in mehreren Gruppen sein. */
-    to: ['Place', 'Story', 'Event', 'Layer', 'Chapter', 'Rule'],
+    to: ['Place', 'Story', 'Event', 'Layer', 'Chapter', 'Rule', 'Faction'],
     /* **Die Reihenfolge der Teile steht an der Kante** (T-108): derselbe
        Vorlesetext steht im Kapitel an dritter Stelle und in der eigenen
        Szene an erster — eine Zahl am Teil gälte nur für eines davon. Ohne
@@ -1277,6 +1279,14 @@ export const relations: Record<string, RelationDef> = {
           title: 'Reveal to',
           target: { interfaces: ['Party'] },
           description: 'Query card: the party that learns what is drawn. Empty: the first party of the running campaign.',
+        },
+        /* Die Struktur-Kachel (T-341): ebenfalls eine Kante des Boards auf
+           sich selbst; die Frage ist ein Startartikel und Kanten (`structure.ts`). */
+        structure: {
+          type: 'object',
+          title: 'Structure',
+          description:
+            'Structure card (T-341): an organisation chart or relationship web from a start article — which edges (members, parts, control, residents, regards), how deep, tree or web. Worked out on the server for each viewer.',
         },
       },
     },

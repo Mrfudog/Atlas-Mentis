@@ -99,7 +99,10 @@ describe('edge readers (T-111)', () => {
     expect(affects.evaluated).toBe(false);
     expect(affects.intended).toBeTruthy();
     expect(edgeEffectText(affects)).toMatch(/^Not evaluated yet/);
-    expect(edgeEffectText(edgeEffects(seedRegistry, 'livesIn'))).toMatch(/^Display only/);
+    /* `livesIn` war die letzte, die nur angezeigt wurde — bis die Struktur
+       (T-341) sie las; geprüft wird die Aussage an einer erfundenen Kante. */
+    const probe = { ...seedRegistry, relations: { ...seedRegistry.relations, probe: { type: 'probe', label: 'probe', from: ['*'], to: ['*'] } } };
+    expect(edgeEffectText(edgeEffects(probe as typeof seedRegistry, 'probe'))).toMatch(/^Display only/);
   });
 
   it('falls back to the labels for an edge kind without a meaning', () => {

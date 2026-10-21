@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-structure",
+      "date": "2026-10-21",
+      "title": "Structure: a faction as an organisation chart or web",
+      "text": "Put a Structure card on a board (⌥), choose a faction, place or family in ⚙: members with ranks, sub-factions, what it controls and who regards whom, tags on the lines — as tree or web; + shows more. A faction’s page shows it too (element Structure in the view designer). Players see only what they know.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
       "id": "2026-10-21-campaign-board",
       "date": "2026-10-21",
       "title": "A campaign board where players start",
