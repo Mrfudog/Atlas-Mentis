@@ -4,6 +4,7 @@ import {
   answeredKeys,
   builderSteps,
   campaignAllowsFeats,
+  characterStats,
   choiceKey,
   choicesAtCharacter,
   chosenResult,
@@ -72,6 +73,21 @@ describe('Ein Merkmal, mehrfach gewährt, fragt je Stufe (T-107)', () => {
     /* Die Antwort auf 4 ändern lässt die auf 8 stehen. */
     f = answerChoice(f, wahl(f, 'ability-scores', 4), ['wis', 'cha']);
     expect(chosenResult(f, byId).abilityBonus).toEqual({ wis: 1, cha: 1, dex: 1, con: 1 });
+  });
+
+  it('characterStats nennt je Stufe, woher der Bonus kommt (T-095)', () => {
+    let f = figur(8);
+    f = answerChoice(f, wahl(f, 'ability-scores', 4), ['str', 'str']);
+    f = answerChoice(f, wahl(f, 'ability-scores', 8), ['str', 'con']);
+    const sb = art('sb-1', 'Statblock', { Abilities: { str: 15, dex: 10, con: 12, int: 10, wis: 10, cha: 10 } });
+    const s = characterStats(f, sb, byId);
+    expect(s.abilities.str.value).toBe(18);
+    expect(s.abilities.con.value).toBe(13);
+    expect(s.abilities.str.parts.filter((t) => t.via === 'choice').map((t) => t.note)).toEqual([
+      'ability-scores, level 4',
+      'ability-scores, level 4',
+      'ability-scores, level 8',
+    ]);
   });
 
   it('das Talent statt der Steigerung, und es fragt selbst', () => {
