@@ -1,5 +1,5 @@
 /**
- * **Das Kampagnenboard** (T-342): je Kampagne ein gewöhnliches Board, der
+ * **Das Kampagnenboard** (T-342, REQ-358): je Kampagne ein gewöhnliches Board, der
  * Ort, an dem Spielende nach der Anmeldung landen — der Titel der Runde,
  * die offenen Aufträge, die Gruppe, wo die Geschichte gerade steht, die
  * nächste Sitzung, die Gerüchte.

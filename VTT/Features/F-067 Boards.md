@@ -15,7 +15,7 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-11 Stories · 45 Punkte · 6 steht · 2 teils · 3 offen
+12 Stories · 53 Punkte · 7 steht · 2 teils · 3 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -30,4 +30,5 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 | [[REQ-165]] Bilder, Formen und Werkzeuge auf dem Board | Spielleitung | 2 | steht |
 | [[REQ-166]] Auf dem Board anlegen | Spielleitung | 2 | teils |
 | [[REQ-291]] Leseansicht auf dem Board | Spielleitung | 3 | offen |
+| [[REQ-358]] Kampagnenboard als Startpunkt für Spielende | Spieler | 2 | steht |
 <!-- stories:ende -->

@@ -4,7 +4,7 @@ import { Heim } from '../kern/heim';
 import { Suche } from '../kern/suche';
 
 /**
- * **Die Basis-Leiste für Spielende** (T-342): feste Wege zurück zum
+ * **Die Basis-Leiste für Spielende** (T-342, REQ-358): feste Wege zurück zum
  * Kampagnenboard, zur eigenen Figur, zu den Karten, zur Suche und zum
  * Wissen. Wer mitspielt, soll zwischen Board und Figur wechseln, ohne im
  * Kompendium zu suchen — die Kopfleiste bleibt, das hier ist der kurze Weg.

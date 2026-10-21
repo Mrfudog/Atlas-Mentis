@@ -19,7 +19,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
 | Feature | Stories | Punkte | Stand |
 |---|---|---|---|
-| [[F-067 Boards]] — Leinwände mit Platzierungen, Ankern und Bereichen; Anlegen auf dem Board. | 11 | 45 | 6 steht · 2 teils · 3 offen |
+| [[F-067 Boards]] — Leinwände mit Platzierungen, Ankern und Bereichen; Anlegen auf dem Board. | 12 | 53 | 7 steht · 2 teils · 3 offen |
 | [[F-068 Suche]] — Übergreifende Suche beim Tippen, Volltext. | 2 | 6 | 1 steht · 1 teils |
 | [[F-069 Filter & Filtergruppen]] — Filter einer Seite, gespeicherte Filtergruppen. | 3 | 7 | 3 steht |
 | [[F-070 Navigation & Kurzansicht]] — Kopfleiste, Brotkrumen, Kurzansicht als Popup, Kampagne und Ebene sichtbar. | 6 | 19 | 5 steht · 1 teils |

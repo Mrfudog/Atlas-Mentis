@@ -1,5 +1,5 @@
 /**
- * **Das Kampagnenboard, von selbst** (T-342).
+ * **Das Kampagnenboard, von selbst** (T-342, REQ-358).
  *
  * Je Kampagne ein Board, auf dem Spielende nach der Anmeldung landen. Neue
  * Kampagnen bekommen es beim Anlegen (`POST /api/campaigns`), bestehende
