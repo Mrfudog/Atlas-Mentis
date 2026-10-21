@@ -105,7 +105,7 @@ const LayoutWhenSchema = z.object({
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'knowledgeContents', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'stats', 'token', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs', 'section', 'columns', 'tileGroup', 'carousel', 'collapsible', 'quote', 'badges', 'edgeTable']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'knowledgeContents', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'shape', 'stats', 'token', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs', 'section', 'columns', 'tileGroup', 'carousel', 'collapsible', 'quote', 'badges', 'edgeTable']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),

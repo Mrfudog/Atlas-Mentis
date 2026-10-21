@@ -2153,6 +2153,21 @@ nicht in jedem Beutel gleich liegen. Ein Stück **vom Raster** zu nehmen und
 es **aus dem Behälter** zu nehmen sind zwei Dinge, und beide braucht man:
 das eine räumt um, das andere gibt her.
 
+**Die Form eines Gegenstands wird gemalt** (T-142, Element `shape`): ein
+Raster von 5 × 5, das am Rand wächst, umschaltbar auf die Zeilen, wie sie
+im Vault stehen (`X` belegt, `0` frei). Gespeichert wird die Form **ohne
+leere Ränder** (`trimShape`) — sonst läge eine Fackel im Inventar als
+Fünfer mit einem Feld oben links. Das **Spiegeln** steht wie die Drehung
+an der Kante (`holds.props.flip`), gespiegelt wird vor dem Drehen, und
+angeboten wird es nur, wo die gespiegelte Form keine Drehung der
+ursprünglichen ist (`shapeChiral`): ein Stab oder ein T bleibt gespiegelt,
+was er war. **Das Bild liegt in der Form**: das Inventarbild
+(`Item.inventoryImage`), sonst das Bild des Gegenstands, nach seinem
+Ausschnitt (`Item.inventoryFrame`: Zoom, Verschiebung, Drehung zur Form,
+Einpassen oder Füllen) und nur in den belegten Feldern. Der Ausschnitt
+steht am Gegenstand und nicht an der Kante — dasselbe Schwert sieht in
+jedem Rucksack gleich aus; wie es liegt, sagt die Kante.
+
 **Fallen lassen heisst nicht weggeben** (D58). Ein Schwert, das mitten im
 Kampf aus der Hand fällt, gehört der Figur weiter und liegt zu ihren
 Füssen; nach dem Kampf hebt sie es auf. Darum bleibt die `holds`-Kante,
