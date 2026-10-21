@@ -46,6 +46,19 @@ klein und mit eigenem Namen — keine Daten aus 5e.tools, kein
 Kampagneninhalt. Spuren (`trace`) und Bilder entstehen nur bei einem
 Fehler und liegen am Lauf als Artefakt `e2e-spuren`.
 
+Die Specs heute, je bei 1360 und 390 px:
+
+| Spec | Ablauf | Rollen |
+|---|---|---|
+| `anmelden` | Anmelden, falsches Passwort, gespeicherte Sitzung | Leitung, Spielerin |
+| `artikel` | Verweis → Kurzansicht → Artikelseite; `audience: gm` kommt nicht an | Leitung, Spielerin |
+| `kompendium` | Suche, Feldfilter, Spaltenwahl | Leitung (Desktop), Spielerin (Telefon) |
+| `karte` | Karte ins Spiel, aufdecken, freigeben, Token ziehen; versteckter Marker bleibt weg | Leitung, Spielerin |
+| `initiative` | Start, End turn der Spielerin, Next turn | Leitung, Spielerin |
+| `board` | Text- und Abfrage-Kachel, gesiebt | Leitung, Spielerin |
+| `charakter` | Assistent bis zur Figur, dann Stufe 2 | Leitung (Desktop), Spielerin (Telefon) |
+| `kampagnenboard` | Spielerin landet auf dem Board, Basis-Leiste; Leitung behält ihren Start (T-342) | Leitung, Spielerin |
+
 Den Merge hält der Job, sobald die Leitung ihn in den Repo-Einstellungen als
 Pflichtprüfung einträgt (T-356).
 
@@ -55,9 +68,9 @@ Lokal laufen lassen und einen neuen Spec schreiben:
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-1 Stories · 5 Punkte · 1 teils
+1 Stories · 5 Punkte · 1 steht
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-359]] Jede Änderung im Browser geprüft | Verwaltung | 1 | teils |
+| [[REQ-359]] Jede Änderung im Browser geprüft | Verwaltung | 1 | steht |
 <!-- stories:ende -->
