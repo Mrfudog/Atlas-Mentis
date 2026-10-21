@@ -97,6 +97,7 @@
           "text": [
             "Registry › Views lists every view; Design opens one in the view designer — from a type’s page with that type chosen, from an article with “Design this view” in Full edit. The preview stands on top; add elements from the palette, move them with ↑ ↓ → ← or by dragging, and give each its values — follow an edge to show fields of linked articles, such as the wares of the shop a creature keeps.",
             "Saving asks where the change goes: every article, every article of a type (preselected when you come from a type; saved as an adjustment — only the difference, so new fields of the view still come — wherever that can say it, otherwise as the type’s own arrangement), only this article, or a new view with a condition. The most specific view that applies wins — everywhere: the popup on a named article and on a map marker, the preview beside a list, a board card, the article page and the print ask the same question. Board cards and the View row above an article offer every one that applies.",
+            "Every kind of article comes with views that fit it: the card (Quick) and the + of a search hit show the two or three values you recognise it by — level and school of a spell, phase of an encounter, kind of a map — and the Handout adds what you hand the players with it, such as an item’s rarity or a place’s environment; a spell becomes a spell card. Change any of them in the designer.",
             "For the rows of a random table use the element Table: its die column and Roll, which saves the roll in the rolls log and marks the row. Table from edges shows edges and their targets, not rows. Elements marked “article page only” are drawn by the page and the print; a designed view shows a note in their place."
           ]
         },
@@ -126,6 +127,14 @@
           "text": [
             "In Compendium, World, Story or Rules, pick a type in the sidebar (or stay on the mixed list) and press Columns. Tick the fields to show — also calculated values like a modifier, and edges like the classes that grant a spell — and drag them or use ↑↓ into order; Apply keeps the choice for this page and type on every device of your account and puts it in the address, so a link shows the same table.",
             "Reset to default drops your choice: the campaign default shows, or else the columns of the type's overview. As GM, Make campaign default shows your choice to everyone in the campaign who has not chosen their own. Players only ever see what they may see of an article: a held-back field stays an empty cell."
+          ]
+        },
+        {
+          "heading": "Laying out a session board",
+          "text": [
+            "Open the board of the session (Boards, or the board link on the session). With Background, put the map of the evening under everything, or a colour or image.",
+            "Article places the scenes, creatures and handouts as cards; set each card’s view — Quick for a short card, Full for the whole page, a designed view where one applies. Mark what players must not see with GM.",
+            "Text adds headings, notes and lists beside them — [[links]] to articles work; Draw adds arrows and circles to tie them together. The canvas grows as you go; Fit all shows the whole board."
           ]
         },
         {

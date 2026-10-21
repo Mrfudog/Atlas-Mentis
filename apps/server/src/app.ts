@@ -100,6 +100,8 @@ import {
   redactEntity,
   initiativeRulesOf,
   redactMap,
+  redactBoard,
+  BOARD_TYPE,
   mapRulesOf,
   PARTY_RELATION,
   type FogMode,
@@ -1569,7 +1571,11 @@ export function buildApp({
               }),
               (id) => assetVersion(alle.get(id)),
             )
-          : e,
+          : /* Ein Board ohne das, was die Leitung zurückhält (T-339): Formen
+               und Kacheln mit `hidden`. Wer es schreibt, bekommt es ganz. */
+            primaryInterface(e) === BOARD_TYPE && !seesUnfinished(alle, e, auge)
+            ? redactBoard(e)
+            : e,
       );
   }
 

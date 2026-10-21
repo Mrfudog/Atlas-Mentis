@@ -2599,6 +2599,13 @@ export const fieldGroups = {
    *
    * Ein Anker ist `{ id, name, x, y, zoom? }`; mit `w` und `h` ist er ein
    * **Bereich** (T-073), den die Seite als Reiter zeigt und einklappt.
+   *
+   * Seit T-339 liegen in `shapes` auch Text (Markdown, mit `[[Verweisen]]`
+   * und `{VAR}`, nie eingesetzt gespeichert) und Bilder neben den
+   * Zeichnungen (`shapesOf`). `width`/`height` sind keine Grenze mehr,
+   * sondern die Mindestgrösse: die Leinwand wächst beim Lesen mit dem
+   * Inhalt (`boardExtent`, D8). Der Hintergrund ist ein Bild, eine Farbe
+   * oder eine Karte (`backgroundMap`), über der die Kacheln liegen.
    */
   BoardInfo: {
     schema: {
@@ -2608,6 +2615,21 @@ export const fieldGroups = {
         height: { type: 'number', title: 'Height in px', default: 1500 },
         snap: { type: 'number', title: 'Snap to px', default: 10 },
         background: { type: 'string', format: 'asset', title: 'Background' },
+        backgroundColor: { type: 'string', title: 'Background colour', description: 'A colour under everything on the board, e.g. #2b2b2b. Empty: the page paper.' },
+        backgroundFit: {
+          type: 'string',
+          title: 'Background image',
+          enum: ['stretch', 'tile', 'fixed'],
+          default: 'stretch',
+          description: 'How the background image lies: stretched over the canvas, tiled, or once at the top left at its own size.',
+        },
+        backgroundMap: {
+          type: 'string',
+          format: 'link',
+          title: 'Background map',
+          target: { interfaces: ['Map'] },
+          description: 'A map that fills the canvas under the cards — players see it as in play, only what is uncovered.',
+        },
         rules: { type: 'object', title: 'View per interface' },
         shapes: { type: 'array', title: 'Shapes', items: { type: 'object' } },
         anchors: { type: 'array', title: 'Anchors', items: { type: 'object' } },
