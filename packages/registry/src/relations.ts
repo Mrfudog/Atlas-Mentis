@@ -1075,6 +1075,9 @@ export const relations: Record<string, RelationDef> = {
            ist dort ein Vorschlag zum Platzieren (`placementSuggestions`);
            mit `stay` gehört er auf diese Karte, und keine schlägt ihn vor. */
         stay: { type: 'boolean', title: 'Keep on this map' },
+        /* **Wie dieser Marker steht** (T-214): überschreibt Karte,
+           Kartenart und Art (`markerViewOf`). Leer: was die sagen. */
+        view: { type: 'string', title: 'Shows as', enum: ['symbol', 'name', 'image', 'card'], description: 'How this marker stands on the map: symbol, symbol with name, image, or a quick card. Empty: what the map, its kind or the article type say.' },
       },
     },
   },

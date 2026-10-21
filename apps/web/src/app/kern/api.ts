@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -2216,7 +2216,8 @@ export interface KartenKontext {
   session?: string | null;
   /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
   /** `size`: die Grösse des Statblocks (T-317), für den Platz des Tokens. */
-  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string }>;
+  /** `view`: wie Artikel dieser Art als Marker stehen (T-214, `InterfaceDef.markerView`). */
+  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; view?: MarkerView }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
@@ -2228,6 +2229,8 @@ export interface KartenKontext {
   passageRules?: PassageRules;
   /** Die Werkzeuggruppen für die Art dieser Karte (T-320). Fehlt bei einem älteren Server. */
   tools?: MapToolGroup[];
+  /** Die Markeransicht der Kartenart an der Kampagne (T-214). Fehlt bei einem älteren Server. */
+  kindMarkerView?: MarkerView | null;
   /** Die eigenen Figuren mit Token hier (T-204). */
   own?: string[];
   /** Was der Betrachter ziehen darf, nach `Campaign.tokenMove` (T-290) — gerechnet am Server. */
