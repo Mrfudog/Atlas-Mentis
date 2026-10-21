@@ -49,7 +49,7 @@ function datenstand(): Datenstand {
             'Grey stones.',
             { type: 'image', href: { type: 'internal', path: 'adventure/TKP/Grimmore.webp' }, imageType: 'map', title: 'Castle Grimmore' },
             { type: 'entries', name: 'G1. Gate', id: '012', entries: [{ type: 'insetReadaloud', entries: ['A rusted portcullis.'] }, 'Nobody guards it.'] },
-            { type: 'entries', name: 'G2. Hall', id: '013', entries: ['Dust.'] },
+            { type: 'entries', name: 'G2. Hall', id: '013', entries: ['Dust.', { type: 'entries', name: 'G2a: Alcove', entries: ['A niche.'] }] },
           ],
         },
         { type: 'section', name: 'Rumours', id: '014', entries: ['People talk.'] },
@@ -108,6 +108,23 @@ describe('Orte erkennen (T-175)', () => {
     expect(ortAusText('Thalos', 'Thalos is the realm of the sea god.')).toEqual({ ort: true });
   });
 
+  it('nachgeschärft (T-182): Schlüssel mit Doppelpunkt und Spanne, „This village …", Apposition davor, Hauptstadt', () => {
+    expect(ortBefund('D27: Ritual Room', [])).toEqual({ ort: true, kind: 'Raum' });
+    expect(ortBefund('Area 1: Cave Mouth', [])).toEqual({ ort: true, kind: 'Raum' });
+    expect(ortBefund('1N. Rectory', [])).toEqual({ ort: true, kind: 'Raum' });
+    expect(ortBefund('M14–M15. Old Rooms', [])).toEqual({ ort: true, kind: 'Raum' });
+    expect(ortBefund('Day 1: Departure', [])).toEqual({ ort: false });
+    expect(ortBefund('D27: Ritual Room', [], { schluessel: false }).ort).toBe(false);
+    expect(ortAusText('Rivermoot', 'This small village stands at the end of the road.')).toEqual({ ort: true, kind: 'Stadt' });
+    expect(ortAusText('Old Holes', 'These caves are empty.')).toEqual({ ort: true });
+    expect(ortAusText('Mudfolk', 'These wild mountain folk are covered in mud.')).toEqual({ ort: false, kandidat: true });
+    expect(ortAusText('Inside', "This tomb's interior holds a platform.").ort).toBe(false);
+    expect(ortAusText('Treasure', 'This cavern holds treasure beyond counting.').ort).toBe(false);
+    expect(ortAusText('Fleetswake', 'This festival celebrates the sea, and the gods.').ort).toBe(false);
+    expect(ortAusText('Oselo', "The warden's home village, Oselo appears calm.")).toEqual({ ort: true, kind: 'Stadt' });
+    expect(ortAusText('Karrn', 'Capital: Korth')).toEqual({ ort: true });
+  });
+
   it('nimmt Marken aus dem Text', () => {
     expect(klartext('a {@b walled} {@creature goblin|MM|goblins} camp')).toBe('a walled goblins camp');
   });
@@ -161,6 +178,11 @@ describe('Orte aus Büchern und Abenteuern (T-175)', () => {
     expect(tor.components['Visibility']).toEqual({ audience: 'gm' });
     expect(tor.components['Place']).not.toHaveProperty('arrival');
     expect(finde('Place', 'Rumours')).toBeUndefined();
+    /* Ein Raum mit Schlüssel als Überschrift in einer Szene (T-182): ein Ort im Raum darüber, ohne eigene Szene. */
+    const nische = finde('Place', 'G2a: Alcove')!;
+    expect(nische.components['Place']).toEqual({ kind: 'Raum' });
+    expect(kanten(nische, 'partOf')).toEqual([finde('Place', 'G2. Hall')!.id]);
+    expect(finde('Scene', 'G2a: Alcove')).toBeUndefined();
   });
 
   it('gibt bei zwei Läufen dieselben Orte', () => {

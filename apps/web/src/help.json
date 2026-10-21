@@ -343,7 +343,8 @@
       "sections": [
         {
           "text": [
-            "For the GM and administrators: checks that find articles with gaps or broken links, and bulk changes with a preview and undo."
+            "For the GM and administrators: checks that find articles with gaps or broken links, and bulk changes with a preview and undo.",
+            "Add edge takes an article as target, or a path over edges: <-describedIn is whatever points here with described in, ->mapOf->happensAt follows map of and then happens at. Every selected article gets its own target; one with several is skipped, not guessed."
           ]
         }
       ]
