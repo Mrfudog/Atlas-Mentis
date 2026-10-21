@@ -39,6 +39,12 @@
  * nachträgt. Sonst ändert es nichts an ihnen; einen selbst geschriebenen
  * Text ersetzt es nur mit `--force-texts`.
  *
+ * `--only <schlüssel,…>` nimmt nur diese Optionen des Katalogs mit ihren
+ * Varianten (`--only ruleGraphs` → `rule:ruleGraphs`, `option:ruleGraphs:*`)
+ * oder diese Systeme (`system:<key>`). Ihr System muss es schon geben. So
+ * legt ein Lauf an, was zu seiner Änderung gehört, und nicht nebenbei, was
+ * eine andere Sitzung gerade anlegt.
+ *
  * Ein zweiter Lauf legt nichts doppelt an: was angelegt wurde, steht in der
  * Zustandsdatei (Vorgabe `<plan>.state.json`, ebenfalls ausserhalb).
  * Ausgegeben werden Schlüssel, Ids und Zahlen — die Ausgabe darf ins
@@ -71,7 +77,7 @@ const option = (n) => {
   const i = args.indexOf(n);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const datei = args.find((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1] === '--state'));
+const datei = args.find((a, i) => !a.startsWith('--') && !(i > 0 && ['--state', '--only'].includes(args[i - 1])));
 const trocken = flag('--dry-run');
 
 function stirb(text, code = 1) {
@@ -225,6 +231,13 @@ const soll = [
   })),
 ];
 for (const k of Object.keys(eintraege)) if (!soll.some((s) => s.schluessel === k)) stirb(`Unbekannter Eintrag im Plan: ${k}`);
+const nur = option('--only')?.split(',').map((x) => x.trim()).filter(Boolean);
+if (nur) {
+  const trifft = (s) => nur.some((k) => s.schluessel === `system:${k}` || s.schluessel === `rule:${k}` || s.schluessel.startsWith(`option:${k}:`));
+  const ohne = nur.filter((k) => !soll.some((s) => trifft(s) && s.schluessel.split(':')[1] === k));
+  if (ohne.length) stirb(`--only trifft nichts: ${ohne.join(', ')}`);
+  soll.splice(0, soll.length, ...soll.filter(trifft));
+}
 
 /** Der Text eines Artikels: der Satz aus dem Katalog oder Graphen, dazu der Verweis auf seine Grundlage. */
 async function textFuer(s, e) {
