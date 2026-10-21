@@ -70,6 +70,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'statblock', name: 'Statblock', icon: '⚔', tip: 'The statblock as in the book.' },
       { el: 'spell', name: 'Spell', icon: '✦', tip: 'A spell as in the book.' },
       { el: 'item', name: 'Item', icon: '⚱', tip: 'An item as in the book.' },
+      { el: 'shape', name: 'Shape', icon: '▦', tip: 'The cells an item takes in the grid inventory, with its picture, as grid or list; its stack size; Edit shape and Adjust inventory image for whoever may edit it.' },
       { el: 'sheet', name: 'Character sheet', icon: '❤', tip: 'The header of a creature: hit points, vitals and spellcasting, hit dice, slots, gold, abilities and the status row. Stands above the tabs.', seite: true },
       { el: 'turn', name: 'Your turn', icon: '⏵', tip: 'Every action of the creature by action type, with Used and New turn; what the hands block stays visible with the reason.', seite: true },
       { el: 'spells', name: 'Spells', icon: '✧', tip: 'Spellcasting: ability, attack, save DC, slots; every spell by level with Cast.', seite: true },
