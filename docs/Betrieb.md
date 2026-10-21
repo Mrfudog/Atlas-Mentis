@@ -886,8 +886,11 @@ Dafür rechnet derselbe Lauf einen **Bildplan** — welches Bild aus
 `Statblock.token` (Klasse `token`), das erste Bild des Begleittexts an
 `Image.image` (Klasse `image`; die übrigen nur in die Galerie), die Karte
 eines Abenteuers, die als Adresse dasteht, an `Image.image` ihrer `Map`
-(Klasse `map`). Bilder im Buchtext (als Teile der Leseansicht) stehen noch
-nicht im Plan.
+(Klasse `map`), und jedes Bild im Buch- und Abenteuertext an `Image.image`
+seines Teils `Illustration` (T-210; die Teile legt die Pipeline mit
+`types` = `Illustration` an). **Der Plan muss aus demselben Datenstand
+kommen wie der Bestand auf dev** — die Ids der Teile hängen am Rang im
+Kapitel, also an den Daten (T-284: Spiegel `5etools-src`, nicht der Fork).
 
 ```bash
 # 1. Plan (der Lauf wie zum Einlesen, nur mit --images)
@@ -900,6 +903,14 @@ node scripts/bilder-5etools.mjs bildplan.json --img <5etools-img> --only MM --wr
 node scripts/atlas.mjs bulk --dry-run bilder-lauf/verknuepfen-1.json
 node scripts/atlas.mjs bulk bilder-lauf/verknuepfen-1.json
 ```
+
+**Ebenen ausserhalb des Stapels** (T-284): was in einer Ebene liegt, die
+die laufende Kampagne nicht aufschaltet — die meisten Bücher und
+Abenteuer —, gibt es ohne Weiteres für niemanden, auch nicht für die
+Verwaltung (E2); Zielprüfung und Hochladen meldeten 404. Mit
+`--all-layers` fragt das Skript `GET /api/entities/:id?allLayers=1`, lädt
+mit dem Formularfeld `allLayers=1` hoch und schreibt `allLayers: true` in
+die Massenänderung — alles nur für die Verwaltung.
 
 **Vorher der Platz:** `GET /api/assets/storage` (nur Verwaltung) nennt
 Dateien und Bytes der Ablage und was ihr Datenträger frei hat; das Skript

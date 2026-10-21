@@ -134,7 +134,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-44 Stories · 137 Punkte · 27 steht · 6 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+44 Stories · 137 Punkte · 28 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -255,7 +255,7 @@ Drei Teststufen für jede Änderung — Unit, Integration, E2E im Browser — un
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-359]] | Jede Änderung im Browser geprüft | Verwaltung | 1 | 5 | teils |
+| [[REQ-359]] | Jede Änderung im Browser geprüft | Verwaltung | 1 | 5 | steht |
 
 ## EP-03 Kreaturen & Figuren
 
