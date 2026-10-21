@@ -241,6 +241,22 @@ export function rangePair(range: string | null | undefined): [number | null, num
   return m ? [Number(m[1]), m[2] ? Number(m[2]) : null] : [null, null];
 }
 
+/** Wo ein Ziel liegt: in Reichweite, auf langer Reichweite (Nachteil) oder ausser Reichweite. */
+export type RangeBand = 'normal' | 'long' | 'out';
+
+/**
+ * **In welcher Reichweite ein Ziel liegt** (T-351) — für Maske und Server
+ * dieselbe Rechnung: bis `range` normal, bis `longRange` lang (Nachteil),
+ * darüber ausser Reichweite. `null`, wenn der Abstand oder die Reichweite
+ * der Kachel unbekannt ist — dann prüft niemand, statt falsch abzulehnen.
+ */
+export function rangeBand(tile: Pick<PlanTile, 'range' | 'longRange'>, feet: number | null | undefined): RangeBand | null {
+  if (feet === null || feet === undefined || !Number.isFinite(feet) || tile.range === null) return null;
+  if (feet <= tile.range) return 'normal';
+  if (tile.longRange !== null && feet <= tile.longRange) return 'long';
+  return 'out';
+}
+
 /**
  * Eine Kachel aus einem Angriff (`attackNumbers`) oder, ohne Angriff, aus
  * dem Namen und der Art einer Aktion.
