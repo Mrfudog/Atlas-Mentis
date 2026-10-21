@@ -2030,6 +2030,17 @@ und Bewegung rechnen auf jeder Seite in der Ebene, in der sie gerade sind.
 Die Gegenseite eines Übergangs ist ein gespiegeltes Ende und kein zweiter
 Marker — ein Paar wäre zwei Stellen, die auseinanderlaufen.
 
+**Ein Übergang ist eine Fläche, und wer darin steht, ist dort** (T-326).
+Eine Treppe über drei Felder als Punkt hiess, dass genau einer auf ihr
+stehen konnte, und ein Portal, vor dem die Gruppe wartet, schickte sie
+einzeln. Die Fläche ist ein Vieleck am Marker, keine eigene Markerart: ein
+Punkt-Übergang ist die Fläche eines Feldes, und alles, was vorher galt,
+gilt weiter. Wer, wann und was es kostet, ist eine Vorgabe der Kampagne
+mit einer Ausnahme je Übergang — ein Geheimportal, das nur die Leitung
+auslöst, ist eine Zeile am Übergang und keine zweite Art. Im Kampf ist der
+Durchgang ein Schritt im Zugplan und kein eigener Weg daneben: nur dort
+weiss jemand, wie viel Bewegung der Zug noch hat.
+
 **Der Massstab ist Text, die Fuss werden gerechnet** (T-321). „6 mi" je
 Hex steht so an der Karte, wie es jemand gemeint hat; dass das 31 680 Fuss
 sind, rechnet das Lesen über die Einheiten des Registers (D8). Ein

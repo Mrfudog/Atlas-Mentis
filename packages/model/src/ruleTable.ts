@@ -218,6 +218,8 @@ export function reachExits(
   const schon = new Set<string>();
   let disengaged = false;
   for (const s of steps) {
+    /* Hinter einem Übergang (T-326) steht die Figur woanders — die Reichweiten hier gelten nicht mehr. */
+    if (s.kind === "passage") break;
     if (s.kind === "act") {
       if (s.tile === "std:disengage") disengaged = true;
       continue;

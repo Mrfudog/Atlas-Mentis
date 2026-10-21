@@ -424,6 +424,33 @@ export interface Passage {
   /** Das Ende am Ziel eines Übergangs in beide Richtungen. */
   mirrored: boolean;
   note: string;
+  /**
+   * **Die Fläche dieses Endes** (T-326) — ein Vieleck in Anteilen der Karte
+   * (ein Rechteck sind vier Ecken). `null`: das eine Feld um `at`, wie jeder
+   * Übergang vor T-326 (`passageArea`).
+   */
+  area: Poly | null;
+  /** Die Fläche am Ziel; `null`: das Feld um `toAt`. */
+  toArea: Poly | null;
+  /** Was dieser Übergang anders regelt als die Kampagne (`passageRulesOf`). */
+  rules: Readonly<Record<string, unknown>>;
+}
+
+/** Ein Vieleck in Anteilen der Karte. */
+export type Poly = Array<[number, number]>;
+
+/** Ein Vieleck aus dem Speicher: mindestens drei Ecken, je in 0–1; sonst `null`. */
+export function polyOf(v: unknown): Poly | null {
+  if (!Array.isArray(v)) return null;
+  const pts: Poly = [];
+  for (const q of v) {
+    if (!Array.isArray(q) || q.length < 2) return null;
+    const x = zahl(q[0]);
+    const y = zahl(q[1]);
+    if (x === null || y === null) return null;
+    pts.push([Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))]);
+  }
+  return pts.length >= 3 ? pts : null;
 }
 
 const anteil = (v: unknown, sonst: number): number => {
@@ -449,6 +476,9 @@ export function passageOf(map: Entity, r: Relation): Passage | null {
     oneWay: p['oneWay'] === true,
     mirrored: false,
     note: typeof p['note'] === 'string' ? p['note'] : '',
+    area: polyOf(p['area']),
+    toArea: polyOf(p['toArea']),
+    rules: p['rules'] && typeof p['rules'] === 'object' && !Array.isArray(p['rules']) ? (p['rules'] as Roh) : {},
   };
 }
 
@@ -468,7 +498,7 @@ export function passageEnds(map: Entity, floor: string): Passage[] {
   const hier = alle.filter((p) => p.floor === floor);
   const zurueck = alle
     .filter((p) => !p.oneWay && p.toMap === map.id && p.toFloor === floor)
-    .map((p) => ({ ...p, floor: p.toFloor, at: p.toAt, toFloor: p.floor, toAt: p.at, mirrored: true }));
+    .map((p) => ({ ...p, floor: p.toFloor, at: p.toAt, toFloor: p.floor, toAt: p.at, area: p.toArea, toArea: p.area, mirrored: true }));
   return [...hier, ...zurueck];
 }
 
@@ -501,7 +531,7 @@ export function passageAt(map: Entity, floor: string, p: Pt, reach: number = PAS
  * Instanz). Einbahn heisst: das gespiegelte Ende gibt es nicht, also geht
  * es auch nicht zurück.
  */
-export function goThrough(map: Entity, tokenRel: string, end: Passage): Entity | null {
+export function goThrough(map: Entity, tokenRel: string, end: Passage, to?: Pt): Entity | null {
   if (end.toMap !== map.id) return null;
   const r = (map.relations ?? []).find((x) => x.id === tokenRel && x.type === MARKER);
   if (!r || floorOfRelation(r) !== end.floor) return null;
@@ -511,7 +541,9 @@ export function goThrough(map: Entity, tokenRel: string, end: Passage): Entity |
     ...map,
     relations: (map.relations ?? []).map((x) => {
       if (x.id !== tokenRel) return x;
-      const props: Roh = { ...((x.props ?? {}) as Roh), x: r4(end.toAt.x), y: r4(end.toAt.y) };
+      /* `to`: das freie Feld der Zielfläche (T-326, `landingSpots`); ohne es der Zielpunkt. */
+      const ziel = to ?? end.toAt;
+      const props: Roh = { ...((x.props ?? {}) as Roh), x: r4(ziel.x), y: r4(ziel.y) };
       if (end.toFloor === GROUND_FLOOR) delete props['floor'];
       else props['floor'] = end.toFloor;
       return { ...x, props };
@@ -541,11 +573,47 @@ export function sightInto(
       const p = (r.props ?? {}) as Roh;
       if (p['kind'] !== 'play' && p['kind'] !== 'party') continue;
       const at = { x: anteil(p['x'], 0.5), y: anteil(p['y'], 0.5) };
-      const e = enden.find((x) => onPassage(x, at, PASSAGE_EXACT, 1));
-      if (e) out.push({ relId: r.id, to: r.to, from: e.toAt, passage: e });
+      /* **Wer in der Fläche steht, sieht** (T-326) — von der Stelle der
+         Zielfläche, die seiner in der Fläche entspricht. */
+      const e = enden.find((x) => (x.area ? inPoly(x.area, at) : onPassage(x, at, PASSAGE_EXACT, 1)));
+      if (e) out.push({ relId: r.id, to: r.to, from: e.area ? across(e.area, e.toArea, e.toAt, at) : e.toAt, passage: e });
     }
   }
   return out;
+}
+
+/** Liegt der Punkt im Vieleck? (Strahlwurf, wie `inPolygon` in `map.ts`.) */
+export function inPoly(q: Poly, p: Pt): boolean {
+  let innen = false;
+  for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
+    const [xi, yi] = q[i]!;
+    const [xj, yj] = q[j]!;
+    if (yi > p.y !== yj > p.y && p.x < ((xj - xi) * (p.y - yi)) / (yj - yi) + xi) innen = !innen;
+  }
+  return innen;
+}
+
+/** Der umschliessende Kasten eines Vielecks. */
+export function polyBox(q: Poly): { x: number; y: number; w: number; h: number } {
+  const xs = q.map((c) => c[0]);
+  const ys = q.map((c) => c[1]);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+
+/**
+ * **Die entsprechende Stelle am Ziel**: wo ein Punkt im Kasten der Fläche
+ * liegt, liegt er im Kasten der Zielfläche — oben an der Treppe steht man
+ * an deren oberem Ende. Ohne Zielfläche der Zielpunkt.
+ */
+export function across(area: Poly, toArea: Poly | null, toAt: Pt, p: Pt): Pt {
+  if (!toArea) return toAt;
+  const a = polyBox(area);
+  const b = polyBox(toArea);
+  const u = a.w > 0 ? (p.x - a.x) / a.w : 0.5;
+  const v = a.h > 0 ? (p.y - a.y) / a.h : 0.5;
+  return { x: b.x + Math.min(1, Math.max(0, u)) * b.w, y: b.y + Math.min(1, Math.max(0, v)) * b.h };
 }
 
 /**

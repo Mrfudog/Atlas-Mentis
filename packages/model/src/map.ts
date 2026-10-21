@@ -488,6 +488,14 @@ export function turnOf(
   return { ...(current ? { current } : {}), ...(next ? { next } : {}) };
 }
 
+/** Ist der laufende Zug der letzte der Runde? (T-326, `passageWhen: 'roundEnd'`.) Vor Runde 1 nein. */
+export function isLastTurn(entities: ReadonlyMap<EntityId, Entity>, encounter: Entity): boolean {
+  const k = (encounter.components?.['Encounter'] ?? {}) as { round?: unknown; turn?: unknown };
+  if (!(Number(k.round) >= 1)) return false;
+  const n = initiativeOrder(entities, (encounter.relations ?? []).filter((r) => r.type === PARTICIPATES && r.to)).length;
+  return n > 0 && Math.min(n - 1, Math.max(0, Number(k.turn) || 0)) === n - 1;
+}
+
 /**
  * **Der Kampf auf einer Karte** (REQ-144, T-198): die Begegnung mit
  * `onMap` hierher, die eine Sitzung gerade führt (`activeEncounter`), sonst

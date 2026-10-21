@@ -1044,6 +1044,14 @@ export const relations: Record<string, RelationDef> = {
         toY: { type: 'number', title: 'Leads to Y (0–1)' },
         sight: { type: 'string', title: 'Sight through it', enum: ['through', 'none'], default: 'through' },
         oneWay: { type: 'boolean', title: 'One way' },
+        /* **Übergang als Fläche** (T-326): `area`/`toArea` sind Vielecke in
+           Anteilen der Karte (`[[x, y], …]`, ein Rechteck vier Ecken); ohne
+           sie ist ein Ende das Feld um seinen Punkt. `rules` überschreibt
+           die Vorgabe der Kampagne (`passageRulesOf`): `trigger`, `when`,
+           `move` oder `feet`, `action`, `confirm`. */
+        area: { type: 'array', title: 'Passage area', items: { type: 'array' } },
+        toArea: { type: 'array', title: 'Target area', items: { type: 'array' } },
+        rules: { type: 'object', title: 'Passage rules' },
       },
     },
   },
