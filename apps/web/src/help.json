@@ -117,6 +117,7 @@
         {
           "text": [
             "Every map you can see, with a preview; sub-maps stand indented under their map. Filter by layer and tag.",
+            "Transformations › + Group by … groups the maps by map kind, location (the place the map shows, or the place of its parent map), region (the outermost place above it), layer, parent map or tag, with a count per group; ▾ closes a group. Your grouping is kept for your account; Save… names it, Copy link shares it. Without a step the list stays the tree by parent map.",
             "“New map” turns an uploaded or chosen image into a map. To put a map on the table, set “Map on the table” on the session — then it shows under Play."
           ]
         }

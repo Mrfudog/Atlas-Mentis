@@ -1,9 +1,11 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { MAP_TYPE, fromImage } from '@nw/model';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { MAP_TYPE, applyTransform, fromImage, stepsFromString, stepsToString, type Dimension, type TransformNode, type TransformStep } from '@nw/model';
 import { Api, type KartenZeile } from '../kern/api';
 import { Session } from '../kern/session';
 import { Bild, BildWahl } from '../artikel/bild';
+import { Transformationen, type GespeicherteKette } from '../muster/transformationen';
 
 /**
  * **Play › Maps** (T-202, `/maps`): der feste Ort für Karten. Eine Liste
@@ -21,7 +23,7 @@ import { Bild, BildWahl } from '../artikel/bild';
  */
 @Component({
   selector: 'nw-karten',
-  imports: [Bild, BildWahl, RouterLink],
+  imports: [Bild, BildWahl, NgTemplateOutlet, RouterLink, Transformationen],
   template: `
     <div class="seite">
       <header class="kopf">
@@ -62,6 +64,14 @@ import { Bild, BildWahl } from '../artikel/bild';
             </button>
           }
         </div>
+        <nw-transformationen
+          [dimensionen]="dimensionen"
+          [steps]="steps()"
+          (stepsChange)="neueKette($event)"
+          [vorlagen]="vorlagen"
+          ort="maps"
+          [adresse]="true"
+        />
       }
 
       @if (fehler(); as f) {
@@ -73,31 +83,46 @@ import { Bild, BildWahl } from '../artikel/bild';
       }
 
       <ul class="liste" aria-label="Maps">
-        @for (z of gezeigt(); track z.zeile.id) {
-          <li [style.--tiefe]="z.zeile.depth" [class.pfad]="!z.treffer">
-            <a class="vorschau" [routerLink]="['/play']" [queryParams]="{ map: z.zeile.id }" [attr.aria-label]="'Open ' + z.zeile.name + ' in Play'">
-              @if (z.zeile.image) {
-                <nw-bild [wert]="z.zeile.image" [version]="z.zeile.imageVersion" groesse="thumb" [oeffnen]="false" [alt]="z.zeile.name" />
-              } @else {
-                <span class="ohne">no image</span>
-              }
-            </a>
-            <div class="text">
-              <a class="name" [routerLink]="['/artikel', z.zeile.id]">{{ z.zeile.name }}</a>
-              <span class="dim">
-                {{ z.zeile.kind }}
-                @for (l of z.zeile.layers; track l.id) {
-                  · {{ l.name }}
-                }
-              </span>
-              @if (z.zeile.tags.length) {
-                <span class="marken">{{ z.zeile.tags.join(', ') }}</span>
-              }
-            </div>
-            <a class="spielen" [routerLink]="['/play']" [queryParams]="{ map: z.zeile.id }">Open in Play</a>
-          </li>
+        @for (p of posten(); track p.key) {
+          @if (p.gruppe; as g) {
+            <li class="gruppe" [style.--tiefe]="p.tiefe">
+              <button type="button" class="pfeil" [attr.aria-expanded]="!zu().has(g.key)" (click)="umschalten(g.key)">
+                <span aria-hidden="true">{{ zu().has(g.key) ? '▸' : '▾' }}</span>
+                <span class="art">{{ dimName(g.dim) }}</span>
+                <b>{{ g.label }}</b>
+                <span class="zahl" [attr.aria-label]="g.count + (g.count === 1 ? ' map' : ' maps')">{{ g.count }}</span>
+              </button>
+            </li>
+          } @else if (p.zeile; as zeile) {
+            <li [style.--tiefe]="p.tiefe" [class.pfad]="!p.treffer">
+              <ng-container *ngTemplateOutlet="karte; context: { $implicit: zeile }" />
+            </li>
+          }
         }
       </ul>
+
+      <ng-template #karte let-zeile>
+        <a class="vorschau" [routerLink]="['/play']" [queryParams]="{ map: zeile.id }" [attr.aria-label]="'Open ' + zeile.name + ' in Play'">
+          @if (zeile.image) {
+            <nw-bild [wert]="zeile.image" [version]="zeile.imageVersion" groesse="thumb" [oeffnen]="false" [alt]="zeile.name" />
+          } @else {
+            <span class="ohne">no image</span>
+          }
+        </a>
+        <div class="text">
+          <a class="name" [routerLink]="['/artikel', zeile.id]">{{ zeile.name }}</a>
+          <span class="dim">
+            {{ zeile.kind }}
+            @for (l of zeile.layers; track l.id) {
+              · {{ l.name }}
+            }
+          </span>
+          @if (zeile.tags.length) {
+            <span class="marken">{{ zeile.tags.join(', ') }}</span>
+          }
+        </div>
+        <a class="spielen" [routerLink]="['/play']" [queryParams]="{ map: zeile.id }">Open in Play</a>
+      </ng-template>
     </div>
   `,
   styles: `
@@ -182,6 +207,35 @@ import { Bild, BildWahl } from '../artikel/bild';
     .liste li.pfad {
       opacity: 0.55;
     }
+    .liste li.gruppe {
+      padding: 0;
+      border: 0;
+      background: none;
+    }
+    .gruppe .pfeil {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      min-height: 40px;
+      padding: 0.25rem 0.35rem;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: none;
+      color: inherit;
+      text-align: left;
+    }
+    .gruppe .art {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .gruppe .zahl {
+      color: var(--dim);
+      font-variant-numeric: tabular-nums;
+    }
     .vorschau {
       flex: none;
       width: 6rem;
@@ -250,6 +304,7 @@ export class Karten {
   private readonly api = inject(Api);
   private readonly router = inject(Router);
   private readonly session = inject(Session);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly zeilen = signal<KartenZeile[]>([]);
   protected readonly laedt = signal(true);
@@ -280,8 +335,52 @@ export class Karten {
    */
   protected readonly gezeigt = computed(() => kartenGefiltert(this.zeilen(), this.suche(), this.ebene(), this.marke()));
 
+  /** Die Kette der Transformationen (T-330); leer heisst: der Baum nach Elternkarte. */
+  protected readonly steps = signal<TransformStep[]>([]);
+  /** Zugeklappte Gruppen, nach Schlüssel — offen ist die Vorgabe. */
+  protected readonly zu = signal<ReadonlySet<string>>(new Set());
+
+  protected readonly dimensionen = KARTEN_DIMENSIONEN;
+  protected readonly vorlagen: GespeicherteKette[] = [
+    { name: 'By kind', steps: 'group:mapKind' },
+    { name: 'By location', steps: 'group:region,group:location' },
+  ];
+
+  /** Was die Liste zeichnet: ohne Gruppe der Baum, sonst Gruppen mit ihren Karten. */
+  protected readonly posten = computed(() => kartenPosten(this.gezeigt(), this.steps(), this.zu()));
+
   constructor() {
     void this.holen();
+    void this.ladeKette();
+  }
+
+  protected dimName(k: string): string {
+    return KARTEN_DIMENSIONEN.find((d) => d.key === k)?.label ?? k;
+  }
+
+  protected umschalten(key: string): void {
+    const s = new Set(this.zu());
+    if (s.has(key)) s.delete(key);
+    else s.add(key);
+    this.zu.set(s);
+  }
+
+  /** Die Kette gilt auf jedem Gerät des Kontos; ein Link mit `?steps=` geht vor. */
+  private async ladeKette(): Promise<void> {
+    if (this.route.snapshot.queryParamMap.get('steps')) return;
+    try {
+      const roh = (await this.api.prefs())[KETTE_PREF];
+      const aus = typeof roh === 'string' ? stepsFromString(roh) : [];
+      if (aus.length && !this.steps().length) this.steps.set(aus);
+    } catch {
+      /* Ohne Einstellungen bleibt der Baum. */
+    }
+  }
+
+  protected neueKette(st: TransformStep[]): void {
+    this.steps.set(st);
+    const wort = stepsToString(st);
+    this.api.setPref(KETTE_PREF, wort || null).catch(() => undefined);
   }
 
   private async holen(): Promise<void> {
@@ -314,6 +413,82 @@ export class Karten {
       this.legtAn.set(false);
     }
   }
+}
+
+/** Unter diesem Schlüssel merkt sich das Konto die Kette der Kartenliste. */
+const KETTE_PREF = 'maps.steps';
+
+/** Ein Wert oder keiner (dann „(none)"). */
+const ohneWert = (v: string | undefined | null): string[] => (v ? [v] : []);
+
+/**
+ * **Wonach die Kartenliste gruppiert** (T-330). Dieselben Schlüssel wie
+ * `articleDimensions`, aber über die Zeilen der Liste: die Seite hält keinen Bestand
+ * (W7), und Standort und Namen hat der Server schon gesiebt. Die Werte
+ * sind Ids, die Namen kommen aus der Zeile selbst.
+ */
+export const KARTEN_DIMENSIONEN: readonly Dimension<KartenZeile>[] = [
+  { key: 'mapKind', label: 'Map kind', values: (z) => ohneWert(z.kind) },
+  { key: 'location', label: 'Location', values: (z) => ohneWert(z.location?.[0]?.id) },
+  { key: 'region', label: 'Region', values: (z) => ohneWert(z.location?.at(-1)?.id) },
+  { key: 'layer', label: 'Layer', values: (z) => z.layers.map((l) => l.id) },
+  { key: 'parent', label: 'Parent map', values: (z) => ohneWert(z.parent) },
+  { key: 'tag', label: 'Tag', values: (z) => z.tags },
+];
+
+/** Die Dimensionen mit Namen für die Werte, aus den Zeilen gelesen. */
+export function kartenDimensionen(zeilen: readonly KartenZeile[]): Dimension<KartenZeile>[] {
+  const namen = new Map<string, string>();
+  for (const z of zeilen) {
+    namen.set('parent:' + z.id, z.name);
+    for (const l of z.layers) namen.set('layer:' + l.id, l.name);
+    for (const o of z.location ?? []) namen.set('ort:' + o.id, o.name);
+  }
+  const art: Record<string, string> = { location: 'ort', region: 'ort', layer: 'layer', parent: 'parent' };
+  return KARTEN_DIMENSIONEN.map((d) => {
+    const vor = art[d.key];
+    return vor ? { ...d, valueLabel: (v: string) => namen.get(vor + ':' + v) ?? v } : d;
+  });
+}
+
+/** Ein Posten der Liste: eine Gruppe oder eine Karte, mit ihrer Einrückung. */
+export interface KartenPosten {
+  key: string;
+  tiefe: number;
+  gruppe?: TransformNode<KartenZeile>;
+  zeile?: KartenZeile;
+  treffer?: boolean;
+}
+
+/**
+ * **Was die Liste zeichnet** (T-330). Ohne Gruppierung der Baum nach
+ * Elternkarte, wie `kartenGefiltert` ihn gibt — die Vorgabe. Mit einer
+ * Kette die Gruppen (`applyTransform`) mit Zähler und darunter die
+ * Treffer; die blassen Karten über einem Treffer gehören zum Baum und
+ * fallen dort weg. Eine zugeklappte Gruppe zeigt nichts darunter.
+ */
+export function kartenPosten(
+  gezeigt: readonly { zeile: KartenZeile; treffer: boolean }[],
+  steps: readonly TransformStep[],
+  zu: ReadonlySet<string>,
+): KartenPosten[] {
+  if (!steps.length) {
+    return gezeigt.map(({ zeile, treffer }) => ({ key: zeile.id, tiefe: zeile.depth, zeile, treffer }));
+  }
+  const zeilen = gezeigt.filter((x) => x.treffer).map((x) => x.zeile);
+  const t = applyTransform(zeilen, steps, kartenDimensionen(zeilen));
+  if (!t.nodes.length) return t.rows.map((zeile) => ({ key: zeile.id, tiefe: 0, zeile, treffer: true }));
+  const raus: KartenPosten[] = [];
+  const geh = (knoten: readonly TransformNode<KartenZeile>[]): void => {
+    for (const g of knoten) {
+      raus.push({ key: 'g:' + g.key, tiefe: g.depth, gruppe: g });
+      if (zu.has(g.key)) continue;
+      if (g.children.length) geh(g.children);
+      else for (const zeile of g.rows) raus.push({ key: g.key + '#' + zeile.id, tiefe: g.depth + 1, zeile, treffer: true });
+    }
+  };
+  geh(t.nodes);
+  return raus;
 }
 
 /** Der Filter der Kartenliste: Treffer und die Karten über ihnen (`treffer: false`). */
