@@ -62,10 +62,20 @@ const OpSchema = z.discriminatedUnion('op', [
    *  ein Ziel ist eine Id oder `{to, props}`; wer darin fehlt, bleibt
    *  unberührt. So geht eine Zauberliste je Klasse in **eine** Änderung,
    *  statt einer je Klasse. */
+  /** **Ziel aus Kante** (T-182): `to` darf ein Weg über Kanten sein —
+   *  `<-describedIn` (wer mit `describedIn` auf den Artikel zeigt),
+   *  `->mapOf->happensAt` (seine `mapOf`-Ziele, von dort deren
+   *  `happensAt`). So bekommt jeder Artikel sein eigenes Ziel, ohne dass
+   *  jemand je Artikel eine Liste schreibt. Ein Weg mit mehr als einem
+   *  Ziel ist mehrdeutig und wird übersprungen (gezählt, nicht geraten).
+   *  `toTypes` engt die Ziele auf Arten ein (Untertypen zählen mit),
+   *  `ifNone` setzt nur, wo der Artikel noch keine Kante dieser Art hat. */
   z.object({
     op: z.literal('addRelation'),
     type: z.string().min(1),
     to: z.string().min(1).optional(),
+    toTypes: z.array(z.string().min(1)).optional(),
+    ifNone: z.boolean().optional(),
     props: z.record(z.string(), z.unknown()).optional(),
     targets: z
       .record(
@@ -468,6 +478,16 @@ export function teileDazu(
   return raus;
 }
 
+/** Ein Weg über Kanten statt einer Id (T-182): `<-art` oder `->art`, auch hintereinander. */
+export function istWeg(to: string): boolean {
+  return /^(<-|->)/.test(to.trim());
+}
+
+/** Die Schritte eines Wegs: `<-describedIn->partOf` → zurück über describedIn, dann vor über partOf. */
+export function wegSchritte(weg: string): { zurueck: boolean; art: string }[] {
+  return [...weg.trim().matchAll(/(<-|->)\s*([A-Za-z][\w]*)/g)].map((m) => ({ zurueck: m[1] === '<-', art: m[2]! }));
+}
+
 /**
  * Die Peg-Id des Artikels, den `addLinked` zu `vonId` anlegt (T-169). Sie
  * folgt aus dem ausgewählten Artikel, damit der 5e.tools-Importer dieselbe
@@ -507,6 +527,38 @@ export function planBulk(
   }
   const peg = (x: string) => (raw.has(x) ? x : nachNummer.get(x));
   const ziele = selected.map((id) => raw.get(id)).filter((e): e is Entity => !!e);
+  /* Für Wege über Kanten (T-182): wer auf wen zeigt, je Art — einmal
+     gerechnet und nur, wenn ein Weg gefragt ist. */
+  let eingehend: Map<string, Map<string, string[]>> | null = null;
+  const vonHer = (id: string, art: string): string[] => {
+    if (!eingehend) {
+      eingehend = new Map();
+      for (const x of raw.values()) {
+        for (const r of x.relations ?? []) {
+          const je = eingehend.get(r.to) ?? eingehend.set(r.to, new Map()).get(r.to)!;
+          (je.get(r.type) ?? je.set(r.type, []).get(r.type)!).push(x.id);
+        }
+      }
+    }
+    return eingehend.get(id)?.get(art) ?? [];
+  };
+  const folgeWeg = (start: string, weg: string): string[] => {
+    let stand = [start];
+    for (const schritt of wegSchritte(weg)) {
+      const weiter = new Set<string>();
+      for (const id of stand) {
+        const ziele = schritt.zurueck ? vonHer(id, schritt.art) : (raw.get(id)?.relations ?? []).filter((r) => r.type === schritt.art).map((r) => r.to);
+        for (const z of ziele) if (raw.has(z)) weiter.add(z);
+      }
+      stand = [...weiter];
+    }
+    return stand;
+  };
+  const passtArt = (id: string, arten: string[] | undefined): boolean => {
+    if (!arten?.length) return true;
+    const kette = typeChain(registry, raw.get(id)?.interfaces?.[0] ?? '');
+    return arten.some((a) => kette.includes(a));
+  };
   /** Was `addLinked` in diesem Lauf schon an Nummern vergab. */
   const nummern: string[] = [];
   const nenne = (e: Entity | undefined) => (e ? `${entityName(e)} (${articleId(e) || e.id})` : '?');
@@ -636,9 +688,18 @@ export function planBulk(
               problem(e, `${op.type}: addRelation needs either to or targets`);
               break;
             }
-            const eigen = op.targets
+            if (op.ifNone && (neu.relations ?? []).some((r) => r.type === op.type)) break;
+            let eigen = op.targets
               ? (Object.hasOwn(op.targets, e.id) ? op.targets[e.id] : Object.hasOwn(op.targets, articleId(e)) ? op.targets[articleId(e)] : undefined) ?? []
               : [{ to: op.to!, props: op.props }];
+            if (op.to && istWeg(op.to)) {
+              const gefunden = folgeWeg(e.id, op.to).filter((id) => id !== e.id && passtArt(id, op.toTypes));
+              if (gefunden.length > 1) {
+                problem(e, `${op.type} via ${op.to}: ambiguous (${gefunden.length} targets: ${gefunden.slice(0, 3).map((x) => nenne(raw.get(x))).join(', ')}${gefunden.length > 3 ? ', …' : ''})`);
+                break;
+              }
+              eigen = gefunden.map((to) => ({ to, props: op.props }));
+            }
             for (const t of eigen) {
               const ziel = typeof t === 'string' ? t : t.to;
               const props = typeof t === 'string' ? op.props : t.props ?? op.props;
