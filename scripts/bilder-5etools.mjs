@@ -9,6 +9,10 @@
  *   Ablage:  --out <verzeichnis>  (Vorgabe ./bilder-lauf: Journal und Massenänderungen)
  *   --targets  zählt schon in der Vorschau, welche Artikel es auf dev gibt
  *   --reserve <GB>  so viel bleibt auf dem Datenträger der Ablage frei (Vorgabe 2)
+ *   --all-layers  auch Artikel in Ebenen, die die laufende Kampagne nicht
+ *                 aufschaltet (nur Verwaltung, T-284): Zielprüfung, Hochladen
+ *                 und Massenänderung mit `allLayers` — sonst gelten sie als
+ *                 „nicht auf dev“, obwohl sie dastehen
  *
  * Der Plan kommt vom Einleser (`node packages/import-5etools/dist/cli.js
  * <data> --images bildplan.json`, `bilder.ts`): je Bild der Pfad unter
@@ -67,6 +71,7 @@ if (!planPfad || !img) {
 const BASE = (process.env.ATLAS_URL || 'https://dev.ttrpg.fuchsbau.io').replace(/\/+$/, '');
 const TOKEN = process.env.ATLAS_DEV_TOKEN || '';
 const SCHREIBEN = args.includes('--write');
+const ALLE_EBENEN = args.includes('--all-layers');
 const OUT = resolve(wert('--out') ?? 'bilder-lauf');
 const kopf = () => (TOKEN ? { authorization: `Bearer ${TOKEN}` } : {});
 
@@ -126,7 +131,7 @@ async function gibtEs(id) {
     let res;
     for (let versuch = 0; ; versuch++) {
       try {
-        res = await fetch(`${BASE}/api/entities/${encodeURIComponent(id)}`, { headers: kopf() });
+        res = await fetch(`${BASE}/api/entities/${encodeURIComponent(id)}${ALLE_EBENEN ? '?allLayers=1' : ''}`, { headers: kopf() });
         await res.arrayBuffer();
         if (res.status >= 500 && versuch < 4) throw new Error(`HTTP ${res.status}`);
         break;
@@ -202,6 +207,7 @@ if (SCHREIBEN) {
     if (b.alt) form.set('alt', b.alt);
     form.set('publication', b.quelle);
     form.set('anchor', `5etools-img:${b.pfad}`);
+    if (ALLE_EBENEN) form.set('allLayers', '1');
     form.set('file', new Blob([readFileSync(d)], { type: MIME[endung] ?? 'application/octet-stream' }), basename(d));
     let res;
     for (let versuch = 0; ; versuch++) {
@@ -258,7 +264,7 @@ for (let i = 0; i < ziele.length; i += STUECK) {
     ops.push({ op: 'set', field: 'Image.image', values: karten });
   }
   datein += 1;
-  writeFileSync(join(OUT, `verknuepfen-${datein}.json`), `${JSON.stringify({ select: { ids }, ops }, null, 1)}\n`);
+  writeFileSync(join(OUT, `verknuepfen-${datein}.json`), `${JSON.stringify({ select: { ids }, ops, ...(ALLE_EBENEN ? { allLayers: true } : {}) }, null, 1)}\n`);
 }
 console.log(`Verknüpfen: ${werte['Statblock.token'].size} Tokens, ${werte['Image.image'].size} Bilder an ${ziele.length} Artikeln → ${datein} Massenänderung(en) in ${OUT}`);
 if (datein) console.log(`Weiter: node scripts/atlas.mjs bulk --dry-run ${join(OUT, 'verknuepfen-1.json')}`);
