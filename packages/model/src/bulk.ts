@@ -123,6 +123,11 @@ export const BulkRequestSchema = z.object({
   confirmDelete: z.number().int().optional(),
   /** Schreiben, was besteht, und die Abgelehnten liegen lassen (nicht beim Zusammenführen). */
   skipRejected: z.boolean().optional(),
+  /** Auch Artikel, die nur fehlen, weil ihre Ebene in der laufenden
+   *  Kampagne nicht aufgeschaltet ist (T-182, wie die Werkbank mit
+   *  `allLayers=1`, T-207) — nur für die Verwaltung. Ein Buch, das keine
+   *  Runde spielt, bekäme sonst nie eine Kante nachgetragen. */
+  allLayers: z.boolean().optional(),
   /** Wie viele Beispiele die Antwort trägt. */
   limit: z.number().int().min(0).max(5000).optional(),
   note: z.string().optional(),

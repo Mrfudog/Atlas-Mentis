@@ -25,6 +25,10 @@
  *   node scripts/atlas.mjs bulk --dry-run 1-happensAt.json
  *   node scripts/atlas.mjs bulk 1-happensAt.json
  *
+ * Jeder Auftrag trägt `allLayers`: die meisten Bücher schaltet keine
+ * Runde auf, und ohne den Schalter träfe die Auswahl nur, was im Spiel ist
+ * — darum schreibt ihn nur die Verwaltung.
+ *
  * Was es auf dem Server nicht gibt, nennt die Vorschau („no such article")
  * und lässt es aus; mehrdeutige Wege ebenso („ambiguous"). `--layer`
  * nimmt nur die Artikel einer Ebene (die Probe). Ohne Abhängigkeiten; die
@@ -66,6 +70,7 @@ const auftraege = {
     select: { ids: alle.filter((e) => art(e) === 'Scene').map((e) => e.id) },
     ops: [{ op: 'addRelation', type: 'happensAt', to: '<-describedIn', toTypes: ['Place'], ifNone: true }],
     note: 'T-182: Szene spielt am Ort, den sie beschreibt',
+    allLayers: true,
   },
   '2-mapOf.json': {
     select: { ids: alle.filter((e) => art(e) === 'Map').map((e) => e.id) },
@@ -74,6 +79,7 @@ const auftraege = {
       { op: 'addRelation', type: 'mapOf', targets: ziele(['Map'], 'mapOf', 'Place') },
     ],
     note: 'T-182: Karte zeigt auch den Ort ihrer Szene und ihres Bereichs',
+    allLayers: true,
   },
   '3-partOf.json': (() => {
     const targets = ziele(['Place'], 'partOf', 'Place');
@@ -81,6 +87,7 @@ const auftraege = {
       select: { ids: Object.keys(targets) },
       ops: [{ op: 'addRelation', type: 'partOf', targets, ifNone: true }],
       note: 'T-182: Ort in Ort, aus dem Importlauf',
+      allLayers: true,
     };
   })(),
   '4-livesIn.json': (() => {
@@ -89,6 +96,7 @@ const auftraege = {
       select: { ids: Object.keys(targets) },
       ops: [{ op: 'addRelation', type: 'livesIn', targets, ifNone: true }],
       note: 'T-182: Wohnort einer benannten Kreatur, aus dem Importlauf',
+      allLayers: true,
     };
   })(),
 };
