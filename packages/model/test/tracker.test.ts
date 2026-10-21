@@ -8,6 +8,7 @@ import {
   initiativeRulesOf,
   nextTurn,
   previousTurn,
+  setTurn,
   trackerView,
 } from '../src/tracker.js';
 import type { Entity, EntityId, Relation } from '../src/types.js';
@@ -35,6 +36,40 @@ describe('Kampagneneinstellung (T-022)', () => {
   it('liest die Felder und verwirft Unbekanntes', () => {
     const c = ent('c', 'Campaign', { components: { Campaign: { combat: 'off', initHealth: 'exact', initColumns: ['hp', 'nonsense', 'init'] } } });
     expect(initiativeRulesOf(c)).toMatchObject({ combat: 'off', health: 'exact', names: 'cover', columns: ['init', 'hp'] });
+  });
+});
+
+describe('Initiative als Regelsystem (T-334)', () => {
+  it('„D&D 5e (standard)" läuft, solange der Tracker an ist, und kennt kein Verzögern', () => {
+    expect(initiativeRulesOf(null).system).toBe('dnd5e');
+    const c = ent('c', 'Campaign', { components: { Campaign: { initQuickActions: ['damage', 'delay', 'remove'] } } });
+    expect(initiativeRulesOf(c).quickActions).toEqual(['damage', 'remove']);
+    expect(initiativeRulesOf(ent('o', 'Campaign', { components: { Campaign: { combat: 'off' } } })).system).toBeNull();
+  });
+});
+
+describe('Zug frei setzen (T-334)', () => {
+  const mitBless = () => kampf(1, 0, [teil('a', 'rook', { init: 20, conditions: [{ text: 'Bless', rounds: 1 }] }), teil('b', 'ork', { init: 15 }), teil('c', 'wolf', { init: 10 })]);
+  it('setzt eine Zeile, überspringt und geht zum Anfang, ohne etwas zu zählen', () => {
+    let e = setTurn(alle, mitBless(), { edge: 'c' });
+    expect(fightOf(e)).toEqual({ round: 1, turn: 2 });
+    e = setTurn(alle, e, 'skip');
+    expect(fightOf(e)).toEqual({ round: 2, turn: 0 });
+    e = setTurn(alle, setTurn(alle, e, 'skip'), 'top');
+    expect(fightOf(e)).toEqual({ round: 2, turn: 0 });
+    expect(props(e, 'a').conditions).toHaveLength(1);
+  });
+  it('vor Runde 1 und für Unbekannte bleibt alles, wie es ist', () => {
+    expect(fightOf(setTurn(alle, kampf(0, 0), 'skip'))).toEqual({ round: 0, turn: 0 });
+    expect(fightOf(setTurn(alle, kampf(1, 1), { edge: 'nix' }))).toEqual({ round: 1, turn: 1 });
+  });
+  it('ohne Stand sind die Trefferpunkte voll, für die Leitung und die Gruppe', () => {
+    const e = kampf(1, 0, [teil('a', 'rook', { init: 20 }), teil('b', 'ork', { init: 15 })]);
+    const v = trackerView(alle, e, { ...DEFAULT_INITIATIVE_RULES, columns: ['hp'] }, true);
+    expect([v.rows[1]!.hp, v.rows[1]!.hpMax]).toEqual([15, 15]);
+    expect([v.turn, v.turns]).toEqual([1, 2]);
+    const roh = redactParticipants(alle, e.relations!, { round: 1, turn: 0 }, { health: 'exact' });
+    expect(roh).toHaveLength(1);
   });
 });
 

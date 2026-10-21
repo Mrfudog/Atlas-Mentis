@@ -11,6 +11,7 @@
  * Zählung nutzt die Regelwirkung (T-275); wie ein Zustand rechnet (RK,
  * Schaden), steht nicht hier.
  */
+import { bookSections, type BookSection } from './book.js';
 import { entityName, primaryInterface } from './entity.js';
 import {
   PARTICIPATES,
@@ -29,7 +30,7 @@ import {
   hpWord,
 } from './initiative.js';
 import { resolveInstance } from './instance.js';
-import type { Entity, EntityId, Relation } from './types.js';
+import type { Entity, EntityId, Registry, Relation } from './types.js';
 
 type Lookup = ReadonlyMap<EntityId, Entity>;
 
@@ -42,13 +43,35 @@ export const QUICK_ACTIONS = ['damage', 'heal', 'effect', 'delay', 'reroll', 're
 export type QuickAction = (typeof QUICK_ACTIONS)[number];
 
 /**
- * **Die Einstellung der Kampagne** (Rules & options › Combat). Was
+ * **Die Initiative als Regelsystem** (T-334, E-100): ein System sagt, wie
+ * Züge laufen und welche Knöpfe die Leitung je Zeile bekommt. Heute gibt
+ * es eins, „D&D 5e (standard)" — ohne Verzögern, denn dafür steht keine
+ * Regel im Grundregelwerk; die Hausregel kommt als eigenes System (T-336),
+ * `delayTurn` bleibt dafür stehen. Gewählt wird es über `Campaign.combat`:
+ * `on` ist dieses System, `off` kein Tracker — so sehen bestehende
+ * Kampagnen nichts anders.
+ */
+export interface InitiativeSystemDef {
+  key: 'dnd5e';
+  label: string;
+  /** Die Knöpfe je Zeile, die dieses System kennt. */
+  quickActions: readonly QuickAction[];
+}
+
+export const INITIATIVE_SYSTEMS: readonly InitiativeSystemDef[] = [
+  { key: 'dnd5e', label: 'D&D 5e (standard)', quickActions: ['damage', 'heal', 'effect', 'reroll', 'remove'] },
+];
+
+/**
+ * **Die Einstellung der Kampagne** (Rules & options › Combat › Initiative). Was
  * fehlt, gilt wie vor T-022: Deckname, Gesundheit als Wort, alle offenen
  * Einträge.
  */
 export interface InitiativeRules extends Required<PlayerViewRules> {
-  /** Das Kampfsystem: aus heisst kein Tracker, weder für die Leitung noch für Spielende. */
+  /** Das Initiative-System: aus heisst kein Tracker, weder für die Leitung noch für Spielende. */
   combat: 'on' | 'off';
+  /** Das System, wenn eins läuft (T-334). */
+  system: InitiativeSystemDef['key'] | null;
   /** Die Aktionen der Gegner (die Regeln am Statblock): nur die Leitung, oder auch Spielende, sobald der Zug kam. */
   enemyActions: 'hidden' | 'shown';
   columns: TrackerColumn[];
@@ -57,13 +80,19 @@ export interface InitiativeRules extends Required<PlayerViewRules> {
 
 export const DEFAULT_INITIATIVE_RULES: InitiativeRules = {
   combat: 'on',
+  system: 'dnd5e',
   names: 'cover',
   health: 'coarse',
   effects: 'all',
   enemyActions: 'hidden',
   columns: ['init', 'ac', 'hp', 'effects'],
-  quickActions: ['damage', 'heal', 'effect', 'delay', 'remove'],
+  quickActions: ['damage', 'heal', 'effect', 'remove'],
 };
+
+/** Das System einer Einstellung — `null`, wenn der Tracker aus ist. */
+export function initiativeSystemOf(rules: Pick<InitiativeRules, 'combat'>): InitiativeSystemDef | null {
+  return rules.combat === 'on' ? INITIATIVE_SYSTEMS[0]! : null;
+}
 
 const eines = <T extends string>(wert: unknown, erlaubt: readonly T[], sonst: T): T =>
   typeof wert === 'string' && (erlaubt as readonly string[]).includes(wert) ? (wert as T) : sonst;
@@ -74,14 +103,19 @@ const liste = <T extends string>(wert: unknown, erlaubt: readonly T[], sonst: T[
 export function initiativeRulesOf(campaign: Entity | null | undefined): InitiativeRules {
   const c = (campaign?.components?.['Campaign'] ?? {}) as Record<string, unknown>;
   const d = DEFAULT_INITIATIVE_RULES;
+  const combat = eines(c['combat'], ['on', 'off'], d.combat);
+  const system = initiativeSystemOf({ combat });
+  /* Was das System nicht kennt, bietet es nicht an — auch wenn es an der Kampagne steht (Delay, T-334). */
+  const knoepfe = liste(c['initQuickActions'], QUICK_ACTIONS, d.quickActions).filter((q) => !system || system.quickActions.includes(q));
   return {
-    combat: eines(c['combat'], ['on', 'off'], d.combat),
+    combat,
+    system: system?.key ?? null,
     names: eines(c['initNames'], ['cover', 'real'], d.names),
     health: eines(c['initHealth'], ['none', 'coarse', 'exact'], d.health),
     effects: eines(c['initEffects'], ['all', 'party', 'none'], d.effects),
     enemyActions: eines(c['initActions'], ['hidden', 'shown'], d.enemyActions),
     columns: liste(c['initColumns'], TRACKER_COLUMNS, d.columns),
-    quickActions: liste(c['initQuickActions'], QUICK_ACTIONS, d.quickActions),
+    quickActions: knoepfe,
   };
 }
 
@@ -168,6 +202,36 @@ export function previousTurn(entities: Lookup, encounter: Entity): Entity {
 }
 
 /**
+ * **Den Zug frei setzen** (T-334): wer jetzt dran ist — eine Zeile
+ * („Make current"), der nächste ohne Zug („Skip") oder der erste der Reihe
+ * („Back to top"). **Gezählt wird dabei nichts:** Effekte laufen nur beim
+ * regulären Zugwechsel (`nextTurn`) ab. Ein Überspringen ist eine
+ * Berichtigung am Tisch und kein Zug; wer übersprungen wurde, hatte
+ * keinen, also endet auch nichts an seinem Ende. Nach dem letzten
+ * beginnt beim Überspringen die nächste Runde, „Back to top" bleibt in
+ * der Runde.
+ */
+export function setTurn(entities: Lookup, encounter: Entity, wohin: { edge: string } | 'skip' | 'top'): Entity {
+  const rel = encounter.relations ?? [];
+  const order = initiativeOrder(entities, rel);
+  let { round, turn } = fightOf(encounter);
+  if (round < 1 || !order.length) return encounter;
+  if (wohin === 'top') turn = 0;
+  else if (wohin === 'skip') {
+    turn += 1;
+    if (turn >= order.length) {
+      turn = 0;
+      round += 1;
+    }
+  } else {
+    const idx = order.findIndex((r) => r.id === wohin.edge);
+    if (idx < 0) return encounter;
+    turn = idx;
+  }
+  return mitKampf(encounter, [...rel], { round, turn });
+}
+
+/**
  * **Verzögern** (REQ-128): wer dran ist, rückt einen Platz nach hinten,
  * und der nächste ist dran. Gespeichert wird nur die Initiative — eine
  * Zahl zwischen den beiden, hinter die er rückt —, kein eigener Stand:
@@ -204,6 +268,9 @@ export function initiativeMod(entities: Lookup, to: EntityId): number {
 export type TrackerOp =
   | { op: 'next' }
   | { op: 'previous' }
+  | { op: 'skip' }
+  | { op: 'top' }
+  | { op: 'turn'; edge: string }
   | { op: 'delay' }
   | { op: 'end' }
   | { op: 'init'; edge: string; value?: number; reroll?: boolean }
@@ -257,6 +324,11 @@ export function applyTrackerOp(
       return { encounter: nextTurn(entities, encounter) };
     case 'previous':
       return { encounter: previousTurn(entities, encounter) };
+    case 'skip':
+    case 'top':
+      return { encounter: setTurn(entities, encounter, op.op) };
+    case 'turn':
+      return { encounter: setTurn(entities, encounter, { edge: op.edge }) };
     case 'delay':
       return { encounter: delayTurn(entities, encounter) };
     case 'end':
@@ -351,16 +423,32 @@ export interface TrackerRow {
   effects: TrackerEffect[];
   /** Die Regeln am Statblock (`composedOf`), Namen. */
   actions?: string[];
+  /**
+   * **Was er kann, aufgeklappt** (T-334): die Abschnitte des Statblocks wie
+   * im Buch (`bookSections`: Merkmale, Aktionen, Bonusaktionen, Reaktionen
+   * …) und seine Zauber, mit Würfen im Text. Für Spielende nur, was sie
+   * sehen dürfen — am Server gesiebt.
+   */
+  options?: TrackerOptions;
   /** Nur für die Leitung. */
   revealed?: boolean;
   identified?: boolean;
   note?: string;
 }
 
+/** Die Optionen eines Teilnehmers: Abschnitte des Statblocks und Zauber. */
+export interface TrackerOptions {
+  sections: BookSection[];
+  spells: { id: EntityId; name: string; level: number | null }[];
+}
+
 export interface TrackerView {
   id: EntityId;
   name: string;
   round: number;
+  /** Zug x von y — nur für die Leitung: Spielenden verriete die Zahl, wer noch kommt (D58). */
+  turn?: number;
+  turns?: number;
   phase: string;
   /** Leitet der Betrachter? Dann ist die Reihe ganz und die Knöpfe stehen. */
   gm: boolean;
@@ -393,6 +481,8 @@ export function trackerView(
   gm: boolean,
   /** Die Aktionen je Teilnehmerkante; ohne: aus `entities`. Spielende kennen den Artikel eines Unerkannten nicht, der Server schon. */
   actionsOf?: (edge: string) => string[],
+  /** Die Optionen je Teilnehmerkante (T-334), schon gesiebt; ohne: keine. */
+  optionsOf?: (edge: string) => TrackerOptions | null,
 ): TrackerView {
   const rel = encounter.relations ?? [];
   const order = initiativeOrder(entities, rel);
@@ -425,8 +515,10 @@ export function trackerView(
     }
     if (spalte.has('hp')) {
       const max = gm && r.to ? participantStats(entities, r).hpMax : p.hpMax;
-      if (gm || p.hp != null) {
-        if (p.hp != null) row.hp = Number(p.hp);
+      /* Ohne Stand ist er unverletzt (T-334, D8): gelesen, nicht gespeichert. */
+      const hp = p.hp != null ? Number(p.hp) : gm && max != null ? Number(max) : undefined;
+      if (gm || hp != null) {
+        if (hp != null) row.hp = hp;
         if (max != null) row.hpMax = Number(max);
       }
       if (gm && !party) row.hpState = hpWord(p.hp, max);
@@ -455,6 +547,10 @@ export function trackerView(
       const a = actionsOf ? actionsOf(r.id) : r.to ? participantActions(entities, r.to) : [];
       if (a.length) row.actions = a;
     }
+    if (gm || party || rules.enemyActions === 'shown') {
+      const o = optionsOf?.(r.id);
+      if (o && (o.sections.length || o.spells.length)) row.options = o;
+    }
     if (gm) {
       row.revealed = !!p.revealed;
       row.identified = !!p.identified;
@@ -466,11 +562,56 @@ export function trackerView(
     id: encounter.id,
     name: entityName(encounter),
     round: fight.round,
+    ...(gm && fight.round > 0 && order.length ? { turn: Math.min(fight.turn, order.length - 1) + 1, turns: order.length } : {}),
     phase: String(karteVon(encounter)['phase'] ?? 'planned'),
     gm,
     rules,
     rows,
   };
+}
+
+/**
+ * **Die Optionen eines Teilnehmers** (T-334): die Abschnitte seines
+ * Statblocks (der Instanz, mit der Vorlage darunter) wie im Buch, und die
+ * Zauber, die er wirkt (`casts` am Statblock und an der Figur). `entities`
+ * ist, was der Betrachter sieht — für Spielende gesiebt; ein Teil, der
+ * dort fehlt, fällt weg, statt als „fehlt" dazustehen.
+ */
+export function participantOptions(
+  registry: Pick<Registry, 'interfaces' | 'relations' | 'units' | 'settings'> & { vars?: Record<string, string> },
+  entities: Lookup,
+  to: EntityId,
+): TrackerOptions | null {
+  const t = entities.get(to);
+  const sb = t ? statblockFor(entities, t) : null;
+  if (!t) return null;
+  const voll = sb ? resolveInstance(entities, sb) : null;
+  const sections = voll
+    ? bookSections(registry, voll, {
+        part: (id) => entities.get(id),
+        nameOf: (id) => {
+          const e = entities.get(id);
+          return e ? entityName(e) : undefined;
+        },
+        campaign: registry.vars,
+      })
+        .map((s) => ({ ...s, entries: s.entries.filter((e) => !e.missing) }))
+        .filter((s) => s.entries.length)
+    : [];
+  const gesehen = new Set<string>();
+  const spells: TrackerOptions['spells'] = [];
+  for (const quelle of [voll, t]) {
+    for (const r of quelle?.relations ?? []) {
+      if (r.type !== 'casts' || gesehen.has(r.to)) continue;
+      const z = entities.get(r.to);
+      if (!z) continue;
+      gesehen.add(r.to);
+      const lvl = Number((z.components?.['Spell'] as { level?: unknown } | undefined)?.level);
+      spells.push({ id: z.id, name: entityName(z), level: Number.isFinite(lvl) ? lvl : null });
+    }
+  }
+  spells.sort((a, b) => (a.level ?? 99) - (b.level ?? 99) || a.name.localeCompare(b.name));
+  return { sections, spells };
 }
 
 /** Ist das eine Begegnung? */

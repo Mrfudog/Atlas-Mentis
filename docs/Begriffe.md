@@ -1667,6 +1667,19 @@ weiter hinten, und eine Marke hätte eine zweite Reihe neben der Reihe
 bedeutet. **Zurück zählt nichts zurück** — wer zu früh weitertippt, nimmt
 den Zug zurück, aber ein abgelaufener Effekt käme nur geraten wieder.
 
+**Den Zug frei setzen ist eine Berichtigung, kein Zug** (T-334): „Make
+current", „Skip" und „Back to top" sagen nur, wer jetzt dran ist. Zählten
+sie Effekte, liefe ein „Bless" ab, weil die Leitung sich vertippt hat.
+**Ohne Stand ist man unverletzt** — das Maximum steht am Statblock, und
+einen Stand zu speichern, bevor jemand getroffen wurde, hiesse dasselbe
+zweimal halten (D8).
+
+**Die Initiative ist ein Regelsystem** (E-100): „D&D 5e (standard)" ist
+das, was `combat: on` schon immer tat, mit einem Namen. Ein System sagt,
+was es kann — dieses kennt kein Verzögern, also steht der Knopf nicht da.
+Eine Hausregel mit Verzögern ist ein weiteres System (T-336), kein
+Schalter am Knopf.
+
 ### Klasse, Stufe und was gewährt wird
 
 Klasse, Unterklasse, Abstammung und Hintergrund sind **Regeln mit eigenen

@@ -323,10 +323,12 @@ export function redactParticipants(
     if (dranId === r.id) neu.current = true;
     let to = r.to;
     if (gruppe) {
-      Object.assign(neu, { label: p.label, hp: p.hp, hpMax: participantStats(entities, r).hpMax, note: p.note });
+      /* Ohne Stand ist er unverletzt (T-334, D8). */
+      const max = participantStats(entities, r).hpMax;
+      Object.assign(neu, { label: p.label, hp: p.hp ?? max, hpMax: max, note: p.note });
     } else {
       const max = participantStats(entities, r).hpMax;
-      if (gesundheit === 'exact') Object.assign(neu, { hp: p.hp, hpMax: max });
+      if (gesundheit === 'exact') Object.assign(neu, { hp: p.hp ?? max, hpMax: max });
       else if (gesundheit === 'coarse') neu.hpState = hpWord(p.hp, max);
       if (p.identified) neu.label = p.label;
       else if (view.names === 'real') {

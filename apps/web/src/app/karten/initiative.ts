@@ -7,6 +7,10 @@ import { KurzLink } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
 import { Session } from '../kern/session';
 import { Wahl } from '../artikel/wahl';
+import { Text } from '../artikel/text';
+
+/** Die Animation beim Zugwechsel, je Konto abschaltbar (T-334). Vorgabe an. */
+export const TRACKER_MOTION_PREF = 'tracker.motion';
 
 /** Was gerade an einer Zeile offen ist: eine Zahl für Schaden oder Heilung, oder der Effekt. */
 type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
@@ -24,17 +28,27 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
  * (T-116) als Ereignis der Begegnung zurück, und der Tracker fragt neu —
  * der Beamer und das Telefon zeigen dasselbe. Der Ring am Token (T-117)
  * steht auf der Karte und bleibt dort.
+ *
+ * **Runde 2** (T-334): die Leitung setzt den Zug frei („Make current",
+ * „Skip", „Back to top" — gezählt wird nur bei „Next turn"), der Kopf
+ * zählt Runde und Zug, eine Zeile klappt auf und zeigt, was der Teilnehmer
+ * kann (gesiebt am Server), und ein Zugwechsel blinkt kurz auf — aus den
+ * Marken `--motion-turn` und `--turn-flash`, je Konto abschaltbar und still
+ * bei `prefers-reduced-motion`.
  */
 @Component({
   selector: 'nw-initiative',
-  imports: [RouterLink, KurzLink, BegriffLink, Wahl],
+  imports: [RouterLink, KurzLink, BegriffLink, Wahl, Text],
   template: `
     <section class="tracker" aria-label="Initiative" [class.gross]="gross()">
       <header class="kopf">
         <h2>Initiative</h2>
         @if (sicht(); as v) {
           <a class="name" [routerLink]="['/artikel', v.id]" [nwQuick]="v.id">{{ v.name }}</a>
-          <span class="marke" [class.laeuft]="v.round > 0">{{ v.round > 0 ? 'Round ' + v.round : v.phase }}</span>
+          <span class="marke" [class.laeuft]="v.round > 0" [attr.title]="v.round > 0 ? spielzeit(v.round) : null">{{ v.round > 0 ? 'Round ' + v.round : v.phase }}</span>
+          @if (v.turn && v.turns) {
+            <span class="marke zaehler" title="Turn in this round">Turn {{ v.turn }}/{{ v.turns }}</span>
+          }
         }
         <span class="frei"></span>
         @if (sicht(); as v) {
@@ -45,15 +59,18 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
               } @else {
                 <button type="button" (click)="tue({ op: 'previous' })" [disabled]="laeuft()" aria-label="Previous turn" title="Previous turn — expired effects do not come back">◀</button>
                 <button type="button" class="haupt" (click)="tue({ op: 'next' })" [disabled]="laeuft()" title="End this turn: effects count down, the next combatant starts">Next turn ▶</button>
+                <button type="button" (click)="tue({ op: 'skip' })" [disabled]="laeuft()" title="Skip the current combatant — nothing counts down">Skip</button>
+                <button type="button" (click)="tue({ op: 'top' })" [disabled]="laeuft()" aria-label="Back to top" title="Back to the top of the order — the round stays, nothing counts down">⤒</button>
                 @if (v.phase !== 'done') {
                   <button type="button" (click)="beenden()" [disabled]="laeuft()" title="Mark the encounter as done">End</button>
                 }
               }
             } @else if (eigenerZug()) {
-              <button type="button" class="haupt" (click)="tue({ op: 'next' })" [disabled]="laeuft()">End my turn ▶</button>
+              <button type="button" class="haupt" (click)="tue({ op: 'next' })" [disabled]="laeuft()">End turn ▶</button>
             }
           }
         }
+        <button type="button" class="klein" (click)="bewegungSchalten()" [attr.aria-pressed]="bewegung()" [attr.title]="bewegung() ? 'Turn change animation on — click to turn it off' : 'Turn change animation off — click to turn it on'">{{ bewegung() ? '✦' : '✧' }}</button>
         <button type="button" class="klein" (click)="vollbild()" [attr.aria-label]="'Full screen'" title="Full screen — for the projector">⛶</button>
       </header>
 
@@ -72,7 +89,7 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
       } @else {
         <ol class="reihe">
           @for (r of sicht()!.rows; track r.edge) {
-            <li class="zeile" [class.dran]="r.current" [class.gruppe]="r.party" [class.verbuendet]="r.ally && !r.party" [class.unten]="unten(r)" [attr.aria-current]="r.current ? 'step' : null">
+            <li class="zeile" [class.dran]="r.current" [class.wechsel]="wechsel() === r.edge" [class.gruppe]="r.party" [class.verbuendet]="r.ally && !r.party" [class.unten]="unten(r)" [attr.aria-current]="r.current ? 'step' : null">
               <div class="haupt-zeile">
                 @if (spalte('init')) {
                   @if (sicht()!.gm && initEdit() === r.edge) {
@@ -89,6 +106,8 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
                   }
                   @if (r.current) {
                     <span class="dran-marke">{{ r.own ? 'your turn' : 'turn' }}</span>
+                  } @else if (sicht()!.gm && sicht()!.round > 0) {
+                    <button type="button" class="schalter setzen" [disabled]="laeuft()" (click)="tue({ op: 'turn', edge: r.edge })" [attr.aria-label]="'Make ' + r.name + ' current'" title="Make current — nothing counts down">▸</button>
                   }
                   @if (sicht()!.gm && !r.party) {
                     <button type="button" class="schalter" [class.an]="r.revealed" (click)="tue({ op: 'flags', edge: r.edge, revealed: !r.revealed })"
@@ -110,7 +129,34 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
                     }
                   </span>
                 }
+                @if (r.options) {
+                  <button type="button" class="klein auf" (click)="aufklappen(r.edge)" [attr.aria-expanded]="offenZeilen().has(r.edge)" [attr.aria-label]="(offenZeilen().has(r.edge) ? 'Hide options of ' : 'Show options of ') + r.name" title="What this combatant can do">{{ offenZeilen().has(r.edge) ? '▴' : '▾' }}</button>
+                }
               </div>
+
+              @if (r.options && offenZeilen().has(r.edge)) {
+                <div class="optionen">
+                  @for (s of r.options.sections; track s.key) {
+                    @if (s.title) {
+                      <h3>{{ s.title }}</h3>
+                    }
+                    @if (s.intro) {
+                      <p class="eintrag">{{ s.intro }}</p>
+                    }
+                    @for (e of s.entries; track e.id) {
+                      <nw-text class="eintrag" [text]="e.text" [scopes]="e.scopes" [vorspann]="e.name + '.'" [vorspannZiel]="e.target" />
+                    }
+                  }
+                  @if (r.options.spells.length) {
+                    <h3>Spells</h3>
+                    <p class="zauber">
+                      @for (z of r.options.spells; track z.id; let letzter = $last) {
+                        <a [routerLink]="['/artikel', z.id]" [nwQuick]="z.id">{{ z.name }}</a>@if (z.level !== null) {<span class="dim"> ({{ z.level === 0 ? 'cantrip' : z.level }})</span>}@if (!letzter) {<span class="dim"> · </span>}
+                      }
+                    </p>
+                  }
+                </div>
+              }
 
               @if (spalte('effects') && r.effects.length) {
                 <ul class="effekte" aria-label="Effects">
@@ -282,6 +328,66 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
     .zeile.dran {
       border-left-color: var(--accent);
       background: color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+    /* Der Zugwechsel (T-334): kurz aufleuchten, aus den Marken der Seite. */
+    .zeile.wechsel {
+      animation: zugwechsel var(--motion-turn, 900ms) ease-out;
+    }
+    .zeile.wechsel .dran-marke {
+      animation: marke-auf var(--motion-turn, 900ms) ease-out;
+    }
+    @keyframes zugwechsel {
+      from {
+        background: var(--turn-flash, var(--accent-soft));
+        box-shadow: inset 0 0 0 2px var(--accent);
+      }
+    }
+    @keyframes marke-auf {
+      from {
+        transform: scale(1.35);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .zeile.wechsel,
+      .zeile.wechsel .dran-marke {
+        animation: none;
+      }
+    }
+    .marke.zaehler {
+      font-variant-numeric: tabular-nums;
+    }
+    .setzen {
+      font-size: 0.9em;
+    }
+    .auf {
+      margin-left: auto;
+    }
+    .optionen {
+      margin: 0.35rem 0 0.1rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      background: var(--paper);
+      font-size: 0.9em;
+    }
+    .optionen h3 {
+      margin: 0.35rem 0 0.15rem;
+      font-family: var(--caps);
+      font-size: 1em;
+      color: var(--heading);
+      border-bottom: 1px solid var(--line2);
+    }
+    .optionen h3:first-child {
+      margin-top: 0;
+    }
+    .optionen .eintrag {
+      display: block;
+      margin: 0.2rem 0;
+    }
+    .zauber {
+      margin: 0.2rem 0;
+    }
+    .zauber a {
+      color: var(--link);
     }
     .zeile.gruppe .wer a,
     .zeile.verbuendet .wer a {
@@ -519,6 +625,14 @@ export class Initiative {
   protected readonly neuInit = signal('');
   protected readonly neuVerbuendet = signal(false);
 
+  /** Aufgeklappte Zeilen (T-334). */
+  protected readonly offenZeilen = signal<ReadonlySet<string>>(new Set());
+  /** Die Zeile, deren Zug gerade begann — für die Animation. */
+  protected readonly wechsel = signal<string | null>(null);
+  protected readonly bewegung = signal(true);
+  private letzterDran: string | null | undefined = undefined;
+  private wechselUhr: ReturnType<typeof setTimeout> | undefined;
+
   protected readonly schnell = computed<QuickAction[]>(() => this.sicht()?.rules.quickActions ?? []);
   protected readonly eigenerZug = computed(() => !!this.sicht()?.rows.some((r) => r.current && r.own));
   protected readonly schnellText: Record<QuickAction, string> = {
@@ -536,6 +650,8 @@ export class Initiative {
       const id = this.begegnung();
       untracked(() => {
         this.sicht.set(null);
+        this.letzterDran = undefined;
+        this.offenZeilen.set(new Set());
         void this.holen(id);
       });
     });
@@ -544,10 +660,53 @@ export class Initiative {
     const ab = inject(Live).onArtikel((ev) => {
       if (ev.id === this.begegnung() || ev.type === 'Campaign') void this.holen(this.begegnung());
     });
+    /* Wessen Zug begann? Beim ersten Laden keiner — sonst blinkte jede geöffnete Seite. */
+    effect(() => {
+      const v = this.sicht();
+      if (!v) return;
+      const dran = v.rows.find((r) => r.current)?.edge ?? null;
+      untracked(() => {
+        if (this.letzterDran !== undefined && dran && dran !== this.letzterDran && this.bewegung()) {
+          clearTimeout(this.wechselUhr);
+          this.wechsel.set(dran);
+          this.wechselUhr = setTimeout(() => this.wechsel.set(null), 1500);
+        }
+        this.letzterDran = dran;
+      });
+    });
+    void this.api
+      .prefs()
+      .then((p) => this.bewegung.set(p[TRACKER_MOTION_PREF] !== false))
+      .catch(() => undefined);
     inject(DestroyRef).onDestroy(() => {
       ab();
       this.lauf += 1;
+      clearTimeout(this.wechselUhr);
     });
+  }
+
+  protected aufklappen(edge: string): void {
+    const neu = new Set(this.offenZeilen());
+    if (neu.has(edge)) neu.delete(edge);
+    else neu.add(edge);
+    this.offenZeilen.set(neu);
+  }
+
+  protected async bewegungSchalten(): Promise<void> {
+    const an = !this.bewegung();
+    this.bewegung.set(an);
+    if (!an) this.wechsel.set(null);
+    try {
+      await this.api.setPref(TRACKER_MOTION_PREF, an ? null : false);
+    } catch {
+      /* Bleibt für diese Seite so; gespeichert wird beim nächsten Mal. */
+    }
+  }
+
+  /** Die Spielzeit: sechs Sekunden je Runde. */
+  protected spielzeit(runde: number): string {
+    const s = Math.max(0, runde - 1) * 6;
+    return `Round ${runde} — ${s < 60 ? `${s} seconds` : `${Math.floor(s / 60)} min ${s % 60} s`} of game time so far`;
   }
 
   private async holen(id: string): Promise<void> {
