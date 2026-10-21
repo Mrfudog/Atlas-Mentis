@@ -69,6 +69,7 @@ export * from './registerabgleich.js';
 export * from './stowing.js';
 export * from './ruleOptions.js';
 export * from './facets.js';
+export * from './listcolumns.js';
 export * from './requirements.js';
 export * from './zugplan.js';
 export * from './glossary.js';

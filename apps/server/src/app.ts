@@ -152,6 +152,7 @@ import { registerHandwerk } from './handwerk.js';
 import { leitetTisch, registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
 import { registerAufwertung } from './aufwertung.js';
 import { registerFiltergruppen } from './filtergruppen.js';
+import { registerSpaltenwahl } from './spaltenwahl.js';
 import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
@@ -1205,6 +1206,8 @@ export function buildApp({
     /* Filtergruppen (T-137): eigene schreibt jedes Konto, die der
        Kampagne die Leitung — die Routen prüfen beides selbst. */
     if (url === '/api/filters' || url.startsWith('/api/filters/')) return;
+    /* Die Vorgabe der Spalten (T-343): die Route prüft die Leitung selbst. */
+    if (url === '/api/list-columns') return;
     /* Kaufen und Verkaufen (T-133): die Route prüft die Figur selbst (`laden.ts`). */
     if (/^\/api\/shops\/[^/]+\/(buy|sell)$/.test(url) && request.method === 'POST') return;
     /* Sitzungsende und Aufheben (T-140): die Routen prüfen Rolle und Zielinventar selbst (`liegen.ts`). */
@@ -3026,6 +3029,7 @@ export function buildApp({
   });
   /* Filtergruppen je Seite (T-137): die der Kampagne und die eigenen. */
   registerFiltergruppen(app, { repo, viewerOf, roh });
+  registerSpaltenwahl(app, { repo, viewerOf, roh });
   registerEbenensets(app, { repo, viewerOf });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
   registerHandwerk(app, {
