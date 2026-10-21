@@ -11,7 +11,7 @@ import {
   QUERY_DISPLAYS,
   SLIDE_INTERVAL,
 } from '@nw/model';
-import type { BoardQuery, Entity, QueryDisplay, Relation } from '@nw/model';
+import type { BoardQuery, Entity, LiveSource, QueryDisplay, Relation } from '@nw/model';
 import { Api, ApiError, type AbfrageAntwort } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Live } from '../kern/live';
@@ -19,6 +19,16 @@ import { Kachel } from './kachel';
 import { BoardSuche } from './suche';
 
 const DARSTELLUNG: Record<QueryDisplay, string> = { list: 'List', draw: 'Draw', slideshow: 'Slideshow' };
+
+/** Die laufenden Quellen (T-342), wie das Panel sie nennt. */
+const LAUFEND: { key: LiveSource; label: string; does: string }[] = [
+  { key: 'scene', label: 'Scene in play', does: 'The scene set on the running session.' },
+  { key: 'arc', label: 'Current arc', does: 'The arc above the scene in play.' },
+  { key: 'session', label: 'Running session', does: 'The latest session with something in play.' },
+  { key: 'nextSession', label: 'Next session', does: 'The session after the running one.' },
+  { key: 'party', label: 'The party', does: 'The characters in the party of the campaign.' },
+  { key: 'quests', label: 'Open quests', does: 'Quests offered or accepted.' },
+];
 
 /**
  * **Die Abfrage-Kachel** (T-340): eine Kachel, die eine Auswahl zeigt —
@@ -58,6 +68,13 @@ const DARSTELLUNG: Record<QueryDisplay, string> = { list: 'List', draw: 'Draw', 
             }
           </select>
         </label>
+        <!-- Laufende Quellen (T-342): eine Frage an die Kampagne, beim Lesen beantwortet. -->
+        <fieldset class="laufend">
+          <legend>Live from the campaign</legend>
+          @for (l of LIVE; track l.key) {
+            <label [title]="l.does"><input type="checkbox" [checked]="frage().current.includes(l.key)" (change)="laufendSetzen(l.key, $any($event.target).checked)" /> {{ l.label }}</label>
+          }
+        </fieldset>
         <label>Tags <input placeholder="rumour, city" [value]="frage().tags.join(', ')" (change)="frageSetzen({ tags: woerter($any($event.target).value) })" /></label>
         <label>Layers
           <select multiple size="3" aria-label="Layers" (change)="ebenenSetzen($any($event.target))">
@@ -167,6 +184,8 @@ const DARSTELLUNG: Record<QueryDisplay, string> = { list: 'List', draw: 'Draw', 
     .einst label { display: grid; gap: 0.15rem; }
     .einst fieldset.zeile { display: flex; flex-wrap: wrap; gap: 0.6rem; border: 0; padding: 0; margin: 0; }
     .einst fieldset.zeile label, .einst label:has(> input[type='checkbox']) { display: flex; gap: 0.3rem; align-items: center; }
+    .einst fieldset.laufend { display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; border: 1px solid var(--line2); border-radius: 4px; padding: 0.3rem 0.5rem; margin: 0; }
+    .einst fieldset.laufend legend { font-size: 0.85rem; color: var(--dim); padding: 0 0.2rem; }
     .einst input, .einst select { font: inherit; min-width: 0; }
     .zahl { width: 5rem; }
     .einzeln { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
@@ -202,6 +221,7 @@ export class Abfrage {
   private readonly host = inject(ElementRef<HTMLElement>);
   protected readonly DISPLAYS = QUERY_DISPLAYS;
   protected readonly DARSTELLUNG = DARSTELLUNG;
+  protected readonly LIVE = LAUFEND;
   protected readonly IV = SLIDE_INTERVAL;
   protected readonly stepsToString = stepsToString;
   protected readonly stepsFromString = stepsFromString;
@@ -218,7 +238,7 @@ export class Abfrage {
   private readonly ebenenListe = signal<{ id: string; name: string }[]>([]);
 
   protected readonly tile = computed(() => queryTileOf(this.rel()));
-  protected readonly frage = computed<BoardQuery>(() => this.tile()?.query ?? { types: [], articles: [], tags: [], layers: [], steps: '' });
+  protected readonly frage = computed<BoardQuery>(() => this.tile()?.query ?? { types: [], articles: [], tags: [], layers: [], steps: '', current: [] });
 
   /* Neu gefragt wird, wenn sich die Kante ändert — als Wort, damit ein neu
      gezeichnetes Board mit gleicher Kante nicht jedes Mal fragt. */
@@ -313,8 +333,8 @@ export class Abfrage {
 
   protected leerText(): string {
     const q = this.frage();
-    const leer = !q.types.length && !q.articles.length && !q.tags.length && !q.layers.length && !q.steps;
-    if (leer) return this.einstellen() ? 'Choose types, tags, layers or articles above.' : 'No source yet — open ⚙ to choose what this card shows.';
+    const leer = !q.types.length && !q.articles.length && !q.tags.length && !q.layers.length && !q.current.length && !q.steps;
+    if (leer) return this.einstellen() ? 'Choose live sources, types, tags, layers or articles above.' : 'No source yet — open ⚙ to choose what this card shows.';
     return 'Nothing here — or nothing you may see yet.';
   }
 
@@ -334,6 +354,10 @@ export class Abfrage {
   }
   protected frageSetzen(teil: Partial<BoardQuery>): void {
     this.aendern.emit({ query: storedQuery({ ...this.frage(), ...teil }) });
+  }
+  protected laufendSetzen(key: LiveSource, an: boolean): void {
+    const ist = this.frage().current.filter((k) => k !== key);
+    this.frageSetzen({ current: an ? [...ist, key] : ist });
   }
   protected typenSetzen(sel: HTMLSelectElement): void {
     this.frageSetzen({ types: [...sel.selectedOptions].map((o) => o.value) });

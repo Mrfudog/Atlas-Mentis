@@ -1019,6 +1019,17 @@ export interface Me {
   viewAsRefused?: boolean;
 }
 
+/** `GET /api/home` (T-342): das Kampagnenboard und wo Spielende landen. */
+export interface Heim {
+  campaign: { id: string; name: string } | null;
+  role: TableRole | null;
+  board: { id: string; name: string } | null;
+  playerStart: 'board' | 'compendium';
+  /** Wohin nach der Anmeldung; `null`: der gewohnte Start. */
+  land: string | null;
+  character: { id: string; name: string } | null;
+}
+
 /** Wo der Tab sich merkt, wessen Sicht er einnimmt: über Seitenwechsel und
  *  Neuladen, nicht über das Schliessen des Tabs (REQ-241). */
 const SICHT_SCHLUESSEL = 'atlas.viewAs';
@@ -1350,6 +1361,10 @@ export class Api {
 
   me(): Promise<Me> {
     return this.call<Me>('/api/me', {}, false);
+  }
+  /** Wohin dieser Betrachter gehört (T-342): Kampagne, Rolle, Board, Landeplatz, Figur. */
+  home(): Promise<Heim> {
+    return this.call<Heim>('/api/home', {}, false);
   }
   /** Die Abfrage-Kachel (T-340): was sie diesem Betrachter bringt — gesiebt am Server. */
   boardQuery(board: string, rel: string): Promise<AbfrageAntwort> {

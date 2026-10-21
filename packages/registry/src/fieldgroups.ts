@@ -2999,6 +2999,16 @@ export const fieldGroups = {
           enum: ['gm', 'players'],
           default: 'gm',
         },
+        /* **Wo Spielende landen** (T-342): auf dem Kampagnenboard (Vorgabe)
+           oder im Kompendium. Die Leitung behält ihren Start; gelesen über
+           `playerStartOf`. */
+        playerStart: {
+          type: 'string',
+          title: 'Players start on',
+          description: 'Where players of this campaign land after signing in: the campaign board or the compendium.',
+          enum: ['board', 'compendium'],
+          default: 'board',
+        },
         /* **Die Sprachen dieser Kampagne** (REQ-251, T-095): welche
            Sprachen am Tisch sinnvoll oder möglich sind. Sprachwahlen im
            Assistenten bieten nur diese an; leer heisst jede. Namen von

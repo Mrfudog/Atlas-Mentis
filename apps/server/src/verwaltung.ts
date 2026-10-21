@@ -61,6 +61,8 @@ import {
   isTableRole,
   nextId,
   validateEntity,
+  newCampaignBoard,
+  BOARD_TYPE,
   withStack,
   withCompare,
   campaignLayer,
@@ -75,6 +77,7 @@ import type { Repository, StoredUser } from './repo.js';
 import { sorgeSpielerEbene } from './spielerebene.js';
 import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
 import { inDieGruppe, neueGruppe } from './gruppe.js';
+import { BOARD_EVENT } from './kampagnenboard.js';
 import { eigeneEbenen } from './ebenenrechte.js';
 
 /**
@@ -337,21 +340,28 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       relations: [{ id: `${id}~activates-${ebeneId}`, type: 'activates', to: ebeneId, props: { order: 100 } }],
     };
     const gruppe = neueGruppe(alle, entity, ebeneId);
+    /* **Und ihr Board** (T-342): der Startpunkt für Spielende, aus der
+       Vorlage im Modell; bestehende bekommen es beim ersten Öffnen. */
+    const board = newCampaignBoard([...alle, gruppe], entity, ebeneId);
     const registry = await repo.getRegistry();
     const known = new Map([
       ...alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
       [ebeneId, LAYER_COMPONENT] as const,
       [id, CAMPAIGN_TYPE] as const,
+      [board.id, BOARD_TYPE] as const,
     ]);
     const issues = [
       ...validateEntity(registry, ebene, {}),
       ...validateEntity(registry, entity, { knownTypes: known }),
       ...validateEntity(registry, gruppe, { knownTypes: known }),
+      ...validateEntity(registry, board, { knownTypes: known }),
     ];
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
     await repo.putEntity(ebene);
     await repo.putEntity(entity);
     await repo.putEntity(gruppe);
+    await repo.putEntity(board);
+    await repo.appendEvent(BOARD_EVENT, entity.id, { board: board.id, on: 'create' });
     await repo.appendEvent('entity.written', entity.id, { interfaces: entity.interfaces, cards: ['Identity'], layer: ebeneId });
     if (request.body?.lead === true) {
       const ich = await repo.getUser(user.id);

@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, registry]
 status: derived
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 
 # Requirements Registry
@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 55 | 174 | 41 steht · 9 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 118 | 389 | 66 steht · 18 teils · 26 offen · 5 ersetzt · 3 verworfen |
+| 2 | 119 | 397 | 67 steht · 18 teils · 26 offen · 5 ersetzt · 3 verworfen |
 | 3 | 120 | 354 | 61 steht · 25 teils · 33 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **357** | **1267** | 182 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **358** | **1275** | 183 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -396,6 +396,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-355]] | Tragraster, Zonen und Behälter einstellen | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | steht |
 | [[REQ-356]] | Tragblatt aus Bausteinen mit Zonen und Bedingungen | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 5 | defined | steht |
 | [[REQ-357]] | Regelgraphen wirken am Tisch | Spielleitung | [[F-046 Regelauswertung\|Regelauswertung]] | 3 | 13 | defined | teils |
+| [[REQ-358]] | Kampagnenboard als Startpunkt für Spielende | Spieler | [[F-067 Boards\|Boards]] | 2 | 8 | defined | steht |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

@@ -435,13 +435,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'boards',
     label: 'Boards',
     area: 'play',
-    does: 'lays the article out as a card on the board, hangs a board under its story, and lets a query card list, draw or show articles — and reveal what is drawn to the party (T-340)',
+    does: 'lays the article out as a card on the board, hangs a board under its story, and lets a query card list, draw or show articles — and reveal what is drawn to the party (T-340); a campaign gets its board, and its cards read the scene in play, the party and the open quests (T-342)',
     uses: {
       [M + 'board.ts']: ['placed'],
       /* Die Abfrage-Kachel (T-340): eine `placed`-Kante des Boards auf sich selbst. */
       [M + 'boardquery.ts']: ['placed'],
       /* Beim Ziehen freigeben: das Gezogene wird Wissen der Gruppe (T-340). */
       [S + 'abfrage.ts']: ['knownBy'],
+      /* Das Kampagnenboard (T-342): an der Kampagne, in ihrer Ebene, und
+         die laufenden Quellen (Szene über `partOf`, Gruppe). */
+      [M + 'campaignboard.ts']: ['inLayer', 'memberOfParty', 'partOf', 'placed'],
+      [S + 'kampagnenboard.ts']: ['memberOfParty'],
       [W + 'boards/board.ts']: ['inLayer', 'instanceOf', 'partOf', 'placed'],
       [W + 'boards/boards.ts']: ['partOf'],
       [W + 'boards/brett.ts']: ['partOf'],

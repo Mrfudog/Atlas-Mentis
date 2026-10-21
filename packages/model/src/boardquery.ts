@@ -33,6 +33,14 @@ import type { Entity, Registry, Relation } from './types.js';
 import { layersOf } from './versions.js';
 import { BOARD_TYPE, PLACED_RELATION } from './board.js';
 
+/**
+ * **Was eine Kachel laufend fragen kann** (T-342): Fragen an die Kampagne
+ * des Boards, deren Antwort sich mit dem Spiel ändert. Wörter und keine
+ * Ids — die Antwort rechnet `liveArticles` beim Lesen.
+ */
+export const LIVE_SOURCES = ['scene', 'arc', 'session', 'nextSession', 'party', 'quests'] as const;
+export type LiveSource = (typeof LIVE_SOURCES)[number];
+
 /** Wie die Kachel zeigt, was die Abfrage bringt. */
 export const QUERY_DISPLAYS = ['list', 'draw', 'slideshow'] as const;
 export type QueryDisplay = (typeof QUERY_DISPLAYS)[number];
@@ -60,6 +68,14 @@ export interface BoardQuery {
   layers: string[];
   /** Die Filterkette (T-253), `filter:status=ready,sort:name`. */
   steps: string;
+  /**
+   * **Laufende Quellen** (T-342, `LIVE_SOURCES`): die Szene im Spiel, ihr
+   * Arc, die Sitzung, die nächste, die Gruppe, die offenen Aufträge — eine
+   * Frage an die Kampagne des Boards, beim Lesen beantwortet
+   * (`liveArticles`), nie als Id gespeichert: die Szene von heute ist
+   * morgen eine andere.
+   */
+  current: string[];
 }
 
 /** Eine Abfrage-Kachel, wie sie an der Kante steht — mit den Vorgaben für das, was fehlt. */
@@ -103,6 +119,7 @@ export function boardQueryOf(raw: unknown): BoardQuery {
     tags: woerter(o['tags']),
     layers: woerter(o['layers']),
     steps: stepsToString(stepsFromString(text(o['steps']))),
+    current: woerter(o['current']).filter((x) => (LIVE_SOURCES as readonly string[]).includes(x)),
   };
 }
 
@@ -127,7 +144,7 @@ export function queryTileOf(rel: Relation): QueryTile | null {
 /** Sagt die Quelle überhaupt etwas? Eine leere bringt nichts — nicht das ganze Kompendium. */
 export function queryIsEmpty(q: BoardQuery): boolean {
   const kette = stepsFromString(q.steps).some((s) => 'filter' in s);
-  return !q.types.length && !q.articles.length && !q.tags.length && !q.layers.length && !kette;
+  return !q.types.length && !q.articles.length && !q.tags.length && !q.layers.length && !q.current.length && !kette;
 }
 
 /**
@@ -137,7 +154,7 @@ export function queryIsEmpty(q: BoardQuery): boolean {
 export function storedQuery(q: Partial<BoardQuery>): Record<string, unknown> {
   const n = boardQueryOf(q);
   const out: Record<string, unknown> = {};
-  for (const k of ['types', 'articles', 'tags', 'layers'] as const) if (n[k].length) out[k] = n[k];
+  for (const k of ['types', 'articles', 'tags', 'layers', 'current'] as const) if (n[k].length) out[k] = n[k];
   if (n.steps) out['steps'] = n.steps;
   return out;
 }

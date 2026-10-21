@@ -19,6 +19,8 @@ import { Neues } from './kern/neues';
 import { Hilfe } from './hilfe/hilfe';
 import { GlossarLeiste } from './glossar/leiste';
 import { Glossar } from './kern/glossar';
+import { Heim } from './kern/heim';
+import { Basisleiste } from './start/basisleiste';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -67,7 +69,7 @@ import { Glossar } from './kern/glossar';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf, SichtKnopf, Hilfe, GlossarLeiste],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf, SichtKnopf, Hilfe, GlossarLeiste, Basisleiste],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -223,6 +225,12 @@ import { Glossar } from './kern/glossar';
             <a [routerLink]="'/' + m" [queryParams]="{ view: alle }" (click)="menue.set(null)">All</a>
           }
         </nav>
+      }
+    }
+    <!-- Die Basis-Leiste für Spielende (T-342), nachgeladen, sobald jemand mitspielt. -->
+    @defer (when heim.spielt()) {
+      @if (session.angemeldet() && heim.spielt()) {
+        <nw-basisleiste />
       }
     }
     @if (warnung()) {
@@ -593,6 +601,8 @@ export class App {
 
   protected readonly api = inject(Api);
   protected readonly suche = inject(Suche);
+  /** Wohin dieser Betrachter gehört, und ob die Basis-Leiste steht (T-342). */
+  protected readonly heim = inject(Heim);
   /** Was neu ist (T-157) — der Stand gehört zum Konto. */
   protected readonly neues = inject(Neues);
   protected readonly neuTitel = computed(() => {
