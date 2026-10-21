@@ -13,7 +13,7 @@ import { seedRegistry, typeViews } from '../src/index.js';
 const migration = (n: string) => readFileSync(new URL(`../../../apps/server/migrations/${n}.sql`, import.meta.url), 'utf8');
 const sql = migration('052_ansichten_je_art');
 /* Migrationen, die eine Zeile aus 052 später nachziehen — die letzte gilt. */
-const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '094_quelleninhalt'].map(migration);
+const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '094_quelleninhalt', '123_ansichten_je_art_und_stufe'].map(migration);
 
 const zeilen = (text: string) =>
   [...text.matchAll(/\('(\w+)', '(\w+)', '(\{.*?\})'::jsonb\)/g)].map((m) => [m[1]!, m[2]!, JSON.parse(m[3]!)] as const);
@@ -27,7 +27,9 @@ describe('Ansichten je Art (T-110)', () => {
        Code steht nach Art beisammen. */
     const sortiert = (l: (readonly unknown[])[]) => [...l].sort((a, b) => `${a[0]}.${a[1]}`.localeCompare(`${b[0]}.${b[1]}`));
     expect(sortiert([...stand.values()])).toEqual(sortiert(imCode));
-    expect(sql).toContain(`'${JSON.stringify(seedRegistry.views['handout'])}'::jsonb`);
+    /* Den Zettel legt 052 an; 123 gibt ihm sein Feldelement (T-234). */
+    expect(spaeter.at(-1)).toContain(`set config = '${JSON.stringify(seedRegistry.views['handout'])}'::jsonb`);
+    expect(sql).toContain("values ('handout', 'Handout', 5,");
     expect(sql).toContain(`set config = '${JSON.stringify(seedRegistry.views['print'])}'::jsonb`);
   });
 
