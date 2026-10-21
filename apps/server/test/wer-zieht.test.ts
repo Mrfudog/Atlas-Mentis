@@ -112,18 +112,14 @@ describe('Wer Tokens zieht (T-290)', () => {
     expect((await kontext('Sela')).movable.sort()).toEqual(['cr_esel', 'pc_mira', 'pc_rook']);
   });
 
-  it('`allies`: im Kampf auch, wer an der Begegnung auf der Seite der Gruppe steht — über den Zugplan', async () => {
+  it('`allies` zieht ausserhalb des Kampfes — geplant wird im Kampf nur die eigene Figur (T-325)', async () => {
     const { rufe, kontext } = await aufbau({ tokenMove: 'allies' }, true);
     expect((await kontext('Sela')).movable.sort()).toEqual(['cr_esel', 'cr_hund', 'pc_mira', 'pc_rook']);
+    /* Bis T-325 plante Sela auch den Hund; jetzt nur, wen sie führt. */
     const plan = (await rufe('Sela', 'GET', '/api/maps/map_1/turn-plan?actor=cr_hund')).json() as { actors: { id: string }[]; actor: { id: string } };
-    expect(plan.actors.map((a) => a.id)).toContain('cr_hund');
-    expect(plan.actors.map((a) => a.id)).not.toContain('cr_gob');
-    expect(plan.actor.id).toBe('cr_hund');
-    const ein = await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'cr_hund', steps: [{ id: 's1', kind: 'move', path: [{ x: 5, y: 5 }, { x: 6, y: 5 }], feet: 5, to: { x: 0.45, y: 0.4 } }] });
-    expect(ein.statusCode).toBe(200);
-    /* Mit `party` ist der Hund nicht zu haben, auch im Kampf nicht. */
-    const eng = await aufbau({ tokenMove: 'party' }, true);
-    const nein = await eng.rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'cr_hund', steps: [{ id: 's1', kind: 'move', path: [{ x: 5, y: 5 }, { x: 6, y: 5 }], feet: 5, to: { x: 0.45, y: 0.4 } }] });
+    expect(plan.actors.map((a) => a.id)).toEqual(['pc_rook']);
+    expect(plan.actor.id).toBe('pc_rook');
+    const nein = await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'cr_hund', steps: [{ id: 's1', kind: 'move', path: [{ x: 5, y: 5 }, { x: 6, y: 5 }], feet: 5, to: { x: 0.45, y: 0.4 } }] });
     expect(nein.statusCode).toBe(403);
   });
 

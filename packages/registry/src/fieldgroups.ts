@@ -3091,6 +3091,16 @@ export const fieldGroups = {
           items: { type: 'string' },
           enum: ['damage', 'heal', 'effect', 'delay', 'reroll', 'remove'],
         },
+        /* **Der Zugplan** (T-325): was Spielende im Kampf über „Plan turn"
+           zurechtlegen — aus, nur Bewegung, Bewegung und Aktionen, oder voll
+           mit Reaktionen. Gelesen über `turnPlannerOf`. */
+        turnPlanner: {
+          type: 'string',
+          title: 'Turn planner',
+          description: 'What players plan on the map during an encounter: off, movement only, movement and actions, or full with reactions.',
+          enum: ['off', 'move', 'actions', 'full'],
+          default: 'full',
+        },
         /* **Die Karte am Tisch** (T-204). `fog`: ein Nebel für die ganze
            Gruppe, oder je Figur — dann sieht jede, was sie selbst (oder
            ihre Gruppe) aufgedeckt hat, und die Leitung die Vereinigung.

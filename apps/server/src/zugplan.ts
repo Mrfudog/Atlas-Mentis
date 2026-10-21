@@ -91,6 +91,10 @@ import {
   speedModes,
   tilesFor,
   TURNPLAN_EVENT,
+  plannerAllows,
+  plannerReacts,
+  plannerTiles,
+  turnPlannerOf,
   reactionBack,
   knownNames,
   offersFrom,
@@ -421,22 +425,21 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   }
 
   /**
-   * Für wen der Betrachter planen darf: eigene Figuren mit Token hier; die
-   * Leitung für jede Kreatur mit Statblock. **Wen die Kampagne ziehen
-   * lässt** (T-290, `tokenMove`), dafür plant auch eine Spielerin — im Kampf
-   * zieht sie Gruppe und Verbündete so über den Plan; bestätigt wird er
-   * ohnehin. `none` nimmt den Plan der eigenen Figur nicht: ein Zug im Kampf
-   * ist mehr als Bewegung, und die Leitung bestätigt ihn.
+   * Für wen der Betrachter planen darf: **nur für die eigenen Figuren**
+   * mit Token hier (T-325, die Leitung 21.10.: „nur den Besitzern des
+   * jeweiligen Charakters"), die Leitung für jede Kreatur mit Statblock.
+   * Bis T-325 plante eine Spielerin auch, wen `tokenMove` sie ziehen liess
+   * (T-290) — dann stand der Zugplan auch bei Spielenden ohne eigene Figur.
+   * Ist er an der Kampagne aus (`turnPlanner: 'off'`), plant niemand.
    */
   function figuren(stand: Stand, karte: Entity, user: User, leitet: boolean, kampagne: Entity | null): Entity[] {
+    if (turnPlannerOf(kampagne) === 'off') return [];
     const eigene = new Set(user.actorIds ?? []);
-    const wer = zieher(stand, kampagne, karte, eigene);
-    const regeln = mapRulesOf(kampagne);
     const ids = [...new Set(markersOf(karte).map((m) => m.to))];
     return ids
       .map((i) => stand.map.get(i))
       .filter((e): e is Entity => !!e)
-      .filter((e) => eigene.has(e.id) || ((leitet || mayMoveToken(regeln.tokenMove, e.id, wer)) && !!statblockVon(stand.alle, e)));
+      .filter((e) => eigene.has(e.id) || (leitet && !!statblockVon(stand.alle, e)));
   }
 
   /**
@@ -454,6 +457,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const l = await lage(request, request.params.id);
     if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
     const { user, stand, roheKarte, karte, kampagne, leitet } = l;
+    const stufe = turnPlannerOf(kampagne);
     const moegliche = figuren(stand, karte, user, leitet, kampagne);
     const nameVon = new Map((leitet || !moegliche.length ? moegliche : await sieve(request, moegliche, stand.map)).map((e) => [e.id, entityName(e)]));
     const figur = moegliche.find((e) => e.id === request.query.actor) ?? moegliche.find((e) => (user.actorIds ?? []).includes(e.id)) ?? moegliche[0] ?? null;
@@ -466,7 +470,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const aktionsIds = sb ? (resolveInstance(stand.map, sb).relations ?? []).filter((r) => r.type === 'composedOf').map((r) => r.to) : [];
       const da = aktionsIds.flatMap((i) => stand.map.get(i) ?? []);
       const sicht = new Set((da.length ? await sieve(request, da, stand.map) : []).map((e) => e.id));
-      tiles = kachelnVon(stand.map, sb, (i) => sicht.has(i));
+      tiles = plannerTiles(kachelnVon(stand.map, sb, (i) => sicht.has(i)), stufe);
       speed = tempoVon(werte(stand.map, sb));
     }
 
@@ -495,13 +499,17 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     /* Die Pläne: die Leitung sieht alle dieser Karte, Spielende ihre
        eigenen — und den, der ihre Figur gerade um eine Reaktion fragt. */
     const eigene = new Set(user.actorIds ?? []);
+    /* Ist der Zugplan aus, bleiben der Leitung nur die offenen — die alten
+       stünden sonst als Grund für das Werkzeug da. */
     const plans = (await plaeneDerKarte(repo, karte.id))
+      .filter((p) => stufe !== 'off' || (leitet && (p.state === 'planned' || p.state === 'reacting')))
       .filter((p) => leitet || p.by?.id === user.id || eigene.has(p.actor) || (p.state === 'reacting' && !!p.pending && eigene.has(p.pending.reactor)))
       .slice(0, 20)
       .map((p) => ({ ...p, ...(p.state === 'reacting' && p.pending ? { canAnswer: darfAntworten(user, leitet, p.pending.reactor) } : {}) }));
 
     return {
       leitet,
+      planner: stufe,
       encounter: kampf ? { id: kampf.id } : null,
       actors: moegliche.map((e) => ({ id: e.id, name: nameVon.get(e.id) ?? e.id, own: eigene.has(e.id), rel: markersOf(karte).find((m) => m.to === e.id)?.rel.id ?? null })),
       actor: figur
@@ -536,6 +544,8 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if (!figur) return reply.code(403).send({ error: 'Planen darf, wer die Figur führt oder am Tisch leitet — und sie braucht ein Token auf dieser Karte.' });
       const steps = (Array.isArray(b.steps) ? b.steps : []).slice(0, 30).map(cleanStep).filter((s): s is PlanStep => !!s);
       if (!steps.length) return reply.code(422).send({ error: 'Ein Plan braucht mindestens einen Schritt.' });
+      /* Die Stufe der Kampagne (T-325): was sie nicht anbietet, nimmt sie auch nicht an. */
+      if (steps.some((s) => !plannerAllows(s, turnPlannerOf(kampagne)))) return reply.code(422).send({ error: 'This campaign’s turn planner does not take that step.' });
       const tempo = tempoVon(werte(stand.map, statblockVon(stand.alle, figur)));
       const kampf = encounterOnMap(stand.alle, roheKarte.id);
       const reactionSpent = !(await reaktionDa(repo, stand, roheKarte.id, figur.id, kampf));
@@ -817,10 +827,12 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const geo = plan.nat ? gridGeometry(mapSettings(roheEbene), plan.nat) : null;
     /* **Der Graph führt** (REQ-357): laufen die Regeln der Kampagne am
        Tisch, fragt der Zug sie und nicht den eingebauten Gelegenheitsangriff. */
-    const regeln = await regelnAmTisch(stand, kampagne);
+    /* Ohne die volle Stufe (T-325) fragt ein Zug niemanden um eine Reaktion. */
+    const reagiert = plannerReacts(turnPlannerOf(kampagne));
+    const regeln = reagiert ? await regelnAmTisch(stand, kampagne) : null;
     /* Die Leitung führt aus: gegen die ganze Karte, auch verborgene Gegner. */
     const provs =
-      geo && !regeln ? opportunityAttacks(plan.steps, bedrohteFelder(roheEbene, geo, bedrohungen(stand, roheEbene, figur.id, kampf)), geo.cellFeet) : [];
+      geo && !regeln && reagiert ? opportunityAttacks(plan.steps, bedrohteFelder(roheEbene, geo, bedrohungen(stand, roheEbene, figur.id, kampf)), geo.cellFeet) : [];
     const tisch = regeln && geo ? await tischKreaturen(repo, stand, roheEbene, geo, kampf) : [];
     const selbst = tisch.find((c) => c.id === figur.id);
     const exits = regeln && selbst ? reachExits(plan.steps, tisch.filter((c) => c.id !== figur.id).map((c) => ({ id: c.id, cell: { x: c.x, y: c.y }, reach: c.values['reach'] ?? 5 })), geo?.cellFeet) : [];

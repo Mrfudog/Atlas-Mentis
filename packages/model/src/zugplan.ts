@@ -539,3 +539,39 @@ export function reactionBack(spent: RoundTurn | null, now: RoundTurn | null, own
   const naechste: RoundTurn = own > spent.turn ? { round: spent.round, turn: own } : { round: spent.round + 1, turn: own };
   return now.round > naechste.round || (now.round === naechste.round && now.turn >= naechste.turn);
 }
+
+// ------------------------------------------------------- Stufe der Kampagne
+
+/**
+ * **Wie viel der Zugplan kann** (T-325, `Campaign.turnPlanner`): aus, nur
+ * Bewegung, Bewegung und Aktionen, oder voll — mit Reaktionen
+ * (Gelegenheitsangriff, die Angebote der Regeln, REQ-357). Jede Stufe
+ * schliesst die engere ein. Ohne Angabe gilt `full`, wie vor T-325.
+ */
+export type TurnPlanner = 'off' | 'move' | 'actions' | 'full';
+export const TURN_PLANNERS: readonly TurnPlanner[] = ['off', 'move', 'actions', 'full'];
+
+/** Die Stufe des Zugplans einer Kampagne. */
+export function turnPlannerOf(campaign: { components?: Record<string, Record<string, unknown> | undefined> } | null | undefined): TurnPlanner {
+  const v = campaign?.components?.['Campaign']?.['turnPlanner'];
+  return TURN_PLANNERS.includes(v as TurnPlanner) ? (v as TurnPlanner) : 'full';
+}
+
+/** Die Kacheln, die eine Stufe anbietet: `move` keine, `actions` keine Reaktion. */
+export function plannerTiles(tiles: readonly PlanTile[], mode: TurnPlanner): PlanTile[] {
+  if (mode === 'off' || mode === 'move') return [];
+  return mode === 'actions' ? tiles.filter((t) => t.cost !== 'reaction') : [...tiles];
+}
+
+/** Darf ein Schritt in dieser Stufe stehen? Der Server prüft damit jeden eingereichten Plan. */
+export function plannerAllows(step: PlanStep, mode: TurnPlanner): boolean {
+  if (mode === 'off') return false;
+  if (step.kind === 'move') return true;
+  if (mode === 'move') return false;
+  return mode === 'full' || step.cost !== 'reaction';
+}
+
+/** Fragt der Zug in dieser Stufe nach Reaktionen anderer? Nur voll. */
+export function plannerReacts(mode: TurnPlanner): boolean {
+  return mode === 'full';
+}

@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-20. 86 Schnittstellen, 70 Kantenarten.
+Stand 2026-10-21. 86 Schnittstellen, 70 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -939,7 +939,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `itemPricing` *combined | base | none*, `enhancementsBy` *gm | players*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*, `mapTools` *object*
+- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `itemPricing` *combined | base | none*, `enhancementsBy` *gm | players*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `turnPlanner` *off | move | actions | full*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*, `mapTools` *object*
 
 **Geerbte Felder**
 

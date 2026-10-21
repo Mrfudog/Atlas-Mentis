@@ -504,6 +504,19 @@ weil niemand den Hund ziehen lassen will, die eigene Figur aber nicht.
 Ob die Leitung bestätigt, war schon eine Einstellung (`moves`) — sie
 blieb, statt neben `tokenMoveConfirm` ein zweites Mal dazustehen.
 
+**Den Zug plant, wem die Figur gehört** (T-325). Bis dahin plante eine
+Spielerin im Kampf für jede Figur, die `tokenMove` sie ziehen liess — mit
+`allies` also auch den Hund der anderen, und Spielende ohne eigene Figur
+sahen eine Leiste, die ihnen nichts zu tun gab. Ziehen ausserhalb des
+Kampfes ist eine Frage der Ordnung am Tisch; einen Zug planen heisst, für
+die Figur zu entscheiden, und das tut, wer sie spielt. Wie viel ein Zug
+umfasst, ist eine **Stufe** wie bei `tokenMove` (aus, Bewegung, dazu
+Aktionen, dazu Reaktionen): eine Liste erlaubter Kostenarten wäre eine
+zweite Stelle für dieselbe Frage. Und weil er ändert, was ein Antippen
+der Karte tut, ist er ein **Werkzeug** der Leiste und keine Leiste für
+sich; der Tracker und die Gruppe ändern nichts am Antippen und sind
+**Panels** aus derselben Leiste — sie bleiben neben jedem Werkzeug offen.
+
 **Wer was aufgedeckt sieht, ist eine Frage an die Form** (T-204). Ein
 Nebel je Figur hätte auch je Figur eine Liste aufgedeckter Formen sein
 können — dann stünde dasselbe Stück Gang so oft da, wie Figuren es
