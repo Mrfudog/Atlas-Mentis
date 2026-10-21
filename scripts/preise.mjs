@@ -2,7 +2,7 @@
 /**
  * **Geschätzte Preise für Gegenstände ohne Listenpreis** (T-139, E-046).
  *
- *   node scripts/preise.mjs plan --rule b [--out plan.json]
+ *   node scripts/preise.mjs plan --rule b|c|kombi [--table preise.json --table-label …] [--out plan.json]
  *   node scripts/preise.mjs apply <plan.json> [--log log.jsonl] [--dry-run]
  *
  * `plan` liest von dev alle Gegenstände im Spiel (`Item` und Untertypen)
@@ -11,6 +11,11 @@
  * Rüstung (`variantOf` auf einen Sammelartikel wie „+1 Weapon") bekommt
  * den Listenpreis ihres Grundgegenstands dazu. Artefakte, `unknown` und
  * `varies` bleiben leer — die schätzt niemand nach einer Tabelle.
+ *
+ * `--rule kombi` ist die Entscheidung E-046 d der Leitung (14.10.): eine
+ * Preistabelle von aussen (`--table`, Sane Magical Prices) vor einem
+ * Kibbles-Rezept vor der Seltenheit nach b. Die Annahmen dazu stehen im
+ * Protokoll docs/Nachtarbeit/2026-10-14-T-139.md.
  *
  * `apply` schreibt **nie in den Grundartikel** (Vorgabe der Leitung,
  * 14.10.): je Gegenstand eine Fassung (`POST /api/entities/:id/adapt`) in
@@ -80,10 +85,10 @@ function consumable(e) {
   return /^(oil|dust|elixir|philter|potion|scroll) of\b/i.test(nameOf(e)) || /\b(ammunition|arrows?|bolts?|bullets?|needles?)\b/i.test(nameOf(e));
 }
 
-async function alleGegenstaende() {
-  /* Die Liste nennt je Art nur sich selbst und gibt höchstens 200 Zeilen auf einmal. */
+/** Alle Artikel der Arten im Spiel, je Art höchstens 200 Zeilen auf einmal. */
+async function alleVon(types) {
   const ids = [];
-  for (const type of ['Item', 'Weapon', 'Armor']) {
+  for (const type of types) {
     for (let offset = 0; ; ) {
       const l = await api(`/api/list?type=${type}&limit=200&offset=${offset}`);
       ids.push(...l.rows.map((r) => r.id));
@@ -99,46 +104,162 @@ async function alleGegenstaende() {
   return out;
 }
 
+const kanten = (e, type) => (e?.relations ?? []).filter((r) => r.type === type);
+const rarityOf = (e) => String(item(e).rarity ?? 'none').toLowerCase() || 'none';
+const MAGISCH_NICHT = new Set(['none', '']);
+
+/** „worth at least 20 gp" an einer Kante `needs` — der Mindestwert eines Bauteils. */
+function mindestwert(props) {
+  const m = /(\d[\d,]*(?:\.\d+)?)\s*gp/i.exec(String(props?.note ?? ''));
+  return m ? Math.round(Number(m[1].replace(/,/g, '')) * 100) : undefined;
+}
+
 async function plan() {
   const ruleKey = option('--rule');
-  const rule = RULES[ruleKey];
-  if (!rule) throw new Error(`--rule ${Object.keys(RULES).join('|')} (E-046)`);
-  const alle = await alleGegenstaende();
+  const rule = RULES[ruleKey === 'kombi' ? 'b' : ruleKey];
+  if (!rule) throw new Error(`--rule ${[...Object.keys(RULES), 'kombi'].join('|')} (E-046)`);
+  const kombi = ruleKey === 'kombi';
+  const alle = await alleVon(['Item', 'Weapon', 'Armor']);
   const byId = new Map(alle.map((e) => [e.id, e]));
-  const out = [];
-  const offen = {};
-  for (const e of alle) {
-    if (priceOf(e) !== undefined) continue;
-    const rarity = String(item(e).rarity ?? 'none').toLowerCase();
-    const gp = rule.gp[rarity];
-    if (gp === undefined) {
-      offen[rarity] = (offen[rarity] ?? 0) + 1;
-      continue;
+  const holen = async (id) => byId.get(id) ?? (await api(`/api/entities/${id}`).catch(() => null));
+
+  /* Eine Preistabelle von aussen (`--table`, etwa Sane Magical Prices,
+     E-046 d): [{ name, gp }] — liegt ausserhalb des Repos, ins Protokoll
+     kommen nur Id, Name, Zahl. Gilt vor jeder Rechnung. */
+  const tabelle = new Map();
+  const tabLabel = option('--table-label') ?? 'price table';
+  if (option('--table')) {
+    for (const z of JSON.parse(readFileSync(option('--table'), 'utf8'))) tabelle.set(String(z.name).toLowerCase(), Math.round(Number(z.gp) * 100));
+  }
+
+  /* Kibbles-Rezepte (E-046 d, Begründung der Leitung): was ein Rezept
+     liefert, kostet, was seine Teile kosten. Annahme A2: Rohmaterial mit
+     eigenem Preis zählt doppelt (Herstellen kostet die Hälfte, wie XGE zu
+     DMG), ein Bauteil, das selbst ein Gegenstand ist, zählt einmal zu
+     seinem Preis. */
+  const rezepte = new Map();
+  const material = new Map();
+  if (kombi) {
+    for (const r of await alleVon(['Recipe'])) {
+      for (const y of kanten(r, 'yields')) (rezepte.get(y.to) ?? rezepte.set(y.to, []).get(y.to)).push(r);
     }
-    const halb = consumable(e);
-    let cp = Math.round((halb ? gp / 2 : gp) * 100);
-    let note = `estimated: ${rule.label} ${rarity}${halb ? ', consumable (half)' : ''}`;
-    /* Der Grundgegenstand steht an `variantOf` (der Importer hängt „+1
-       Longsword" an „Longsword"); zählt nur, wenn er nicht magisch ist
-       und einen Listenpreis hat. Kein Abgleich nach Namen — „Manual of
-       Iron Golems" ist keine Variante von „Iron". */
-    for (const r of (e.relations ?? []).filter((x) => x.type === 'variantOf')) {
-      const b = byId.get(r.to) ?? (await api(`/api/entities/${r.to}`).catch(() => null));
-      const br = String(item(b).rarity ?? 'none').toLowerCase();
-      if (b && priceOf(b) !== undefined && (br === 'none' || br === '')) {
-        cp += priceOf(b);
-        note += ` + base price (${nameOf(b)})`;
-        break;
+    for (const m of await alleVon(['Material'])) material.set(m.id, m);
+  }
+  /* Annahme A3: eine Unterart kostet wie ihre Stufe — „Uncommon Arcane
+     Essence" wie „Uncommon Essence", „Rare Curative Reagent" wie „Rare
+     Reagent"; das Buch nennt den Preis nur für die Stufe. Eine Zutat
+     „(optional)" kostet nichts. */
+  const materialNachName = new Map();
+  for (const m of material.values()) if (priceOf(m) !== undefined) materialNachName.set(nameOf(m).toLowerCase(), priceOf(m));
+  const materialPreis = (m) => {
+    if (priceOf(m) !== undefined) return { cp: priceOf(m) };
+    const n = nameOf(m);
+    if (/\(optional\)\s*$/i.test(n)) return { cp: 0, how: 'optional' };
+    const s = /^(common|uncommon|rare|very rare|legendary)\s+.+?\s+(essence|reagent|supplies)\b/i.exec(n);
+    const p = s ? materialNachName.get(`${s[1]} ${s[2]}`.toLowerCase()) : undefined;
+    return p !== undefined ? { cp: p, how: 'tier' } : undefined;
+  };
+  /* Annahme A4: eine Zauberschriftrolle als Zutat (Kibbles nennt den
+     Zauber an der Kante) kostet nach ihrem Grad wie im DMG 2024 — Grad
+     0–1 common, 2–3 uncommon, 4–5 rare, 6–8 very rare, 9 legendary — zum
+     Preis der Regel als Verbrauchsgut (halb). */
+  const zauberGrad = new Map();
+  if (kombi) for (const z of await alleVon(['Spell'])) zauberGrad.set(nameOf(z).toLowerCase(), Number(z.components?.Spell?.level));
+  const rolleStufe = (g) => (g <= 1 ? 'common' : g <= 3 ? 'uncommon' : g <= 5 ? 'rare' : g <= 8 ? 'very rare' : 'legendary');
+  const schriftrolle = (props) => {
+    const g = zauberGrad.get(String(props?.note ?? '').trim().toLowerCase());
+    if (!Number.isFinite(g)) return undefined;
+    return Math.round((rule.gp[rolleStufe(g)] / 2) * 100);
+  };
+  const nachName = new Map();
+  for (const e of alle) if (!nachName.has(nameOf(e).toLowerCase())) nachName.set(nameOf(e).toLowerCase(), e);
+
+  const merk = new Map();
+  /** Der Preis eines Gegenstands: Liste, Tabelle, Rezept, Seltenheit — in dieser Reihenfolge. */
+  async function schaetze(e, tiefe = 0) {
+    if (!e) return null;
+    if (priceOf(e) !== undefined) return { cp: priceOf(e), note: 'list', list: true };
+    if (merk.has(e.id)) return merk.get(e.id);
+    merk.set(e.id, null); /* gegen Kreise */
+    let out = null;
+    const t = tabelle.get(nameOf(e).toLowerCase());
+    if (t !== undefined) out = { cp: t, note: `estimated: ${tabLabel}`, src: 'table' };
+    if (!out && kombi && tiefe < 6) {
+      for (const r of rezepte.get(e.id) ?? []) {
+        const n = Math.max(1, Number(r.components?.Recipe?.yieldCount) || 1);
+        let roh = 0;
+        let teile = 0;
+        let ok = true;
+        for (const k of kanten(r, 'needs')) {
+          const qty = Math.max(1, Number(k.props?.qty) || 1);
+          const m = material.get(k.to);
+          const mp = m ? materialPreis(m) : undefined;
+          if (mp) { roh += qty * mp.cp; continue; }
+          /* Ein Bauteil, das ein Gegenstand ist: das Material „+1 Shortsword" ist der Gegenstand gleichen Namens. */
+          const g = m ? nachName.get(nameOf(m).toLowerCase()) : await holen(k.to);
+          const rolle = g && /^spell scroll$/i.test(nameOf(g)) ? schriftrolle(k.props) : undefined;
+          if (rolle !== undefined) { teile += qty * rolle; continue; }
+          const p = g ? await schaetze(g, tiefe + 1) : null;
+          const min = mindestwert(k.props);
+          if (p) teile += qty * Math.max(p.cp, min ?? 0);
+          else if (min !== undefined) teile += qty * min;
+          else {
+            if (process.env.PREISE_WARUM) console.error('fehlt', nameOf(e), '←', m ? `Material ${nameOf(m)}` : `${k.to} ${g ? nameOf(g) + ' ' + rarityOf(g) : '(nicht gefunden)'}`);
+            ok = false;
+            break;
+          }
+        }
+        if (ok && roh + teile > 0) {
+          const cp = Math.round((2 * roh + teile) / n);
+          const nr = r.components?.Identity?.id ?? r.id;
+          if (!out || cp < out.cp) out = { cp, note: `estimated: Kibbles recipe ${nr} (materials ×2, components at price)`, src: 'recipe' };
+        }
       }
     }
-    out.push({ id: e.id, nr: e.components?.Identity?.id, name: nameOf(e), rarity, copperPrice: cp, priceNote: note });
+    if (!out) {
+      const rarity = rarityOf(e);
+      const gp = rule.gp[rarity];
+      if (gp !== undefined) {
+        const halb = consumable(e);
+        let cp = Math.round((halb ? gp / 2 : gp) * 100);
+        let note = `estimated: ${rule.label} ${rarity}${halb ? ', consumable (half)' : ''}`;
+        /* Der Grundgegenstand steht an `variantOf` („+1 Longsword" →
+           „Longsword"); zählt nur, wenn er nicht magisch ist und einen
+           Listenpreis hat. Kein Abgleich nach Namen. */
+        for (const v of kanten(e, 'variantOf')) {
+          const b = await holen(v.to);
+          if (b && priceOf(b) !== undefined && MAGISCH_NICHT.has(rarityOf(b))) {
+            cp += priceOf(b);
+            note += ` + base price (${nameOf(b)})`;
+            break;
+          }
+        }
+        out = { cp, note, src: 'rarity' };
+      }
+    }
+    merk.set(e.id, out);
+    return out;
+  }
+
+  const out = [];
+  const offen = {};
+  const quellen = {};
+  for (const e of alle) {
+    if (priceOf(e) !== undefined) continue;
+    const s = await schaetze(e);
+    if (!s) {
+      offen[rarityOf(e)] = (offen[rarityOf(e)] ?? 0) + 1;
+      continue;
+    }
+    quellen[s.src] = (quellen[s.src] ?? 0) + 1;
+    out.push({ id: e.id, nr: e.components?.Identity?.id, name: nameOf(e), rarity: rarityOf(e), copperPrice: s.cp, priceNote: s.note, src: s.src });
   }
   const datei = option('--out') ?? 'preise-plan.json';
   writeFileSync(datei, JSON.stringify(out, null, 1));
   const je = {};
   for (const p of out) je[p.rarity] = (je[p.rarity] ?? 0) + 1;
   console.log(`${out.length} Schätzungen nach ${datei}:`, je, '— leer bleiben:', offen);
-  console.log(`davon mit Grundpreis: ${out.filter((p) => p.priceNote.includes('base price')).length}`);
+  console.log('nach Herkunft:', quellen, `— davon mit Grundpreis: ${out.filter((p) => p.priceNote.includes('base price')).length}`);
 }
 
 async function apply() {
