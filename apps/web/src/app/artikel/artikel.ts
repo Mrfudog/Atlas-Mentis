@@ -620,7 +620,11 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 </div>
               }
 
-              <h3>Passages</h3>
+              <!-- T-337: hiess „Passages" — dasselbe Wort ist der Kartenübergang.
+                   Die Prosafelder stehen bewusst nicht in der Feldtabelle: jeder
+                   Eintrag trägt seine Id, an der die Freigabe hängt (Begriffe.md). -->
+              <h3 id="textabschnitte">Text sections</h3>
+              <p class="texthinweis">{{ TEXT_HINWEIS }}</p>
               @for (b of entwurfProsa(); track b.id) {
                 <div class="blockmaske">
                   <div class="bkopf">
@@ -632,12 +636,12 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 </div>
               }
               <div class="werkzeuge">
-                <select #neueArt>
+                <select #neueArt aria-label="Kind of text section">
                   @for (t of prosaArten(); track t.ref) {
                     <option [value]="t.ref">{{ t.label }}</option>
                   }
                 </select>
-                <button type="button" (click)="prosaDazu(neueArt.value)">+ Passage</button>
+                <button type="button" (click)="prosaDazu(neueArt.value)">+ Text</button>
               </div>
 
               <h3>Relations</h3>
@@ -954,6 +958,33 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   </dl>
                 </section>
               }
+              <!-- T-337: welche Textabschnitte diese Art kennt und wie viele hier
+                   stehen — auch ausserhalb des Bearbeitens, damit klar ist,
+                   wofür „+ Text" da ist. -->
+              @if (textArten().length) {
+                <section class="textarten" aria-labelledby="textarten-titel">
+                  <h3 id="textarten-titel">Text sections</h3>
+                  <p class="texthinweis">{{ TEXT_HINWEIS }}</p>
+                  <ul>
+                    @for (t of textArten(); track t.ref) {
+                      <li [class.leer]="!t.zahl">
+                        <span class="tl">{{ t.label }}</span>
+                        <span class="zahl">{{ t.zahl || '—' }}</span>
+                      </li>
+                    }
+                  </ul>
+                  @if (darfSchreiben()) {
+                    <div class="werkzeuge">
+                      <select #textArt aria-label="Kind of text section">
+                        @for (t of textArten(); track t.ref) {
+                          <option [value]="t.ref">{{ t.label }}</option>
+                        }
+                      </select>
+                      <button type="button" (click)="textDazu(textArt.value)">+ Text</button>
+                    </div>
+                  }
+                </section>
+              }
             }
             </article>
           </main>
@@ -1109,8 +1140,8 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
       <p class="leer buch">Loading…</p>
     }
   `,
-  /* Die Feldauswahl (T-195) und das Kapitel „Admin" (T-277) in eigenen Dateien: das Budget je Datei. */
-  styleUrls: ['./artikel.scss', './feldwahl.scss', './admin.scss'],
+  /* Die Feldauswahl (T-195), das Kapitel „Admin" (T-277) und die Textabschnitte (T-337) in eigenen Dateien: das Budget je Datei. */
+  styleUrls: ['./artikel.scss', './feldwahl.scss', './admin.scss', './textarten.scss'],
 })
 export class Artikel implements SchnellKontext {
   /** Eine Kante auf eine Eigenschaft, einen Zustand, eine Aktionsart mit
@@ -2200,6 +2231,29 @@ export class Artikel implements SchnellKontext {
       ref: `${f.type}.${f.key}`,
       label: fieldTitle(r, primaryInterface(e), f),
     }));
+  }
+
+  /** Was „Text sections" erklärt (T-337) — in der Maske und auf der Seite gleich. */
+  protected readonly TEXT_HINWEIS =
+    'Read-aloud text, notes, secrets: each kind can hold several sections, and each section can be revealed on its own.';
+
+  /** Die Textabschnitte, die diese Art kennt, und wie viele hier stehen (T-337). */
+  protected readonly textArten = computed(() => {
+    const prosa = this.prosa();
+    return this.prosaArten().map((a) => ({
+      ...a,
+      zahl: prosa.filter((b) => `${b.type}.${b.key}` === a.ref && !b.leer && b.wert.trim()).length,
+    }));
+  });
+
+  /** „+ Text" auf der Seite: bearbeiten und einen leeren Abschnitt dieser Art dazu. */
+  protected textDazu(ref: string): void {
+    if (!this.bearbeitet()) this.beginnen();
+    this.prosaDazu(ref);
+    setTimeout(() => {
+      const ta = document.querySelectorAll<HTMLTextAreaElement>('.blockmaske textarea');
+      ta[ta.length - 1]?.focus();
+    });
   }
 
   protected prosaDazu(ref: string): void {

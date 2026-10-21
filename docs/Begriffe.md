@@ -301,6 +301,12 @@ Ein Prosafeld — `many` und lange Eingabe — steht **nicht** in der Feldtabell
 Es gehört dem Prosa-Element der Ansicht; zweimal dasselbe zu zeigen, oben als
 Zeile und unten als Absatz, war genau das, was an den Blöcken störte.
 
+In der Oberfläche heissen die Einträge **Textabschnitte** („Text sections",
+Knopf „+ Text", T-337) — bis 21.10.2026 „Passages", und das war dasselbe Wort
+wie der Kartenübergang. Unter den Feldern steht je Art, die der Typ kennt,
+wie viele Abschnitte dastehen; dass jeder einzeln freigegeben werden kann,
+sagt der Satz darüber.
+
 ### Langer Text
 
 Ein langes Feld ist **Markdown**: Überschriften, Listen, Tabellen,
