@@ -134,3 +134,10 @@
   height: 1px;
   pointer-events: none;
 }
+
+/* Das Raster der ausgerichteten Unterkarte (T-329) — über dem eigenen, unter den Rahmen. */
+.unterraster {
+  position: absolute;
+  pointer-events: none;
+  background-repeat: repeat;
+}
