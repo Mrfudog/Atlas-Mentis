@@ -335,6 +335,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'rest',
+    label: 'Rests',
+    area: 'character',
+    does: 'a long rest takes one level of exhaustion away by swapping the condition for the stage below it; short and long rests reset hit points, hit dice and spell slots (T-352)',
+    uses: {
+      [M + 'rest.ts']: ['stageOf'],
+      [W + 'bogen/kopf.ts']: ['stageOf'],
+    },
+  },
+  {
     key: 'proficiencies',
     label: 'Proficiencies of a character',
     area: 'character',
