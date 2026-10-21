@@ -1235,6 +1235,7 @@ export const relations: Record<string, RelationDef> = {
         z: { type: 'number', title: 'Layer', default: 0 },
         locked: { type: 'boolean', title: 'Locked' },
         note: { type: 'string', title: 'Note' },
+        hidden: { type: 'boolean', title: 'GM only', description: 'The card is not sent to players at all (T-339).' },
       },
     },
   },

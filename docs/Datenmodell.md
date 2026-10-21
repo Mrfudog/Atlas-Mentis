@@ -1901,6 +1901,16 @@ Anordnung, statt es zu verschweigen. Zugeteilt wird an einer Stelle
 (`anordnen` in `apps/web/src/app/artikel/anordnung.ts`) für Artikelseite,
 Druck und Registervorschau.
 
+### Boards: Formen, Hintergrund, Ausdehnung (T-339, E-123)
+
+| Nr | Regel | Wo |
+|---|---|---|
+| B1 | **Was auf dem Board liegt und kein Artikel ist, ist eine Form am Board** (`Board.shapes`): `text` (Markdown, mit `[[Verweisen]]` und `{VAR}`, nie eingesetzt gespeichert), `image` (Asset-Id oder Adresse), `pen`, `line`, `arrow`, `rect`, `ellipse`. Linien und Freihand tragen ihre Punkte relativ zur Ecke. Eine Form, deren Art die Seite nicht kennt, bleibt beim Schreiben stehen. | `shapesOf`, `withShapes`, `fitPoints` |
+| B2 | **Der Hintergrund** ist ein Bild (`background`, gestreckt/gekachelt/einmal: `backgroundFit`), eine Farbe (`backgroundColor`) oder eine Karte (`backgroundMap`, Verweis auf `Map`) — die Karte so, wie der Server sie dem Betrachter schickt (`redactMap`, Bild unter dem Nebel beschnitten). | `boardBackground`, `withBackground` |
+| B3 | **Die Leinwand wächst beim Lesen mit dem Inhalt** (D8): `width`/`height` sind die Mindestgrösse, dazu das Äusserste von Kacheln, Bereichen und Formen plus ein Rand. Ein Board mit allem innerhalb sieht aus wie vorher. | `boardExtent`, `boardContentBounds` |
+| B4 | **Eine Kachel wählt jede Ansicht**, `full` eingeschlossen (sie scrollt in der Kachel); keine eigene Stufe „board“. Ohne Wahl und ohne Regel des Boards bekommt, wer das Board nicht schreibt, den Handzettel (`handout`), sonst entscheidet die Grösse. Eine Karte ohne Wahl ist auf der Kachel die lebendige Karte. | `placementView` (`player`) |
+| B5 | **„GM only“ hält am Server zurück**: Formen und Kacheln mit `hidden` gehen an niemanden, der den Arbeitsstand des Boards nicht sieht; wer es schreibt, bekommt es ganz. Ob der Artikel einer Kachel ankommt, sagt weiter seine eigene Sichtbarkeit. | `redactBoard` im Sieb |
+
 ### 10.1 Die Regeloptionen einer Kampagne (T-190)
 
 Wonach eine Kampagne spielt, steht heute an drei Stellen: als **Feld an
@@ -2290,7 +2300,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
+| `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | overview, full |
 | `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | full |
@@ -2364,7 +2374,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
 | `partOf` | Place \| Story \| Quest \| Event \| Board \| Encounter \| Layer \| Chapter \| BookPart \| Rule → Place \| Story \| Event \| Layer \| Chapter \| Rule |  | — | `rank` |
 | `partyOf` | Party → Campaign | ja | — | — |
-| `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
+| `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` `hidden` |
 | `questAbout` | Quest → * |  | — | — |
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |

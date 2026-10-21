@@ -684,6 +684,28 @@ hinausschiebt, hat sie damit herausgenommen; eine gespeicherte
 Zugehörigkeit müsste man dabei jedes Mal mitändern, und vergessen hiesse,
 dass sie im Bereich steht und woanders liegt.
 
+**Was auf dem Board liegt und kein Artikel ist** — ein Text, ein Bild,
+eine Zeichnung (T-339) —, ist eine **Form** am Board (`Board.shapes`) und
+keine Kante: sie zeigt auf nichts, und sie gehört niemandem sonst. Ein
+Text darin ist Markdown wie jeder lange Text, mit `[[Verweisen]]` und
+`{VAR}`, und wird beim Zeichnen eingesetzt, nie beim Speichern. Eine
+Karte darf eine Kachel sein (die lebendige Karte, gesiebt wie in Play)
+oder der **Hintergrund** des Boards (`backgroundMap`) — beides ist keine
+neue Art Platzierung, sondern derselbe Artikel an einem anderen Ort.
+
+**Die Leinwand hat keinen Rand.** `width` und `height` waren die Grösse
+des Boards; jetzt sind sie die Mindestgrösse, und wie gross es ist, wird
+beim Lesen aus dem gerechnet, was darauf liegt (`boardExtent`, D8). Eine
+gespeicherte Grösse wäre die zweite Stelle, die beim ersten Ziehen über
+den Rand falsch steht.
+
+Auf der Kachel gibt es **keine Stufe „board“** (E-123): eine Kachel wählt
+eine Ansicht wie jeder Ort, der wählt — Quick, Full (die ganze Seite,
+scrollend), der Handzettel oder eine gestaltete. Wer nicht leitet, bekommt
+ohne Wahl den **Handzettel**; was die Leitung wählt, gilt für alle.
+Zurückgehalten wird weiter am Server: eine Kachel oder Form mit „GM only“
+(`hidden`) geht an Spielende gar nicht erst hinaus (`redactBoard`).
+
 **Es gibt keine Spieleransicht.** Es gab einmal eine, und sie war die zweite
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird
 am Server (`redactEntity`): was bei einem Spieler ankommt, darf er sehen, und
