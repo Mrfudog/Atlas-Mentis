@@ -1725,6 +1725,22 @@ in einer Ortsansicht; eine gestaltete zeichnet er ganz. Die
 Listenspalten (`listColumns`, `overview`) bleiben eine Frage des Typs:
 eine Tabelle hat für alle Zeilen dieselben Spalten.
 
+**Die Spalten sind wählbar** (T-343, `packages/model/src/listcolumns.ts`):
+„Columns" an jeder Übersicht wählt je Seite und Art (`columnsKey`:
+`world`, `compendium|Spell`), was die Tabelle zeigt — ein Feld (`Typ.feld`,
+eigen oder geerbt, auch `derived`), eine Kante (`out.kante`, `in.kante`,
+die Namen am anderen Ende) oder eine Angabe jeder Zeile (`@type`,
+`@source`, `@layers`, `@tags`, `@status`, `@id`). Was eine Spalte sein
+kann, sagt `columnChoices` (keine Prosa, keine Form, kein Bild). Es gilt
+die Adresse (`?cols=`), dann die Wahl des Kontos (Einstellung
+`listColumns.<seite>[.<Art>]`), dann die **Vorgabe der Kampagne** (die
+Leitung, Tabelle `list_columns`, `/api/list-columns`), sonst die
+`overview` wie bisher. Gerechnet wird am Server (`/api/list?cols=`) aus den
+**gesiebten** Karten des Listenindex; ein gerechneter Wert nur, wenn alles
+dasteht, was die Rechnung liest (`derivedInputs`) — sonst bliebe statt
+eines zurückgehaltenen Felds eine falsche Zahl stehen (E-098). Gespeichert
+wird nichts im Artikel (D8).
+
 **Das Element `table`** zeichnet die Zeilen einer Tabelle (`Table.rows`)
 mit Würfelspalte und „Roll" (`rollTableOf`, `rowForRoll` in
 `rollTable.ts`): die Spanne steht in der ersten Zelle („2–3", „00" ist
@@ -2313,7 +2329,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
+| `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, search, overview, full |
 | `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | quick, search, full |
@@ -2387,7 +2403,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
 | `partOf` | Place \| Story \| Quest \| Event \| Board \| Encounter \| Layer \| Chapter \| BookPart \| Rule → Place \| Story \| Event \| Layer \| Chapter \| Rule |  | — | `rank` |
 | `partyOf` | Party → Campaign | ja | — | — |
-| `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
+| `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` `hidden` |
 | `questAbout` | Quest → * |  | — | — |
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |

@@ -35,6 +35,12 @@ import {
   facetNumber,
   facetsFor,
   articleId,
+  BASE_COLUMNS,
+  cleanColumns,
+  columnField,
+  columnKind,
+  derivedInputs,
+  derivedValue,
   entityName,
   enumOptions,
   fieldTitle,
@@ -96,6 +102,11 @@ interface IndexZeile {
   req?: Requirement;
   /** Die Kanten des Artikels (geteilt, nicht kopiert) — für `rel=`. */
   relations: NonNullable<Entity['relations']>;
+  /** Die gesiebten Karten (geteilt, nicht kopiert): woraus eine gewählte
+   *  Spalte liest (T-343) — nur, was der Betrachter sieht. */
+  karten: NonNullable<Entity['components']>;
+  /** Die ausgegebene Nummer (`npc-0042`) für die Spalte `@id`. */
+  nummer: string;
   /** Die Gruppe seiner Fassungen (T-092), wenn er welche hat. */
   fassung?: string;
   /** Der Rang der obersten aufgeschalteten Ebene, die ihn bringt — die
@@ -111,6 +122,8 @@ export interface ListIndex {
   types: Map<string, { label: string; area: string; chain: string[]; columns: Spalte[]; bild: boolean; facets: FacetDef[] }>;
   /** Id → Art, für die Gruppen einer Artikelwahl (T-174). */
   typeOf: Map<string, string>;
+  /** Die Gegenrichtung der Kanten über das Gesiebte — für `in.kante` als Spalte (T-343). */
+  ein: Map<string, { type: string; from: string }[]>;
   registry: Registry;
 }
 
@@ -242,12 +255,14 @@ export function buildListIndex(
       tags: tagsOf(e),
       ...facettenWerte(art.facets, e, names, ein, ctx),
       relations: e.relations ?? [],
+      karten: e.components ?? {},
+      nummer: articleId(e),
       ...(fassungen.has(e.id) ? { fassung: fassungen.get(e.id)! } : {}),
       rang: rank(e),
     });
   }
   rows.sort((a, b) => (a.sortName < b.sortName ? -1 : a.sortName > b.sortName ? 1 : a.id < b.id ? -1 : 1));
-  return { rows, names, types, typeOf, registry };
+  return { rows, names, types, typeOf, ein, registry };
 }
 
 /**
@@ -314,6 +329,19 @@ export function listProjection(registry: Registry): (e: Entity) => Entity {
     for (const k of karten) {
       const karte = e.components?.[k];
       if (karte) components[k] = karte;
+    }
+    /* **Die übrigen Karten der Art** für die Spaltenwahl (T-343): ohne
+       Prosa — eine Spalte zeigt keinen langen Text (`columnField`), und
+       der Index bliebe sonst so gross wie der Bestand. */
+    for (const [k, karte] of Object.entries(e.components ?? {})) {
+      if (components[k] || !karte) continue;
+      const felder = registry.interfaces[k]?.schema?.properties;
+      if (!felder) continue;
+      const schmal: Record<string, unknown> = {};
+      for (const [f, v] of Object.entries(karte as Record<string, unknown>)) {
+        if (felder[f] && columnField(felder[f]!)) schmal[f] = v;
+      }
+      if (Object.keys(schmal).length) components[k] = schmal as typeof karte;
     }
     return { ...e, components };
   };
@@ -403,6 +431,10 @@ export interface ListQuery {
    *  gerechnet, mit dem, was der Betrachter an ihr sieht. Unbekanntes
    *  bleibt in der Liste und ist markiert. */
   usable?: CharacterProfile | undefined;
+  /** **Gewählte Spalten** (T-343, `cols=`): statt der Felder der
+   *  `overview` genau diese — `Typ.feld`, `out.kante`, `in.kante`,
+   *  `@angabe`. Ohne: wie immer. */
+  columns?: string[] | undefined;
 }
 
 export interface ListColumn {
@@ -555,6 +587,14 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const marken = q.tag?.length ? q.tag : null;
   const einTyp = q.type?.length === 1 ? q.type[0]! : undefined;
   const spalten = einTyp ? (idx.types.get(einTyp)?.columns ?? listColumns(idx.registry, einTyp)) : [];
+  /* Gewählt (T-343): dann genau diese, in dieser Reihenfolge. */
+  const gewaehlt = q.columns ? spaltenWahl(idx, q.columns, einTyp) : null;
+  const zellen = new Map<IndexZeile, Record<string, unknown>>();
+  const zellenVon = (z: IndexZeile): Record<string, unknown> => {
+    let c = zellen.get(z);
+    if (!c) zellen.set(z, (c = gewaehlteZellen(idx, z, gewaehlt!)));
+    return c;
+  };
   /* **Die Facetten** (T-174): die gewählten Arten, sonst die eine Art, die
      eine Filtergruppe eingrenzt (`of`) — und davon, was alle haben. */
   const facettenTypen = q.type?.length ? q.type : q.of?.length === 1 ? q.of : [];
@@ -636,7 +676,13 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     liste = nachNaehe(treffer, such);
   } else if (nach !== 'name' || ab) {
     const wert = (z: IndexZeile): unknown =>
-      nach === 'name' ? z.sortName : nach === 'type' ? (idx.types.get(z.type)?.label ?? z.type) : z.cols[nach];
+      nach === 'name'
+        ? z.sortName
+        : nach === 'type' || nach === '@type'
+          ? (idx.types.get(z.type)?.label ?? z.type)
+          : gewaehlt
+            ? leerWeg(zellenVon(z)[nach] ?? (nach === '@source' ? z.source || undefined : undefined))
+            : z.cols[nach];
     liste = [...treffer].sort((a, b) => {
       const va = wert(a);
       const vb = wert(b);
@@ -709,11 +755,13 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     total: liste.length,
     offset,
     limit: q.limit,
-    columns: spalten.map((c) => ({
-      ref: c.ref,
-      label: fieldTitle(idx.registry, einTyp, c),
-      kind: spaltenArt(c.prop),
-    })),
+    columns: gewaehlt
+      ? gewaehlt.map(({ ref, label, kind }) => ({ ref, label, kind }))
+      : spalten.map((c) => ({
+          ref: c.ref,
+          label: fieldTitle(idx.registry, einTyp, c),
+          kind: spaltenArt(c.prop),
+        })),
     rows: blatt.map((z) => ({
       id: z.id,
       name: z.name,
@@ -722,7 +770,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       source: z.source,
       status: z.status,
       ...(z.users ? { users: z.users } : {}),
-      cols: z.cols,
+      cols: gewaehlt ? zellenVon(z) : z.cols,
       ...(z.image ? { image: z.image } : {}),
       ...(z.imageVersion ? { imageVersion: z.imageVersion } : {}),
       ...(z.asset ? { asset: z.asset } : {}),
@@ -759,6 +807,101 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
         : {}),
     },
   };
+}
+
+interface GewaehlteSpalte extends ListColumn {
+  /** Ein Feld: wem es gehört und wie es aussieht. */
+  feld?: { type: string; key: string; prop: PropertySchema };
+  /** Eine Kante: welche, in welcher Richtung. */
+  kante?: { type: string; dir: 'out' | 'in' };
+}
+
+/**
+ * **Die gewählten Spalten** (T-343), aufgelöst gegen das Register. Was es
+ * nicht kennt, fällt weg — eine Wahl ist ein Name, und ein Feld, das es
+ * nicht mehr gibt, ist keine Spalte.
+ */
+function spaltenWahl(idx: ListIndex, refs: readonly string[], einTyp: string | undefined): GewaehlteSpalte[] {
+  const raus: GewaehlteSpalte[] = [];
+  for (const ref of refs) {
+    const basis = BASE_COLUMNS.find((b) => b.ref === ref);
+    if (basis) {
+      raus.push({ ref, label: basis.label, kind: ref === '@layers' || ref === '@tags' ? 'list' : 'text' });
+      continue;
+    }
+    const punkt = ref.indexOf('.');
+    const [vorn, hinten] = [ref.slice(0, punkt), ref.slice(punkt + 1)];
+    if (vorn === 'out' || vorn === 'in') {
+      const def = idx.registry.relations?.[hinten];
+      if (!def) continue;
+      raus.push({
+        ref,
+        label: (vorn === 'out' ? def.label : def.inverseLabel || def.label) || hinten,
+        kind: 'list',
+        kante: { type: hinten, dir: vorn },
+      });
+      continue;
+    }
+    const prop = idx.registry.interfaces[vorn]?.schema?.properties?.[hinten];
+    if (!prop || !columnField(prop)) continue;
+    raus.push({
+      ref,
+      label: fieldTitle(idx.registry, einTyp, { type: vorn, key: hinten, prop }),
+      kind: columnKind(prop),
+      feld: { type: vorn, key: hinten, prop },
+    });
+  }
+  return raus;
+}
+
+/**
+ * Die Werte der gewählten Spalten einer Zeile — aus ihren gesiebten
+ * Karten und Kanten. Ein Verweis steht als Name, und nur, wenn der
+ * Betrachter das Ziel sieht; eine Rechnung nur, wenn alles, was sie liest,
+ * dasteht (`derivedInputs`): eine 0 für ein zurückgehaltenes Feld wäre
+ * falsch und verriete, dass dort etwas fehlt.
+ */
+function gewaehlteZellen(idx: ListIndex, z: IndexZeile, spalten: readonly GewaehlteSpalte[]): Record<string, unknown> {
+  const raus: Record<string, unknown> = {};
+  const kette = idx.types.get(z.type)?.chain ?? [];
+  for (const s of spalten) {
+    let wert: unknown;
+    if (s.ref === '@type') wert = idx.types.get(z.type)?.label ?? z.type;
+    else if (s.ref === '@layers') wert = z.layers.map((l) => idx.names.get(l) ?? l);
+    else if (s.ref === '@tags') wert = z.tags;
+    else if (s.ref === '@status') wert = z.status || undefined;
+    else if (s.ref === '@id') wert = z.nummer || undefined;
+    else if (s.kante) {
+      const ids =
+        s.kante.dir === 'out'
+          ? z.relations.filter((r) => r.type === s.kante!.type).map((r) => r.to)
+          : (idx.ein.get(z.id) ?? []).filter((r) => r.type === s.kante!.type).map((r) => r.from);
+      wert = [...new Set(ids.map((id) => idx.names.get(id)).filter((n): n is string => !!n))];
+    } else if (s.feld && kette.includes(s.feld.type)) {
+      const karte = z.karten[s.feld.type] as Record<string, unknown> | undefined;
+      if (s.feld.prop.derived) {
+        const da = (k: string) =>
+          (karte && karte[k] !== undefined) || Object.values(z.karten).some((c) => (c as Record<string, unknown>)?.[k] !== undefined);
+        if (derivedInputs(String(s.feld.prop.derived)).every(da)) {
+          wert = derivedValue(s.feld.prop, karte ?? {}, z.karten as Record<string, Record<string, unknown>>, z.relations);
+        }
+      } else {
+        wert = karte?.[s.feld.key];
+        if (s.feld.prop.format === 'link' && wert !== undefined) {
+          wert = Array.isArray(wert) ? wert.map((w) => idx.names.get(String(w))).filter(Boolean) : idx.names.get(String(wert));
+        }
+      }
+    }
+    wert = leerWeg(wert);
+    if (wert !== undefined) raus[s.ref] = wert;
+  }
+  return raus;
+}
+
+/** Leer ist leer: keine Zeichenkette, keine leere Liste, kein `null`. */
+function leerWeg(v: unknown): unknown {
+  if (v === null || v === '' || (Array.isArray(v) && !v.length)) return undefined;
+  return v;
 }
 
 /** Die Facetten der Arten, einmal je Index und Auswahl. */
@@ -880,6 +1023,9 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     const n = Number(v);
     return Number.isFinite(n) ? Math.floor(n) : vorgabe;
   };
+  /* Die gewählten Spalten (T-343): `cols=Spell.level,@source`. Leer
+     gesagt (`cols=`) heisst: nur der Name. */
+  const cols = raw['cols'] === undefined ? null : cleanColumns(Array.isArray(raw['cols']) ? raw['cols'].flatMap((x) => String(x).split(',')) : String(raw['cols']));
   const fields: Record<string, FieldFilter> = {};
   for (const f of Array.isArray(raw['f']) ? raw['f'] : raw['f'] ? [raw['f']] : []) {
     const s = String(f);
@@ -920,6 +1066,7 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     /* Höchstens 200 je Blatt: wer mehr will, blättert. */
     limit: Math.min(200, Math.max(1, zahl(raw['limit'], 50))),
     fields,
+    ...(cols ? { columns: cols } : {}),
   };
 }
 
