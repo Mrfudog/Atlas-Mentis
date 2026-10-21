@@ -87,6 +87,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Gegenstandsform' },
   },
   {
+    term: 'Supplement',
+    aliases: ['Field supplement'],
+    sort: 'app',
+    definition: 'A version that adds a few fields to an article instead of replacing it, such as the shapes and stack sizes of a homebrew system.',
+    effect: 'While its layer is in play, the named fields come from it, over whatever version applies; it shows in no list. Changing such a field changes the supplement.',
+    translations: { de: 'Ergänzung' },
+  },
+  {
     term: 'Inventory image',
     sort: 'app',
     definition: 'The picture an item shows in the grid inventory: its own, or else the item’s image, cut to its shape.',

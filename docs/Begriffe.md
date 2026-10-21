@@ -2219,6 +2219,16 @@ Einpassen oder Füllen) und nur in den belegten Feldern. Der Ausschnitt
 steht am Gegenstand und nicht an der Kante — dasselbe Schwert sieht in
 jedem Rucksack gleich aus; wie es liegt, sagt die Kante.
 
+**Die Formen aus Basils System sind eine Ergänzung** (T-142, E-125) und
+keine ganze Fassung. Eine Fassung ersetzt ihr Original, und von mehreren
+gilt nur die höchste — eine Formfassung schlösse die Preisfassung aus
+„AI generated prices" aus, und wer beides aufschaltet, verlöre eines. Eine
+**Ergänzung** nennt an ihrer Kante `overrides` die Felder, die sie trägt
+(`props.fields`), und legt beim Lesen nur diese über das, was gilt. Sie
+steht selbst in keiner Liste, und ein Feld, das sie trägt, wird nicht in
+den Artikel darunter geschrieben: dort stünde es unsichtbar und bliebe,
+wenn die Ebene ausgeht.
+
 **Fallen lassen heisst nicht weggeben** (D58). Ein Schwert, das mitten im
 Kampf aus der Hand fällt, gehört der Figur weiter und liegt zu ihren
 Füssen; nach dem Kampf hebt sie es auf. Darum bleibt die `holds`-Kante,
