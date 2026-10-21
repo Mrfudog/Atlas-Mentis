@@ -71,6 +71,24 @@ export default async function aufbau(config: FullConfig): Promise<void> {
      Anfrage, aber so steht in den Dateien, was die Specs erwarten. */
   for (const rolle of ['leitung', 'spielerin'] as const) await (await anmelden(baseURL, rolle)).dispose();
 
-  const lauf: Lauf = { id, campaign: { id: campaign.id, name, layer: `ly_${campaign.id}` } };
+  /* Die Figur der Spielerin: sie legt sie selbst an (in ihre Spielerebene),
+     in die Gruppe der Kampagne (`memberOfParty`, T-100); zugeteilt wird
+     sie wie auf einer echten Installation über `user actor`. */
+  const spielerin = await request.newContext({ baseURL, storageState: sitzungDatei('spielerin') });
+  const figurName = `Wren ${id}`;
+  const neu = await spielerin.post('/api/entities', {
+    data: {
+      type: 'PlayerCharacter',
+      name: figurName,
+      fields: { 'Status.status': 'ready' },
+      relations: [{ type: 'memberOfParty', to: `pt_${campaign.id}` }],
+    },
+  });
+  await pruefe(neu, 'Figur der Spielerin anlegen');
+  const figur = { id: ((await neu.json()) as { id: string }).id, name: figurName };
+  await spielerin.dispose();
+  execFileSync(process.execPath, [nutzerSkript, 'actor', KONTEN.spielerin, '--actor', figur.id], { env: process.env, stdio: 'pipe' });
+
+  const lauf: Lauf = { id, campaign: { id: campaign.id, name, layer: `ly_${campaign.id}` }, figur };
   writeFileSync(laufDatei, JSON.stringify(lauf, null, 2));
 }
