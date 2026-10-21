@@ -107,7 +107,6 @@ import {
   type MapToolGroup,
   type Relation,
   GROUND_FLOOR,
-  PASSAGE_EXACT,
   PASSAGE_KINDS,
   addFloor,
   elevationLabel,
@@ -115,6 +114,18 @@ import {
   floorView,
   mapFloors,
   passageEnds,
+  cellPoly,
+  inPassage,
+  passageArea,
+  passageCostText,
+  passageRulesOf,
+  passageUnder,
+  withPassageArea,
+  PASSAGE_TRIGGERS,
+  PASSAGE_WHENS,
+  PASSAGE_MOVES,
+  PASSAGE_ACTIONS,
+  PASSAGE_CONFIRMS,
   removeFloor,
   setFloorReleased,
   sightInto,
@@ -195,6 +206,7 @@ type Werkzeug =
   | 'gitterUrsprung'
   | 'gitterZelle'
   | 'uebergang'
+  | 'uebergangFlaeche'
   | 'rahmen'
   | 'rahmenWeg';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
@@ -1122,6 +1134,14 @@ interface Zeiger {
                     <span>{{ kuerzel(p.name) }}</span>
                   </button>
                 }
+                @if (uebergangFlaechen().length) {
+                  <!-- **Die Fläche eines Übergangs** (T-326): wer darin steht, steht am Übergang. -->
+                  <svg class="uebergang-flaechen" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                    @for (f of uebergangFlaechen(); track f.key) {
+                      <polygon [attr.class]="'k-' + f.kind + (f.offen ? ' offen' : '')" [attr.points]="f.pts" vector-effect="non-scaling-stroke" />
+                    }
+                  </svg>
+                }
                 @for (u of uebergaenge(); track u.key) {
                   <!-- **Übergänge** (T-307): Treppe, Leiter, Brücke, Portal — ein Antippen zeigt Ziel und „Go through“. -->
                   <button
@@ -1147,12 +1167,16 @@ interface Zeiger {
                       <a [routerLink]="weg(u.toMap).link" [queryParams]="weg(u.toMap).query">Open {{ u.ziel }}</a>
                     } @else {
                       <button type="button" class="klein" (click)="ebeneZeigen(u.toFloor)">Show {{ u.ziel }}</button>
-                      @for (m of aufUebergang(); track m.rel.id) {
-                        <button type="button" class="klein" [disabled]="speichert()" (click)="durchgehen(m.rel.id, u)">Take {{ m.name }} through</button>
-                      } @empty {
-                        <small>Drop a token on it to go through.</small>
-                      }
                     }
+                    @for (m of aufUebergang(); track m.rel.id) {
+                      <button type="button" class="klein" [disabled]="speichert()" (click)="durchgehen(m.rel.id, u)">{{ alsLeitung() ? 'Take ' + m.name + ' through' : 'Go through with ' + m.name }}</button>
+                    } @empty {
+                      <small>Drop a token on it to go through.</small>
+                    }
+                    @if (alsLeitung() && aufUebergang().length > 1) {
+                      <button type="button" class="klein" [disabled]="speichert()" (click)="alleDurch(u)">Send all {{ aufUebergang().length }} through</button>
+                    }
+                    <small class="kosten">{{ u.regelText }}</small>
                     @if (ebenenLeitung()) {
                       <label>
                         <select (change)="uebergangSetzen(u.relId, { passage: $any($event.target).value })" aria-label="Kind of passage">
@@ -1169,6 +1193,26 @@ interface Zeiger {
                         <input type="checkbox" [checked]="u.oneWay" (change)="uebergangSetzen(u.relId, { oneWay: $any($event.target).checked })" />
                         One way
                       </label>
+                      <span class="flaeche">
+                        <button type="button" class="klein" (click)="flaecheBeginnen(u)" title="Tap two corners: the area of this end">{{ u.hatFlaeche ? 'Redraw area' : 'Draw area' }}</button>
+                        @if (u.hatFlaeche) {
+                          <button type="button" class="klein" (click)="flaecheWeg(u)">One square</button>
+                        }
+                      </span>
+                      <details class="regeln">
+                        <summary>Who, when, cost</summary>
+                        @for (r of REGEL_FELDER; track r.key) {
+                          <label>
+                            {{ r.label }}
+                            <select (change)="regelSetzen(u.relId, r.key, $any($event.target).value)" [attr.aria-label]="r.label">
+                              <option value="" [selected]="!u.rules[r.key]">Campaign ({{ $any(kampagnenRegeln())[r.key] }})</option>
+                              @for (v of r.werte; track v) {
+                                <option [value]="v" [selected]="u.rules[r.key] === v">{{ v }}</option>
+                              }
+                            </select>
+                          </label>
+                        }
+                      </details>
                       <button type="button" class="klein" (click)="uebergangWeg(u.relId)">Remove</button>
                     }
                     <button type="button" class="klein" (click)="uebergangWahl.set(null)" aria-label="Close">×</button>
@@ -1310,6 +1354,8 @@ interface Zeiger {
           Tap a wall to make it a {{ wandArtName() }}.
         } @else if (werkzeug() === 'uebergang') {
           {{ !uebergangA() ? 'Tap where the passage is.' : !uebergangZiel() ? 'Choose where it leads.' : uebergangZiel() === '__karte' ? 'Pick the map the portal leads to.' : 'Tap where it leads on ' + ebeneName(uebergangZiel()) + '.' }}
+        } @else if (werkzeug() === 'uebergangFlaeche') {
+          {{ flaecheA() ? 'Now tap the opposite corner of the area.' : 'Tap one corner of the area the passage covers.' }}
         } @else if (werkzeug() === 'schloss') {
           Tap a door to lock or unlock it.
         } @else if (werkzeug() === 'wandWeg') {
@@ -1656,13 +1702,53 @@ export class Karte {
       const anderswo = p.toMap !== e.id;
       const ziel = anderswo ? (namen[p.toMap]?.name ?? this.bestand.name()(p.toMap) ?? 'another map') : this.ebeneName(p.toFloor);
       const art = p.kind.charAt(0).toUpperCase() + p.kind.slice(1);
+      const vorgabe = this.kampagnenRegeln();
+      const gilt = {
+        trigger: (p.rules['trigger'] as string) ?? vorgabe.trigger,
+        when: (p.rules['when'] as string) ?? vorgabe.when,
+        move: (p.rules['move'] as string) ?? vorgabe.move,
+        action: (p.rules['action'] as string) ?? vorgabe.action,
+      };
       return {
         ...p,
         key: p.relId + (p.mirrored ? '~' : ''),
         anderswo,
         ziel,
+        hatFlaeche: !!p.area,
+        regelText: this.regelSatz(gilt),
         titel: `${art} to ${ziel}${p.oneWay ? ' — one way' : ''}${p.sight === 'none' ? ' — no view through' : ''}${p.note ? ' — ' + p.note : ''}`,
       };
+    });
+  });
+  /** Die Vorgabe der Kampagne für Übergänge (T-326). */
+  protected readonly kampagnenRegeln = computed(() => this.kontext()?.passageRules ?? passageRulesOf(null));
+  /** Was ein Übergang regelt, als Satz unter seiner Karte. */
+  private regelSatz(g: { trigger: string; when: string; move: string; action: string }): string {
+    const wer = g.trigger === 'gm' ? 'The GM sends tokens through' : g.trigger === 'players' ? 'Players go through themselves' : 'GM and players';
+    const wann = g.when === 'turn' ? ', in an encounter on their own turn' : g.when === 'roundEnd' ? ', in an encounter in the last turn of the round' : '';
+    const kosten = passageCostText({ ...passageRulesOf(null), move: g.move as never, action: g.action as never }, null);
+    return `${wer}${wann}. In an encounter: ${kosten}.`;
+  }
+  /** Die Einstellungen je Übergang (T-326): leer heisst „wie die Kampagne". */
+  protected readonly REGEL_FELDER: ReadonlyArray<{ key: string; label: string; werte: readonly string[] }> = [
+    { key: 'trigger', label: 'Who', werte: PASSAGE_TRIGGERS },
+    { key: 'when', label: 'When in an encounter', werte: PASSAGE_WHENS },
+    { key: 'move', label: 'Movement', werte: PASSAGE_MOVES },
+    { key: 'action', label: 'Action', werte: PASSAGE_ACTIONS },
+    { key: 'confirm', label: 'GM confirms', werte: PASSAGE_CONFIRMS },
+  ];
+  /** Das Gitter der gezeigten Ebene — die Fläche eines Übergangs ohne eigene ist ein Feld darin. */
+  private readonly geoJetzt = computed(() => {
+    const s = this.einst();
+    return s ? gridGeometry(s, this.nat()) : null;
+  });
+  /** Die Flächen der Übergänge auf dieser Ebene, als Punkte für das SVG. Ohne eigene Fläche nur, solange die Karte offen ist. */
+  protected readonly uebergangFlaechen = computed(() => {
+    const geo = this.geoJetzt();
+    const offen = this.uebergangWahl();
+    return this.uebergaenge().flatMap((u) => {
+      const a = u.area ?? (offen === u.key ? passageArea(u, geo) : null);
+      return a ? [{ key: u.key, kind: u.kind, offen: offen === u.key, pts: a.map(([x, y]) => `${x},${y}`).join(' ') }] : [];
     });
   });
   /** Das angetippte Ende. */
@@ -1673,9 +1759,8 @@ export class Karte {
     const u = this.uebergangOffen();
     if (!u || u.anderswo) return [];
     const zieht = new Set(this.ziehbarHier());
-    return this.marker().filter(
-      (m) => (m.kind === 'play' || m.kind === 'party') && Math.hypot(m.x - u.at.x, m.y - u.at.y) <= PASSAGE_EXACT && (this.alsLeitung() || zieht.has(m.to)),
-    );
+    const geo = this.geoJetzt();
+    return this.marker().filter((m) => (m.kind === 'play' || m.kind === 'party') && inPassage(u, m, geo) && (this.alsLeitung() || zieht.has(m.to)));
   });
   protected uebergangKlick(ev: Event, key: string): void {
     ev.stopPropagation();
@@ -1687,14 +1772,107 @@ export class Karte {
     this.speichert.set(true);
     this.mangel.set(null);
     try {
-      await this.api.moveToken(this.id(), { rel, via: u.relId });
-      await this.bestand.oeffnen(this.id(), true, false);
-      this.ebeneZeigen(u.toFloor);
+      const nat = this.nat();
+      const r = await this.api.moveToken(this.id(), { rel, via: u.relId, ...(nat ? { nat } : {}) });
+      if (r.proposal) {
+        this.hinweis.set(VORSCHLAG_GESENDET);
+        await this.kontextHolen(this.id());
+        return;
+      }
+      await this.nachDurchgang(r.map ?? u.toMap, r.floor ?? u.toFloor);
     } catch (err) {
       this.mangel.set({ text: err instanceof Error ? err.message : 'The token did not go through.', einzeln: [] });
     } finally {
       this.speichert.set(false);
     }
+  }
+  /** **Alle durchschicken** (T-326): die Leitung schickt jedes Token in der Fläche. */
+  protected async alleDurch(u: Passage): Promise<void> {
+    if (this.speichert()) return;
+    this.speichert.set(true);
+    this.mangel.set(null);
+    try {
+      const nat = this.nat();
+      const r = await this.api.sendThrough(this.id(), { via: u.relId, floor: this.ebene(), ...(nat ? { nat } : {}) });
+      await this.nachDurchgang(r.map, r.floor);
+    } catch (err) {
+      this.mangel.set({ text: err instanceof Error ? err.message : 'Nobody went through.', einzeln: [] });
+    } finally {
+      this.speichert.set(false);
+    }
+  }
+  /** Nach dem Durchgang: dieselbe Karte auf der Zielebene, sonst die Zielkarte öffnen. */
+  private async nachDurchgang(map: string, floor: string): Promise<void> {
+    this.uebergangWahl.set(null);
+    if (map !== this.id()) {
+      const w = this.weg(map);
+      await this.router.navigate(w.link, w.query ? { queryParams: w.query } : {});
+      return;
+    }
+    await this.bestand.oeffnen(this.id(), true, false);
+    this.ebeneZeigen(floor);
+  }
+  /** Eine Einstellung je Übergang (T-326): leer nimmt sie weg, dann gilt die Kampagne. */
+  protected regelSetzen(relId: string, key: string, wert: string): void {
+    const g = this.ganz();
+    if (!g) return;
+    const relations = (g.relations ?? []).map((r) => {
+      if (r.id !== relId) return r;
+      const props = { ...((r.props ?? {}) as Record<string, unknown>) };
+      const rules = { ...((props['rules'] ?? {}) as Record<string, unknown>) };
+      if (wert) rules[key] = wert;
+      else delete rules[key];
+      if (Object.keys(rules).length) props['rules'] = rules;
+      else delete props['rules'];
+      return { ...r, props };
+    });
+    void this.schreibenGanz({ ...g, relations });
+  }
+
+  /** **Die Fläche eines Endes setzen** (T-326): zwei Ecken, auf die Felder gerundet. */
+  protected readonly flaecheA = signal<Pt | null>(null);
+  private flaecheFuer: { relId: string; seite: 'area' | 'toArea' } | null = null;
+  protected flaecheBeginnen(u: Passage): void {
+    this.flaecheFuer = { relId: u.relId, seite: u.mirrored ? 'toArea' : 'area' };
+    this.flaecheA.set(null);
+    this.waehle('uebergangFlaeche');
+  }
+  protected flaecheWeg(u: Passage): void {
+    const g = this.ganz();
+    if (!g) return;
+    void this.schreibenGanz(withPassageArea(g, u.relId, u.mirrored ? 'toArea' : 'area', null));
+  }
+  private flaecheTippen(pt: Pt): void {
+    const a = this.flaecheA();
+    if (!a) {
+      this.flaecheA.set(pt);
+      return;
+    }
+    const f = this.flaecheFuer;
+    const g = this.ganz();
+    this.flaecheA.set(null);
+    this.waehle('keins');
+    if (!f || !g) return;
+    /* Mit Gitter: die Felder, die die beiden Ecken treffen, ganz. */
+    const geo = this.geoJetzt();
+    let x0 = Math.min(a.x, pt.x);
+    let y0 = Math.min(a.y, pt.y);
+    let x1 = Math.max(a.x, pt.x);
+    let y1 = Math.max(a.y, pt.y);
+    if (geo) {
+      const p = cellPoly(geo, cellAt(geo, { x: x0, y: y0 }));
+      const q = cellPoly(geo, cellAt(geo, { x: x1, y: y1 }));
+      x0 = Math.min(...p.map((c) => c[0]));
+      y0 = Math.min(...p.map((c) => c[1]));
+      x1 = Math.max(...q.map((c) => c[0]));
+      y1 = Math.max(...q.map((c) => c[1]));
+    }
+    if (x1 - x0 < 0.002 || y1 - y0 < 0.002) {
+      this.hinweis.set('The two corners are too close.');
+      return;
+    }
+    const k = (v: number) => Math.min(1, Math.max(0, v));
+    void this.schreibenGanz(withPassageArea(g, f.relId, f.seite, [[k(x0), k(y0)], [k(x1), k(y0)], [k(x1), k(y1)], [k(x0), k(y1)]]));
   }
   /** Einen Übergang einstellen — Art, Sicht, Einbahn; `null` nimmt es weg. */
   protected uebergangSetzen(relId: string, patch: Record<string, unknown>): void {
@@ -1772,6 +1950,24 @@ export class Karte {
     this.waehle('keins');
     void this.schreibenGanz({ ...g, relations: [...(g.relations ?? []), rel] }).then(() => this.ebeneWahl.set(a.floor));
   }
+  /**
+   * **Auf einen Übergang gezogen** (T-326): ein Portal nimmt das Token
+   * gleich mit — so war es in der alten Karte; an einer Treppe öffnet sich
+   * ihre Karte, denn wer auf der Treppe steht, will vielleicht nur sehen.
+   */
+  private amUebergang(rel: string, pt: Pt): void {
+    if (this.mangel() || this.imKampf()) return;
+    const m = this.marker().find((x) => x.rel.id === rel);
+    if (!m || (m.kind !== 'play' && m.kind !== 'party')) return;
+    const u = passageUnder(this.uebergaenge(), pt, this.geoJetzt());
+    if (!u) return;
+    const ue = this.uebergaenge().find((x) => x.relId === u.relId && x.mirrored === u.mirrored);
+    if (u.kind === 'portal' && !this.alsLeitung()) {
+      void this.durchgehen(rel, u);
+      return;
+    }
+    if (ue) this.uebergangWahl.set(ue.key);
+  }
   /** Ein Token, das nah an einem Ende losgelassen wird, steht genau darauf — dann geht es durch. */
   private aufEnde(pt: Pt): Pt {
     const nat = this.nat();
@@ -1779,7 +1975,8 @@ export class Karte {
     if (!nat || !s || nat.w <= 0) return pt;
     const reich = (0.5 * s.gridSize) / nat.w;
     const ar = nat.h / nat.w;
-    const ende = this.uebergaenge().find((u) => Math.hypot(pt.x - u.at.x, (pt.y - u.at.y) * ar) <= reich);
+    /* Eine Fläche (T-326) fängt selbst — dort bleibt das Token, wo es fällt. */
+    const ende = this.uebergaenge().find((u) => !u.area && Math.hypot(pt.x - u.at.x, (pt.y - u.at.y) * ar) <= reich);
     return ende ? ende.at : pt;
   }
   /** Die Kartenregeln der Kampagne (T-204); ohne Antwort die Vorgaben. */
@@ -1858,7 +2055,7 @@ export class Karte {
     });
   });
   /** Leitet der Betrachter (er schreibt die Karte) und schaut nicht gerade als Spieler? */
-  private readonly alsLeitung = computed(() => this.darfSchreiben() && !this.spielersicht());
+  protected readonly alsLeitung = computed(() => this.darfSchreiben() && !this.spielersicht());
   protected readonly fehlt = computed(() => this.bestand.fehlt().has(this.id()));
   protected readonly name = computed(() => {
     const e = this.karte();
@@ -2498,7 +2695,10 @@ export class Karte {
       const z = this.zug();
       if (g.zieht && z && g.selbst) {
         this.nachZug = true;
-        void this.selbstZiehen(g.id, z.pt).finally(() => this.zug.set(null));
+        void this.selbstZiehen(g.id, z.pt).finally(() => {
+          this.zug.set(null);
+          this.amUebergang(g.id, z.pt);
+        });
         return;
       }
       if (g.zieht && z) {
@@ -2517,6 +2717,7 @@ export class Karte {
         void this.schreiben(neu).finally(() => {
           this.zug.set(null);
           if (ausserhalb && !this.mangel()) this.hinweis.set('Moved outside the plan.');
+          this.amUebergang(g.id, z.pt);
         });
       }
       return;
@@ -2835,6 +3036,8 @@ export class Karte {
       this.lichtSetzen(pt);
     } else if (this.werkzeug() === 'uebergang') {
       this.uebergangTippen(pt);
+    } else if (this.werkzeug() === 'uebergangFlaeche') {
+      this.flaecheTippen(pt);
     } else if (this.werkzeug() === 'schloss') {
       const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
       if (t) void this.tuerKlick(t);

@@ -52,6 +52,46 @@
   gap: 0.35rem;
   align-items: center;
 }
+.uebergang-karte .kosten {
+  opacity: 0.75;
+}
+.uebergang-karte .flaeche {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.uebergang-karte .regeln label {
+  justify-content: space-between;
+  margin-top: 0.2rem;
+}
+.uebergang-karte .regeln select {
+  max-width: 9rem;
+}
+/* **Die Fläche eines Übergangs** (T-326): getönt, gestrichelt umrandet —
+   sie liegt unter den Tokens und fängt keinen Finger. */
+.uebergang-flaechen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+.uebergang-flaechen polygon {
+  fill: rgb(60 60 60 / 0.16);
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.uebergang-flaechen polygon.k-portal {
+  fill: rgb(75 58 122 / 0.22);
+  stroke: #4b3a7a;
+}
+.uebergang-flaechen polygon.offen {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
 .ebenenwahl {
   display: inline-flex;
   gap: 0.3rem;
