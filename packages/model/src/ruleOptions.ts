@@ -32,6 +32,7 @@ import { inventoryRulesOf } from './inventory.js';
 import { mapRulesOf, mapToolTable } from './map.js';
 import { stowingRuleOf } from './stowing.js';
 import { initiativeRulesOf } from './tracker.js';
+import { turnPlannerOf } from './zugplan.js';
 import { substitutionsOf, substitutionText } from './substitutes.js';
 import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
@@ -55,7 +56,7 @@ export const RULE_SORTS: readonly RuleSortDef[] = [
   { key: 'travel', label: 'Travel', does: 'What travel costs in food, light and watches.' },
   { key: 'units', label: 'Units', does: 'In which measures distances and weights are shown.' },
   { key: 'map', label: 'On the map', does: 'What the fog of war hides from whom, and how tokens move outside an encounter.' },
-  { key: 'combat', label: 'Combat', does: 'Whether the initiative tracker runs, and what players see of it.' },
+  { key: 'combat', label: 'Combat', does: 'Whether the initiative tracker runs, what players see of it, and how much they plan of a turn.' },
   { key: 'table', label: 'At the table', does: 'Who sees what during play.' },
 ];
 
@@ -429,6 +430,20 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
+    /* Der Zugplan (T-198, T-325), gelesen über `turnPlannerOf`. */
+    key: 'turnPlanner',
+    sort: 'combat',
+    label: 'Turn planner',
+    does: 'What a player plans in “Plan turn” on the map during an encounter: nothing, only movement, movement and actions, or everything with reactions. Players plan only for the characters they play; the GM confirms every turn.',
+    source: { field: 'turnPlanner' },
+    variants: [
+      { key: 'off', label: 'Off', does: 'No “Plan turn” on the map; the GM moves tokens in an encounter.' },
+      { key: 'move', label: 'Movement only', does: 'A player plans where their character moves; actions are said at the table.' },
+      { key: 'actions', label: 'Movement and actions', does: 'Movement, actions and bonus actions with targets and hit chances. Nobody is asked to react.' },
+      { key: 'full', label: 'Full', does: 'As movement and actions, plus reactions: leaving a foe’s reach asks for an opportunity attack, and the campaign’s rules may offer theirs.' },
+    ],
+  },
+  {
     key: 'initNames',
     sort: 'combat',
     label: 'Unidentified foes shown as',
@@ -748,6 +763,8 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return Object.entries(mapToolTable(campaign)).map(([k, g]) => `${k}: ${g.length ? g.join(', ') : 'none'}`);
     case 'combat':
       return initiativeRulesOf(campaign).combat;
+    case 'turnPlanner':
+      return turnPlannerOf(campaign);
     case 'initNames':
       return initiativeRulesOf(campaign).names;
     case 'initHealth':

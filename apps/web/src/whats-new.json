@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-one-tool-bar",
+      "date": "2026-10-21",
+      "title": "Plan turn, Initiative and floors in the map's tool bar",
+      "text": "Play is calmer: Plan turn is a tool in the map's tool bar, shown only for the characters you play (the GM plans for every creature). Initiative and Party open beside the map from the same bar, and the floor you see is picked under Floors. How much players plan — off, movement only, movement and actions, or full with reactions — is set under Rules & options › Combat › Turn planner.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-21-initiative-round-two",
       "date": "2026-10-21",
       "title": "Initiative: set the turn, open a combatant, full hit points",

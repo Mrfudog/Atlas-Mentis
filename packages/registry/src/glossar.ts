@@ -369,11 +369,19 @@ const APP: AppTerm[] = [
   },
   {
     term: 'Party & encounters',
-    aliases: ['Table'],
+    aliases: ['Table', 'Party panel'],
     sort: 'app',
-    definition: 'The column beside a map: the party with hit points and conditions, and the encounters of the session.',
+    definition: 'The panel beside a map, opened with Party in its tool bar: the party with hit points and conditions, and the encounters of the session.',
     effect: 'Place or drag a row to put a character on the map; ◎ centres the map on a token. Before an encounter, Prepare sets its combatants on the map hidden.',
     translations: { de: 'Gruppe und Begegnungen' },
+  },
+  {
+    term: 'Turn planner',
+    aliases: ['Plan turn', 'Turn plan'],
+    sort: 'app',
+    definition: 'The tool Plan turn in the tool bar of a map: during an encounter a player lays out the turn of their own character — moves, actions, reactions — and sends it to the GM, who confirms and rolls it.',
+    effect: 'Only for the characters a player plays; the GM plans for every creature. How much it covers — off, movement only, movement and actions, or full with reactions — the campaign sets under Rules & options › Combat › Turn planner.',
+    translations: { de: 'Zugplaner' },
   },
   {
     term: 'Initiative tracker',

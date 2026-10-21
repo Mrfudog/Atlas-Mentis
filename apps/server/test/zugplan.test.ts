@@ -145,6 +145,51 @@ describe('Zugplan (T-198)', () => {
   });
 });
 
+describe('Zugplaner nur für Besitzende, je Stufe der Kampagne (T-325)', () => {
+  const stufe = async (repo: InMemoryRepository, turnPlanner: string) => {
+    const k = (await repo.getEntity('camp_a'))!;
+    await repo.putEntity({ ...k, components: { ...k.components, Campaign: { ...k.components?.['Campaign'], turnPlanner } } });
+  };
+
+  it('zeigt einer Spielerin ohne eigene Figur nichts, der Leitung jede Kreatur', async () => {
+    const { rufe } = await aufbau();
+    const tam = (await rufe('Tam', 'GET', '/api/maps/map_1/turn-plan')).json();
+    expect(tam.actors).toEqual([]);
+    expect(tam.actor).toBeNull();
+    expect(tam.planner).toBe('full');
+    expect((await rufe('Sela', 'GET', '/api/maps/map_1/turn-plan')).json().actors.map((a: { id: string }) => a.id)).toEqual(['pc_rook']);
+  });
+
+  it('`off`: niemand plant, auch die Leitung nicht', async () => {
+    const { rufe, repo } = await aufbau();
+    await stufe(repo, 'off');
+    expect((await rufe('Sela', 'GET', '/api/maps/map_1/turn-plan')).json().actors).toEqual([]);
+    expect((await rufe('Gwen', 'GET', '/api/maps/map_1/turn-plan')).json().actors).toEqual([]);
+    expect((await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: ZUG })).statusCode).toBe(403);
+  });
+
+  it('`move`: keine Kacheln, und ein Plan mit Aktion wird abgelehnt', async () => {
+    const { rufe, repo } = await aufbau();
+    await stufe(repo, 'move');
+    const d = (await rufe('Sela', 'GET', '/api/maps/map_1/turn-plan')).json();
+    expect(d.planner).toBe('move');
+    expect(d.tiles).toEqual([]);
+    expect((await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: ZUG })).statusCode).toBe(422);
+    expect((await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [ZUG[0]] })).statusCode).toBe(200);
+  });
+
+  it('`actions`: Aktionen ja, Reaktionen nein', async () => {
+    const { rufe, repo } = await aufbau();
+    await stufe(repo, 'actions');
+    const d = (await rufe('Sela', 'GET', '/api/maps/map_1/turn-plan')).json();
+    expect(d.tiles.some((t: { cost: string }) => t.cost === 'reaction')).toBe(false);
+    expect(d.tiles.find((t: { id: string }) => t.id === 'ac_axe')).toBeDefined();
+    expect((await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: ZUG })).statusCode).toBe(200);
+    const reaktion = [{ id: 'r', kind: 'act', tile: 'ac_axe', name: 'Handaxe', cost: 'reaction', target: 'cr_gob', targetName: 'Goblin' }];
+    expect((await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: reaktion })).statusCode).toBe(422);
+  });
+});
+
 /* Runde 2: das Bild ist 700 × 700, ein Feld 70 — Feld (x, y) hat die Mitte
    bei ((x + 0.5) / 10, (y + 0.5) / 10). */
 const NAT = { w: 700, h: 700 };
@@ -195,6 +240,17 @@ describe('Zugplan, Runde 2: Gelegenheitsangriff (T-198)', () => {
     await nebeneinander(repo);
     const zwei = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [WEG], nat: NAT })).json().plan;
     expect((await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${zwei}/decide`, { decision: 'confirm' })).json().state).toBe('confirmed');
+  });
+
+  it('ohne die volle Stufe (T-325) fragt niemand um eine Reaktion', async () => {
+    const { rufe, repo } = await aufbau();
+    await nebeneinander(repo);
+    const k = (await repo.getEntity('camp_a'))!;
+    await repo.putEntity({ ...k, components: { ...k.components, Campaign: { turnPlanner: 'actions' } } });
+    const plan = (await rufe('Sela', 'POST', '/api/maps/map_1/turn-plan', { actor: 'pc_rook', steps: [WEG], nat: NAT })).json().plan;
+    const r = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/decide`, { decision: 'confirm' })).json();
+    expect(r.state).toBe('confirmed');
+    expect(r.results.map((x: { text: string }) => x.text)).toEqual(['Moved 10 ft.']);
   });
 
   it('Nein lässt ziehen, ohne zu würfeln; Disengage fragt gar nicht', async () => {

@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, MapToolGroup, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, MapToolGroup, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -2093,6 +2093,8 @@ export class Api {
 /** Die Lage für den Zugplan (`GET /api/maps/:id/turn-plan`, T-198). */
 export interface ZugLage {
   leitet: boolean;
+  /** Die Stufe der Kampagne (T-325, `Campaign.turnPlanner`): ohne `full` keine Reaktion. */
+  planner: TurnPlanner;
   actors: { id: string; name: string; own: boolean; rel: string | null }[];
   /** `reaction`: hat die Figur ihre Reaktion (Runde 2: verbraucht bis zum eigenen nächsten Zug)? */
   actor: { id: string; name: string; speed: number; rel: string | null; reaction: boolean } | null;
