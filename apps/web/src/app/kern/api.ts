@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -2133,7 +2133,15 @@ export interface KartenKontext {
     show: MapLinkShow;
     own?: MapLink['own'];
     template?: string;
+    /** Am Raster dieser Karte ausgerichtet (T-329): `frame` ist dann schon gerechnet. */
+    align?: boolean;
+    alignIssue?: AlignIssue;
+    childGrid?: ChildGrid;
+    /** Der Massstab der Unterkarte (T-329) — fürs Messen in ihrer Einheit. */
+    scale?: string;
   }[];
+  /** Die Karte darüber, fürs Messen in ihrer Einheit (T-329). Fehlt bei einem älteren Server. */
+  up?: { id: string; name: string; scale: string; align: boolean; alignIssue?: AlignIssue } | null;
   /** Die Karte darüber als blasser Rand (T-327); ihr Bild, wie der Betrachter es bekommt. */
   outer: { id: string; name: string; image: string; frame: { x: number; y: number; w: number; h: number } } | null;
   /** Die Vorgaben der Kampagne für Verknüpfungen (T-327) — nur für die Leitung. */

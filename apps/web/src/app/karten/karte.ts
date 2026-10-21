@@ -25,6 +25,12 @@ import {
   fogOn,
   frameNear,
   areaInFrame,
+  ALIGN_ISSUE_TEXT,
+  convertDistance,
+  feetPerScaleUnit,
+  feetToScaleUnit,
+  parseScale,
+  type AlignIssue,
   linkCentre,
   mapExits,
   outerPlacement,
@@ -192,6 +198,8 @@ export type PlanTipp =
 
 /** Ab so vielen Bildpunkten ist ein Druck ein Ziehen und kein Antippen. */
 const ZIEHEN_AB = 5;
+/** Eine Strecke zum Anzeigen: zwei Stellen, Schweizer Schreibweise wie `measure`. */
+const rundText = (n: number): string => (Math.round(n * 100) / 100).toLocaleString('de-CH', { maximumFractionDigits: 2 });
 /** Ein Rad schickt viele kleine Schritte; einer je so viele Millisekunden. */
 const RAD_PAUSE = 90;
 /** Ein Finger ist breiter als ein Mauszeiger: kleiner wird ein Marker nicht. */
@@ -543,6 +551,14 @@ interface Zeiger {
                       <option value="none" [selected]="l.own.outer === 'none'">None</option>
                     </select>
                   </label>
+                  <!-- **Am Raster ausrichten** (T-329): Grösse aus beiden Massstäben, Lage am Raster dieser Karte. -->
+                  <label [title]="l.sperre ?? 'The area’s size follows from both scales and snaps to this map’s grid'">
+                    <input type="checkbox" [checked]="l.align" [disabled]="!!l.sperre && !l.align" (change)="linkSetzen(l, { align: $any($event.target).checked || null })" />
+                    Align to parent grid
+                  </label>
+                  @if (l.sperre ?? l.issue; as h) {
+                    <span class="hint">{{ h }}</span>
+                  }
                   <button type="button" class="klein" (click)="vieleckBeginnen({ art: 'link', id: l.id })" title="Tap the corners of a new area for this link">{{ l.form ? 'Redraw shape' : 'Make it a shape' }}</button>
                   @if (l.form) {
                     <button type="button" class="klein" (click)="linkSetzen(l, { area: null })" title="Back to the rectangle around the shape">Rectangle</button>
@@ -1075,6 +1091,20 @@ interface Zeiger {
                   <div class="gitter" aria-hidden="true" [style.background-image]="g.bild" [style.background-size]="g.groesse" [style.background-position]="g.lage"></div>
                 }
                 @for (k of rahmen(); track k.id) {
+                  @if (k.raster; as r) {
+                    <!-- **Beide Raster** (T-329): das Gitter der ausgerichteten Unterkarte in ihrem Bereich. -->
+                    <div
+                      class="unterraster"
+                      aria-hidden="true"
+                      [style.left.%]="k.frame.x * 100"
+                      [style.top.%]="k.frame.y * 100"
+                      [style.width.%]="k.frame.w * 100"
+                      [style.height.%]="k.frame.h * 100"
+                      [style.background-image]="r.bild"
+                      [style.background-size]="r.groesse"
+                      [style.background-position]="r.lage"
+                    ></div>
+                  }
                   <!-- **Wie eine Verknüpfung steht** (T-327): Klick springt, nur Rahmen, Symbol — „hidden“ steht nicht da. -->
                   @if (k.show === 'icon') {
                     <a
@@ -1475,6 +1505,14 @@ interface Zeiger {
           <button type="button" class="klein" (click)="hinweis.set(null)" aria-label="Dismiss">×</button>
         } @else if (werkzeug() === 'messen') {
           {{ messung()?.text || 'Tap a start point, then an end point.' }}
+          <!-- **Weg über Karten** (T-329): Stücke sammeln, auch nach einem Sprung in eine andere Karte. -->
+          @if (messung()?.m?.distance != null) {
+            <button type="button" class="klein" (click)="wegStueck()" title="Add this distance to a route — it stays when you go to another map">Add to route</button>
+          }
+          @if (wegSumme(); as w) {
+            <span class="weg"> · Route: {{ w }}</span>
+            <button type="button" class="klein" (click)="weg2.set([])" aria-label="Clear the route">×</button>
+          }
         } @else if (werkzeug() === 'setzen') {
           {{ setzenZiel() ? 'Tap the map where ' + setzenName() + ' goes.' : setzenBei() ? 'Pick the article below.' : setzenArt() === 'scenery' ? 'Tap the map where the asset goes.' : 'Tap the map where the marker goes.' }}
         } @else if (werkzeug() === 'aufdecken') {
@@ -2513,10 +2551,38 @@ export class Karte {
           nah: frameNear(k.frame, nat, zoom, f, k.near ?? MAP_NEAR),
           punkte: form ? form.map(([x, y]) => `${x},${y}`).join(' ') : null,
           mitte: linkCentre({ frame: k.frame, area: k.area ?? null }),
+          raster: bearbeiten ? this.unterRaster(k) : null,
         },
       ];
     });
   });
+
+  /**
+   * **Das Raster der Unterkarte im Bereich** (T-329): beim Einstellen einer
+   * ausgerichteten Verknüpfung stehen beide Gitter übereinander — so sieht
+   * die Leitung, dass sie ineinanderlaufen. Gerechnet am Server
+   * (`childGrid`), hier nur in Schirmpunkte gesetzt.
+   */
+  private unterRaster(k: NonNullable<ReturnType<typeof this.kontext>>['children'][number]): { bild: string; groesse: string; lage: string } | null {
+    const g = k.childGrid;
+    const s = this.einst();
+    if (!k.align || !g || !s) return null;
+    const farbe = gridStroke({ ...s, gridColor: '#2f6f9f', gridOpacity: 0.7, gridHidden: false });
+    if (!farbe) return null;
+    const bw = k.frame.w * this.breite();
+    const bh = k.frame.h * (this.hoehe() ?? this.breite());
+    const w = g.cell * bw;
+    if (!(w >= 2)) return null;
+    const lage = `${g.ox * bw}px ${g.oy * bh}px`;
+    if (g.shape === 'square') {
+      return { bild: `linear-gradient(to right, ${farbe} 1px, transparent 1px), linear-gradient(to bottom, ${farbe} 1px, transparent 1px)`, groesse: `${w}px ${w}px`, lage };
+    }
+    const h = ((w * 2) / Math.sqrt(3)) * 1.5;
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 100 ${HEX_TILE_H}" preserveAspectRatio="none">` +
+      `<path d="${HEX_TILE_PATH}" fill="none" stroke="${farbe}" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>`;
+    return { bild: `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`, groesse: `${w}px ${h}px`, lage };
+  }
 
   // -------------------------------------------------- Hinaus und Rand (T-327)
 
@@ -3288,7 +3354,63 @@ export class Karte {
     const b = this.messB();
     const s = this.einst();
     if (!a || !b || !s) return null;
-    return { a, b, text: measure(s, this.nat(), a, b).text };
+    const m = measure(s, this.nat(), a, b);
+    return { a, b, text: [m.text, ...this.messAnderswo(s.scale, m.distance, a, b)].filter(Boolean).join(' · '), m };
+  });
+
+  /**
+   * **Dieselbe Strecke in der Einheit einer anderen Karte** (T-329): in
+   * einer Unterkarte die der Karte darüber („≈ 0,2 mi on Region“), in der
+   * Karte darüber die einer Unterkarte, wenn beide Enden in ihrem Bereich
+   * liegen. Umgerechnet über die Massstäbe (`convertDistance`); passt eine
+   * Einheit nicht („1 day“), steht nichts da.
+   */
+  private messAnderswo(scale: string, distance: number | null, a: Pt, b: Pt): string[] {
+    if (distance === null) return [];
+    const k = this.kontext();
+    const eigen = parseScale(scale)?.unit ?? '';
+    const out: string[] = [];
+    const sag = (ziel: string, name: string) => {
+      const u = parseScale(ziel)?.unit ?? '';
+      if (!u || u === eigen) return;
+      const d = convertDistance(distance, scale, ziel);
+      if (d !== null) out.push(`≈ ${rundText(d)} ${u} on ${name}`);
+    };
+    if (k?.up) sag(k.up.scale, k.up.name);
+    const drin = (k?.children ?? []).find((c) => [a, b].every((p) => p.x >= c.frame.x && p.x <= c.frame.x + c.frame.w && p.y >= c.frame.y && p.y <= c.frame.y + c.frame.h));
+    if (drin?.scale) sag(drin.scale, drin.name);
+    return out;
+  }
+
+  // ---------------------------------------------- Weg über Karten (T-329)
+
+  /**
+   * **Ein Weg über mehrere Karten** (T-329, Grundlage für Reisen, T-177):
+   * gemessene Stücke sammeln, auch nach einem Sprung in eine andere Karte —
+   * die Gesamtstrecke steht in der Einheit der Karte, auf der man gerade
+   * ist. Gezählt wird in Fuss; ein Stück ohne Länge im Massstab („1 day“)
+   * zählt nicht und wird genannt. Nur auf dieser Seite, nicht gespeichert.
+   */
+  protected readonly weg2 = signal<{ name: string; feet: number | null; text: string }[]>([]);
+  protected wegStueck(): void {
+    const m = this.messung();
+    const s = this.einst();
+    if (!m || !s || m.m.distance === null) return;
+    const f = feetPerScaleUnit(s.scale);
+    const name = this.name() || 'this map';
+    this.weg2.update((w) => [...w, { name, feet: f ? m.m.distance! * f : null, text: m.m.text }]);
+  }
+  protected readonly wegSumme = computed(() => {
+    const w = this.weg2();
+    if (!w.length) return null;
+    const s = this.einst();
+    const feet = w.reduce((n, x) => n + (x.feet ?? 0), 0);
+    const ohne = w.filter((x) => x.feet === null).length;
+    const scale = s?.scale ?? '5 ft';
+    const u = parseScale(scale)?.unit ?? 'ft';
+    const d = feetToScaleUnit(feet, scale);
+    const summe = d !== null ? `${rundText(d)} ${u}` : `${rundText(feet)} ft`;
+    return `${w.length} ${w.length === 1 ? 'leg' : 'legs'} · ${summe}${ohne ? ` (${ohne} without a length scale not counted)` : ''}`;
   });
 
   // ------------------------------------------------------------ Zugplan
@@ -4052,6 +4174,10 @@ export class Karte {
       name: k.name,
       own,
       form: !!k.area,
+      align: !!k.align,
+      /* Ohne Länge in einem der Massstäbe („1 day“) lässt sich nicht ausrichten — gesperrt mit Grund. */
+      sperre: feetPerScaleUnit(this.einst()?.scale ?? '') && feetPerScaleUnit(k.scale ?? '') ? null : ALIGN_ISSUE_TEXT.units,
+      issue: k.alignIssue ? ALIGN_ISSUE_TEXT[k.alignIssue as AlignIssue] : null,
       nearProzent: Math.round((k.near ?? MAP_NEAR) * 100),
       vorgabe: this.kontext()?.linkDefaults ?? { show: 'jump' as MapLinkShow, showPlayers: 'jump' as MapLinkShow, outer: 'none' as const },
     };

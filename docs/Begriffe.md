@@ -2488,6 +2488,17 @@ Verknüpfung. Der blasse Rand der Karte darüber wird gerechnet und nicht
 gespeichert (D8) — ein zugeschnittenes Bild an der Unterkarte wäre beim
 nächsten neuen Bild der Karte darüber falsch.
 
+**Ausgerichtet wird gerechnet, nicht gespeichert** (T-329). Die Grösse
+eines am Raster ausgerichteten Bereichs folgt aus zwei Massstäben und zwei
+Bildgrössen — vier Angaben, von denen jede sich ändern darf. Stünde die
+gerechnete Grösse an der Kante, wäre sie beim nächsten neuen Bild oder
+Massstab falsch, und niemand merkte es (D8). Darum bleibt `w`/`h` die
+freie Grösse, und der Schalter `align` sagt nur, dass sie gerade nicht
+gilt; fällt er, ist die Verknüpfung, was sie vorher war. Gerechnet wird in
+Fuss, weil das die eine Einheit ist, in die jede Länge des Registers geht —
+eine Reisezeit wie „1 day" nicht, und darum lässt sie sich nicht
+ausrichten, statt eine Grösse zu raten.
+
 **Welche Werkzeuge eine Karte zeigt, sagt die Kampagne, nicht die Karte**
 (T-320). Eine Weltkarte braucht keine Wände und eine Kampfkarte keine
 Unterkarten — aber welche Gruppe auf welcher Art steht, ist eine

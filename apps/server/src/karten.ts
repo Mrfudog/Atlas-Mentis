@@ -39,8 +39,12 @@ import {
   linkOuterOn,
   linkShowFor,
   mapLinkDefaultsOf,
-  mapLinkOf,
+  effectiveMapLink,
+  mapSettings,
   mapSheets,
+  type AlignIssue,
+  type ChildGrid,
+  type Relation,
   parentMapRelation,
   type MapLink,
   type MapLinkShow,
@@ -138,7 +142,24 @@ export interface KartenKontext {
     show: MapLinkShow;
     own?: MapLink['own'];
     template?: string;
+    /**
+     * **Am Raster dieser Karte ausgerichtet** (T-329, `alignLink`): dann ist
+     * `frame` schon die gerechnete Lage und Grösse, `childGrid` das Raster
+     * der Unterkarte darin; `alignIssue`, warum es nicht geht (nur Leitung).
+     */
+    align?: boolean;
+    alignIssue?: AlignIssue;
+    childGrid?: ChildGrid;
+    /** Der Massstab der Unterkarte — damit misst die Seite hier auch in ihrer Einheit. */
+    scale?: string;
   }[];
+  /**
+   * **Die Karte darüber, für das Messen** (T-329): ihr Name und Massstab —
+   * die Seite zeigt eine Strecke hier auch in deren Einheit. Nur, wenn der
+   * Betrachter sie in den Brotkrumen hat; dazu, ob die eigene Verknüpfung
+   * ausgerichtet ist und was dagegen spricht.
+   */
+  up?: { id: string; name: string; scale: string; align: boolean; alignIssue?: AlignIssue } | null;
   /** Die Karte darüber als blasser Rand (T-327), sonst `null`. */
   outer: { id: string; name: string; image: string; frame: Frame } | null;
   /** Die Vorgaben der Kampagne für Verknüpfungen — nur für die Leitung, die sie einstellt. */
@@ -272,7 +293,14 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
        Kante, sonst die Vorgabe der Kampagne. Spielende bekommen nur, was
        für sie gilt (`showPlayers`); die eigenen Angaben der Kante nur die
        Leitung, die sie einstellt. */
-    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const register = await repo.getRegistry();
+    const kampagne = currentCampaign(stand.map, register.settings ?? null);
+    /* **Ausgerichtet gelesen** (T-329): Grösse aus beiden Massstäben, Lage
+       am Raster — die Bildgrössen vom Asset (`mapNatOf`), gerechnet beim
+       Lesen (D8). */
+    const einheiten = register.units;
+    const geltendeKante = (kind: Entity, rel: Relation | undefined, oben: Entity | undefined) =>
+      effectiveMapLink(stand.map, kind, rel, oben, einheiten);
     const vorgaben = mapLinkDefaultsOf(kampagne);
     const children: KartenKontext['children'] = !navigation
       ? []
@@ -280,7 +308,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
           .filter((k) => k.id !== karte.id && !isPlayInstance(k))
           .flatMap((k) => {
             const rel = (k.relations ?? []).find((r) => r.type === INSIDE_MAP_RELATION && (r.to === karte.id || r.to === vorlageId));
-            const link = mapLinkOf(rel);
+            const link = geltendeKante(k, rel, karte);
             const z = link ? ziel(k) : null;
             if (!link || !z) return [];
             return [
@@ -292,6 +320,10 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
                 near: link.near,
                 show: linkShowFor(link, vorgaben, leitetKarte),
                 ...(leitetKarte ? { own: link.own, template: k.id } : {}),
+                ...(link.align ? { align: true } : {}),
+                ...(link.alignIssue && leitetKarte ? { alignIssue: link.alignIssue } : {}),
+                ...(link.childGrid ? { childGrid: link.childGrid } : {}),
+                scale: mapSettings(k).scale,
               },
             ];
           })
@@ -301,9 +333,19 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
        `mapNavigation`), und mit ihrem Bild, wie er es bekommt: für
        Spielende unter Nebel die beschnittene Adresse (T-312). Die Lage
        rechnet die Seite aus dem Kasten (`outerPlacement`, D8). */
-    const eigeneKante = mapLinkOf(parentMapRelation(karte));
     const obenId = parents.at(-1)?.id;
     const oben = obenId ? sichtbar.get(obenId) : undefined;
+    const eigeneRel = parentMapRelation(karte);
+    const eigeneKante = geltendeKante(karte, eigeneRel, eigeneRel ? (oben ?? sichtbar.get(eigeneRel.to)) : undefined);
+    const up: KartenKontext['up'] = oben
+      ? {
+          id: oben.id,
+          name: entityName(oben),
+          scale: mapSettings(oben).scale,
+          align: !!eigeneKante?.align,
+          ...(eigeneKante?.alignIssue && leitetKarte ? { alignIssue: eigeneKante.alignIssue } : {}),
+        }
+      : null;
     const obenBild = oben ? mapSheets(oben).find((b) => b.base && b.image && b.visible && (leitetKarte || !b.gmOnly))?.image : undefined;
     const outer: KartenKontext['outer'] =
       eigeneKante && oben && obenBild && linkOuterOn(eigeneKante, vorgaben)
@@ -369,7 +411,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       for (const e of stand.alle) {
         if ((e.relations ?? []).some((r) => r.type === PARTY_RELATION && r.to === gruppeSichtbar.id)) ids.add(e.id);
       }
-      const p = partyPosition(sichtbar, karte, ids);
+      const p = partyPosition(sichtbar, karte, ids, (k, rel) => geltendeKante(k, rel, sichtbar.get(rel.to))?.frame ?? null);
       if (p) {
         party = {
           id: gruppeSichtbar.id,
@@ -446,7 +488,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
-    return { parents, children: kinder, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
+    return { parents, children: kinder, up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
   });
 
   /**

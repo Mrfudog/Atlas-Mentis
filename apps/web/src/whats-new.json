@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-aligned-sub-maps",
+      "date": "2026-10-21",
+      "title": "Sub-maps aligned to the grid above, distances across maps",
+      "text": "Sub-maps › Link settings › Align to parent grid sizes a linked map from both scales and snaps it to the grid of the map above, both grids showing. Measuring inside a sub-map also gives the distance in the unit of the map above, and Add to route sums up legs across maps.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-21-map-links",
       "date": "2026-10-21",
       "title": "Sub-map links as shapes, with zoom depth and a border",

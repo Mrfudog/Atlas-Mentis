@@ -406,6 +406,48 @@ sagt, sagt die Kampagne, und ohne beides gilt, was vor T-327 galt.
   bisher ebenfalls hinauf. Nachbarkarten (hinüber statt hinauf) warten auf
   E-121; ein Ausgang trägt dafür schon `kind: 'neighbour'` und die Seite.
 
+### Gitter über den Massstab verbinden (T-329)
+
+Eine Stadtkarte (1 Feld = 50 ft) in einer Regionskarte (1 Hex = 1 mi) soll
+genau die Hexe einnehmen, die ihre Fuss ausmachen — die Gitter laufen
+ineinander. Dafür steht an der Kante `insideMap` der Schalter **`align`**
+(*Sub-maps › Link settings › Align to parent grid*; `packages/model/src/mapscale.ts`).
+
+- **Grösse aus beiden Massstäben** (`alignedSize`): gerechnet in Fuss je
+  Bildpunkt (`feetPerPixel` = Massstab durch Feldbreite). Die Unterkarte ist
+  `nat.w · fpp(Kind)` Fuss breit, das sind `/ fpp(Eltern)` Bildpunkte der
+  Karte darüber, als Anteil ihrer Breite. Die Bildgrössen kommen am Server
+  vom Asset (`Asset.width`/`height`, `mapNatOf`) — der Server lädt kein Bild.
+- **Lage am Raster** (`snapToParentGrid`): bei Quadraten die linke obere
+  Ecke an die nächste Gitterecke, bei Hexen die **Mitte** des Bereichs in
+  die Mitte eines Hexes (eine Stadt liegt *in* einem Hex). Ausgangspunkt ist
+  die Mitte des gespeicherten Kastens.
+- **Eine Form geht mit**: ein Vieleck (`area`) wird aus seinem Kasten in den
+  ausgerichteten gestreckt.
+- **Gerechnet beim Lesen** (D8): gespeichert bleiben `x`/`y`/`w`/`h` als
+  freie Lage und Grösse — fällt der Schalter, gelten sie wieder. Der
+  Kartenkontext schickt den ausgerichteten `frame`, dazu `childGrid` (das
+  Raster der Unterkarte in Anteilen des Bereichs; die Seite zeichnet beide
+  Gitter, solange *Sub-maps* offen ist) und für die Leitung `alignIssue`.
+  Das Gruppen-Token rechnet durch denselben Rahmen (`partyPosition` mit
+  `frameFor`).
+- **Nicht umrechenbar** (`alignIssue`): `units`, wenn ein Massstab keine
+  Länge ist („1 day" ist eine Reisezeit) — der Schalter ist dann gesperrt
+  und sagt warum —, `size`, wenn eine Bildgrösse fehlt. Dann gilt die
+  freie Grösse.
+- **Distanzen über Karten**: Messen (M) in einer Unterkarte zeigt die
+  Strecke zusätzlich in der Einheit der Karte darüber (`convertDistance`,
+  „≈ 0,19 mi on Region"; `up` im Kartenkontext), in der Karte darüber in der
+  einer Unterkarte, wenn beide Enden in ihrem Bereich liegen. *Add to
+  route* sammelt gemessene Stücke auch über einen Sprung in eine andere
+  Karte und zählt sie in Fuss zusammen, gezeigt in der Einheit der Karte,
+  auf der man steht (`routeFeet` im Modell, die Grundlage für Reisen,
+  T-177); ein Stück ohne Länge zählt nicht und wird genannt. Die Route lebt
+  nur in der Seite.
+- **Für T-328** (Marker zwischen Kartenstufen): Punkte wandern mit
+  `liftPoint`/`lowerPoint` durch den Rahmen, den `effectiveMapLink` liefert
+  — dieselbe Rechnung wie hier.
+
 ---
 
 ## Stockwerke und Portale (T-307)
