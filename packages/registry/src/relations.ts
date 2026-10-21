@@ -969,6 +969,10 @@ export const relations: Record<string, RelationDef> = {
         show: { type: 'string', title: 'Shown to the GM', enum: ['jump', 'frame', 'icon', 'hidden'] },
         showPlayers: { type: 'string', title: 'Shown to players', enum: ['jump', 'frame', 'icon', 'hidden'] },
         outer: { type: 'string', title: 'Map above as border', enum: ['faded', 'none'] },
+        /* **Am Raster darüber ausgerichtet** (T-329, `mapscale.ts`): Grösse
+           aus beiden Massstäben, Lage am Raster, gerechnet beim Lesen (D8);
+           `x`/`y`/`w`/`h` bleiben die freie Lage und Grösse. */
+        align: { type: 'boolean', title: 'Align to parent grid' },
       },
     },
   },

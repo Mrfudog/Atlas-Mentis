@@ -376,6 +376,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Kartenverknüpfung' },
   },
   {
+    term: 'Align to parent grid',
+    aliases: ['Aligned sub-map', 'Route'],
+    sort: 'app',
+    definition: 'A switch on a sub-map link: the area’s size follows from both maps’ scales, and its place snaps to the grid of the map above.',
+    effect: 'A town map at 1 square = 50 ft in a region at 1 hex = 1 mile takes exactly the hexes its feet cover, its centre in a hex; with Sub-maps open both grids show in the area. Measuring in the sub-map also gives the distance in the unit of the map above, and Measure › Add to route adds up legs across maps. Needs a length in both scales — “1 day” is a travel time, so the switch stays off.',
+    translations: { de: 'Am Raster ausrichten' },
+  },
+  {
     term: 'Map tools',
     aliases: ['Tools per map kind', 'Sub-maps', 'Link map', 'Unlink'],
     sort: 'app',

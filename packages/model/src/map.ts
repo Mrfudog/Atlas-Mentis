@@ -938,6 +938,8 @@ export function partyPosition(
   maps: ReadonlyMap<EntityId, Entity>,
   map: Entity,
   partyIds: ReadonlySet<EntityId>,
+  /** Der Rahmen, wie er gilt — ausgerichtet am Raster darüber (T-329, `alignLink`); ohne: der gespeicherte. */
+  frameFor: (child: Entity, rel: Relation) => Frame | null = (_c, rel) => frameOf(rel),
 ): PartyPosition | null {
   let beste: (PartyPosition & { tiefe: number }) | null = null;
   const kandidaten = [...maps.values()].filter(isMap).sort((a, b) => a.id.localeCompare(b.id));
@@ -951,7 +953,7 @@ export function partyPosition(
     while (jetzt && jetzt.id !== map.id && tiefe < HOECHSTENS) {
       gesehen.add(jetzt.id);
       const rel = parentMapRelation(jetzt);
-      const rahmen = frameOf(rel);
+      const rahmen = rel ? frameFor(jetzt, rel) : null;
       if (!rel || !rahmen || gesehen.has(rel.to)) {
         jetzt = undefined;
         break;
