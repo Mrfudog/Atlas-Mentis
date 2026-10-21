@@ -201,6 +201,15 @@ button.quick-info:hover {
   size: A4;
   margin: 16mm 15mm;
 }
+/* Die Basis-Leiste der Spielenden (T-342) liegt am Telefon unten: die
+   Seite rückt ab, und feste Leisten am unteren Rand stellen sich darüber. */
+@media (max-width: 640px) {
+  body.mit-basis {
+    --basis-unten: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+}
+
 @media print {
   :root,
   :root:not([data-theme='light']) {

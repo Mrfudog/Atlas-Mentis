@@ -238,7 +238,9 @@ export function newCampaignBoard(
     relations: [
       { id: `${id}~partOf`, type: PART_OF, to: campaign.id, props: {} },
       ...(ebeneId ? [{ id: `${id}~inLayer-1`, type: LAYER_RELATION, to: ebeneId, props: {} }] : []),
-      { id: `${id}~placed-campaign`, type: PLACED_RELATION, to: campaign.id, props: { x: 40, y: 40, w: 420, h: 300, z: 1 } },
+      /* Die Kurzansicht: Titel und Bild der Kampagne. Ein Handzettel, die
+         Vorgabe für Spielende (E-123), hat an einer Kampagne nichts. */
+      { id: `${id}~placed-campaign`, type: PLACED_RELATION, to: campaign.id, props: { x: 40, y: 40, w: 420, h: 300, z: 1, view: 'quick' } },
       abfrage('now', 'Now playing', { current: ['arc', 'scene'] }, { x: 500, y: 40, w: 340, h: 300 }),
       abfrage('next', 'Next session', { current: ['nextSession'] }, { x: 880, y: 40, w: 300, h: 300 }),
       abfrage('party', 'The party', { current: ['party'] }, { x: 40, y: 380, w: 420, h: 300 }),

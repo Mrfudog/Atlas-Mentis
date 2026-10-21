@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DOCUMENT, DestroyRef, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Heim } from '../kern/heim';
 import { Suche } from '../kern/suche';
@@ -41,14 +41,13 @@ import { Suche } from '../kern/suche';
           <span class="zeichen" aria-hidden="true">✉</span><span class="wort">Knowledge</span>
         </a>
       </nav>
-      <div class="platz" aria-hidden="true"></div>
     }
   `,
   styles: `
     .basis {
       position: sticky;
       top: 0;
-      z-index: 15;
+      z-index: 25;
       display: flex;
       justify-content: center;
       gap: 0.25rem 1rem;
@@ -83,9 +82,6 @@ import { Suche } from '../kern/suche';
       font-size: 1.1rem;
       line-height: 1;
     }
-    .platz {
-      display: none;
-    }
     /* Am Telefon unten, gleich breit verteilt, Zeichen über Wort. */
     @media (max-width: 640px) {
       .basis {
@@ -108,14 +104,19 @@ import { Suche } from '../kern/suche';
         padding: 0.25rem 0.1rem;
         font-size: 0.7rem;
       }
-      .platz {
-        display: block;
-        height: 3.5rem;
-      }
     }
   `,
 })
 export class Basisleiste {
   protected readonly heim = inject(Heim);
   protected readonly suche = inject(Suche);
+
+  constructor() {
+    /* Am Telefon liegt die Leiste über dem unteren Rand: die Seite rückt
+       ab, und feste Leisten anderer Seiten stellen sich darüber
+       (`--basis-unten`, styles.scss). */
+    const body = inject(DOCUMENT).body;
+    body.classList.add('mit-basis');
+    inject(DestroyRef).onDestroy(() => body.classList.remove('mit-basis'));
+  }
 }
