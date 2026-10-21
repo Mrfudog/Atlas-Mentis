@@ -1593,6 +1593,15 @@ export const relations: Record<string, RelationDef> = {
       properties: {
         scope: { type: 'string', title: 'Scope' },
         note: { type: 'string', title: 'Why' },
+        /* **Eine Ergänzung** (T-142, E-125): nennt die Kante Felder, ersetzt
+           die Fassung das Original nicht, sondern legt nur diese darüber
+           (`withSupplements`). */
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          title: 'Only these fields',
+          description: 'Makes it a supplement: only these fields (Type.field) are laid over the article, which stays in play.',
+        },
       },
     },
   },

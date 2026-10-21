@@ -653,6 +653,7 @@ export function overriderOf(
   let bestRang = -1;
   for (const o of index ? (index.get(id) ?? []) : entities.values()) {
     if (!kanten(o, OVERRIDES_RELATION).some((r) => r.to === id)) continue;
+    if (isSupplement(o)) continue; /* eine Ergänzung ersetzt nichts (T-142) */
     const r2 = bringt(o);
     if (!r2) continue; /* Überschreibung ohne aufgeschaltete Ebene zählt nicht */
     if (r2 > bestRang) {
@@ -684,11 +685,77 @@ export function resolveArticle(
   const gesehen = new Set<EntityId>([entity.id]);
   for (let i = 0; i < 8; i += 1) {
     const next = overriderOf(entities, at.id, campaign, registry, index);
-    if (!next || gesehen.has(next.id)) return at;
+    if (!next || gesehen.has(next.id)) break;
     gesehen.add(next.id);
     at = next;
   }
-  return at;
+  if (!campaign) return at;
+  const { bringt } = sicht(entities, campaign, registry);
+  return withSupplements(at, gesehen, index ?? overridersIndex(entities.values()), bringt).entity;
+}
+
+/**
+ * **Eine Ergänzung** (T-142, E-125): eine Fassung, deren `overrides`-Kante
+ * die Felder nennt, die sie trägt (`props.fields`, `Item.rows`). Sie
+ * ersetzt den Artikel nicht — Text, Preis und jede andere Fassung bleiben,
+ * wie sie sind —, sondern legt nur diese Felder darüber, solange ihre Ebene
+ * aufgeschaltet ist. Die Formen aus Basils System sind so eine eigene
+ * Ebene, die neben den geschätzten Preisen gilt; zwei ganze Fassungen
+ * schlössen einander aus, und es gälte nur die höhere.
+ *
+ * Für sich steht eine Ergänzung nicht im Spiel: keine Liste, keine Suche,
+ * kein Verweisziel.
+ */
+export function supplementFields(entity: Entity | null | undefined): string[] {
+  const out: string[] = [];
+  for (const r of kanten(entity ?? undefined, OVERRIDES_RELATION)) {
+    const f = (r.props as { fields?: unknown } | undefined)?.fields;
+    if (Array.isArray(f)) for (const x of f) if (typeof x === 'string' && x.includes('.') && !out.includes(x)) out.push(x);
+  }
+  return out;
+}
+
+export function isSupplement(entity: Entity | null | undefined): boolean {
+  return supplementFields(entity).length > 0;
+}
+
+/**
+ * Die Ergänzungen über einem Artikel: die aufgeschalteten, die auf eine
+ * der Ids zeigen (das Original und die Fassungen dazwischen), die höhere
+ * Ebene zuletzt — sie gewinnt Feld für Feld. Zurück kommt der Artikel mit
+ * den Feldern und, je Feld, die Ergänzung, aus der es kommt (`supplied`).
+ * Ein Feld, das die Ergänzung nennt, aber nicht trägt, bleibt, wie es war.
+ */
+export function withSupplements(
+  entity: Entity,
+  ids: Iterable<EntityId>,
+  index: ReadonlyMap<EntityId, readonly Entity[]>,
+  rank: (e: Entity) => number,
+): { entity: Entity; supplied: Record<string, EntityId> } {
+  const kandidaten: { e: Entity; rang: number }[] = [];
+  const gesehen = new Set<EntityId>();
+  for (const id of new Set([entity.id, ...ids])) {
+    for (const o of index.get(id) ?? []) {
+      if (gesehen.has(o.id) || !isSupplement(o)) continue;
+      gesehen.add(o.id);
+      const rang = rank(o);
+      if (rang > 0) kandidaten.push({ e: o, rang });
+    }
+  }
+  if (!kandidaten.length) return { entity, supplied: {} };
+  kandidaten.sort((a, b) => a.rang - b.rang);
+  const components: Record<string, Record<string, unknown>> = { ...(entity.components ?? {}) } as Record<string, Record<string, unknown>>;
+  const supplied: Record<string, EntityId> = {};
+  for (const { e } of kandidaten) {
+    for (const ref of supplementFields(e)) {
+      const [karte = '', feld = ''] = ref.split('.');
+      const wert = (e.components?.[karte] as Record<string, unknown> | undefined)?.[feld];
+      if (wert === undefined) continue;
+      components[karte] = { ...(components[karte] ?? {}), [feld]: wert };
+      supplied[ref] = e.id;
+    }
+  }
+  return Object.keys(supplied).length ? { entity: { ...entity, components } as Entity, supplied } : { entity, supplied };
 }
 
 /** Das Sieb, wie der Server es braucht: da und nicht überschrieben. */
@@ -698,7 +765,7 @@ export function inPlay(
   campaign: Entity | null,
   registry?: Pick<Registry, 'interfaces'>,
 ): boolean {
-  return inStack(entities, entity, campaign, registry) && !isOverridden(entities, entity, campaign, registry);
+  return !isSupplement(entity) && inStack(entities, entity, campaign, registry) && !isOverridden(entities, entity, campaign, registry);
 }
 
 export interface PlayStack {
@@ -720,6 +787,8 @@ export interface PlayStack {
    * für jeden Verweis darin).
    */
   resolve(entity: Entity, index: ReadonlyMap<EntityId, readonly Entity[]>): Entity;
+  /** Welche Felder einer geltenden Fassung aus welcher Ergänzung kommen (T-142). */
+  supplied(entity: Entity, index: ReadonlyMap<EntityId, readonly Entity[]>): Record<string, EntityId>;
 }
 
 /**
@@ -751,6 +820,7 @@ export function playStack(
       enabled: () => false,
       unactivated: () => [],
       resolve: (e) => e,
+      supplied: () => ({}),
     };
   }
   const { rang, zaehlt, frei, bringt } = sicht(entities, campaign, registry);
@@ -770,13 +840,13 @@ export function playStack(
   const ueberschrieben = new Set<EntityId>();
   for (const o of entities.values()) {
     const ziele = kanten(o, OVERRIDES_RELATION);
-    if (!ziele.length) continue;
+    if (!ziele.length || isSupplement(o)) continue;
     if (!bringt(o)) continue;
     for (const r of ziele) ueberschrieben.add(r.to);
   }
   const imStapel = (entity: Entity): boolean => stapelFrage(entity, zaehlt, frei);
   return {
-    inPlay: (entity) => imStapel(entity) && !ueberschrieben.has(entity.id),
+    inPlay: (entity) => imStapel(entity) && !ueberschrieben.has(entity.id) && !isSupplement(entity),
     inStack: imStapel,
     inCompare: (entity) =>
       vergleich.size > 0 &&
@@ -810,17 +880,24 @@ export function playStack(
         let best: Entity | null = null;
         let bestRang = 0;
         for (const o of index.get(at.id) ?? []) {
+          if (isSupplement(o)) continue;
           const r2 = bringt(o);
           if (r2 > bestRang) {
             bestRang = r2;
             best = o;
           }
         }
-        if (!best || gesehen.has(best.id)) return at;
+        if (!best || gesehen.has(best.id)) break;
         gesehen.add(best.id);
         at = best;
       }
-      return at;
+      /* Darüber die Ergänzungen (T-142): nur ihre Felder. */
+      return withSupplements(at, gesehen, index, bringt).entity;
+    },
+    supplied: (entity, index) => {
+      const gesehen = new Set<EntityId>([entity.id]);
+      for (const r of kanten(entity, OVERRIDES_RELATION)) if (!isSupplement(entity)) gesehen.add(r.to);
+      return withSupplements(entity, gesehen, index, bringt).supplied;
     },
   };
 }
@@ -887,7 +964,7 @@ export function stackOutcomes(
   /* Fassungen: je Original die Bewerber im Spiel. */
   const bewerber = new Map<EntityId, { layer: EntityId; rang: number }[]>();
   for (const o of entities.values()) {
-    const ziele = kanten(o, OVERRIDES_RELATION);
+    const ziele = isSupplement(o) ? [] : kanten(o, OVERRIDES_RELATION);
     if (ziele.length) {
       const von = oben(o, 'bringt');
       if (von) for (const r of ziele) (bewerber.get(r.to) ?? bewerber.set(r.to, []).get(r.to)!).push(von);
