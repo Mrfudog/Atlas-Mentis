@@ -2043,7 +2043,12 @@ nennt sie je Regel unter „Builds on" — aus ihren Knoten
 (`ruleGraphWords`: Auslöser, Werte in Bedingungen, Folgen) und aus ihrem
 Text (`spotTerms`); ein Wort ohne Begriff steht gestrichelt da. Angelegt
 werden sie mit `scripts/glossar-anlegen.mjs` nach einem Plan ausserhalb des
-Repos.
+Repos. **Der Grundbestand** (T-347: Zustände, Waffeneigenschaften,
+Aktionen …) mit `scripts/glossar.mjs plan|apply`: der Plan prüft gegen die
+Installation, bestehende Begriffe werden nur ergänzt, wo leer, die Kanten
+`explains` gehen als Massenänderung. **Zwei Regelstände, ein Name:** der
+Begriff von 2024 ist eine Fassung (`overrides`) dessen von 2014 — zwei
+gleichnamige Einträge im Stapel erkennte `termIndex` beide nicht.
 
 **Die Wörter der App sind Code** (`packages/registry/src/glossar.ts`,
 `APP_TERMS`): die neun Wörter aus [Begriffe.md](Begriffe.md), Ebene,
