@@ -833,6 +833,53 @@ wiederkommen, werden sie neu geschrieben.
   [docs/Zugang.md](docs/Zugang.md)) — das ist ein Grund mehr für die enge
   Bindung und keiner weniger.
 
+## Grundanforderungen an jede Änderung
+
+Von der Leitung festgelegt (21.10.2026), für jedes Coding-Projekt und jede
+Sitzung. Eine Änderung ist erst fertig, wenn alle fünf Punkte stehen; wo einer
+nicht passt (z. B. reine Doku), sagt der Pull Request, warum.
+
+1. **Drei Teststufen, im selben Pull Request.**
+   - **Unit:** reine Funktionen in `model`/`registry`, jeder Zweig und die
+     Grenzfälle (leer, null, Einheit fehlt, Umrechnung).
+   - **Integration:** die Route über `app.inject` gegen `InMemoryRepository`,
+     samt Siebung (Leitung und Spielerin). Wer die Datenbank anfasst, prüft
+     zusätzlich mit dem Durchstich gegen Postgres, und zwar auch **mit
+     Bestand**: Eine Migration läuft einmal gegen einen Stand mit den Altdaten,
+     die sie umstellt. Am 21.10. fiel dev aus, weil eine Migration nur gegen
+     eine leere Datenbank geprüft war (PR #318).
+   - **E2E:** Playwright gegen den gebauten Server und die gebaute Oberfläche,
+     als Datei unter `apps/web/e2e/`, die in der CI läuft (T-356). Geprüft
+     wird der Ablauf so, wie die Leitung oder eine Spielerin ihn macht, bei
+     1360 px und 390 px. Wo der Server siebt, laufen beide Rollen.
+   - Einen Fehler gibt es zuerst als fehlschlagenden Test, dann die Behebung.
+2. **Nach dem Merge auf dev nachsehen.** Das Ausrollen ist grün, und
+   `/api/health` antwortet mit 200. Ist es rot, wird es sofort behoben (oder
+   zurückgenommen), bevor etwas Neues kommt.
+3. **Im Vault dokumentieren.** Jede Funktion steht an ihrer Feature-Notiz
+   (`VTT/Features/F-nnn …`) und Story (`VTT/Stories/`), mit nachgeführtem
+   Stand. Sobald mehr als drei Teile zusammenspielen, kommt ein **Diagramm**
+   dazu, ob Ablauf, Zustände oder Datenfluss: Mermaid in der Notiz bis etwa
+   zehn Knoten, grösser als Excalidraw mit SVG ([docs/README.md ›
+   Bilder](docs/README.md#bilder)). Entscheidungen kommen ins Decision Log.
+   Kampagneninhalt gehört nie dorthin, das Repo ist öffentlich.
+4. **Hilfestellungen anlegen.** Jede sichtbare Funktion bekommt:
+   - den Hilfetext ihrer Seite (`help.json`);
+   - einen Handbuch-Abschnitt, bei einem Ablauf Schritt für Schritt unter
+     *Workflows*;
+   - einen Glossareintrag für jeden neuen Begriff;
+   - die Beschreibung am Feld bzw. den Tooltip;
+   - einen Eintrag in What's new.
+
+   Eine Fehlermeldung sagt, was zu tun ist, nicht nur, was schiefging.
+5. **Keine stillen Grenzanhebungen.** Wer eine Grenze anheben müsste (Grösse
+   des Startpakets, Timeout, Limit), legt stattdessen eine Aufgabe im Bereich
+   Performance an und nennt sie im Pull Request. Der Prüflauf nach jedem
+   Release (T-322) vergleicht mit der Grundlinie.
+
+Die PR-Vorlage fragt jeden Punkt ab, und die Aufträge an die Sitzungen nennen
+ihn.
+
 ## Bauen und prüfen
 
 ```bash
