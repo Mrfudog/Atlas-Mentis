@@ -28,6 +28,14 @@
           ]
         },
         {
+          "heading": "Long pages: folding and jumping",
+          "text": [
+            "Long pages and long lists are made of sections that fold — on the campaign page the parts of Layers, in a book its sections. A bar above them does the same everywhere: Expand all and Collapse all fold every section at once, ‹ and › go to the previous or next section and open it.",
+            "With the keyboard: Alt+↓ and Alt+↑ jump, Alt+Shift+↓ expands and Alt+Shift+↑ collapses everything. Inside a text field the keys keep their usual meaning. On a phone the bar sits at the bottom of the screen, where your thumb is.",
+            "Where a page remembers what is open — the groups of layers, for instance — it remembers it for your account, whether you folded one section or all of them."
+          ]
+        },
+        {
           "heading": "What you see",
           "text": [
             "A campaign plays with layers — books, homebrew, its own layer and one per player. What no switched-on layer brings is not there, for anyone. Under an article’s title you see which layer this version is in. Its chapter Admin — on every article — names the layers of its other versions too and why it shows: in play, from a compare layer, enabled as extra content, or in no layer.",

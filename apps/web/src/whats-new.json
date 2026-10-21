@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-section-bar",
+      "date": "2026-10-22",
+      "title": "Long pages: expand all, collapse all, jump between sections",
+      "text": "On the campaign’s Layers tab, Expand all and Collapse all fold every section — the order, saved selections, each group of books, compare layers and extra content — and ‹ › jump to the previous or next one (Alt+↑/↓). In a book, ‹ › go from section to section and on to the next chapter. On a phone the bar sits at the bottom.",
+      "area": "Campaign",
+      "link": "/campaign?tab=layers"
+    },
+    {
       "id": "2026-10-21-structure",
       "date": "2026-10-21",
       "title": "Structure: a faction as an organisation chart or web",
