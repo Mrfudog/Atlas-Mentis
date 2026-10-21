@@ -1921,7 +1921,38 @@ laufenden Kampagne): eine gezogene Information oder ein Bündel bekommt
 (`informationsOf`), und sieht die Gruppe ihn selbst noch nicht, kommt sie
 in `revealedTo`. Was der Ziehende nicht schreibt (ein geteiltes
 Regelwerk), bleibt und wird genannt. Allgemein gehalten, weil dieselbe
-Kachel die Live-Bereiche des Kampagnenboards tragen soll (T-342).
+Kachel die Live-Bereiche des Kampagnenboards trägt (T-342).
+
+**Laufende Quellen** (T-342, `query.current`, `LIVE_SOURCES`): eine
+Abfrage darf statt Ids eine Frage an die Kampagne des Boards stellen —
+`scene` (die Szene im Spiel an der laufenden Sitzung), `arc` (der Arc
+darüber), `session` und `nextSession`, `party` (die Figuren in der Gruppe
+der Kampagne) und `quests` (Aufträge mit `progress` `offered` oder
+`accepted`). Beantwortet wird beim Lesen (`liveArticles`) und wie einzeln
+genannte Artikel gesiebt; gespeichert wird nur das Wort — die Szene von
+heute ist morgen eine andere (D8). Die Kampagne ist die, an der das Board
+über `partOf` hängt, sonst die laufende. **Die laufende Sitzung** ist die
+späteste (nach `Time.sort`), an der etwas im Spiel steht (Szene, Karte,
+Kampf), sonst die späteste überhaupt; die nächste ist die danach
+(`sessionsOf`). Ein Feld „läuft“ gibt es nicht: was an der Sitzung steht,
+sagt es schon.
+
+**Das Kampagnenboard** (T-342, `campaignboard.ts`) ist ein gewöhnliches
+Board mit `partOf` auf die Kampagne — keine Kante `boardOf`, dieselbe
+Kette wie beim Board einer Sitzung. Hängen mehrere, gilt `bd_<kampagne>`,
+sonst das älteste (`campaignBoardOf`). Die Vorlage (`newCampaignBoard`)
+legt die Kampagne als Karte und fünf Abfrage-Kacheln hin: Now playing
+(Arc, Szene), Next session, The party, Open quests, Rumours (Marke
+`rumour`, zum Ziehen). Neue Kampagnen bekommen es beim Anlegen, bestehende
+**beim ersten Öffnen** (`GET /api/home`, `sorgeKampagnenboard`) — nicht
+über eine Datenmigration, die die Vorlage in SQL ein zweites Mal
+hinschriebe. Angelegt wird einmal (Ereignis `campaign.board`); löscht die
+Leitung es, bleibt es weg. **Wo Spielende landen** sagt
+`Campaign.playerStart` (`board`, Vorgabe, oder `compendium`); die Leitung
+und die Verwaltung behalten ihren Start. `GET /api/home` nennt Kampagne,
+Rolle, Board (gesiebt), Landeplatz und die eigene Figur; daraus zeichnet
+die Oberfläche für Spielende die **Basis-Leiste** (Board · My character ·
+Maps · Search · Knowledge), am Telefon unten, am Desktop oben.
 
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
@@ -2339,7 +2370,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
-| `Campaign` | `Story` `VisibilityRules` | `compareFor` `languages` `feats` `hitPoints` `inventory` `itemPricing` `enhancementsBy` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `craftLearning` `craftLearnRarity` `playerRolls` `ruleGraphs` `combat` `initNames` `initHealth` `initEffects` `initActions` `initColumns` `initQuickActions` `turnPlanner` `fog` `moves` `tokenMove` `revealOnMove` `doors` `tokenSizes` `passageTrigger` `passageWhen` `passageMove` `passageAction` `passageConfirm` `mapLinkShow` `mapLinkShowPlayers` `mapLinkOuter` `mapTools` `markerViews` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` `VisibilityRules` | `compareFor` `playerStart` `languages` `feats` `hitPoints` `inventory` `itemPricing` `enhancementsBy` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `craftLearning` `craftLearnRarity` `playerRolls` `ruleGraphs` `combat` `initNames` `initHealth` `initEffects` `initActions` `initColumns` `initQuickActions` `turnPlanner` `fog` `moves` `tokenMove` `revealOnMove` `doors` `tokenSizes` `passageTrigger` `passageWhen` `passageMove` `passageAction` `passageConfirm` `mapLinkShow` `mapLinkShowPlayers` `mapLinkOuter` `mapTools` `markerViews` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, handout, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `mapNavigation` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
