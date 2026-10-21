@@ -27,6 +27,8 @@ export interface Lauf {
   /** Kennung des Laufs, steht im Namen jedes Testartikels. */
   id: string;
   campaign: { id: string; name: string; layer: string };
+  /** Die Figur der Spielerin (`app_user_actor`): ihre Züge, ihr Bogen. */
+  figur: { id: string; name: string };
 }
 
 export const laufDatei = join(ORDNER, 'lauf.json');
