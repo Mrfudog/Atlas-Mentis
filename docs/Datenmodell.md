@@ -1570,7 +1570,7 @@ E-030 b; `search` seit T-138):
 | `full` | die Artikelseite | alles |
 | `print` | „Print" an der Artikelseite: ein Blatt A4 (`/artikel/:id/print`) | Beschreibung, alle Felder ausser dem Vorbereitungsstand, Prosa, Teile, Abschnitte — ohne Seitenspalte; Statblock, Zauber, Gegenstand wie im Buch |
 | `search` | das „+" an einem Treffer der übergreifenden Suche (T-138) | Bild, Beschreibung und die Felder, die die Art dafür wählt; Art, Ebene und Herausgeber stehen in der Trefferzeile, sie sind keine Felder |
-| eigene, z. B. `handout` | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt — der Handzettel: Beschreibung, Absatz, Vorlesetext |
+| eigene, z. B. `handout` | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt — der Handzettel: Bild, Beschreibung, die Werte, die die Art dafür wählt (T-234), Absatz, Vorlesetext |
 
 **Ansichten sind Zeilen und werden im Register bearbeitet** (Register ›
 Views, T-110): anlegen (als Abschrift einer anderen), umbenennen, ordnen,
@@ -1645,6 +1645,19 @@ Statblock, Zauber und Gegenstand wie im Buch obenan und lässt den
 Vorbereitungsstand weg, und **`handout`** ist die erste eigene Ansicht:
 Beschreibung, Absatz, Vorlesetext — ohne Werte und Geheimnisse. Alles
 Anpassungen; Migration 052 schreibt nur, wo eine Art noch nichts sagt.
+
+**Ansichten je Art und Stufe** (T-234, Migration 123,
+[Bedarf](vorschlaege/Ansichten-Bedarf.md)): der Handzettel hat wie Karte
+und Suche ein leeres Feldelement (`h-f`), das die Art füllt — Gegenstand,
+Waffe und Rüstung ihre Kenndaten, ein Ort Art und Umgebung, eine Kreatur
+ihr Volk, eine Fraktion nur ihre Art (das Ziel ist oft ihr Geheimnis); ein
+Zauber kommt als Karte wie im Buch. Die Karte zeigt jetzt auch an
+Begegnung, Karte, Rezept, Gruppe, Ereignis, Geschichte und Arc zwei, drei
+Werte, und **das „+" der Suche nimmt je Art dieselben Werte wie die Karte**
+(`suche()` in `ansichten.ts`, abgeleitet). Eine Spieleransicht gibt es
+weiterhin nicht: Spielende sehen dieselben Ansichten, gesiebt am Server;
+was man ihnen in die Hand gibt, ist der Handzettel. Den Bestand je Art und
+Ort schreibt `node packages/registry/scripts/ansichten.mjs` aus.
 
 Die Migration (050) änderte, was gezeichnet wird, nicht: `full` bekam
 `rest: true` — das tat die Artikelseite schon immer, nur stand es nirgends —,
