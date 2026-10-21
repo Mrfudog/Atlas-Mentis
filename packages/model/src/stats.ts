@@ -106,6 +106,8 @@ export interface Defenses {
 export interface CharacterStatsOptions {
   /** Zustände aus der Initiative, die nicht in `Vitals.conditions` stehen. */
   conditions?: readonly EntityId[];
+  /** Allgemeine Aktionen, deren Eintrag gerade gilt (Dodge, Help, Hide; T-275). */
+  actions?: readonly string[];
 }
 
 const zahl = (v: unknown): number | null => {
@@ -148,7 +150,7 @@ export function characterStats(
   const sb = (statblock?.components?.['Statblock'] ?? {}) as Record<string, unknown>;
   const ab = (statblock?.components?.['Abilities'] ?? {}) as Record<string, unknown>;
   const bonuses = (sb['bonuses'] && typeof sb['bonuses'] === 'object' ? sb['bonuses'] : {}) as Record<string, unknown>;
-  const effekte = effectsAt(character, byId, { ...(statblock ? { statblock } : {}), ...(options.conditions ? { conditions: options.conditions } : {}) });
+  const effekte = effectsAt(character, byId, { ...(statblock ? { statblock } : {}), ...(options.conditions ? { conditions: options.conditions } : {}), ...(options.actions ? { actions: options.actions } : {}) });
   const totals = effectTotals(effekte);
   const hatKlasse = (character.relations ?? []).some((r) => r.type === 'hasClass');
 

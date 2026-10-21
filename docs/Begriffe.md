@@ -1840,6 +1840,18 @@ ist `proficiencyBonus` die Regel und das Register nennt sie
 (`profBonus(hasClass.level)`); ebenso rechnet die passive Wahrnehmung im
 Register (`10+check(wis.Perception)`) und am Bogen mit `checkBonus`.
 
+**Ein Zug, der bestätigt ist, ist geschehen** (T-275). Der Zugplan
+würfelte Schaden und schrieb ihn ins Protokoll — und die Trefferpunkte
+standen danach wie vorher; die Leitung tippte die Zahl ein zweites Mal ab.
+Jetzt zieht der Server ab, nach der Abwehr des Ziels, und würfelt die
+Konzentrationsprobe gleich mit. Gezogen wird von der **Teilnehmerkante**,
+weil zwei Goblins derselben Kreatur zwei Stände haben; eine Spielerfigur
+hat ihren Stand am Bogen (`Vitals`), also dort auch. Dodge und Help sind
+keine Knöpfe, die etwas „merken": sie legen einen **Eintrag in der
+Initiative** an, wie ein Zustand, mit der Dauer der Regel — die Initiative
+zählt ihn herunter, und wer würfelt, liest ihn als Vorteil oder Nachteil.
+So gibt es für „wie lange gilt das" eine Stelle, nicht zwei.
+
 **Der Assistent zählt keine Schritte auf, er liest sie** (T-080). Fest ist
 nur, was das Modell selbst vorgibt: drei Kanten (Abstammung, Hintergrund,
 Klasse), sechs Werte, ein Name. Dazwischen steht je offene Wahl der

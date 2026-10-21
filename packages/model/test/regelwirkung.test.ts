@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { derivedValue, proficiencyBonus } from '../src/calc.js';
 import { participantStats } from '../src/initiative.js';
 import { characterStats, creatureStats } from '../src/stats.js';
+import { COMMON_ACTION_CATALOGUE, commonAction, rollMode, turnTypeOf } from '../src/actions.js';
+import { concentrationCheck, damageAfterDefenses } from '../src/damage.js';
+import { RULE_ACTIONS } from '../src/sheet.js';
+import { COMMON_ACTIONS, costOf } from '../src/zugplan.js';
 import type { Entity, PropertySchema } from '../src/types.js';
 import { fieldGroups } from '../../registry/src/fieldgroups.js';
 
@@ -188,5 +192,56 @@ describe('Punkt 5: passive Wahrnehmung mit Übung und Expertise', () => {
     const s = sb('sb', 'pc', { Abilities: { wis: 14 }, Statblock: {}, Proficiencies: { expertise: ['Perception'] } });
     const g = characterStats(pc!, s, map(pc!, inv!, s, klasse)).statblock!;
     expect(derivedValue(prop, g.components!['Abilities'], g.components)).toBe(18);
+  });
+});
+
+describe('Punkt 2: Schaden nach der Abwehr', () => {
+  const abwehr = (resist: string[] = [], immune: string[] = [], vulnerable: string[] = []) => ({
+    resist: resist.map((word) => ({ word, via: 'statblock' })),
+    immune: immune.map((word) => ({ word, via: 'statblock' })),
+    vulnerable: vulnerable.map((word) => ({ word, via: 'statblock' })),
+    conditionImmune: [],
+  });
+  it('immun 0, resistent halb (abgerundet), verwundbar doppelt, beides hebt sich auf', () => {
+    expect(damageAfterDefenses(9, 'fire', abwehr([], ['fire']))).toMatchObject({ amount: 0, why: 'immune' });
+    expect(damageAfterDefenses(9, 'fire', abwehr(['fire']))).toMatchObject({ amount: 4, why: 'resistant' });
+    expect(damageAfterDefenses(9, 'fire', abwehr([], [], ['fire']))).toMatchObject({ amount: 18, why: 'vulnerable' });
+    expect(damageAfterDefenses(9, 'fire', abwehr(['fire'], [], ['fire']))).toEqual({ amount: 9, rolled: 9 });
+    expect(damageAfterDefenses(9, 'cold', abwehr(['fire']))).toEqual({ amount: 9, rolled: 9 });
+  });
+  it('ein Satz vom Statblock greift mit seinem Wort', () => {
+    const d = damageAfterDefenses(10, 'Slashing', abwehr(['bludgeoning, piercing, and slashing from nonmagical attacks']));
+    expect(d).toMatchObject({ amount: 5, why: 'resistant', word: 'bludgeoning, piercing, and slashing from nonmagical attacks' });
+  });
+  it('die Konzentrationsprobe: SG aus dem Schaden, Bonus aus KON, Übung und Wirkungen', () => {
+    const [pc, inv] = figur([['fire', { tier: 'worn' }]]);
+    const s = sb('sb', 'pc', { Abilities: { con: 14 }, Statblock: { prof: 3 }, Proficiencies: { saves: ['con'] } });
+    const st = characterStats(pc!, s, map(pc!, inv!, s, feuerring));
+    expect(concentrationCheck(st, 25)).toEqual({ dc: 12, bonus: 5 });
+    expect(concentrationCheck(st, 4)).toEqual({ dc: 10, bonus: 5 });
+  });
+});
+
+describe('Punkt 3: ein Aktionskatalog', () => {
+  it('Bogen und Zugplan lesen dieselbe Liste und denselben Kostenleser', () => {
+    expect(RULE_ACTIONS.map((a) => a.id.replace('rule:', ''))).toEqual(COMMON_ACTION_CATALOGUE.map((a) => a.key));
+    for (const t of COMMON_ACTIONS) expect(commonAction(t.id)?.planned).toBe(true);
+    expect(COMMON_ACTIONS.map((t) => t.id)).toEqual(expect.arrayContaining(['std:dash', 'std:dodge', 'std:help', 'std:hide', 'std:ready']));
+    for (const n of ['Action', 'Bonus Action', 'Reaction', 'Free Action', 'Legendary Action', 'Object Interaction']) {
+      const t = turnTypeOf(n);
+      expect(costOf(n)).toBe(t === 'bonus' || t === 'reaction' || t === 'free' ? t : 'action');
+    }
+    expect(costOf('Object Interaction')).toBe('free');
+    expect(turnTypeOf('1 minute')).toBeNull();
+  });
+  it('Dodge wirkt als Nachteil gegen, Help als Vorteil für — über die Einträge der Initiative', () => {
+    const [pc, inv] = figur([]);
+    const s = sb('sb', 'pc', { Abilities: { dex: 12 } });
+    const alle = map(pc!, inv!, s);
+    expect(creatureStats(pc!, alle, { actions: ['dodge'] }).totals.grants['attacked']).toEqual(['disadvantage']);
+    expect(creatureStats(pc!, alle, { actions: ['help'] }).totals.grants['attack']).toEqual(['advantage']);
+    expect(creatureStats(pc!, alle, { actions: ['dash'] }).totals.grants).toEqual({});
+    expect(rollMode(true, true)).toBeUndefined();
+    expect(rollMode(true, false)).toBe('adv');
   });
 });
