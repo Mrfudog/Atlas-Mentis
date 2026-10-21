@@ -229,16 +229,136 @@ export function turnGrid(rows: readonly string[], n: number): string[] {
   return netz.map((r) => r.join(''));
 }
 
-/** Die Form eines Gegenstands, gedreht. Ohne `rows` ein Feld — der Normalfall, kein Sonderfall. */
-export function itemShape(rows: unknown, rot = 0): Shape {
-  const r = shapeRows(rows);
-  if (!r.length) return { rows: ['#'], w: 1, h: 1 };
+/**
+ * **Gespiegelt** (T-142): links und rechts vertauscht. Gespiegelt wird
+ * vor dem Drehen — ein L, gespiegelt und dann gedreht, ist jedes der acht
+ * möglichen L. Wie die Drehung steht es an der Kante (`holds.props.flip`).
+ */
+export function flipGrid(rows: readonly string[]): string[] {
+  const w = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  return rows.map((r) => r.padEnd(w, '.').split('').reverse().join(''));
+}
+
+/** Die Form eines Gegenstands, gespiegelt und gedreht. Ohne `rows` ein Feld — der Normalfall, kein Sonderfall. */
+export function itemShape(rows: unknown, rot = 0, flip = false): Shape {
+  const r0 = shapeRows(rows);
+  if (!r0.length) return { rows: ['#'], w: 1, h: 1 };
+  const r = flip ? flipGrid(r0) : r0;
   return alsForm(rot ? turnGrid(r, Number(rot) / 90) : r);
 }
 
-export function filled(shape: Shape, x: number, y: number): boolean {
-  const c = shape.rows[y]?.charAt(x) ?? '';
+/** Belegt heisst: ein Zeichen, das kein freies ist (`#`, `X`, eine Zonenfarbe …). */
+function belegtZeichen(c: string): boolean {
   return c !== '' && !EMPTY.has(c);
+}
+
+/**
+ * **Leere Ränder weg** (T-142): die Form, wie sie gespeichert wird — ohne
+ * leere Zeilen oben und unten und ohne leere Spalten links und rechts, `#`
+ * belegt und `.` frei. Gemalt wird auf einem 5×5-Raster, das wächst;
+ * gespeichert werden soll aber die Form und nicht das Raster, sonst
+ * belegte jede Fackel im Inventar ein Feld oben links in einem leeren
+ * Fünfer. Ohne ein belegtes Feld bleibt nichts — das heisst ein Feld.
+ */
+export function trimShape(rows: unknown): string[] {
+  const r = shapeRows(rows).map((z) => z.split('').map((c) => (belegtZeichen(c) ? '#' : '.')).join(''));
+  const w = r.reduce((m, z) => Math.max(m, z.length), 0);
+  const netz = r.map((z) => z.padEnd(w, '.'));
+  const zeilen = netz.map((z, i) => (z.includes('#') ? i : -1)).filter((i) => i >= 0);
+  if (!zeilen.length) return [];
+  let links = w;
+  let rechts = -1;
+  for (const z of netz) {
+    const a = z.indexOf('#');
+    if (a < 0) continue;
+    links = Math.min(links, a);
+    rechts = Math.max(rechts, z.lastIndexOf('#'));
+  }
+  return netz.slice(zeilen[0], zeilen[zeilen.length - 1]! + 1).map((z) => z.slice(links, rechts + 1));
+}
+
+/**
+ * **Die Form aus dem Vault** (T-142): `Formfaktor` ist eine Liste von
+ * Zeilen mit `X` belegt und `0` frei (`0X0`). Gelesen wird jedes Zeichen,
+ * das kein freies ist, als belegt — auch ein kleines `x` —, und die Ränder
+ * gehen weg. Was keine Zeilen sind, gibt keine Form.
+ */
+export function shapeFromVault(raw: unknown): string[] {
+  const zeilen = Array.isArray(raw) ? raw.map((z) => String(z ?? '').trim()) : typeof raw === 'string' ? raw.split(/[,\n]/).map((z) => z.trim()) : [];
+  return trimShape(zeilen.filter(Boolean));
+}
+
+/**
+ * **Lohnt Spiegeln?** (T-142) Nur wenn die gespiegelte Form keine Drehung
+ * der ursprünglichen ist — ein Stab, ein Quadrat, ein T sind gespiegelt
+ * dieselben, ein L oder S nicht. Wo es nichts ändert, bietet das Inventar
+ * es nicht an.
+ */
+export function shapeChiral(rows: unknown): boolean {
+  const r = trimShape(rows);
+  if (!r.length) return false;
+  const gespiegelt = trimShape(flipGrid(r)).join('/');
+  for (let n = 0; n < 4; n++) if (trimShape(turnGrid(r, n)).join('/') === gespiegelt) return false;
+  return true;
+}
+
+/** Zwei Formen sind dieselbe, wenn sie ohne Ränder Zeichen für Zeichen gleich belegen. */
+export function sameShape(a: unknown, b: unknown): boolean {
+  return trimShape(a).join('/') === trimShape(b).join('/');
+}
+
+/**
+ * **Wie das Bild in der Form liegt** (T-142): Ausschnitt (`x`, `y` in
+ * Prozent der Form, von der Mitte), Vergrösserung, Drehung zur Form in
+ * Vierteln und ob es die Form ausfüllt (`cover`) oder ganz darin steht
+ * (`contain`). Gespeichert am Gegenstand (`Item.inventoryFrame`), denn
+ * dasselbe Schwert sieht in jedem Rucksack gleich aus — die Lage im
+ * Raster steht an der Kante.
+ */
+export interface InventoryFrame {
+  zoom: number;
+  x: number;
+  y: number;
+  rot: number;
+  fit: 'contain' | 'cover';
+}
+
+export const INVENTORY_ZOOM_MAX = 4;
+
+/**
+ * Ein Ausschnitt in seinen Grenzen; Unlesbares fällt auf die Vorgabe:
+ * füllend, mittig, 1× — eingepasst stünde ein Querformat in einem langen
+ * Bogen als schmales Band da.
+ */
+export function inventoryFrame(raw: unknown): InventoryFrame {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const zahl = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+  const klemm = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const rot = ((Math.round(zahl(o['rot'], 0) / 90) % 4) + 4) % 4;
+  return {
+    zoom: klemm(zahl(o['zoom'], 1), 0.25, INVENTORY_ZOOM_MAX),
+    x: klemm(zahl(o['x'], 0), -100, 100),
+    y: klemm(zahl(o['y'], 0), -100, 100),
+    rot: rot * 90,
+    fit: o['fit'] === 'contain' ? 'contain' : 'cover',
+  };
+}
+
+/**
+ * **Das Bild im Inventar** (T-142): das eigene Inventarbild
+ * (`Item.inventoryImage`), sonst das Bild des Gegenstands (`Image.image`).
+ * Ohne Bild keines — gezeichnet wird dann die Farbe des Stücks.
+ */
+export function inventoryImageOf(item: Entity | null | undefined): { asset: string; frame: InventoryFrame; own: boolean } | null {
+  const karte = (item?.components?.['Item'] ?? {}) as Record<string, unknown>;
+  const eigen = typeof karte['inventoryImage'] === 'string' && karte['inventoryImage'] ? (karte['inventoryImage'] as string) : '';
+  const bild = item?.components?.['Image']?.['image'];
+  const asset = eigen || (typeof bild === 'string' ? bild : '');
+  return asset ? { asset, frame: inventoryFrame(karte['inventoryFrame']), own: !!eigen } : null;
+}
+
+export function filled(shape: Shape, x: number, y: number): boolean {
+  return belegtZeichen(shape.rows[y]?.charAt(x) ?? '');
 }
 
 /**
@@ -254,13 +374,14 @@ export function containerShape(grid: unknown, carry: readonly string[] | null, c
   return alsForm(Array.from({ length: Math.max(1, Math.trunc(rows) || 6) }, () => '#'.repeat(c)));
 }
 
-/** Ein Stück im Raster: welche Kante, welche Form, wo, wie gedreht. */
+/** Ein Stück im Raster: welche Kante, welche Form, wo, wie gedreht und ob gespiegelt. */
 export interface GridPiece {
   key: string;
   rows: unknown;
   gx?: number | null;
   gy?: number | null;
   rot?: number | null;
+  flip?: boolean | null;
 }
 
 function liegt(p: GridPiece): p is GridPiece & { gx: number; gy: number } {
@@ -268,8 +389,8 @@ function liegt(p: GridPiece): p is GridPiece & { gx: number; gy: number } {
 }
 
 /** Die Felder, die ein Stück belegt, als `x,y`. */
-export function cellsOf(p: GridPiece, rot = p.rot ?? 0, gx = p.gx ?? 0, gy = p.gy ?? 0): string[] {
-  const f = itemShape(p.rows, rot);
+export function cellsOf(p: GridPiece, rot = p.rot ?? 0, gx = p.gx ?? 0, gy = p.gy ?? 0, flip = !!p.flip): string[] {
+  const f = itemShape(p.rows, rot, flip);
   const out: string[] = [];
   for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) if (filled(f, x, y)) out.push(`${gx + x},${gy + y}`);
   return out;
@@ -279,12 +400,12 @@ export function cellsOf(p: GridPiece, rot = p.rot ?? 0, gx = p.gx ?? 0, gy = p.g
  * **Passt das Stück dorthin?** Der Rand, gesperrte Felder und belegte
  * Felder sind die einzigen Gründe für nein — Gewicht zählt im Raster nicht.
  */
-export function fitsAt(box: Shape, pieces: readonly GridPiece[], piece: GridPiece, gx: number, gy: number, rot = piece.rot ?? 0): boolean {
-  const f = itemShape(piece.rows, rot);
+export function fitsAt(box: Shape, pieces: readonly GridPiece[], piece: GridPiece, gx: number, gy: number, rot = piece.rot ?? 0, flip = !!piece.flip): boolean {
+  const f = itemShape(piece.rows, rot, flip);
   if (gx < 0 || gy < 0 || gx + f.w > box.w || gy + f.h > box.h) return false;
   const belegt = new Set<string>();
   for (const p of pieces) if (p.key !== piece.key && liegt(p)) for (const c of cellsOf(p)) belegt.add(c);
-  for (const c of cellsOf(piece, rot, gx, gy)) {
+  for (const c of cellsOf(piece, rot, gx, gy, flip)) {
     const [x, y] = c.split(',').map(Number) as [number, number];
     if (!filled(box, x, y) || belegt.has(c)) return false;
   }
@@ -307,7 +428,7 @@ export function firstFreeSpot(box: Shape, pieces: readonly GridPiece[], piece: G
  */
 export function pieceInShape(box: Shape, piece: GridPiece): boolean {
   if (!liegt(piece)) return false;
-  const f = itemShape(piece.rows, piece.rot ?? 0);
+  const f = itemShape(piece.rows, piece.rot ?? 0, !!piece.flip);
   if (piece.gx < 0 || piece.gy < 0 || piece.gx + f.w > box.w || piece.gy + f.h > box.h) return false;
   return cellsOf(piece).every((c) => {
     const [x, y] = c.split(',').map(Number) as [number, number];
@@ -391,7 +512,7 @@ export function coins(copper: unknown): { pp: number; gp: number; sp: number; cp
 export const RESERVED_FOR = 'reservedFor';
 
 /** Die Lage im Raster und am Körper: sie gilt nur im Behälter, in dem das Stück liegt. */
-const LAGE = ['gx', 'gy', 'rot', 'slot'];
+const LAGE = ['gx', 'gy', 'rot', 'flip', 'slot'];
 
 export function reservedFor(edge: Pick<Relation, 'props'> | null | undefined): EntityId | null {
   const v = edge?.props?.[RESERVED_FOR];

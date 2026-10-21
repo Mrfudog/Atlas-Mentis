@@ -132,6 +132,8 @@ import {
   craftCheck,
   shopWares,
   withVersionPrices,
+  withSupplements,
+  isSupplement,
   buybackPrice,
   reservedFor,
   SHOP_TYPE,
@@ -1600,7 +1602,11 @@ export function buildApp({
     if (request.query.ids !== undefined) {
       const ids = new Set(request.query.ids.split(',').map((x) => x.trim()).filter(Boolean));
       if (ids.size > 500) return reply.code(400).send({ error: 'Höchstens 500 Ids je Anfrage' });
-      return sieve(request, alle.filter((e) => ids.has(e.id)), alle);
+      const gesiebt = await sieve(request, alle.filter((e) => ids.has(e.id)), alle);
+      /* Mit den Feldern aus aufgeschalteten Ergänzungen (T-142): das
+         Kachelinventar liest so die Form aus „Item shapes" — ohne die Id
+         zu wechseln, denn die Kante zeigt auf diesen Artikel. */
+      return Promise.all(gesiebt.map((e) => mitErgaenzungen(e)));
     }
     return sieve(request, alle, alle);
   });
@@ -2005,6 +2011,28 @@ export function buildApp({
        Überschreiber sind gezählt (T-108). Ein anderer Bestand fragt wie bisher. */
     if (map === stand.map) return stapelFuer(map, kampagne, registry).resolve(e, stand.ueberschreiber);
     return resolveArticle(map, e, kampagne);
+  }
+
+  /** Welche Felder dieses Artikels aus einer aufgeschalteten Ergänzung kommen (T-142), je Feld ihre Id. */
+  async function ergaenzungen(e: Entity): Promise<Record<string, string>> {
+    const stand = await roh();
+    const ids = [e.id, ...(e.relations ?? []).filter((r) => r.type === 'overrides').map((r) => r.to)];
+    if (!ids.some((id) => stand.ersetzt.has(id))) return {};
+    const registry = await repo.getRegistry();
+    const kampagne = kampagneIn(stand.map, registry.settings ?? null);
+    if (!kampagne) return {};
+    return stapelFuer(stand.map, kampagne, registry).supplied(e, stand.ueberschreiber);
+  }
+  async function mitErgaenzungen(e: Entity): Promise<Entity> {
+    const stand = await roh();
+    /* Auch eine ganze Fassung: die Ergänzung zeigt aufs Original. */
+    const ids = isSupplement(e) ? [e.id] : [e.id, ...(e.relations ?? []).filter((r) => r.type === 'overrides').map((r) => r.to)];
+    if (!ids.some((id) => stand.ersetzt.has(id))) return e;
+    const registry = await repo.getRegistry();
+    const kampagne = kampagneIn(stand.map, registry.settings ?? null);
+    if (!kampagne) return e;
+    const stapel = stapelFuer(stand.map, kampagne, registry);
+    return withSupplements(e, ids, stand.ueberschreiber, (x) => stapel.rank(x)).entity;
   }
 
   async function kandidaten(request: FastifyRequest, ziele: Iterable<string>): Promise<Map<string, Entity[]>> {
@@ -3195,8 +3223,11 @@ export function buildApp({
        „Admin" (T-277): sagt der Artikel keine, sagt es seine Gruppe. */
     const registry = await repo.getRegistry();
     const audience = effectiveAudience(stand.map, einer, campaignVisibility(stand.map, registry, currentCampaign(stand.map, registry.settings ?? null)));
+    /* Was aus einer Ergänzung kommt (T-142): das Element Shape schreibt die Form dorthin. */
+    const supplied = await ergaenzungen(einer);
     const refs = {
       audience,
+      ...(Object.keys(supplied).length ? { supplied } : {}),
       ...(await bezuegeVon(request, einer)),
       ...(await bilderVon(request, einer)),
       ...(ready ? { ready } : {}),
@@ -3747,6 +3778,52 @@ export function buildApp({
        ein Board, das die Seite nach einem Griff ganz zurückschreibt, trüge
        ihren letzten Stand mit und nähme einen Zug zurück. */
     if (vorherRoh && primaryInterface(entity) === BOARD_TYPE) entity = keepDrawState(vorherRoh, entity);
+
+    /* **Was eine Ergänzung trägt, gehört ihr** (T-142): gelesen kommt die
+       Form aus „Item shapes" im Artikel mit, geschrieben wird sie nicht in
+       den Grundartikel — dort stünde sie unsichtbar unter der Ergänzung und
+       bliebe, wenn die Ebene ausgeht. Das Feld behält seinen Stand. */
+    /* **Wer ein ergänztes Feld ändert, ändert die Ergänzung** — wenn er sie
+       schreiben darf; sonst bleibt sie, wie sie ist. */
+    const ergaenzt = await ergaenzungen(entity);
+    if (Object.keys(ergaenzt).length) {
+      const components = { ...(entity.components ?? {}) } as Record<string, Record<string, unknown>>;
+      const umleiten = new Map<string, Record<string, unknown>>();
+      for (const [ref, quelle] of Object.entries(ergaenzt)) {
+        const [karte = '', feld = ''] = ref.split('.');
+        const gesendet = components[karte]?.[feld];
+        const erg = await repo.getEntity(quelle);
+        const dort = (erg?.components?.[karte] as Record<string, unknown> | undefined)?.[feld];
+        if (erg && JSON.stringify(gesendet) !== JSON.stringify(dort)) {
+          const neu = umleiten.get(quelle) ?? {};
+          neu[ref] = gesendet;
+          umleiten.set(quelle, neu);
+        }
+        const alt = (vorherRoh?.components?.[karte] as Record<string, unknown> | undefined)?.[feld];
+        const hier = { ...(components[karte] ?? {}) };
+        if (alt === undefined) delete hier[feld];
+        else hier[feld] = alt;
+        components[karte] = hier;
+      }
+      entity = { ...entity, components } as Entity;
+      const wer = await viewerOf(request);
+      for (const [quelle, felder] of umleiten) {
+        const erg = await repo.getEntity(quelle);
+        if (!erg || !wer || !mayWrite(wer, await ownedBy(wer), quelle)) continue;
+        const comps = { ...(erg.components ?? {}) } as Record<string, Record<string, unknown>>;
+        for (const [ref, wert] of Object.entries(felder)) {
+          const [karte = '', feld = ''] = ref.split('.');
+          const k = { ...(comps[karte] ?? {}) };
+          if (wert === undefined) delete k[feld];
+          else k[feld] = wert;
+          comps[karte] = k;
+        }
+        const neu = { ...erg, components: comps } as Entity;
+        const probleme = validateEntity(await repo.getRegistry(), neu);
+        if (probleme.length) return { code: 400, body: { error: 'Ergänzung ungültig', issues: probleme } };
+        await repo.putEntity(neu);
+      }
+    }
 
     /* **Reservierte Stücke bleiben, wie sie sind** (T-134): verkaufen,
        verschieben, verbrauchen, löschen geht erst, wenn der Auftrag
@@ -4345,7 +4422,9 @@ export function buildApp({
     const alle = await repo.listEntities();
     const roh = new Map(alle.map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
-    const gesiebt = await sieve(request, alle, alle);
+    /* Ergänzungen (T-142) stehen für sich nicht im Spiel, sollen sich aber
+       ändern lassen wie jeder Artikel ihrer Ebene — aufgeschaltet zählen sie mit. */
+    const gesiebt = [...(await sieve(request, alle, alle)), ...(await sieve(request, alle.filter(isSupplement), alle, undefined, 'versions'))];
     const auswahl = selectEntities(registry, gesiebt, auftrag.select);
     const r = await fuehreLaufAus(request, wer, registry, roh, auftrag, auswahl.map((e) => e.id));
     return reply.code(r.code).send({ ...r.body, ms: Date.now() - t0 });

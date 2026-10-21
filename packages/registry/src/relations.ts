@@ -768,6 +768,9 @@ export const relations: Record<string, RelationDef> = {
         /* Die Drehung im Raster schrieb der Prototyp schon immer; hier
            stand sie nicht (D54 zieht sie nach). */
         rot: { type: 'number', title: 'Rotation in degrees', default: 0 },
+        /* **Gespiegelt** (T-142): vor dem Drehen, wie `itemShape` rechnet.
+           Nur wo die Form nicht symmetrisch ist (`shapeChiral`). */
+        flip: { type: 'boolean', title: 'Mirrored' },
         attuned: { type: 'boolean', title: 'Attuned' },
         note: { type: 'string', title: 'Note' },
         /* **Reserviert für …** (T-127, für den Handwerksauftrag T-128): der
@@ -1625,6 +1628,15 @@ export const relations: Record<string, RelationDef> = {
       properties: {
         scope: { type: 'string', title: 'Scope' },
         note: { type: 'string', title: 'Why' },
+        /* **Eine Ergänzung** (T-142, E-125): nennt die Kante Felder, ersetzt
+           die Fassung das Original nicht, sondern legt nur diese darüber
+           (`withSupplements`). */
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          title: 'Only these fields',
+          description: 'Makes it a supplement: only these fields (Type.field) are laid over the article, which stays in play.',
+        },
       },
     },
   },

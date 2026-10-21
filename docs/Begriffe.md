@@ -2207,6 +2207,31 @@ nicht in jedem Beutel gleich liegen. Ein Stück **vom Raster** zu nehmen und
 es **aus dem Behälter** zu nehmen sind zwei Dinge, und beide braucht man:
 das eine räumt um, das andere gibt her.
 
+**Die Form eines Gegenstands wird gemalt** (T-142, Element `shape`): ein
+Raster von 5 × 5, das am Rand wächst, umschaltbar auf die Zeilen, wie sie
+im Vault stehen (`X` belegt, `0` frei). Gespeichert wird die Form **ohne
+leere Ränder** (`trimShape`) — sonst läge eine Fackel im Inventar als
+Fünfer mit einem Feld oben links. Das **Spiegeln** steht wie die Drehung
+an der Kante (`holds.props.flip`), gespiegelt wird vor dem Drehen, und
+angeboten wird es nur, wo die gespiegelte Form keine Drehung der
+ursprünglichen ist (`shapeChiral`): ein Stab oder ein T bleibt gespiegelt,
+was er war. **Das Bild liegt in der Form**: das Inventarbild
+(`Item.inventoryImage`), sonst das Bild des Gegenstands, nach seinem
+Ausschnitt (`Item.inventoryFrame`: Zoom, Verschiebung, Drehung zur Form,
+Einpassen oder Füllen) und nur in den belegten Feldern. Der Ausschnitt
+steht am Gegenstand und nicht an der Kante — dasselbe Schwert sieht in
+jedem Rucksack gleich aus; wie es liegt, sagt die Kante.
+
+**Die Formen aus Basils System sind eine Ergänzung** (T-142, E-125) und
+keine ganze Fassung. Eine Fassung ersetzt ihr Original, und von mehreren
+gilt nur die höchste — eine Formfassung schlösse die Preisfassung aus
+„AI generated prices" aus, und wer beides aufschaltet, verlöre eines. Eine
+**Ergänzung** nennt an ihrer Kante `overrides` die Felder, die sie trägt
+(`props.fields`), und legt beim Lesen nur diese über das, was gilt. Sie
+steht selbst in keiner Liste, und ein Feld, das sie trägt, wird nicht in
+den Artikel darunter geschrieben: dort stünde es unsichtbar und bliebe,
+wenn die Ebene ausgeht.
+
 **Fallen lassen heisst nicht weggeben** (D58). Ein Schwert, das mitten im
 Kampf aus der Hand fällt, gehört der Figur weiter und liegt zu ihren
 Füssen; nach dem Kampf hebt sie es auf. Darum bleibt die `holds`-Kante,

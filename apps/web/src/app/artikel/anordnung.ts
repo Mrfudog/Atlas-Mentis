@@ -67,6 +67,7 @@ export interface Stueck {
     | 'statblock'
     | 'stats'
     | 'token'
+    | 'shape'
     | 'spell'
     | 'item'
     | 'beschreibung'
@@ -332,6 +333,10 @@ export function anordnen(
       case 'token':
         /* Das Token (T-297) holt sich, was es braucht (`refs.token`). */
         out.push({ id: el.id, art: 'token' });
+        break;
+      case 'shape':
+        /* Die Form (T-142) zeichnet ihre Felder selbst; die Buchzeilen nehmen sie heraus. */
+        out.push({ id: el.id, art: 'shape' });
         break;
       case 'description': {
         const text = opt.beschreibung;

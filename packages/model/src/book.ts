@@ -744,6 +744,8 @@ const ITEM_PLACED = new Set([
   'Item.bonusSpellAttack', 'Item.bonusSave', 'Item.copperPrice', 'Item.priceNote', 'Item.weight',
   'Weapon.category', 'Weapon.damage', 'Weapon.damage2', 'Weapon.damageType', 'Weapon.range',
   'Weapon.ammoType', 'Armor.ac', 'Armor.armorType', 'Armor.strength', 'Armor.stealthDisadvantage',
+  /* Das Element `shape` (T-142) zeichnet Form, Stapelgrösse und Inventarbild. */
+  'Item.rows', 'Item.width', 'Item.height', 'Item.cells', 'Item.stackSize', 'Item.inventoryImage', 'Item.inventoryFrame',
 ]);
 
 const AUFLADEN: Record<string, string> = {

@@ -510,6 +510,13 @@ export type LayoutElementKind =
   | 'spell'
   | 'item'
   /**
+   * **Die Form eines Gegenstands** (T-142): sein Raster fürs Kachelinventar
+   * mit dem Bild darin, umschaltbar zwischen Raster und Zeilen, dazu die
+   * Stapelgrösse; zum Malen für wer schreibt, Drehen und Spiegeln als
+   * Vorschau, und „Adjust inventory image". Ohne `Item`-Karte nichts.
+   */
+  | 'shape'
+  /**
    * **Die Kennzahlen** (T-206): Rüstungsklasse, Trefferpunkte, Bewegung,
    * Initiative, passive Wahrnehmung, Herausforderung als eine Reihe
    * Kacheln (`keyStats` in `book.ts`), dazu die Zustände einer Figur. An

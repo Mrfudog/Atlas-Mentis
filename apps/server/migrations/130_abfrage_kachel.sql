@@ -8,7 +8,7 @@
 --
 -- Der Seed schreibt nur in eine leere Datenbank, also kommt es hier nach.
 -- Nur, wo das Feld noch fehlt; nichts wird entfernt, kein Artikel geändert.
--- Die Nummer wird beim Hereinmergen nachgesehen.
+-- Nummer beim Hereinmergen nachgesehen: 130.
 
 update relation_def
    set props = jsonb_set(
