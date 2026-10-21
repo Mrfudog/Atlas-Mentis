@@ -1,5 +1,5 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { expectedDamage, planBudget, planText, type PlanStep, type PlanTile, type Size, type TurnPlan } from '@nw/model';
+import { expectedDamage, inPoly, planBudget, planText, type PlanCost, type PlanStep, type PlanTile, type Size, type TurnPlan } from '@nw/model';
 import { Api, type ZugLage } from '../kern/api';
 import { Live } from '../kern/live';
 import type { Planung, PlanTipp } from './karte';
@@ -168,7 +168,7 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
                 type="button"
                 class="kachel c-move"
                 [class.an]="modus() === 'move'"
-                [disabled]="budget().left.movement <= 0"
+                [disabled]="budget().left.movement <= 0 || hatUebergang()"
                 (click)="bewegen()"
                 title="Move: tap a square on the map"
               >
@@ -176,6 +176,20 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
                 <span class="n">Move</span>
                 <small>{{ budget().left.movement }} ft</small>
               </button>
+              @for (u of uebergaenge(); track u.via) {
+                <!-- **Durch einen Übergang** (T-326): steht der Zug in seiner Fläche, kostet er, was der Übergang sagt. -->
+                <button
+                  type="button"
+                  class="kachel c-move"
+                  [disabled]="!!u.blocked || hatUebergang() || budget().left.movement < u.feet || (u.cost !== 'free' && budget().left[u.cost] <= 0)"
+                  (click)="durch(u)"
+                  [title]="u.blocked ?? 'Go through the ' + u.name"
+                >
+                  <span class="k">⇅</span>
+                  <span class="n">Through {{ u.name }}</span>
+                  <small>{{ u.feet ? u.feet + ' ft' : '' }}{{ u.feet && u.cost !== 'free' ? ' · ' : '' }}{{ u.cost !== 'free' ? kosten(u.cost).wort : (u.feet ? '' : 'free') }}</small>
+                </button>
+              }
               @for (t of l.tiles; track t.id) {
                 <button
                   type="button"
@@ -652,6 +666,25 @@ export class Zugplaner {
       threats: l.threats ?? [],
     };
   });
+
+  /**
+   * **Die Übergänge, an denen der Zug gerade steht** (T-326): wo der letzte
+   * Schritt hinführt, sonst das Token — in der Fläche des Übergangs.
+   */
+  protected readonly uebergaenge = computed(() => {
+    const l = this.lage();
+    const ps = l?.passages ?? [];
+    if (!ps.length) return [];
+    const zug = [...this.schritte()].reverse().find((s) => s.kind === 'move');
+    const wo = zug?.kind === 'move' && zug.to ? zug.to : ps[0]!.from;
+    return ps.filter((u) => (u.area ? inPoly(u.area, wo) : Math.hypot(wo.x - u.at.x, wo.y - u.at.y) <= 0.002));
+  });
+  /** Nach einem Übergang steht die Figur woanders — der Zug endet dort. */
+  protected readonly hatUebergang = computed(() => this.schritte().some((s) => s.kind === 'passage'));
+  protected durch(u: { via: string; name: string; feet: number; cost: PlanCost }): void {
+    this.dazu({ id: neueId(), kind: 'passage', via: u.via, name: u.name, feet: u.feet, cost: u.cost });
+    this.modus.set('idle');
+  }
 
   protected kosten(c: string) {
     return KOSTEN[c] ?? KOSTEN['action']!;

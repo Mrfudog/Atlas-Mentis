@@ -75,11 +75,18 @@ import {
   floorOfMarker,
   GROUND_FLOOR,
   floorView,
-  goThrough,
   onFloor,
-  onPassage,
   passageEnds,
-  PASSAGE_EXACT,
+  inPassage,
+  passageArea,
+  isLastTurn,
+  mayUsePassage,
+  passageFeet,
+  passageNeedsConfirm,
+  passageRulesOf,
+  tokensInPassage,
+  turnOf,
+  type Passage,
   naturalD20,
   partiesOf,
   resolvePlay,
@@ -106,6 +113,7 @@ import {
   tableDistance,
   tableRuleGraphs,
   type Entity,
+  type PlanCost,
   type PlanCursor,
   type Provocation,
   type RuleCreature,
@@ -128,6 +136,8 @@ import type { User } from './auth.js';
 import type { ChangeFeed } from './live.js';
 import type { Repository } from './repo.js';
 import { leitetTisch, tischSitzung, wurfEintragen } from './wuerfe.js';
+import type { InsSpiel } from './spielinstanz.js';
+import { durchschicken, geoDerEbene } from './uebergang.js';
 
 interface Stand {
   alle: Entity[];
@@ -142,6 +152,8 @@ export interface ZugplanDeps {
   sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>) => Promise<Entity[]>;
   geltend: (e: Entity, map: Map<string, Entity>) => Promise<Entity>;
   schreibeGeprueft: (entity: Entity) => Promise<{ stored: Entity } | { issues: ReturnType<typeof validateEntity> }>;
+  /** Eine Karte für den Tisch der Sitzung (T-289) — ein Portal auf eine andere Karte nimmt sie ins Spiel (T-326). */
+  insSpiel?: InsSpiel;
 }
 
 /** So viele Plan-Einträge einer Karte liest die Leiste höchstens. */
@@ -409,6 +421,56 @@ export function wegAufdecken(
 export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   const { repo, feed, viewerOf, roh, sieve, geltend, schreibeGeprueft } = deps;
 
+  /**
+   * **Darf es jetzt durch diesen Übergang?** (T-326) Die Regeln des
+   * Übergangs, gefragt mit dem Stand des Kampfes auf der Karte: wer am
+   * Zug ist, ob es der letzte Zug der Runde ist.
+   */
+  function durchErlaubt(stand: Stand, karte: Entity, kampagne: Entity | null, ende: Passage, figur: string, leitet: boolean): string | null {
+    const kampf = encounterOnMap(stand.alle, karte.id);
+    const zug = kampf ? turnOf(stand.map, kampf) : {};
+    return mayUsePassage(passageRulesOf(kampagne, ende), {
+      gm: leitet,
+      combat: !!kampf,
+      ownTurn: zug.current?.to === figur,
+      lastTurn: !!kampf && isLastTurn(stand.map, kampf),
+    });
+  }
+
+  /** Durchschicken und schreiben — Quelle, Ziel und bei Bedarf die Sitzung. */
+  async function schickeDurch(
+    stand: Stand,
+    karte: Entity,
+    kampagne: Entity | null,
+    ende: Passage,
+    rels: string[],
+    nat: { w: number; h: number } | null,
+    sitzungFolgt: boolean,
+  ): Promise<{ map: string; floor: string; moved: { rel: string; to: { x: number; y: number } }[] } | { fehler: number; error: string; issues?: unknown }> {
+    const d = await durchschicken({ geltend, insSpiel: deps.insSpiel }, { stand, karte, kampagne, ende, rels, nat });
+    if ('fehler' in d) return d;
+    for (const e of d.andere) {
+      const w = await schreibeGeprueft(e);
+      if ('issues' in w) return { fehler: 422, error: 'The target map could not be written.', issues: w.issues };
+    }
+    const w = await schreibeGeprueft(d.quelle);
+    if ('issues' in w) return { fehler: 422, error: 'Die Karte liess sich nicht schreiben.', issues: w.issues };
+    /* **Die Spielenden wechseln mit** (T-326): schickt die Leitung durch ein
+       Portal auf eine andere Karte, zeigt die Sitzung, die diese Karte auf
+       dem Tisch hat, danach die Zielkarte. */
+    if (sitzungFolgt && d.map !== karte.id) {
+      const sitzung = tischSitzung(stand.alle);
+      const st = sitzung ? ((sitzung.components?.['Session'] ?? sitzung.components?.['SessionState'] ?? {}) as Record<string, unknown>) : null;
+      if (sitzung && st?.['activeMap'] === karte.id) {
+        const name = sitzung.components?.['Session'] ? 'Session' : 'SessionState';
+        const ws = await schreibeGeprueft({ ...sitzung, components: { ...sitzung.components, [name]: { ...st, activeMap: d.map } } });
+        if ('issues' in ws) return { fehler: 422, error: 'The session could not be written.', issues: ws.issues };
+      }
+    }
+    if (d.map !== karte.id) feed.publish({ kind: 'plan', id: d.map });
+    return { map: d.map, floor: d.floor, moved: d.moved };
+  }
+
   /** Die gesiebte Karte, die rohe dazu, Kampagne und Rolle — oder ein Fehler. */
   async function lage(request: FastifyRequest, id: string) {
     const user = await viewerOf(request);
@@ -525,8 +587,70 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       targets,
       threats,
       plans,
+      passages: figur ? uebergaengeFuer(stand, roheKarte, karte, kampagne, figur.id, leitet, speed) : [],
     };
   });
+
+  /**
+   * **Die Übergänge, die der Plan anbietet** (T-326): auf der Ebene der
+   * Figur, wie der Betrachter die Karte sieht, je mit Fläche (ohne eigene
+   * das Feld um den Punkt, wenn die Bildgrösse am Asset steht), Kosten und
+   * — wenn er es jetzt nicht erlaubt — dem Grund.
+   */
+  function uebergaengeFuer(stand: Stand, roheKarte: Entity, karte: Entity, kampagne: Entity | null, figur: string, leitet: boolean, tempo: number) {
+    const m = markersOf(karte).find((x) => x.to === figur);
+    if (!m) return [];
+    const ebene = floorOfMarker(karte, m.rel.id);
+    const geo = geoDerEbene(stand, roheKarte, ebene, null);
+    return passageEnds(floorView(karte, ebene), ebene).map((e) => {
+      const r = passageRulesOf(kampagne, e);
+      return {
+        via: e.relId,
+        name: e.note || e.kind,
+        at: e.at,
+        area: passageArea(e, geo),
+        feet: passageFeet(r, tempo, geo?.cellFeet ?? 5),
+        cost: r.action === 'none' ? ('free' as const) : r.action,
+        blocked: durchErlaubt(stand, roheKarte, kampagne, e, figur, leitet),
+        from: { x: m.x, y: m.y },
+      };
+    });
+  }
+
+  /**
+   * Ein Übergang im Plan: steht die Figur nach den Schritten davor in
+   * seiner Fläche, kennt der Betrachter ihn, erlaubt er es jetzt? Dann
+   * Name und Kosten nach seinen Regeln, sonst der Grund.
+   */
+  function passageImPlan(
+    stand: Stand,
+    roheKarte: Entity,
+    karte: Entity,
+    kampagne: Entity | null,
+    figur: string,
+    davor: readonly PlanStep[],
+    via: string,
+    nat: { w: number; h: number } | null,
+    leitet: boolean,
+    tempo: number,
+  ): { name: string; feet: number; cost: PlanCost } | string {
+    const m = markersOf(roheKarte).find((x) => x.to === figur);
+    if (!m) return 'The character has no token here.';
+    const ebene = floorOfMarker(roheKarte, m.rel.id);
+    const geo = geoDerEbene(stand, roheKarte, ebene, nat);
+    const letzter = [...davor].reverse().find((x) => x.kind === 'move');
+    const wo = letzter?.kind === 'move' && letzter.to ? letzter.to : { x: m.x, y: m.y };
+    const ende = passageEnds(floorView(karte, ebene), ebene).find((e) => e.relId === via);
+    if (!ende || !inPassage(ende, wo, geo)) return 'The character does not stand in that passage.';
+    const nein = durchErlaubt(stand, roheKarte, kampagne, ende, figur, leitet);
+    if (nein) return nein;
+    const r = passageRulesOf(kampagne, ende);
+    return {
+      name: ende.note || ende.kind,
+      feet: passageFeet(r, tempo, geo?.cellFeet ?? 5),
+      cost: r.action === 'none' ? 'free' : r.action,
+    };
+  }
 
   /** Antworten darf die Leitung für jeden, Spielende für ihre Figur. */
   function darfAntworten(user: User, leitet: boolean, reactor: string): boolean {
@@ -549,6 +673,18 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const tempo = tempoVon(werte(stand.map, statblockVon(stand.alle, figur)));
       const kampf = encounterOnMap(stand.alle, roheKarte.id);
       const reactionSpent = !(await reaktionDa(repo, stand, roheKarte.id, figur.id, kampf));
+      /* **Übergänge im Plan** (T-326): der Server setzt die Kosten aus den
+         Regeln des Übergangs, prüft, dass die Figur an der Stelle des Plans
+         in der Fläche steht, und ob der Übergang es ihr jetzt erlaubt. */
+      for (const [i, s] of steps.entries()) {
+        if (s.kind !== 'passage') continue;
+        const pruef = passageImPlan(stand, roheKarte, karte, kampagne, figur.id, steps.slice(0, i), s.via, cleanNat(b.nat), leitet, tempo);
+        if (typeof pruef === 'string') return reply.code(422).send({ error: pruef });
+        steps[i] = { ...s, name: pruef.name, feet: pruef.feet, cost: pruef.cost };
+        /* Nach einem Übergang steht die Figur woanders — der Plan endet dort. */
+        steps.splice(i + 1);
+        break;
+      }
       const { problems } = planBudget(steps, tempo, { reactionSpent });
       if (problems.length) return reply.code(422).send({ error: problems.join(' ') });
 
@@ -610,28 +746,51 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if (asset && !marker.movable) return reply.code(403).send({ error: 'This asset is fixed. Move it while editing the map.' });
       if (asset ? !leitet && !mayMoveAsset(regeln) : !darfZiehen(leitet, regeln, marker.to, zieher(stand, kampagne, karte, user.actorIds ?? [])))
         return reply.code(403).send({ error: asset ? 'This campaign does not let you move that asset.' : 'This campaign does not let you move that token.' });
-      if (!asset && !leitet && encounterOnMap(stand.alle, roheKarte.id)) return reply.code(423).send({ error: 'During an encounter, tokens move through the turn plan.' });
       /* **Je Ebene** (T-307): Gitter, Sperren und Nebel sind die der Ebene,
          auf der das Token steht. */
       const ebene = floorOfMarker(roheKarte, marker.rel.id);
       const roheEbene = floorView(roheKarte, ebene);
 
-      /* **Durchgehen** (T-307): das Token steht auf einem Übergang und
-         wechselt auf dessen Ziel. Wer es ziehen darf, darf es durchgehen
-         lassen; mit Bestätigung durch die Leitung wartet auch das. */
+      /* **Durchgehen** (T-307, T-326): das Token steht in der Fläche eines
+         Übergangs und wechselt auf dessen Ziel — dieselbe Karte oder durch
+         ein Portal auf eine andere. Wer es ziehen darf, darf es
+         durchgehen lassen, wenn der Übergang es Spielenden erlaubt
+         (`passageRulesOf`); bestätigt die Leitung, wird es ein Zugplan mit
+         einem Schritt. Im Kampf geht es über den Zugplan, der die Kosten
+         gegen den Zug rechnet. */
       if (typeof b.via === 'string' && b.via) {
         if (asset) return reply.code(422).send({ error: 'An asset does not take a passage.' });
-        const ende = passageEnds(roheEbene, ebene).find((e) => e.relId === b.via && onPassage(e, marker, PASSAGE_EXACT, 1));
+        const nat = cleanNat(b.nat);
+        const geo = geoDerEbene(stand, roheKarte, ebene, nat);
+        const ende = passageEnds(roheEbene, ebene).find((e) => e.relId === b.via && inPassage(e, marker, geo));
         /* Spielende kennen nur Übergänge, die ihre Karte trägt. */
         if (!ende || (!leitet && !passageEnds(floorView(karte, ebene), ebene).some((e) => e.relId === ende.relId))) return reply.code(404).send({ error: 'There is no passage here.' });
-        if (!leitet && regeln.moves === 'confirm') return reply.code(423).send({ error: 'Moves wait for the GM to confirm them.' });
-        if (ende.toMap !== roheKarte.id) return reply.code(422).send({ error: 'This portal leads to another map.' });
-        const durch = goThrough(roheKarte, marker.rel.id, ende);
-        if (!durch) return reply.code(422).send({ error: 'This passage leads nowhere.' });
-        const r = await schreibeGeprueft(durch);
-        if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
-        return { moved: marker.rel.id, floor: ende.toFloor, to: ende.toAt };
+        const nein = durchErlaubt(stand, roheKarte, kampagne, ende, marker.to, leitet);
+        if (nein && !leitet) return reply.code(403).send({ error: nein });
+        if (!leitet && encounterOnMap(stand.alle, roheKarte.id)) return reply.code(423).send({ error: 'During an encounter, take the passage in your turn plan.' });
+        if (!leitet && passageNeedsConfirm(passageRulesOf(kampagne, ende), regeln.moves)) {
+          const figur = stand.map.get(marker.to);
+          const plan: TurnPlan = {
+            plan: `tp-${randomUUID().slice(0, 12)}`,
+            map: roheKarte.id,
+            actor: marker.to,
+            actorName: figur ? await nameFuer(request, figur, leitet, stand.map) : marker.to,
+            by: { id: user.id, name: user.name },
+            steps: [{ id: 's1', kind: 'passage', via: ende.relId, name: ende.kind, feet: 0, cost: 'free' }],
+            state: 'planned',
+            campaign: kampagne?.id ?? null,
+            session: tischSitzung(stand.alle)?.id ?? null,
+            ...(nat ? { nat } : {}),
+          };
+          await repo.appendEvent(TURNPLAN_EVENT, roheKarte.id, plan);
+          feed.publish({ kind: 'plan', id: roheKarte.id });
+          return reply.code(202).send({ proposal: { ...plan, text: planText(plan.steps) } });
+        }
+        const r = await schickeDurch(stand, roheKarte, kampagne, ende, [marker.rel.id], nat, false);
+        if ('fehler' in r) return reply.code(r.fehler).send({ error: r.error, ...(r.issues ? { issues: r.issues } : {}) });
+        return { moved: marker.rel.id, map: r.map, floor: r.floor, to: r.moved[0]?.to };
       }
+      if (!asset && !leitet && encounterOnMap(stand.alle, roheKarte.id)) return reply.code(423).send({ error: 'During an encounter, tokens move through the turn plan.' });
 
       const roh = (b.to ?? {}) as { x?: unknown; y?: unknown };
       const tx = Number(roh.x);
@@ -688,6 +847,37 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const r = await schreibeGeprueft(neu);
       if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
       return { moved: marker.rel.id, to };
+    },
+  );
+
+  /**
+   * **Alle durchschicken** (T-326, `POST /api/maps/:id/passage`
+   * `{via, floor, nat?}`): die Leitung schickt jedes Token, das in der
+   * Fläche eines Übergangs steht, auf dessen Ziel — Figuren und das
+   * Gruppen-Token. Durch ein Portal auf eine andere Karte wechselt die
+   * Sitzung mit, wenn sie diese Karte zeigt. Ist der Übergang den
+   * Spielenden vorbehalten (`trigger: 'players'`), schickt sie niemanden.
+   */
+  app.post<{ Params: { id: string }; Body: { via?: unknown; floor?: unknown; nat?: unknown } | null }>(
+    '/api/maps/:id/passage',
+    async (request, reply) => {
+      const l = await lage(request, request.params.id);
+      if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
+      const { stand, roheKarte, kampagne, leitet } = l;
+      if (!leitet) return reply.code(403).send({ error: 'Only the GM sends everyone through.' });
+      const b = request.body ?? {};
+      const ebene = typeof b.floor === 'string' && b.floor ? b.floor : GROUND_FLOOR;
+      const nat = cleanNat(b.nat);
+      const ende = passageEnds(floorView(roheKarte, ebene), ebene).find((e) => e.relId === b.via);
+      if (!ende) return reply.code(404).send({ error: 'There is no passage here.' });
+      const nein = mayUsePassage(passageRulesOf(kampagne, ende), { gm: true, combat: false, ownTurn: false, lastTurn: false });
+      if (nein) return reply.code(403).send({ error: nein });
+      const geo = geoDerEbene(stand, roheKarte, ebene, nat);
+      const wer = tokensInPassage(floorView(roheKarte, ebene), ende, geo).map((m) => m.rel.id);
+      if (!wer.length) return reply.code(422).send({ error: 'Nobody stands in this passage.' });
+      const r = await schickeDurch(stand, roheKarte, kampagne, ende, wer, nat, true);
+      if ('fehler' in r) return reply.code(r.fehler).send({ error: r.error, ...(r.issues ? { issues: r.issues } : {}) });
+      return r;
     },
   );
 
@@ -922,6 +1112,22 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         }
         results.push({ step: s.id, text: `Moved ${s.feet} ft.` });
         continue;
+      }
+      if (s.kind === 'passage') {
+        /* **Durch den Übergang** (T-326) — von der Stelle, an der die Figur
+           jetzt steht. Die Kosten rechnete das Einreichen. */
+        const m = rel ? markersOf(karte).find((x) => x.rel.id === rel) : undefined;
+        const ende = m ? passageEnds(floorView(karte, floorOfMarker(karte, m.rel.id)), floorOfMarker(karte, m.rel.id)).find((e) => e.relId === s.via) : undefined;
+        if (!m || !ende) {
+          results.push({ step: s.id, text: `${s.name}: the passage is gone.` });
+          continue;
+        }
+        const f = await schreiben();
+        if (f) return f;
+        const d = await schickeDurch(stand, karte, kampagne, ende, [m.rel.id], plan.nat ?? null, false);
+        if ('fehler' in d) return { fehler: d.fehler, error: d.error, ...(d.issues ? { issues: d.issues } : {}) };
+        results.push({ step: s.id, text: `Went through the ${s.name}${s.feet ? ` (${s.feet} ft)` : ''}.` });
+        return { plan: { ...rest, state: 'confirmed', asked: [...gefragt], results } };
       }
       const t = kacheln.get(s.tile);
       const ziel = s.target ? stand.map.get(s.target) : undefined;

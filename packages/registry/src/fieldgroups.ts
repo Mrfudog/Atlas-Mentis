@@ -3160,6 +3160,45 @@ export const fieldGroups = {
           enum: ['rules', 'tinyHalf'],
           default: 'rules',
         },
+        /* **Übergänge** (T-326): wer Tokens durch Treppen und Portale
+           schickt, wann im Kampf, was es kostet und ob die Leitung
+           bestätigt. Vorgabe für jeden Übergang, der es nicht selbst sagt
+           (`props.rules` am Marker); gelesen über `passageRulesOf`. */
+        passageTrigger: {
+          type: 'string',
+          title: 'Passages: who sends tokens through',
+          description: 'Who moves tokens through stairs, ladders and portals: only the GM, players with their own token in the passage, or both.',
+          enum: ['gm', 'players', 'both'],
+          default: 'both',
+        },
+        passageWhen: {
+          type: 'string',
+          title: 'Passages: when in an encounter',
+          description: 'During an encounter, when a player may take a passage: any time, only on their own turn, or only in the last turn of the round.',
+          enum: ['any', 'turn', 'roundEnd'],
+          default: 'any',
+        },
+        passageMove: {
+          type: 'string',
+          title: 'Passages: movement it costs',
+          description: 'How much movement going through costs during an encounter: nothing, one square, half the speed, or all of it.',
+          enum: ['none', 'square', 'half', 'all'],
+          default: 'none',
+        },
+        passageAction: {
+          type: 'string',
+          title: 'Passages: action it costs',
+          description: 'Whether going through costs an action or a bonus action during an encounter.',
+          enum: ['none', 'action', 'bonus'],
+          default: 'none',
+        },
+        passageConfirm: {
+          type: 'string',
+          title: 'Passages: GM confirms',
+          description: 'Whether the GM confirms a player going through: like any move (Player moves), always, or never.',
+          enum: ['moves', 'always', 'never'],
+          default: 'moves',
+        },
         /* **Werkzeuge je Kartentyp** (T-320): je `Map.kind` die Gruppen
            der Werkzeugleiste. Fehlt eine Art, gilt die Vorgabe
            (`defaultMapTools`); gelesen über `mapToolsOf`. */

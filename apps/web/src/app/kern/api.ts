@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, MapToolGroup, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, MapToolGroup, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -1557,13 +1557,22 @@ export class Api {
   /**
    * **Die eigene Figur ziehen** (T-204): `free` zieht sofort (`moved`),
    * `confirm` legt einen Vorschlag an (`proposal`), den die Leitung bestätigt.
-   * Mit `via` (T-307) geht das Token durch einen Übergang, auf dem es steht.
+   * Mit `via` (T-307) geht das Token durch einen Übergang, in dessen Fläche
+   * es steht (T-326) — `map` sagt, wo es danach steht (ein Portal).
    */
   moveToken(
     map: string,
     body: { rel: string; to?: { x: number; y: number }; via?: string; nat?: { w: number; h: number }; path?: { x: number; y: number }[]; feet?: number },
-  ): Promise<{ moved?: string; proposal?: TurnPlan; floor?: string }> {
+  ): Promise<{ moved?: string; proposal?: TurnPlan; floor?: string; map?: string }> {
     return this.call(`/api/maps/${encodeURIComponent(map)}/move`, { method: 'POST', body: JSON.stringify(body) });
+  }
+  /**
+   * **Alle durchschicken** (T-326): die Leitung schickt jedes Token in der
+   * Fläche eines Übergangs auf dessen Ziel — auch durch ein Portal auf eine
+   * andere Karte; die Sitzung wechselt dann mit.
+   */
+  sendThrough(map: string, body: { via: string; floor: string; nat?: { w: number; h: number } }): Promise<{ map: string; floor: string; moved: { rel: string; to: { x: number; y: number } }[] }> {
+    return this.call(`/api/maps/${encodeURIComponent(map)}/passage`, { method: 'POST', body: JSON.stringify(body) });
   }
   /**
    * **Eine Tür schalten** (T-118): die Leitung jede, Spielende eine neben
@@ -2107,6 +2116,8 @@ export interface ZugLage {
   threats: { id: string; name: string; rel: string; reach: number }[];
   /** `canAnswer`: dieser Betrachter beantwortet die offene Reaktionsfrage. */
   plans: (TurnPlan & { at: string; canAnswer?: boolean })[];
+  /** Die Übergänge auf der Ebene der Figur (T-326): Fläche, Kosten, und warum nicht, wenn nicht. */
+  passages?: { via: string; name: string; at: { x: number; y: number }; area: Array<[number, number]> | null; feet: number; cost: 'action' | 'bonus' | 'reaction' | 'free'; blocked: string | null; from: { x: number; y: number } }[];
 }
 
 /** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */
@@ -2129,6 +2140,8 @@ export interface KartenKontext {
   combatants: { id: string; name: string; placed: boolean }[];
   /** Die Kartenregeln der Kampagne (T-204). Fehlt bei einem älteren Server. */
   rules?: MapRules;
+  /** Die Vorgabe der Kampagne für Übergänge (T-326). */
+  passageRules?: PassageRules;
   /** Die Werkzeuggruppen für die Art dieser Karte (T-320). Fehlt bei einem älteren Server. */
   tools?: MapToolGroup[];
   /** Die eigenen Figuren mit Token hier (T-204). */

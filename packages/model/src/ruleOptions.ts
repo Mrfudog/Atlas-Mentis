@@ -33,6 +33,7 @@ import { mapRulesOf, mapToolTable } from './map.js';
 import { stowingRuleOf } from './stowing.js';
 import { initiativeRulesOf } from './tracker.js';
 import { turnPlannerOf } from './zugplan.js';
+import { passageRulesOf } from './passages.js';
 import { substitutionsOf, substitutionText } from './substitutes.js';
 import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
@@ -416,6 +417,68 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
+    /* Übergänge (T-326), gelesen über `passageRulesOf`; je Übergang überschreibbar. */
+    key: 'passageTrigger',
+    sort: 'map',
+    label: 'Passages: who sends tokens through',
+    does: 'Who moves tokens through stairs, ladders and portals. A passage can say otherwise in its own settings.',
+    source: { field: 'passageTrigger' },
+    variants: [
+      { key: 'both', label: 'GM and players', does: 'The GM sends every token in the passage through; a player sends their own token standing in it.' },
+      { key: 'gm', label: 'GM only', does: 'Only the GM sends tokens through.' },
+      { key: 'players', label: 'Players only', does: 'Players take the passage with their own tokens; the GM moves tokens by hand.' },
+    ],
+  },
+  {
+    key: 'passageWhen',
+    sort: 'map',
+    label: 'Passages: when in an encounter',
+    does: 'During an encounter, when a player may take a passage. Outside an encounter there are no turns, so any time.',
+    source: { field: 'passageWhen' },
+    variants: [
+      { key: 'any', label: 'Any time', does: 'Whenever the player’s token stands in the passage.' },
+      { key: 'turn', label: 'Own turn', does: 'Only while the character is the one whose turn it is in the tracker.' },
+      { key: 'roundEnd', label: 'End of round', does: 'Only during the last turn of the round.' },
+    ],
+  },
+  {
+    key: 'passageMove',
+    sort: 'map',
+    label: 'Passages: movement it costs',
+    does: 'During an encounter, the movement a passage takes from the turn. It counts against the speed in the turn planner.',
+    source: { field: 'passageMove' },
+    variants: [
+      { key: 'none', label: 'None', does: 'Going through costs no movement.' },
+      { key: 'square', label: 'One square', does: 'Going through costs one square of movement.' },
+      { key: 'half', label: 'Half speed', does: 'Going through costs half the character’s speed.' },
+      { key: 'all', label: 'All movement', does: 'Going through costs the whole speed of the turn.' },
+    ],
+  },
+  {
+    key: 'passageAction',
+    sort: 'map',
+    label: 'Passages: action it costs',
+    does: 'During an encounter, whether a passage takes an action or a bonus action.',
+    source: { field: 'passageAction' },
+    variants: [
+      { key: 'none', label: 'None', does: 'Going through takes no action.' },
+      { key: 'action', label: 'Action', does: 'Going through takes the action of the turn.' },
+      { key: 'bonus', label: 'Bonus action', does: 'Going through takes the bonus action of the turn.' },
+    ],
+  },
+  {
+    key: 'passageConfirm',
+    sort: 'map',
+    label: 'Passages: GM confirms',
+    does: 'Whether a player going through waits for the GM.',
+    source: { field: 'passageConfirm' },
+    variants: [
+      { key: 'moves', label: 'Like moves', does: 'As Player moves says: free moves go through at once, confirmed moves wait.' },
+      { key: 'always', label: 'Always', does: 'Every passage a player takes waits for the GM to confirm it.' },
+      { key: 'never', label: 'Never', does: 'A player goes through at once.' },
+    ],
+  },
+  {
     /* Der Initiative-Tracker (T-022) als eigenes Regelsystem (T-334, E-100):
        `on` ist das System „D&D 5e (standard)", gelesen über `initiativeRulesOf`. */
     key: 'combat',
@@ -759,6 +822,16 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return mapRulesOf(campaign).revealOnMove;
     case 'doors':
       return mapRulesOf(campaign).doors;
+    case 'passageTrigger':
+      return passageRulesOf(campaign).trigger;
+    case 'passageWhen':
+      return passageRulesOf(campaign).when;
+    case 'passageMove':
+      return passageRulesOf(campaign).move;
+    case 'passageAction':
+      return passageRulesOf(campaign).action;
+    case 'passageConfirm':
+      return passageRulesOf(campaign).confirm;
     case 'mapTools':
       return Object.entries(mapToolTable(campaign)).map(([k, g]) => `${k}: ${g.length ? g.join(', ') : 'none'}`);
     case 'combat':

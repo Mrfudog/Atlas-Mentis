@@ -1215,6 +1215,8 @@ export function buildApp({
     if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/(decide|react))?$/.test(url) && request.method === 'POST') return;
     /* Die eigene Figur ziehen (T-204): die Route prüft Figur, Kampf und Kampagnenregel selbst (`zugplan.ts`). */
     if (/^\/api\/maps\/[^/]+\/move$/.test(url) && request.method === 'POST') return;
+    /* Alle durch einen Übergang schicken (T-326): die Route prüft die Leitung selbst (`zugplan.ts`). */
+    if (/^\/api\/maps\/[^/]+\/passage$/.test(url) && request.method === 'POST') return;
     /* Eine Tür öffnen (T-118): die Route prüft Leitung, Kampagnenregel und Figur an der Tür selbst (`tueren.ts`). */
     if (/^\/api\/maps\/[^/]+\/door$/.test(url) && request.method === 'POST') return;
     /* Eine Begegnung beginnen (T-203): die Route prüft die Leitung selbst (`kampfstart.ts`). */
@@ -3632,12 +3634,13 @@ export function buildApp({
   });
   /* Der Zugplan auf der Karte (T-198): planen, einreichen, bestätigen —
      gewürfelt wird beim Bestätigen, ins Log (T-172). */
-  registerZugplan(app, { repo, feed: live, viewerOf, roh, sieve, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
+  /* Karten und Begegnungen im Spiel als Instanz (T-289) — auch der Zugplan braucht sie: ein Portal auf eine andere Karte (T-326). */
+  const spielDeps = { repo, viewerOf, roh, sieve, kampagnenEbene, schreibeGeprueft: (e: Entity) => schreibeGeprueft(e) };
+  registerZugplan(app, { repo, feed: live, viewerOf, roh, sieve, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e), insSpiel: insSpiel(spielDeps) });
   /* Türen am Tisch (T-118): öffnen, schliessen, verschliessen — und aufdecken, was dahinter liegt. */
   registerTueren(app, { repo, viewerOf, roh, sieve, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e) });
   /* Eine Begegnung beginnen (T-203): Initiative, vorplatzierte Tokens, die Sitzung führt sie. */
   /* Karten und Begegnungen im Spiel als Instanz (T-289): „In Play nehmen“ und „Played“. */
-  const spielDeps = { repo, viewerOf, roh, sieve, kampagnenEbene, schreibeGeprueft: (e: Entity) => schreibeGeprueft(e) };
   registerSpielinstanz(app, spielDeps);
   /* Enhancements an einem Stück (T-300): +1, versilbert … */
   registerAufwertung(app, {

@@ -440,15 +440,75 @@ Feld), steht genau darauf. Antippen des Übergangs zeigt das Ziel, „Show
 …“ und „Take … through“: `POST /api/maps/:id/move` mit `via` versetzt
 das Token auf Zielebene und Zielpunkt (`goThrough`) — wer es ziehen darf,
 darf es durchgehen lassen; mit Bestätigung durch die Leitung (`moves:
-confirm`) und im Kampf wartet auch das. Ein Portal auf eine andere Karte
-versetzt nichts: das Token gehört dort einer anderen Instanz; der Knopf
-öffnet die Karte.
+confirm`) und im Kampf wartet auch das. Seit T-326 (unten) versetzt auch
+ein Portal auf eine andere Karte, in deren Instanz für die Sitzung.
+
+### Übergänge als Fläche (T-326)
+
+Eine Treppe ist breiter als ein Punkt, und vor einem Portal steht eine
+ganze Gruppe. **Ein Ende darf eine Fläche sein** (`props.area`, am Ziel
+`props.toArea`): ein Vieleck in Anteilen der Karte, gesetzt mit „Draw
+area“ in der Karte des Übergangs — zwei Ecken, auf die Felder gerundet.
+**Ohne Fläche ist ein Ende das Feld um seinen Punkt** (`passageArea`;
+ohne Gitter der Punkt selbst) — bestehende Übergänge sehen aus wie vorher
+und verhalten sich wie vorher, nur zählt jetzt das ganze Feld.
+
+- **Wer darin steht, steht am Übergang** (`inPassage`, `tokensInPassage`).
+- **Sicht von innen:** wer in der Fläche einer Treppe mit Sicht steht,
+  sieht auf der Zielebene von der **entsprechenden Stelle** der Zielfläche
+  aus (`across`: wo man im Kasten der Fläche steht, steht man im Kasten
+  der Zielfläche) — oben an der Treppe sieht man oben, unten unten.
+  Gerechnet wird wie jede Sicht (T-305) mit den Sperren der Zielebene;
+  zurückgehalten wird am Server wie bisher (`redactFloors`, `redactMap`).
+- **Zielfelder:** wer durchgeht, landet auf einem **freien Feld der
+  Zielfläche**, das nächste am Zielpunkt zuerst (`landingSpots`); reicht
+  es nicht, auch auf belegten — niemand bleibt stehen, weil die Treppe
+  oben voll ist. Die Bildgrösse der Zielebene kommt vom Asset
+  (`Asset.width/height`), nicht vom Browser.
+
+**Durchschicken** (`apps/server/src/uebergang.ts`):
+
+- **Die Leitung schickt alle** in der Fläche: „Send all through“,
+  `POST /api/maps/:id/passage` `{via, floor}`. Durch ein **Portal auf eine
+  andere Karte** kommen die Tokens dort an — liegt die Quelle als Instanz
+  auf dem Tisch einer Sitzung (T-289), in die Instanz der Zielkarte für
+  dieselbe Sitzung (angelegt, wenn es sie nicht gibt), und eine
+  zurückgehaltene Instanz wird dabei freigegeben. Zeigt die Sitzung die
+  Quellkarte, zeigt sie danach die Zielkarte: **die Spielenden wechseln
+  mit**.
+- **Spielende gehen selbst:** ein Token in der Fläche, „Go through with …“
+  — oder **auf ein Portal ziehen**, dann geht es gleich hindurch (so war es
+  in der alten Karte; an einer Treppe öffnet sich nur ihre Karte, denn wer
+  auf der Treppe steht, will vielleicht nur sehen). Dieselbe Route wie
+  bisher, `POST /api/maps/:id/move` mit `via`.
+
+**Wer, wann, was es kostet** (`passageRulesOf`, `mayUsePassage`): die
+Vorgabe steht an der Kampagne (Rules & options › Map), je Übergang
+überschreibbar (`props.rules`, „Who, when, cost“ in seiner Karte):
+
+| Einstellung | Kampagne | Werte | Vorgabe |
+|---|---|---|---|
+| wer | `passageTrigger` | `gm`, `players`, `both` | `both` |
+| wann im Kampf | `passageWhen` | `any`, `turn` (eigener Zug), `roundEnd` (letzter Zug der Runde) | `any` |
+| Bewegung | `passageMove` (am Übergang auch `feet`) | `none`, `square`, `half`, `all` | `none` |
+| Aktion | `passageAction` | `none`, `action`, `bonus` | `none` |
+| Bestätigung | `passageConfirm` | `moves` (wie `Campaign.moves`), `always`, `never` | `moves` |
+
+Ohne Angabe gilt, was vor T-326 galt. Ausserhalb eines Kampfes gibt es
+keinen Zug, also hält `when` dort nichts und nichts kostet etwas. **Im
+Kampf geht es über den Zugplan** (T-198): steht der geplante Zug in der
+Fläche, bietet der Planer „Through …“ an; der Schritt `kind: 'passage'`
+zieht seine Fuss vom Tempo und nimmt Aktion oder Bonusaktion
+(`planBudget`), der Server rechnet die Kosten beim Einreichen aus den
+Regeln neu und prüft, dass die Figur an der Stelle in der Fläche steht und
+der Übergang es jetzt erlaubt. Danach endet der Plan — die Figur steht
+woanders. Geprüft wird **am Server**; die Maske bietet nur an.
 
 **Später:** Sicht zwischen Ebenen nur über Übergänge — ein Fenster nach
 aussen, der Blick vom Turmdach in den Hof wird ein eigener Übergang
 „Ausblick“. Das Aufdecken beim Ankommen oben (heute deckt erst der nächste
-Zug auf) und das Versetzen in die Instanz einer anderen Karte kommen
-danach.
+Zug auf) kommt danach; ebenso Flächen als freies Vieleck (heute ein
+Rechteck aus zwei Ecken).
 
 ---
 

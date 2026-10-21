@@ -30,6 +30,8 @@ import {
   currentCampaign,
   carriedLights,
   darkvisionFor,
+  passageRulesOf,
+  type PassageRules,
   encounterOnMap,
   entityName,
   fogOn,
@@ -132,6 +134,8 @@ export interface KartenKontext {
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
   /** Die Kartenregeln der Kampagne (T-204): Nebel je Gruppe oder Figur, Züge, Aufdecken beim Zug — ohne `Map.revealOnMove`, das liest die Seite an der Karte. */
   rules: MapRules;
+  /** Die Vorgabe der Kampagne für Übergänge (T-326) — ein Übergang darf sie überschreiben. */
+  passageRules: PassageRules;
   /** Die Werkzeuggruppen für die Art dieser Karte (T-320, `Campaign.mapTools`). */
   tools: MapToolGroup[];
   /** Die Figuren des Betrachters mit Token auf dieser Karte (T-204). */
@@ -385,7 +389,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
-    return { parents, children: kinder, navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights } satisfies KartenKontext;
+    return { parents, children: kinder, navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
   });
 
   /**

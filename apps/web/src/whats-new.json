@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-passage-areas",
+      "date": "2026-10-21",
+      "title": "Stairs and portals cover an area; send everyone through",
+      "text": "A passage can cover several squares (Floors › tap a passage › Draw area). Standing anywhere on stairs you can see through shows the floor above. The GM sends everyone in the area through at once, also through a portal to another map; players drop their token on a portal to go through. Who may, when in an encounter and what it costs is set under Rules & options › Map and per passage.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-21-text-sections",
       "date": "2026-10-21",
       "title": "Text sections instead of passages on an article",

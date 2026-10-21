@@ -78,6 +78,20 @@ export type PlanStep =
       /** Die Id des Artikels, auf dessen Token gezielt wird. */
       target?: string;
       targetName?: string;
+    }
+  | {
+      id: string;
+      /**
+       * **Durch einen Übergang** (T-326): die Figur steht in der Fläche
+       * von `via` und geht hindurch. Was es kostet, sagt der Übergang
+       * (`passageRulesOf`) — Fuss vom Tempo, dazu Aktion oder Bonusaktion
+       * (`free`: keine). Der Server rechnet die Kosten beim Einreichen neu.
+       */
+      kind: 'passage';
+      via: string;
+      name: string;
+      feet: number;
+      cost: PlanCost;
     };
 
 /**
@@ -320,6 +334,15 @@ export function planBudget(
       if (left.movement < 0) problems.push(`Not enough movement for ${s.feet} ft.`);
       continue;
     }
+    if (s.kind === 'passage') {
+      left.movement -= s.feet;
+      if (left.movement < 0) problems.push(`Not enough movement to take ${s.name}.`);
+      if (s.cost !== 'free') {
+        left[s.cost] -= 1;
+        if (left[s.cost] < 0) problems.push(`No ${s.cost === 'bonus' ? 'bonus action' : s.cost} left for ${s.name}.`);
+      }
+      continue;
+    }
     if (s.cost === 'free') continue;
     left[s.cost] -= 1;
     if (left[s.cost] < 0) problems.push(`No ${s.cost === 'bonus' ? 'bonus action' : s.cost} left for ${s.name}.`);
@@ -362,6 +385,7 @@ export function planText(steps: readonly PlanStep[]): string {
   return steps
     .map((s) => {
       if (s.kind === 'move') return `Move ${s.feet} ft`;
+      if (s.kind === 'passage') return `Through ${s.name}`;
       const vor = s.cost === 'bonus' ? 'Bonus: ' : s.cost === 'reaction' ? 'Reaction: ' : '';
       return `${vor}${s.name}${s.targetName ? ` → ${s.targetName}` : ''}`;
     })
@@ -455,6 +479,11 @@ export function cleanStep(raw: unknown, i: number): PlanStep | null {
     const ziel = tx !== null && ty !== null ? { to: { x: Math.min(1, Math.max(0, tx)), y: Math.min(1, Math.max(0, ty)) } } : {};
     return { id, kind: 'move', path, feet, ...ziel };
   }
+  if (s['kind'] === 'passage' && typeof s['via'] === 'string' && s['via']) {
+    const feet = num(s['feet']);
+    const cost = (['action', 'bonus', 'reaction', 'free'] as const).find((c) => c === s['cost']) ?? 'free';
+    return { id, kind: 'passage', via: s['via'].slice(0, 80), name: String(s['name'] ?? 'passage').slice(0, 120), feet: feet !== null && feet > 0 ? feet : 0, cost };
+  }
   if (s['kind'] === 'act' && typeof s['tile'] === 'string' && s['tile']) {
     const cost = (['action', 'bonus', 'reaction', 'free'] as const).find((c) => c === s['cost']) ?? 'action';
     return {
@@ -500,6 +529,8 @@ export function opportunityAttacks(steps: readonly PlanStep[], threats: readonly
   const schon = new Set<string>();
   let geloest = false;
   for (const s of steps) {
+    /* Hinter einem Übergang (T-326) steht die Figur woanders — die Reichweiten hier gelten nicht mehr. */
+    if (s.kind === 'passage') break;
     if (s.kind === 'act') {
       if (s.tile === 'std:disengage') geloest = true;
       continue;
@@ -566,7 +597,7 @@ export function plannerTiles(tiles: readonly PlanTile[], mode: TurnPlanner): Pla
 /** Darf ein Schritt in dieser Stufe stehen? Der Server prüft damit jeden eingereichten Plan. */
 export function plannerAllows(step: PlanStep, mode: TurnPlanner): boolean {
   if (mode === 'off') return false;
-  if (step.kind === 'move') return true;
+  if (step.kind === 'move' || step.kind === 'passage') return true;
   if (mode === 'move') return false;
   return mode === 'full' || step.cost !== 'reaction';
 }

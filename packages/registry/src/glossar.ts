@@ -361,10 +361,10 @@ const APP: AppTerm[] = [
   },
   {
     term: 'Passage',
-    aliases: ['Stairs', 'Ladder', 'Bridge', 'Portal', 'One way', 'View through'],
+    aliases: ['Stairs', 'Ladder', 'Bridge', 'Portal', 'One way', 'View through', 'Passage area', 'Send all through'],
     sort: 'app',
-    definition: 'A marker that leads to another floor of the map or to another map — stairs, a ladder, a bridge or a portal — with a point it leads to. Not the same as a text section of an article.',
-    effect: 'A token standing on it can be taken through. With View through it also sees from the other end, on that floor and at its scale; One way leaves no way back.',
+    definition: 'A marker that leads to another floor of the map or to another map — stairs, a ladder, a bridge or a portal — covering one square or a drawn area, with an area it leads to. Not the same as a text section of an article.',
+    effect: 'A token standing anywhere in its area can be taken through and lands on a free square of the target area; the GM can send everyone in it at once, also through a portal to another map. With View through it also sees from the matching spot at the other end, on that floor and at its scale; One way leaves no way back. Who may send tokens through, when in an encounter and what it costs come from the campaign (Rules & options › Map) unless the passage says otherwise.',
     translations: { de: 'Übergang' },
   },
   {
