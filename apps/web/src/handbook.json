@@ -16,7 +16,8 @@
           "heading": "How a page is built",
           "text": [
             "Article, character and type pages are split into chapters — on an article Fields, Relations, Linked here, Admin and Log. On a phone each chapter is a tab at the top, one at a time, and the address keeps the chosen one (?k=…). On a wider screen every chapter is a framed area with its title and count: the wide ones (the fields, the sheet) on the left, the narrow ones (relations, what links here) beside them, and Admin and Log below, collapsed until you open them. The row of chapter names at the top jumps to each.",
-            "A chapter with nothing in it is not shown, not even as a tab. Admin is on every kind of article: its layers and where it comes from, who can see it and why, what is known about it, and its versions."
+            "A chapter with nothing in it is not shown, not even as a tab. Admin is on every kind of article: its layers and where it comes from, who can see it and why, what is known about it, and its versions.",
+            "Long text that a kind of article offers — read-aloud text, notes, secrets — stands as text sections, not as fields: a kind can hold several, and each section can be revealed to players on its own. Below the fields the page lists the kinds with their count; “+ Text” adds one. A passage is something else: the stairs or portal between floors of a map."
           ]
         },
         {
