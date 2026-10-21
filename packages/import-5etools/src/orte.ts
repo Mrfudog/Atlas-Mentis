@@ -56,6 +56,15 @@ const ORTSWORT: Record<string, string | undefined> = {
 /** Ein Raum mit Schlüssel: „1. Cave Mouth", „12a. Vault", „K1. Front Courtyard". */
 export const RAUM = /^([A-Z]{0,2}\d+[a-z]?)\.\s/;
 
+/* Dazu die Schreibweisen der neueren Abenteuer (T-182): „D27: Ritual
+   Room", „Area 1: Cave Entrance", „1N. Rectory", „M14–M15. Miners'
+   Retreat". Nur für den Ort, nicht für die Szenen — welcher Abschnitt eine
+   eigene Szene ist, sagt weiter `RAUM` in `abenteuer.ts`, sonst legte ein
+   Lauf `only-new` neben den Teilen einer Szene neue Szenen mit demselben
+   Text an. */
+const SCHLUESSEL = '[A-Z]{0,2}\\d+[A-Za-z]?';
+export const RAUM_SCHLUESSEL = new RegExp(`^(?:Areas?\\s+)?${SCHLUESSEL}(?:\\s*[–-]\\s*${SCHLUESSEL})?[.:]\\s`);
+
 /** Was die Erkennung über einen Abschnitt sagt. */
 export interface OrtBefund {
   /** Ein Ort — anlegen. */
@@ -101,6 +110,18 @@ const NACH_SUBJEKT = new RegExp(
   'i',
 );
 const IRGENDWO = new RegExp(`\\b(${WORTE})\\b`, 'i');
+/* „This walled city stands …", „These caves are …" (T-182): der Satz
+   spricht vom Abschnitt selbst. Das Ortswort muss auch hier das Hauptwort
+   sein — danach ein Satzzeichen oder ein Verb, nicht „mountain folk" oder
+   „tomb's interior". */
+const VERB = '(?:is|was|are|were|has|had|have|lies|lay|lie|stands|stand|sits|sit|serves|serve|houses|house|contains|contain|consists|covers|cover|rises|rise|stretches|extends|occupies|holds|hold|used|once|seems|appears|looks|overlooks|sprawls|clings|hugs|floats|drifts|marks|guards|connects|leads|opens|lead|open)';
+const DIESER = new RegExp(
+  `^(?:this|these)\\s+((?:(?!of\\b|and\\b|the\\b|an?\\b)[\\w'-]+\\s+){0,3}?)(${WORTE})s?\\b(?=\\s*[,;:—–]|\\s+${VERB}\\b)`,
+  'i',
+);
+/* Unter einer Überschrift wie „Treasure", „Temple Features" oder „Ground
+   Floor" meint „This cavern …" den Ort darüber, nicht den Abschnitt. */
+const ALLGEMEIN = /\b(?:features?|treasure|overview|background|development|developments|secret|doors?|reason|geography|locations?|adventures?|floor|level|ruins|tactics|encounters?|events?|hooks?|summary|aftermath|conclusion|introduction|running|roleplaying|history)\b/i;
 
 /**
  * Nennt der erste Satz den Abschnitt `name` als Ort? `text` ist der erste
@@ -123,6 +144,23 @@ export function ortAusText(name: string, text: string): OrtBefund {
       return { ort: true, ...(kind ? { kind } : {}) };
     }
   }
+  /* „This village …" — der Abschnitt ist das Subjekt, ohne seinen Namen. */
+  const dieser = ALLGEMEIN.test(n) ? null : DIESER.exec(s);
+  if (dieser) {
+    const kind = ORTSWORT[dieser[2]!.toLowerCase()];
+    return { ort: true, ...(kind ? { kind } : {}) };
+  }
+  /* „Darklord Chakuna's home village, Oselo appears …" — die Apposition
+     steht vor dem Namen. */
+  if (n.length > 1) {
+    const vorn = new RegExp(`^(?:[\\w'-]+\\s+){0,5}?(${WORTE}),\\s+(?:the\\s+)?${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').exec(s);
+    if (vorn) {
+      const kind = ORTSWORT[vorn[1]!.toLowerCase()];
+      return { ort: true, ...(kind ? { kind } : {}) };
+    }
+  }
+  /* Ein Gazetteer-Eintrag mit Hauptstadt („Capital: …") ist ein Land. */
+  if (/^capital:\s/.test(s)) return { ort: true };
   /* Ein Ortswort in den ersten Worten, aber nicht als Aussage über den
      Abschnitt: zählen, nicht anlegen. */
   const anfang = s.split(' ').slice(0, 15).join(' ');
@@ -150,7 +188,7 @@ export function ersterAbsatz(entries: unknown): string {
  * Räume allein machen keinen Ort — „Areas of …" ist eine Liste.
  */
 export function ortBefund(name: string, entries: unknown, o: { karte?: string | undefined; raeume?: boolean; schluessel?: boolean } = {}): OrtBefund {
-  if (o.schluessel !== false && RAUM.test(name)) return { ort: true, kind: 'Raum' };
+  if (o.schluessel !== false && RAUM_SCHLUESSEL.test(name)) return { ort: true, kind: 'Raum' };
   const t = ortAusText(name, ersterAbsatz(entries));
   if (t.ort) return t;
   if (o.karte) return klein(o.karte) === klein(name) ? { ort: true, karte: true } : { ort: true, karte: true, name: o.karte };
@@ -173,6 +211,34 @@ export function ortAusKarte(titel: string): string | undefined {
     .trim();
   if (!t || /\btraps?\b/i.test(t)) return undefined;
   return t;
+}
+
+/**
+ * Der Bereich, den ein Kartentitel nennt (T-182): „Map 6.1: Old Bonegrinder
+ * (Area O)" → „O". Nur Buchstaben — „(Area N2)" ist ein Raum, kein Bereich.
+ */
+export function bereichAusKarte(titel: string): string | undefined {
+  return /\(areas?\s+([A-Z]{1,2})\)/i.exec(klartext(titel))?.[1]?.toUpperCase();
+}
+
+/** Der Bereich der ersten eigenen Karte eines Abschnitts, die einen nennt. */
+export function bereichAusKarten(entries: unknown): string | undefined {
+  for (const t of kartenTitel(entries)) {
+    const b = bereichAusKarte(t);
+    if (b) return b;
+  }
+  return undefined;
+}
+
+/** Die Buchstaben vor der Nummer eines Raumschlüssels: „O1. Ground Floor" → „O", „12a. Vault" → „". */
+export function schluesselBereich(name: string): string | undefined {
+  if (!RAUM_SCHLUESSEL.test(name)) return undefined;
+  return /^(?:Areas?\s+)?([A-Z]{0,2})\d/.exec(name)?.[1];
+}
+
+/** Ein Eintrag einer Bereichsliste: „N. Town of Vallaki" → „N". */
+export function listenBereich(name: string): string | undefined {
+  return /^([A-Z]{1,2})\.\s/.exec(name)?.[1];
 }
 
 /** Was ein angelegter Ort mitbekommt. */
@@ -216,7 +282,7 @@ type Knoten = Record<string, unknown>;
 
 /** Hat ein Abschnitt Unterabschnitte, die Räume mit Schlüssel sind? */
 export function hatRaeume(entries: unknown): boolean {
-  return Array.isArray(entries) && entries.some((k) => !!k && typeof k === 'object' && typeof (k as Knoten)['name'] === 'string' && RAUM.test(((k as Knoten)['name'] as string).trim()));
+  return Array.isArray(entries) && entries.some((k) => !!k && typeof k === 'object' && typeof (k as Knoten)['name'] === 'string' && RAUM_SCHLUESSEL.test(((k as Knoten)['name'] as string).trim()));
 }
 
 /**
@@ -236,7 +302,7 @@ export function kartenTitel(entries: unknown): string[] {
       if (k['imageType'] === 'map') out.push(typeof k['title'] === 'string' ? k['title'] : '');
       return;
     }
-    if (k['type'] === 'section' || (typeof k['name'] === 'string' && RAUM.test(k['name'].trim()))) return;
+    if (k['type'] === 'section' || (typeof k['name'] === 'string' && RAUM_SCHLUESSEL.test(k['name'].trim()))) return;
     such(k['images']);
     such(k['entries']);
   };
@@ -268,6 +334,12 @@ export function ortFuerUeberschrift(wb: Werkbank, quelle: string, art: string, a
     const befund = ortBefund(n, k['entries'], { raeume: schluessel && hatRaeume(k['entries']), schluessel });
     if (!befund.ort) {
       if (befund.kandidat) ortKandidat(wb, art);
+      return undefined;
+    }
+    /* Eine nummerierte Überschrift ist nur in einem Ort ein Raum (T-182):
+       „1. The Tome of …" in einer Kartenlegung ist eine Aufzählung. */
+    if (befund.kind === 'Raum' && !eltern) {
+      ortKandidat(wb, art);
       return undefined;
     }
     const ort = legeOrtAn(wb, befund.name ?? n, { herkunft, eltern, befund, quelle, seite: k['page'], art });
