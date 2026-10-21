@@ -138,6 +138,14 @@
           ]
         },
         {
+          "heading": "Rumours to draw",
+          "text": [
+            "Tag the rumours of a town (or make them Information), then put a Query card on the session board: ⚙, choose the type or the tag, and Draw as the display.",
+            "When the party asks around, press Draw — each rumour comes once until you Reset. Tick Reveal when drawn and the party learns it: it shows up for the players and in their knowledge.",
+            "As a slideshow, the same card runs handouts or portraits on a second screen; ⛶ makes it full screen."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."

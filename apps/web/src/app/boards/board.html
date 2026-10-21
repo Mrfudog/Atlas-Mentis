@@ -382,6 +382,26 @@
                     [class.ziehbar]="darfSchreiben() && !k.platz.locked"
                     (pointerdown)="greifen($event, k, 'schieben')"
                   >
+                    @if (k.abfrage) {
+                      <!-- Die Abfrage-Kachel (T-340): Titel und Einstellungen statt Art und Ansicht. -->
+                      <span class="kart">Query</span>
+                      <span class="kname abfrage-titel">{{ k.rel.props?.['title'] || 'Query' }}</span>
+                      @if (darfSchreiben()) {
+                        <button
+                          type="button"
+                          class="weg"
+                          [class.an]="abfrageOffen() === k.rel.id"
+                          [attr.aria-pressed]="abfrageOffen() === k.rel.id"
+                          [attr.aria-label]="'Settings of ' + (k.rel.props?.['title'] || 'Query')"
+                          title="Source and display"
+                          (click)="abfrageOffen.set(abfrageOffen() === k.rel.id ? null : k.rel.id)"
+                        >
+                          ⚙
+                        </button>
+                        <button type="button" class="weg gm" [class.an]="!!k.platz.hidden" (click)="verbergen(k.rel)" [attr.aria-pressed]="!!k.platz.hidden" aria-label="GM only: query card" title="GM only — not sent to players">GM</button>
+                        <button type="button" class="weg" (click)="wegnehmen(k.rel)" aria-label="Take the query card off the board" title="Take off the board">×</button>
+                      }
+                    } @else {
                     <span class="kart">{{ typLabel(k.kurz) }}</span>
                     @if (darfSchreiben()) {
                       <select
@@ -425,8 +445,19 @@
                     } @else {
                       <span class="kview fest">{{ istKarte(k) ? 'Map' : viewLabel(k.ansicht) }}</span>
                     }
+                    }
                   </header>
-                  @if (k.kurz) {
+                  @if (k.abfrage) {
+                    <div class="kinhalt">
+                      <nw-abfrage
+                        [board]="b.id"
+                        [rel]="k.rel"
+                        [einstellen]="darfSchreiben() && abfrageOffen() === k.rel.id"
+                        [spielend]="!darfSchreiben()"
+                        (aendern)="aendern(k.rel.id, $event)"
+                      />
+                    </div>
+                  } @else if (k.kurz) {
                     <a
                       class="kname"
                       [class.ziehbar]="darfSchreiben() && !k.platz.locked"

@@ -302,6 +302,14 @@
           ]
         },
         {
+          "title": "Query cards",
+          "text": [
+            "Query (⚄ in the tool bar) places a card that shows a selection instead of one article. ⚙ on the card sets its source — types, tags, layers, single articles and a filter chain such as filter:status=ready — and how it shows: a list, Draw or a slideshow.",
+            "Draw takes one at random and does not put it back until Reset; everyone at the table sees the same draws. With Reveal when drawn, what is drawn becomes knowledge of the party and visible to it. A slideshow turns on by itself; ‹ › step, ⛶ shows it full screen for a second screen.",
+            "Players see only the articles they may see — the card asks the server for each of them."
+          ]
+        },
+        {
           "title": "An endless canvas",
           "text": [
             "The canvas grows with what lies on it: drag a card or draw past the edge and there is more room. Drag the empty canvas to pan, Ctrl or ⌘ with the wheel zooms, and Fit all brings everything into view."
