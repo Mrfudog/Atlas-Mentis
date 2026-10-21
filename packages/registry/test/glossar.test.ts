@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { GLOSSARY_SORTS, RULE_OPTIONS, RULE_SORTS, appTermId } from '@nw/model';
-import { APP_TERMS, interfaces } from '../src/index';
+import { GLOSSARY_SORTS, RULE_OPTIONS, RULE_SORTS, appTermId, glossaryFieldRefs } from '@nw/model';
+import { APP_TERMS, GAME_TERMS, interfaces } from '../src/index';
 
 /* T-242, T-225: das Handbuch und das Glossar halten Schritt mit dem Code —
    **erzwungen**, nicht erhofft. Wer eine Art anlegt, eine Regeloption
@@ -59,5 +59,29 @@ describe('Regeln & Optionen im Handbuch (T-225)', () => {
       ...RULE_OPTIONS.flatMap((o) => (o.variants ?? []).filter((v) => !v.does.trim()).map((v) => `variant ${o.key}.${v.key}`)),
     ];
     expect(stumm).toEqual([]);
+  });
+});
+
+describe('Felder und Regeloptionen nennen ihren Glossarbegriff (T-347)', () => {
+  it('nennt nur Begriffe aus GAME_TERMS', () => {
+    const erlaubt = new Set(GAME_TERMS);
+    const genannt = [
+      ...glossaryFieldRefs({ interfaces }).map((r) => ({ wo: r.ref, name: r.name })),
+      ...RULE_OPTIONS.flatMap((o) => [
+        ...(o.glossary ? [{ wo: `option ${o.key}`, name: o.glossary }] : []),
+        ...(o.variants ?? []).filter((v) => v.glossary).map((v) => ({ wo: `variant ${o.key}.${v.key}`, name: v.glossary! })),
+      ]),
+    ];
+    expect(genannt.filter((g) => !erlaubt.has(g.name))).toEqual([]);
+    expect(genannt.length).toBeGreaterThan(10);
+  });
+
+  it('führt keinen Namen in GAME_TERMS, den niemand nennt, und keinen doppelt', () => {
+    const genannt = new Set([
+      ...glossaryFieldRefs({ interfaces }).map((r) => r.name),
+      ...RULE_OPTIONS.flatMap((o) => [o.glossary, ...(o.variants ?? []).map((v) => v.glossary)]).filter((n): n is string => !!n),
+    ]);
+    expect(GAME_TERMS.filter((n) => !genannt.has(n))).toEqual([]);
+    expect(GAME_TERMS.filter((n, i) => GAME_TERMS.indexOf(n) !== i)).toEqual([]);
   });
 });

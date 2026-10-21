@@ -188,6 +188,15 @@ export interface PropertySchema {
    */
   description?: string;
   /**
+   * **Der Glossarbegriff, der dieses Feld erklärt** (T-347, T-225): sein
+   * Name, wie er am Glossarartikel steht („Hit points"). Dann zeigen
+   * Feldtitel und Handbuch den Eintrag statt eines eigenen Satzes — eine
+   * Erklärung, an einer Stelle. Der Eintrag ist ein Artikel der
+   * Installation; welche Namen genannt werden dürfen, sagt `GAME_TERMS`
+   * (`@nw/registry`), ob es sie gibt, die Werkbank (`missingGlossaryTerms`).
+   */
+  glossary?: string;
+  /**
    * **Schlägt vor, was schon dasteht.** Für ein freies Wort, das eine
    * Sorte benennt (`Creature.kind`, `Deity.pantheon`): die Eingabe bietet
    * die Werte an, die andere Artikel in diesem Feld tragen, damit dieselbe

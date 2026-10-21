@@ -212,6 +212,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `alwaysEdit` | steht immer als Eingabe da (`Vitals.hp`) |
 | `prominent` | steht beim Bearbeiten auch leer da (`Description.description`, `Status.status`, T-195) |
 | `description` | ein Satz, was das Feld meint — gezeigt in „+ Add field“ (T-195) |
+| `glossary` | der Glossarbegriff, der das Feld erklärt (Name, `Statblock.hp` → „Hit points“): der Feldname ist gepunktet und trägt seine Definition (T-347) |
 | `suggest` | ein freies Wort schlägt vor, was sichtbare Artikel darin tragen (`Creature.kind`) |
 | `readOnly` | ausgegeben, nicht eingetippt (`Identity.id`) |
 | `editOnly` | nur in der Maske, nie beim Lesen: ein Schlüssel zum Ordnen (`Time.sort`, T-126) |
@@ -2078,6 +2079,18 @@ Installation, bestehende Begriffe werden nur ergänzt, wo leer, die Kanten
 `explains` gehen als Massenänderung. **Zwei Regelstände, ein Name:** der
 Begriff von 2024 ist eine Fassung (`overrides`) dessen von 2014 — zwei
 gleichnamige Einträge im Stapel erkennte `termIndex` beide nicht.
+
+**Felder und Regeloptionen nennen ihren Begriff** (T-347, T-225: eine
+Erklärung, eine Stelle): `PropertySchema.glossary`, `RuleOptionDef.glossary`
+und `RuleVariantDef.glossary` tragen den Namen eines Spielbegriffs. Am
+Artikel ist der Feldname dann gepunktet — Titel ist die Definition,
+Strg/⌘+Klick öffnet die Leiste —, Handbuch und Rules & options setzen den
+Eintrag unter den Satz der Option. Gesucht wird nach Namen
+(`glossaryEntryNamed`: erst ein Glossarartikel, dann ein Wort der App,
+dann ein Alias, nur eindeutig). Welche Namen der Code nennen darf, steht
+in `GAME_TERMS` (`@nw/registry`, nur Namen, kein Text; der Test hält die
+Verweise daran); ob die Installation den Begriff hat, sagt die Werkbank
+(`missingGlossaryTerms`) — fehlt er, steht wieder der eigene Satz da.
 
 **Die Wörter der App sind Code** (`packages/registry/src/glossar.ts`,
 `APP_TERMS`): die neun Wörter aus [Begriffe.md](Begriffe.md), Ebene,

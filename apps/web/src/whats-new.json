@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-glossary-everywhere",
+      "date": "2026-10-21",
+      "title": "Conditions, properties and actions explain themselves",
+      "text": "The glossary now holds the conditions, weapon properties, actions, damage types, senses, cover, rests and more of the basic rules. Poisoned or prone are dotted in any text: hover for the definition, Ctrl/⌘+click for the entry and where it is used. Field names such as Hit points are dotted too, and Rules & options shows the entry under an option that names a term.",
+      "area": "Rules",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-21-board-query-cards",
       "date": "2026-10-21",
       "title": "Boards: query cards — lists, draws and slideshows",

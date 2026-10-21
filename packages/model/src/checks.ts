@@ -16,8 +16,10 @@
 
 import { imageAddresses } from './assets.js';
 import { entityName, linkFinder, typeChain } from './entity.js';
+import { glossaryFieldRefs } from './glossary.js';
 import { INSTANCE_RELATION, isInstance } from './instance.js';
 import { beschreibeAbweichung, registerAbweichung } from './registerabgleich.js';
+import { RULE_OPTIONS } from './ruleOptions.js';
 import type { Entity, Registry } from './types.js';
 import { stageBases, validateEntity } from './validate.js';
 
@@ -354,6 +356,35 @@ export const CHECKS: Check[] = [
       for (const e of entities) {
         const adressen = imageAddresses(registry, e);
         if (adressen.length) raus.push(hit(e, adressen.map((a) => `${a.field}: ${a.url}`).join(', ')));
+      }
+      return raus;
+    },
+  },
+  {
+    /* T-347: ein Feld oder eine Regeloption nennt einen Glossarbegriff
+       (`glossary`); der Eintrag ist ein Artikel der Installation und kann
+       fehlen — dann steht dort wieder der eigene Satz, und hier steht, wo. */
+    key: 'missingGlossaryTerms',
+    label: 'Glossary terms named but missing',
+    description:
+      'A field or rule option names a glossary term (glossary) that no visible glossary article carries as name or alias — the field title and the handbook fall back to their own sentence.',
+    run({ registry, entities }) {
+      const namen = new Set<string>();
+      for (const e of entities) {
+        if (!typeChain(registry, e.interfaces?.[0] ?? '').includes('GlossaryTerm')) continue;
+        const id = e.components?.['Identity'] as { name?: unknown; aliases?: unknown } | undefined;
+        for (const n of [id?.name, ...(Array.isArray(id?.aliases) ? id.aliases : [])]) if (typeof n === 'string') namen.add(n.trim().toLowerCase());
+      }
+      const fehlt = (n: string) => !namen.has(n.trim().toLowerCase());
+      const raus: CheckHit[] = [];
+      for (const r of glossaryFieldRefs(registry)) {
+        if (fehlt(r.name)) raus.push({ id: `glossary:${r.ref}`, name: r.ref, type: 'field', reason: `names “${r.name}”`, registry: { type: r.ref.split('.')[0]! } });
+      }
+      for (const o of RULE_OPTIONS) {
+        if (o.glossary && fehlt(o.glossary)) raus.push({ id: `glossary:rule:${o.key}`, name: o.key, type: 'rule option', reason: `names “${o.glossary}”` });
+        for (const v of o.variants ?? []) {
+          if (v.glossary && fehlt(v.glossary)) raus.push({ id: `glossary:rule:${o.key}:${v.key}`, name: `${o.key}: ${v.key}`, type: 'rule option', reason: `names “${v.glossary}”` });
+        }
       }
       return raus;
     },

@@ -16,7 +16,7 @@
  */
 
 import { articleId, entityName } from './entity.js';
-import type { Entity } from './types.js';
+import type { Entity, Registry } from './types.js';
 
 /** Die Sorten eines Glossareintrags, in der Reihenfolge des Filters im
  *  Handbuch. `type` tragen nur die Wörter der App (eine Artikelart); die
@@ -199,4 +199,34 @@ export function mentionsTerm(e: Entity, entry: GlossaryEntry): boolean {
     : null;
   const verweise = [entry.id, entry.number].filter((x): x is string => !!x).map((x) => `[[${x}`);
   return textsOf(e).some((t) => verweise.some((v) => t.includes(v)) || (!!wort && wort.test(t)));
+}
+
+/**
+ * **Der Eintrag zu einem Namen, den ein Feld oder eine Regeloption nennt**
+ * (`glossary`, T-347): erst ein Glossarartikel dieses Namens, dann ein Wort
+ * der App, dann ein Alias — und nur, wenn auf der Stufe genau einer passt.
+ * „Action" ist eine Artikelart (Wort der App) und eine Aktionsart (Begriff);
+ * gemeint ist im Feld der Begriff.
+ */
+export function glossaryEntryNamed(entries: readonly GlossaryEntry[], name: string | null | undefined): GlossaryEntry | null {
+  const k = String(name ?? '').trim().toLowerCase();
+  if (!k) return null;
+  const stufen = [
+    entries.filter((e) => e.article && e.term.toLowerCase() === k),
+    entries.filter((e) => !e.article && e.term.toLowerCase() === k),
+    entries.filter((e) => e.aliases.some((a) => a.toLowerCase() === k)),
+  ];
+  for (const s of stufen) if (s.length) return s.length === 1 ? s[0]! : null;
+  return null;
+}
+
+/** Je Feld mit `glossary` der Name, nach `Typ.feld` — wo ein Feld seinen Begriff nennt. */
+export function glossaryFieldRefs(registry: Pick<Registry, 'interfaces'>): { ref: string; name: string }[] {
+  const raus: { ref: string; name: string }[] = [];
+  for (const [typ, def] of Object.entries(registry.interfaces)) {
+    for (const [feld, p] of Object.entries(def.schema?.properties ?? {})) {
+      if (p.glossary) raus.push({ ref: `${typ}.${feld}`, name: p.glossary });
+    }
+  }
+  return raus;
 }

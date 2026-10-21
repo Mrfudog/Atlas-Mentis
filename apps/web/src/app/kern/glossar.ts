@@ -15,7 +15,7 @@
  */
 
 import { Directive, ElementRef, Injectable, Input, computed, inject, signal } from '@angular/core';
-import { termIndex, type GlossaryEntry } from '@nw/model';
+import { glossaryEntryNamed, termIndex, type GlossaryEntry } from '@nw/model';
 import { Api } from './api';
 
 @Injectable({ providedIn: 'root' })
@@ -76,6 +76,14 @@ export class Glossar {
     return e && e.id !== id ? e.id : null;
   }
 
+  /** Die Id des Eintrags, den ein Feld oder eine Regeloption nennt
+   *  (`glossary`, T-347) — `null`, solange es ihn auf der Installation nicht gibt. */
+  genannt(name: string | null | undefined): string | null {
+    if (!name) return null;
+    void this.laden();
+    return glossaryEntryNamed(this._eintraege() ?? [], name)?.id ?? null;
+  }
+
   /** Der Eintrag, der einen Artikel erklärt (`explains`), sonst der gleichnamige. */
   fuer(artikel: { id?: string; name: string }): GlossaryEntry | null {
     const erklaert = (this._eintraege() ?? []).filter((e) => !!artikel.id && e.explains.some((x) => x.id === artikel.id));
@@ -107,8 +115,12 @@ export class BegriffLink {
   private readonly glossar = inject(Glossar);
   readonly el = inject<ElementRef<HTMLElement>>(ElementRef);
 
+  /* Der Titel trägt die Definition (T-347): am Feldnamen ist er die
+     Erklärung des Feldes, nicht nur ein Hinweis auf die Leiste. */
   protected get titel(): string | null {
-    return this.id ? 'Glossary — Ctrl/⌘+click to open' : null;
+    if (!this.id) return null;
+    const e = this.glossar.nachId().get(this.id);
+    return e?.definition ? `${e.term}: ${e.definition} — Ctrl/⌘+click for the glossary` : 'Glossary — Ctrl/⌘+click to open';
   }
 
   protected klick(ev: MouseEvent): void {
