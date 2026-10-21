@@ -755,6 +755,23 @@ export class PgRepository implements Repository {
     return (r.rowCount ?? 0) > 0;
   }
 
+  async listColumnDefaults(campaignId: string): Promise<Record<string, string[]>> {
+    const { rows } = await this.pool.query<Row>('select key, columns from list_columns where campaign_id = $1', [campaignId]);
+    return Object.fromEntries(rows.map((r) => [String(r['key']), (r['columns'] as string[]) ?? []]));
+  }
+
+  async putListColumnDefault(campaignId: string, key: string, columns: string[] | null): Promise<void> {
+    if (columns === null) {
+      await this.pool.query('delete from list_columns where campaign_id = $1 and key = $2', [campaignId, key]);
+      return;
+    }
+    await this.pool.query(
+      `insert into list_columns(campaign_id, key, columns, updated_at) values ($1, $2, $3, now())
+       on conflict (campaign_id, key) do update set columns = excluded.columns, updated_at = now()`,
+      [campaignId, key, JSON.stringify(columns)],
+    );
+  }
+
   async getPrefs(userId: string): Promise<Record<string, unknown>> {
     const { rows } = await this.pool.query<Row>('select key, value from app_user_pref where user_id = $1', [userId]);
     return Object.fromEntries(rows.map((r) => [String(r['key']), r['value']]));

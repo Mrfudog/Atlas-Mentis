@@ -9,6 +9,14 @@
       "link": "/compendium"
     },
     {
+      "id": "2026-10-21-list-columns",
+      "date": "2026-10-21",
+      "title": "Choose the columns of a list",
+      "text": "Columns in Compendium, World, Story and Rules picks the fields a table shows — also calculated values and edges — and their order. Your choice is kept per page and type and travels in the link; the GM can set it as the campaign default.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-21-builder-takes-new-article",
       "date": "2026-10-21",
       "title": "The character builder keeps what you typed under New article",

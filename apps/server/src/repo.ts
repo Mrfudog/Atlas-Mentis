@@ -211,6 +211,12 @@ export interface Repository {
    *  Kampagne an derselben Seite die Marke — in einem Schritt. */
   putListFilter(row: ListFilterRow): Promise<void>;
   dropListFilter(id: string): Promise<boolean>;
+  /** **Die Spalten einer Übersicht als Vorgabe der Kampagne** (T-343):
+   *  Schlüssel `seite` oder `seite|Art` → Spalten. Gesetzt von der Leitung,
+   *  neben der Kampagne und nicht in ihr — wie die Filtergruppen. */
+  listColumnDefaults(campaignId: string): Promise<Record<string, string[]>>;
+  /** `null` nimmt die Vorgabe weg. */
+  putListColumnDefault(campaignId: string, key: string, columns: string[] | null): Promise<void>;
   /** **Einstellungen je Konto** (T-092): Schlüssel → Wert, wie die Seite
    *  sie schreibt. Wie jemand liest, nicht was gilt — darum am Konto und
    *  in keinem Artikel. */
@@ -479,6 +485,16 @@ export class InMemoryRepository implements Repository {
   }
   async dropListFilter(id: string): Promise<boolean> {
     return this.filtergruppen.delete(id);
+  }
+  private readonly spaltenVorgaben = new Map<string, Record<string, string[]>>();
+  async listColumnDefaults(campaignId: string): Promise<Record<string, string[]>> {
+    return structuredClone(this.spaltenVorgaben.get(campaignId) ?? {});
+  }
+  async putListColumnDefault(campaignId: string, key: string, columns: string[] | null): Promise<void> {
+    const v = this.spaltenVorgaben.get(campaignId) ?? {};
+    if (columns === null) delete v[key];
+    else v[key] = [...columns];
+    this.spaltenVorgaben.set(campaignId, v);
   }
   private readonly prefs = new Map<string, Record<string, unknown>>();
   async getPrefs(userId: string): Promise<Record<string, unknown>> {

@@ -555,6 +555,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Filtergruppe' },
   },
   {
+    term: 'Column choice',
+    aliases: ['Columns'],
+    sort: 'app',
+    definition: 'Which fields a list shows as columns, and in what order. Without a choice the columns come from the type’s overview.',
+    effect: 'Kept per page and type for your account and in the address; the GM can make one the campaign default.',
+    translations: { de: 'Spaltenwahl' },
+  },
+  {
     term: 'Visibility by group',
     aliases: ['Layer default', 'Visibility rule'],
     sort: 'app',
