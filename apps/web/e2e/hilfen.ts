@@ -32,7 +32,26 @@ export interface Api {
     name: string,
     mehr?: { fields?: Record<string, unknown>; relations?: { type: string; to: string; props?: Record<string, unknown> }[] },
   ): Promise<Angelegt>;
+  /**
+   * Karten eines Artikels ändern (`GET`, dann `PUT /api/entities/:id`):
+   * je Karte werden die genannten Felder überschrieben, der Rest bleibt.
+   */
+  setzen(rolle: Rolle, id: string, karten: Record<string, Record<string, unknown>>): Promise<void>;
+  /**
+   * Ein Bild hochladen (`POST /api/assets`) — eine einfarbige Fläche
+   * 320 × 240, genug für eine Karte — und auf `ready` setzen, damit es
+   * auch die Spielerin bekommt. Gibt die Id des Asset-Artikels.
+   */
+  bild(rolle: Rolle, name: string): Promise<string>;
 }
+
+/* Eine einfarbige PNG-Fläche 320 × 240 (Pergament), hier erzeugt statt als
+   Datei im Repo: ein Bild aus einer Kampagne oder einem Buch gehört nie
+   hierher. */
+const FLAECHE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAUAAAADwCAIAAAD+Tyo8AAACEElEQVR42u3TQQkAAAgEweufwiS+jWUHf8LAJFjYTBfwVCQAAwMGBgwMBgYMDBgYMDAYGDAwYGAwMGBgwMCAgcHAgIEBAwMGBgMDBgYMDAYGDAwYGDAwGBgwMGBgwMBgYMDAgIHBwICBAQMDBgYDAwYGDAwGVgEMDBgYMDAYGDAwYGDAwGBgwMCAgcHAgIEBAwMGBgMDBgYMDBgYDAwYGDAwGBgwMGBgwMBgYMDAgIEBA4OBAQMDBgYDAwYGDAwYGAwMGBgwMBgYMDBgYMDAYGDAwICBAQODgQEDAwYGAwMGBgwMGBgMDBgYMDBgYDAwYGDAwGBgwMCAgQEDg4EBAwMGBgwMBgYMDBgYDAwYGDAwYGAwMGBgwMBgYMDAgIEBA4OBAQMDBgYMDAYGDAwYGAwMGBgwMGBgMDBgYMDAgIHBwICBAQODgQEDAwYGDAwGBgwMGBgMrAIYGDAwYGAwMGBgwMCAgcHAgIEBA4OBAQMDBgYMDAYGDAwYGDAwGBgwMGBgMDBgYMDAgIHBwICBAQMDBgYDAwYGDAwGBgwMGBgwMBgYMDBgYDAwYGDAwICBwcCAgQEDAwYGAwMGBgwMBgYMDBgYMDAYGDAwYGDAwGBgwMCAgcHAgIEBAwMGBgMDBgYMDBgYDAwYGDAwGBgwMGBgwMBgYMDAgIHBwICBAQMDBgYDAwYGDAwYGAwMGBi4Wzq2rb2/F5tbAAAAAElFTkSuQmCC',
+  'base64',
+);
 
 let zaehler = 0;
 
@@ -78,6 +97,27 @@ export const test = basis.extend<{ lauf: Lauf; leitung: Page; spielerin: Page; a
         if (!res.ok()) throw new Error(`${art} „${name}" anlegen: ${res.status()} ${await res.text()}`);
         const e = (await res.json()) as { id: string };
         return { id: e.id, name };
+      },
+      async setzen(rolle, id, karten) {
+        const ctx = await als(rolle);
+        const e = (await (await ctx.get(`/api/entities/${id}`)).json()) as {
+          components?: Record<string, Record<string, unknown>>;
+          refs?: unknown;
+        };
+        const components = { ...(e.components ?? {}) };
+        for (const [k, v] of Object.entries(karten)) components[k] = { ...(components[k] ?? {}), ...v };
+        delete e.refs;
+        const res = await ctx.put(`/api/entities/${id}`, { data: { ...e, components } });
+        if (!res.ok()) throw new Error(`${id} ändern: ${res.status()} ${await res.text()}`);
+      },
+      async bild(rolle, name) {
+        const res = await (await als(rolle)).post('/api/assets', {
+          multipart: { file: { name: `${name}.png`, mimeType: 'image/png', buffer: FLAECHE } },
+        });
+        if (!res.ok()) throw new Error(`Bild „${name}" hochladen: ${res.status()} ${await res.text()}`);
+        const id = ((await res.json()) as { id: string }).id;
+        await this.setzen(rolle, id, { Status: { status: 'ready' } });
+        return id;
       },
     });
     await Promise.all(offen.map((c) => c.dispose()));
