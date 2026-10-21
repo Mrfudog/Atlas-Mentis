@@ -35,11 +35,16 @@ test('a structure card: tree and web, sieved for the player', async ({ leitung, 
   await leitung.getByRole('button', { name: 'Structure', exact: true }).click();
   const einst = leitung.getByRole('form', { name: 'Structure settings' });
   await einst.getByRole('button', { name: 'Choose…' }).click();
-  await einst.getByRole('searchbox', { name: 'Search articles' }).or(einst.getByRole('textbox', { name: 'Search articles' })).fill(wacht.name);
+  const suche = einst.getByRole('searchbox', { name: 'Search articles' }).or(einst.getByRole('textbox', { name: 'Search articles' }));
   /* Die Treffer kommen beim Tippen und zeichnen sich neu; ein Klick auf
-     einen ersetzten Knopf geht verloren — also klicken, bis der Start dasteht. */
+     einen ersetzten Knopf geht verloren. Und unter Last kennt die Liste am
+     Server die eben angelegte Fraktion vielleicht noch nicht — also neu
+     tippen (neu fragen) und klicken, bis der Start dasteht. */
   await expect(async () => {
-    await einst.getByRole('button', { name: `${wacht.name} Faction` }).click({ timeout: 2_000 });
+    if (!(await suche.isVisible())) await einst.getByRole('button', { name: 'Choose…' }).click();
+    await suche.fill('');
+    await suche.fill(wacht.name);
+    await einst.getByRole('button', { name: `${wacht.name} Faction` }).click({ timeout: 3_000 });
     await expect(einst.locator('.start b')).toHaveText(wacht.name, { timeout: 2_000 });
   }).toPass({ timeout: 15_000 });
 
