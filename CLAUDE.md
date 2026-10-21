@@ -840,7 +840,18 @@ pnpm install
 pnpm --filter @nw/model build && pnpm --filter @nw/registry build   # zuerst
 pnpm test && pnpm lint
 pnpm --filter @nw/registry emit-seed   # nach jeder Registeränderung
+DATABASE_URL=postgres://… pnpm e2e     # Abläufe im Browser, nach dem Bau von server und web
 ```
+
+**E2E** (T-356): Playwright-Specs unter `apps/web/e2e/` gegen den gebauten
+Server mit der gebauten Oberfläche und eine **eigene** Postgres (nie dev,
+nie prod — der Aufbau legt Konten und eine Testkampagne an), als Leitung
+und Spielerin, `desktop` 1360 und `phone` 390 px; im CI der Job `e2e`. In
+den Sitzungen mit `E2E_CHROMIUM=/opt/pw-browsers/chromium`. Ein neuer Spec
+nimmt `test` aus `e2e/hilfen.ts` (Fixtures `leitung`, `spielerin`, `api`,
+`eindeutig`), Integrationstests ihren Tisch aus
+`apps/server/test/hilfen/tisch.ts` — [CONTRIBUTING.md ›
+E2E-Prüfungen](CONTRIBUTING.md#e2e-prüfungen).
 
 `emit-seed` **behält** Zeilen, die es nur im Prototyp gibt — wer dort eine
 Artikelart anlegt, soll sie behalten. Eine Zeile zu **entfernen** ist deshalb

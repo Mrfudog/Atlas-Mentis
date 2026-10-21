@@ -19,3 +19,8 @@ prototype/nebelwacht-registry.json
 
 # Gebaute Oberfläche: das Abbild kopiert sie hinein (Dockerfile), im Repo hat sie nichts zu suchen.
 apps/server/public/
+
+# E2E-Läufe (T-356): Sitzungen, Spuren und Bericht eines Laufs — nie ins Repo.
+apps/web/e2e/.stand/
+apps/web/e2e/.ergebnis/
+apps/web/e2e/.bericht/
