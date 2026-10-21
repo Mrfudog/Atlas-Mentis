@@ -499,7 +499,7 @@ export const fieldGroups = {
         wisMod: { type: 'number', title: 'WIS mod', derived: 'mod(wis)', of: 'wis', format: 'signed' },
         cha: { type: 'number', title: 'CHA' },
         chaMod: { type: 'number', title: 'CHA mod', derived: 'mod(cha)', of: 'cha', format: 'signed' },
-        initiative: { type: 'number', title: 'Initiative', derived: 'mod(dex)', format: 'signed' },
+        initiative: { type: 'number', title: 'Initiative', derived: 'mod(dex)', format: 'signed', glossary: 'Initiative' },
         /* Mit Übung und Expertise in Perception (T-275, Punkt 5): dieselbe
            Rechnung wie der Bogen (`checkBonus`). */
         passivePerception: { type: 'number', title: 'Passive perception', derived: '10+check(wis.Perception)' },
@@ -532,15 +532,15 @@ export const fieldGroups = {
            7.10.). Wanderung: `prototype/migration/statblock-creaturetype.mjs`. */
         creatureType: { type: 'string', suggest: true, title: 'Creature type' },
         alignment: { type: 'string', suggest: true, title: 'Alignment' },
-        ac: { type: 'number', title: 'Armour class' },
+        ac: { type: 'number', title: 'Armour class', glossary: 'Armor Class' },
         acNote: { type: 'string', title: 'AC note' },
-        hp: { type: 'number', title: 'Hit points' },
+        hp: { type: 'number', title: 'Hit points', glossary: 'Hit points' },
         hpFormula: { type: 'string', title: 'Hit dice' },
         /* `unit` ist das Ausgangsmass: die Einheit der Zahlen, die keine
            nennen. „40 ft, climb 20 ft" sagt es selbst, „40" nicht. */
-        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
+        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed', glossary: 'Speed' },
         cr: { type: 'string', title: 'Challenge rating' },
-        prof: { type: 'number', title: 'Proficiency bonus' },
+        prof: { type: 'number', title: 'Proficiency bonus', glossary: 'Proficiency bonus' },
         /* **Das Zusatzquadrat im Tragraster** (REQ-215, D54): gerechnet
            am Statblock, der es liest, wie ein Angriff seinen Treffer aus
            Attribut und Übung rechnet — darum ein Feld mit Rechnung und
@@ -561,9 +561,9 @@ export const fieldGroups = {
         languageNote: { type: 'string', title: 'Languages, besides' },
         /* Die drei Schadensfelder bleiben Sätze: „bludgeoning, piercing,
            and slashing from nonmagical attacks" ist keine Liste von Arten. */
-        resistances: { type: 'string', title: 'Resistances' },
-        vulnerabilities: { type: 'string', title: 'Vulnerabilities' },
-        immunities: { type: 'string', title: 'Immunities' },
+        resistances: { type: 'string', title: 'Resistances', glossary: 'Damage resistance' },
+        vulnerabilities: { type: 'string', title: 'Vulnerabilities', glossary: 'Damage vulnerability' },
+        immunities: { type: 'string', title: 'Immunities', glossary: 'Damage immunity' },
         /* **Zustandsimmunitäten zeigen auf Zustände** (M5, T-078): die Ids
            der `Condition`-Artikel, wie `Vitals.conditions`. Als Namen
            (D50) hielten sie den Stand vom Tag des Eintrags — ein
@@ -866,8 +866,8 @@ export const fieldGroups = {
           title: 'Duration unit',
           enum: ['round', 'minute', 'hour', 'day'],
         },
-        concentration: { type: 'boolean', title: 'Concentration' },
-        ritual: { type: 'boolean', title: 'Ritual' },
+        concentration: { type: 'boolean', title: 'Concentration', glossary: 'Concentration' },
+        ritual: { type: 'boolean', title: 'Ritual', glossary: 'Ritual' },
         /* „At Higher Levels" — ein langer Text, denn er trägt Würfel
            (`{{1d6}}`) wie der Haupttext. */
         higherLevels: { type: 'string', format: 'long', title: 'At higher levels' },
@@ -1223,7 +1223,7 @@ export const fieldGroups = {
       properties: {
         /* Eine, selten zwei (Small oder Medium nach Wahl). */
         size: { type: 'array', title: 'Size', items: { type: 'string' }, enumRef: 'Size' },
-        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
+        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed', glossary: 'Speed' },
         /* `{ "con": 2 }` — Attribut auf Bonus, fest. Eine Wahl („two
            different +1") ist ein Eintrag in `Choices.choices` (REQ-238);
            `abilityNote` hält, was sich nicht als Wahl schreiben lässt. */
@@ -1462,7 +1462,7 @@ export const fieldGroups = {
           enum: ['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact', 'varies', 'unknown'] },
         /* DMG 2014: kleiner oder grosser Gegenstand, für die Schatztabellen. */
         tier: { type: 'string', title: 'Tier', enum: ['minor', 'major'] },
-        attunement: { type: 'boolean', title: 'Requires attunement' },
+        attunement: { type: 'boolean', title: 'Requires attunement', glossary: 'Attunement' },
         /* „by a wizard", „by a cleric or paladin" — ein Satz, keine Liste. */
         /* „by a cleric or paladin" — eine Voraussetzung wie am Talent (T-180). */
         attunementNote: { type: 'string', title: 'Attunement by', facet: { as: 'requirement' } },
@@ -1638,7 +1638,7 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        ac: { type: 'number', title: 'Armour class' },
+        ac: { type: 'number', title: 'Armour class', glossary: 'Armor Class' },
         armorType: { type: 'string', title: 'Armour type', enum: ['light', 'medium', 'heavy', 'shield'] },
         /* Die Stärke, unter der das Tempo sinkt. */
         strength: { type: 'number', min: 1, max: 30, title: 'Strength required' },
@@ -2250,12 +2250,12 @@ export const fieldGroups = {
            Zustandsliste und die Trefferwürfel stehen nicht dabei: die eine
            ist ein Satz Häkchen, die anderen Punkte, und beides zeichnet der
            Bogen ohnehin anklickbar. */
-        hp: { type: 'number', title: 'Hit points now', alwaysEdit: true },
-        hpTemp: { type: 'number', title: 'Temporary HP', alwaysEdit: true },
-        hitDiceLeft: { type: 'number', title: 'Hit dice left' },
-        deathSuccess: { type: 'number', title: 'Death saves passed', default: 0 },
-        deathFail: { type: 'number', title: 'Death saves failed', default: 0 },
-        inspiration: { type: 'boolean', title: 'Inspiration' },
+        hp: { type: 'number', title: 'Hit points now', alwaysEdit: true, glossary: 'Hit points' },
+        hpTemp: { type: 'number', title: 'Temporary HP', alwaysEdit: true, glossary: 'Temporary hit points' },
+        hitDiceLeft: { type: 'number', title: 'Hit dice left', glossary: 'Hit Dice' },
+        deathSuccess: { type: 'number', title: 'Death saves passed', default: 0, glossary: 'Death saving throw' },
+        deathFail: { type: 'number', title: 'Death saves failed', default: 0, glossary: 'Death saving throw' },
+        inspiration: { type: 'boolean', title: 'Inspiration', glossary: 'Inspiration' },
         /* **Ein Zustand ist ein Artikel der Art `Condition`**, kein Wort aus
            einer Einstellung (Abgleich A3, 7.10.; D48): „prone" hat eine
            Beschreibung, die am Tisch jemand lesen will. Hier stehen die Ids;
@@ -2271,12 +2271,12 @@ export const fieldGroups = {
         /* **Verbrauchte Zauberplätze je Grad** (M2), der erste ist der 1.
            Grad. Wie viele es gibt, steht am Statblock (`spellSlots`): das
            ist die Festlegung, das hier der Stand — wie `hp` an beiden. */
-        slotsUsed: { type: 'array', title: 'Spell slots used', items: { type: 'number' } },
+        slotsUsed: { type: 'array', title: 'Spell slots used', items: { type: 'number' }, glossary: 'Spell slot' },
         /* **Woran sie sich konzentriert** (T-247, REQ-067): ein Zauber, nicht
            ein Häkchen — die Statuszeile nennt ihn, und „Failed" bei der
            Probe nach Schaden leert das Feld. Höchstens einer (PHB). */
         concentration: {
-          type: 'string', format: 'link', title: 'Concentrating on',
+          type: 'string', format: 'link', title: 'Concentrating on', glossary: 'Concentration',
           target: { interfaces: ['Spell'] },
         },
         /* Wie lange noch: „9 min", „1 h", „until you attack". Ein Wort
@@ -2360,6 +2360,7 @@ export const fieldGroups = {
           title: 'Saving throws',
           items: { type: 'string' },
           enumRef: 'Ability',
+          glossary: 'Saving throw',
         },
       },
     },

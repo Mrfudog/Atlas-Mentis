@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { MAP_KINDS, MAP_TOOL_GROUPS, MARKER_VIEWS, isMarkerView, kindMarkerViewOf, withKindMarkerView, mapToolTable, withMapTool, withRuleVariant, type Entity, type MapKind, type MapToolGroup, type Relation, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
+import { BegriffLink, Glossar } from '../kern/glossar';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
 import { ExperimenteSchalter } from '../lab/experimente-schalter';
@@ -22,7 +23,7 @@ import { Tragraster } from './tragraster';
  */
 @Component({
   selector: 'nw-regeloptionen',
-  imports: [RouterLink, KurzLink, ExperimenteSchalter, Text, Tragraster],
+  imports: [RouterLink, KurzLink, BegriffLink, ExperimenteSchalter, Text, Tragraster],
   template: `
     <section class="regeln" aria-labelledby="regeln-titel">
       <header class="kopf">
@@ -80,6 +81,9 @@ import { Tragraster } from './tragraster';
                 }
               </div>
               <p class="was"><nw-text [text]="o.does" inline /></p>
+              @if (begriff(o.glossary); as b) {
+                <p class="was glossar"><span [nwBegriff]="b.id" [nwQuick]="b.id">{{ b.term }}</span>: {{ b.definition }}</p>
+              }
 
               @if (o.variants) {
                 <ul class="varianten">
@@ -102,6 +106,9 @@ import { Tragraster } from './tragraster';
                         }
                       </div>
                       <p class="was"><nw-text [text]="v.does" inline /></p>
+                      @if (begriff(v.glossary); as b) {
+                        <p class="was glossar"><span [nwBegriff]="b.id" [nwQuick]="b.id">{{ b.term }}</span>: {{ b.definition }}</p>
+                      }
                     </li>
                   }
                 </ul>
@@ -371,6 +378,13 @@ export class Regeloptionen {
 
   private readonly api = inject(Api);
   private readonly session = inject(Session);
+  private readonly glossar = inject(Glossar);
+  /** Der Glossareintrag, den Option oder Variante nennt (T-347), mit seiner Definition — eine Erklärung, eine Stelle (T-225). */
+  protected begriff(name: string | undefined): { id: string; term: string; definition: string } | null {
+    const id = this.glossar.genannt(name);
+    const e = id ? this.glossar.nachId().get(id) : undefined;
+    return e ? { id: e.id, term: e.term, definition: e.definition } : null;
+  }
 
   /**
    * Leitet dieses Konto die Kampagne (oder verwaltet die Installation)? Dann

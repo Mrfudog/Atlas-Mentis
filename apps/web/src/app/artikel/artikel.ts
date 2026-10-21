@@ -889,7 +889,11 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                       @for (z of st.zellen; track z.ref) {
                         <div class="feld" [class.lang]="z.lang" [class.geerbt]="z.geerbt" [class.leer]="z.leer || z.fehlt"
                              [attr.title]="z.geerbt ? 'From the template' : z.leer ? 'Empty here; another version fills it' : null">
-                          <dt>{{ z.label }}</dt>
+                          @if (feldBegriff(z.ref); as b) {
+                            <dt><span [nwBegriff]="b" [nwQuick]="b">{{ z.label }}</span></dt>
+                          } @else {
+                            <dt>{{ z.label }}</dt>
+                          }
                           <dd>
                             @if (z.links) {
                               @for (l of z.links; track $index) {
@@ -1153,6 +1157,14 @@ export class Artikel implements SchnellKontext {
   private readonly glossar = inject(Glossar);
   protected begriff(id: string | null | undefined, name: string): string | null {
     return this.glossar.begriffZu(id, name);
+  }
+  /** Der Glossareintrag, den ein Feld nennt (`glossary`, T-347): am
+   *  Feldnamen gepunktet, mit seiner Definition als Titel. */
+  protected feldBegriff(ref: string): string | null {
+    const punkt = ref.indexOf('.');
+    if (punkt <= 0) return null;
+    const p = this.bestand.registry()?.interfaces[ref.slice(0, punkt)]?.schema?.properties?.[ref.slice(punkt + 1)];
+    return this.glossar.genannt(p?.glossary);
   }
 
   readonly id = input.required<string>();

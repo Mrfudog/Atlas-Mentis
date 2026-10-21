@@ -25,7 +25,7 @@
  * Quelle ist eine Frage an den Bestand und nichts sonst.
  */
 
-import { primaryInterface, typeChain } from './entity.js';
+import { entityName, primaryInterface, typeChain } from './entity.js';
 import { isInstance } from './instance.js';
 import { isBookPart } from './parts.js';
 import { applyTransform, stepsFromString, stepsToString, type Dimension, type TransformStep } from './transform.js';
@@ -195,7 +195,8 @@ export function queryPool(
   const behalten = kandidaten.filter((e) => einzeln.has(e.id) || gefiltert.has(e.id));
   const sortiert = sortKette.length
     ? applyTransform(behalten, sortKette, dims).rows
-    : [...behalten].sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true, sensitivity: 'base' }));
+    : /* Nach dem Namen, wie er dasteht — `e.name` ist an eingelesenen Artikeln leer. */
+      [...behalten].sort((a, b) => entityName(a).localeCompare(entityName(b), 'en', { numeric: true, sensitivity: 'base' }));
   const unknown = applyTransform([], kette, dims).unknown;
   const limit = opts.limit ?? QUERY_LIMIT;
   return { rows: sortiert.slice(0, limit), total: sortiert.length, unknown };

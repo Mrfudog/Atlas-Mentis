@@ -94,6 +94,17 @@ import {
         </label>
         <p class="hint">One sentence on what the field means — shown when someone adds it while editing an article.</p>
 
+        <!-- T-347: der Glossarbegriff, der das Feld erklärt — eine Erklärung, eine Stelle (T-225). -->
+        <label class="f">
+          <span>Glossary term</span>
+          <input
+            [value]="p.glossary ?? ''"
+            [disabled]="!darf()"
+            (change)="setzen({ glossary: wert($event) || undefined })"
+          />
+        </label>
+        <p class="hint">The name of a glossary entry that explains this field. The field name on an article is then dotted: hover shows the definition, Ctrl/⌘+click opens the entry.</p>
+
         <label class="f">
           <span>Holds</span>
           <select [disabled]="!darf()" (change)="artWechseln($any($event.target))">

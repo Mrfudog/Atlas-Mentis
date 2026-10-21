@@ -47,7 +47,7 @@ export class PgRepository implements Repository {
         titles: (r['titles'] as InterfaceDef['titles']) ?? undefined,
         /* Wohin ein geerbtes Feld an dieser Art zeigt (T-119). */
         targets: (r['targets'] as InterfaceDef['targets']) ?? undefined,
-        /* Wie Artikel dieser Art als Marker stehen (T-214, Migration 132). */
+        /* Wie Artikel dieser Art als Marker stehen (T-214, Migration 133). */
         markerView: (r['marker_view'] as InterfaceDef['markerView']) ?? undefined,
       };
     }
@@ -129,7 +129,7 @@ export class PgRepository implements Repository {
              def.units ?? null, def.titles ? JSON.stringify(def.titles) : null,
              def.targets ? JSON.stringify(def.targets) : null],
           );
-          /* `marker_view` (T-214, Migration 132) nur, wo eine Art es sagt —
+          /* `marker_view` (T-214, Migration 133) nur, wo eine Art es sagt —
              so schreibt dieselbe Zeile auch in eine Datenbank davor. */
           if (def.markerView) {
             await client.query('update interface_def set marker_view = $2 where name = $1', [name, def.markerView]);

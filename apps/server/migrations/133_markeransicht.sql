@@ -9,7 +9,7 @@
 --
 -- Der Seed schreibt nur in eine leere Datenbank, also kommt es hier nach.
 -- Nur, wo das Feld noch fehlt; nichts wird entfernt, kein Artikel geändert.
--- Nummer beim Hereinmergen nachgesehen.
+-- Nummer beim Hereinmergen nachgesehen: 133.
 
 alter table interface_def add column if not exists marker_view text;
 
