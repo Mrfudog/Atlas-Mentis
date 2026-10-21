@@ -76,10 +76,10 @@ gewählt in Rules & options, gelesen über `RULE_OPTIONS`.
 
 Hier ist nichts umzusetzen. Zwei Ausnahmen:
 
-- **Doppelt:** „Travel Rations, Light and Watches“ (ohne Schlüssel, `kind: travel`)
-  und „Rations, light and watches“ (`travel`) sagen dasselbe. Vorschlag: den
-  Text des ersten in den zweiten übernehmen und den ersten auf `dropped` setzen.
-  Das löscht einen Artikel, also **entscheidet die Verwaltung**.
+- **Doppelt, erledigt 21.10.:** „Travel Rations, Light and Watches“ (ohne
+  Schlüssel) und „Rations, light and watches“ (`travel`) sagten dasselbe. Die
+  Regel mit Schlüssel trägt jetzt Name und Text der Hausregel, die Hausregel
+  ging in ihr auf (Massenänderung mit Undo, Leitung 20.10.).
 - **Kampagnen- statt Installationseinstellung:** Die Reisezähler stehen laut
   Text noch an der Installation (T-132). Das ist eine Frage der Einstellung,
   nicht des Graphen.
@@ -282,5 +282,4 @@ Jeder Schritt ist für sich nutzbar.
 
 ## Offene Entscheidungen
 
-- **Die doppelte Reiseregel** zusammenlegen (A). Löscht einen Artikel.
 - **Story:** REQ-357 Regelgraphen wirken am Tisch (`VTT/Stories/REQ-357.md`).
