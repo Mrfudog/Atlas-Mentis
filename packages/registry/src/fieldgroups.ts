@@ -1572,10 +1572,32 @@ export const fieldGroups = {
            Maske malt es als Raster. Als Textfeld war es eine Zeile wie
            `##.,##.` — man sah der Eingabe nicht an, was dabei herauskommt,
            und beim Abzählen verrutscht eine Spalte. */
-        rows: { type: 'array', format: 'grid', title: 'Grid', items: { type: 'string' } },
+        rows: {
+          type: 'array', format: 'grid', title: 'Shape', items: { type: 'string' },
+          description: 'The cells it takes in a grid inventory, one row per line: # taken, . free. Painted in the element Shape.',
+        },
         width: { type: 'number', title: 'Width', derived: 'colCount(rows)' },
         height: { type: 'number', title: 'Height', derived: 'rowCount(rows)' },
         cells: { type: 'number', title: 'Cells', derived: 'cellCount(rows)' },
+        /* **Das Bild im Inventar** (T-142): ohne eigenes das Bild des
+           Gegenstands (`Image.image`). Ein eigenes, wenn das Buchbild ein
+           Gemälde ist und im Raster ein freigestelltes Stück liegen soll. */
+        inventoryImage: {
+          type: 'string',
+          format: 'asset',
+          title: 'Inventory image',
+          target: { where: { component: 'Asset', property: 'kind', value: 'image' } },
+          description: 'The picture in the grid inventory; without one, the item’s image.',
+        },
+        /* **Wie es in der Form liegt** (T-142, `inventoryFrame()`):
+           `{zoom, x, y, rot, fit}`. Gesetzt in „Adjust inventory image" am
+           Element Shape, nicht getippt — darum nur in der Maske. */
+        inventoryFrame: {
+          type: 'object',
+          title: 'Inventory image frame',
+          editOnly: true,
+          description: 'How the picture lies in the shape: zoom, offset, quarter turns and fit or fill. Set with Adjust inventory image.',
+        },
       },
     },
   },

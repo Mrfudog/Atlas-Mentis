@@ -233,7 +233,16 @@
         {
           "heading": "Inventory",
           "text": [
-            "Characters, parties and containers carry items in a grid: drag to move, rotate a piece, move it between character, party and container. Zones of a container say how long it takes to draw what lies there."
+            "Characters, parties and containers carry items in a grid: drag to move, rotate a piece, move it between character, party and container. Zones of a container say how long it takes to draw what lies there.",
+            "A piece whose shape is not symmetric can also be mirrored. Its picture lies in its cells, turned and mirrored with it."
+          ]
+        },
+        {
+          "heading": "Item shape",
+          "text": [
+            "On an item, Shape shows the cells it takes in the grid inventory, with its picture, as Grid or List; Rotate and Mirror there are only a preview.",
+            "Edit shape paints the cells on a 5 × 5 grid that grows when you paint its last row or column, or takes the rows as text (# taken, . free; X and 0 work too), with the stack size. Empty borders are cut off when you save.",
+            "Adjust inventory image picks an own picture or keeps the item’s image, and sets fit or fill, zoom, a quarter turn and the part that shows by dragging."
           ]
         },
         {

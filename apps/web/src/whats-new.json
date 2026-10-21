@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-item-shapes",
+      "date": "2026-10-21",
+      "title": "Paint item shapes, with the picture in the inventory",
+      "text": "An item’s page shows its shape for the grid inventory as grid or list, with its picture in the cells. Edit shape paints it on a growing 5 × 5 grid or takes the rows as text; Adjust inventory image sets an own picture, zoom, turn and fit. In the inventory, pieces show their picture and can be mirrored where the shape is not symmetric.",
+      "area": "Inventory",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-21-quick-first",
       "date": "2026-10-21",
       "title": "Quick cards: key values first, picture last",

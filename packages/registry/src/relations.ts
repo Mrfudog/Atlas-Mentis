@@ -768,6 +768,9 @@ export const relations: Record<string, RelationDef> = {
         /* Die Drehung im Raster schrieb der Prototyp schon immer; hier
            stand sie nicht (D54 zieht sie nach). */
         rot: { type: 'number', title: 'Rotation in degrees', default: 0 },
+        /* **Gespiegelt** (T-142): vor dem Drehen, wie `itemShape` rechnet.
+           Nur wo die Form nicht symmetrisch ist (`shapeChiral`). */
+        flip: { type: 'boolean', title: 'Mirrored' },
         attuned: { type: 'boolean', title: 'Attuned' },
         note: { type: 'string', title: 'Note' },
         /* **Reserviert für …** (T-127, für den Handwerksauftrag T-128): der

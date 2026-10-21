@@ -21,6 +21,7 @@ import { Zauber } from '../artikel/zauber';
 import { Gegenstand } from '../artikel/gegenstand';
 import { Kennzahlen } from '../artikel/kennzahlen';
 import { TokenBild } from '../artikel/token-bild';
+import { Form } from '../artikel/form';
 import { Lesen } from '../lesen/lesen';
 import { Tabellenzeilen } from '../artikel/tabellenzeilen';
 import { Bild, bildDes } from '../artikel/bild';
@@ -60,7 +61,7 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-ansichtsbaum',
-  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Lesen, Tabellenzeilen, Bild],
+  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild],
   template: `
     <ng-template #knoten let-el>
       @switch (el.el) {
@@ -131,6 +132,9 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
         }
         @case ('token') {
           <nw-token [artikel]="artikel()" />
+        }
+        @case ('shape') {
+          <nw-form [artikel]="artikel()" />
         }
         @case ('spell') {
           <nw-zauber [artikel]="artikel()" [scopes]="scopes()" />
