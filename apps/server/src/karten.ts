@@ -23,6 +23,9 @@
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  kindMarkerViewOf,
+  markerViewForType,
+  type MarkerView,
   statblockSize,
   assetVersion,
   tokenLook,
@@ -129,6 +132,8 @@ export interface MarkerZiel {
   look?: TokenLook;
   /** Die Grösse des Statblocks (T-317) — daraus rechnet die Seite den Platz des Tokens (`tokenSpan`). */
   size?: string;
+  /** Wie Artikel dieser Art als Marker stehen (`InterfaceDef.markerView`, T-214); fehlt: die Art sagt nichts. */
+  view?: MarkerView;
 }
 
 export interface KartenKontext {
@@ -208,6 +213,8 @@ export interface KartenKontext {
   passageRules: PassageRules;
   /** Die Werkzeuggruppen für die Art dieser Karte (T-320, `Campaign.mapTools`). */
   tools: MapToolGroup[];
+  /** Die Markeransicht der Kartenart an der Kampagne (`Campaign.markerViews`, T-214); `null`: keine. */
+  kindMarkerView: MarkerView | null;
   /** Die Figuren des Betrachters mit Token auf dieser Karte (T-204). */
   own: string[];
   /**
@@ -447,6 +454,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         ...(v ? { version: v } : {}),
         ...(asset ? { look: tokenLook(asset) } : {}),
         ...(groesseVon.has(z.id) ? { size: groesseVon.get(z.id)! } : {}),
+        ...(markerViewForType(register, primaryInterface(z)) ? { view: markerViewForType(register, primaryInterface(z))! } : {}),
       };
     }
 
@@ -542,7 +550,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       const k = keepLifted(g, (m) => !!targets[m.to]);
       return k ? [{ ...k, name: g.name }] : [];
     });
-    return { parents, children: kinder, lifted: liftedGesehen, ...(toPlace ? { toPlace } : {}), up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
+    return { parents, children: kinder, lifted: liftedGesehen, ...(toPlace ? { toPlace } : {}), up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], kindMarkerView: kindMarkerViewOf(kampagne, mapKindOf(roheKarte)), own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
   });
 
   /**

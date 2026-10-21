@@ -2159,6 +2159,14 @@ export const fieldGroups = {
           enum: ['world', 'region', 'settlement', 'district', 'building', 'battle'],
           default: 'region',
         },
+        /* **Wie die Marker dieser Karte stehen** (T-214): vor der Vorgabe
+           der Kartenart und der Art, hinter dem einzelnen Marker. */
+        markerView: {
+          type: 'string',
+          title: 'Markers show as',
+          enum: ['symbol', 'name', 'image', 'card'],
+          description: 'How markers stand on this map: symbol, symbol with name, image, or a quick card. A marker can say otherwise. Empty: the map kind’s setting in the campaign, else the article type’s.',
+        },
         gridShape: {
           type: 'string',
           title: 'Grid',
@@ -3281,6 +3289,14 @@ export const fieldGroups = {
           type: 'object',
           title: 'Map tools',
           description: 'Which tool groups the map shows for each map kind. A kind left out keeps the default: walls, fog, light, grid, tokens, assets and markers on battle maps; sub-map links, markers and assets on the others.',
+        },
+        /* **Markeransicht je Kartentyp** (T-214): `{ world: 'symbol' }`;
+           gelesen über `kindMarkerViewOf`. Fehlt eine Art, gilt die
+           Vorgabe der Artikelart. */
+        markerViews: {
+          type: 'object',
+          title: 'Marker view by map kind',
+          description: 'How markers stand on maps of each kind: symbol, name, image or quick card. A kind left out follows the article type; a map or a single marker can say otherwise.',
         },
       },
     },

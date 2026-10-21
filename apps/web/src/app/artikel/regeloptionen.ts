@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MAP_KINDS, MAP_TOOL_GROUPS, mapToolTable, withMapTool, withRuleVariant, type Entity, type MapKind, type MapToolGroup, type Relation, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
+import { MAP_KINDS, MAP_TOOL_GROUPS, MARKER_VIEWS, isMarkerView, kindMarkerViewOf, withKindMarkerView, mapToolTable, withMapTool, withRuleVariant, type Entity, type MapKind, type MapToolGroup, type Relation, type RuleOptionState, type RuleSortState, type RuleVariantState } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { BegriffLink, Glossar } from '../kern/glossar';
 import { KurzLink } from '../kern/kurzansicht';
@@ -180,6 +180,33 @@ import { Tragraster } from './tragraster';
                                      [attr.aria-label]="g.label + ' on ' + k + ' maps'" (change)="werkzeug(k, g.key, $any($event.target).checked)" />
                             </td>
                           }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else if (o.key === 'markerViews' && kampagneArtikel(); as c) {
+                <!-- **Markeransicht je Kartentyp** (T-214): eine Zeile je Art; „by type“ folgt der Artikelart. -->
+                <div class="tabelle-rahmen">
+                  <table class="werkzeuge">
+                    <thead>
+                      <tr>
+                        <th scope="col">Map kind</th>
+                        <th scope="col">Markers show as</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (k of ARTEN; track k) {
+                        <tr>
+                          <th scope="row">{{ k }}</th>
+                          <td>
+                            <select [disabled]="!darfSchreiben() || waehlt() !== null" [attr.aria-label]="'Markers on ' + k + ' maps show as'" (change)="markerAnsicht(k, $any($event.target).value)">
+                              <option value="" [selected]="!markerAnsichtVon(c, k)">by article type</option>
+                              @for (v of ANSICHTEN; track v.key) {
+                                <option [value]="v.key" [selected]="markerAnsichtVon(c, k) === v.key" [title]="v.does">{{ v.label }}</option>
+                              }
+                            </select>
+                          </td>
                         </tr>
                       }
                     </tbody>
@@ -386,7 +413,11 @@ export class Regeloptionen {
   protected readonly ARTEN = MAP_KINDS;
   protected readonly GRUPPEN = MAP_TOOL_GROUPS;
   /** Die Kampagne selbst, für die Tabelle „Map tools“ (T-320). */
-  private readonly kampagneArtikel = signal<Entity | null>(null);
+  protected readonly kampagneArtikel = signal<Entity | null>(null);
+  protected readonly ANSICHTEN = MARKER_VIEWS;
+  protected markerAnsichtVon(c: Entity, k: MapKind): string {
+    return kindMarkerViewOf(c, k) ?? '';
+  }
   protected readonly tabelle = computed(() => {
     const k = this.kampagneArtikel();
     return k ? mapToolTable(k) : null;
@@ -406,7 +437,7 @@ export class Regeloptionen {
     try {
       const r = await this.api.campaignRules(id);
       this.sorten.set(r.sorts);
-      if (r.sorts.some((s) => s.options.some((o) => o.key === 'mapTools'))) {
+      if (r.sorts.some((s) => s.options.some((o) => o.key === 'mapTools' || o.key === 'markerViews'))) {
         const { refs: _r, fromTemplate: _f, ...k } = (await this.api.entity(id)) as Entity & { refs?: unknown; fromTemplate?: unknown };
         this.kampagneArtikel.set(k as Entity);
       }
@@ -458,6 +489,22 @@ export class Regeloptionen {
     try {
       const { refs: _refs, fromTemplate: _ft, ...k } = (await this.api.entity(this.kampagne())) as Entity & { refs?: unknown; fromTemplate?: unknown };
       await this.api.putEntity(withMapTool(k as Entity, art, g, an));
+      await this.lade(this.kampagne());
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'The option could not be saved.');
+    } finally {
+      this.waehlt.set(null);
+    }
+  }
+
+  /** Die Markeransicht einer Kartenart setzen (T-214) — an der Kampagne, wie die Werkzeuge. */
+  protected async markerAnsicht(art: MapKind, v: string): Promise<void> {
+    if (this.waehlt()) return;
+    this.waehlt.set(`markerViews:${art}`);
+    this.fehler.set(null);
+    try {
+      const { refs: _refs, fromTemplate: _ft, ...k } = (await this.api.entity(this.kampagne())) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      await this.api.putEntity(withKindMarkerView(k as Entity, art, isMarkerView(v) ? v : null));
       await this.lade(this.kampagne());
     } catch (error) {
       this.fehler.set(error instanceof ApiError ? error.message : 'The option could not be saved.');

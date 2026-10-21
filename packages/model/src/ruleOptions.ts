@@ -29,7 +29,7 @@ import { allowedEquipmentMethods, type EquipmentMethod } from './equipment.js';
 import { hitPointRuleOf } from './hitpoints.js';
 import { enhancementsByOf, itemPricingOf } from './enhancement.js';
 import { inventoryRulesOf } from './inventory.js';
-import { mapRulesOf, mapToolTable } from './map.js';
+import { MAP_KINDS, kindMarkerViewOf, mapRulesOf, mapToolTable } from './map.js';
 import { stowingRuleOf } from './stowing.js';
 import { initiativeRulesOf } from './tracker.js';
 import { turnPlannerOf } from './zugplan.js';
@@ -391,6 +391,14 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'Map tools',
     does: 'Which tools a map offers, by map kind: walls, fog and light belong on battle maps, linking sub-maps on world and region maps. A kind left unchanged keeps the default.',
     source: { field: 'mapTools' },
+  },
+  {
+    /* Markeransicht je Kartentyp (T-214), gelesen über `kindMarkerViewOf`; eine Tabelle statt Varianten. */
+    key: 'markerViews',
+    sort: 'map',
+    label: 'Marker view by map kind',
+    does: 'How markers stand on maps of each kind: as a symbol, a symbol with its name, an image or a quick card. A kind left on “by type” follows the article type; a map or a single marker can say otherwise.',
+    source: { field: 'markerViews' },
   },
   {
     /* Kartenverknüpfungen (T-327), gelesen über `mapLinkDefaultsOf`; je Verknüpfung überschreibbar. */
@@ -894,6 +902,11 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return mapLinkDefaultsOf(campaign).outer;
     case 'mapTools':
       return Object.entries(mapToolTable(campaign)).map(([k, g]) => `${k}: ${g.length ? g.join(', ') : 'none'}`);
+    case 'markerViews':
+      return MAP_KINDS.flatMap((k) => {
+        const v = kindMarkerViewOf(campaign, k);
+        return v ? [`${k}: ${v}`] : [];
+      });
     case 'combat':
       return initiativeRulesOf(campaign).combat;
     case 'turnPlanner':

@@ -360,6 +360,14 @@ export interface InterfaceDef {
    * als Regel, `tags` und `where` schlagen vor.
    */
   targets?: Record<string, LinkTarget>;
+  /**
+   * **Wie ein Artikel dieser Art als Marker auf der Karte steht** (T-214):
+   * Symbol, Symbol mit Namen, Bild oder Kurzansicht-Karte (`quick`).
+   * Aufgelöst die `extends`-Kette hoch wie `units`; die Kartenart (an der
+   * Kampagne), die Karte und der Marker selbst dürfen es überschreiben
+   * (`markerViewOf`). Ohne Angabe: das Bild, sonst das Symbol.
+   */
+  markerView?: 'symbol' | 'name' | 'image' | 'card';
 }
 
 /**
