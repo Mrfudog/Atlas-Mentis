@@ -1067,6 +1067,10 @@ export const relations: Record<string, RelationDef> = {
         area: { type: 'array', title: 'Passage area', items: { type: 'array' } },
         toArea: { type: 'array', title: 'Target area', items: { type: 'array' } },
         rules: { type: 'object', title: 'Passage rules' },
+        /* **Hier gemeint** (T-328): ein Marker im Bereich einer Unterkarte
+           ist dort ein Vorschlag zum Platzieren (`placementSuggestions`);
+           mit `stay` gehört er auf diese Karte, und keine schlägt ihn vor. */
+        stay: { type: 'boolean', title: 'Keep on this map' },
       },
     },
   },

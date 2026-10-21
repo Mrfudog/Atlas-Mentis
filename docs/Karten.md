@@ -448,6 +448,44 @@ ineinander. Dafür steht an der Kante `insideMap` der Schalter **`align`**
   `liftPoint`/`lowerPoint` durch den Rahmen, den `effectiveMapLink` liefert
   — dieselbe Rechnung wie hier.
 
+### Marker und Tokens zwischen Kartenstufen (T-328)
+
+Was auf einer Stadtkarte steht, soll die Regionskarte mitzeigen; was die
+Leitung auf der Regionskarte in die Stadt setzt, soll die Stadtkarte
+kennen. Beides ohne zweite Kopie (`packages/model/src/mapstack.ts`).
+
+- **Tief → hoch, gelesen** (`liftMarkers`, D8): der Kartenkontext
+  (`lifted`) hebt die Marker jeder Unterkarte mit ihrer Verknüpfung
+  (`effectiveMapLink`, also auch ausgerichtet und als Form) auf die Karte
+  darüber — `liftPoint` durch den Kasten. Gehoben werden Orte und Personen
+  (`static`), Aufträge (`quest`) und Spiel-Tokens (`play`); nicht das
+  Gruppen-Token (das steht schon über `partyPosition` auf jeder Stufe),
+  Assets, Übergänge und freie Lichter. Was oben schon selbst einen Marker
+  hat, kommt nicht zweimal. Mehr als `LIFT_SINGLES` (6) werden ein
+  **Bündel mit Zahl** in der Mitte des Bereichs; ein Klick führt hinein.
+  Eine Stufe weit und nur die erste Ebene: auf der Weltkarte steht nicht
+  jede Kiste jedes Kellers. Die Seite zeichnet gehobene Marker kleiner und
+  gestrichelt; ein Klick öffnet die Kurzansicht.
+- **Hoch → tief, als Vorschlag** (`placementSuggestions`): ein Marker der
+  Karte darüber im Bereich einer Unterkarte bleibt, wo er ist — **er ist
+  der gespeicherte Vorschlag**. Die Unterkarte rechnet daraus beim Lesen
+  die Liste **„To place"** (`toPlace`, nur für die Leitung) mit der Lage
+  aus `lowerPoint`, gestrichelt auf der Karte. *Confirm* setzt ihn an diese
+  Lage, *Move…* an eine angetippte; dann **wandert** er
+  (`confirmPlacement`): erst kommt die Kante an der Unterkarte, dann geht
+  die oben weg — es gibt ihn wieder einmal, und oben steht er gehoben.
+  *Keep on …* setzt `stay` am Marker oben: er ist dort gemeint, keine
+  Unterkarte schlägt ihn mehr vor. Ein Marker, der unten schon steht, wird
+  nicht vorgeschlagen. Bei einer Karte im Spiel zählt oben nur, was an der
+  Instanz selbst steht — was die Vorlage trägt, wandert nicht von hier aus.
+- **Gesiebt am Server**: die Unterkarte kommt, wie der Betrachter sie
+  bekommt (`redactMap`: ihr Nebel, `hidden`, Sichtbarkeit des Ziels; eine
+  nicht freigegebene Instanz gar nicht), ihr Bereich nur, wo er oben
+  aufgedeckt ist, und jeder gehobene Punkt nur, wo oben kein Nebel liegt.
+  Eine Verknüpfung, die Spielende nicht sehen (`showPlayers: hidden`),
+  verrät auch keine Marker. Ein gehobener Marker, dessen Ziel der
+  Betrachter nicht sieht, steht nicht da.
+
 ---
 
 ## Stockwerke und Portale (T-307)

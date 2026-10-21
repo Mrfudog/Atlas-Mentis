@@ -2499,6 +2499,19 @@ Fuss, weil das die eine Einheit ist, in die jede Länge des Registers geht —
 eine Reisezeit wie „1 day" nicht, und darum lässt sie sich nicht
 ausrichten, statt eine Grösse zu raten.
 
+**Ein Marker steht auf einer Karte, und die anderen lesen ihn** (T-328).
+Dass der Wirt in der Stadt auch auf der Regionskarte zu sehen ist, wäre
+mit einer Kopie oben schnell gemacht — und am nächsten Tag stünde er oben
+noch am Hafen, während er unten längst im Tempel ist. Also wird gehoben
+statt kopiert: die Regionskarte liest die Marker der Stadt durch den
+Rahmen (D8, Kanten nur vorwärts). Umgekehrt ist es eine Frage und keine
+Rechnung: ein Punkt auf der Regionskarte ist in der Stadt eine ganze
+Strassenecke breit, und wohin genau er gehört, weiss nur die Leitung.
+Darum bleibt der Marker oben stehen und ist unten ein **Vorschlag** — kein
+zweiter, stiller Marker, sondern die Frage „hierhin?". Bestätigt, wandert
+er hinunter und steht oben wieder, gehoben; so gibt es ihn zu jeder Zeit
+einmal. Wer ihn oben meint, sagt es (`stay`), und dann fragt niemand mehr.
+
 **Welche Werkzeuge eine Karte zeigt, sagt die Kampagne, nicht die Karte**
 (T-320). Eine Weltkarte braucht keine Wände und eine Kampfkarte keine
 Unterkarten — aber welche Gruppe auf welcher Art steht, ist eine

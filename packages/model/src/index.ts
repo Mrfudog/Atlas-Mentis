@@ -52,6 +52,7 @@ export * from './floors.js';
 export * from './passages.js';
 export * from './maplinks.js';
 export * from './mapscale.js';
+export * from './mapstack.js';
 export * from './walls.js';
 export * from './mapdraw.js';
 export * from './lighting.js';
