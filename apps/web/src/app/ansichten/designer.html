@@ -219,6 +219,24 @@
             }
           </div>
         }
+        @if (el.el === 'structure') {
+          <!-- Die Struktur (T-341): welche Kanten, wie tief, Baum oder Netz — vom Artikel der Seite aus. -->
+          <div class="lbl">Shows as</div>
+          <div class="chips">
+            @for (o of ['tree', 'net']; track o) {
+              <button type="button" class="chipb" [disabled]="!darf()" [attr.aria-pressed]="(el.layout ?? 'tree') === o" (click)="setze({ layout: o === 'tree' ? null : o })">{{ o === 'net' ? 'web' : o }}</button>
+            }
+          </div>
+          <div class="lbl">Edges</div>
+          @for (k of STRUKTUR_KANTEN; track k.type) {
+            <label class="haken"><input type="checkbox" [checked]="strukturKanten(el).includes(k.type)" [disabled]="!darf()" (change)="strukturKante(el, k.type, $any($event.target).checked)" /> {{ k.label }}</label>
+          }
+          <label>
+            <span class="lbl">Depth</span>
+            <input type="number" [min]="STRUKTUR_TIEFE.min" [max]="STRUKTUR_TIEFE.max" [value]="el.depth ?? STRUKTUR_TIEFE.default" [disabled]="!darf()" (input)="setze({ depth: +optionWert($event) || null })" />
+          </label>
+          <p class="sub">From the article the view stands on. Players see only what they may — worked out on the server.</p>
+        }
         @if (nimmtWerte(el)) {
           <div class="werte">
             <div class="lbl">Values from</div>
