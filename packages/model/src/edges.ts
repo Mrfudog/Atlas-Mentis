@@ -329,9 +329,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'effects',
     label: 'Effects on the numbers',
     area: 'character',
-    does: 'applies the effects of granted features (from their level) and of carried items to the character’s numbers',
+    does: 'applies the effects of granted features (from their level), of carried items, of what a statblock has equipped and of the creature’s conditions to its numbers (T-275)',
     uses: {
-      [M + 'effects.ts']: ['carries', 'grants', 'holds'],
+      [M + 'effects.ts']: ['carries', 'equips', 'grants', 'holds'],
     },
   },
   {
@@ -340,16 +340,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     area: 'character',
     does: 'gathers every proficiency, expertise and saving throw of a character with where it comes from — the statblock by hand, the first class (later classes only their multiclass list), subclass, origin with its base, background, what they grant on their level, chosen feats, answered choices and items that grant proficiency (T-239)',
     uses: {
-      [M + 'proficiency.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [M + 'proficiency.ts']: ['chose', 'equips', 'grants', 'hasAncestry', 'hasBackground', 'hasClass', 'holds'],
     },
   },
   {
     key: 'characterStats',
     label: 'Numbers of a character',
     area: 'character',
-    does: 'computes the numbers of a character with their parts — ability scores from the statblock’s base plus origin and chosen bonuses and items, proficiency bonus from the level, hit points from the class levels and CON, AC, initiative, speed and senses — and the statblock as it reads with them (T-272)',
+    does: 'computes the numbers of a character with their parts — ability scores from the statblock’s base plus origin and chosen bonuses and items, proficiency bonus from the level, hit points from the class levels and CON, AC from the armor worn, initiative, every speed, senses, resistances and immunities, the critical-hit threshold — and the statblock as it reads with them (T-272, T-275)',
     uses: {
-      [M + 'stats.ts']: ['hasAncestry', 'hasClass'],
+      [M + 'stats.ts']: ['belongsTo', 'hasAncestry', 'hasClass', 'holds'],
       /* Im Full edit der Figur: der Hinweis auf ihren Statblock (T-272). */
       [W + 'artikel/artikel.ts']: ['belongsTo'],
     },

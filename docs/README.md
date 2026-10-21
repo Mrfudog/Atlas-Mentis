@@ -72,6 +72,7 @@ von Hand ändern.
 | [vorschlaege/Regel-Builder.md](vorschlaege/Regel-Builder.md) | Versuch: Regeln als Knoten (Auslöser → Bedingung → Folge), hinter einem Schalter (T-270, E-102) | Versuch, Bericht | Hand |
 | [vorschlaege/Regeln-Uebersicht.md](vorschlaege/Regeln-Uebersicht.md) | Alle Regeln in Gruppen: was Einstellung oder Rechenwerk bleibt, was Graph wird, welche Bausteine fehlen (T-270, E-102) | Vorschlag | Hand |
 | [Regelsysteme.md](Regelsysteme.md) | Regelsysteme als Behälter (T-132) | Entscheidungsvorlage, E-044 | Hand |
+| [Regelwirkung.md](Regelwirkung.md) | Wirken die Regeln am Tisch? Grundlinie für die Prüfung nach jedem Release (T-322, T-275) | gilt | Hand |
 | [Spieltisch.md](Spieltisch.md) | Wie der Spieltisch im Prototyp entstand | Herkunft (Prototyp, eingefroren D59) | Hand |
 | [Durchgang.md](Durchgang.md) | Abgleich Register ↔ Konzept, mit Entscheidungen | Herkunft, Entscheidungen gelten | Hand |
 | [Roadmap.md](Roadmap.md) | Der Fahrplan vom 19.9. (Etappen A–D) | Herkunft — offene Arbeit steht im Projektbrett | Hand |

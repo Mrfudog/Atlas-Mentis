@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { entityName, proficiencyVia, statPartText } from '@nw/model';
+import { entityName, extraStatRows, proficiencyVia, statPartText } from '@nw/model';
 import type { Entity, StatPart, StatValue } from '@nw/model';
 import { FigurDaten } from '../bogen/daten';
 import { Bestand } from '../kern/bestand';
@@ -103,7 +103,8 @@ export class Werte {
   protected readonly zeilen = computed<StatValue[]>(() => {
     const w = this.daten.fuer(this.figur().id).werte();
     if (!w) return [];
-    return [...Object.values(w.abilities), w.prof, w.ac, w.hp, w.initiative, w.speed, w.senses].filter((x) => x.parts.length || x.value !== null);
+    /* Abwehr und kritischer Treffer, wo sie etwas sagen (T-275). */
+    return [...Object.values(w.abilities), w.prof, w.ac, w.hp, w.initiative, w.speed, w.senses, ...extraStatRows(w)].filter((x) => x.parts.length || x.value !== null);
   });
 
   protected teil(t: StatPart): string {
@@ -112,7 +113,7 @@ export class Werte {
 
   /** Woher der Teil kommt, in Worten — wie bei den Übungen. */
   protected herkunft(t: StatPart): string {
-    if (t.kind === 'base' && t.via === 'statblock') return 'statblock';
+    if (t.via === 'statblock') return 'statblock';
     if (t.kind === 'fixed') return 'statblock';
     if (t.kind === 'con' || t.kind === 'dex' || (t.kind === 'base' && !t.via)) return t.note ?? '';
     if (t.kind === 'level') return '';

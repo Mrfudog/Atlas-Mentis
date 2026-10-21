@@ -153,7 +153,7 @@ export function proficienciesOf(character: Entity, statblock: Entity | undefined
     }
   }
 
-  for (const { effect, source } of effectsAt(character, byId)) {
+  for (const { effect, source } of effectsAt(character, byId, statblock ? { statblock } : {})) {
     if (effect.op !== 'grant' || effect.value === undefined || effect.value === '') continue;
     const kind: ProficiencyKind | null = effect.target === 'proficiency' ? 'proficient' : effect.target === 'expertise' ? 'expertise' : effect.target === 'saveProficiency' ? 'saves' : null;
     if (kind) dazu(String(effect.value), kind, { id: source, via: 'effect' });
@@ -233,7 +233,12 @@ export function proficiencyVia(s: ProficiencySource): string {
     case 'choice':
       return 'choice';
     case 'effect':
+    case 'holds':
       return 'item';
+    case 'equips':
+      return 'equipped';
+    case 'condition':
+      return 'condition';
     default:
       return s.via;
   }

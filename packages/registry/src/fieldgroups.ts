@@ -500,7 +500,9 @@ export const fieldGroups = {
         cha: { type: 'number', title: 'CHA' },
         chaMod: { type: 'number', title: 'CHA mod', derived: 'mod(cha)', of: 'cha', format: 'signed' },
         initiative: { type: 'number', title: 'Initiative', derived: 'mod(dex)', format: 'signed' },
-        passivePerception: { type: 'number', title: 'Passive perception', derived: '10+mod(wis)' },
+        /* Mit Übung und Expertise in Perception (T-275, Punkt 5): dieselbe
+           Rechnung wie der Bogen (`checkBonus`). */
+        passivePerception: { type: 'number', title: 'Passive perception', derived: '10+check(wis.Perception)' },
       },
     },
   },
@@ -1085,7 +1087,9 @@ export const fieldGroups = {
    *
    * `op`: `add` zählt dazu, `set` setzt (bei Attributen nur, wenn es höher
    * ist; beim kritischen Treffer gilt die kleinste Schwelle), `grant`
-   * gewährt ein Wort (Resistenz, Immunität). `when`: `worn` (getragen oder
+   * gewährt ein Wort (Resistenz, Immunität; `advantage`/`disadvantage` an
+   * `attack` und `attacked`), `limit` deckelt (ein gepacktes Ziel hat
+   * Tempo höchstens 0, T-275). `when`: `worn` (getragen oder
    * in der Hand), `attuned` (eingestimmt **und** getragen), `carried`
    * (irgendwo dabei, nicht zu Hause und nicht am Boden), `self` (eine
    * Eigenschaft des Gegenstands selbst, die keiner Figur zugerechnet
@@ -1114,7 +1118,7 @@ export const fieldGroups = {
                  `capacity`, `weapon`, `weapon.attack`, `weapon.damage`, `spellDamage`,
                  `check`, `prof`, `save.concentration` — frei, siehe `EFFECT_TARGETS`. */
               target: { type: 'string', title: 'Target' },
-              op: { type: 'string', title: 'Operation', enum: ['add', 'set', 'grant'] },
+              op: { type: 'string', title: 'Operation', enum: ['add', 'set', 'grant', 'limit'] },
               /* Eine Zahl (19, +1, 10) oder ein Wort (`fire`, `walk`). */
               value: { type: 'string', title: 'Value' },
               when: { type: 'string', title: 'Applies when', enum: ['worn', 'attuned', 'carried', 'self'] },
@@ -1871,7 +1875,7 @@ export const fieldGroups = {
         proficiency: {
           type: 'number',
           title: 'Proficiency',
-          derived: '2+(sum(hasClass.level)-1)/4',
+          derived: 'profBonus(hasClass.level)',
           format: 'signed',
         },
       },

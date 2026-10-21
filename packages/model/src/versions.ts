@@ -27,7 +27,7 @@
 
 import type { Entity, EntityId, Registry } from './types.js';
 import { LAYER_RELATION } from './visibility.js';
-import { OVERRIDES_RELATION } from './stack.js';
+import { OVERRIDES_RELATION, isSupplement } from './stack.js';
 import { entityName } from './entity.js';
 
 export const VARIANT_RELATION = 'variantOf';
@@ -51,6 +51,9 @@ export function sameThing(a: Entity, b: Entity): boolean {
 
 /** Die Kanten, über die `e` eine Fassung von etwas ist (Ziel-Ids). */
 function fassungsKanten(e: Entity, get: (id: EntityId) => Entity | undefined): EntityId[] {
+  /* Eine Ergänzung (T-142) ist keine Fassung: sie trägt nur ihre Felder,
+     und neben dem Artikel stünde an jedem anderen „— not set". */
+  if (isSupplement(e)) return [];
   const out: EntityId[] = [];
   for (const r of e.relations ?? []) {
     if (!r.to || r.to === e.id) continue;

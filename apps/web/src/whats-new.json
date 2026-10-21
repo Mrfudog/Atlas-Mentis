@@ -9,6 +9,14 @@
       "link": "/boards"
     },
     {
+      "id": "2026-10-21-effects-count",
+      "date": "2026-10-21",
+      "title": "Armor, items and conditions change the numbers",
+      "text": "A character’s AC now comes from the armor and shield it wears, and items, features and conditions change AC, speeds, resistances and the critical-hit threshold — on the sheet, in the initiative tracker and in the turn plan. Grappled sets every speed to 0. Passive Perception counts proficiency and expertise. “How the numbers come about” on a character says where each part comes from.",
+      "area": "Characters",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-21-places-from-books",
       "date": "2026-10-21",
       "title": "Places know their rooms, region, scenes and residents",

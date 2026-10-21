@@ -276,7 +276,7 @@ export class Klasse {
       }));
       const hatUnter = unter.some((x) => x.merkmale.length);
       if (!k.length && !hatUnter) continue;
-      out.push({ level, pb: proficiencyBonus(level), klasse: k, unter: hatUnter ? unter : null });
+      out.push({ level, pb: proficiencyBonus(level) ?? 2, klasse: k, unter: hatUnter ? unter : null });
     }
     return out;
   });

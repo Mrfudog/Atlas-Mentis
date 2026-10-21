@@ -1350,6 +1350,23 @@ var DERIVED_FN={
       summe+=z; n++;
     });
     return n?summe:null; },
+  /* Der Übungsbonus aus einer Summe über Kanten und der Bonus auf eine
+     Probe (T-275): `profBonus(hasClass.level)`, `check(wis.Perception)`.
+     Wie im Paket — das Register nennt sie, also rechnet sie auch hier. */
+  profBonus:function(raw,look,key,kanten){
+    var l=DERIVED_FN.sum(raw,look,key,kanten); if(l==null||l<1)return null;
+    return Math.ceil(Math.floor(l)/4)+1; },
+  check:function(raw,look,key){
+    var i=String(key).indexOf("."); if(i<=0)return null;
+    var at=key.slice(0,i), sk=key.slice(i+1).toLowerCase(); if(!ABIL_KEYS[at])return null;
+    function w(k){ var v=look(k); return v===AMBIG?undefined:v; }
+    function hat(l){ return Array.isArray(l)?l.filter(function(x){return String(x).toLowerCase()===sk;})[0]:undefined; }
+    var exp=hat(w("expertise")), ge=exp||hat(w("proficient")), bon=w("bonuses")||{};
+    if(ge){ var f=Object.keys(bon).filter(function(k){return k.toLowerCase()===sk;})[0];
+      if(f!=null&&bon[f]!==""&&bon[f]!=null&&isFinite(Number(bon[f])))return Number(bon[f]); }
+    var sc=w(at); if(sc==null||sc===""||!isFinite(Number(sc)))return null;
+    var p=Number(w("prof")); p=isFinite(p)?p:0;
+    return Math.floor((Number(sc)-10)/2)+(ge?p*(exp?2:1):0); },
   rowCount:function(raw){ return asRows(raw).length; },
   colCount:function(raw){ return asRows(raw).reduce(function(m,r){return Math.max(m,r.length);},0); },
   cellCount:function(raw){ return asRows(raw).reduce(function(sum,r){
@@ -16274,7 +16291,11 @@ function renderHowto(v){
       "too (Effects: target, kind, value, when — worn, attuned, carried); "+
       "it counts while the inventory edge says the item is worn or attuned, "+
       "and it is worked out on read, so taking the gauntlets off takes the "+
-      "19 Strength away at once."));
+      "19 Strength away at once. The effects count at the table: the AC "+
+      "comes from the armour and shield worn, every speed takes its bonuses "+
+      "and limits, resistances and the critical-hit threshold join the "+
+      "statblock as it reads — and a condition is a source too (Grappled "+
+      "limits every speed to 0), as is what a statblock equips."));
     var kantenBsp=[
       {type:"hasClass",to:"Fighter",props:{level:3,subclass:"Champion"}},
       {type:"hasClass",to:"Wizard",props:{level:2}},
@@ -16312,7 +16333,11 @@ function renderHowto(v){
       (REG.interfaces.Effects?
         "Gauntlets of Ogre Power  effects: ability.str set 19  (attuned)\n"+
         "holds → Gauntlets  tier: worn, attuned: yes\n"+
-        "  → STR 10 → 19 (worked out on read; off again when taken off)\n":"")+"\n"+
+        "  → STR 10 → 19 (worked out on read; off again when taken off)\n"+
+        "holds → Chain Mail  tier: worn (heavy, AC 16) · Shield  tier: held (+2)\n"+
+        "  → AC 18 (armour worn, not the number typed on the statblock)\n"+
+        "Vitals.conditions → Grappled  effects: speed.* limit 0\n"+
+        "  → speed 0 ft. until the condition goes\n":"")+"\n"+
       "Statblock · Proficiencies.proficient draws on\n"+(quellen||"  —");
     v.appendChild(el("pre",{class:"code",text:rechnung2}));
   }

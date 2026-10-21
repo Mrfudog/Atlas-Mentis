@@ -25,7 +25,7 @@
  * `node scripts/atlas.mjs bulk --dry-run <datei>`, dann ohne), damit sie
  * sich wie jede rückgängig machen lässt. `--limit` für eine Probe.
  *
- * `offen` zählt Gegenstände im Spiel ohne Form, je Art und Grösse
+ * `offen` zählt Gegenstände im Spiel ohne Form, je Art und Gegenstandstyp
  * (Schritt 4: Grundlage für einen Regelvorschlag, nichts wird geschrieben).
  *
  * Wie `preise.mjs`: `ATLAS_URL`, `ATLAS_DEV_TOKEN` (in einer Cloud-Sitzung
@@ -358,9 +358,9 @@ async function offen() {
       mit += 1;
       continue;
     }
+    /* Eine Grösse tragen Gegenstände nicht; gezählt wird je Art und Gegenstandstyp. */
     const art = String(item.itemType ?? e.interfaces?.[0] ?? '?').toLowerCase() || '?';
-    const groesse = e.components?.Item?.size ?? (e.interfaces?.[0] === 'Weapon' ? (e.components?.Weapon?.properties ?? []).filter((x) => /heavy|light|two-handed/i.test(x)).join('+') || 'weapon' : '');
-    const k = `${e.interfaces?.[0] ?? '?'} · ${art}${groesse ? ` · ${groesse}` : ''}`;
+    const k = `${e.interfaces?.[0] ?? '?'} · ${art}`;
     je[k] = (je[k] ?? 0) + 1;
   }
   const sortiert = Object.fromEntries(Object.entries(je).sort((a, b) => b[1] - a[1]));

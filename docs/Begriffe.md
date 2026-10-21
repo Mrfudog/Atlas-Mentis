@@ -1834,6 +1834,26 @@ und kein neues Feld. Je Wirkung ein eigenes Feld (`abilitySet`,
 neue Art hätte Feld und Code gebraucht. Die alten `bonusAc` & Co. bleiben
 stehen und zählen beim Lesen mit.
 
+**Eine Wirkung, die niemand anwendet, ist eine Behauptung** (T-275). Der
+Regelkatalog vom 18.10. fand, dass `effectsAt` sammelte und ausser den
+Übungen niemand las: ein Ring der Feuerresistenz stand im Inventar und
+änderte keine Zahl, die RK war ein abgetipptes Feld. Jetzt liest
+`characterStats` jede Wirkung, und **jede Stelle am Tisch fragt dieselbe
+Rechnung** (`creatureStats`): der Bogen, die Initiative, der Zugplan. Die
+RK kommt aus der getragenen Rüstung, wo eine getragen wird — abgetippt
+wäre sie nach dem ersten Rüstungswechsel falsch. **Ein Zustand ist eine
+Quelle wie ein Gegenstand**: gepackt deckelt das Tempo auf 0 (`limit`,
+nicht `set`, denn `set` hebt nur). Eine eigene Regel-Engine (E-102) ist
+das nicht: die Rechnung hat genau die Eingaben, die eine Automation
+„Wirkung anwenden" hätte, und zieht dann um, statt neu zu entstehen.
+
+**Eine Regel steht einmal** (T-275). Der Übungsbonus stand im Register als
+`2+(…-1)/4` und auf der Klassenseite als `ceil(L/4)+1` — dasselbe Ergebnis,
+zwei Stellen, und die nächste Hausregel hätte eine davon vergessen. Jetzt
+ist `proficiencyBonus` die Regel und das Register nennt sie
+(`profBonus(hasClass.level)`); ebenso rechnet die passive Wahrnehmung im
+Register (`10+check(wis.Perception)`) und am Bogen mit `checkBonus`.
+
 **Der Assistent zählt keine Schritte auf, er liest sie** (T-080). Fest ist
 nur, was das Modell selbst vorgibt: drei Kanten (Abstammung, Hintergrund,
 Klasse), sechs Werte, ein Name. Dazwischen steht je offene Wahl der

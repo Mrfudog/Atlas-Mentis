@@ -26,6 +26,7 @@ import {
   primaryInterface,
   tagsOf,
 } from "./entity.js";
+import { proficiencyBonus } from "./calc.js";
 import type { Entity } from "./types.js";
 
 /** Wie tief Merkmale ineinander stecken dürfen (Battle Master › Maneuver Options › Manöver). */
@@ -34,10 +35,6 @@ export const EMBED_DEPTH = 2;
 /** Die Marke, die ein optionales oder Varianten-Merkmal trägt (`isClassFeatureVariant`). */
 export const OPTIONAL_TAG = "optional";
 
-/** Übungsbonus nach Gesamtstufe — die Regel, nicht eine Spalte der Tabelle. */
-export function proficiencyBonus(level: number): number {
-  return Math.ceil(level / 4) + 1;
-}
 
 export function isOptionalFeature(feature: Entity | undefined): boolean {
   return tagsOf(feature).includes(OPTIONAL_TAG);
@@ -280,7 +277,8 @@ export function classTable(
   for (let level = 1; level <= 20; level++) {
     rows.push({
       level,
-      proficiencyBonus: proficiencyBonus(level),
+      /* Die Regel, nicht eine Spalte der Tabelle; sie steht einmal (`calc.ts`, T-275). */
+      proficiencyBonus: proficiencyBonus(level) ?? 2,
       features: features
         .filter((f) => f.level === level)
         .flatMap((f) => f.names),
