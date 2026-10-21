@@ -676,7 +676,19 @@ mit `types` = `Place` und den Quellen, deren Text schon steht. Ohne
 `types` brächte ein Lauf über wenige Quellen auch geteilte Merkmale mit,
 die er anders teilt als der Lauf über alle — sie stünden als Waisen daneben.
 Kanten, die **an** schon geladenen Artikeln stehen (`happensAt` an der
-Szene, `mapOf` an der Karte), trägt `only-new` nicht nach.
+Szene, `mapOf` an der Karte, `partOf` eines Orts, `livesIn` einer
+Kreatur), trägt `only-new` nicht nach. Das tut `scripts/orte-kanten.mjs`
+(T-182): es liest die Ausfuhrdatei eines lokalen Laufs über dieselben
+Quellen und schreibt vier Massenänderungen — `happensAt` und der Ort der
+Karte als **Ziel aus Kante** (der Server findet den Ort selbst), `partOf`,
+Bereichskarten und `livesIn` aus der Datei, jede nur, wo noch nichts
+steht:
+
+```bash
+node packages/import-5etools/dist/cli.js <5etools-src/data> --out /ausserhalb/ausfuhr.json
+node scripts/orte-kanten.mjs /ausserhalb/ausfuhr.json /ausserhalb/auftrag [--layer e5_book_lmop]
+node scripts/atlas.mjs bulk --dry-run /ausserhalb/auftrag/1-happensAt.json   # dann 2-mapOf, 3-partOf, 4-livesIn
+```
 
 **Vom Bestand mit einer Ebene zu einer je Buch** (Migration
 `026_ebene_je_buch.sql`, T-081): beim Start hängt der Server jeden Artikel
@@ -1098,7 +1110,7 @@ gezielt zusammen: `checks duplicates` zeigt Gruppe und Ähnlichkeit, dann
 | `select.tag` | eine Marke |
 | `select.ids` | Peg-Ids oder Nummern |
 | `select.where` | `[{ field, op, value }]`, alle müssen gelten. `field`: `name`, `id` (Nummer), `type` oder `Karte.feld` (`Statblock.cr`). `op`: `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in` (Liste), `matches` (Regex), `empty`, `notEmpty` — gross/klein egal |
-| `ops` | `set` / `unset` (`field`, `value`; T-144: statt `value` auch `values` — je Artikel ein eigener Wert nach Peg-Id oder Nummer, wer fehlt, bleibt unberührt —, und `ifEmpty`: nur wo das Feld leer ist), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein; `addLinked` (T-169: `type`, `relation`, `fields` als `{ "Karte.feld": wert }`, `copy` als Liste von Karten, `stripBracket`) legt je ausgewähltem Artikel einen neuen an — gleicher Name (ohne Klammer am Ende mit `stripBracket`), dieselben Ebenen, Peg-Id `<peg>-<art>` wie beim Importer — und bindet den ausgewählten über `relation` an ihn; hat er schon eine solche Kante (`one`), wird er übersprungen; Undo löscht die angelegten wieder; `delete` (T-176) löscht die Auswahl mit ihren Teilen, entfernt Kanten von aussen darauf und löst Instanzen einer gehenden Vorlage — steht ebenfalls allein |
+| `ops` | `set` / `unset` (`field`, `value`; T-144: statt `value` auch `values` — je Artikel ein eigener Wert nach Peg-Id oder Nummer, wer fehlt, bleibt unberührt —, und `ifEmpty`: nur wo das Feld leer ist), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`; T-212: statt `to` auch `targets` — je Artikel eigene Ziele; T-182: `to` darf ein **Weg über Kanten** sein, `<-describedIn` (wer mit `describedIn` auf den Artikel zeigt) oder `->mapOf->happensAt` (vorwärts, hintereinander) — jeder Artikel bekommt so sein eigenes Ziel, ein Weg mit mehr als einem Ziel gilt als mehrdeutig und wird übersprungen; `toTypes` engt die Ziele auf Arten ein, `ifNone` setzt nur, wo noch keine Kante dieser Art steht), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein; `addLinked` (T-169: `type`, `relation`, `fields` als `{ "Karte.feld": wert }`, `copy` als Liste von Karten, `stripBracket`) legt je ausgewähltem Artikel einen neuen an — gleicher Name (ohne Klammer am Ende mit `stripBracket`), dieselben Ebenen, Peg-Id `<peg>-<art>` wie beim Importer — und bindet den ausgewählten über `relation` an ihn; hat er schon eine solche Kante (`one`), wird er übersprungen; Undo löscht die angelegten wieder; `delete` (T-176) löscht die Auswahl mit ihren Teilen, entfernt Kanten von aussen darauf und löst Instanzen einer gehenden Vorlage — steht ebenfalls allein |
 | `confirmDelete` | löscht ein Lauf mehr als einen Artikel, die Zahl aus der Vorschau (`--confirm-delete N`) |
 | `skipRejected` | schreiben, was besteht, und die Abgelehnten liegen lassen (nie beim Löschen) |
 
