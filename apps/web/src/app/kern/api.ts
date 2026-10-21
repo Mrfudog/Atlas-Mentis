@@ -842,6 +842,29 @@ export interface SuchFrage {
   compare?: boolean;
 }
 
+/** Was eine Abfrage-Kachel bringt (T-340, `GET /api/boards/:board/query/:rel`). */
+export interface AbfrageAntwort {
+  title: string;
+  display: 'list' | 'draw' | 'slideshow';
+  interval: number;
+  reveal: boolean;
+  view: string;
+  items: Entity[];
+  total: number;
+  drawn: string[];
+  remaining: number;
+  unknown: string[];
+  mayDraw: boolean;
+}
+
+/** Was beim Ziehen freigegeben wurde. */
+export interface AbfrageFreigabe {
+  party: string | null;
+  known: number;
+  visible: boolean;
+  skipped: string[];
+}
+
 export interface ListenFrage {
   area?: string | undefined;
   type?: string | undefined;
@@ -1327,6 +1350,18 @@ export class Api {
 
   me(): Promise<Me> {
     return this.call<Me>('/api/me', {}, false);
+  }
+  /** Die Abfrage-Kachel (T-340): was sie diesem Betrachter bringt — gesiebt am Server. */
+  boardQuery(board: string, rel: string): Promise<AbfrageAntwort> {
+    return this.call<AbfrageAntwort>(`/api/boards/${encodeURIComponent(board)}/query/${encodeURIComponent(rel)}`);
+  }
+  /** Einen ziehen, ohne Zurücklegen; `drawn: null`, wenn nichts mehr da ist. */
+  boardDraw(board: string, rel: string): Promise<{ drawn: string | null; item?: Entity | null; remaining: number; revealed?: AbfrageFreigabe }> {
+    return this.call(`/api/boards/${encodeURIComponent(board)}/query/${encodeURIComponent(rel)}/draw`, { method: 'POST', body: '{}' });
+  }
+  /** Alles zurücklegen. */
+  boardReset(board: string, rel: string): Promise<{ drawn: string[] }> {
+    return this.call(`/api/boards/${encodeURIComponent(board)}/query/${encodeURIComponent(rel)}/reset`, { method: 'POST', body: '{}' });
   }
   putEntity(entity: Entity): Promise<Entity> {
     return this.call<Entity>(`/api/entities/${encodeURIComponent(entity.id)}`, {

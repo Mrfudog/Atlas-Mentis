@@ -31,6 +31,7 @@ import {
   PLACEMENT_MIN,
   placementOf,
   placementsOf,
+  isQueryPlacement,
   placementView,
   primaryInterface,
   snapTo,
@@ -44,6 +45,7 @@ import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { Brett, chainAbove, isBoard, storyOf, type Mangel } from './brett';
 import { Kachel } from './kachel';
+import { Abfrage } from './abfrage';
 import { BoardSuche } from './suche';
 import { SCHNELL_KONTEXT, type SchnellKontext } from '../artikel/schnell';
 import { BildWahl, bildAdresse } from '../artikel/bild';
@@ -58,10 +60,12 @@ import { Karte as KartenAnsicht } from '../karten/karte';
  * Optionen in der Zeile über der Leinwand. Was ein Werkzeug anlegt, ist
  * eine Form am Board (`Board.shapes`) oder eine Kante (`placed`).
  */
-type Werkzeug = 'auswahl' | 'artikel' | 'text' | 'bild' | 'zeichnen' | 'karte' | 'hintergrund' | 'bereich';
+type Werkzeug = 'auswahl' | 'artikel' | 'abfrage' | 'text' | 'bild' | 'zeichnen' | 'karte' | 'hintergrund' | 'bereich';
 const WERKZEUGE: { key: Werkzeug; sym: string; label: string; title: string; schreibt: boolean }[] = [
   { key: 'auswahl', sym: '↖', label: 'Select', title: 'Select, move and resize; drag the empty canvas to pan', schreibt: false },
   { key: 'artikel', sym: '▤', label: 'Article', title: 'Place an article as a card', schreibt: true },
+  /* Die Abfrage-Kachel (T-340): eine Auswahl statt eines Artikels. */
+  { key: 'abfrage', sym: '⚄', label: 'Query', title: 'A card that lists, draws or shows articles from types, tags, layers or a filter', schreibt: true },
   { key: 'text', sym: 'T', label: 'Text', title: 'Click the canvas to place a heading, paragraph, list or quote', schreibt: true },
   { key: 'bild', sym: '▧', label: 'Image', title: 'Upload an image or choose one from the assets', schreibt: true },
   { key: 'zeichnen', sym: '✎', label: 'Draw', title: 'Freehand, line, arrow, rectangle, ellipse', schreibt: true },
@@ -118,6 +122,8 @@ interface Karte {
   bereich: string;
   /** Der Bereich des Boards, in dem die Karte liegt (T-073) — aus der Lage. */
   liegtIn: string | null;
+  /** Eine Abfrage-Kachel (T-340): sie zeigt eine Auswahl, keinen Artikel. */
+  abfrage?: boolean;
 }
 
 /** Ein Rechteck, das gerade auf der Leinwand gezogen wird (T-073). */
@@ -182,7 +188,7 @@ interface Bzug {
  */
 @Component({
   selector: 'nw-board',
-  imports: [RouterLink, Kachel, BoardSuche, BildWahl, Text, Blatt, KartenAnsicht],
+  imports: [RouterLink, Kachel, Abfrage, BoardSuche, BildWahl, Text, Blatt, KartenAnsicht],
   templateUrl: './board.html',
   styleUrls: ['./board.scss', './werkzeuge.scss'],
   /* Was aus der Suche neu angelegt wird, folgt der Ebene des Boards (T-131). */
@@ -319,10 +325,15 @@ export class Board implements SchnellKontext {
    */
   private readonly entwurf = signal<Entity | null>(null);
   private readonly stand = computed<Entity | undefined>(() => this.entwurf() ?? this.board());
-  protected readonly kanten = computed<Relation[]>(() => {
+  /** Alle Kacheln, auch die Abfrage-Kacheln (T-340). */
+  private readonly platzierungen = computed<Relation[]>(() => {
     const b = this.stand();
     return b ? placementsOf(b) : [];
   });
+  /** Die Kacheln mit einem Artikel — eine Abfrage-Kachel zeigt auf das Board selbst. */
+  protected readonly kanten = computed<Relation[]>(() => this.platzierungen().filter((r) => !isQueryPlacement(r)));
+  /** Welche Abfrage-Kachel ihre Einstellungen zeigt (⚙). */
+  protected readonly abfrageOffen = signal<string | null>(null);
 
   protected readonly zoom = signal(1);
   private readonly buehne = viewChild<ElementRef<HTMLElement>>('buehne');
@@ -337,7 +348,21 @@ export class Board implements SchnellKontext {
     const byId = this.kennt();
     const z = this.zug();
     const anker = this.anker();
-    return this.kanten().map((rel) => {
+    return this.platzierungen().map((rel) => {
+      if (isQueryPlacement(rel)) {
+        const liegt = placementOf(rel);
+        const platz = z && z.id === rel.id ? z.jetzt : this.mitBereich(liegt, anchorAreaOf(anker, liegt));
+        return {
+          rel,
+          platz,
+          ziel: undefined,
+          kurz: undefined,
+          ansicht: '',
+          bereich: 'abfrage',
+          liegtIn: anchorAreaOf(anker, z && z.id === rel.id ? z.von : liegt),
+          abfrage: true,
+        };
+      }
       const ziel = voll.get(rel.to);
       const kurz = ziel ?? byId.get(rel.to);
       const liegt = placementOf(rel);
@@ -726,7 +751,7 @@ export class Board implements SchnellKontext {
     if (!b) return;
     const buehne = this.buehne()?.nativeElement;
     const sichtbar = buehne ? buehne.clientWidth / this.zoom() : undefined;
-    const platz = nextPlacement({ ...b, relations: this.kanten() }, w, h, sichtbar);
+    const platz = nextPlacement({ ...b, relations: this.platzierungen() }, w, h, sichtbar);
     const neu: Relation = {
       id: `r-${crypto.randomUUID()}`,
       type: PLACED_RELATION,
@@ -734,6 +759,25 @@ export class Board implements SchnellKontext {
       props: { x: platz.x, y: platz.y, w: platz.w, h: platz.h, z: Math.max(platz.z, this.obenauf() + 1) },
     };
     this.gewaehlt.set(neu.id);
+    this.kantenSchreiben([...this.alleKanten(), neu]);
+  }
+
+  /** Eine neue Abfrage-Kachel (T-340): eine Kante des Boards auf sich selbst, die Quelle noch leer. */
+  protected abfrageHinlegen(): void {
+    const b = this.board();
+    if (!b) return;
+    const buehne = this.buehne()?.nativeElement;
+    const sichtbar = buehne ? buehne.clientWidth / this.zoom() : undefined;
+    const platz = nextPlacement({ ...b, relations: this.platzierungen() }, 320, 360, sichtbar);
+    const neu: Relation = {
+      id: `r-${crypto.randomUUID()}`,
+      type: PLACED_RELATION,
+      to: b.id,
+      props: { x: platz.x, y: platz.y, w: platz.w, h: platz.h, z: Math.max(platz.z, this.obenauf() + 1), title: 'Query', query: {} },
+    };
+    this.gewaehlt.set(neu.id);
+    this.abfrageOffen.set(neu.id);
+    this.werkzeug.set('auswahl');
     this.kantenSchreiben([...this.alleKanten(), neu]);
   }
 
@@ -844,6 +888,13 @@ export class Board implements SchnellKontext {
   protected readonly werkzeuge = computed(() => WERKZEUGE.filter((w) => !w.schreibt || this.darfSchreiben()));
 
   protected werkzeugWaehlen(w: Werkzeug): void {
+    /* Die Abfrage-Kachel liegt gleich da, mit offenen Einstellungen — eine
+       leere Kachel, die erst einen Klick auf die Leinwand braucht, wäre
+       ein Schritt ohne Entscheidung. */
+    if (w === 'abfrage') {
+      this.abfrageHinlegen();
+      return;
+    }
     this.werkzeug.set(this.werkzeug() === w ? 'auswahl' : w);
     /* Wer zu zeichnen anfängt, ist mit der gewählten Form fertig — ihr Blatt läge sonst über der Leinwand. */
     if (this.werkzeug() !== 'auswahl' && this.werkzeug() !== 'bild') this.formGewaehlt.set(null);
@@ -1223,7 +1274,7 @@ export class Board implements SchnellKontext {
     if (b) void this.schreiben({ ...b, relations: kanten });
   }
 
-  private aendern(id: string, props: Record<string, unknown>): void {
+  protected aendern(id: string, props: Record<string, unknown>): void {
     const kanten = this.alleKanten().map((r) => {
       if (r.id !== id) return r;
       const neu: Record<string, unknown> = { ...(r.props ?? {}), ...props };
