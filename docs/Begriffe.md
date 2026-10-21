@@ -1396,6 +1396,17 @@ nach einem Ort klingt, ohne es zu sagen, wird gezählt und nicht angelegt,
 denn ein falscher Ort in der Weltliste ist schwerer zu finden als ein
 fehlender.
 
+**Wo jemand wohnt, sagt der Text nur einmal** (T-182). Eine Kreatur, die
+im Text genau eines Orts steht, wohnt dort; nennen zwei Orte sie, wohnt
+sie nirgends — auch wenn der eine im anderen liegt. Eine Gefangene, die
+in drei Räumen erwähnt wird, hat dort kein Zuhause, und ob die Burg oder
+ihr Turmzimmer gemeint ist, weiss nur, wer das Buch kennt. Ebenso die
+Gegend: ein Ort liegt in Barovia, weil die Liste von Barovia ihn mit
+seinem Buchstaben führt — nicht, weil er im selben Buch steht. Und
+nachgetragen wird mit einem **Weg über Kanten** statt mit einer Liste je
+Artikel: „die Szene spielt am Ort, der sie beschreibt" ist eine Regel,
+und der Server rechnet sie am Bestand, den er hat.
+
 **Wer schreibt, schreibt in eine Ebene** (T-098, E-001). Die Leitung
 konnte bis zum 14.10. ihre eigene Kampagne lesen und nichts daran ändern;
 die naheliegende Regel „die Leitung schreibt, was ihrer Kampagne gehört"

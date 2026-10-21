@@ -215,6 +215,42 @@ describe('bulk', () => {
     expect(beides.skipped[0]?.reason).toMatch(/either to or targets/);
   });
 
+  it('takes the target from an edge path (T-182)', () => {
+    const e = (id: string, typ: string, relations: Entity['relations'] = []): Entity => ({
+      id, interfaces: [typ], name: id, components: { Identity: { name: id, id: `${typ.toLowerCase()}-${id}` } }, relations,
+    });
+    const orte = [
+      e('sz1', 'Scene'),
+      e('sz2', 'Scene'),
+      e('sz3', 'Scene', [{ id: 'sz3~h', type: 'happensAt', to: 'p9' }]),
+      e('sz4', 'Scene'),
+      e('p1', 'Place', [{ id: 'p1~d', type: 'describedIn', to: 'sz1' }]),
+      e('p2', 'Place', [{ id: 'p2~d', type: 'describedIn', to: 'sz2' }]),
+      e('p3', 'Place', [{ id: 'p3~d', type: 'describedIn', to: 'sz2' }]),
+      e('p4', 'Place', [{ id: 'p4~d', type: 'describedIn', to: 'sz3' }]),
+      e('p9', 'Place'),
+      /* Beschreibt die Szene, ist aber kein Ort. */
+      e('n1', 'Creature', [{ id: 'n1~d', type: 'describedIn', to: 'sz4' }]),
+      e('m1', 'Map', [{ id: 'm1~m', type: 'mapOf', to: 'sz1' }]),
+      e('m3', 'Map', [{ id: 'm3~m', type: 'mapOf', to: 'sz3' }, { id: 'm3~p', type: 'mapOf', to: 'p9' }]),
+    ];
+    const bestand = new Map(orte.map((x) => [x.id, x]));
+    const szenen = planBulk(seedRegistry, bestand, ['sz1', 'sz2', 'sz3', 'sz4'], [
+      { op: 'addRelation', type: 'happensAt', to: '<-describedIn', toTypes: ['Place'], ifNone: true },
+    ]);
+    /* sz1: eindeutig; sz2: zwei Orte — mehrdeutig, übersprungen; sz3 hat
+       schon einen (nichts überschrieben); sz4: kein Ort. */
+    expect(szenen.changes.map((c) => [c.id, c.summary])).toEqual([['sz1', ['+ happensAt → p1']]]);
+    expect(szenen.skipped.map((x) => [x.id, x.reason])).toEqual([['sz2', 'happensAt via <-describedIn: ambiguous (2 targets: p2 (place-p2), p3 (place-p3))']]);
+    /* Zwei Schritte: die Karte zeigt auch den Ort ihrer Szene; was schon steht, bleibt. */
+    const karten = planBulk(seedRegistry, bestand, ['m1', 'm3'], [{ op: 'addRelation', type: 'mapOf', to: '->mapOf->happensAt' }]);
+    expect(karten.changes).toEqual([]);
+    const mitSzene = new Map(bestand);
+    mitSzene.set('sz1', { ...bestand.get('sz1')!, relations: [{ id: 'sz1~h', type: 'happensAt', to: 'p1' }] });
+    const karten2 = planBulk(seedRegistry, mitSzene, ['m1', 'm3'], [{ op: 'addRelation', type: 'mapOf', to: '->mapOf->happensAt' }]);
+    expect(karten2.changes.map((c) => [c.id, c.summary])).toEqual([['m1', ['+ mapOf → p1']]]);
+  });
+
   it('merges identical features as variants', () => {
     const plan = planBulk(seedRegistry, raw, ['f1', 'f2', 'f3'], [{ op: 'merge', mode: 'variant', by: 'content' }]);
     expect(plan.changes.map((c) => c.id)).toEqual(['f2']);

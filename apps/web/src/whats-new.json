@@ -9,6 +9,14 @@
       "link": "/boards"
     },
     {
+      "id": "2026-10-21-places-from-books",
+      "date": "2026-10-21",
+      "title": "Places know their rooms, region, scenes and residents",
+      "text": "Places read from books and adventures now find more rooms, sit inside the region whose list names them, and list the scenes set there, their maps and the named creatures that live there. In the Workbench, Add edge takes its target from an edge path such as <-describedIn, so every article gets its own target in one change.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
       "id": "2026-10-21-item-shape-layer",
       "date": "2026-10-21",
       "title": "Item shapes as a layer of their own",

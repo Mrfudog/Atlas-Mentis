@@ -59,7 +59,21 @@
 import type { Entity } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Abenteuer } from '../lesen.js';
-import { hatRaeume as hatOrtRaeume, legeOrtAn, ortBefund, ortFuerUeberschrift, ortKandidat, ortsnameAusKarten } from '../orte.js';
+import {
+  bereichAusKarte,
+  bereichAusKarten,
+  hatRaeume as hatOrtRaeume,
+  kartenTitel,
+  legeOrtAn,
+  klartext,
+  listenBereich,
+  ortAusKarte,
+  ortBefund,
+  ortFuerUeberschrift,
+  ortKandidat,
+  ortsnameAusKarten,
+  schluesselBereich,
+} from '../orte.js';
 import { legeTeileAn } from '../teile.js';
 import type { TextKontext } from '../text.js';
 import { kapitelTitel } from './buch.js';
@@ -220,11 +234,57 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
   const ortVon = new Map<string, Entity>();
   /** Die Orte nach Name: zwei Karten derselben Gegend sind ein Ort. */
   const ortNachName = new Map<string, Entity>();
+  /* **Bereiche** (T-182): ein Abenteuer nennt einen Ort auch über seinen
+     Buchstaben. „Map 6.1: Old Bonegrinder (Area O)" steht im ersten Raum
+     „O1. Ground Floor", ist aber die Karte des ganzen Bereichs O; und die
+     Liste der Gegend („Areas of Barovia") führt „N. Town of Vallaki" — der
+     Ort mit der Karte „(Area N)" liegt also in ihr. Nur, was der Text so
+     sagt: ein Buchstabe, den zwei Listen führen, verbindet nichts. */
+  const bereichsOrt = new Map<string, Entity>();
+  const listeVon = new Map<string, Entity | null>();
+  /** Dieselbe Liste nach dem Namen hinter dem Buchstaben: „E. Village of Barovia". */
+  const listeNachName = new Map<string, Entity | null>();
+  const merkeListe = (k: Knoten, ort: Entity): void => {
+    const merke = <K>(m: Map<K, Entity | null>, key: K) => {
+      const alt = m.get(key);
+      m.set(key, alt === undefined || alt === ort ? ort : null);
+    };
+    for (const x of kinder(k)) {
+      const l = listenBereich(name(x));
+      if (!l) continue;
+      merke(listeVon, l);
+      merke(listeNachName, kl(klartext(name(x)).replace(/^[A-Z]{1,2}\.\s+/, '')));
+    }
+  };
   const abschnitte = (e: Knoten, arc: Entity, pfad: string[], elternOrt?: Entity): unknown[] => {
     const inhalt: unknown[] = [];
     const raeume = hatRaeume(e) || e['type'] === 'section';
     /** Der letzte Ort aus einer Karte auf dieser Stufe (T-175). */
     let nachbarOrt: Entity | undefined;
+    /* Eine Bereichskarte in einem Raum dieser Stufe: vorher, damit auch die
+       Räume vor ihr in ihm liegen. */
+    for (const k of kinder(e)) {
+      const bl = schluesselBereich(name(k));
+      if (!bl || bereichsOrt.has(bl)) continue;
+      const titel = kartenTitel(k['entries']).find((t) => bereichAusKarte(t) === bl);
+      const ortName = titel ? ortAusKarte(titel) : undefined;
+      if (!ortName) continue;
+      const schon = ortNachName.get(ortName.toLowerCase());
+      const ort = schon ?? legeOrtAn(wb, ortName, {
+        abschnitt: szeneVon.get(e),
+        eltern: elternOrt,
+        befund: { ort: true, karte: true },
+        quelle,
+        seite: k['page'],
+        art: 'adventureData',
+        herkunft: `place|area|${kl(a.id)}|${bl}`,
+      });
+      if (!schon) {
+        gm(ort);
+        ortNachName.set(ortName.toLowerCase(), ort);
+      }
+      bereichsOrt.set(bl, ort);
+    }
     for (const k of Array.isArray(e['entries']) ? (e['entries'] as unknown[]) : []) {
       /* Eigene Szenen werden: auf Kapitelstufe jeder benannte Abschnitt,
          darunter nur Räume und Unterkapitel. Der Rest ist Text. */
@@ -247,13 +307,19 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
         const schon = befund.kind === 'Raum' ? undefined : ortNachName.get(ortName.toLowerCase());
         if (schon) ort = schon;
         else {
-          /* Ein Raum neben dem Ort seiner Karte liegt in ihm. */
-          const eltern = befund.kind === 'Raum' ? (elternOrt ?? nachbarOrt) : elternOrt;
+          /* Ein Raum neben dem Ort seiner Karte liegt in ihm, sonst im Ort seines Bereichs. */
+          const bl = schluesselBereich(name(k));
+          const eltern = befund.kind === 'Raum' ? (elternOrt ?? nachbarOrt ?? (bl ? bereichsOrt.get(bl) : undefined)) : elternOrt;
           ort = legeOrtAn(wb, ortName, { abschnitt: szene, eltern, befund, quelle, seite: k['page'], art: 'adventureData' });
           gm(ort);
           if (befund.kind !== 'Raum') ortNachName.set(ortName.toLowerCase(), ort);
         }
-        if (befund.karte) nachbarOrt = ort;
+        if (befund.karte) {
+          nachbarOrt = ort;
+          const bl = bereichAusKarten(k['entries']);
+          if (bl && !bereichsOrt.has(bl)) bereichsOrt.set(bl, ort);
+        }
+        if (befund.kind !== 'Raum') merkeListe(k, ort);
         wb.kante(szene, 'happensAt', ort.id);
         ortVon.set(szene.id, ort);
       } else if (befund.kandidat) ortKandidat(wb, 'adventureData');
@@ -283,6 +349,23 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
     abschnitte(kap, arc, [n]);
     kapitel.push({ arc, chapter, kap });
   });
+  /* Ein Bereich liegt in der Gegend, deren Liste seinen Buchstaben führt —
+     wenn er nicht schon woanders liegt und die Gegend nicht in ihm. */
+  const orteNachId = new Map([...ortNachName.values()].map((o) => [o.id, o]));
+  const inGegend: [Entity, Entity | null | undefined][] = [
+    ...[...bereichsOrt].map(([bl, ort]) => [ort, listeVon.get(bl)] as [Entity, Entity | null | undefined]),
+    ...[...ortNachName].map(([n, ort]) => [ort, listeNachName.get(n)] as [Entity, Entity | null | undefined]),
+  ];
+  for (const [ort, gegend] of inGegend) {
+    if (!gegend || gegend === ort || (ort.relations ?? []).some((r) => r.type === 'partOf')) continue;
+    let x: Entity | undefined = gegend;
+    for (let i = 0; x && x !== ort && i < 20; i += 1) {
+      const hoch: string | undefined = (x.relations ?? []).find((r) => r.type === 'partOf')?.to;
+      x = hoch ? orteNachId.get(hoch) : undefined;
+    }
+    if (x === ort) continue;
+    wb.kante(ort, 'partOf', gegend.id);
+  }
 
   /* `{@area 2|01e}` findet den Abschnitt in diesem Abenteuer. */
   const basis = wb.ctx;
@@ -331,6 +414,9 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       /* Die Karte einer Szene zeigt auch ihren Ort (T-175). */
       const platz = ortVon.get(ort.id);
       if (platz) wb.kante(karte, 'mapOf', platz.id);
+      /* Die Karte eines Bereichs zeigt auch ihn (T-182), wo immer sie steht. */
+      const bereich = bereichsOrt.get(bereichAusKarte(titel) ?? '');
+      if (bereich && bereich !== platz) wb.kante(karte, 'mapOf', bereich.id);
       else if (imKapitel) wb.notiz('Karte im Kapiteltext: ohne benannten Abschnitt kein Ort (T-175)', 'adventureData');
       return teil;
     };
@@ -341,7 +427,7 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       angelegt: gm,
       szene: (k) => szeneVon.get(k),
       bild,
-      ort: ortFuerUeberschrift(wb, quelle, 'adventureData', gm),
+      ort: ortFuerUeberschrift(wb, quelle, 'adventureData', gm, true),
       ortVon: (sz) => ortVon.get(sz.id),
     }, kap['page']);
   }
