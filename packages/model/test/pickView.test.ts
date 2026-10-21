@@ -52,6 +52,28 @@ describe('pickView (T-310)', () => {
     expect(pickView(varo, mit, 'gibtsnicht', { fallback: 'quick' }).key).toBe('quick');
   });
 
+  it('die Suche liest quick (T-346): wer noch search nennt, bekommt quick', () => {
+    expect(seedRegistry.views['search']).toBeUndefined();
+    const p = pickView(varo, seedRegistry, 'search');
+    expect(p.key).toBe('quick');
+    /* Werte oben, das Bild zuletzt — dort darf der Rahmen abschneiden. */
+    expect(p.layout[0]?.id).toBe('c-q-stats');
+    expect(p.layout.at(-1)?.el).toBe('image');
+    /* Eine gestaltete der Gruppe quick gilt auch dort. */
+    expect(pickView(tabelle, mit, 'search').key).toBe('tableCard');
+    /* Steht eine eigene Ansicht search noch da, gilt sie. */
+    const alt: Registry = { ...seedRegistry, views: { ...seedRegistry.views, search: { label: 'Search', fields: 'none', layout: [] } } };
+    expect(pickView(varo, alt, 'search').key).toBe('search');
+  });
+
+  it('quick: bei jeder Art steht das Bild zuletzt (T-346)', () => {
+    for (const art of Object.keys(seedRegistry.interfaces)) {
+      const { layout } = pickView({ id: 'x', interfaces: [art], components: {} } as Entity, seedRegistry, 'quick');
+      const i = layout.findIndex((el) => el.el === 'image');
+      if (i >= 0) expect(i, art).toBe(layout.length - 1);
+    }
+  });
+
   it('die Anordnung der Art zählt wie bisher (layoutFor)', () => {
     const p = pickView(tabelle, seedRegistry, 'full');
     expect(p.from).toBe('Table');

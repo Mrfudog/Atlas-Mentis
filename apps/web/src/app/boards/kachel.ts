@@ -3,12 +3,15 @@ import {
   elementTakes,
   entriesOf,
   drawnByTree,
+  entityName,
+  fieldText,
   fieldTitle,
   forArticle,
   pickView,
   primaryInterface,
   proseFields,
   typeChain,
+  unitsFor,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
@@ -19,6 +22,7 @@ import { Gegenstand } from '../artikel/gegenstand';
 import { Kennzahlen } from '../artikel/kennzahlen';
 import { TokenBild } from '../artikel/token-bild';
 import { Ansichtsbaum } from '../ansichten/baum';
+import { Bild, bildDes } from '../artikel/bild';
 
 /** Was die Kachel aus einem Element des Layouts macht. */
 type Stueck =
@@ -31,6 +35,8 @@ type Stueck =
   /* Die Kennzahlen (T-206): AC, HP, Bewegung … als Kacheln. */
   | { art: 'stats'; id: string }
   | { art: 'token'; id: string }
+  /* Das Bild (T-346): in `quick` zuletzt, und die Kachel schneidet es unten ab. */
+  | { art: 'bild'; id: string; bild: { wert: string; caption: string; alt: string; version?: string } }
   /* Was nur der Baum zeichnet (T-310): Behälter, Tabellen — oder eine ganze gestaltete Ansicht. */
   | { art: 'baum'; id: string; layout: LayoutElement[] };
 
@@ -54,7 +60,7 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-kachel',
-  imports: [Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Ansichtsbaum],
+  imports: [Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Ansichtsbaum, Bild],
   template: `
     @for (s of stuecke(); track s.id) {
       @switch (s.art) {
@@ -85,6 +91,11 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
         @case ('token') {
           <nw-token [artikel]="artikel()" />
         }
+        @case ('bild') {
+          <div class="bildfach">
+            <nw-bild [wert]="s.bild.wert" [version]="s.bild.version" groesse="thumb" [caption]="s.bild.caption" [alt]="s.bild.alt" />
+          </div>
+        }
         @case ('spell') {
           <nw-zauber [artikel]="artikel()" [scopes]="scopes()" />
         }
@@ -105,10 +116,24 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
     }
   `,
   styles: `
+    /* Eine Spalte so hoch wie die Kachel, in der nur das Bildfach
+       nachgibt (T-346): reicht der Platz nicht, wird das Bild unten
+       abgeschnitten, nicht verkleinert. Reicht er schon für den Text nicht,
+       scrollt die Kachel wie bisher. */
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
       font-size: 0.9rem;
       line-height: 1.35;
+    }
+    :host > * {
+      flex: none;
+    }
+    :host > .bildfach {
+      flex: 0 1 auto;
+      min-height: 0;
+      overflow: hidden;
     }
     .satz,
     .prosa {
@@ -237,6 +262,10 @@ export class Kachel {
           ? { art: 'teile', id: el.id, gruppen: [...gruppen].map(([label, namen]) => ({ label, namen })) }
           : null;
       }
+      case 'image': {
+        const bild = bildDes(e, r, this.bestand.bild().get(e.id));
+        return bild ? { art: 'bild', id: el.id, bild: { ...bild, alt: bild.alt || entityName(e) } } : null;
+      }
       case 'statblock':
       case 'spell':
       case 'item':
@@ -266,7 +295,8 @@ export class Kachel {
         /* Die Beschreibung steht als Satz, ein Prosafeld als Absatz — nicht
            noch einmal als Wert. */
         if (comp === 'Description' || (schema.many && schema.format === 'long')) continue;
-        const roh = alsText(karte[prop]);
+        /* Ein Mass in Einheiten wie auf der Seite (T-346): „60 ft", nicht „60". */
+        const roh = typeof karte[prop] === 'number' ? fieldText(r, schema, karte[prop], unitsFor(r, typ)) : alsText(karte[prop]);
         if (!roh && (!opt.leer || schema.derived)) continue;
         const wert = roh || '—';
         opt.genommen.add(`${comp}.${prop}`);

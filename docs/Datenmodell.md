@@ -1560,21 +1560,23 @@ flowchart LR
 
 ## 10. Ansichten und Anordnung
 
-Fünf Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
-E-030 b; `search` seit T-138):
+Vier Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
+E-030 b). Das „+" der Suche hatte von T-138 bis T-346 eine fünfte,
+`search`; sie zeigte, was `quick` zeigte, und ist in ihr aufgegangen
+(Migration 127). Wer `search` noch nennt, bekommt `quick`
+(`RETIRED_PLACES`, beim Lesen):
 
 | Ansicht | Wo | Zeigt |
 |---|---|---|
 | `overview` | ein Verweis, eine Listenzeile | ein Vorschaubild neben dem Namen (Element `image`, T-114), Beschreibung und die Felder, die die Art dafür wählt — **die Spalten im Kompendium** |
-| `quick` | eine Kachel auf dem Board, die Vorschau, das Popup, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
+| `quick` | eine Kachel auf dem Board, die Vorschau, das Popup (auch am Marker der Karte), das „+" der Suche, die Schnellanlage | **das Relevanteste oben** (T-346): die Kennwerte der Art (Kreatur: ihre Kennzahlen; Zauber: Grad, Schule, Zeit, Reichweite …), dann Beschreibung, Prosa — **das Bild zuletzt**; im Kartenrahmen (Popup, Kachel) wird es bei Platzmangel unten abgeschnitten, nicht verkleinert |
 | `full` | die Artikelseite | alles |
 | `print` | „Print" an der Artikelseite: ein Blatt A4 (`/artikel/:id/print`) | Beschreibung, alle Felder ausser dem Vorbereitungsstand, Prosa, Teile, Abschnitte — ohne Seitenspalte; Statblock, Zauber, Gegenstand wie im Buch |
-| `search` | das „+" an einem Treffer der übergreifenden Suche (T-138) | Bild, Beschreibung und die Felder, die die Art dafür wählt; Art, Ebene und Herausgeber stehen in der Trefferzeile, sie sind keine Felder |
 | eigene, z. B. `handout` | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt — der Handzettel: Bild, Beschreibung, die Werte, die die Art dafür wählt (T-234), Absatz, Vorlesetext |
 
 **Ansichten sind Zeilen und werden im Register bearbeitet** (Register ›
 Views, T-110): anlegen (als Abschrift einer anderen), umbenennen, ordnen,
-löschen — die fünf, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
+löschen — die vier, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
 Ansicht eine **globale Anordnung**: Elemente in ihrer Reihenfolge, ein
 `fields`- oder `prose`-Element mit Einträgen „ganzer Typ" (`Spell` — ein
 neues Feld erscheint von selbst) oder „Typ.Feld" (`Spell.level` — bleibt
@@ -2265,32 +2267,32 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, search, overview |
+| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
-| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | quick, handout, search, overview, full |
-| `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, handout, search, overview |
-| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | quick, search |
-| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `controls` `discount` `regards` | `memberOf` `discount` `questGiver` `features` `knownBy` `regards` | quick, handout, search |
-| `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | `features` | quick, search, overview |
-| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `availability` `copperPrice` `priceNote` `stackSize` `weight` `lightBright` `lightDim` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, handout, search, overview, full |
+| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | quick, handout, overview, full |
+| `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, handout, overview |
+| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | quick |
+| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `controls` `discount` `regards` | `memberOf` `discount` `questGiver` `features` `knownBy` `regards` | quick, handout |
+| `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | `features` | quick, overview |
+| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `availability` `copperPrice` `priceNote` `stackSize` `weight` `lightBright` `lightDim` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, handout, overview, full |
 | `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
-| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | quick, search, full |
-| `Place` | `Image` `Lore` `ReadAloud` `Secrets` `Source` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, handout, search, full |
+| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | quick, full |
+| `Place` | `Image` `Lore` `ReadAloud` `Secrets` `Source` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, handout, full |
 | `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | — |
 | `Shop` | `Place` | `priceMod` | `partOf` `sells` `discount` `shopkeeper` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
-| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, search, overview |
+| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
 **story**
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, search |
+| `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Campaign` | `Story` `VisibilityRules` | `compareFor` `languages` `feats` `hitPoints` `inventory` `itemPricing` `enhancementsBy` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `craftLearning` `craftLearnRarity` `playerRolls` `ruleGraphs` `combat` `initNames` `initHealth` `initEffects` `initActions` `initColumns` `initQuickActions` `turnPlanner` `fog` `moves` `tokenMove` `revealOnMove` `doors` `tokenSizes` `passageTrigger` `passageWhen` `passageMove` `passageAction` `passageConfirm` `mapLinkShow` `mapLinkShowPlayers` `mapLinkOuter` `mapTools` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
-| `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, handout, search, full |
-| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, search |
+| `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, handout, full |
+| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `mapNavigation` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
-| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, search |
+| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 
 **Rules**
 
@@ -2299,13 +2301,13 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `AbilityMethod` | `Rule` | `method` `scores` `budget` `costs` `dice` `count` `scope` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsMethod` `abilityPool` `grants` `partOf` | overview |
 | `Action` | `Rule` | `actionType` `recharge` `uses` `attack` `ability` `toHitBonus` `reach` `range` `target` `damageDice` `damageBonus` `damageType` `extraDamageDice` `extraDamageType` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
 | `ActionType` | `Rule` | `per` `count` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | — |
-| `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` `partOf` `knownBy` | quick, full, search, overview |
+| `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` `partOf` `knownBy` | quick, full, overview |
 | `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `casts` `grants` `partOf` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` `partOf` `knownBy` | full |
-| `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `grants` `partOf` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` `partOf` `knownBy` | quick, full, search, overview |
+| `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `grants` `partOf` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` `partOf` `knownBy` | quick, full, overview |
 | `Condition` | `Rule` | `kind` `stage` `recovery` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | overview |
 | `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | — |
 | `EquipmentMethod` | `Rule` | `method` `gold` `budget` `magic` `itemTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsEquipment` `grants` `partOf` | overview |
-| `Feat` | `Rule` `Choices` `Effects` | `prerequisite` `repeatable` | `affects` `casts` `grants` `partOf` | `composedOf` `affects` `chose` `grants` `partOf` `knownBy` `loot` | quick, search, overview |
+| `Feat` | `Rule` `Choices` `Effects` | `prerequisite` `repeatable` | `affects` `casts` `grants` `partOf` | `composedOf` `affects` `chose` `grants` `partOf` `knownBy` `loot` | quick, overview |
 | `Feature` | `Rule` `Choices` `Effects` | `featureType` | `affects` `casts` `partOf` | `composedOf` `affects` `chose` `grants` `partOf` | overview |
 | `GlossaryTerm` | `Rule` | `sort` `effect` `example` `translations` | `affects` `casts` `explains` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
 | `Information` | `Secrets` `Facts` | `fields` `applies` `tier` | `knownBy` | `knowledge` `includes` `loot` | — |
@@ -2314,10 +2316,10 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Knowledge` | — | — | `knownBy` `includes` | — | full |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
 | `MaterialGroup` | `Rule` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `needs` | — |
-| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | quick, search, full |
-| `Rule` | `Source` `Vars` | `kind` `autolink` `key` `graph` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, search, overview |
+| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | quick, full |
+| `Rule` | `Source` `Vars` | `kind` `autolink` `key` `graph` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `loot` | — |
-| `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `casts` `spellList` `grants` `partOf` | quick, print, handout, search, overview, full |
+| `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `casts` `spellList` `grants` `partOf` | quick, print, handout, overview, full |
 | `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `carryExtra*` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | print, overview, quick, full |
 | `Subclass` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `subclassOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `chose` `grants` `partOf` `knownBy` | overview |
 | `Substitution` | `Rule` | `replaces` `with` `withTags` `rarity` `ratio` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsSubstitution` `grants` `partOf` | — |
@@ -2331,8 +2333,8 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
-| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, search, overview, full |
-| `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | quick, search, full |
+| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, overview, full |
+| `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | quick, full |
 
 **Ohne Bereich**
 

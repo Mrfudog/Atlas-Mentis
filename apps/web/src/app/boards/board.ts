@@ -610,7 +610,7 @@ export class Board implements SchnellKontext {
     const r = this.bestand.registry();
     /* Die Artikelseite und der Druck sind Seiten, keine Kacheln; eigene Ansichten stehen zur Wahl (T-110). */
     /* Seit T-339 auch `full` — sie scrollt in der Kachel. Der Druck ist ein Blatt, keine Kachel. */
-    return r ? viewKeys(r).filter((k) => k !== 'print' && k !== 'search' && !isDesignedView(r.views[k])) : [];
+    return r ? viewKeys(r).filter((k) => k !== 'print' && !isDesignedView(r.views[k])) : [];
   });
 
   /**

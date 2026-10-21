@@ -102,15 +102,14 @@ export function eintrag(el: string): PaletteEintrag | undefined {
 }
 
 /** Die Gruppen, die ein Ort wählt (`PLACE_VIEWS`); eine eigene ist ein freies Wort. */
-export const GRUPPEN = ['overview', 'quick', 'full', 'print', 'search'] as const;
+export const GRUPPEN = ['overview', 'quick', 'full', 'print'] as const;
 
-/** Wo eine Ansicht der Orte gezeichnet wird — der Ort wählt sie (CLAUDE.md, „Fünf Ansichten"). */
+/** Wo eine Ansicht der Orte gezeichnet wird — der Ort wählt sie (CLAUDE.md, „Vier Ansichten"). */
 export const ORTE: Record<string, string> = {
   overview: 'A link, a list row in the compendium (its columns) and small board tiles.',
-  quick: 'A card: the preview beside a list, the popup on every named article, board tiles.',
+  quick: 'A card: the preview beside a list, the popup on every named article, board tiles, map markers and the “+” of a search hit.',
   full: 'The article page.',
   print: '“Print” on the article page: one A4 sheet.',
-  search: 'Under the “+” of a hit in the search.',
 };
 
 /** Ein Eintrag lesbar: `Spell.level` → „Spell › Level", `Spell` → „Spell (all fields)". */

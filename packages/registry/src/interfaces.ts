@@ -720,8 +720,8 @@ export const interfaces: Record<string, InterfaceDef> = {
          AC, HP, Bewegung, Initiative, passive Wahrnehmung, CR in einer
          Reihe — Karte, Popup und Token. Bis dahin stand hier der ganze
          Bogen (REQ-211), und die Kurzansicht war länger als die Seite
-         daneben; der Bogen gehört zu `full`. */
-      quick: [{ id: 's-q-img', el: 'image' }, { id: 's-q-stats', el: 'stats' }],
+         daneben; der Bogen gehört zu `full`. Das Bild zuletzt (T-346). */
+      quick: [{ id: 's-q-stats', el: 'stats' }, { id: 's-q-img', el: 'image' }],
       /* **Wie im Monster Manual** (W2, Leitung 13.10.): das Element
          `statblock` zeichnet Kopf, Werte und die Abschnitte aus
          `composedOf` — es ersetzt Feldtabelle und `composed` für die

@@ -117,8 +117,8 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   `classOverview`, `originOverview` statt `/classes/:id` …), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
   Blatt A4, T-110), die **Suche** (`suche/`, Kopfleiste, Strg+K und `/`:
   Treffer beim Tippen aus `GET /api/search`, nach Nähe, Filter nach Art,
-  Ebene, Herausgeber und Bereich, das „+" ist die Ansicht `search`;
-  T-138), unter der Marke die **laufende Kampagne** mit der Zahl ihrer
+  Ebene, Herausgeber und Bereich, das „+" zeigt die Kurzansicht `quick`;
+  T-138, T-346), unter der Marke die **laufende Kampagne** mit der Zahl ihrer
   Ebenen und dem Popup zum Einstellen (`verwaltung/stapel-knopf.ts`,
   `kern/stapel.ts`: Ebenen, Gruppen, Vergleich auch einer ganzen Gruppe,
   Wechsel der Kampagne für die Verwaltung; T-143; gespeicherte
@@ -357,14 +357,17 @@ wiederkommen, werden sie neu geschrieben.
   (`POST /api/layers/:layer/empty`, Besitzer und Verwaltung) ist eine
   Massenänderung `delete`: Teile gehen mit, Kanten darauf gehen weg, Undo
   wie jede.
-- **Fünf Ansichten, und der Ort wählt sie.** `overview` steht in einem
-  Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
-  Artikelseite, `print` auf dem Blatt hinter „Print" (T-110), `search`
-  unter dem „+" eines Treffers der übergreifenden Suche (T-138). **Eigene
+- **Vier Ansichten, und der Ort wählt sie.** `overview` steht in einem
+  Verweis oder einer Listenzeile, `quick` auf einer Karte, im Popup und
+  unter dem „+" eines Suchtreffers (T-346: `search` ging darin auf, wer es
+  noch nennt, bekommt `quick`, `RETIRED_PLACES`), `full` auf der
+  Artikelseite, `print` auf dem Blatt hinter „Print" (T-110). **In `quick`
+  steht das Relevanteste oben und das Bild zuletzt** — der Kartenrahmen
+  schneidet es unten ab, statt es zu verkleinern. **Eigene
   Ansichten** legt man im Register an (Registry › Views, E-030 b; die
   erste ist der Handzettel `handout`); gewählt
   werden sie nur, wo ohnehin gewählt wird — die Kachel und der Druck. Die
-  fünf, nach denen ein Ort fragt (`PLACE_VIEWS`), lassen sich umbauen, nicht
+  vier, nach denen ein Ort fragt (`PLACE_VIEWS`), lassen sich umbauen, nicht
   löschen. **Die Kurzansicht** (`quick`) steht auch als Popup an
   jedem genannten Artikel (`nwQuick`, `nw-kurzpopup`, T-093): ein Klick
   zeigt die Karte, „Open article" führt hin. Einen Wähler gibt es nicht —
