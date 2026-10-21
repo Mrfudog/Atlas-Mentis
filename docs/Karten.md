@@ -227,6 +227,20 @@ Sagt niemand etwas, gilt das Bild — wie vor T-214. Assets und freie
 Lichter liegen, wie sie sind. Am Telefon ist die Karte schmaler (10 rem
 statt 14) und unten weich abgeschnitten.
 
+### Notizen (T-214, E-070 a)
+
+Eine Notiz ist ein Artikel der Art `Note`; auf der Karte steht ein
+Marker, der auf sie zeigt. **Notes (N) › Add note**: auf die Karte
+tippen, den Text schreiben, „GM only" oder „Players too" wählen,
+speichern. Angelegt wird mit der ersten Zeile als Namen (`noteName`), der
+Sichtbarkeit `gm` bzw. `players` und dem Stand `ready` — in der
+Schreibebene, wie jeder neue Artikel. Danach ist sie ein Marker wie
+jeder: ziehen, antippen für die Kurzansicht (dort „Open article" zum
+Bearbeiten), wegnehmen. Sie steht als Kurzansicht-Karte da
+(`Note.markerView`), solange Marker, Karte oder Kartenart nichts anderes
+sagen. Zurückgehalten wird am Server: eine Notiz nur für die Leitung
+kommt bei Spielenden weder als Artikel noch als Marker an.
+
 ### Gespielte Stände an der Karte (T-316)
 
 „Played“ an der Vorlage (T-289) steht offen; jeder Stand hat **Open in

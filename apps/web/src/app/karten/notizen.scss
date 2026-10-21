@@ -1,0 +1,26 @@
+/* **Eine Notiz anlegen** (T-214): Text, wer sie sieht, speichern — als
+   Blatt über der Karte wie „Add marker“; am Telefon untereinander. */
+.notiz-blatt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+}
+.notiz-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1 1 18rem;
+  font-size: 0.85rem;
+}
+.notiz-text textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 1rem;
+}
+.notiz-wer {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}

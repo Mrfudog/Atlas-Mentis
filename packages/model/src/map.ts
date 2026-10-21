@@ -359,6 +359,16 @@ export function markerViewOf(
   return m.view || from.map || from.kind || from.type || MARKER_VIEW_DEFAULT;
 }
 
+/**
+ * **Der Name einer Notiz** (T-214, E-070 a): ihre erste Zeile, nach 48
+ * Zeichen gekürzt. Die Notiz ist ein Artikel und braucht einen Namen;
+ * einen zweiten tippen zu lassen hiesse, dieselbe Sache zweimal zu sagen.
+ */
+export function noteName(text: string): string {
+  const zeile = (text.trim().split(/\r?\n/)[0] ?? '').trim();
+  return zeile.length > 48 ? `${zeile.slice(0, 47).trimEnd()}…` : zeile;
+}
+
 // ----------------------------------------------------------------- Assets
 
 /**
