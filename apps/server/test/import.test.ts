@@ -310,6 +310,31 @@ describe('pnpm --filter @nw/server run import', () => {
       expect((await repo.listEntities()).map((e) => e.id).sort()).toEqual(['alt', 'alt_text', 'e5_layer', 'neu', 'p3']);
     });
 
+    it('legt ein Bild im Text auch in ein Kapitel, das schon steht — es ist kein zweiter Text (T-284)', async () => {
+      const kapitel: Entity = {
+        id: 'alt', interfaces: ['Chapter'], name: 'alt', components: { Identity: { name: 'alt', id: 'chapter-alt' } },
+        relations: [{ id: 'alt-inLayer', type: 'inLayer', to: ebene.id }],
+      };
+      const absatz: Entity = {
+        id: 'alt_text', interfaces: ['Paragraph'], name: 'alt_text',
+        components: { Identity: { name: 'alt_text', id: 'paragraph-alt' }, Prose: { paragraph: [{ id: 'text', value: 'x' }] } },
+        relations: [{ id: 'alt_text-inLayer', type: 'inLayer', to: ebene.id }, { id: 'alt_text-partOf', type: 'partOf', to: 'alt', props: { rank: 1 } }],
+      };
+      const bild: Entity = {
+        id: 'bild', interfaces: ['Illustration'], name: 'Die Burg',
+        components: { Identity: { name: 'Die Burg', id: 'illustration-0001' }, Image: { caption: 'Die Burg' } },
+        relations: [{ id: 'bild-inLayer', type: 'inLayer', to: ebene.id }, { id: 'bild-partOf', type: 'partOf', to: 'alt', props: { rank: 1.001 } }],
+      };
+      /* Ein Absatz in dasselbe Kapitel bleibt draussen (T-108) — das Bild kommt hinter den Absatz. */
+      const nochEiner = { ...absatz, id: 'p2', relations: [{ id: 'p2-inLayer', type: 'inLayer', to: ebene.id }, { id: 'p2-partOf', type: 'partOf', to: 'alt', props: { rank: 2 } }] };
+      const repo = await mitKonto([ebene, kapitel, absatz]);
+      const r = await runImport(repo, { ...datei, entities: [ebene, kapitel, absatz, nochEiner, bild] }, { onlyNew: true });
+      expect(r).toMatchObject({ geschrieben: 1 });
+      expect(r.text).toMatch(/davon 1 Teile, deren Kapitel oder Szene schon steht/);
+      expect((await repo.listEntities()).map((e) => e.id).sort()).toEqual(['alt', 'alt_text', 'bild', 'e5_layer']);
+      expect((await repo.getEntity('bild'))?.relations.find((x) => x.type === 'partOf')?.props).toEqual({ rank: 1.001 });
+    });
+
     it('gleicht Nummern und Verweise neuer Artikel an den Bestand an (T-087)', async () => {
       /* Der Bestand stammt aus einem älteren Lauf: Fireball trägt dort
          spell-0007, die Datei zählt ihn als spell-0001 — und unter

@@ -64,6 +64,7 @@ import {
   PUBLISHER_GROUPING,
   isBookPart,
   partRank,
+  primaryInterface,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
@@ -202,8 +203,13 @@ export async function runImport(
      Migration 046, die den Text schon geladener Abenteuer zu Teilen
      machte) — ein Lauf legte sonst neben ihren Teilen eine zweite Fassung
      desselben Texts an. */
+  /* **Ausgenommen: ein Bild im Text** (`Illustration`, T-210, T-284). Es
+     ist keine zweite Fassung eines Texts, und sein Rang ist ein Bruch
+     hinter dem Teil davor — es stellt sich zwischen die Teile, die schon
+     stehen, ohne einen umzunummerieren. Ohne die Ausnahme käme kein Bild
+     in ein Kapitel, dessen Text schon geladen ist. */
   const ganzesSchonDa = (e: Entity): boolean =>
-    isBookPart(e) && (e.relations ?? []).some((r) => partRank(r) !== undefined && bestandIds.has(r.to));
+    isBookPart(e) && primaryInterface(e) !== 'Illustration' && (e.relations ?? []).some((r) => partRank(r) !== undefined && bestandIds.has(r.to));
   const neuRoh = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && !ganzesSchonDa(e)) : ausDatei;
   /* **Nur die Neuzugänge** (`--additions`, T-087), und was einer davon über
      eine Kante braucht und noch nirgends steht (die 2014-Karte, auf die die
