@@ -2,7 +2,7 @@
  * **Bücher aus Teilen** (T-108, E-028, E-029): ein Kapitel (`Chapter`) ist
  * die Lesestruktur eines Buchs oder Abenteuers und besteht aus **Teilen** —
  * Überschriften, Absätzen, Vorlesetexten, Verweisen auf Artikel, die für
- * sich stehen, und (im Abenteuer) Szenen. Jeder Teil ist ein eigener
+ * sich stehen, Bildern (`Illustration`, T-210) und (im Abenteuer) Szenen. Jeder Teil ist ein eigener
  * Artikel, damit man ihn wiederverwendet: einen Vorlesetext in die eigene
  * Szene holen heisst, den Artikel zu nehmen (oder eine Fassung davon).
  *
@@ -35,7 +35,7 @@ const articleId = (e: Entity): string => {
 export const CHAPTER_TYPE = 'Chapter';
 
 /** Die Teil-Arten: was nur als Teil eines Kapitels (oder einer Szene) Sinn hat. */
-export const BOOK_PART_TYPES: readonly string[] = ['Heading', 'Paragraph', 'ReadAloudText', 'Embed'];
+export const BOOK_PART_TYPES: readonly string[] = ['Heading', 'Paragraph', 'ReadAloudText', 'Embed', 'Illustration'];
 
 /** Die Kante, über die ein Teil an seinem Ganzen hängt. */
 export const PART_EDGE = 'partOf';

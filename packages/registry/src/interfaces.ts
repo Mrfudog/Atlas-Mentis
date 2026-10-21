@@ -967,6 +967,20 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
+   * **Ein Bild im Buchtext** (T-210): ein Teil wie ein Absatz, mit
+   * Bildunterschrift und Alternativtext aus `Image`. Kein `Embed` auf das
+   * Asset: dessen Ziel ist Pflicht, und das Bild kommt erst mit dem
+   * Hochladen (T-284) — bis dahin steht die Unterschrift an ihrer Stelle.
+   * Die Unterschrift gehört zur Stelle im Buch und nicht zur Datei, und das
+   * Bild erbt beim Hochladen Ebene und Sichtbarkeit seines Teils.
+   */
+  Illustration: {
+    name: 'Illustration',
+    label: 'Illustration',
+    extends: ['BookPart', 'Image'],
+  },
+
+  /**
    * **Wer die Kampagne leitet, steht nicht an ihr**, sondern am Konto:
    * `campaign_member` hält je Konto und Kampagne eine Rolle (`gm`, `co-gm`,
    * `player`, `spectator`). Für einen Tag stand hier eine `Access`-Karte mit
