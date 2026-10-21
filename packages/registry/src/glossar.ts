@@ -376,6 +376,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Kartenverknüpfung' },
   },
   {
+    term: 'To place',
+    aliases: ['Lifted marker', 'Keep on map'],
+    sort: 'app',
+    definition: 'A marker set on a map above inside a sub-map’s area, waiting in the sub-map until the GM confirms where it goes.',
+    effect: 'Confirm moves it into the sub-map at the suggested spot, Move… where you tap; then it leaves the map above and shows there again by itself — markers and tokens of a sub-map always show on the map above (lifted, dashed, many as one number). Keep on … leaves it on the map above for good.',
+    translations: { de: 'Zum Platzieren' },
+  },
+  {
     term: 'Align to parent grid',
     aliases: ['Aligned sub-map', 'Route'],
     sort: 'app',
