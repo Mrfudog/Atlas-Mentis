@@ -1955,6 +1955,35 @@ Rolle, Board (gesiebt), Landeplatz und die eigene Figur; daraus zeichnet
 die Oberfläche für Spielende die **Basis-Leiste** (Board · My character ·
 Maps · Search · Knowledge), am Telefon unten, am Desktop oben.
 
+**Eine Struktur-Kachel ist ebenfalls eine Kante des Boards auf sich
+selbst** (T-341, `structure.ts`): `placed` mit `props.structure` — ein
+Startartikel (`root`), die Kanten, denen sie folgt (`edges`, aus
+`STRUCTURE_EDGES`: `memberOf`, `partOf`, `controls`, `livesIn`,
+`regards`; Vorgabe ohne `livesIn`), die Tiefe (`depth`, 1–5, Vorgabe 2)
+und die Form (`layout`: `tree` oder `net`). Gespeichert ist nur die Frage;
+**Knoten und Linien werden beim Lesen gerechnet** (D8): Breitensuche vom
+Startartikel über die gewählten Kanten in beide Richtungen
+(`structureGraph`), die Gegenrichtung als Abfrage. Je Kantenart steht, welches Ende
+darunter gehört (`child`) — im Baum entscheidet der Weg vom Start, wer
+oben steht, und eine Linie zum Übergeordneten zeigt hinauf (`up`).
+Beschriftet wird mit den Marken (`regards.tags`), sonst dem Rang
+(`memberOf.rank`), sonst dem Wort der Kantenart; `regards` in beide
+Richtungen sind zwei Linien ([Beziehungen.md](Beziehungen.md)).
+**Gerechnet wird am Server über den gesiebten Bestand** (`GET
+/api/structure/:id?edges=…&depth=…`): zuerst grob über den rohen Bestand
+einen Schritt tiefer, dann nur diese Artikel gesiebt, dann noch einmal —
+so fehlt einer Spielerin ein verborgener Knoten, jede Linie zu ihm und
+alles, was nur über ihn erreichbar war; eine Kante verrät dabei nichts,
+was der Artikel, an dem sie steht, nicht ohnehin hinausgibt. Höchstens
+`STRUCTURE_LIMIT` (120) Knoten; was hinter der Tiefe liegt, holt der
+Knoten mit „+" nach (`mergeStructure`). Dasselbe zeichnet das Element
+**`structure`** einer Ansicht vom Artikel der Seite aus (Einstellungen
+`edges`, `depth`, `layout` am Element); die Vollansicht der Fraktion trägt
+es. **Unterfraktionen** hängen über `partOf` an ihrer Fraktion (`Faction`
+ist dafür an beiden Enden erlaubt). `territory` (Formen auf einer Karte)
+liest die Struktur noch nicht: die Karte zeichnet die Formen nicht, und
+die Kante sagt das mit `intended`; Gebiete sind bis dahin `controls`.
+
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
 Ansicht, sondern ein anderes Konto in derselben Rechnung: mit `X-View-As`
@@ -2355,7 +2384,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | quick, handout, overview, full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, handout, overview |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | quick |
-| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `controls` `discount` `regards` | `memberOf` `discount` `questGiver` `features` `knownBy` `regards` | quick, handout |
+| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `partOf` `controls` `discount` `regards` | `memberOf` `partOf` `discount` `questGiver` `features` `knownBy` `regards` | quick, handout, full |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | `features` | quick, overview |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `availability` `copperPrice` `priceNote` `stackSize` `weight` `lightBright` `lightDim` `rows` `width*` `height*` `cells*` `inventoryImage` `inventoryFrame` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, handout, overview, full |
 | `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
@@ -2488,9 +2517,9 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `overrides` | * → * | ja | — | `scope` `note` `fields` |
 | `owes` | Creature → Creature |  | — | — |
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
-| `partOf` | Place \| Story \| Quest \| Event \| Board \| Encounter \| Layer \| Chapter \| BookPart \| Rule → Place \| Story \| Event \| Layer \| Chapter \| Rule |  | — | `rank` |
+| `partOf` | Place \| Story \| Quest \| Event \| Board \| Encounter \| Layer \| Chapter \| BookPart \| Rule \| Faction → Place \| Story \| Event \| Layer \| Chapter \| Rule \| Faction |  | — | `rank` |
 | `partyOf` | Party → Campaign | ja | — | — |
-| `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` `hidden` `title` `query` `display` `drawn` `interval` `reveal` `party` |
+| `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` `hidden` `title` `query` `display` `drawn` `interval` `reveal` `party` `structure` |
 | `questAbout` | Quest → * |  | — | — |
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |

@@ -100,7 +100,7 @@ const RING = 150;
           <button type="button" [class.an]="form() === 'tree'" [attr.aria-pressed]="form() === 'tree'" (click)="formWahl.set('tree')">Tree</button>
           <button type="button" [class.an]="form() === 'net'" [attr.aria-pressed]="form() === 'net'" (click)="formWahl.set('net')">Web</button>
         </div>
-        <span class="dim">{{ g.nodes.length }} {{ g.nodes.length === 1 ? 'entry' : 'entries' }}{{ g.truncated ? ' — more than shown' : '' }}</span>
+        <span class="dim">{{ g.nodes.length }} shown{{ g.truncated ? ' — there is more' : '' }}</span>
         <button type="button" class="neu" aria-label="Reload the structure" title="Reload" (click)="laden()">↻</button>
       </div>
       @if (g.nodes.length < 2) {
