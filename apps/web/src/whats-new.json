@@ -9,6 +9,14 @@
       "link": "/boards"
     },
     {
+      "id": "2026-10-21-views-per-kind",
+      "date": "2026-10-21",
+      "title": "Cards, search hits and handouts show what matters per kind",
+      "text": "The quick card of encounters, maps, recipes, parties, events, stories and arcs now shows their key values, and the + of a search hit shows the same values as the card. Handouts carry what you hand the players: kind and rarity of items, kind of places, factions and deities, reward of quests; a spell prints as a spell card.",
+      "area": "Articles",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-21-markers-between-maps",
       "date": "2026-10-21",
       "title": "Markers between map levels",

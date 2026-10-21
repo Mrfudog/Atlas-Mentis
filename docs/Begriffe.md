@@ -659,6 +659,15 @@ muss, hält die fünf fest. Das „+" der Suche ist darum **eine Ansicht und
 kein Sonderfall**: die Leitung stellt im Register ein, was ein
 aufgeklappter Treffer zeigt, wie bei jeder anderen.
 
+**Warum der Handzettel Werte trägt, aber nicht alle** (T-234): wer den
+Spielenden einen Gegenstand in die Hand gibt, gibt ihnen auch seine
+Seltenheit; wer ihnen eine Fraktion vorstellt, nicht ihr Ziel. Was
+zurückgehalten ist, siebt der Server ohnehin — der Zettel lässt darüber
+hinaus weg, was die Leitung zwar sehen darf, aber nicht austeilt. Darum
+wählt die Art die Werte (`h-f`), wie bei Karte und Suche, und eine
+„Spieleransicht" daneben gibt es weiter nicht: zwei Stellen, die sagen, was
+Spielende sehen, wären zwei Wahrheiten.
+
 **Was eine Ansicht zeigt, steht einmal, global** — eine Liste von
 Elementen, darin ganze Typen oder einzelne Felder —, und **ein Artikel
 zeigt davon, was er hat**. Eine Art, die anders aussehen soll, sagt nur

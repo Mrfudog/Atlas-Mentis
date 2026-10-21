@@ -504,7 +504,7 @@ const APP: AppTerm[] = [
   {
     term: 'Handout',
     sort: 'app',
-    definition: 'A view for printing or showing one article to the players, set up in Registry › Views. On a character’s Campaign tab, the handouts are the pictures, letters, maps and knowledge the character was given.',
+    definition: 'A view for printing or showing one article to the players: picture, description, the few values each kind hands out (rarity of an item, kind of a place — never a faction’s goal or a creature’s attitude) and the read-aloud text. Set up in Registry › Views. On a character’s Campaign tab, the handouts are the pictures, letters, maps and knowledge the character was given.',
     translations: { de: 'Handzettel' },
   },
   {
