@@ -16,6 +16,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import {
   addMarker,
+  noteName,
   isMarkerView,
   mapMarkerViewOf,
   markerViewOf,
@@ -240,7 +241,8 @@ type Werkzeug =
   | 'rahmen'
   | 'rahmenWeg'
   | 'vieleck'
-  | 'platzieren';
+  | 'platzieren'
+  | 'notiz';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
@@ -248,7 +250,7 @@ const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
 const SPERRE_TREFFER = 14;
 /** Die Werkzeuge, die einen Punkt setzen — in ihnen öffnet Halten die Lupe (T-315). */
-const LUPE_WERKZEUGE: ReadonlySet<Werkzeug> = new Set(['wand', 'punkte', 'gitterUrsprung', 'gitterZelle', 'setzen', 'platzieren']);
+const LUPE_WERKZEUGE: ReadonlySet<Werkzeug> = new Set(['wand', 'punkte', 'gitterUrsprung', 'gitterZelle', 'setzen', 'platzieren', 'notiz']);
 /** So lange hält man, bis die Lupe aufgeht. */
 const LUPE_MS = 280;
 /** Halbmesser der Lupe am Schirm, und wie stark sie vergrössert. */
@@ -300,7 +302,8 @@ const GRUPPEN: readonly GruppenDef[] = [
   { key: 'gitter', label: 'Grid', title: 'Set the grid on the map: origin, square size, shape', sym: '#', taste: 'G', leitung: true, braucht: ['grid'] },
   /* **Unterkarten** (T-320): einen Rahmen ziehen, die Karte wählen, in die man dort hineinzoomt. */
   { key: 'unterkarten', label: 'Sub-maps', title: 'Link a map to a frame on this one, to zoom into it', sym: '⊡', taste: 'K', leitung: true, braucht: ['frames'] },
-  { key: 'notizen', label: 'Notes', title: 'Notes on the map', sym: '✎', taste: 'N', leitung: true, spaeter: 'T-203' },
+  /* **Notizen** (T-214, E-070 a): eine Notiz ist ein Artikel `Note`, auf der Karte ein Marker auf sie. */
+  { key: 'notizen', label: 'Notes', title: 'Notes on the map: tap where one goes, for the GM or the players', sym: '✎', taste: 'N', leitung: true, braucht: ['markers'] },
   { key: 'zeichnen', label: 'Draw', title: 'Draw on the map', sym: '✐', taste: 'D', leitung: true, spaeter: '—' },
 ];
 
@@ -1013,6 +1016,28 @@ interface Zeiger {
             </div>
           }
 
+          @if (aktiv() === 'notizen' && darfSchreiben()) {
+            <div class="unterleiste" role="toolbar" aria-label="Notes">
+              <button type="button" [class.an]="werkzeug() === 'notiz'" [attr.aria-pressed]="werkzeug() === 'notiz'" (click)="waehle('notiz')" title="Tap the map where the note goes">
+                Add note
+              </button>
+            </div>
+          }
+          @if (werkzeug() === 'notiz' && notizBei()) {
+            <!-- **Eine Notiz anlegen** (T-214, E-070 a): Text und wer sie sieht; gespeichert als Artikel \`Note\`, auf der Karte ein Marker. -->
+            <form class="setzen notiz-blatt" (submit)="$event.preventDefault(); notizAnlegen()">
+              <label class="notiz-text">
+                Note
+                <textarea rows="3" [value]="notizText()" (input)="notizText.set($any($event.target).value)" placeholder="What should be remembered here?" aria-label="Text of the note"></textarea>
+              </label>
+              <span class="notiz-wer" role="radiogroup" aria-label="Who sees the note">
+                <label><input type="radio" name="notiz-wer" [checked]="notizFuer() === 'gm'" (change)="notizFuer.set('gm')" /> GM only</label>
+                <label><input type="radio" name="notiz-wer" [checked]="notizFuer() === 'players'" (change)="notizFuer.set('players')" /> Players too</label>
+              </span>
+              <button type="submit" class="haupt" [disabled]="!notizText().trim() || notizSpeichert()">Save note</button>
+              <button type="button" (click)="notizBei.set(null)">Cancel</button>
+            </form>
+          }
           @if (werkzeug() === 'setzen' && setzenBei()) {
             <div class="setzen">
               <p>{{ setzenArt() === 'scenery' ? 'Which asset goes here? The same one may stand many times.' : 'Which article does the marker stand for?' }}</p>
@@ -1641,6 +1666,8 @@ interface Zeiger {
         } @else if (werkzeug() === 'platzieren') {
           Tap the map where {{ platzName() }} goes.
           <button type="button" class="klein" (click)="waehle('keins')">Cancel</button>
+        } @else if (werkzeug() === 'notiz') {
+          {{ notizBei() ? 'Write the note below.' : 'Tap the map where the note goes.' }}
         } @else if (werkzeug() === 'setzen') {
           {{ setzenZiel() ? 'Tap the map where ' + setzenName() + ' goes.' : setzenBei() ? 'Pick the article below.' : setzenArt() === 'scenery' ? 'Tap the map where the asset goes.' : 'Tap the map where the marker goes.' }}
         } @else if (werkzeug() === 'aufdecken') {
@@ -1716,7 +1743,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss', './notizen.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -3475,7 +3502,7 @@ export class Karte {
     }
     this.aktiv.set(neu);
     this.waehle('keins');
-    this.werkzeug.set(neu === 'messen' ? 'messen' : 'keins');
+    this.werkzeug.set(neu === 'messen' ? 'messen' : neu === 'notizen' ? 'notiz' : 'keins');
   }
 
   protected readonly werkzeug = signal<Werkzeug>('keins');
@@ -3485,6 +3512,7 @@ export class Karte {
     this.messB.set(null);
     this.messFest.set(false);
     this.setzenBei.set(null);
+    this.notizBei.set(null);
     this.setzenZiel.set(null);
     this.setzenArt.set('static');
     this.assetWahl.set(null);
@@ -3522,6 +3550,15 @@ export class Karte {
     } else if (this.werkzeug() === 'platzieren') {
       const v = this.zuPlatzieren().find((x) => x.rel === this.platzWahl());
       if (v) void this.platzBestaetigen(v, pt);
+    } else if (this.werkzeug() === 'notiz') {
+      this.notizBei.set(pt);
+      /* Das Blatt steht unter der Karte — am Telefon hinter der Leiste.
+         Also in den Blick holen und gleich schreiben lassen. */
+      setTimeout(() => {
+        const feld = this.host.nativeElement.querySelector<HTMLTextAreaElement>('.notiz-blatt textarea');
+        feld?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        feld?.focus({ preventScroll: true });
+      });
     } else if (this.werkzeug() === 'setzen') {
       const ziel = this.setzenZiel();
       if (ziel) this.spielTokenSetzen(ziel, pt);
@@ -3735,6 +3772,47 @@ export class Karte {
   });
 
   protected readonly setzenBei = signal<Pt | null>(null);
+
+  // ------------------------------------------------------ Notizen (T-214)
+
+  /** Wo die neue Notiz hinkommt; `null`: noch nicht getippt. */
+  protected readonly notizBei = signal<Pt | null>(null);
+  protected readonly notizText = signal('');
+  /** Wer sie sieht — die Leitung oder auch die Spielenden (`Visibility.audience`). */
+  protected readonly notizFuer = signal<'gm' | 'players'>('gm');
+  protected readonly notizSpeichert = signal(false);
+
+  /**
+   * **Eine Notiz anlegen** (E-070 a): ein Artikel `Note` mit dem Text als
+   * Beschreibung und der Stufe der Sichtbarkeit, fertig (`ready`), damit
+   * die Spielenden eine für sie sehen; dann ein Marker auf ihn. Der Name
+   * ist der Anfang des Textes. Zurückgehalten wird am Server: eine Notiz
+   * nur für die Leitung kommt mit ihrem Marker bei Spielenden nicht an.
+   */
+  protected async notizAnlegen(): Promise<void> {
+    const pt = this.notizBei();
+    const text = this.notizText().trim();
+    if (!pt || !text || this.notizSpeichert()) return;
+    this.notizSpeichert.set(true);
+    try {
+      const notiz = await this.api.createEntity('Note', noteName(text), {
+        'Description.description': text,
+        'Visibility.audience': this.notizFuer(),
+        'Status.status': 'ready',
+      });
+      const e = this.karte();
+      if (e) await this.schreiben(addMarker(e, notiz.id, pt, `r-${crypto.randomUUID()}`));
+      this.notizBei.set(null);
+      this.notizText.set('');
+      /* Zurück auf die Leitung: eine Notiz, die versehentlich an alle geht,
+         verrät mehr, als eine zu wenig gezeigte verschweigt. */
+      this.notizFuer.set('gm');
+    } catch (err) {
+      this.hinweis.set(err instanceof Error ? err.message : 'The note could not be saved.');
+    } finally {
+      this.notizSpeichert.set(false);
+    }
+  }
   protected readonly schonDa = computed(() => new Set([this.id(), ...markersOf(this.karte() ?? ({} as Entity)).map((m) => m.to)]));
 
   protected setzen(ziel: Entity): void {

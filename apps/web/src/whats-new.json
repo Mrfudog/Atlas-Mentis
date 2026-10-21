@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-map-notes",
+      "date": "2026-10-21",
+      "title": "Maps: quick notes for the GM or the players",
+      "text": "Under Notes (N) on a map, tap where a note goes, write it and choose GM only or Players too. Each note is its own article, stands as a small card on the map and moves like a marker; players never see a GM note.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-21-marker-view",
       "date": "2026-10-21",
       "title": "Maps: markers as symbol, name, image or quick card",
