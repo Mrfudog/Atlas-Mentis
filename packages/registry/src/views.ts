@@ -181,6 +181,9 @@ export const views: Record<string, ViewDef> = {
     layout: [
       { id: 'h-img', el: 'image' },
       { id: 'h-desc', el: 'description' },
+      /* Leer wie bei `quick` (T-234): welche Werte auf den Zettel gehören,
+         weiss die Art — die Seltenheit eines Gegenstands, die Art eines Orts. */
+      { id: 'h-f', el: 'fields', fields: [] },
       { id: 'h-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
     ],
   },
