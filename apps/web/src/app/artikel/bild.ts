@@ -34,6 +34,20 @@ export function bildAdresse(wert: unknown, groesse: 'thumb' | 'full' = 'full', v
   return `/api/assets/${encodeURIComponent(w)}${frage ? `?${frage}` : ''}`;
 }
 
+/**
+ * **Ein Bild im Buchtext** (`Illustration`, T-210): Adresse, wenn das Bild
+ * hochgeladen ist, Unterschrift und Alternativtext. Leseansicht und
+ * Element `parts` zeichnen es gleich — ohne Adresse die Unterschrift als
+ * Platzhalter, kein Fehler.
+ */
+export function illustration(e: Entity): { adresse?: string; text: string; alt: string } {
+  const b = (e.components?.['Image'] ?? {}) as { image?: unknown; caption?: unknown; alt?: unknown };
+  const adresse = bildAdresse(b.image);
+  const text = typeof b.caption === 'string' ? b.caption.trim() : '';
+  const alt = typeof b.alt === 'string' && b.alt.trim() ? b.alt.trim() : text;
+  return { ...(adresse ? { adresse } : {}), text, alt };
+}
+
 /** Die Version einer Datei, wie der Server sie in `?v=` erwartet: der Hash vor der Endung. */
 export function bildVersion(e: Entity): string {
   const ref = (e.components?.['Asset'] as { ref?: unknown } | undefined)?.ref;

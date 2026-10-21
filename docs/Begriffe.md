@@ -1398,6 +1398,18 @@ Szene zeigt aufs Original, und eine Korrektur am Original kommt mit.
 Zwei Wege, weil es zwei Absichten sind; einer allein hiesse, entweder
 jeden Vorlesetext zu kopieren oder keinen ändern zu können.
 
+**Ein Bild im Buch ist ein Teil, kein Verweis** (T-210). Ein `Embed` auf
+das Bild läge nahe — aber sein Ziel ist Pflicht, und die Datei kommt erst
+mit dem Hochladen; bis dahin gäbe es den Teil nicht, und mit ihm fehlte
+die Bildunterschrift. Und die Unterschrift gehört zur Stelle im Buch, nicht
+zur Datei: dasselbe Wappen darf in zwei Büchern zweimal anders heissen.
+Also ist es eine eigene Teilart, `Illustration`, mit den Feldern von
+`Image`; ohne Datei steht die Unterschrift als Platzhalter da. **Eingefügt
+wird es, ohne etwas umzunummerieren:** sein Rang ist ein Bruch hinter dem
+Teil davor (`3.001`). Die Teile eines Buchs, das schon gelesen wird,
+behalten Rang und Id — eine Neunummerierung hätte jeden Teil berührt und
+mit ihm jede Fassung, die jemand davon geholt hat.
+
 **Ein Ort steht neben seinem Text, nicht in ihm** (T-175). Barovia war
 nur eine Überschrift im Buch — auffindbar beim Lesen, aber nicht in World,
 nicht auf einer Karte, nicht als Wohnort einer Kreatur. Der Ort ist darum
@@ -2689,6 +2701,15 @@ neue Einstellung, die bestehende Karten anders zeichnete, wäre eine
 und keine eigene: was auf einer Kurzansicht steht, ist schon so geordnet,
 dass das Wichtigste oben steht und das Bild zuletzt (T-346), und ein
 Kasten, der unten abschneidet, verliert nur das Unwichtigste.
+
+**Eine Notiz auf der Karte ist ein Artikel** (T-214, E-070 a) und kein
+Text am Marker. Am Marker hätte sie keine Sichtbarkeit, keinen Stand,
+keine Ebene und keinen Verweis — und die Frage, ob Spielende sie sehen,
+bräuchte eine zweite Regel neben `articleVisible`, die irgendwann jemand
+vergisst. Als Artikel geht sie durch dasselbe Sieb wie alles andere: eine
+Notiz nur für die Leitung ist für Spielende nicht da, und ihr Marker mit
+ihr. Der Name ist die erste Zeile des Textes; einen zweiten tippen zu
+lassen hiesse, dieselbe Sache zweimal zu sagen.
 
 ## Zug, Tempo und Zone auf der Karte
 

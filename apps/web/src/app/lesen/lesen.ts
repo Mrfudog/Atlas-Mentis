@@ -10,7 +10,7 @@ import { Text } from '../artikel/text';
 import { KurzLink } from '../kern/kurzansicht';
 import { Ladeanzeige } from '../kern/ladeanzeige';
 import { bloeckeVon, type Block } from '../kern/buchtext';
-import { bildAdresse } from '../artikel/bild';
+import { bildAdresse, illustration } from '../artikel/bild';
 import { LeseInhalt } from './inhalt';
 
 interface Abschnitt {
@@ -23,6 +23,12 @@ interface Abschnitt {
   teil?: 'text' | 'verweis';
   /** Am Verweis-Teil: worauf er zeigt. */
   ziel?: { id: string; name: string; art: string };
+  /**
+   * Am Bild-Teil (`Illustration`, T-210): die Adresse, wenn das Bild schon
+   * hochgeladen ist, und die Unterschrift. Ohne Adresse steht die
+   * Unterschrift als Platzhalter an der Stelle.
+   */
+  bild?: { adresse?: string; text: string; alt: string };
   /** Die Fassung, die gilt (E-018) — dorthin führt „open". */
   artikel: string;
   name: string;
@@ -204,6 +210,19 @@ interface Abschnitt {
                       <a [routerLink]="['/artikel', z.id]" [nwQuick]="z.id">{{ z.name }}</a>
                     </div>
                   }
+                  @if (a.bild; as bi) {
+                    <!-- Ein Bild im Text (T-210); noch nicht hochgeladen, steht die Unterschrift da. -->
+                    <figure class="abbildung" [class.ohne]="!bi.adresse">
+                      @if (bi.adresse) {
+                        <img [src]="bi.adresse" [alt]="bi.alt" loading="lazy" />
+                      } @else {
+                        <div class="platzhalter" role="img" [attr.aria-label]="bi.alt || 'Illustration'">Illustration</div>
+                      }
+                      @if (bi.text) {
+                        <figcaption>{{ bi.text }}</figcaption>
+                      }
+                    </figure>
+                  }
                   @for (bl of a.bloecke; track bl.key) {
                     <div [class]="'block ' + bl.art">
                       @if (bl.art !== 'text') {
@@ -367,9 +386,11 @@ export class Lesen {
       const bloecke = bloeckeVon(r, e);
       const name = (id: string) => s.refs.names[id] ?? id;
       const teil = x.toc === false ? (x.target ? ('verweis' as const) : ('text' as const)) : undefined;
+      const bild = primaryInterface(e) === 'Illustration' ? illustration(e) : undefined;
       return {
         id: x.id,
         ...(teil ? { teil } : {}),
+        ...(bild ? { bild } : {}),
         ...(x.target
           ? { ziel: { id: x.target.id, name: entityName(x.target), art: r.interfaces[primaryInterface(x.target)]?.label ?? primaryInterface(x.target) } }
           : {}),

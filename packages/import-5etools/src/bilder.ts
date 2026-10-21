@@ -15,17 +15,18 @@
  *    `Image.image` des Artikels, wenn seine Art `Image` nimmt, die übrigen
  *    nur als Bild in seiner Ebene (Galerie), Klasse `image`;
  *  - die Karten der Abenteuer, die heute als Adresse dastehen
- *    (`BILD_ADRESSE`) → `Image.image` der `Map`, Klasse `map`.
- *
- * Bilder im Buchtext (Teile der Leseansicht) stehen noch nicht im Plan:
- * dafür muss ein Bild ein Teil zwischen zwei bestehenden werden — Folgeaufgabe.
+ *    (`BILD_ADRESSE`) → `Image.image` der `Map`, Klasse `map`;
+ *  - die **Bilder im Buch- und Abenteuertext** (T-210) → `Image.image`
+ *    ihres Teils (`Illustration`, angelegt von `teile.ts`), Klasse `image`.
+ *    Der Eintrag nennt dazu das Ganze, den Teil davor und den Rang — so
+ *    lässt sich prüfen, wo das Bild steht, ohne die Ausfuhrdatei zu lesen.
  */
 
 import type { Entity, Registry } from '@nw/model';
 import { typeChain } from '@nw/model';
 import { BILD_ADRESSE } from './arten/abenteuer.js';
 import type { Knoten } from './copy.js';
-import { loeseKopien } from './copy.js';
+import { bildPfad, loeseKopien } from './copy.js';
 import type { Datenstand } from './lesen.js';
 
 export type BildKlasse = 'token' | 'map' | 'image';
@@ -43,6 +44,25 @@ export interface BildEintrag {
   name: string;
   alt?: string;
   /** Das Kürzel der 5e.tools-Quelle. */
+  quelle: string;
+  /** Am Bild im Text (T-210): das Kapitel oder die Szene, in der es steht … */
+  ganzes?: string;
+  /** … der Teil davor (ohne: es steht am Anfang) … */
+  vorher?: string;
+  /** … und sein Rang an `partOf` (ein Bruch hinter dem Teil davor). */
+  rang?: number;
+}
+
+/** Ein Bild im Buchtext, wie `teile.ts` es beim Anlegen seines Teils merkt (T-210). */
+export interface TextBild {
+  pfad: string;
+  /** Der Teil (`Illustration`), der das Bild zeigt. */
+  ziel: string;
+  ganzes: string;
+  vorher?: string;
+  rang: number;
+  name: string;
+  alt?: string;
   quelle: string;
 }
 
@@ -64,14 +84,6 @@ export function tokenName(name: string): string {
     .replace(/"/g, '');
 }
 
-/** Der Pfad eines internen Verweises (`{type: 'internal', path}`); extern und leer: nichts. */
-function internerPfad(href: unknown): string | undefined {
-  const h = href as Knoten | undefined;
-  if (!h || h['type'] !== 'internal') return undefined;
-  const p = String(h['path'] ?? '').replace(/^\/+/, '').replace(/^img\//, '');
-  return p || undefined;
-}
-
 /**
  * Der Token-Pfad eines Monsters (oder Objekts, Fahrzeugs) wie
  * `Renderer.generic.getTokenUrl`: `token` vor `tokenHref` vor dem
@@ -80,7 +92,7 @@ function internerPfad(href: unknown): string | undefined {
 export function tokenPfad(e: Knoten, verzeichnis: string): string | undefined {
   const t = e['token'] as Knoten | undefined;
   if (t && t['name'] && t['source']) return `${verzeichnis}/${String(t['source'])}/${tokenName(String(t['name']))}.webp`;
-  const href = internerPfad(e['tokenHref']);
+  const href = bildPfad(e['tokenHref']);
   if (href) return href;
   if (!e['hasToken']) return undefined;
   return `${verzeichnis}/${String(e['source'])}/${tokenName(String(e['name']))}.webp`;
@@ -97,7 +109,7 @@ const kl = (s: unknown) => String(s ?? '').trim().toLowerCase();
 function fluffBilder(f: Knoten | undefined): { pfad: string; titel?: string }[] {
   const raus: { pfad: string; titel?: string }[] = [];
   for (const b of Array.isArray(f?.['images']) ? (f!['images'] as Knoten[]) : []) {
-    const pfad = internerPfad(b['href']);
+    const pfad = bildPfad(b['href']);
     if (pfad) raus.push({ pfad, ...(b['title'] ? { titel: String(b['title']) } : {}) });
   }
   return raus;
@@ -113,6 +125,7 @@ export function bildplan(
   stand: Pick<Datenstand, 'arten'>,
   angelegt: readonly (readonly [string, Knoten, Entity])[],
   alle: readonly Entity[],
+  textbilder: readonly TextBild[] = [],
 ): Bildplan {
   const eintraege: BildEintrag[] = [];
   const nimmtBild = new Map<string, boolean>();
@@ -175,6 +188,11 @@ export function bildplan(
     const pfad = url.slice(BILD_ADRESSE.length).split('/').map((s) => decodeURIComponent(s)).join('/');
     const quelle = String((e.components['Source'] as { publication?: unknown } | undefined)?.publication ?? pfad.split('/')[1] ?? '');
     merke({ pfad, klasse: 'map', ziel: e.id, feld: 'Image.image', ersetzt: url, name: e.name, alt: typeof bild.alt === 'string' ? bild.alt : e.name, quelle });
+  }
+
+  /* Die Bilder im Buchtext (T-210): je Teil eines, ins leere `Image.image`. */
+  for (const t of textbilder) {
+    merke({ pfad: t.pfad, klasse: 'image', ziel: t.ziel, feld: 'Image.image', name: t.name, ...(t.alt ? { alt: t.alt } : {}), quelle: t.quelle, ganzes: t.ganzes, ...(t.vorher ? { vorher: t.vorher } : {}), rang: t.rang });
   }
 
   return { format: 'atlas-bilder/1', eintraege };

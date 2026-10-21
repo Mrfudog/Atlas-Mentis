@@ -54,7 +54,7 @@ export const EBENE = 'D&D 5e (2014)';
 /** Die Ebene für das, was kein Buch nennt (die Aktionsarten) — unter
  *  Official und in der Gruppe `EBENE` (T-109). */
 /** Was vom Buchtext eines Regelbuchs Neuzugang ist (T-145): das Kapitel und seine Teile. */
-const BUCHTEXT = new Set(['Chapter', 'Heading', 'Paragraph', 'ReadAloudText', 'Embed']);
+const BUCHTEXT = new Set(['Chapter', 'Heading', 'Paragraph', 'ReadAloudText', 'Embed', 'Illustration']);
 
 export const OHNE_BUCH = 'D&D 5e (2014) — no book given';
 
@@ -655,7 +655,7 @@ function bauen(
         ...(auswahl.nurGrundstand ? {} : { additions: neuzugaenge(wb) }),
       },
       bericht: wb.bericht,
-      bilder: bildplan(registry, stand, angelegt, wb.entities),
+      bilder: bildplan(registry, stand, angelegt, wb.entities, wb.textbilder),
       zauberlisten: zauberlistenPlan(wb.entities),
     },
     vergeben: wb.vergeben,

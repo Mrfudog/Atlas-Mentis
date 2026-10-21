@@ -11,7 +11,7 @@
 -- die zweite Stelle, die beim nächsten Umbau der Vorlage veraltet.
 --
 -- Kein Artikel wird geändert, entfernt wird nichts.
--- Nummer beim Hereinmergen nachsehen.
+-- Nummer beim Hereinmergen nachgesehen: 136.
 
 update interface_def
    set schema = jsonb_set(

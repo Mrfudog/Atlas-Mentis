@@ -1,22 +1,25 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { entityName, headingLevel, primaryInterface } from '@nw/model';
+import { entityName, headingLevel, isBookPart, primaryInterface } from '@nw/model';
 import type { Entity, VarScopes } from '@nw/model';
 import { Api, type Teile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { bloeckeVon, type Block } from '../kern/buchtext';
 import { KurzLink } from '../kern/kurzansicht';
+import { illustration } from './bild';
 import { Text } from './text';
 
 interface Zeile {
   id: string;
   /** Wohin „open" führt: die Fassung, die gilt. */
   artikel: string;
-  art: 'ueberschrift' | 'text' | 'verweis' | 'szene';
+  art: 'ueberschrift' | 'text' | 'verweis' | 'szene' | 'bild';
   name: string;
   stufe: number;
   bloecke: Block[];
   ziel?: { id: string; name: string; art: string };
+  /** Am Bild-Teil (T-210): Adresse, wenn hochgeladen, und Unterschrift. */
+  bild?: { adresse?: string; text: string; alt: string };
 }
 
 /**
@@ -46,6 +49,20 @@ interface Zeile {
                 <div class="fkopf szene" role="heading" [attr.aria-level]="2">
                   <a [routerLink]="['/artikel', z.artikel]" [nwQuick]="z.artikel">{{ z.name }}</a>
                 </div>
+              }
+              @case ('bild') {
+                @if (z.bild; as bi) {
+                  <figure class="abbildung" [class.ohne]="!bi.adresse">
+                    @if (bi.adresse) {
+                      <img [src]="bi.adresse" [alt]="bi.alt" loading="lazy" />
+                    } @else {
+                      <div class="platzhalter" role="img" [attr.aria-label]="bi.alt || 'Illustration'">Illustration</div>
+                    }
+                    @if (bi.text) {
+                      <figcaption>{{ bi.text }}</figcaption>
+                    }
+                  </figure>
+                }
               }
               @case ('verweis') {
                 @if (z.ziel; as v) {
@@ -114,15 +131,17 @@ export class Fluss {
       const e = p.entity;
       const typ = primaryInterface(e);
       const stufe = headingLevel(e);
-      const szene = typ !== 'Paragraph' && typ !== 'ReadAloudText' && typ !== 'Embed' && stufe === undefined;
+      const bild = typ === 'Illustration';
+      const szene = !isBookPart(e) && stufe === undefined;
       return {
         id: p.id,
         artikel: e.id,
-        art: stufe !== undefined ? 'ueberschrift' : typ === 'Embed' ? 'verweis' : szene ? 'szene' : 'text',
+        art: stufe !== undefined ? 'ueberschrift' : typ === 'Embed' ? 'verweis' : bild ? 'bild' : szene ? 'szene' : 'text',
+        ...(bild ? { bild: illustration(e) } : {}),
         name: entityName(e),
         stufe: (stufe ?? 2) + 1,
         /* Eine Szene zeigt hier nur ihren Kopf; ihren Text liest man auf ihrer Seite. */
-        bloecke: szene || stufe !== undefined || typ === 'Embed' ? [] : bloeckeVon(r, e),
+        bloecke: szene || bild || stufe !== undefined || typ === 'Embed' ? [] : bloeckeVon(r, e),
         ...(p.target
           ? { ziel: { id: p.target.id, name: entityName(p.target), art: r.interfaces[primaryInterface(p.target)]?.label ?? primaryInterface(p.target) } }
           : {}),
