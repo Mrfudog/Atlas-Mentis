@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-item-shape-layer",
+      "date": "2026-10-21",
+      "title": "Item shapes as a layer of their own",
+      "text": "Shapes and stack sizes can come from a layer that only adds these fields: switched on in the campaign, every item shows them in its Shape and in the grid inventory, next to prices from another layer. Editing such a shape changes that layer.",
+      "area": "Inventory",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-21-item-shapes",
       "date": "2026-10-21",
       "title": "Paint item shapes, with the picture in the inventory",
