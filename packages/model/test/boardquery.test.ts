@@ -70,6 +70,14 @@ describe('Abfrage-Kachel (T-340)', () => {
     expect(r.unknown).toEqual([]);
   });
 
+  it('sortiert nach dem Namen, wie er dasteht, auch wenn `name` leer ist', () => {
+    const ohne = bestand.map((e) => ({ ...e, name: '' }));
+    const ids = queryPool(seedRegistry, boardQueryOf({ tags: ['rumour'] }), ohne, dims).rows.map((e) => e.id);
+    expect(ids).toEqual(['n2', 'o1', 'n1']);
+    const ab = queryPool(seedRegistry, boardQueryOf({ tags: ['rumour'], steps: 'sort:-name' }), ohne, dims).rows.map((e) => e.id);
+    expect(ab).toEqual(['n1', 'o1', 'n2']);
+  });
+
   it('nimmt eine Ebene als Quelle und nennt unbekannte Dimensionen', () => {
     const r = queryPool(seedRegistry, boardQueryOf({ layers: ['ly_k'], steps: 'filter:nope=x' }), bestand, dims);
     expect(r.rows.map((e) => e.id).sort()).toEqual(['i1', 'n1']);

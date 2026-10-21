@@ -18,7 +18,7 @@
  * Reine Funktionen, kein Framework (CLAUDE.md › packages/model).
  */
 
-import { areaOf, primaryInterface } from './entity.js';
+import { areaOf, entityName, primaryInterface } from './entity.js';
 import { dimensionValues, glied, NONE, type Dimension } from './transformkeys.js';
 import type { Entity, Registry } from './types.js';
 import { layersOf } from './versions.js';
@@ -228,7 +228,8 @@ export function articleDimensions(
     { key: 'tag', label: 'Tag', values: (e) => feldWert(e, 'Tags', 'tags') },
     { key: 'status', label: 'Status', values: (e) => feldWert(e, 'Status', 'status').slice(0, 1).concat(['ready']).slice(0, 1) },
     { key: 'audience', label: 'Visibility', values: (e) => feldWert(e, 'Visibility', 'audience').slice(0, 1).concat(['public']).slice(0, 1) },
-    { key: 'name', label: 'Name', values: (e) => [e.name] },
+    /* Der Name, wie er dasteht (`Identity.name`): `e.name` ist an eingelesenen Artikeln leer. */
+    { key: 'name', label: 'Name', values: (e) => [entityName(e)] },
   ];
   if (ctx.layerGroups) {
     const lg = ctx.layerGroups;
