@@ -1569,7 +1569,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Condition
 
-`Condition` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Condition` · erbt von `Rule` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1578,6 +1578,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1622,7 +1623,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Disease
 
-`Disease` · erbt von `Condition` ← `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Disease` · erbt von `Condition` ← `Rule` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1632,6 +1633,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - *`Condition`* — `kind` *condition | status*, `stage` *1…∞*, `recovery` *none | shortRest | longRest | longRestStep | save | special*
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*

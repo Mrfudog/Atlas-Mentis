@@ -335,3 +335,52 @@ export function baseArticle(entities: Lookup, id: EntityId): EntityId {
   const kette = templateChain(entities, e);
   return kette.length ? kette[kette.length - 1]!.id : id;
 }
+
+/**
+ * **Ein Nachschlagen, das aufgelöst liefert** (T-275): `get` gibt jeden
+ * Artikel mit seiner Vorlage darunter (`resolveInstance`), erst beim Fragen
+ * und je Artikel einmal. Für Rechnungen, die `byId` „schon aufgelöst"
+ * erwarten (`effectsAt`, `characterStats`) — ein Stück im Inventar ist
+ * eine Instanz und trägt seine Wirkungen sonst nicht. Aufzählen
+ * (`values`) liefert die Artikel, wie sie gespeichert sind.
+ */
+export function resolvedLookup(entities: Lookup): Lookup {
+  if (entities instanceof AufgeloesteMap) return entities;
+  return new AufgeloesteMap(entities);
+}
+
+/* Ohne Kopie: ein Bestand von 24 000 Artikeln wird je Frage nicht abgeschrieben. */
+class AufgeloesteMap implements ReadonlyMap<EntityId, Entity> {
+  private readonly fertig = new Map<EntityId, Entity>();
+  constructor(private readonly roh: Lookup) {}
+  get(id: EntityId): Entity | undefined {
+    const da = this.fertig.get(id);
+    if (da) return da;
+    const e = this.roh.get(id);
+    if (!e) return undefined;
+    const r = resolveInstance(this.roh, e);
+    this.fertig.set(id, r);
+    return r;
+  }
+  has(id: EntityId): boolean {
+    return this.roh.has(id);
+  }
+  get size(): number {
+    return this.roh.size;
+  }
+  forEach(fn: (value: Entity, key: EntityId, map: ReadonlyMap<EntityId, Entity>) => void, thisArg?: unknown): void {
+    this.roh.forEach((v, k) => fn.call(thisArg, v, k, this));
+  }
+  entries() {
+    return this.roh.entries();
+  }
+  keys() {
+    return this.roh.keys();
+  }
+  values() {
+    return this.roh.values();
+  }
+  [Symbol.iterator]() {
+    return this.roh[Symbol.iterator]();
+  }
+}

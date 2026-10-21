@@ -23,7 +23,7 @@
  * dem System, das `unitsFor` für die Art nennt.
  */
 
-import { abilityMod, formatValue } from './calc.js';
+import { abilityMod, checkBonus, formatValue } from './calc.js';
 import { attackLine, attackNumbers } from './attack.js';
 import { isDice } from './dice.js';
 import { entityName, fieldTitle, primaryInterface, relationDef } from './entity.js';
@@ -366,21 +366,12 @@ export function passivePerception(entity: Entity, ctx: StatblockContext = {}): n
   const sb = (entity.components?.['Statblock'] ?? {}) as Card;
   const ab = (entity.components?.['Abilities'] ?? {}) as Card;
   const pr = (entity.components?.['Proficiencies'] ?? {}) as Card;
-  const bonuses = (sb['bonuses'] && typeof sb['bonuses'] === 'object' ? sb['bonuses'] : {}) as Card;
-  const wis = num(ab['wis']);
-  const wisMod = wis === null ? null : abilityMod(wis);
-  const expertise = list(pr['expertise']);
-  const name = [...list(pr['proficient']), ...expertise].find((n) => n.toLowerCase() === 'perception');
-  if (name) {
-    const fest = num(bonuses[name]);
-    if (fest !== null) return 10 + fest;
-    const prof = num(sb['prof']);
-    /* Eine andere Grundlage als WIS sagt der Fertigkeitsartikel. */
-    const grund = ctx.skillAbility?.(name) ?? 'wis';
-    const s = num(ab[grund]);
-    if (s !== null && prof !== null) return 10 + abilityMod(s) + prof * (expertise.includes(name) ? 2 : 1);
-  }
-  return wisMod === null ? null : 10 + wisMod;
+  /* Eine andere Grundlage als WIS sagt der Fertigkeitsartikel. Gerechnet
+     wird wie die Registerformel `10+check(wis.Perception)` (T-275). */
+  const geuebt = [...list(pr['proficient']), ...list(pr['expertise'])].find((n) => n.toLowerCase() === 'perception');
+  const grund = (geuebt && ctx.skillAbility?.(geuebt)) || 'wis';
+  const b = checkBonus({ proficient: pr['proficient'], expertise: pr['expertise'], prof: sb['prof'], bonuses: sb['bonuses'], score: ab[grund] }, 'Perception');
+  return b === null ? null : 10 + b;
 }
 
 // ------------------------------------------------------------ Kennzahlen

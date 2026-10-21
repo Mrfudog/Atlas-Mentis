@@ -569,7 +569,10 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Condition',
     area: 'rules',
     label: 'Condition',
-    extends: ['Rule'],
+    /* Ein Zustand wirkt wie ein Gegenstand (T-275): gepackt deckelt das
+       Tempo auf 0, geblendet gibt Nachteil auf eigene Angriffe —
+       `effectsAt` liest `Vitals.conditions` und die Initiative. */
+    extends: ['Rule', 'Effects'],
     schema: merge(g.ConditionInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
