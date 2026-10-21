@@ -11,7 +11,10 @@ einer lokalen Datenbank): [`docs/Nachtarbeit/T-234-bilder/`](../Nachtarbeit/T-23
 
 Grundlage: E-103 (Ansicht = Anordnung + Geltung + Gruppe), der Designer als
 einziger Editor (T-276), alle Zeichenwege über `pickView` (T-310), Kapitel
-(T-277), der Handzettel (T-110). Offen dazu: E-123 (Boards), E-124 (unten).
+(T-277), der Handzettel (T-110). E-123 (Boards) ist entschieden: keine Stufe
+„board“, auf der Kachel soll eine sinnvolle Ansicht die Vorgabe sein — am
+liebsten der Handzettel —, und die Leitung wählt weiter. Die Werte je Art
+dafür legt dieser Stand an, die Vorgabe der Kachel gehört T-339. Offen: E-124 (unten).
 
 ## Kurzfassung
 
@@ -33,7 +36,7 @@ einziger Editor (T-276), alle Zeichenwege über `pickView` (T-310), Kapitel
   (45 Arten). **Nachher:** quick 46, handout 12, search 45.
 - **Nicht umgesetzt, weil es eine Entscheidung braucht:** Varianten einer
   Art an einem Ort (Kreatur „Kampf", Ort „Reiseführer") — E-124. Spalten
-  der Übersicht für Arten ohne (T-343). Grosse Blöcke zerlegen: T-282.
+  der Übersicht für Arten ohne (T-344). Grosse Blöcke zerlegen: T-282.
 
 ## Bedarf: Art × Stufe
 
@@ -48,11 +51,11 @@ alle offen und brauchen keinen Zettel.
 | Item / Weapon / Armor / Material | ● | ● Art, Seltenheit, Einstimmung (+ Kenndaten) | ● `item`, `crafting` | ● `item` | **● dieselben Werte** | **● wie quick** | |
 | Statblock | ● | ● `stats` | ● `statblock` | ● `statblock` | — | — | Zahlen teilt man nicht aus |
 | Creature / PlayerCharacter | ● | ● `stats`, Art, Volk, Rolle, Haltung | ● Bogen (`sheet`, `turn`, `spells` …) | — | **● nur Volk** | **● wie quick** | Haltung, Rolle sind Leitung; Variante „Kampf" → E-124 |
-| Place / Shop | — | ● Art, Umgebung | ● `crawl` (Shop: `wares`) | — | **● Art, Umgebung** | **● wie quick** | Variante „Reiseführer" → E-124; Spalten → T-343 |
+| Place / Shop | — | ● Art, Umgebung | ● `crawl` (Shop: `wares`) | — | **● Art, Umgebung** | **● wie quick** | Variante „Reiseführer" → E-124; Spalten → T-344 |
 | Faction | — | ● Art, Ziel | — | — | **● nur Art** | **● wie quick** | Ziel ist oft Geheimnis; Struktur → T-341 |
 | Deity | ● | ● Pantheon, Gesinnung | — | — | **● Pantheon, Domänen** | **● wie quick** | |
 | Hazard | ● | ● Art, Bedrohung | — | — | — | **● wie quick** | eine Falle teilt man nicht aus |
-| Quest | — | ● Stand, Lohn | ● | — | **● Stand, Lohn** | **● wie quick** | Spalten → T-343 |
+| Quest | — | ● Stand, Lohn | ● | — | **● Stand, Lohn** | **● wie quick** | Spalten → T-344 |
 | Scene | — | ● Modus, Schwierigkeit | — | — | — (Vorlesetext global) | **● wie quick** | |
 | Encounter | ● | **● Art, Phase, Schwierigkeit** | ● `initiative` | — | — | **● wie quick** | |
 | Map | — | **● Art** | ● `map` | — | — | **● wie quick** | Masse nicht auf der Karte (Rohwert) |
@@ -133,8 +136,8 @@ flowchart LR
   eigener Gruppe (`combat`, `guide`) und Geltung auf die Art zu haben —
   gewählt an der Leiste „Views" und auf der Kachel. Ob solche Ansichten mit
   dem Register kommen (Startzeilen) oder die Leitung sie im Designer anlegt,
-  ist ihre Entscheidung.
-- **T-343 — Spalten der Übersicht** für Place, Faction, Quest, Scene, Event,
+  ist ihre Entscheidung. Umsetzung danach: T-345.
+- **T-344 — Spalten der Übersicht** (Vorgabe, auf die T-343 „Reset to default“ zurückgeht) für Place, Faction, Quest, Scene, Event,
   Story, Arc, Party, Map, Recipe: heute nur Name und Beschreibung im
   Kompendium. Klein, aber es ändert, was Listen zeigen.
 - **T-282 — grosse Blöcke.** Die Liste unten; am dringendsten `sheet`,
