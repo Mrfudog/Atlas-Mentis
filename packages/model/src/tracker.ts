@@ -11,6 +11,7 @@
  * Zählung nutzt die Regelwirkung (T-275); wie ein Zustand rechnet (RK,
  * Schaden), steht nicht hier.
  */
+import { commonAction } from './actions.js';
 import { bookSections, type BookSection } from './book.js';
 import { entityName, primaryInterface } from './entity.js';
 import {
@@ -298,6 +299,7 @@ function sauberEintrag(e: TimedEntry): TimedEntry | null {
   if (e.rounds != null && Number.isFinite(n) && n > 0) raus.rounds = Math.floor(n);
   if (typeof e.anchor === 'string' && e.anchor) raus.anchor = e.anchor;
   if (e.at === 'start' || e.at === 'end') raus.at = e.at;
+  if (typeof e.action === 'string' && commonAction(e.action)?.rule) raus.action = commonAction(e.action)!.key;
   if (typeof e.source === 'string' && e.source.trim()) raus.source = e.source.trim();
   if (e.hidden) raus.hidden = true;
   return raus;
