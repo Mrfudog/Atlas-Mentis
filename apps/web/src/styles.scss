@@ -38,6 +38,10 @@
   --magic: #6b3d75;
   --blue: #2f5d7c;
   --accent-soft: rgba(140, 28, 19, 0.08);
+  /* Bewegung (T-334): der Zugwechsel im Tracker leuchtet kurz auf. Still
+     bei `prefers-reduced-motion` und, wenn das Konto es abschaltet. */
+  --motion-turn: 900ms;
+  --turn-flash: rgba(200, 130, 46, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -70,6 +74,7 @@
     --magic: #c49ad0;
     --blue: #7fb0d4;
     --accent-soft: rgba(208, 103, 90, 0.14);
+    --turn-flash: rgba(183, 122, 51, 0.35);
   }
 }
 

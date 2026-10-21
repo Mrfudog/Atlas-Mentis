@@ -415,15 +415,16 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     ],
   },
   {
-    /* Der Initiative-Tracker (T-022), gelesen über `initiativeRulesOf`. */
+    /* Der Initiative-Tracker (T-022) als eigenes Regelsystem (T-334, E-100):
+       `on` ist das System „D&D 5e (standard)", gelesen über `initiativeRulesOf`. */
     key: 'combat',
     sort: 'combat',
-    label: 'Initiative tracker',
-    does: 'Whether encounters run in the initiative tracker in Play: order, turns, rounds and effects with a duration.',
+    label: 'Initiative',
+    does: 'Which initiative system runs encounters in the tracker in Play: order, turns, rounds and effects with a duration. The settings below belong to it.',
     source: { field: 'combat' },
     rules: ['Initiative', 'Combat'],
     variants: [
-      { key: 'on', label: 'On', does: 'Play shows the tracker of the running encounter; the GM moves the turns, players follow.' },
+      { key: 'on', label: 'D&D 5e (standard)', does: 'Highest initiative first, one turn each per round; effects count down at the start or end of a turn. No delaying — the basic rules have none.', rules: ['Initiative'] },
       { key: 'off', label: 'Off', does: 'No tracker. Encounters still start and roll initiative; the table keeps the order itself.' },
     ],
   },
@@ -489,7 +490,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     key: 'initQuickActions',
     sort: 'combat',
     label: 'Tracker quick actions',
-    does: 'Which buttons the GM has on each row: damage, heal, add effect, delay, reroll, remove. Changed under “Change options”.',
+    does: 'Which buttons the GM has on each row: damage, heal, add effect, reroll, remove. Changed under “Change options”.',
     source: { field: 'initQuickActions' },
     when: { field: 'combat', is: ['on'] },
   },
