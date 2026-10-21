@@ -312,7 +312,7 @@
         {
           "title": "Tools",
           "text": [
-            "The tool bar stands on the left (on a phone at the bottom): Select, Article, Text, Image, Draw, Map, Background and Area. The chosen tool shows its options above the canvas; Esc goes back to Select.",
+            "The tool bar stands on the left (on a phone at the bottom): Select, Article, Query, Structure, Text, Image, Draw, Map, Background and Area. The chosen tool shows its options above the canvas; Esc goes back to Select.",
             "Text: choose a heading, paragraph, list or quote, then click the canvas. It is Markdown — [[links]] and {VAR} work as everywhere and are filled in when shown, never in what is saved. Image: upload one or choose from the images. Draw: freehand, line, arrow, rectangle or ellipse, with colour and width.",
             "Select an element to change it in the panel over the canvas — text, colour, fill, width, turn, front or back, GM only — or press Delete. GM only on an element or on a card (the GM button) keeps it from players altogether.",
             "Map: a map as a live card, or as the background — it fills the canvas under the cards; players see only what they would see in play. Background: an image (stretched, tiled or once), a colour, or a map."
@@ -325,6 +325,15 @@
             "Draw takes one at random and does not put it back until Reset; everyone at the table sees the same draws. With Reveal when drawn, what is drawn becomes knowledge of the party and visible to it. A slideshow turns on by itself; ‹ › step, ⛶ shows it full screen for a second screen.",
             "Players see only the articles they may see — the card asks the server for each of them.",
             "Live from the campaign: a card can ask for the scene in play, the current arc, the running or next session, the party or the open quests instead of naming articles. It follows the game — set another scene on the session and the card shows it."
+          ]
+        },
+        {
+          "title": "Structure cards",
+          "text": [
+            "Structure (⌥ in the tool bar) places a card that draws a faction, place or family from its edges: ⚙ chooses the start, which edges (members and ranks, parts and sub-factions, what it controls, residents, relationships), how deep, and tree or web.",
+            "Tree is an organisation chart: ▾ folds a branch, the line from above carries the rank or the tags of the relationship, ↑ marks what the start belongs to, → and ↩ list relationships across the tree. Web draws rings around the start; a dashed line runs across the tree.",
+            "Click a name for its quick card; + on a node shows what lies beyond the depth. Each direction of a relationship is its own line with its own tags.",
+            "Players see only the entries and lines they may see — the card asks the server for each viewer, and what hangs only on something hidden stays hidden too."
           ]
         },
         {

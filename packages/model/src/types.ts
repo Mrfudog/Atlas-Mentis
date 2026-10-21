@@ -612,7 +612,14 @@ export type LayoutElementKind =
   /** Die Werte als Marken (Tags, Zustände, Eigenschaften). */
   | 'badges'
   /** Je Kante eine Zeile: Ziel und die Eigenschaften der Kante (`props`). */
-  | 'edgeTable';
+  | 'edgeTable'
+  /**
+   * **Die Struktur** (T-341): Organigramm oder Beziehungsnetz vom Artikel
+   * aus — Mitglieder, Teile, Herrschaft, Beziehungen mit ihren Marken —,
+   * gerechnet am Server über das, was der Betrachter sieht
+   * (`structure.ts`). Dasselbe wie die Kachel „Structure" auf dem Board.
+   */
+  | 'structure';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the
@@ -690,6 +697,12 @@ export interface LayoutElement {
   side?: 'right' | 'bottom' | 'none';
   /** `reader`: wo das Inhaltsverzeichnis steht — links, oben oder aus. */
   toc?: 'left' | 'top' | 'off';
+  /** `structure`: welche Kanten (`STRUCTURE_EDGES`); leer heisst die Vorgabe. */
+  edges?: string[];
+  /** `structure`: wie viele Schritte vom Artikel. */
+  depth?: number;
+  /** `structure`: Baum (Organigramm) oder Netz. */
+  layout?: 'tree' | 'net';
 }
 
 /**

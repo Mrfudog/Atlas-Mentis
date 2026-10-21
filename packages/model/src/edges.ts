@@ -435,7 +435,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'boards',
     label: 'Boards',
     area: 'play',
-    does: 'lays the article out as a card on the board, hangs a board under its story, and lets a query card list, draw or show articles — and reveal what is drawn to the party (T-340); a campaign gets its board, and its cards read the scene in play, the party and the open quests (T-342)',
+    does: 'lays the article out as a card on the board, hangs a board under its story, and lets a query card list, draw or show articles — and reveal what is drawn to the party (T-340); a campaign gets its board, and its cards read the scene in play, the party and the open quests (T-342); a structure card draws a faction, place or family as an organisation chart or relationship web (T-341)',
     uses: {
       [M + 'board.ts']: ['placed'],
       /* Die Abfrage-Kachel (T-340): eine `placed`-Kante des Boards auf sich selbst. */
@@ -446,6 +446,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
          die laufenden Quellen (Szene über `partOf`, Gruppe). */
       [M + 'campaignboard.ts']: ['inLayer', 'memberOfParty', 'partOf', 'placed'],
       [S + 'kampagnenboard.ts']: ['memberOfParty'],
+      /* Die Struktur-Kachel und das Element `structure` (T-341): Organigramm
+         und Beziehungsnetz aus diesen Kanten, in beide Richtungen. */
+      [M + 'structure.ts']: ['controls', 'livesIn', 'memberOf', 'partOf', 'placed', 'regards'],
       [W + 'boards/board.ts']: ['inLayer', 'instanceOf', 'partOf', 'placed'],
       [W + 'boards/boards.ts']: ['partOf'],
       [W + 'boards/brett.ts']: ['partOf'],

@@ -61,6 +61,10 @@ mit einem `↩`, was zurückgedacht wird. Bearbeiten lässt sich die
 Gegenrichtung dort nicht — wer das könnte, schriebe in einen fremden
 Artikel, ohne ihn zu sehen.
 
+Auf einem Board und an der Seite einer Fraktion zeichnet die
+**Struktur** (T-341) dieselben Kanten als Linien, beschriftet mit ihren
+Marken — je Richtung eine Linie, gesiebt für jeden Betrachter.
+
 ---
 
 ## Bedienung

@@ -23,7 +23,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 184 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen — 359 Stories in 80 Features und 12 Epics.
+Zusammen: 185 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen — 360 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -37,7 +37,7 @@ Zusammen: 184 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen — 35
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 29 | 19 steht · 5 teils · 4 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 30 | 20 steht · 5 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -895,6 +895,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | [[REQ-166]] | Auf dem Board anlegen | 2 | **teils** | Anlegen auf dem Board |
 | [[REQ-291]] | Leseansicht auf dem Board | 3 | **offen** |  |
 | [[REQ-358]] | Kampagnenboard als Startpunkt für Spielende | 2 | **steht** | Je Kampagne ein Board (beim Anlegen, bestehende beim ersten Öffnen), Abfrage-Kacheln mit laufenden Quellen (Szene, Arc, Sitzung, nächste Sitzung, Gruppe, offene Aufträge), Gerüchte zum Ziehen; Spielende landen darauf (Campaign.playerStart), Basis-Leiste Board · My character · Maps · Search · Knowledge (T-342). |
+| [[REQ-360]] | Struktur einer Fraktion als Organigramm oder Netz | 2 | **steht** | Kachel „Structure“ auf dem Board und Element `structure` im Ansichtsdesigner (an der Vollansicht der Fraktion): Baum mit Auf- und Zuklappen oder Netz, Knoten mit Kurzansicht, „+“ für mehr, Linien mit Marken oder Rang; gerechnet am Server über den gesiebten Bestand (GET /api/structure/:id). Unterfraktionen über partOf. Gebiete über controls; territory folgt, wenn die Karte die Formen zeichnet (T-341). |
 
 ### F-068 Suche
 

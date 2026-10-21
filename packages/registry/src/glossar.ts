@@ -60,6 +60,16 @@ const APP: AppTerm[] = [
     see: '/boards',
   },
   {
+    term: 'Structure card',
+    aliases: ['Structure', 'Organisation chart', 'Relationship web'],
+    sort: 'app',
+    definition: 'A card on a board — and an element of a view — that draws an article from its edges: members with their ranks, parts and sub-factions, what it controls, residents and who regards whom. As a tree (organisation chart) or as a web.',
+    effect: 'Worked out on the server for each viewer: players see only the entries and lines they may see, and what hangs only on something hidden stays hidden too. The lines carry the tags of a relationship or the rank of a member; each direction is its own line.',
+    example: 'A card “The Watch”: the captain and her circle below the faction, the guild beside it with “distrust” on the line one way and “useful” on the other.',
+    translations: { de: 'Struktur-Kachel' },
+    see: '/boards',
+  },
+  {
     term: 'Campaign board',
     aliases: ['Start board', 'Base bar'],
     sort: 'app',

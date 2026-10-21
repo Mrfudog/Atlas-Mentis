@@ -153,6 +153,14 @@
           ]
         },
         {
+          "heading": "A faction at a glance",
+          "text": [
+            "Give the members of a faction their memberOf edge with a rank, hang a circle of it under it with part of, and set what it controls and what it thinks of others (Relationships, with tags).",
+            "On the session board, choose Structure (⌥), then ⚙ › Choose… and the faction. Tree shows the chart; Web the net of relationships. Click a name for its quick card, + to look one step further.",
+            "Mark a card GM only to keep it from players; otherwise each player sees the entries and lines they know. The faction’s own page shows the same structure — in the view designer it is the element Structure."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."
