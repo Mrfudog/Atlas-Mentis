@@ -37,6 +37,7 @@ import { passageRulesOf } from './passages.js';
 import { mapLinkDefaultsOf } from './maplinks.js';
 import { substitutionsOf, substitutionText } from './substitutes.js';
 import { entityName } from './entity.js';
+import { playerStartOf } from './campaignboard.js';
 import type { Entity, EntityId } from './types.js';
 
 export type RuleSortKey = 'inventory' | 'items' | 'crafting' | 'abilities' | 'equipment' | 'character' | 'travel' | 'units' | 'map' | 'combat' | 'table';
@@ -666,6 +667,19 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
       { key: 'players', label: 'Players too', does: 'Players may look at other versions next to the one that applies.' },
     ],
   },
+  /* Wo Spielende nach der Anmeldung landen (T-342): auf dem Kampagnenboard
+     oder wie die Leitung im Kompendium. Die Leitung behält ihren Start. */
+  {
+    key: 'playerStart',
+    sort: 'table',
+    label: 'Players start on',
+    does: 'Where players of this campaign land after signing in. The GM keeps their own start.',
+    source: { field: 'playerStart' },
+    variants: [
+      { key: 'board', label: 'Campaign board', does: 'Players land on the campaign board, with a bar back to it, their character, maps, search and knowledge.' },
+      { key: 'compendium', label: 'Compendium', does: 'Players land on the compendium, like everyone else.' },
+    ],
+  },
 ];
 
 /** Felder, deren Varianten `true`/`false` heissen, aber als Wahrheitswert stehen. */
@@ -923,6 +937,8 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return initiativeRulesOf(campaign).columns;
     case 'initQuickActions':
       return initiativeRulesOf(campaign).quickActions;
+    case 'playerStart':
+      return playerStartOf(campaign);
     default: {
       const roh = campaign?.components?.['Campaign']?.[feld];
       /* Die übrigen Vorgaben stehen am Register (`CampaignInfo`): Talente ja, Würfe für den Tisch. */

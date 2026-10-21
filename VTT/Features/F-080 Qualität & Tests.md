@@ -59,5 +59,5 @@ Lokal laufen lassen und einen neuen Spec schreiben:
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-358]] Jede Änderung im Browser geprüft | Verwaltung | 1 | teils |
+| [[REQ-359]] Jede Änderung im Browser geprüft | Verwaltung | 1 | teils |
 <!-- stories:ende -->

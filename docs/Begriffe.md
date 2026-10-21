@@ -726,6 +726,20 @@ dasselbe Gerücht ziehen. **Freigeben beim Ziehen** macht das Gezogene zum
 Wissen der Gruppe — dieselbe Kante `knownBy` wie im Reiter Knowledge, und
 wo der Artikel selbst noch verborgen ist, die Freigabe an ihm.
 
+**Das Kampagnenboard** (T-342) ist der Ort, an dem Spielende ankommen:
+der Titel der Runde, wo die Geschichte steht, die Gruppe, die offenen
+Aufträge, die Gerüchte. Es ist kein neues Ding, sondern ein Board, das an
+der Kampagne hängt — mit Kacheln, die *fragen*, statt zu kopieren: „die
+Szene, die gerade läuft" ist eine Frage an die Sitzung, und eine Kachel,
+die die Szene von letzter Woche festhielte, läge am nächsten Abend falsch.
+Angelegt wird es beim ersten Öffnen und nicht über eine Migration, weil
+die Vorlage dann nur an einer Stelle steht; gelöscht bleibt es gelöscht.
+Wohin Spielende nach der Anmeldung kommen, ist eine Tischregel der
+Kampagne, keine Einstellung des Kontos: die Leitung will, dass der Tisch
+am selben Ort anfängt. Die **Basis-Leiste** daneben ist kein zweites Menü,
+sondern der kurze Weg zurück — Board, die eigene Figur, Karten, Suche,
+Wissen —, denn wer mitspielt, sucht nicht im Kompendium.
+
 **Die Leinwand hat keinen Rand.** `width` und `height` waren die Grösse
 des Boards; jetzt sind sie die Mindestgrösse, und wie gross es ist, wird
 beim Lesen aus dem gerechnet, was darauf liegt (`boardExtent`, D8). Eine
@@ -1383,6 +1397,18 @@ nur zeigen will, wie er ist, *verwendet* ihn: ein `Embed` in der eigenen
 Szene zeigt aufs Original, und eine Korrektur am Original kommt mit.
 Zwei Wege, weil es zwei Absichten sind; einer allein hiesse, entweder
 jeden Vorlesetext zu kopieren oder keinen ändern zu können.
+
+**Ein Bild im Buch ist ein Teil, kein Verweis** (T-210). Ein `Embed` auf
+das Bild läge nahe — aber sein Ziel ist Pflicht, und die Datei kommt erst
+mit dem Hochladen; bis dahin gäbe es den Teil nicht, und mit ihm fehlte
+die Bildunterschrift. Und die Unterschrift gehört zur Stelle im Buch, nicht
+zur Datei: dasselbe Wappen darf in zwei Büchern zweimal anders heissen.
+Also ist es eine eigene Teilart, `Illustration`, mit den Feldern von
+`Image`; ohne Datei steht die Unterschrift als Platzhalter da. **Eingefügt
+wird es, ohne etwas umzunummerieren:** sein Rang ist ein Bruch hinter dem
+Teil davor (`3.001`). Die Teile eines Buchs, das schon gelesen wird,
+behalten Rang und Id — eine Neunummerierung hätte jeden Teil berührt und
+mit ihm jede Fassung, die jemand davon geholt hat.
 
 **Ein Ort steht neben seinem Text, nicht in ihm** (T-175). Barovia war
 nur eine Überschrift im Buch — auffindbar beim Lesen, aber nicht in World,

@@ -64,7 +64,7 @@ export interface LeistenAktion {
     :host {
       position: fixed;
       left: 50%;
-      bottom: 14px;
+      bottom: calc(14px + var(--basis-unten, 0px));
       transform: translateX(-50%);
       z-index: 8;
       max-width: calc(100% - 16px);

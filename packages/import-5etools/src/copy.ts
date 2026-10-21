@@ -518,3 +518,11 @@ export function spielarten(eintraege: Knoten[], merke: string, melde: KopieMelde
   }
   return aus;
 }
+
+/** Der Pfad eines internen Verweises (`{type: 'internal', path}`); extern und leer: nichts. */
+export function bildPfad(href: unknown): string | undefined {
+  const h = href as Knoten | undefined;
+  if (!h || h['type'] !== 'internal') return undefined;
+  const p = String(h['path'] ?? '').replace(/^\/+/, '').replace(/^img\//, '');
+  return p || undefined;
+}

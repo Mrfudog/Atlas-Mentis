@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-21. 87 Schnittstellen, 70 Kantenarten.
+Stand 2026-10-21. 88 Schnittstellen, 70 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -939,7 +939,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `itemPricing` *combined | base | none*, `enhancementsBy` *gm | players*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `turnPlanner` *off | move | actions | full*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*, `passageTrigger` *gm | players | both*, `passageWhen` *any | turn | roundEnd*, `passageMove` *none | square | half | all*, `passageAction` *none | action | bonus*, `passageConfirm` *moves | always | never*, `mapLinkShow` *jump | frame | icon | hidden*, `mapLinkShowPlayers` *jump | frame | icon | hidden*, `mapLinkOuter` *faded | none*, `mapTools` *object*, `markerViews` *object*
+- `compareFor` *gm | players*, `playerStart` *board | compendium*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `itemPricing` *combined | base | none*, `enhancementsBy` *gm | players*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `turnPlanner` *off | move | actions | full*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*, `passageTrigger` *gm | players | both*, `passageWhen` *any | turn | roundEnd*, `passageMove` *none | square | half | all*, `passageAction` *none | action | bonus*, `passageConfirm` *moves | always | never*, `mapLinkShow` *jump | frame | icon | hidden*, `mapLinkShowPlayers` *jump | frame | icon | hidden*, `mapLinkOuter` *faded | none*, `mapTools` *object*, `markerViews` *object*
 
 **Geerbte Felder**
 
@@ -2943,7 +2943,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 33 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 34 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -3357,6 +3357,44 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Illustration
+
+`Illustration` · erbt von `BookPart` ← `Image` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Geerbte Felder**
+
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"

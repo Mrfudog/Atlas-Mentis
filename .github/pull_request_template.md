@@ -8,10 +8,21 @@
 
 ## Wie geprüft
 
-- [ ] `pnpm test`
+<!-- CLAUDE.md › Grundanforderungen an jede Änderung. Fehlt eine Stufe, hier sagen warum. -->
+
+- [ ] `pnpm test`: Unit
+- [ ] Integration: Route über `app.inject`, Leitung und Spielerin
+- [ ] Durchstich gegen Postgres, bei Migration auch mit Bestand (Altdaten, die sie umstellt)
+- [ ] E2E: `apps/web/e2e/`, 1360 und 390 px
 - [ ] `pnpm lint`
 - [ ] `pnpm build`
-- [ ] Am laufenden Stand angesehen
+- [ ] Nach dem Merge: Ausrollen auf dev grün, `/api/health` 200
+
+## Vault
+
+- [ ] Feature-Notiz und Story nachgeführt (`VTT/Features/`, `VTT/Stories/`)
+- [ ] Diagramm, wo mehr als drei Teile zusammenspielen
+- [ ] nicht nötig (keine Funktion geändert)
 
 ## What's new
 

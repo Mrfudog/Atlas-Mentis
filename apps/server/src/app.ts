@@ -163,6 +163,7 @@ import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
 import { registerAbfrage } from './abfrage.js';
+import { registerKampagnenboard } from './kampagnenboard.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
@@ -3116,6 +3117,8 @@ export function buildApp({
     schreiben,
   });
   /* Die Abfrage-Kachel am Board (T-340): Liste, Ziehen, Freigeben — gesiebt je Betrachter. */
+  /* Das Kampagnenboard als Startpunkt (T-342). */
+  registerKampagnenboard(app, { repo, viewerOf, sieve });
   registerAbfrage(app, {
     repo,
     viewerOf,
