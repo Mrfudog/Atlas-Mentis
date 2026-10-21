@@ -40,6 +40,12 @@ import {
   linkShowFor,
   mapLinkDefaultsOf,
   effectiveMapLink,
+  isRevealed,
+  liftMarkers,
+  keepLifted,
+  placementSuggestions,
+  type LiftedGroup,
+  type PlacementSuggestion,
   mapSettings,
   mapSheets,
   type AlignIssue,
@@ -160,6 +166,21 @@ export interface KartenKontext {
    * ausgerichtet ist und was dagegen spricht.
    */
   up?: { id: string; name: string; scale: string; align: boolean; alignIssue?: AlignIssue } | null;
+  /**
+   * **Die Marker der Unterkarten** (T-328, tief → hoch): gehoben mit der
+   * Verknüpfung (`liftMarkers`), bei vielen ein Bündel mit Zahl — gelesen,
+   * nichts davon gespeichert. Für Spielende nur, was beide Karten zeigen:
+   * die Unterkarte kommt gesiebt (Nebel, Freigabe, `hidden`, Sichtbarkeit
+   * des Ziels), und ein Punkt unter dem Nebel dieser Karte fällt weg.
+   */
+  lifted: (LiftedGroup & { name: string })[];
+  /**
+   * **„To place"** (T-328, hoch → tief), nur für die Leitung: Marker der
+   * Karte darüber im Bereich dieser Karte, mit der umgerechneten Lage. Der
+   * Marker oben ist der gespeicherte Vorschlag; „Confirm" lässt ihn
+   * hierher wandern (`confirmPlacement`).
+   */
+  toPlace?: (PlacementSuggestion & { name: string; fromName: string })[];
   /** Die Karte darüber als blasser Rand (T-327), sonst `null`. */
   outer: { id: string; name: string; image: string; frame: Frame } | null;
   /** Die Vorgaben der Kampagne für Verknüpfungen — nur für die Leitung, die sie einstellt. */
@@ -357,10 +378,38 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const ohneNebel = !fogOn(karte) || leitetKarte;
     const kinder = ohneNebel ? children : children.filter((k) => frameRevealed(karte, k.frame));
 
+    /* **Tief → hoch** (T-328): die Marker jeder Unterkarte, die hier einen
+       Bereich hat, gehoben. Die Unterkarte ist gesiebt (`sichtbar`, bei
+       einer Karte im Spiel die Instanz derselben Sitzung); was hier schon
+       selbst steht, kommt nicht zweimal. Eine Verknüpfung, die der
+       Betrachter nicht sieht (`hidden`), verrät auch keine Marker. */
+    const hierSchon = new Set(markersOf(karte).map((m) => m.to));
+    const lifted: KartenKontext['lifted'] = kinder.flatMap((k) => {
+      const unter = sichtbar.get(k.id);
+      if (!unter || (!leitetKarte && k.show === 'hidden')) return [];
+      const roh = liftMarkers(unter, { frame: k.frame, area: k.area ?? null }, { skip: hierSchon });
+      const g = roh && (ohneNebel ? roh : keepLifted(roh, (m) => isRevealed(karte, m)));
+      return g ? [{ ...g, name: k.name }] : [];
+    });
+
+    /* **Hoch → tief** (T-328), nur für die Leitung: was auf der Karte
+       darüber im Bereich dieser Karte steht. Gelesen wird die Karte
+       darüber, wie sie gespeichert ist — bei einer Instanz nur, was an ihr
+       selbst steht: was die Vorlage trägt, wandert nicht von hier aus. */
+    const obenRoh = oben ? stand.map.get(oben.id) : undefined;
+    const toPlace: KartenKontext['toPlace'] =
+      leitetKarte && obenRoh && eigeneKante
+        ? placementSuggestions(obenRoh, eigeneKante, karte).map((v) => ({
+            ...v,
+            name: entityName(stand.map.get(v.to)),
+            fromName: entityName(obenRoh),
+          }))
+        : undefined;
+
     /* Die Ziele der Marker — auf der Karte stehen nur noch die, die der
        Betrachter sieht (`redactMap`); gesiebt wird trotzdem, denn ein Name
        ist ein Feld. */
-    const zielIds = [...new Set(markersOf(karte).map((m) => m.to))];
+    const zielIds = [...new Set([...markersOf(karte).map((m) => m.to), ...lifted.flatMap((g) => g.items.map((m) => m.to))])];
     const ziele = await sieve(
       request,
       zielIds.map((id) => stand.map.get(id)).filter((e): e is Entity => !!e),
@@ -488,7 +537,12 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
-    return { parents, children: kinder, up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
+    /* Ein gehobener Marker, dessen Ziel der Betrachter nicht sieht, steht nicht da — das Sieb der Ziele sagt es. */
+    const liftedGesehen = lifted.flatMap((g) => {
+      const k = keepLifted(g, (m) => !!targets[m.to]);
+      return k ? [{ ...k, name: g.name }] : [];
+    });
+    return { parents, children: kinder, lifted: liftedGesehen, ...(toPlace ? { toPlace } : {}), up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
   });
 
   /**
