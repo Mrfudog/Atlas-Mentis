@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-campaign-board",
+      "date": "2026-10-21",
+      "title": "A campaign board where players start",
+      "text": "Every campaign now has a board: the campaign, what is being played, the next session, the party, the open quests and the rumours, always up to date. Players land on it after signing in and get a bar back to the board, their character, maps, search and knowledge. The GM can send players to the compendium instead under Rules & options.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
       "id": "2026-10-21-marker-view",
       "date": "2026-10-21",
       "title": "Maps: markers as symbol, name, image or quick card",
