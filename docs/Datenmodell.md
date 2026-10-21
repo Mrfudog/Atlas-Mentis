@@ -728,6 +728,17 @@ gröbere Karte bildet das Token durch den Rahmen ihrer Unterkarte ab
 (`insideMap`), ohne ein zweites zu halten. Weiterziehen setzt das Token um.
 `Party.at` war ein Feld daneben und ist seit dem 7.10. weg (A6).
 
+**Wo eine Karte steht** (T-330, `locationPath` in
+`packages/model/src/location.ts`): der Ort, den sie zeigt (`mapOf` auf einen
+`Place` oder Untertyp — eine Geschichte ist kein Standort), sonst der Ort
+ihrer Karte darüber (`insideMap`); darüber die grösseren Orte über
+`partOf`, der nächste zuerst. Gerechnet beim Lesen, nichts gespeichert. Die
+Kartenliste (`GET /api/maps`) liefert den Weg mit, gesiebt bis zum ersten
+Ort, den der Betrachter nicht sieht; gruppiert wird nach dem nächsten Ort
+(„Location") und dem äussersten („Region"). Die Kanten stehen als Listen da
+(`LOCATION_RELATIONS`, `PLACE_PARENT_RELATIONS`): ein allgemeines
+`locatedIn` (T-331, E-120) wird dort ein Eintrag.
+
 **Die Karte in der Seite (T-115).** Gerechnet wird in
 `packages/model/src/map.ts`, gezeichnet von `nw-karte` (Element `map` auf
 der Artikelseite und Play › Map):
@@ -2163,7 +2174,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-20: 60 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-21: 60 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
