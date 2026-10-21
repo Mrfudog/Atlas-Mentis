@@ -7,7 +7,7 @@
 --
 -- Wie 095 nur, wo schon ein Register steht. Ergänzt wird nur, was fehlt;
 -- nichts wird entfernt, kein Artikel geändert.
--- Nummer beim Hereinmergen nachgesehen.
+-- Nummer beim Hereinmergen nachgesehen: 134.
 
 insert into interface_def (name, label, abstract, extends, area, titles, marker_view)
 select 'Note', 'Note', false, array['Identity', 'Description', 'Status', 'Visibility', 'Tags'],
