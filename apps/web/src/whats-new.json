@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-initiative-round-two",
+      "date": "2026-10-21",
+      "title": "Initiative: set the turn, open a combatant, full hit points",
+      "text": "Skip a turn, go back to the top or make any row current with ▸ — effects count down only on Next turn. The tracker shows Round and Turn x/y, starts everyone at full hit points, and ▾ opens a row with its actions and spells with rolls. Turn changes light up briefly (✦ turns it off). Initiative is now a rule system under Combat: D&D 5e (standard), without Delay.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-20-hex-grid-and-scale",
       "date": "2026-10-20",
       "title": "Clean hex grids and a scale per square",
