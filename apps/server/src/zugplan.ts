@@ -96,7 +96,18 @@ import {
   resolveInstance,
   creatureStats,
   entryConditions,
+  entryActions,
+  commonAction,
+  rollMode,
+  damageAfterDefenses,
+  concentrationCheck,
+  applyDamage,
+  checkBonus,
+  type CharacterStats,
+  type CommonAction,
   type ParticipantProps,
+  type Relation,
+  type TimedEntry,
   rollDice,
   speedModes,
   tilesFor,
@@ -354,6 +365,8 @@ export interface TrefferWurf {
   crit?: 'crit' | 'fumble';
   hit: boolean | null;
   ac: number | null;
+  /** Mit Vorteil oder Nachteil gewürfelt (T-275). */
+  mode?: 'adv' | 'dis';
 }
 
 /**
@@ -908,7 +921,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     kampagne: Entity | null,
     hidden: boolean,
     stand: Stand,
-  ): Promise<{ total: number; crit?: 'crit' | 'fumble' | undefined } | null> {
+  ): Promise<{ total: number; crit?: 'crit' | 'fumble' | undefined; nat?: number } | null> {
     const w = rollDice(expr, zufall);
     if (!w) return null;
     const nat = naturalD20(w);
@@ -927,10 +940,53 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       ...(hidden ? { hidden: true as const } : {}),
     };
     await wurfEintragen({ repo, feed }, wer, payload);
-    return { total: w.total, crit: nat?.crit };
+    return { total: w.total, crit: nat?.crit, ...(nat ? { nat: nat.nat } : {}) };
   }
 
-  /** Der Wurf auf Treffen mit einer Kachel gegen die RK des Ziels. */
+  /**
+   * **Was ein Zug am Tisch ändert** (T-275): die Begegnung (Trefferpunkte
+   * und Einträge der Teilnehmer) und Figuren (`Vitals`), gesammelt und am
+   * Ende — oder vor einer Reaktion — geschrieben, durch `validateEntity`.
+   * Der Bestand wird nicht angefasst: gelesen wird über `aktuell`.
+   */
+  interface Folgen {
+    kampf: Entity | null;
+    geaendert: Map<string, Entity>;
+  }
+  const neueFolgen = (stand: Stand, karte: string): Folgen => ({ kampf: encounterOnMap(stand.alle, karte), geaendert: new Map() });
+  const aktuell = (f: Folgen, stand: Stand, id: string): Entity | undefined => f.geaendert.get(id) ?? stand.map.get(id);
+  const teilnahme = (f: Folgen, id: string): Relation | undefined =>
+    (f.kampf?.relations ?? []).find((r) => r.type === PARTICIPATES && r.to === id);
+  const eintraegeVon = (f: Folgen, id: string): TimedEntry[] => ((teilnahme(f, id)?.props ?? {}) as ParticipantProps).conditions ?? [];
+  /** Die Werte am Tisch: gelesen wie am Bogen, mit Zuständen und Aktionen aus der Initiative. */
+  const werteAmTisch = (f: Folgen, stand: Stand, e: Entity): CharacterStats => {
+    const ein = eintraegeVon(f, e.id);
+    return creatureStats(aktuell(f, stand, e.id) ?? e, stand.map, { conditions: entryConditions(ein), actions: entryActions(ein) });
+  };
+  /** Die Kante eines Teilnehmers ändern; die Begegnung gilt dann als geändert. */
+  const teilnehmerAendern = (f: Folgen, id: string, patch: (p: ParticipantProps) => ParticipantProps): boolean => {
+    const k = teilnahme(f, id);
+    if (!f.kampf || !k) return false;
+    f.kampf = { ...f.kampf, relations: (f.kampf.relations ?? []).map((r) => (r === k ? { ...r, props: patch({ ...((r.props ?? {}) as ParticipantProps) }) as Relation['props'] } : r)) };
+    f.geaendert.set(f.kampf.id, f.kampf);
+    return true;
+  };
+  const folgenSchreiben = async (f: Folgen): Promise<{ fehler: number; error: string; issues?: unknown } | null> => {
+    for (const e of f.geaendert.values()) {
+      const r = await schreibeGeprueft(e);
+      if ('issues' in r) return { fehler: 422, error: `${entityName(e)} liess sich nicht schreiben.`, issues: r.issues };
+    }
+    f.geaendert.clear();
+    return null;
+  };
+
+  /**
+   * Der Wurf auf Treffen mit einer Kachel gegen die RK des Ziels — die
+   * gelesene RK (T-275), mit **Vorteil oder Nachteil** aus den Wirkungen
+   * beider (`attack` am Angreifer, `attacked` am Ziel: Dodge, Help, Hide,
+   * Zustände) und der **Krit-Schwelle** des Angreifers. Ein Eintrag, der
+   * beim Angriff verbraucht ist (Help, Hide), geht danach weg.
+   */
   async function trefferWurf(
     t: PlanTile,
     wer: Entity,
@@ -940,11 +996,144 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     hidden: boolean,
     stand: Stand,
     vorne = '',
+    f: Folgen = neueFolgen(stand, ''),
   ): Promise<TrefferWurf> {
-    const w = await wurf(wer, von, `1d20${t.toHit! < 0 ? t.toHit : `+${t.toHit}`}`, `${vorne}${t.name} → ${entityName(ziel)}: attack`, kampagne, hidden, stand);
-    const ac = rkVon(stand, ziel);
-    const treffer = !!w && w.crit !== 'fumble' && (w.crit === 'crit' || (ac !== null && w.total >= ac));
-    return { total: w?.total ?? null, ...(w?.crit ? { crit: w.crit } : {}), hit: ac !== null || w?.crit ? treffer : null, ac };
+    const sw = werteAmTisch(f, stand, wer);
+    const sz = werteAmTisch(f, stand, ziel);
+    const g = (st: CharacterStats, k: string) => st.totals.grants[k] ?? [];
+    const modus = rollMode(
+      g(sw, 'attack').includes('advantage') || g(sz, 'attacked').includes('advantage'),
+      g(sw, 'attack').includes('disadvantage') || g(sz, 'attacked').includes('disadvantage'),
+    );
+    const w20 = modus === 'adv' ? '2d20kh1' : modus === 'dis' ? '2d20kl1' : '1d20';
+    const wie = modus === 'adv' ? ' (advantage)' : modus === 'dis' ? ' (disadvantage)' : '';
+    const w = await wurf(wer, von, `${w20}${t.toHit! < 0 ? t.toHit : `+${t.toHit}`}`, `${vorne}${t.name} → ${entityName(ziel)}: attack${wie}`, kampagne, hidden, stand);
+    const ac = sz.ac.value !== null && sz.ac.value > 0 ? sz.ac.value : null;
+    const schwelle = sw.critThreshold.value ?? 20;
+    const crit = w?.crit ?? (w?.nat !== undefined && w.nat >= schwelle ? 'crit' : undefined);
+    const treffer = !!w && crit !== 'fumble' && (crit === 'crit' || (ac !== null && w.total >= ac));
+    /* Verbraucht: was bis zum nächsten eigenen Angriff galt. */
+    if (eintraegeVon(f, wer.id).some((e) => commonAction(e.action)?.rule?.spent === 'attack')) {
+      teilnehmerAendern(f, wer.id, (p) => ({ ...p, conditions: (p.conditions ?? []).filter((e) => commonAction(e.action)?.rule?.spent !== 'attack') }));
+    }
+    return { total: w?.total ?? null, ...(crit ? { crit } : {}), hit: ac !== null || crit ? treffer : null, ac, ...(modus ? { mode: modus } : {}) };
+  }
+
+  /**
+   * **Schaden abziehen** (T-275, Punkt 2): nach der Abwehr des Ziels
+   * (`damageAfterDefenses`), von der Teilnehmerkante in der Begegnung und
+   * — bei einer Spielerfigur oder ausserhalb einer Begegnung — von
+   * `Vitals` (zeitweilige zuerst, `applyDamage`). Konzentriert sich das
+   * Ziel, würfelt der Server den KON-Rettungswurf gegen den SG ins Log
+   * (E-128); misslingt er, endet die Konzentration.
+   */
+  async function schadenAnwenden(
+    f: Folgen,
+    stand: Stand,
+    ziel: Entity,
+    gewuerfelt: number,
+    art: string,
+    von: { id: string; name: string },
+    kampagne: Entity | null,
+    hidden: boolean,
+  ): Promise<string> {
+    const st = werteAmTisch(f, stand, ziel);
+    const d = damageAfterDefenses(gewuerfelt, art, st.defenses);
+    const teile: string[] = [];
+    if (d.why) teile.push(`${d.why === 'immune' ? 'immune' : d.why === 'resistant' ? 'resistant' : 'vulnerable'} (${d.word}) → ${d.amount}`);
+    const jetzt = aktuell(f, stand, ziel.id) ?? ziel;
+    const v = (jetzt.components?.['Vitals'] ?? {}) as Record<string, unknown>;
+    const max = st.hp.value;
+    const k = teilnahme(f, ziel.id);
+    const kp = ((k?.props ?? {}) as ParticipantProps);
+    const pc = primaryInterface(ziel) === 'PlayerCharacter';
+    let neu: number | null = null;
+    if (!k || pc) {
+      const hp = Number.isFinite(Number(v['hp'])) && v['hp'] !== undefined && v['hp'] !== null && v['hp'] !== '' ? Number(v['hp']) : (max ?? null);
+      if (hp !== null) {
+        const r = applyDamage({ hp, temp: Number(v['hpTemp']) || 0 }, d.amount);
+        neu = r.hp;
+        const vitals: Record<string, unknown> = { ...v, hp: r.hp };
+        if (r.temp) vitals['hpTemp'] = r.temp;
+        else delete vitals['hpTemp'];
+        f.geaendert.set(ziel.id, { ...jetzt, components: { ...jetzt.components, Vitals: vitals } });
+      }
+    }
+    if (k) {
+      const basis = kp.hp != null && Number.isFinite(Number(kp.hp)) ? Number(kp.hp) : (max ?? null);
+      const hp = neu ?? (basis === null ? null : Math.max(0, basis - d.amount));
+      if (hp !== null) {
+        teilnehmerAendern(f, ziel.id, (p) => ({ ...p, hp, involved: true }));
+        neu = hp;
+      }
+    }
+    if (neu !== null) teile.push(`${entityName(ziel)} at ${neu}${max !== null ? `/${max}` : ''} HP`);
+    /* Die Konzentrationsprobe (PHB): SG 10 oder der halbe Schaden. */
+    const auf = typeof v['concentration'] === 'string' && v['concentration'] ? (v['concentration'] as string) : null;
+    if (auf && d.amount > 0) {
+      const probe = concentrationCheck(st, d.amount);
+      const zauber = stand.map.get(auf);
+      const r = await wurf(ziel, von, `1d20${probe.bonus === null ? '' : probe.bonus < 0 ? probe.bonus : `+${probe.bonus}`}`, `${entityName(ziel)}: concentration save, DC ${probe.dc}`, kampagne, hidden, stand);
+      if (r) {
+        const haelt = r.total >= probe.dc;
+        teile.push(`concentration save ${r.total} vs DC ${probe.dc} — ${haelt ? 'holds' : `lost${zauber ? ` (${entityName(zauber)})` : ''}`}`);
+        if (!haelt) {
+          const nun = f.geaendert.get(ziel.id) ?? jetzt;
+          const vv = { ...((nun.components?.['Vitals'] ?? {}) as Record<string, unknown>) };
+          delete vv['concentration'];
+          f.geaendert.set(ziel.id, { ...nun, components: { ...nun.components, Vitals: vv } });
+        }
+      }
+    }
+    return teile.join('; ');
+  }
+
+  /**
+   * **Eine allgemeine Aktion wirkt** (T-275, Punkt 3): ihr Eintrag in der
+   * Initiative (Dodge an sich, Help am Verbündeten, Hide nach der Probe),
+   * mit der Dauer aus dem Katalog — der Anker ist der Handelnde, also
+   * „bis zum Anfang deines nächsten Zugs" auch am Ziel. Ohne Begegnung
+   * zählt nichts; das sagt der Text.
+   */
+  async function aktionWirkt(
+    f: Folgen,
+    stand: Stand,
+    a: CommonAction,
+    figur: Entity,
+    ziel: Entity | undefined,
+    von: { id: string; name: string },
+    kampagne: Entity | null,
+    hidden: boolean,
+  ): Promise<string> {
+    const teile: string[] = [];
+    if (a.check) {
+      const st = werteAmTisch(f, stand, figur);
+      const c = (st.statblock?.components ?? {}) as Record<string, Record<string, unknown> | undefined>;
+      const bonus = checkBonus(
+        { proficient: c['Proficiencies']?.['proficient'], expertise: c['Proficiencies']?.['expertise'], prof: c['Statblock']?.['prof'], bonuses: c['Statblock']?.['bonuses'], score: st.abilities[a.check.ability as keyof CharacterStats['abilities']]?.value },
+        a.check.skill,
+      );
+      const r = await wurf(figur, von, `1d20${bonus === null ? '' : bonus < 0 ? bonus : `+${bonus}`}`, `${a.name}: ${a.check.skill} check`, kampagne, hidden, stand);
+      if (r) teile.push(`${a.check.skill} ${r.total}`);
+    }
+    const regel = a.rule;
+    if (regel) {
+      const wer = regel.on === 'target' ? ziel : figur;
+      const anker = teilnahme(f, figur.id)?.id;
+      const eintrag: TimedEntry = {
+        text: regel.label,
+        action: a.key,
+        ...(regel.rounds ? { rounds: regel.rounds } : {}),
+        ...(regel.at ? { at: regel.at } : {}),
+        ...(anker && wer && wer.id !== figur.id ? { anchor: anker } : {}),
+        source: entityName(figur),
+      };
+      if (!wer) teile.push('no one to help');
+      else if (teilnehmerAendern(f, wer.id, (p) => ({ ...p, conditions: [...(p.conditions ?? []).filter((e) => e.action !== a.key), eintrag] }))) {
+        teile.push(`${entityName(wer)}: ${regel.label}`);
+      } else teile.push('no encounter — nothing counts down');
+    }
+    return teile.join('; ');
   }
 
   /** Der Schaden eines Treffers; kritisch die Würfel zweimal (PHB), der feste Teil einmal. */
@@ -965,18 +1154,18 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     return dmg?.total ?? null;
   }
 
-  /** Was von einem Angriff im Ergebnis steht. */
-  function angriffErgebnis(t: PlanTile, ziel: Entity, w: TrefferWurf, schaden: number | null | undefined, vorne = ''): Omit<PlanResult, 'step'> {
-    const wie = w.ac === null ? `rolled ${w.total ?? '—'} (no AC known)` : w.hit ? 'hit' : 'miss';
+  /** Was von einem Angriff im Ergebnis steht — mit dem, was der Schaden am Tisch tat. */
+  function angriffErgebnis(t: PlanTile, ziel: Entity, w: TrefferWurf, schaden: number | null | undefined, vorne = '', folge = ''): Omit<PlanResult, 'step'> {
+    const wie = w.ac === null ? `rolled ${w.total ?? '—'} (no AC known)` : w.hit ? (w.crit === 'crit' ? 'critical hit' : 'hit') : 'miss';
     const s = schaden ?? undefined;
     return {
-      text: `${vorne}${t.name} → ${entityName(ziel)}: ${wie}${s !== undefined ? `, ${s}${t.damageType ? ` ${t.damageType}` : ''} damage` : ''}`,
+      text: `${vorne}${t.name} → ${entityName(ziel)}: ${wie}${w.mode ? ` with ${w.mode === 'adv' ? 'advantage' : 'disadvantage'}` : ''}${s !== undefined ? `, ${s}${t.damageType ? ` ${t.damageType}` : ''} damage` : ''}${folge ? ` (${folge})` : ''}`,
       ...(w.ac !== null ? { hit: !!w.hit } : {}),
       ...(s !== undefined ? { damage: s } : {}),
     };
   }
 
-  /** Ein Angriff mit einer Kachel: Wurf, Treffer gegen die RK, Schaden — und was davon im Ergebnis steht. */
+  /** Ein Angriff mit einer Kachel: Wurf, Treffer gegen die RK, Schaden, abgezogen — und was davon im Ergebnis steht. */
   async function angriff(
     t: PlanTile,
     wer: Entity,
@@ -986,10 +1175,12 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     hidden: boolean,
     stand: Stand,
     vorne = '',
+    f: Folgen = neueFolgen(stand, ''),
   ): Promise<Omit<PlanResult, 'step'>> {
-    const w = await trefferWurf(t, wer, ziel, von, kampagne, hidden, stand, vorne);
+    const w = await trefferWurf(t, wer, ziel, von, kampagne, hidden, stand, vorne, f);
     const schaden = await schadenWurf(t, w, wer, ziel, von, kampagne, hidden, stand, vorne);
-    return angriffErgebnis(t, ziel, w, schaden, vorne);
+    const folge = schaden !== null ? await schadenAnwenden(f, stand, ziel, schaden, t.damageType, von, kampagne, hidden) : '';
+    return angriffErgebnis(t, ziel, w, schaden, vorne, folge);
   }
 
   /**
@@ -1021,6 +1212,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     kampagne: Entity | null,
     plan: TurnPlan,
     von: { id: string; name: string },
+    vorher?: Folgen,
   ): Promise<{ plan: TurnPlan } | { fehler: number; error: string; issues?: unknown }> {
     const figur = stand.map.get(plan.actor);
     if (!figur) return { fehler: 409, error: 'Die Figur gibt es nicht mehr.' };
@@ -1028,7 +1220,8 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const hidden =
       (kampagne?.components?.['Campaign'] as { playerRolls?: unknown } | undefined)?.playerRolls === 'gm' && plan.by.id !== von.id;
     const kampf = encounterOnMap(stand.alle, roheKarte.id);
-    /* Gerechnet auf der Ebene der Figur (T-307): ihr Gitter, ihre Gegner. */
+    /* Was der Zug an Begegnung und Figuren ändert (T-275), geschrieben mit der Karte. */
+    const folgen = vorher ?? neueFolgen(stand, roheKarte.id);
     const relDa = markersOf(roheKarte).find((m) => m.to === figur.id)?.rel.id;
     const ebene = relDa ? floorOfMarker(roheKarte, relDa) : GROUND_FLOOR;
     const roheEbene = floorView(roheKarte, ebene);
@@ -1093,6 +1286,8 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const aufdecken = fogOn(roheKarte) && mapRulesOf(kampagne, roheKarte).revealOnMove;
     const rel = markersOf(karte).find((m) => m.to === figur.id)?.rel.id;
     const schreiben = async () => {
+      const ff = await folgenSchreiben(folgen);
+      if (ff) return ff;
       if (karte === roheKarte) return null;
       const r = await schreibeGeprueft(karte);
       return 'issues' in r ? { fehler: 422, error: 'Die Karte liess sich nicht schreiben.', issues: r.issues } : null;
@@ -1149,12 +1344,19 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       }
       const t = kacheln.get(s.tile);
       const ziel = s.target ? stand.map.get(s.target) : undefined;
+      /* Eine allgemeine Aktion, die eine Zahl ändert (T-275): Dodge, Help, Hide, Ready. */
+      const allgemein = s.tile.startsWith('std:') ? commonAction(s.tile) : undefined;
+      if (allgemein && (allgemein.rule || allgemein.check)) {
+        const was = await aktionWirkt(folgen, stand, allgemein, figur, ziel, plan.by, kampagne, hidden);
+        results.push({ step: s.id, text: `${s.name}${s.targetName ? ` → ${s.targetName}` : ''}${was ? `: ${was}` : ''}` });
+        continue;
+      }
       if (!t || t.toHit === null || !ziel) {
         results.push({ step: s.id, text: `${s.name}${s.targetName ? ` → ${s.targetName}` : ''}` });
         continue;
       }
       if (!regeln) {
-        results.push({ step: s.id, ...(await angriff(t, figur, ziel, plan.by, kampagne, hidden, stand)) });
+        results.push({ step: s.id, ...(await angriff(t, figur, ziel, plan.by, kampagne, hidden, stand, '', folgen)) });
         continue;
       }
       /* **Ein Angriff mit Regeln** (REQ-357): angegriffen → Wurf → getroffen
@@ -1164,7 +1366,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       let cur: PlanCursor = plan.cursor?.step === s.id ? plan.cursor : { step: s.id };
       let p = frage(lauf('attacked', wo, { target: ziel.id }), `${s.id}:attacked`, s.id, 0, ziel.id);
       if (p) return halt(p, i, cur);
-      const w = cur.roll ?? (await trefferWurf(t, figur, ziel, plan.by, kampagne, hidden, stand));
+      const w = cur.roll ?? (await trefferWurf(t, figur, ziel, plan.by, kampagne, hidden, stand, '', folgen));
       cur = { ...cur, roll: w };
       if (w.hit !== null) {
         const on = w.hit ? 'hit' : 'missed';
@@ -1177,7 +1379,9 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         p = frage(lauf('damaged', wo, { target: ziel.id, amount: schaden }), `${s.id}:damaged`, s.id, 0, ziel.id);
         if (p) return halt(p, i, cur);
       }
-      results.push({ step: s.id, ...angriffErgebnis(t, ziel, w, schaden) });
+      /* Abgezogen wird einmal, wenn der Schritt fertig ist — nach jeder Frage der Regeln. */
+      const folge = schaden !== null && schaden !== undefined ? await schadenAnwenden(folgen, stand, ziel, schaden, t.damageType, plan.by, kampagne, hidden) : '';
+      results.push({ step: s.id, ...angriffErgebnis(t, ziel, w, schaden, '', folge) });
     }
     const f = await schreiben();
     if (f) return f;
@@ -1238,6 +1442,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const { at: _at, ...ohneZeit } = plan;
       const results: PlanResult[] = [...(plan.results ?? [])];
       const von = { id: user.id, name: user.name };
+      const folgen = neueFolgen(stand, roheKarte.id);
 
       /* Ein Angebot einer Regel (REQ-357) nennt, gegen wen; sonst ist es der Ziehende. */
       const gegen = (p.against ? stand.map.get(p.against) : undefined) ?? figur;
@@ -1249,7 +1454,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
             .filter((t) => t.group === 'attack' && t.toHit !== null && t.longRange === null)
             .sort((a, b) => b.toHit! - a.toHit! || (b.average ?? 0) - (a.average ?? 0));
           const t = nah[0];
-          if (t) results.push({ step: p.step, ...(await angriff(t, reagiert, gegen, von, kampagne, false, stand, `${wort}: `)) });
+          if (t) results.push({ step: p.step, ...(await angriff(t, reagiert, gegen, von, kampagne, false, stand, `${wort}: `, folgen)) });
           else results.push({ step: p.step, text: `${wort}: ${p.reactorName} has no melee attack.` });
         } else {
           /* Was die Reaktion bewirkt, setzt bis Schritt 3 die Leitung — hier steht, dass sie genommen wurde. */
@@ -1270,7 +1475,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         results.push({ step: p.step, text: p.rule ? `${p.reactorName} does not use ${wort}.` : `${p.reactorName} lets ${plan.actorName} go.` });
       }
 
-      const r = await ausfuehren(stand, roheKarte, kampagne, { ...ohneZeit, results }, plan.decidedBy ?? von);
+      const r = await ausfuehren(stand, roheKarte, kampagne, { ...ohneZeit, results }, plan.decidedBy ?? von, folgen);
       if ('fehler' in r) return reply.code(r.fehler).send({ error: r.error, ...(r.issues ? { issues: r.issues } : {}) });
       await repo.appendEvent(TURNPLAN_EVENT, roheKarte.id, r.plan);
       feed.publish({ kind: 'plan', id: roheKarte.id });
