@@ -43,6 +43,17 @@ DATABASE_URL=postgres://… pnpm e2e
 Die Reihenfolge ist keine Willkür: `registry`, `server` und `web` übersetzen
 gegen die von `model` erzeugten Typdateien, nicht gegen dessen Quelltext.
 
+**Jede Änderung erfüllt die Grundanforderungen** aus
+[CLAUDE.md › Grundanforderungen an jede Änderung](CLAUDE.md#grundanforderungen-an-jede-änderung):
+- Tests auf drei Stufen: Unit, Integration (samt Durchstich mit Bestand),
+  E2E unter `apps/web/e2e/`;
+- nach dem Merge ein Blick auf dev;
+- Feature-Notiz und Story im Vault, mit Diagramm, wo es hilft;
+- Hilfestellungen (Hilfe, Handbuch, Glossar, Tooltip, What's new);
+- keine stillen Grenzanhebungen.
+
+Die PR-Vorlage fragt jeden Punkt ab.
+
 ## Handbuch und Glossar nachziehen
 
 Das Handbuch (`/handbook`, T-242, T-225) ist die eine Stelle, an der die

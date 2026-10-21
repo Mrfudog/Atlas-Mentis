@@ -679,10 +679,10 @@ const TYPES: AppTerm[] = [
   { term: 'Chapter', sort: 'type', types: ['Chapter'], definition: 'A chapter of a book, made of parts in order; read in the reader.', translations: { de: 'Kapitel' } },
   {
     term: 'Book part',
-    aliases: ['Heading', 'Paragraph', 'Read-aloud text', 'Embedded article'],
+    aliases: ['Heading', 'Paragraph', 'Read-aloud text', 'Embedded article', 'Illustration'],
     sort: 'type',
-    types: ['Heading', 'Paragraph', 'ReadAloudText', 'Embed'],
-    definition: 'A piece of a chapter: a heading, a paragraph, a read-aloud text or an embedded article. Each can be taken into your own story on its own.',
+    types: ['Heading', 'Paragraph', 'ReadAloudText', 'Embed', 'Illustration'],
+    definition: 'A piece of a chapter: a heading, a paragraph, a read-aloud text, an embedded article or an illustration with its caption. Each can be taken into your own story on its own.',
     translations: { de: 'Buchteil' },
   },
   { term: 'Asset', aliases: ['Image', 'File'], sort: 'type', types: ['Asset'], definition: 'An image or file as an article, with tags, source and visibility.', translations: { de: 'Datei' } },

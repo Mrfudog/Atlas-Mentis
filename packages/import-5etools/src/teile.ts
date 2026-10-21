@@ -20,6 +20,13 @@
  * - Im **Abenteuer** darf ein benannter Abschnitt eine Szene werden
  *   (`szene`): sie steht als Teil an ihrer Stelle, und was sie enthält, wird
  *   ihr eigener Fluss. Karten gibt `bild` weiter.
+ * - Ein **Bild im Text** wird eine `Illustration` (T-210): ein Teil mit
+ *   Bildunterschrift und leerem `Image.image` — die Datei bringt der
+ *   Bildplan (`wb.textbilder`, `bilder.ts`) erst mit dem Hochladen. Sein
+ *   Rang ist ein **Bruch hinter dem Teil davor** (`3.001`, `3.002`): die
+ *   übrigen Teile behalten Rang und Peg-Id, wie sie vor T-210 gezählt
+ *   wurden, und `--only-new` fügt die Bilder in ein Buch ein, dessen Teile
+ *   schon stehen — ohne Neunummerierung.
  *
  * Die Peg-Id eines Teils ist aus seinem Ganzen und seinem Rang gerechnet:
  * zwei Läufe über denselben Text schreiben dieselben Ids, und `--only-new`
@@ -29,6 +36,7 @@
 import type { Entity } from '@nw/model';
 import { partName } from '@nw/model';
 import type { Knoten } from './copy.js';
+import { bildPfad } from './copy.js';
 import { inline, markdown } from './text.js';
 import type { TextKontext } from './text.js';
 import type { Werkbank } from './werkbank.js';
@@ -100,6 +108,9 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
   let hierOrt = eltern;
   const b = wb.artBericht(o.art);
   let rang = 0;
+  /** Die Bilder hinter dem Teil mit Rang `rang` (T-210) — `bildBei` merkt, zu welchem. */
+  let bildNr = 0;
+  let bildBei = -1;
 
   const teil = (typ: string, n: string, s: unknown): Entity => {
     /* Ein Name, dem kein Absatz folgte, steht für sich vor dem nächsten Teil. */
@@ -138,18 +149,68 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
     const e = teil('Embed', ziel.name ?? '', s);
     wb.feld(e, 'Embed', 'target', ziel.id);
   };
+  /**
+   * Ein Bild im Text als Teil (T-210). Es zählt den Rang nicht hoch: es
+   * bekommt einen Bruch hinter dem Teil davor, damit kein anderer Teil
+   * wegen eines Bildes eine andere Peg-Id bekommt. Ein ausstehender
+   * Name (`titel`) bleibt stehen — er gehört dem Absatz danach.
+   */
+  const abbildung = (bld: Knoten, s: unknown): void => {
+    const pfad = bildPfad(bld['href']);
+    if (!pfad) {
+      zaehle(b.notizen, 'Bild im Buchtext ohne Pfad (weggelassen)');
+      return;
+    }
+    if (bildBei !== rang) {
+      bildBei = rang;
+      bildNr = 0;
+    }
+    bildNr += 1;
+    if (bildNr >= 1000) {
+      zaehle(b.notizen, 'Bild im Buchtext: mehr als 999 hintereinander (weggelassen)');
+      return;
+    }
+    const titelText = typeof bld['title'] === 'string' ? inline(bld['title'], o.ctx).trim() : '';
+    const alt = typeof bld['altText'] === 'string' && bld['altText'].trim() ? bld['altText'].trim() : partName(titelText, 200);
+    const n = titelText ? partName(titelText, 200) : `${partName(ganzes.name ?? '', 120)} (illustration)`;
+    const rank = rang + bildNr / 1000;
+    const vorher = raus[raus.length - 1];
+    const e = wb.anlegen('Illustration', n, `part|${ganzes.id}|${rang}|image|${bildNr}`, { source: o.quelle, ...(s !== undefined && s !== 0 ? { page: s } : {}) });
+    wb.kante(e, 'partOf', ganzes.id, { rank });
+    const unter = [titelText, typeof bld['credit'] === 'string' && bld['credit'].trim() ? `Art by ${bld['credit'].trim()}` : ''].filter(Boolean).join(' · ');
+    if (unter) wb.feld(e, 'Image', 'caption', unter);
+    if (alt) wb.feld(e, 'Image', 'alt', alt);
+    zaehle(b.artikel, 'Illustration');
+    o.angelegt?.(e);
+    raus.push(e);
+    wb.textbilder.push({ pfad, ziel: e.id, ganzes: ganzes.id, ...(vorher ? { vorher: vorher.id } : {}), rang: rank, name: n, ...(alt ? { alt } : {}), quelle: o.quelle });
+  };
+  /** Ein Bild: eine Karte im Abenteuer geht an `bild`, alles andere wird ein Teil. */
+  const einBild = (bld: Knoten, s: unknown): void => {
+    const art = String(bld['imageType'] ?? '');
+    if (o.bild && (art === 'map' || art === 'mapPlayer')) {
+      const an = o.bild(bld, ganzes);
+      if (an) {
+        rang += 1;
+        wb.kante(an, 'partOf', ganzes.id, { rank: rang });
+        raus.push(an);
+      } else if (art === 'mapPlayer') zaehle(b.notizen, 'Spielerkarte im Abenteuertext (weggelassen, steht an der Karte)');
+      return;
+    }
+    abbildung(bld, s);
+  };
+
   /** Ein benannter Abschnitt, der schon ein Artikel aus diesem Buch ist. */
   const schonDa = (n: string): Entity | undefined => {
     for (const tag of SCHON_ARTIKEL) {
       const t = wb.hole(tag, n, o.quelle);
-      if (t && !t.interfaces[0]?.match(/^(Heading|Paragraph|ReadAloudText|Embed|Chapter)$/)) return t;
+      if (t && !t.interfaces[0]?.match(/^(Heading|Paragraph|ReadAloudText|Embed|Illustration|Chapter)$/)) return t;
     }
     return undefined;
   };
 
-  /** Bilder in einem Block, der als ein Absatz gesetzt wird: die Karten darin gehen nicht verloren. */
-  const karten = (k: Knoten): void => {
-    if (!o.bild) return;
+  /** Bilder in einem Block, der als ein Absatz gesetzt wird: sie stehen als Teile dahinter (T-210). */
+  const karten = (k: Knoten, s: unknown): void => {
     const bilder: Knoten[] = [];
     const such = (x: unknown): void => {
       if (Array.isArray(x)) for (const y of x) such(y);
@@ -161,14 +222,7 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
       }
     };
     such(k['entries']);
-    for (const bld of bilder) {
-      const an = o.bild(bld, ganzes);
-      if (an) {
-        rang += 1;
-        wb.kante(an, 'partOf', ganzes.id, { rank: rang });
-        raus.push(an);
-      }
-    }
+    for (const bld of bilder) einBild(bld, s);
   };
 
   const gehe = (eintraege: unknown[], tiefe: number, s: unknown): void => {
@@ -204,7 +258,7 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
           if (da) {
             verweis(da, hier);
             /* Eine Karte im Abschnitt gehört dem Abenteuer, nicht dem Artikel, auf den er zeigt. */
-            karten(k);
+            karten(k, hier);
             break;
           }
           if (tiefe + 1 <= TIEFSTE_UEBERSCHRIFT) {
@@ -249,7 +303,7 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
         }
         case 'inset': case 'variant':
           absatz(markdown([k], o.ctx, 6), 'sidebar', hier);
-          karten(k);
+          karten(k, hier);
           break;
         case 'quote':
           absatz(markdown([k], o.ctx, 6), 'quote', hier);
@@ -280,25 +334,14 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
         }
         case 'image': case 'gallery': {
           const bilder = typ === 'gallery' ? (Array.isArray(k['images']) ? (k['images'] as Knoten[]) : []) : [k];
-          for (const bld of bilder) {
-            if (!o.bild) {
-              zaehle(b.notizen, 'Bild im Buchtext (weggelassen, E5)');
-              continue;
-            }
-            const an = o.bild(bld, ganzes);
-            if (an) {
-              rang += 1;
-              wb.kante(an, 'partOf', ganzes.id, { rank: rang });
-              raus.push(an);
-            }
-          }
+          for (const bld of bilder) einBild(bld, k['page'] ?? hier);
           break;
         }
         case 'hr':
           break;
         default:
           absatz(markdown([k], o.ctx, Math.min(6, tiefe + 1)), 'text', hier);
-          karten(k);
+          karten(k, hier);
       }
     }
   };
