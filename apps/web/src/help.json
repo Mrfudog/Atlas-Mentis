@@ -289,9 +289,25 @@
           ]
         },
         {
+          "title": "Tools",
+          "text": [
+            "The tool bar stands on the left (on a phone at the bottom): Select, Article, Text, Image, Draw, Map, Background and Area. The chosen tool shows its options above the canvas; Esc goes back to Select.",
+            "Text: choose a heading, paragraph, list or quote, then click the canvas. It is Markdown — [[links]] and {VAR} work as everywhere and are filled in when shown, never in what is saved. Image: upload one or choose from the images. Draw: freehand, line, arrow, rectangle or ellipse, with colour and width.",
+            "Select an element to change it in the panel over the canvas — text, colour, fill, width, turn, front or back, GM only — or press Delete. GM only on an element or on a card (the GM button) keeps it from players altogether.",
+            "Map: a map as a live card, or as the background — it fills the canvas under the cards; players see only what they would see in play. Background: an image (stretched, tiled or once), a colour, or a map."
+          ]
+        },
+        {
+          "title": "An endless canvas",
+          "text": [
+            "The canvas grows with what lies on it: drag a card or draw past the edge and there is more room. Drag the empty canvas to pan, Ctrl or ⌘ with the wheel zooms, and Fit all brings everything into view."
+          ]
+        },
+        {
           "title": "Views on a card",
           "text": [
-            "A card’s view menu offers the designed views that apply to its article — for example “Shop” on a creature that keeps a shop — and after them the usual ones. A card on Quick shows the most specific quick view that applies, as the popup does."
+            "A card’s view menu offers the designed views that apply to its article — for example “Shop” on a creature that keeps a shop — and after them the usual ones, Full included: the whole article page, scrolling inside the card. A card on Quick shows the most specific quick view that applies, as the popup does.",
+            "Players see a card without a chosen view as the Handout; what the GM chooses for a card counts for everyone. A map on a card is the live map itself."
           ]
         }
       ]

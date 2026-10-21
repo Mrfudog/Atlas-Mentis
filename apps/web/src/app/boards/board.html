@@ -16,27 +16,11 @@
           <button type="button" (click)="zoomen(-0.1)" aria-label="Zoom out">−</button>
           <span>{{ (zoom() * 100).toFixed(0) }}%</span>
           <button type="button" (click)="zoomen(0.1)" aria-label="Zoom in">+</button>
+          <button type="button" (click)="allesZeigen()" title="Fit everything on the board into view">Fit all</button>
         </span>
         <a class="knopf" [routerLink]="['/artikel', b.id]">Article</a>
-        @if (darfSchreiben()) {
-          <button type="button" [attr.aria-pressed]="zeichnet()" (click)="zeichnet.set(!zeichnet())">
-            {{ zeichnet() ? 'Cancel area' : 'Add area' }}
-          </button>
-          <button
-            type="button"
-            class="pri"
-            [attr.aria-expanded]="suchtOffen()"
-            (click)="suchtOffen.set(!suchtOffen())"
-          >
-            Add article
-          </button>
-        }
       </div>
     </header>
-
-    @if (suchtOffen() && darfSchreiben()) {
-      <nw-board-suche [ohne]="liegt()" (gewaehlt)="hinlegen($event)" />
-    }
 
     <p class="stand" role="status">
       @if (speichert()) {
@@ -49,13 +33,17 @@
       } @else {
         @if (zeichnet()) {
           Drag a rectangle on the canvas to mark the area · Esc cancels
+        } @else if (werkzeug() === 'text') {
+          Click the canvas to place the text · Esc cancels
+        } @else if (werkzeug() === 'zeichnen') {
+          Drag on the canvas to draw · Esc cancels
         } @else {
           {{ karten().length }} on the board
           @if (karten().length > sichtbar().length) {
             · {{ karten().length - sichtbar().length }} in collapsed areas
           }
           @if (darfSchreiben()) {
-            · drag a title bar to move, a corner to resize
+            · drag a title bar to move, a corner to resize, the empty canvas to pan
           }
         }
       }
@@ -82,17 +70,217 @@
           }
         </nav>
       }
-      <div #buehne class="buehne" tabindex="0" aria-label="Board canvas">
+      <div class="arbeit" [class.zu]="leisteZu()">
+      <!-- **Die Werkzeugleiste** (T-339, Muster der Karte T-325): links am Desktop, unten fest am Telefon. -->
+      <div class="werkzeugleiste" role="toolbar" aria-label="Board tools" aria-orientation="vertical">
+        @for (w of werkzeuge(); track w.key) {
+          <button type="button" [class.an]="werkzeug() === w.key" [attr.aria-pressed]="werkzeug() === w.key" [attr.aria-label]="w.label" [title]="w.title" (click)="werkzeugWaehlen(w.key)">
+            <span class="sym" aria-hidden="true">{{ w.sym }}</span>
+            <span class="txt">{{ w.label }}</span>
+          </button>
+        }
+        <span class="trenner" aria-hidden="true"></span>
+        <button type="button" (click)="allesZeigen()" aria-label="Fit all" title="Fit everything on the board into view">
+          <span class="sym" aria-hidden="true">⤢</span>
+          <span class="txt">Fit all</span>
+        </button>
+        <button type="button" class="einklappen" (click)="leisteZu.set(!leisteZu())" [attr.aria-expanded]="!leisteZu()" [attr.aria-label]="leisteZu() ? 'Show tool names' : 'Hide tool names'" [title]="leisteZu() ? 'Show tool names' : 'Hide tool names'">
+          <span aria-hidden="true">{{ leisteZu() ? '»' : '«' }}</span>
+        </button>
+      </div>
+
+      <div class="spalte">
+      @if (darfSchreiben()) {
+        @switch (werkzeug()) {
+          @case ('artikel') {
+            <nw-board-suche [ohne]="liegt()" (gewaehlt)="hinlegen($event)" />
+          }
+          @case ('text') {
+            <div class="unterleiste" role="group" aria-label="Text">
+              <span class="hint">Choose the kind, then click the canvas. Markdown, <code>[[links]]</code> and <code>{{ '{' }}VAR{{ '}' }}</code> work as everywhere.</span>
+              @for (t of TEXT_STILE; track t.key) {
+                <button type="button" [class.an]="textStil() === t.key" [title]="t.title" [attr.aria-label]="t.title" (click)="textStil.set(t.key)">{{ t.label }}</button>
+              }
+            </div>
+          }
+          @case ('bild') {
+            <div class="unterleiste" role="group" aria-label="Image">
+              <nw-bildwahl [wert]="''" [fuer]="b.id" label="Image on the board" (wertChange)="bildHinlegen($event)" />
+            </div>
+          }
+          @case ('zeichnen') {
+            <div class="unterleiste" role="group" aria-label="Draw">
+              @for (z of ZEICHEN_ARTEN; track z.key) {
+                <button type="button" [class.an]="zeichenArt() === z.key" (click)="zeichenArt.set(z.key)">{{ z.label }}</button>
+              }
+              <label>Colour <input type="color" [value]="farbe()" (input)="farbe.set($any($event.target).value)" /></label>
+              <label>Width <input class="zahl" type="number" min="1" max="40" [value]="staerke()" (change)="staerke.set(+$any($event.target).value || 3)" /></label>
+              <label><input type="checkbox" [checked]="fuellen()" (change)="fuellen.set($any($event.target).checked)" /> Filled</label>
+            </div>
+          }
+          @case ('karte') {
+            <div class="unterleiste" role="group" aria-label="Map">
+              <span class="hint">A map as a live card, or under everything as the background. Players see what they would see in play.</span>
+              <label><input type="radio" name="karte-als" [checked]="karteAls() === 'kachel'" (change)="karteAls.set('kachel')" /> As a card</label>
+              <label><input type="radio" name="karte-als" [checked]="karteAls() === 'grund'" (change)="karteAls.set('grund')" /> As background</label>
+            </div>
+            <nw-board-suche [ohne]="liegt()" typ="Map" (gewaehlt)="karteGewaehlt($event)" />
+          }
+          @case ('hintergrund') {
+            <div class="unterleiste" role="group" aria-label="Background">
+              <nw-bildwahl [wert]="hintergrund().image" [fuer]="b.id" label="Background image" (wertChange)="hintergrundSetzen({ image: $event })" />
+              <label>
+                Image
+                <select (change)="fitSetzen($any($event.target).value)" aria-label="How the background image lies">
+                  <option value="stretch" [selected]="hintergrund().fit === 'stretch'">Stretched</option>
+                  <option value="tile" [selected]="hintergrund().fit === 'tile'">Tiled</option>
+                  <option value="fixed" [selected]="hintergrund().fit === 'fixed'">Once, own size</option>
+                </select>
+              </label>
+              <label>Colour <input type="color" [value]="hintergrund().color || '#f4ecd8'" (change)="hintergrundSetzen({ color: $any($event.target).value })" /></label>
+              @if (hintergrund().color) {
+                <button type="button" (click)="hintergrundSetzen({ color: '' })">No colour</button>
+              }
+              @if (hintergrund().map) {
+                <span>Map: <b>{{ grundKarte() ? name(grundKarte()) : '…' }}</b></span>
+                <button type="button" (click)="hintergrundSetzen({ map: '' })">Remove map</button>
+              } @else {
+                <button type="button" (click)="karteAls.set('grund'); werkzeug.set('karte')">Choose a map…</button>
+              }
+            </div>
+          }
+        }
+      }
+      <!-- Das Blatt der gewählten Form schwebt über der Leinwand (T-339): oben stünde es im
+           Fluss, und die Leinwand spränge, sobald es beim nächsten Antippen verschwindet. -->
+      <div class="buehnen-rahmen">
+    @if (darfSchreiben() && gewaehlteForm(); as f) {
+        <!-- Die gewählte Form (T-339): was sie ist, und was man an ihr ändert. -->
+        <div class="unterleiste formblatt schwebend" role="group" aria-label="Selected element">
+          @if (f.kind === 'text') {
+            @for (t of TEXT_STILE; track t.key) {
+              <button type="button" [title]="t.title" [attr.aria-label]="t.title" (click)="stilSetzen(t.key)">{{ t.label }}</button>
+            }
+            <textarea class="formtext" rows="4" aria-label="Text" [value]="f.text" (change)="formAendern(f.id, { text: $any($event.target).value })"></textarea>
+          }
+          @if (f.kind === 'image') {
+            <nw-bildwahl [wert]="f.asset" [fuer]="b.id" label="Image" (wertChange)="bildHinlegen($event)" />
+          }
+          <label>Colour <input type="color" [value]="f.color || '#2b2118'" (change)="formAendern(f.id, { color: $any($event.target).value })" /></label>
+          @if (f.kind === 'rect' || f.kind === 'ellipse' || f.kind === 'text') {
+            <label><input type="checkbox" [checked]="!!f.fill" (change)="formAendern(f.id, { fill: $any($event.target).checked ? (f.kind === 'text' ? '#fffaf0' : f.color || '#8c1c13') : '' })" /> Filled</label>
+          }
+          @if (istZeichnung(f)) {
+            <label>Width <input class="zahl" type="number" min="1" max="40" [value]="f.stroke" (change)="formAendern(f.id, { stroke: +$any($event.target).value || 3 })" /></label>
+          }
+          <label>Turn <input class="zahl" type="number" step="15" [value]="f.rot" (change)="formAendern(f.id, { rot: +$any($event.target).value || 0 })" />°</label>
+          <button type="button" (click)="nachVorn(f)">To front</button>
+          <button type="button" (click)="nachHinten(f)">To back</button>
+          <label title="Not sent to players at all"><input type="checkbox" [checked]="f.hidden" (change)="formAendern(f.id, { hidden: $any($event.target).checked })" /> GM only</label>
+          <button type="button" class="weg-knopf" (click)="formLoeschen(f.id)">Delete</button>
+        </div>
+      }
+      <div #buehne class="buehne" tabindex="0" aria-label="Board canvas" (wheel)="rad($event)">
         @if (karte(); as c) {
-          <div class="flaeche" [style.width.px]="c.width * zoom()" [style.height.px]="c.height * zoom()">
+          @let gross = ausdehnung();
+          <div class="flaeche" [style.width.px]="gross.width * zoom()" [style.height.px]="gross.height * zoom()">
             <div
               class="leinwand"
-              [style.width.px]="c.width"
-              [style.height.px]="c.height"
+              [style.width.px]="gross.width"
+              [style.height.px]="gross.height"
               [style.transform]="'scale(' + zoom() + ')'"
-              [class.zeichnet]="zeichnet()"
+              [class.zeichnet]="zeichnet() || werkzeug() === 'text' || werkzeug() === 'zeichnen'"
+              [class.schwenkt]="!!schwenk()"
+              [class.mit-grund]="!!grundStil().bild || !!grundStil().farbe || !!grundKarte()"
               (pointerdown)="leinwandGreifen($event)"
             >
+              @let g = grundStil();
+              @if (g.bild || g.farbe) {
+                <div
+                  class="grund"
+                  aria-hidden="true"
+                  [style.background-color]="g.farbe"
+                  [style.background-image]="g.bild"
+                  [style.background-size]="g.groesse"
+                  [style.background-repeat]="g.wiederholen"
+                ></div>
+              }
+              @if (grundKarte()) {
+                <!-- Die Karte als Hintergrund (T-339): ihre Blätter, wie der Server sie schickt — für Spielende unter dem Nebel beschnitten. -->
+                <div class="kartengrund" aria-hidden="true" [style.width.px]="grundBreite()">
+                  @for (s of grundBlaetter(); track s.id; let i = $index) {
+                    <img [src]="bildAdresse(s.image)" alt="" [class.erstes]="i === 0" [style.opacity]="s.opacity" (load)="i === 0 && grundGeladen($event)" />
+                  }
+                </div>
+              }
+              @for (f of formen(); track f.id) {
+                <div
+                  class="form"
+                  [class]="'f-' + f.kind"
+                  [class.gewaehlt]="formGewaehlt() === f.id"
+                  [class.verborgen]="f.hidden"
+                  [style.left.px]="f.x"
+                  [style.top.px]="f.y"
+                  [style.width.px]="f.w"
+                  [style.height.px]="f.h"
+                  [style.z-index]="f.z"
+                  [style.transform]="f.rot ? 'rotate(' + f.rot + 'deg)' : null"
+                  [style.color]="f.color || null"
+                  [style.background-color]="f.kind === 'text' ? f.fill || null : null"
+                  (pointerdown)="formGreifen($event, f, 'schieben')"
+                >
+                  @switch (f.kind) {
+                    @case ('text') {
+                      <nw-text [text]="f.text" [scopes]="scopes()" />
+                    }
+                    @case ('image') {
+                      @if (bild(f); as src) {
+                        <img [src]="src" alt="" draggable="false" (load)="bildGeladen(f, $event)" />
+                      }
+                    }
+                    @default {
+                      <svg class="zeichnung" [attr.width]="f.w" [attr.height]="f.h" aria-hidden="true">
+                        @if (f.kind === 'arrow') {
+                          <defs>
+                            <marker [attr.id]="'pfeil-' + f.id" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                              <path d="M0 0 L10 5 L0 10 z" [attr.fill]="f.color || 'currentColor'" />
+                            </marker>
+                          </defs>
+                        }
+                        @switch (f.kind) {
+                          @case ('rect') {
+                            <rect [attr.x]="f.stroke / 2" [attr.y]="f.stroke / 2" [attr.width]="f.w - f.stroke > 0 ? f.w - f.stroke : 0" [attr.height]="f.h - f.stroke > 0 ? f.h - f.stroke : 0" [attr.stroke]="f.color || 'currentColor'" [attr.stroke-width]="f.stroke" [attr.fill]="f.fill || 'none'" />
+                          }
+                          @case ('ellipse') {
+                            <ellipse [attr.cx]="f.w / 2" [attr.cy]="f.h / 2" [attr.rx]="f.w / 2 - f.stroke / 2 > 0 ? f.w / 2 - f.stroke / 2 : 0" [attr.ry]="f.h / 2 - f.stroke / 2 > 0 ? f.h / 2 - f.stroke / 2 : 0" [attr.stroke]="f.color || 'currentColor'" [attr.stroke-width]="f.stroke" [attr.fill]="f.fill || 'none'" />
+                          }
+                          @default {
+                            <path [attr.d]="linie(f)" fill="none" [attr.stroke]="f.color || 'currentColor'" [attr.stroke-width]="f.stroke" stroke-linecap="round" stroke-linejoin="round" [attr.marker-end]="f.kind === 'arrow' ? 'url(#pfeil-' + f.id + ')' : null" />
+                          }
+                        }
+                      </svg>
+                    }
+                  }
+                  @if (darfSchreiben() && formGewaehlt() === f.id && werkzeug() === 'auswahl') {
+                    <div class="griff" title="Resize" aria-hidden="true" (pointerdown)="formGreifen($event, f, 'groesse')"></div>
+                  }
+                </div>
+              }
+              @if (strichForm(); as f) {
+                <svg class="vorschau" [style.left.px]="f.x" [style.top.px]="f.y" [attr.width]="f.w + 1" [attr.height]="f.h + 1" aria-hidden="true">
+                  @switch (f.kind) {
+                    @case ('rect') {
+                      <rect x="0" y="0" [attr.width]="f.w" [attr.height]="f.h" [attr.stroke]="f.color" [attr.stroke-width]="f.stroke" [attr.fill]="f.fill || 'none'" />
+                    }
+                    @case ('ellipse') {
+                      <ellipse [attr.cx]="f.w / 2" [attr.cy]="f.h / 2" [attr.rx]="f.w / 2" [attr.ry]="f.h / 2" [attr.stroke]="f.color" [attr.stroke-width]="f.stroke" [attr.fill]="f.fill || 'none'" />
+                    }
+                    @default {
+                      <path [attr.d]="linie(f)" fill="none" [attr.stroke]="f.color" [attr.stroke-width]="f.stroke" stroke-linecap="round" stroke-linejoin="round" />
+                    }
+                  }
+                </svg>
+              }
               @for (a of bereiche(); track a.id) {
                 @let l = lageVon(a);
                 <section
@@ -179,6 +367,7 @@
               @for (k of sichtbar(); track k.rel.id) {
                 <article
                   class="kachel"
+                  [class.verborgen]="!!k.platz.hidden"
                   [class.gewaehlt]="gewaehlt() === k.rel.id"
                   [class]="'b-' + (k.bereich || 'keiner')"
                   [style.left.px]="k.platz.x"
@@ -186,7 +375,7 @@
                   [style.width.px]="k.platz.w"
                   [style.height.px]="k.platz.h"
                   [style.z-index]="gewaehlt() === k.rel.id ? 10000 : k.platz.z"
-                  (pointerdown)="$event.stopPropagation(); gewaehlt.set(k.rel.id)"
+                  (pointerdown)="$event.stopPropagation(); gewaehlt.set(k.rel.id); formGewaehlt.set(null)"
                 >
                   <header
                     class="kkopf"
@@ -205,7 +394,7 @@
                              Optionen entstehen erst nach dem Wert, und dann stünde
                              nach dem Neuladen „Auto" da, wo „Overview" gespeichert ist. -->
                         <option value="" [selected]="!k.rel.props?.['view']">
-                          Auto · {{ viewLabel(k.ansicht) }}
+                          Auto · {{ istKarte(k) ? 'Live map' : viewLabel(k.ansicht) }}
                         </option>
                         @for (v of ansichtenFuer(k.ziel ?? k.kurz); track v) {
                           <option [value]="v" [selected]="k.rel.props?.['view'] === v">
@@ -213,6 +402,17 @@
                           </option>
                         }
                       </select>
+                      <button
+                        type="button"
+                        class="weg gm"
+                        [class.an]="!!k.platz.hidden"
+                        (click)="verbergen(k.rel)"
+                        [attr.aria-pressed]="!!k.platz.hidden"
+                        [attr.aria-label]="'GM only: ' + name(k.kurz)"
+                        title="GM only — not sent to players"
+                      >
+                        GM
+                      </button>
                       <button
                         type="button"
                         class="weg"
@@ -223,7 +423,7 @@
                         ×
                       </button>
                     } @else {
-                      <span class="kview fest">{{ viewLabel(k.ansicht) }}</span>
+                      <span class="kview fest">{{ istKarte(k) ? 'Map' : viewLabel(k.ansicht) }}</span>
                     }
                   </header>
                   @if (k.kurz) {
@@ -240,10 +440,18 @@
                   @if (k.platz.note) {
                     <p class="knotiz">{{ k.platz.note }}</p>
                   }
-                  <div class="kinhalt">
-                    @if (k.ziel) {
+                  <div class="kinhalt" [class.mit-karte]="istKarte(k)">
+                    @if (k.ziel && istKarte(k)) {
+                      <!-- Die Karte selbst (T-339): dieselbe Komponente wie auf der Artikelseite, gesiebt am Server. -->
+                      <nw-karte [id]="k.ziel.id" />
+                    } @else if (k.ziel) {
                       <!-- Die Kachel wählt die Ansicht (T-310, pickView): eine gestaltete zeichnet ihren Baum. -->
-                      <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" [rueck]="rueckVon(k.ziel)" />
+                      @if (k.ansicht === 'full') {
+                        <!-- Die ganze Seite (T-339): gezeichnet wie im Druck, als Blatt — sie scrollt in der Kachel. -->
+                        <nw-blatt [artikel]="k.ziel" ansicht="full" [rueck]="rueckVon(k.ziel)" />
+                      } @else {
+                        <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" [rueck]="rueckVon(k.ziel)" />
+                      }
                     } @else if (k.kurz) {
                       <p class="laedt">Loading…</p>
                     }
@@ -261,14 +469,17 @@
             </div>
           </div>
         }
-        @if (!karten().length) {
+        @if (!karten().length && !formen().length) {
           <p class="leerbrett">
             Nothing on this board yet.
             @if (darfSchreiben()) {
-              Add an article to place the first card.
+              Choose a tool on the left to place an article, text, an image or a map.
             }
           </p>
         }
+      </div>
+      </div>
+      </div>
       </div>
       </div>
 
