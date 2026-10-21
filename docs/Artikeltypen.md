@@ -2705,7 +2705,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `width` *number*, `height` *number*, `snap` *number*, `background` *asset*, `backgroundColor` *string*, `backgroundFit` *stretch | tile | fixed*, `backgroundMap` *link → Map*, `rules` *object*, `shapes` *array*, `anchors` *array*
+- `width` *number*, `height` *number*, `snap` *number*, `background` *asset*, `rules` *object*, `shapes` *array*, `anchors` *array*
 
 **Geerbte Felder**
 

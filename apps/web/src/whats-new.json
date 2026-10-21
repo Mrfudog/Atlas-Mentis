@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-builder-takes-new-article",
+      "date": "2026-10-21",
+      "title": "The character builder keeps what you typed under New article",
+      "text": "Under New article › Player Character, “Use the character builder” now takes along the name, the layer and required fields. Ability Score Improvements ask per level on level-up, sidekicks included.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
       "id": "2026-10-21-board-tools",
       "date": "2026-10-21",
       "title": "Boards: tools for text, images, drawing and maps",
