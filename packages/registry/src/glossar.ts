@@ -377,10 +377,10 @@ const APP: AppTerm[] = [
   },
   {
     term: 'Initiative tracker',
-    aliases: ['Tracker', 'Next turn', 'Delay', 'Effect with a duration'],
+    aliases: ['Tracker', 'Next turn', 'Skip', 'Make current', 'Effect with a duration'],
     sort: 'app',
-    definition: 'The order of a running encounter in Play and on the encounter: whose turn it is, the round, hit points and effects with a duration. The GM moves the turns; a player ends their own.',
-    effect: 'Next turn counts down the effects tied to the end of the current turn and the start of the next. What players see of foes — names, health, effects, actions — the campaign sets under Rules & options › Combat.',
+    definition: 'The order of a running encounter in Play and on the encounter: whose turn it is, the round and turn, hit points and effects with a duration, and — opened — what each combatant can do. The GM moves the turns; a player ends their own.',
+    effect: 'Next turn counts down the effects tied to the end of the current turn and the start of the next; Skip, Back to top and Make current only set whose turn it is. What players see of foes — names, health, effects, actions — the campaign sets under Rules & options › Combat.',
     translations: { de: 'Initiative-Tracker' },
   },
   {

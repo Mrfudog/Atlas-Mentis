@@ -139,22 +139,48 @@ describe('the initiative tracker (T-022)', () => {
     expect((await sicht('Mira')).rows.find((r) => r.current)!.edge).toBe('p2');
   });
 
-  it('adds, damages, delays and removes', async () => {
+  it('adds, damages, sets the turn and removes', async () => {
     const { sicht, tue } = await aufbau();
     await tue('Mira', { op: 'hp', edge: 'p2', delta: -4 });
     await tue('Mira', { op: 'add', to: 'npc_ghul', init: 15, label: 'Ghul 2' });
     let gm = await sicht('Mira');
     expect(gm.rows.map((r) => r.name)).toEqual(['Rook', 'Ghul 2', 'Ghul']);
     expect(gm.rows[2]!.hp).toBe(6);
+    /* Ohne Stand voll (T-334): 22/22, nicht ?/22. */
+    expect([gm.rows[1]!.hp, gm.rows[1]!.hpMax]).toEqual([22, 22]);
     expect(gm.rows[0]!.current).toBe(true);
-    await tue('Mira', { op: 'delay' });
+    expect([gm.round, gm.turn, gm.turns]).toEqual([1, 1, 3]);
+    /* Verzögern kennt D&D 5e (standard) nicht (T-334). */
+    expect((await tue('Mira', { op: 'delay' })).statusCode).toBe(409);
+    expect(gm.rules.quickActions).not.toContain('delay');
+    await tue('Mira', { op: 'turn', edge: 'p2' });
     gm = await sicht('Mira');
-    expect(gm.rows.map((r) => r.name)).toEqual(['Ghul 2', 'Rook', 'Ghul']);
-    expect(gm.rows[0]!.current).toBe(true);
-    await tue('Mira', { op: 'remove', edge: gm.rows[0]!.edge });
+    expect(gm.rows.find((r) => r.current)!.edge).toBe('p2');
+    await tue('Mira', { op: 'skip' });
+    gm = await sicht('Mira');
+    expect([gm.round, gm.turn]).toEqual([2, 1]);
+    await tue('Mira', { op: 'skip' });
+    await tue('Mira', { op: 'top' });
+    gm = await sicht('Mira');
+    expect([gm.round, gm.turn]).toEqual([2, 1]);
+    expect((await tue('Sela', { op: 'top' })).statusCode).toBe(403);
+    await tue('Mira', { op: 'remove', edge: gm.rows[1]!.edge });
     gm = await sicht('Mira');
     expect(gm.rows.map((r) => r.name)).toEqual(['Rook', 'Ghul']);
     expect(gm.rows[0]!.current).toBe(true);
+  });
+
+  it('opens a row with what the combatant can do, for players only what the campaign shows', async () => {
+    let { sicht, tue } = await aufbau();
+    const gm = await sicht('Mira');
+    const ghul = gm.rows.find((r) => r.edge === 'p2')!;
+    expect(ghul.options!.sections.flatMap((s) => s.entries.map((e) => e.name))).toEqual(['Bite']);
+    expect((await sicht('Sela')).rows.find((r) => r.edge === 'p2')?.options).toBeUndefined();
+    ({ sicht, tue } = await aufbau({ initActions: 'shown' }));
+    /* Ein Gegner steht für Spielende erst, wenn sein Zug kam (D58). */
+    await tue('Mira', { op: 'next' });
+    const spieler = (await sicht('Sela')).rows.find((r) => r.edge === 'p2')!;
+    expect(spieler.options!.sections.flatMap((s) => s.entries.map((e) => e.name))).toEqual(['Bite']);
   });
 
   it('is off when the campaign turns it off', async () => {

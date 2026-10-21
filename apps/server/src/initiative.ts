@@ -8,6 +8,11 @@
  * hier gezeichnet wird, ist schon zurückgehalten. Live geht die Änderung
  * als Artikel-Ereignis der Begegnung; der Tracker fragt dann neu.
  *
+ * **Aufgeklappt** (T-334) zeigt eine Zeile, was der Teilnehmer kann
+ * (`participantOptions`): für die Leitung aus dem ganzen Bestand, für
+ * Spielende nur aus Teilen, die sie sehen (`sieve`), und nur, wo die
+ * Kampagne die Aktionen der Gegner zeigt (`initActions`).
+ *
  * Ändern darf die Leitung. Spielende dürfen nur ihren eigenen Zug beenden
  * (`next`, wenn die Figur dran ist, die ihr Konto führt). Ist der Tracker
  * an der Kampagne aus (`Campaign.combat`), ändert niemand etwas, und die
@@ -23,7 +28,11 @@ import {
   initiativeOrder,
   initiativeRulesOf,
   participantActions,
+  participantOptions,
   primaryInterface,
+  relationDef,
+  statblockFor,
+  templateChain,
   trackerView,
   type Entity,
   type InitiativeRules,
@@ -49,7 +58,7 @@ export interface TrackerDeps {
   schreibeGeprueft: (entity: Entity) => Promise<{ stored: Entity } | { issues: ReturnType<typeof validateEntity> }>;
 }
 
-const OPS = new Set(['next', 'previous', 'delay', 'end', 'init', 'hp', 'effect', 'removeEffect', 'flags', 'add', 'remove']);
+const OPS = new Set(['next', 'previous', 'skip', 'top', 'turn', 'delay', 'end', 'init', 'hp', 'effect', 'removeEffect', 'flags', 'add', 'remove']);
 
 function w20(): number {
   return 1 + Math.floor((getRandomValues(new Uint32Array(1))[0]! / 2 ** 32) * 20);
@@ -85,7 +94,16 @@ export function registerTracker(app: FastifyInstance, deps: TrackerDeps): void {
     if (rules.combat === 'off') return { ...trackerView(stand.map, { ...gesiebt, relations: [] }, rules, gm), off: true };
     const eigene = new Set(l.user.actorIds ?? []);
     const markiert = (v: TrackerView): TrackerView => ({ ...v, rows: v.rows.map((r) => (r.to && eigene.has(r.to) ? { ...r, own: true } : r)) });
-    if (gm) return markiert(trackerView(stand.map, await geltend(gefunden, stand.map), rules, true));
+    const registry = await repo.getRegistry();
+    if (gm) {
+      const voll = await geltend(gefunden, stand.map);
+      const kanten = new Map((voll.relations ?? []).map((r) => [r.id, r]));
+      const optionsOf = (edge: string) => {
+        const to = kanten.get(edge)?.to;
+        return to ? participantOptions(registry, stand.map, to) : null;
+      };
+      return markiert(trackerView(stand.map, voll, rules, true, undefined, optionsOf));
+    }
 
     /* Spielende: die gesiebte Reihe. Die Aktionen eines Gegners kommen
        vom rohen Statblock — der Artikel eines Unerkannten ist ihnen nicht
@@ -102,7 +120,33 @@ export function registerTracker(app: FastifyInstance, deps: TrackerDeps): void {
         return to ? participantActions(gefiltert, to) : [];
       };
     }
-    return markiert(trackerView(stand.map, gesiebt, rules, false, actionsOf));
+    /* Die Optionen (T-334): Statblock und Figur roh — die Kante nennt sie,
+       auch wenn der Artikel eines Unerkannten den Spielenden nicht genannt
+       ist —, ihre Teile und Zauber nur, wie sie sie sehen. */
+    const teilIds = new Set<string>();
+    const mitTeilen = (e: Entity | undefined) => {
+      for (const r of e?.relations ?? []) {
+        if (r.type === 'casts' || relationDef(registry, r.type).section) teilIds.add(r.to);
+      }
+    };
+    for (const r of gesiebt.relations ?? []) {
+      const t = stand.map.get(rohKanten.get(r.id)?.to ?? '');
+      if (!t) continue;
+      mitTeilen(t);
+      const sb = statblockFor(stand.map, t);
+      /* Die Instanz liest ihre Teile von der Vorlage (`resolveInstance`), also deren auch. */
+      for (const e of sb ? [sb, ...templateChain(stand.map, sb)] : []) mitTeilen(e);
+    }
+    const teile = await sieve(request, [...teilIds].flatMap((id) => stand.map.get(id) ?? []), stand.map);
+    const sichtbareTeile = new Map(teile.map((e) => [e.id, e]));
+    /* Statblock und Figur bleiben, ihre Teile und Zauber nur gesiebt; Aktionsarten (Namen der Abschnitte) sind Wörter. */
+    const fuerOptionen = new Map([...stand.map].filter(([id]) => !teilIds.has(id) || sichtbareTeile.has(id)));
+    for (const [id, e] of sichtbareTeile) fuerOptionen.set(id, e);
+    const optionsOf = (edge: string) => {
+      const to = rohKanten.get(edge)?.to;
+      return to ? participantOptions(registry, fuerOptionen, to) : null;
+    };
+    return markiert(trackerView(stand.map, gesiebt, rules, false, actionsOf, optionsOf));
   });
 
   app.post<{ Params: { id: string }; Body: TrackerOp | undefined }>('/api/encounters/:id/tracker', async (request, reply) => {
@@ -116,8 +160,12 @@ export function registerTracker(app: FastifyInstance, deps: TrackerDeps): void {
     if (rules.combat === 'off') return reply.code(409).send({ error: 'The initiative tracker is off in this campaign.' });
     const begegnung = await geltend(gefunden, stand.map);
     /* Begonnen wird über „Start" (`kampfstart.ts`): der würfelt und nimmt eine Vorlage als Instanz ins Spiel (T-289). */
-    if (fightOf(begegnung).round < 1 && ['next', 'previous', 'delay'].includes(op.op)) {
+    if (fightOf(begegnung).round < 1 && ['next', 'previous', 'skip', 'top', 'turn', 'delay'].includes(op.op)) {
       return reply.code(409).send({ error: 'Start the encounter first.' });
+    }
+    /* Verzögern kennt das System „D&D 5e (standard)" nicht (T-334); `delayTurn` bleibt für eine Hausregel (T-336). */
+    if (op.op === 'delay' && !rules.quickActions.includes('delay')) {
+      return reply.code(409).send({ error: 'This initiative system has no delaying.' });
     }
     if (!gm) {
       /* Den eigenen Zug beenden darf, wer die Figur führt, die dran ist. */

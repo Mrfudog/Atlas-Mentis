@@ -613,6 +613,10 @@ flowchart LR
 | I9 | **Ein Zugwechsel zählt zweimal** (REQ-212): „Next turn" zählt das Ende des laufenden Zuges, dann den Anfang des nächsten (`tickEntries`, I2); nach dem letzten beginnt die nächste Runde. Zurück zählt nichts zurück — was abgelaufen ist, kommt nicht wieder. Dieselbe Zählung nutzt die Regelwirkung (T-275); was ein Zustand an RK oder Schaden tut, steht nicht hier. | Modell (`nextTurn`, `previousTurn`) |
 | I10 | **Verzögern ist ein Ort in der Reihe, keine Marke** (REQ-128): wer dran ist, bekommt eine Initiative zwischen den nächsten beiden und rückt einen Platz nach hinten; der nächste ist dran. Ändert sich die Reihe sonst (Initiative, Teilnehmer dazu oder weg), bleibt dran, wer dran war (`turn` wird neu gesucht). Ein Entfernter nimmt seinen Anker mit: Einträge, die an seinem Zug zählten, zählen am eigenen. | Modell (`delayTurn`, `applyTrackerOp`) |
 | I11 | **Den Tracker führt die Leitung; eine Spielerin beendet nur ihren eigenen Zug** (`POST /api/encounters/:id/tracker`, `next`, wenn die Figur ihres Kontos dran ist). Begonnen wird über „Start" (K15), nicht über den Tracker. Die Reihe kommt gerechnet (`trackerView`): für die Leitung aus der rohen Begegnung, für alle anderen aus der gesiebten — die Aktionen eines Unerkannten liest der Server vom rohen Statblock, nur Regeln, die der Betrachter sieht. | `apps/server/src/initiative.ts`, `trackerView` |
+| I12 | **Ohne Stand ist ein Teilnehmer unverletzt** (T-334, D8): fehlt `props.hp`, gilt beim Lesen das Maximum vom Statblock — „22/22", nicht „?/22". Gespeichert wird nichts; der erste Schaden schreibt den Stand. Für Spielende gilt dasselbe, wo sie Zahlen sehen (Gruppe, `initHealth: exact`). | Modell (`trackerView`, `redactParticipants`) |
+| I13 | **Den Zug frei setzen zählt nichts** (T-334): „Make current" (`turn` mit Kante), „Skip" (der nächste, nach dem letzten die nächste Runde) und „Back to top" (der erste, die Runde bleibt) setzen nur `Encounter.turn`/`round`. Effekte laufen allein beim regulären Zugwechsel (I9) ab — wer übersprungen wird, hatte keinen Zug, also endet an seinem Ende auch nichts. Zug x von y bekommt nur die Leitung (I7). | Modell (`setTurn`) |
+| I14 | **Die Initiative ist ein Regelsystem** (T-334, E-100): `Campaign.combat` heisst „Initiative"; `on` ist das System „D&D 5e (standard)" (`INITIATIVE_SYSTEMS`), `off` kein Tracker. Ein System sagt, welche Knöpfe es kennt: „D&D 5e (standard)" kein Verzögern — es steht nicht im Grundregelwerk —, also bietet die Maske es nicht an, auch wenn `initQuickActions` es nennt, und der Server lehnt `delay` ab. `delayTurn` (I10) bleibt für ein Hausregelsystem (T-336). Die übrigen `init*`-Felder gelten unter dem System. | Modell (`initiativeRulesOf`, `initiativeSystemOf`) |
+| I15 | **Eine Zeile klappt auf und zeigt, was der Teilnehmer kann** (T-334): die Abschnitte seines Statblocks wie im Buch (`bookSections`, Instanz mit Vorlage darunter) und seine Zauber (`casts`), mit Würfen im Text. Die Leitung bekommt sie für jeden; Spielende für die Gruppe und, mit `initActions: shown`, für erschienene Gegner — und nur Teile und Zauber, die sie sehen (`sieve` am Server). | `participantOptions`, `apps/server/src/initiative.ts` |
 
 Offen: dass `bloodied` schon unter dem Maximum gilt und nicht erst ab der
 Hälfte; ob ein Gegner, den die Gruppe in Runde 1 vor seinem Zug trifft
@@ -2163,7 +2167,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-20: 60 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-21: 60 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 

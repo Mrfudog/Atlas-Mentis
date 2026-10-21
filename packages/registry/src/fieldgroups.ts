@@ -3071,8 +3071,10 @@ export const fieldGroups = {
            Kampfes. `combat` schaltet ihn ab; die übrigen sagen, was
            Spielende von der Reihe sehen (gesiebt am Server,
            `redactParticipants`), welche Spalten stehen und welche Knöpfe
-           die Leitung je Zeile hat. Gelesen über `initiativeRulesOf`. */
-        combat: { type: 'string', title: 'Initiative tracker', enum: ['on', 'off'], default: 'on' },
+           die Leitung je Zeile hat. Gelesen über `initiativeRulesOf`.
+           Seit T-334 ist `combat` das Initiative-System (E-100): `on` heisst
+           „D&D 5e (standard)", weitere Systeme kommen als Werte dazu (T-336). */
+        combat: { type: 'string', title: 'Initiative', enum: ['on', 'off'], default: 'on' },
         initNames: { type: 'string', title: 'Unidentified foes shown as', enum: ['cover', 'real'], default: 'cover' },
         initHealth: { type: 'string', title: 'Foes’ health shown to players', enum: ['none', 'coarse', 'exact'], default: 'coarse' },
         initEffects: { type: 'string', title: 'Effects shown to players', enum: ['all', 'party', 'none'], default: 'all' },
