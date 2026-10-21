@@ -12,6 +12,7 @@ import { Ladeanzeige } from '../kern/ladeanzeige';
 import { bloeckeVon, type Block } from '../kern/buchtext';
 import { bildAdresse, illustration } from '../artikel/bild';
 import { LeseInhalt } from './inhalt';
+import { Klappleiste, type Richtung } from '../muster/klappleiste';
 
 interface Abschnitt {
   id: string;
@@ -61,7 +62,7 @@ interface Abschnitt {
  */
 @Component({
   selector: 'nw-lesen',
-  imports: [RouterLink, FormsModule, Text, KurzLink, Ladeanzeige, LeseInhalt],
+  imports: [RouterLink, FormsModule, Text, KurzLink, Ladeanzeige, LeseInhalt, Klappleiste],
   host: { '(document:keydown.escape)': 'tocOffen.set(false)' },
   template: `
     <div class="leser" [class.eingebettet]="eingebettet()">
@@ -178,6 +179,11 @@ interface Abschnitt {
           }
 
           <main class="lesetext">
+            @if (stueck() && abschnitte().length) {
+              <!-- Vor und zurück über die Abschnitte (T-220), am Ende ins nächste Kapitel. -->
+              <nw-klappleiste auswahl="section.abschnitt" [klappbar]="false" beschriftung="Sections of this chapter"
+                              (ende)="blaettern($event)" />
+            }
             @if (!b.toc.length) {
               <!-- Der Grund, wo der Server ihn kennt (T-126): ohne eingelesenen
                    Buchtext ist das der einzige, auch für die Verwaltung. -->
@@ -491,6 +497,12 @@ export class Lesen {
     } catch (x) {
       this.fehler.set(x instanceof Error ? x.message : String(x));
     }
+  }
+
+  /** Über den letzten Abschnitt hinaus (T-220): ins Kapitel davor oder danach. */
+  protected blaettern(r: Richtung): void {
+    const n = this.nachbar(r);
+    if (n) void this.gehe(n.id);
   }
 
   /** Zu einem Abschnitt: sein Stück laden, wenn es nicht das offene ist, und hinscrollen. */

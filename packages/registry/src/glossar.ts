@@ -40,6 +40,16 @@ export interface AppTerm {
 /** Die Wörter, mit denen die App über sich selbst spricht. */
 const APP: AppTerm[] = [
   {
+    term: 'Section bar',
+    aliases: ['Expand all', 'Collapse all', 'Next section'],
+    sort: 'app',
+    definition: 'The bar above a long page or list that folds its sections: Expand all, Collapse all, and ‹ › to the previous or next section.',
+    effect: 'Alt+↑ and Alt+↓ jump, with Shift they collapse or expand everything. On a phone it sits at the bottom. What a page remembers as open, it remembers for your account.',
+    example: 'On the campaign’s Layers tab: Collapse all, then › to Extra content.',
+    translations: { de: 'Klappleiste' },
+    see: '/handbook',
+  },
+  {
     term: 'Board element',
     aliases: ['Board text', 'Board drawing'],
     sort: 'app',
