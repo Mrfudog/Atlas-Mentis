@@ -49,6 +49,16 @@ const APP: AppTerm[] = [
     see: '/boards',
   },
   {
+    term: 'Query card',
+    aliases: ['Draw card', 'Slideshow card'],
+    sort: 'app',
+    definition: 'A card on a board that shows a selection of articles instead of one: from types, single articles, tags, layers or a filter chain. It shows them as a list, draws one at random without putting it back, or runs them as a slideshow.',
+    effect: 'Answered on the server for each viewer — players see only what they may see. With “Reveal when drawn”, what is drawn becomes knowledge of the party and visible to it.',
+    example: 'A card “Rumours” over every quest tagged rumour: Draw gives the next one the bard has heard, until none is left.',
+    translations: { de: 'Abfrage-Kachel' },
+    see: '/boards',
+  },
+  {
     term: 'Carry block',
     aliases: ['Carry sheet', 'Carry grid'],
     sort: 'app',

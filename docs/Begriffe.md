@@ -712,6 +712,20 @@ Karte darf eine Kachel sein (die lebendige Karte, gesiebt wie in Play)
 oder der **Hintergrund** des Boards (`backgroundMap`) — beides ist keine
 neue Art Platzierung, sondern derselbe Artikel an einem anderen Ort.
 
+**Eine Abfrage-Kachel** (T-340) zeigt nicht einen Artikel, sondern eine
+Auswahl — die Gerüchte der Stadt, was man über den Baron hören kann. Die
+Leitung sagt, *woher* (Arten, einzelne Artikel, Marken, Ebenen, eine
+Filterkette), nicht *welche*: eine Liste von Ids veraltete mit dem
+nächsten neuen Gerücht. Sie ist eine Kachel wie jede andere, also eine
+Kante — ihr Ziel ist das Board selbst, weil die Frage niemandem sonst
+gehört. Die Antwort rechnet der Server für jeden, der hinsieht; eine
+Kachel, die Spielenden die Liste der Leitung zeigt und im Browser kürzt,
+hätte die Liste schon verraten. Gezogen wird ohne Zurücklegen, und der
+Stand gehört dem Server: zwei Laptops am Tisch sollen nicht zweimal
+dasselbe Gerücht ziehen. **Freigeben beim Ziehen** macht das Gezogene zum
+Wissen der Gruppe — dieselbe Kante `knownBy` wie im Reiter Knowledge, und
+wo der Artikel selbst noch verborgen ist, die Freigabe an ihm.
+
 **Die Leinwand hat keinen Rand.** `width` und `height` waren die Grösse
 des Boards; jetzt sind sie die Mindestgrösse, und wie gross es ist, wird
 beim Lesen aus dem gerechnet, was darauf liegt (`boardExtent`, D8). Eine

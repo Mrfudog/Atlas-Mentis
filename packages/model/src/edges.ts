@@ -435,9 +435,13 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'boards',
     label: 'Boards',
     area: 'play',
-    does: 'lays the article out as a card on the board, and hangs a board under its story',
+    does: 'lays the article out as a card on the board, hangs a board under its story, and lets a query card list, draw or show articles — and reveal what is drawn to the party (T-340)',
     uses: {
       [M + 'board.ts']: ['placed'],
+      /* Die Abfrage-Kachel (T-340): eine `placed`-Kante des Boards auf sich selbst. */
+      [M + 'boardquery.ts']: ['placed'],
+      /* Beim Ziehen freigeben: das Gezogene wird Wissen der Gruppe (T-340). */
+      [S + 'abfrage.ts']: ['knownBy'],
       [W + 'boards/board.ts']: ['inLayer', 'instanceOf', 'partOf', 'placed'],
       [W + 'boards/boards.ts']: ['partOf'],
       [W + 'boards/brett.ts']: ['partOf'],

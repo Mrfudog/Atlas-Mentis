@@ -101,6 +101,8 @@ import {
   initiativeRulesOf,
   redactMap,
   redactBoard,
+  redactQueryTiles,
+  keepDrawState,
   BOARD_TYPE,
   mapRulesOf,
   PARTY_RELATION,
@@ -160,6 +162,7 @@ import { registerSpaltenwahl } from './spaltenwahl.js';
 import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
+import { registerAbfrage } from './abfrage.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
@@ -1218,6 +1221,8 @@ export function buildApp({
     if (/^\/api\/sessions\/[^/]+\/(end|pick-up)$/.test(url) && request.method === 'POST') return;
     /* Geben (T-150): die Route fragt `mayWrite` am Inventar selbst (`stueck.ts`). */
     if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
+    /* Die Abfrage-Kachel (T-340): ziehen und zurücksetzen prüft die Route am Board selbst (`abfrage.ts`). */
+    if (/^\/api\/boards\/[^/]+\/query\/[^/]+\/(draw|reset)$/.test(url) && request.method === 'POST') return;
     /* Der Zugplan (T-198): die Routen prüfen Figur und Leitung selbst (`zugplan.ts`). */
     if (/^\/api\/maps\/[^/]+\/turn-plan(\/[^/]+\/(decide|react))?$/.test(url) && request.method === 'POST') return;
     /* Die eigene Figur ziehen (T-204): die Route prüft Figur, Kampf und Kampagnenregel selbst (`zugplan.ts`). */
@@ -1576,7 +1581,8 @@ export function buildApp({
           : /* Ein Board ohne das, was die Leitung zurückhält (T-339): Formen
                und Kacheln mit `hidden`. Wer es schreibt, bekommt es ganz. */
             primaryInterface(e) === BOARD_TYPE && !seesUnfinished(alle, e, auge)
-            ? redactBoard(e)
+            ? /* Von einer Abfrage-Kachel (T-340) nur, was dieser Betrachter sieht. */
+              redactQueryTiles(redactBoard(e), siehtZiel)
             : e,
       );
   }
@@ -3109,6 +3115,18 @@ export function buildApp({
     augeVon,
     schreiben,
   });
+  /* Die Abfrage-Kachel am Board (T-340): Liste, Ziehen, Freigeben — gesiebt je Betrachter. */
+  registerAbfrage(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve,
+    schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet),
+    darfSchreiben: async (request, id) => {
+      const user = await viewerOf(request);
+      return !!user && mayWrite(user, await ownedBy(user), id);
+    },
+  });
   /* Liegengelassen (T-140): Sitzungsende und Aufheben. */
   registerLiegen(app, {
     repo,
@@ -3756,6 +3774,10 @@ export function buildApp({
     const vorherRoh = await repo.getEntity(entity.id);
     const steht = vorherRoh?.revision ?? null;
     if (steht !== erwartet) return { konflikt: erwartet };
+    /* **Was gezogen ist, gehört den Routen der Abfrage-Kachel** (T-340):
+       ein Board, das die Seite nach einem Griff ganz zurückschreibt, trüge
+       ihren letzten Stand mit und nähme einen Zug zurück. */
+    if (vorherRoh && primaryInterface(entity) === BOARD_TYPE) entity = keepDrawState(vorherRoh, entity);
 
     /* **Was eine Ergänzung trägt, gehört ihr** (T-142): gelesen kommt die
        Form aus „Item shapes" im Artikel mit, geschrieben wird sie nicht in

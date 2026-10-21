@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-board-query-cards",
+      "date": "2026-10-21",
+      "title": "Boards: query cards — lists, draws and slideshows",
+      "text": "A query card shows a selection of articles from types, tags, layers, single articles or a filter: as a list, as a random draw without putting back, or as a slideshow for a second screen. Players see only what they may see, and a draw can reveal what it brings to the party.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
       "id": "2026-10-21-rests",
       "date": "2026-10-21",
       "title": "Short and long rests on the character sheet",
