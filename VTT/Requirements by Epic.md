@@ -134,7 +134,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-43 Stories · 132 Punkte · 27 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+44 Stories · 137 Punkte · 27 steht · 6 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -248,6 +248,14 @@ Listen am Server, schnelle Navigation, Ladeanzeige. — [[F-019 Leistung & Laden
 |---|---|---|---|---|---|
 | [[REQ-246]] | Navigation ohne Einfrieren | Spieler | 1 | 5 | steht |
 | [[REQ-232]] | Listen rechnet der Server | Spieler | 2 | 5 | steht |
+
+### F-080 Qualität & Tests
+
+Drei Teststufen für jede Änderung — Unit, Integration, E2E im Browser — und wie das CI sie fährt. — [[F-080 Qualität & Tests]]
+
+| ID | Story | Rolle | Prio | Aufwand | Stand |
+|---|---|---|---|---|---|
+| [[REQ-359]] | Jede Änderung im Browser geprüft | Verwaltung | 1 | 5 | teils |
 
 ## EP-03 Kreaturen & Figuren
 

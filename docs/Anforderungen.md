@@ -12,12 +12,12 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 183 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen — 358 Stories in 79 Features und 12 Epics.
+Zusammen: 183 steht · 55 teils · 105 offen · 10 ersetzt · 6 verworfen — 359 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 53 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
-| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 43 | 27 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen |
+| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 44 | 27 steht · 6 teils · 8 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 42 | 7 steht · 9 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
@@ -155,7 +155,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen)
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-359 Jede Änderung im Browser geprüft (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -251,6 +251,12 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 |---|---|---|---|---|
 | REQ-232 | Listen rechnet der Server | 2 | **steht** | `GET /api/list` mit Spalten aus `overview` und Facetten, 2 KB je Blatt in 15–40 ms; erster Aufruf eines Spielers nach einer Änderung ≈370 ms (W7, D66) |
 | REQ-246 | Navigation ohne Einfrieren | 1 | **steht** | Stapel einmal gerechnet, Ladebanner, Startmeldung (T-086) |
+
+### F-080 Qualität & Tests
+
+| ID | Story | Prio | Stand | Anmerkung |
+|---|---|---|---|---|
+| REQ-359 | Jede Änderung im Browser geprüft | 1 | **teils** | Gerüst, CI-Job e2e und Anmelden stehen (T-356); weitere Abläufe folgen je Spec. |
 
 ## EP-03 Kreaturen & Figuren
 
@@ -986,6 +992,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-145** (1, teils, Medien & Assets) — Ablage in der Seite — *Assets als Artikel; Ablage im Artefakt*
 - **REQ-344** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
 - **REQ-346** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
+- **REQ-359** (1, teils, Zugang & Betrieb) — Jede Änderung im Browser geprüft — *Gerüst, CI-Job e2e und Anmelden stehen (T-356); weitere Abläufe folgen je Spec.*
 - **REQ-041** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **REQ-072** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **REQ-079** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*

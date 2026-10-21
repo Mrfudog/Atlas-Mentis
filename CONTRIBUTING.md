@@ -36,6 +36,8 @@ pnpm --filter @nw/model build && pnpm --filter @nw/registry build
 pnpm --filter @nw/server build && pnpm --filter web build
 # Wer eine Migration anfasst, zusätzlich gegen eine leere Postgres:
 DATABASE_URL=postgres://… node apps/server/scripts/durchstich.mjs
+# Die Abläufe im Browser, gegen eine eigene Postgres (unten, E2E-Prüfungen):
+DATABASE_URL=postgres://… pnpm e2e
 ```
 
 Die Reihenfolge ist keine Willkür: `registry`, `server` und `web` übersetzen
@@ -123,6 +125,73 @@ Routen (Pfade wie in `app.routes.ts`), ein Titel, Abschnitte mit kurzen
 englischen Absätzen. Eine **neue Route** braucht dort einen Text oder
 einen Eintrag unter `without` mit Grund — `apps/web/test/hilfe.test.ts`
 prüft das.
+
+## E2E-Prüfungen
+
+Playwright unter `apps/web/e2e/` (T-356, [F-080](VTT/Features/F-080%20Qualit%C3%A4t%20%26%20Tests.md)):
+der gebaute Server liefert die gebaute Oberfläche aus, wie im Abbild, und
+die Specs spielen Abläufe als **Leitung** und als **Spielerin** durch, je
+einmal als `desktop` (1360 × 900) und als `phone` (390 × 844). Im CI läuft
+das als Job `e2e`.
+
+**Lokal laufen lassen:**
+
+```bash
+pnpm --filter @nw/model build && pnpm --filter @nw/registry build
+pnpm --filter @nw/server build && pnpm --filter web build
+# Eine eigene Postgres — nie dev oder prod: der Aufbau legt Konten und
+# Kampagnen an. In den Sitzungen: pg_ctlcluster 16 main start.
+export DATABASE_URL=postgres://postgres:pg@localhost:5432/postgres
+# In den Sitzungen liegt Chromium schon da; sonst einmal
+# `pnpm exec playwright install chromium` und E2E_CHROMIUM weglassen.
+export E2E_CHROMIUM=/opt/pw-browsers/chromium
+pnpm e2e                       # alle Specs, beide Projekte
+pnpm e2e --project=desktop     # nur 1360 px
+pnpm e2e anmelden              # nur Specs, deren Datei so heisst
+pnpm e2e --ui                  # zum Zuschauen und Nachstellen
+```
+
+Der Server startet von selbst auf Port 8091 (`E2E_PORT`) und nimmt einen
+schon laufenden mit. Der Aufbau (`aufbau.ts`) legt die Konten
+`e2e-verwaltung` (Admin), `e2e-leitung` (`gm`) und `e2e-spielerin`
+(`player`) über `user add` an und je Lauf eine Kampagne `E2E <zeit>`; der
+Abbau (`abbau.ts`) räumt sie wieder weg. Ein Fehler hinterlässt Spur und
+Bild in `apps/web/e2e/.ergebnis/` (`pnpm exec playwright show-trace …`);
+im CI hängen sie als Artefakt `e2e-spuren` am Lauf.
+
+**Einen Spec schreiben:** eine Datei `apps/web/e2e/<ablauf>.spec.ts`,
+Testtitel englisch, Kommentare deutsch, oben die Anforderung.
+
+```ts
+import { test, expect } from './hilfen';
+
+test('a player does not see what the GM holds back', async ({ leitung, spielerin, api, eindeutig }) => {
+  const ort = await api.anlegen('leitung', 'Place', eindeutig('Crypt'), {
+    fields: { 'Visibility.audience': 'gm' },
+  });
+  await leitung.goto(`/artikel/${ort.id}`);
+  await expect(leitung.getByRole('heading', { name: ort.name })).toBeVisible();
+  await spielerin.goto(`/artikel/${ort.id}`);
+  await expect(spielerin.getByRole('heading', { name: ort.name })).toHaveCount(0);
+});
+```
+
+- `leitung` und `spielerin` sind zwei angemeldete Browser-Sitzungen, `page`
+  ist eine ohne Rolle; `api.als(rolle)` und `api.anlegen(…)` gehen über
+  dieselbe API wie die Oberfläche.
+- Testdaten legt der Spec selbst an, **klein und mit `eindeutig(name)`** —
+  die Specs laufen parallel und in beiden Projekten. Keine Inhalte aus
+  5e.tools oder einer Kampagne.
+- Gefunden wird über Rollen, Beschriftungen und Text (`getByRole`,
+  `getByLabel`), nie über CSS-Klassen. **Kein `waitForTimeout`**: Playwright
+  wartet von selbst auf das, was `expect` verlangt.
+- Was am Telefon anders aussieht, prüft der Spec mit
+  `test.info().project.name === 'phone'`, statt einen zweiten zu schreiben.
+- Wo der Server siebt, laufen beide Rollen im selben Test.
+
+**Integration** (eine Route über `app.inject`, ohne Browser) baut ihren
+Tisch mit `apps/server/test/hilfen/tisch.ts`: Konten mit Rollen,
+`t.als('Sela', 'GET', …)` — Beispiel in `apps/server/test/tisch.test.ts`.
 
 ## Wo Anforderungen leben
 
