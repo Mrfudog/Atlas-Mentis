@@ -1182,6 +1182,30 @@ node scripts/regelwerk.mjs ~/kibbles/paket.json             # schreibt nach dev
 - **Nur dev.** Die Ausgabe nennt Schlüssel, Arten und Zahlen, nie Text
   aus dem Paket, und darf ins Protokoll (`docs/Nachtarbeit/…`).
 
+## Gegenstandsformen aus Basils System laden
+
+Formen und Stapelgrössen (T-142, E-125) stehen im **privaten** Vault der
+Leitung (`Homebrew System/Gegenstände`, Schlüssel `Formfaktor`,
+`Stapelgrösse`, `aliases`). **Nichts aus dem Vault kommt ins Repository**:
+geklont wird ausserhalb des Arbeitsbaums, Plan, Protokoll und
+Massenänderung liegen daneben; ins Repo kommt nur das Protokoll mit Ids,
+Namen der Gegenstände auf dev und Werten.
+
+```bash
+node scripts/formen.mjs plan --vault ~/ttrpg/"Homebrew System/Gegenstände" --out ~/formen/plan.json
+node scripts/formen.mjs apply ~/formen/plan.json --limit 20 --log ~/formen/log.jsonl --bulk ~/formen/bulk.json   # Probe
+node scripts/atlas.mjs bulk --dry-run ~/formen/bulk.json && node scripts/atlas.mjs bulk ~/formen/bulk.json
+node scripts/formen.mjs apply ~/formen/plan.json --log ~/formen/log.jsonl --bulk ~/formen/bulk.json            # der Rest
+node scripts/formen.mjs offen --out ~/formen/offen.json   # was ohne Form bleibt, je Art
+```
+
+`apply` legt je Gegenstand eine **Ergänzung** (Datenmodell E7a) in der
+Ebene „Item shapes (Basil Homebrew)" an, in der Gruppe „Basil Homebrew",
+die es in der laufenden Kampagne aufschaltet; ein zweiter Lauf nimmt, was
+im Protokoll steht. Die Werte setzt die Massenänderung — zurück mit
+`atlas.mjs undo <id>`, abschalten heisst, die Gruppe in der Kampagne
+auszuschalten.
+
 ## Den Bestand von prod nach dev holen
 
 Seit T-130 geht das auch in der Oberfläche, ohne Shell: Werkbank ›

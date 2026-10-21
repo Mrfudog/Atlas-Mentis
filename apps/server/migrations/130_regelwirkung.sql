@@ -16,7 +16,7 @@
 -- Nur, wo noch steht, was das Register gebracht hat — jede Zeile wird mit
 -- ihrem alten Wert verglichen; was jemand im Register geändert hat, bleibt.
 -- Kein Artikel wird geändert, entfernt wird nichts.
--- Die Nummer wird beim Hereinmergen nachgesehen.
+-- Die Nummer ist beim Hereinmergen nachgesehen (130).
 
 update interface_def
    set schema = jsonb_set(

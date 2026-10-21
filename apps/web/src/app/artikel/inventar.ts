@@ -11,6 +11,7 @@ import {
   firstFreeSpot,
   fitsAt,
   insideOf,
+  inventoryImageOf,
   isUnstowed,
   itemShape,
   loadStage,
@@ -20,9 +21,11 @@ import {
   pieceZone,
   reserve,
   reservedFor,
+  shapeChiral,
   sizeFactor,
   slotsUsed,
   type GridPiece,
+  type InventoryFrame,
   type Shape,
   zoneMap,
 } from '@nw/model';
@@ -33,6 +36,8 @@ import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
 import { Wahl } from './wahl';
+import { bildAdresse } from './bild';
+import { formBildStil, maskenStil } from '../kern/formbild';
 
 /** Die Griffweiten an `holds.props.tier`, in der Reihenfolge des Registers. */
 const TIERS = ['held', 'worn', 'belt', 'pack', 'ground', 'stored'];
@@ -82,6 +87,10 @@ interface Stueck extends GridPiece {
   /** Noch nicht verstaut (T-140, `holds.props.unstowed`). */
   offen: boolean;
   farbe: string;
+  /** Das Bild in der Form (T-142): das Inventarbild des Gegenstands, sonst sein Bild. */
+  bild: { asset: string; frame: InventoryFrame } | null;
+  /** Lohnt Spiegeln? Nur bei einer Form, die gespiegelt keine Drehung ihrer selbst ist. */
+  chiral: boolean;
 }
 
 interface Ziel {
@@ -196,8 +205,16 @@ interface Ziel {
                     [attr.aria-label]="zellLabel(z)" [title]="zellLabel(z)"
                     [disabled]="!darf() && !z.stueck"
                     (click)="zelle(z.x, z.y)">
-              @if (z.anker && z.stueck) { <span class="kurz">{{ z.stueck.name.slice(0, 3) }}</span> }
+              @if (z.anker && z.stueck && !z.stueck.bild) { <span class="kurz">{{ z.stueck.name.slice(0, 3) }}</span> }
             </button>
+          }
+          <!-- Das Bild jedes liegenden Stücks (T-142), nur in seinen Feldern, gedreht und gespiegelt wie das Stück. -->
+          @for (b of bilder(); track b.key) {
+            <div class="stueckbild" aria-hidden="true" [style]="b.lage">
+              <div class="dreher" [style]="b.dreher">
+                <img [src]="b.src" alt="" draggable="false" [style]="b.img" />
+              </div>
+            </div>
           }
         </div>
         @if (darf()) {
@@ -265,6 +282,9 @@ interface Ziel {
                 </label>
                 @if (regel() === 'grid') {
                   <button type="button" class="klein" (click)="drehen(p)">Rotate</button>
+                  @if (p.chiral) {
+                    <button type="button" class="klein" [attr.aria-pressed]="!!p.flip" (click)="spiegeln(p)">Mirror</button>
+                  }
                   @if (liegtIm(p)) {
                     <button type="button" class="klein" (click)="herausnehmen(p)">Off the grid</button>
                   } @else {
@@ -317,7 +337,10 @@ interface Ziel {
     .mass.warn { color: var(--warn); }
     .beutel { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; margin-left: auto; }
     .beutel input { width: 3.6rem; min-height: 32px; margin-right: 0.15rem; }
-    .raster { display: grid; gap: 2px; width: max-content; max-width: 100%; }
+    .raster { position: relative; display: grid; gap: 2px; width: max-content; max-width: 100%; }
+    .stueckbild { position: absolute; overflow: hidden; pointer-events: none; }
+    .stueckbild .dreher { position: absolute; left: 50%; top: 50%; }
+    .stueckbild img { display: block; user-select: none; }
     .zelle {
       width: var(--zelle); height: var(--zelle); min-height: 0; padding: 0;
       border: 1px solid var(--line); border-radius: 3px; background: var(--surface);
@@ -458,6 +481,7 @@ export class Inventar {
           gx: zahl(pr['gx']),
           gy: zahl(pr['gy']),
           rot: zahl(pr['rot']) ?? 0,
+          flip: pr['flip'] === true,
           rows: item['rows'],
           weight: zahl(item['weight']),
           stackSize: zahl(item['stackSize']),
@@ -465,6 +489,8 @@ export class Inventar {
           behaelter: (it?.relations ?? []).find((r) => r.type === 'carries')?.to ?? null,
           offen: isUnstowed(k),
           farbe: `hsl(${(i * 67 + 200) % 360} 55% 62%)`,
+          bild: inventoryImageOf(it),
+          chiral: shapeChiral(item['rows']),
         };
       });
   });
@@ -486,7 +512,7 @@ export class Inventar {
     const belegt = new Map<string, { stueck: Stueck; anker: boolean }>();
     for (const p of this.stuecke()) {
       if (!pieceInShape(box, p)) continue;
-      const f = itemShape(p.rows, p.rot ?? 0);
+      const f = itemShape(p.rows, p.rot ?? 0, !!p.flip);
       let erstes = true;
       for (let y = 0; y < f.h; y++)
         for (let x = 0; x < f.w; x++) {
@@ -502,6 +528,37 @@ export class Inventar {
         const b = belegt.get(key);
         out.push({ key, x, y, offen: filled(box, x, y), zone: zonen[key] ?? '', stueck: b?.stueck ?? null, anker: !!b?.anker });
       }
+    return out;
+  });
+
+  /**
+   * **Die Bilder der liegenden Stücke** (T-142): je Stück ein Kasten über
+   * seinen Feldern, maskiert auf die belegten; darin die ungedrehte Form,
+   * gedreht und gespiegelt wie das Stück, und darin das Bild nach seinem
+   * Ausschnitt. Feldgrösse und Abstand wie im Raster (`--zelle`, 2px).
+   */
+  protected readonly bilder = computed(() => {
+    const box = this.kiste();
+    const px = (n: number, luecken: number) => `calc(${n} * var(--zelle) + ${Math.max(0, luecken) * 2}px)`;
+    const out: { key: string; src: string; lage: Record<string, string>; dreher: Record<string, string>; img: Record<string, string> }[] = [];
+    for (const p of this.stuecke()) {
+      if (!p.bild || !pieceInShape(box, p)) continue;
+      const src = bildAdresse(p.bild.asset, 'thumb');
+      if (!src) continue;
+      const ur = itemShape(p.rows);
+      const lage = itemShape(p.rows, p.rot ?? 0, !!p.flip);
+      out.push({
+        key: p.key,
+        src,
+        lage: { left: px(p.gx!, p.gx!), top: px(p.gy!, p.gy!), width: px(lage.w, lage.w - 1), height: px(lage.h, lage.h - 1), ...maskenStil(lage) },
+        dreher: {
+          width: px(ur.w, ur.w - 1),
+          height: px(ur.h, ur.h - 1),
+          transform: `translate(-50%, -50%) rotate(${p.rot ?? 0}deg) scaleX(${p.flip ? -1 : 1})`,
+        },
+        img: formBildStil(p.bild.frame, ur.w, ur.h),
+      });
+    }
     return out;
   });
 
@@ -664,6 +721,16 @@ export class Inventar {
       return;
     }
     void this.setze(p, { rot });
+  }
+
+  /** **Spiegeln** (T-142): wie Drehen, an der Kante (`holds.props.flip`), nur wo die Form es ändert. */
+  protected spiegeln(p: Stueck): void {
+    const flip = !p.flip;
+    if (this.liegtIm(p) && !fitsAt(this.kiste(), this.stuecke(), p, p.gx!, p.gy!, p.rot ?? 0, flip)) {
+      this.hinweis.set(`Mirrored, ${p.name} doesn’t fit here — take it off the grid first.`);
+      return;
+    }
+    void this.setze(p, { flip: flip || undefined });
   }
 
   protected hinlegen(p: Stueck): void {

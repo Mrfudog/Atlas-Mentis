@@ -768,6 +768,9 @@ export const interfaces: Record<string, InterfaceDef> = {
       full: [
         { id: 'it-img', el: 'image' },
         { id: 'it-book', el: 'item' },
+        /* Form, Stapelgrösse und Inventarbild (T-142): das Element malt
+           und zeigt sie, das Buch nimmt sie nicht in seine Zusatzzeilen. */
+        { id: 'it-shape', el: 'shape' },
         { id: 'it-desc', el: 'description' },
         { id: 'it-f', el: 'fields', fields: 'all', except: ['Item', 'Weapon', 'Armor', 'Material'] },
         { id: 'it-linked', el: 'linked' },
