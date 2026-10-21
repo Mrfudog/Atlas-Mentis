@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-quick-first",
+      "date": "2026-10-21",
+      "title": "Quick cards: key values first, picture last",
+      "text": "The quick card — popup, map marker, board card and the + of a search hit — now opens with what you look for: a creature’s numbers, a spell’s level, school, casting time and range, an item’s rarity and weight, with measures in your units. The picture comes last and is cut off at the bottom when a popup or card runs out of room. Search hits show the quick card instead of a view of their own.",
+      "area": "Articles",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-21-board-tools",
       "date": "2026-10-21",
       "title": "Boards: tools for text, images, drawing and maps",

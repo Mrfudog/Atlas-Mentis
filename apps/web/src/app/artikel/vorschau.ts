@@ -6,6 +6,7 @@ import {
   elementTakes,
   entityName,
   entriesOf,
+  fieldText,
   fieldTitle,
   drawnByTree,
   forArticle,
@@ -13,6 +14,7 @@ import {
   primaryInterface,
   proseFields,
   typeChain,
+  unitsFor,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
@@ -98,7 +100,10 @@ interface Stueck {
               <nw-kennzahlen [artikel]="e" />
             }
             @case ('bild') {
-              <nw-bild [wert]="s.bild!.wert" [version]="s.bild!.version" groesse="thumb" [caption]="s.bild!.caption" [alt]="s.bild!.alt || name(e)" />
+              <!-- Im Rahmen (Popup, Marker) schneidet das Fach unten ab statt zu scrollen (T-346). -->
+              <div class="bildfach">
+                <nw-bild [wert]="s.bild!.wert" [version]="s.bild!.version" groesse="thumb" [caption]="s.bild!.caption" [alt]="s.bild!.alt || name(e)" />
+              </div>
             }
             @case ('felder') {
               <dl>
@@ -164,6 +169,28 @@ interface Stueck {
     </aside>
   `,
   styles: `
+    /* **Das Bild gibt nach** (T-346): die Karte ist eine Spalte, in der nur
+       das Bildfach schrumpfen darf. Steht sie in einem Rahmen mit fester
+       Höhe (das Popup, der Marker), wird das Bild unten abgeschnitten —
+       nicht verkleinert —, und die Werte darüber bleiben ganz. Ohne Rahmen
+       (Kompendium, Suche) steht es ganz da. */
+    :host {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .vorschau {
+      flex: 0 1 auto;
+      min-height: 0;
+    }
+    .vorschau > * {
+      flex: none;
+    }
+    .vorschau > .bildfach {
+      flex: 0 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
     .vorschau.eingebettet {
       border: 0;
       padding: 0;
@@ -416,7 +443,8 @@ export class Vorschau {
               ? (name(String(wert)) ?? String(wert))
               : typeof wert === 'object'
                 ? JSON.stringify(wert)
-                : String(wert);
+                : /* Ein Mass in Einheiten wie auf der Seite (T-346): „60 ft", nicht „60". */
+                  fieldText(r, prop, wert, unitsFor(r, typ)) || String(wert);
         raus.push({
           ref: `${comp}.${key}`,
           label: fieldTitle(r, typ, { type: comp, key, prop }),

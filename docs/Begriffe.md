@@ -640,10 +640,9 @@ und welche gilt, sagt der Ort und kein Schalter:
 | Ansicht | Wo sie gilt | Was sie zeigt |
 |---|---|---|
 | **Overview** | Ein Verweis im Text, eine Listenzeile | Name und die Beschreibung — eine Handvoll Zeilen, wie ein Hover; die Felder darin sind die Spalten im Kompendium |
-| **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
+| **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel und am Marker, das „+" eines Suchtreffers, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat — die Kennwerte oben, das Bild zuletzt |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 | **Print** | „Print" an der Artikelseite | Was auf ein Blatt A4 gehört — ohne Knöpfe und Seitenspalte |
-| **Search** | Das „+" an einem Treffer der übergreifenden Suche (T-138) | Was über Name, Art, Ebene und Herausgeber hinaus hilft, den richtigen Treffer zu erkennen — Bild, Beschreibung, ein, zwei Werte |
 
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es an diesen Orten
 nicht. Ein Verweis ist ein Verweis, und eine Artikelseite ist eine
@@ -655,16 +654,27 @@ Leitung wissen will) ist die erste, „Spielertisch" könnte die nächste
 sein — im Register angelegt und dort gewählt, wo ohnehin gewählt
 wird: auf der Kachel und beim Drucken. Die Leitung wollte festlegen, was
 erscheint, ohne Code zu ändern; dass dafür niemand an jedem Ort wählen
-muss, hält die fünf fest. Das „+" der Suche ist darum **eine Ansicht und
-kein Sonderfall**: die Leitung stellt im Register ein, was ein
-aufgeklappter Treffer zeigt, wie bei jeder anderen.
+muss, hält die vier fest. Das „+" der Suche ist darum **eine Ansicht und
+kein Sonderfall** — und zwar **dieselbe wie die Karte** (T-346): von
+T-138 bis T-346 hatte es eine eigene, `search`, und die zeigte an jeder
+Art, was `quick` zeigte, abgeleitet, damit sie nicht vergessen wurde. Zwei
+Ansichten, die dasselbe sagen müssen, sind eine Ansicht, die man zweimal
+pflegt; beide beantworten „was habe ich da vor mir?".
+
+**Warum das Bild zuletzt steht** (T-346): eine Karte hat einen Rahmen —
+das Popup unter dem Auslöser, die Kachel auf dem Board — und nicht immer
+Platz für alles. Steht das Bild oben, schiebt es die Werte aus dem Rahmen,
+und wer die Kurzansicht öffnet, sucht Grad und Reichweite, nicht das Bild.
+Also stehen die Kennwerte oben, dann Satz und Passagen, und das Bild am
+Ende, wo der Rahmen es **abschneidet statt verkleinert**: ein Ausschnitt
+bleibt erkennbar, ein Briefmarkenbild nicht.
 
 **Warum der Handzettel Werte trägt, aber nicht alle** (T-234): wer den
 Spielenden einen Gegenstand in die Hand gibt, gibt ihnen auch seine
 Seltenheit; wer ihnen eine Fraktion vorstellt, nicht ihr Ziel. Was
 zurückgehalten ist, siebt der Server ohnehin — der Zettel lässt darüber
 hinaus weg, was die Leitung zwar sehen darf, aber nicht austeilt. Darum
-wählt die Art die Werte (`h-f`), wie bei Karte und Suche, und eine
+wählt die Art die Werte (`h-f`), wie bei der Karte, und eine
 „Spieleransicht" daneben gibt es weiter nicht: zwei Stellen, die sagen, was
 Spielende sehen, wären zwei Wahrheiten.
 

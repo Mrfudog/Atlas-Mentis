@@ -73,6 +73,11 @@ const SCHMAL = '(max-width: 640px)';
     .kurz {
       position: fixed;
       z-index: 50;
+      /* Eine Spalte, damit die Karte darin nachgibt: das Bild zuletzt und
+         unten abgeschnitten (T-346). Gescrollt wird erst, wenn schon die
+         Werte und der Text nicht passen. */
+      display: flex;
+      flex-direction: column;
       overflow-y: auto;
       border-radius: 8px;
       box-shadow: 0 6px 24px rgb(0 0 0 / 0.25);

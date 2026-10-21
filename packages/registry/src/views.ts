@@ -65,7 +65,14 @@ export const views: Record<string, ViewDef> = {
     ],
   },
 
-  /** Die Karte: ein Bild, ein Satz, das Wesentliche. */
+  /**
+   * **Die Karte** — Popup, Kachel, Marker, Kompendium-Vorschau und das
+   * „+" der Suche (T-346: die Suche hatte eine eigene Ansicht `search`, die
+   * dasselbe zeigte). Oben, wofür man sie öffnet: die Kennwerte der Art,
+   * dann der Satz, dann die Passagen. **Das Bild zuletzt**: im Kartenrahmen
+   * wird unten abgeschnitten, wenn der Platz nicht reicht, und dann soll es
+   * das Bild treffen und nicht die Werte.
+   */
   quick: {
     label: 'Quick',
     order: 2,
@@ -76,13 +83,13 @@ export const views: Record<string, ViewDef> = {
     bindings: false,
     image: true,
     layout: [
-      { id: 'q-img', el: 'image' },
-      { id: 'q-desc', el: 'description' },
       /* Wie bei der Übersicht: die Auswahl ist leer und wird je Art
-         gefüllt. Eine Karte trägt zwei oder drei Werte, und **welche**
+         gefüllt. Eine Karte trägt drei bis sechs Werte, und **welche**
          weiss die Art und nicht die Ansicht. */
       { id: 'q-f', el: 'fields', fields: [] },
+      { id: 'q-desc', el: 'description' },
       { id: 'q-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
+      { id: 'q-img', el: 'image' },
     ],
   },
 
@@ -185,31 +192,6 @@ export const views: Record<string, ViewDef> = {
          weiss die Art — die Seltenheit eines Gegenstands, die Art eines Orts. */
       { id: 'h-f', el: 'fields', fields: [] },
       { id: 'h-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
-    ],
-  },
-
-  /**
-   * **Das „+" der Suche** (T-138): die Leitung wollte Treffer mit wenig
-   * Info und darunter, aufgeklappt, „Quelle, Art etc.". Art, Ebene und
-   * Herausgeber stehen in der Trefferzeile selbst (sie sind keine Felder);
-   * was der Artikel darüber hinaus sagt, sagt diese Ansicht — Bild,
-   * Beschreibung und je Art die Felder, die sie dazunimmt. Ein Ort, der
-   * nach ihr fragt, also bleibt sie stehen (`PLACE_VIEWS`).
-   */
-  search: {
-    label: 'Search',
-    order: 6,
-    fields: 'none',
-    description: true,
-    composed: false,
-    relations: false,
-    bindings: false,
-    image: true,
-    layout: [
-      { id: 's-img', el: 'image' },
-      { id: 's-desc', el: 'description' },
-      /* Leer wie bei `quick`: welche zwei, drei Werte, weiss die Art. */
-      { id: 's-f', el: 'fields', fields: [] },
     ],
   },
 };

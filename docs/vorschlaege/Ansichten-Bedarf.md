@@ -1,6 +1,7 @@
 # Ansichten: Bestand, Bedarf je Art und Stufe
 
-Stand 21.10.2026, T-234. Gelesen aus dem Register (`packages/registry`,
+Stand 21.10.2026, T-234; **nachgeführt mit T-346** (Abschnitt
+„quick: Reihenfolge je Art", die Suche liest `quick`). Gelesen aus dem Register (`packages/registry`,
 `seedRegistry`) mit `node packages/registry/scripts/ansichten.mjs` — das
 Skript schreibt die Tabelle unten neu (`… <Typ>` je Art Element für Element,
 `--json` maschinenlesbar). Gestaltete Ansichten aus dem Designer stehen in der
@@ -18,8 +19,8 @@ dafür legt dieser Stand an, die Vorgabe der Kachel gehört T-339. Offen: E-124 
 
 ## Kurzfassung
 
-- **Stufen bleiben, wie sie sind.** `overview`, `quick`, `full`, `print`,
-  `search` sind die Orte; `handout` ist die eigene Gruppe für das, was man
+- **Stufen bleiben, wie sie sind.** `overview`, `quick`, `full`, `print`
+  sind die Orte (bis T-346 auch `search`, siehe unten); `handout` ist die eigene Gruppe für das, was man
   Spielenden in die Hand gibt. **Eine Stufe „player" gibt es nicht** und
   kommt nicht dazu (CLAUDE.md: es gibt keine Spieleransicht — Spielende sehen
   dieselben Ansichten, gesiebt am Server mit `redactEntity`). Wo die Aufgabe
@@ -72,9 +73,10 @@ alle offen und brauchen keinen Zettel.
 | Article, World, Chapter, Asset, Buchteile | (Asset ●) | — | — | — | — | — | Grundanordnung reicht; Teile stehen in keiner Liste |
 
 **Doppelungen:** keine gefunden — jede Anpassung sagt eine Abweichung, keine
-Abschrift einer Ansicht. Dass Karte und Suche dieselben Werte tragen, ist
+Abschrift einer Ansicht. Dass Karte und Suche dieselben Werte tragen, war
 gewollt (beide beantworten „was habe ich vor mir?") und darum **abgeleitet**
-(`suche()`), nicht zweimal geschrieben. **Ungenutzt:** keine Ortsansicht; die
+(`suche()`) — mit T-346 ist daraus eine Ansicht geworden: das „+" der Suche
+liest `quick`, die Spalte `search` oben gilt nicht mehr. **Ungenutzt:** keine Ortsansicht; die
 gestalteten Ansichten der Datenbank zählt Registry › Views (`appliesCount`).
 
 ## Die Elementbäume
@@ -101,30 +103,113 @@ handout · Spell (Anpassung: drop h-desc, extra h-spell, order)
 ├─ h-f      fields []
 └─ h-b      prose
 
-quick · Encounter (Anpassung: add q-f)
-├─ q-img    image
+quick (global, seit T-346)
+├─ q-f      fields []                       ← die Kennwerte der Art, oben
 ├─ q-desc   description
-├─ q-f      fields [Encounter.kind, Encounter.phase, Difficulty]
-└─ q-b      prose
+├─ q-b      prose [Prose.paragraph, ReadAloud.readaloud]
+└─ q-img    image                           ← zuletzt; der Rahmen schneidet es unten ab
 
-search · <Art> (abgeleitet aus quick)
-├─ s-img    image
-├─ s-desc   description
-└─ s-f      fields = q-f der Art
+quick · Creature (Anpassung: add q-f, extra c-q-stats, order [c-q-stats])
+├─ c-q-stats stats                          ← AC, HP, Tempo, Initiative, CR
+├─ q-f      fields [Creature.kind, species, role, attitude]
+├─ q-desc   description
+├─ q-b      prose
+└─ q-img    image
 ```
 
 ```mermaid
 flowchart LR
   O["Ort fragt<br/>(pickView)"] --> G{"Gruppe"}
   G -->|overview| OV["Verweis, Listenzeile"]
-  G -->|quick| Q["Karte, Popup, Vorschau,<br/>Board-Kachel (Leitung)"]
+  G -->|quick| Q["Karte, Popup, Vorschau, Marker,<br/>Board-Kachel, „+“ der Suche"]
   G -->|full| F["Artikelseite<br/>+ Kapitel (T-277)"]
   G -->|print| P["Blatt A4"]
-  G -->|search| S["„+“ der Suche<br/>= Werte der Karte"]
   G -->|handout| H["Handzettel: Druck,<br/>Board-Kachel (Spielende, E-123)"]
-  Q & S & H --> A["Art wählt die Werte<br/>(q-f, s-f, h-f)"]
+  Q & H --> A["Art wählt die Werte<br/>(q-f, h-f)"]
   F --> V{"Variante?<br/>E-124"}
 ```
+
+## quick: Reihenfolge je Art (T-346)
+
+Die Leitung (21.10.): „search ist meist wie quick" und „Bilder sollten in
+der Quick-Ansicht unten angeordnet werden, dass sie notfalls abgeschnitten
+werden. Generell sollte die Anordnung geprüft werden, damit das
+Relevanteste oben steht."
+
+- **Die Suche liest `quick`.** Die Ansicht `search` und ihre 22
+  Anpassungen je Art sind weg (Migration 125, nur wo sie noch so standen,
+  wie das Register sie brachte); wer `search` noch nennt, bekommt `quick`
+  (`RETIRED_PLACES`, beim Lesen). Eine gestaltete Ansicht der Gruppe
+  `search` käme in die Gruppe `quick` — auf dev gab es keine.
+- **Reihenfolge:** Kennwerte → Beschreibung → Absatz/Vorlesetext → **Bild**.
+  Die Kennwerte stehen in der Reihenfolge, in der die Art sie erklärt;
+  leere fallen weg, also zeigt eine gewöhnliche Rüstung keine Seltenheit.
+- **Abschneiden:** Popup (auch am Marker der Karte) und Board-Kachel sind
+  Spalten, in denen nur das Bildfach nachgibt (`flex-shrink`, `overflow:
+  hidden`) — das Bild wird unten abgeschnitten, nicht verkleinert. Reicht
+  der Platz nicht einmal für Werte und Text, scrollt der Rahmen wie bisher.
+  Die Kachel zeigt das Bild jetzt überhaupt (vorher zeichnete sie kein
+  `image`). Kompendium-Vorschau und Suche haben keinen festen Rahmen: dort
+  steht das Bild ganz.
+- **Masse** stehen auf Karte und Kachel jetzt in Einheiten wie auf der
+  Seite („60 ft", `fieldText`) — darum dürfen Reichweite und Gewicht auf die
+  Karte. **Der Preis nicht:** er steht in Kupfer, und eine Währung als
+  Einheit gibt es nicht; „Price in copper 5000" wäre keine Auskunft.
+- **Nicht übernommen, was die Leitung auf dev selbst eingestellt hat:**
+  siehe [Protokoll](../Nachtarbeit/2026-10-21-T-346.md) (Party, Table).
+
+`●` sagt die Art selbst, `○` erbt von der genannten; „neu" heisst, die Art
+nimmt mit T-346 andere Werte oder eine andere Reihenfolge als ihre
+Vorgängerin (die Grundreihenfolge gilt für alle).
+
+| Art | woher | quick, von oben nach unten | |
+|---|---|---|---|
+| Creature | ● | Kennzahlen (`stats`) → kind, species, role, attitude → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| PlayerCharacter | ○ Creature | Kennzahlen (`stats`) → kind, species, role, attitude → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Place | ● | kind, environment, state → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Shop | ○ Place | kind, environment, state → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Faction | ● | kind, goal → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Rule | ● | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Feat | ● | kind, prerequisite, repeatable → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Skill | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Language | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Class | ● | kind, hitDie, primaryAbility, spellAbility → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Subclass | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Ancestry | ● | kind, size, speed, creatureType, darkvision → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Background | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| AbilityMethod | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| EquipmentMethod | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Condition | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Disease | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| ActionType | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Action | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Feature | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| ItemProperty | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Spell | ● | kind, level, school, castingAction, range, concentration, ritual → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Hazard | ● | kind, tier, threat, trigger → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| ZoneKind | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Deity | ● | pantheon, title, alignment, domains → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Statblock | ● | Kennzahlen (`stats`) → Bild | neu |
+| Item | ● | itemType, rarity, attunement, weight → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Weapon | ● | itemType, rarity, attunement, weight, category, damage, damageType → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Armor | ● | itemType, rarity, attunement, weight, armorType, ac, strength, stealthDisadvantage → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Material | ○ Item | itemType, rarity, attunement, weight → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Party | ● | level, motto → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Story | ● | kind, played → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Arc | ● | kind, played, levelFrom, levelTo → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Campaign | ○ Story | kind, played → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Session | ○ Story | kind, played → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Scene | ● | kind, played, mode, Difficulty → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Quest | ● | progress, reward, deadline → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Map | ● | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Recipe | ● | trade, tool, dc, time → Beschreibung → Absatz, Vorlesetext → Bild | neu |
+| Trade | ● | kind, tools → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| MaterialGroup | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Substitution | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| GlossaryTerm | ○ Rule | kind → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| CraftingOrder | ○ Recipe | trade, tool, dc, time → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Encounter | ● | kind, phase, Difficulty → Beschreibung → Absatz, Vorlesetext → Bild |  |
+| Event | ● | kind, display → Beschreibung → Absatz, Vorlesetext → Bild |  |
 
 ## Offene Punkte
 
@@ -149,68 +234,68 @@ flowchart LR
 `—` Grundanordnung, `±` Anpassung, `■` eigene Anordnung; in Klammern die
 Art, an der sie steht, dahinter die grossen Blöcke.
 
-| Art | Bereich | overview | quick | full | print | handout | search |
-|---|---|---|---|---|---|---|---|
-| Board | play | — | — | ■ board | — | — | — |
-| CraftingOrder | play | — | ± (Recipe) | ■ crafting | — | — | ± (Recipe) |
-| Encounter | play | ■ | ± | ■ initiative | — | — | ± |
-| Map | play | — | ± | ■ map | — | — | ± |
-| AbilityMethod | rules | ■ | ± (Rule) | — | — | — | ± (Rule) |
-| Action | rules | ■ | ± (Rule) | — | — | — | ± (Rule) |
-| ActionType | rules | ■ (Rule) | ± (Rule) | — | — | — | ± (Rule) |
-| Ancestry | rules | ■ | ± | ± originOverview | — | — | ± |
-| Background | rules | ■ (Rule) | ± (Rule) | ± originOverview | — | — | ± (Rule) |
-| Class | rules | ■ | ± | ± classOverview | — | — | ± |
-| Condition | rules | ■ | ± (Rule) | — | — | — | ± (Rule) |
-| Disease | rules | ■ (Condition) | ± (Rule) | — | — | — | ± (Rule) |
-| EquipmentMethod | rules | ■ | ± (Rule) | — | — | — | ± (Rule) |
-| Feat | rules | ■ | ± | — | — | — | ± |
-| Feature | rules | ■ | ± (Rule) | — | — | — | ± (Rule) |
-| GlossaryTerm | rules | ■ | ± (Rule) | — | — | — | ± (Rule) |
-| Information | rules | — | — | — | — | — | — |
-| Inventory | rules | — | — | ■ inventory | — | — | — |
-| ItemProperty | rules | ■ (Rule) | ± (Rule) | — | — | — | ± (Rule) |
-| Knowledge | rules | — | — | ± knowledgeContents | — | — | — |
-| Language | rules | ■ | ± (Rule) | — | — | — | ± (Rule) |
-| MaterialGroup | rules | ■ (Rule) | ± (Rule) | — | — | — | ± (Rule) |
-| Recipe | rules | — | ± | ■ crafting | — | — | ± |
-| Rule | rules | ■ | ± | — | — | — | ± |
-| Skill | rules | ■ (Rule) | ± (Rule) | — | — | — | ± (Rule) |
-| Spell | rules | ■ | ± | ■ spell | ± spell | ± spell | ± |
-| Statblock | rules | ■ | ■ stats | ■ statblock | ± statblock | — | — |
-| Subclass | rules | ■ | ± (Rule) | — | — | — | ± (Rule) |
-| Substitution | rules | ■ (Rule) | ± (Rule) | — | — | — | ± (Rule) |
-| Table | rules | ■ | — | ■ | — | — | — |
-| Trade | rules | ■ (Rule) | ± | ± crafting | — | — | ± (Rule) |
-| ZoneKind | rules | ■ (Rule) | ± (Rule) | — | — | — | ± (Rule) |
-| Arc | story | — | ± | — | — | — | ± |
-| Campaign | story | — | ± (Story) | ■ rules, stack, members, timeline, prep | — | — | ± (Story) |
-| Quest | story | — | ± | ■ | — | ± | ± |
-| Scene | story | — | ± | — | — | — | ± |
-| Session | story | — | ± (Story) | ■ live, prep | — | — | ± (Story) |
-| Story | story | — | ± | — | — | — | ± |
-| Armor | world | ■ | ± | ■ (Item) item, crafting | ± (Item) item | ± | ± |
-| Article | world | — | — | — | — | — | — |
-| Creature | world | ■ | ± stats | ■ sheet, turn, spells, inventory, crafting, campaign | — | ± | ± |
-| Deity | world | ■ | ± | — | — | ± | ± |
-| Event | world | — | ± | — | — | — | ± |
-| Faction | world | — | ± | — | — | ± | ± |
-| Hazard | world | ■ | ± | — | — | — | ± |
-| Item | world | ■ | ± | ■ item, crafting | ± item | ± | ± |
-| Material | world | ■ (Item) | ± (Item) | ■ (Item) item, crafting | ± (Item) item | ± (Item) | ± (Item) |
-| Party | world | — | ± | ■ inventory, crafting | — | — | ± |
-| Place | world | — | ± | ■ crawl | — | ± | ± |
-| PlayerCharacter | world | ■ (Creature) | ± (Creature) stats | ■ (Creature) sheet, turn, spells, inventory, crafting, campaign | — | ± (Creature) | ± (Creature) |
-| Shop | world | — | ± (Place) | ± wares, crawl | — | ± (Place) | ± (Place) |
-| Weapon | world | ■ | ± | ■ (Item) item, crafting | ± (Item) item | ± | ± |
-| World | world | — | — | — | — | — | — |
-| Asset | — | ■ | — | — | — | — | — |
-| Chapter | — | — | — | — | — | — | — |
-| Embed | — | — | — | — | — | — | — |
-| Heading | — | — | — | — | — | — | — |
-| Layer | — | — | — | ± contents, reader | — | — | — |
-| Paragraph | — | — | — | — | — | — | — |
-| ReadAloudText | — | — | — | — | — | — | — |
+| Art | Bereich | overview | quick | full | print | handout |
+|---|---|---|---|---|---|---|
+| Board | play | — | — | ■ board | — | — |
+| CraftingOrder | play | — | ± (Recipe) | ■ crafting | — | — |
+| Encounter | play | ■ | ± | ■ initiative | — | — |
+| Map | play | — | ± | ■ map | — | — |
+| AbilityMethod | rules | ■ | ± (Rule) | — | — | — |
+| Action | rules | ■ | ± (Rule) | — | — | — |
+| ActionType | rules | ■ (Rule) | ± (Rule) | — | — | — |
+| Ancestry | rules | ■ | ± | ± originOverview | — | — |
+| Background | rules | ■ (Rule) | ± (Rule) | ± originOverview | — | — |
+| Class | rules | ■ | ± | ± classOverview | — | — |
+| Condition | rules | ■ | ± (Rule) | — | — | — |
+| Disease | rules | ■ (Condition) | ± (Rule) | — | — | — |
+| EquipmentMethod | rules | ■ | ± (Rule) | — | — | — |
+| Feat | rules | ■ | ± | — | — | — |
+| Feature | rules | ■ | ± (Rule) | — | — | — |
+| GlossaryTerm | rules | ■ | ± (Rule) | — | — | — |
+| Information | rules | — | — | — | — | — |
+| Inventory | rules | — | — | ■ inventory | — | — |
+| ItemProperty | rules | ■ (Rule) | ± (Rule) | — | — | — |
+| Knowledge | rules | — | — | ± knowledgeContents | — | — |
+| Language | rules | ■ | ± (Rule) | — | — | — |
+| MaterialGroup | rules | ■ (Rule) | ± (Rule) | — | — | — |
+| Recipe | rules | — | ± | ■ crafting | — | — |
+| Rule | rules | ■ | ± | — | — | — |
+| Skill | rules | ■ (Rule) | ± (Rule) | — | — | — |
+| Spell | rules | ■ | ± | ■ spell | ± spell | ± spell |
+| Statblock | rules | ■ | ■ stats | ■ statblock | ± statblock | — |
+| Subclass | rules | ■ | ± (Rule) | — | — | — |
+| Substitution | rules | ■ (Rule) | ± (Rule) | — | — | — |
+| Table | rules | ■ | — | ■ | — | — |
+| Trade | rules | ■ (Rule) | ± | ± crafting | — | — |
+| ZoneKind | rules | ■ (Rule) | ± (Rule) | — | — | — |
+| Arc | story | — | ± | — | — | — |
+| Campaign | story | — | ± (Story) | ■ rules, stack, members, timeline, prep | — | — |
+| Quest | story | — | ± | ■ | — | ± |
+| Scene | story | — | ± | — | — | — |
+| Session | story | — | ± (Story) | ■ live, prep | — | — |
+| Story | story | — | ± | — | — | — |
+| Armor | world | ■ | ± | ■ (Item) item, crafting | ± (Item) item | ± |
+| Article | world | — | — | — | — | — |
+| Creature | world | ■ | ± stats | ■ sheet, turn, spells, inventory, crafting, campaign | — | ± |
+| Deity | world | ■ | ± | — | — | ± |
+| Event | world | — | ± | — | — | — |
+| Faction | world | — | ± | — | — | ± |
+| Hazard | world | ■ | ± | — | — | — |
+| Item | world | ■ | ± | ■ item, crafting | ± item | ± |
+| Material | world | ■ (Item) | ± (Item) | ■ (Item) item, crafting | ± (Item) item | ± (Item) |
+| Party | world | — | ± | ■ inventory, crafting | — | — |
+| Place | world | — | ± | ■ crawl | — | ± |
+| PlayerCharacter | world | ■ (Creature) | ± (Creature) stats | ■ (Creature) sheet, turn, spells, inventory, crafting, campaign | — | ± (Creature) |
+| Shop | world | — | ± (Place) | ± wares, crawl | — | ± (Place) |
+| Weapon | world | ■ | ± | ■ (Item) item, crafting | ± (Item) item | ± |
+| World | world | — | — | — | — | — |
+| Asset | — | ■ | — | — | — | — |
+| Chapter | — | — | — | — | — | — |
+| Embed | — | — | — | — | — | — |
+| Heading | — | — | — | — | — | — |
+| Layer | — | — | — | ± contents, reader | — | — |
+| Paragraph | — | — | — | — | — | — |
+| ReadAloudText | — | — | — | — | — | — |
 60 anlegbare Arten. Eigenes je Ort: overview 34, quick 46, full 27, print 6, handout 12, search 45.
 
 Grosse Blöcke (T-282):
