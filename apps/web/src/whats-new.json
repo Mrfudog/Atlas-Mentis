@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-21-text-sections",
+      "date": "2026-10-21",
+      "title": "Text sections instead of passages on an article",
+      "text": "What an article called passages — read-aloud text, notes, secrets — is now Text sections, so it is no longer mixed up with passages between map floors. Below the fields every article lists the kinds of text its type offers and how many stand there, with + Text to add one; each section can be revealed on its own.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-21-one-tool-bar",
       "date": "2026-10-21",
       "title": "Plan turn, Initiative and floors in the map's tool bar",

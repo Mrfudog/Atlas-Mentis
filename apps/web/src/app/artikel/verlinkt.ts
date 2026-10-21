@@ -184,7 +184,7 @@ interface EFeld {
                     <button type="button" (click)="abbrechen()">Cancel</button>
                     <button type="submit" class="pri" [disabled]="speichert()">{{ speichert() ? 'Saving…' : 'Save' }}</button>
                   </div>
-                  <p class="hinweis">Saved into {{ name(le) }}, not into this article. Passages and relations: open it.</p>
+                  <p class="hinweis">Saved into {{ name(le) }}, not into this article. Text sections and relations: open it.</p>
                 </form>
             } @else if (g.bogen) {
               <!-- Mit den Endwerten der Figur (T-272); bearbeitet wird oben die gespeicherte Karte. -->

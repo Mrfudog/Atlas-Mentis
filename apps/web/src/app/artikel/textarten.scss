@@ -1,0 +1,30 @@
+/* T-337: welche Textabschnitte die Art kennt — klein, unter dem Artikel. */
+.texthinweis {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--dim);
+  max-width: 60ch;
+}
+.textarten {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+}
+.textarten ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+.textarten li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.textarten .zahl {
+  color: var(--dim);
+}
