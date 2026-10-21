@@ -857,7 +857,7 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 ## EP-11 Oberfläche & Navigation
 
-29 Stories · 98 Punkte · 19 steht · 5 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+30 Stories · 106 Punkte · 20 steht · 5 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -872,6 +872,7 @@ Leinwände mit Platzierungen, Ankern und Bereichen; Anlegen auf dem Board. — [
 | [[REQ-165]] | Bilder, Formen und Werkzeuge auf dem Board | Spielleitung | 2 | 3 | steht |
 | [[REQ-166]] | Auf dem Board anlegen | Spielleitung | 2 | 2 | teils |
 | [[REQ-358]] | Kampagnenboard als Startpunkt für Spielende | Spieler | 2 | 8 | steht |
+| [[REQ-360]] | Struktur einer Fraktion als Organigramm oder Netz | Spielleitung | 2 | 8 | steht |
 | [[REQ-119]] | Boards der Spielenden | Spieler | 3 | 3 | offen |
 | [[REQ-159]] | Anker und Bereiche auf dem Board | Spielleitung | 3 | 3 | steht |
 | [[REQ-160]] | Zwischen Ankern springen | Spielleitung | 3 | 2 | teils |
