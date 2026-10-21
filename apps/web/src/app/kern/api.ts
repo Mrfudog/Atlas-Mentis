@@ -2212,6 +2212,8 @@ export interface KartenZeile {
   layers: { id: string; name: string }[];
   depth: number;
   parent: string | null;
+  /** Der Standort (T-330), der nächste Ort zuerst; fehlt bei einem älteren Server. */
+  location?: { id: string; name: string }[];
 }
 
 /** Wo eine Karte vorkommt (`GET /api/maps/:id/uses`, T-202). */

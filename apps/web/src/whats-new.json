@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-21-group-maps",
+      "date": "2026-10-21",
+      "title": "Group the map list by kind, location and more",
+      "text": "Play › Maps now has the Transformations bar: group your maps by map kind, location, region, layer, parent map or tag, with a count per group. Your grouping stays for your account, and you can save or share it as a link.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
       "id": "2026-10-20-hex-grid-and-scale",
       "date": "2026-10-20",
       "title": "Clean hex grids and a scale per square",

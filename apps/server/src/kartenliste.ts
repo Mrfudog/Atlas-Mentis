@@ -3,8 +3,8 @@
  * Karte vorkommt.
  *
  * - `GET /api/maps` — jede Karte, die der Betrachter sieht, als Baum
- *   (`mapTree`: Unterkarten unter ihrer Karte), mit Bild, Art, Marken und
- *   Ebenen. Gefiltert wird auf der Seite: Karten sind wenige, und ein
+ *   (`mapTree`: Unterkarten unter ihrer Karte), mit Bild, Art, Marken,
+ *   Ebenen und Standort (`locationPath`, T-330). Gefiltert wird auf der Seite: Karten sind wenige, und ein
  *   Filter, der Zeilen herausnimmt, darf die Einrückung nicht zerreissen.
  * - `GET /api/maps/:id/uses` — Sitzungen, Szenen und Kämpfe, in denen die
  *   Karte vorkommt (`mapUses`), gesiebt: „liegt in drei Sitzungen“ verriete
@@ -15,7 +15,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { assetVersion, entityName, isMap, isPlayInstance, LAYER_RELATION, mapImage, mapTree, mapUses, primaryInterface, type Entity } from '@nw/model';
+import { assetVersion, entityName, isMap, isPlayInstance, LAYER_RELATION, locationPath, mapImage, mapTree, mapUses, primaryInterface, type Entity, type Registry } from '@nw/model';
 
 interface Stand {
   alle: Entity[];
@@ -25,6 +25,8 @@ interface Stand {
 export interface KartenlisteDeps {
   roh: () => Promise<Stand>;
   sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>) => Promise<Entity[]>;
+  /** Das Register — ob ein Ziel ein Ort ist, sagt seine `extends`-Kette (T-330). */
+  registry: () => Promise<Pick<Registry, 'interfaces'>>;
 }
 
 /** Eine Zeile der Kartenliste. */
@@ -40,10 +42,12 @@ export interface KartenZeile {
   layers: { id: string; name: string }[];
   depth: number;
   parent: string | null;
+  /** Der Standort (T-330), der nächste Ort zuerst; endet am ersten, den der Betrachter nicht sieht. */
+  location: { id: string; name: string }[];
 }
 
 export function registerKartenliste(app: FastifyInstance, deps: KartenlisteDeps): void {
-  const { roh, sieve } = deps;
+  const { roh, sieve, registry } = deps;
 
   app.get('/api/maps', async (request) => {
     const stand = await roh();
@@ -72,6 +76,25 @@ export function registerKartenliste(app: FastifyInstance, deps: KartenlisteDeps)
         )
       ).map((e) => e.id),
     );
+    /* Der Standort (T-330): gerechnet am ungesiebten Stand, gezeigt nur
+       bis zum ersten Ort, den der Betrachter nicht sieht — dahinter verriete
+       der Weg, was über dem verborgenen Ort liegt. */
+    const reg = await registry();
+    const wege = new Map(karten.map((k) => [k.id, locationPath(reg, stand.map.get(k.id) ?? k, stand.map)]));
+    const orte = new Map(
+      (
+        await sieve(
+          request,
+          [...new Set([...wege.values()].flat())].map((id) => stand.map.get(id)).filter((e): e is Entity => !!e),
+          stand.map,
+        )
+      ).map((e) => [e.id, entityName(e)]),
+    );
+    const standort = (id: string): { id: string; name: string }[] => {
+      const weg = wege.get(id) ?? [];
+      const bis = weg.findIndex((o) => !orte.has(o));
+      return (bis < 0 ? weg : weg.slice(0, bis)).map((o) => ({ id: o, name: orte.get(o)! }));
+    };
     const maps: KartenZeile[] = mapTree(karten).map(({ map, depth, parent }) => {
       const info = (map.components?.['Map'] ?? {}) as { kind?: unknown };
       const tags = (map.components?.['Tags'] as { tags?: unknown } | undefined)?.tags;
@@ -87,6 +110,7 @@ export function registerKartenliste(app: FastifyInstance, deps: KartenlisteDeps)
           .map((r) => ({ id: r.to, name: ebenen.get(r.to)! })),
         depth,
         parent,
+        location: standort(map.id),
       };
     });
     return { maps };

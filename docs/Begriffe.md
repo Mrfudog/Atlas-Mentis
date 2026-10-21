@@ -2660,6 +2660,13 @@ Warum keine feste Gruppierung je Seite: „nach Ebene, dann Art" ist heute
 richtig und morgen „nach Regelmodul, dann Bereich". Eine Liste im Code
 müsste jedes Mal geändert werden; eine Kette stellt man um.
 
+Der **Standort** einer Karte (T-330) ist darum auch keine Spalte, sondern
+eine Dimension: der Ort, den sie zeigt, und die grösseren darüber, beim
+Lesen gerechnet (`locationPath`). Zwei Dimensionen statt einer mit vielen
+Stufen — „Location" der nächste Ort, „Region" der äusserste —, weil eine
+Kette Stufen schon kann: „nach Region, dann Ort" schachtelt die Stadt unter
+die Küste. Die Kartenliste bleibt ohne Schritt der Baum nach Elternkarte.
+
 ## Ein Wort, mehrere Sachen
 
 Wörter, die im Gespräch eine andere Sache meinen als im Modell. Was hier

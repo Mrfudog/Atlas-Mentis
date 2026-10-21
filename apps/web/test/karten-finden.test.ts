@@ -13,7 +13,7 @@ import { provideRouter } from '@angular/router';
 import type { Registry } from '@nw/model';
 import { Wahl } from '../src/app/artikel/wahl';
 import { Api, type KartenZeile } from '../src/app/kern/api';
-import { kartenGefiltert } from '../src/app/karten/karten';
+import { kartenGefiltert, kartenPosten } from '../src/app/karten/karten';
 import { Bestand } from '../src/app/kern/bestand';
 import { Session } from '../src/app/kern/session';
 
@@ -129,5 +129,55 @@ describe('Play › Maps › filter (T-202)', () => {
       ['Region', true],
     ]);
     expect(kartenGefiltert(zeilen, '', '', '').length).toBe(4);
+  });
+});
+
+/* T-330: gruppieren nach Art, Standort, Ebene, Elternkarte und Marke. */
+describe('Play › Maps › group (T-330)', () => {
+  const z = (id: string, depth: number, parent: string | null, extra: Partial<KartenZeile> = {}): KartenZeile => ({
+    id,
+    name: id,
+    image: '',
+    kind: '',
+    tags: [],
+    layers: [],
+    depth,
+    parent,
+    ...extra,
+  });
+  const kueste = { id: 'pl_k', name: 'Sword Coast' };
+  const zeilen = [
+    z('World', 0, null, { kind: 'world' }),
+    z('City', 1, 'World', { kind: 'city', location: [{ id: 'pl_c', name: 'Waterdeep' }, kueste] }),
+    z('Docks', 2, 'City', { kind: 'city', location: [{ id: 'pl_d', name: 'Docks' }, { id: 'pl_c', name: 'Waterdeep' }, kueste] }),
+    z('Abbey', 0, null, { kind: 'battle' }),
+  ];
+  const alle = kartenGefiltert(zeilen, '', '', '');
+  const zeig = (p: ReturnType<typeof kartenPosten>) => p.map((x) => (x.gruppe ? `${x.tiefe}:${x.gruppe.label} ${x.gruppe.count}` : `${x.tiefe}-${x.zeile!.id}`));
+
+  it('without a step it stays the tree by parent map — the default', () => {
+    expect(zeig(kartenPosten(alle, [], new Set()))).toEqual(['0-World', '1-City', '2-Docks', '0-Abbey']);
+  });
+
+  it('groups by map kind with counts, maps without kind last', () => {
+    expect(zeig(kartenPosten(alle, [{ group: 'mapKind' }], new Set()))).toEqual([
+      '0:battle 1', '1-Abbey', '0:city 2', '1-City', '1-Docks', '0:world 1', '1-World',
+    ]);
+  });
+
+  it('groups by region and location, with the names of the places', () => {
+    expect(zeig(kartenPosten(alle, [{ group: 'region' }, { group: 'location' }], new Set()))).toEqual([
+      '0:Sword Coast 2', '1:Docks 1', '2-Docks', '1:Waterdeep 1', '2-City', '0:(none) 2', '1:(none) 2', '2-World', '2-Abbey',
+    ]);
+  });
+
+  it('groups by parent map, and a closed group hides what is below', () => {
+    const p = kartenPosten(alle, [{ group: 'parent' }], new Set(['parent:City']));
+    expect(zeig(p)).toEqual(['0:City 1', '0:World 1', '1-City', '0:(none) 2', '1-World', '1-Abbey']);
+  });
+
+  it('groups only the hits, not the pale maps above them', () => {
+    const treffer = kartenGefiltert(zeilen, 'dock', '', '');
+    expect(zeig(kartenPosten(treffer, [{ group: 'mapKind' }], new Set()))).toEqual(['0:city 1', '1-Docks']);
   });
 });
