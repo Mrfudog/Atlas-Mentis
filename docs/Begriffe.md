@@ -706,6 +706,14 @@ Stelle, die am Tag der nächsten Art falsch ist; so bringt die neue Art ihre
 Spalten mit. Und weil die Vorschau neben der Liste eine Karte ist, zeigt
 sie Quick.
 
+**Die Overview ist die Vorgabe, nicht die Grenze** (T-343). Wer eine
+Tabelle anders braucht — die Stufe am Zauber, die Klassen, die ihn
+gewähren, den Modifikator am Statblock —, wählt die Spalten selbst; die
+Wahl gehört dem Konto (wie der Filter der Seite), und die Leitung kann
+eine zur Vorgabe der Kampagne machen. Eine Spaltenwahl ist ein Blick, kein
+Inhalt: sie steht neben der Kampagne und nicht in ihr, und ohne sie gilt
+wieder, was die Art sagt.
+
 **Eine Filtergruppe ist kein Wort, sondern ein gespeicherter Blick**
 (T-137). Die Leitung wollte World ohne Gegenstände sehen, ohne es jedes Mal
 abzuwählen, und Unterreiter, die sie aus der Kopfleiste wieder findet. Eine

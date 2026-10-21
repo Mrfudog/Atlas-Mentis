@@ -558,6 +558,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [S + 'liste.ts']: ['inLayer'],
       /* Die Facetten lassen die Ebenenkante aus — dafür steht „Where from“ (T-174). */
       [M + 'facets.ts']: ['inLayer'],
+      [M + 'listcolumns.ts']: ['inLayer'],
       [W + 'artikel/artikel.ts']: ['inLayer'],
       /* Die Ebene im Kopf jeder Artikelseite und in der Kurzansicht (T-251). */
       [W + 'artikel/ebenen-marke.ts']: ['inLayer'],

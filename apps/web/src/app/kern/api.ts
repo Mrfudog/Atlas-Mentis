@@ -875,6 +875,16 @@ export interface ListenFrage {
   usable?: string | undefined;
   /** Auch die Artikel der Vergleichsebenen, als eigener Block (T-213). */
   compare?: boolean | undefined;
+  /** **Gewählte Spalten** (T-343): genau diese statt der `overview`; leer heisst nur der Name. */
+  cols?: string[] | undefined;
+}
+
+/** Die Vorgaben der Kampagne für die Spalten (T-343, `/api/list-columns`). */
+export interface SpaltenVorgaben {
+  campaign: string | null;
+  canManage: boolean;
+  /** `seite` oder `seite|Art` → Spalten. */
+  defaults: Record<string, string[]>;
 }
 
 /**
@@ -1351,6 +1361,11 @@ export class Api {
   list(frage: ListenFrage, init: RequestInit = {}): Promise<Liste> {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(frage)) {
+      /* Eine leere Spaltenwahl heisst etwas (nur der Name, T-343). */
+      if (k === 'cols' && Array.isArray(v)) {
+        p.set('cols', v.join(','));
+        continue;
+      }
       if (v === undefined || v === '' || v === false || (Array.isArray(v) && !v.length)) continue;
       if (k === 'f') for (const f of v as string[]) p.append('f', f);
       else p.set(k, Array.isArray(v) ? v.join(',') : v === true ? '1' : String(v));
@@ -1762,6 +1777,14 @@ export class Api {
   }
   deleteFilter(id: string): Promise<{ ok: true }> {
     return this.call(`/api/filters/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+  /** Die Spalten der Übersichten als Vorgabe der Kampagne (T-343). */
+  listColumnDefaults(): Promise<SpaltenVorgaben> {
+    return this.call<SpaltenVorgaben>('/api/list-columns', {}, false);
+  }
+  /** Die Leitung setzt eine Vorgabe; `null` nimmt sie weg. */
+  setListColumnDefault(key: string, columns: string[] | null): Promise<{ ok: true }> {
+    return this.call('/api/list-columns', { method: 'PUT', body: JSON.stringify({ key, columns }) });
   }
   /** Was sich das Konto merkt (T-092). */
   prefs(): Promise<Record<string, unknown>> {

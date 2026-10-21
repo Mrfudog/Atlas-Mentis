@@ -78,7 +78,8 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   kennen.
 - `apps/web` — Angular, im Pergament des Design-Canvas. Anmeldung, die
   Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
-  Seitenleiste, Spalten aus der `overview` der Art, Vorschau `quick`;
+  Seitenleiste, Spalten aus der `overview` der Art oder gewählt —
+  „Columns“, je Konto, Adresse und Vorgabe der Kampagne, T-343 —, Vorschau `quick`;
   **gerechnet am Server**, `GET /api/list`), „New article" und der
   Artikel im Buchstil (geholt beim Öffnen, Ansicht `full`, mit den Namen
   seiner Kantenziele und Verweise in `refs`) stehen, dazu die Boards
