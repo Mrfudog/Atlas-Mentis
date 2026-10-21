@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, type RedirectFunction, type Routes } from '@angular/router';
 import { wache } from './kern/wache';
+import { startpunkt } from './start/startpunkt';
 
 /**
  * Die Wache steht vor allem ausser der Anmeldung. Sie ist Bequemlichkeit,
@@ -22,7 +23,8 @@ export const routes: Routes = [
     loadComponent: () => import('./login/login').then((m) => m.Login),
     title: 'Sign in · Atlas Mentis',
   },
-  { path: '', pathMatch: 'full', redirectTo: 'compendium' },
+  /* Der Start (T-342): Spielende aufs Kampagnenboard, sonst das Kompendium. */
+  { path: '', pathMatch: 'full', canActivate: [startpunkt], children: [] },
   {
     path: 'compendium',
     canActivate: [wache],

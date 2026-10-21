@@ -41,7 +41,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../../docs/Zugang.md), [Wissen.md](../../docs/Wissen.md), [Betrieb.md](../../docs/Betrieb.md), [Architektur.md](../../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** [[REQ-041]] Wer was schreiben darf (teils) · [[REQ-088]] Massenänderungen an Wissen und Rechten (teils) · [[REQ-229]] Konten in der Seite verwalten (offen) · [[REQ-242]] Felder der eigenen Figur sperren (offen) · [[REQ-268]] Dev-Token aus der Werkbank erzeugen (teils) · [[REQ-269]] Ankündigen, wann produktiv gearbeitet werden kann (teils) · [[REQ-270]] Artikel von dev nach prod übernehmen (teils) · [[REQ-271]] Konflikte bei der Übernahme nebeneinander lösen (offen) · [[REQ-354]] Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · [[REQ-358]] Jede Änderung im Browser geprüft (teils)
+**Offen mit Prio 1–3:** [[REQ-041]] Wer was schreiben darf (teils) · [[REQ-088]] Massenänderungen an Wissen und Rechten (teils) · [[REQ-229]] Konten in der Seite verwalten (offen) · [[REQ-242]] Felder der eigenen Figur sperren (offen) · [[REQ-268]] Dev-Token aus der Werkbank erzeugen (teils) · [[REQ-269]] Ankündigen, wann produktiv gearbeitet werden kann (teils) · [[REQ-270]] Artikel von dev nach prod übernehmen (teils) · [[REQ-271]] Konflikte bei der Übernahme nebeneinander lösen (offen) · [[REQ-354]] Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · [[REQ-359]] Jede Änderung im Browser geprüft (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->

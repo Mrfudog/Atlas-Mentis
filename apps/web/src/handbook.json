@@ -13,6 +13,13 @@
           ]
         },
         {
+          "heading": "Where players start",
+          "text": [
+            "Every campaign has a campaign board: the campaign itself, what is being played, the next session, the party, the open quests and the rumours. It is an ordinary board under the campaign — the GM moves, removes and adds cards as on any board. Its cards read the current state when it is opened: set the scene in play on the session and the card “Now playing” follows.",
+            "Players land on it after signing in. A bar — at the top, on a phone at the bottom — leads back to the board, to their character, to the maps, to search and to what they know. The GM keeps their own start; under Rules & options › At the table, “Players start on” sends players to the compendium instead."
+          ]
+        },
+        {
           "heading": "How a page is built",
           "text": [
             "Article, character and type pages are split into chapters — on an article Fields, Relations, Linked here, Admin and Log. On a phone each chapter is a tab at the top, one at a time, and the address keeps the chosen one (?k=…). On a wider screen every chapter is a framed area with its title and count: the wide ones (the fields, the sheet) on the left, the narrow ones (relations, what links here) beside them, and Admin and Log below, collapsed until you open them. The row of chapter names at the top jumps to each.",

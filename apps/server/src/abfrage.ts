@@ -29,7 +29,9 @@ import {
   articleDimensions,
   articleVisible,
   BOARD_TYPE,
+  campaignOfBoard,
   currentCampaign,
+  liveArticles,
   drawNext,
   entityName,
   informationsOf,
@@ -108,9 +110,16 @@ export function registerAbfrage(app: FastifyInstance, deps: AbfrageDeps): void {
     const registry = await repo.getRegistry();
     const name = (id: string) => entityName(stand.map.get(id)) || id;
     const dims = articleDimensions(registry, { layerName: name });
-    const grob = queryPool(registry, tile.query, stand.alle, dims, { exclude: board.id, limit: Infinity });
+    /* **Laufende Quellen** (T-342): die Szene im Spiel, die Gruppe, die
+       offenen Aufträge — gefragt an die Kampagne des Boards, sonst an die
+       laufende, und wie einzeln genannte Artikel behandelt: gesiebt wird
+       danach wie bei jeder Abfrage. */
+    const kampagne = campaignOfBoard(stand.map, board) ?? currentCampaign(stand.map, registry.settings ?? null)?.id ?? null;
+    const live = liveArticles(registry, stand.map, kampagne, tile.query.current);
+    const frage = live.length ? { ...tile.query, articles: [...new Set([...tile.query.articles, ...live])] } : tile.query;
+    const grob = queryPool(registry, frage, stand.alle, dims, { exclude: board.id, limit: Infinity });
     const gesiebt = await sieve(request, grob.rows, stand.map);
-    return { tile, pool: queryPool(registry, tile.query, gesiebt, dims, { exclude: board.id, limit: Infinity }) };
+    return { tile, pool: queryPool(registry, frage, gesiebt, dims, { exclude: board.id, limit: Infinity }) };
   }
 
   app.get<{ Params: { board: string; rel: string } }>('/api/boards/:board/query/:rel', async (request, reply) => {

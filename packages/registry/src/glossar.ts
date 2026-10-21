@@ -60,6 +60,16 @@ const APP: AppTerm[] = [
     see: '/boards',
   },
   {
+    term: 'Campaign board',
+    aliases: ['Start board', 'Base bar'],
+    sort: 'app',
+    definition: 'The board of a campaign, where players land after signing in: the campaign itself, what is being played, the next session, the party, the open quests and the rumours. An ordinary board that hangs under the campaign.',
+    effect: 'Its cards ask instead of copy — the scene in play, the party and the open quests are read when the board is opened, and each viewer sees only what they may. Players get a bar back to the board, their character, maps, search and knowledge.',
+    example: 'The GM moves the party to the mill: the card “Now playing” on the campaign board shows the mill scene to everyone at the table.',
+    translations: { de: 'Kampagnenboard' },
+    see: '/boards',
+  },
+  {
     term: 'Carry block',
     aliases: ['Carry sheet', 'Carry grid'],
     sort: 'app',

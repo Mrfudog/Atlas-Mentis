@@ -323,7 +323,14 @@
           "text": [
             "Query (⚄ in the tool bar) places a card that shows a selection instead of one article. ⚙ on the card sets its source — types, tags, layers, single articles and a filter chain such as filter:status=ready — and how it shows: a list, Draw or a slideshow.",
             "Draw takes one at random and does not put it back until Reset; everyone at the table sees the same draws. With Reveal when drawn, what is drawn becomes knowledge of the party and visible to it. A slideshow turns on by itself; ‹ › step, ⛶ shows it full screen for a second screen.",
-            "Players see only the articles they may see — the card asks the server for each of them."
+            "Players see only the articles they may see — the card asks the server for each of them.",
+            "Live from the campaign: a card can ask for the scene in play, the current arc, the running or next session, the party or the open quests instead of naming articles. It follows the game — set another scene on the session and the card shows it."
+          ]
+        },
+        {
+          "title": "The campaign board",
+          "text": [
+            "Every campaign has a board of its own, where players land after signing in: the campaign, Now playing, Next session, The party, Open quests and Rumours. Change it like any board. Players get a bar back to it, to their character, maps, search and knowledge."
           ]
         },
         {
@@ -486,6 +493,7 @@
     }
   ],
   "without": {
+    "": "The start only leads on: players to their campaign board, everyone else to the compendium.",
     "login": "Before signing in there is no header and no help button."
   }
 }

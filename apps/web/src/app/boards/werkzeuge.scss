@@ -208,7 +208,8 @@
     top: auto;
     left: 0;
     right: 0;
-    bottom: 0;
+    /* Über der Basis-Leiste der Spielenden, wenn sie steht (T-342). */
+    bottom: var(--basis-unten, 0px);
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -242,7 +243,7 @@
   .spalte > .unterleiste {
     order: 1;
     position: sticky;
-    bottom: 56px;
+    bottom: calc(56px + var(--basis-unten, 0px));
     z-index: 4;
     max-height: 40dvh;
     overflow-y: auto;
