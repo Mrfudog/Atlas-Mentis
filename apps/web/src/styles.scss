@@ -260,3 +260,11 @@ button.begriff {
   background: none;
   color: inherit;
 }
+
+/* Die Klappleiste (T-220) steht am Telefon unten fest; die Seite lässt
+   darunter Platz, damit das Letzte nicht hinter ihr verschwindet. */
+@media (max-width: 719.98px) {
+  body:has(nw-klappleiste.fest) {
+    padding-bottom: calc(3.75rem + var(--basis-unten, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+}
