@@ -9,7 +9,7 @@
           "text": [
             "Play shows the map the session has as “Map on the table”. Switch the session at the top; “All maps” opens any other map without changing what the table sees.",
             "A map on the table is a map in play — its own copy for this session: tokens and fog live there, the map itself stays as prepared. Open a map and press Take into play (GM) to put it on the table; Start encounter does the same for an encounter and its map. Players see a map in play only after Release to players, with the fog already on.",
-            "Zoom with + and −, the mouse wheel or two fingers. A sub-map that fills the view is entered; zooming out past the edge leads back to the map above.",
+            "Zoom with + and −, the mouse wheel or two fingers. A sub-map that fills the view is entered; zooming out past the edge, or the arrow at the top, leads back to the map above.",
             "On a map in play, players stay on the table map unless the GM presses Players stay here to switch it to Players change maps — then they may zoom only into maps taken into play and released in this session. The GM can always change maps."
           ]
         },
@@ -19,7 +19,8 @@
             "The tool bar on the left holds the tools in groups: Select (S), Plan turn (P), Tokens (T), Measure (M), Floors (E) and Fog (F). Pick a group and its tools appear above the map; pick it again, or press Esc, to go back to Select. « hides the tool names, » shows them again.",
             "Below a line, the same bar opens panels beside the map: Initiative (I) shows the tracker of the running encounter, Party (Y) the party and the encounters. They stay open whatever tool you use; on a phone they open above the bar.",
             "Which groups a map shows depends on its kind, as the campaign sets it: battle maps get Walls, Fog, Light, Grid and Tokens; world, region and other maps get Sub-maps, markers and assets. GMs change it with ⚙ Tools at the end of the bar (for this kind) or under Rules & options › Map tools (all kinds).",
-            "Sub-maps › Link map: drag a frame, pick the map that lies there — zooming in then leads to it; Unlink removes it.",
+            "Sub-maps › Link map: drag a frame, pick the map that lies there — zooming in then leads to it; Unlink removes it. Link shape taps the corners of a free shape instead.",
+            "Sub-maps › Link settings: per linked map, how much of the view it must fill before zooming in enters it, how the GM and the players see it (click to jump, frame only, icon, hidden), and whether it shows this map faded around it. The campaign default is under Rules & options › Map.",
             "Select: drag a marker to move it, tap it for its quick view. Measure: tap two points. Tokens (GM): Add marker — tap where it goes, then pick the article: one line per name, the creature first (then statblock, then image), + shows the others. Remove — tap a marker to take it off the map; or tap a token in Select and use Remove above it, or press Delete.",
             "Place combatants puts the creatures of the running encounter on the map, Clear play tokens removes them again — prepared markers and the party stay.",
             "Fullscreen (or Shift+F) gives the map the whole screen; Esc leaves it.",

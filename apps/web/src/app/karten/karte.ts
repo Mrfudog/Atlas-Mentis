@@ -24,6 +24,16 @@ import {
   entityName,
   fogOn,
   frameNear,
+  areaInFrame,
+  linkCentre,
+  mapExits,
+  outerPlacement,
+  LINK_NEAR_MIN,
+  MAP_LINK_SHOWS,
+  MAP_LINK_SHOW_LABELS,
+  MAP_NEAR,
+  type MapLink,
+  type MapLinkShow,
   gridGeometry,
   HEX_TILE_H,
   HEX_TILE_PATH,
@@ -121,6 +131,7 @@ import {
   passageRulesOf,
   passageUnder,
   withPassageArea,
+  polyBox,
   PASSAGE_TRIGGERS,
   PASSAGE_WHENS,
   PASSAGE_MOVES,
@@ -208,7 +219,8 @@ type Werkzeug =
   | 'uebergang'
   | 'uebergangFlaeche'
   | 'rahmen'
-  | 'rahmenWeg';
+  | 'rahmenWeg'
+  | 'vieleck';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
@@ -484,7 +496,59 @@ interface Zeiger {
             <!-- **Unterkarten verlinken** (T-320): Rahmen ziehen, Karte wählen — hineinzoomen führt dann dorthin. -->
             <div class="unterleiste" role="toolbar" aria-label="Sub-maps">
               <button type="button" [class.an]="werkzeug() === 'rahmen'" [attr.aria-pressed]="werkzeug() === 'rahmen'" (click)="waehle('rahmen')" title="Drag a frame over the part of this map, then pick the map you zoom into there">Link map</button>
+              <button type="button" [class.an]="werkzeug() === 'vieleck' && vieleckFuer()?.art === 'neu'" [attr.aria-pressed]="werkzeug() === 'vieleck' && vieleckFuer()?.art === 'neu'" (click)="vieleckBeginnen({ art: 'neu' })" title="Tap the corners of the area, then pick the map you zoom into there">Link shape</button>
               <button type="button" [class.an]="werkzeug() === 'rahmenWeg'" [attr.aria-pressed]="werkzeug() === 'rahmenWeg'" (click)="waehle('rahmenWeg')" title="Tap a frame to unlink its map; the map itself stays">Unlink</button>
+              @if (verknuepfungen().length && !rahmenNeu()) {
+                <!-- **Eine Verknüpfung einstellen** (T-327): Zoomtiefe, Anzeige für Leitung und Spielende, Rand, Form. -->
+                <label>
+                  Link settings
+                  <select (change)="linkWahl.set($any($event.target).value || null)" aria-label="Linked map to set up">
+                    <option value="" [selected]="!linkWahl()">choose a linked map…</option>
+                    @for (k of verknuepfungen(); track k.id) {
+                      <option [value]="k.id" [selected]="linkWahl() === k.id">{{ k.name }}</option>
+                    }
+                  </select>
+                </label>
+              }
+              @if (linkOffen(); as l) {
+                <span class="link-einstellung">
+                  <label title="How much of the view the area must fill before the next zoom step enters the sub-map">
+                    Enter at
+                    <input type="range" min="10" max="100" step="5" [value]="l.nearProzent" (change)="linkSetzen(l, { near: +$any($event.target).value / 100 })" aria-label="Zoom depth: share of the view" />
+                    {{ l.nearProzent }}%
+                  </label>
+                  <label>
+                    GM sees
+                    <select (change)="linkSetzen(l, { show: $any($event.target).value || null })" aria-label="How the GM sees this link">
+                      <option value="" [selected]="!l.own.show">Campaign ({{ MAP_LINK_SHOW_LABELS[l.vorgabe.show] }})</option>
+                      @for (v of MAP_LINK_SHOWS; track v) {
+                        <option [value]="v" [selected]="l.own.show === v">{{ MAP_LINK_SHOW_LABELS[v] }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    Players see
+                    <select (change)="linkSetzen(l, { showPlayers: $any($event.target).value || null })" aria-label="How players see this link">
+                      <option value="" [selected]="!l.own.showPlayers">Campaign ({{ MAP_LINK_SHOW_LABELS[l.vorgabe.showPlayers] }})</option>
+                      @for (v of MAP_LINK_SHOWS; track v) {
+                        <option [value]="v" [selected]="l.own.showPlayers === v">{{ MAP_LINK_SHOW_LABELS[v] }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label title="Inside the sub-map, show this map faded around its image">
+                    Border
+                    <select (change)="linkSetzen(l, { outer: $any($event.target).value || null })" aria-label="This map as a border of the sub-map">
+                      <option value="" [selected]="!l.own.outer">Campaign ({{ l.vorgabe.outer === 'faded' ? 'faded' : 'none' }})</option>
+                      <option value="faded" [selected]="l.own.outer === 'faded'">Faded</option>
+                      <option value="none" [selected]="l.own.outer === 'none'">None</option>
+                    </select>
+                  </label>
+                  <button type="button" class="klein" (click)="vieleckBeginnen({ art: 'link', id: l.id })" title="Tap the corners of a new area for this link">{{ l.form ? 'Redraw shape' : 'Make it a shape' }}</button>
+                  @if (l.form) {
+                    <button type="button" class="klein" (click)="linkSetzen(l, { area: null })" title="Back to the rectangle around the shape">Rectangle</button>
+                  }
+                </span>
+              }
               @if (rahmenNeu()) {
                 <label>
                   Map
@@ -938,6 +1002,7 @@ interface Zeiger {
               (pointermove)="bewegen($event)"
               (pointerup)="hoch($event)"
               (pointercancel)="abbrechen($event)"
+              (scroll)="randFolgen()"
               (keydown)="taste($event)"
               (dragover)="ueberBuehne($event)"
               (drop)="fallen($event)"
@@ -947,10 +1012,40 @@ interface Zeiger {
               @if (!nat() && !bildFehlt()) {
                 <nw-ladeanzeige class="laedt" label="Loading map image …" />
               }
+              @if (ausgaenge().length) {
+                <!-- **Hinaus** (T-327): ein Pfeil zur Karte darüber — Nachbarkarten kommen mit E-121 dazu. -->
+                <div class="ausgaenge">
+                  @for (a of ausgaenge(); track a.id) {
+                    <a
+                      class="ausgang"
+                      [class]="'ausgang ' + (a.side ?? 'oben')"
+                      [routerLink]="weg(a.id).link"
+                      [queryParams]="weg(a.id).query"
+                      [title]="'Up to ' + a.name"
+                      (pointerdown)="$event.stopPropagation()"
+                    ><span aria-hidden="true">↑</span> {{ a.name }}</a>
+                  }
+                </div>
+              }
+              @if (rand(); as r) {
+                <!-- **Die Karte darüber als Rand** (T-327): blass um die Unterkarte, gelegt über den Kasten
+                     der Verknüpfung; für Spielende das beschnittene Bild (T-312). Folgt dem Scrollstand. -->
+                <div #randFeld class="rand-oben" aria-hidden="true" [style.width.px]="fenster().w" [style.height.px]="fenster().h">
+                  <div #randInnen class="rand-innen" [style.width.px]="breite()" [style.height.px]="hoehe()">
+                    <img [src]="adresse(r.image)" alt="" draggable="false" [style.left.%]="r.lage.x * 100" [style.top.%]="r.lage.y * 100" [style.width.%]="r.lage.w * 100" [style.height.%]="r.lage.h * 100" />
+                  </div>
+                </div>
+              }
+              @if (saum().x) {
+                <!-- Der Saum rechts und unten (T-327): ein Punkt, der die Scrollfläche aufspannt. -->
+                <div class="saum-ende" aria-hidden="true" [style.left.px]="breite() + 2 * saum().x - 1" [style.top.px]="(hoehe() ?? 0) + 2 * saum().y - 1"></div>
+              }
               <div
                 #innen
                 class="innen"
                 [class.gemessen]="hoehe() !== null"
+                [style.left.px]="saum().x || null"
+                [style.top.px]="saum().y || null"
                 [style.width.px]="breite()"
                 [style.height.px]="hoehe()"
               >
@@ -980,22 +1075,67 @@ interface Zeiger {
                   <div class="gitter" aria-hidden="true" [style.background-image]="g.bild" [style.background-size]="g.groesse" [style.background-position]="g.lage"></div>
                 }
                 @for (k of rahmen(); track k.id) {
-                  <a
-                    class="rahmen"
-                    [class.nah]="k.nah"
-                    [routerLink]="weg(k.id).link"
-                    [queryParams]="weg(k.id).query"
-                    [style.left.%]="k.frame.x * 100"
-                    [style.top.%]="k.frame.y * 100"
-                    [style.width.%]="k.frame.w * 100"
-                    [style.height.%]="k.frame.h * 100"
-                    [class.wegnehmen]="werkzeug() === 'rahmenWeg'"
-                    [title]="werkzeug() === 'rahmenWeg' ? 'Unlink ' + k.name : k.nah ? 'Zoom in once more to enter ' + k.name : 'Enter ' + k.name"
-                    (pointerdown)="$event.stopPropagation()"
-                    (click)="werkzeug() === 'rahmenWeg' && rahmenLoesen($event, k.id, k.name)"
-                  >
-                    <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
-                  </a>
+                  <!-- **Wie eine Verknüpfung steht** (T-327): Klick springt, nur Rahmen, Symbol — „hidden“ steht nicht da. -->
+                  @if (k.show === 'icon') {
+                    <a
+                      class="rahmen-marker"
+                      [class.nah]="k.nah"
+                      [routerLink]="weg(k.id).link"
+                      [queryParams]="weg(k.id).query"
+                      [style.left.%]="k.mitte.x * 100"
+                      [style.top.%]="k.mitte.y * 100"
+                      [title]="k.nah ? 'Zoom in once more to enter ' + k.name : 'Enter ' + k.name"
+                      [attr.aria-label]="'Enter ' + k.name"
+                      (pointerdown)="$event.stopPropagation()"
+                    >
+                      <span aria-hidden="true">⊡</span>
+                    </a>
+                  } @else if (k.show === 'frame') {
+                    <div
+                      class="rahmen nur"
+                      [class.form]="!!k.punkte"
+                      [class.nah]="k.nah"
+                      [style.left.%]="k.frame.x * 100"
+                      [style.top.%]="k.frame.y * 100"
+                      [style.width.%]="k.frame.w * 100"
+                      [style.height.%]="k.frame.h * 100"
+                      aria-hidden="true"
+                    >
+                      @if (k.punkte) {
+                        <svg viewBox="0 0 1 1" preserveAspectRatio="none"><polygon [attr.points]="k.punkte" vector-effect="non-scaling-stroke" /></svg>
+                      }
+                      @if (k.nah) {
+                        <span>{{ k.name }} — zoom in to enter</span>
+                      }
+                    </div>
+                  } @else {
+                    <a
+                      class="rahmen"
+                      [class.form]="!!k.punkte"
+                      [class.nah]="k.nah"
+                      [routerLink]="weg(k.id).link"
+                      [queryParams]="weg(k.id).query"
+                      [style.left.%]="k.frame.x * 100"
+                      [style.top.%]="k.frame.y * 100"
+                      [style.width.%]="k.frame.w * 100"
+                      [style.height.%]="k.frame.h * 100"
+                      [class.wegnehmen]="werkzeug() === 'rahmenWeg'"
+                      [title]="werkzeug() === 'rahmenWeg' ? 'Unlink ' + k.name : k.nah ? 'Zoom in once more to enter ' + k.name : 'Enter ' + k.name"
+                      (pointerdown)="$event.stopPropagation()"
+                      (click)="werkzeug() === 'rahmenWeg' && rahmenLoesen($event, k.id, k.name)"
+                    >
+                      @if (k.punkte) {
+                        <svg viewBox="0 0 1 1" preserveAspectRatio="none"><polygon [attr.points]="k.punkte" vector-effect="non-scaling-stroke" /></svg>
+                      }
+                      <span>{{ k.nah ? k.name + ' — zoom in to enter' : k.name }}</span>
+                    </a>
+                  }
+                }
+                @if (vieleckVorschau(); as v) {
+                  <!-- Das Vieleck, solange es gezeichnet wird (T-327). -->
+                  <svg class="vieleck-vorschau" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                    <polyline [attr.points]="v" vector-effect="non-scaling-stroke" />
+                  </svg>
                 }
                 @if (grau()) {
                   <!-- Dunkelsicht in Graustufen (T-305): nimmt dem Bild darunter die Farbe
@@ -1195,6 +1335,7 @@ interface Zeiger {
                       </label>
                       <span class="flaeche">
                         <button type="button" class="klein" (click)="flaecheBeginnen(u)" title="Tap two corners: the area of this end">{{ u.hatFlaeche ? 'Redraw area' : 'Draw area' }}</button>
+                        <button type="button" class="klein" (click)="vieleckBeginnen({ art: 'uebergang', relId: u.relId, seite: u.mirrored ? 'toArea' : 'area' })" title="Tap the corners of a free shape: the area of this end">Draw shape</button>
                         @if (u.hatFlaeche) {
                           <button type="button" class="klein" (click)="flaecheWeg(u)">One square</button>
                         }
@@ -1354,6 +1495,12 @@ interface Zeiger {
           Tap a wall to make it a {{ wandArtName() }}.
         } @else if (werkzeug() === 'uebergang') {
           {{ !uebergangA() ? 'Tap where the passage is.' : !uebergangZiel() ? 'Choose where it leads.' : uebergangZiel() === '__karte' ? 'Pick the map the portal leads to.' : 'Tap where it leads on ' + ebeneName(uebergangZiel()) + '.' }}
+        } @else if (werkzeug() === 'vieleck') {
+          {{ vieleckPunkte().length < 3 ? 'Tap the corners of the area, one after another.' : 'Tap more corners, or the first one again to finish.' }}
+          @if (vieleckPunkte().length >= 3) {
+            <button type="button" class="klein" (click)="vieleckFertig()">Done</button>
+          }
+          <button type="button" class="klein" (click)="waehle('keins')">Cancel</button>
         } @else if (werkzeug() === 'uebergangFlaeche') {
           {{ flaecheA() ? 'Now tap the opposite corner of the area.' : 'Tap one corner of the area the passage covers.' }}
         } @else if (werkzeug() === 'schloss') {
@@ -1403,7 +1550,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -2221,7 +2368,8 @@ export class Karte {
     const h = this.hoehe();
     if (!b || !h) return undefined;
     const w = this.breite();
-    return { x: b.scrollLeft / w, y: b.scrollTop / h, w: b.clientWidth / w, h: b.clientHeight / h };
+    const m = this.saum();
+    return { x: (b.scrollLeft - m.x) / w, y: (b.scrollTop - m.y) / h, w: b.clientWidth / w, h: b.clientHeight / h };
   }
 
   /**
@@ -2240,15 +2388,17 @@ export class Karte {
     }
     const px = fx ?? b.clientWidth / 2;
     const py = fy ?? b.clientHeight / 2;
-    const cx = b.scrollLeft + px;
-    const cy = b.scrollTop + py;
+    /* Mit Saum (T-327) liegt das Bild um ihn verschoben; gerechnet wird im Bild. */
+    const m = this.saum();
+    const cx = b.scrollLeft - m.x + px;
+    const cy = b.scrollTop - m.y + py;
     const f = neu / alt;
     const n = this.nat();
     const w = Math.max(1, this.fenster().w) * neu;
     i.style.width = `${w}px`;
     if (n) i.style.height = `${w * (n.h / n.w)}px`;
-    b.scrollLeft = cx * f - px;
-    b.scrollTop = cy * f - py;
+    b.scrollLeft = cx * f - px + m.x;
+    b.scrollTop = cy * f - py + m.y;
     this.zoom.set(neu);
   }
 
@@ -2341,11 +2491,94 @@ export class Karte {
 
   // -------------------------------------------------------------- Rahmen
 
+  /**
+   * **Die Verknüpfungen, wie sie stehen** (T-327): was der Server für den
+   * Betrachter sagt (`show`) — beim Bearbeiten (Sub-maps) jede als Rahmen,
+   * sonst fände die Leitung eine versteckte nicht wieder. Die Form steht in
+   * Anteilen des Kastens (`areaInFrame`).
+   */
   protected readonly rahmen = computed(() => {
     const nat = this.nat();
     const zoom = this.zoom();
     const f = this.fenster();
-    return (this.kontext()?.children ?? []).map((k) => ({ ...k, nah: frameNear(k.frame, nat, zoom, f) }));
+    const bearbeiten = this.aktiv() === 'unterkarten' && this.darfSchreiben();
+    return (this.kontext()?.children ?? []).flatMap((k) => {
+      const show: MapLinkShow = bearbeiten ? 'jump' : (k.show ?? 'jump');
+      if (show === 'hidden') return [];
+      const form = areaInFrame({ frame: k.frame, area: k.area ?? null });
+      return [
+        {
+          ...k,
+          show,
+          nah: frameNear(k.frame, nat, zoom, f, k.near ?? MAP_NEAR),
+          punkte: form ? form.map(([x, y]) => `${x},${y}`).join(' ') : null,
+          mitte: linkCentre({ frame: k.frame, area: k.area ?? null }),
+        },
+      ];
+    });
+  });
+
+  // -------------------------------------------------- Hinaus und Rand (T-327)
+
+  /** Die Pfeile am Rand: heute die Karte darüber; Nachbarkarten nach E-121. */
+  protected readonly ausgaenge = computed(() => mapExits(this.kontext()?.parents ?? []));
+
+  /** Die Karte darüber als Rand: ihr Bild und seine Lage in Anteilen dieser Karte. */
+  protected readonly rand = computed(() => {
+    const o = this.kontext()?.outer;
+    if (!o || !this.hoehe()) return null;
+    return { image: o.image, lage: outerPlacement(o.frame) };
+  });
+  /* Nach jedem Zeichnen mit Rand (neues Bild, Zoom, Fenster) sitzt er erst nach dem nächsten Takt. */
+  private readonly randNachziehen = effect(() => {
+    if (!this.rand()) return;
+    this.breite();
+    this.fenster();
+    setTimeout(() => this.randFolgen(), 0);
+  });
+  private readonly randFeld = viewChild<ElementRef<HTMLElement>>('randFeld');
+  private readonly randInnen = viewChild<ElementRef<HTMLElement>>('randInnen');
+  /**
+   * Der Rand liegt im sichtbaren Ausschnitt fest und sein Inneren läuft mit
+   * der Karte: so trägt er nichts zur Scrollfläche bei, und links und oben
+   * der Unterkarte (negative Lage) ist er trotzdem zu sehen. Direkt am
+   * Element gesetzt, nicht über ein Signal — jeder Scrollschritt zeichnete
+   * sonst die ganze Karte neu.
+   */
+  protected randFolgen(): void {
+    const b = this.buehne()?.nativeElement;
+    const feld = this.randFeld()?.nativeElement;
+    const innen = this.randInnen()?.nativeElement;
+    if (!b || !feld || !innen) return;
+    const m = this.saum();
+    feld.style.transform = `translate(${b.scrollLeft}px, ${b.scrollTop}px)`;
+    innen.style.transform = `translate(${m.x - b.scrollLeft}px, ${m.y - b.scrollTop}px)`;
+  }
+
+  /**
+   * **Der Saum um die Unterkarte** (T-327): mit Rand liegt das Bild um
+   * 40 % des Fensters je Seite eingerückt, damit man auch links und oben
+   * über die Unterkarte hinaus schwenken kann. Ohne Rand keiner — dann
+   * steht die Karte wie bisher am Ursprung der Bühne.
+   */
+  protected readonly saum = computed(() => {
+    if (!this.rand()) return { x: 0, y: 0 };
+    const f = this.fenster();
+    return { x: Math.round(f.w * 0.4), y: Math.round(f.h * 0.4) };
+  });
+  /** Beim ersten Saum steht der Blick auf der Unterkarte, nicht im Rand. */
+  private saumFuer: string | null = null;
+  private readonly saumAnfang = effect(() => {
+    const m = this.saum();
+    const id = this.id();
+    if (!m.x || this.saumFuer === id) return;
+    this.saumFuer = id;
+    setTimeout(() => {
+      const b = this.buehne()?.nativeElement;
+      if (!b) return;
+      b.scrollLeft += m.x;
+      b.scrollTop += m.y;
+    }, 0);
   });
 
   // -------------------------------------------------------------- Gitter
@@ -2970,6 +3203,7 @@ export class Karte {
     this.zelleA.set(null);
     this.punktZug.set(null);
     this.fang.set(null);
+    this.vieleckPunkte.set([]);
   }
 
   private antippen(ev: PointerEvent): void {
@@ -3038,6 +3272,8 @@ export class Karte {
       this.uebergangTippen(pt);
     } else if (this.werkzeug() === 'uebergangFlaeche') {
       this.flaecheTippen(pt);
+    } else if (this.werkzeug() === 'vieleck') {
+      this.vieleckTippen(pt);
     } else if (this.werkzeug() === 'schloss') {
       const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
       if (t) void this.tuerKlick(t);
@@ -3303,8 +3539,9 @@ export class Karte {
     const b = this.buehne()?.nativeElement;
     const h = this.hoehe();
     if (!m || !b || !h) return;
-    b.scrollLeft = m.x * this.breite() - b.clientWidth / 2;
-    b.scrollTop = m.y * h - b.clientHeight / 2;
+    const saum = this.saum();
+    b.scrollLeft = m.x * this.breite() - b.clientWidth / 2 + saum.x;
+    b.scrollTop = m.y * h - b.clientHeight / 2 + saum.y;
   }
 
   /** Wen „Place“ gerade setzt: das nächste Antippen stellt ihn hin. */
@@ -3753,7 +3990,7 @@ export class Karte {
   // ------------------------------------------------------- Unterkarten (T-320)
 
   /** Der gezogene Rahmen, bis eine Karte gewählt ist. */
-  protected readonly rahmenNeu = signal<{ x: number; y: number; w: number; h: number } | null>(null);
+  protected readonly rahmenNeu = signal<{ x: number; y: number; w: number; h: number; area?: Array<[number, number]> } | null>(null);
   protected readonly rahmenZiel = signal<string | null>(null);
   protected readonly rahmenSpeichert = signal(false);
   protected readonly rahmenFehler = signal<string | null>(null);
@@ -3784,7 +4021,12 @@ export class Karte {
     if (!f || !ziel || this.rahmenSpeichert()) return;
     await this.unterkarteSchreiben(ziel, (rel) => [
       ...rel.filter((r) => r.type !== INSIDE_MAP_RELATION),
-      { id: `${ziel}~insideMap-${Date.now().toString(36)}`, type: INSIDE_MAP_RELATION, to: this.id(), props: { x: r4(f.x), y: r4(f.y), w: r4(f.w), h: r4(f.h) } },
+      {
+        id: `${ziel}~insideMap-${Date.now().toString(36)}`,
+        type: INSIDE_MAP_RELATION,
+        to: this.id(),
+        props: { x: r4(f.x), y: r4(f.y), w: r4(f.w), h: r4(f.h), ...(f.area ? { area: f.area } : {}) },
+      },
     ]);
     this.rahmenNeu.set(null);
   }
@@ -3793,6 +4035,108 @@ export class Karte {
     if (!confirm(`Unlink ${name}? The map stays; it is just no longer inside this one.`)) return;
     await this.unterkarteSchreiben(id, (rel) => rel.filter((r) => !(r.type === INSIDE_MAP_RELATION && r.to === this.id())));
   }
+  // ------------------------------------------- Verknüpfung einstellen (T-327)
+
+  protected readonly MAP_LINK_SHOWS = MAP_LINK_SHOWS;
+  protected readonly MAP_LINK_SHOW_LABELS = MAP_LINK_SHOW_LABELS;
+  /** Die Verknüpfungen, die die Leitung einstellen darf — der Server schickt `own` nur ihr. */
+  protected readonly verknuepfungen = computed(() => (this.kontext()?.children ?? []).filter((k) => !!k.own));
+  protected readonly linkWahl = signal<string | null>(null);
+  protected readonly linkOffen = computed(() => {
+    const k = this.verknuepfungen().find((x) => x.id === this.linkWahl());
+    if (!k) return null;
+    const own: MapLink['own'] = k.own ?? {};
+    return {
+      id: k.id,
+      vorlage: k.template ?? k.id,
+      name: k.name,
+      own,
+      form: !!k.area,
+      nearProzent: Math.round((k.near ?? MAP_NEAR) * 100),
+      vorgabe: this.kontext()?.linkDefaults ?? { show: 'jump' as MapLinkShow, showPlayers: 'jump' as MapLinkShow, outer: 'none' as const },
+    };
+  });
+  /**
+   * **Eine Verknüpfung einstellen**: geschrieben an der Kante `insideMap`
+   * der Unterkarte. `null` nimmt eine Angabe weg — dann gilt die Kampagne
+   * bzw. das Rechteck. Eine Zoomtiefe gleich der Vorgabe ist keine Angabe.
+   */
+  protected async linkSetzen(l: { vorlage: string }, patch: Record<string, unknown>): Promise<void> {
+    await this.unterkarteSchreiben(l.vorlage, (rel) =>
+      rel.map((r) => {
+        if (r.type !== INSIDE_MAP_RELATION) return r;
+        const props = { ...((r.props ?? {}) as Record<string, unknown>) };
+        for (const [k, v] of Object.entries(patch)) {
+          if (v === null || v === '' || (k === 'near' && Math.abs(Number(v) - MAP_NEAR) < 0.001)) delete props[k];
+          else if (k === 'near') props[k] = Math.max(LINK_NEAR_MIN, Math.min(1, Number(v)));
+          else if (k === 'area' && Array.isArray(v)) {
+            const b = polyBox(v as Array<[number, number]>);
+            Object.assign(props, { area: v, x: r4(b.x), y: r4(b.y), w: r4(b.w), h: r4(b.h) });
+          } else props[k] = v;
+        }
+        return { ...r, props };
+      }),
+    );
+  }
+
+  // ------------------------------------------ Freies Vieleck (T-327, T-326)
+
+  /**
+   * **Ein Vieleck antippen**: Ecke um Ecke, die erste noch einmal (oder
+   * „Done") schliesst es. Dieselbe Form für den Bereich einer Verknüpfung
+   * und die Fläche eines Übergangs — beides `[[x, y], …]` in Anteilen.
+   */
+  protected readonly vieleckPunkte = signal<Pt[]>([]);
+  protected readonly vieleckFuer = signal<
+    { art: 'neu' } | { art: 'link'; id: string } | { art: 'uebergang'; relId: string; seite: 'area' | 'toArea' } | null
+  >(null);
+  protected vieleckBeginnen(f: NonNullable<ReturnType<typeof this.vieleckFuer>>): void {
+    if (this.werkzeug() === 'vieleck') this.werkzeug.set('keins');
+    this.waehle('vieleck');
+    this.vieleckFuer.set(f);
+    this.rahmenNeu.set(null);
+  }
+  protected readonly vieleckVorschau = computed(() => {
+    if (this.werkzeug() !== 'vieleck') return null;
+    const p = this.vieleckPunkte();
+    return p.length ? p.map((q) => `${q.x},${q.y}`).join(' ') : null;
+  });
+  private vieleckTippen(pt: Pt): void {
+    const p = this.vieleckPunkte();
+    const erste = p[0];
+    const h = this.hoehe() ?? this.breite();
+    if (erste && p.length >= 3 && Math.hypot((pt.x - erste.x) * this.breite(), (pt.y - erste.y) * h) < SPERRE_TREFFER) {
+      this.vieleckFertig();
+      return;
+    }
+    this.vieleckPunkte.set([...p, pt]);
+  }
+  protected vieleckFertig(): void {
+    const p = this.vieleckPunkte();
+    const f = this.vieleckFuer();
+    this.waehle('keins');
+    this.vieleckFuer.set(null);
+    if (p.length < 3 || !f) return;
+    const poly = p.map((q) => [r4(q.x), r4(q.y)] as [number, number]);
+    const b = polyBox(poly);
+    if (b.w < 0.002 || b.h < 0.002) {
+      this.hinweis.set('The shape is too small.');
+      return;
+    }
+    if (f.art === 'neu') {
+      this.aktiv.set('unterkarten');
+      this.rahmenNeu.set({ ...b, area: poly });
+      this.rahmenZiel.set(null);
+      void this.kartenLaden();
+    } else if (f.art === 'link') {
+      const l = this.verknuepfungen().find((k) => k.id === f.id);
+      if (l) void this.linkSetzen({ vorlage: l.template ?? l.id }, { area: poly });
+    } else {
+      const g = this.ganz();
+      if (g) void this.schreibenGanz(withPassageArea(g, f.relId, f.seite, poly));
+    }
+  }
+
   private async unterkarteSchreiben(id: string, neu: (rel: Relation[]) => Relation[]): Promise<void> {
     this.rahmenSpeichert.set(true);
     this.rahmenFehler.set(null);

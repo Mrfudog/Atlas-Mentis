@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapRules, MapToolGroup, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -2123,7 +2123,21 @@ export interface ZugLage {
 /** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */
 export interface KartenKontext {
   parents: { id: string; name: string }[];
-  children: { id: string; name: string; frame: { x: number; y: number; w: number; h: number } }[];
+  /** Die Unterkarten mit ihrer Verknüpfung (T-327); `own` und `template` nur für die Leitung. */
+  children: {
+    id: string;
+    name: string;
+    frame: { x: number; y: number; w: number; h: number };
+    area?: Array<[number, number]>;
+    near: number;
+    show: MapLinkShow;
+    own?: MapLink['own'];
+    template?: string;
+  }[];
+  /** Die Karte darüber als blasser Rand (T-327); ihr Bild, wie der Betrachter es bekommt. */
+  outer: { id: string; name: string; image: string; frame: { x: number; y: number; w: number; h: number } } | null;
+  /** Die Vorgaben der Kampagne für Verknüpfungen (T-327) — nur für die Leitung. */
+  linkDefaults?: MapLinkDefaults;
   /** Darf der Betrachter von hier zu einer anderen Karte zoomen (T-308)? Fehlt bei einem älteren Server. */
   navigation?: boolean;
   /** Der Schalter der Sitzung (`Session.mapNavigation`), an einer Karte im Spiel. */
