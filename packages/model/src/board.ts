@@ -39,6 +39,8 @@ export interface BoardPlacement {
   view?: string;
   locked?: boolean;
   note?: string;
+  /** Nur für die Leitung (T-339): die Kachel geht an Spielende nicht hinaus (`redactBoard`). */
+  hidden?: boolean;
 }
 
 export interface BoardCard {
@@ -80,6 +82,7 @@ export function placementOf(rel: Relation): BoardPlacement {
   if (typeof p['view'] === 'string' && p['view']) out.view = p['view'];
   if (p['locked'] === true) out.locked = true;
   if (typeof p['note'] === 'string' && p['note']) out.note = p['note'];
+  if (p['hidden'] === true) out.hidden = true;
   return out;
 }
 
@@ -101,12 +104,19 @@ export function placementsOf(board: Entity): Relation[] {
  * ist eine Zeile und zeigt `overview`, eine höhere ist eine Karte und zeigt
  * `quick`. Wer die Kachel grösser zieht, bekommt die Karte, ohne irgendwo
  * etwas auszuwählen.
+ *
+ * **Für Spielende ist die Vorgabe der Handzettel** (T-339, E-123 a): wer
+ * nicht leitet, bekommt auf einer Kachel ohne eigene Wahl `handout`, wo es
+ * ihn gibt — keine eigene Stufe „board“, sondern die Ansicht, die für den
+ * Tisch gemacht ist. Gewählt wird je Kachel weiter jede Ansicht, auch `full`
+ * und eine gestaltete; was die Leitung wählt, gilt für alle.
  */
 export function placementView(
   registry: Pick<Registry, 'interfaces' | 'views'>,
   board: Entity,
   rel: Relation,
   targetType: string,
+  opts: { player?: boolean } = {},
 ): string {
   const p = placementOf(rel);
   if (p.view && registry.views[p.view]) return p.view;
@@ -115,6 +125,7 @@ export function placementView(
     const v = rules[t];
     if (v && registry.views[v]) return v;
   }
+  if (opts.player && p.h > OVERVIEW_MAX_HEIGHT && registry.views['handout']) return 'handout';
   return viewForSize(registry, p.h);
 }
 
@@ -257,5 +268,303 @@ export function withAnchors(board: Entity, anchors: readonly BoardAnchor[]): Ent
   return {
     ...board,
     components: { ...board.components, [BOARD_TYPE]: { ...c, anchors: neu } },
+  };
+}
+
+// ------------------------------------------------- Formen auf dem Board (T-339)
+
+/**
+ * **Was auf dem Board liegt und kein Artikel ist** (T-339): Text, Bild und
+ * Zeichnung. Sie stehen in `Board.shapes` am Board selbst — sie gehören
+ * keinem anderen Artikel, springen nirgends hin und haben keine
+ * Gegenrichtung. Ein Artikel auf dem Board bleibt eine Kante (`placed`).
+ *
+ * **Ein Text ist Markdown** (M10) mit `[[Verweisen]]` und `{VAR}` wie
+ * überall: gespeichert wird die Vorlage, eingesetzt wird beim Zeichnen
+ * (`inline.ts`). Überschrift, Absatz, Liste und Zitat sind Markdown und
+ * kein eigenes Feld — `# ` macht die Überschrift.
+ *
+ * Erweiterbar: eine neue Art ist ein neues Wort in `BOARD_SHAPE_KINDS`;
+ * was eine Seite nicht kennt, bleibt beim Schreiben unverändert stehen
+ * (`withShapes`), statt zu verschwinden.
+ */
+export const BOARD_SHAPE_KINDS = ['text', 'image', 'pen', 'line', 'arrow', 'rect', 'ellipse'] as const;
+export type BoardShapeKind = (typeof BOARD_SHAPE_KINDS)[number];
+/** Die Zeichnungen — was das Werkzeug „Draw“ legt. */
+export const BOARD_DRAW_KINDS: readonly BoardShapeKind[] = ['pen', 'line', 'arrow', 'rect', 'ellipse'];
+
+export interface BoardShape {
+  id: string;
+  kind: BoardShapeKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  z: number;
+  /** Drehung in Grad um die Mitte. */
+  rot: number;
+  /** Strichfarbe (Zeichnung) bzw. Textfarbe; leer: die Tinte der Seite. */
+  color: string;
+  /** Füllung einer Fläche (Rechteck, Ellipse, Text); leer: keine. */
+  fill: string;
+  /** Strichstärke in px. */
+  stroke: number;
+  /** Text: Markdown, nie eingesetzt gespeichert. */
+  text: string;
+  /** Bild: die Id eines Asset-Artikels oder eine Adresse (T-114). */
+  asset: string;
+  /**
+   * Freihand, Linie, Pfeil: die Punkte **relativ zur Lage** (`x`, `y`) —
+   * so verschiebt ein Zug nur zwei Zahlen und nicht jeden Punkt.
+   */
+  points: [number, number][];
+  /** Nur für die Leitung: geht an Spielende gar nicht erst hinaus (`redactBoard`). */
+  hidden: boolean;
+}
+
+export const SHAPE_MIN = { w: 8, h: 8 } as const;
+
+function text(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
+
+/** Die Formen eines Boards, von unten nach oben; unbrauchbare fallen weg. */
+export function shapesOf(board: Entity): BoardShape[] {
+  const c = (board.components?.[BOARD_TYPE] ?? {}) as Record<string, unknown>;
+  const roh = Array.isArray(c['shapes']) ? (c['shapes'] as unknown[]) : [];
+  const out: { s: BoardShape; i: number }[] = [];
+  roh.forEach((x, i) => {
+    if (!x || typeof x !== 'object') return;
+    const o = x as Record<string, unknown>;
+    if (typeof o['id'] !== 'string' || !o['id']) return;
+    if (!BOARD_SHAPE_KINDS.includes(o['kind'] as BoardShapeKind)) return;
+    const punkte = Array.isArray(o['points'])
+      ? (o['points'] as unknown[]).filter(
+          (p): p is [number, number] =>
+            Array.isArray(p) && p.length === 2 && p.every((n) => typeof n === 'number' && Number.isFinite(n)),
+        )
+      : [];
+    out.push({
+      i,
+      s: {
+        id: o['id'],
+        kind: o['kind'] as BoardShapeKind,
+        x: zahl(o['x'], 0),
+        y: zahl(o['y'], 0),
+        w: Math.max(0, zahl(o['w'], 0)),
+        h: Math.max(0, zahl(o['h'], 0)),
+        z: zahl(o['z'], 0),
+        rot: zahl(o['rot'], 0),
+        color: text(o['color']),
+        fill: text(o['fill']),
+        stroke: Math.max(1, zahl(o['stroke'], 3)),
+        text: text(o['text']),
+        asset: text(o['asset']).trim(),
+        points: punkte,
+        hidden: o['hidden'] === true,
+      },
+    });
+  });
+  return out.sort((a, b) => a.s.z - b.s.z || a.i - b.i).map((x) => x.s);
+}
+
+/**
+ * Das Board mit diesen Formen. Was an einer gespeicherten Form sonst noch
+ * steht, bleibt; Vorgaben (leere Farbe, keine Drehung …) werden nicht
+ * gespeichert, und Formen einer Art, die diese Seite nicht kennt, bleiben.
+ */
+export function withShapes(board: Entity, shapes: readonly BoardShape[]): Entity {
+  const c = (board.components?.[BOARD_TYPE] ?? {}) as Record<string, unknown>;
+  const roh = Array.isArray(c['shapes']) ? (c['shapes'] as unknown[]) : [];
+  const alt = new Map<string, Record<string, unknown>>();
+  const fremd: unknown[] = [];
+  for (const a of roh) {
+    const o = a && typeof a === 'object' ? (a as Record<string, unknown>) : null;
+    if (o && typeof o['id'] === 'string' && BOARD_SHAPE_KINDS.includes(o['kind'] as BoardShapeKind)) alt.set(o['id'], o);
+    else fremd.push(a);
+  }
+  const neu = shapes.map((s) => {
+    const o: Record<string, unknown> = { ...(alt.get(s.id) ?? {}), id: s.id, kind: s.kind, x: s.x, y: s.y, w: s.w, h: s.h };
+    const setze = (k: string, v: unknown, leer: boolean) => {
+      if (leer) delete o[k];
+      else o[k] = v;
+    };
+    setze('z', s.z, !s.z);
+    setze('rot', s.rot, !s.rot);
+    setze('color', s.color, !s.color);
+    setze('fill', s.fill, !s.fill);
+    setze('stroke', s.stroke, s.stroke === 3 || !BOARD_DRAW_KINDS.includes(s.kind));
+    setze('text', s.text, s.kind !== 'text');
+    setze('asset', s.asset, s.kind !== 'image' || !s.asset);
+    setze('points', s.points, !s.points.length);
+    setze('hidden', true, !s.hidden);
+    return o;
+  });
+  return {
+    ...board,
+    components: { ...board.components, [BOARD_TYPE]: { ...c, shapes: [...fremd, ...neu] } },
+  };
+}
+
+/** Eine neue Form mit den Vorgaben — die Seite setzt nur, was das Werkzeug sagt. */
+export function newShape(kind: BoardShapeKind, at: Partial<BoardShape> & { id: string }): BoardShape {
+  return {
+    kind,
+    x: 0,
+    y: 0,
+    w: kind === 'text' ? 320 : 200,
+    h: kind === 'text' ? 120 : 140,
+    z: 0,
+    rot: 0,
+    color: '',
+    fill: '',
+    stroke: 3,
+    text: '',
+    asset: '',
+    points: [],
+    hidden: false,
+    ...at,
+  };
+}
+
+/**
+ * Das Rechteck, das eine Linie oder Freihand aus ihren Punkten umschliesst
+ * — mit den Punkten danach relativ zu seiner Ecke. Gerechnet beim Fertig-
+ * zeichnen, damit Auswahl und Ausdehnung des Boards eine Lage kennen.
+ */
+export function fitPoints(absolute: readonly [number, number][]): { x: number; y: number; w: number; h: number; points: [number, number][] } {
+  if (!absolute.length) return { x: 0, y: 0, w: 0, h: 0, points: [] };
+  const xs = absolute.map((p) => p[0]);
+  const ys = absolute.map((p) => p[1]);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return {
+    x,
+    y,
+    w: Math.max(...xs) - x,
+    h: Math.max(...ys) - y,
+    points: absolute.map(([px, py]) => [Math.round(px - x), Math.round(py - y)] as [number, number]),
+  };
+}
+
+// ------------------------------------------------------------ Hintergrund
+
+export const BACKGROUND_FITS = ['tile', 'stretch', 'fixed'] as const;
+export type BackgroundFit = (typeof BACKGROUND_FITS)[number];
+
+export interface BoardBackground {
+  /** Ein Bild (Asset-Id oder Adresse); leer: keines. */
+  image: string;
+  /** Eine Farbe; leer: das Papier der Seite. */
+  color: string;
+  /** Wie das Bild liegt: gekachelt, auf die Leinwand gestreckt, einmal oben links. */
+  fit: BackgroundFit;
+  /** Eine Karte als Hintergrund (Id eines `Map`-Artikels); leer: keine. */
+  map: string;
+}
+
+/** Der Hintergrund des Boards (`Board.background`, `backgroundColor`, `backgroundFit`, `backgroundMap`). */
+export function boardBackground(board: Entity): BoardBackground {
+  const c = (board.components?.[BOARD_TYPE] ?? {}) as Record<string, unknown>;
+  const fit = BACKGROUND_FITS.includes(c['backgroundFit'] as BackgroundFit) ? (c['backgroundFit'] as BackgroundFit) : 'stretch';
+  return {
+    image: text(c['background']).trim(),
+    color: text(c['backgroundColor']).trim(),
+    fit,
+    map: text(c['backgroundMap']).trim(),
+  };
+}
+
+/** Das Board mit diesem Hintergrund; was leer ist, fällt aus der Karte. */
+export function withBackground(board: Entity, bg: Partial<BoardBackground>): Entity {
+  const c = { ...((board.components?.[BOARD_TYPE] ?? {}) as Record<string, unknown>) };
+  const felder: [keyof BoardBackground, string][] = [
+    ['image', 'background'],
+    ['color', 'backgroundColor'],
+    ['fit', 'backgroundFit'],
+    ['map', 'backgroundMap'],
+  ];
+  for (const [k, feld] of felder) {
+    if (!(k in bg)) continue;
+    const v = bg[k];
+    if (!v || (k === 'fit' && v === 'stretch')) delete c[feld];
+    else c[feld] = v;
+  }
+  return { ...board, components: { ...board.components, [BOARD_TYPE]: c } };
+}
+
+// ---------------------------------------------------- Unendliche Leinwand
+
+/** Wie viel Platz hinter dem Äussersten bleibt — dorthin zieht man weiter. */
+export const BOARD_MARGIN = 600;
+
+/**
+ * **Wie gross die Leinwand ist** (T-339), gerechnet beim Lesen (D8): so
+ * gross wie `width`/`height` sagen (die Vorgabe 2400 × 1500) — und
+ * grösser, sobald etwas weiter draussen liegt, mit einem Rand dahinter.
+ * `width` und `height` sind damit keine Grenze mehr, sondern die
+ * Mindestgrösse; ein Board, auf dem alles innerhalb liegt, sieht aus wie
+ * vorher. Links und oben bleibt die Leinwand bei 0 (`snapTo`).
+ */
+export function boardExtent(
+  board: Entity,
+  extra: readonly { x: number; y: number; w: number; h: number }[] = [],
+): { width: number; height: number } {
+  const c = boardCard(board);
+  let rechts = 0;
+  let unten = 0;
+  const nimm = (r: { x: number; y: number; w?: number; h?: number }) => {
+    rechts = Math.max(rechts, r.x + (r.w ?? 0));
+    unten = Math.max(unten, r.y + (r.h ?? 0));
+  };
+  for (const r of placementsOf(board)) nimm(placementOf(r));
+  for (const a of anchorsOf(board)) nimm(a);
+  for (const s of shapesOf(board)) nimm(s);
+  for (const r of extra) nimm(r);
+  return {
+    width: Math.max(c.width, rechts ? Math.ceil(rechts + BOARD_MARGIN) : 0),
+    height: Math.max(c.height, unten ? Math.ceil(unten + BOARD_MARGIN) : 0),
+  };
+}
+
+/** Das Rechteck um alles, was auf dem Board liegt — für „Fit all“; `null` auf einem leeren Board. */
+export function boardContentBounds(board: Entity): { x: number; y: number; w: number; h: number } | null {
+  const alles = [
+    ...placementsOf(board).map(placementOf),
+    ...anchorsOf(board).map((a) => ({ x: a.x, y: a.y, w: a.w ?? 0, h: a.h ?? 0 })),
+    ...shapesOf(board),
+  ];
+  if (!alles.length) return null;
+  const x = Math.min(...alles.map((r) => r.x));
+  const y = Math.min(...alles.map((r) => r.y));
+  return {
+    x,
+    y,
+    w: Math.max(...alles.map((r) => r.x + r.w)) - x,
+    h: Math.max(...alles.map((r) => r.y + r.h)) - y,
+  };
+}
+
+// ------------------------------------------------------------- Zurückhalten
+
+/**
+ * **Was Spielende vom Board bekommen** (T-339): ohne die Formen und
+ * Kacheln, die die Leitung zurückhält (`hidden`). Gerufen am Server für
+ * jeden, der den Arbeitsstand nicht sieht — wer das Board schreibt,
+ * bekommt es ganz, sonst schriebe er beim nächsten Griff ein gekürztes
+ * zurück. Ob der Artikel auf einer Kachel überhaupt an jemanden geht,
+ * entscheidet weiter dessen eigene Sichtbarkeit.
+ */
+export function redactBoard(board: Entity): Entity {
+  const c = board.components?.[BOARD_TYPE] as Record<string, unknown> | undefined;
+  const shapes = Array.isArray(c?.['shapes']) ? (c['shapes'] as unknown[]) : null;
+  const ohne = shapes?.filter((s) => !(s && typeof s === 'object' && (s as { hidden?: unknown }).hidden === true));
+  const kanten = (board.relations ?? []).filter((r) => !(r.type === PLACED_RELATION && r.props?.['hidden'] === true));
+  return {
+    ...board,
+    ...(c && ohne && ohne.length !== shapes!.length
+      ? { components: { ...board.components, [BOARD_TYPE]: { ...c, shapes: ohne } } }
+      : {}),
+    relations: kanten,
   };
 }

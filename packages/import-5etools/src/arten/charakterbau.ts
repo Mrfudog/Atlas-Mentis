@@ -644,7 +644,7 @@ export const ASI_WAHLEN: Choice[] = [
  * Eine Attributssteigerung nach 2014: „increase one ability score of your
  * choice by 2". Die Gefolgsleute (Sidekicks, TCE) sagen es in der dritten
  * Person — „the sidekick increases one …" — und blieben darum ohne Wahl
- * (T-095); Migration 124 zieht sie nach.
+ * (T-095); Migration 125 zieht sie nach.
  */
 const ASI_TEXT = /increases? one ability score of your choice by 2/i;
 

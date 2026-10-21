@@ -9,6 +9,14 @@
       "link": "/characters/new"
     },
     {
+      "id": "2026-10-21-board-tools",
+      "date": "2026-10-21",
+      "title": "Boards: tools for text, images, drawing and maps",
+      "text": "Boards have a tool bar like the map: headings, notes and lists with links, images, freehand, arrows and shapes, a background image, colour or map, and maps as live cards. Cards show any view up to Full, the canvas grows with what lies on it, and GM only keeps an element or card from players.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
       "id": "2026-10-21-views-per-kind",
       "date": "2026-10-21",
       "title": "Cards, search hits and handouts show what matters per kind",
