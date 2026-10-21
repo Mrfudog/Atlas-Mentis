@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-book-illustrations",
+      "date": "2026-10-21",
+      "title": "Books and adventures: pictures in the text",
+      "text": "Open a book from the campaign’s layers: a picture in its text is now a part of its chapter, at its place between the paragraphs, with its caption. Until the image file is uploaded, a frame with the caption stands there. Players see only the pictures of what they may read.",
+      "area": "Layers",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-21-marker-view",
       "date": "2026-10-21",
       "title": "Maps: markers as symbol, name, image or quick card",
