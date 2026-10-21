@@ -150,3 +150,41 @@ export function rollMode(advantage: boolean, disadvantage: boolean): 'adv' | 'di
   if (disadvantage && !advantage) return 'dis';
   return undefined;
 }
+
+/** Bis wohin ein Angriff „aus der Nähe" kommt (Prone, T-351): 5 ft. */
+export const NEAR_FEET = 5;
+
+/**
+ * **Wie ein Angriff gewürfelt wird** (T-351): Vorteil und Nachteil aus den
+ * Wirkungen beider Seiten — `attack` am Angreifer, `attacked` am Ziel, dazu
+ * `attacked.near` bzw. `attacked.far` nach dem Abstand (Prone) — und
+ * Nachteil auf **langer Reichweite**. `why` sagt, woher, fürs Protokoll
+ * und die Vorschau. Ohne bekannten Abstand gilt weder nah noch fern.
+ */
+export function attackRollMode(
+  attacker: Readonly<Record<string, readonly string[]>>,
+  target: Readonly<Record<string, readonly string[]>>,
+  opts: { feet?: number | null; long?: boolean } = {},
+): { mode: 'adv' | 'dis' | undefined; why: string[] } {
+  const feet = opts.feet ?? null;
+  const naehe = feet === null ? null : feet <= NEAR_FEET ? 'attacked.near' : 'attacked.far';
+  const quellen: [string, readonly string[]][] = [
+    ['attacker', attacker['attack'] ?? []],
+    ['target', target['attacked'] ?? []],
+    ...(naehe ? ([[naehe === 'attacked.near' ? 'target, within 5 ft.' : 'target, beyond 5 ft.', target[naehe] ?? []]] as [string, readonly string[]][]) : []),
+  ];
+  let vor = false;
+  let nach = !!opts.long;
+  const why: string[] = opts.long ? ['long range'] : [];
+  for (const [wer, w] of quellen) {
+    if (w.includes('advantage')) {
+      vor = true;
+      why.push(`advantage (${wer})`);
+    }
+    if (w.includes('disadvantage')) {
+      nach = true;
+      why.push(`disadvantage (${wer})`);
+    }
+  }
+  return { mode: rollMode(vor, nach), why };
+}

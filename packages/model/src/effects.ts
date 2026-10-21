@@ -84,6 +84,10 @@ export const EFFECT_TARGETS: Record<string, string> = {
      `disadvantage` — auf eigene Angriffe, auf Angriffe gegen die Kreatur. */
   attack: 'attack rolls',
   attacked: 'attack rolls against it',
+  /* Nach Abstand (T-351): Prone gibt dem Angreifer in 5 ft Vorteil, von
+     weiter weg Nachteil — eine Wirkung je Seite der Grenze. */
+  'attacked.near': 'attack rolls against it from within 5 ft.',
+  'attacked.far': 'attack rolls against it from farther than 5 ft.',
 };
 
 /** Ein Eintrag von `Effects.effects`. */
@@ -376,7 +380,7 @@ export function effectText(e: Effect): string {
   else if (e.target.startsWith('speed.') && e.op === 'set') satz = `${name} ${v} ft.`;
   else if (e.op === 'limit' && e.target.startsWith('speed.')) satz = `${name} at most ${v} ft.`;
   else if (e.op === 'limit') satz = `${name} at most ${v}`;
-  else if (e.op === 'grant' && (e.target === 'attack' || e.target === 'attacked')) satz = `${v} on ${name}`;
+  else if (e.op === 'grant' && (e.target === 'attack' || e.target.startsWith('attacked'))) satz = `${v} on ${name}`;
   else if (e.op === 'set') satz = `${name} becomes ${v}`;
   else if (e.op === 'add') satz = `${vorzeichen} ${e.target === 'ac' ? name : `to ${name}`}`;
   else if (e.op === 'grant') satz = e.target === 'conditionImmune' ? `immunity to ${v}` : `${name} to ${v}`;

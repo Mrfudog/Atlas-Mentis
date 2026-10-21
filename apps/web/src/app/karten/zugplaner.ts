@@ -1,5 +1,5 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { expectedDamage, inPoly, planBudget, planText, type PlanCost, type PlanStep, type PlanTile, type Size, type TurnPlan } from '@nw/model';
+import { expectedDamage, inPoly, planBudget, planText, rangeBand, type PlanCost, type PlanStep, type PlanTile, type Size, type TurnPlan } from '@nw/model';
 import { Api, type ZugLage } from '../kern/api';
 import { Live } from '../kern/live';
 import type { Planung, PlanTipp } from './karte';
@@ -561,7 +561,7 @@ export class Zugplaner {
   private async holen(karte: string, figur: string | null): Promise<void> {
     const n = ++this.lauf;
     try {
-      const l = await this.api.turnPlan(karte, figur);
+      const l = await this.api.turnPlan(karte, figur, this.nat);
       if (n !== this.lauf) return;
       const vorher = this.lage()?.actor?.id;
       this.lage.set(l);
@@ -638,6 +638,8 @@ export class Zugplaner {
   }
   /** Die Bildgrösse der Karte, vom letzten Antippen — der Server rechnet damit die Felder. */
   private nat: Size | null = null;
+  /** Der Abstand je Angriffsschritt beim Antippen — für die Vorschau auf langer Reichweite (T-351). */
+  private readonly weiten = new Map<string, number | null>();
   private eingereicht: string | null = null;
 
   /** Was die Karte zeigen soll (`nw-karte [planung]`). */
@@ -651,7 +653,8 @@ export class Zugplaner {
     if (t && this.modus() === 'target') {
       for (const z of l.targets) {
         const c = z.chances[t.id];
-        if (c !== undefined) labels[z.id] = `${c}%`;
+        const m = z.modes?.[t.id];
+        if (c !== undefined) labels[z.id] = `${c}%${m ? (m === 'adv' ? ' adv.' : ' dis.') : ''}`;
       }
     }
     return {
@@ -716,10 +719,14 @@ export class Zugplaner {
     const l = this.lage();
     const t = l?.tiles.find((x) => x.id === s.tile);
     const z = l?.targets.find((x) => x.id === s.target);
-    const c = t && z ? z.chances[t.id] : undefined;
+    /* Lange Reichweite (T-351): die Chance mit Nachteil, die der Server dafür mitgibt. */
+    const lang = t ? rangeBand(t, this.weiten.get(s.id) ?? null) === 'long' : false;
+    const c = t && z ? (lang ? (z.long?.[t.id] ?? z.chances[t.id]) : z.chances[t.id]) : undefined;
     if (!t || c === undefined) return t?.damage ? `${t.damage} ${t.damageType}` : '';
     const erwartet = expectedDamage(c / 100, t.average);
-    return `${c}% to hit · ${t.damage} ${t.damageType}${erwartet !== null ? ` · ≈${erwartet} expected` : ''}`;
+    const m = z?.modes?.[t.id];
+    const wie = [lang ? 'long range' : '', !lang && m ? (m === 'adv' ? 'advantage' : 'disadvantage') : ''].filter(Boolean).join(', ');
+    return `${c}% to hit${wie ? ` (${wie})` : ''} · ${t.damage} ${t.damageType}${erwartet !== null ? ` · ≈${erwartet} expected` : ''}`;
   }
 
   protected zustand(p: TurnPlan): string {
@@ -773,12 +780,15 @@ export class Zugplaner {
     }
     const t = this.gewaehlt();
     if (e.kind === 'target' && t && this.modus() === 'target') {
-      const weit = t.longRange ?? t.range;
-      if (weit !== null && e.feet !== null && e.feet > weit) {
-        this.fehler.set(`${e.name} is ${e.feet} ft away — out of range.`);
+      if (e.nat) this.nat = e.nat;
+      /* Dieselbe Rechnung wie der Server (T-351): ausser Reichweite nimmt er nicht an. */
+      if (rangeBand(t, e.feet) === 'out') {
+        this.fehler.set(`${e.name} is ${e.feet} ft away — out of range for ${t.name}. Move closer first or pick another target.`);
         return;
       }
-      this.dazu({ id: neueId(), kind: 'act', tile: t.id, name: t.name, cost: t.cost, target: e.id, targetName: e.name });
+      const id = neueId();
+      this.weiten.set(id, e.feet);
+      this.dazu({ id, kind: 'act', tile: t.id, name: t.name, cost: t.cost, target: e.id, targetName: e.name });
       this.abwaehlen();
     }
   }
