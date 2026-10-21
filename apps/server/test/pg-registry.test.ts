@@ -37,7 +37,11 @@ describe('the registry survives a round trip through Postgres', () => {
 
   it('writes every field the seed rows actually carry', () => {
     const insert = /insert into interface_def\(([^)]*)\)/.exec(pgQuelle)?.[1] ?? '';
-    const fehlt = [...benutzt].filter((k) => !insert.split(',').includes(spalte(k)));
+    /* Eine spätere Spalte darf nachgeschrieben werden (`marker_view`,
+       T-214): so geht dieselbe Zeile auch in eine Datenbank vor ihrer
+       Migration — der Register-Abgleich spielt genau das nach. */
+    const nachher = (k: string) => new RegExp(`update interface_def set ${spalte(k)} =`).test(pgQuelle);
+    const fehlt = [...benutzt].filter((k) => !insert.split(',').includes(spalte(k)) && !nachher(k));
     expect(fehlt).toEqual([]);
   });
 

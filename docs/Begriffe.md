@@ -2688,6 +2688,15 @@ und keine eigene: was auf einer Kurzansicht steht, ist schon so geordnet,
 dass das Wichtigste oben steht und das Bild zuletzt (T-346), und ein
 Kasten, der unten abschneidet, verliert nur das Unwichtigste.
 
+**Eine Notiz auf der Karte ist ein Artikel** (T-214, E-070 a) und kein
+Text am Marker. Am Marker hätte sie keine Sichtbarkeit, keinen Stand,
+keine Ebene und keinen Verweis — und die Frage, ob Spielende sie sehen,
+bräuchte eine zweite Regel neben `articleVisible`, die irgendwann jemand
+vergisst. Als Artikel geht sie durch dasselbe Sieb wie alles andere: eine
+Notiz nur für die Leitung ist für Spielende nicht da, und ihr Marker mit
+ihr. Der Name ist die erste Zeile des Textes; einen zweiten tippen zu
+lassen hiesse, dieselbe Sache zweimal zu sagen.
+
 ## Zug, Tempo und Zone auf der Karte
 
 **Ein Zug ist kein Feld der Kreatur.** Dass der Kämpfer schon 20 Fuss

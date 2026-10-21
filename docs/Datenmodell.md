@@ -785,6 +785,7 @@ der Artikelseite und Play › Map):
 | K31 | **Unterkarte am Raster darüber ausrichten** (T-329, docs/Karten.md › Gitter über den Massstab): an `insideMap` der Schalter `align`. Mit ihm folgt die Grösse des Bereichs aus beiden Massstäben (`alignedSize`, Fuss je Bildpunkt; Bildgrösse aus `Asset.width`/`height`), die Lage rastet am Raster der Karte darüber ein (Quadrat: Ecke an Gitterecke; Hex: Mitte in Hexmitte), eine Form wird mitgestreckt — gerechnet beim Lesen (D8), `x`/`y`/`w`/`h` bleiben die freie Lage und Grösse. Ohne Länge in einem Massstab (`1 day`) oder ohne Bildgrösse nicht (`alignIssue`). Strecken zwischen Karten: `convertDistance`, Gesamtstrecke über Karten `routeFeet`. | `mapscale.ts`, `map.ts` (`partyPosition` mit `frameFor`), `karten.ts`, Migration 121 |
 | K32 | **Marker zwischen Kartenstufen** (T-328, docs/Karten.md › Marker und Tokens zwischen Kartenstufen): die Marker einer Unterkarte (`static`, `quest`, `play`; erste Ebene) erscheinen auf der Karte darüber an ihrer umgerechneten Lage (`liftMarkers`, über die geltende Verknüpfung), bei mehr als sechs als Bündel mit Zahl — gerechnet beim Lesen (D8), gesiebt wie beide Karten. Ein Marker der Karte darüber im Bereich einer Unterkarte ist dort ein Vorschlag „To place" (`placementSuggestions`, nur Leitung); bestätigt wandert er hinunter (`confirmPlacement`: unten neu, oben weg), mit `stay` an der Kante `marker` bleibt er oben gemeint. Keine zweite Kopie. |
 | K33 | **Markeransicht wählbar** (T-214, docs/Karten.md › Markeransicht): ein Marker steht als `symbol` (Anfangsbuchstaben), `name` (Symbol mit Namen), `image` (Token oder Bild, sonst Symbol) oder `card` (die Ansicht `quick` des Ziels als kleine Karte). Die genaueste Angabe gilt: `marker.props.view`, `Map.markerView`, `Campaign.markerViews[Map.kind]`, `InterfaceDef.markerView` der Art des Ziels (die `extends`-Kette hoch geerbt), sonst `image` — so standen Marker vorher, bestehende Karten ändern sich nicht. Assets (`scenery`) und freie Lichter fragen nicht. Die Vorgabe der Art liefert der Kartenkontext je Ziel (`targets[id].view`), die der Kartenart als `kindMarkerView`; die Karte zeichnet daraus, zurückgehalten wird wie bei jedem Marker am Server. | `map.ts` (`markerViewOf`, `markerViewForType`, `mapMarkerViewOf`, `kindMarkerViewOf`, `withMarkerView`, `withMapMarkerView`, `withKindMarkerView`), `ruleOptions.ts` (`markerViews`), `karten.ts`, Spalte `interface_def.marker_view`, Migration 133 |
+| K34 | **Notizen auf der Karte sind Artikel** (T-214, E-070 a, docs/Karten.md › Notizen): Art `Note` (Bereich `play`, `Identity`, `Description` als „Text“, `Status`, `Visibility`, `Tags`; `markerView: 'card'`). Notes › Add note legt sie an (Name: die erste Zeile, `noteName`; Sichtbarkeit `gm` oder `players`; Stand `ready`) und setzt einen gewöhnlichen Marker auf sie — verschoben, entfernt und eingestellt wie jeder Marker. Kein Text an der Kante: so hat die Notiz Ebene, Stand, Verweise und Sichtbarkeit wie jeder Artikel, und zurückgehalten wird sie am Server wie jeder (`redactMap` nimmt den Marker, das Sieb den Namen im Kartenkontext). | `Note` in `interfaces.ts`, `noteName` (`map.ts`), `karte.ts` (`notizAnlegen`), Migration 134 |
 
 **Der Zug auf der Karte (D56, REQ-206–210; Grössen D58, REQ-224).** Gerechnet wird beim Lesen,
 gespeichert nur, was danach gilt:
@@ -2275,7 +2276,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-21: 61 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-21: 62 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2284,11 +2285,11 @@ Stand 2026-10-21: 61 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungs
 | `Abilities` | `str` `strMod*` `dex` `dexMod*` `con` `conMod*` `int` `intMod*` `wis` `wisMod*` `cha` `chaMod*` `initiative*` `passivePerception*` | `Statblock` |
 | `BookPart` | — | 5 |
 | `Choices` | `choices` | 6 |
-| `Description` | `description` | 25 |
+| `Description` | `description` | 26 |
 | `Difficulty` | `difficulty` | `Scene` `Encounter` |
 | `Effects` | `effects` | 4 |
 | `Facts` | `fact` | `Creature` `Item` `Information` |
-| `Identity` | `name` `id` `aliases` `cover` | 26 |
+| `Identity` | `name` `id` `aliases` `cover` | 27 |
 | `Image` | `image` `caption` `alt` | 16 |
 | `Lore` | `lore` | 17 |
 | `Notes` | `note` | 26 |
@@ -2298,13 +2299,13 @@ Stand 2026-10-21: 61 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungs
 | `ReadAloud` | `readaloud` | 7 |
 | `Secrets` | `secret` | 15 |
 | `Source` | `publication` `page` `anchor` `url` `srd` | 13 |
-| `Status` | `status` | 23 |
+| `Status` | `status` | 24 |
 | `Tactics` | `tactics` | `Statblock` `Scene` `Encounter` |
-| `Tags` | `tags` | 26 |
+| `Tags` | `tags` | 27 |
 | `Time` | `sort` `display` `untilSort` `until` `duration` | `Story` `Quest` `Event` |
 | `Todos` | `items` | 4 |
 | `Vars` | `bindings` | `Creature` `Rule` `Statblock` |
-| `Visibility` | `audience` `revealedTo` `hiddenFrom` | 26 |
+| `Visibility` | `audience` `revealedTo` `hiddenFrom` | 27 |
 | `VisibilityRules` | `visibilityRules` | `Campaign` |
 | `Vitals` | `hp` `hpTemp` `hitDiceLeft` `deathSuccess` `deathFail` `inspiration` `conditions` `nat1` `slotsUsed` `concentration` `durations` `hidden` `turnUsed` | `Creature` |
 
@@ -2386,6 +2387,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, overview, full |
 | `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `markerView` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | quick, full |
+| `Note` | — | — | — | — | — |
 
 **Ohne Bereich**
 

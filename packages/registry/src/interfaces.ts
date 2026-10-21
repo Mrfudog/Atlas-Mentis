@@ -1268,6 +1268,23 @@ export const interfaces: Record<string, InterfaceDef> = {
    * in der Kampagne; die Wörter der App selbst stehen im Repo
    * (`packages/registry/src/glossar.ts`), weil sie zum Code gehören.
    */
+  /**
+   * **Eine Notiz auf der Karte** (T-214, E-070 a): ein eigener Artikel und
+   * kein Text an der Kante — so hat sie Sichtbarkeit, Stand, Ebene und
+   * Verweise wie alles andere, und zurückgehalten wird sie am Server wie
+   * jeder Artikel. Auf der Karte steht ein Marker, der auf sie zeigt; der
+   * Text ist `Description.description`. Gelesen wird sie als Karte
+   * (`markerView: 'card'`).
+   */
+  Note: {
+    name: 'Note',
+    area: 'play',
+    label: 'Note',
+    extends: ['Identity', 'Description', 'Status', 'Visibility', 'Tags'],
+    titles: { 'Description.description': 'Text' },
+    markerView: 'card',
+  },
+
   GlossaryTerm: {
     name: 'GlossaryTerm',
     area: 'rules',

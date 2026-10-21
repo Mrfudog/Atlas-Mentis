@@ -663,6 +663,7 @@ const TYPES: AppTerm[] = [
   { term: 'Feature', sort: 'type', types: ['Feature'], definition: 'Anything lasting a class, ancestry, monster or region gives.', translations: { de: 'Merkmal' } },
   { term: 'Item property', sort: 'type', types: ['ItemProperty'], definition: 'A property of a weapon or item, such as a reach or a two-handed grip.', translations: { de: 'Gegenstandseigenschaft' } },
   { term: 'Spell', sort: 'type', types: ['Spell'], definition: 'A spell with level, school, casting time, range, components and duration.', translations: { de: 'Zauber' } },
+  { term: 'Note', aliases: ['Map note'], sort: 'type', types: ['Note'], definition: 'A note on a map: its own article with a text, shown to the GM only or to the players too, and a marker that points to it.', effect: 'Notes (N) on the map: tap where it goes, write the text, choose GM only or Players. Drag it like any marker; tap it for its quick view.', translations: { de: 'Notiz' } },
   { term: 'Hazard', aliases: ['Trap'], sort: 'type', types: ['Hazard'], definition: 'A trap or hazard; placed on a map as a marker.', translations: { de: 'Gefahr' } },
   { term: 'Zone kind', sort: 'type', types: ['ZoneKind'], definition: 'A rule that applies at places on a map, such as difficult terrain.', translations: { de: 'Zonenart' } },
   { term: 'Item', sort: 'type', types: ['Item'], definition: 'A thing one can carry: gear, a tool, a magic item. In an inventory it is a piece of its own.', translations: { de: 'Gegenstand' } },
