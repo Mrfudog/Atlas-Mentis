@@ -34,7 +34,8 @@ export interface BilderDeps {
   store: AssetStore;
   viewerOf: (request: FastifyRequest) => Promise<User | null>;
   roh: () => Promise<Stand>;
-  sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>) => Promise<Entity[]>;
+  /** `'unactivated'`: was nur fehlt, weil seine Ebene nicht aufgeschaltet ist (T-069) — gesiebt, als wäre sie es. */
+  sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>, stapel?: 'unactivated') => Promise<Entity[]>;
   geltend: (e: Entity, map: Map<string, Entity>) => Promise<Entity>;
   anlegen: (
     request: FastifyRequest,
@@ -56,6 +57,9 @@ interface AssetInfo {
   ref?: string;
   mime?: string;
 }
+
+/** Ein Schalter im Formular: `1` oder `true`. */
+const wahr = (w: string | undefined): boolean => w === '1' || w === 'true';
 
 const infoVon = (e: Entity): AssetInfo => (e.components?.['Asset'] ?? {}) as AssetInfo;
 
@@ -159,7 +163,14 @@ export function registerBilder(app: FastifyInstance, deps: BilderDeps): Bilder {
     if (fuerId) {
       const da = stand.map.get(fuerId);
       fuer = da ? (await sieve(request, [da], stand.map))[0] : undefined;
-      if (!fuer) return reply.code(404).send({ error: 'Den Artikel gibt es nicht.' });
+      /* **Alle Ebenen** (T-284): die Verwaltung lädt auch für einen Artikel
+         hoch, dessen Ebene die laufende Kampagne nicht aufschaltet — ein
+         Bild im Text eines Abenteuers, das gerade niemand spielt. Wie
+         `allLayers` an der Massenänderung (T-182), und nur dort, wo sie es
+         sagt: sonst hinge ein Bild still an einem Artikel ausserhalb des
+         Stapels. */
+      if (!fuer && da && wahr(felder['allLayers']) && user.isAdmin) fuer = (await sieve(request, [da], stand.map, 'unactivated'))[0];
+      if (!fuer) return reply.code(404).send({ error: 'Den Artikel gibt es nicht. Ist seine Ebene nicht aufgeschaltet, sagt die Verwaltung allLayers=1.' });
     }
     /* **Eine neue Fassung eines Bildes** (T-119, „Replace › as a new
        version"): ein eigenes Asset mit `variantOf` auf das alte. Beide

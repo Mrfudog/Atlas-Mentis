@@ -406,6 +406,52 @@ describe('tokens (T-297)', () => {
   });
 });
 
+describe('an article whose layer is not switched on (T-284)', () => {
+  /** Ein Bildteil im Text eines Abenteuers, das die laufende Kampagne nicht aufschaltet. */
+  async function mitBuch() {
+    const t = await aufbau();
+    await t.repo.putEntity(ebene('ly_buch'));
+    await t.repo.putEntity({
+      id: 'p_bild',
+      interfaces: ['Illustration'],
+      name: 'Die Burg im Nebel',
+      components: { Identity: { name: 'Die Burg im Nebel', id: 'illustration-0001', aliases: [] }, Visibility: { audience: 'gm' } },
+      relations: [{ id: 'p_bild~l', type: 'inLayer', to: 'ly_buch', props: {} }],
+    });
+    return t;
+  }
+
+  it('is not there by default, for anyone — the stack comes first (E2)', async () => {
+    const { hole, hoch } = await mitBuch();
+    expect((await hole('Admin', '/api/entities/p_bild')).statusCode).toBe(404);
+    const res = await hoch('Admin', { for: 'p_bild' }, { name: 'burg.png', type: 'image/png', data: await png(40, 40) });
+    expect(res.statusCode).toBe(404);
+    expect((res.json() as { error: string }).error).toMatch(/allLayers=1/);
+  });
+
+  it('is found and gets its image when the administration says allLayers', async () => {
+    const { hole, hoch } = await mitBuch();
+    const da = await hole('Admin', '/api/entities/p_bild?allLayers=1');
+    expect(da.statusCode).toBe(200);
+    expect((da.json() as Entity).id).toBe('p_bild');
+    const res = await hoch('Admin', { for: 'p_bild', allLayers: '1', kind: 'image' }, { name: 'burg.png', type: 'image/png', data: await png(40, 40) });
+    expect(res.statusCode).toBe(201);
+    const a = res.json() as Entity;
+    /* Das Bild kommt in die Ebene des Teils und nimmt seine Stufe mit. */
+    expect(a.relations.filter((r) => r.type === 'inLayer').map((r) => r.to)).toEqual(['ly_buch']);
+    expect(a.components?.['Visibility']).toMatchObject({ audience: 'gm' });
+  });
+
+  it('stays closed to everyone else, also with the switch', async () => {
+    const { hole, hoch } = await mitBuch();
+    for (const wer of ['Mira', 'Sela']) {
+      expect((await hole(wer, '/api/entities/p_bild?allLayers=1')).statusCode).toBe(404);
+      const res = await hoch(wer, { for: 'p_bild', allLayers: '1' }, { name: 'burg.png', type: 'image/png', data: await png(40, 40) });
+      expect(res.statusCode).toBe(404);
+    }
+  });
+});
+
 describe('the storage of the asset store (T-211)', () => {
   it('tells the admin how much lies there, and nobody else', async () => {
     const { hoch, als } = await aufbau();
