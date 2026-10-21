@@ -28,7 +28,7 @@ zu entstehen.
 | 6 | Zugraster sperrt Verbündete, kein schwieriges Gelände | Folgeaufgabe | — | — |
 | 7 | drawStage, handActions, Sicht, Reise, tickEntries nur im Prototyp | Folgeaufgabe | — | — |
 | 8 | Reichweite nur in der Maske, lange Reichweite ohne Nachteil | Folgeaufgabe | — | — |
-| 9 | Kein Auslöser für Rasten | Folgeaufgabe | — | — |
+| 9 | Kein Auslöser für Rasten | **wirkt** (T-352): kurze Rast (Trefferwürfel), lange Rast (TP, Trefferwürfel, Plätze, Erschöpfung, Todesrettungen) am Bogen; offen: Pakt-Plätze bei kurzer Rast, Merkmale mit Nutzungen, Rast für die ganze Gruppe | `longRest`, `spendHitDie`, `stageDown` (`rest.ts`); Bogen `kopf.ts` | `packages/model/test/rest.test.ts` |
 | 10 | Tragestufen ohne Folge, ZoneInfo unausgewertet | Folgeaufgabe | — | — |
 | 11 | Registerformeln als Brücke zu Automationen | Grundlage: `profBonus`, `check` sind neue Funktionen des Rechenwerks | `calc.ts` (`FUNCTIONS`) | `regelwirkung.test.ts` › Punkt 4, 5 |
 | 12 | Kanten mit `intended` ohne Auswerter | `equips` wird gelesen (Wirkungen), `intended` weg; `affects`, `zone`, `loot`, `entry`, `route` offen | `itemsAt` | `edges.test.ts` |
