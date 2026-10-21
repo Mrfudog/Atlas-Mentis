@@ -1833,12 +1833,32 @@ nicht `set`, denn `set` hebt nur). Eine eigene Regel-Engine (E-102) ist
 das nicht: die Rechnung hat genau die Eingaben, die eine Automation
 „Wirkung anwenden" hätte, und zieht dann um, statt neu zu entstehen.
 
+**Eine Rast ist eine Rechnung, kein Merkzettel** (T-352). „Back on a
+long rest" stand als Satz am Bogen, und wer rastete, klickte zwanzig
+Punkte zurück. Jetzt rechnet `longRest` aus dem Stand den neuen Stand —
+mit je einem Satz, was sich änderte —, und der Bogen schreibt ihn wie
+jeden anderen Stand. Erschöpfung geht eine Stufe zurück, indem der
+Zustand gegen die niedrigere Stufe getauscht wird (`stageDown`), denn eine
+Stufe ist ein eigener Zustand und kein Zähler.
+
 **Eine Regel steht einmal** (T-275). Der Übungsbonus stand im Register als
 `2+(…-1)/4` und auf der Klassenseite als `ceil(L/4)+1` — dasselbe Ergebnis,
 zwei Stellen, und die nächste Hausregel hätte eine davon vergessen. Jetzt
 ist `proficiencyBonus` die Regel und das Register nennt sie
 (`profBonus(hasClass.level)`); ebenso rechnet die passive Wahrnehmung im
 Register (`10+check(wis.Perception)`) und am Bogen mit `checkBonus`.
+
+**Ein Zug, der bestätigt ist, ist geschehen** (T-275). Der Zugplan
+würfelte Schaden und schrieb ihn ins Protokoll — und die Trefferpunkte
+standen danach wie vorher; die Leitung tippte die Zahl ein zweites Mal ab.
+Jetzt zieht der Server ab, nach der Abwehr des Ziels, und würfelt die
+Konzentrationsprobe gleich mit. Gezogen wird von der **Teilnehmerkante**,
+weil zwei Goblins derselben Kreatur zwei Stände haben; eine Spielerfigur
+hat ihren Stand am Bogen (`Vitals`), also dort auch. Dodge und Help sind
+keine Knöpfe, die etwas „merken": sie legen einen **Eintrag in der
+Initiative** an, wie ein Zustand, mit der Dauer der Regel — die Initiative
+zählt ihn herunter, und wer würfelt, liest ihn als Vorteil oder Nachteil.
+So gibt es für „wie lange gilt das" eine Stelle, nicht zwei.
 
 **Der Assistent zählt keine Schritte auf, er liest sie** (T-080). Fest ist
 nur, was das Modell selbst vorgibt: drei Kanten (Abstammung, Hintergrund,

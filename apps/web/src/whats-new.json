@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-rests",
+      "date": "2026-10-21",
+      "title": "Short and long rests on the character sheet",
+      "text": "Under Rest in a character’s header, “Short · hit die” rolls a hit die and heals it plus CON; “Long rest” brings back all hit points, half the hit dice and every spell slot, and takes one level of exhaustion away. No more resetting pips by hand.",
+      "area": "Characters",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-21-turn-plan-applies",
+      "date": "2026-10-21",
+      "title": "Confirmed turns take hit points; Dodge, Help and Hide count",
+      "text": "When the GM confirms a turn plan, damage comes off the target after its resistances, and a concentrating target rolls its save at once. Dodge gives attacks against you disadvantage until your next turn, Help gives an ally advantage on their next attack, Hide rolls Stealth and gives your next attack advantage — each as an entry in the initiative. Ready and Search can be planned too.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-21-effects-count",
       "date": "2026-10-21",
       "title": "Armor, items and conditions change the numbers",

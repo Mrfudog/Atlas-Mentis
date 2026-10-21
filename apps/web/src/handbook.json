@@ -78,7 +78,7 @@
         {
           "heading": "Playing your character",
           "text": [
-            "Open your character. The header stays above the tabs: set the amount, then Damage, Heal or Temp — damage takes temporary hit points first. Click pips to spend hit dice, spell slots and inspiration.",
+            "Open your character. The header stays above the tabs: set the amount, then Damage, Heal or Temp — damage takes temporary hit points first. Click pips to spend hit dice, spell slots and inspiration. After a fight, Rest › Short · hit die spends a hit die; after a night, Long rest resets hit points, hit dice, slots and a level of exhaustion.",
             "Conditions and concentration stand in the status row with how long they last. When you take damage while concentrating, the sheet asks for the Constitution save; roll it, then Passed or Failed.",
             "On your turn open Combat: Your turn lists what you can do, by action type. Mark what you used; New turn clears it. A locked row says why — stow or drop something to free a hand.",
             "To cast, open Spells and press Cast: it uses the lowest free slot, starts concentration where the spell asks for it and marks the action used. Slots come back on a long rest — click the pips in the header."
@@ -118,7 +118,7 @@
           "heading": "Running a fight",
           "text": [
             "Before the session, decide under Campaign › Rules & options › Combat › Initiative which initiative system runs (D&D 5e (standard)) and what players see of the tracker: cover names or names, foes' health as nothing, a word or numbers, which effects, and whether foes' actions show; pick the columns and the quick actions for your rows under Change options.",
-            "At the table, ▶ Start on the encounter (Table panel of the map, the encounter's page or the tracker) rolls initiative and runs it in the session; Play shows the tracker beside the map, under Initiative in the tool bar. Next turn moves on and counts effects down; Skip, ⤒ Back to top and ▸ on a row set whose turn it is without counting anything; Damage and Heal change hit points (a combatant starts at full); + Effect ties a condition or note to a number of rounds, counting at the start or end of whichever combatant's turn you pick.",
+            "At the table, ▶ Start on the encounter (Table panel of the map, the encounter's page or the tracker) rolls initiative and runs it in the session; Play shows the tracker beside the map, under Initiative in the tool bar. Next turn moves on and counts effects down; Skip, ⤒ Back to top and ▸ on a row set whose turn it is without counting anything; Damage and Heal change hit points (a combatant starts at full); + Effect ties a condition or note to a number of rounds, counting at the start or end of whichever combatant's turn you pick. A confirmed turn plan changes the same rows: its damage comes off after resistances, and Dodge, Help, Hide and Ready appear as entries that count down like any effect.",
             "Players follow on their phones: they see the party, and each foe once its turn has come. A player whose character is up presses End turn. ▾ on a row shows what a combatant can do. End marks the encounter done; the order stays as it was."
           ]
         },

@@ -24,6 +24,7 @@
  * Wirkung mit (`effectsOf`).
  */
 
+import { actionEffects } from './actions.js';
 import { choiceSources } from './choices.js';
 import type { Entity, EntityId } from './types.js';
 
@@ -244,6 +245,11 @@ export interface EffectsAtOptions {
    * eines Teilnehmers der Initiative (`participates.props.conditions`).
    */
   conditions?: readonly EntityId[];
+  /**
+   * Allgemeine Aktionen, deren Eintrag gerade gilt (`TimedEntry.action`:
+   * `dodge`, `help`, `hide`) — ihre Wirkungen aus dem Katalog (T-275).
+   */
+  actions?: readonly string[];
 }
 
 /** Die Zustände, die an einer Kreatur stehen (`Vitals.conditions`). */
@@ -286,6 +292,9 @@ export function effectsAt(character: Entity, byId: ReadonlyMap<EntityId, Entity>
     }
   }
   for (const id of [...conditionIdsOf(character), ...(options.conditions ?? [])]) dazu(byId.get(id), 'condition');
+  for (const { key, effects } of actionEffects(options.actions ?? [])) {
+    for (const effect of effects) raus.push({ effect, source: key, via: 'action' });
+  }
   return raus;
 }
 

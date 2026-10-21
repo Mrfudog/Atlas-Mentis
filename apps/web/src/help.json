@@ -110,6 +110,8 @@
             "During an encounter, players plan their turn with the tool Plan turn (P) in the tool bar: pick actions, tap squares to move, then “Send turn to GM”. Player tokens move only through the plan. Plan turn appears only for your own characters — a player without one does not see it; the GM plans for every creature and sees a number for turns waiting.",
             "How much a player plans is the campaign's choice (Rules & options › Combat › Turn planner): off, movement only, movement and actions, or full with reactions.",
             "A square marked ⚠ leaves an enemy's reach and provokes an opportunity attack — Disengage first to avoid it. The GM confirms a plan with “Confirm & roll” or sends it back.",
+            "Confirming rolls at the server and applies the result: damage comes off the target's hit points after its resistances, immunities and vulnerabilities, and a target that concentrates makes its Constitution save against the DC at once.",
+            "Dodge, Help, Hide and Ready leave an entry in the initiative that counts down: attacks against a dodging creature have disadvantage, a helped or hidden one attacks with advantage once.",
             "As the turn plays out, whoever may react is asked “Opportunity attack?”. Attack rolls into the log and uses the reaction until that creature's next turn.",
             "With Rules from graphs on (Rules & options › At the table), the rule articles in play decide instead: a rule may offer a reaction when someone leaves a reach, is attacked, hit, missed or damaged — Shield, Sentinel, an opportunity attack. Use takes it and spends the reaction, Skip lets it pass; other outcomes appear as a line in the turn’s result for the GM to apply."
           ]
@@ -203,6 +205,7 @@
           "heading": "Characters: the sheet",
           "text": [
             "A character's page has its header above the tabs: hit points with an amount — type it, use − and + or scroll over it — for Damage, Heal and Temp. Damage takes temporary hit points first; temporary hit points don't stack, the higher value stays. The arrows switch between vitals and spellcasting; hit dice, spell slots and inspiration are pips you click.",
+            "Rest: “Short · hit die” rolls one hit die into the log and heals the roll plus your CON modifier; “Long rest” (asked once more) brings back all hit points, half your hit dice, every spell slot, and takes one level of exhaustion away. What it changed shows below.",
             "The status row below shows concentration, conditions with how long they last and whether you are hidden; × removes one, “+ Condition” adds one. Damage while concentrating asks for the Constitution save (DC 10 or half the damage); “Failed” ends the spell. “▴ Less” collapses the header to hit points, damage and heal, AC, initiative and speed; on a phone it starts collapsed.",
             "Overview, Combat, Gear, Crafting and Ties are tabs; a link such as the gold in the header opens its tab.",
             "Log, at the bottom, lists the rolls made on the character and on its statblock, newest first; filter by who rolled or by session.",

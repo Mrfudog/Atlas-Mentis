@@ -23,6 +23,12 @@ export interface TimedEntry {
   text?: string;
   /** Alter Bestand: ein Zustandsname statt einer Id. */
   name?: string;
+  /**
+   * Eine allgemeine Aktion, deren Wirkung der Eintrag trägt (`dodge`,
+   * `help`, `hide` — `COMMON_ACTION_CATALOGUE`, T-275); dazu `text` als
+   * Wort für die Reihe („Dodging").
+   */
+  action?: string;
   /** Wie oft der Anker-Zeitpunkt noch vorbeikommt; leer heisst: bis jemand ihn entfernt. */
   rounds?: number;
   /** Wessen Zug: die Id einer `participates`-Kante derselben Begegnung. */
@@ -187,7 +193,7 @@ export function participantStats(
   const props = (relation.props ?? {}) as ParticipantProps;
   const t = entities.get(relation.to);
   const alt = Number(props.hpMax);
-  const st = t ? creatureStats(t, entities, { conditions: entryConditions(props.conditions) }) : null;
+  const st = t ? creatureStats(t, entities, { conditions: entryConditions(props.conditions), actions: entryActions(props.conditions) }) : null;
   const ac = st?.ac.value ?? null;
   const hp = st?.hp.value ?? null;
   return {
@@ -199,6 +205,11 @@ export function participantStats(
 /** Die Zustände (`rule`) unter den Einträgen eines Teilnehmers. */
 export function entryConditions(entries: readonly TimedEntry[] | undefined): EntityId[] {
   return (entries ?? []).map((e) => e.rule).filter((r): r is string => typeof r === 'string' && !!r);
+}
+
+/** Die allgemeinen Aktionen (`action`) unter den Einträgen eines Teilnehmers. */
+export function entryActions(entries: readonly TimedEntry[] | undefined): string[] {
+  return (entries ?? []).map((e) => e.action).filter((a): a is string => typeof a === 'string' && !!a);
 }
 
 /** Steht der Teilnehmer auf der Seite der Gruppe? Die Gruppe selbst und wer in einer ist. */

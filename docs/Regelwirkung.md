@@ -21,14 +21,14 @@ zu entstehen.
 | # | Lücke aus dem Katalog | Stand | Wo | Test „wirkt am Tisch" |
 |---|---|---|---|---|
 | 1 | Wirkungen gesammelt, nicht angewandt; RK nur gespeichert | **wirkt** | `characterStats`, `creatureStats` (`stats.ts`), `effectsAt`/`itemsAt` (`effects.ts`); Initiative `participantStats`, Zugplan `rkVon` | `packages/model/test/regelwirkung.test.ts` › Punkt 1 |
-| 2 | Schaden nicht von den TP abgezogen, Konzentration nur angezeigt | offen (Teil 1, zweiter PR) | — | — |
-| 3 | Zwei Aktionskataloge, zwei Kostenleser; nur Dash/Disengage wirken | offen (Teil 1, zweiter PR) | — | — |
+| 2 | Schaden nicht von den TP abgezogen, Konzentration nur angezeigt | **wirkt** (Zugplan; der Tracker zieht weiter von Hand ab) | `damageAfterDefenses`, `concentrationCheck` (`damage.ts`); Server `schadenAnwenden` (`zugplan.ts`) | `apps/server/test/regelwirkung.test.ts` › Punkt 2, `regelwirkung.test.ts` › Punkt 2 |
+| 3 | Zwei Aktionskataloge, zwei Kostenleser; nur Dash/Disengage wirken | **eine Quelle**; Dodge, Help, Hide wirken (Vorteil/Nachteil), Ready als Eintrag | `COMMON_ACTION_CATALOGUE`, `turnTypeOf`/`costOf` (`actions.ts`); Server `aktionWirkt`, `trefferWurf` | `apps/server/test/regelwirkung.test.ts` › Punkt 3, `regelwirkung.test.ts` › Punkt 3 |
 | 4 | Zwei Übungsbonus-Formeln | **eine Quelle** | `proficiencyBonus` (`calc.ts`), Register `profBonus(hasClass.level)` | `regelwirkung.test.ts` › Punkt 4 |
 | 5 | Passive Wahrnehmung ohne Übung/Expertise | **wirkt** | `checkBonus` (`calc.ts`), Register `10+check(wis.Perception)`, Bogen `passivePerception` | `regelwirkung.test.ts` › Punkt 5 |
 | 6 | Zugraster sperrt Verbündete, kein schwieriges Gelände | Folgeaufgabe | — | — |
 | 7 | drawStage, handActions, Sicht, Reise, tickEntries nur im Prototyp | Folgeaufgabe | — | — |
 | 8 | Reichweite nur in der Maske, lange Reichweite ohne Nachteil | Folgeaufgabe | — | — |
-| 9 | Kein Auslöser für Rasten | Folgeaufgabe | — | — |
+| 9 | Kein Auslöser für Rasten | **wirkt** (T-352): kurze Rast (Trefferwürfel), lange Rast (TP, Trefferwürfel, Plätze, Erschöpfung, Todesrettungen) am Bogen; offen: Pakt-Plätze bei kurzer Rast, Merkmale mit Nutzungen, Rast für die ganze Gruppe | `longRest`, `spendHitDie`, `stageDown` (`rest.ts`); Bogen `kopf.ts` | `packages/model/test/rest.test.ts` |
 | 10 | Tragestufen ohne Folge, ZoneInfo unausgewertet | Folgeaufgabe | — | — |
 | 11 | Registerformeln als Brücke zu Automationen | Grundlage: `profBonus`, `check` sind neue Funktionen des Rechenwerks | `calc.ts` (`FUNCTIONS`) | `regelwirkung.test.ts` › Punkt 4, 5 |
 | 12 | Kanten mit `intended` ohne Auswerter | `equips` wird gelesen (Wirkungen), `intended` weg; `affects`, `zone`, `loot`, `entry`, `route` offen | `itemsAt` | `edges.test.ts` |
@@ -65,10 +65,41 @@ Noch nicht angewandt (Ziele, die gesammelt und gezeigt werden): `save`,
 `spellDamage`, `carry`. Unarmored Defense (Barbar, Mönch) rechnet erst, wenn
 das Merkmal eine Wirkung trägt.
 
+## Punkte 2 und 3 — was jetzt wirkt
+
+- **Schaden:** bestätigt die Leitung einen Zug, würfelt der Server Treffer
+  und Schaden und **zieht ab** — nach Immunität (0), Resistenz (halb,
+  abgerundet) und Verwundbarkeit (doppelt) des Ziels; ein Satz mit
+  Einschränkung („from nonmagical attacks") greift, das Wort steht im
+  Ergebnis. Abgezogen wird an der Teilnehmerkante der Begegnung, bei einer
+  Spielerfigur auch an `Vitals` (zeitweilige zuerst), ausserhalb einer
+  Begegnung an `Vitals`.
+- **Konzentration:** konzentriert sich das Ziel, würfelt der Server den
+  KON-Rettungswurf gegen SG 10 oder den halben Schaden (Bonus: KON, Übung
+  im Rettungswurf, Wirkungen `save`, `save.con`, `save.concentration`);
+  misslingt er, endet die Konzentration (E-128: Server würfelt statt einer
+  Anfrage an die Spielerin).
+- **Vorteil/Nachteil und Krit:** der Angriff würfelt `2d20kh1`/`2d20kl1`,
+  wenn die Wirkungen es sagen, und trifft kritisch ab der Krit-Schwelle
+  des Angreifers.
+- **Ein Aktionskatalog:** Dash, Disengage, Dodge, Help, Hide, Ready,
+  Search, Use an object im Zugplan; dieselbe Liste in „Your turn".
+  Dodge/Help/Hide/Ready legen einen Eintrag in der Initiative an
+  (`TimedEntry.action`), den die Initiative herunterzählt; Help und Hide
+  sind beim nächsten Angriff verbraucht.
+
+Noch nicht: der Tracker (Damage/Heal) kennt keine Schadensart und zieht
+den Betrag weiter ohne Abwehr ab; lange Reichweite ohne Nachteil und die
+Reichweitenprüfung am Server (Punkt 8); Zustände mit Vorteil/Nachteil
+brauchen Wirkungen an ihren Artikeln (`attack`/`attacked`), die auf dev
+noch nicht stehen.
+
 ## Prüfen nach einem Release
 
-1. `pnpm vitest run packages/model/test/regelwirkung.test.ts` — grün.
+1. `pnpm vitest run packages/model/test/regelwirkung.test.ts apps/server/test/regelwirkung.test.ts` — grün.
 2. Auf dev mit der Testfigur in „basil · Tests": Rüstung an- und ablegen →
    RK in Bogen und Initiative folgt; Ring der Resistenz → Resistenzen;
-   Zustand „Grappled" setzen → Tempo 0.
+   Zustand „Grappled" setzen → Tempo 0; einen Zug mit Angriff bestätigen →
+   TP des Ziels in der Initiative sinken; Dodge planen → nächster Angriff
+   gegen die Figur mit Nachteil.
 3. Diese Tabelle nachziehen, wenn eine Lücke geschlossen ist.

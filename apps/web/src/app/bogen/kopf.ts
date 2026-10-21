@@ -8,9 +8,12 @@ import {
   concentrationDc,
   goldText,
   grantTemp,
+  longRest,
   pipToggle,
   setSlotsUsed,
   signedBook,
+  spendHitDie,
+  stageDown,
   wheelAmount,
 } from '@nw/model';
 import type { Entity } from '@nw/model';
@@ -169,6 +172,27 @@ interface Chip {
                   </span>
                 </div>
               }
+              @if (darf()) {
+                <!-- Rasten (T-352): kurze Rast gibt einen Trefferwürfel aus, die lange setzt zurück -->
+                <div class="res rast">
+                  <span class="lbl">Rest</span>
+                  @if (langFrage()) {
+                    <button type="button" class="heal" (click)="langeRast()">Finish long rest</button>
+                    <button type="button" (click)="langFrage.set(false)">Cancel</button>
+                  } @else {
+                    <button
+                      type="button"
+                      [disabled]="!k.hitDice || k.hitDice.left < 1"
+                      (click)="trefferwuerfelAusgeben()"
+                      title="Short rest: spend a hit die — it heals the roll plus your CON modifier"
+                    >Short · hit die</button>
+                    <button type="button" (click)="langFrage.set(true)" title="Long rest: all hit points, half your hit dice, every spell slot, one level of exhaustion">Long rest</button>
+                  }
+                </div>
+                @if (rastText(); as t) {
+                  <small class="rasttext" role="status">{{ t }}</small>
+                }
+              }
               <div class="res">
                 <span class="lbl">Inspiration</span>
                 <button
@@ -313,6 +337,10 @@ export class Bogen {
   protected readonly fehler = signal<string | null>(null);
   /** Die offene Konzentrationsprobe nach Schaden. */
   protected readonly probeOffen = signal<{ schaden: number; dc: number; wurf: number | null } | null>(null);
+  /** Die lange Rast fragt einmal nach (T-352). */
+  protected readonly langFrage = signal(false);
+  /** Was die letzte Rast tat. */
+  protected readonly rastText = signal<string | null>(null);
   /** Die `Condition`-Artikel zum Hinzufügen. */
   protected readonly zustaende = signal<{ id: string; name: string }[]>([]);
 
@@ -471,6 +499,65 @@ export class Bogen {
     /* Ein Punkt ist ein Würfel; verbraucht ist, was rechts von „übrig" liegt. */
     const verbraucht = pipToggle(max - left, max - 1 - i);
     return this.schreib(() => ({ hitDiceLeft: max - verbraucht }));
+  }
+
+  /** Ein neuer Stand als Änderung: was wegfällt, wird ausdrücklich geleert. */
+  private ersetze(alt: Record<string, unknown>, neu: Record<string, unknown>): Record<string, unknown> {
+    const raus: Record<string, unknown> = { ...neu };
+    for (const k of Object.keys(alt)) if (!(k in neu)) raus[k] = undefined;
+    return raus;
+  }
+
+  /** **Kurze Rast** (T-352): ein Trefferwürfel, am Server gewürfelt (Log), heilt Wurf plus KON. */
+  protected async trefferwuerfelAusgeben(): Promise<void> {
+    const k = this.kopf();
+    const hd = k?.hitDice;
+    if (!k || !hd || hd.left < 1) return;
+    const seiten = Number(/d(\d+)/.exec(hd.die)?.[1]);
+    if (!seiten) {
+      this.fehler.set('The hit die of this character is not known.');
+      return;
+    }
+    const con = k.abilities.find((a) => a.key === 'con')?.mod ?? 0;
+    try {
+      const w = await this.api.roll({ expr: `1d${seiten}`, subject: this.artikel().id, label: 'Hit die (short rest)' });
+      let text = '';
+      await this.schreib((v) => {
+        const r = spendHitDie(v, { roll: w.total, conMod: con, hpMax: k.max, hitDiceMax: hd.max });
+        if (!r) return {};
+        text = r.changes.join('; ');
+        return r.vitals;
+      });
+      this.rastText.set(text ? `Short rest — ${text}` : null);
+    } catch (error) {
+      this.fehler.set(fehlerText(error));
+    }
+  }
+
+  /** **Lange Rast** (T-352): Trefferpunkte, Trefferwürfel, Plätze, Erschöpfung — gerechnet in `longRest`. */
+  protected async langeRast(): Promise<void> {
+    this.langFrage.set(false);
+    const k = this.kopf();
+    if (!k) return;
+    const ids = Array.isArray(this.vitals()['conditions']) ? (this.vitals()['conditions'] as string[]) : [];
+    let erschoepfung = stageDown(ids, this.bestand.voll());
+    try {
+      /* Die niedrigere Stufe steht vielleicht noch nicht im Bestand. */
+      if (!erschoepfung && ids.some((id) => (this.bestand.voll().get(id)?.relations ?? []).some((r) => r.type === 'stageOf'))) {
+        const l = await this.api.list({ type: 'Condition', limit: 200 });
+        await this.bestand.holen(l.rows.map((x) => x.id));
+        erschoepfung = stageDown(ids, this.bestand.voll());
+      }
+    } catch (error) {
+      this.fehler.set(fehlerText(error));
+    }
+    let text = '';
+    await this.schreib((v) => {
+      const r = longRest(v, { hpMax: k.max, hitDiceMax: k.hitDice?.max ?? 0, exhaustion: erschoepfung });
+      text = r.changes.join('; ');
+      return this.ersetze(v, r.vitals);
+    });
+    if (!this.fehler()) this.rastText.set(`Long rest — ${text || 'nothing to restore'}`);
   }
 
   protected platz(level: number, used: number, i: number): Promise<void> {
