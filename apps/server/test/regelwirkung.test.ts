@@ -7,10 +7,11 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import type * as Krypto from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('node:crypto', async (orig) => {
-  const echt = await orig<typeof import('node:crypto')>();
+  const echt = await orig<typeof Krypto>();
   return { ...echt, getRandomValues: <T extends ArrayBufferView>(a: T): T => ((a as unknown as Uint32Array)[0] = 2 ** 31, a) };
 });
 

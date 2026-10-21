@@ -1076,7 +1076,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const r = await wurf(ziel, von, `1d20${probe.bonus === null ? '' : probe.bonus < 0 ? probe.bonus : `+${probe.bonus}`}`, `${entityName(ziel)}: concentration save, DC ${probe.dc}`, kampagne, hidden, stand);
       if (r) {
         const haelt = r.total >= probe.dc;
-        teile.push(`concentration save ${r.total} vs DC ${probe.dc} — ${haelt ? 'holds' : `lost${zauber ? ` (${entityName(zauber)})` : ''}`}`);
+        teile.push(`concentration save ${r.total} vs DC ${probe.dc} — ${haelt ? 'kept' : `lost${zauber ? ` (${entityName(zauber)})` : ''}`}`);
         if (!haelt) {
           const nun = f.geaendert.get(ziel.id) ?? jetzt;
           const vv = { ...((nun.components?.['Vitals'] ?? {}) as Record<string, unknown>) };
