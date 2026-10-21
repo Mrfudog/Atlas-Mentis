@@ -192,6 +192,13 @@ export interface ArticleDimensionContext {
   /** Die Träger, die einen Artikel kennen oder sehen dürfen (Figur, Gruppe). */
   bearers?: (e: Entity) => readonly string[];
   bearerName?: (id: string) => string | undefined;
+  /**
+   * Der Standort als Weg, der nächste Ort zuerst (`locationPath`, T-330) —
+   * wer den Bestand kennt, sagt es; dann gibt es „Location“ und „Region“.
+   */
+  location?: (e: Entity) => readonly string[];
+  /** Name eines Orts. */
+  locationName?: (id: string) => string | undefined;
   /** Felder (`Typ.feld`), nach deren Wert gruppiert werden darf. */
   fields?: readonly string[];
 }
@@ -204,8 +211,8 @@ function feldWert(e: Entity, typ: string, feld: string): string[] {
 
 /**
  * **Die üblichen Dimensionen für Artikel** (T-253): Ebene, Ebenengruppe,
- * Art, Bereich, Marke, Status, Sichtbarkeit, dazu Regelmodul und Träger,
- * wenn der Aufrufer sie kennt, und je genanntes Feld eines (`field.Typ.feld`).
+ * Art, Bereich, Marke, Status, Sichtbarkeit, Kartenart, dazu Standort
+ * (T-330), Regelmodul und Träger, wenn der Aufrufer sie kennt, und je genanntes Feld eines (`field.Typ.feld`).
  * Die Vorgaben stehen, wie das Modell sie liest: ohne Status-Karte zählt
  * ein Artikel als fertig (D72), ohne `audience` ist er `public`.
  */
@@ -231,6 +238,19 @@ export function articleDimensions(
       values: (e) => [...new Set(layersOf(e).flatMap((l) => lg(l)))],
       valueLabel: (v) => ctx.groupName?.(v) ?? ctx.layerName?.(v) ?? v,
     });
+  }
+  /* Die Kartenart (T-330): ein freies Wort an `Map.kind`; andere Artikel stehen unter „(none)". */
+  if (registry.interfaces['Map']) dims.push({ key: 'mapKind', label: 'Map kind', values: (e) => feldWert(e, 'Map', 'kind') });
+  if (ctx.location) {
+    const weg = ctx.location;
+    const name = (v: string) => ctx.locationName?.(v) ?? v;
+    /* Der nächste Ort und der äusserste: „Group by Region, then Location“
+       schachtelt Stadt unter Küste, ohne dass eine Dimension mehrere
+       Ebenen zugleich tragen muss. */
+    dims.push(
+      { key: 'location', label: 'Location', values: (e) => weg(e).slice(0, 1), valueLabel: name },
+      { key: 'region', label: 'Region', values: (e) => weg(e).slice(-1), valueLabel: name },
+    );
   }
   if (ctx.ruleModules) dims.push({ key: 'module', label: 'Rule module', values: ctx.ruleModules });
   if (ctx.bearers) {

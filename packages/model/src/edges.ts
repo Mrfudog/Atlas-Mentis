@@ -465,9 +465,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'mapList',
     label: 'Map list',
     area: 'play',
-    does: 'lists the maps under Play › Maps with their sub-maps indented and their layers, and says on a map where it is used — sessions, scenes and fights on it, and what it depicts (T-202)',
+    does: 'lists the maps under Play › Maps with their sub-maps indented and their layers, groups them by the place they show and the places above it (T-330), and says on a map where it is used — sessions, scenes and fights on it, and what it depicts (T-202)',
     uses: {
       [M + 'maplist.ts']: ['insideMap', 'mapOf', 'marker'],
+      [M + 'location.ts']: ['insideMap', 'mapOf', 'partOf'],
       [S + 'kartenliste.ts']: ['inLayer'],
       [W + 'karten/kartenpanel.ts']: ['mapOf', 'onMap'],
     },

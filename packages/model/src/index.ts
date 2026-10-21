@@ -59,6 +59,7 @@ export * from './shop.js';
 export * from './enhancement.js';
 export * from './assets.js';
 export * from './maplist.js';
+export * from './location.js';
 export * from './uebernahme.js';
 export * from './registerabgleich.js';
 export * from './stowing.js';
