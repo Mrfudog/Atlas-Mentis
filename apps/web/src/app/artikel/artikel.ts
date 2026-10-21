@@ -1160,11 +1160,8 @@ export class Artikel implements SchnellKontext {
   }
   /** Der Glossareintrag, den ein Feld nennt (`glossary`, T-347): am
    *  Feldnamen gepunktet, mit seiner Definition als Titel. */
-  protected feldBegriff(ref: string): string | null {
-    const punkt = ref.indexOf('.');
-    if (punkt <= 0) return null;
-    const p = this.bestand.registry()?.interfaces[ref.slice(0, punkt)]?.schema?.properties?.[ref.slice(punkt + 1)];
-    return this.glossar.genannt(p?.glossary);
+  protected feldBegriff(ref: string | undefined): string | null {
+    return this.glossar.feld(this.bestand.registry(), ref);
   }
 
   readonly id = input.required<string>();

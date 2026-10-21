@@ -94,9 +94,9 @@ function aufbauen(vitals: Record<string, unknown> = {}, opt: { darf?: boolean; k
       provideRouter([]),
       { provide: FigurDaten, useValue: daten },
       { provide: Api, useValue: api },
-      { provide: Bestand, useValue: { name: signal((id: string) => ({ 'sp-1': 'Silent Image', 'cond-p': 'Poisoned' })[id]), holen: vi.fn() } },
+      { provide: Bestand, useValue: { registry: signal(null), name: signal((id: string) => ({ 'sp-1': 'Silent Image', 'cond-p': 'Poisoned' })[id]), holen: vi.fn() } },
       { provide: Session, useValue: { darfSchreiben: signal(() => opt.darf ?? true) } },
-      { provide: Glossar, useValue: { begriffZu: () => null } },
+      { provide: Glossar, useValue: { begriffZu: () => null, feld: () => null } },
     ],
   });
   /* JIT lädt keine Stildatei und kennt `input()` nicht (text.test.ts). */

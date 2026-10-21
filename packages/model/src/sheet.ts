@@ -272,6 +272,8 @@ export interface SheetCell {
   label: string;
   value: string;
   why?: string;
+  /** `Typ.feld`, woher der Wert kommt — für den Glossarbegriff am Namen (T-347). */
+  ref?: string;
 }
 
 /** Ein Attribut in der Reihe: Modifikator gross, Wert, Rettungswurf. */
@@ -353,12 +355,12 @@ export function sheetHeader(
   const tile = (k: string) => ks.tiles.find((t) => t.key === k);
   const vitals: SheetCell[] = [];
   const ac = tile('ac');
-  if (ac) vitals.push({ key: 'ac', label: 'AC', value: ac.value, ...(ac.note ? { why: ac.note } : {}) });
+  if (ac) vitals.push({ key: 'ac', label: 'AC', value: ac.value, ref: 'Statblock.ac', ...(ac.note ? { why: ac.note } : {}) });
   const init = tile('initiative');
-  if (init) vitals.push({ key: 'init', label: 'Init', value: init.value, why: 'DEX' });
+  if (init) vitals.push({ key: 'init', label: 'Init', value: init.value, why: 'DEX', ref: 'Abilities.initiative' });
   const speed = tile('speed');
-  if (speed) vitals.push({ key: 'speed', label: 'Speed', value: speed.value });
-  if (prof !== null) vitals.push({ key: 'prof', label: 'Prof', value: signedBook(prof) });
+  if (speed) vitals.push({ key: 'speed', label: 'Speed', value: speed.value, ref: 'Statblock.speed' });
+  if (prof !== null) vitals.push({ key: 'prof', label: 'Prof', value: signedBook(prof), ref: 'Statblock.prof' });
   const pp = tile('passivePerception');
   if (pp) vitals.push({ key: 'passive', label: 'Passive', value: pp.value, why: 'Perception' });
 
