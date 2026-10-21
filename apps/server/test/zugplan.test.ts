@@ -118,7 +118,7 @@ describe('Zugplan (T-198)', () => {
     const d = r.json();
     expect(d.state).toBe('confirmed');
     expect(d.results).toHaveLength(3);
-    expect(d.results[1].text).toMatch(/^Handaxe → Goblin: (hit|miss)/);
+    expect(d.results[1].text).toMatch(/^Handaxe → Goblin: (critical hit|hit|miss)/);
     const karte = (await repo.getEntity('map_1'))!;
     expect(markersOf(karte).find((m) => m.rel.id === 'mk_rook')).toMatchObject({ x: 0.25, y: 0.1 });
     const wuerfe = await repo.listEvents({ name: 'roll' });
@@ -229,7 +229,7 @@ describe('Zugplan, Runde 2: Gelegenheitsangriff (T-198)', () => {
     expect(a.statusCode).toBe(200);
     expect(a.json().state).toBe('confirmed');
     expect(a.json().results.map((x: { text: string }) => x.text)).toEqual([
-      expect.stringMatching(/^Opportunity attack: Unarmed Strike → Rook: (hit|miss)/),
+      expect.stringMatching(/^Opportunity attack: Unarmed Strike → Rook: (critical hit|hit|miss)/),
       'Moved 10 ft.',
     ]);
     expect(markersOf((await repo.getEntity('map_1'))!).find((m) => m.rel.id === 'mk_rook')).toMatchObject(mitte(0, 1));
@@ -362,7 +362,7 @@ describe('Zugplan: Regeln am Tisch (REQ-357)', () => {
     expect(r).toMatchObject({ state: 'reacting', pending: { reactor: 'cr_gob', rule: 'r_oa', ruleName: 'Opportunity attack', offer: 'Opportunity attack', strike: true, against: 'pc_rook' } });
     const a = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/react`, { attack: true })).json();
     expect(a.state).toBe('confirmed');
-    expect(a.results[0].text).toMatch(/^Opportunity attack: Unarmed Strike → Rook: (hit|miss)/);
+    expect(a.results[0].text).toMatch(/^Opportunity attack: Unarmed Strike → Rook: (critical hit|hit|miss)/);
     expect(await repo.listEvents({ name: 'reaction' })).toHaveLength(1);
   });
 
@@ -395,7 +395,7 @@ describe('Zugplan: Regeln am Tisch (REQ-357)', () => {
     const a = (await rufe('Gwen', 'POST', `/api/maps/map_1/turn-plan/${plan}/react`, { attack: true })).json();
     expect(a.state).toBe('confirmed');
     expect(a.cursor).toBeUndefined();
-    expect(a.results.map((x: { text: string }) => x.text)).toEqual(['Goblin uses Parry against Rook.', expect.stringMatching(/^Handaxe → Goblin: (hit|miss)/)]);
+    expect(a.results.map((x: { text: string }) => x.text)).toEqual(['Goblin uses Parry against Rook.', expect.stringMatching(/^Handaxe → Goblin: (critical hit|hit|miss)/)]);
     expect(await repo.listEvents({ name: 'reaction' })).toHaveLength(1);
   });
 

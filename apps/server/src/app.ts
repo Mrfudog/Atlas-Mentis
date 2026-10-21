@@ -4418,14 +4418,23 @@ export function buildApp({
       return reply.code(400).send({ error: 'Eine Auswahl ohne Bedingung träfe den ganzen Bestand — sag, welche Artikel.' });
     }
 
+    if (auftrag.allLayers && !wer.user.isAdmin) {
+      return reply.code(403).send({ error: 'Alle Ebenen ändert nur die Verwaltung.' });
+    }
     const t0 = Date.now();
     const alle = await repo.listEntities();
     const roh = new Map(alle.map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
     /* Ergänzungen (T-142) stehen für sich nicht im Spiel, sollen sich aber
-       ändern lassen wie jeder Artikel ihrer Ebene — aufgeschaltet zählen sie mit. */
-    const gesiebt = [...(await sieve(request, alle, alle)), ...(await sieve(request, alle.filter(isSupplement), alle, undefined, 'versions'))];
-    const auswahl = selectEntities(registry, gesiebt, auftrag.select);
+       ändern lassen wie jeder Artikel ihrer Ebene — aufgeschaltet zählen sie mit.
+       `allLayers` (T-182): dazu, was nur fehlt, weil seine Ebene nicht
+       aufgeschaltet ist — gesiebt, als wäre sie es. */
+    const gesiebt = [
+      ...(await sieve(request, alle, alle)),
+      ...(await sieve(request, alle.filter(isSupplement), alle, undefined, 'versions')),
+      ...(auftrag.allLayers ? await sieve(request, alle, alle, undefined, 'unactivated') : []),
+    ];
+    const auswahl = [...new Map(selectEntities(registry, gesiebt, auftrag.select).map((e) => [e.id, e])).values()];
     const r = await fuehreLaufAus(request, wer, registry, roh, auftrag, auswahl.map((e) => e.id));
     return reply.code(r.code).send({ ...r.body, ms: Date.now() - t0 });
   });

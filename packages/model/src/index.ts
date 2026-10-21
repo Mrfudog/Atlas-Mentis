@@ -75,6 +75,8 @@ export * from './requirements.js';
 export * from './zugplan.js';
 export * from './glossary.js';
 export * from './sheet.js';
+export * from './actions.js';
+export * from './damage.js';
 export * from './ruleGraph.js';
 export * from './ruleTable.js';
 export * from './transform.js';
