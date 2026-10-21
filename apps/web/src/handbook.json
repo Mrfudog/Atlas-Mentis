@@ -153,7 +153,7 @@
     {
       "id": "glossary",
       "title": "Glossary",
-      "intro": "Terms of the app and of the rules, with what they mean at the table. Terms from the rules come from the books the campaign plays with; a campaign can add its own."
+      "intro": "Terms of the app and of the rules, with what they mean at the table. Terms from the rules come from the books the campaign plays with; a campaign can add its own. Fields and rule options that name a term show its entry: a field name with a dotted underline explains itself on hover."
     }
   ]
 }

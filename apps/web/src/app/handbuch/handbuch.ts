@@ -1,6 +1,6 @@
 import { Component, DestroyRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { GLOSSARY_SORTS, glossarySortLabel, type GlossaryEntry } from '@nw/model';
+import { GLOSSARY_SORTS, glossaryEntryNamed, glossarySortLabel, type GlossaryEntry } from '@nw/model';
 import { Glossar, BegriffLink } from '../kern/glossar';
 import { HILFE, abschnittId } from '../kern/hilfe';
 import { KAPITEL, buchstabe, regelKapitel } from '../kern/handbuch';
@@ -68,11 +68,19 @@ import { KAPITEL, buchstabe, regelKapitel } from '../kern/handbuch';
                   @for (o of r.optionen; track o.key) {
                     <h4>{{ o.label }}</h4>
                     <p>{{ o.does }}</p>
+                    @if (eintrag(o.glossary); as e) {
+                      <p class="aus-glossar"><button type="button" [nwBegriff]="e.id" (click)="oeffne(e)">{{ e.term }}</button>: {{ e.definition }}</p>
+                    }
                     @if (o.variants?.length) {
                       <dl>
                         @for (v of o.variants; track v.key) {
                           <dt>{{ v.label }}</dt>
-                          <dd>{{ v.does }}</dd>
+                          <dd>
+                            {{ v.does }}
+                            @if (eintrag(v.glossary); as e) {
+                              <span class="aus-glossar"> <button type="button" [nwBegriff]="e.id" (click)="oeffne(e)">{{ e.term }}</button>: {{ e.definition }}</span>
+                            }
+                          </dd>
                         }
                       </dl>
                     }
@@ -221,6 +229,21 @@ import { KAPITEL, buchstabe, regelKapitel } from '../kern/handbuch';
       display: block;
       font-size: 0.85rem;
     }
+    /* Der Eintrag des Glossars, den eine Regeloption nennt (T-347). */
+    .aus-glossar {
+      font-size: 0.9rem;
+      color: var(--muted, inherit);
+    }
+    .aus-glossar button {
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+    }
     .werkzeug {
       position: sticky;
       top: 0;
@@ -318,6 +341,11 @@ export class Handbuch {
 
   protected abschnitt = abschnittId;
   protected sortLabel = glossarySortLabel;
+
+  /** Der Glossareintrag, den eine Regeloption nennt (T-347) — eine Erklärung, eine Stelle (T-225). */
+  protected eintrag(name: string | undefined): GlossaryEntry | null {
+    return name ? glossaryEntryNamed(this.glossar.eintraege() ?? [], name) : null;
+  }
 
   protected oeffne(e: GlossaryEntry): void {
     this.glossar.oeffnen(e.id);
