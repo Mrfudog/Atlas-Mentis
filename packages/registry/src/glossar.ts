@@ -435,6 +435,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Am Raster ausrichten' },
   },
   {
+    term: 'Marker view',
+    aliases: ['Markers show as', 'Quick card', 'Marker view by map kind'],
+    sort: 'app',
+    definition: 'How a marker stands on a map: as a symbol with initials, the symbol with its name, its image, or a quick card — the article’s quick view, small, on the map.',
+    effect: 'The most specific setting wins: the marker itself (tap it in Select), the map (Tokens › Markers show as), the map kind (Rules & options › Marker view by map kind), the article type (Registry › On a map, inherited by subtypes); without any, the image, else the symbol.',
+    translations: { de: 'Markeransicht' },
+  },
+  {
     term: 'Map tools',
     aliases: ['Tools per map kind', 'Sub-maps', 'Link map', 'Unlink'],
     sort: 'app',

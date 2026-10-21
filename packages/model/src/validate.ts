@@ -162,6 +162,8 @@ export const InterfaceDefSchema = z.object({
   titles: z.record(z.string(), z.string()).optional(),
   /* `Typ.feld` → Ziel (T-119): wie `target` am Feld, nur für diese Art. */
   targets: z.record(z.string(), linkTargetSchema).optional(),
+  /* Wie ein Artikel dieser Art als Marker steht (T-214). */
+  markerView: z.enum(['symbol', 'name', 'image', 'card']).optional(),
 });
 
 export const EnumDefSchema = z.object({

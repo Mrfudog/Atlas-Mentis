@@ -206,6 +206,27 @@ Ecke; gebrochene Plätze rasten an halben (oder Viertel-)Feldern. Auf Hex
 in die Feldmitte. Möbel (`scenery`) rasten nicht. Der Zugplan rechnet
 weiter in ganzen Feldern nach Statblock (D58).
 
+### Markeransicht (T-214)
+
+Ein Marker steht als **Symbol** (die Anfangsbuchstaben im Kreis), als
+**Name** (das Symbol, darunter ein Schild mit dem Namen), als **Bild**
+(Tokenbild oder Bild des Artikels, ohne beides das Symbol) oder als
+**Kurzansicht-Karte** (die Ansicht `quick` des Artikels, klein unter dem
+Punkt; antippen öffnet das Popup wie bei jedem Marker). Gewählt wird an
+vier Stellen, die genaueste gilt (`markerViewOf`):
+
+1. am Marker selbst (`marker.props.view`; in Select antippen, die Wahl
+   steht über ihm neben „Remove"),
+2. an der Karte (`Map.markerView`; Tokens › Markers show as),
+3. an der Kartenart (`Campaign.markerViews`, Rules & options › Marker view
+   by map kind),
+4. an der Art des Ziels (`InterfaceDef.markerView`, Registry › On a map,
+   die `extends`-Kette hoch geerbt).
+
+Sagt niemand etwas, gilt das Bild — wie vor T-214. Assets und freie
+Lichter liegen, wie sie sind. Am Telefon ist die Karte schmaler (10 rem
+statt 14) und unten weich abgeschnitten.
+
 ### Gespielte Stände an der Karte (T-316)
 
 „Played“ an der Vorlage (T-289) steht offen; jeder Stand hat **Open in

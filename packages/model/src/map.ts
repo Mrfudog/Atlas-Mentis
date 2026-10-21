@@ -16,6 +16,7 @@
 import type { Pt } from './sight.js';
 import type { Entity, EntityId, Registry, Relation, UnitDef } from './types.js';
 import { unitByCode } from './units.js';
+import { typeChain } from './entity.js';
 import { initiativeOrder, PARTICIPATES, type ParticipantProps } from './initiative.js';
 import { floorView, hasFloors, mapFloors, redactFloors, withFloorView } from './floors.js';
 import { hasSightWalls, mapWalls, redactWalls, sightPolygon, wallKind, type MapWall, type WallKind } from './walls.js';
@@ -212,6 +213,8 @@ export interface MapMarker {
   movable: boolean;
   /** Was das Asset hält, als Sperrart (`props.blocks`, T-306); leer: nichts. */
   blocks: WallKind | '';
+  /** Wie dieser Marker steht (`props.view`, T-214); leer: was Karte, Kartenart oder Art sagen. */
+  view: MarkerView | '';
 }
 
 export function markerOf(rel: Relation): MapMarker {
@@ -232,6 +235,7 @@ export function markerOf(rel: Relation): MapMarker {
     prepared: typeof p['encounter'] === 'string' ? p['encounter'] : '',
     movable: p['movable'] === true,
     blocks: typeof p['blocks'] === 'string' && p['blocks'] && !wallKind(p['blocks']).door ? wallKind(p['blocks']).key : '',
+    view: isMarkerView(p['view']) ? p['view'] : '',
   };
 }
 
@@ -261,6 +265,98 @@ export function addMarker(map: Entity, to: EntityId, at: Pt, id: string, kind: M
     ...map,
     relations: [...(map.relations ?? []), { id, type: MARKER_RELATION, to, props: { x: r4(at.x), y: r4(at.y), kind } }],
   };
+}
+
+// --------------------------------------------------------- Markeransicht
+
+/**
+ * **Wie ein Marker auf der Karte steht** (T-214, REQ-135): als Symbol
+ * (Anfangsbuchstaben), als Symbol mit Namen darunter, als Bild (Tokenbild
+ * oder Bild des Artikels, sonst das Symbol) oder als Kurzansicht-Karte —
+ * die Ansicht `quick` des Artikels, wie im Popup.
+ */
+export type MarkerView = 'symbol' | 'name' | 'image' | 'card';
+export const MARKER_VIEWS: readonly { key: MarkerView; label: string; does: string }[] = [
+  { key: 'symbol', label: 'Symbol', does: 'A round marker with the initials.' },
+  { key: 'name', label: 'Name', does: 'The symbol with the name below it.' },
+  { key: 'image', label: 'Image', does: 'The token or the picture of the article; the symbol if it has none.' },
+  { key: 'card', label: 'Quick card', does: 'The quick view of the article as a small card on the map.' },
+];
+/** Was gilt, wenn niemand etwas sagt — so standen Marker vor T-214 da. */
+export const MARKER_VIEW_DEFAULT: MarkerView = 'image';
+
+export function isMarkerView(v: unknown): v is MarkerView {
+  return v === 'symbol' || v === 'name' || v === 'image' || v === 'card';
+}
+
+/**
+ * **Die Vorgabe der Art** (`InterfaceDef.markerView`), die `extends`-Kette
+ * hoch wie `units`: der erste Typ, der etwas sagt, gilt für die Untertypen.
+ */
+export function markerViewForType(registry: Pick<Registry, 'interfaces'>, type: string | undefined): MarkerView | null {
+  if (!type) return null;
+  for (const t of typeChain(registry, type)) {
+    const v = registry.interfaces[t]?.markerView;
+    if (isMarkerView(v)) return v;
+  }
+  return null;
+}
+
+/** Was die Karte für ihre Marker sagt (`Map.markerView`); `null`: nichts. */
+export function mapMarkerViewOf(map: Entity | null | undefined): MarkerView | null {
+  const v = (map?.components?.[MAP_COMPONENT] as { markerView?: unknown } | undefined)?.markerView;
+  return isMarkerView(v) ? v : null;
+}
+
+/** Was die Kampagne für eine Kartenart sagt (`Campaign.markerViews`, `{ world: 'symbol' }`); `null`: nichts. */
+export function kindMarkerViewOf(campaign: Entity | null | undefined, kind: MapKind): MarkerView | null {
+  const roh = (campaign?.components?.['Campaign'] as { markerViews?: unknown } | undefined)?.markerViews;
+  const v = roh && typeof roh === 'object' && !Array.isArray(roh) ? (roh as Record<string, unknown>)[kind] : undefined;
+  return isMarkerView(v) ? v : null;
+}
+
+/** Die Markeransicht einer Kartenart setzen oder (mit `null`) auf die Vorgabe der Art zurückstellen. */
+export function withKindMarkerView(campaign: Entity, kind: MapKind, view: MarkerView | null): Entity {
+  const k = (campaign.components?.['Campaign'] ?? {}) as Record<string, unknown>;
+  const alt = k['markerViews'] && typeof k['markerViews'] === 'object' && !Array.isArray(k['markerViews']) ? { ...(k['markerViews'] as Record<string, unknown>) } : {};
+  if (view) alt[kind] = view;
+  else delete alt[kind];
+  const { markerViews: _weg, ...rest } = k;
+  return { ...campaign, components: { ...campaign.components, Campaign: Object.keys(alt).length ? { ...rest, markerViews: alt } : rest } };
+}
+
+/** Die Markeransicht der Karte setzen oder (mit `null`) wegnehmen. */
+export function withMapMarkerView(map: Entity, view: MarkerView | null): Entity {
+  const { markerView: _weg, ...rest } = (map.components?.[MAP_COMPONENT] ?? {}) as Record<string, unknown>;
+  return { ...map, components: { ...map.components, [MAP_COMPONENT]: view ? { ...rest, markerView: view } : rest } };
+}
+
+/** Die Ansicht eines einzelnen Markers setzen oder (mit `null`) wegnehmen (`props.view`). */
+export function withMarkerView(map: Entity, relId: string, view: MarkerView | null): Entity {
+  return {
+    ...map,
+    relations: (map.relations ?? []).map((r) => {
+      if (r.id !== relId || r.type !== MARKER_RELATION) return r;
+      const { view: _weg, ...rest } = (r.props ?? {}) as Record<string, unknown>;
+      return { ...r, props: view ? { ...rest, view } : rest };
+    }),
+  };
+}
+
+/**
+ * **Welche Ansicht gilt** — die genaueste Angabe gewinnt: der Marker
+ * (`props.view`), die Karte (`Map.markerView`), ihre Kartenart an der
+ * Kampagne (`Campaign.markerViews`), die Art des Ziels
+ * (`InterfaceDef.markerView`), sonst das Bild. Ein Asset (`scenery`) und
+ * ein freies Licht liegen, wie sie sind, und fragen nicht.
+ */
+export function markerViewOf(
+  m: Pick<MapMarker, 'view' | 'kind'>,
+  from: { map?: MarkerView | null; kind?: MarkerView | null; type?: MarkerView | null },
+): MarkerView {
+  if (m.kind === 'scenery') return 'image';
+  if (m.kind === 'light') return 'symbol';
+  return m.view || from.map || from.kind || from.type || MARKER_VIEW_DEFAULT;
 }
 
 // ----------------------------------------------------------------- Assets

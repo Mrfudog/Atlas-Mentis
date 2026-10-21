@@ -2662,6 +2662,20 @@ nichts weg, was gilt: eingeschalteter Nebel und eine dunkle Karte
 behalten ihre Werkzeuge, sonst sässe die Leitung vor einer Karte, deren
 Nebel sie nicht mehr aufdecken kann.
 
+**Wie ein Marker aussieht, sagt die genaueste Stelle, die etwas sagt**
+(T-214). Eine Notiz liest man als Karte, ein Händler auf der Stadtkarte
+als Name, ein Goblin auf der Kampfkarte als Bild — das ist zuerst eine
+Frage an die **Art** und steht darum an der Registerzeile, geerbt wie
+`units`. Auf einer Weltkarte aber ist jedes Bild zu gross: also darf die
+**Kartenart** (an der Kampagne, wie die Werkzeuge) es überschreiben, die
+einzelne **Karte** auch, und der einzelne **Marker** zuletzt. Ohne jede
+Angabe bleibt es beim Bild, sonst den Anfangsbuchstaben — wie vorher; eine
+neue Einstellung, die bestehende Karten anders zeichnete, wäre eine
+Änderung, um die niemand gebeten hat. Die Karte zeigt die Ansicht `quick`
+und keine eigene: was auf einer Kurzansicht steht, ist schon so geordnet,
+dass das Wichtigste oben steht und das Bild zuletzt (T-346), und ein
+Kasten, der unten abschneidet, verliert nur das Unwichtigste.
+
 ## Zug, Tempo und Zone auf der Karte
 
 **Ein Zug ist kein Feld der Kreatur.** Dass der Kämpfer schon 20 Fuss
