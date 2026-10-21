@@ -141,3 +141,43 @@ describe('a chapter made of parts (T-108)', () => {
     expect(b.toc.map((z: { id: string }) => z.id)).toEqual(expect.arrayContaining(['arc_eigen', r.id]));
   });
 });
+
+describe('an illustration in the book text (T-210)', () => {
+  const B = 'e5_book_pic';
+  const extra: Entity[] = [
+    { id: B, name: 'Pictures', interfaces: ['Layer'], components: { ...id('Pictures', 'layer-0009'), Layer: { kind: 'book', order: 0 } }, relations: [] },
+    { id: 'ch_pic', name: 'Chapter 1: Views', interfaces: ['Chapter'], components: id('Chapter 1: Views', 'chapter-0009'), relations: [in_('ch_pic', B)] },
+    { id: 'pa_eins', name: 'One.', interfaces: ['Paragraph'], components: { ...id('One.', 'paragraph-0011'), Prose: { paragraph: [{ id: 'text', value: 'One.' }] } }, relations: [in_('pa_eins', B), teil('pa_eins', 'ch_pic', 1)] },
+    { id: 'pa_zwei', name: 'Two.', interfaces: ['Paragraph'], components: { ...id('Two.', 'paragraph-0012'), Prose: { paragraph: [{ id: 'text', value: 'Two.' }] } }, relations: [in_('pa_zwei', B), teil('pa_zwei', 'ch_pic', 2)] },
+    /* Zwischen den beiden Absätzen, ohne sie neu zu nummerieren; das eine ohne Datei, das andere nur für die Leitung. */
+    { id: 'il_view', name: 'A View', interfaces: ['Illustration'], components: { ...id('A View', 'illustration-0001'), Image: { caption: 'A View', alt: 'A view' } }, relations: [in_('il_view', B), teil('il_view', 'ch_pic', 1.001)] },
+    { id: 'il_secret', name: 'The Secret', interfaces: ['Illustration'], components: { ...id('The Secret', 'illustration-0002'), ...gm, Image: { caption: 'The Secret' } }, relations: [in_('il_secret', B), teil('il_secret', 'ch_pic', 1.002)] },
+  ];
+
+  async function mitBildern() {
+    const { repo, rufe } = await aufbau();
+    for (const e of extra) await repo.putEntity(structuredClone(e));
+    const camp = (await repo.getEntity('camp_a'))!;
+    camp.relations = [...(camp.relations ?? []), { id: 'camp_a~ac4', type: 'activates', to: B, props: { order: 6 } }];
+    await repo.putEntity(camp);
+    return rufe;
+  }
+
+  it('stands between two parts in the reader, and players see only what is released', async () => {
+    const rufe = await mitBildern();
+    const leitung = (await rufe('Basil', 'GET', `/api/read/${B}/unit/ch_pic`)).json();
+    expect(leitung.sections.map((s: { id: string }) => s.id)).toEqual(['ch_pic', 'pa_eins', 'il_view', 'il_secret', 'pa_zwei']);
+    expect(leitung.sections[2]).toMatchObject({ toc: false, entity: { components: { Image: { caption: 'A View' } } } });
+    const spielerin = (await rufe('Sela', 'GET', `/api/read/${B}/unit/ch_pic`)).json();
+    expect(spielerin.sections.map((s: { id: string }) => s.id)).toEqual(['ch_pic', 'pa_eins', 'il_view', 'pa_zwei']);
+    /* Nicht im Inhaltsverzeichnis: ein Bild ist kein Abschnitt. */
+    const buch = (await rufe('Sela', 'GET', `/api/read/${B}`)).json();
+    expect(buch.toc.map((z: { id: string }) => z.id)).toEqual(['ch_pic']);
+  });
+
+  it('lists in order on the chapter page', async () => {
+    const rufe = await mitBildern();
+    const t = (await rufe('Sela', 'GET', '/api/entities/ch_pic/parts')).json();
+    expect(t.parts.map((p: { id: string }) => p.id)).toEqual(['pa_eins', 'il_view', 'pa_zwei']);
+  });
+});

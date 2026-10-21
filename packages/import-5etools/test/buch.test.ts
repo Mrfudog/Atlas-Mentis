@@ -13,7 +13,7 @@ import { buchEbeneId } from '../src/werkbank.js';
  * einer Tabelle, die schon eine `Table` ist, einem eingebetteten Zauber
  * und einem Abschnitt, der schon eine Regel ist.
  */
-function datenstand(): Datenstand {
+function datenstand(ohneBilder = false): Datenstand {
   const arten = new Map<string, Knoten[]>();
   arten.set('spell', [{ name: 'Sleep', source: 'TRB', level: 1, school: 'E', entries: ['Zzz.'] }]);
   arten.set('condition', [{ name: 'Dazed', source: 'TRB', entries: ['You are dazed.'] }]);
@@ -34,13 +34,24 @@ function datenstand(): Datenstand {
         { type: 'table', caption: 'Weather', colLabels: ['d6', 'Weather'], rows: [['1', 'Rain']] },
         { type: 'statblock', tag: 'spell', name: 'Sleep', source: 'TRB' },
         { type: 'entries', name: 'Dazed', entries: ['You are dazed.'] },
-        { type: 'image', href: { type: 'internal', path: 'book/TRB/art.webp' } },
+        { type: 'image', href: { type: 'internal', path: 'book/TRB/art.webp' }, title: 'A Duel', credit: 'Someone' },
+        { type: 'gallery', images: [{ type: 'image', href: { type: 'internal', path: 'book/TRB/g1.webp' } }, { type: 'image', href: { type: 'external', url: 'https://example.org/x.png' } }] },
         { type: 'insetReadaloud', entries: ['Hear me.'] },
       ],
     },
-    { type: 'section', name: 'Appendix A: Odds', id: '002', page: 20, entries: ['Odd.'] },
+    {
+      type: 'section', name: 'Appendix A: Odds', id: '002', page: 20,
+      entries: ['Odd.', { type: 'inset', name: 'Aside', entries: ['Look.', { type: 'image', href: { type: 'internal', path: 'book/TRB/inset.webp' } }] }],
+    },
     { type: 'section', name: 'Credits', id: '003', entries: ['Thanks.'] },
   ];
+  /* Dasselbe Buch ohne Bilder: so stand es vor T-210 auf dev. */
+  const ohne = (x: unknown): unknown =>
+    Array.isArray(x)
+      ? x.filter((y) => !(y && typeof y === 'object' && ['image', 'gallery'].includes(String((y as Knoten)['type'])))).map(ohne)
+      : x && typeof x === 'object'
+        ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, ohne(v)]))
+        : x;
   return {
     arten,
     quellen: new Map([['trb', { id: 'TRB', name: 'The Rule Book', published: '2015-01-01', art: 'book' }]]),
@@ -51,7 +62,7 @@ function datenstand(): Datenstand {
           name: 'The Rule Book', id: 'TRB', source: 'TRB',
           contents: [{ name: 'Fighting', ordinal: { type: 'chapter', identifier: 9 } }, { name: 'Appendix A: Odds', ordinal: { type: 'appendix', identifier: 'A' } }, { name: 'Credits' }],
         },
-        daten,
+        daten: ohneBilder ? (ohne(daten) as Knoten[]) : daten,
       }],
     ]),
   };
@@ -90,6 +101,8 @@ describe('Bücher als Kapitel aus Teilen (T-108)', () => {
       'Embed:',
       'Embed:',
       'Embed:',
+      'Illustration:',
+      'Illustration:',
       'ReadAloudText:',
     ]);
     /* Ein Verweis im Absatz nennt die Nummer; der Kasten ist eine Randnotiz. */
@@ -120,13 +133,49 @@ describe('Bücher als Kapitel aus Teilen (T-108)', () => {
   it('nennt den Buchtext eines 2014-Buchs als Neuzugang, seine Artikel nicht (T-145)', () => {
     const { datei } = lauf(datenstand());
     const neu = new Set(datei.additions);
-    const text = datei.entities.filter((e) => ['Chapter', 'Heading', 'Paragraph', 'ReadAloudText', 'Embed'].includes(art(e)));
+    const text = datei.entities.filter((e) => ['Chapter', 'Heading', 'Paragraph', 'ReadAloudText', 'Embed', 'Illustration'].includes(art(e)));
     expect(text.length).toBeGreaterThan(10);
     for (const e of text) expect(neu.has(e.id), `${art(e)} ${e.name}`).toBe(true);
     /* Was der Text einbettet, ist Grundstand und bleibt draussen. */
     for (const t of ['Spell', 'Condition', 'Table']) {
       for (const e of datei.entities.filter((x) => art(x) === t)) expect(neu.has(e.id), `${t} ${e.name}`).toBe(false);
     }
+  });
+
+  it('setzt ein Bild im Text als Teil mit Rang zwischen zwei bestehenden (T-210)', () => {
+    const t = teileVon(entities, kapitel[0]!);
+    const bilder = t.filter((e) => art(e) === 'Illustration');
+    const rang = (e: Entity) => Number(e.relations!.find((r) => r.type === 'partOf')!.props?.['rank']);
+    /* Hinter dem dritten Verweis (Rang 10), vor dem Vorlesetext (Rang 11). */
+    expect(bilder.map(rang)).toEqual([10.001, 10.002]);
+    expect(bilder[0]!.name).toBe('A Duel');
+    expect(bilder[0]!.components['Image']).toEqual({ caption: 'A Duel · Art by Someone', alt: 'A Duel' });
+    /* Ohne Titel heisst es nach seinem Ganzen; die Datei kommt erst mit dem Hochladen. */
+    expect(bilder[1]!.name).toBe('Chapter 9: Fighting (illustration)');
+    expect(bilder[1]!.components['Image']?.['image']).toBeUndefined();
+    /* Ein Bild in einem Kasten steht dahinter. */
+    const anhang = teileVon(entities, kapitel[1]!);
+    expect(anhang.map((e) => art(e))).toEqual(['Paragraph', 'Paragraph', 'Illustration']);
+  });
+
+  it('ändert an den übrigen Teilen nichts — Ids, Ränge und Text wie ohne Bilder (T-210)', () => {
+    const ohne = lauf(datenstand(true)).datei.entities;
+    const kurz = (es: Entity[]) =>
+      es.filter((e) => art(e) !== 'Illustration').map((e) => JSON.stringify([e.id, e.components, e.relations]));
+    expect(kurz(entities)).toEqual(kurz(ohne));
+  });
+
+  it('nennt jedes Bild im Bildplan mit Ganzem, Vorgänger und Rang (T-210)', () => {
+    const { bilder } = lauf(datenstand());
+    const im = bilder.eintraege.filter((b) => b.ganzes);
+    expect(im.map((b) => b.pfad)).toEqual(['book/TRB/art.webp', 'book/TRB/g1.webp', 'book/TRB/inset.webp']);
+    const t = teileVon(entities, kapitel[0]!);
+    const erstes = im[0]!;
+    expect(erstes).toMatchObject({ klasse: 'image', feld: 'Image.image', ganzes: kapitel[0]!.id, rang: 10.001, quelle: 'TRB' });
+    expect(t.find((e) => e.id === erstes.ziel)?.interfaces[0]).toBe('Illustration');
+    expect(entities.find((e) => e.id === erstes.vorher)?.interfaces[0]).toBe('Embed');
+    /* Das zweite Bild folgt dem ersten. */
+    expect(im[1]!.vorher).toBe(erstes.ziel);
   });
 
   it('nennt ein Kapitel wie 5e.tools', () => {

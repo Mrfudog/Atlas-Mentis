@@ -14,6 +14,7 @@
 import { createHash } from 'node:crypto';
 import type { Entity, Registry, Relation } from '@nw/model';
 import { idPrefix, typeChain } from '@nw/model';
+import type { TextBild } from './bilder.js';
 import type { Knoten } from './copy.js';
 import { quelleVon } from './lesen.js';
 import type { Regelstand } from './lesen.js';
@@ -180,6 +181,8 @@ export class Werkbank {
    * eines 2014-Abenteuers findet so sein Ziel.
    */
   grundSiehtAlles = false;
+  /** Die Bilder im Buchtext, je angelegtem Teil (T-210) — für den Bildplan. */
+  readonly textbilder: TextBild[] = [];
   readonly standJe = new Map<string, { stand: Regelstand; grund: boolean; nachtrag?: boolean }>();
 
   constructor(readonly registry: Registry, vorgabe?: Map<string, string>) {

@@ -73,3 +73,31 @@
 .fehler {
   color: var(--danger, #8b1a1a);
 }
+/* Ein Bild im Buchtext (T-210). Noch nicht hochgeladen, hält ein Rahmen
+   die Stelle und die Unterschrift steht darunter — kein Fehler. */
+.abbildung {
+  margin: 1rem 0;
+}
+.abbildung img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.abbildung .platzhalter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4rem;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  color: var(--dim);
+  font-family: var(--caps);
+  font-size: 0.85rem;
+}
+.abbildung figcaption {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-style: italic;
+  margin-top: 0.25rem;
+}

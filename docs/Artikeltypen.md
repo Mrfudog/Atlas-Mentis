@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-21. 87 Schnittstellen, 70 Kantenarten.
+Stand 2026-10-21. 88 Schnittstellen, 70 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -2943,7 +2943,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 33 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 34 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -3357,6 +3357,44 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Illustration
+
+`Illustration` · erbt von `BookPart` ← `Image` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Geerbte Felder**
+
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
