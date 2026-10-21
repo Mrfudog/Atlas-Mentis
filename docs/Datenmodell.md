@@ -1889,6 +1889,35 @@ Lage zu keinem Bereich mehr; an der Ecke ändert er seine Grösse, und die
 Karten bleiben liegen. Gezogen wird mit Pointer-Events, mit Maus, Stift
 und Finger gleich.
 
+**Eine Abfrage-Kachel ist eine Kante des Boards auf sich selbst** (T-340,
+`boardquery.ts`): `placed` mit `props.query` — die Quelle als Daten:
+Artikelarten (mit Untertypen), einzelne Artikel, Marken, Ebenen und eine
+Filterkette aus T-253 (`steps`, als Wort wie in der Adresse). Arten,
+Marken und Ebenen engen gemeinsam ein, innerhalb einer Angabe genügt eine;
+einzelne Artikel kommen immer dazu und gehen durch die Kette nicht
+verloren. Eine leere Quelle bringt nichts, nicht das ganze Kompendium.
+So verschiebt, vergrössert, sperrt und verbirgt sie dieselbe Rechnung wie
+jede Kachel, und es entsteht keine zweite Liste von Dingen auf dem Board;
+als Rückbezug „liegt auf“ zählt sie nicht (`isQueryPlacement`).
+**Beantwortet wird am Server, je Betrachter** (`GET
+/api/boards/:board/query/:rel`, `queryPool` über den gesiebten Stapel):
+Spielende bekommen nur, was sie sehen dürfen, und eine zurückgehaltene
+Kachel (`hidden`) gibt es für sie nicht. `display` sagt, wie sie zeigt:
+`list`, `draw` (zufällig **ohne Zurücklegen**, `POST …/draw` und `…/reset`,
+nur wer das Board schreibt) oder `slideshow` (`interval` Sekunden, Weiter
+und Zurück, Vollbild). **Was gezogen ist, steht an der Kante** (`drawn`)
+**und gehört den Routen**: ein `PUT` des Boards behält den Stand, den der
+Server hat (`keepDrawState`), sonst nähme die Seite mit ihrem letzten
+Stand einen Zug zurück. Spielende bekommen vom Gezogenen und von den
+einzeln genannten Artikeln nur, was sie sehen (`redactQueryTiles`).
+**Beim Ziehen freigeben** (`reveal`, an `party` oder die erste Gruppe der
+laufenden Kampagne): eine gezogene Information oder ein Bündel bekommt
+`knownBy` auf die Gruppe, ein anderer Artikel gibt seine Informationen frei
+(`informationsOf`), und sieht die Gruppe ihn selbst noch nicht, kommt sie
+in `revealedTo`. Was der Ziehende nicht schreibt (ein geteiltes
+Regelwerk), bleibt und wird genannt. Allgemein gehalten, weil dieselbe
+Kachel die Live-Bereiche des Kampagnenboards tragen soll (T-342).
+
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
 Ansicht, sondern ein anderes Konto in derselben Rechnung: mit `X-View-As`
@@ -2405,7 +2434,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
 | `partOf` | Place \| Story \| Quest \| Event \| Board \| Encounter \| Layer \| Chapter \| BookPart \| Rule → Place \| Story \| Event \| Layer \| Chapter \| Rule |  | — | `rank` |
 | `partyOf` | Party → Campaign | ja | — | — |
-| `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` `hidden` |
+| `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` `hidden` `title` `query` `display` `drawn` `interval` `reveal` `party` |
 | `questAbout` | Quest → * |  | — | — |
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |

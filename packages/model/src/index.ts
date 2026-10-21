@@ -40,6 +40,7 @@ export * from './builder.js';
 export * from './multiclass.js';
 export * from './hitpoints.js';
 export * from './board.js';
+export * from './boardquery.js';
 export * from './checks.js';
 export * from './bulk.js';
 export * from './reading.js';
