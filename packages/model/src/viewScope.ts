@@ -15,7 +15,7 @@
 
 import type { Entity, LayoutAdjust, LayoutElement, LayoutWhen, Registry, ViewApplies, ViewDef, ViewPathStep } from './types.js';
 import { primaryInterface, typeChain } from './entity.js';
-import { applyAdjust, layoutFor, viewKeys, whenHolds } from './views.js';
+import { RETIRED_PLACES, applyAdjust, layoutFor, viewKeys, whenHolds } from './views.js';
 
 /** Wie genau eine Ansicht gilt; die Reihenfolge ist die Rangfolge. */
 export const VIEW_SCOPES = ['article', 'condition', 'type', 'global'] as const;
@@ -170,8 +170,10 @@ export interface ViewPick {
 
 /**
  * **Die eine Stelle, an der gewählt wird** (T-310, E-103): für einen
- * Artikel und einen Ort (`quick`, `overview`, `full`, `print`, `search`
- * oder eine eigene Gruppe) die geltende Ansicht und ihre Anordnung.
+ * Artikel und einen Ort (`quick`, `overview`, `full`, `print` oder eine
+ * eigene Gruppe) die geltende Ansicht und ihre Anordnung. Ein Ort, den es
+ * nicht mehr gibt (`search`, T-346), liest sich als sein Nachfolger
+ * (`RETIRED_PLACES`).
  *
  * Ein Ort ist eine Gruppe: es gilt die genaueste Ansicht darin
  * (`viewFor`), sonst die des Ortes selbst. Nennt `place` eine gestaltete
@@ -189,6 +191,7 @@ export function pickView(
   place: string,
   opts: { incoming?: readonly { type: string }[]; exact?: boolean; fallback?: string } = {},
 ): ViewPick {
+  if (!registry.views[place] && RETIRED_PLACES[place]) place = RETIRED_PLACES[place]!;
   const def = registry.views[place];
   let key = def && (opts.exact || isDesignedView(def)) ? place : viewFor(entity, registry, place, { incoming: opts.incoming });
   if (!registry.views[key] && opts.fallback && registry.views[opts.fallback]) {

@@ -90,12 +90,22 @@ export function attachedDerived(
 
 /**
  * **Die Ansichten, die ein Ort wählt** (T-110, E-030 b): die Liste und der
- * Verweis `overview`, Karte und Popup `quick`, die Artikelseite `full`,
- * der Druck `print`, das „+" der Suche `search` (T-138). Sie lassen sich
- * umbenennen und umbauen, aber nicht löschen — der Ort fragt nach ihnen. Eigene Ansichten daneben wählt man
- * dort, wo gewählt wird (die Kachel auf dem Board, der Druck).
+ * Verweis `overview`, Karte, Popup und das „+" der Suche `quick`, die
+ * Artikelseite `full`, der Druck `print`. Sie lassen sich umbenennen und
+ * umbauen, aber nicht löschen — der Ort fragt nach ihnen. Eigene Ansichten
+ * daneben wählt man dort, wo gewählt wird (die Kachel auf dem Board, der
+ * Druck).
  */
-export const PLACE_VIEWS = ['overview', 'quick', 'full', 'print', 'search'] as const;
+export const PLACE_VIEWS = ['overview', 'quick', 'full', 'print'] as const;
+
+/**
+ * **Orte, die es nicht mehr gibt, und wohin sie fallen** (T-346): die
+ * Suche hatte bis T-346 eine eigene Ansicht `search`, die zeigte, was
+ * `quick` zeigte. Wer sie noch nennt (eine Kachel, ein Link), bekommt
+ * `quick` — beim Lesen, ohne Fehler. Steht in einer Installation noch eine
+ * abweichende Ansicht `search`, gilt sie weiter als eigene Ansicht.
+ */
+export const RETIRED_PLACES: Readonly<Record<string, string>> = { search: 'quick' };
 
 /** Eine Anpassung statt einer eigenen Anordnung? */
 export function isAdjust(x: TypeLayout | undefined | null): x is { adjust: LayoutAdjust } {

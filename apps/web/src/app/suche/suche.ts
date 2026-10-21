@@ -24,9 +24,10 @@ const KNOEPFE = 8;
  * Beim Tippen fragt sie den Server (`/api/search`): derselbe gesiebte
  * Index wie jede Liste, nach Nähe geordnet — was ein Spieler nicht sieht,
  * findet er nicht, und ein verborgener Name steht als Deckname da. Ein
- * Treffer zeigt wenig (Name und Art); das **„+"** klappt die Ansicht
- * `search` auf, mit Ebene, Herausgeber und Quelle darüber — eine Ansicht
- * aus dem Register, kein Sonderfall.
+ * Treffer zeigt wenig (Name und Art); das **„+"** klappt die Kurzansicht
+ * `quick` auf (T-346, bis dahin eine eigene Ansicht `search`, die
+ * dasselbe zeigte), mit Ebene, Herausgeber und Quelle darüber — eine
+ * Ansicht aus dem Register, kein Sonderfall.
  *
  * Gefiltert wird nach Bereich, Art, Ebene und Herausgeber; was zuletzt als
  * Filter diente, steht in seiner Leiste vorn.
@@ -226,7 +227,7 @@ const KNOEPFE = 8;
                     @defer (on immediate) {
                       <nw-vorschau
                         [id]="z.id"
-                        ansicht="search"
+                        ansicht="quick"
                         [eingebettet]="true"
                         [rueck]="false"
                       />

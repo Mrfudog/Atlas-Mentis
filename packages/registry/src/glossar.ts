@@ -220,7 +220,7 @@ const APP: AppTerm[] = [
   {
     term: 'View',
     sort: 'app',
-    definition: 'How an article is drawn in a place: overview in a list or link, quick on a card or popup, full on its page, print on paper, search under a search hit.',
+    definition: 'How an article is drawn in a place: overview in a list or link, quick on a card, a popup or under the + of a search hit, full on its page, print on paper.',
     effect: 'The place picks the view; you never choose a “player view” — players see the same view with less in it.',
     translations: { de: 'Ansicht' },
   },
