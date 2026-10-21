@@ -16,6 +16,12 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import {
   addMarker,
+  isMarkerView,
+  mapMarkerViewOf,
+  markerViewOf,
+  MARKER_VIEWS,
+  withMapMarkerView,
+  withMarkerView,
   blockingWalls,
   clearPlayTokens,
   coverAll,
@@ -153,9 +159,11 @@ import {
   type PlacementSuggestion,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
+import type { MarkerView } from '@nw/model';
 import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
 import { Api, type GespieltZeile, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Vorschau } from '../artikel/vorschau';
 import { Kurzansicht } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
 import { Session } from '../kern/session';
@@ -324,7 +332,7 @@ interface Zeiger {
  */
 @Component({
   selector: 'nw-karte',
-  imports: [RouterLink, BoardSuche, BildWahl, Ladeanzeige, KartenSeitenleiste],
+  imports: [RouterLink, BoardSuche, BildWahl, Ladeanzeige, KartenSeitenleiste, Vorschau],
   template: `
     <div class="karte" [class.gross]="gross()" [class.voll]="vollbild()" [class.ersatz]="ersatzVollbild()" [class.mit-plan]="aktiv() === 'zug' && zugplan()" [class.mit-panel]="(initiative() && initiativeOffen()) || seiteOffen()">
       <div class="leiste">
@@ -607,6 +615,18 @@ interface Zeiger {
                 <button type="button" (click)="teilnehmerSetzen()" [title]="'Put ' + offeneTeilnehmer().length + ' combatants of ' + (kontext()?.turn?.name ?? 'the fight') + ' on the map'">
                   Place combatants ({{ offeneTeilnehmer().length }})
                 </button>
+              }
+              @if (werkzeuge().has('markers') || werkzeuge().has('tokens')) {
+                <!-- **Markeransicht der Karte** (T-214, \`Map.markerView\`): ein Marker darf es anders sagen. -->
+                <label class="markeransicht" title="How markers stand on this map. Tap a marker to set it for that one alone.">
+                  Markers show as
+                  <select (change)="markerAnsichtKarte($any($event.target).value)" aria-label="Markers on this map show as">
+                    <option value="" [selected]="!kartenMarkerAnsicht()">{{ kartenVorgabeText() }}</option>
+                    @for (v of MARKER_VIEWS; track v.key) {
+                      <option [value]="v.key" [selected]="kartenMarkerAnsicht() === v.key" [title]="v.does">{{ v.label }}</option>
+                    }
+                  </select>
+                </label>
               }
               <button type="button" [class.an]="werkzeug() === 'tokenWeg'" [attr.aria-pressed]="werkzeug() === 'tokenWeg'" (click)="waehle('tokenWeg')" title="Tap a marker to take it off the map">
                 Remove
@@ -1475,6 +1495,8 @@ interface Zeiger {
                     [class.beringt]="!!m.ring"
                     [class.leuchtet]="m.leuchtet"
                     [class.gewaehlt]="werkzeug() === 'asset' && assetWahl() === m.rel.id"
+                    [class.mit-schild]="m.ansicht === 'name'"
+                    [class.mit-karte]="m.ansicht === 'card'"
                     [style.left.%]="m.x * 100"
                     [style.top.%]="m.y * 100"
                     [style.width.px]="m.px"
@@ -1496,12 +1518,35 @@ interface Zeiger {
                     }
                     @if (m.etikett) {
                       <b class="etikett">{{ m.etikett }}</b>
+                    } @else if (m.ansicht === 'name') {
+                      <!-- **Markeransicht „Name“** (T-214): das Symbol, darunter der Name. -->
+                      <b class="schild">{{ m.name }}</b>
+                    }
+                    @if (m.ansicht === 'card') {
+                      <!-- **Markeransicht „Quick card“** (T-214): die Kurzansicht (\`quick\`) als Karte unter dem Punkt —
+                           nur zum Lesen; antippen öffnet sie wie bei jedem Marker. -->
+                      <span class="mk-karte" inert>
+                        @defer (on viewport) {
+                          <nw-vorschau [id]="m.to" [rueck]="false" />
+                        } @placeholder {
+                          <span class="mk-laedt">{{ m.name }}</span>
+                        }
+                      </span>
                     }
                   </button>
                 }
                 @if (markerWahlBild(); as w) {
                   <!-- **Ein gewähltes Token** (T-320): wegnehmen hier oder mit Entf, ohne erst das Werkzeug zu suchen. -->
                   <div class="token-aktionen" role="group" [attr.aria-label]="w.name" [style.left.%]="w.x * 100" [style.top.%]="w.y * 100" (pointerdown)="$event.stopPropagation()">
+                    @if (w.kind !== 'light' && w.kind !== 'scenery') {
+                      <!-- **Wie dieser Marker steht** (T-214, \`props.view\`): vor Karte, Kartenart und Art. -->
+                      <select class="klein" (change)="markerAnsichtSetzen(w.rel.id, $any($event.target).value)" aria-label="This marker shows as" title="How this marker stands on the map">
+                        <option value="" [selected]="!w.view">as the map ({{ ansichtLabel(w.geerbt) }})</option>
+                        @for (v of MARKER_VIEWS; track v.key) {
+                          <option [value]="v.key" [selected]="w.view === v.key">{{ v.label }}</option>
+                        }
+                      </select>
+                    }
                     <button type="button" class="klein" (click)="tokenWeg(w.rel.id)" title="Take this token off the map (Delete)">Remove</button>
                     <button type="button" class="klein" (click)="markerWahl.set(null)" aria-label="Close">×</button>
                   </div>
@@ -1671,7 +1716,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -2781,8 +2826,14 @@ export class Karte {
     /* Ein freies Licht (T-320) ist für Spielende nur sein Schein, kein Marker. */
     const lt = this.alsLeitung();
     const getragen = this.getragen();
+    const kartenSicht = this.kartenMarkerAnsicht();
+    const artSicht = this.kontext()?.kindMarkerView ?? null;
     return markersOf(e).filter((m) => m.kind !== 'passage' && (m.kind !== 'light' || lt)).map((m: MapMarker) => {
       const ziel = m.kind === 'light' ? undefined : ziele[m.to];
+      /* **Die Markeransicht** (T-214): Marker › Karte › Kartenart › Art › Bild. */
+      const von = { map: kartenSicht, kind: artSicht, type: ziel?.view ?? null };
+      const ansicht = markerViewOf(m, von);
+      const mitBild = ansicht === 'image' || ansicht === 'card';
       const name = m.kind === 'light' ? 'Light' : (ziel?.name ?? this.bestand.name()(m.to) ?? '?');
       const pt = z && z.id === m.rel.id ? z.pt : m;
       /* Der Platz in Feldern (T-317): am Token, sonst nach Statblock; Möbel behalten ihre Breite. */
@@ -2794,13 +2845,16 @@ export class Karte {
         y: pt.y,
         name,
         px,
-        bild: ziel?.image ? bildAdresse(ziel.image, 'thumb', ziel.version ?? '') : null,
+        ansicht,
+        /* Was ohne eigene Angabe gälte — für „as the map (…)“ am gewählten Marker. */
+        geerbt: markerViewOf({ ...m, view: '' }, von),
+        bild: mitBild && ziel?.image ? bildAdresse(ziel.image, 'thumb', ziel.version ?? '') : null,
         /* Ein fertiges Rundtoken ohne eigenen Kreis, jedes andere Bild im
            Ausschnitt seines Assets (T-297). Möbel liegen, wie sie sind. */
-        rund: m.kind !== 'scenery' && !!ziel?.image && !!ziel.look?.round,
+        rund: m.kind !== 'scenery' && mitBild && !!ziel?.image && !!ziel.look?.round,
         bildStil: m.kind !== 'scenery' ? tokenStil(ziel?.look) : {},
         /* Der Rand des Bildes (T-301) — nur um ein ausgeschnittenes. */
-        ring: m.kind !== 'scenery' && ziel?.image ? ringStil(ziel.look, px) : null,
+        ring: m.kind !== 'scenery' && mitBild && ziel?.image ? ringStil(ziel.look, px) : null,
         /* Der Zeiger auf dem, der dran ist (REQ-144): dasselbe Token,
            ein Ring mehr — und gestrichelt der Nächste. */
         dran: !!zug?.current && m.to === zug.current,
@@ -2938,6 +2992,28 @@ export class Karte {
     const id = this.markerWahl();
     return id && this.werkzeug() === 'keins' ? (this.marker().find((m) => m.rel.id === id) ?? null) : null;
   });
+
+  // ------------------------------------------------------ Markeransicht
+
+  protected readonly MARKER_VIEWS = MARKER_VIEWS;
+  /** Was die Karte für ihre Marker sagt (`Map.markerView`, T-214) — an der ganzen Karte, nicht je Ebene. */
+  protected readonly kartenMarkerAnsicht = computed(() => mapMarkerViewOf(this.ganz()));
+  /** „Default — …“: was ohne Angabe der Karte gilt, die Kartenart oder die Art. */
+  protected readonly kartenVorgabeText = computed(() => {
+    const k = this.kontext()?.kindMarkerView;
+    return k ? `as ${mapKindOf(this.ganz())} maps (${this.ansichtLabel(k)})` : 'by article type';
+  });
+  protected ansichtLabel(v: MarkerView): string {
+    return MARKER_VIEWS.find((x) => x.key === v)?.label ?? v;
+  }
+  protected markerAnsichtKarte(v: string): void {
+    const g = this.ganz();
+    if (g) void this.schreibenGanz(withMapMarkerView(g, isMarkerView(v) ? v : null));
+  }
+  protected markerAnsichtSetzen(relId: string, v: string): void {
+    const e = this.karte();
+    if (e) void this.schreiben(withMarkerView(e, relId, isMarkerView(v) ? v : null));
+  }
 
   private nachZug = false;
   private griff: { id: string; to: string; sx: number; sy: number; zieht: boolean; pointer: number; von: Pt; selbst: boolean; span: number | null } | null = null;

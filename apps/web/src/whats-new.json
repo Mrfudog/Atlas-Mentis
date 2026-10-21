@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-marker-view",
+      "date": "2026-10-21",
+      "title": "Maps: markers as symbol, name, image or quick card",
+      "text": "Choose how markers stand on a map: as a symbol, a symbol with its name, an image, or a small quick card with the article’s quick view. Set it for one marker (tap it), for the whole map (Tokens › Markers show as), for each map kind under Rules & options, or for an article type in the registry.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-21-board-query-cards",
       "date": "2026-10-21",
       "title": "Boards: query cards — lists, draws and slideshows",

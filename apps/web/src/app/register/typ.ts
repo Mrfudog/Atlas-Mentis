@@ -14,6 +14,7 @@ import {
   typeList,
   viewGroup,
   viewKeys,
+  MARKER_VIEWS,
 } from '@nw/model';
 import type { InterfaceDef, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
@@ -125,6 +126,17 @@ interface Gruppe {
           </select>
         </label>
         <p class="hint">Measures are stored in their own unit and converted on read; this overrides the campaign setting for this type and its subtypes.</p>
+        <!-- **Als Marker** (T-214, \`InterfaceDef.markerView\`): geerbt die \`extends\`-Kette hoch. -->
+        <label class="f">
+          <span>On a map</span>
+          <select [disabled]="!darf()" (change)="setzen({ markerView: $any($any($event.target).value) || undefined })">
+            <option value="" [selected]="!d.markerView">{{ geerbteMarkeransicht() ? 'inherited — ' + geerbteMarkeransicht() : 'image (default)' }}</option>
+            @for (v of MARKER_VIEWS; track v.key) {
+              <option [value]="v.key" [selected]="d.markerView === v.key">{{ v.label }}</option>
+            }
+          </select>
+        </label>
+        <p class="hint">How its articles stand as markers: symbol, symbol with name, image or quick card. The campaign can set it per map kind, a map for its markers, and a single marker for itself.</p>
       </nw-kapitelteil>
 
       <nw-kapitelteil key="fields" titel="Own fields" lage="haupt" [zahl]="eigene().length"
@@ -316,6 +328,14 @@ export class RegTyp {
     for (const t of ancestorsOf(r, this.name())) if (r.interfaces[t]?.area) return r.interfaces[t]!.area!;
     return '';
   });
+  /** Was ein Obertyp für die Markeransicht sagt (T-214); leer: keiner. */
+  protected readonly geerbteMarkeransicht = computed(() => {
+    const r = this.reg();
+    if (!r) return '';
+    for (const t of ancestorsOf(r, this.name())) if (r.interfaces[t]?.markerView) return r.interfaces[t]!.markerView!;
+    return '';
+  });
+  protected readonly MARKER_VIEWS = MARKER_VIEWS;
   protected readonly parents = computed(() => (this.reg() ? parentsOf(this.reg()!, this.name()) : []));
   protected readonly kinder = computed(() => (this.reg() ? childrenOf(this.reg()!, this.name()) : []));
   protected readonly eigene = computed(() => Object.keys(this.reg() ? ownFields(this.reg()!, this.name()) : {}));
