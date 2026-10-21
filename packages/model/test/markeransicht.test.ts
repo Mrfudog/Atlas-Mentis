@@ -7,6 +7,7 @@ import {
   markersOf,
   markerViewForType,
   markerViewOf,
+  noteName,
   withKindMarkerView,
   withMapMarkerView,
   withMarkerView,
@@ -92,5 +93,14 @@ describe('Registerzeile', () => {
   it('nimmt markerView an und lehnt Unbekanntes ab', () => {
     expect(InterfaceDefSchema.safeParse({ name: 'Note', markerView: 'card' }).success).toBe(true);
     expect(InterfaceDefSchema.safeParse({ name: 'Note', markerView: 'poster' }).success).toBe(false);
+  });
+});
+
+describe('noteName', () => {
+  it('nimmt die erste Zeile und kürzt lange', () => {
+    expect(noteName('  Falle im Keller\nDC 15  ')).toBe('Falle im Keller');
+    const lang = noteName('x'.repeat(80));
+    expect(lang.length).toBe(48);
+    expect(lang.endsWith('…')).toBe(true);
   });
 });
