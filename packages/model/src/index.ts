@@ -80,3 +80,4 @@ export * from './ruleGraph.js';
 export * from './ruleTable.js';
 export * from './transform.js';
 export * from './groupvisibility.js';
+export * from './rest.js';

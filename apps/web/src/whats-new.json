@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-rests",
+      "date": "2026-10-21",
+      "title": "Short and long rests on the character sheet",
+      "text": "Under Rest in a character’s header, “Short · hit die” rolls a hit die and heals it plus CON; “Long rest” brings back all hit points, half the hit dice and every spell slot, and takes one level of exhaustion away. No more resetting pips by hand.",
+      "area": "Characters",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-21-turn-plan-applies",
       "date": "2026-10-21",
       "title": "Confirmed turns take hit points; Dodge, Help and Hide count",
