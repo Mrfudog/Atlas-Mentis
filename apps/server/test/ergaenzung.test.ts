@@ -114,4 +114,11 @@ describe('Ergänzungen (T-142)', () => {
     const res = await rufe('POST', '/api/bulk', { select: { layer: 'ly_form' }, ops: [{ op: 'set', field: 'Item.stackSize', values: { bow_sh: 4 } }], dryRun: true });
     expect(res.json()).toMatchObject({ selected: 1 });
   });
+
+  it('stehen nicht unter den Fassungen', async () => {
+    const { rufe } = await aufbau();
+    const f = (await rufe('GET', '/api/entities/bow_ai/versions')).json() as { versions: { entity: Entity }[] };
+    expect(f.versions.map((v) => v.entity.id)).toContain('bow');
+    expect(f.versions.map((v) => v.entity.id)).not.toContain('bow_sh');
+  });
 });
