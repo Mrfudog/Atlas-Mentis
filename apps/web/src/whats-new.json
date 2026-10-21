@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-map-links",
+      "date": "2026-10-21",
+      "title": "Sub-map links as shapes, with zoom depth and a border",
+      "text": "A linked sub-map can lie in a drawn shape (Sub-maps › Link shape). Per link, set how far you zoom in before it opens and how GM and players see it — a frame to click, only the frame, an icon or nothing. Inside, the map above can show faded around the sub-map, and an arrow at the top leads back up. Defaults are under Rules & options › Map.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-21-passage-areas",
       "date": "2026-10-21",
       "title": "Stairs and portals cover an area; send everyone through",

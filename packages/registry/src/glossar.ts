@@ -368,6 +368,14 @@ const APP: AppTerm[] = [
     translations: { de: 'Übergang' },
   },
   {
+    term: 'Sub-map link',
+    aliases: ['Link shape', 'Link settings', 'Zoom depth', 'Enter at', 'Map above as border', 'Up to'],
+    sort: 'app',
+    definition: 'Where a sub-map lies on the map above: a rectangle or a drawn shape, with how deep you zoom before it opens and how it shows — a frame to click, only the frame, an icon, or nothing.',
+    effect: 'Zooming in until the area fills the set share of the view enters the sub-map; zooming out past the edge, or the arrow at the top, leads back up. Inside, the map above can show faded around it, as far as it is released and revealed. GM and players can see a link differently; the campaign sets the default under Rules & options › Map, a link its own under Sub-maps › Link settings.',
+    translations: { de: 'Kartenverknüpfung' },
+  },
+  {
     term: 'Map tools',
     aliases: ['Tools per map kind', 'Sub-maps', 'Link map', 'Unlink'],
     sort: 'app',

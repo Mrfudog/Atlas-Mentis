@@ -35,8 +35,17 @@ import {
   encounterOnMap,
   entityName,
   fogOn,
-  frameOf,
   frameRevealed,
+  linkOuterOn,
+  linkShowFor,
+  mapLinkDefaultsOf,
+  mapLinkOf,
+  mapSheets,
+  parentMapRelation,
+  type MapLink,
+  type MapLinkShow,
+  type MapLinkDefaults,
+  type Poly,
   INSIDE_MAP_RELATION,
   isMap,
   isPlayInstance,
@@ -114,7 +123,26 @@ export interface MarkerZiel {
 
 export interface KartenKontext {
   parents: { id: string; name: string }[];
-  children: { id: string; name: string; frame: Frame }[];
+  /**
+   * Die Unterkarten (REQ-131) mit ihrer Verknüpfung (T-327): Kasten, Form,
+   * Zoomtiefe und wie der Betrachter sie sieht; `own` (was die Kante selbst
+   * sagt) und `template` (die Karte, an der die Kante steht) nur für die
+   * Leitung, die sie einstellt.
+   */
+  children: {
+    id: string;
+    name: string;
+    frame: Frame;
+    area?: Poly;
+    near: number;
+    show: MapLinkShow;
+    own?: MapLink['own'];
+    template?: string;
+  }[];
+  /** Die Karte darüber als blasser Rand (T-327), sonst `null`. */
+  outer: { id: string; name: string; image: string; frame: Frame } | null;
+  /** Die Vorgaben der Kampagne für Verknüpfungen — nur für die Leitung, die sie einstellt. */
+  linkDefaults?: MapLinkDefaults;
   /**
    * Darf der Betrachter von hier zu einer anderen Karte zoomen (T-308)?
    * Aus heisst: keine Brotkrumen, keine Rahmen — die Seite fällt auch nicht
@@ -240,17 +268,47 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
           return z ? [{ id: z.id, name: entityName(z) }] : [];
         })
       : [];
-    const children = !navigation
+    /* **Die Verknüpfungen** (T-327): Form, Zoomtiefe und Anzeige je
+       Kante, sonst die Vorgabe der Kampagne. Spielende bekommen nur, was
+       für sie gilt (`showPlayers`); die eigenen Angaben der Kante nur die
+       Leitung, die sie einstellt. */
+    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const vorgaben = mapLinkDefaultsOf(kampagne);
+    const children: KartenKontext['children'] = !navigation
       ? []
       : karten
           .filter((k) => k.id !== karte.id && !isPlayInstance(k))
           .flatMap((k) => {
             const rel = (k.relations ?? []).find((r) => r.type === INSIDE_MAP_RELATION && (r.to === karte.id || r.to === vorlageId));
-            const frame = frameOf(rel);
-            const z = frame ? ziel(k) : null;
-            return frame && z ? [{ id: z.id, name: entityName(z), frame }] : [];
+            const link = mapLinkOf(rel);
+            const z = link ? ziel(k) : null;
+            if (!link || !z) return [];
+            return [
+              {
+                id: z.id,
+                name: entityName(z),
+                frame: link.frame,
+                ...(link.area ? { area: link.area } : {}),
+                near: link.near,
+                show: linkShowFor(link, vorgaben, leitetKarte),
+                ...(leitetKarte ? { own: link.own, template: k.id } : {}),
+              },
+            ];
           })
           .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    /* **Die Karte darüber als Rand** (T-327): nur, wenn es sie für den
+       Betrachter gibt (`parents` ist gesiebt — Freigabe und
+       `mapNavigation`), und mit ihrem Bild, wie er es bekommt: für
+       Spielende unter Nebel die beschnittene Adresse (T-312). Die Lage
+       rechnet die Seite aus dem Kasten (`outerPlacement`, D8). */
+    const eigeneKante = mapLinkOf(parentMapRelation(karte));
+    const obenId = parents.at(-1)?.id;
+    const oben = obenId ? sichtbar.get(obenId) : undefined;
+    const obenBild = oben ? mapSheets(oben).find((b) => b.base && b.image && b.visible && (leitetKarte || !b.gmOnly))?.image : undefined;
+    const outer: KartenKontext['outer'] =
+      eigeneKante && oben && obenBild && linkOuterOn(eigeneKante, vorgaben)
+        ? { id: oben.id, name: entityName(oben), image: obenBild, frame: eigeneKante.frame }
+        : null;
     /* **Unter dem Nebel kein Rahmen** (REQ-139): eine Unterkarte im
        Verdeckten verriete, dass dort etwas ist. Es zählt, ob die Mitte
        oder eine Ecke aufgedeckt ist. */
@@ -304,7 +362,6 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     /* **Wo die Gruppe steht** (REQ-136): ihr Token oder das einer ihrer
        Figuren, auf der feinsten Karte, abgebildet durch die Rahmen. */
     let party: KartenKontext['party'] = null;
-    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
     const gruppe = kampagne ? partiesOf(stand.map, kampagne.id)[0] : undefined;
     const [gruppeSichtbar] = gruppe ? await sieve(request, [gruppe], stand.map) : [];
     if (gruppeSichtbar) {
@@ -389,7 +446,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
-    return { parents, children: kinder, navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
+    return { parents, children: kinder, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
   });
 
   /**

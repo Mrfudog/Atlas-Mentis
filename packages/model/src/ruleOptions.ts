@@ -34,6 +34,7 @@ import { stowingRuleOf } from './stowing.js';
 import { initiativeRulesOf } from './tracker.js';
 import { turnPlannerOf } from './zugplan.js';
 import { passageRulesOf } from './passages.js';
+import { mapLinkDefaultsOf } from './maplinks.js';
 import { substitutionsOf, substitutionText } from './substitutes.js';
 import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
@@ -380,6 +381,44 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     label: 'Map tools',
     does: 'Which tools a map offers, by map kind: walls, fog and light belong on battle maps, linking sub-maps on world and region maps. A kind left unchanged keeps the default.',
     source: { field: 'mapTools' },
+  },
+  {
+    /* Kartenverknüpfungen (T-327), gelesen über `mapLinkDefaultsOf`; je Verknüpfung überschreibbar. */
+    key: 'mapLinkShow',
+    sort: 'map',
+    label: 'Sub-map links: shown to the GM',
+    does: 'How a linked sub-map appears on the map above for the GM. A link can say otherwise (Sub-maps › Link settings).',
+    source: { field: 'mapLinkShow' },
+    variants: [
+      { key: 'jump', label: 'Click to jump', does: 'A frame with the name; a click opens the sub-map.' },
+      { key: 'frame', label: 'Frame only', does: 'Only the outline; zoom in to enter.' },
+      { key: 'icon', label: 'Icon', does: 'A small symbol in the middle; a click opens the sub-map.' },
+      { key: 'hidden', label: 'Hidden', does: 'Nothing to see; zooming in still enters the sub-map.' },
+    ],
+  },
+  {
+    key: 'mapLinkShowPlayers',
+    sort: 'map',
+    label: 'Sub-map links: shown to players',
+    does: 'How a linked sub-map appears on the map above for players, where they may change maps at all. A link can say otherwise.',
+    source: { field: 'mapLinkShowPlayers' },
+    variants: [
+      { key: 'jump', label: 'Click to jump', does: 'A frame with the name; a click opens the sub-map.' },
+      { key: 'frame', label: 'Frame only', does: 'Only the outline; zoom in to enter.' },
+      { key: 'icon', label: 'Icon', does: 'A small symbol in the middle; a click opens the sub-map.' },
+      { key: 'hidden', label: 'Hidden', does: 'Nothing to see; zooming in still enters the sub-map.' },
+    ],
+  },
+  {
+    key: 'mapLinkOuter',
+    sort: 'map',
+    label: 'Sub-map links: map above as border',
+    does: 'Whether a sub-map shows the map above, faded, around its own image, placed by the link’s frame. Fog and release of the map above apply there too.',
+    source: { field: 'mapLinkOuter' },
+    variants: [
+      { key: 'none', label: 'No', does: 'Around the sub-map is empty, as before.' },
+      { key: 'faded', label: 'Faded', does: 'The map above shows around it, pale; zoom out or use the arrow to go up.' },
+    ],
   },
   {
     key: 'revealOnMove',
@@ -832,6 +871,12 @@ function feldwert(campaign: Entity | null | undefined, feld: string): unknown {
       return passageRulesOf(campaign).action;
     case 'passageConfirm':
       return passageRulesOf(campaign).confirm;
+    case 'mapLinkShow':
+      return mapLinkDefaultsOf(campaign).show;
+    case 'mapLinkShowPlayers':
+      return mapLinkDefaultsOf(campaign).showPlayers;
+    case 'mapLinkOuter':
+      return mapLinkDefaultsOf(campaign).outer;
     case 'mapTools':
       return Object.entries(mapToolTable(campaign)).map(([k, g]) => `${k}: ${g.length ? g.join(', ') : 'none'}`);
     case 'combat':

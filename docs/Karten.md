@@ -363,6 +363,49 @@ Alles in Anteilen, nie in Bildpunkten — dieselbe Entscheidung wie bei Nebel
 und Tokens. Eine Karte, die neu ausgeschnitten wird, verlöre sonst jeden
 Rahmen.
 
+### Verknüpfung als Form, Zoomtiefe, Anzeige, Rand (T-327)
+
+Eine Verknüpfung ist mehr als ein Rechteck. Alles steht an derselben Kante
+`insideMap` der Unterkarte (`packages/model/src/maplinks.ts`); was sie nicht
+sagt, sagt die Kampagne, und ohne beides gilt, was vor T-327 galt.
+
+- **Bereich als Form** (`area`): ein Vieleck in Anteilen der Karte darüber,
+  dieselbe Form wie die Fläche eines Übergangs (T-326). *Sub-maps › Link
+  shape* tippt es Ecke um Ecke an; die erste Ecke noch einmal oder *Done*
+  schliesst es. `x`/`y`/`w`/`h` bleiben sein **Kasten**: auf ihn wird das
+  Bild der Unterkarte gelegt und mit ihm gerechnet (`liftPoint`,
+  `frameShare`, das Gruppen-Token) — die Form sagt nur, wo die Verknüpfung
+  gezeichnet wird und wo ein Klick sie trifft. *Rectangle* nimmt die Form
+  wieder weg. Dasselbe freie Vieleck zeichnet am Übergang *Draw shape*.
+- **Zoomtiefe** (`near`): ab welchem Anteil des Blicks der nächste
+  Zoomschritt hineinführt, 10–100 %, Vorgabe 55 % (`MAP_NEAR`). Ein
+  kleiner Hof in einer grossen Stadt soll früh öffnen, ein Viertel erst,
+  wenn man wirklich davorsteht.
+- **Anzeige** (`show` für die Leitung, `showPlayers` für Spielende):
+  *Click to jump* (Rahmen mit Namen, Klick springt — wie bisher), *Frame
+  only* (Umrandung, kein Klick), *Icon* (ein Symbol ⊡ in der Mitte,
+  Klick springt), *Hidden* (nichts zu sehen, Zoomen führt trotzdem hinein).
+  Die Vorgabe steht an der Kampagne (`mapLinkShow`, `mapLinkShowPlayers`,
+  Rules & options). Der Server schickt jedem Betrachter nur die Anzeige,
+  die für ihn gilt; was die Kante selbst sagt, nur der Leitung. Mit
+  *Sub-maps* offen steht jede Verknüpfung als Rahmen da — sonst fände die
+  Leitung eine versteckte nicht wieder.
+- **Die Karte darüber als Rand** (`outer`, Vorgabe `Campaign.mapLinkOuter`,
+  ohne Angabe aus): in der Unterkarte steht um ihr Bild herum blass die
+  Karte darüber, in gleicher Ausrichtung. Die Lage wird aus dem Kasten
+  gerechnet (`outerPlacement`, D8): die Karte darüber ist um `1/w` grösser
+  und um `x/w` verschoben. Es gibt sie nur, wo der Betrachter die Karte
+  darüber hat — dieselbe Liste wie die Brotkrumen, also gesiebt nach
+  Freigabe und `Session.mapNavigation` —, und mit ihrem Bild, wie er es
+  bekommt: für Spielende unter Nebel die beschnittene Adresse (T-312), das
+  Verdeckte bleibt durchsichtig. Gezeichnet wird der Rand im sichtbaren
+  Ausschnitt (er trägt nichts zur Scrollfläche bei) und läuft beim
+  Schwenken mit.
+- **Hinaus** (`mapExits`): oben in der Bühne ein Pfeil zur Karte darüber,
+  nur wenn es sie für den Betrachter gibt. Ganz hinauszoomen führt wie
+  bisher ebenfalls hinauf. Nachbarkarten (hinüber statt hinauf) warten auf
+  E-121; ein Ausgang trägt dafür schon `kind: 'neighbour'` und die Seite.
+
 ---
 
 ## Stockwerke und Portale (T-307)
@@ -515,7 +558,7 @@ Rechteck aus zwei Ecken).
 ## Hineinzoomen statt hineinspringen
 
 Das Rad zoomt. Füllt ein Unterkartenrahmen den Blick — mehr als 55 % in
-**beiden** Richtungen; ein Rahmen, der nur quer voll ist, ist ein Streifen
+**beiden** Richtungen, oder die Zoomtiefe der Verknüpfung (`near`, T-327); ein Rahmen, der nur quer voll ist, ist ein Streifen
 und kein Ziel —, dann wird er aufdringlich: durchgezogen, beschriftet,
 „zoom in to enter". **Erst der Schritt danach betritt ihn.**
 

@@ -1,0 +1,136 @@
+/* **Verknüpfung als Form** (T-327): der Kasten zeichnet nichts, das Vieleck
+   darin den Rand; getroffen wird nur die Form. */
+.rahmen svg,
+.vieleck-vorschau {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.rahmen.form {
+  border: 0;
+  background: none;
+  pointer-events: none;
+}
+.rahmen.form svg polygon {
+  fill: transparent;
+  stroke: rgb(140 28 19 / 0.7);
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+  pointer-events: all;
+}
+.rahmen.form:hover svg polygon,
+.rahmen.form:focus-visible svg polygon {
+  fill: rgb(140 28 19 / 0.08);
+}
+.rahmen.form.nah svg polygon {
+  stroke-width: 3px;
+  stroke-dasharray: none;
+  fill: rgb(140 28 19 / 0.1);
+}
+.rahmen.form span {
+  position: relative;
+  pointer-events: auto;
+}
+/* Nur der Rahmen: kein Klick, hinein geht es mit Zoomen. */
+.rahmen.nur {
+  pointer-events: none;
+}
+.rahmen.nur:not(.nah) {
+  background: none;
+}
+.vieleck-vorschau {
+  pointer-events: none;
+  z-index: 4;
+}
+.vieleck-vorschau polyline {
+  fill: rgb(201 162 39 / 0.15);
+  stroke: var(--gold);
+  stroke-width: 2px;
+}
+/* Eine Verknüpfung als Marker: ein Symbol in der Mitte des Bereichs. */
+.rahmen-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  border: 2px solid rgb(140 28 19 / 0.8);
+  background: rgb(251 246 236 / 0.9);
+  color: rgb(140 28 19);
+  text-decoration: none;
+  font-size: 1rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+.rahmen-marker.nah {
+  border-width: 3px;
+  background: rgb(251 246 236);
+}
+
+/* **Die Karte darüber als Rand** (T-327): im sichtbaren Ausschnitt fest
+   (`randFolgen`), unter der Unterkarte, blass, ohne Geste. */
+.rand-oben {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.rand-innen {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.rand-innen img {
+  position: absolute;
+  max-width: none;
+  opacity: 0.35;
+  filter: grayscale(0.4);
+  user-select: none;
+}
+/* **Hinaus** (T-327): der Pfeil zur Karte darüber, oben in der Mitte und
+   ohne Platz im Fluss — er scrollt nicht mit. */
+.ausgaenge {
+  position: sticky;
+  top: 0;
+  left: 0;
+  height: 0;
+  z-index: 6;
+}
+.ausgang {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgb(251 246 236 / 0.92);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+.link-einstellung {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  align-items: center;
+}
+.link-einstellung input[type='range'] {
+  width: 6rem;
+  vertical-align: middle;
+}
+.saum-ende {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
