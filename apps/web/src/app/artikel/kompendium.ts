@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { plainText } from '@nw/model';
+import { BASE_COLUMNS, columnChoices, plainText, type ColumnChoice } from '@nw/model';
 import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api';
 import { Stapel } from '../kern/stapel';
 import { QuelleText } from '../kern/quellen';
@@ -18,6 +18,8 @@ import { Anlegen } from './anlegen';
 import { Vorschau } from './vorschau';
 import { Bild } from './bild';
 import { ansichtWeg } from '../klassen/ansicht-weg';
+import { Spalten } from '../kern/spalten';
+import { Spaltenwahl } from './spaltenwahl';
 
 interface TypGruppe {
   label: string;
@@ -55,7 +57,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -243,6 +245,16 @@ const OFFEN = 8;
             @if (session.darfAnlegen()) {
               <button type="button" class="pri" (click)="anlegenOffen.set(true)">New article</button>
             }
+            <!-- Welche Spalten die Tabelle zeigt (T-343). -->
+            <button
+              type="button"
+              class="knopf spalten-knopf"
+              [class.an]="!!wahl()"
+              [attr.aria-expanded]="spaltenOffen()"
+              (click)="spaltenOffen.set(!spaltenOffen())"
+            >
+              Columns
+            </button>
             <button type="button" class="nurklein" (click)="filterOffen.set(!filterOffen())">
               {{ filterOffen() ? 'Hide filters' : 'Filters' }}
             </button>
@@ -302,17 +314,15 @@ const OFFEN = 8;
                   <th [attr.aria-sort]="ariaSort('name')">
                     <button type="button" class="sort" (click)="sortiere('name')">Name{{ pfeil('name') }}</button>
                   </th>
-                  @if (!type()) {
-                    <th [attr.aria-sort]="ariaSort('type')">
-                      <button type="button" class="sort" (click)="sortiere('type')">Type{{ pfeil('type') }}</button>
-                    </th>
+                  @for (c of tabellenSpalten(); track c.ref) {
+                    @if (c.ref === '@source' && !wahl()) {
+                      <th>{{ c.label }}</th>
+                    } @else {
+                      <th [attr.aria-sort]="ariaSort(sortRef(c.ref))" [class.zahlspalte]="c.kind === 'number'">
+                        <button type="button" class="sort" (click)="sortiere(sortRef(c.ref))">{{ c.label }}{{ pfeil(sortRef(c.ref)) }}</button>
+                      </th>
+                    }
                   }
-                  @for (c of liste()!.columns; track c.ref) {
-                    <th [attr.aria-sort]="ariaSort(c.ref)" [class.zahlspalte]="c.kind === 'number'">
-                      <button type="button" class="sort" (click)="sortiere(c.ref)">{{ c.label }}{{ pfeil(c.ref) }}</button>
-                    </th>
-                  }
-                  <th>Source</th>
                 </tr>
               </thead>
               <tbody>
@@ -350,23 +360,25 @@ const OFFEN = 8;
                         </button>
                       }
                     </td>
-                    @if (!type()) {
-                      <td>{{ typLabel(z.type) }}</td>
-                    }
-                    @for (c of liste()!.columns; track c.ref) {
-                      <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
-                    }
-                    <td class="dim quelle">
-                      @if (z.source) {
-                        <nw-quelle [text]="z.source" />
-                        <!-- Die Ebene knapp, wenn es nicht die der Kampagne ist (T-251). -->
-                        @if (fremdeEbenen(z.layers); as l) {
-                          <small class="ebene"> · {{ l }}</small>
-                        }
+                    @for (c of tabellenSpalten(); track c.ref) {
+                      @if (c.ref === '@type') {
+                        <td>{{ typLabel(z.type) }}</td>
+                      } @else if (c.ref === '@source') {
+                        <td class="dim quelle">
+                          @if (z.source) {
+                            <nw-quelle [text]="z.source" />
+                            <!-- Die Ebene knapp, wenn es nicht die der Kampagne ist (T-251). -->
+                            @if (fremdeEbenen(z.layers); as l) {
+                              <small class="ebene"> · {{ l }}</small>
+                            }
+                          } @else {
+                            {{ z.layers.join(', ') }}
+                          }
+                        </td>
                       } @else {
-                        {{ z.layers.join(', ') }}
+                        <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
                       }
-                    </td>
+                    }
                   </tr>
                   @if (fassungenOffen().has(z.id)) {
                     @for (v of z.versions ?? []; track v.id) {
@@ -374,14 +386,14 @@ const OFFEN = 8;
                         <td class="name">
                           <a [routerLink]="zielVon({ id: v.id, type: z.type })" (click)="link({ id: v.id, type: z.type }, $event)">{{ v.name }}</a>
                         </td>
-                        <td [attr.colspan]="spaltenZahl() - 2" class="dim">{{ v.layers.join(', ') }}</td>
-                        <td class="dim quelle">
-                          @if (v.source) {
-                            <nw-quelle [text]="v.source" />
-                          } @else {
+                        @if (spaltenZahl() > 1) {
+                          <td [attr.colspan]="spaltenZahl() - 1" class="dim quelle">
                             {{ v.layers.join(', ') }}
-                          }
-                        </td>
+                            @if (v.source) {
+                              · <nw-quelle [text]="v.source" />
+                            }
+                          </td>
+                        }
                       </tr>
                     }
                   }
@@ -406,19 +418,21 @@ const OFFEN = 8;
                           <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
                           <nw-nicht-im-spiel [id]="z.id" [name]="z.name" [kampagne]="v.canEnable?.campaign" />
                         </td>
-                        @if (!type()) {
-                          <td>{{ typLabel(z.type) }}</td>
-                        }
-                        @for (c of liste()!.columns; track c.ref) {
-                          <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
-                        }
-                        <td class="dim quelle">
-                          @if (z.source) {
-                            <nw-quelle [text]="z.source" />
+                        @for (c of tabellenSpalten(); track c.ref) {
+                          @if (c.ref === '@type') {
+                            <td>{{ typLabel(z.type) }}</td>
+                          } @else if (c.ref === '@source') {
+                            <td class="dim quelle">
+                              @if (z.source) {
+                                <nw-quelle [text]="z.source" />
+                              } @else {
+                                {{ z.layers.join(', ') }}
+                              }
+                            </td>
                           } @else {
-                            {{ z.layers.join(', ') }}
+                            <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
                           }
-                        </td>
+                        }
                       </tr>
                     }
                     @if (v.total > v.rows.length) {
@@ -452,6 +466,20 @@ const OFFEN = 8;
       }
     </div>
 
+    @if (spaltenOffen()) {
+      <nw-spaltenwahl
+        [gewaehlt]="tabellenSpalten().map(spaltenRef)"
+        [angebot]="angebot()"
+        [quelle]="wahl()?.quelle ?? null"
+        [darfVorgabe]="spalten.darfVorgabe()"
+        [hatVorgabe]="hatVorgabe()"
+        (anwenden)="spaltenAnwenden($event)"
+        (zuruecksetzen)="spaltenZurueck()"
+        (vorgabe)="spaltenVorgabe($event)"
+        (zu)="spaltenOffen.set(false)"
+      />
+    }
+
     @if (anlegenOffen()) {
       <nw-anlegen [bereich]="bereich()" [vorgabe]="type()" (zu)="anlegenOffen.set(false)" />
     }
@@ -469,6 +497,8 @@ export class Kompendium {
   readonly f = input<string | string[] | undefined>(undefined);
   /** „Usable by <Figur>" aus der Adresse (`?usable=<id>`, T-180). */
   readonly usable = input<string | undefined>(undefined);
+  /** Die gewählten Spalten aus der Adresse (`?cols=Spell.level,@source`, T-343) — ein geteilter Link zeigt dieselbe Tabelle. */
+  readonly cols = input<string | undefined>(undefined);
 
   protected readonly OFFEN = OFFEN;
   protected readonly bestand = inject(Bestand);
@@ -486,11 +516,14 @@ export class Kompendium {
   /** Der globale Ebenenstand (T-143) — die Liste folgt ihm, der Hinweis führt hin (T-186). */
   protected readonly stapel = inject(Stapel);
   protected readonly gruppen = inject(Filtergruppen);
+  /** Die Spaltenwahl je Tabelle (T-343): Adresse, eigene Wahl, Vorgabe der Kampagne. */
+  protected readonly spalten = inject(Spalten);
   private readonly api = inject(Api);
   private readonly router = inject(Router);
 
   protected readonly filterOffen = signal(false);
   protected readonly anlegenOffen = signal(false);
+  protected readonly spaltenOffen = signal(false);
   protected readonly aufgeklappt = signal<ReadonlySet<string>>(new Set());
   protected readonly liste = signal<Liste | null>(null);
   protected readonly laedt = signal(false);
@@ -516,6 +549,7 @@ export class Kompendium {
        Anlegen-Dialog; die Liste wartet nicht darauf. */
     void this.bestand.load();
     void this.gruppen.laden();
+    void this.spalten.lade();
     effect(() => {
       /* Ein anderer Reiter ist eine andere Seite: er fängt mit dem an, was
          seine Gruppe sagt (T-137). */
@@ -568,7 +602,8 @@ export class Kompendium {
        kurzen Pause, sonst ginge je Buchstabe eine Anfrage hinaus. Erst
        wenn die Gruppen da sind — sonst käme „World" einmal mit Items. */
     effect(() => {
-      if (!this.gruppen.stand()) return;
+      /* Auch auf die Spaltenwahl: sonst käme die Tabelle einmal mit den Spalten der Art. */
+      if (!this.gruppen.stand() || !this.spalten.geladen()) return;
       const frage = this.frage();
       untracked(() => {
         const getippt = (frage.q ?? '') !== this.letzteSuche;
@@ -616,8 +651,94 @@ export class Kompendium {
       usable: this.usable() || undefined,
       /* Vergleichsartikel als eigener Block darunter (T-213, Schalter im Popup). */
       compare: this.stapel.vergleich() || undefined,
+      /* Gewählte Spalten (T-343); ohne Wahl die der `overview`, wie immer. */
+      cols: this.wahl()?.cols,
     };
   });
+
+  /** Was für diese Tabelle gilt (T-343) — `null`: die Spalten der Art. */
+  protected readonly wahl = computed(() => this.spalten.wahl(this.seite(), this.type(), this.cols()));
+  protected readonly hatVorgabe = computed(() => {
+    const t = this.type();
+    return !!this.spalten.vorgaben()[t ? `${this.seite()}|${t}` : this.seite()];
+  });
+
+  /**
+   * **Die Spalten der Tabelle**: gewählt die, die der Server zurückgibt;
+   * sonst wie immer — die Art in einer gemischten Liste, die Felder der
+   * `overview`, die Quelle.
+   */
+  protected readonly tabellenSpalten = computed<{ ref: string; label: string; kind: string }[]>(() => {
+    const l = this.liste();
+    if (!l) return [];
+    if (this.wahl()) return l.columns;
+    return [
+      ...(this.type() ? [] : [{ ref: '@type', label: 'Type', kind: 'text' }]),
+      ...l.columns,
+      { ref: '@source', label: 'Source', kind: 'text' },
+    ];
+  });
+  protected readonly spaltenRef = (c: { ref: string }) => c.ref;
+  /** Die Art sortiert der Server als `type`, wie bisher. */
+  protected sortRef(ref: string): string {
+    return ref === '@type' ? 'type' : ref;
+  }
+
+  /**
+   * **Was wählbar ist**: die Angaben jeder Zeile, dann die Felder und
+   * Kanten der gewählten Art — in einer gemischten Liste die aller Arten,
+   * die darin stehen, je Feld einmal (es bleibt bei anderen Arten leer).
+   */
+  protected readonly angebot = computed<ColumnChoice[]>(() => {
+    const reg = this.bestand.registry();
+    const basis: ColumnChoice[] = BASE_COLUMNS.map((b) => ({
+      ref: b.ref,
+      label: b.label,
+      kind: b.ref === '@layers' || b.ref === '@tags' ? 'list' : 'text',
+      group: 'Every row',
+    }));
+    if (!reg) return basis;
+    const t = this.type();
+    const typen = t ? [t] : (this.liste()?.facets.types ?? []).map((x) => x.type);
+    const gesehen = new Set(basis.map((b) => b.ref));
+    const raus = [...basis];
+    for (const typ of typen) {
+      for (const c of columnChoices(reg, typ)) {
+        if (gesehen.has(c.ref)) continue;
+        gesehen.add(c.ref);
+        raus.push(t ? c : c.group === 'Edges' ? { ...c, group: `Edges · ${this.typLabel(typ)}` } : c);
+      }
+    }
+    return raus;
+  });
+
+  protected async spaltenAnwenden(cols: string[]): Promise<void> {
+    this.spaltenOffen.set(false);
+    try {
+      await this.spalten.setzen(this.seite(), this.type(), cols);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    }
+    /* In der Adresse, damit ein geteilter Link dieselbe Tabelle zeigt. */
+    void this.router.navigate([], { queryParams: { cols: cols.join(',') }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+  protected async spaltenZurueck(): Promise<void> {
+    this.spaltenOffen.set(false);
+    try {
+      await this.spalten.setzen(this.seite(), this.type(), null);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    }
+    void this.router.navigate([], { queryParams: { cols: null }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+  protected async spaltenVorgabe(cols: string[] | null): Promise<void> {
+    this.spaltenOffen.set(false);
+    try {
+      await this.spalten.alsVorgabe(this.seite(), this.type(), cols);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    }
+  }
 
   /** Die Figuren für „Usable by" (T-180) — geholt, sobald eine Voraussetzung dasteht. */
   protected readonly figuren = signal<{ id: string; name: string }[]>([]);
@@ -775,9 +896,7 @@ export class Kompendium {
 
   protected readonly blatt = computed(() => this.filter.blatt());
   protected readonly blaetter = computed(() => Math.ceil((this.liste()?.total ?? 0) / BLATT));
-  protected readonly spaltenZahl = computed(
-    () => 2 + (this.type() ? 0 : 1) + (this.liste()?.columns.length ?? 0),
-  );
+  protected readonly spaltenZahl = computed(() => 1 + this.tabellenSpalten().length);
 
   /** Die Feldfilter als Chips über der Tabelle. */
   protected readonly feldChips = computed(() => {

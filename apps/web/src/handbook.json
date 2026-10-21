@@ -123,6 +123,13 @@
           ]
         },
         {
+          "heading": "Choosing the columns of a list",
+          "text": [
+            "In Compendium, World, Story or Rules, pick a type in the sidebar (or stay on the mixed list) and press Columns. Tick the fields to show — also calculated values like a modifier, and edges like the classes that grant a spell — and drag them or use ↑↓ into order; Apply keeps the choice for this page and type on every device of your account and puts it in the address, so a link shows the same table.",
+            "Reset to default drops your choice: the campaign default shows, or else the columns of the type's overview. As GM, Make campaign default shows your choice to everyone in the campaign who has not chosen their own. Players only ever see what they may see of an article: a held-back field stays an empty cell."
+          ]
+        },
+        {
           "heading": "Laying out a session board",
           "text": [
             "Open the board of the session (Boards, or the board link on the session). With Background, put the map of the evening under everything, or a colour or image.",

@@ -558,6 +558,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [S + 'liste.ts']: ['inLayer'],
       /* Die Facetten lassen die Ebenenkante aus — dafür steht „Where from“ (T-174). */
       [M + 'facets.ts']: ['inLayer'],
+      [M + 'listcolumns.ts']: ['inLayer'],
       [W + 'artikel/artikel.ts']: ['inLayer'],
       /* Die Ebene im Kopf jeder Artikelseite und in der Kurzansicht (T-251). */
       [W + 'artikel/ebenen-marke.ts']: ['inLayer'],
@@ -568,6 +569,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [W + 'artikel/schnell.ts']: ['inLayer'],
       /* „New article" nennt eine andere Ebene als die Schreibebene (T-161). */
       [W + 'artikel/anlegen.ts']: ['inLayer'],
+      /* Die Ebene, die „New article" dem Assistenten mitgibt (T-095). */
+      [W + 'figur/assistent.ts']: ['inLayer'],
       /* Was über eine asField-Kante hängt, am Ort des lesenden Artikels
          (T-125): welche Kanten, sagt `linkedTypes`; genannt werden nur die
          Vorlage einer neuen Instanz und ihre Ebene — das Inventar zeichnet

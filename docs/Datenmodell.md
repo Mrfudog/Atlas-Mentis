@@ -1563,7 +1563,7 @@ flowchart LR
 Vier Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
 E-030 b). Das „+" der Suche hatte von T-138 bis T-346 eine fünfte,
 `search`; sie zeigte, was `quick` zeigte, und ist in ihr aufgegangen
-(Migration 125). Wer `search` noch nennt, bekommt `quick`
+(Migration 127). Wer `search` noch nennt, bekommt `quick`
 (`RETIRED_PLACES`, beim Lesen):
 
 | Ansicht | Wo | Zeigt |
@@ -1726,6 +1726,22 @@ kennt (`drawnByTree`: die Behälter, `tileGroup`, `quote`, `badges`,
 in einer Ortsansicht; eine gestaltete zeichnet er ganz. Die
 Listenspalten (`listColumns`, `overview`) bleiben eine Frage des Typs:
 eine Tabelle hat für alle Zeilen dieselben Spalten.
+
+**Die Spalten sind wählbar** (T-343, `packages/model/src/listcolumns.ts`):
+„Columns" an jeder Übersicht wählt je Seite und Art (`columnsKey`:
+`world`, `compendium|Spell`), was die Tabelle zeigt — ein Feld (`Typ.feld`,
+eigen oder geerbt, auch `derived`), eine Kante (`out.kante`, `in.kante`,
+die Namen am anderen Ende) oder eine Angabe jeder Zeile (`@type`,
+`@source`, `@layers`, `@tags`, `@status`, `@id`). Was eine Spalte sein
+kann, sagt `columnChoices` (keine Prosa, keine Form, kein Bild). Es gilt
+die Adresse (`?cols=`), dann die Wahl des Kontos (Einstellung
+`listColumns.<seite>[.<Art>]`), dann die **Vorgabe der Kampagne** (die
+Leitung, Tabelle `list_columns`, `/api/list-columns`), sonst die
+`overview` wie bisher. Gerechnet wird am Server (`/api/list?cols=`) aus den
+**gesiebten** Karten des Listenindex; ein gerechneter Wert nur, wenn alles
+dasteht, was die Rechnung liest (`derivedInputs`) — sonst bliebe statt
+eines zurückgehaltenen Felds eine falsche Zahl stehen (E-098). Gespeichert
+wird nichts im Artikel (D8).
 
 **Das Element `table`** zeichnet die Zeilen einer Tabelle (`Table.rows`)
 mit Würfelspalte und „Roll" (`rollTableOf`, `rowForRoll` in

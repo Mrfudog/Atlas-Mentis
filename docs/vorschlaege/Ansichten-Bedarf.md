@@ -137,7 +137,7 @@ werden. Generell sollte die Anordnung geprüft werden, damit das
 Relevanteste oben steht."
 
 - **Die Suche liest `quick`.** Die Ansicht `search` und ihre 22
-  Anpassungen je Art sind weg (Migration 125, nur wo sie noch so standen,
+  Anpassungen je Art sind weg (Migration 127, nur wo sie noch so standen,
   wie das Register sie brachte); wer `search` noch nennt, bekommt `quick`
   (`RETIRED_PLACES`, beim Lesen). Eine gestaltete Ansicht der Gruppe
   `search` käme in die Gruppe `quick` — auf dev gab es keine.

@@ -9,6 +9,22 @@
       "link": "/registry"
     },
     {
+      "id": "2026-10-21-list-columns",
+      "date": "2026-10-21",
+      "title": "Choose the columns of a list",
+      "text": "Columns in Compendium, World, Story and Rules picks the fields a table shows — also calculated values and edges — and their order. Your choice is kept per page and type and travels in the link; the GM can set it as the campaign default.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-21-builder-takes-new-article",
+      "date": "2026-10-21",
+      "title": "The character builder keeps what you typed under New article",
+      "text": "Under New article › Player Character, “Use the character builder” now takes along the name, the layer and required fields. Ability Score Improvements ask per level on level-up, sidekicks included.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
       "id": "2026-10-21-board-tools",
       "date": "2026-10-21",
       "title": "Boards: tools for text, images, drawing and maps",

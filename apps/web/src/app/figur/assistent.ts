@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   answerChoice,
+  LAYER_RELATION,
   offeredOptions,
   choicesOf,
   checkPurchase,
@@ -68,6 +69,7 @@ import { Text } from '../artikel/text';
 import { ansichtWeg } from '../klassen/ansicht-weg';
 import { EbenenMarke } from '../artikel/ebenen-marke';
 import { Stapel } from '../kern/stapel';
+import { mitnahmeLesen } from './mitnahme';
 
 interface Moeglichkeit {
   /** Was in die Antwort kommt: Artikel-Id, Name oder Schlüssel. */
@@ -180,6 +182,8 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
            auf der Artikelseite, beim Anlegen die Ebene, in die sie kommt. -->
       @if (gespeichert() && figur(); as f) {
         <nw-ebenen-marke [artikel]="f" />
+      } @else if (!gespeichert() && mitgebrachteEbene(); as l) {
+        <p class="dim zielebene">Layer: <strong>{{ l }}</strong> — chosen under “New article”.</p>
       } @else if (!gespeichert() && stapel.schreib(); as w) {
         <p class="dim zielebene">Layer: <strong>{{ w.layer?.name ?? 'no layer' }}</strong> — change it under “Writes to” in the header.</p>
       }
@@ -1414,6 +1418,20 @@ export class Assistent {
   private readonly talente = signal(true);
   private readonly geladenVerfahren = signal(false);
 
+  /**
+   * **Was „New article" mitgibt** (T-095, Prüfung 20.10.): Name, Ebene und
+   * Pflichtfelder aus der Adresse (`name`, `layer`, `f.<Typ.feld>`). Sie
+   * stehen im Entwurf, als hätte man sie hier eingetragen — nichts wird
+   * doppelt gefragt.
+   */
+  private readonly mitgebracht = mitnahmeLesen(this.route.snapshot.queryParamMap);
+  /** Der Name der mitgebrachten Ebene, wenn sie von der Schreibebene abweicht. */
+  protected readonly mitgebrachteEbene = computed(() => {
+    const id = this.mitgebracht.layer;
+    if (!id || id === this.stapel.schreib()?.layer?.id) return '';
+    return this.stapel.schreib()?.options.find((o) => o.id === id)?.name ?? id;
+  });
+
   /** Die Startausrüstung (T-096): Verfahren, Wurf, Einkauf. */
   protected readonly ausrMethoden = signal<EquipmentMethod[]>([]);
   protected readonly ausrMethode = signal<EquipmentMethod | null>(null);
@@ -1681,6 +1699,7 @@ export class Assistent {
       /* Der Entwurf vom letzten Mal (T-193), sobald die Verfahren da sind, die er nennt. */
       void Promise.all([this.api.prefs().catch(() => ({}) as Record<string, unknown>), verfahren, ausr]).then(([p]) => {
         this.stelleWiederHer(p[ENTWURF]);
+        this.uebernimm();
         this.entwurfGeladen.set(true);
       });
 
@@ -2502,9 +2521,14 @@ export class Assistent {
     this.wiederhergestellt.set(new Date(d.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }));
   }
 
+  /** Was „New article" mitgab, schlägt den gemerkten Entwurf (T-095). */
+  private uebernimm(): void {
+    if (this.mitgebracht.name) this.name.set(this.mitgebracht.name);
+  }
+
   protected neuBeginnen(): void {
     this.entwurf.set(LEER);
-    this.name.set('');
+    this.name.set(this.mitgebracht.name);
     this.werte.set({});
     this.eigenerWurf.set(null);
     this.goldWurf.set(null);
@@ -2664,7 +2688,16 @@ export class Assistent {
     await this.api.putEntity({ ...rest, name, components: comps });
 
     const sb = this.statblock();
-    if (!sb) return;
+    /* Über „New article" angelegt, hat die Figur noch keinen Statblock
+       (T-095): die Werte, die der Assistent jetzt kennt, bekommen einen —
+       sonst gingen sie beim Speichern still verloren. */
+    if (!sb) {
+      const werte = Object.fromEntries(this.attribute().flatMap((a) => (this.werte()[a] === undefined ? [] : [[`Abilities.${a}`, this.werte()[a]]])));
+      const felder = { ...werte, ...(this.bearbeiten() ? this.statblockFelder() : {}), ...(max !== null ? { 'Statblock.hp': max } : {}) };
+      if (Object.keys(felder).length)
+        await this.api.createEntity('Statblock', this.name().trim() || entityName(e), { ...felder, 'Status.status': 'ready' }, [{ type: 'belongsTo', to: e.id }]);
+      return;
+    }
     const { updatedAt: _su, refs: _sr, ...sbRest } = sb as Entity & { updatedAt?: unknown; refs?: unknown };
     const sbComps: Record<string, Record<string, unknown>> = { ...(sbRest.components ?? {}) };
     if (max !== null) setze(sbComps, 'Statblock.hp', max);
@@ -2697,12 +2730,14 @@ export class Assistent {
       if (!figurId) {
         const kanten = (e.relations ?? []).map((r) => ({ type: r.type, to: r.to, props: r.props ?? {} }));
         if (this.gruppe()) kanten.push({ type: 'memberOfParty', to: this.gruppe(), props: {} });
+        /* Die Ebene aus „New article" (T-095); sonst nimmt der Server die Schreibebene. */
+        if (this.mitgebrachteEbene()) kanten.push({ type: LAYER_RELATION, to: this.mitgebracht.layer, props: {} });
         /* Die Figur gehört dem Spieler (E-014 d): gleich fertig. */
         /* Das Maximum steht am Statblock, der Stand gleich voll an der Figur (T-194). */
         const figur = await this.api.createEntity(
           'PlayerCharacter',
           name,
-          { 'Status.status': 'ready', ...this.figurFelder(), ...(max !== null ? { 'Vitals.hp': max } : {}) },
+          { ...this.mitgebracht.felder, 'Status.status': 'ready', ...this.figurFelder(), ...(max !== null ? { 'Vitals.hp': max } : {}) },
           kanten,
         );
         /* Auf später gelegte Werte bleiben leer (T-193). */

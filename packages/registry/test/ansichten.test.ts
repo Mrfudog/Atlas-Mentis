@@ -15,7 +15,7 @@ const sql = migration('052_ansichten_je_art');
 /* Migrationen, die eine Zeile aus 052 später nachziehen — die letzte gilt. */
 const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '094_quelleninhalt', '123_ansichten_je_art_und_stufe'].map(migration);
 /* Die Suche liest quick, quick neu geordnet (T-346): andere Form, eigene Prüfung. */
-const zusammen = migration('125_quick_statt_search');
+const zusammen = migration('127_quick_statt_search');
 
 const zeilen = (text: string) =>
   [...text.matchAll(/\('(\w+)', '(\w+)', '(\{.*?\})'::jsonb\)/g)].map((m) => [m[1]!, m[2]!, JSON.parse(m[3]!)] as const);
@@ -24,7 +24,7 @@ describe('Ansichten je Art (T-110)', () => {
   it('Migration 052 und die späteren bringen genau die Zeilen aus ansichten.ts', () => {
     const stand = new Map(zeilen(sql).map(([t, v, w]) => [`${t}.${v}`, [t, v, w]]));
     for (const text of spaeter) for (const [t, v, w] of zeilen(text)) stand.set(`${t}.${v}`, [t, v, w]);
-    /* 125 (T-346): quick mit altem und neuem Wert, search fällt weg. */
+    /* 127 (T-346): quick mit altem und neuem Wert, search fällt weg. */
     for (const m of zusammen.matchAll(/\('(\w+)', '([[{].*?)'::jsonb, '([[{].*?)'::jsonb\)/g)) {
       const alt = stand.get(`${m[1]}.quick`);
       if (!alt) continue;
