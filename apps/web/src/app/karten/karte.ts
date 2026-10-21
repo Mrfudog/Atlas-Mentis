@@ -216,7 +216,7 @@ const r4 = (v: number): number => Math.round(Math.min(1, Math.max(0, v)) * 10000
 const PINSEL = [1, 2, 4, 8] as const;
 
 /** Die Gruppen der Werkzeugleiste (T-203). */
-type Gruppe = 'auswahl' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'unterkarten' | 'notizen' | 'zeichnen';
+type Gruppe = 'auswahl' | 'zug' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'unterkarten' | 'notizen' | 'zeichnen';
 interface GruppenDef {
   key: Gruppe;
   label: string;
@@ -239,6 +239,10 @@ interface GruppenDef {
  */
 const GRUPPEN: readonly GruppenDef[] = [
   { key: 'auswahl', label: 'Select', title: 'Select and move markers, open their quick view', sym: '↖', taste: 'S' },
+  /* **Der Zugplan als Werkzeug** (T-325, die Leitung 21.10.): in derselben
+     Leiste statt einer eigenen darunter; da nur, wenn der Server dem
+     Betrachter eine Figur zum Planen gibt (`zugplan`). */
+  { key: 'zug', label: 'Plan turn', title: 'Plan the turn of your character: move, act, send it to the GM', sym: '⚔', taste: 'P' },
   { key: 'tokens', label: 'Tokens', title: 'Add markers, place combatants, clear play tokens', sym: '◉', taste: 'T', leitung: true, braucht: ['tokens', 'markers', 'assets'] },
   { key: 'messen', label: 'Measure', title: 'Tap two points to measure', sym: '↔', taste: 'M' },
   /* **Ebenen** (T-307, E-108): Stockwerke, Keller, Turmgeschosse, und die
@@ -286,7 +290,7 @@ interface Zeiger {
   selector: 'nw-karte',
   imports: [RouterLink, BoardSuche, BildWahl, Ladeanzeige, KartenSeitenleiste],
   template: `
-    <div class="karte" [class.gross]="gross()" [class.voll]="vollbild()" [class.ersatz]="ersatzVollbild()">
+    <div class="karte" [class.gross]="gross()" [class.voll]="vollbild()" [class.ersatz]="ersatzVollbild()" [class.mit-plan]="aktiv() === 'zug' && zugplan()" [class.mit-panel]="(initiative() && initiativeOffen()) || seiteOffen()">
       <div class="leiste">
         <nav aria-label="Map breadcrumb" class="brot">
           @for (p of kontext()?.parents ?? []; track p.id) {
@@ -303,26 +307,13 @@ interface Zeiger {
             <button type="button" (click)="stufe(1)" aria-label="Zoom in" title="Zoom in — a sub-map that fills the view is entered">+</button>
             <button type="button" (click)="einpassen()" title="Fit the whole map">Fit</button>
           </span>
-          @if (ebenen().length > 1) {
-            <!-- **Die Ebene wechseln** (T-307): gruppiert nach Gebäudeteil, nach Höhe. -->
-            <label class="ebenenwahl" title="Which floor of the map you see">
-              Floor
-              <select (change)="ebeneZeigen($any($event.target).value)" aria-label="Floor">
-                @for (g of ebenenGruppen(); track g.structure) {
-                  <optgroup [label]="g.structure || name()">
-                    @for (f of g.floors; track f.id) {
-                      <option [value]="f.id" [selected]="f.id === ebene()">{{ f.name }}{{ f.elevation ? ' · ' + elevationLabel(f.elevation) : '' }}</option>
-                    }
-                  </optgroup>
-                }
-              </select>
-            </label>
-          }
           @if (blaetter().length > 1) {
             <button type="button" [attr.aria-expanded]="blaetterOffen()" (click)="blaetterOffen.set(!blaetterOffen())">Layers</button>
           }
           <!-- Am Telefon stehen Sicht und Freigabe in einem Menü (T-320): die Karte braucht den Platz. -->
-          <button type="button" class="menue-knopf" [class.an]="menueOffen()" [attr.aria-expanded]="menueOffen()" (click)="menueOffen.set(!menueOffen())" title="View, release and the party beside the map">
+          <!-- Ohne Schreibrecht steht darin nichts (seit T-325 ist Party ein Panel der Leiste). -->
+          @if (darfSchreiben()) {
+          <button type="button" class="menue-knopf" [class.an]="menueOffen()" [attr.aria-expanded]="menueOffen()" (click)="menueOffen.set(!menueOffen())" title="View as and release">
             <span aria-hidden="true">⋯</span> View
           </button>
           <span class="mehr" [class.offen]="menueOffen()">
@@ -356,10 +347,8 @@ interface Zeiger {
               Take into play
             </button>
           }
-          <button type="button" [class.an]="seiteOffen()" [attr.aria-expanded]="seiteOffen()" (click)="seiteUm()" title="The party and the encounters of this map, beside it">
-            <span aria-hidden="true">☰</span> Party &amp; encounters
-          </button>
           </span>
+          }
           <button type="button" class="vollbild" [class.an]="vollbild()" [attr.aria-pressed]="vollbild()" (click)="vollbildUm()" [title]="vollbild() ? 'Leave fullscreen (Esc)' : 'Fullscreen (Shift+F)'">
             <span aria-hidden="true">{{ vollbild() ? '⤡' : '⤢' }}</span>
             {{ vollbild() ? 'Exit fullscreen' : 'Fullscreen' }}
@@ -430,11 +419,27 @@ interface Zeiger {
              Gruppen statt verstreuter Knöpfe; die aktive zeigt ihre Unterwerkzeuge. -->
         <div class="werkzeugleiste" role="toolbar" aria-label="Map tools" aria-orientation="vertical">
           @for (g of gruppen(); track g.key) {
-            <button type="button" [class.an]="aktiv() === g.key" [attr.aria-pressed]="aktiv() === g.key" [attr.aria-label]="g.label" [title]="g.title + ' (' + g.taste + ')'" (click)="gruppeWaehlen(g.key)">
+            <button type="button" [class.an]="aktiv() === g.key" [attr.aria-pressed]="aktiv() === g.key" [attr.aria-label]="g.label" [title]="gruppenTitel(g)" (click)="gruppeWaehlen(g.key)">
               <span class="sym" aria-hidden="true">{{ g.sym }}</span>
-              <span class="txt">{{ g.label }}</span>
+              <span class="txt">{{ g.key === 'ebenen' && ebenen().length > 1 ? (ebeneJetzt()?.name ?? g.label) : g.label }}</span>
+              @if (g.key === 'zug' && zugZahl()) {
+                <span class="zahl" title="Turns waiting for you">{{ zugZahl() }}</span>
+              }
             </button>
           }
+          <!-- **Panels** (T-325): was neben der Karte stand, klappt aus der Leiste auf —
+               es ändert nicht, was ein Antippen tut, und bleibt neben jedem Werkzeug offen. -->
+          <span class="trenner" aria-hidden="true"></span>
+          @if (initiative()) {
+            <button type="button" class="panel-knopf" [class.an]="initiativeOffen()" [attr.aria-pressed]="initiativeOffen()" aria-label="Initiative" title="The initiative tracker of the running encounter, beside the map (I)" (click)="initiativeUm()">
+              <span class="sym" aria-hidden="true">⚑</span>
+              <span class="txt">Initiative</span>
+            </button>
+          }
+          <button type="button" class="panel-knopf" [class.an]="seiteOffen()" [attr.aria-pressed]="seiteOffen()" aria-label="Party and encounters" title="The party and the encounters of this map, beside it (Y)" (click)="seiteUm()">
+            <span class="sym" aria-hidden="true">☰</span>
+            <span class="txt">Party</span>
+          </button>
           @if (kampfLeitung() && kontext()?.campaign) {
             <!-- **Werkzeuge je Kartentyp** (T-320): der Absprung zur Einstellung der Kampagne. -->
             <button type="button" class="werkzeug-knopf" [class.an]="werkzeugBlatt()" [attr.aria-expanded]="werkzeugBlatt()" aria-label="Tools for this map kind" [title]="'Which tools ' + kartenArt() + ' maps show in this campaign'" (click)="werkzeugBlatt.set(!werkzeugBlatt())">
@@ -885,6 +890,13 @@ interface Zeiger {
             </div>
           }
 
+          @if (aktiv() === 'zug' && zugplan()) {
+            <!-- **Plan turn** (T-325): der Zugplaner aus Play, als Blatt seines Werkzeugs. -->
+            <div class="zug-panel" role="region" aria-label="Plan turn">
+              <ng-content select="[nwZug]" />
+            </div>
+          }
+
           @if (werkzeug() === 'setzen' && setzenBei()) {
             <div class="setzen">
               <p>{{ setzenArt() === 'scenery' ? 'Which asset goes here? The same one may stand many times.' : 'Which article does the marker stand for?' }}</p>
@@ -1244,6 +1256,12 @@ interface Zeiger {
             </div>
           }
         </div>
+        @if (initiative() && initiativeOffen()) {
+          <!-- Der Initiative-Tracker als Panel (T-325); gezeichnet von Play, hier nur sein Platz. -->
+          <div class="seitenpanel initiative-panel">
+            <ng-content select="[nwInitiative]" />
+          </div>
+        }
         @if (seiteOffen()) {
           <nw-kartenseite
             class="seite"
@@ -1349,8 +1367,14 @@ export class Karte {
   readonly sitzung = input<string | null>(null);
   /** Unter Play füllt die Karte den Schirm. */
   readonly gross = input(false);
-  /** Der Zugplan (T-198): solange er dasteht, wählt ein Antippen Weg oder Ziel. */
+  /** Der Zugplan (T-198): solange sein Werkzeug gewählt ist, wählt ein Antippen Weg oder Ziel. */
   readonly planung = input<Planung | null>(null);
+  /** Hat der Zugplaner diesem Betrachter etwas (T-325)? Dann steht „Plan turn“ in der Leiste. Gesiebt hat der Server. */
+  readonly zugplan = input(false);
+  /** Wie viele Züge auf die Leitung warten — die Zahl am Werkzeug. */
+  readonly zugZahl = input(0);
+  /** Läuft eine Begegnung, deren Tracker Play als Panel hineinreicht (T-325)? */
+  readonly initiative = input(false);
   readonly planTipp = output<PlanTipp>();
   /** Die Gelegenheitsangriffe der geplanten Wege (ohne Vorschau) — für die Zugfolge (T-198, Runde 2). */
   readonly planWarnungen = output<{ step: string; reactorName: string }[]>();
@@ -2173,7 +2197,7 @@ export class Karte {
     const f = this.faktor();
     const z = this.zug();
     const max = this.breite() * 0.3;
-    const plan = this.planung();
+    const plan = this.planJetzt();
     const pr = this.planRaster();
     /* Ein freies Licht (T-320) ist für Spielende nur sein Schein, kein Marker. */
     const lt = this.alsLeitung();
@@ -2240,7 +2264,7 @@ export class Karte {
       return;
     }
     /* Im Zugplan ist ein Token ein Ziel und keine Kurzansicht (T-198). */
-    const plan = this.planung();
+    const plan = this.planJetzt();
     /* Beim Bewegen ist ein Token im Weg und keine Kurzansicht. */
     if (plan?.mode === 'move') return;
     if (plan?.mode === 'target') {
@@ -2429,7 +2453,7 @@ export class Karte {
     }
     const b = this.buehne()?.nativeElement;
     if (!b) return;
-    if (this.planung()?.mode === 'move' && ev.pointerType === 'mouse' && !this.zeiger.size) {
+    if (this.planJetzt()?.mode === 'move' && ev.pointerType === 'mouse' && !this.zeiger.size) {
       const pt = this.punkt(ev);
       this.planZeiger.set(pt);
     }
@@ -2626,6 +2650,16 @@ export class Karte {
       return;
     }
     if (ev.shiftKey || ev.key.length !== 1) return;
+    if (ev.key.toLowerCase() === 'i' && this.initiative()) {
+      this.initiativeUm();
+      ev.preventDefault();
+      return;
+    }
+    if (ev.key.toLowerCase() === 'y') {
+      this.seiteUm();
+      ev.preventDefault();
+      return;
+    }
     const g = this.gruppen().find((x) => x.taste.toLowerCase() === ev.key.toLowerCase());
     if (!g) return;
     this.gruppeWaehlen(g.key);
@@ -2639,6 +2673,7 @@ export class Karte {
     GRUPPEN.filter(
       (g) =>
         !g.spaeter &&
+        (g.key !== 'zug' || this.zugplan()) &&
         (!g.leitung || this.darfSchreiben()) &&
         (g.key !== 'ebenen' || this.darfSchreiben() || this.ebenen().length > 1) &&
         (!g.braucht || g.braucht.some((t) => this.werkzeuge().has(t))),
@@ -2682,6 +2717,27 @@ export class Karte {
     }
   }
   protected readonly aktiv = signal<Gruppe>('auswahl');
+  /** Der Plan zählt nur, solange sein Werkzeug gewählt ist (T-325) — sonst tut ein Antippen, was das Werkzeug sagt. */
+  protected readonly planJetzt = computed(() => (this.aktiv() === 'zug' && this.zugplan() ? this.planung() : null));
+  /** Titel eines Werkzeugs mit seinem Kürzel; die Ebenen nennen, welche gerade gezeigt wird. */
+  protected gruppenTitel(g: GruppenDef): string {
+    const t = g.key === 'ebenen' && this.ebenen().length > 1 ? `Floor: ${this.ebeneName(this.ebene())} — ${g.title}` : g.title;
+    return `${t} (${g.taste})`;
+  }
+  /** Ein Werkzeug von aussen öffnen — Play, wenn der Zugplaner eine Frage hat. */
+  werkzeugOeffnen(g: 'zug'): void {
+    if (this.aktiv() !== g) this.gruppeWaehlen(g);
+  }
+  /**
+   * **Der Tracker als Panel** (T-325): am Desktop offen, am Telefon zu —
+   * dort deckte er die halbe Karte. Gewählt wird je Schirm.
+   */
+  private readonly initiativeWahl = signal<boolean | null>(null);
+  protected readonly initiativeOffen = computed(() => this.initiativeWahl() ?? !this.schmal());
+  protected initiativeUm(): void {
+    this.initiativeWahl.set(!this.initiativeOffen());
+  }
+  private readonly schmal = signal(typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches);
   /** Nur die Symbole: die Leiste schmal, mehr Karte. */
   protected readonly leisteZu = signal(false);
 
@@ -2722,7 +2778,7 @@ export class Karte {
 
   /** Was ein Antippen an `pt` tut — auch das Loslassen in der Lupe (T-315). */
   private setzenAn(pt: Pt, ev: { altKey: boolean; pointerType: string }): void {
-    if (this.planung()?.mode === 'move') {
+    if (this.planJetzt()?.mode === 'move') {
       const w = this.wegZu(pt);
       const nat = this.nat();
       if (w && nat) this.planTipp.emit({ kind: 'cell', ...w, nat });
@@ -2800,7 +2856,7 @@ export class Karte {
 
   /** Das Raster des Plans und wo das Token gerade steht (T-198); nur auf Quadraten. */
   protected readonly planRaster = computed(() => {
-    const plan = this.planung();
+    const plan = this.planJetzt();
     const s = this.einst();
     const e = this.angezeigt();
     if (!plan || !s || !e) return null;
@@ -2817,7 +2873,7 @@ export class Karte {
 
   /** Wohin das Tempo reicht, als Felder — einmal je Plan, nicht je Zeichnen. */
   private readonly planReich = computed(() => {
-    const plan = this.planung();
+    const plan = this.planJetzt();
     const pr = this.planRaster();
     if (!plan || plan.mode !== 'move' || !pr || plan.budget <= 0) return {} as Record<string, number>;
     return planReach(pr.grid, pr.start, plan.budget);
@@ -2827,7 +2883,7 @@ export class Karte {
 
   /** Der Weg zu einem Punkt, wenn er ins übrige Tempo passt. */
   private wegZu(pt: Pt): { path: Cell[]; feet: number; to: Pt } | null {
-    const plan = this.planung();
+    const plan = this.planJetzt();
     const pr = this.planRaster();
     if (!plan || !pr) return null;
     const c = cellAt(pr.geo, pt);
@@ -2838,7 +2894,7 @@ export class Karte {
 
   /** Was die Überlagerung zeichnet: Reichweite, Wege, Vorschau, Ring und das Token am Ende. */
   protected readonly planBild = computed(() => {
-    const plan = this.planung();
+    const plan = this.planJetzt();
     const pr = this.planRaster();
     if (!plan || !pr) return null;
     const { geo } = pr;
@@ -3021,9 +3077,13 @@ export class Karte {
 
   // -------------------------------------------------------- Seitenleiste
 
-  /** Offen oder zu, für diesen Schirm; ohne Wahl unter Play offen, auf der Artikelseite zu. */
+  /**
+   * Offen oder zu, für diesen Schirm; ohne Wahl zu — auch unter Play
+   * (T-325, „die Seite hat zu viel, das sie auf einmal anzeigt“): das
+   * Panel klappt aus der Leiste auf.
+   */
   private readonly seiteWahl = signal<boolean | null>(null);
-  protected readonly seiteOffen = computed(() => this.seiteWahl() ?? this.ort() === 'play');
+  protected readonly seiteOffen = computed(() => this.seiteWahl() ?? false);
   protected seiteUm(): void {
     this.seiteWahl.set(!this.seiteOffen());
   }
@@ -3355,7 +3415,7 @@ export class Karte {
     const w = this.werkzeug();
     const lt = this.alsLeitung();
     const darf = lt || (this.regeln().doors === 'players' && this.eigeneHier().length > 0 && !this.spielersicht());
-    const planWaehlt = (this.planung()?.mode ?? 'idle') !== 'idle';
+    const planWaehlt = (this.planJetzt()?.mode ?? 'idle') !== 'idle';
     return mapWalls(e)
       .filter(isDoor)
       .map((t) => {

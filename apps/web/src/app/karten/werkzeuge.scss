@@ -131,3 +131,60 @@
 .werkzeug-knopf {
   color: var(--dim);
 }
+
+/* **Werkzeuge und Panels in einer Leiste** (T-325): „Plan turn" ist ein
+   Werkzeug, sein Blatt steht unter der Bühne; Initiative und Party sind
+   Panels neben ihr — getrennt durch eine Linie in der Leiste. */
+.werkzeugleiste .zahl {
+  display: inline-block;
+  min-width: 1.2rem;
+  margin-left: auto;
+  border-radius: 0.6rem;
+  background: var(--accent);
+  color: var(--surface);
+  font-size: 0.7rem;
+  text-align: center;
+}
+.werkzeugleiste .trenner {
+  display: block;
+  height: 1px;
+  margin: 0.2rem 0.3rem;
+  background: var(--line);
+}
+.spalte > .zug-panel {
+  order: 5;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 0.4rem 0.75rem 0.6rem;
+  max-height: 20rem;
+  overflow-y: auto;
+}
+.seitenpanel {
+  flex: none;
+  width: 21rem;
+  max-height: min(78vh, 760px);
+  overflow: auto;
+  box-sizing: border-box;
+}
+@media (max-width: 640px) {
+  .spalte > .zug-panel {
+    order: 1;
+    position: sticky;
+    bottom: 56px;
+    z-index: 4;
+    max-height: 45dvh;
+    padding: 0.35rem 0.6rem 0.5rem;
+  }
+  .werkzeugleiste .trenner {
+    flex: none;
+    width: 1px;
+    height: auto;
+    margin: 0.3rem 0.15rem;
+  }
+  .seitenpanel {
+    width: auto;
+    order: 1;
+    max-height: 45dvh;
+  }
+}

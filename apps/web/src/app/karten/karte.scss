@@ -555,12 +555,12 @@ button {
   border-radius: 50%;
 }
 
-/* Mit der Aktionsleiste darunter (T-198) bleibt die Karte kleiner. */
-:host-context(.mit-plan) .gross .buehne {
+/* Mit dem Blatt „Plan turn" darunter (T-198, T-325) bleibt die Karte kleiner. */
+.karte.mit-plan.gross .buehne {
   height: calc(100dvh - 22rem);
 }
 @media (max-width: 640px) {
-  :host-context(.mit-plan) .gross .buehne {
+  .karte.mit-plan.gross .buehne {
     height: 42dvh;
     min-height: 260px;
   }

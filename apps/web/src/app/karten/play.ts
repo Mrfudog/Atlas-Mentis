@@ -29,7 +29,7 @@ import { Zugplaner } from './zugplaner';
   /* Würfe auf diesem Schirm gehören zur Sitzung am Tisch (T-172). */
   providers: [WurfZiel],
   template: `
-    <div class="seite vollbild-ziel" [class.mit-plan]="!!zp()?.planung()">
+    <div class="seite vollbild-ziel">
       <header class="kopf">
         <h1>Play</h1>
         @if (tisch(); as t) {
@@ -62,13 +62,31 @@ import { Zugplaner } from './zugplaner';
       } @else if (!tisch()) {
         <p class="leer">Loading…</p>
       } @else if (karteId(); as id) {
-        <!-- Der Zugplan (T-198): die Leiste sagt der Karte, was sie zeigt,
-             und die Karte meldet zurück, was angetippt wurde. -->
-        <nw-karte [id]="id" ort="play" [sitzung]="tisch()?.session ?? null" [gross]="true" [planung]="zp.planung()" (planTipp)="zp.tipp($event)" (planWarnungen)="zp.warnungen.set($event)" (insSpiel)="genommen()" />
-        <nw-zugplaner #zp [karte]="id" />
-      }
-      <!-- Der Initiative-Tracker (T-022): die Begegnung, die die Sitzung führt — auch ohne Karte. -->
-      @if (tisch()?.encounter; as enc) {
+        <!-- **Eine Leiste** (T-325): Zugplan und Tracker stehen in der Werkzeugleiste
+             der Karte — der Zugplan als Werkzeug „Plan turn“, der Tracker als Panel.
+             Gezeichnet werden sie hier; die Karte gibt ihnen den Platz. Der Zugplan
+             sagt der Karte, was sie zeigt, und die Karte meldet zurück, was angetippt wurde. -->
+        <nw-karte
+          #karte
+          [id]="id"
+          ort="play"
+          [sitzung]="tisch()?.session ?? null"
+          [gross]="true"
+          [planung]="zp.planung()"
+          [zugplan]="zp.da()"
+          [zugZahl]="zp.wartet()"
+          [initiative]="!!tisch()?.encounter"
+          (planTipp)="zp.tipp($event)"
+          (planWarnungen)="zp.warnungen.set($event)"
+          (insSpiel)="genommen()"
+        >
+          <nw-zugplaner nwZug #zp [karte]="id" />
+          @if (tisch()?.encounter; as enc) {
+            <nw-initiative nwInitiative [begegnung]="enc" />
+          }
+        </nw-karte>
+      } @else if (tisch()?.encounter; as enc) {
+        <!-- Der Initiative-Tracker (T-022) ohne Karte: die Begegnung, die die Sitzung führt. -->
         <nw-initiative class="tracker" [begegnung]="enc" />
       }
       @if (tisch() && !fehler() && !karteId()) {
@@ -145,10 +163,6 @@ import { Zugplaner } from './zugplaner';
       .seite {
         padding: 0.75rem 1rem 1.5rem;
       }
-      /* Die Leiste liegt am Telefon fest unten (T-198): darunter Platz, damit nichts verdeckt bleibt. */
-      .seite.mit-plan {
-        padding-bottom: 50vh;
-      }
     }
   `,
 })
@@ -159,8 +173,9 @@ export class Play {
 
   private readonly api = inject(Api);
   private readonly router = inject(Router);
-  /** Die Aktionsleiste (T-198), wenn eine Karte daliegt. */
+  /** Der Zugplaner (T-198), wenn eine Karte daliegt — als Werkzeug in ihrer Leiste (T-325). */
   protected readonly zp = viewChild<Zugplaner>('zp');
+  private readonly karte = viewChild<Karte>('karte');
   protected readonly tisch = signal<Tisch | null>(null);
   protected readonly fehler = signal<string | null>(null);
   protected readonly karteId = computed(() => this.map() || this.tisch()?.map || null);
@@ -168,6 +183,10 @@ export class Play {
   constructor() {
     const ziel = inject(WurfZiel);
     effect(() => ziel.sitzung.set(this.tisch()?.session ?? null));
+    /* Fragt ein Zug um eine Reaktion (Gelegenheitsangriff), geht „Plan turn“ auf — die Frage steht dort. */
+    effect(() => {
+      if (this.zp()?.fragt()) untracked(() => this.karte()?.werkzeugOeffnen('zug'));
+    });
     effect(() => {
       const s = this.session();
       untracked(() => this.holen(s));

@@ -16,22 +16,23 @@
         {
           "heading": "Tools",
           "text": [
-            "The tool bar on the left holds the tools in groups: Select (S), Tokens (T), Measure (M), Floors (E) and Fog (F). Pick a group and its tools appear above the map; pick it again, or press Esc, to go back to Select. « hides the tool names, » shows them again.",
+            "The tool bar on the left holds the tools in groups: Select (S), Plan turn (P), Tokens (T), Measure (M), Floors (E) and Fog (F). Pick a group and its tools appear above the map; pick it again, or press Esc, to go back to Select. « hides the tool names, » shows them again.",
+            "Below a line, the same bar opens panels beside the map: Initiative (I) shows the tracker of the running encounter, Party (Y) the party and the encounters. They stay open whatever tool you use; on a phone they open above the bar.",
             "Which groups a map shows depends on its kind, as the campaign sets it: battle maps get Walls, Fog, Light, Grid and Tokens; world, region and other maps get Sub-maps, markers and assets. GMs change it with ⚙ Tools at the end of the bar (for this kind) or under Rules & options › Map tools (all kinds).",
             "Sub-maps › Link map: drag a frame, pick the map that lies there — zooming in then leads to it; Unlink removes it.",
             "Select: drag a marker to move it, tap it for its quick view. Measure: tap two points. Tokens (GM): Add marker — tap where it goes, then pick the article: one line per name, the creature first (then statblock, then image), + shows the others. Remove — tap a marker to take it off the map; or tap a token in Select and use Remove above it, or press Delete.",
             "Place combatants puts the creatures of the running encounter on the map, Clear play tokens removes them again — prepared markers and the party stay.",
             "Fullscreen (or Shift+F) gives the map the whole screen; Esc leaves it.",
-            "Floors (E): a map with several floors — storeys, a cellar, tower levels — shows Floor at the top to switch between them. Stairs, ladders, bridges and portals are the square markers: tap one to see where it leads, Show the other floor, or Take a token standing on it through. A token on stairs you can see through sees both floors. GMs add floors and passages under Floors.",
-            "Party & encounters shows the party beside the map: hit points and conditions, ◎ centres the map on a token. The GM places a character with Place or by dragging its row onto the map, and sees the encounters of the session with Place for the combatants not yet on the map.",
+            "Floors (E): a map with several floors — storeys, a cellar, tower levels — shows the floor you see in the bar; pick Floors to switch between them. Stairs, ladders, bridges and portals are the square markers: tap one to see where it leads, Show the other floor, or Take a token standing on it through. A token on stairs you can see through sees both floors. GMs add floors and passages under Floors.",
+            "Party (Y) shows the party beside the map: hit points and conditions, ◎ centres the map on a token. The GM places a character with Place or by dragging its row onto the map, and sees the encounters of the session with Place for the combatants not yet on the map.",
             "Before an encounter starts, Prepare sets its combatants on the map faded and hidden from the players; drag them where they belong. ▶ Start rolls initiative for whoever has none (into the log), reveals the prepared tokens and makes the encounter the one the session runs.",
-            "View as (GM) shows the map as the GM, as all players or as one character: fogged parts covered, hidden markers left out. On a phone the tools stay below the map at the bottom of the screen, and View, release and Party & encounters sit behind ⋯ View."
+            "View as (GM) shows the map as the GM, as all players or as one character: fogged parts covered, hidden markers left out. On a phone the tools stay below the map at the bottom of the screen, and View as and release sit behind ⋯ View."
           ]
         },
         {
           "heading": "Initiative tracker",
           "text": [
-            "Below the map stands the initiative tracker of the encounter the session runs — also without a map. It lists the combatants by initiative, marks whose turn it is and shows the round; ⛶ shows it full screen for a projector.",
+            "Initiative in the tool bar opens the tracker of the encounter the session runs beside the map — on a computer it starts open, on a phone closed. Without a map it stands on the page. It lists the combatants by initiative, marks whose turn it is and shows the round; ⛶ shows it full screen for a projector.",
             "GM: ▶ Start rolls initiative and runs the encounter; Next turn ends the current turn, counts effects down and starts the next; ◀ goes back without bringing expired effects back. Tap an initiative to change it.",
             "Each row has the quick actions the campaign picked — Damage, Heal, Effect, Delay (move one place back), Reroll, Remove — and 👁 shows or hides a foe from the players. Add a combatant at the bottom.",
             "An effect is a condition or a note with a duration: it counts down at the start or end of a combatant's turn — its own or another's — and drops at zero. Without rounds it stays until removed; hidden effects show only to the GM.",
@@ -99,7 +100,8 @@
         {
           "heading": "Turn planner and reactions",
           "text": [
-            "During an encounter, players plan their turn under “Plan turn”: pick actions from the bar, tap squares to move, then “Send turn to GM”. Player tokens move only through the plan.",
+            "During an encounter, players plan their turn with the tool Plan turn (P) in the tool bar: pick actions, tap squares to move, then “Send turn to GM”. Player tokens move only through the plan. Plan turn appears only for your own characters — a player without one does not see it; the GM plans for every creature and sees a number for turns waiting.",
+            "How much a player plans is the campaign's choice (Rules & options › Combat › Turn planner): off, movement only, movement and actions, or full with reactions.",
             "A square marked ⚠ leaves an enemy's reach and provokes an opportunity attack — Disengage first to avoid it. The GM confirms a plan with “Confirm & roll” or sends it back.",
             "As the turn plays out, whoever may react is asked “Opportunity attack?”. Attack rolls into the log and uses the reaction until that creature's next turn.",
             "With Rules from graphs on (Rules & options › At the table), the rule articles in play decide instead: a rule may offer a reaction when someone leaves a reach, is attacked, hit, missed or damaged — Shield, Sentinel, an opportunity attack. Use takes it and spends the reaction, Skip lets it pass; other outcomes appear as a line in the turn’s result for the GM to apply."

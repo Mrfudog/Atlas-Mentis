@@ -33,14 +33,9 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
   template: `
     @if (lage(); as l) {
       @if (l.actors.length || l.plans.length) {
-        <section class="leiste" [class.offen]="offen()" aria-label="Turn planner">
+        <section class="leiste" aria-label="Turn planner">
           <header class="kopf">
-            <button type="button" class="auf" [attr.aria-expanded]="offen()" (click)="offen.set(!offen())">
-              {{ offen() ? '▾' : '▴' }} Plan turn
-              @if (offeneZuege().length && l.leitet) {
-                <span class="zahl" title="Plans waiting for you">{{ offeneZuege().length }}</span>
-              }
-            </button>
+            <b class="auf">Plan turn</b>
             @if (l.actor; as a) {
               @if (l.actors.length > 1) {
                 <select aria-label="Who plans" (change)="figur($any($event.target).value)">
@@ -53,7 +48,9 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
               }
               <div class="res" aria-label="Resources left">
                 @for (r of ressourcen(); track r.key) {
+                  @if (r.key !== 'reaction' || l.planner === 'full') {
                   <span class="pip" [class]="'r-' + r.key" [class.leer]="r.left <= 0" [title]="r.title">{{ r.zeichen }}</span>
+                  }
                 }
                 <span class="tempo" [class.leer]="budget().left.movement <= 0" title="Movement left">
                   <span class="balken"><span [style.width.%]="tempoAnteil()"></span></span>
@@ -88,129 +85,126 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
             }
           }
 
-          @if (offen()) {
-            <!-- Die Leitung sieht zuerst, was auf sie wartet. -->
-            @if (l.leitet && l.plans.length) {
-              <div class="leitung" aria-label="Turns sent to you">
-                <h3>Turns</h3>
-                <ul>
-                  @for (p of l.plans.slice(0, 8); track p.plan) {
-                    <li [class]="'p-' + p.state">
-                      <div>
-                        <b>{{ p.actorName }}</b>
-                        <span class="dim">{{ p.by.name }} · {{ zustand(p) }}</span>
+          <!-- Die Leitung sieht zuerst, was auf sie wartet. -->
+          @if (l.leitet && l.plans.length) {
+            <div class="leitung" aria-label="Turns sent to you">
+              <h3>Turns</h3>
+              <ul>
+                @for (p of l.plans.slice(0, 8); track p.plan) {
+                  <li [class]="'p-' + p.state">
+                    <div>
+                      <b>{{ p.actorName }}</b>
+                      <span class="dim">{{ p.by.name }} · {{ zustand(p) }}</span>
+                    </div>
+                    <div class="txt">{{ text(p.steps) }}</div>
+                    @for (r of p.results ?? []; track r.step) {
+                      <div class="ergebnis" [class.treffer]="r.hit === true" [class.daneben]="r.hit === false">{{ r.text }}</div>
+                    }
+                    @if (p.note) {
+                      <div class="dim">“{{ p.note }}”</div>
+                    }
+                    @if (p.state === 'planned') {
+                      <div class="knoepfe">
+                        <button type="button" class="primaer" [disabled]="sendet()" (click)="entscheiden(p, 'confirm')">Confirm &amp; roll</button>
+                        <button type="button" [disabled]="sendet()" (click)="entscheiden(p, 'reject')">Reject</button>
                       </div>
-                      <div class="txt">{{ text(p.steps) }}</div>
-                      @for (r of p.results ?? []; track r.step) {
-                        <div class="ergebnis" [class.treffer]="r.hit === true" [class.daneben]="r.hit === false">{{ r.text }}</div>
-                      }
-                      @if (p.note) {
-                        <div class="dim">“{{ p.note }}”</div>
-                      }
-                      @if (p.state === 'planned') {
-                        <div class="knoepfe">
-                          <button type="button" class="primaer" [disabled]="sendet()" (click)="entscheiden(p, 'confirm')">Confirm &amp; roll</button>
-                          <button type="button" [disabled]="sendet()" (click)="entscheiden(p, 'reject')">Reject</button>
-                        </div>
-                      }
-                    </li>
-                  }
-                </ul>
-              </div>
-            }
-            @if (l.actor) {
-              <!-- Die Zugfolge: ziehen zum Umordnen, ← → am Telefon. -->
-              <ol class="folge" aria-label="Your turn, in order" (dragover)="$event.preventDefault()" (drop)="fallen($event, schritte().length)">
-                @for (s of schritte(); track s.id; let i = $index) {
-                  <li
-                    class="schritt"
-                    [class]="'c-' + (s.kind === 'move' ? 'move' : s.cost)"
-                    draggable="true"
-                    (dragstart)="ziehen($event, i)"
-                    (dragover)="$event.preventDefault()"
-                    (drop)="fallen($event, i); $event.stopPropagation()"
-                  >
-                    <span class="nr">{{ i + 1 }}</span>
-                    <span class="txt">{{ schrittText(s) }}</span>
-                    @if (vorschauVon(s); as v) {
-                      <small>{{ v }}</small>
                     }
-                    @for (w of warnungVon(s); track w) {
-                      <small class="warnung">⚠ {{ w }}</small>
-                    }
-                    <span class="knoepfe">
-                      <button type="button" [disabled]="i === 0" (click)="schieben(i, -1)" [attr.aria-label]="'Earlier: ' + schrittText(s)">←</button>
-                      <button type="button" [disabled]="i === schritte().length - 1" (click)="schieben(i, 1)" [attr.aria-label]="'Later: ' + schrittText(s)">→</button>
-                      <button type="button" (click)="weg(i)" [attr.aria-label]="'Remove: ' + schrittText(s)">×</button>
-                    </span>
                   </li>
-                } @empty {
-                  <li class="hinweis">Tap <b>Move</b> and a square on the map, or an action and a target — then send the turn to the GM.</li>
                 }
-              </ol>
+              </ul>
+            </div>
+          }
+          @if (l.actor) {
+            <!-- Die Zugfolge: ziehen zum Umordnen, ← → am Telefon. -->
+            <ol class="folge" aria-label="Your turn, in order" (dragover)="$event.preventDefault()" (drop)="fallen($event, schritte().length)">
+              @for (s of schritte(); track s.id; let i = $index) {
+                <li
+                  class="schritt"
+                  [class]="'c-' + (s.kind === 'move' ? 'move' : s.cost)"
+                  draggable="true"
+                  (dragstart)="ziehen($event, i)"
+                  (dragover)="$event.preventDefault()"
+                  (drop)="fallen($event, i); $event.stopPropagation()"
+                >
+                  <span class="nr">{{ i + 1 }}</span>
+                  <span class="txt">{{ schrittText(s) }}</span>
+                  @if (vorschauVon(s); as v) {
+                    <small>{{ v }}</small>
+                  }
+                  @for (w of warnungVon(s); track w) {
+                    <small class="warnung">⚠ {{ w }}</small>
+                  }
+                  <span class="knoepfe">
+                    <button type="button" [disabled]="i === 0" (click)="schieben(i, -1)" [attr.aria-label]="'Earlier: ' + schrittText(s)">←</button>
+                    <button type="button" [disabled]="i === schritte().length - 1" (click)="schieben(i, 1)" [attr.aria-label]="'Later: ' + schrittText(s)">→</button>
+                    <button type="button" (click)="weg(i)" [attr.aria-label]="'Remove: ' + schrittText(s)">×</button>
+                  </span>
+                </li>
+              } @empty {
+                <li class="hinweis">Tap <b>Move</b> and a square on the map, or an action and a target — then send the turn to the GM.</li>
+              }
+            </ol>
 
-              <p class="stand" role="status">
-                @if (modus() === 'move') {
-                  Tap a blue square to move there ({{ budget().left.movement }} ft left).
-                  <button type="button" class="klein" (click)="modus.set('idle')">Done</button>
-                } @else if (gewaehlt(); as t) {
-                  Pick a target for <b>{{ t.name }}</b> (range {{ t.range }} ft{{ t.longRange ? ', long ' + t.longRange : '' }}).
-                  <button type="button" class="klein" (click)="abwaehlen()">Cancel</button>
-                } @else if (budget().problems.length) {
-                  <span class="fehler">{{ budget().problems.join(' ') }}</span>
-                } @else if (warnungen().length) {
-                  <span class="warnung">⚠ {{ warnungen().length === 1 ? 'This turn provokes an opportunity attack' : 'This turn provokes ' + warnungen().length + ' opportunity attacks' }} — Disengage first to avoid it.</span>
-                } @else if (fehler(); as f) {
-                  <span class="fehler">{{ f }}</span>
-                } @else if (meinPlan(); as p) {
-                  {{ planStand(p) }}
-                }
-              </p>
+            <p class="stand" role="status">
+              @if (modus() === 'move') {
+                Tap a blue square to move there ({{ budget().left.movement }} ft left).
+                <button type="button" class="klein" (click)="modus.set('idle')">Done</button>
+              } @else if (gewaehlt(); as t) {
+                Pick a target for <b>{{ t.name }}</b> (range {{ t.range }} ft{{ t.longRange ? ', long ' + t.longRange : '' }}).
+                <button type="button" class="klein" (click)="abwaehlen()">Cancel</button>
+              } @else if (budget().problems.length) {
+                <span class="fehler">{{ budget().problems.join(' ') }}</span>
+              } @else if (warnungen().length) {
+                <span class="warnung">⚠ {{ warnungen().length === 1 ? 'This turn provokes an opportunity attack' : 'This turn provokes ' + warnungen().length + ' opportunity attacks' }} — Disengage first to avoid it.</span>
+              } @else if (fehler(); as f) {
+                <span class="fehler">{{ f }}</span>
+              } @else if (meinPlan(); as p) {
+                {{ planStand(p) }}
+              }
+            </p>
 
-              <div class="kacheln" role="toolbar" aria-label="Actions">
+            <div class="kacheln" role="toolbar" aria-label="Actions">
+              <button
+                type="button"
+                class="kachel c-move"
+                [class.an]="modus() === 'move'"
+                [disabled]="budget().left.movement <= 0"
+                (click)="bewegen()"
+                title="Move: tap a square on the map"
+              >
+                <span class="k">👣</span>
+                <span class="n">Move</span>
+                <small>{{ budget().left.movement }} ft</small>
+              </button>
+              @for (t of l.tiles; track t.id) {
                 <button
                   type="button"
-                  class="kachel c-move"
-                  [class.an]="modus() === 'move'"
-                  [disabled]="budget().left.movement <= 0"
-                  (click)="bewegen()"
-                  title="Move: tap a square on the map"
+                  class="kachel"
+                  [class]="'c-' + t.cost + ' g-' + t.group"
+                  [class.an]="gewaehlt()?.id === t.id"
+                  [disabled]="!leistbar(t)"
+                  draggable="true"
+                  (dragstart)="kachelZiehen($event, t)"
+                  (click)="kachel(t)"
+                  [title]="kachelTitel(t)"
                 >
-                  <span class="k">👣</span>
-                  <span class="n">Move</span>
-                  <small>{{ budget().left.movement }} ft</small>
+                  <span class="k">{{ kosten(t.cost).zeichen }}</span>
+                  <span class="n">{{ t.name }}</span>
+                  @if (t.toHit !== null) {
+                    <small>{{ t.toHit >= 0 ? '+' : '' }}{{ t.toHit }} · {{ t.damage }}</small>
+                  } @else {
+                    <small>{{ kosten(t.cost).wort }}</small>
+                  }
                 </button>
-                @for (t of l.tiles; track t.id) {
-                  <button
-                    type="button"
-                    class="kachel"
-                    [class]="'c-' + t.cost + ' g-' + t.group"
-                    [class.an]="gewaehlt()?.id === t.id"
-                    [disabled]="!leistbar(t)"
-                    draggable="true"
-                    (dragstart)="kachelZiehen($event, t)"
-                    (click)="kachel(t)"
-                    [title]="kachelTitel(t)"
-                  >
-                    <span class="k">{{ kosten(t.cost).zeichen }}</span>
-                    <span class="n">{{ t.name }}</span>
-                    @if (t.toHit !== null) {
-                      <small>{{ t.toHit >= 0 ? '+' : '' }}{{ t.toHit }} · {{ t.damage }}</small>
-                    } @else {
-                      <small>{{ kosten(t.cost).wort }}</small>
-                    }
-                  </button>
-                }
-              </div>
+              }
+            </div>
 
-              <div class="senden">
-                <button type="button" class="primaer" [disabled]="!schritte().length || !!budget().problems.length || sendet()" (click)="senden()">
-                  {{ meinPlan()?.state === 'planned' ? 'Update the turn' : 'Send turn to GM' }}
-                </button>
-                <button type="button" [disabled]="!schritte().length" (click)="leeren()">Clear</button>
-              </div>
-            }
-
+            <div class="senden">
+              <button type="button" class="primaer" [disabled]="!schritte().length || !!budget().problems.length || sendet()" (click)="senden()">
+                {{ meinPlan()?.state === 'planned' ? 'Update the turn' : 'Send turn to GM' }}
+              </button>
+              <button type="button" [disabled]="!schritte().length" (click)="leeren()">Clear</button>
+            </div>
           }
         </section>
       }
@@ -220,18 +214,10 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
     :host {
       display: block;
     }
+    /* Seit T-325 das Blatt des Werkzeugs „Plan turn“ in der Leiste der
+       Karte: Rahmen, Platz und am Telefon die Lage unten gibt die Karte. */
     .leiste {
-      position: sticky;
-      bottom: 0;
-      z-index: 5;
-      margin-top: 0.5rem;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 0.5rem 0.5rem 0 0;
-      box-shadow: 0 -2px 10px rgb(0 0 0 / 0.2);
-      padding: 0.4rem 0.75rem 0.6rem;
-      max-height: 60vh;
-      overflow-y: auto;
+      display: block;
     }
     .kopf {
       display: flex;
@@ -511,16 +497,6 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
       color: var(--dim);
     }
     @media (max-width: 640px) {
-      .leiste {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        margin: 0;
-        border-radius: 0.6rem 0.6rem 0 0;
-        max-height: 55vh;
-        padding: 0.35rem 0.6rem calc(0.5rem + env(safe-area-inset-bottom));
-      }
       .res {
         margin-left: 0;
       }
@@ -536,7 +512,6 @@ export class Zugplaner {
 
   private readonly api = inject(Api);
   protected readonly lage = signal<ZugLage | null>(null);
-  protected readonly offen = signal(true);
   protected readonly fehler = signal<string | null>(null);
   protected readonly sendet = signal(false);
   private readonly gewaehlteFigur = signal<string | null>(null);
@@ -619,6 +594,19 @@ export class Zugplaner {
     const a = l?.actor?.id;
     return (a && l?.plans.find((p) => p.actor === a)) || null;
   });
+  /**
+   * **Hat der Planer diesem Betrachter etwas?** (T-325) Dann steht „Plan
+   * turn“ in der Leiste der Karte. Wer planen darf, hat der Server gesiebt
+   * (nur die eigenen Figuren, `zugplan.ts`) — hier wird nur gezählt.
+   */
+  readonly da = computed(() => {
+    const l = this.lage();
+    return !!l && (l.actors.length > 0 || l.plans.length > 0);
+  });
+  /** Wie viele Züge auf die Leitung warten — die Zahl am Werkzeug. */
+  readonly wartet = computed(() => (this.lage()?.leitet ? this.offeneZuege().length : 0));
+  /** Fragt ein Zug diesen Betrachter um eine Reaktion? Dann öffnet Play das Werkzeug. */
+  readonly fragt = computed(() => this.fragen().length > 0);
   protected readonly offeneZuege = computed(() => (this.lage()?.plans ?? []).filter((p) => p.state === 'planned' || (p.state === 'reacting' && p.canAnswer)));
   /** Die Züge, die auf eine Antwort dieses Betrachters warten (Gelegenheitsangriff). */
   protected readonly fragen = computed(() => (this.lage()?.plans ?? []).filter((p) => p.state === 'reacting' && p.canAnswer && p.pending));
@@ -641,7 +629,7 @@ export class Zugplaner {
   /** Was die Karte zeigen soll (`nw-karte [planung]`). */
   readonly planung = computed<Planung | null>(() => {
     const l = this.lage();
-    if (!l?.actor || !this.offen()) return null;
+    if (!l?.actor) return null;
     const wege = this.schritte().flatMap((s) => (s.kind === 'move' ? [s.path] : []));
     const letzter = wege.at(-1);
     const t = this.gewaehlt();
