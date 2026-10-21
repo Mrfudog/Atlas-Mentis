@@ -1607,8 +1607,9 @@ export class Api {
     return this.call<KartenSeite>(`/api/maps/${encodeURIComponent(id)}/side${q}`);
   }
   /** Was die Aktionsleiste auf dieser Karte braucht (T-198). */
-  turnPlan(map: string, actor?: string | null): Promise<ZugLage> {
-    return this.call<ZugLage>(`/api/maps/${encodeURIComponent(map)}/turn-plan${actor ? `?actor=${encodeURIComponent(actor)}` : ''}`);
+  turnPlan(map: string, actor?: string | null, nat?: { w: number; h: number } | null): Promise<ZugLage> {
+    const q = [actor ? `actor=${encodeURIComponent(actor)}` : '', nat ? `nat=${Math.round(nat.w)}x${Math.round(nat.h)}` : ''].filter(Boolean).join('&');
+    return this.call<ZugLage>(`/api/maps/${encodeURIComponent(map)}/turn-plan${q ? `?${q}` : ''}`);
   }
   /** Einen Zug einreichen — oder einen eingereichten ersetzen (`plan`). */
   submitTurnPlan(
@@ -2195,8 +2196,21 @@ export interface ZugLage {
   /** Läuft auf der Karte eine Begegnung? Dann zieht nur der Plan. */
   encounter: { id: string } | null;
   tiles: PlanTile[];
-  /** `chances`: Trefferchance in Prozent je Angriffskachel; `ac` nur für die Leitung. */
-  targets: { id: string; name: string; type: string; chances: Record<string, number>; ac?: number }[];
+  /**
+   * `chances`: Trefferchance in Prozent je Angriffskachel, mit Vorteil oder
+   * Nachteil (`modes`, T-351) aus Zuständen und Abstand; `long` die Chance
+   * auf langer Reichweite; `feet` der Abstand jetzt; `ac` nur für die Leitung.
+   */
+  targets: {
+    id: string;
+    name: string;
+    type: string;
+    chances: Record<string, number>;
+    long?: Record<string, number>;
+    modes?: Record<string, 'adv' | 'dis'>;
+    feet?: number;
+    ac?: number;
+  }[];
   /** Wer die Figur bedroht: Token (`rel`) der Gegenseite und seine Reichweite in Fuss. */
   threats: { id: string; name: string; rel: string; reach: number }[];
   /** `canAnswer`: dieser Betrachter beantwortet die offene Reaktionsfrage. */
