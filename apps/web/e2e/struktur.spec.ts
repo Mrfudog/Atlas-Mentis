@@ -36,7 +36,12 @@ test('a structure card: tree and web, sieved for the player', async ({ leitung, 
   const einst = leitung.getByRole('form', { name: 'Structure settings' });
   await einst.getByRole('button', { name: 'Choose…' }).click();
   await einst.getByRole('searchbox', { name: 'Search articles' }).or(einst.getByRole('textbox', { name: 'Search articles' })).fill(wacht.name);
-  await einst.getByRole('button', { name: new RegExp(wacht.name) }).first().click();
+  /* Die Treffer kommen beim Tippen und zeichnen sich neu; ein Klick auf
+     einen ersetzten Knopf geht verloren — also klicken, bis der Start dasteht. */
+  await expect(async () => {
+    await einst.getByRole('button', { name: `${wacht.name} Faction` }).click({ timeout: 2_000 });
+    await expect(einst.locator('.start b')).toHaveText(wacht.name, { timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
 
   const baum = leinwand.getByRole('tree', { name: `Structure of ${wacht.name}` });
   await expect(baum.getByRole('link', { name: ada.name })).toBeVisible();
