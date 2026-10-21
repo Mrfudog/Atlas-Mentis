@@ -148,6 +148,9 @@ import {
   sightInto,
   updateFloor,
   withFloorView,
+  confirmPlacement,
+  keepOnMap,
+  type PlacementSuggestion,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
@@ -228,7 +231,8 @@ type Werkzeug =
   | 'uebergangFlaeche'
   | 'rahmen'
   | 'rahmenWeg'
-  | 'vieleck';
+  | 'vieleck'
+  | 'platzieren';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
 const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
@@ -236,7 +240,7 @@ const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
 const SPERRE_TREFFER = 14;
 /** Die Werkzeuge, die einen Punkt setzen — in ihnen öffnet Halten die Lupe (T-315). */
-const LUPE_WERKZEUGE: ReadonlySet<Werkzeug> = new Set(['wand', 'punkte', 'gitterUrsprung', 'gitterZelle', 'setzen']);
+const LUPE_WERKZEUGE: ReadonlySet<Werkzeug> = new Set(['wand', 'punkte', 'gitterUrsprung', 'gitterZelle', 'setzen', 'platzieren']);
 /** So lange hält man, bis die Lupe aufgeht. */
 const LUPE_MS = 280;
 /** Halbmesser der Lupe am Schirm, und wie stark sie vergrössert. */
@@ -1304,6 +1308,59 @@ interface Zeiger {
                     <span>{{ kuerzel(p.name) }}</span>
                   </button>
                 }
+                <!-- **Von der Karte darin** (T-328): gelesen, nicht gespeichert — bei vielen ein Bündel mit Zahl, das hineinführt. -->
+                @for (g of gehoben(); track g.map) {
+                  @if (g.bundled) {
+                    <a
+                      class="marker gehoben buendel"
+                      [routerLink]="weg(g.map).link"
+                      [queryParams]="weg(g.map).query"
+                      [style.left.%]="g.centre.x * 100"
+                      [style.top.%]="g.centre.y * 100"
+                      [style.width.px]="MARKER_MIN + 4"
+                      [style.height.px]="MARKER_MIN + 4"
+                      [title]="g.items.length + ' markers on ' + g.name + ' — enter it to see them'"
+                      [attr.aria-label]="g.items.length + ' markers on ' + g.name"
+                      (pointerdown)="$event.stopPropagation()"
+                    >
+                      <span>{{ g.items.length }}</span>
+                    </a>
+                  } @else {
+                    @for (m of g.items; track m.rel) {
+                      <button
+                        type="button"
+                        class="marker gehoben abgeleitet"
+                        [class]="'k-' + m.kind"
+                        [style.left.%]="m.x * 100"
+                        [style.top.%]="m.y * 100"
+                        [style.width.px]="MARKER_MIN"
+                        [style.height.px]="MARKER_MIN"
+                        [title]="m.name + ' — on ' + g.name"
+                        [attr.aria-label]="m.name + ', on ' + g.name"
+                        (pointerdown)="$event.stopPropagation()"
+                        (click)="kurzansicht($event, m.to)"
+                      >
+                        @if (m.bild) {
+                          <img [src]="m.bild" alt="" draggable="false" />
+                        } @else {
+                          <span>{{ kuerzel(m.name) }}</span>
+                        }
+                      </button>
+                    }
+                  }
+                }
+                <!-- **Zum Platzieren** (T-328): die vorgeschlagene Lage, gestrichelt; nur die Leitung bekommt sie. -->
+                @for (v of zuPlatzieren(); track v.rel) {
+                  <span
+                    class="geist platz-geist"
+                    [class.gewaehlt]="platzWahl() === v.rel"
+                    [style.left.%]="v.x * 100"
+                    [style.top.%]="v.y * 100"
+                    [style.width.px]="MARKER_MIN"
+                    [style.height.px]="MARKER_MIN"
+                    [title]="v.name + ' — to place (from ' + v.fromName + ')'"
+                  ></span>
+                }
                 @if (uebergangFlaechen().length) {
                   <!-- **Die Fläche eines Übergangs** (T-326): wer darin steht, steht am Übergang. -->
                   <svg class="uebergang-flaechen" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
@@ -1492,6 +1549,29 @@ interface Zeiger {
         }
       </div>
 
+      @if (zuPlatzieren().length) {
+        <!-- **To place** (T-328): Marker der Karte darüber im Bereich dieser Karte — erst bestätigt stehen sie hier. -->
+        <section class="zu-platzieren" aria-label="To place">
+          <h4>To place <span class="zahl">{{ zuPlatzieren().length }}</span></h4>
+          <ul>
+            @for (v of zuPlatzieren(); track v.rel) {
+              <li [class.gewaehlt]="platzWahl() === v.rel">
+                <span class="name">{{ v.name }}</span>
+                <span class="hint">from {{ v.fromName }}</span>
+                <span class="knoepfe">
+                  <button type="button" class="klein" [disabled]="speichert()" (click)="platzBestaetigen(v, v)" [title]="'Place ' + v.name + ' here at the suggested spot; it leaves ' + v.fromName + ' and shows there from this map'">Confirm</button>
+                  <button type="button" class="klein" [class.an]="platzWahl() === v.rel" [attr.aria-pressed]="platzWahl() === v.rel" [disabled]="speichert()" (click)="platzWaehlen(v.rel)" title="Tap the map where it goes instead">Move…</button>
+                  <button type="button" class="klein" [disabled]="speichert()" (click)="platzBehalten(v)" [title]="'It belongs on ' + v.fromName + '; no map inside suggests it again'">Keep on {{ v.fromName }}</button>
+                </span>
+              </li>
+            }
+          </ul>
+          @if (platzFehler(); as f) {
+            <p class="fehler" role="alert">{{ f }}</p>
+          }
+        </section>
+      }
+
       <p class="stand" role="status">
         @if (speichert()) {
           Saving…
@@ -1513,6 +1593,9 @@ interface Zeiger {
             <span class="weg"> · Route: {{ w }}</span>
             <button type="button" class="klein" (click)="weg2.set([])" aria-label="Clear the route">×</button>
           }
+        } @else if (werkzeug() === 'platzieren') {
+          Tap the map where {{ platzName() }} goes.
+          <button type="button" class="klein" (click)="waehle('keins')">Cancel</button>
         } @else if (werkzeug() === 'setzen') {
           {{ setzenZiel() ? 'Tap the map where ' + setzenName() + ' goes.' : setzenBei() ? 'Pick the article below.' : setzenArt() === 'scenery' ? 'Tap the map where the asset goes.' : 'Tap the map where the marker goes.' }}
         } @else if (werkzeug() === 'aufdecken') {
@@ -2738,6 +2821,72 @@ export class Karte {
     });
   });
 
+  /**
+   * **Die Marker der Karten darin** (T-328): gehoben am Server, hier nur
+   * mit Namen und Bild aus `targets`. Auf einer Ebene ausser der ersten
+   * nicht — gehoben wird auf die Karte, nicht in ein Stockwerk.
+   */
+  protected readonly gehoben = computed(() => {
+    const k = this.kontext();
+    if (!k?.lifted?.length || this.ebene() !== GROUND_FLOOR) return [];
+    return k.lifted.map((g) => ({
+      ...g,
+      items: g.items.map((m) => {
+        const z = k.targets[m.to];
+        return { ...m, name: z?.name ?? '?', bild: z?.image ? bildAdresse(z.image, 'thumb', z.version ?? '') : null };
+      }),
+    }));
+  });
+
+  /** **„To place"** (T-328): nur für die Leitung, die hier schreibt. */
+  protected readonly zuPlatzieren = computed(() => (this.darfSchreiben() && this.ebene() === GROUND_FLOOR ? (this.kontext()?.toPlace ?? []) : []));
+  protected readonly platzWahl = signal<string | null>(null);
+  protected readonly platzFehler = signal<string | null>(null);
+  protected readonly platzName = computed(() => this.zuPlatzieren().find((v) => v.rel === this.platzWahl())?.name ?? 'it');
+
+  protected platzWaehlen(rel: string): void {
+    const an = this.platzWahl() === rel && this.werkzeug() === 'platzieren';
+    this.waehle(an ? 'keins' : 'platzieren');
+    this.platzWahl.set(an ? null : rel);
+  }
+
+  /**
+   * **Bestätigen** (T-328): der Marker wandert von der Karte darüber
+   * hierher (`confirmPlacement`) — zuerst hier geschrieben, dann oben
+   * weggenommen, so geht er nie verloren; schlägt das Zweite fehl, steht
+   * er kurz an beiden Stellen und die Liste sagt es nicht mehr an.
+   */
+  protected async platzBestaetigen(v: PlacementSuggestion, at: Pt): Promise<void> {
+    const e = this.karte();
+    if (!e || this.speichert()) return;
+    this.platzFehler.set(null);
+    this.platzWahl.set(null);
+    if (this.werkzeug() === 'platzieren') this.werkzeug.set('keins');
+    try {
+      const { refs: _r, fromTemplate: _f, ...oben } = (await this.api.entity(v.from)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      const p = this.tokenRasten(at, this.tokenPlatz(v.to, null));
+      const neu = confirmPlacement(oben as Entity, this.voll(e), v.rel, p, `r-${crypto.randomUUID()}`);
+      await this.schreibenGanz(neu.child);
+      if (this.mangel()) return;
+      await this.api.putEntity(neu.parent);
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.platzFehler.set(err instanceof Error ? `Not placed: ${err.message}` : 'Not placed.');
+    }
+  }
+
+  /** **„Keep on …"** (T-328): der Marker ist oben gemeint (`stay`); keine Karte darin schlägt ihn mehr vor. */
+  protected async platzBehalten(v: PlacementSuggestion): Promise<void> {
+    this.platzFehler.set(null);
+    try {
+      const { refs: _r, fromTemplate: _f, ...oben } = (await this.api.entity(v.from)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+      await this.api.putEntity(keepOnMap(oben as Entity, v.rel));
+      await this.kontextHolen(this.id());
+    } catch (err) {
+      this.platzFehler.set(err instanceof Error ? `Not saved: ${err.message}` : 'Not saved.');
+    }
+  }
+
   /** Die Gruppe, wenn sie auf einer Karte darin steht (auf dieser ist sie ein Marker). */
   protected readonly gruppe = computed(() => {
     const p = this.kontext()?.party;
@@ -3294,6 +3443,9 @@ export class Karte {
         this.messB.set(pt);
         this.messFest.set(true);
       }
+    } else if (this.werkzeug() === 'platzieren') {
+      const v = this.zuPlatzieren().find((x) => x.rel === this.platzWahl());
+      if (v) void this.platzBestaetigen(v, pt);
     } else if (this.werkzeug() === 'setzen') {
       const ziel = this.setzenZiel();
       if (ziel) this.spielTokenSetzen(ziel, pt);

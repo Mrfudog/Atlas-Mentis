@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-21-markers-between-maps",
+      "date": "2026-10-21",
+      "title": "Markers between map levels",
+      "text": "Markers and tokens of a sub-map now show on the map above at their place, many as one number. A marker set on the map above inside a sub-map waits there under To place until the GM confirms or moves it.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-21-aligned-sub-maps",
       "date": "2026-10-21",
       "title": "Sub-maps aligned to the grid above, distances across maps",

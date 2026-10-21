@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -2142,6 +2142,10 @@ export interface KartenKontext {
   }[];
   /** Die Karte darüber, fürs Messen in ihrer Einheit (T-329). Fehlt bei einem älteren Server. */
   up?: { id: string; name: string; scale: string; align: boolean; alignIssue?: AlignIssue } | null;
+  /** Die Marker der Unterkarten, gehoben (T-328) — gelesen, gesiebt am Server. Fehlt bei einem älteren Server. */
+  lifted?: (LiftedGroup & { name: string })[];
+  /** „To place“ (T-328), nur für die Leitung: Marker der Karte darüber im Bereich dieser Karte. */
+  toPlace?: (PlacementSuggestion & { name: string; fromName: string })[];
   /** Die Karte darüber als blasser Rand (T-327); ihr Bild, wie der Betrachter es bekommt. */
   outer: { id: string; name: string; image: string; frame: { x: number; y: number; w: number; h: number } } | null;
   /** Die Vorgaben der Kampagne für Verknüpfungen (T-327) — nur für die Leitung. */
