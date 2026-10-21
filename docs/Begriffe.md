@@ -2791,6 +2791,17 @@ sich mit dem Code, gehören in denselben Commit, und ein Test verlangt je
 anlegbare Art und je Wort aus der Tabelle oben einen Eintrag. In der
 Datenbank stünden sie auf dev und prod je einmal und liefen auseinander.
 
+**Ein Feld nennt seinen Begriff, statt ihn zu erklären** (T-347). „Hit
+points" stand als Satz in `description`, als Hilfe am Bogen und als
+Glossareintrag — drei Erklärungen, die nach dem ersten Nachbessern
+verschieden sind. Jetzt nennt das Feld den Namen (`glossary`), und der
+Eintrag erklärt. Nur der Name steht im Code: der Text ist Inhalt eines
+Regelwerks und liegt in dessen Ebene; darum kann der Eintrag auf einer
+Installation fehlen, und die Werkbank sagt es, statt dass der Test es
+nicht wissen kann. **Zwei Regelstände, ein Name:** der Begriff von 2024
+ist eine Fassung dessen von 2014 (`overrides`) — zwei gleichnamige
+Einträge im Stapel würden beide nicht mehr erkannt.
+
 Das **Handbuch** (`/handbook`, T-225) ist die eine Stelle, an der alles
 erklärt wird; was erzeugt werden kann (Hilfe je Seite, Regeloptionen,
 Arten, Glossar), wird erzeugt. Es löst `VTT/Glossary.md` ab, das den

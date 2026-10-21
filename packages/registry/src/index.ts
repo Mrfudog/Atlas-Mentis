@@ -16,7 +16,7 @@ const interfaces: Registry['interfaces'] = Object.fromEntries(
 );
 
 export { interfaces, relations, views, units, enums, typeViews };
-export { APP_TERMS, type AppTerm } from './glossar.js';
+export { APP_TERMS, GAME_TERMS, type AppTerm } from './glossar.js';
 
 /** Campaign-wide defaults, the last scope {VAR} resolution falls back to. */
 export const vars: Record<string, string> = {

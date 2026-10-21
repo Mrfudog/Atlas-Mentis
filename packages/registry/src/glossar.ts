@@ -7,7 +7,8 @@
  *
  * **Spielbegriffe stehen hier nicht** (Zustände, Waffeneigenschaften,
  * Aktionsarten): sie sind Inhalt eines Regelwerks und liegen als Artikel in
- * dessen Ebene. Das Repository ist öffentlich.
+ * dessen Ebene. Das Repository ist öffentlich. Nur ihre **Namen** stehen
+ * unten (`GAME_TERMS`), soweit Felder und Regeloptionen sie nennen.
  *
  * Erzwungen wird das Nachziehen von `test/glossar.test.ts`: jede anlegbare
  * Art steht in genau einem Eintrag (`types`), jedes der neun Wörter aus
@@ -671,3 +672,36 @@ const TYPES: AppTerm[] = [
 ];
 
 export const APP_TERMS: readonly AppTerm[] = [...APP, ...TYPES];
+
+/**
+ * **Die Spielbegriffe, die der Code nennen darf** (T-347): ein Feld
+ * (`PropertySchema.glossary`) oder eine Regeloption (`glossary`) zeigt
+ * den Eintrag des Glossars statt eines eigenen Satzes. Der Eintrag selbst
+ * ist ein Artikel der Installation, in der Ebene seines Regelwerks — hier
+ * stehen **nur die Namen**, kein Text. `test/glossar.test.ts` hält die
+ * Verweise auf diese Liste, die Werkbank (`missingGlossaryTerms`) prüft,
+ * ob die Installation den Begriff hat.
+ */
+export const GAME_TERMS: readonly string[] = [
+  'Action',
+  'Armor Class',
+  'Attunement',
+  'Bonus action',
+  'Carrying capacity',
+  'Concentration',
+  'Damage immunity',
+  'Damage resistance',
+  'Damage vulnerability',
+  'Death saving throw',
+  'Hit Dice',
+  'Hit points',
+  'Initiative',
+  'Inspiration',
+  'Opportunity attack',
+  'Proficiency bonus',
+  'Ritual',
+  'Saving throw',
+  'Speed',
+  'Spell slot',
+  'Temporary hit points',
+];

@@ -69,6 +69,8 @@ export interface RuleVariantDef {
   does: string;
   /** Buchartikel, auf denen diese Option beruht (Namen) — der Artikel der Option verweist darauf (T-270). */
   rules?: string[];
+  /** Der Glossarbegriff, der sie erklärt (T-347, wie `PropertySchema.glossary`). */
+  glossary?: string;
 }
 
 export type RuleOptionSource =
@@ -88,6 +90,12 @@ export interface RuleOptionDef {
   variants?: readonly RuleVariantDef[];
   /** Buchartikel, auf denen die Regel beruht (Namen) — ihr Artikel verweist darauf (T-270). */
   rules?: string[];
+  /**
+   * **Der Glossarbegriff, der sie erklärt** (T-347, T-225): Handbuch und
+   * Rules & options zeigen dann seinen Eintrag statt `does` — der Satz
+   * bleibt für die Einfuhr der Regelartikel und wo es den Begriff nicht gibt.
+   */
+  glossary?: string;
   /**
    * **Gilt nur unter einer Variante einer anderen Option** (T-248): Basils
    * Raster, Zonen und Körperplätze sagen nichts, wenn die Kampagne nach
@@ -135,6 +143,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
   {
     /* Trefferpunkte ab Stufe 2 (T-194): die Kampagne sagt, was der Assistent anbietet. */
     key: 'hitPoints',
+    glossary: 'Hit points',
     sort: 'character',
     label: 'Hit points per level',
     does: 'How a level beyond the first adds hit points in the character builder.',
@@ -191,6 +200,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
   },
   {
     key: 'carrying',
+    glossary: 'Carrying capacity',
     sort: 'inventory',
     label: "Basil's sheet: grid, zones and body slots",
     does: 'The carry blocks — grids with zones for a size, a strength or any other statblock field, joined into one grid —, the draw time per body slot, what dropping and stowing cost, and the container templates.',
@@ -501,8 +511,8 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     source: { field: 'passageAction' },
     variants: [
       { key: 'none', label: 'None', does: 'Going through takes no action.' },
-      { key: 'action', label: 'Action', does: 'Going through takes the action of the turn.' },
-      { key: 'bonus', label: 'Bonus action', does: 'Going through takes the bonus action of the turn.' },
+      { key: 'action', label: 'Action', does: 'Going through takes the action of the turn.', glossary: 'Action' },
+      { key: 'bonus', label: 'Bonus action', does: 'Going through takes the bonus action of the turn.', glossary: 'Bonus action' },
     ],
   },
   {
@@ -521,6 +531,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     /* Der Initiative-Tracker (T-022) als eigenes Regelsystem (T-334, E-100):
        `on` ist das System „D&D 5e (standard)", gelesen über `initiativeRulesOf`. */
     key: 'combat',
+    glossary: 'Initiative',
     sort: 'combat',
     label: 'Initiative',
     does: 'Which initiative system runs encounters in the tracker in Play: order, turns, rounds and effects with a duration. The settings below belong to it.',
@@ -542,7 +553,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
       { key: 'off', label: 'Off', does: 'No “Plan turn” on the map; the GM moves tokens in an encounter.' },
       { key: 'move', label: 'Movement only', does: 'A player plans where their character moves; actions are said at the table.' },
       { key: 'actions', label: 'Movement and actions', does: 'Movement, actions and bonus actions with targets and hit chances. Nobody is asked to react.' },
-      { key: 'full', label: 'Full', does: 'As movement and actions, plus reactions: leaving a foe’s reach asks for an opportunity attack, and the campaign’s rules may offer theirs.' },
+      { key: 'full', label: 'Full', does: 'As movement and actions, plus reactions: leaving a foe’s reach asks for an opportunity attack, and the campaign’s rules may offer theirs.', glossary: 'Opportunity attack' },
     ],
   },
   {
@@ -770,6 +781,8 @@ export interface RuleVariantState {
   chosen: boolean;
   /** Der Artikel dieser Option (T-270). Fehlt er, steht die Option nur da, wenn sie gewählt ist. */
   rule?: RuleRef;
+  /** Der Glossarbegriff, der sie erklärt (T-347). */
+  glossary?: string;
 }
 
 /** Ein gewähltes Verfahren (Attribute, Ausrüstung): ein Artikel oder eine Vorgabe aus dem Code. */
@@ -796,6 +809,8 @@ export interface RuleOptionState {
   methods?: RuleMethodState[];
   /** Der Artikel dieser Regel (T-270). */
   rule?: RuleRef;
+  /** Der Glossarbegriff, der sie erklärt (T-347). */
+  glossary?: string;
 }
 
 export interface RuleSortState extends RuleSortDef {
@@ -945,6 +960,7 @@ export function ruleOptionsOf(campaign: Entity | null | undefined, ctx: RuleOpti
         does: textVon(art, o.does),
         scope: 'settings' in o.source ? 'installation' : 'campaign',
         rule: refVon(art),
+        ...(o.glossary ? { glossary: o.glossary } : {}),
       };
       const src = o.source;
       if ('field' in src) {
@@ -955,7 +971,7 @@ export function ruleOptionsOf(campaign: Entity | null | undefined, ctx: RuleOpti
             const a = idx.options.get(`${o.key}:${v.key}`);
             const chosen = String(wert) === v.key;
             if (!a && !chosen) return [];
-            return [{ key: v.key, label: a ? entityName(a) : v.label, does: textVon(a, v.does), chosen, ...(a ? { rule: refVon(a) } : {}) }];
+            return [{ key: v.key, label: a ? entityName(a) : v.label, does: textVon(a, v.does), chosen, ...(a ? { rule: refVon(a) } : {}), ...(v.glossary ? { glossary: v.glossary } : {}) }];
           });
         } else {
           raus.value = Array.isArray(wert) ? wert.map(String) : wert === undefined ? [] : [String(wert)];
