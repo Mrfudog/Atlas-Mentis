@@ -35,7 +35,10 @@ const bestand: Entity[] = [
   art('pc_1', 'PlayerCharacter', 'Rook', {}, [{ id: 'mp', type: 'memberOfParty', to: 'pt_1', props: {} }]),
   art('npc_offen', 'Creature', 'Volo'),
   art('npc_geheim', 'Creature', 'Der Fremde', { Visibility: { audience: 'gm' } }),
-  art('welt', 'Map', 'Welt', { Image: { image: 'as_welt' }, Map: { gridShape: 'hex' } }),
+  /* Der Standort (T-330): die Weltkarte zeigt ein Land, das in einem Kontinent liegt, den nur die Leitung kennt. */
+  art('ort_kontinent', 'Place', 'Kontinent', { Visibility: { audience: 'gm' } }),
+  art('ort_land', 'Place', 'Nebelland', {}, [{ id: 'po2', type: 'partOf', to: 'ort_kontinent', props: {} }]),
+  art('welt', 'Map', 'Welt', { Image: { image: 'as_welt' }, Map: { gridShape: 'hex' } }, [{ id: 'mo', type: 'mapOf', to: 'ort_land', props: {} }]),
   art(
     'stadt',
     'Map',
@@ -231,8 +234,13 @@ describe('/api/maps', () => {
       ['keller', 2],
     ]);
     expect(gm.maps.find((m) => m.id === 'stadt')).toMatchObject({ parent: 'welt', image: 'as_stadt', layers: [{ name: 'Nebel' }] });
-    const sp = (await hole('Sela', '/api/maps')).json() as { maps: { id: string }[] };
+    const sp = (await hole('Sela', '/api/maps')).json() as { maps: { id: string; location: { name: string }[] }[] };
     expect(sp.maps.map((m) => m.id)).not.toContain('keller');
+    /* T-330: der Standort, die Unterkarte bei ihrer Karte; der Weg endet vor dem verborgenen Ort. */
+    const ort = (r: { maps: { id: string; location?: { name: string }[] }[] }, id: string) => r.maps.find((m) => m.id === id)?.location?.map((l) => l.name);
+    expect(ort(gm, 'stadt')).toEqual(['Nebelland', 'Kontinent']);
+    expect(ort(sp, 'stadt')).toEqual(['Nebelland']);
+    expect(ort(sp, 'gruft')).toEqual([]);
   });
 
   it('says where a map is used — sessions and fights the viewer sees', async () => {
