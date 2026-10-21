@@ -3199,6 +3199,32 @@ export const fieldGroups = {
           enum: ['moves', 'always', 'never'],
           default: 'moves',
         },
+        /* **Kartenverknüpfungen** (T-327, `mapLinkDefaultsOf`): wie eine
+           verlinkte Unterkarte auf der Karte darüber steht — für die
+           Leitung und die Spielenden getrennt —, und ob die Unterkarte die
+           Karte darüber blass als Rand zeigt. Eine Verknüpfung darf es
+           selbst sagen (Kante `insideMap`). */
+        mapLinkShow: {
+          type: 'string',
+          title: 'Sub-map links: shown to the GM',
+          description: 'How a linked sub-map appears on the map above for the GM: a frame you click to jump in, only the frame, an icon, or nothing (zoom in to enter).',
+          enum: ['jump', 'frame', 'icon', 'hidden'],
+          default: 'jump',
+        },
+        mapLinkShowPlayers: {
+          type: 'string',
+          title: 'Sub-map links: shown to players',
+          description: 'How a linked sub-map appears on the map above for players: a frame you click to jump in, only the frame, an icon, or nothing (zoom in to enter).',
+          enum: ['jump', 'frame', 'icon', 'hidden'],
+          default: 'jump',
+        },
+        mapLinkOuter: {
+          type: 'string',
+          title: 'Sub-map links: map above as border',
+          description: 'Whether a sub-map shows the map above, faded, around its own image — as far as the map above is released and revealed.',
+          enum: ['faded', 'none'],
+          default: 'none',
+        },
         /* **Werkzeuge je Kartentyp** (T-320): je `Map.kind` die Gruppen
            der Werkzeugleiste. Fehlt eine Art, gilt die Vorgabe
            (`defaultMapTools`); gelesen über `mapToolsOf`. */

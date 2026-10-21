@@ -620,6 +620,8 @@ export function frameShare(frame: Frame, nat: Size | null, zoom: number, viewpor
 export interface ChildMap {
   id: EntityId;
   frame: Frame;
+  /** Ab welchem Anteil des Blicks hineingezoomt wird (T-327, `linkNear`); ohne Angabe `MAP_NEAR`. */
+  near?: number;
 }
 
 export type ZoomStep =
@@ -651,7 +653,7 @@ export function zoomStep(opts: {
     for (const k of opts.children) {
       if (opts.visible && !overlaps(k.frame, opts.visible)) continue;
       const anteil = frameShare(k.frame, opts.nat, zoom, opts.viewport);
-      if (anteil >= MAP_NEAR && (!beste || anteil > beste.anteil)) beste = { id: k.id, anteil };
+      if (anteil >= (k.near ?? MAP_NEAR) && (!beste || anteil > beste.anteil)) beste = { id: k.id, anteil };
     }
     if (beste) return { kind: 'enter', id: beste.id };
     return { kind: 'zoom', zoom: Math.min(MAP_ZOOM_MAX, zoom * MAP_ZOOM_STEP) };
@@ -661,9 +663,9 @@ export function zoomStep(opts: {
   return { kind: 'zoom', zoom: neu };
 }
 
-/** Steht der Rahmen nahe genug, dass der nächste Schritt ihn betritt? */
-export function frameNear(frame: Frame, nat: Size | null, zoom: number, viewport: Size): boolean {
-  return frameShare(frame, nat, zoom, viewport) >= MAP_NEAR;
+/** Steht der Rahmen nahe genug, dass der nächste Schritt ihn betritt? `near` je Verknüpfung (T-327). */
+export function frameNear(frame: Frame, nat: Size | null, zoom: number, viewport: Size, near: number = MAP_NEAR): boolean {
+  return frameShare(frame, nat, zoom, viewport) >= near;
 }
 
 function overlaps(a: Frame, b: Frame): boolean {

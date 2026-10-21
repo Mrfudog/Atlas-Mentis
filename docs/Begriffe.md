@@ -2474,6 +2474,20 @@ Token, das jemand nach `tokenMove` zieht, und für Spielende nur der Schein.
 Wer eine Laterne mit Namen und Preis will, legt das Item als Marker hin;
 es leuchtet nach seinem eigenen Licht.
 
+**Eine Verknüpfung behält ihren Kasten, auch als Form** (T-327). Ein
+Hafenviertel ist kein Rechteck, also darf der Bereich ein Vieleck sein —
+aber das Bild der Unterkarte ist eines, und alles, was zwischen den beiden
+Karten rechnet (Punkte heben, Gruppen-Token, wie viel des Blicks ein
+Bereich füllt), braucht ein Rechteck. Die Form sagt darum nur, wo gezeichnet
+und getroffen wird; gerechnet wird mit ihrem Kasten. Zwei Rechnungen — eine
+für die Form, eine für das Bild — liefen beim ersten schiefen Viertel
+auseinander. Ebenso stehen Zoomtiefe und Anzeige **an der Kante**, nicht an
+der Unterkarte: dieselbe Karte könnte in einer anderen Karte anders liegen,
+und was die Leitung über eine Verknüpfung sagt, sagt sie über diese
+Verknüpfung. Der blasse Rand der Karte darüber wird gerechnet und nicht
+gespeichert (D8) — ein zugeschnittenes Bild an der Unterkarte wäre beim
+nächsten neuen Bild der Karte darüber falsch.
+
 **Welche Werkzeuge eine Karte zeigt, sagt die Kampagne, nicht die Karte**
 (T-320). Eine Weltkarte braucht keine Wände und eine Kampfkarte keine
 Unterkarten — aber welche Gruppe auf welcher Art steht, ist eine

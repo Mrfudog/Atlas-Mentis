@@ -947,7 +947,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'insideMap',
     label: 'inside',
     inverseLabel: 'zoom into',
-    means: 'A map lies inside another map, at a rectangle; the outer map lists what you can zoom into.',
+    means: 'A map lies inside another map, at a rectangle or a shape; the outer map lists what you can zoom into.',
     from: ['Map'],
     to: ['Map'],
     cardinality: 'one',
@@ -958,6 +958,17 @@ export const relations: Record<string, RelationDef> = {
         y: { type: 'number', title: 'Y (0–1)' },
         w: { type: 'number', title: 'Width (0–1)' },
         h: { type: 'number', title: 'Height (0–1)' },
+        /* **Verknüpfung als Form** (T-327, `maplinks.ts`): `area` ist ein
+           Vieleck in Anteilen der Karte darüber, wie die Fläche eines
+           Übergangs; `x`/`y`/`w`/`h` bleiben sein Kasten. `near` ist die
+           Zoomtiefe (Anteil des Blicks, Vorgabe 0,55), `show` und
+           `showPlayers` die Anzeige, `outer` der blasse Rand der Karte
+           darüber in der Unterkarte — ohne Angabe die Kampagne. */
+        area: { type: 'array', title: 'Link area', items: { type: 'array' } },
+        near: { type: 'number', title: 'Enter at share of view', min: 0.1, max: 1 },
+        show: { type: 'string', title: 'Shown to the GM', enum: ['jump', 'frame', 'icon', 'hidden'] },
+        showPlayers: { type: 'string', title: 'Shown to players', enum: ['jump', 'frame', 'icon', 'hidden'] },
+        outer: { type: 'string', title: 'Map above as border', enum: ['faded', 'none'] },
       },
     },
   },
