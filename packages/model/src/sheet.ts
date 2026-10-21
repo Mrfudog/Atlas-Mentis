@@ -11,6 +11,7 @@
  * das Inventar dieselbe Funktion (`handState`) — die Sperren hier bleiben.
  */
 
+import { COMMON_ACTION_CATALOGUE, TURN_TYPES, turnTypeOf, type TurnType } from './actions.js';
 import { keyStats, signedBook, type StatblockContext } from './book.js';
 import { abilityMod, derivedValue } from './calc.js';
 import { hitPointLevels } from './hitpoints.js';
@@ -167,28 +168,11 @@ export function gripDamage(item: HeldItem, both: boolean): string {
 
 // ------------------------------------------------------------ Your turn
 
-/** Die Aktionsarten in der Reihenfolge des Bogens. */
-export const TURN_TYPES = ['action', 'bonus', 'reaction', 'free', 'trigger'] as const;
-export type TurnType = (typeof TURN_TYPES)[number];
+/* Aktionsarten und der Kostenleser stehen mit dem Katalog der allgemeinen
+   Aktionen in `actions.ts` (T-275, Punkt 3). */
 
 /** Nur diese drei werden je Zug als verbraucht markiert. */
 export const TRACKED_TURN_TYPES: readonly TurnType[] = ['action', 'bonus', 'reaction'];
-
-/**
- * **Die Aktionsart aus dem Namen ihres Artikels** (`ActionType`: „Action",
- * „Bonus Action", „Reaction", „Free Action"). Was nicht passt — eine
- * Minute, eine Stunde — steht nicht im Zug und gibt `null`.
- */
-export function turnTypeOf(actionTypeName: string | null | undefined): TurnType | null {
-  const n = String(actionTypeName ?? '').toLowerCase().trim();
-  if (!n) return null;
-  if (n.includes('bonus')) return 'bonus';
-  if (n.includes('reaction')) return 'reaction';
-  if (n.includes('free') || n.includes('object')) return 'free';
-  if (n.includes('trigger') || n.includes('special')) return 'trigger';
-  if (n.includes('legendary') || n === 'action' || n.endsWith(' action')) return 'action';
-  return null;
-}
 
 /** Was eine Sperre braucht: Zauber (Komponenten), eine Hand, die leichte Nebenhand. */
 export type TurnNeed = 'cast' | 'hand' | 'offhand';
@@ -227,23 +211,18 @@ export function lockOf(a: TurnAction, hands: HandState): string {
 }
 
 /**
- * **Die allgemeinen Aktionen** jeder Figur (PHB Kapitel 9). Die Namen
- * sind Regelwörter; was sie tun, sagt das Glossar.
+ * **Die allgemeinen Aktionen** jeder Figur (PHB Kapitel 9) — aus dem einen
+ * Katalog (`COMMON_ACTION_CATALOGUE`, T-275), den auch der Zugplan liest.
  */
-export const RULE_ACTIONS: readonly TurnAction[] = [
-  { id: 'rule:dash', name: 'Dash', type: 'action', source: 'rules', sourceLabel: 'Rules' },
-  { id: 'rule:disengage', name: 'Disengage', type: 'action', source: 'rules', sourceLabel: 'Rules' },
-  { id: 'rule:dodge', name: 'Dodge', type: 'action', source: 'rules', sourceLabel: 'Rules' },
-  { id: 'rule:help', name: 'Help', type: 'action', source: 'rules', sourceLabel: 'Rules' },
-  { id: 'rule:hide', name: 'Hide', type: 'action', source: 'rules', sourceLabel: 'Rules' },
-  { id: 'rule:search', name: 'Search', type: 'action', source: 'rules', sourceLabel: 'Rules' },
-  { id: 'rule:use', name: 'Use an object', type: 'action', source: 'rules', sourceLabel: 'Rules', needs: 'hand' },
-  { id: 'rule:offhand', name: 'Off-hand attack', type: 'bonus', source: 'rules', sourceLabel: 'Rules', needs: 'offhand' },
-  { id: 'rule:opportunity', name: 'Opportunity attack', type: 'reaction', source: 'rules', sourceLabel: 'Rules' },
-  { id: 'rule:draw', name: 'Draw or stow a weapon', type: 'free', source: 'rules', sourceLabel: 'Rules', does: 'One object interaction per turn' },
-  { id: 'rule:drop', name: 'Drop an item', type: 'free', source: 'rules', sourceLabel: 'Rules' },
-  { id: 'rule:stand', name: 'Stand up', type: 'free', source: 'rules', sourceLabel: 'Rules', does: 'Costs half your speed' },
-];
+export const RULE_ACTIONS: readonly TurnAction[] = COMMON_ACTION_CATALOGUE.map((a) => ({
+  id: `rule:${a.key}`,
+  name: a.name,
+  type: a.type,
+  source: 'rules',
+  sourceLabel: 'Rules',
+  does: a.hint,
+  ...(a.needs ? { needs: a.needs } : {}),
+}));
 
 /** Jede Zeile mit ihrer Sperre. */
 export function turnRows(actions: readonly TurnAction[], hands: HandState): TurnRow[] {

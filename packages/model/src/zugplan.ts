@@ -15,6 +15,7 @@
  * Oberfläche gleich.
  */
 
+import { COMMON_ACTION_CATALOGUE, turnTypeOf } from './actions.js';
 import { abilityMod } from './calc.js';
 import { averageOf, attackNumbers, type AttackNumbers } from './attack.js';
 import { cellAt, cellCentre, type GridGeometry, type MapMarker } from './map.js';
@@ -198,33 +199,29 @@ export function freshResources(speed: number): TurnResources {
 /**
  * **Was eine Aktion kostet**, aus dem Namen ihrer Art (`Action.actionType`
  * nennt einen Artikel: „Action", „Bonus Action", „Reaction",
- * „Legendary Action"). Legendär ist am Tisch kein eigener Zug — für den
- * Plan zählt sie als Aktion, bis die Leitung etwas anderes will.
+ * „Legendary Action"). Derselbe Leser wie am Bogen (`turnTypeOf`, T-275):
+ * legendär zählt als Aktion, „Object Interaction" als frei; was keine Art
+ * im Zug hat (eine Minute), plant sich als Aktion.
  */
 export function costOf(actionTypeName: string | null | undefined): PlanCost {
-  const n = String(actionTypeName ?? '').toLowerCase();
-  if (n.includes('bonus')) return 'bonus';
-  if (n.includes('reaction')) return 'reaction';
-  if (n.includes('free')) return 'free';
-  return 'action';
+  const t = turnTypeOf(actionTypeName);
+  return t === 'bonus' || t === 'reaction' || t === 'free' ? t : 'action';
 }
 
 /**
- * **Die allgemeinen Aktionen** des Spielerhandbuchs, die jede Kreatur hat.
- * `Dash` gibt das Tempo noch einmal; die übrigen ändern am Plan nichts und
- * stehen da, damit man sie wählen und die Leitung sie lesen kann.
+ * **Die allgemeinen Aktionen im Zugplan** — aus dem einen Katalog
+ * (`COMMON_ACTION_CATALOGUE`, T-275), die ein Zug plant. Dash gibt das
+ * Tempo noch einmal, Disengage schützt vor Gelegenheitsangriffen; Dodge,
+ * Help, Hide und Ready setzen beim Bestätigen ihren Eintrag in der
+ * Initiative, und der ändert Vorteil und Nachteil (`ActionRule`).
  */
-export const COMMON_ACTIONS: readonly PlanTile[] = [
-  { id: 'std:dash', name: 'Dash', hint: 'Gain extra movement equal to your speed.' },
-  { id: 'std:disengage', name: 'Disengage', hint: 'Your movement does not provoke opportunity attacks.' },
-  { id: 'std:dodge', name: 'Dodge', hint: 'Attacks against you have disadvantage until your next turn.' },
-  { id: 'std:help', name: 'Help', hint: 'An ally gains advantage on their next check or attack.' },
-  { id: 'std:hide', name: 'Hide', hint: 'Make a Dexterity (Stealth) check.' },
-].map((t) => ({
-  ...t,
-  cost: 'action' as const,
+export const COMMON_ACTIONS: readonly PlanTile[] = COMMON_ACTION_CATALOGUE.filter((a) => a.planned).map((a) => ({
+  id: `std:${a.key}`,
+  name: a.name,
+  hint: a.hint,
+  cost: costOf(a.type === 'action' ? 'Action' : a.type),
   group: 'common' as const,
-  targeted: false,
+  targeted: !!a.targeted,
   range: null,
   longRange: null,
   toHit: null,
