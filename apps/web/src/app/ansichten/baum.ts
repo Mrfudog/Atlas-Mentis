@@ -25,6 +25,7 @@ import { Form } from '../artikel/form';
 import { Lesen } from '../lesen/lesen';
 import { Tabellenzeilen } from '../artikel/tabellenzeilen';
 import { Bild, bildDes } from '../artikel/bild';
+import { Struktur } from '../struktur/struktur';
 
 /** Ein Wert, wie ihn ein Element zeigt. */
 interface Wert {
@@ -61,7 +62,7 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-ansichtsbaum',
-  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild],
+  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild, Struktur],
   template: `
     <ng-template #knoten let-el>
       @switch (el.el) {
@@ -193,6 +194,14 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
                 </tbody>
               </table>
             }
+          }
+        }
+        @case ('structure') {
+          <!-- Die Struktur (T-341): vom Artikel aus, gesiebt am Server; erst geladen, wenn sie zu sehen ist (T-348). -->
+          @defer (on viewport) {
+            <nw-struktur [wurzel]="artikel().id" [kanten]="el.edges ?? []" [tiefe]="el.depth" [form]="el.layout ?? 'tree'" />
+          } @placeholder {
+            <p class="laedt">Structure…</p>
           }
         }
         @case ('table') {

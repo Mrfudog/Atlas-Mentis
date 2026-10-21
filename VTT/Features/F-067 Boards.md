@@ -15,7 +15,7 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-12 Stories · 53 Punkte · 7 steht · 2 teils · 3 offen
+13 Stories · 61 Punkte · 8 steht · 2 teils · 3 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -31,4 +31,31 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 | [[REQ-166]] Auf dem Board anlegen | Spielleitung | 2 | teils |
 | [[REQ-291]] Leseansicht auf dem Board | Spielleitung | 3 | offen |
 | [[REQ-358]] Kampagnenboard als Startpunkt für Spielende | Spieler | 2 | steht |
+| [[REQ-360]] Struktur einer Fraktion als Organigramm oder Netz | Spielleitung | 2 | steht |
 <!-- stories:ende -->
+
+## Struktur-Kachel (T-341)
+
+Eine Kachel, die eine Fraktion, einen Ort oder eine Familie aus ihren
+Kanten zeichnet — als Organigramm oder Beziehungsnetz; dasselbe als
+Element `structure` an der Seite der Fraktion. Gespeichert ist nur die
+Frage, gerechnet wird am Server je Betrachter ([[REQ-360]]).
+
+```mermaid
+flowchart TB
+  subgraph Board
+    P[placed → Board selbst<br/>props.structure]
+  end
+  subgraph Ansicht
+    EL[Element structure<br/>an Faction.full]
+  end
+  P --> API[GET /api/structure/:id]
+  EL --> API
+  API --> GR[grob: roher Bestand]
+  GR --> SV[Sieb: Stapel, Sichtbarkeit, Wissen]
+  SV --> GF[structureGraph]
+  GF --> T[Baum: aufklappen, ↑ übergeordnet]
+  GF --> N[Netz: Ringe je Tiefe]
+  T & N -->|+ am Knoten| API
+```
+

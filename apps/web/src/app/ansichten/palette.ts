@@ -51,6 +51,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'quote', name: 'Quote', icon: '❝', tip: 'A field as a quote — a voice, a motto.', werte: true, neu: true },
       { el: 'badges', name: 'Badges', icon: '◉', tip: 'Values as badges — tags, conditions, properties.', werte: true, neu: true },
       { el: 'edgeTable', name: 'Table from edges', icon: '⊞', tip: 'One row per edge: its target and the edge’s own values. For the rows of a table: Table.', werte: true, neu: true },
+      { el: 'structure', name: 'Structure', icon: '⌥', tip: 'An organisation chart or relationship web from this article: members and ranks, parts and sub-factions, what it controls, who regards whom — the tags on the lines. Players see only what they may.', neu: true },
       { el: 'table', name: 'Table', icon: '⚄', tip: 'The rows of a table with its die column and Roll — the roll is saved in the rolls log and its row marked.', neu: true },
       { el: 'prose', name: 'Long text', icon: '☰', tip: 'Long texts (paragraphs, secrets, read-aloud), each under its title.', werte: true },
       { el: 'image', name: 'Image', icon: '▣', tip: 'The image of the article, with its caption.' },

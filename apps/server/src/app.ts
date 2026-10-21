@@ -163,6 +163,7 @@ import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
 import { registerAbfrage } from './abfrage.js';
+import { registerStruktur } from './struktur.js';
 import { registerKampagnenboard } from './kampagnenboard.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
@@ -3130,6 +3131,8 @@ export function buildApp({
       return !!user && mayWrite(user, await ownedBy(user), id);
     },
   });
+  /* Die Struktur (T-341): Organigramm und Beziehungsnetz, gesiebt je Betrachter. */
+  registerStruktur(app, { viewerOf, roh, sieve });
   /* Liegengelassen (T-140): Sitzungsende und Aufheben. */
   registerLiegen(app, {
     repo,

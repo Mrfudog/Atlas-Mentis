@@ -102,7 +102,13 @@ const grund: Record<string, Record<string, TypeLayout>> = {
   },
   Place: { quick: karte('Place.kind', 'Place.environment', 'Place.state'), handout: zettel('Place.kind', 'Place.environment') },
   /* Das Ziel einer Fraktion ist oft ihr Geheimnis — auf dem Zettel nur, was sie ist. */
-  Faction: { quick: karte('Faction.kind', 'Faction.goal'), handout: zettel('Faction.kind') },
+  /* Die Seite einer Fraktion zeigt ihre Struktur (T-341): Mitglieder mit
+     Rang, Unterfraktionen, was sie beherrscht, wen sie wie sieht. */
+  Faction: {
+    quick: karte('Faction.kind', 'Faction.goal'),
+    handout: zettel('Faction.kind'),
+    full: { adjust: { extra: [{ id: 'fac-structure', el: 'structure' }] } },
+  },
   Deity: { quick: karte('Deity.pantheon', 'Deity.title', 'Deity.alignment', 'Deity.domains'), handout: zettel('Deity.pantheon', 'Deity.domains') },
   Hazard: { quick: karte('Hazard.kind', 'Hazard.tier', 'Hazard.threat', 'Hazard.trigger') },
   /* Was bis T-234 auf der Karte nur Bild und Satz zeigte: Begegnung und
