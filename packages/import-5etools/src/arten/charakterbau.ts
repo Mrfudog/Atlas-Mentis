@@ -640,8 +640,13 @@ export const ASI_WAHLEN: Choice[] = [
   { id: 'feat', kind: 'feat', count: 1, from: { interfaces: ['Feat'] }, onlyIf: { choice: 'improvement', pick: 'feat' }, note: 'Feat' },
 ];
 
-/** Eine Attributssteigerung nach 2014: „increase one ability score of your choice by 2". */
-const ASI_TEXT = /increase one ability score of your choice by 2/i;
+/**
+ * Eine Attributssteigerung nach 2014: „increase one ability score of your
+ * choice by 2". Die Gefolgsleute (Sidekicks, TCE) sagen es in der dritten
+ * Person — „the sidekick increases one …" — und blieben darum ohne Wahl
+ * (T-095); Migration 123 zieht sie nach.
+ */
+const ASI_TEXT = /increases? one ability score of your choice by 2/i;
 
 const merkmal = (art: 'classFeature' | 'subclassFeature'): Zuordnung => ({
   art,

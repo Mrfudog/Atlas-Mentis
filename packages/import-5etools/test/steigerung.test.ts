@@ -18,13 +18,25 @@ function datenstand(): Datenstand {
       entries: [`At ${level}th level you can increase one ability score of your choice by 2, or two by 1.`],
     });
   }
+  /* Ein Gefolgsmann sagt es in der dritten Person (T-095). */
+  add('classFeature', {
+    name: 'Ability Score Improvement', source: 'TCE', className: 'Squire', classSource: 'TCE', level: 4,
+    entries: ['At this level the squire increases one ability score of your choice by 2, or two by 1.'],
+  });
   /* Ein Merkmal ohne „by 2" (wie die Fassung 2024) fragt nicht. */
   add('classFeature', { name: 'Steady Watch', source: 'PHB', className: 'Warden', classSource: 'PHB', level: 2, entries: ['You gain a feat of your choice.'] });
   add('class', {
     name: 'Warden', source: 'PHB', hd: { number: 1, faces: 8 }, proficiency: ['con'],
     classFeatures: ['Steady Watch|Warden||2', 'Ability Score Improvement|Warden||4', 'Ability Score Improvement|Warden||8'],
   });
-  return { arten, quellen: new Map([['phb', { id: 'PHB', name: "Player's Handbook", published: '2014-08-19', art: 'book' }]]) };
+  add('class', { name: 'Squire', source: 'TCE', hd: { number: 1, faces: 8 }, proficiency: ['con'], classFeatures: ['Ability Score Improvement|Squire|TCE|4'] });
+  return {
+    arten,
+    quellen: new Map([
+      ['phb', { id: 'PHB', name: "Player's Handbook", published: '2014-08-19', art: 'book' }],
+      ['tce', { id: 'TCE', name: "Tasha's Cauldron", published: '2020-11-17', art: 'book' }],
+    ]),
+  };
 }
 
 describe('Die Attributssteigerung als Merkmal (T-107)', () => {
@@ -40,10 +52,17 @@ describe('Die Attributssteigerung als Merkmal (T-107)', () => {
   });
 
   it('die Fassung nach 2014 fragt: Steigerung oder Talent, dasselbe Attribut zweimal erlaubt', () => {
-    const mitWahl = merkmale.filter((e) => e.components['Choices']);
+    const mitWahl = merkmale.filter((e) => e.components['Choices'] && e.relations?.some((r) => r.type === 'inLayer' && /phb/i.test(r.to)));
     expect(mitWahl).toHaveLength(1);
     expect(mitWahl[0]!.components['Choices']?.['choices']).toEqual(ASI_WAHLEN);
     expect(validateEntity(seedRegistry, mitWahl[0]!, { knownTypes: arten })).toEqual([]);
+  });
+
+  it('auch der Gefolgsmann fragt, obwohl er „increases" sagt (T-095)', () => {
+    const squire = es.find((e) => e.interfaces[0] === 'Class' && e.name === 'Squire')!;
+    const ziel = squire.relations?.find((r) => r.type === 'grants')?.to;
+    const m = es.find((e) => e.id === ziel)!;
+    expect(m.components['Choices']?.['choices']).toEqual(ASI_WAHLEN);
   });
 
   it('ein anderes Merkmal nicht', () => {
