@@ -424,6 +424,19 @@ describe('FileAssetStore', () => {
     for (const d of dirs) await rm(d, { recursive: true, force: true });
   });
 
+  /* Gefunden vom E2E-Lauf (T-356): zwei gleiche Bilder in derselben
+     Millisekunde hatten denselben Zwischennamen, und das zweite Umbenennen
+     fand seine Datei nicht mehr — 500 beim Hochladen. */
+  it('takes the same file twice at once', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'atlas-bilder-'));
+    dirs.push(dir);
+    const s = new FileAssetStore(join(dir, 'bilder'));
+    await s.bereit();
+    const key = `${'cd'.repeat(32)}.png`;
+    await Promise.all(Array.from({ length: 8 }, () => s.put(key, Buffer.from('y'))));
+    expect(await readdir(join(dir, 'bilder', 'cd'))).toEqual([key]);
+  });
+
   it('writes under a two-letter folder, lists, reads and deletes', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'atlas-bilder-'));
     dirs.push(dir);

@@ -14,7 +14,7 @@
  * der Version fragt (`?v=`). Die Vorschau heisst `<sha256>.thumb.webp`.
  */
 
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { mkdir, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -75,8 +75,11 @@ export class FileAssetStore implements AssetStore {
     if (await this.has(key)) return;
     await mkdir(join(this.dir, key.slice(0, 2)), { recursive: true });
     /* Erst ganz schreiben, dann umbenennen: eine halbe Datei unter dem
-       richtigen Namen gälte für immer als die richtige. */
-    const tmp = `${ziel}.${process.pid}.${Date.now()}.tmp`;
+       richtigen Namen gälte für immer als die richtige. Der Zwischenname
+       ist je Aufruf eigen — zwei gleiche Bilder in derselben Millisekunde
+       teilten sich sonst eine Datei (T-356). Umbenennen auf ein schon
+       vorhandenes Ziel ersetzt es mit demselben Inhalt. */
+    const tmp = `${ziel}.${process.pid}.${randomUUID()}.tmp`;
     await writeFile(tmp, data);
     await rename(tmp, ziel);
   }
