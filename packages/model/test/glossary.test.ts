@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { glossaryEntryOf, mentionsTerm, spotTerms, termIndex, type GlossaryEntry } from '../src/index';
+import { glossaryEntryNamed, glossaryEntryOf, glossaryFieldRefs, mentionsTerm, runChecks, spotTerms, termIndex, type Entity, type GlossaryEntry, type Registry } from '../src/index';
 
 /* T-242: Begriffe im Text erkennen und Nennungen zählen. Erfundene Wörter. */
 const e = (id: string, term: string, aliases: string[] = [], mehr: Partial<GlossaryEntry> = {}): GlossaryEntry => ({
@@ -54,5 +54,39 @@ describe('glossaryEntryOf und mentionsTerm (T-242)', () => {
     expect(mentionsTerm(mit('Glummer.'), eintrag)).toBe(false);
     expect(mentionsTerm(mit('Nothing.', 'Glum'), eintrag)).toBe(false);
     expect(mentionsTerm({ ...artikel }, eintrag)).toBe(false);
+  });
+});
+
+describe('Felder nennen ihren Begriff (T-347)', () => {
+  it('findet den Glossarartikel vor dem Wort der App, dann einen Alias — nur eindeutig', () => {
+    const eintraege = [
+      e('app:zorp', 'Zorp', [], { article: false, sort: 'type' }),
+      e('g1', 'Zorp'),
+      e('g2', 'Flarn', ['Flarning']),
+      e('g3', 'Quib', ['Mox']),
+      e('g4', 'Wopp', ['Mox']),
+    ];
+    expect(glossaryEntryNamed(eintraege, 'zorp')?.id).toBe('g1');
+    expect(glossaryEntryNamed(eintraege, 'Flarning')?.id).toBe('g2');
+    expect(glossaryEntryNamed(eintraege, 'Mox')).toBeNull();
+    expect(glossaryEntryNamed(eintraege, '')).toBeNull();
+    expect(glossaryEntryNamed(eintraege, 'Nichts')).toBeNull();
+  });
+
+  it('die Werkbank nennt Felder, deren Begriff die Installation nicht hat', () => {
+    const registry = {
+      interfaces: {
+        Probe: { name: 'Probe', schema: { type: 'object', properties: { a: { type: 'number', glossary: 'Flarn' }, b: { type: 'number', glossary: 'Zorp' } } } },
+        GlossaryTerm: { name: 'GlossaryTerm', schema: { type: 'object', properties: {} } },
+      },
+      relations: {}, views: {}, units: {}, vars: {},
+    } as unknown as Registry;
+    expect(glossaryFieldRefs(registry)).toEqual([
+      { ref: 'Probe.a', name: 'Flarn' },
+      { ref: 'Probe.b', name: 'Zorp' },
+    ]);
+    const begriff = { id: 'g1', interfaces: ['GlossaryTerm'], components: { Identity: { name: 'Glorb', aliases: ['flarn'] } } } as unknown as Entity;
+    const [r] = runChecks({ registry, entities: [begriff], exists: new Map() }, { only: ['missingGlossaryTerms'] });
+    expect(r!.hits.filter((h) => h.type === 'field').map((h) => h.name)).toEqual(['Probe.b']);
   });
 });

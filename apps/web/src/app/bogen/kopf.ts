@@ -123,7 +123,7 @@ interface Chip {
               <dl class="zellen">
                 @for (c of seite().zellen; track c.key) {
                   <div class="zelle" [attr.title]="c.why ?? null">
-                    <dt>{{ c.label }}</dt>
+                    <dt><span [nwBegriff]="feldBegriff(c.ref)">{{ c.label }}</span></dt>
                     <dd>{{ c.value }}</dd>
                     @if (c.why) {
                       <small>{{ c.why }}</small>
@@ -435,6 +435,10 @@ export class Bogen {
 
   protected begriff(id: string | undefined, name: string): string | null {
     return this.glossar.begriffZu(id, name);
+  }
+  /** Der Glossareintrag, den das Feld einer Kennzahl nennt (`glossary`, T-347). */
+  protected feldBegriff(ref: string | undefined): string | null {
+    return this.glossar.feld(this.bestand.registry(), ref);
   }
 
   // ------------------------------------------------------------ schreiben

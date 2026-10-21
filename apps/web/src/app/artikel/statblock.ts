@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, untracked } from '@angular/
 import { entityName, enumRefKind, primaryInterface, statblockBook } from '@nw/model';
 import type { Entity, StatblockBook } from '@nw/model';
 import { Bestand } from '../kern/bestand';
+import { BegriffLink, Glossar } from '../kern/glossar';
 import { Abschnitte } from './abschnitte';
 import { AbwMarken, zeilenVergleich, type Abweichung, type Vergleichsfassung } from './fassungen';
 import { Text } from './text';
@@ -19,7 +20,7 @@ import { Text } from './text';
  */
 @Component({
   selector: 'nw-statblock',
-  imports: [Text, Abschnitte, AbwMarken],
+  imports: [Text, Abschnitte, AbwMarken, BegriffLink],
   template: `
     @if (buch(); as b) {
       @if (b.byline) {
@@ -30,7 +31,7 @@ import { Text } from './text';
       @if (b.top.length) {
         <div class="zeilen">
           @for (z of b.top; track z.label) {
-            <p><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
+            <p><strong [nwBegriff]="feldBegriff(z.ref)">{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
           }
         </div>
         <div class="linie" aria-hidden="true"></div>
@@ -47,7 +48,7 @@ import { Text } from './text';
       <div class="linie" aria-hidden="true"></div>
       <div class="zeilen">
         @for (z of b.details; track z.label) {
-          <p><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
+          <p><strong [nwBegriff]="feldBegriff(z.ref)">{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
         }
         @for (z of b.extra; track z.label) {
           <p class="zusatz"><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
@@ -69,6 +70,12 @@ export class Statblock {
   readonly fassungen = input<readonly Vergleichsfassung[]>([]);
 
   private readonly bestand = inject(Bestand);
+  private readonly glossar = inject(Glossar);
+  /** Der Glossareintrag, den das Feld einer Zeile nennt (`glossary`, T-347):
+   *  „Armor Class" gepunktet, mit seiner Definition als Titel. */
+  protected feldBegriff(ref: string | undefined): string | null {
+    return this.glossar.feld(this.bestand.registry(), ref);
+  }
   /** Die Zeile unter dem Namen — Grösse, Art, Gesinnung. */
   protected readonly KOPF = 'byline';
 

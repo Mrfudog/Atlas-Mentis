@@ -15,7 +15,7 @@
  */
 
 import { Directive, ElementRef, Injectable, Input, computed, inject, signal } from '@angular/core';
-import { glossaryEntryNamed, termIndex, type GlossaryEntry } from '@nw/model';
+import { glossaryEntryNamed, termIndex, type GlossaryEntry, type Registry } from '@nw/model';
 import { Api } from './api';
 
 @Injectable({ providedIn: 'root' })
@@ -82,6 +82,14 @@ export class Glossar {
     if (!name) return null;
     void this.laden();
     return glossaryEntryNamed(this._eintraege() ?? [], name)?.id ?? null;
+  }
+
+  /** Die Id des Eintrags, den das Feld `Typ.feld` nennt (`PropertySchema.glossary`, T-347) —
+   *  für Feldnamen an Artikel, Statblock und Bogen dieselbe Frage. */
+  feld(registry: Pick<Registry, 'interfaces'> | null | undefined, ref: string | null | undefined): string | null {
+    const punkt = ref?.indexOf('.') ?? -1;
+    if (!ref || punkt <= 0) return null;
+    return this.genannt(registry?.interfaces[ref.slice(0, punkt)]?.schema?.properties?.[ref.slice(punkt + 1)]?.glossary);
   }
 
   /** Der Eintrag, der einen Artikel erklärt (`explains`), sonst der gleichnamige. */
