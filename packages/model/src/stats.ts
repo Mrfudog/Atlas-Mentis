@@ -121,7 +121,7 @@ export function characterStats(character: Entity, statblock: Entity | undefined,
     if (at.choice.kind !== 'ability' || !at.picks?.length) continue;
     at.picks.slice(0, at.choice.count ?? 1).forEach((a, i) => {
       const n = at.choice.bonus?.[i] ?? at.choice.bonus?.[0] ?? 1;
-      if (istAttribut(a)) teile[a].push({ kind: 'bonus', value: n, source: at.source.entity.id, via: 'choice', note: at.choice.id });
+      if (istAttribut(a)) teile[a].push({ kind: 'bonus', value: n, source: at.source.entity.id, via: 'choice', note: at.source.grant ? `${at.choice.id}, level ${at.source.grant.level}` : at.choice.id });
     });
   }
   const abilities = {} as Record<StatAbility, StatValue>;

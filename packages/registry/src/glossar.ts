@@ -39,6 +39,16 @@ export interface AppTerm {
 /** Die Wörter, mit denen die App über sich selbst spricht. */
 const APP: AppTerm[] = [
   {
+    term: 'Board element',
+    aliases: ['Board text', 'Board drawing'],
+    sort: 'app',
+    definition: 'Something on a board that is not an article: a text (heading, paragraph, list, quote), an image or a drawing — freehand, line, arrow, rectangle, ellipse. It belongs to the board itself.',
+    effect: 'Placed with the tools of the board; [[links]] and {VAR} in a text are filled in when shown. Marked GM only, it is not sent to players.',
+    example: 'An arrow from the note “Meet Volo” to Volo’s card, and a heading “Session 12” above both.',
+    translations: { de: 'Board-Element' },
+    see: '/boards',
+  },
+  {
     term: 'Carry block',
     aliases: ['Carry sheet', 'Carry grid'],
     sort: 'app',
@@ -599,7 +609,7 @@ const TYPES: AppTerm[] = [
   { term: 'Information', sort: 'type', types: ['Information'], definition: 'Some fields of one article — or of every article in a group, like all orcs — that someone knows; given to a character, party, faction, or to everyone with an ancestry, background, class or feat.', translations: { de: 'Information' } },
   { term: 'Knowledge', sort: 'type', types: ['Knowledge'], definition: 'A bundle of pieces of information, given out together — to characters, or to everyone with an ancestry, background, class or feat.', translations: { de: 'Wissen' } },
   { term: 'Map', sort: 'type', types: ['Map'], definition: 'A map with grid, markers, walls, fog and light, used on Play.', translations: { de: 'Karte' }, see: '/play' },
-  { term: 'Board', sort: 'type', types: ['Board'], definition: 'A canvas of cards for a story article; what lies on it are edges.', translations: { de: 'Board' } },
+  { term: 'Board', sort: 'type', types: ['Board'], definition: 'An endless canvas for a story article: articles lie on it as cards (edges), beside texts, images and drawings; a map can be its background.', translations: { de: 'Board' } },
   { term: 'Table', aliases: ['Random table', 'Deck'], sort: 'type', types: ['Table'], definition: 'A table to roll on, or a deck of cards; tables may nest.', translations: { de: 'Tabelle' } },
   { term: 'Rule element', aliases: ['Rule'], sort: 'type', types: ['Rule'], definition: 'A piece of rules text: a rule, an upgrade, a facility, a card.', translations: { de: 'Regelelement' } },
   { term: 'Feat', sort: 'type', types: ['Feat'], definition: 'A talent a character takes; it may ask choices and have effects.', translations: { de: 'Talent' } },

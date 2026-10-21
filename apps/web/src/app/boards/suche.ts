@@ -227,6 +227,8 @@ export class BoardSuche {
   /** Was nicht angeboten wird: das Board selbst und was schon daraufliegt. */
   readonly ohne = input<ReadonlySet<string>>(new Set());
   readonly gewaehlt = output<Entity>();
+  /** Nur Artikel dieser Art (T-339: das Werkzeug „Map“ sucht Karten). */
+  readonly typ = input('');
 
   private readonly bestand = inject(Bestand);
   private readonly session = inject(Session);
@@ -259,7 +261,8 @@ export class BoardSuche {
     });
     /* Wer „Add article" drückt, will tippen. */
     afterNextRender(() => this.feld()?.nativeElement.focus());
-    this.fragen();
+    /* Erst, wenn die Eingaben stehen — `typ` kommt nach dem Konstruktor. */
+    queueMicrotask(() => this.fragen());
   }
 
   /** Gefragt wird nach einer kurzen Pause, nicht bei jedem Buchstaben. */
@@ -279,7 +282,7 @@ export class BoardSuche {
     this.laedt.set(true);
     const q = this.suche().trim();
     void this.bestand
-      .liste({ q: q || undefined, type: this.art() || undefined, limit: TREFFER + 10 })
+      .liste({ q: q || undefined, type: this.art() || this.typ() || undefined, limit: TREFFER + 10 })
       .then((r) => {
         if (nr !== this.lauf) return;
         this.fehler.set(null);

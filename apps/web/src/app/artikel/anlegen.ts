@@ -7,6 +7,7 @@ import { Session } from '../kern/session';
 import { Stapel } from '../kern/stapel';
 import { pflichtFelder, type Pflicht } from './schnell';
 import { Wahl } from './wahl';
+import { mitnahmeParams } from '../figur/mitnahme';
 
 
 /**
@@ -87,8 +88,8 @@ import { Wahl } from './wahl';
       @if (typ() === 'PlayerCharacter') {
         <!-- Klasse, Herkunft, Hintergrund und ihre Wahlen (T-080). -->
         <p class="hinweis">
-          <a routerLink="/characters/new" (click)="zu.emit()">Use the character builder</a> — ancestry, background,
-          class and their choices, step by step.
+          <a routerLink="/characters/new" [queryParams]="mitnehmen()" (click)="zu.emit()">Use the character builder</a> — ancestry, background,
+          class and their choices, step by step{{ name().trim() ? ', with what you entered here' : '' }}.
         </p>
       }
       @if (problem(); as f) {
@@ -218,6 +219,15 @@ export class Anlegen {
     const typ = this.typ();
     return r && typ ? pflichtFelder(r, typ) : [];
   });
+
+  /**
+   * **Was der Assistent übernimmt** (T-095, Prüfung 20.10.): Name, eine
+   * abweichende Ebene und die Pflichtfelder, die hier schon stehen — als
+   * Adresse, damit nichts doppelt gefragt wird (`name`, `layer`, `f.<Typ.feld>`).
+   */
+  protected readonly mitnehmen = computed(() =>
+    mitnahmeParams(this.name(), this.ebene(), this.stapel.schreib()?.layer?.id, this.pflicht(), this.werte()),
+  );
 
   constructor() {
     /* Eine andere Art hat andere Pflichtfelder: was für die alte gewählt

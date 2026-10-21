@@ -1,0 +1,281 @@
+
+/* ------------------------------------------------------- Werkzeuge (T-339)
+   Wie auf der Karte (T-325): die Leiste links, die Optionen des gewählten
+   Werkzeugs über der Leinwand; am Telefon die Leiste unten fest. */
+.arbeit {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.spalte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.werkzeugleiste {
+  position: sticky;
+  top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  flex: none;
+  z-index: 6;
+}
+.werkzeugleiste button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: flex-start;
+  min-height: 40px;
+  padding: 0 0.6rem;
+  text-align: left;
+}
+.werkzeugleiste button.an,
+.unterleiste button.an {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+.werkzeugleiste .sym {
+  display: inline-block;
+  width: 1.2rem;
+  text-align: center;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.werkzeugleiste .trenner {
+  display: block;
+  height: 1px;
+  margin: 0.2rem 0.3rem;
+  background: var(--line);
+}
+.werkzeugleiste .einklappen {
+  justify-content: center;
+  color: var(--dim);
+}
+.arbeit.zu .werkzeugleiste .txt {
+  display: none;
+}
+.arbeit.zu .werkzeugleiste button {
+  justify-content: center;
+  padding: 0;
+  width: 40px;
+}
+.unterleiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.unterleiste label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+}
+.unterleiste .hint {
+  flex-basis: 100%;
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+.unterleiste input.zahl {
+  width: 4.5em;
+}
+.buehnen-rahmen {
+  position: relative;
+}
+.formblatt.schwebend {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 7;
+  max-width: min(34rem, calc(100% - 1rem));
+  max-height: calc(100% - 1rem);
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+}
+.formtext {
+  flex: 1 1 18rem;
+  min-height: 5rem;
+  font: inherit;
+}
+.weg-knopf {
+  color: var(--warn);
+}
+
+/* Der Hintergrund liegt unter allem, die Karte darüber, dann Bereiche, Formen, Kacheln. */
+.leinwand.mit-grund {
+  background-image: none;
+}
+.leinwand.schwenkt {
+  cursor: grabbing;
+}
+.grund {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-position: 0 0;
+}
+.kartengrund {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.kartengrund img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+}
+.kartengrund img.erstes {
+  position: relative;
+  display: block;
+}
+
+.form {
+  position: absolute;
+  box-sizing: border-box;
+  transform-origin: 50% 50%;
+}
+.form.f-text {
+  overflow: hidden;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  line-height: 1.35;
+}
+.form.f-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+.zeichnung,
+.vorschau {
+  overflow: visible;
+}
+.vorschau {
+  position: absolute;
+  pointer-events: none;
+  z-index: 9999;
+}
+.form.gewaehlt {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+.form.verborgen,
+.kachel.verborgen {
+  opacity: 0.6;
+  outline: 2px dotted var(--dim);
+}
+.leinwand:not(.zeichnet) .form {
+  cursor: move;
+}
+.kkopf .gm {
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+.kkopf .gm.an {
+  color: var(--accent);
+}
+.kinhalt.mit-karte {
+  padding: 0;
+}
+
+@media (max-width: 640px) {
+  .arbeit {
+    display: block;
+  }
+  .seite {
+    padding-bottom: 5rem;
+  }
+  .werkzeugleiste {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.2rem;
+    padding: 0.25rem;
+    border-radius: 0;
+    border-width: 1px 0 0;
+    scrollbar-width: none;
+    z-index: 30;
+  }
+  .werkzeugleiste button {
+    flex: none;
+    flex-direction: column;
+    gap: 0;
+    min-height: 44px;
+    min-width: 52px;
+    padding: 0.15rem 0.35rem;
+    justify-content: center;
+  }
+  .werkzeugleiste .txt {
+    font-size: 0.7rem;
+  }
+  .werkzeugleiste .trenner {
+    width: 1px;
+    height: auto;
+    margin: 0.3rem 0.1rem;
+  }
+  .werkzeugleiste .einklappen {
+    display: none;
+  }
+  .spalte > .unterleiste {
+    order: 1;
+    position: sticky;
+    bottom: 56px;
+    z-index: 4;
+    max-height: 40dvh;
+    overflow-y: auto;
+  }
+  .spalte > .buehnen-rahmen {
+    order: 0;
+  }
+  .formblatt.schwebend {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 56px;
+    max-width: none;
+    max-height: 40dvh;
+    border-radius: 0;
+    z-index: 29;
+  }
+}
+
+/* Überschriften im Text des Boards (T-339): grösser als im Fliesstext eines Artikels. */
+.form.f-text ::ng-deep .h1 {
+  font-family: var(--caps);
+  font-size: 2rem;
+  line-height: 1.15;
+  color: var(--accent);
+}
+.form.f-text ::ng-deep .h2 {
+  font-family: var(--caps);
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+.form.f-text ::ng-deep .h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
