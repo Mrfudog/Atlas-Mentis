@@ -113,12 +113,14 @@ export class ListenFilter {
   /**
    * Die Art aus der Adresse. Wechselt sie, beginnt die Liste auf Blatt 1,
    * und die Feldfilter und die Sortierung der alten Art gehen — Grad und
-   * Schule sagen einem Gegenstand nichts.
+   * Schule sagen einem Gegenstand nichts. „Added", „Changed" und „Added by"
+   * bleiben: sie gelten für jede Art.
    */
   typ(t: string | undefined): void {
     if (this.letzterTyp !== null && this.letzterTyp !== t) {
       this.blatt.set(0);
-      this.felder.set({});
+      /* Wann und von wem (T-382, `@…`) gilt für jede Art und bleibt. */
+      this.felder.set(Object.fromEntries(Object.entries(this.felder()).filter(([ref]) => ref.startsWith('@'))));
       this.sortierung.set('');
     }
     this.letzterTyp = t;
