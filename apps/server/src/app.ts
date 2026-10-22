@@ -3178,6 +3178,18 @@ export function buildApp({
     },
     augeVon,
     schreiben,
+    /* Je Artikel (T-387): was das Konto schreibt, und der Herausgeber je Ebene. */
+    schreibbar: async (user) => {
+      const own = await ownedBy(user);
+      return (id) => mayWrite(user, own, id);
+    },
+    verlag: (map) => {
+      const eigene = eigeneEbenen(map);
+      return (l) => {
+        const e = map.get(l);
+        return e ? publisherOf(map, e, eigene) : '';
+      };
+    },
   });
   /* Die Abfrage-Kachel am Board (T-340): Liste, Ziehen, Freigeben — gesiebt je Betrachter. */
   /* Das Kampagnenboard als Startpunkt (T-342). */

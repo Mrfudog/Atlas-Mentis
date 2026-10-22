@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-campaign-articles-layers",
+      "date": "2026-10-22",
+      "title": "See each article's layer on the campaign page and set its visibility",
+      "text": "Layers and Visibility on the campaign page now list every article in play with its layer, publisher and who sees it. Filter and sort by layer, type or visibility, set one article's visibility in its row, or tick several and set it for all at once.",
+      "area": "Campaign",
+      "link": "/campaign?tab=visibility"
+    },
+    {
       "id": "2026-10-22-rule-systems-as-layers",
       "date": "2026-10-22",
       "title": "Inventory is a rule system with its mechanics",

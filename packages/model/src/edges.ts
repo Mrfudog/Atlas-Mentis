@@ -117,6 +117,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     does: 'groups articles by their layer and the layer’s group, so a campaign’s visibility rule for a group (T-252) and the default of a layer reach the articles in it',
     uses: {
       [M + 'groupvisibility.ts']: ['partOf'],
+      /* Die Gruppe der Ebene an jedem Artikel der Liste (T-387). */
+      [S + 'sichtbarkeit.ts']: ['partOf'],
     },
   },
   {

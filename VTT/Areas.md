@@ -16,7 +16,7 @@ Die Funktionsbereiche von früher sind die **Epics** (E-049): je Epic ein Bereic
 | Epic | Umfang | Features | Stories | Punkte | Stand |
 |---|---|---|---|---|---|
 | [[EP-01 Inhaltsgerüst]] | Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell, mit dem jeder Artikel beschrieben, gespeichert und gezeichnet wird. | 9 | 53 | 177 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
-| [[EP-02 Zugang & Betrieb]] | Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, Werkbank, Ausrollen, Sicherung, Übernahme zwischen dev und prod, Leistung. | 11 | 45 | 139 | 28 steht · 6 teils · 8 offen · 1 ersetzt · 2 verworfen |
+| [[EP-02 Zugang & Betrieb]] | Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, Werkbank, Ausrollen, Sicherung, Übernahme zwischen dev und prod, Leistung. | 11 | 46 | 142 | 28 steht · 7 teils · 8 offen · 1 ersetzt · 2 verworfen |
 | [[EP-03 Kreaturen & Figuren]] | Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager — alles, was eine Figur oder ein Monster beschreibt. | 5 | 29 | 122 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
 | [[EP-04 Spielererlebnis]] | Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene Inhalte, Inventar, Chat. | 6 | 42 | 109 | 7 steht · 10 teils · 25 offen |
 | [[EP-05 Kampagne & Sitzungen]] | Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitung, Begegnungen, Abenteuer übernehmen, Party, Ladebildschirm. | 8 | 31 | 106 | 17 steht · 3 teils · 11 offen |

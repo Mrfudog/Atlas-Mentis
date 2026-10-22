@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 125 | 425 | 68 steht · 21 teils · 28 offen · 5 ersetzt · 3 verworfen |
+| 2 | 126 | 428 | 68 steht · 22 teils · 28 offen · 5 ersetzt · 3 verworfen |
 | 3 | 121 | 357 | 61 steht · 25 teils · 34 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **367** | **1314** | 185 steht · 58 teils · 108 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **368** | **1317** | 185 steht · 59 teils · 108 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -406,6 +406,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-365]] | Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung | Spielleitung | [[F-051 Initiative\|Initiative]] | 2 | 3 | defined | offen |
 | [[REQ-366]] | Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair | Spielleitung | [[F-051 Initiative\|Initiative]] | 3 | 3 | defined | offen |
 | [[REQ-367]] | Ebene eines Artikels im Bearbeiten ändern, als erstes Feld | Spielleitung | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 2 | 2 | in progress | teils |
+| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 3 | in progress | teils |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

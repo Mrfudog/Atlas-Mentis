@@ -140,3 +140,118 @@ describe('Sichtbarkeit je Gruppe (T-252)', () => {
     expect(await stufe('p_markt')).toEqual({ audience: 'players', source: 'campaign', rule: 'layer:ly_dnd' });
   });
 });
+
+/* T-387, REQ-368: jeder Artikel mit seiner Ebene, einzeln und für eine Auswahl. */
+describe('Sichtbarkeit je Artikel (T-387)', () => {
+  /** Dazu eine Ebene, die zwei Kampagnen aufschalten — sie gehört keiner, die Leitung schreibt sie nicht. */
+  async function mitGeteilterEbene() {
+    const t = await aufbau();
+    await t.repo.putEntity(ebene('ly_srd'));
+    await t.repo.putEntity({
+      id: 'camp_zwei',
+      interfaces: ['Campaign'],
+      name: 'Zwei',
+      components: { Identity: { name: 'Zwei', id: 'campaign-0002', aliases: [] } },
+      relations: [{ id: 'z1', type: 'activates', to: 'ly_srd', props: { order: 1 } }],
+    });
+    const c = (await t.repo.getEntity('camp_nebel'))!;
+    await t.repo.putEntity({ ...c, relations: [...(c.relations ?? []), { id: 'a3', type: 'activates', to: 'ly_srd', props: { order: 0 } }] });
+    await t.repo.putEntity(ort('p_regel', 'ly_srd'));
+    return t;
+  }
+  const liste = (app: Awaited<ReturnType<typeof aufbau>>['app'], cookie: string, q = '') =>
+    app.inject({ method: 'GET', url: `/api/campaigns/camp_nebel/visibility/articles${q}`, headers: { cookie } });
+
+  it('zeigt je Artikel Ebene, Stufe, Herkunft, Spalten und ob die Leitung schreibt', async () => {
+    const { app, keks } = await mitGeteilterEbene();
+    const res = await liste(app, await keks('Mira'), '?sort=layer&type=Place');
+    expect(res.statusCode).toBe(200);
+    const b = res.json();
+    expect(b.total).toBe(5);
+    expect(b.rows.map((r: { id: string }) => r.id)).toEqual(['p_werk', 'p_gruft', 'p_markt', 'p_tor', 'p_regel']);
+    const gruft = b.rows.find((r: { id: string }) => r.id === 'p_gruft');
+    /* Die Leitung schreibt die Ebene ihrer Kampagne (ly_brew, oben im Stapel), nicht die übrigen. */
+    expect(gruft).toMatchObject({ audience: 'gm', source: 'article', own: { audience: 'gm' }, seenBy: ['gm'], writable: false });
+    expect(gruft.layers).toEqual([{ id: 'ly_dnd', name: 'ly_dnd', publisher: expect.any(String), groups: [] }]);
+    const werk = b.rows.find((r: { id: string }) => r.id === 'p_werk');
+    expect(werk).toMatchObject({ audience: 'gm', source: 'layer', writable: true });
+    expect(b.rows.find((r: { id: string }) => r.id === 'p_regel').writable).toBe(false);
+    expect(b.facets.layers.map((l: { id: string; n: number }) => [l.id, l.n])).toEqual([
+      ['ly_brew', 1],
+      ['ly_dnd', 3],
+      ['ly_srd', 1],
+      /* Ohne Ebene (Figur, Ebenen, Kampagnen) zuletzt; die Facetten zählen ohne den Filter. */
+      ['none', 6],
+    ]);
+    expect(b.facets.levels.gm).toBe(2);
+    expect(b.all).toBe(11);
+    /* Filter: Ebene, Stufe, Name; Seiten. */
+    expect((await liste(app, await keks('Mira'), '?layer=ly_dnd&level=public')).json().rows.map((r: { id: string }) => r.id)).toEqual(['p_markt', 'p_tor']);
+    expect((await liste(app, await keks('Mira'), '?q=TOR')).json().total).toBe(1);
+    const s2 = (await liste(app, await keks('Mira'), '?type=Place&limit=2&offset=2')).json();
+    expect([s2.total, s2.rows.length, s2.offset]).toEqual([5, 2, 2]);
+  });
+
+  it('die Mitleitung liest, ändert nicht; Spielende sehen die Liste nicht', async () => {
+    const { app, keks } = await aufbau();
+    const cora = await keks('Cora');
+    expect((await liste(app, cora)).statusCode).toBe(200);
+    const w = await app.inject({ method: 'POST', url: '/api/campaigns/camp_nebel/visibility/articles', headers: { cookie: cora }, payload: { ids: ['p_markt'], audience: 'gm' } });
+    expect(w.statusCode).toBe(403);
+    const sela = await keks('Sela');
+    expect((await liste(app, sela)).statusCode).toBe(403);
+    const ws = await app.inject({ method: 'POST', url: '/api/campaigns/camp_nebel/visibility/articles', headers: { cookie: sela }, payload: { ids: ['p_markt'], audience: 'public' } });
+    expect(ws.statusCode).toBe(403);
+  });
+
+  it('setzt die Stufe für eine Auswahl; was die Leitung nicht schreibt, bleibt und sagt, warum', async () => {
+    const { app, keks, sieht, repo } = await mitGeteilterEbene();
+    const mira = await keks('Mira');
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_regel', 'p_tor']);
+    const r = await app.inject({
+      method: 'POST',
+      url: '/api/campaigns/camp_nebel/visibility/articles',
+      headers: { cookie: mira },
+      payload: { ids: ['p_werk', 'p_regel', 'gibts_nicht'], audience: 'players' },
+    });
+    expect(r.statusCode).toBe(200);
+    const b = r.json();
+    expect(b.done).toEqual(['p_werk']);
+    expect(b.refused.map((x: { id: string }) => x.id)).toEqual(['p_regel', 'gibts_nicht']);
+    expect(b.refused[0].error).toMatch(/layer you do not write/);
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_regel', 'p_tor', 'p_werk']);
+    expect((await repo.getEntity('p_werk'))?.components?.['Visibility']).toEqual({ audience: 'players' });
+    expect((await repo.getEntity('p_regel'))?.components?.['Visibility']).toBeUndefined();
+    /* Noch einmal dasselbe: nichts zu tun. */
+    const n = await app.inject({ method: 'POST', url: '/api/campaigns/camp_nebel/visibility/articles', headers: { cookie: mira }, payload: { ids: ['p_werk'], audience: 'players' } });
+    expect(n.json()).toMatchObject({ done: [], unchanged: ['p_werk'] });
+    /* Der Gruppe folgen nimmt das Feld wieder weg — die Vorgabe der Ebene gilt. */
+    await app.inject({ method: 'POST', url: '/api/campaigns/camp_nebel/visibility/articles', headers: { cookie: mira }, payload: { ids: ['p_werk'], audience: null } });
+    expect((await repo.getEntity('p_werk'))?.components?.['Visibility']).toBeUndefined();
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_regel', 'p_tor']);
+  });
+
+  it('zeigt und verbirgt je Spielerin über ihre Figuren', async () => {
+    const { app, keks, sieht, repo } = await aufbau();
+    const mira = await keks('Mira');
+    const spalte = (await liste(app, mira)).json().columns.find((c: { kind: string }) => c.kind === 'player').key as string;
+    const post = (payload: unknown) => app.inject({ method: 'POST', url: '/api/campaigns/camp_nebel/visibility/articles', headers: { cookie: mira }, payload });
+    expect((await post({ ids: ['p_werk'], player: { key: spalte, mode: 'show' } })).json().done).toEqual(['p_werk']);
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_tor', 'p_werk']);
+    const zeile = (await liste(app, mira, '?q=werk')).json().rows[0];
+    expect(zeile.players).toEqual({ [spalte]: 'show' });
+    expect(zeile.seenBy).toEqual([spalte, 'gm']);
+    await post({ ids: ['p_werk'], player: { key: spalte, mode: 'hide' } });
+    expect((await repo.getEntity('p_werk'))?.components?.['Visibility']).toEqual({ hiddenFrom: ['pc_rook'] });
+    /* Verborgen schlägt jede Stufe. */
+    await post({ ids: ['p_werk'], audience: 'public' });
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_tor']);
+    await post({ ids: ['p_werk'], player: { key: spalte, mode: 'follow' } });
+    expect((await repo.getEntity('p_werk'))?.components?.['Visibility']).toEqual({ audience: 'public' });
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_tor', 'p_werk']);
+    /* Unsinn sagt, was zu tun ist. */
+    expect((await post({ ids: ['p_markt'], player: { key: 'u:niemand', mode: 'show' } })).statusCode).toBe(400);
+    expect((await post({ ids: ['p_markt'], audience: 'alle' })).json().error).toMatch(/one of public/);
+    expect((await post({ ids: [] , audience: 'gm' })).statusCode).toBe(400);
+  });
+});
