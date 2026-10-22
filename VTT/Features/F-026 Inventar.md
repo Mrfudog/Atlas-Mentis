@@ -69,3 +69,11 @@ Ein Stapel am Gegenstand oder im Untermodul gilt über jeder geerbten Form.
 Die Herkunft kommt mit dem Artikel (`refs.shape`). Regel: G15 in
 `docs/Datenmodell.md`; Code: `packages/model/src/defaultShapes.ts`.
 
+**Übersicht und Wahl am Gegenstand** (T-394): `/inventory/shapes`
+(Rules & options › Inventory › Item shapes) zeigt links die Gruppen,
+rechts die Gegenstände mit geltender Form, Herkunft und der Marke „local“
+für eigene Angaben; das Element Shape am Gegenstand sagt, woher seine
+Form kommt, und setzt Gruppe und Referenzgegenstand („Group &
+reference“). Geschrieben wird in die Karte `ShapeDefaults` einer
+Formebene, gegen die gelesene Revision.
+

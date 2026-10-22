@@ -266,3 +266,30 @@ describe('campaignShapeDefaults', () => {
     expect(hasShapeDefaults(indexShapeDefaults(campaignShapeDefaults(alle, kampagne([]))))).toBe(false);
   });
 });
+
+describe('withShapeItem / withShapeGroup (T-394)', () => {
+  it('setzt, ändert und nimmt Felder eines Gegenstands heraus', async () => {
+    const { withShapeItem } = await import('../src/index.js');
+    let k = withShapeItem(undefined, 'a', { group: 'W4', ref: 'b' });
+    expect(k['shapeItems']).toEqual([{ id: 'a', group: 'W4', ref: 'b' }]);
+    k = withShapeItem(k, 'a', { ref: null, stackSize: 4 });
+    expect(k['shapeItems']).toEqual([{ id: 'a', group: 'W4', stackSize: 4 }]);
+    k = withShapeItem(k, 'a', { rows: [] });
+    expect(k['shapeItems']).toEqual([{ id: 'a', group: 'W4', stackSize: 4, rows: null }]);
+    k = withShapeItem(k, 'a', { rows: null, group: null, stackSize: null });
+    expect(k['shapeItems']).toEqual([]);
+    expect(k['shapeGroups']).toEqual([]);
+  });
+  it('„keine Form“ legt einen Eintrag an, wenn es keinen gibt', async () => {
+    const { withShapeItem } = await import('../src/index.js');
+    expect(withShapeItem({ shapeItems: [] }, 'x', { rows: [] })['shapeItems']).toEqual([{ id: 'x', rows: null }]);
+  });
+  it('eine Gruppe braucht zum Anlegen einen Namen, danach genügt die Änderung', async () => {
+    const { withShapeGroup } = await import('../src/index.js');
+    expect(withShapeGroup({}, 'G', { rows: ['#'] })['shapeGroups']).toBeUndefined();
+    let k = withShapeGroup({}, 'G', { name: 'Gems', rows: ['#'], stackSize: 16 });
+    expect(k['shapeGroups']).toEqual([{ id: 'G', name: 'Gems', rows: ['#'], stackSize: 16 }]);
+    k = withShapeGroup(k, 'G', { stackSize: 8, rows: null });
+    expect(k['shapeGroups']).toEqual([{ id: 'G', name: 'Gems', stackSize: 8 }]);
+  });
+});

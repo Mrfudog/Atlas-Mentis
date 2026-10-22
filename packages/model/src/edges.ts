@@ -111,6 +111,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'itemShapes',
+    label: 'Item shapes overview',
+    area: 'stack',
+    does: 'lists an item’s properties beside its shape in Item shapes, so the GM recognises which group it belongs to (T-394)',
+    uses: {
+      [S + 'vorgabeformen.ts']: ['hasProperty'],
+    },
+  },
+  {
     key: 'visibilityByGroup',
     label: 'Visibility by group',
     area: 'visibility',

@@ -512,6 +512,20 @@
           ]
         }
       ]
+    },
+    {
+      "routes": ["inventory/shapes"],
+      "title": "Item shapes",
+      "sections": [
+        {
+          "text": [
+            "Shapes and stack sizes for the grid inventory, from groups instead of one by one. Left the groups of the Default shapes mechanic, right the items with the shape that applies and where it comes from: on the item, own shape, from a reference item, drawn by price (art objects) or from the group.",
+            "Pick a group to change its shape (rows like ##/## — # taken, . free), stack size, whether its items are carried at all, and its reference item: if that item has its own shape, it is the group’s shape. Every item of the group without its own follows the change.",
+            "Edit on an item sets what is local to it: its group, its reference item (a +1 Longsword takes the Longsword’s shape), an own shape or stack size, or No shape. “local” marks items with such a setting; Only local overrides lists just those, Clear local takes it back. A shape painted on the item itself still wins.",
+            "Writes to says which layer the changes go into — a default-shapes layer you write that is turned on in this campaign. Without one the page is read only; turn on the rule system Inventory on the campaign page."
+          ]
+        }
+      ]
     }
   ],
   "without": {

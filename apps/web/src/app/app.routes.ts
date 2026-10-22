@@ -111,6 +111,13 @@ export const routes: Routes = [
     title: 'Account · Atlas Mentis',
   },
   /* Was neu ist (T-157): erreichbar über die Kopfleiste, mit Punkt bei Neuem. */
+  /* Die Vorgabeformen des Inventars im Überblick (T-394, REQ-333): Rules & options › Inventory › Shapes. */
+  {
+    path: 'inventory/shapes',
+    canActivate: [wache],
+    loadComponent: () => import('./artikel/formen-uebersicht').then((m) => m.FormenUebersichtSeite),
+    title: 'Item shapes · Atlas Mentis',
+  },
   {
     path: 'whats-new',
     canActivate: [wache],
