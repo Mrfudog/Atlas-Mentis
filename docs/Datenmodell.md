@@ -1222,6 +1222,16 @@ unter der Kampagne („Writes to", am Telefon ✎), im Anlegedialog und beim
 Bearbeiten — dort mit einer Warnung, wenn die Änderung in eine andere Ebene
 geht als die Schreibebene.
 
+**Die Ebene wechseln** (T-383): im Bearbeiten ist sie das erste Feld.
+Gespeichert wird sie als das, was sie ist — die Kante `inLayer`
+(`withHomeLayer`; Kanten mit `mode: 'removes'` bleiben, wie sie sind) —, im
+selben `PUT` wie alles andere. Dort prüft der Server, was dazukommt
+(`layerChange`): jede neue Ebene muss unter den Zielebenen des Kontos stehen,
+und aus jeder Ebene heraus nimmt einen Artikel nur die Verwaltung. Den
+Artikel zu schreiben heisst nicht, ihn in ein fremdes Regelwerk legen zu
+dürfen. Kanten und Fassungen bleiben; ob Teile, Statblock und Inventar
+mitwandern, ist offen (E-161).
+
 ```mermaid
 flowchart TB
   K["Campaign"] -- "activates · 100" --> KE["Kampagnenebene<br/>gm, co-gm"]
@@ -1976,7 +1986,7 @@ so fehlt einer Spielerin ein verborgener Knoten, jede Linie zu ihm und
 alles, was nur über ihn erreichbar war; eine Kante verrät dabei nichts,
 was der Artikel, an dem sie steht, nicht ohnehin hinausgibt. Höchstens
 `STRUCTURE_LIMIT` (120) Knoten; was hinter der Tiefe liegt, holt der
-Knoten mit „+" nach (`mergeStructure`). Dasselbe zeichnet das Element
+Knoten mit „+" nach (`mergeStructure`). Auf der Kachel passt sich das Netz der Kachel an; den Ausschnitt rechnet `netViewBox` samt der Breite der Namen (T-368). Dasselbe zeichnet das Element
 **`structure`** einer Ansicht vom Artikel der Seite aus (Einstellungen
 `edges`, `depth`, `layout` am Element); die Vollansicht der Fraktion trägt
 es. **Unterfraktionen** hängen über `partOf` an ihrer Fraktion (`Faction`

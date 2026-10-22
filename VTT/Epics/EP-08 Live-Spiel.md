@@ -20,7 +20,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 | Feature | Stories | Punkte | Stand |
 |---|---|---|---|
 | [[F-050 Spielleiter-Schirm]] — Bereich Play: der Schirm mit seinen Boards über mehrere Fenster, Tischanzeige. | 3 | 10 | 1 teils · 2 offen |
-| [[F-051 Initiative]] — Initiative für Leitung und Spielende, Zustände mit Dauer, Anzeige auf der Karte. | 7 | 18 | 6 steht · 1 teils |
+| [[F-051 Initiative]] — Initiative für Leitung und Spielende, Zustände mit Dauer, Anzeige auf der Karte. | 12 | 39 | 6 steht · 1 teils · 5 offen |
 | [[F-052 Sitzungszustand & Live-Kanal]] — Was gerade läuft, steht an der Sitzung und kommt live zu allen; Protokoll und Statistik. | 4 | 17 | 2 steht · 1 teils · 1 offen |
 | [[F-053 Würfel]] — Würfeln für sich und für alle, mit Protokoll. | 2 | 5 | 2 steht |
 | [[F-054 Werkzeuge am Tisch]] — Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. | 12 | 48 | 4 steht · 3 teils · 4 offen · 1 ersetzt |
@@ -35,7 +35,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 
 **Erklärt in:** [Architektur.md](../../docs/Architektur.md), [Spieltisch.md](../../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** [[REQ-113]] Notiz-Widget (offen) · [[REQ-114]] Schnellanlage auf dem Schirm (teils) · [[REQ-120]] Spielprotokoll (teils) · [[REQ-123]] Timer (offen) · [[REQ-128]] Kampf aus Sicht der Spielenden (teils) · [[REQ-187]] Tischanzeige (offen) · [[REQ-204]] Spielleiter-Schirm (offen) · [[REQ-205]] Ein Board je Geschichtsartikel (teils) · [[REQ-292]] Neuen Artikel aus einer Auswahl anlegen (teils)
+**Offen mit Prio 1–3:** [[REQ-113]] Notiz-Widget (offen) · [[REQ-114]] Schnellanlage auf dem Schirm (teils) · [[REQ-120]] Spielprotokoll (teils) · [[REQ-123]] Timer (offen) · [[REQ-128]] Kampf aus Sicht der Spielenden (teils) · [[REQ-187]] Tischanzeige (offen) · [[REQ-204]] Spielleiter-Schirm (offen) · [[REQ-205]] Ein Board je Geschichtsartikel (teils) · [[REQ-292]] Neuen Artikel aus einer Auswahl anlegen (teils) · [[REQ-362]] Einträge im Tracker, die keine Kreatur sind: Umgebung, Lair, Menge und Homebrew-Quelle, mit eigener Initiative-Position (z. B. 20, verliert Gleichstand) oder ohne Position (nur in der Rundenübersicht) (offen) · [[REQ-363]] Auslöser je Option: Rundenbeginn, Rundenende, nach jedem Zug, nach Bewegung, bei Initiative X — mit Angebot an die Leitung (anzeigen, bestätigen, auslassen) (offen) · [[REQ-364]] Kontingente je Quelle und Frequenz als Check-Marks in einer Rundenübersicht für die Leitung, mit automatischem Zurücksetzen (Beginn des eigenen Zugs, Rundenbeginn) (offen) · [[REQ-365]] Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung (offen) · [[REQ-366]] Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->

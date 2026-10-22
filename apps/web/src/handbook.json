@@ -85,6 +85,23 @@
           ]
         },
         {
+          "heading": "Adding an image from your phone",
+          "text": [
+            "At any image field (an article, a character, a map, a board) tap Upload image; on Images, Upload images.",
+            "Your phone shows its own menu: Photo Library, Take Photo, and Browse or Files. Under Browse/Files pick OneDrive (or another storage) and the image.",
+            "JPEG, PNG, WebP, GIF and AVIF are taken. A HEIC photo from Files is refused with a note — choose it from the photo library instead, where the phone converts it, or save it as JPEG."
+          ]
+        },
+        {
+          "heading": "Moving an article to another layer",
+          "text": [
+            "Open the article and press Edit. The first field is Layer, on the phone as on a wide screen.",
+            "Choose the layer it should belong to. The list holds the layer it is in now and the layers you write in that are switched on in this campaign — the same ones as under Writes to in the header.",
+            "Save. The page says Moved to … and the layer mark under the title shows the new one. Links to the article stay; its versions and the parts of a chapter stay in their own layers.",
+            "A layer you do not write in is refused with a message; choose one of your write layers or ask the GM."
+          ]
+        },
+        {
           "heading": "Making a new kind of article",
           "text": [
             "Registry › Types › New type: name it, choose its area and what it takes in, add its fields. It can be created right away — no code change."

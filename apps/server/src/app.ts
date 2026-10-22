@@ -118,6 +118,7 @@ import {
   validateEntity,
   articleId,
   entityName,
+  layerChange,
   idLinks,
   linkCandidates,
   nextId,
@@ -3791,6 +3792,31 @@ export function buildApp({
     const vorherRoh = await repo.getEntity(entity.id);
     const steht = vorherRoh?.revision ?? null;
     if (steht !== erwartet) return { konflikt: erwartet };
+    /* **Die Ebene wechselt nur in eine, in der man schreibt** (T-383):
+       den Artikel schreiben zu dürfen heisst nicht, ihn in ein fremdes
+       Regelwerk legen zu dürfen. Dieselbe Liste wie beim Anlegen und für
+       die Schreibebene (`zielEbenen`, T-161); aus jeder Ebene heraus legt
+       nur die Verwaltung — ein Artikel ohne Ebene gehört ihr. */
+    if (vorherRoh) {
+      const wechsel = layerChange(vorherRoh, entity);
+      const wer = await viewerOf(request);
+      if (wer && !wer.isAdmin && (wechsel.added.length || wechsel.homeless)) {
+        if (wechsel.homeless) {
+          return { code: 403, body: { error: 'Only the administration keeps articles outside every layer. Choose one of your write layers.' } };
+        }
+        const map = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+        const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+        const ziele = new Set((await zielEbenen(wer, map, kampagne)).map((l) => l.id));
+        const fremd = wechsel.added.filter((l) => !ziele.has(l));
+        if (fremd.length) {
+          const namen = fremd.map((l) => (map.get(l) ? entityName(map.get(l)!) : l)).join(', ');
+          return {
+            code: 403,
+            body: { error: `You do not write in ${namen} in this campaign. Choose one of your write layers (see “Writes to” in the header).` },
+          };
+        }
+      }
+    }
     /* **Was gezogen ist, gehört den Routen der Abfrage-Kachel** (T-340):
        ein Board, das die Seite nach einem Griff ganz zurückschreibt, trüge
        ihren letzten Stand mit und nähme einen Zug zurück. */

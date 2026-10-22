@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { describeAsset } from '@nw/model';
+import { IMAGE_ACCEPT, describeAsset, imageFileProblem } from '@nw/model';
 import { Api, ApiError, type BulkAntwort, type Liste, type ListenZeile } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Loeschen } from '../kern/loeschen';
@@ -92,7 +92,7 @@ const BLATT = 60;
               }
             </select>
             <label class="knopf">
-              <input type="file" accept="image/*" multiple (change)="hochladen($event)" [disabled]="laedt()" />
+              <input type="file" [accept]="accept" multiple (change)="hochladen($event)" [disabled]="laedt()" />
               {{ laedt() ? 'Uploading…' : 'Upload images' }}
             </label>
           </div>
@@ -242,6 +242,8 @@ export class Galerie {
   protected readonly laedt = signal(false);
   protected readonly arbeitet = signal(false);
   protected readonly problem = signal<string | null>(null);
+  /** Konkrete Typen statt `image/*`: so öffnet das Telefon auch seine Dateien (T-369). */
+  protected readonly accept = IMAGE_ACCEPT;
   protected readonly ergebnis = signal<{ text: string; lauf: string | null; open?: { id: string; name: string }[]; hinweis?: string } | null>(null);
   private readonly loescher = inject(Loeschen);
   /** An welcher Kachel gerade eine Marke getippt wird. */
@@ -439,6 +441,16 @@ export class Galerie {
     const dateien = [...(el.files ?? [])];
     el.value = '';
     if (!dateien.length) return;
+    const nein = dateien
+      .map((d) => {
+        const p = imageFileProblem(d);
+        return p ? `${d.name}: ${p}` : null;
+      })
+      .find(Boolean);
+    if (nein) {
+      this.problem.set(nein);
+      return;
+    }
     this.laedt.set(true);
     this.problem.set(null);
     try {
