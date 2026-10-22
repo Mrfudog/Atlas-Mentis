@@ -145,7 +145,8 @@
           "text": [
             "All images you can see. Filter by kind, tag, layer, or “unused” for images nothing refers to yet.",
             "Each image names its resolution, aspect ratio, size and layer. Tags stand as badges: × removes one, “+ tag” adds one; select several images to tag them together.",
-            "“Use as…” turns an image into a map (with a grid suggested from its resolution), a creature's token or a prop, and links to the result."
+            "“Use as…” turns an image into a map (with a grid suggested from its resolution), a creature's token or a prop, and links to the result.",
+            "Upload images opens your device's own picker: on a phone that includes Files, OneDrive and other storage as well as photos. JPEG, PNG, WebP, GIF and AVIF work; HEIC photos from Files must be saved as JPEG first (from the photo library they are converted for you)."
           ]
         }
       ]
