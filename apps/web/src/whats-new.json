@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-22-filter-relations",
+      "date": "2026-10-22",
+      "title": "Filter lists by relations",
+      "text": "“Relations” in the filters of the Compendium, World, Story and Rules finds articles that have a link or none, at least so many, or a link to one article — members of a faction, items with a grid shape.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-22-delete-articles",
       "date": "2026-10-22",
       "title": "Delete articles and images from your layer",
