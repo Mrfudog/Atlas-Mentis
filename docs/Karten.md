@@ -425,6 +425,21 @@ sagt, sagt die Kampagne, und ohne beides gilt, was vor T-327 galt.
   Einrasten, Halten öffnet die Lupe, *Undo point* und Backspace nehmen die
   letzte Ecke zurück, Enter schliesst. *Show points* zeigt die Ecken der
   übrigen Formen.
+- **Hinein nur, wo der Fokus liegt** (22.10.): der Zeiger beim Rad, sonst
+  die Mitte des Blicks (`zoomStep` mit `focus`, `inLink`). Er muss in der
+  Verknüpfung liegen — in ihrer Form, wenn sie eine hat. Vorher genügte,
+  dass ein Rahmen den Blick füllte und irgendwo zu sehen war; das Rad am
+  Rand führte in eine Stadt in der Mitte. Der Regler *Enter when it fills*
+  zeigt mit einer Marke, wie viel die Verknüpfung den Blick **jetzt**
+  füllt, und *Use current* übernimmt das.
+- **Keine Lupe mit der Maus** (22.10.): die Lupe ist für den Finger. Wer
+  mit der Maus drückte und erst nach 0,28 s zog, bekam sie statt des
+  Verschiebens — die Karte liess sich scheinbar nicht mehr ziehen.
+- **Zurücknehmen** (22.10.): *Undo point* und Backspace im Entwurf einer
+  Wand und eines Vielecks; *Undo* und Ctrl/Cmd+Z in der Gruppe Walls
+  nehmen die letzte Änderung an den Wänden dieser Ebene zurück — nur die
+  Wände, damit kein Token zurückspringt, das inzwischen jemand gezogen
+  hat. Der Verlauf gilt in der offenen Seite.
 - **Kein Absprung, solange ein Werkzeug läuft** (22.10.): ein Rahmen führt
   nur in der Auswahl hinein. Mit *Unlink* angetippt, sprang die Seite
   früher in die Unterkarte, bevor die Verknüpfung gelöst war; mit *Link

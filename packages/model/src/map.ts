@@ -728,6 +728,8 @@ export interface ChildMap {
   frame: Frame;
   /** Ab welchem Anteil des Blicks hineingezoomt wird (T-327, `linkNear`); ohne Angabe `MAP_NEAR`. */
   near?: number;
+  /** Die Form der Verknüpfung (Link shape) — dann zählt sie, nicht der Kasten. */
+  area?: ReadonlyArray<readonly [number, number]>;
 }
 
 export type ZoomStep =
@@ -752,12 +754,21 @@ export function zoomStep(opts: {
   viewport: Size;
   /** Der Ausschnitt in Kartenanteilen — nur Rahmen darin zählen. */
   visible?: Frame;
+  /**
+   * **Wohin gezoomt wird** (Kartenanteile): der Zeiger beim Rad, sonst die
+   * Mitte des Blicks. Hinein geht es nur in eine Verknüpfung, in der er
+   * liegt — in ihrer Form, wenn sie eine hat. Ohne ihn genügte es, dass ein
+   * Rahmen den Blick füllt und irgendwo zu sehen ist, und das Rad am Rand
+   * der Karte führte in eine Stadt in der Mitte.
+   */
+  focus?: Pt;
 }): ZoomStep {
   const { zoom, direction } = opts;
   if (direction > 0) {
     let beste: { id: EntityId; anteil: number } | null = null;
     for (const k of opts.children) {
       if (opts.visible && !overlaps(k.frame, opts.visible)) continue;
+      if (opts.focus && !inLink(k, opts.focus)) continue;
       const anteil = frameShare(k.frame, opts.nat, zoom, opts.viewport);
       if (anteil >= (k.near ?? MAP_NEAR) && (!beste || anteil > beste.anteil)) beste = { id: k.id, anteil };
     }
@@ -767,6 +778,13 @@ export function zoomStep(opts: {
   const neu = Math.max(MAP_ZOOM_MIN, zoom / MAP_ZOOM_STEP);
   if (neu >= zoom && opts.parent) return { kind: 'leave', id: opts.parent };
   return { kind: 'zoom', zoom: neu };
+}
+
+/** Liegt der Punkt in der Verknüpfung — in ihrer Form, sonst in ihrem Kasten? */
+export function inLink(k: Pick<ChildMap, 'frame' | 'area'>, p: Pt): boolean {
+  const f = k.frame;
+  if (p.x < f.x || p.y < f.y || p.x > f.x + f.w || p.y > f.y + f.h) return false;
+  return k.area && k.area.length >= 3 ? inPolygon(k.area, p) : true;
 }
 
 /** Steht der Rahmen nahe genug, dass der nächste Schritt ihn betritt? `near` je Verknüpfung (T-327). */

@@ -134,6 +134,22 @@ describe('sub-maps (REQ-131)', () => {
     expect(schritte.at(-1)).toBe('enter');
     expect(schritte.at(-2)).toBe('near');
   });
+  it('enters only where the focus is: cursor or centre of the view, inside the frame or its shape', () => {
+    const nat = { w: 1000, h: 1000 };
+    const viewport = { w: 800, h: 800 };
+    /* Zwei Rahmen, beide füllen den Blick genug; der eine als Dreieck. */
+    const kinder = [
+      { id: 'links', frame: { x: 0.1, y: 0.1, w: 0.3, h: 0.3 } },
+      { id: 'rechts', frame: { x: 0.6, y: 0.1, w: 0.3, h: 0.3 }, area: [[0.6, 0.1], [0.9, 0.1], [0.6, 0.4]] as Array<[number, number]> },
+    ];
+    const schritt = (focus: { x: number; y: number }) => zoomStep({ zoom: 4, direction: 1, children: kinder, nat, viewport, focus });
+    expect(schritt({ x: 0.2, y: 0.2 })).toEqual({ kind: 'enter', id: 'links' });
+    /* Neben jedem Rahmen: näher, nicht hinein — auch wenn beide den Blick füllen. */
+    expect(schritt({ x: 0.5, y: 0.5 }).kind).toBe('zoom');
+    /* Im Kasten des Dreiecks, aber ausserhalb der Form: nicht hinein. */
+    expect(schritt({ x: 0.85, y: 0.35 }).kind).toBe('zoom');
+    expect(schritt({ x: 0.65, y: 0.15 })).toEqual({ kind: 'enter', id: 'rechts' });
+  });
   it('leaves for the map above when fully out', () => {
     expect(zoomStep({ zoom: 0.25, direction: -1, children: [], parent: 'p', nat: null, viewport: { w: 1, h: 1 } })).toEqual({ kind: 'leave', id: 'p' });
     expect(zoomStep({ zoom: 0.25, direction: -1, children: [], nat: null, viewport: { w: 1, h: 1 } })).toEqual({ kind: 'zoom', zoom: 0.25 });

@@ -206,3 +206,19 @@
 .rahmen-marker.durch {
   pointer-events: none;
 }
+
+/* Die Zoomtiefe (T-327): eine Marke am Regler, wie viel die Verknüpfung den Blick jetzt füllt. */
+.nah-regler {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.nah-regler .jetzt {
+  position: absolute;
+  left: clamp(0%, calc((var(--jetzt) - 10%) / 0.9), 100%);
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--gold);
+  pointer-events: none;
+}
