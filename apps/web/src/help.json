@@ -424,7 +424,9 @@
             "“Order in play” lists every layer and group in play, top first: the higher one counts where two bring a version of the same article. Drag a row by its handle (or use ↑ ↓); a group moves as a block. Drag a book out of its group, or use “Own place”, to give it its own place; “Back into …” returns it.",
             "Each row says what its place does: which articles it replaces, and where its versions lose.",
             "Visibility shows who sees what, per group: rows are groups (layer, then type — change the steps above the table), columns are Public, Table, each player and GM, each cell how many articles of the group that column sees.",
-            "Pick an audience for a group, click a player's cell to show or hide the group for that player only, ↺ goes back to the layer's default. Articles with their own setting win over the group; “own” lists them, and “Follow the group” removes their setting."
+            "Pick an audience for a group, click a player's cell to show or hide the group for that player only, ↺ goes back to the layer's default. Articles with their own setting win over the group; “own” lists them, and “Follow the group” removes their setting.",
+            "Below the groups, under Layers and under Visibility, “Articles and their layers” lists every article in play with its layer, the layer's publisher, its visibility and where that comes from (own setting, campaign rule, layer default). Filter by name, layer, type and visibility, sort by name, layer, type or visibility.",
+            "Set one article's visibility right in its row (Public, Table, Players, GM; ↺ follows the group again), or click a player to show or hide it for that player only. Tick several, or “all shown”, and set it for all at once. Articles in a layer you do not write stay as they are and say so: set them for their group above instead. To move an article to another layer, open it and use Edit › Layer."
           ]
         }
       ]

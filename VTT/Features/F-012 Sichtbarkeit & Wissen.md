@@ -15,7 +15,7 @@ Epic: [[EP-02 Zugang & Betrieb]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-14 Stories · 40 Punkte · 11 steht · 1 offen · 1 ersetzt · 1 verworfen
+15 Stories · 43 Punkte · 11 steht · 1 teils · 1 offen · 1 ersetzt · 1 verworfen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -33,4 +33,5 @@ Epic: [[EP-02 Zugang & Betrieb]]
 | [[REQ-352]] Reiter Knowledge am Artikel | Spielleitung | 1 | steht |
 | [[REQ-353]] Die Seite eines Wissens zeigt alles, was es vereint | Spieler | 1 | steht |
 | [[REQ-354]] Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | 2 | offen |
+| [[REQ-368]] Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | 2 | teils |
 <!-- stories:ende -->
