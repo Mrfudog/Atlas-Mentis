@@ -21,6 +21,7 @@
  * von weiter unten kommt.
  */
 
+import { resolvedStack } from './stack.js';
 import type { Entity, EntityId } from './types.js';
 
 /** Eine Form in einer Auswahl nach Preis: Gewicht je Preisstufe. */
@@ -332,4 +333,46 @@ export function withDefaultShape(entity: Entity, idx: ShapeIndex, lookup: ShapeL
   }
   if (!geaendert) return { entity, shape };
   return { entity: { ...entity, components: { ...(entity.components ?? {}), Item: neu } } as Entity, shape };
+}
+
+/**
+ * **Die Vorgabeformen einer Kampagne**: jede aufgeschaltete Ebene, die die
+ * Karte `ShapeDefaults` trägt, in der Reihenfolge des Stapels — die
+ * spezifischere gewinnt Feld für Feld. Was nicht aufgeschaltet ist, sagt
+ * nichts (E2): ohne das Untermodul gilt die Form der Bücher (keine).
+ */
+export function campaignShapeDefaults(entities: Map<EntityId, Entity>, campaign: Entity | null | undefined): ShapeDefaults {
+  if (!campaign) return { groups: [], items: [] };
+  const ebenen = resolvedStack(entities, campaign).filter((l) => l.components?.[SHAPE_DEFAULTS_CARD]);
+  return mergeShapeDefaults(ebenen.map(shapeDefaultsOf));
+}
+
+/** Sagt das Untermodul überhaupt etwas? Sonst lohnt keine Rechnung. */
+export function hasShapeDefaults(idx: ShapeIndex): boolean {
+  return idx.groups.size > 0 || idx.items.size > 0;
+}
+
+/**
+ * **Gerechnetes wird nicht gespeichert** (D8): schickt die Maske Form oder
+ * Stapel zurück, die nur aus dem Untermodul kamen (am gespeicherten
+ * Gegenstand fehlen sie, und sie stehen gleich der Vorgabe), fallen sie
+ * weg. Wer dieselbe Form wie die Vorgabe malt, folgt also der Vorgabe —
+ * wie eine Instanz, die gleich der Vorlage steht.
+ */
+export function stripDefaultShape(sent: Entity, stored: Entity | null | undefined, shape: DefaultShape): Entity {
+  const k = itemKarte(sent);
+  const vorher = itemKarte(stored ?? undefined);
+  const neu: Record<string, unknown> = { ...k };
+  let geaendert = false;
+  const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  if (shape.rows && 'rows' in k && !form(vorher['rows']) && gleich(form(k['rows']), shape.rows)) {
+    delete neu['rows'];
+    geaendert = true;
+  }
+  if (shape.stackSize !== null && 'stackSize' in k && zahl(vorher['stackSize']) === null && zahl(k['stackSize']) === shape.stackSize) {
+    delete neu['stackSize'];
+    geaendert = true;
+  }
+  if (!geaendert) return sent;
+  return { ...sent, components: { ...(sent.components ?? {}), Item: neu } } as Entity;
 }

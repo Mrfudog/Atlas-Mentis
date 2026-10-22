@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  campaignShapeDefaults,
   defaultShapeOf,
+  hasShapeDefaults,
+  stripDefaultShape,
   indexShapeDefaults,
   mergeShapeDefaults,
   priceTier,
@@ -218,5 +221,48 @@ describe('Zufallsform', () => {
     expect(randomShape({ id: 'G', name: 'G' }, 'x', 10)).toBeNull();
     expect(randomShape(g, 'x', null)).toBeNull();
     expect(randomShape(g, 'x', 10)).toBeNull();
+  });
+});
+
+describe('stripDefaultShape (D8)', () => {
+  const shape = { rows: ['#', '#'], stackSize: 32, source: 'group' as const };
+  it('lässt weg, was nur aus der Vorgabe kam', () => {
+    const sent = item('arrow', { rows: ['#', '#'], stackSize: 32, weight: 1 });
+    expect(stripDefaultShape(sent, item('arrow', { weight: 1 }), shape).components?.['Item']).toEqual({ weight: 1 });
+  });
+  it('behält eine Abweichung', () => {
+    const sent = item('arrow', { rows: ['###'], stackSize: 16 });
+    expect(stripDefaultShape(sent, item('arrow'), shape)).toBe(sent);
+  });
+  it('behält, was schon gespeichert war', () => {
+    const sent = item('arrow', { rows: ['#', '#'], stackSize: 32 });
+    expect(stripDefaultShape(sent, item('arrow', { rows: ['#'], stackSize: 8 }), shape)).toBe(sent);
+  });
+  it('ohne Vorgabe ändert sich nichts', () => {
+    const sent = item('arrow', { rows: ['#'] });
+    expect(stripDefaultShape(sent, undefined, { rows: null, stackSize: null, source: 'unset' })).toBe(sent);
+  });
+});
+
+describe('campaignShapeDefaults', () => {
+  const ebene = (id: string, d: unknown): Entity => ({ id, interfaces: ['Layer'], components: { ShapeDefaults: d as Record<string, unknown> } });
+  const unten = ebene('ly_a', { shapeGroups: [{ id: 'A', name: 'A', rows: '#', stackSize: 4 }] });
+  const oben = ebene('ly_b', { shapeGroups: [{ id: 'A', name: 'A', stackSize: 8 }] });
+  const aus = ebene('ly_c', { shapeGroups: [{ id: 'A', name: 'A', stackSize: 99 }] });
+  const kampagne = (order: [string, number][]): Entity => ({
+    id: 'camp',
+    interfaces: ['Campaign'],
+    components: {},
+    relations: order.map(([to, o], i) => ({ id: `a${i}`, type: 'activates', to, props: { order: o } })),
+  });
+  const alle = new Map([unten, oben, aus].map((e) => [e.id, e]));
+  it('nur aufgeschaltete Ebenen, die spezifischere gewinnt', () => {
+    const d = campaignShapeDefaults(alle, kampagne([['ly_a', 10], ['ly_b', 20]]));
+    expect(d.groups).toEqual([{ id: 'A', name: 'A', rows: ['#'], stackSize: 8 }]);
+    expect(campaignShapeDefaults(alle, kampagne([['ly_b', 10], ['ly_a', 20]])).groups[0]?.stackSize).toBe(4);
+  });
+  it('ohne Kampagne oder Untermodul nichts', () => {
+    expect(campaignShapeDefaults(alle, null)).toEqual({ groups: [], items: [] });
+    expect(hasShapeDefaults(indexShapeDefaults(campaignShapeDefaults(alle, kampagne([]))))).toBe(false);
   });
 });
