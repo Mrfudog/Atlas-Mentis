@@ -247,6 +247,17 @@ h1 {
   gap: 0.4rem;
   align-items: center;
 }
+/* Löschen (T-381): rot umrandet, und danach die Meldung mit Undo. */
+.werkzeuge button.gefahr {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.geloescht {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
 /* Vor dem Anlegen: was die gewählte Kantenart bedeutet und bewirkt (T-111). */
 .kantenvorschau {
   margin: 0.4rem 0 0;

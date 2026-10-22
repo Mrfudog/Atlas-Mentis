@@ -41,8 +41,10 @@ export interface Api {
    * Ein Bild hochladen (`POST /api/assets`) — eine einfarbige Fläche
    * 320 × 240, genug für eine Karte — und auf `ready` setzen, damit es
    * auch die Spielerin bekommt. Gibt die Id des Asset-Artikels.
+   * `fertig: false` lässt den Stand — so lädt eine Spielerin hoch, die
+   * `ready` nicht setzen darf.
    */
-  bild(rolle: Rolle, name: string): Promise<string>;
+  bild(rolle: Rolle, name: string, fertig?: boolean): Promise<string>;
 }
 
 /* Eine einfarbige PNG-Fläche 320 × 240 (Pergament), hier erzeugt statt als
@@ -110,13 +112,13 @@ export const test = basis.extend<{ lauf: Lauf; leitung: Page; spielerin: Page; a
         const res = await ctx.put(`/api/entities/${id}`, { data: { ...e, components } });
         if (!res.ok()) throw new Error(`${id} ändern: ${res.status()} ${await res.text()}`);
       },
-      async bild(rolle, name) {
+      async bild(rolle, name, fertig = true) {
         const res = await (await als(rolle)).post('/api/assets', {
           multipart: { file: { name: `${name}.png`, mimeType: 'image/png', buffer: FLAECHE } },
         });
         if (!res.ok()) throw new Error(`Bild „${name}" hochladen: ${res.status()} ${await res.text()}`);
         const id = ((await res.json()) as { id: string }).id;
-        await this.setzen(rolle, id, { Status: { status: 'ready' } });
+        if (fertig) await this.setzen(rolle, id, { Status: { status: 'ready' } });
         return id;
       },
     });
