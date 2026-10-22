@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view, umsetzung]
 status: derived
-updated: 2026-10-21
+updated: 2026-10-22
 source: ../docs/Anforderungen.md
 ---
 
@@ -11,7 +11,7 @@ source: ../docs/Anforderungen.md
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-21. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-22. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -200,7 +200,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-059]] | Wissen über Arten von Kreaturen | 3 | **steht** | `Facts.fact#id` über eine Information |
 | [[REQ-156]] | Sichtbarkeit vererben | 2 | **verworfen** | `inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht |
 | [[REQ-177]] | Einzelne Felder freigeben | 2 | **steht** | `Information.fields` je Feld und je Eintrag |
-| [[REQ-178]] | Decknamen | 3 | **steht** | `Identity.cover` |
+| [[REQ-178]] | Decknamen | 3 | **steht** | `Identity.cover`; verdeckt auch ohne Information, Aufdecken mit einem Klick (22.10.) |
 | [[REQ-179]] | Zeigen, dass es mehr gibt | 4 | **steht** | „…and 3 more things" |
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
 | [[REQ-350]] | Eine Information gilt für eine Gruppe von Artikeln | 1 | **steht** | T-285: Information.applies (Typen, Bedingungen auf Felder und Kanten, Kante auf einen Artikel samt Unterarten) |
@@ -909,7 +909,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-302]] | Der Filter gehört der Seite | 3 | **steht** | `goPage` |
-| [[REQ-303]] | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter` |
+| [[REQ-303]] | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter`; seit T-382 auch Zeit und Autor (`f=@added:7d`, `@changed`, `@by`), D85 |
 | [[REQ-318]] | Ein Ebenenfilter, global und speicherbar | 2 | **steht** | T-186: keine Ebenen-Häkchen mehr auf World/Story/Rules/Compendium; „Saved selections“ im Popup der Kopfleiste (`/api/me/layer-sets`); Filtergruppen ohne `layer`/`nolayer` (Migration 080 legt die alten Angaben nach `list_filter_ebenen_alt`) |
 
 ### F-070 Navigation & Kurzansicht
