@@ -519,3 +519,40 @@ export function imageAddresses(registry: Pick<Registry, 'interfaces'>, e: Entity
   }
   return raus;
 }
+
+/**
+ * **Was ein Bildwähler annimmt** (T-369) — dieselben Formate wie der
+ * Server (`ASSET_MIMES`), als Medientypen *und* Endungen. Mit
+ * `accept="image/*"` öffnet Android nur die Fotoauswahl und iOS bietet
+ * Dateien nur versteckt an; eine Liste konkreter Typen öffnet das
+ * Datei-Menü des Systems (Dateien, OneDrive …), Fotos und Kamera bleiben
+ * darin. Die Endungen braucht es, weil ein Dateianbieter den Medientyp
+ * nicht immer mitgibt. **Kein HEIC:** der Server liest es nicht, und
+ * ohne HEIC in der Liste wandelt iOS ein Foto aus der Mediathek selbst
+ * in JPEG; kommt eines aus den Dateien, sagt `imageFileProblem` es.
+ */
+export const IMAGE_FORMATS = [
+  { mime: 'image/jpeg', ext: ['.jpg', '.jpeg'] },
+  { mime: 'image/png', ext: ['.png'] },
+  { mime: 'image/webp', ext: ['.webp'] },
+  { mime: 'image/gif', ext: ['.gif'] },
+  { mime: 'image/avif', ext: ['.avif'] },
+] as const;
+
+/** Der Wert für `<input type="file" accept>`. */
+export const IMAGE_ACCEPT = IMAGE_FORMATS.flatMap((f) => [f.mime, ...f.ext]).join(',');
+
+/**
+ * Warum eine gewählte Datei nicht hochgeht, oder `null`. Gelesen wird
+ * der Medientyp und, fehlt er, die Endung — eine Datei aus OneDrive kommt
+ * manchmal mit leerem `type`. Die Meldung sagt, was zu tun ist.
+ */
+export function imageFileProblem(file: { name?: string; type?: string }): string | null {
+  const mime = (file.type ?? '').trim().toLowerCase();
+  const name = (file.name ?? '').trim().toLowerCase();
+  const ext = /\.[a-z0-9]+$/.exec(name)?.[0] ?? '';
+  if (IMAGE_FORMATS.some((f) => f.mime === mime || (!mime && (f.ext as readonly string[]).includes(ext)))) return null;
+  if (/^image\/hei[cf]/.test(mime) || ext === '.heic' || ext === '.heif')
+    return 'HEIC photos cannot be uploaded yet. Choose the photo from your photo library (it is converted to JPEG there) or save it as JPEG or PNG first.';
+  return 'This file is not a supported image. Choose a JPEG, PNG, WebP, GIF or AVIF file.';
+}
