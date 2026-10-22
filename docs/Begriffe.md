@@ -2340,6 +2340,16 @@ steht selbst in keiner Liste, und ein Feld, das sie trägt, wird nicht in
 den Artikel darunter geschrieben: dort stünde es unsichtbar und bliebe,
 wenn die Ebene ausgeht.
 
+**Ein Regelsystem und seine Mechaniken sind Ebenen** (E-166). Die
+Leitung wählt die Regeln, nach denen ihre Runde spielt, wie sie Bücher
+wählt: durch Aufschalten. Inventory ist ein **Regelsystem** (eine Gruppe),
+Grid, Weight, Slots und Default shapes sind seine **Regelmechaniken**. Eine
+Mechanik sagt, mit welchen anderen sie zusammen gilt (`compatibleWith`:
+das Raster mit dem Gewicht) — so steht die Regel „es gibt nur ein
+Inventar“ nicht im Code, sondern als fehlende Kante in den Daten. Eigene
+Arten und kein Wort in `Layer.kind`: ein Feld, das Regel ist, leckt beim
+ersten Tippfehler.
+
 **Vorgabeformen kommen aus Gruppen, nicht aus 1900 Ergänzungen** (T-394,
 E-165). Eine Ergänzung je Gegenstand hätte jede Form hundertfach
 gespeichert: wer die Hausregel ändert (Pfeile 32 statt 20 je Stapel),

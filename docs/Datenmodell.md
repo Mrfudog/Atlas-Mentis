@@ -2127,6 +2127,15 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
   Bedingung `sameSide` (Gruppe und Verbündete gegen den Rest, `seiteVon`)
   und `strike` an einer Reaktion (Annehmen ist ein Nahkampfangriff).
 
+### 10.1a Regelsysteme und Regelmechaniken sind Ebenen (E-166, T-394)
+
+Ein **Regelsystem** ist eine Ebene der Art `RuleSystem` (Karte `RuleSystem.sort`: welcher Bereich der Regeloptionen, z. B. `inventory`), als Gruppe (`Layer.kind: 'group'`): aufgeschaltet bringt es seine Mechaniken, und jede lässt sich wie jedes Gruppenmitglied ausnehmen und umsortieren (E-091). Eine **Regelmechanik** ist eine Ebene der Art `RuleMechanic` (`RuleMechanic.method`: das Wort, das die Laufzeit ausführt — `weight`, `slots`, `grid`, `shapes`), Mitglied ihres Regelsystems über `partOf`. **Wer mit wem gilt, sagt die Kante `compatibleWith`** zwischen Mechaniken — einmal gespeichert, in beide Richtungen gelesen (`compatibleMechanics`); Grid gilt mit Weight, Default shapes mit Grid und Slots. Was nicht so verbunden ist, schliesst sich innerhalb eines Regelsystems aus.
+
+- **Beide sind Ebenen**, und „ist eine Ebene“ fragt `isLayer` (`LAYER_TYPES` in `stack.ts`) statt `interfaces[0] === 'Layer'` — Stapel, Schreibrechte, Listen, Löschschutz und Ausfuhr behandeln sie wie jede Ebene. Ein Registertest hält `LAYER_TYPES` mit den Arten zusammen, die von `Layer` erben.
+- **Startzeilen, keine Migration**: `RULE_SYSTEM_LAYERS` (`packages/registry/src/regelsysteme.ts`) beschreibt Inventory, Weight, Slots, Grid und Default shapes; der Start legt an, was fehlt (`regelsystemeNachziehen`), mit Nummer (`rulesystem-0001`, `rulemechanic-0001` …) und durch `validateEntity`, und ändert nichts, was da ist. Migration 140 bringt nur die Registerzeilen.
+- **Was am Tisch zählt, wählt vorerst `Campaign.inventory`** (`inventoryRulesOf`, unverändert). Wie zwei kompatible Mechaniken zusammen zählen (Raster und Gewicht), ist eine eigene Aufgabe.
+- **Default shapes** trägt die Karte `ShapeDefaults` (G15); ist Inventory in der Kampagne aufgeschaltet, gelten ihre Gruppen und Werte je Gegenstand.
+
 ### 10.2 Glossar und Handbuch (T-242, T-225)
 
 **Ein Begriff ist ein Artikel der Art `GlossaryTerm`** (erbt von `Rule`,
@@ -2347,7 +2356,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-21: 62 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-22: 64 Artikelarten, 27 Grundtypen, 71 Kantenarten, 8 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2369,6 +2378,7 @@ Stand 2026-10-21: 62 Artikelarten, 26 Grundtypen, 70 Kantenarten, 8 Aufzählungs
 | `Prose` | `paragraph` | 26 |
 | `ReadAloud` | `readaloud` | 7 |
 | `Secrets` | `secret` | 15 |
+| `ShapeDefaults` | `shapeGroups` `shapeItems` | `RuleMechanic` |
 | `Source` | `publication` `page` `anchor` `url` `srd` | 13 |
 | `Status` | `status` | 24 |
 | `Tactics` | `tactics` | `Statblock` `Scene` `Encounter` |
@@ -2472,6 +2482,8 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Layer` | — | `kind` `order` `abbreviation` `published` `author` `version` `levels` `storyline` `groupBy` `defaultAudience` | `partOf` | `partOf` `inLayer` `activates` `layerRule` | full |
 | `Paragraph` | `BookPart` | `kind` | `partOf` | `describedIn` | — |
 | `ReadAloudText` | `BookPart` `ReadAloud` | — | `partOf` | `describedIn` | — |
+| `RuleMechanic` | `Layer` `ShapeDefaults` | `method` | `partOf` `compatibleWith` | `partOf` `compatibleWith` `inLayer` `activates` `layerRule` | — |
+| `RuleSystem` | `Layer` | `sort` | `partOf` | `partOf` `inLayer` `activates` `layerRule` | — |
 
 ### Kanten
 
@@ -2488,6 +2500,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `casts` | Statblock \| PlayerCharacter \| Item \| Subclass \| Ancestry \| Feat \| Faction \| Rule → Spell |  | — | `mode` `uses` `ability` `level` `charges` `fromLevel` |
 | `chapterOf` | Chapter → Story | ja | — | — |
 | `chose` | PlayerCharacter → Choices |  | — | `choice` `picks` `by` `level` `items` |
+| `compatibleWith` | RuleMechanic → RuleMechanic |  | — | — |
 | `composedOf` | Statblock → Rule |  | Abschnitt „Actions & traits" | `vars` `ability` `damageDice` `damageType` `reach` `range` `target` `toHitBonus` `damageBonus` `extraDamageDice` `extraDamageType` `toHit` `damageFlat` `note` |
 | `controls` | Faction → Place |  | — | — |
 | `crafting` | Creature \| PlayerCharacter \| Party → Recipe |  | — | `day` `days` `put` `rolls` |

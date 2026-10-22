@@ -563,7 +563,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-27 Stories · 126 Punkte · 13 steht · 2 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
+27 Stories · 126 Punkte · 13 steht · 3 teils · 11 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -635,7 +635,7 @@ Regelsysteme und Module als Ebenen, je Sorte ein Modul, gewählt an der Kampagne
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | offen |
+| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | teils |
 | [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | 2 | 5 | offen |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | 3 | 3 | offen |
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | 5 | offen |

@@ -72,6 +72,7 @@ import {
   stackOutcomes,
   type StackClash,
   type StackOutcome,
+  isLayer,
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
 import { sorgeSpielerEbene } from './spielerebene.js';
@@ -163,7 +164,7 @@ export function mayActivate(
 
 /** Was jede Ebene enthält und wem sie gehört — einmal je Bestand (T-143). */
 function zaehle(alle: Map<string, Entity>) {
-  const ebenen = [...alle.values()].filter((e) => (e.interfaces ?? [])[0] === LAYER_COMPONENT);
+  const ebenen = [...alle.values()].filter((e) => isLayer(e));
   const zahl = new Map<string, number>();
   /* Was eine Ebene enthält, je Art — gerechnet, nie gespeichert (D8, T-088). */
   const inhalt = new Map<string, Record<string, number>>();
@@ -581,14 +582,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const mitglieder = groupMembers(alle);
     const aktiv = activatingIndex(alle);
     for (const id of ids) {
-      if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
+      if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
       if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
         return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; aufschalten kann sie die Verwaltung.`);
       }
     }
     /* Abschalten (T-088) darf die Leitung jede Ebene: aus nimmt nur weg. */
     for (const id of abgeschaltet ?? []) {
-      if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
+      if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
     }
     let geschrieben = withStack(kampagne, ids);
     if (abgeschaltet) geschrieben = withOff(geschrieben, abgeschaltet);
@@ -805,7 +806,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const mitglieder = groupMembers(alle);
       const aktiv = activatingIndex(alle);
       for (const id of ids) {
-        if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
+        if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
         if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
           return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; vergleichen kann damit die Verwaltung.`);
         }

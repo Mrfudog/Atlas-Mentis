@@ -18,7 +18,7 @@
  */
 
 import { entityName, primaryInterface } from './entity.js';
-import { LAYER_COMPONENT } from './stack.js';
+import { LAYER_TYPES } from './stack.js';
 import type { Entity, EntityId } from './types.js';
 import { layersOf } from './versions.js';
 import { CAMPAIGN_TYPE } from './visibility.js';
@@ -52,7 +52,7 @@ export interface DeletePickOptions {
 }
 
 /** Arten, die über diese Auswahl nie gelöscht werden. */
-const GESCHUETZT = new Set([LAYER_COMPONENT, CAMPAIGN_TYPE]);
+const GESCHUETZT = new Set([...LAYER_TYPES, CAMPAIGN_TYPE]);
 
 /**
  * Teilt die Auswahl in „wird gelöscht" und „wird abgewählt". Doppelte Ids

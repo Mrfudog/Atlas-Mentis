@@ -59,6 +59,7 @@ import {
   articleVisible,
   campaignVisibility,
   entityName,
+  isLayer,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { User } from './auth.js';
@@ -139,7 +140,7 @@ function gehoertDazu(e: Entity, kampagne: Entity, eigene: Set<string>, an: Set<s
   const ebenen = (e.relations ?? []).filter((r) => r.type === LAYER_RELATION).map((r) => r.to);
   if (ebenen.length) return ebenen.some((id) => eigene.has(id));
   if (art(e) === CAMPAIGN_TYPE) return e.id === kampagne.id;
-  if (art(e) === 'Layer') return an.has(e.id);
+  if (isLayer(e)) return an.has(e.id);
   return true;
 }
 

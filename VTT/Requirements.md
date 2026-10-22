@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 125 | 425 | 68 steht · 20 teils · 29 offen · 5 ersetzt · 3 verworfen |
+| 2 | 125 | 425 | 68 steht · 21 teils · 28 offen · 5 ersetzt · 3 verworfen |
 | 3 | 121 | 357 | 61 steht · 25 teils · 34 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **367** | **1314** | 185 steht · 57 teils · 109 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **367** | **1314** | 185 steht · 58 teils · 108 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -325,7 +325,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-284]] | Läden mit Waren und Preisen | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 2 | 3 | done | steht |
 | [[REQ-285]] | Fraktionspreise | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 3 | 2 | in progress | teils |
 | [[REQ-286]] | Artikel nachts auf Vollständigkeit prüfen | Spielleitung | [[F-076 Artikelprüfung & Nachtarbeit\|Artikelprüfung & Nachtarbeit]] | 3 | 3 | done | steht |
-| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 8 | defined | offen |
+| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 8 | defined | teils |
 | [[REQ-288]] | Preise für jeden Gegenstand | Spielleitung | [[F-077 KI-Inhalte\|KI-Inhalte]] | 3 | 3 | in progress | teils |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 3 | 3 | defined | offen |
 | [[REQ-290]] | Wechselwirkungen von Regeln auswerten | Spielleitung | [[F-046 Regelauswertung\|Regelauswertung]] | 4 | 8 | defined | offen |
