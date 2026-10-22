@@ -198,6 +198,25 @@
           ]
         },
         {
+          "heading": "Finding what was added recently",
+          "text": [
+            "1. Open the Compendium or an area (World, Story, Rules) and, on a phone, Filters.",
+            "2. Open “When & who”. Under Added choose Today, Last 7 days, Last 30 days or Between dates…; Changed works the same for the last edit.",
+            "3. Tick a name under Added by to see only what that person added; “Unknown” are articles from before this was recorded or loaded from a book.",
+            "4. Sort: Newest added first. To keep the view, save it as a filter group (▾ in the header) — it remembers When & who like any other filter.",
+            "5. Under Columns, Added, Changed and Added by can stand in the table."
+          ]
+        },
+        {
+          "heading": "Deleting articles and images",
+          "text": [
+            "1. Choose the layer you work in: the layers popup in the header shows your write layer. Only articles in it can be deleted.",
+            "2. In Images, tick the images to delete (or use 🗑 on one); on an article page, use Delete.",
+            "3. Confirm. The question says how many will be deleted and how many are deselected because they come from other layers.",
+            "4. The message reads like “3 deleted, 2 from other layers deselected”. Undo brings everything back, with the links that pointed to it; the GM can also undo it later in the Workbench."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."

@@ -41,7 +41,18 @@ test('walls: pan after a pause, undo a point and the last wall', async ({
   }
   const fertig = leitung.getByRole('button', { name: /^Finish \(\d+\)$/ });
   const anzahl = async () => Number(((await fertig.textContent()) ?? '').replace(/\D/g, ''));
-  const gesetzt = await anzahl();
+  /* Erst zählen, wenn die Seite den letzten Klick verarbeitet hat: sonst
+     liest der Test „2", der dritte Punkt kommt danach, und „Undo point"
+     landet bei 2 statt bei 1 (T-381, in der CI rot). */
+  let gesetzt = await anzahl();
+  await expect
+    .poll(async () => {
+      const vorher = gesetzt;
+      await leitung.waitForTimeout(150);
+      gesetzt = await anzahl();
+      return gesetzt === vorher;
+    })
+    .toBe(true);
   expect(gesetzt).toBeGreaterThanOrEqual(2);
   await leitung.getByRole('button', { name: 'Undo point' }).click();
   await expect(fertig).toHaveText(`Finish (${gesetzt - 1})`);

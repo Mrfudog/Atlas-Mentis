@@ -70,6 +70,12 @@ export interface BulkAntwort {
   id?: string | null;
   error?: string;
 }
+/** Antwort von `POST /api/entities/delete` (T-381). */
+export interface LoeschAntwort extends BulkAntwort {
+  deselected: { id: string; name: string; reason: 'other-layer' | 'not-writable' | 'not-found' | 'protected'; layers?: string[] }[];
+  /** Die Ebene, aus der gelöscht wurde; `null` für die Verwaltung ohne Schreibebene. */
+  layer: { id: string; name: string } | null;
+}
 export interface BulkLauf {
   id: string;
   at: string;
@@ -613,6 +619,8 @@ export interface Liste {
     /** Die Marken der Treffer, gezählt (T-119). */
     tags?: { tag: string; count: number }[];
     partsHidden: number;
+    /** **Hinzugefügt von** (T-382): je Konto, `∅` für unbekannt. */
+    addedBy?: { id: string; name: string; count: number }[];
     /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt, wie viele unprüfbar bleiben. */
     usable?: Brauchbar;
   };
@@ -903,6 +911,8 @@ export interface ListenFrage {
   compare?: boolean | undefined;
   /** **Gewählte Spalten** (T-343): genau diese statt der `overview`; leer heisst nur der Name. */
   cols?: string[] | undefined;
+  /** Die Zeitzone des Browsers (T-382, `getTimezoneOffset`): „today" beginnt um Mitternacht hier. */
+  tz?: number | undefined;
 }
 
 /** Die Vorgaben der Kampagne für die Spalten (T-343, `/api/list-columns`). */
@@ -1874,6 +1884,16 @@ export class Api {
   }
   dropLayerEditor(layer: string, user: string): Promise<{ ok: true }> {
     return this.call(`/api/layers/${encodeURIComponent(layer)}/editors/${encodeURIComponent(user)}`, { method: 'DELETE' });
+  }
+  /**
+   * **Artikel löschen aus der eigenen Ebene** (T-381): gelöscht wird, was
+   * in der Schreibebene liegt und geschrieben werden darf; der Rest kommt
+   * als `deselected` zurück. `dryRun` zählt nur; mehr als einen löschen
+   * verlangt `confirmDelete` mit der Zahl aus der Vorschau. Zurück über
+   * `undo(id)`.
+   */
+  deleteArticles(ids: string[], opts: { dryRun?: boolean; confirmDelete?: number } = {}): Promise<LoeschAntwort> {
+    return this.call<LoeschAntwort>('/api/entities/delete', { method: 'POST', body: JSON.stringify({ ids, ...opts }) });
   }
   /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
   deleteEntity(id: string): Promise<{ ok: true }> {

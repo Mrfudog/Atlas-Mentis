@@ -382,10 +382,24 @@ const APP: AppTerm[] = [
     translations: { de: 'Spielerebene' },
   },
   {
+    term: 'Added by',
+    aliases: ['When & who', 'Recently added', 'Recently changed'],
+    sort: 'app',
+    definition: 'Who added an article, kept next to the account and not in the article. With Added and Changed (when it was created and last edited) it filters and sorts the lists; “Unknown” means it was not recorded.',
+    translations: { de: 'Hinzugefügt von' },
+  },
+  {
     term: 'Write layer',
     sort: 'app',
     definition: 'The layer new articles go into. Each account chooses it in the layers popup; otherwise a default applies.',
     translations: { de: 'Schreibebene' },
+  },
+  {
+    term: 'Delete from your layer',
+    aliases: ['Delete', 'Deselected'],
+    sort: 'app',
+    definition: 'Deleting removes only articles that lie in your write layer and that you may write; others in a selection are deselected and stay. Undo right after brings the deleted ones back with their links.',
+    translations: { de: 'Löschen aus der eigenen Ebene' },
   },
   {
     term: 'Roll log',

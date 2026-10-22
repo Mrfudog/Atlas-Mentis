@@ -20,6 +20,7 @@ import { Bild } from './bild';
 import { ansichtWeg } from '../klassen/ansicht-weg';
 import { Spalten } from '../kern/spalten';
 import { Spaltenwahl } from './spaltenwahl';
+import { Zeitfilter } from './zeitfilter';
 
 interface TypGruppe {
   label: string;
@@ -57,7 +58,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl, Zeitfilter],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -166,6 +167,15 @@ const OFFEN = 8;
             }
           </details>
         }
+
+        <!-- Wann und von wem (T-382): als Facetten @added, @changed, @by in f=. -->
+        <nw-zeitfilter
+          [felder]="filter.felder()"
+          [autoren]="liste()?.facets?.addedBy ?? []"
+          [sortierung]="filter.sortierung()"
+          (setzen)="metaSetzen($event.ref, $event.values)"
+          (sortieren)="filter.sortierung.set($event); filter.blatt.set(0)"
+        />
 
         <!-- „Usable by <Figur>" (T-180): neben einer Voraussetzung. Was der
              Server nicht prüfen kann, bleibt in der Liste und trägt ein „?". -->
@@ -653,6 +663,8 @@ export class Kompendium {
       compare: this.stapel.vergleich() || undefined,
       /* Gewählte Spalten (T-343); ohne Wahl die der `overview`, wie immer. */
       cols: this.wahl()?.cols,
+      /* „today" beginnt um Mitternacht hier, nicht in UTC (T-382). */
+      tz: new Date().getTimezoneOffset(),
     };
   });
 
@@ -946,6 +958,15 @@ export class Kompendium {
   }
   protected gewaehlt(ref: string, wert: string): boolean {
     return this.filter.felder()[ref]?.values?.includes(wert) ?? false;
+  }
+
+  /** Eine Facette von T-382 setzen oder wegnehmen (`@added`, `@changed`, `@by`). */
+  protected metaSetzen(ref: string, values: string[] | null): void {
+    this.filter.felder.update((f) => {
+      const { [ref]: _weg, ...rest } = f;
+      return values?.length ? { ...rest, [ref]: { values } } : rest;
+    });
+    this.filter.blatt.set(0);
   }
 
   protected wertUmschalten(ref: string, wert: string): void {

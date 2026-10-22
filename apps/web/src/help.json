@@ -146,6 +146,7 @@
             "All images you can see. Filter by kind, tag, layer, or “unused” for images nothing refers to yet.",
             "Each image names its resolution, aspect ratio, size and layer. Tags stand as badges: × removes one, “+ tag” adds one; select several images to tag them together.",
             "“Use as…” turns an image into a map (with a grid suggested from its resolution), a creature's token or a prop, and links to the result.",
+            "Delete removes the selected images — or one image with 🗑 — but only those in your write layer; images from other layers are deselected, and the message says how many. Undo right after brings them back; to delete the others, switch your write layer in the header.",
             "Upload images opens your device's own picker: on a phone that includes Files, OneDrive and other storage as well as photos. JPEG, PNG, WebP, GIF and AVIF work; HEIC photos from Files must be saved as JPEG first (from the photo library they are converted for you)."
           ]
         }
@@ -186,7 +187,8 @@
             "On a character, “How the numbers come about” shows each number with where it comes from: the armor and shield worn, items, features, conditions, the statblock. Resistances, immunities and a lowered critical-hit threshold show there too. The initiative tracker and the turn plan read the same numbers.",
             "The token of a statblock — on a creature, of its statblock — stands as it does on the map. “Adjust token” drags and zooms the image in its circle, picks its border, or marks it as a ready-made round token that is shown as it is; frame and border are saved on the image, so every statblock with that token looks the same. “Change image” sets another image as the token of the statblock.",
             "GMs see a Knowledge box at the side: which pieces of information exist about this article — on it, for it, or for a whole group — the fields each covers and the knowledge it belongs to. “+ Information” picks fields by group and ticks or names a knowledge; who knows it is set on the knowledge.",
-            "A knowledge’s page writes out everything it brings together: each information with the articles it is about and exactly the fields it covers — read as you may read them. Players find what their character knows in one place."
+            "A knowledge’s page writes out everything it brings together: each information with the articles it is about and exactly the fields it covers — read as you may read them. Players find what their character knows in one place.",
+            "Delete removes the article if it lies in your write layer and you may write it; otherwise the message names the layer to switch to. Undo right after the deletion brings it back with its links."
           ]
         },
         {
@@ -301,6 +303,7 @@
             "The choice is kept per page and type for your account and in the address, so a shared link shows the same table. “Reset to default” drops your choice: the campaign default shows, else the type's columns. The GM can make a choice the campaign default for everyone without their own.",
             "Filter groups are saved filters of a page — reach them as tabs or from ▾ in the header. The layers shown follow the running campaign; change them in the popup under the brand. There, “Show comparison articles in lists” adds what only a comparison layer brings, below the list and marked “not in play”; the GM brings one into play with “Enable”.",
             "Pick one type and its fields become filters. Where a type has a prerequisite (feats, magic items, classes), “Usable by” keeps what a character meets; a “?” marks a prerequisite that could not be checked.",
+            "When & who filters by when an article was added or last changed — today, the last 7 or 30 days, or between two dates — and by who added it; Sort puts the newest first. The choice stays in the address and in a saved filter group, and holds when you change the type.",
             "“New article” creates one in your write layer."
           ]
         }

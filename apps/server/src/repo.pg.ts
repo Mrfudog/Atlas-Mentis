@@ -348,12 +348,15 @@ export class PgRepository implements Repository {
           throw new RevisionConflict(entity.id, options.expectRevision, steht);
         }
       }
+      /* `created_at` nur beim ersten Schreiben: ein zurückgeholter Artikel
+         (Undo, Übernahme) bringt seinen mit und steht nicht als „neu" da (T-382). */
+      const erstellt = typeof entity.createdAt === 'string' && !Number.isNaN(Date.parse(entity.createdAt)) ? entity.createdAt : null;
       await client.query(
         options.expectRevision === null
-          ? 'insert into entity(id) values ($1)'
-          : `insert into entity(id) values ($1)
+          ? 'insert into entity(id, created_at) values ($1, coalesce($2::timestamptz, now()))'
+          : `insert into entity(id, created_at) values ($1, coalesce($2::timestamptz, now()))
              on conflict (id) do update set updated_at = now(), revision = entity.revision + 1`,
-        [entity.id],
+        [entity.id, erstellt],
       );
 
       await client.query('delete from component where entity_id = $1', [entity.id]);
@@ -611,6 +614,20 @@ export class PgRepository implements Repository {
   async authoredArticles(): Promise<string[]> {
     const { rows } = await this.pool.query<Row>('select distinct entity_id from app_user_article');
     return rows.map((r) => String(r['entity_id']));
+  }
+
+  /* Wer hinzugefügt hat (T-382): die erste Zeile gilt, ein zweites Setzen ändert nichts. */
+  async addCreator(userId: string, entityId: string): Promise<void> {
+    await this.pool.query(
+      `insert into entity_creator(entity_id, user_id) select $2, $1 where exists (select 1 from app_user where id = $1)
+       on conflict (entity_id) do nothing`,
+      [userId, entityId],
+    );
+  }
+
+  async creators(): Promise<Map<string, string>> {
+    const { rows } = await this.pool.query<Row>('select entity_id, user_id from entity_creator');
+    return new Map(rows.map((r) => [String(r['entity_id']), String(r['user_id'])]));
   }
 
   /* Wer in einer Ebene schreibt (T-098). Ein zweites Setzen ändert nur

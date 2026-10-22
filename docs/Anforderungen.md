@@ -228,7 +228,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-088 | Massenänderungen an Wissen und Rechten | 3 | **teils** | Massenbearbeitung ohne Wissen |
-| REQ-235 | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68) |
+| REQ-235 | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68); seit T-381 löscht jedes Konto aus seiner Schreibebene (`POST /api/entities/delete`, Galerie und Artikelseite, D84). Offen: Papierkorb-Seite (E-160) |
 
 ### F-017 Ausrollen & Sicherung
 
@@ -905,7 +905,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-302 | Der Filter gehört der Seite | 3 | **steht** | `goPage` |
-| REQ-303 | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter` |
+| REQ-303 | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter`; seit T-382 auch Zeit und Autor (`f=@added:7d`, `@changed`, `@by`), D85 |
 | REQ-318 | Ein Ebenenfilter, global und speicherbar | 2 | **steht** | T-186: keine Ebenen-Häkchen mehr auf World/Story/Rules/Compendium; „Saved selections“ im Popup der Kopfleiste (`/api/me/layer-sets`); Filtergruppen ohne `layer`/`nolayer` (Migration 080 legt die alten Angaben nach `list_filter_ebenen_alt`) |
 
 ### F-070 Navigation & Kurzansicht
