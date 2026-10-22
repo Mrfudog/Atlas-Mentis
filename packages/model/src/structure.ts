@@ -297,6 +297,35 @@ export function netLayout(graph: Pick<StructureGraph, 'root' | 'nodes'>, ring = 
   return new Map([...pos].map(([id, p]) => [id, { x: p.x, y: p.y }]));
 }
 
+/**
+ * Der Ausschnitt des Netzes (`viewBox`, T-368): jeder Kreis samt seinem
+ * Namen darunter und dem „+" darüber. Die Breite eines Namens wird
+ * geschätzt (`charWidth` je Zeichen) — ein fester Rand schnitt lange Namen
+ * links und rechts ab, sobald das Bild in eine Kachel eingepasst wird.
+ */
+export function netViewBox(
+  knoten: readonly { x: number; y: number; name: string }[],
+  opts: { charWidth?: number; top?: number; bottom?: number; side?: number } = {},
+): { x: number; y: number; w: number; h: number } {
+  if (!knoten.length) return { x: -50, y: -50, w: 100, h: 100 };
+  const cw = opts.charWidth ?? 6.2;
+  const oben = opts.top ?? 26;
+  const unten = opts.bottom ?? 34;
+  const seite = opts.side ?? 24;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const k of knoten) {
+    const halb = Math.max(seite, (k.name.length * cw) / 2 + 6);
+    x0 = Math.min(x0, k.x - halb);
+    x1 = Math.max(x1, k.x + halb);
+    y0 = Math.min(y0, k.y - oben);
+    y1 = Math.max(y1, k.y + unten);
+  }
+  return { x: Math.floor(x0), y: Math.floor(y0), w: Math.ceil(x1 - x0), h: Math.ceil(y1 - y0) };
+}
+
 /** Zwei Graphen zusammenlegen — was ein aufgeklappter Knoten (+) dazu holt. */
 export function mergeStructure(a: StructureGraph, b: StructureGraph): StructureGraph {
   const nodes = new Map(a.nodes.map((n) => [n.id, n]));
