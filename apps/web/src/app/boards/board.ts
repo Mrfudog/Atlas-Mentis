@@ -1007,6 +1007,8 @@ export class Board implements SchnellKontext {
     if (!this.darfSchreiben() || ev.button !== 0) return;
     const t = ev.target as HTMLElement | null;
     if (art === 'schieben' && t?.closest('a, button, input, textarea, select')) return;
+    /* Die Scrollleiste einer langen Notiz (T-368) gehört dem Scrollen, nicht dem Schieben. */
+    if (art === 'schieben' && t && t === ev.currentTarget && ev.offsetX > t.clientWidth) return;
     ev.preventDefault();
     const von = { x: f.x, y: f.y, w: f.w, h: f.h };
     this.fzug.set({ id: f.id, art, sx: ev.clientX, sy: ev.clientY, von, jetzt: von });
