@@ -111,12 +111,23 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'itemShapes',
+    label: 'Item shapes overview',
+    area: 'stack',
+    does: 'lists an item’s properties beside its shape in Item shapes, so the GM recognises which group it belongs to (T-394)',
+    uses: {
+      [S + 'vorgabeformen.ts']: ['hasProperty'],
+    },
+  },
+  {
     key: 'visibilityByGroup',
     label: 'Visibility by group',
     area: 'visibility',
     does: 'groups articles by their layer and the layer’s group, so a campaign’s visibility rule for a group (T-252) and the default of a layer reach the articles in it',
     uses: {
       [M + 'groupvisibility.ts']: ['partOf'],
+      /* Die Gruppe der Ebene an jedem Artikel der Liste (T-387). */
+      [S + 'sichtbarkeit.ts']: ['partOf'],
     },
   },
   {

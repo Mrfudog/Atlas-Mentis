@@ -18,8 +18,14 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
+  AUDIENCE_ORDER,
   applyTransform,
+  applyVisibilityChange,
   articleVisible,
+  filterArticleRows,
+  GROUP_RELATION,
+  layersOf,
+  playerSetting,
   effectiveAudience,
   entityName,
   isBookPart,
@@ -39,6 +45,10 @@ import {
   type Registry,
   type TransformNode,
   type TransformStep,
+  type ArticleVisibilityQuery,
+  type ArticleVisibilityRow,
+  type VisibilityChange,
+  type VisibilityFields,
   type Viewer,
   type VisibilityRule,
 } from '@nw/model';
@@ -57,6 +67,10 @@ export interface SichtbarkeitDeps {
   augeVon: (user: User, map: Map<string, Entity>, registry: Registry) => Promise<Viewer>;
   /** Einen Artikel schreiben, mit allen Regeln von `PUT /api/entities/:id`. */
   schreiben: (request: FastifyRequest, entity: Entity) => Promise<{ code: number; body: unknown } | { konflikt: number | null }>;
+  /** Was dieses Konto schreibt (`mayWrite`), einmal je Anfrage gerechnet (T-387). */
+  schreibbar: (user: User) => Promise<(id: string) => boolean>;
+  /** Der Herausgeber einer Ebene (`publisherOf`, T-094/T-109). */
+  verlag: (map: Map<string, Entity>) => (layer: string) => string;
 }
 
 /** Eine Spalte der Übersicht. */
@@ -129,17 +143,20 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
     return { user, recht, map, kampagne };
   }
 
-  app.get<{ Params: { c: string }; Querystring: { steps?: string } }>('/api/campaigns/:c/visibility', async (request, reply) => {
-    const z = await zugang(request, reply, false);
-    if (!z) return;
+  /**
+   * **Was beide Übersichten brauchen**: die Spalten samt ihren Betrachtern,
+   * wie das Sieb sie baut, und die Zeilen — was diese Kampagne spielt und
+   * die Leitung ohnehin sieht, ohne Instanzen und Buchteile, die in keiner
+   * Liste stehen. Je Gruppe (T-252) und je Artikel (T-387) dieselbe
+   * Rechnung, sonst zählte die eine Liste anders als die andere.
+   */
+  async function grundlage(z: { user: User; map: Map<string, Entity>; kampagne: Entity }) {
     const { user, map, kampagne } = z;
     const c = kampagne.id;
     const registry = await repo.getRegistry();
     const dims = visibilityDimensions(map, registry);
     const rules = visibilityRulesOf(kampagne);
     const ctx: CampaignVisibility = { campaign: c, rules, dims };
-    const steps: TransformStep[] = stepsFromString(request.query.steps);
-    const kette = steps.length ? steps : [{ group: 'layer' }, { group: 'type' }];
 
     /* **Die Spalten**: wer ohne Rolle schaut (Public), wer zuschaut (Table:
        jede Rolle), jede Spielerin mit ihrem Betrachter, wie das Sieb ihn
@@ -168,13 +185,22 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
       augen.set('u:' + u.id, { ...v, campaignRules: ctx });
     }
 
-    /* Was die Leitung ohnehin sieht, und nur, was diese Kampagne spielt —
-       ohne Instanzen und Buchteile, die in keiner Liste stehen. */
     const imSpiel = deps.imSpiel(map, kampagne, registry);
     const selbst = user.isAdmin ? undefined : { ...(await deps.augeVon(user, map, registry)), campaignRules: ctx };
     const zeilen = [...map.values()].filter(
       (e) => imSpiel(e) && !isInstance(e) && !isBookPart(e) && articleVisible(map, e, selbst),
     );
+    return { registry, dims, rules, ctx, spalten, augen, zeilen };
+  }
+
+  app.get<{ Params: { c: string }; Querystring: { steps?: string } }>('/api/campaigns/:c/visibility', async (request, reply) => {
+    const z = await zugang(request, reply, false);
+    if (!z) return;
+    const { map, kampagne } = z;
+    const c = kampagne.id;
+    const { dims, rules, ctx, spalten, augen, zeilen } = await grundlage(z);
+    const steps: TransformStep[] = stepsFromString(request.query.steps);
+    const kette = steps.length ? steps : [{ group: 'layer' }, { group: 'type' }];
 
     const sicht = new Map<string, Set<string>>();
     for (const [k, v] of augen) {
@@ -314,4 +340,206 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
     }
     return { ok: true, done, refused };
   });
+
+  /**
+   * **Jeder Artikel mit seiner Ebene** (T-387, REQ-368): die Liste unter
+   * Layers und Visibility der Kampagnenseite. Je Zeile die Ebenen mit Namen,
+   * Gruppe und Herausgeber, die geltende Stufe und woher sie kommt, was der
+   * Artikel selbst sagt, welche Spalten ihn sehen und ob die Leitung ihn
+   * schreibt — gerechnet wie die Übersicht je Gruppe (`grundlage`).
+   * Gefiltert und sortiert wird hier (`filterArticleRows`), geblättert in
+   * Seiten: ein Regelwerk bringt Tausende.
+   */
+  app.get<{ Params: { c: string }; Querystring: Record<string, string | undefined> }>(
+    '/api/campaigns/:c/visibility/articles',
+    async (request, reply) => {
+      const z = await zugang(request, reply, false);
+      if (!z) return;
+      const { map, user } = z;
+      const { registry, ctx, spalten, augen, zeilen } = await grundlage(z);
+      const q = request.query ?? {};
+      const stufe = AUDIENCE_ORDER.includes(q['level'] as Audience) ? (q['level'] as Audience) : undefined;
+      const quelle = ['article', 'campaign', 'layer', 'default'].includes(q['source'] ?? '') ? (q['source'] as AudienceSource) : undefined;
+      const sort = ['name', 'layer', 'type', 'level'].includes(q['sort'] ?? '') ? (q['sort'] as ArticleVisibilityQuery['sort']) : 'name';
+      const frage: ArticleVisibilityQuery = {
+        layer: q['layer'] || undefined,
+        type: q['type'] || undefined,
+        level: stufe,
+        source: quelle,
+        q: q['q']?.slice(0, 200) || undefined,
+        sort,
+        dir: q['dir'] === 'desc' ? 'desc' : 'asc',
+      };
+      const offset = Math.max(0, Number.parseInt(q['offset'] ?? '0', 10) || 0);
+      const limit = Math.min(200, Math.max(1, Number.parseInt(q['limit'] ?? '50', 10) || 50));
+
+      const verlag = deps.verlag(map);
+      const ebene = new Map<string, { id: string; name: string; publisher: string; groups: { id: string; name: string }[] }>();
+      const ebeneVon = (id: string) => {
+        let l = ebene.get(id);
+        if (!l) {
+          const e = map.get(id);
+          const groups = (e?.relations ?? [])
+            .filter((r) => r.type === GROUP_RELATION)
+            .map((r) => ({ id: r.to, name: entityName(map.get(r.to)) || r.to }));
+          l = { id, name: entityName(e) || id, publisher: verlag(id), groups };
+          ebene.set(id, l);
+        }
+        return l;
+      };
+      const typName = (t: string) => registry.interfaces[t]?.label ?? t;
+      type Zeile = ArticleVisibilityRow & { entity: Entity; rule?: string };
+      const alle: Zeile[] = zeilen.map((e) => {
+        const st = effectiveAudience(map, e, ctx);
+        return {
+          id: e.id,
+          name: entityName(e) || e.id,
+          type: primaryInterface(e),
+          typeLabel: typName(primaryInterface(e)),
+          layers: layersOf(e).map((l) => ({ id: l, name: ebeneVon(l).name })),
+          audience: st.audience,
+          source: st.source,
+          ...(st.rule ? { rule: st.rule } : {}),
+          entity: e,
+        };
+      });
+
+      /* Die Facetten zählen alles im Spiel, nicht nur den Filter — sonst
+         verschwände eine Ebene aus der Auswahl, sobald man eine andere wählt. */
+      const nEbene = new Map<string, number>();
+      const nArt = new Map<string, number>();
+      const nStufe: Partial<Record<Audience, number>> = {};
+      for (const r of alle) {
+        if (!r.layers.length) nEbene.set('none', (nEbene.get('none') ?? 0) + 1);
+        for (const l of r.layers) nEbene.set(l.id, (nEbene.get(l.id) ?? 0) + 1);
+        nArt.set(r.type, (nArt.get(r.type) ?? 0) + 1);
+        nStufe[r.audience] = (nStufe[r.audience] ?? 0) + 1;
+      }
+
+      const treffer = filterArticleRows(alle, frage);
+      const seite = treffer.slice(offset, offset + limit);
+      const darf = await deps.schreibbar(user);
+      return {
+        may: z.recht,
+        columns: spalten,
+        total: treffer.length,
+        all: alle.length,
+        offset,
+        limit,
+        query: frage,
+        facets: {
+          layers: [...nEbene]
+            .map(([id, n]) => (id === 'none' ? { id, name: 'No layer', publisher: '', groups: [], n } : { ...ebeneVon(id), n }))
+            .sort((a, b) => (a.id === 'none' ? 1 : b.id === 'none' ? -1 : a.name.localeCompare(b.name, 'de'))),
+          types: [...nArt].map(([key, n]) => ({ key, label: typName(key), n })).sort((a, b) => a.label.localeCompare(b.label, 'de')),
+          levels: nStufe,
+        },
+        rows: seite.map((r) => {
+          const e = r.entity;
+          const v = (e.components?.[VISIBILITY_COMPONENT] ?? {}) as VisibilityFields;
+          const seenBy = spalten.filter((s) => articleVisible(map, e, augen.get(s.key)!)).map((s) => s.key);
+          const players: Record<string, 'show' | 'hide'> = {};
+          for (const s of spalten) {
+            const p = s.kind === 'player' ? playerSetting(v, s.bearers ?? []) : null;
+            if (p) players[s.key] = p;
+          }
+          return {
+            id: r.id,
+            name: r.name,
+            type: r.type,
+            typeLabel: r.typeLabel,
+            layers: layersOf(e).map(ebeneVon),
+            audience: r.audience,
+            source: r.source,
+            ...(r.rule ? { rule: r.rule } : {}),
+            own: {
+              ...(typeof v.audience === 'string' ? { audience: v.audience } : {}),
+              revealedTo: Array.isArray(v.revealedTo) ? v.revealedTo.length : 0,
+              hiddenFrom: Array.isArray(v.hiddenFrom) ? v.hiddenFrom.length : 0,
+            },
+            players,
+            seenBy,
+            writable: user.isAdmin || darf(r.id),
+          };
+        }),
+      };
+    },
+  );
+
+  /**
+   * **Sichtbarkeit je Artikel setzen** (T-387) — `{ ids, audience }` (eine
+   * Stufe, `null`: der Gruppe folgen), `{ ids, player: { key, mode } }` (je
+   * Spielende/r zeigen, verbergen, folgen — `key` ist die Spalte) oder
+   * `{ ids, follow: true }`. Geschrieben ins eigene Feld des Artikels, wie
+   * jedes Schreiben (`schreiben`); was die Leitung nicht schreibt, bleibt
+   * und kommt mit Grund zurück — für eine ganze Auswahl auf einmal.
+   */
+  app.post<{ Params: { c: string }; Body: { ids?: unknown; audience?: unknown; player?: unknown; follow?: unknown } }>(
+    '/api/campaigns/:c/visibility/articles',
+    async (request, reply) => {
+      const z = await zugang(request, reply, true);
+      if (!z) return;
+      const b = request.body ?? {};
+      const ids = Array.isArray(b.ids) ? [...new Set(b.ids.filter((x): x is string => typeof x === 'string'))] : [];
+      if (!ids.length) return nein(reply, 400, 'ids: choose at least one article.');
+      if (ids.length > 500) return nein(reply, 400, 'ids: at most 500 articles at once — narrow the filter and do it in parts.');
+      let aenderung: VisibilityChange;
+      if (b.follow === true) aenderung = { follow: true };
+      else if (b.audience !== undefined) {
+        if (b.audience !== null && !STUFEN.includes(b.audience as Audience)) {
+          return nein(reply, 400, `audience: one of ${STUFEN.join(', ')}, or null to follow the group.`);
+        }
+        aenderung = { audience: b.audience as Audience | null };
+      } else if (b.player && typeof b.player === 'object') {
+        const p = b.player as { key?: unknown; mode?: unknown };
+        if (typeof p.key !== 'string' || !['show', 'hide', 'follow'].includes(p.mode as string)) {
+          return nein(reply, 400, 'player: { key: the player column, mode: show | hide | follow }.');
+        }
+        const { spalten } = await grundlage(z);
+        const s = spalten.find((x) => x.key === p.key && x.kind === 'player');
+        if (!s) return nein(reply, 400, 'player.key: not a player of this campaign — reload the page.');
+        if (!s.bearers?.length) return nein(reply, 400, `${s.label} plays no character yet — assign one under Members first.`);
+        aenderung = { player: { bearers: s.bearers, mode: p.mode as 'show' | 'hide' | 'follow' } };
+      } else {
+        return nein(reply, 400, 'Say what to set: audience, player or follow.');
+      }
+
+      const darf = await deps.schreibbar(z.user);
+      const done: string[] = [];
+      const unchanged: string[] = [];
+      const refused: { id: string; name: string; error: string }[] = [];
+      for (const id of ids) {
+        const e = await repo.getEntity(id);
+        if (!e) {
+          refused.push({ id, name: id, error: 'No such article.' });
+          continue;
+        }
+        const name = entityName(e) || id;
+        if (!z.user.isAdmin && !darf(id)) {
+          refused.push({
+            id,
+            name,
+            error: layersOf(e).length
+              ? 'In a layer you do not write — set it for its group instead, or edit the article to make your own version.'
+              : 'Outside every layer — only the administration changes it; set it for its group instead.',
+          });
+          continue;
+        }
+        const alt = e.components?.[VISIBILITY_COMPONENT] as VisibilityFields | undefined;
+        const neu = applyVisibilityChange(alt, aenderung);
+        if (JSON.stringify(neu ?? null) === JSON.stringify(alt ?? null)) {
+          unchanged.push(id);
+          continue;
+        }
+        const components = { ...(e.components ?? {}) };
+        if (neu) components[VISIBILITY_COMPONENT] = neu;
+        else delete components[VISIBILITY_COMPONENT];
+        const r = await deps.schreiben(request, { ...e, components });
+        if ('konflikt' in r) refused.push({ id, name, error: 'Changed in the meantime — reload and try again.' });
+        else if (r.code >= 300) refused.push({ id, name, error: String((r.body as { error?: unknown })?.error ?? r.code) });
+        else done.push(id);
+      }
+      return { ok: true, done, unchanged, refused };
+    },
+  );
 }

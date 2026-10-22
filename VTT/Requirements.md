@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 125 | 425 | 68 steht · 21 teils · 28 offen · 5 ersetzt · 3 verworfen |
-| 3 | 121 | 357 | 61 steht · 25 teils · 34 offen · 1 ersetzt |
-| 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
+| 2 | 142 | 520 | 69 steht · 23 teils · 42 offen · 5 ersetzt · 3 verworfen |
+| 3 | 128 | 394 | 61 steht · 27 teils · 39 offen · 1 ersetzt |
+| 4 | 48 | 220 | 13 steht · 2 teils · 30 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **367** | **1314** | 185 steht · 58 teils · 108 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **394** | **1470** | 186 steht · 62 teils · 130 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -223,7 +223,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-182]] | Kanten lesen sich von beiden Enden | Spielleitung | [[F-001 Artikelmodell\|Artikelmodell]] | 2 | 1 | done | steht |
 | [[REQ-183]] | Gruppeninventar | Spieler | [[F-026 Inventar\|Inventar]] | 3 | 2 | done | steht |
 | [[REQ-184]] | Handwerk mit Rezepten | Spieler | [[F-047 Handwerk\|Handwerk]] | 4 | 5 | done | steht |
-| [[REQ-185]] | Andere Währungen und Tausch | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 5 | 2 | idea | offen |
+| [[REQ-185]] | Andere Währungen und Tausch | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 5 | 2 | defined | offen |
 | [[REQ-186]] | Verschachtelte Tabellen | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 3 | 2 | done | steht |
 | [[REQ-187]] | Tischanzeige | Spielleitung | [[F-050 Spielleiter-Schirm\|Spielleiter-Schirm]] | 3 | 2 | idea | offen |
 | [[REQ-188]] | Übersicht über alles Unfertige | Spielleitung | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 3 | 2 | done | steht |
@@ -406,6 +406,33 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-365]] | Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung | Spielleitung | [[F-051 Initiative\|Initiative]] | 2 | 3 | defined | offen |
 | [[REQ-366]] | Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair | Spielleitung | [[F-051 Initiative\|Initiative]] | 3 | 3 | defined | offen |
 | [[REQ-367]] | Ebene eines Artikels im Bearbeiten ändern, als erstes Feld | Spielleitung | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 2 | 2 | in progress | teils |
+| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 3 | in progress | teils |
+| [[REQ-369]] | Module als Baum mit Transformationen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 5 | defined | offen |
+| [[REQ-370]] | Neuere Fassung zum Vergleich anfragen | Spieler | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | defined | offen |
+| [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 5 | defined | offen |
+| [[REQ-372]] | Regeln lernen, wenn sie vorkommen | Spieler | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 3 | 5 | idea | offen |
+| [[REQ-373]] | Ein Muster für Ansichten, Kacheln und Seiten | Spielleitung | [[F-081 Widgets & Kacheln\|Widgets & Kacheln]] | 2 | 8 | defined | offen |
+| [[REQ-374]] | Viewpoints statt nur Breakpoints | Spielleitung | [[F-082 Viewpoints\|Viewpoints]] | 3 | 8 | defined | offen |
+| [[REQ-375]] | Register als Module | Verwaltung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 13 | defined | offen |
+| [[REQ-376]] | Sammlungsansichten neben Artikelansichten | Spielleitung | [[F-006 Ansichten & Anordnung\|Ansichten & Anordnung]] | 2 | 5 | defined | offen |
+| [[REQ-377]] | Quest aus einer Tabelle würfeln | Spielleitung | [[F-083 Quest-Generator\|Quest-Generator]] | 3 | 5 | defined | teils |
+| [[REQ-378]] | Regelbuch-PDFs privat ablegen | Spielleitung | [[F-066 PDF & OCR\|PDF & OCR]] | 2 | 3 | defined | offen |
+| [[REQ-379]] | Vom Artikel auf Seite und Stelle im PDF springen | Spielleitung | [[F-066 PDF & OCR\|PDF & OCR]] | 2 | 5 | defined | offen |
+| [[REQ-380]] | Bücher über konfigurierbare Strukturen zerlegen | Verwaltung | [[F-074 Regelwerke anderer Verlage\|Regelwerke anderer Verlage]] | 3 | 8 | defined | offen |
+| [[REQ-381]] | Ein Rahmen für alle Werkbank-Seiten | Verwaltung | [[F-016 Werkbank\|Werkbank]] | 2 | 5 | defined | offen |
+| [[REQ-382]] | Design und Werkzeuge in anderen Projekten nutzen | Verwaltung | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 4 | 8 | idea | offen |
+| [[REQ-383]] | Ansicht je Artikeltyp teilen, mit Vorschau als Spieler | Spielleitung | [[F-006 Ansichten & Anordnung\|Ansichten & Anordnung]] | 2 | 5 | defined | offen |
+| [[REQ-384]] | Widget-Katalog | Spielleitung | [[F-081 Widgets & Kacheln\|Widgets & Kacheln]] | 2 | 13 | defined | offen |
+| [[REQ-385]] | Karten-Widget mit Werkzeugen, Ebenen und Grössen | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 2 | 8 | defined | offen |
+| [[REQ-386]] | Suche und Filter in den Modulen | Spielleitung | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 2 | 3 | defined | offen |
+| [[REQ-387]] | Kachel-Vorlagen anpassen | Spielleitung | [[F-081 Widgets & Kacheln\|Widgets & Kacheln]] | 3 | 5 | defined | offen |
+| [[REQ-388]] | Chat während der Sitzung | Spieler | [[F-028 Chat\|Chat]] | 4 | 8 | idea | offen |
+| [[REQ-389]] | Aufnahme wird Chat-Text | Spielleitung | [[F-036 Sitzungsmitschnitt\|Sitzungsmitschnitt]] | 4 | 8 | idea | offen |
+| [[REQ-390]] | Kurze und lange Rast | Spieler | [[F-023 Charakterbogen\|Charakterbogen]] | 2 | 3 | done | steht |
+| [[REQ-391]] | Tragestufen mit Folgen | Spieler | [[F-026 Inventar\|Inventar]] | 3 | 3 | defined | offen |
+| [[REQ-392]] | Featureseiten im Projektbrett | Spielleitung | [[F-084 Projektsteuerung & Vermittlung\|Projektsteuerung & Vermittlung]] | 2 | 5 | defined | offen |
+| [[REQ-393]] | Demo-Video der Seite | Spielleitung | [[F-084 Projektsteuerung & Vermittlung\|Projektsteuerung & Vermittlung]] | 3 | 3 | in progress | teils |
+| [[REQ-394]] | Artikel löschen, einzeln und mehrere, mit Rückgängig | Spielleitung | [[F-071 Bearbeiten in der Ansicht\|Bearbeiten in der Ansicht]] | 2 | 3 | in progress | teils |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

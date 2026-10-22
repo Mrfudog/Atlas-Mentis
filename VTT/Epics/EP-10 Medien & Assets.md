@@ -23,7 +23,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 | [[F-063 Bildverwaltung]] — Hochladen, Übersicht, Bildklassen, Ersetzen, Import der Bilder. | 5 | 13 | 2 teils · 3 offen |
 | [[F-064 Token-Werkstatt]] — Bilder bearbeiten, Tokens zusammenstellen. | 3 | 11 | 3 offen |
 | [[F-065 Druck & Ausfuhr]] — Ein Artikel auf einem Blatt, Karten und Bögen drucken, Ausfuhr nach Markdown. | 3 | 10 | 1 steht · 2 offen |
-| [[F-066 PDF & OCR]] — PDF anzeigen, Seiten anspringen, Texte erkennen. | 2 | 18 | 2 offen |
+| [[F-066 PDF & OCR]] — PDF anzeigen, Seiten anspringen, Texte erkennen. | 4 | 26 | 4 offen |
 
 ### Wo es wohnt
 
@@ -33,7 +33,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 **Erklärt in:** [Betrieb.md](../../docs/Betrieb.md), [Datenmodell.md](../../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** [[REQ-022]] Vorschaubilder und Kacheln (offen) · [[REQ-145]] Ablage in der Seite (teils) · [[REQ-146]] Grosse Dateien auf dem NAS (offen) · [[REQ-147]] Bilder hochladen (teils) · [[REQ-167]] Drucken (offen) · [[REQ-295]] Bild ersetzen als Fassung oder neue Quelle (offen) · [[REQ-296]] Bildklassen (teils) · [[REQ-297]] Bilder aus 5e.tools einlesen und verknüpfen (offen) · [[REQ-329]] Bilder im Inventar (offen) · [[REQ-330]] Inventory image an einen Gegenstand binden (offen)
+**Offen mit Prio 1–3:** [[REQ-022]] Vorschaubilder und Kacheln (offen) · [[REQ-145]] Ablage in der Seite (teils) · [[REQ-146]] Grosse Dateien auf dem NAS (offen) · [[REQ-147]] Bilder hochladen (teils) · [[REQ-167]] Drucken (offen) · [[REQ-295]] Bild ersetzen als Fassung oder neue Quelle (offen) · [[REQ-296]] Bildklassen (teils) · [[REQ-297]] Bilder aus 5e.tools einlesen und verknüpfen (offen) · [[REQ-329]] Bilder im Inventar (offen) · [[REQ-330]] Inventory image an einen Gegenstand binden (offen) · [[REQ-378]] Regelbuch-PDFs privat ablegen (offen) · [[REQ-379]] Vom Artikel auf Seite und Stelle im PDF springen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->

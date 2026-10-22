@@ -15,10 +15,12 @@ Epic: [[EP-10 Medien & Assets]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-2 Stories · 18 Punkte · 2 offen
+4 Stories · 26 Punkte · 4 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-149]] PDF mit Seitensprung | Spieler | 4 | offen |
 | [[REQ-152]] Texte aus PDF erkennen | Spielleitung | 5 | offen |
+| [[REQ-378]] Regelbuch-PDFs privat ablegen | Spielleitung | 2 | offen |
+| [[REQ-379]] Vom Artikel auf Seite und Stelle im PDF springen | Spielleitung | 2 | offen |
 <!-- stories:ende -->

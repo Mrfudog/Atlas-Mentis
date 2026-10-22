@@ -26,7 +26,8 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 | [[F-033 Abenteuer übernehmen]] — Vorgefertigte Abenteuer als Ebene, Kapitel und Szenen in die eigene Geschichte holen. | 2 | 18 | 2 steht |
 | [[F-034 Party]] — Die Figurengruppe einer Kampagne mit ihrer Übersicht. | 3 | 7 | 2 steht · 1 teils |
 | [[F-035 Ladebildschirm-Board]] — Ein öffentliches Board je Kampagne mit Widgets, das alle anpassen. | 1 | 3 | 1 offen |
-| [[F-036 Sitzungsmitschnitt]] — Audio aufnehmen, transkribieren, Recap-Entwurf. | 3 | 18 | 3 offen |
+| [[F-036 Sitzungsmitschnitt]] — Audio aufnehmen, transkribieren, Recap-Entwurf. | 4 | 26 | 4 offen |
+| [[F-083 Quest-Generator]] — Ein Modul, das aus einem Wurf auf eine Quest- oder Encounter-Tabelle Quest, Questgegenstände und Kanten in einem Schritt anlegt. | 1 | 5 | 1 teils |
 
 ### Wo es wohnt
 
@@ -38,7 +39,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 **Erklärt in:** [Datenmodell.md](../../docs/Datenmodell.md), [Spieltisch.md](../../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** [[REQ-079]] Schnelle Aktionen in der Sitzung (teils) · [[REQ-080]] Vorlesetexte nach der Sitzung freigeben (offen) · [[REQ-086]] Gruppenübersicht (teils) · [[REQ-180]] Gepflanzte Fäden (offen) · [[REQ-221]] Begegnungen bauen (offen) · [[REQ-236]] Kampagne mit Dialog anlegen (offen) · [[REQ-279]] Kampagnenwerte pflegen und in Texten nutzen (teils) · [[REQ-282]] Sitzungsansicht für das Spiel (offen) · [[REQ-283]] Kampagnen-Ladebildschirm (offen)
+**Offen mit Prio 1–3:** [[REQ-079]] Schnelle Aktionen in der Sitzung (teils) · [[REQ-080]] Vorlesetexte nach der Sitzung freigeben (offen) · [[REQ-086]] Gruppenübersicht (teils) · [[REQ-180]] Gepflanzte Fäden (offen) · [[REQ-221]] Begegnungen bauen (offen) · [[REQ-236]] Kampagne mit Dialog anlegen (offen) · [[REQ-279]] Kampagnenwerte pflegen und in Texten nutzen (teils) · [[REQ-282]] Sitzungsansicht für das Spiel (offen) · [[REQ-283]] Kampagnen-Ladebildschirm (offen) · [[REQ-377]] Quest aus einer Tabelle würfeln (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
