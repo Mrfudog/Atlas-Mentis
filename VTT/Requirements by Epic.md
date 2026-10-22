@@ -328,7 +328,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-42 Stories · 109 Punkte · 7 steht · 9 teils · 26 offen — [[EP-04 Spielererlebnis]]
+42 Stories · 109 Punkte · 7 steht · 10 teils · 25 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -359,7 +359,7 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 | [[REQ-326]] | Ziehen und Ablegen im Raster | Spieler | 2 | 3 | offen |
 | [[REQ-327]] | Packen am Telefon | Spieler | 2 | 2 | offen |
 | [[REQ-328]] | Ablage für nicht Verstautes | Spieler | 2 | 1 | offen |
-| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | 2 | 2 | offen |
+| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | 2 | 2 | teils |
 | [[REQ-355]] | Tragraster, Zonen und Behälter einstellen | Spielleitung | 2 | 3 | steht |
 | [[REQ-356]] | Tragblatt aus Bausteinen mit Zonen und Bedingungen | Spielleitung | 2 | 5 | steht |
 | [[REQ-183]] | Gruppeninventar | Spieler | 3 | 2 | steht |

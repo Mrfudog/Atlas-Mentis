@@ -2340,6 +2340,18 @@ steht selbst in keiner Liste, und ein Feld, das sie trägt, wird nicht in
 den Artikel darunter geschrieben: dort stünde es unsichtbar und bliebe,
 wenn die Ebene ausgeht.
 
+**Vorgabeformen kommen aus Gruppen, nicht aus 1900 Ergänzungen** (T-394,
+E-165). Eine Ergänzung je Gegenstand hätte jede Form hundertfach
+gespeichert: wer die Hausregel ändert (Pfeile 32 statt 20 je Stapel),
+müsste jeden Pfeil anfassen, und neue Gegenstände blieben ohne. Darum
+trägt das Untermodul „Default shapes“ des Inventars **Gruppen** mit einer
+Form und Werte **je Gegenstand** (welche Gruppe, welcher
+**Referenzgegenstand**, eine eigene Form), und gerechnet wird beim Lesen.
+Der Referenzgegenstand ist der Grund, warum ein „+1 Longsword“ wie ein
+Longsword aussieht: er erbt dessen Form, und wer die Form des Longswords
+ändert, ändert sie mit. Ein Wert am Gegenstand selbst schlägt alles —
+er ist die Ausnahme, und die Seite sagt bei jeder Form, woher sie kommt.
+
 **Fallen lassen heisst nicht weggeben** (D58). Ein Schwert, das mitten im
 Kampf aus der Hand fällt, gehört der Figur weiter und liegt zu ihren
 Füssen; nach dem Kampf hebt sie es auf. Darum bleibt die `holds`-Kante,

@@ -15,7 +15,7 @@ Epic: [[EP-04 Spielererlebnis]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-23 Stories · 59 Punkte · 7 steht · 4 teils · 12 offen
+23 Stories · 59 Punkte · 7 steht · 5 teils · 11 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -39,7 +39,32 @@ Epic: [[EP-04 Spielererlebnis]]
 | [[REQ-326]] Ziehen und Ablegen im Raster | Spieler | 2 | offen |
 | [[REQ-327]] Packen am Telefon | Spieler | 2 | offen |
 | [[REQ-328]] Ablage für nicht Verstautes | Spieler | 2 | offen |
-| [[REQ-333]] Vorgaben für Formen und Stapel | Spielleitung | 2 | offen |
+| [[REQ-333]] Vorgaben für Formen und Stapel | Spielleitung | 2 | teils |
 | [[REQ-355]] Tragraster, Zonen und Behälter einstellen | Spielleitung | 2 | steht |
 | [[REQ-356]] Tragblatt aus Bausteinen mit Zonen und Bedingungen | Spielleitung | 2 | steht |
 <!-- stories:ende -->
+
+## Vorgabeformen (T-394, E-165)
+
+Form und Stapel eines Gegenstands werden beim Lesen gerechnet (D8): aus
+dem Untermodul „Default shapes“ des Inventarmoduls — Gruppen und Werte je
+Gegenstand —, nicht aus Artikeln je Gegenstand. Der erste Treffer gilt:
+
+```mermaid
+flowchart TD
+  A["Item.rows am Gegenstand?"] -- ja --> E1["eigene Angabe (item)"]
+  A -- nein --> B["eigene Form im Untermodul?"]
+  B -- ja --> E2["own (auch: keine)"]
+  B -- nein --> C["Referenzgegenstand?"]
+  C -- ja --> C2["dessen Form, Kette ≤ 6 (reference)"]
+  C -- nein --> D["Gruppe trägt nicht?"]
+  D -- ja --> E3["keine Form (none)"]
+  D -- nein --> F["Auswahl nach Preis?"]
+  F -- ja --> E4["Zufallsform aus der Id (random)"]
+  F -- nein --> G["Form der Gruppe oder ihres Referenzgegenstands (group)"]
+```
+
+Ein Stapel am Gegenstand oder im Untermodul gilt über jeder geerbten Form.
+Die Herkunft kommt mit dem Artikel (`refs.shape`). Regel: G15 in
+`docs/Datenmodell.md`; Code: `packages/model/src/defaultShapes.ts`.
+

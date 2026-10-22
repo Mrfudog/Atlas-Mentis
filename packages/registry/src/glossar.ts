@@ -128,6 +128,23 @@ const APP: AppTerm[] = [
     translations: { de: 'Gegenstandsform' },
   },
   {
+    term: 'Default shapes',
+    aliases: ['Shape group', 'Item group (inventory)'],
+    sort: 'app',
+    definition: 'The part of the inventory module that gives items their shape and stack size from groups — blades, arrows, potions — instead of storing them on every item.',
+    effect: 'Worked out when an item is read: its own shape first, then its reference item, then the group (art objects draw a shape by price). Changing a group changes every item that says nothing of its own.',
+    example: '+1 Longsword has no shape of its own and takes the Longsword’s.',
+    translations: { de: 'Vorgabeformen' },
+  },
+  {
+    term: 'Reference item',
+    aliases: ['Base item (shape)'],
+    sort: 'app',
+    definition: 'The item another item takes its inventory shape and stack size from, unless it has its own.',
+    effect: 'Followed in a chain of up to six steps; a stack size on the item still wins. The shape panel says which item it came from.',
+    translations: { de: 'Referenzgegenstand' },
+  },
+  {
     term: 'Supplement',
     aliases: ['Field supplement'],
     sort: 'app',
