@@ -31,6 +31,7 @@ import {
   entityName,
   fogOn,
   frameNear,
+  frameShare,
   areaInFrame,
   ALIGN_ISSUE_TEXT,
   convertDistance,
@@ -542,11 +543,17 @@ interface Zeiger {
               }
               @if (linkOffen(); as l) {
                 <span class="link-einstellung">
-                  <label title="How much of the view the area must fill before the next zoom step enters the sub-map">
-                    Enter at
-                    <input type="range" min="10" max="100" step="5" [value]="l.nearProzent" (change)="linkSetzen(l, { near: +$any($event.target).value / 100 })" aria-label="Zoom depth: share of the view" />
-                    {{ l.nearProzent }}%
+                  <label title="How much of the view the area must fill before the next zoom step enters the sub-map — counted only when the cursor (mouse wheel) or the centre of the view lies in it">
+                    Enter when it fills
+                    <span class="nah-regler" [style.--jetzt]="l.jetztProzent + '%'">
+                      <input type="range" min="10" max="100" step="5" [value]="l.nearProzent" (change)="linkSetzen(l, { near: +$any($event.target).value / 100 })" aria-label="Zoom depth: share of the view" />
+                      <span class="jetzt" aria-hidden="true" [title]="'Now: ' + l.jetztProzent + '%'"></span>
+                    </span>
+                    {{ l.nearProzent }}% of the view
                   </label>
+                  <!-- Wie viel die Verknüpfung den Blick gerade füllt — und das übernehmen. -->
+                  <span class="dim">now {{ l.jetztProzent }}%</span>
+                  <button type="button" class="klein" [disabled]="l.jetztProzent < 10" (click)="linkSetzen(l, { near: l.jetzt })" title="Enter this sub-map from the zoom you are at now">Use current</button>
                   <label>
                     GM sees
                     <select (change)="linkSetzen(l, { show: $any($event.target).value || null })" aria-label="How the GM sees this link">
@@ -920,8 +927,10 @@ interface Zeiger {
               <button type="button" [class.an]="werkzeug() === 'wandArt'" [attr.aria-pressed]="werkzeug() === 'wandArt'" (click)="waehle('wandArt')" title="Tap a wall to make it the kind chosen on the left">Set kind</button>
               <button type="button" [class.an]="werkzeug() === 'schloss'" [attr.aria-pressed]="werkzeug() === 'schloss'" (click)="waehle('schloss')" title="Tap a door to lock or unlock it">Lock</button>
               <button type="button" [class.an]="werkzeug() === 'wandWeg'" [attr.aria-pressed]="werkzeug() === 'wandWeg'" (click)="waehle('wandWeg')" title="Tap a wall to remove it">Erase</button>
+              <button type="button" [disabled]="!wandRueckgaengig()" (click)="wandZurueck()" title="Undo the last change to the walls on this floor (Ctrl/Cmd+Z)">Undo</button>
               @if (wandPunkte().length) {
                 <button type="button" (click)="wandFertig()" [disabled]="wandPunkte().length < 2">Finish ({{ wandPunkte().length }})</button>
+                <button type="button" (click)="wandPunkte.set(wandPunkte().slice(0, -1))" title="Take back the last point (Backspace)">Undo point</button>
                 <button type="button" (click)="wandPunkte.set([])">Cancel</button>
               }
               <span class="schalter">
@@ -2606,6 +2615,21 @@ export class Karte {
     if (img.naturalWidth > 0 && img.naturalHeight > 0) this.nat.set({ w: img.naturalWidth, h: img.naturalHeight });
   }
 
+  /**
+   * **Wohin gezoomt wird** (T-327), in Kartenanteilen: der Punkt in der
+   * Bühne (der Zeiger beim Rad), sonst die Mitte des Blicks. Nur eine
+   * Verknüpfung, in der er liegt, wird betreten (`zoomStep`).
+   */
+  private fokus(fx?: number, fy?: number): Pt | undefined {
+    const b = this.buehne()?.nativeElement;
+    const h = this.hoehe();
+    if (!b || !h) return undefined;
+    const m = this.saum();
+    const px = fx ?? b.clientWidth / 2;
+    const py = fy ?? b.clientHeight / 2;
+    return { x: (b.scrollLeft - m.x + px) / this.breite(), y: (b.scrollTop - m.y + py) / h };
+  }
+
   /** Der Ausschnitt in Kartenanteilen. */
   private sichtbar(): Frame | undefined {
     const b = this.buehne()?.nativeElement;
@@ -2651,10 +2675,12 @@ export class Karte {
     const e = this.karte();
     if (!e) return;
     const visible = this.sichtbar();
+    const focus = this.fokus(fx, fy);
     const s = zoomStep({
       zoom: this.zoom(),
       direction: richtung,
       children: this.kontext()?.children ?? [],
+      ...(focus ? { focus } : {}),
       /* Aus (T-308): kein Rückfall auf die Kante — der Server hat entschieden. */
       parent: this.kontext()?.parents.at(-1)?.id ?? (this.kontext()?.navigation === false ? undefined : parentMapRelation(e)?.to),
       nat: this.nat(),
@@ -3174,7 +3200,10 @@ export class Karte {
       }
     }
     /* **Die Lupe** (T-315): in einem Setz-Werkzeug öffnet Halten sie; Ziehen davor schiebt die Karte. */
-    if (LUPE_WERKZEUGE.has(this.werkzeug()) && this.zeiger.size === 1) {
+    /* Mit der Maus keine Lupe: der Zeiger deckt nichts zu, und wer drückt und
+       dann erst zieht, bekam die Lupe statt des Verschiebens — nach vielen
+       Punkten liess sich die Karte so scheinbar nicht mehr ziehen. */
+    if (LUPE_WERKZEUGE.has(this.werkzeug()) && this.zeiger.size === 1 && ev.pointerType !== 'mouse') {
       const start = this.punkt(ev);
       const id = ev.pointerId;
       this.lupeAus();
@@ -3391,10 +3420,12 @@ export class Karte {
     if (!k) return;
     if (this.kneifenZiel > k.z0) {
       const visible = this.sichtbar();
+      const focus = this.fokus();
       const s = zoomStep({
         zoom: this.zoom(),
         direction: 1,
         children: this.kontext()?.children ?? [],
+        ...(focus ? { focus } : {}),
         nat: this.nat(),
         viewport: this.fenster(),
         ...(visible ? { visible } : {}),
@@ -3429,11 +3460,22 @@ export class Karte {
    */
   @HostListener('document:keydown', ['$event'])
   protected kuerzelTaste(ev: KeyboardEvent): void {
+    /* Ctrl/Cmd+Z nimmt die letzte Änderung an den Wänden zurück — nur in der Gruppe Walls. */
+    if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && ev.key.toLowerCase() === 'z' && this.aktiv() === 'waende' && this.wandRueckgaengig() && !tipptGerade(ev.target)) {
+      this.wandZurueck();
+      ev.preventDefault();
+      return;
+    }
     if (ev.defaultPrevented || ev.ctrlKey || ev.metaKey || ev.altKey || tipptGerade(ev.target)) return;
     const gemeint = this.ort() === 'play' || this.vollbild() || this.host.nativeElement.contains(document.activeElement);
     if (!gemeint) return;
     if (ev.key === 'Escape' && (this.aktiv() !== 'auswahl' || this.ersatzVollbild())) {
       this.zurueck();
+      ev.preventDefault();
+      return;
+    }
+    if (this.werkzeug() === 'wand' && ev.key === 'Backspace' && this.wandPunkte().length) {
+      this.wandPunkte.set(this.wandPunkte().slice(0, -1));
       ev.preventDefault();
       return;
     }
@@ -4553,6 +4595,9 @@ export class Karte {
       sperre: feetPerScaleUnit(this.einst()?.scale ?? '') && feetPerScaleUnit(k.scale ?? '') ? null : ALIGN_ISSUE_TEXT.units,
       issue: k.alignIssue ? ALIGN_ISSUE_TEXT[k.alignIssue as AlignIssue] : null,
       nearProzent: Math.round((k.near ?? MAP_NEAR) * 100),
+      /* Wie viel sie den Blick jetzt füllt (T-327) — dieselbe Rechnung wie der Zoomschritt. */
+      jetzt: Math.min(1, Math.round(frameShare(k.frame, this.nat(), this.zoom(), this.fenster()) * 100) / 100),
+      jetztProzent: Math.min(100, Math.round(frameShare(k.frame, this.nat(), this.zoom(), this.fenster()) * 100)),
       vorgabe: this.kontext()?.linkDefaults ?? { show: 'jump' as MapLinkShow, showPlayers: 'jump' as MapLinkShow, outer: 'none' as const },
     };
   });
@@ -4966,8 +5011,32 @@ export class Karte {
    * und `PUT`, wie ein Board (`Brett.schreiben`). Schlägt es fehl, gilt
    * wieder, was der Server hat.
    */
-  private async schreiben(e: Entity): Promise<void> {
+  private async schreiben(e: Entity, merken = true): Promise<void> {
+    /* **Die Wände vorher merken** (Rückgängig): nur, wenn sich an ihnen etwas
+       ändert, und nur die Wände — ein Rückgängig der ganzen Karte nähme
+       Tokens zurück, die inzwischen jemand anderes gezogen hat. */
+    const vorher = this.karte();
+    if (merken && vorher) {
+      const alt = JSON.stringify(mapWalls(vorher));
+      if (alt !== JSON.stringify(mapWalls(e))) {
+        this.wandVerlauf.set([...this.wandVerlauf(), { ebene: this.ebene(), walls: JSON.parse(alt) as unknown[] }].slice(-30));
+      }
+    }
     return this.schreibenGanz(this.voll(e));
+  }
+  /** Die letzten Stände der Wände, je Ebene — für *Undo* (Ctrl/Cmd+Z). Nur in dieser Seite. */
+  protected readonly wandVerlauf = signal<{ ebene: string; walls: unknown[] }[]>([]);
+  protected readonly wandRueckgaengig = computed(() => this.wandVerlauf().some((v) => v.ebene === this.ebene()));
+  /** Die letzte Änderung an den Wänden dieser Ebene zurücknehmen. */
+  protected wandZurueck(): void {
+    const k = this.karte();
+    const liste = this.wandVerlauf();
+    const i = liste.map((v) => v.ebene).lastIndexOf(this.ebene());
+    if (!k || i < 0) return;
+    const alt = liste[i]!;
+    this.wandVerlauf.set([...liste.slice(0, i), ...liste.slice(i + 1)]);
+    const map = { ...((k.components?.['Map'] ?? {}) as Record<string, unknown>), walls: alt.walls };
+    void this.schreiben({ ...k, components: { ...k.components, Map: map } }, false);
   }
   /** Die ganze Karte schreiben — Ebenen und Übergänge (T-307). */
   private async schreibenGanz(e: Entity): Promise<void> {

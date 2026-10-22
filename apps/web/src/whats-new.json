@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-zoom-focus-undo-walls",
+      "date": "2026-10-22",
+      "title": "Zoom into the sub-map you point at; undo walls",
+      "text": "Zooming enters a sub-map only where the cursor or the centre of the view lies. Sub-maps › Enter when it fills marks where you are now; Use current takes it. Walls: Undo point and Backspace while drawing, Undo or Ctrl/Cmd+Z for the last change. With a mouse, holding before dragging moves the map again.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
       "id": "2026-10-22-link-shape-tools",
       "date": "2026-10-22",
       "title": "Link shapes with visible corners, snapping and undo",
