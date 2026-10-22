@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-edit-layer-first",
+      "date": "2026-10-22",
+      "title": "Change an article's layer while editing",
+      "text": "Edit now starts with the Layer field. Choose another of your write layers and Save moves the article there; the page tells you where it is now.",
+      "area": "Articles",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-22-board-cards-fit",
       "date": "2026-10-22",
       "title": "Structure and query cards use the whole card; long notes scroll",
