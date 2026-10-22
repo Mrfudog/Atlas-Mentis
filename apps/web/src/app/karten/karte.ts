@@ -1563,7 +1563,7 @@ interface Zeiger {
                     [style.transform]="m.rot ? 'translate(-50%, -50%) rotate(' + m.rot + 'deg)' : null"
                     [style.--ring-w]="m.ring?.['--ring-w'] ?? null"
                     [style.--ring-bg]="m.ring?.['--ring-bg'] ?? null"
-                    [title]="m.titel"
+                    [title]="m.groesse ? m.titel + ' — ' + m.groesse : m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
                     (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : werkzeug() === 'asset' ? assetWaehlen(m) : kurzansicht($event, m.to, m.rel.id)"
@@ -2966,7 +2966,9 @@ export class Karte {
            ein Ring mehr — und gestrichelt der Nächste. */
         dran: !!zug?.current && m.to === zug.current,
         naechster: !!zug?.next && m.to === zug.next && m.to !== zug.current,
-        titel: [name, m.kind === 'scenery' || m.kind === 'light' ? '' : this.groesseText(m.to, m.ownSize), m.note, m.prepared ? 'prepared for an encounter — hidden until it starts' : m.hidden ? 'hidden from the players' : '', zug?.current === m.to ? 'their turn' : zug?.next === m.to ? 'next' : '']
+        /* Woher die Grösse kommt (T-390) — nur im Tooltip; der Name des Knopfs bleibt der Name. */
+        groesse: m.kind === 'scenery' || m.kind === 'light' ? '' : this.groesseText(m.to, m.ownSize),
+        titel: [name, m.note, m.prepared ? 'prepared for an encounter — hidden until it starts' : m.hidden ? 'hidden from the players' : '', zug?.current === m.to ? 'their turn' : zug?.next === m.to ? 'next' : '']
           .filter(Boolean)
           .join(' — '),
         selbst: !!plan && plan.rel === m.rel.id,

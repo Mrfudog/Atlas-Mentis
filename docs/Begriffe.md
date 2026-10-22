@@ -481,6 +481,14 @@ tut es. Die Grösse eines Tokens ist die seiner Kreatur, das Raster gehört
 der Karte; ein Feld dafür am Bild wäre die zweite Stelle für dieselbe
 Sache.
 
+**Warum die Grösse am Token gerechnet und nicht gespeichert wird** (T-390):
+sie kommt aus dem Statblock, und eine Wirkung wie Enlarge verschiebt sie
+nur, solange sie an der Kreatur steht. Eine gespeicherte Grösse am Token
+wäre nach dem Ende von Enlarge falsch, und nach einer Korrektur am
+Statblock auch. Gespeichert wird nur, was die Leitung bewusst anders will
+(`props.size`) — und weil die Seite sagt, woher die Grösse kommt, sieht man,
+welche der drei Stufen gerade gilt.
+
 Woher die Maske weiss, welche Klasse ein Feld will, steht am Feld
 (`target.where`) — und an der Karte, die `Image.image` erbt, steht es am
 Typ (`targets`, wie `titles` für die Beschriftung). Eine Liste im Code

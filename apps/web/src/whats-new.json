@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-token-size-from-statblock",
+      "date": "2026-10-22",
+      "title": "Tokens take their size from the statblock and from effects",
+      "text": "A dragon placed on a map now covers its squares straight away — also monsters that are only a statblock. Effects with target size, such as Enlarge or Reduce, change it while they last, and Tokens › Token size still overrides it; the tooltip says where the size comes from.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-22-delete-articles",
       "date": "2026-10-22",
       "title": "Delete articles and images from your layer",

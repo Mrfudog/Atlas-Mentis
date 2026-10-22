@@ -210,7 +210,7 @@ const APP: AppTerm[] = [
     term: 'Token size',
     aliases: ['Token space', 'Squares a token covers'],
     sort: 'app',
-    definition: 'How many squares a token covers on the map: its own size if set (Tokens › Token size, half squares too), otherwise the size on its statblock by the campaign’s Token sizes — Medium 1×1, Large 2×2, Huge 3×3.',
+    definition: 'How many squares a token covers on the map: its own size if set (Tokens › Token size, half squares too), otherwise the size on its statblock — changed by effects such as Enlarge or Reduce while they last — by the campaign’s Token sizes: Medium 1×1, Large 2×2, Huge 3×3, Gargantuan 4×4.',
     effect: 'With Tokens snap to the grid on, a dropped token lands so that this space covers whole (or half) squares.',
     translations: { de: 'Tokengrösse' },
   },
