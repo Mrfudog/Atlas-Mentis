@@ -192,6 +192,11 @@ button {
 .buehne {
   position: relative;
   overflow: auto;
+  /* Die Rinne der Scrollleiste steht immer. Die Kartenbreite rechnet aus
+     `clientWidth`; füllt die Karte die Bühne genau, schob die auftauchende
+     Leiste sie schmaler, damit niedriger, die Leiste verschwand, und das
+     Ganze flackerte im Takt des ResizeObserver. */
+  scrollbar-gutter: stable;
   height: min(70vh, 720px);
   border: 1px solid var(--line);
   border-radius: 6px;
