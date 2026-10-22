@@ -329,7 +329,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-42 Stories · 109 Punkte · 7 steht · 9 teils · 26 offen — [[EP-04 Spielererlebnis]]
+42 Stories · 109 Punkte · 7 steht · 10 teils · 25 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -360,7 +360,7 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 | [[REQ-326]] | Ziehen und Ablegen im Raster | Spieler | 2 | 3 | offen |
 | [[REQ-327]] | Packen am Telefon | Spieler | 2 | 2 | offen |
 | [[REQ-328]] | Ablage für nicht Verstautes | Spieler | 2 | 1 | offen |
-| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | 2 | 2 | offen |
+| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | 2 | 2 | teils |
 | [[REQ-355]] | Tragraster, Zonen und Behälter einstellen | Spielleitung | 2 | 3 | steht |
 | [[REQ-356]] | Tragblatt aus Bausteinen mit Zonen und Bedingungen | Spielleitung | 2 | 5 | steht |
 | [[REQ-183]] | Gruppeninventar | Spieler | 3 | 2 | steht |
@@ -564,7 +564,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-27 Stories · 126 Punkte · 13 steht · 2 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
+27 Stories · 126 Punkte · 13 steht · 3 teils · 11 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -636,7 +636,7 @@ Regelsysteme und Module als Ebenen, je Sorte ein Modul, gewählt an der Kampagne
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | offen |
+| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | teils |
 | [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | 2 | 5 | offen |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | 3 | 3 | offen |
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | 5 | offen |

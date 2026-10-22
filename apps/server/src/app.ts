@@ -84,7 +84,8 @@ import {
   isGroupLayer,
   versionsOf,
   versionGroups,
-  LAYER_COMPONENT,
+  LAYER_TYPES,
+  isLayer,
   LAYER_RELATION,
   WRITE_LAYER_PREF,
   OVERRIDES_RELATION,
@@ -134,6 +135,13 @@ import {
   shopWares,
   withVersionPrices,
   withSupplements,
+  campaignShapeDefaults,
+  hasShapeDefaults,
+  indexShapeDefaults,
+  stripDefaultShape,
+  withDefaultShape,
+  type DefaultShape,
+  type ShapeIndex,
   isSupplement,
   pickDeletable,
   buybackPrice,
@@ -1612,8 +1620,9 @@ export function buildApp({
       const gesiebt = await sieve(request, alle.filter((e) => ids.has(e.id)), alle);
       /* Mit den Feldern aus aufgeschalteten Ergänzungen (T-142): das
          Kachelinventar liest so die Form aus „Item shapes" — ohne die Id
-         zu wechseln, denn die Kante zeigt auf diesen Artikel. */
-      return Promise.all(gesiebt.map((e) => mitErgaenzungen(e)));
+         zu wechseln, denn die Kante zeigt auf diesen Artikel. Darunter die
+         Vorgabeform des Inventarmoduls (T-394). */
+      return Promise.all(gesiebt.map(async (e) => (await mitVorgabeform(await mitErgaenzungen(e))).entity));
     }
     return sieve(request, alle, alle);
   });
@@ -1924,7 +1933,7 @@ export function buildApp({
       verlag = new Map();
       const eigene = eigeneEbenen(stand.map);
       for (const e of stand.map.values()) {
-        if ((e.interfaces ?? [])[0] === 'Layer') verlag.set(e.id, publisherOf(stand.map, e, eigene));
+        if (isLayer(e)) verlag.set(e.id, publisherOf(stand.map, e, eigene));
       }
       verlage.set(stand.map, verlag);
     }
@@ -1955,7 +1964,7 @@ export function buildApp({
     const verlag: Record<string, string> = {};
     const eigene = eigeneEbenen(stand.map);
     for (const e of stand.map.values()) {
-      if ((e.interfaces ?? [])[0] !== 'Layer') continue;
+      if (!isLayer(e)) continue;
       const k = (e.components?.['Layer'] as { abbreviation?: unknown } | undefined)?.abbreviation;
       const name = idx.names.get(e.id);
       if (typeof k !== 'string' || !k.trim() || !name) continue;
@@ -2051,6 +2060,43 @@ export function buildApp({
     if (!kampagne) return e;
     const stapel = stapelFuer(stand.map, kampagne, registry);
     return withSupplements(e, ids, stand.ueberschreiber, (x) => stapel.rank(x)).entity;
+  }
+
+  /**
+   * **Die Vorgabeformen der laufenden Kampagne** (T-394, E-165): aus den
+   * aufgeschalteten Ebenen mit der Karte `ShapeDefaults`, je Bestand und
+   * Register einmal gerechnet. `null`, wenn keine etwas sagt.
+   */
+  let formenJe: { stand: unknown; key: string; idx: ShapeIndex | null } | null = null;
+  async function vorgabeformen(): Promise<{ idx: ShapeIndex; item: (id: string) => Entity | undefined } | null> {
+    const stand = await roh();
+    const registry = await repo.getRegistry();
+    const kampagne = kampagneIn(stand.map, registry.settings ?? null);
+    const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
+    if (formenJe?.stand !== stand || formenJe.key !== key) {
+      const idx = indexShapeDefaults(campaignShapeDefaults(stand.map, kampagne));
+      formenJe = { stand, key, idx: hasShapeDefaults(idx) ? idx : null };
+    }
+    const idx = formenJe.idx;
+    if (!idx || !kampagne) return null;
+    const stapel = stapelFuer(stand.map, kampagne, registry);
+    return {
+      idx,
+      /* Ein Referenzgegenstand zählt, wie er in dieser Kampagne gilt (Fassung, Ergänzung). */
+      item: (id) => {
+        const x = stand.map.get(id);
+        return x ? stapel.resolve(x, stand.ueberschreiber) : undefined;
+      },
+    };
+  }
+
+  /** Ein Gegenstand mit seiner Vorgabeform (T-394); andere Artikel bleiben, wie sie sind. */
+  async function mitVorgabeform(e: Entity): Promise<{ entity: Entity; shape?: DefaultShape }> {
+    if (!typeChain(await repo.getRegistry(), primaryInterface(e)).includes('Item')) return { entity: e };
+    const vf = await vorgabeformen();
+    if (!vf) return { entity: e };
+    const { entity, shape } = withDefaultShape(e, vf.idx, vf);
+    return shape.source === 'unset' ? { entity } : { entity, shape };
   }
 
   async function kandidaten(request: FastifyRequest, ziele: Iterable<string>): Promise<Map<string, Entity[]>> {
@@ -3247,7 +3293,19 @@ export function buildApp({
     if (!gesiebt && (request.query.allLayers === '1' || request.query.allLayers === 'true') && (await viewerOf(request))?.isAdmin) {
       [gesiebt] = await sieve(request, [zeige], stand.map, undefined, 'unactivated');
     }
-    const einer = gesiebt;
+    /* **Form und Stapel aus dem Inventarmodul** (T-394, E-165): gerechnet,
+       nie gespeichert (D8); woher, sagt `refs.shape`. Nach dem Sieb, damit
+       ein zurückgehaltener Gegenstand nichts verrät. */
+    const vorgabe = gesiebt ? await mitVorgabeform(gesiebt) : null;
+    /* Ein Referenzgegenstand, den der Betrachter nicht sieht, wird nicht genannt — die Form gilt trotzdem. */
+    if (vorgabe?.shape?.ref) {
+      const r = stand.map.get(vorgabe.shape.ref);
+      if (!r || !(await sieve(request, [r], stand.map)).length) {
+        const { ref: _weg, ...ohne } = vorgabe.shape;
+        vorgabe.shape = ohne;
+      }
+    }
+    const einer = vorgabe?.entity;
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
        „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
        da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
@@ -3269,6 +3327,7 @@ export function buildApp({
     const refs = {
       audience,
       ...(Object.keys(supplied).length ? { supplied } : {}),
+      ...(vorgabe?.shape ? { shape: vorgabe.shape } : {}),
       ...(await bezuegeVon(request, einer)),
       ...(await bilderVon(request, einer)),
       ...(ready ? { ready } : {}),
@@ -3445,7 +3504,7 @@ export function buildApp({
 
   /** Arten, von denen es keine Fassung gibt: eine Ebene ist der Ort, eine
    *  Kampagne der Stapel selbst (T-098). */
-  const OHNE_FASSUNG = new Set(['Layer', CAMPAIGN_TYPE]);
+  const OHNE_FASSUNG = new Set([...LAYER_TYPES, CAMPAIGN_TYPE]);
 
   /**
    * **In welche Ebenen dieser Artikel angepasst werden kann** (E-018, T-082,
@@ -3640,7 +3699,7 @@ export function buildApp({
           if (wert === 'ready' && !darfFertig && !optionen.zurueck) return { code: 403, body: { error: '„ready" setzt die Leitung.' } };
           if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
         }
-      } else if (user && type !== LAYER_COMPONENT && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
+      } else if (user && !LAYER_TYPES.has(type) && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
         /* **Die Verwaltung legt an, wo sie nichts sagt** — wie bisher ohne
            Ebene, ausser sie hat für die laufende Kampagne eine Schreibebene
            gewählt (T-161, T-176): dann dort, damit Tests in der Testebene
@@ -3891,6 +3950,17 @@ export function buildApp({
         const probleme = validateEntity(await repo.getRegistry(), neu);
         if (probleme.length) return { code: 400, body: { error: 'Ergänzung ungültig', issues: probleme } };
         await repo.putEntity(neu);
+      }
+    }
+
+    /* **Was das Inventarmodul rechnet, bleibt dort** (T-394, D8): Form und
+       Stapel, die nur aus der Vorgabe kamen, schickt die Maske mit zurück —
+       gespeichert wird nur, was davon abweicht. */
+    if (vorherRoh && vorherRoh.components?.['Item'] !== undefined) {
+      const vf = await vorgabeformen();
+      if (vf) {
+        const { shape } = await mitVorgabeform(await mitErgaenzungen(vorherRoh));
+        if (shape) entity = stripDefaultShape(entity, vorherRoh, shape);
       }
     }
 
@@ -4152,7 +4222,7 @@ export function buildApp({
        Artikel stünden danach in keiner aufgeschalteten Ebene und wären für
        niemanden mehr da. Eine leere darf, wer darin schreibt. */
     const wer = await viewerOf(request);
-    if (weg && wer && !wer.isAdmin && primaryInterface(weg) === 'Layer') {
+    if (weg && wer && !wer.isAdmin && isLayer(weg)) {
       const inhalt = [...alle.values()].filter((e) => e.id !== weg.id && layersOf(e).includes(weg.id));
       /* Mit Aufzählung (T-164): wer löschen wollte, sieht, was darin liegt —
          und kann es übernehmen (`POST /api/layers/:layer/takeover`). */
@@ -4192,7 +4262,7 @@ export function buildApp({
     const removed = await repo.deleteEntity(request.params.id);
     if (!removed) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Wer in einer gelöschten Ebene schrieb, schreibt in nichts mehr. */
-    if (weg && primaryInterface(weg) === 'Layer') {
+    if (weg && isLayer(weg)) {
       for (const g of await repo.layerGrants()) if (g.layerId === weg.id) await repo.revokeLayer(g.userId, g.layerId);
     }
     /* Ein Bild nimmt seine Datei mit, wenn kein anderes Asset sie nennt (T-114). */
@@ -4615,7 +4685,7 @@ export function buildApp({
       const alle = await repo.listEntities();
       const roh = new Map(alle.map((e) => [e.id, e]));
       const l = roh.get(request.params.layer);
-      if (!l || primaryInterface(l) !== LAYER_COMPONENT) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
+      if (!l || !isLayer(l)) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
       if (!echt.user.isAdmin && !(echt.user.ownedLayerIds ?? []).includes(l.id)) {
         return reply.code(403).send({ error: 'Eine Ebene leeren die Verwaltung und wer sie besitzt.' });
       }

@@ -26,6 +26,7 @@ import {
   resolveView,
   isBookPart,
   isMap,
+  isLayer,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { bringsIntoLayer, homeLayers, pickView, spellcastingOf, withCastRelations, withHomeLayer } from '@nw/model';
@@ -273,7 +274,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
             <!-- Die Leseansicht (T-091): an der Stelle im Buch — auf der
                  Seite der Ebene, wo das Buch als Element steht (T-191). -->
             @if (leseZiel(); as z) {
-              @if (!bearbeitet() && art(e) !== 'Layer') {
+              @if (!bearbeitet() && !istEbene(e)) {
                 <a class="knopf" [routerLink]="['/artikel', z.layer]" [queryParams]="leseParams(z)">Read in book</a>
               }
             }
@@ -410,7 +411,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
           </p>
         }
         <!-- Wer die Ebene herausgibt und warum (T-109) — gerechnet, geändert wird die Kante. -->
-        @if (art(e) === 'Layer' && !zeigtAlten()) {
+        @if (istEbene(e) && !zeigtAlten()) {
           <nw-herausgeber [ebene]="e.id" />
         }
         @if (original(); as o) {
@@ -1536,6 +1537,11 @@ export class Artikel implements SchnellKontext {
   protected name(e: Entity): string {
     return entityName(e);
   }
+  /** Eine Ebene, auch ein Regelsystem oder eine Regelmechanik (E-166). */
+  protected istEbene(e: Entity): boolean {
+    return isLayer(e);
+  }
+
   protected art(e: Entity): string {
     return primaryInterface(e);
   }
@@ -2049,7 +2055,7 @@ export class Artikel implements SchnellKontext {
   protected readonly verschoben = signal<string | null>(null);
   protected readonly ebenenWahl = computed(() => {
     const e = this.artikel();
-    if (!e || this.art(e) === 'Layer') return null;
+    if (!e || isLayer(e)) return null;
     const name = this.bestand.name();
     const jetzt = homeLayers(e.relations);
     const optionen = new Map<string, { id: string; name: string; zusatz?: string }>();
@@ -2185,7 +2191,7 @@ export class Artikel implements SchnellKontext {
   /** Ebenen, Kampagnen und Teile eines Buchs haben eigene Wege. */
   protected readonly loeschbar = computed(() => {
     const e = this.artikel();
-    return !!e && !['Layer', 'Campaign'].includes(this.art(e));
+    return !!e && !isLayer(e) && this.art(e) !== 'Campaign';
   });
 
   protected async loeschen(): Promise<void> {

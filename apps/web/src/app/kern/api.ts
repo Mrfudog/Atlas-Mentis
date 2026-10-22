@@ -621,6 +621,11 @@ export interface Liste {
     partsHidden: number;
     /** **Hinzugefügt von** (T-382): je Konto, `∅` für unbekannt. */
     addedBy?: { id: string; name: string; count: number }[];
+    /** **Beziehungen und Felder** (T-389): wonach `@has` fragt, je mit Zahl; je gewählter Kante die Ziele. */
+    has?: {
+      choices: { ref: string; label: string; kind: 'edge' | 'field'; count: number }[];
+      targets: Record<string, { id: string; name: string; count: number }[]>;
+    };
     /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt, wie viele unprüfbar bleiben. */
     usable?: Brauchbar;
   };
@@ -2352,7 +2357,7 @@ export interface KartenKontext {
   /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
   /** `size`: die Grösse des Statblocks (T-317), für den Platz des Tokens. */
   /** `view`: wie Artikel dieser Art als Marker stehen (T-214, `InterfaceDef.markerView`). */
-  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; view?: MarkerView }>;
+  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; baseSize?: string; sizeFrom?: 'statblock' | 'effects'; sizeVia?: string[]; view?: MarkerView }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;

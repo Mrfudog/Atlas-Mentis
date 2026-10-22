@@ -36,6 +36,7 @@ import {
   validateEntity,
   WRITE_LAYER_PREF,
   type Entity,
+  isLayer,
 } from '@nw/model';
 import type { Repository } from './repo.js';
 import { foldName, type User } from './auth.js';
@@ -55,7 +56,7 @@ import { mitWahl } from './schreibebene.js';
 const IMPORTIERT = /^e5_/;
 export function eigeneEbenen(map: Map<string, Entity>): Set<string> {
   return new Set(
-    [...map.values()].filter((e) => primaryInterface(e) === LAYER_COMPONENT && !IMPORTIERT.test(e.id)).map((e) => e.id),
+    [...map.values()].filter((e) => isLayer(e) && !IMPORTIERT.test(e.id)).map((e) => e.id),
   );
 }
 
@@ -95,7 +96,7 @@ export function registerEbenenrechte(
 ): void {
   const nein = (reply: FastifyReply, code: number, error: string) => reply.code(code).send({ error });
   const bestand = async () => new Map((await repo.listEntities()).map((e) => [e.id, e]));
-  const istEbene = (e: Entity | undefined): e is Entity => !!e && primaryInterface(e) === LAYER_COMPONENT;
+  const istEbene = (e: Entity | undefined): e is Entity => !!e && isLayer(e);
 
   /** Darf dieses Konto sagen, wer in dieser Ebene schreibt? */
   const verwaltet = (user: User, layerId: string) => user.isAdmin || (user.ownedLayerIds ?? []).includes(layerId);

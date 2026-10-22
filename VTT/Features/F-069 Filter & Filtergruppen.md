@@ -37,3 +37,17 @@ flowchart LR
   C -->|Fenster, Konto, Sortierung| F[Zeilen + Facette Added by]
 ```
 
+## Nach Beziehungen (T-389)
+
+„Relations" in der Seitenleiste jeder Übersicht (Story REQ-395, auf dem Brett; die Notiz bringt der Abgleich Brett → Vault): eine Kante **hat** / **hat keine** / **mindestens n** / **höchstens n**, und an „hat" ein Ziel („member of: Guild"); mit gewählter Art auch ein **Feld** — die Rasterform eines Gegenstands ist `Item.rows`, ein Feld mit `format: 'grid'` und keine Kante. Die Bedingungen reisen als Facette `@has` in `f=` (`@has:out.memberOf=<id>|!Item.rows|out.carries>=3`) und gelten zusammen; gelesen werden sie mit `parseHasTerm`, geprüft mit `matchesHas` (`packages/model/src/relationfilter.ts`). Welche Kanten zur Wahl stehen, sagt das Register (`hasEdgeChoices`: `from`/`to` die `extends`-Kette hoch, `*` für jede Art); ohne Art nur, was in den Treffern vorkommt. **Gesiebt wird vorher:** eine ausgehende Kante zählt nur mit sichtbarem Ziel, eine eingehende nur mit sichtbarer Quelle; Felder mit `many` stehen nicht zur Wahl, weil das Wissen ihre Einträge einzeln zurückhält. Siehe D86.
+
+```mermaid
+flowchart LR
+  A[Seitenleiste: Relations] -->|f=@has:…| B[GET /api/list]
+  B --> C[gesiebter Index]
+  C -->|Kanten mit sichtbarem Ende, ein| D[matchesHas]
+  D --> E[Zeilen]
+  D --> F[facets.has: Wahl mit Zahl, Ziele]
+  F --> A
+```
+

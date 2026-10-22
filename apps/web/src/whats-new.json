@@ -9,6 +9,30 @@
       "link": "/campaign?tab=visibility"
     },
     {
+      "id": "2026-10-22-rule-systems-as-layers",
+      "date": "2026-10-22",
+      "title": "Inventory is a rule system with its mechanics",
+      "text": "Inventory now stands as a rule system layer with the mechanics Weight, Slots, Grid and Default shapes. Each mechanic says which others it works with — the grid works with weight. Default shapes gives items their shape and stack size from groups and reference items, once its data is in.",
+      "area": "Rules",
+      "link": "/artikel/ly_rs_inventory"
+    },
+    {
+      "id": "2026-10-22-token-size-from-statblock",
+      "date": "2026-10-22",
+      "title": "Tokens take their size from the statblock and from effects",
+      "text": "A dragon placed on a map now covers its squares straight away — also monsters that are only a statblock. Effects with target size, such as Enlarge or Reduce, change it while they last, and Tokens › Token size still overrides it; the tooltip says where the size comes from.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-22-filter-relations",
+      "date": "2026-10-22",
+      "title": "Filter lists by relations",
+      "text": "“Relations” in the filters of the Compendium, World, Story and Rules finds articles that have a link or none, at least so many, or a link to one article — members of a faction, items with a grid shape.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-22-delete-articles",
       "date": "2026-10-22",
       "title": "Delete articles and images from your layer",
