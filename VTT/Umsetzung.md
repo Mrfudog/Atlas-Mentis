@@ -23,17 +23,17 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 186 steht · 59 teils · 133 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
+Zusammen: 186 steht · 62 teils · 130 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 56 | 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen |
-| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 51 | 28 steht · 7 teils · 13 offen · 1 ersetzt · 2 verworfen |
+| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 51 | 28 steht · 8 teils · 12 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 19 steht · 2 teils · 8 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 9 teils · 28 offen |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 10 teils · 27 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 33 | 17 steht · 4 teils · 12 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 29 | 13 steht · 2 teils · 14 offen |
+| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 29 | 13 steht · 3 teils · 13 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 33 | 14 steht · 6 teils · 12 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 29 | 18 steht · 6 teils · 5 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 23 | 4 steht · 3 teils · 16 offen |
@@ -169,7 +169,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils) · REQ-368 Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden (offen) · REQ-371 Information aus Feld, Textteil oder Beziehung (offen) · REQ-372 Regeln lernen, wenn sie vorkommen (offen) · REQ-381 Ein Rahmen für alle Werkbank-Seiten (offen) · REQ-392 Featureseiten im Projektbrett (offen) · REQ-393 Demo-Video der Seite (teils)
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils) · REQ-368 Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden (teils) · REQ-371 Information aus Feld, Textteil oder Beziehung (offen) · REQ-372 Regeln lernen, wenn sie vorkommen (offen) · REQ-381 Ein Rahmen für alle Werkbank-Seiten (offen) · REQ-392 Featureseiten im Projektbrett (offen) · REQ-393 Demo-Video der Seite (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -211,7 +211,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-352]] | Reiter Knowledge am Artikel | 1 | **steht** | T-286: Kasten Knowledge in der Seitenspalte (Leitung), Routen /api/knowledge/…; neue Information gilt über applies.article |
 | [[REQ-353]] | Die Seite eines Wissens zeigt alles, was es vereint | 1 | **steht** | T-287: Element knowledge an der Art Knowledge, GET /api/knowledge/:id/contents (gesiebt) |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | 2 | **offen** |  |
-| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | 2 | **offen** | T-387 in Arbeit |
+| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | 2 | **teils** | T-387: Liste mit Ebene, Filter, Sortierung, Sichtbarkeit je Artikel und für eine Auswahl stehen; Ebene wechseln aus der Liste wartet auf E-161, Vorrang je Artikel auf E-111, Artikel in fremden Ebenen auf E-162 |
 | [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | 2 | **offen** |  |
 | [[REQ-372]] | Regeln lernen, wenn sie vorkommen | 3 | **offen** |  |
 
@@ -244,7 +244,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-088]] | Massenänderungen an Wissen und Rechten | 3 | **teils** | Massenbearbeitung ohne Wissen |
-| [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68) |
+| [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68); seit T-381 löscht jedes Konto aus seiner Schreibebene (`POST /api/entities/delete`, Galerie und Artikelseite, D84). Offen: Papierkorb-Seite (E-160) |
 | [[REQ-381]] | Ein Rahmen für alle Werkbank-Seiten | 2 | **offen** |  |
 
 ### F-017 Ausrollen & Sicherung
@@ -367,7 +367,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils) · REQ-391 Tragestufen mit Folgen (offen)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (teils) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils) · REQ-391 Tragestufen mit Folgen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -405,7 +405,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | [[REQ-326]] | Ziehen und Ablegen im Raster | 2 | **offen** |  |
 | [[REQ-327]] | Packen am Telefon | 2 | **offen** |  |
 | [[REQ-328]] | Ablage für nicht Verstautes | 2 | **offen** |  |
-| [[REQ-333]] | Vorgaben für Formen und Stapel | 2 | **offen** |  |
+| [[REQ-333]] | Vorgaben für Formen und Stapel | 2 | **teils** | T-394: Auflösung beim Lesen (Gruppe, Referenzgegenstand, Zufallsform, Herkunft refs.shape), Rahmen als Regelmechanik (E-166) und Umzug der Formen aus den Ergänzungen (Migration 141) stehen; Übersicht, Wahl am Gegenstand und Daten der Gruppen folgen. |
 | [[REQ-355]] | Tragraster, Zonen und Behälter einstellen | 2 | **steht** | Rules & options › Inventory: Grössen, Zonen je Spalte, Behältervorlagen gemalt, Fallenlassen/Verstauen, Körperplätze (T-291). |
 | [[REQ-356]] | Tragblatt aus Bausteinen mit Zonen und Bedingungen | 2 | **steht** | Einstellung carrySheet: Bausteine mit Form, Zonen und Bedingungen, aneinandergefügt (assembleCarry); Editor mit Vorschau für Grösse und STR, Zonenmaler auch für Behältervorlagen (T-298). |
 | [[REQ-391]] | Tragestufen mit Folgen | 3 | **offen** |  |
@@ -609,7 +609,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils) · REQ-369 Module als Baum mit Transformationen (offen) · REQ-375 Register als Module (offen)
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (teils) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils) · REQ-369 Module als Baum mit Transformationen (offen) · REQ-375 Register als Module (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -670,7 +670,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | 4 | **offen** |  |
-| [[REQ-287]] | Regelsysteme und Module als Ebenen | 2 | **offen** | E-044, T-132; entschieden als Ebenen: E-078, E-090–E-094 |
+| [[REQ-287]] | Regelsysteme und Module als Ebenen | 2 | **teils** | E-044, T-132; entschieden als Ebenen: E-078, E-090–E-094, E-166. T-394 Schritt 1: Arten RuleSystem und RuleMechanic, Kante compatibleWith, Inventory mit Weight, Slots, Grid und Default shapes beim Start angelegt; die Wahl am Tisch liest weiter Campaign.inventory. Handwerk und die übrigen Teilsysteme folgen (T-132). |
 | [[REQ-289]] | Homebrew-Regeln erfassen | 3 | **offen** | wenn das Gerüst steht |
 | [[REQ-319]] | Inventarregeln als wählbares Modul | 2 | **offen** |  |
 | [[REQ-369]] | Module als Baum mit Transformationen | 2 | **offen** |  |
@@ -1079,7 +1079,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-275]]** (2, teils, Spielererlebnis) — Erhaltene Gegenstände als Instanz — *`instanceOf` am Item vorhanden (T-150 läuft)*
 - **[[REQ-279]]** (2, teils, Kampagne & Sitzungen) — Kampagnenwerte pflegen und in Texten nutzen — *Auflösung steht; Maske fehlt*
 - **[[REQ-282]]** (2, offen, Kampagne & Sitzungen) — Sitzungsansicht für das Spiel — *Vorbereitungsseite steht (REQ-078), Spielansicht nicht*
-- **[[REQ-287]]** (2, offen, Regeln & Nachschlagen) — Regelsysteme und Module als Ebenen — *E-044, T-132; entschieden als Ebenen: E-078, E-090–E-094*
+- **[[REQ-287]]** (2, teils, Regeln & Nachschlagen) — Regelsysteme und Module als Ebenen — *E-044, T-132; entschieden als Ebenen: E-078, E-090–E-094, E-166. T-394 Schritt 1: Arten RuleSystem und RuleMechanic, Kante compatibleWith, Inventory mit Weight, Slots, Grid und Default shapes beim Start angelegt; die Wahl am Tisch liest weiter Campaign.inventory. Handwerk und die übrigen Teilsysteme folgen (T-132).*
 - **[[REQ-292]]** (2, teils, Live-Spiel) — Neuen Artikel aus einer Auswahl anlegen
 - **[[REQ-311]]** (2, teils, Spielererlebnis) — Spieleransicht mit der eigenen Figur im Fokus — *Entwurf Player/PlayerPhone*
 - **[[REQ-312]]** (2, teils, Karten) — Eigenes Token bewegen — *Prototyp ja; in der Seite noch nicht für Spielende*
@@ -1094,7 +1094,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-326]]** (2, offen, Spielererlebnis) — Ziehen und Ablegen im Raster
 - **[[REQ-327]]** (2, offen, Spielererlebnis) — Packen am Telefon
 - **[[REQ-328]]** (2, offen, Spielererlebnis) — Ablage für nicht Verstautes
-- **[[REQ-333]]** (2, offen, Spielererlebnis) — Vorgaben für Formen und Stapel
+- **[[REQ-333]]** (2, teils, Spielererlebnis) — Vorgaben für Formen und Stapel — *T-394: Auflösung beim Lesen (Gruppe, Referenzgegenstand, Zufallsform, Herkunft refs.shape), Rahmen als Regelmechanik (E-166) und Umzug der Formen aus den Ergänzungen (Migration 141) stehen; Übersicht, Wahl am Gegenstand und Daten der Gruppen folgen.*
 - **[[REQ-334]]** (2, offen, Spielererlebnis) — Tragende Ausrüstung als Behälter mit eigenem Raster
 - **[[REQ-335]]** (2, offen, Spielererlebnis) — Verbund: Zellen, die gemeinsam ein Stück tragen
 - **[[REQ-336]]** (2, offen, Spielererlebnis) — Festlegen, wo ein Gegenstand getragen werden darf
@@ -1108,7 +1108,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-364]]** (2, offen, Live-Spiel) — Kontingente je Quelle und Frequenz als Check-Marks in einer Rundenübersicht für die Leitung, mit automatischem Zurücksetzen (Beginn des eigenen Zugs, Rundenbeginn)
 - **[[REQ-365]]** (2, offen, Live-Spiel) — Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung
 - **[[REQ-367]]** (2, teils, Zugang & Betrieb) — Ebene eines Artikels im Bearbeiten ändern, als erstes Feld — *T-383: Feld „Layer“ zuerst in der Maske, Angebot aus den Schreibebenen, Prüfung im PUT gegen zielEbenen, Meldung „Moved to …“; was mit Teilen, Statblock und Inventar geschieht, wartet auf E-161*
-- **[[REQ-368]]** (2, offen, Zugang & Betrieb) — Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden — *T-387 in Arbeit*
+- **[[REQ-368]]** (2, teils, Zugang & Betrieb) — Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden — *T-387: Liste mit Ebene, Filter, Sortierung, Sichtbarkeit je Artikel und für eine Auswahl stehen; Ebene wechseln aus der Liste wartet auf E-161, Vorrang je Artikel auf E-111, Artikel in fremden Ebenen auf E-162*
 - **[[REQ-369]]** (2, offen, Regeln & Nachschlagen) — Module als Baum mit Transformationen
 - **[[REQ-370]]** (2, offen, Inhaltsgerüst) — Neuere Fassung zum Vergleich anfragen
 - **[[REQ-371]]** (2, offen, Zugang & Betrieb) — Information aus Feld, Textteil oder Beziehung

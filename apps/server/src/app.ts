@@ -84,7 +84,8 @@ import {
   isGroupLayer,
   versionsOf,
   versionGroups,
-  LAYER_COMPONENT,
+  LAYER_TYPES,
+  isLayer,
   LAYER_RELATION,
   WRITE_LAYER_PREF,
   OVERRIDES_RELATION,
@@ -134,7 +135,15 @@ import {
   shopWares,
   withVersionPrices,
   withSupplements,
+  campaignShapeDefaults,
+  hasShapeDefaults,
+  indexShapeDefaults,
+  stripDefaultShape,
+  withDefaultShape,
+  type DefaultShape,
+  type ShapeIndex,
   isSupplement,
+  pickDeletable,
   buybackPrice,
   reservedFor,
   SHOP_TYPE,
@@ -1136,7 +1145,7 @@ export function buildApp({
       /* Die Übernahme (T-130): lesen und vorschauen schreibt nichts. */
       url === '/api/transfer/peer/read' ||
       url === '/api/transfer/preview' ||
-      (url === '/api/bulk' && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
+      ((url === '/api/bulk' || url === '/api/entities/delete') && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
     const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && !liestNur;
 
     if (!user) {
@@ -1196,6 +1205,8 @@ export function buildApp({
     /* Eigene Ebenen und wer darin schreibt (T-098): die Routen prüfen je
        Ebene selbst (`ebenenrechte.ts`). */
     if (url === '/api/layers' || url.startsWith('/api/layers/')) return;
+    /* Löschen aus der eigenen Ebene (T-381): die Route prüft je Artikel selbst (`pickDeletable`). */
+    if (url === '/api/entities/delete' && request.method === 'POST') return;
     /* „Edit" an einem fremden Artikel legt eine Fassung an (T-098): die
        Route prüft die Zielebene selbst. */
     if (/^\/api\/entities\/[^/]+\/adapt$/.test(url) && request.method === 'POST') return;
@@ -1609,8 +1620,9 @@ export function buildApp({
       const gesiebt = await sieve(request, alle.filter((e) => ids.has(e.id)), alle);
       /* Mit den Feldern aus aufgeschalteten Ergänzungen (T-142): das
          Kachelinventar liest so die Form aus „Item shapes" — ohne die Id
-         zu wechseln, denn die Kante zeigt auf diesen Artikel. */
-      return Promise.all(gesiebt.map((e) => mitErgaenzungen(e)));
+         zu wechseln, denn die Kante zeigt auf diesen Artikel. Darunter die
+         Vorgabeform des Inventarmoduls (T-394). */
+      return Promise.all(gesiebt.map(async (e) => (await mitVorgabeform(await mitErgaenzungen(e))).entity));
     }
     return sieve(request, alle, alle);
   });
@@ -1921,7 +1933,7 @@ export function buildApp({
       verlag = new Map();
       const eigene = eigeneEbenen(stand.map);
       for (const e of stand.map.values()) {
-        if ((e.interfaces ?? [])[0] === 'Layer') verlag.set(e.id, publisherOf(stand.map, e, eigene));
+        if (isLayer(e)) verlag.set(e.id, publisherOf(stand.map, e, eigene));
       }
       verlage.set(stand.map, verlag);
     }
@@ -1952,7 +1964,7 @@ export function buildApp({
     const verlag: Record<string, string> = {};
     const eigene = eigeneEbenen(stand.map);
     for (const e of stand.map.values()) {
-      if ((e.interfaces ?? [])[0] !== 'Layer') continue;
+      if (!isLayer(e)) continue;
       const k = (e.components?.['Layer'] as { abbreviation?: unknown } | undefined)?.abbreviation;
       const name = idx.names.get(e.id);
       if (typeof k !== 'string' || !k.trim() || !name) continue;
@@ -2048,6 +2060,43 @@ export function buildApp({
     if (!kampagne) return e;
     const stapel = stapelFuer(stand.map, kampagne, registry);
     return withSupplements(e, ids, stand.ueberschreiber, (x) => stapel.rank(x)).entity;
+  }
+
+  /**
+   * **Die Vorgabeformen der laufenden Kampagne** (T-394, E-165): aus den
+   * aufgeschalteten Ebenen mit der Karte `ShapeDefaults`, je Bestand und
+   * Register einmal gerechnet. `null`, wenn keine etwas sagt.
+   */
+  let formenJe: { stand: unknown; key: string; idx: ShapeIndex | null } | null = null;
+  async function vorgabeformen(): Promise<{ idx: ShapeIndex; item: (id: string) => Entity | undefined } | null> {
+    const stand = await roh();
+    const registry = await repo.getRegistry();
+    const kampagne = kampagneIn(stand.map, registry.settings ?? null);
+    const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
+    if (formenJe?.stand !== stand || formenJe.key !== key) {
+      const idx = indexShapeDefaults(campaignShapeDefaults(stand.map, kampagne));
+      formenJe = { stand, key, idx: hasShapeDefaults(idx) ? idx : null };
+    }
+    const idx = formenJe.idx;
+    if (!idx || !kampagne) return null;
+    const stapel = stapelFuer(stand.map, kampagne, registry);
+    return {
+      idx,
+      /* Ein Referenzgegenstand zählt, wie er in dieser Kampagne gilt (Fassung, Ergänzung). */
+      item: (id) => {
+        const x = stand.map.get(id);
+        return x ? stapel.resolve(x, stand.ueberschreiber) : undefined;
+      },
+    };
+  }
+
+  /** Ein Gegenstand mit seiner Vorgabeform (T-394); andere Artikel bleiben, wie sie sind. */
+  async function mitVorgabeform(e: Entity): Promise<{ entity: Entity; shape?: DefaultShape }> {
+    if (!typeChain(await repo.getRegistry(), primaryInterface(e)).includes('Item')) return { entity: e };
+    const vf = await vorgabeformen();
+    if (!vf) return { entity: e };
+    const { entity, shape } = withDefaultShape(e, vf.idx, vf);
+    return shape.source === 'unset' ? { entity } : { entity, shape };
   }
 
   async function kandidaten(request: FastifyRequest, ziele: Iterable<string>): Promise<Map<string, Entity[]>> {
@@ -3129,6 +3178,18 @@ export function buildApp({
     },
     augeVon,
     schreiben,
+    /* Je Artikel (T-387): was das Konto schreibt, und der Herausgeber je Ebene. */
+    schreibbar: async (user) => {
+      const own = await ownedBy(user);
+      return (id) => mayWrite(user, own, id);
+    },
+    verlag: (map) => {
+      const eigene = eigeneEbenen(map);
+      return (l) => {
+        const e = map.get(l);
+        return e ? publisherOf(map, e, eigene) : '';
+      };
+    },
   });
   /* Die Abfrage-Kachel am Board (T-340): Liste, Ziehen, Freigeben — gesiebt je Betrachter. */
   /* Das Kampagnenboard als Startpunkt (T-342). */
@@ -3232,7 +3293,19 @@ export function buildApp({
     if (!gesiebt && (request.query.allLayers === '1' || request.query.allLayers === 'true') && (await viewerOf(request))?.isAdmin) {
       [gesiebt] = await sieve(request, [zeige], stand.map, undefined, 'unactivated');
     }
-    const einer = gesiebt;
+    /* **Form und Stapel aus dem Inventarmodul** (T-394, E-165): gerechnet,
+       nie gespeichert (D8); woher, sagt `refs.shape`. Nach dem Sieb, damit
+       ein zurückgehaltener Gegenstand nichts verrät. */
+    const vorgabe = gesiebt ? await mitVorgabeform(gesiebt) : null;
+    /* Ein Referenzgegenstand, den der Betrachter nicht sieht, wird nicht genannt — die Form gilt trotzdem. */
+    if (vorgabe?.shape?.ref) {
+      const r = stand.map.get(vorgabe.shape.ref);
+      if (!r || !(await sieve(request, [r], stand.map)).length) {
+        const { ref: _weg, ...ohne } = vorgabe.shape;
+        vorgabe.shape = ohne;
+      }
+    }
+    const einer = vorgabe?.entity;
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
        „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
        da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
@@ -3254,6 +3327,7 @@ export function buildApp({
     const refs = {
       audience,
       ...(Object.keys(supplied).length ? { supplied } : {}),
+      ...(vorgabe?.shape ? { shape: vorgabe.shape } : {}),
       ...(await bezuegeVon(request, einer)),
       ...(await bilderVon(request, einer)),
       ...(ready ? { ready } : {}),
@@ -3430,7 +3504,7 @@ export function buildApp({
 
   /** Arten, von denen es keine Fassung gibt: eine Ebene ist der Ort, eine
    *  Kampagne der Stapel selbst (T-098). */
-  const OHNE_FASSUNG = new Set(['Layer', CAMPAIGN_TYPE]);
+  const OHNE_FASSUNG = new Set([...LAYER_TYPES, CAMPAIGN_TYPE]);
 
   /**
    * **In welche Ebenen dieser Artikel angepasst werden kann** (E-018, T-082,
@@ -3625,7 +3699,7 @@ export function buildApp({
           if (wert === 'ready' && !darfFertig && !optionen.zurueck) return { code: 403, body: { error: '„ready" setzt die Leitung.' } };
           if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
         }
-      } else if (user && type !== LAYER_COMPONENT && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
+      } else if (user && !LAYER_TYPES.has(type) && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
         /* **Die Verwaltung legt an, wo sie nichts sagt** — wie bisher ohne
            Ebene, ausser sie hat für die laufende Kampagne eine Schreibebene
            gewählt (T-161, T-176): dann dort, damit Tests in der Testebene
@@ -3876,6 +3950,17 @@ export function buildApp({
         const probleme = validateEntity(await repo.getRegistry(), neu);
         if (probleme.length) return { code: 400, body: { error: 'Ergänzung ungültig', issues: probleme } };
         await repo.putEntity(neu);
+      }
+    }
+
+    /* **Was das Inventarmodul rechnet, bleibt dort** (T-394, D8): Form und
+       Stapel, die nur aus der Vorgabe kamen, schickt die Maske mit zurück —
+       gespeichert wird nur, was davon abweicht. */
+    if (vorherRoh && vorherRoh.components?.['Item'] !== undefined) {
+      const vf = await vorgabeformen();
+      if (vf) {
+        const { shape } = await mitVorgabeform(await mitErgaenzungen(vorherRoh));
+        if (shape) entity = stripDefaultShape(entity, vorherRoh, shape);
       }
     }
 
@@ -4137,7 +4222,7 @@ export function buildApp({
        Artikel stünden danach in keiner aufgeschalteten Ebene und wären für
        niemanden mehr da. Eine leere darf, wer darin schreibt. */
     const wer = await viewerOf(request);
-    if (weg && wer && !wer.isAdmin && primaryInterface(weg) === 'Layer') {
+    if (weg && wer && !wer.isAdmin && isLayer(weg)) {
       const inhalt = [...alle.values()].filter((e) => e.id !== weg.id && layersOf(e).includes(weg.id));
       /* Mit Aufzählung (T-164): wer löschen wollte, sieht, was darin liegt —
          und kann es übernehmen (`POST /api/layers/:layer/takeover`). */
@@ -4177,7 +4262,7 @@ export function buildApp({
     const removed = await repo.deleteEntity(request.params.id);
     if (!removed) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Wer in einer gelöschten Ebene schrieb, schreibt in nichts mehr. */
-    if (weg && primaryInterface(weg) === 'Layer') {
+    if (weg && isLayer(weg)) {
       for (const g of await repo.layerGrants()) if (g.layerId === weg.id) await repo.revokeLayer(g.userId, g.layerId);
     }
     /* Ein Bild nimmt seine Datei mit, wenn kein anderes Asset sie nennt (T-114). */
@@ -4401,7 +4486,14 @@ export function buildApp({
    * Rechte je Artikel. Gibt die Änderungen zurück, wie sie geschrieben
    * würden, und die Abgelehnten.
    */
-  async function pruefeLauf(user: User, registry: Registry, roh: Map<string, Entity>, changes: BulkChange[]) {
+  /**
+   * `folgen` (T-381): in einem Löschlauf aus der eigenen Ebene sind die
+   * Änderungen an bleibenden Artikeln nur Folgen — eine Kante auf das
+   * Gelöschte geht weg, eine Instanz bekommt, was sie von der Vorlage las.
+   * Die schreibt das Konto nicht selbst; sie zu verweigern hiesse, dass ein
+   * fremder Verweis das Löschen des Eigenen sperrt. Geprüft wird weiter.
+   */
+  async function pruefeLauf(user: User, registry: Registry, roh: Map<string, Entity>, changes: BulkChange[], folgen = false) {
     const danach = new Map(roh);
     for (const c of changes) {
       if (c.after) danach.set(c.id, c.after);
@@ -4423,7 +4515,8 @@ export function buildApp({
       const e = c.after ?? c.before!;
       const name = String(e.components?.['Identity']?.['name'] ?? e.name ?? c.id);
       const pruefe = !roh.has(c.id) && eigenDanach ? eigenDanach : eigen;
-      if (pruefe && !mayWrite(user, pruefe, c.id)) {
+      const nurFolge = folgen && !!c.before && !!c.after && roh.has(c.id);
+      if (pruefe && !nurFolge && !mayWrite(user, pruefe, c.id)) {
         abgelehnt.push({ id: c.id, name, type: e.interfaces?.[0] ?? '', issues: ['Das gehört dir nicht.'] });
         continue;
       }
@@ -4506,9 +4599,10 @@ export function buildApp({
     roh: Map<string, Entity>,
     auftrag: BulkRequest,
     ausgewaehlt: string[],
+    art?: 'delete-own',
   ): Promise<{ code: number; body: Record<string, unknown> }> {
     const plan = planBulk(registry, roh, ausgewaehlt, auftrag.ops);
-    const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, plan.changes);
+    const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, plan.changes, art === 'delete-own');
     const loescht = geprueft.filter((c) => !c.after).length;
     const limit = auftrag.limit ?? 50;
     const antwort = {
@@ -4540,6 +4634,7 @@ export function buildApp({
 
     const { dryRun: _d, ...was } = auftrag;
     const id = await repo.appendEvent('bulk', undefined, {
+      ...(art ? { kind: art } : {}),
       by: { id: wer.user.id, name: wer.user.name },
       token: wer.token?.name ?? null,
       request: was,
@@ -4590,7 +4685,7 @@ export function buildApp({
       const alle = await repo.listEntities();
       const roh = new Map(alle.map((e) => [e.id, e]));
       const l = roh.get(request.params.layer);
-      if (!l || primaryInterface(l) !== LAYER_COMPONENT) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
+      if (!l || !isLayer(l)) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
       if (!echt.user.isAdmin && !(echt.user.ownedLayerIds ?? []).includes(l.id)) {
         return reply.code(403).send({ error: 'Eine Ebene leeren die Verwaltung und wer sie besitzt.' });
       }
@@ -4606,6 +4701,77 @@ export function buildApp({
       const drin = alle.filter((e) => e.id !== l.id && layersOf(e).includes(l.id)).map((e) => e.id);
       const r = await fuehreLaufAus(request, echt, await repo.getRegistry(), roh, auftrag, drin);
       return reply.code(r.code).send({ ...r.body, layer: { id: l.id, name: entityName(l) }, ms: Date.now() - t0 });
+    },
+  );
+
+  /**
+   * **Artikel löschen, einzeln oder aus einer Auswahl** (T-381). Gelöscht
+   * wird nur, was in der Ebene liegt, in der das Konto gerade arbeitet —
+   * dort, wo es auch anlegen würde (`schreibEbene`; die Verwaltung ohne
+   * gewählte Schreibebene ausserhalb jeder Ebene) — und was es schreiben
+   * darf. Der Rest wird abgewählt und mit Grund zurückgegeben
+   * (`pickDeletable`). Ausgeführt wird als Massenänderung `delete`: Teile
+   * gehen mit, Kanten darauf gehen weg, Instanzen werden gelöst — und der
+   * Lauf steht im Protokoll, also zurück über `POST /api/bulk/:id/undo`,
+   * auch für Spielende. Bilddateien bleiben dabei liegen (E-160): sonst
+   * brächte das Zurücknehmen ein Bild ohne Datei.
+   * `dryRun` sagt, was geschähe; mehr als einen Artikel löschen nur mit
+   * `confirmDelete` = Zahl aus der Vorschau (D68).
+   */
+  app.post<{ Body: { ids?: unknown; dryRun?: unknown; confirmDelete?: unknown } | null }>(
+    '/api/entities/delete',
+    async (request, reply) => {
+      const echt = await werIst(request);
+      if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+      if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nicht gelöscht.' });
+      const b = request.body ?? {};
+      const ids = Array.isArray(b.ids) ? [...new Set(b.ids.filter((x): x is string => typeof x === 'string' && !!x))] : [];
+      if (!ids.length) return reply.code(400).send({ error: 'Sag, welche Artikel: { "ids": [...] }.' });
+      if (ids.length > 1000) return reply.code(400).send({ error: 'Höchstens 1000 Artikel auf einmal — teile die Auswahl.' });
+      const user = echt.user;
+      const alle = await repo.listEntities();
+      const roh = new Map(alle.map((e) => [e.id, e]));
+      const registry = await repo.getRegistry();
+      const kampagne = currentCampaign(roh, registry.settings ?? null);
+      const ebene = user.isAdmin
+        ? await gewaehlteSchreibEbene(user, roh, kampagne)
+        : await vorgabeEbene(user, roh, kampagne);
+      const sichtbar = new Set(
+        [
+          ...(await sieve(request, alle, alle)),
+          ...(await sieve(request, alle.filter(isSupplement), alle, undefined, 'versions')),
+        ].map((e) => e.id),
+      );
+      const eigen = user.isAdmin ? null : await ownedBy(user);
+      const wahl = pickDeletable(roh, ids, {
+        layer: ebene?.id ?? null,
+        unlayered: user.isAdmin && !ebene,
+        mayWrite: (id) => !eigen || mayWrite(user, eigen, id),
+        visible: (id) => sichtbar.has(id),
+      });
+      const layerInfo = ebene ? { id: ebene.id, name: entityName(ebene) } : null;
+      const extra = { deselected: wahl.deselected, layer: layerInfo };
+      if (!wahl.ids.length) {
+        return reply.code(200).send({ dryRun: b.dryRun === true, selected: 0, changed: 0, deleted: 0, examples: [], rejected: [], rejectedCount: 0, skipped: [], skippedCount: 0, id: null, ...extra });
+      }
+      /* Reserviertes Material geht nicht mit (T-134) — wie beim einzelnen Löschen. */
+      for (const id of wahl.ids) {
+        const gesperrt = await vorDemLoeschen(repo, user, roh.get(id)!, roh);
+        if (gesperrt) return reply.code(423).send({ error: `${entityName(roh.get(id))}: ${gesperrt}`, ...extra });
+      }
+      const auftrag: BulkRequest = {
+        select: { ids: wahl.ids },
+        ops: [{ op: 'delete' }],
+        dryRun: b.dryRun === true,
+        ...(typeof b.confirmDelete === 'number' ? { confirmDelete: b.confirmDelete } : {}),
+        limit: 200,
+        note: `Delete ${wahl.ids.length === 1 ? entityName(roh.get(wahl.ids[0]!)) : `${wahl.ids.length} articles`}`,
+      };
+      const r = await fuehreLaufAus(request, echt, registry, roh, auftrag, wahl.ids, 'delete-own');
+      if (r.code === 200 && !auftrag.dryRun) {
+        for (const id of wahl.ids) await repo.dropReadyStand(id);
+      }
+      return reply.code(r.code).send({ ...r.body, ...extra });
     },
   );
 
@@ -4662,8 +4828,15 @@ export function buildApp({
       if (konflikte.length && !request.body?.force) {
         return reply.code(409).send({ error: `${konflikte.length} Artikel wurden seither geändert. Mit "force": true gewinnt die alte Fassung.`, conflicts: konflikte });
       }
+      /* Den eigenen Löschlauf (T-381) nimmt zurück, wer ihn tat — mit
+         denselben Folgen an fremden Artikeln, aber ohne `force`: das hiesse,
+         die Änderung eines anderen zu überschreiben. */
+      const eigenerLoeschlauf = selbst && (ereignis.payload as { kind?: unknown }).kind === 'delete-own';
+      if (eigenerLoeschlauf && request.body?.force && !isLeitung(wer.user)) {
+        return reply.code(403).send({ error: 'Seither Geändertes überschreibt die Leitung — frag sie, oder stelle die Artikel einzeln wieder her.' });
+      }
       const registry = await repo.getRegistry();
-      const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, zurueck);
+      const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, zurueck, eigenerLoeschlauf);
       const antwort = { restored: geprueft.length, conflicts: konflikte, rejected: abgelehnt };
       if (request.body?.dryRun) return { dryRun: true, ...antwort };
       if (abgelehnt.length) return reply.code(422).send({ error: 'Die alten Fassungen bestehen die Prüfung nicht — nichts geschrieben.', ...antwort });

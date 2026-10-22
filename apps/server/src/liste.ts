@@ -50,6 +50,14 @@ import {
   layoutFor,
   listColumns,
   inTimeWindow,
+  HAS_REF,
+  hasEdgeChoices,
+  hasFieldAllowed,
+  hasFieldChoices,
+  hasValue,
+  isHasEdge,
+  matchesHas,
+  parseHasTerm,
   meetsRequirement,
   parseRequirement,
   parseTimeWindow,
@@ -61,8 +69,9 @@ import {
   tagsOf,
   typeChain,
   versionGroups,
+  isLayer,
 } from '@nw/model';
-import type { CharacterProfile, Entity, FacetDef, TimeWindow, LayoutElement, PropertySchema, Registry, Requirement, RequirementContext } from '@nw/model';
+import type { CharacterProfile, Entity, FacetDef, HasFacts, HasTerm, TimeWindow, LayoutElement, PropertySchema, Registry, Requirement, RequirementContext } from '@nw/model';
 
 /** Ein Artikel ohne Ebenenkante steht in der Liste unter „keine Ebene". */
 export const NO_LAYER = '∅';
@@ -162,7 +171,7 @@ export function buildListIndex(
   shown: ReadonlySet<string> | null = null,
   herkunft: ListProvenance = {},
 ): ListIndex {
-  const genannt = (e: Entity) => !shown || primaryInterface(e) !== 'Layer' || shown.has(e.id);
+  const genannt = (e: Entity) => !shown || !isLayer(e) || shown.has(e.id);
   visible = shown ? visible.filter(genannt) : visible;
   /* Fassungen derselben Sache (T-092): einmal über das Gesiebte. */
   const fassungen = versionGroups(visible);
@@ -375,6 +384,11 @@ export function listProjection(registry: Registry): (e: Entity) => Entity {
       const schmal: Record<string, unknown> = {};
       for (const [f, v] of Object.entries(karte as Record<string, unknown>)) {
         if (felder[f] && columnField(felder[f]!)) schmal[f] = v;
+        /* „Hat ein Feld" (T-389, `@has`) fragt nur, ob etwas dasteht —
+           die Rasterform eines Gegenstands ist keine Spalte. Ein Platzhalter
+           statt des Werts; gesiebt wird danach je Feld wie sonst. Felder mit
+           `many` nicht: deren Einträge siebt das Wissen einzeln. */
+        else if (felder[f] && !felder[f]!.many && !felder[f]!.derived && hasValue(v)) schmal[f] = true;
       }
       if (Object.keys(schmal).length) components[k] = schmal as typeof karte;
     }
@@ -459,6 +473,8 @@ export interface ListQuery {
   changed?: TimeWindow | undefined;
   /** **Hinzugefügt von** (T-382): diese Konten; `UNKNOWN_CREATOR` für „nicht bekannt". */
   by?: string[] | undefined;
+  /** **Nach Beziehungen** (T-389): Bedingungen aus `f=@has:…`, alle zusammen (`parseHasTerm`). */
+  has?: HasTerm[] | undefined;
   /** **Nach Nähe ordnen** (T-138): mit `q` zuerst der genaue Name, dann
    *  der Anfang, ein Wortanfang, ein Alias oder Deckname, zuletzt „enthält".
    *  Innerhalb einer Stufe nach Namen. Gilt nur ohne `sort`. */
@@ -550,6 +566,13 @@ export interface ListResult {
     partsHidden: number;
     /** **Hinzugefügt von** (T-382): je Konto gezählt, über die Treffer aller übrigen Filter. */
     addedBy: { id: string; name: string; count: number }[];
+    /** **Beziehungen und Felder** (T-389): wonach `@has` fragen kann, je
+     *  Wahl die Treffer, die sie haben; dazu je gewählter Kante die anderen
+     *  Enden mit Zahl, für „zu diesem Artikel". Nur Sichtbares zählt. */
+    has: {
+      choices: { ref: string; label: string; kind: 'edge' | 'field'; count: number }[];
+      targets: Record<string, { id: string; name: string; count: number }[]>;
+    };
     /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt
      *  und wie viele unbekannt in der Liste bleiben. */
     usable?: { id: string; name: string; hidden: number; unknown: number };
@@ -651,6 +674,28 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const filter = Object.entries(q.fields).filter(([ref]) => facetten.some((f) => f.ref === ref));
   const mitFeldern = filter.length > 0 || facetten.length > 0;
 
+  /* **Beziehungen** (T-389): eine Kante zählt nur mit sichtbarem anderem
+     Ende — `names` und `ein` stehen über dem Gesiebten. Ein Feld nur, wenn
+     nach ihm gefragt werden darf (`hasFieldAllowed`): sonst gilt die
+     Bedingung nicht, wie jeder Unsinn in der Adresse. */
+  const hat = (q.has ?? []).filter((t) => {
+    if (isHasEdge(t.ref)) return true;
+    const [typ, feld] = t.ref.split('.');
+    return hasFieldAllowed(idx.registry, typ!, feld!);
+  });
+  /* Ein Ziel (`=id`) erst danach: so zählen die anderen Ziele derselben
+     Kante weiter, und man kann eins gegen das andere tauschen. */
+  const hatGrund = hat.filter((t) => t.to === undefined);
+  const hatZiel = hat.filter((t) => t.to !== undefined);
+  const fakten = new Map<IndexZeile, HasFacts>();
+  const faktenVon = (z: IndexZeile): HasFacts => {
+    let f = fakten.get(z);
+    if (!f) fakten.set(z, (f = hasFakten(idx, z)));
+    return f;
+  };
+  const zielOk = (z: IndexZeile, ausser?: string): boolean =>
+    hatZiel.every((t) => t.ref === ausser || matchesHas(t, faktenVon(z)));
+
   const inEbene = (z: IndexZeile): boolean => {
     const ls = z.layers.length ? z.layers : [NO_LAYER];
     if (ebenen && !ls.some((l) => ebenen.has(l))) return false;
@@ -670,6 +715,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     if (staende && !staende.has(z.status || 'ready')) continue;
     if (such && !z.such.includes(such)) continue;
     if (marken && !marken.every((t) => z.tags.includes(t))) continue;
+    if (hatGrund.length && !hatGrund.every((t) => matchesHas(t, faktenVon(z)))) continue;
     if (q.added && !inTimeWindow(z.createdAt, q.added)) continue;
     if (q.changed && !inTimeWindow(z.updatedAt, q.changed)) continue;
     if (q.exclude?.has(z.id)) continue;
@@ -695,6 +741,16 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const treffer: IndexZeile[] = [];
   const getypt: IndexZeile[] = [];
   let partsHidden = 0;
+  const zielRefs = [...new Set(hat.filter((t) => isHasEdge(t.ref)).map((t) => t.ref))];
+  const zielZahl = new Map<string, Map<string, number>>(zielRefs.map((r) => [r, new Map()]));
+  const zieleZaehlen = (z: IndexZeile): void => {
+    for (const ref of zielRefs) {
+      if (!zielOk(z, ref)) continue;
+      const [dir, typ] = ref.split('.') as ['out' | 'in', string];
+      const m = zielZahl.get(ref)!;
+      for (const id of new Set(faktenVon(z).edges(dir, typ))) m.set(id, (m.get(id) ?? 0) + 1);
+    }
+  };
   for (const z of grund) {
     const ebeneOk = inEbene(z);
     const typOk = !typSet || typSet.has(z.type);
@@ -711,9 +767,14 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       const ls = z.layers.length ? z.layers : [NO_LAYER];
       for (const l of ls) ebenenZahl.set(l, (ebenenZahl.get(l) ?? 0) + 1);
     }
+    /* Die Ziele einer gewählten Kante (T-389) zählen ohne ihr eigenes `=id`. */
+    if (typOk && ebeneOk && felder) zieleZaehlen(z);
+    if (!zielOk(z)) continue;
     if (typOk && ebeneOk) getypt.push(z);
     if (typOk && ebeneOk && felder) treffer.push(z);
   }
+
+  const has = hasFacette(idx, facettenTypen, treffer, hat, zielZahl, faktenVon);
 
   // Facetten — nur bei gewählten Arten.
   const fields: FieldFacet[] = [];
@@ -873,6 +934,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
           count: autorZahl.get(id) ?? 0,
         }))
         .sort((a, b) => (a.id === UNKNOWN_CREATOR ? 1 : b.id === UNKNOWN_CREATOR ? -1 : b.count - a.count || a.name.localeCompare(b.name, 'en'))),
+      has,
       ...(q.usable
         ? { usable: { id: q.usable.id, name: q.usable.name, hidden: nichtErfuellt, unknown: treffer.filter((z) => unbekannt.has(z.id)).length } }
         : {}),
@@ -1124,7 +1186,7 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
   /* **Zeit und Autor als Facetten** (T-382): `f=@added:7d`, `f=@by:<id>|<id>`
      — so tragen Adresse und Filtergruppen sie wie jede andere Wahl. */
   const meta: Record<string, string[] | undefined> = {};
-  for (const k of ['@added', '@changed', '@by']) {
+  for (const k of ['@added', '@changed', '@by', HAS_REF]) {
     if (fields[k]) meta[k] = fields[k].values;
     delete fields[k];
   }
@@ -1146,12 +1208,81 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     sort: typeof raw['sort'] === 'string' && raw['sort'] ? raw['sort'] : undefined,
     ...zeitfilter({ ...raw, added: raw['added'] ?? meta['@added']?.[0], changed: raw['changed'] ?? meta['@changed']?.[0] }),
     by: liste(raw['by']) ?? meta['@by'],
+    has: hasBedingungen(meta[HAS_REF]),
     offset: Math.max(0, zahl(raw['offset'], 0)),
     /* Höchstens 200 je Blatt: wer mehr will, blättert. */
     limit: Math.min(200, Math.max(1, zahl(raw['limit'], 50))),
     fields,
     ...(cols ? { columns: cols } : {}),
   };
+}
+
+/** Die Bedingungen von `f=@has:…` (T-389); Unsinn fällt weg. */
+function hasBedingungen(werte: string[] | undefined): HasTerm[] | undefined {
+  const t = (werte ?? []).map(parseHasTerm).filter((x): x is HasTerm => !!x);
+  return t.length ? t : undefined;
+}
+
+/**
+ * **Was eine Zeile an Beziehungen hat** (T-389): ausgehend die Kanten mit
+ * sichtbarem Ziel, eingehend die aus `ein` (dort steht nur, wessen Quelle
+ * man sieht), ein Feld aus den gesiebten Karten. Die Ebenenkante nicht.
+ */
+function hasFakten(idx: ListIndex, z: IndexZeile): HasFacts {
+  return {
+    edges: (dir, typ) =>
+      typ === LAYER_RELATION
+        ? []
+        : dir === 'out'
+          ? z.relations.filter((r) => r.type === typ && idx.names.has(r.to)).map((r) => r.to)
+          : (idx.ein.get(z.id) ?? []).filter((r) => r.type === typ).map((r) => r.from),
+    field: (typ, feld) => hasValue((z.karten[typ] as Record<string, unknown> | undefined)?.[feld]),
+  };
+}
+
+/**
+ * Die Wahl der Seitenleiste (T-389): die Kanten, die für die gewählten
+ * Arten gelten (ohne Art: die, die in den Treffern vorkommen), und mit
+ * gewählter Art ihre Felder — je mit der Zahl der Treffer, die sie haben.
+ */
+function hasFacette(
+  idx: ListIndex,
+  typen: readonly string[],
+  treffer: readonly IndexZeile[],
+  hat: readonly HasTerm[],
+  zielZahl: ReadonlyMap<string, ReadonlyMap<string, number>>,
+  faktenVon: (z: IndexZeile) => HasFacts,
+): ListResult['facets']['has'] {
+  const kanten = hasEdgeChoices(idx.registry, typen);
+  const felder = hasFieldChoices(idx.registry, typen);
+  const zahl = new Map<string, number>();
+  const feldRefs = felder.map((f) => [f.ref, ...f.ref.split('.')] as const);
+  for (const z of treffer) {
+    const da = new Set<string>();
+    for (const r of z.relations) if (r.type !== LAYER_RELATION && idx.names.has(r.to)) da.add(`out.${r.type}`);
+    for (const r of idx.ein.get(z.id) ?? []) da.add(`in.${r.type}`);
+    for (const ref of da) zahl.set(ref, (zahl.get(ref) ?? 0) + 1);
+    const f = faktenVon(z);
+    for (const [ref, typ, feld] of feldRefs) if (f.field(typ!, feld!)) zahl.set(ref, (zahl.get(ref) ?? 0) + 1);
+  }
+  const gewaehlt = new Set(hat.map((t) => t.ref));
+  const choices = [...kanten, ...felder]
+    .map((c) => ({ ...c, count: zahl.get(c.ref) ?? 0 }))
+    /* Ohne Art stünden alle Kanten des Registers da; dann nur, was vorkommt. */
+    .filter((c) => typen.length > 0 || c.count > 0 || gewaehlt.has(c.ref));
+  const targets: Record<string, { id: string; name: string; count: number }[]> = {};
+  for (const [ref, m] of zielZahl) {
+    const gesucht = new Set(hat.filter((t) => t.ref === ref && t.to !== undefined).map((t) => t.to!));
+    targets[ref] = [...m]
+      .map(([id, count]) => ({ id, name: idx.names.get(id) ?? id, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'en'))
+      .slice(0, 100);
+    /* Das gewählte Ziel steht mit da, auch ohne Treffer — sonst fehlte es im Wähler. */
+    for (const id of gesucht) {
+      if (!targets[ref].some((x) => x.id === id) && idx.names.has(id)) targets[ref].push({ id, name: idx.names.get(id)!, count: 0 });
+    }
+  }
+  return { choices, targets };
 }
 
 /**

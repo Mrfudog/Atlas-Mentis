@@ -70,6 +70,12 @@ export interface BulkAntwort {
   id?: string | null;
   error?: string;
 }
+/** Antwort von `POST /api/entities/delete` (T-381). */
+export interface LoeschAntwort extends BulkAntwort {
+  deselected: { id: string; name: string; reason: 'other-layer' | 'not-writable' | 'not-found' | 'protected'; layers?: string[] }[];
+  /** Die Ebene, aus der gelöscht wurde; `null` für die Verwaltung ohne Schreibebene. */
+  layer: { id: string; name: string } | null;
+}
 export interface BulkLauf {
   id: string;
   at: string;
@@ -615,6 +621,11 @@ export interface Liste {
     partsHidden: number;
     /** **Hinzugefügt von** (T-382): je Konto, `∅` für unbekannt. */
     addedBy?: { id: string; name: string; count: number }[];
+    /** **Beziehungen und Felder** (T-389): wonach `@has` fragt, je mit Zahl; je gewählter Kante die Ziele. */
+    has?: {
+      choices: { ref: string; label: string; kind: 'edge' | 'field'; count: number }[];
+      targets: Record<string, { id: string; name: string; count: number }[]>;
+    };
     /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt, wie viele unprüfbar bleiben. */
     usable?: Brauchbar;
   };
@@ -1127,6 +1138,58 @@ export interface SichtUebersicht {
   rules: VisibilityRule[];
   nodes: SichtKnoten[];
 }
+/** Eine Ebene an einer Zeile der Artikelliste (T-387): Name, Herausgeber, Gruppen. */
+export interface SichtEbene {
+  id: string;
+  name: string;
+  publisher: string;
+  groups: { id: string; name: string }[];
+}
+/** Ein Artikel der Kampagne mit Ebene und Sichtbarkeit (T-387, REQ-368). */
+export interface SichtArtikel {
+  id: string;
+  name: string;
+  type: string;
+  typeLabel: string;
+  layers: SichtEbene[];
+  audience: Audience;
+  source: AudienceSource;
+  rule?: string;
+  own: { audience?: Audience; revealedTo: number; hiddenFrom: number };
+  /** Je Spielerspalte, was der Artikel selbst sagt. */
+  players: Record<string, 'show' | 'hide'>;
+  /** Welche Spalten ihn sehen. */
+  seenBy: string[];
+  writable: boolean;
+}
+export interface SichtArtikelListe {
+  may: Recht;
+  columns: SichtSpalte[];
+  total: number;
+  all: number;
+  offset: number;
+  limit: number;
+  facets: {
+    layers: (SichtEbene & { n: number })[];
+    types: { key: string; label: string; n: number }[];
+    levels: Partial<Record<Audience, number>>;
+  };
+  rows: SichtArtikel[];
+}
+export interface SichtArtikelFrage {
+  layer?: string;
+  type?: string;
+  level?: Audience | '';
+  q?: string;
+  sort?: 'name' | 'layer' | 'type' | 'level';
+  dir?: 'asc' | 'desc';
+  offset?: number;
+  limit?: number;
+}
+export type SichtArtikelAenderung =
+  | { audience: Audience | null }
+  | { player: { key: string; mode: 'show' | 'hide' | 'follow' } }
+  | { follow: true };
 export interface Mitglieder {
   campaign: { id: string; name: string; exists: boolean };
   may: Recht;
@@ -1827,6 +1890,16 @@ export class Api {
   dropLayerEditor(layer: string, user: string): Promise<{ ok: true }> {
     return this.call(`/api/layers/${encodeURIComponent(layer)}/editors/${encodeURIComponent(user)}`, { method: 'DELETE' });
   }
+  /**
+   * **Artikel löschen aus der eigenen Ebene** (T-381): gelöscht wird, was
+   * in der Schreibebene liegt und geschrieben werden darf; der Rest kommt
+   * als `deselected` zurück. `dryRun` zählt nur; mehr als einen löschen
+   * verlangt `confirmDelete` mit der Zahl aus der Vorschau. Zurück über
+   * `undo(id)`.
+   */
+  deleteArticles(ids: string[], opts: { dryRun?: boolean; confirmDelete?: number } = {}): Promise<LoeschAntwort> {
+    return this.call<LoeschAntwort>('/api/entities/delete', { method: 'POST', body: JSON.stringify({ ids, ...opts }) });
+  }
   /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
   deleteEntity(id: string): Promise<{ ok: true }> {
     return this.call(`/api/entities/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -2044,6 +2117,24 @@ export class Api {
   }
   followGroup(campaign: string, ids: string[]): Promise<{ ok: true; done: string[]; refused: { id: string; error: string }[] }> {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/visibility/follow`, { method: 'POST', body: JSON.stringify({ ids }) });
+  }
+  /** Jeder Artikel mit seiner Ebene (T-387): gefiltert, sortiert und geblättert am Server. */
+  campaignVisibilityArticles(campaign: string, frage: SichtArtikelFrage): Promise<SichtArtikelListe> {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(frage)) if (v !== undefined && v !== '') p.set(k, String(v));
+    const q = p.toString();
+    return this.call<SichtArtikelListe>(`/api/campaigns/${encodeURIComponent(campaign)}/visibility/articles${q ? '?' + q : ''}`);
+  }
+  /** Sichtbarkeit je Artikel setzen, auch für eine Auswahl (T-387). */
+  setArticleVisibility(
+    campaign: string,
+    ids: string[],
+    aenderung: SichtArtikelAenderung,
+  ): Promise<{ ok: true; done: string[]; unchanged: string[]; refused: { id: string; name: string; error: string }[] }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/visibility/articles`, {
+      method: 'POST',
+      body: JSON.stringify({ ids, ...aenderung }),
+    });
   }
   members(campaign: string): Promise<Mitglieder> {
     return this.call<Mitglieder>(`/api/campaigns/${encodeURIComponent(campaign)}/members`);
@@ -2266,7 +2357,7 @@ export interface KartenKontext {
   /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
   /** `size`: die Grösse des Statblocks (T-317), für den Platz des Tokens. */
   /** `view`: wie Artikel dieser Art als Marker stehen (T-214, `InterfaceDef.markerView`). */
-  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; view?: MarkerView }>;
+  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; baseSize?: string; sizeFrom?: 'statblock' | 'effects'; sizeVia?: string[]; view?: MarkerView }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;

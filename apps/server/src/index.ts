@@ -4,6 +4,7 @@ import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { closePool, getPool } from './db.js';
 import { PgRepository } from './repo.pg.js';
+import { regelsystemeNachziehen } from './regelsysteme.js';
 import { seedRegistryInto } from './seed.js';
 import { migrate } from './migrate.js';
 import { FileAssetStore } from './assets.js';
@@ -43,6 +44,8 @@ async function main(): Promise<void> {
   const applied = await migrate(getPool(), verlust);
   if (applied.length) app.log.info({ applied }, 'Migrationen angewandt');
   await seedRegistryInto(repo, verlust);
+  /* Inventory und seine Mechaniken (E-166): anlegen, was fehlt. */
+  await regelsystemeNachziehen(repo, (m) => app.log.info(m));
   await app.listen({ port: config.port, host: config.host });
   /* Den Bestand einmal lesen, bevor jemand fragt: die erste Anfrage nach
      einem Neustart wartete sonst auf das Lesen aller Artikel (24 157 aus

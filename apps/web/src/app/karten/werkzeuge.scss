@@ -50,6 +50,19 @@
   background: rgb(140 28 19 / 0.08);
   pointer-events: none;
 }
+/* Woher die Grösse kommt (T-390): unter dem gestrichelten Quadrat. */
+.groessen-herkunft {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--paper, #f4ead5);
+  color: var(--ink, #2b1d10);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 3;
+}
 .unterleiste .hint {
   flex-basis: 100%;
   color: var(--dim);

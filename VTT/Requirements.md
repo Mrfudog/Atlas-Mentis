@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 142 | 520 | 69 steht · 20 teils · 45 offen · 5 ersetzt · 3 verworfen |
+| 2 | 142 | 520 | 69 steht · 23 teils · 42 offen · 5 ersetzt · 3 verworfen |
 | 3 | 128 | 394 | 61 steht · 27 teils · 39 offen · 1 ersetzt |
 | 4 | 48 | 220 | 13 steht · 2 teils · 30 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **394** | **1470** | 186 steht · 59 teils · 133 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **394** | **1470** | 186 steht · 62 teils · 130 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -325,7 +325,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-284]] | Läden mit Waren und Preisen | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 2 | 3 | done | steht |
 | [[REQ-285]] | Fraktionspreise | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 3 | 2 | in progress | teils |
 | [[REQ-286]] | Artikel nachts auf Vollständigkeit prüfen | Spielleitung | [[F-076 Artikelprüfung & Nachtarbeit\|Artikelprüfung & Nachtarbeit]] | 3 | 3 | done | steht |
-| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 8 | defined | offen |
+| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 8 | defined | teils |
 | [[REQ-288]] | Preise für jeden Gegenstand | Spielleitung | [[F-077 KI-Inhalte\|KI-Inhalte]] | 3 | 3 | in progress | teils |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 3 | 3 | defined | offen |
 | [[REQ-290]] | Wechselwirkungen von Regeln auswerten | Spielleitung | [[F-046 Regelauswertung\|Regelauswertung]] | 4 | 8 | defined | offen |
@@ -371,7 +371,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-330]] | Inventory image an einen Gegenstand binden | Spielleitung | [[F-064 Token-Werkstatt\|Token-Werkstatt]] | 3 | 2 | defined | offen |
 | [[REQ-331]] | Hilfe für Gegenstandsbilder | Spielleitung | [[F-064 Token-Werkstatt\|Token-Werkstatt]] | 4 | 1 | defined | offen |
 | [[REQ-332]] | Beute öffnen und nehmen | Spieler | [[F-078 Beute\|Beute]] | 3 | 3 | defined | offen |
-| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | offen |
+| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | teils |
 | [[REQ-334]] | Tragende Ausrüstung als Behälter mit eigenem Raster | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
 | [[REQ-335]] | Verbund: Zellen, die gemeinsam ein Stück tragen | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | offen |
 | [[REQ-336]] | Festlegen, wo ein Gegenstand getragen werden darf | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | offen |
@@ -406,7 +406,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-365]] | Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung | Spielleitung | [[F-051 Initiative\|Initiative]] | 2 | 3 | defined | offen |
 | [[REQ-366]] | Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair | Spielleitung | [[F-051 Initiative\|Initiative]] | 3 | 3 | defined | offen |
 | [[REQ-367]] | Ebene eines Artikels im Bearbeiten ändern, als erstes Feld | Spielleitung | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 2 | 2 | in progress | teils |
-| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 3 | in progress | offen |
+| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 3 | in progress | teils |
 | [[REQ-369]] | Module als Baum mit Transformationen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 5 | defined | offen |
 | [[REQ-370]] | Neuere Fassung zum Vergleich anfragen | Spieler | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | defined | offen |
 | [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 5 | defined | offen |

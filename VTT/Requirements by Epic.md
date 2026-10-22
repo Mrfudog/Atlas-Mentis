@@ -137,7 +137,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-51 Stories · 165 Punkte · 28 steht · 7 teils · 13 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+51 Stories · 165 Punkte · 28 steht · 8 teils · 12 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -179,7 +179,7 @@ Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder dar
 | [[REQ-177]] | Einzelne Felder freigeben | Spielleitung | 2 | 3 | steht |
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | Spielleitung | 2 | 2 | steht |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | 2 | 3 | offen |
-| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | 2 | 3 | offen |
+| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | 2 | 3 | teils |
 | [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | Spielleitung | 2 | 5 | offen |
 | [[REQ-039]] | Sichtbarkeit mit Rollenlisten und Freigabemarken | – | 3 | 8 | ersetzt |
 | [[REQ-059]] | Wissen über Arten von Kreaturen | Spielleitung | 3 | 3 | steht |
@@ -345,7 +345,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-44 Stories · 120 Punkte · 7 steht · 9 teils · 28 offen — [[EP-04 Spielererlebnis]]
+44 Stories · 120 Punkte · 7 steht · 10 teils · 27 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -376,7 +376,7 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 | [[REQ-326]] | Ziehen und Ablegen im Raster | Spieler | 2 | 3 | offen |
 | [[REQ-327]] | Packen am Telefon | Spieler | 2 | 2 | offen |
 | [[REQ-328]] | Ablage für nicht Verstautes | Spieler | 2 | 1 | offen |
-| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | 2 | 2 | offen |
+| [[REQ-333]] | Vorgaben für Formen und Stapel | Spielleitung | 2 | 2 | teils |
 | [[REQ-355]] | Tragraster, Zonen und Behälter einstellen | Spielleitung | 2 | 3 | steht |
 | [[REQ-356]] | Tragblatt aus Bausteinen mit Zonen und Bedingungen | Spielleitung | 2 | 5 | steht |
 | [[REQ-183]] | Gruppeninventar | Spieler | 3 | 2 | steht |
@@ -591,7 +591,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-29 Stories · 144 Punkte · 13 steht · 2 teils · 14 offen — [[EP-07 Regeln & Nachschlagen]]
+29 Stories · 144 Punkte · 13 steht · 3 teils · 13 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -663,7 +663,7 @@ Regelsysteme und Module als Ebenen, je Sorte ein Modul, gewählt an der Kampagne
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | offen |
+| [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | teils |
 | [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | 2 | 5 | offen |
 | [[REQ-369]] | Module als Baum mit Transformationen | Spielleitung | 2 | 5 | offen |
 | [[REQ-375]] | Register als Module | Verwaltung | 2 | 13 | offen |

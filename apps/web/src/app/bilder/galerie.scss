@@ -333,3 +333,21 @@ h1 {
     height: 6.5rem;
   }
 }
+/* Löschen (T-381): rot umrandet, damit es nicht neben „Use as" untergeht. */
+.massen button.gefahr {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.weg-bild {
+  min-height: 32px;
+  min-width: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+}
+.weg-bild:hover,
+.weg-bild:focus-visible {
+  border-color: var(--warn);
+}

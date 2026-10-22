@@ -36,6 +36,7 @@ import {
   type Entity,
   type LayerFilter,
   type Registry,
+  isLayer,
 } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
@@ -110,7 +111,7 @@ export function registerQuelleninhalt(app: FastifyInstance, deps: InhaltDeps): v
     const user = await viewerOf(request);
     const stand = await roh();
     const l = stand.map.get(request.params.layer);
-    if (!l || primaryInterface(l) !== 'Layer') return reply.code(404).send({ error: 'Nicht gefunden' });
+    if (!l || !isLayer(l)) return reply.code(404).send({ error: 'Nicht gefunden' });
     const vorschau = vorschauEbenen(user, l, stand.map);
     if (!(await sieve(request, [l], stand.map, vorschau.size ? vorschau : undefined)).length) {
       return reply.code(404).send({ error: 'Nicht gefunden' });

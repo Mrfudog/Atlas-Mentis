@@ -102,12 +102,23 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'ruleMechanics',
+    label: 'Rule mechanics',
+    area: 'stack',
+    does: 'reads which rule mechanics apply together (the grid with weight), in both directions from one stored edge, and which mechanics belong to a rule system (E-166)',
+    uses: {
+      [M + 'stack.ts']: ['compatibleWith', 'partOf'],
+    },
+  },
+  {
     key: 'visibilityByGroup',
     label: 'Visibility by group',
     area: 'visibility',
     does: 'groups articles by their layer and the layer’s group, so a campaign’s visibility rule for a group (T-252) and the default of a layer reach the articles in it',
     uses: {
       [M + 'groupvisibility.ts']: ['partOf'],
+      /* Die Gruppe der Ebene an jedem Artikel der Liste (T-387). */
+      [S + 'sichtbarkeit.ts']: ['partOf'],
     },
   },
   {
@@ -581,6 +592,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [S + 'liste.ts']: ['inLayer'],
       /* Die Facetten lassen die Ebenenkante aus — dafür steht „Where from“ (T-174). */
       [M + 'facets.ts']: ['inLayer'],
+      /* Der Filter nach Beziehungen lässt sie ebenso aus (T-389). */
+      [M + 'relationfilter.ts']: ['inLayer'],
       [M + 'listcolumns.ts']: ['inLayer'],
       [W + 'artikel/artikel.ts']: ['inLayer'],
       /* Die Ebene im Kopf jeder Artikelseite und in der Kurzansicht (T-251). */

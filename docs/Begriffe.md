@@ -481,6 +481,14 @@ tut es. Die Grösse eines Tokens ist die seiner Kreatur, das Raster gehört
 der Karte; ein Feld dafür am Bild wäre die zweite Stelle für dieselbe
 Sache.
 
+**Warum die Grösse am Token gerechnet und nicht gespeichert wird** (T-390):
+sie kommt aus dem Statblock, und eine Wirkung wie Enlarge verschiebt sie
+nur, solange sie an der Kreatur steht. Eine gespeicherte Grösse am Token
+wäre nach dem Ende von Enlarge falsch, und nach einer Korrektur am
+Statblock auch. Gespeichert wird nur, was die Leitung bewusst anders will
+(`props.size`) — und weil die Seite sagt, woher die Grösse kommt, sieht man,
+welche der drei Stufen gerade gilt.
+
 Woher die Maske weiss, welche Klasse ein Feld will, steht am Feld
 (`target.where`) — und an der Karte, die `Image.image` erbt, steht es am
 Typ (`targets`, wie `titles` für die Beschriftung). Eine Liste im Code
@@ -2331,6 +2339,28 @@ gilt nur die höchste — eine Formfassung schlösse die Preisfassung aus
 steht selbst in keiner Liste, und ein Feld, das sie trägt, wird nicht in
 den Artikel darunter geschrieben: dort stünde es unsichtbar und bliebe,
 wenn die Ebene ausgeht.
+
+**Ein Regelsystem und seine Mechaniken sind Ebenen** (E-166). Die
+Leitung wählt die Regeln, nach denen ihre Runde spielt, wie sie Bücher
+wählt: durch Aufschalten. Inventory ist ein **Regelsystem** (eine Gruppe),
+Grid, Weight, Slots und Default shapes sind seine **Regelmechaniken**. Eine
+Mechanik sagt, mit welchen anderen sie zusammen gilt (`compatibleWith`:
+das Raster mit dem Gewicht) — so steht die Regel „es gibt nur ein
+Inventar“ nicht im Code, sondern als fehlende Kante in den Daten. Eigene
+Arten und kein Wort in `Layer.kind`: ein Feld, das Regel ist, leckt beim
+ersten Tippfehler.
+
+**Vorgabeformen kommen aus Gruppen, nicht aus 1900 Ergänzungen** (T-394,
+E-165). Eine Ergänzung je Gegenstand hätte jede Form hundertfach
+gespeichert: wer die Hausregel ändert (Pfeile 32 statt 20 je Stapel),
+müsste jeden Pfeil anfassen, und neue Gegenstände blieben ohne. Darum
+trägt das Untermodul „Default shapes“ des Inventars **Gruppen** mit einer
+Form und Werte **je Gegenstand** (welche Gruppe, welcher
+**Referenzgegenstand**, eine eigene Form), und gerechnet wird beim Lesen.
+Der Referenzgegenstand ist der Grund, warum ein „+1 Longsword“ wie ein
+Longsword aussieht: er erbt dessen Form, und wer die Form des Longswords
+ändert, ändert sie mit. Ein Wert am Gegenstand selbst schlägt alles —
+er ist die Ausnahme, und die Seite sagt bei jeder Form, woher sie kommt.
 
 **Fallen lassen heisst nicht weggeben** (D58). Ein Schwert, das mitten im
 Kampf aus der Hand fällt, gehört der Figur weiter und liegt zu ihren

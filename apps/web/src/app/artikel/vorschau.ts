@@ -15,6 +15,7 @@ import {
   proseFields,
   typeChain,
   unitsFor,
+  isLayer,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
@@ -156,7 +157,7 @@ interface Stueck {
           <div class="knoepfe">
             <a class="knopf pri" [routerLink]="weg(e)">Open article</a>
             <!-- Eine Ebene liest man auch von hier (T-167): der Reiter „Read" am Artikel. -->
-            @if (e.interfaces[0] === 'Layer') {
+            @if (istEbene(e)) {
               <a class="knopf" [routerLink]="['/artikel', e.id]" [queryParams]="{ tab: 'read' }">Read</a>
             }
           </div>
@@ -327,6 +328,11 @@ export class Vorschau {
   protected readonly rueckKanten = computed<IncomingEdge[]>(() =>
     (this.bestand.rueckbezuege().get(this.id()) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id, props: b.relation.props })),
   );
+
+  /** Eine Ebene, auch ein Regelsystem oder eine Regelmechanik (E-166). */
+  protected istEbene(e: Entity): boolean {
+    return isLayer(e);
+  }
 
   protected name(e: Entity): string {
     return entityName(e);
