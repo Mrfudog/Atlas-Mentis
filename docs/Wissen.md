@@ -202,3 +202,26 @@ ist es nicht, denn dasselbe Feld kann auf zwei Wegen bekannt werden.
    ist nicht entschieden; die Kanten gehen heute immer mit.
 4. ~~**Die Fraktion als Träger** — Abgleich A7.~~ Entschieden am 7.10.:
    Mitglieder je Rang, siehe oben.
+
+## Aufdecken (REQ-178, 22.10.2026)
+
+**Ein Deckname verdeckt.** Trägt ein Artikel `Identity.cover`, sehen alle
+ausser der Leitung den Decknamen, bis eine **bekannte** Information
+`Identity.name` nennt — auch wenn es zu dem Artikel sonst keine
+Information gibt. Bis dahin galt der Deckname nur, wenn eine Information
+den Namen beanspruchte; ohne sie stand der richtige Name da, obwohl
+jemand eigens einen Decknamen eingetragen hatte. Die Aliasse gehen mit
+weg: ein anderer Name für dasselbe verriete den richtigen.
+
+**Aufdecken ist ein Klick und darunter gewöhnliches Wissen.**
+`POST /api/knowledge/of/:id/reveal` (nur die Leitung) legt eine
+Information für genau diesen Artikel an — als Vorgabe mit
+`Identity.name`, mit `fields` jede andere Auswahl, etwa die Basiswerte —
+und teilt sie den Gruppen der Kampagne zu (`knownBy`), oder der einen,
+die `party` nennt. Gibt es schon eine Information für genau diese Felder,
+wird sie zugeteilt und keine zweite angelegt. Wer feiner teilen will,
+nimmt den Kasten Knowledge am Artikel: dasselbe Wissen, mit Bündeln.
+
+Auf der Karte heisst der Knopf *Reveal name* und steht unter ⋯ View, wenn
+die Karte im Spiel einen Decknamen trägt.
+

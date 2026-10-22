@@ -108,3 +108,37 @@ describe('the page of a knowledge (T-287)', () => {
   });
 });
 
+
+describe('revealing to the players (REQ-178)', () => {
+  it('shows the cover name until the GM reveals the name, with one call and without a second information', async () => {
+    await repo.putEntity(art('gestalt', 'Creature', 'Aurinax', 'creature-0002', {
+      components: { Identity: { name: 'Aurinax', id: 'creature-0002', aliases: [], cover: 'Hooded figure' } },
+      relations: [{ id: 'g~1', type: 'inLayer', to: 'ly-k', props: {} }],
+    }));
+    await repo.putEntity(art('wacht', 'Party', 'The Watch', 'party-0001', { relations: [{ id: 'p~1', type: 'partyOf', to: 'k', props: {} }] }));
+    const b = (await repo.getEntity('brak'))!;
+    await repo.putEntity({ ...b, relations: [...(b.relations ?? []), { id: 'b~2', type: 'memberOfParty', to: 'wacht', props: {} }] });
+
+    expect((await get('brak', '/api/entities/gestalt')).json().name).toBe('Hooded figure');
+    expect((await get('leitung', '/api/entities/gestalt')).json().name).toBe('Aurinax');
+    expect((await post('brak', '/api/knowledge/of/gestalt/reveal', {})).statusCode).toBe(403);
+
+    const r = await post('leitung', '/api/knowledge/of/gestalt/reveal', {});
+    expect(r.statusCode, r.body).toBe(200);
+    expect(r.json()).toMatchObject({ fields: ['Identity.name'], parties: [{ id: 'wacht', name: 'The Watch' }] });
+    expect((await get('brak', '/api/entities/gestalt')).json().name).toBe('Aurinax');
+    /* Lia ist in keiner Gruppe — für sie bleibt es der Deckname. */
+    expect((await get('lia', '/api/entities/gestalt')).json().name).toBe('Hooded figure');
+
+    /* Noch einmal: dieselbe Information, keine zweite. */
+    const r2 = await post('leitung', '/api/knowledge/of/gestalt/reveal', {});
+    expect(r2.json().info).toBe(r.json().info);
+    expect((await get('leitung', '/api/knowledge/of/gestalt')).json().infos).toHaveLength(1);
+  });
+
+  it('says what to do when there is no party to tell', async () => {
+    const r = await post('leitung', '/api/knowledge/of/axt/reveal', { fields: ['Recipe.dc'] });
+    expect(r.statusCode).toBe(409);
+    expect(r.json().error).toMatch(/Party/);
+  });
+});

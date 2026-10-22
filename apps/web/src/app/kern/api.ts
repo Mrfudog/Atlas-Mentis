@@ -1770,6 +1770,10 @@ export class Api {
   addInformation(id: string, body: { name?: string; fields: string[]; bundles: string[]; newBundle?: string }): Promise<Wissensreiter> {
     return this.call(`/api/knowledge/of/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(body) });
   }
+  /** Aufdecken (REQ-178): Felder eines Artikels den Gruppen zuteilen — als Vorgabe den Namen. */
+  revealKnowledge(id: string, body: { fields?: string[]; party?: string } = {}): Promise<{ info: string; fields: string[]; parties: { id: string; name: string }[] }> {
+    return this.call(`/api/knowledge/of/${encodeURIComponent(id)}/reveal`, { method: 'POST', body: JSON.stringify(body) });
+  }
   updateInformation(info: string, body: { name?: string; fields?: string[]; bundles?: string[]; newBundle?: string; article: string }): Promise<Wissensreiter> {
     return this.call(`/api/knowledge/info/${encodeURIComponent(info)}`, { method: 'PUT', body: JSON.stringify(body) });
   }

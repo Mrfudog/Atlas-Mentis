@@ -55,6 +55,7 @@ import {
   isMap,
   isPlayInstance,
   isReleased,
+  releaseMap,
   playedInfo,
   templateOf,
   MAP_ZOOM_MAX,
@@ -383,6 +384,12 @@ interface Zeiger {
             <button type="button" class="freigabe" [class.an]="freigegeben()" [attr.aria-pressed]="freigegeben()" (click)="freigeben(!freigegeben())" [title]="freigegeben() ? 'Players see this map. Click to take it back from them.' : 'Players do not see this map yet. Release it — the fog applies at once.'">
               {{ freigegeben() ? 'Released' : 'Release to players' }}
             </button>
+            @if (deckname(); as d) {
+              <!-- **Aufdecken** (REQ-178): Spielende sehen den Decknamen, bis die Leitung den Namen teilt. -->
+              <button type="button" class="freigabe" [disabled]="deckt()" (click)="namenAufdecken()" [title]="'Players see “' + d + '”. Reveal the real name to the party — more knowledge is shared under Knowledge on the article.'">
+                Reveal name
+              </button>
+            }
             @if (kontext()?.session) {
               <!-- **Zwischen Karten wechseln** (T-308): ein Schalter an der Sitzung, Vorgabe aus. -->
               <button type="button" class="freigabe" [class.an]="kontext()!.mapNavigation" [attr.aria-pressed]="kontext()!.mapNavigation" [disabled]="navigationSpeichert()" (click)="navigationSetzen(!kontext()!.mapNavigation)" [title]="kontext()!.mapNavigation ? 'Players may zoom into sub-maps and out to the map above — only maps released in this session. Click to keep them on this map.' : 'Players stay on this map; frames are only picture for them. Click to let them zoom to other released maps.'">
@@ -2451,8 +2458,28 @@ export class Karte {
   protected freigeben(an: boolean): void {
     const e = this.karte();
     if (!e) return;
-    const karte = { ...((e.components?.['Map'] ?? {}) as Record<string, unknown>), released: an };
-    void this.schreiben({ ...e, components: { ...e.components, Map: karte } });
+    /* Freigeben heisst teilen: auch `ready` und `campaign` (releaseMap). */
+    void this.schreiben(releaseMap(e, an));
+  }
+  /** Der Deckname der Karte, wie ihn die Spielenden sehen (REQ-178) — nur für die Leitung von Belang. */
+  protected readonly deckname = computed(() => {
+    const c = (this.karte()?.components?.['Identity'] as { cover?: unknown } | undefined)?.cover;
+    return typeof c === 'string' && c.trim() ? c.trim() : null;
+  });
+  protected readonly deckt = signal(false);
+  /** Den Namen den Gruppen zuteilen; danach sehen sie ihn statt des Decknamens. */
+  protected async namenAufdecken(): Promise<void> {
+    const e = this.karte();
+    if (!e || this.deckt()) return;
+    this.deckt.set(true);
+    try {
+      const r = await this.api.revealKnowledge(e.id);
+      this.hinweis.set(`The name is now known to ${r.parties.map((p) => p.name).join(', ')}.`);
+    } catch (err) {
+      this.hinweis.set(err instanceof Error ? `The name could not be revealed: ${err.message}` : 'The name could not be revealed.');
+    } finally {
+      this.deckt.set(false);
+    }
   }
   protected readonly navigationSpeichert = signal(false);
   /** Den Schalter der Sitzung setzen (`Session.mapNavigation`, T-308); der Server siebt danach. */

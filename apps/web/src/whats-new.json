@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-release-shares-maps",
+      "date": "2026-10-22",
+      "title": "Release shares the map — image, fog and cover name included",
+      "text": "Release to players now also makes a map in play ready and open to the campaign, so players see it even when its template was for the GM only — with its image under the fog, without sharing the image itself. A cover name is what players see until you press Reveal name (⋯ View). The map stage no longer flickers when the map exactly fills it.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-22-section-bar",
       "date": "2026-10-22",
       "title": "Long pages: expand all, collapse all, jump between sections",

@@ -1564,7 +1564,8 @@ export function buildApp({
     const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
     return entities
       .filter((e) => articleVisible(alle, e, auge))
-      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln))
+      /* Ein Deckname verdeckt für alle ausser der Leitung (REQ-178). */
+      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge)))
       .map((e) =>
         isMap(e) && !seesUnfinished(alle, e, auge)
           ? /* Das Kartenbild nur, soweit aufgedeckt (T-312, E-041): die

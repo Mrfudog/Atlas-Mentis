@@ -583,6 +583,29 @@ describe('what a player gets to read', () => {
     expect(res.json().components.Secrets.secret).toHaveLength(1);
   });
 
+  it('shows players the cover name until they are told the name, and the GM always the name (REQ-178)', async () => {
+    /* Ohne jede Information: der Deckname allein verdeckt schon. */
+    const ohne: Entity = { ...geheimnis, id: 'n_gestalt', components: { Identity: { name: 'Aurinax', id: 'npc-0002', aliases: ['Der Goldschmied'], cover: 'die Gestalt im Mantel' }, Status: { status: 'ready' } }, relations: [] };
+    const repo = new InMemoryRepository(
+      { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_t' } },
+      [rook, inv, ohne, { id: 'camp_t', interfaces: ['Campaign'], name: 'T', components: { Identity: { name: 'T', id: 'campaign-0001', aliases: [] } }, relations: [] }],
+    );
+    const app = buildApp({ repo });
+    await addUser(repo, 'Sela', { actorId: 'pc_rook' });
+    await addUser(repo, 'Mira', { roles: { camp_t: 'gm' } });
+    const lies = async (wer: string) =>
+      (await app.inject({ method: 'GET', url: '/api/entities/n_gestalt', headers: { cookie: cookieOf(await login(app, wer)) } })).json() as Entity;
+    const sela = await lies('Sela');
+    expect(sela.name).toBe('die Gestalt im Mantel');
+    expect(JSON.stringify(sela)).not.toMatch(/Aurinax|Goldschmied/);
+    expect((await lies('Mira')).name).toBe('Aurinax');
+    /* Aufgedeckt: eine Information nennt den Namen, und Rook kennt sie. */
+    await repo.putEntity({ ...info, id: 'i_gestalt', components: { ...info.components, Information: { tier: 'secret', fields: ['Identity.name'] } }, relations: [{ id: 'rb2', type: 'knownBy', to: 'pc_rook', props: {} }] });
+    const o = (await repo.getEntity('n_gestalt'))!;
+    await repo.putEntity({ ...o, relations: [{ id: 'rk2', type: 'knowledge', to: 'i_gestalt', props: {} }] });
+    expect((await lies('Sela')).name).toBe('Aurinax');
+  });
+
   /* Der eigentliche Prüfstein: der Name steht nicht in der Antwort. Nicht
      „wird nicht angezeigt" — steht nicht drin. */
   it('does not send a player what they have not been told', async () => {
