@@ -3330,6 +3330,110 @@ export const fieldGroups = {
    * Herausgeber einer Ebene ist die Herausgeber-Gruppe, an der sie hängt,
    * und wird gerechnet (`publisherOf`), nicht gespeichert.
    */
+  /**
+   * **Ein Regelsystem ist eine Ebene** (E-166, E-078, E-100): Inventory,
+   * später Crafting, Travel … — der Bereich, in dem Regelmechaniken
+   * stecken. `sort` sagt, welcher Bereich der Regeloptionen (`RULE_SORTS`)
+   * es ist. Als Gruppe (`Layer.kind: 'group'`) bringt es aufgeschaltet
+   * seine Mechaniken mit; jede lässt sich einzeln ausnehmen und umsortieren
+   * (E-091).
+   */
+  RuleSystemInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        sort: {
+          type: 'string',
+          title: 'Rule area',
+          enum: ['inventory', 'items', 'crafting', 'abilities', 'equipment', 'character', 'travel', 'units', 'map', 'combat', 'table'],
+          description: 'Which area of Rules & options this rule system covers, such as inventory.',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Eine Regelmechanik ist eine Ebene** (E-166): Grid, Weight, Slots,
+   * Default shapes — eine Option eines Regelsystems (`partOf`), die sagt,
+   * mit welchen anderen sie zusammen gilt (Kante `compatibleWith`).
+   * `method` ist das Wort, das die Laufzeit ausführt; was am Tisch zählt,
+   * wählt vorerst `Campaign.inventory`.
+   */
+  RuleMechanicInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        method: {
+          type: 'string',
+          title: 'Mechanic',
+          enum: ['weight', 'slots', 'grid', 'shapes'],
+          description: 'What the app runs for this mechanic: weight, slots, the grid, or default shapes for items.',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Vorgabeformen** (T-394, E-165): Gruppen und Werte je Gegenstand,
+   * beim Lesen aufgelöst (`defaultShapeOf`, D8). Gesetzt in der Übersicht
+   * Rules & options › Inventory › Shapes und am Element Shape — in der
+   * Feldtabelle stünden nur Listen von Schlüsseln (`editOnly`).
+   */
+  ShapeDefaults: {
+    schema: {
+      type: 'object',
+      properties: {
+        shapeGroups: {
+          type: 'array',
+          many: true,
+          editOnly: true,
+          facet: false,
+          title: 'Shape groups',
+          description: 'Groups of items that share a shape and stack size, unless an item says otherwise.',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id', 'name'],
+            properties: {
+              id: { type: 'string', title: 'Key' },
+              name: { type: 'string', title: 'Name' },
+              section: { type: 'string', title: 'Section' },
+              rows: { type: 'array', format: 'grid', title: 'Shape', items: { type: 'string' } },
+              stackSize: { type: 'number', min: 1, title: 'Stack size' },
+              carryable: { type: 'boolean', title: 'Carried in the inventory', default: true },
+              ref: { type: 'string', format: 'link', title: 'Reference item', target: { interfaces: ['Item'] } },
+              rule: { type: 'string', title: 'Which items' },
+              note: { type: 'string', title: 'Note' },
+              rank: { type: 'number', title: 'Order' },
+              shapes: { type: 'array', title: 'Shapes by price', items: { type: 'object' } },
+              tiers: { type: 'array', title: 'Price tiers (gp)', items: { type: 'number' } },
+            },
+          },
+        },
+        shapeItems: {
+          type: 'array',
+          many: true,
+          editOnly: true,
+          facet: false,
+          title: 'Item shapes',
+          description: 'Per item: its group, its reference item, its own shape or stack size.',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+              id: { type: 'string', format: 'link', title: 'Item', target: { interfaces: ['Item'] } },
+              group: { type: 'string', title: 'Group' },
+              ref: { type: 'string', format: 'link', title: 'Reference item', target: { interfaces: ['Item'] } },
+              rows: { type: 'array', format: 'grid', title: 'Shape', items: { type: 'string' } },
+              stackSize: { type: 'number', min: 1, title: 'Stack size' },
+            },
+          },
+        },
+      },
+    },
+  },
+
   LayerInfo: {
     schema: {
       type: 'object',

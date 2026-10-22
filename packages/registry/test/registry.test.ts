@@ -993,3 +993,11 @@ describe('the rule family', () => {
     expect(i['Table'].schema.properties['columns']).toBeTruthy();
   });
 });
+
+describe('Ebenen-Arten (E-166)', () => {
+  it('jede Art, die von Layer erbt, steht in LAYER_TYPES — sonst sähen Stapel und Rechte sie nicht als Ebene', async () => {
+    const { LAYER_TYPES, typeChain } = await import('@nw/model');
+    const ebenen = Object.keys(seedRegistry.interfaces).filter((n) => !seedRegistry.interfaces[n]?.abstract && typeChain(seedRegistry, n).includes('Layer'));
+    expect(ebenen.sort()).toEqual([...LAYER_TYPES].sort());
+  });
+});

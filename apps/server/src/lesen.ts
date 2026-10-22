@@ -34,6 +34,7 @@ import {
   READING_TYPES,
   replacedIds,
   type ReadingNode,
+  isLayer,
 } from '@nw/model';
 import type { Entity } from '@nw/model';
 import type { User } from './auth.js';
@@ -187,7 +188,7 @@ export function registerLesen(
   /** Die Ebene, wenn es sie gibt und dieser Betrachter sie sehen darf. */
   async function ebene(request: FastifyRequest, id: string, stand: Stand): Promise<Entity | undefined> {
     const l = stand.map.get(id);
-    if (!l || primaryInterface(l) !== 'Layer') return undefined;
+    if (!l || !isLayer(l)) return undefined;
     return (await sieve(request, [l], stand.map))[0];
   }
 
@@ -481,7 +482,7 @@ export function registerLesen(
     /* Die Ebene selbst liest man von vorn — auch ohne Text (T-167): die
        Seite sagt dann „No text imported yet", statt dass der Knopf fehlt,
        und eine Gruppe ist ein Regal. */
-    if (primaryInterface(e) === 'Layer') return { layer: e.id, ...(mitText.has(e.id) || isGroupLayer(e) ? {} : { empty: true }) };
+    if (isLayer(e)) return { layer: e.id, ...(mitText.has(e.id) || isGroupLayer(e) ? {} : { empty: true }) };
     /* Eine Fassung (E-018) liest man an der Stelle ihres Originals. */
     const original = (e.relations ?? []).find((r) => r.type === 'overrides')?.to;
     const quelle = (original && stand.map.get(original)) || e;

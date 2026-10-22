@@ -59,6 +59,17 @@ export const OVERRIDES_RELATION = 'overrides';
  */
 export const COMPARE_MODE = 'compare';
 export const LAYER_COMPONENT = 'Layer';
+/**
+ * **Die Arten, die Ebenen sind** (E-166): `Layer` und seine Unterarten —
+ * ein Regelsystem (`RuleSystem`, z. B. Inventory) und eine Regelmechanik
+ * (`RuleMechanic`, z. B. Grid). Der Stapel, die Schreibrechte und die
+ * Listen fragen „ist eine Ebene“ ohne Register; darum steht die Liste
+ * hier, und `packages/registry/test` prüft, dass jede Art, die von `Layer`
+ * erbt, darin steht.
+ */
+export const LAYER_TYPES: ReadonlySet<string> = new Set([LAYER_COMPONENT, 'RuleSystem', 'RuleMechanic']);
+/** Ist dieser Artikel eine Ebene (auch ein Regelsystem oder eine Regelmechanik)? */
+export const isLayer = (e: Entity | null | undefined): boolean => LAYER_TYPES.has((e?.interfaces ?? [])[0] ?? '');
 /** Die Kontoeinstellung mit der gewählten Schreibebene je Kampagne
  *  (`{ [Kampagne]: Ebene }`, T-176) — neben dem Konto, nie im Artikel. */
 export const WRITE_LAYER_PREF = 'writeLayer';
@@ -241,7 +252,7 @@ const layerKarte = (e: Entity | undefined): Record<string, unknown> =>
 
 /** Ist diese Ebene eine Gruppe (E-022 b)? Beschreibung wie jedes `kind` — aber eine, die etwas enthält. */
 export const isGroupLayer = (e: Entity | undefined): boolean =>
-  (e?.interfaces ?? [])[0] === LAYER_COMPONENT && layerKarte(e)['kind'] === GROUP_KIND;
+  isLayer(e) && layerKarte(e)['kind'] === GROUP_KIND;
 
 /**
  * **Wonach eine Gruppe ordnet** (T-094): `publisher` — wer das Buch
@@ -326,7 +337,7 @@ export function publisherOf(
 export function groupMembers(entities: Map<EntityId, Entity>): Map<EntityId, EntityId[]> {
   const roh = new Map<EntityId, Entity[]>();
   for (const e of entities.values()) {
-    if ((e.interfaces ?? [])[0] !== LAYER_COMPONENT) continue;
+    if (!isLayer(e)) continue;
     for (const r of kanten(e, GROUP_RELATION)) {
       if (!isGroupLayer(entities.get(r.to))) continue;
       const l = roh.get(r.to) ?? [];
@@ -1399,4 +1410,27 @@ export function rehang(fassung: Entity, mapping: ReadonlyMap<EntityId, EntityId>
     relations.push({ id: `${fassung.id}~partOf-into`, type: 'partOf', to: into, props: rank === undefined ? {} : { rank } });
   }
   return { ...fassung, relations };
+}
+
+/** Die Kante zwischen Regelmechaniken, die zusammen gelten (E-166). */
+export const COMPATIBLE_RELATION = 'compatibleWith';
+
+/**
+ * **Mit welchen Mechaniken gilt diese zusammen?** (E-166) Die Kante
+ * `compatibleWith` steht einmal, an einer der beiden; gelesen wird sie in
+ * beide Richtungen — die Gegenrichtung ist eine Abfrage.
+ */
+export function compatibleMechanics(entities: Map<EntityId, Entity>, mechanicId: EntityId): EntityId[] {
+  const raus = new Set<EntityId>();
+  for (const r of kanten(entities.get(mechanicId), COMPATIBLE_RELATION)) raus.add(r.to);
+  for (const e of entities.values()) {
+    if (e.id !== mechanicId && kanten(e, COMPATIBLE_RELATION).some((r) => r.to === mechanicId)) raus.add(e.id);
+  }
+  raus.delete(mechanicId);
+  return [...raus];
+}
+
+/** Die Mechaniken eines Regelsystems (`partOf`), in der Reihenfolge, in der sie als Gruppe im Stapel stünden. */
+export function mechanicsOf(entities: Map<EntityId, Entity>, systemId: EntityId): Entity[] {
+  return (groupMembers(entities).get(systemId) ?? []).map((id) => entities.get(id)).filter((e): e is Entity => !!e && (e.interfaces ?? [])[0] === 'RuleMechanic');
 }

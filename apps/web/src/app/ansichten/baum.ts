@@ -12,6 +12,7 @@ import {
   pathIds,
   primaryInterface,
   typeChain,
+  isLayer,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, PathHit, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
@@ -145,7 +146,7 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
         }
         @case ('reader') {
           <div class="leser" [class.unten]="el.side === 'bottom'" [class.rechts]="(el.side ?? 'right') === 'right' && werteVon(el).length">
-            @if (primaerTyp() === 'Layer') {
+            @if (istEbene()) {
               <nw-lesen [layer]="artikel().id" [eingebettet]="true" [toc]="el.toc ?? 'left'" />
             } @else {
               <p class="hinweis">The book reader shows a layer as a book.</p>
@@ -288,6 +289,8 @@ export class Ansichtsbaum {
   private readonly folien = signal<Record<string, number>>({});
 
   protected readonly primaerTyp = computed(() => primaryInterface(this.artikel()));
+  /** Eine Ebene, auch ein Regelsystem oder eine Regelmechanik (E-166). */
+  protected readonly istEbene = computed(() => isLayer(this.artikel()));
   protected readonly titel = computed(() => entityName(this.artikel()));
   protected readonly baum = computed(() => forArticle(this.layout(), this.artikel(), this.rueck()));
   protected readonly scopes = computed<VarScopes>(() => {

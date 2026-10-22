@@ -84,7 +84,8 @@ import {
   isGroupLayer,
   versionsOf,
   versionGroups,
-  LAYER_COMPONENT,
+  LAYER_TYPES,
+  isLayer,
   LAYER_RELATION,
   WRITE_LAYER_PREF,
   OVERRIDES_RELATION,
@@ -1932,7 +1933,7 @@ export function buildApp({
       verlag = new Map();
       const eigene = eigeneEbenen(stand.map);
       for (const e of stand.map.values()) {
-        if ((e.interfaces ?? [])[0] === 'Layer') verlag.set(e.id, publisherOf(stand.map, e, eigene));
+        if (isLayer(e)) verlag.set(e.id, publisherOf(stand.map, e, eigene));
       }
       verlage.set(stand.map, verlag);
     }
@@ -1963,7 +1964,7 @@ export function buildApp({
     const verlag: Record<string, string> = {};
     const eigene = eigeneEbenen(stand.map);
     for (const e of stand.map.values()) {
-      if ((e.interfaces ?? [])[0] !== 'Layer') continue;
+      if (!isLayer(e)) continue;
       const k = (e.components?.['Layer'] as { abbreviation?: unknown } | undefined)?.abbreviation;
       const name = idx.names.get(e.id);
       if (typeof k !== 'string' || !k.trim() || !name) continue;
@@ -3491,7 +3492,7 @@ export function buildApp({
 
   /** Arten, von denen es keine Fassung gibt: eine Ebene ist der Ort, eine
    *  Kampagne der Stapel selbst (T-098). */
-  const OHNE_FASSUNG = new Set(['Layer', CAMPAIGN_TYPE]);
+  const OHNE_FASSUNG = new Set([...LAYER_TYPES, CAMPAIGN_TYPE]);
 
   /**
    * **In welche Ebenen dieser Artikel angepasst werden kann** (E-018, T-082,
@@ -3686,7 +3687,7 @@ export function buildApp({
           if (wert === 'ready' && !darfFertig && !optionen.zurueck) return { code: 403, body: { error: '„ready" setzt die Leitung.' } };
           if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
         }
-      } else if (user && type !== LAYER_COMPONENT && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
+      } else if (user && !LAYER_TYPES.has(type) && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
         /* **Die Verwaltung legt an, wo sie nichts sagt** — wie bisher ohne
            Ebene, ausser sie hat für die laufende Kampagne eine Schreibebene
            gewählt (T-161, T-176): dann dort, damit Tests in der Testebene
@@ -4209,7 +4210,7 @@ export function buildApp({
        Artikel stünden danach in keiner aufgeschalteten Ebene und wären für
        niemanden mehr da. Eine leere darf, wer darin schreibt. */
     const wer = await viewerOf(request);
-    if (weg && wer && !wer.isAdmin && primaryInterface(weg) === 'Layer') {
+    if (weg && wer && !wer.isAdmin && isLayer(weg)) {
       const inhalt = [...alle.values()].filter((e) => e.id !== weg.id && layersOf(e).includes(weg.id));
       /* Mit Aufzählung (T-164): wer löschen wollte, sieht, was darin liegt —
          und kann es übernehmen (`POST /api/layers/:layer/takeover`). */
@@ -4249,7 +4250,7 @@ export function buildApp({
     const removed = await repo.deleteEntity(request.params.id);
     if (!removed) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Wer in einer gelöschten Ebene schrieb, schreibt in nichts mehr. */
-    if (weg && primaryInterface(weg) === 'Layer') {
+    if (weg && isLayer(weg)) {
       for (const g of await repo.layerGrants()) if (g.layerId === weg.id) await repo.revokeLayer(g.userId, g.layerId);
     }
     /* Ein Bild nimmt seine Datei mit, wenn kein anderes Asset sie nennt (T-114). */
@@ -4672,7 +4673,7 @@ export function buildApp({
       const alle = await repo.listEntities();
       const roh = new Map(alle.map((e) => [e.id, e]));
       const l = roh.get(request.params.layer);
-      if (!l || primaryInterface(l) !== LAYER_COMPONENT) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
+      if (!l || !isLayer(l)) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
       if (!echt.user.isAdmin && !(echt.user.ownedLayerIds ?? []).includes(l.id)) {
         return reply.code(403).send({ error: 'Eine Ebene leeren die Verwaltung und wer sie besitzt.' });
       }

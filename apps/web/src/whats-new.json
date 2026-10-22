@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-rule-systems-as-layers",
+      "date": "2026-10-22",
+      "title": "Inventory is a rule system with its mechanics",
+      "text": "Inventory now stands as a rule system layer with the mechanics Weight, Slots, Grid and Default shapes. Each mechanic says which others it works with — the grid works with weight. Default shapes gives items their shape and stack size from groups and reference items, once its data is in.",
+      "area": "Rules",
+      "link": "/artikel/ly_rs_inventory"
+    },
+    {
       "id": "2026-10-22-token-size-from-statblock",
       "date": "2026-10-22",
       "title": "Tokens take their size from the statblock and from effects",

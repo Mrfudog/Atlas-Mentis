@@ -1466,6 +1466,22 @@ export const relations: Record<string, RelationDef> = {
   // ---------------------------------------------------------------- layers
 
   /**
+   * **Welche Regelmechaniken zusammen gelten** (E-166): Grid mit Weight,
+   * Default shapes mit Grid. Einmal gespeichert, gilt in beide Richtungen
+   * (die Gegenrichtung ist eine Abfrage, `compatibleMechanics`). Was nicht
+   * so verbunden ist, schliesst sich innerhalb eines Regelsystems aus.
+   */
+  compatibleWith: {
+    type: 'compatibleWith',
+    label: 'compatible with',
+    inverseLabel: 'also works with',
+    means: 'Two rule mechanics can apply together in a campaign, such as the grid inventory with weight; stored once, it reads both ways.',
+    from: ['RuleMechanic'],
+    to: ['RuleMechanic'],
+    cardinality: 'many',
+  },
+
+  /**
    * Wozu ein Artikel gehört (REQ-005). Ohne diese Kante gehört er der
    * Kampagne selbst und ist immer da — das ist der Normalfall und soll
    * keine Zeile kosten.

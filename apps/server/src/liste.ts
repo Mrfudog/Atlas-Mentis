@@ -69,6 +69,7 @@ import {
   tagsOf,
   typeChain,
   versionGroups,
+  isLayer,
 } from '@nw/model';
 import type { CharacterProfile, Entity, FacetDef, HasFacts, HasTerm, TimeWindow, LayoutElement, PropertySchema, Registry, Requirement, RequirementContext } from '@nw/model';
 
@@ -170,7 +171,7 @@ export function buildListIndex(
   shown: ReadonlySet<string> | null = null,
   herkunft: ListProvenance = {},
 ): ListIndex {
-  const genannt = (e: Entity) => !shown || primaryInterface(e) !== 'Layer' || shown.has(e.id);
+  const genannt = (e: Entity) => !shown || !isLayer(e) || shown.has(e.id);
   visible = shown ? visible.filter(genannt) : visible;
   /* Fassungen derselben Sache (T-092): einmal über das Gesiebte. */
   const fassungen = versionGroups(visible);
