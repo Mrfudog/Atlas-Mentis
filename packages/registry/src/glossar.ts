@@ -389,6 +389,13 @@ const APP: AppTerm[] = [
     translations: { de: 'Hinzugefügt von' },
   },
   {
+    term: 'Relation filter',
+    aliases: ['Relations', 'Has relation'],
+    sort: 'app',
+    definition: 'A list filter on an article’s links and fields: has a relation or none, at least or at most so many, or one to a chosen article; with a type also has a field. Only links to articles you may see count.',
+    translations: { de: 'Beziehungsfilter' },
+  },
+  {
     term: 'Write layer',
     sort: 'app',
     definition: 'The layer new articles go into. Each account chooses it in the layers popup; otherwise a default applies.',

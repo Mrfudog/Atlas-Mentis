@@ -206,6 +206,16 @@
           ]
         },
         {
+          "heading": "Filtering by relations",
+          "text": [
+            "1. Open the Compendium or an area (World, Story, Rules) and, on a phone, Filters.",
+            "2. Pick a type if you want its fields too — for example Item.",
+            "3. Open “Relations”, choose a relation or field (the number says how many in the list have it), then has, has none, at least or at most, and Add. Example: Item, Shape, has — the items with a grid shape.",
+            "4. For a relation set to has, pick an article under it — “member of: Guild” keeps the guild's members.",
+            "5. Add more conditions; all of them apply. × removes one. The choice stays in the address and in a filter group saved with ▾ in the header."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."
