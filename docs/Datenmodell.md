@@ -1222,6 +1222,16 @@ unter der Kampagne („Writes to", am Telefon ✎), im Anlegedialog und beim
 Bearbeiten — dort mit einer Warnung, wenn die Änderung in eine andere Ebene
 geht als die Schreibebene.
 
+**Die Ebene wechseln** (T-383): im Bearbeiten ist sie das erste Feld.
+Gespeichert wird sie als das, was sie ist — die Kante `inLayer`
+(`withHomeLayer`; Kanten mit `mode: 'removes'` bleiben, wie sie sind) —, im
+selben `PUT` wie alles andere. Dort prüft der Server, was dazukommt
+(`layerChange`): jede neue Ebene muss unter den Zielebenen des Kontos stehen,
+und aus jeder Ebene heraus nimmt einen Artikel nur die Verwaltung. Den
+Artikel zu schreiben heisst nicht, ihn in ein fremdes Regelwerk legen zu
+dürfen. Kanten und Fassungen bleiben; ob Teile, Statblock und Inventar
+mitwandern, ist offen (E-161).
+
 ```mermaid
 flowchart TB
   K["Campaign"] -- "activates · 100" --> KE["Kampagnenebene<br/>gm, co-gm"]
