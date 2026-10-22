@@ -98,7 +98,8 @@ import {
   entryConditions,
   entryActions,
   commonAction,
-  rollMode,
+  attackRollMode,
+  rangeBand,
   damageAfterDefenses,
   concentrationCheck,
   applyDamage,
@@ -331,6 +332,24 @@ function bedrohteFelder(karte: Entity, geo: GridGeometry, b: ReturnType<typeof b
   });
 }
 
+/**
+ * **Wie weit ein Angriff reicht** (T-351): der Abstand in Fuss von der
+ * Stelle, an der die Figur angreift, zum Token des Ziels auf ihrer Ebene —
+ * `null` ohne Gitter oder ohne beide Tokens (dann prüft niemand). `davor`
+ * sind die Schritte vor dem Angriff: angegriffen wird vom Ende des letzten
+ * Wegs. Dieselbe Rechnung wie die Maske (`feetBetween`, 5-10-5).
+ */
+export function abstandImPlan(karte: Entity, geo: GridGeometry | null, figur: string, ziel: string, davor: readonly PlanStep[] = []): number | null {
+  if (!geo) return null;
+  const ich = markersOf(karte).find((m) => m.to === figur);
+  if (!ich) return null;
+  const dort = markersOf(floorView(karte, floorOfMarker(karte, ich.rel.id))).find((m) => m.to === ziel);
+  if (!dort) return null;
+  const letzter = [...davor].reverse().find((x) => x.kind === 'move' && (x.to || x.path.length));
+  const wo = letzter?.kind === 'move' ? (letzter.to ?? cellPoint(geo, letzter.path[letzter.path.length - 1]!)) : ich;
+  return feetBetween(geo, wo, dort);
+}
+
 /** Wo eine Begegnung steht und welchen Platz `id` in ihrer Reihe hat. */
 function kampfStand(stand: Stand, kampf: Entity | null, id: string): { jetzt: { round: number; turn: number } | null; platz: number | null } {
   if (!kampf) return { jetzt: null, platz: null };
@@ -546,7 +565,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     return g ? entityName(g) : e.id;
   }
 
-  app.get<{ Params: { id: string }; Querystring: { actor?: string } }>('/api/maps/:id/turn-plan', async (request, reply) => {
+  app.get<{ Params: { id: string }; Querystring: { actor?: string; nat?: string } }>('/api/maps/:id/turn-plan', async (request, reply) => {
     const l = await lage(request, request.params.id);
     if ('fehler' in l) return reply.code(l.fehler ?? 404).send({ error: l.fehler === 401 ? 'Nicht angemeldet' : 'Nicht gefunden' });
     const { user, stand, roheKarte, karte, kampagne, leitet } = l;
@@ -574,11 +593,44 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const ziele = zielRoh.length ? await sieve(request, zielRoh, stand.map) : [];
     const sichtbar = new Set(ziele.map((z) => z.id));
     const angriffe = tiles.filter((t) => t.toHit !== null);
+    /* **Vorteil und Nachteil in der Vorschau** (T-351): aus den Wirkungen
+       beider (Zustände, Dodge, Help …) und dem Abstand, wo die Tokens jetzt
+       stehen; `long` ist die Chance auf langer Reichweite, für die Maske,
+       die den Abstand am Ende des geplanten Wegs kennt. */
+    const folgenJetzt = neueFolgen(stand, roheKarte.id);
+    const ich = figur ? werteAmTisch(folgenJetzt, stand, figur) : null;
+    const markerIch = figur ? markersOf(roheKarte).find((m) => m.to === figur.id) : undefined;
+    /* Die Bildgrösse sagt das Asset, sonst der Browser (`?nat=1960x700`). */
+    const natQ = /^(\d+)x(\d+)$/.exec(request.query.nat ?? '');
+    const natJetzt = natQ ? cleanNat({ w: Number(natQ[1]), h: Number(natQ[2]) }) : null;
+    const geoJetzt = markerIch ? geoDerEbene(stand, roheKarte, floorOfMarker(roheKarte, markerIch.rel.id), natJetzt) : null;
     const targets = ziele.map((z) => {
-      const ac = rkVon(stand, stand.map.get(z.id)!);
+      const roh = stand.map.get(z.id)!;
+      const ac = rkVon(stand, roh);
       const chances: Record<string, number> = {};
-      if (ac !== null) for (const t of angriffe) chances[t.id] = Math.round(hitChance(t.toHit!, ac) * 100);
-      return { id: z.id, name: entityName(z), type: primaryInterface(z), chances, ...(leitet && ac !== null ? { ac } : {}) };
+      const long: Record<string, number> = {};
+      const modes: Record<string, 'adv' | 'dis'> = {};
+      const er = ich ? werteAmTisch(folgenJetzt, stand, roh).totals.grants : {};
+      const feet = figur ? abstandImPlan(karte, geoJetzt, figur.id, z.id) : null;
+      for (const t of angriffe) {
+        /* `chances` ohne lange Reichweite — ob sie gilt, weiss erst die
+           Maske am Ende des Wegs; dafür steht `long` daneben. */
+        const { mode } = attackRollMode(ich?.totals.grants ?? {}, er, { feet });
+        if (mode) modes[t.id] = mode;
+        if (ac === null) continue;
+        chances[t.id] = Math.round(hitChance(t.toHit!, ac, mode) * 100);
+        if (t.longRange !== null) long[t.id] = Math.round(hitChance(t.toHit!, ac, attackRollMode(ich?.totals.grants ?? {}, er, { feet, long: true }).mode) * 100);
+      }
+      return {
+        id: z.id,
+        name: entityName(z),
+        type: primaryInterface(z),
+        chances,
+        ...(Object.keys(long).length ? { long } : {}),
+        ...(Object.keys(modes).length ? { modes } : {}),
+        ...(feet !== null ? { feet } : {}),
+        ...(leitet && ac !== null ? { ac } : {}),
+      };
     });
     /* Wer die Figur bedroht — auf der gesiebten Karte und nur, wen der
        Betrachter sieht; Namen wie in `targets`. */
@@ -683,6 +735,28 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     };
   }
 
+  /**
+   * Der erste Angriff des Plans, dessen Ziel ausser Reichweite steht, als
+   * Satz, der sagt, was zu tun ist — sonst `null`.
+   */
+  function ausserReichweite(stand: Stand, roheKarte: Entity, karte: Entity, figur: Entity, steps: readonly PlanStep[], nat: { w: number; h: number } | null): string | null {
+    const m = markersOf(roheKarte).find((x) => x.to === figur.id);
+    if (!m) return null;
+    const geo = geoDerEbene(stand, roheKarte, floorOfMarker(roheKarte, m.rel.id), nat);
+    if (!geo) return null;
+    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true).map((t) => [t.id, t]));
+    for (const [i, s] of steps.entries()) {
+      if (s.kind !== 'act' || !s.target) continue;
+      const t = kacheln.get(s.tile);
+      if (!t) continue;
+      const feet = abstandImPlan(karte, geo, figur.id, s.target, steps.slice(0, i));
+      if (rangeBand(t, feet) !== 'out') continue;
+      const reicht = `${t.range} ft${t.longRange ? `, long ${t.longRange} ft` : ''}`;
+      return `${s.targetName ?? 'The target'} is ${feet} ft away — out of range for ${t.name} (${reicht}). Move closer first or pick another target.`;
+    }
+    return null;
+  }
+
   /** Antworten darf die Leitung für jeden, Spielende für ihre Figur. */
   function darfAntworten(user: User, leitet: boolean, reactor: string): boolean {
     return leitet || (user.actorIds ?? []).includes(reactor);
@@ -718,6 +792,11 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       }
       const { problems } = planBudget(steps, tempo, { reactionSpent });
       if (problems.length) return reply.code(422).send({ error: problems.join(' ') });
+      /* **Reichweite am Server** (T-351): ausser Reichweite nimmt der Plan
+         nicht an — gemessen vom Ende des Wegs davor, auf der Karte, die der
+         Einreichende sieht. Ohne Gitter oder Token prüft niemand. */
+      const weit = ausserReichweite(stand, roheKarte, karte, figur, steps, cleanNat(b.nat));
+      if (weit) return reply.code(422).send({ error: weit });
 
       let planId = typeof b.plan === 'string' && b.plan ? b.plan : '';
       if (planId) {
@@ -984,7 +1063,8 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
    * Der Wurf auf Treffen mit einer Kachel gegen die RK des Ziels — die
    * gelesene RK (T-275), mit **Vorteil oder Nachteil** aus den Wirkungen
    * beider (`attack` am Angreifer, `attacked` am Ziel: Dodge, Help, Hide,
-   * Zustände) und der **Krit-Schwelle** des Angreifers. Ein Eintrag, der
+   * Zustände; `attacked.near`/`.far` nach `weite.feet`) und auf langer
+   * Reichweite (`weite.long`, T-351), und der **Krit-Schwelle** des Angreifers. Ein Eintrag, der
    * beim Angriff verbraucht ist (Help, Hide), geht danach weg.
    */
   async function trefferWurf(
@@ -997,16 +1077,14 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     stand: Stand,
     vorne = '',
     f: Folgen = neueFolgen(stand, ''),
+    weite: { feet?: number | null; long?: boolean } = {},
   ): Promise<TrefferWurf> {
     const sw = werteAmTisch(f, stand, wer);
     const sz = werteAmTisch(f, stand, ziel);
-    const g = (st: CharacterStats, k: string) => st.totals.grants[k] ?? [];
-    const modus = rollMode(
-      g(sw, 'attack').includes('advantage') || g(sz, 'attacked').includes('advantage'),
-      g(sw, 'attack').includes('disadvantage') || g(sz, 'attacked').includes('disadvantage'),
-    );
+    /* Abstand und lange Reichweite (T-351): Prone nach Nähe, lang mit Nachteil. */
+    const { mode: modus, why } = attackRollMode(sw.totals.grants, sz.totals.grants, weite);
     const w20 = modus === 'adv' ? '2d20kh1' : modus === 'dis' ? '2d20kl1' : '1d20';
-    const wie = modus === 'adv' ? ' (advantage)' : modus === 'dis' ? ' (disadvantage)' : '';
+    const wie = modus ? ` (${modus === 'adv' ? 'advantage' : 'disadvantage'}${why.includes('long range') ? ', long range' : ''})` : why.includes('long range') ? ' (long range)' : '';
     const w = await wurf(wer, von, `${w20}${t.toHit! < 0 ? t.toHit : `+${t.toHit}`}`, `${vorne}${t.name} → ${entityName(ziel)}: attack${wie}`, kampagne, hidden, stand);
     const ac = sz.ac.value !== null && sz.ac.value > 0 ? sz.ac.value : null;
     const schwelle = sw.critThreshold.value ?? 20;
@@ -1176,8 +1254,9 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     stand: Stand,
     vorne = '',
     f: Folgen = neueFolgen(stand, ''),
+    weite: { feet?: number | null; long?: boolean } = {},
   ): Promise<Omit<PlanResult, 'step'>> {
-    const w = await trefferWurf(t, wer, ziel, von, kampagne, hidden, stand, vorne, f);
+    const w = await trefferWurf(t, wer, ziel, von, kampagne, hidden, stand, vorne, f, weite);
     const schaden = await schadenWurf(t, w, wer, ziel, von, kampagne, hidden, stand, vorne);
     const folge = schaden !== null ? await schadenAnwenden(f, stand, ziel, schaden, t.damageType, von, kampagne, hidden) : '';
     return angriffErgebnis(t, ziel, w, schaden, vorne, folge);
@@ -1226,6 +1305,8 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     const ebene = relDa ? floorOfMarker(roheKarte, relDa) : GROUND_FLOOR;
     const roheEbene = floorView(roheKarte, ebene);
     const geo = plan.nat ? gridGeometry(mapSettings(roheEbene), plan.nat) : null;
+    /* Für die Reichweite (T-351) auch ohne Bildgrösse vom Browser: die des Assets. */
+    const geoWeite = geoDerEbene(stand, roheKarte, ebene, plan.nat ?? null);
     /* **Der Graph führt** (REQ-357): laufen die Regeln der Kampagne am
        Tisch, fragt der Zug sie und nicht den eingebauten Gelegenheitsangriff. */
     /* Ohne die volle Stufe (T-325) fragt ein Zug niemanden um eine Reaktion. */
@@ -1355,8 +1436,18 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         results.push({ step: s.id, text: `${s.name}${s.targetName ? ` → ${s.targetName}` : ''}` });
         continue;
       }
+      /* **Reichweite beim Ausführen** (T-351): gemessen, wo die Tokens jetzt
+         stehen — das Ziel kann seit dem Einreichen gegangen sein. Ausser
+         Reichweite wird nicht gewürfelt; lang würfelt mit Nachteil. */
+      const feet = abstandImPlan(karte, geoWeite, figur.id, ziel.id);
+      const band = rangeBand(t, feet);
+      if (band === 'out') {
+        results.push({ step: s.id, text: `${t.name} → ${entityName(ziel)}: out of range (${feet} ft), no roll.` });
+        continue;
+      }
+      const weite = { feet, long: band === 'long' };
       if (!regeln) {
-        results.push({ step: s.id, ...(await angriff(t, figur, ziel, plan.by, kampagne, hidden, stand, '', folgen)) });
+        results.push({ step: s.id, ...(await angriff(t, figur, ziel, plan.by, kampagne, hidden, stand, '', folgen, weite)) });
         continue;
       }
       /* **Ein Angriff mit Regeln** (REQ-357): angegriffen → Wurf → getroffen
@@ -1366,7 +1457,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       let cur: PlanCursor = plan.cursor?.step === s.id ? plan.cursor : { step: s.id };
       let p = frage(lauf('attacked', wo, { target: ziel.id }), `${s.id}:attacked`, s.id, 0, ziel.id);
       if (p) return halt(p, i, cur);
-      const w = cur.roll ?? (await trefferWurf(t, figur, ziel, plan.by, kampagne, hidden, stand, '', folgen));
+      const w = cur.roll ?? (await trefferWurf(t, figur, ziel, plan.by, kampagne, hidden, stand, '', folgen, weite));
       cur = { ...cur, roll: w };
       if (w.hit !== null) {
         const on = w.hit ? 'hit' : 'missed';

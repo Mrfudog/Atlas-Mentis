@@ -28,12 +28,12 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
-| 1 | 56 | 179 | 42 steht · 9 teils · 1 offen · 2 ersetzt · 2 verworfen |
+| 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
 | 2 | 120 | 405 | 68 steht · 18 teils · 26 offen · 5 ersetzt · 3 verworfen |
 | 3 | 120 | 354 | 61 steht · 25 teils · 33 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **360** | **1288** | 185 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **361** | **1291** | 185 steht · 55 teils · 105 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -399,6 +399,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-358]] | Kampagnenboard als Startpunkt für Spielende | Spieler | [[F-067 Boards\|Boards]] | 2 | 8 | defined | steht |
 | [[REQ-359]] | Jede Änderung im Browser geprüft | Verwaltung | [[F-080 Qualität & Tests\|Qualität & Tests]] | 1 | 5 | defined | steht |
 | [[REQ-360]] | Struktur einer Fraktion als Organigramm oder Netz | Spielleitung | [[F-067 Boards\|Boards]] | 2 | 8 | defined | steht |
+| [[REQ-361]] | Lange Seiten: Bereiche klappen und springen | Spielleitung | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 1 | 3 | in progress | teils |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

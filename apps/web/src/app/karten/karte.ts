@@ -206,7 +206,7 @@ export interface Planung {
 /** Was ein Antippen im Plan ergibt: ein Weg (mit der Bildgrösse, für den Server) oder ein Ziel. */
 export type PlanTipp =
   | { kind: 'cell'; path: Cell[]; feet: number; to: Pt; nat: Size }
-  | { kind: 'target'; id: string; name: string; feet: number | null };
+  | { kind: 'target'; id: string; name: string; feet: number | null; nat?: Size };
 
 /** Ab so vielen Bildpunkten ist ein Druck ein Ziehen und kein Antippen. */
 const ZIEHEN_AB = 5;
@@ -2997,7 +2997,8 @@ export class Karte {
       const m = this.marker().find((x) => x.to === id && x.rel.id !== plan.rel);
       if (!m) return;
       const pr = this.planRaster();
-      this.planTipp.emit({ kind: 'target', id, name: m.name, feet: pr ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) : null });
+      const nat = this.nat();
+      this.planTipp.emit({ kind: 'target', id, name: m.name, feet: pr ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) : null, ...(nat ? { nat } : {}) });
       return;
     }
     /* Ein freies Licht hat keinen Artikel (T-320): antippen wählt es nur. */

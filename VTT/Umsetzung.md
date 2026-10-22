@@ -23,7 +23,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 185 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen — 360 Stories in 80 Features und 12 Epics.
+Zusammen: 185 steht · 55 teils · 105 offen · 10 ersetzt · 6 verworfen — 361 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -37,7 +37,7 @@ Zusammen: 185 steht · 54 teils · 105 offen · 10 ersetzt · 6 verworfen — 36
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 30 | 20 steht · 5 teils · 4 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 31 | 20 steht · 6 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -875,7 +875,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [UI-Arbeitsplan.md](../docs/UI-Arbeitsplan.md), [Web-Arbeitsplan.md](../docs/Web-Arbeitsplan.md), [design](../docs/design)
 
-**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils) · REQ-345 Schwebende Werkzeugleiste für eine Auswahl (teils)
+**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils) · REQ-345 Schwebende Werkzeugleiste für eine Auswahl (teils) · REQ-361 Lange Seiten: Bereiche klappen und springen (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -922,6 +922,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | [[REQ-317]] | Zurück an dieselbe Stelle | 1 | **steht** | T-185: `Rueckweg` merkt den Scrollstand je Verlaufseintrag und stellt ihn bei „Zurück“ wieder her, sobald die Liste hoch genug ist; die Ebenenliste zeichnet den letzten Stand sofort |
 | [[REQ-342]] | Handbuch: alle Erklärungen an einer Stelle | 1 | **steht** | `/handbook`, `help.json`, `RULE_OPTIONS.does`, `APP_TERMS`, Tests erzwingen das Nachziehen (T-242, T-225, T-205) |
 | [[REQ-345]] | Schwebende Werkzeugleiste für eine Auswahl | 2 | **teils** | Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt |
+| [[REQ-361]] | Lange Seiten: Bereiche klappen und springen | 1 | **teils** | Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); Assistent, Facetten, Register, Artikel-, Figur- und Ebenenseite folgen |
 
 ### F-071 Bearbeiten in der Ansicht
 
@@ -1004,6 +1005,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-145]]** (1, teils, Medien & Assets) — Ablage in der Seite — *Assets als Artikel; Ablage im Artefakt*
 - **[[REQ-344]]** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
 - **[[REQ-346]]** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
+- **[[REQ-361]]** (1, teils, Oberfläche & Navigation) — Lange Seiten: Bereiche klappen und springen — *Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); Assistent, Facetten, Register, Artikel-, Figur- und Ebenenseite folgen*
 - **[[REQ-041]]** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **[[REQ-072]]** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **[[REQ-079]]** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*

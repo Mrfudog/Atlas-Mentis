@@ -3,6 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
 import { Stapelfolge } from './stapelfolge';
+import { Klappleiste } from '../muster/klappleiste';
 import { areaOf } from '@nw/model';
 import { Api, type Ebenenauswahl, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -163,7 +164,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
  */
 @Component({
   selector: 'nw-kampagnen-ebenen',
-  imports: [RouterLink, NgTemplateOutlet, KurzLink, Stapelfolge],
+  imports: [RouterLink, NgTemplateOutlet, KurzLink, Stapelfolge, Klappleiste],
   template: `
     <section class="kasten" [class.kompakt]="kompakt()" aria-label="Layers in play">
       @if (!kompakt()) {
@@ -177,8 +178,13 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
         <p class="fehler" role="alert">{{ f }}</p>
       }
       @if (daten(); as d) {
+        <!-- Eine Leiste für die Bereiche (T-220): alles auf/zu, vor und zurück, Alt+↑/↓. -->
+        <!-- Nachgeladen: diese Liste steht auch im Popup der Kopfleiste, und das Startpaket bleibt (T-348). -->
+        @defer (on immediate) {
+          <nw-klappleiste beschriftung="Layer sections" [fest]="!kompakt()" />
+        }
         <!-- Die Reihenfolge (T-188): oben gewinnt, ziehen, Gruppen als Block, Bücher herauslösen. -->
-        <details class="sets reihenfolge" [open]="!offen().has('order-zu')" (toggle)="zuklappen('order-zu', $event)">
+        <details class="sets reihenfolge" data-bereich [open]="!offen().has('order-zu')" (toggle)="zuklappen('order-zu', $event)">
           <summary>
             <span class="gname">Order in play</span>
             <span class="dim">{{ stapel().length }} in play · top wins</span>
@@ -196,7 +202,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
           }
         </details>
         <!-- Gespeicherte Auswahlen (T-186): der Stapel unter einem Namen, je Konto. -->
-        <details class="sets" [open]="offen().has('sets')" (toggle)="merke('sets', $event)">
+        <details class="sets" data-bereich [open]="offen().has('sets')" (toggle)="merke('sets', $event)">
           <summary>
             <span class="gname">Saved selections</span>
             <span class="dim">{{ sets().length }} saved</span>
@@ -316,7 +322,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
           }
         </ul>
         @if (gruppen().length || lose().length) {
-          <h3>Books</h3>
+          <h3 data-bereich tabindex="-1">Books</h3>
           <p class="fuss">
             Each book from 5e.tools is a layer of its own, and the books sit in groups. Turn on a whole group, or
             single books; with the group on, unticking a book takes just that one out.
@@ -330,7 +336,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
             <ng-container [ngTemplateOutlet]="gruppeTpl" [ngTemplateOutletContext]="{ $implicit: g }" />
           }
           @if (lose().length) {
-            <details class="gruppe" [open]="offen().has('-')" (toggle)="merke('-', $event)">
+            <details class="gruppe" data-bereich [open]="offen().has('-')" (toggle)="merke('-', $event)">
               <summary>
                 <span class="gname">{{ ansicht() === 'publisher' ? 'No publisher group (Homebrew, Unassigned)' : 'Other books' }}</span>
                 <span class="dim">{{ anZahl(lose()) }} of {{ lose().length }} on</span>
@@ -344,7 +350,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
           }
         }
         <ng-template #gruppeTpl let-g>
-          <details class="gruppe" [open]="offen().has(g.ebene.id)" (toggle)="merke(g.ebene.id, $event)">
+          <details class="gruppe" data-bereich [open]="offen().has(g.ebene.id)" (toggle)="merke(g.ebene.id, $event)">
             <summary>
               <input
                 type="checkbox"
@@ -518,7 +524,11 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
             }
           </div>
         </ng-template>
-        <h3>Compare layers</h3>
+        <details class="sets" data-bereich [open]="!offen().has('compare-zu')" (toggle)="zuklappen('compare-zu', $event)">
+          <summary>
+            <span class="gname">Compare layers</span>
+            <span class="dim">{{ vergleich().length }} marked</span>
+          </summary>
         <p class="fuss">
           A layer marked <em>compare</em> is not in play and in no list. Its versions of an article show
           on demand next to the fields that differ, and the GM can take one over into this campaign.
@@ -537,8 +547,13 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
           />
           <span>Players see the compare layers too</span>
         </label>
+        </details>
         <!-- Einzeln freigegeben (T-187): Extra-Inhalt aus Ebenen, die nicht im Spiel sind. -->
-        <h3>Extra content</h3>
+        <details class="sets" data-bereich [open]="!offen().has('extra-zu')" (toggle)="zuklappen('extra-zu', $event)">
+          <summary>
+            <span class="gname">Extra content</span>
+            <span class="dim">{{ d.extra?.length ?? 0 }} enabled</span>
+          </summary>
         <p class="fuss">
           Single articles in play although their layer is not — enable one on its page when it comes from a
           compare layer.
@@ -561,6 +576,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
         } @else {
           <p class="dim">None yet.</p>
         }
+        </details>
         @if (d.may === 'see') {
           <p class="fuss">A co-GM sees the layers; the GM turns them on.</p>
         }
@@ -1088,9 +1104,7 @@ export class KampagnenEbenenListe {
     else s.delete(key);
     this.offen.set(s);
     this.merkeStand();
-    void this.api.setPref(OFFEN_PREF, [...s]).catch(() => {
-      /* Nicht gemerkt ist nicht schlimm: der Abschnitt ist trotzdem offen. */
-    });
+    this.offenSpeichern();
   }
 
   /** Ein Abschnitt, der offen anfängt (T-188): gemerkt wird, dass er zu ist. */
@@ -1102,9 +1116,24 @@ export class KampagnenEbenenListe {
     else s.delete(key);
     this.offen.set(s);
     this.merkeStand();
-    void this.api.setPref(OFFEN_PREF, [...s]).catch(() => {
-      /* Nicht gemerkt ist nicht schlimm. */
-    });
+    this.offenSpeichern();
+  }
+
+  /**
+   * Gespeichert wird einmal nach dem letzten Klappen: „Expand all" (T-220)
+   * klappt vierzig Gruppen, und vierzig Schreibzugriffe mit je einem
+   * halben Stand wären vierzig Gelegenheiten, in falscher Reihenfolge
+   * anzukommen.
+   */
+  private offenTimer: ReturnType<typeof setTimeout> | null = null;
+  private offenSpeichern(): void {
+    if (this.offenTimer) clearTimeout(this.offenTimer);
+    this.offenTimer = setTimeout(() => {
+      this.offenTimer = null;
+      void this.api.setPref(OFFEN_PREF, [...this.offen()]).catch(() => {
+        /* Nicht gemerkt ist nicht schlimm: der Abschnitt steht trotzdem so. */
+      });
+    }, 300);
   }
 
   private async offenLaden(): Promise<void> {

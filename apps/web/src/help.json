@@ -115,6 +115,7 @@
             "A square marked ⚠ leaves an enemy's reach and provokes an opportunity attack — Disengage first to avoid it. The GM confirms a plan with “Confirm & roll” or sends it back.",
             "Confirming rolls at the server and applies the result: damage comes off the target's hit points after its resistances, immunities and vulnerabilities, and a target that concentrates makes its Constitution save against the DC at once.",
             "Dodge, Help, Hide and Ready leave an entry in the initiative that counts down: attacks against a dodging creature have disadvantage, a helped or hidden one attacks with advantage once.",
+            "The hit chance on each target already counts advantage and disadvantage from conditions (“adv.”, “dis.”). A target beyond an attack's range cannot be picked, and the server refuses such a turn too; between normal and long range the attack rolls with disadvantage, and the step says “long range”.",
             "As the turn plays out, whoever may react is asked “Opportunity attack?”. Attack rolls into the log and uses the reaction until that creature's next turn.",
             "With Rules from graphs on (Rules & options › At the table), the rule articles in play decide instead: a rule may offer a reaction when someone leaves a reach, is attacked, hit, missed or damaged — Shield, Sentinel, an opportunity attack. Use takes it and spends the reaction, Skip lets it pass; other outcomes appear as a line in the turn’s result for the GM to apply."
           ]
@@ -189,6 +190,7 @@
           "text": [
             "A layer's page shows its book below the header, chapter after chapter. The table of contents opens at the side; its chapters fold out.",
             "Search finds a passage in this book. Where you stopped is remembered for your account, on every device. A group of layers shows as a shelf.",
+            "‹ and › above the text go to the previous or next section, and on to the next chapter at the end (Alt+↑ and Alt+↓). On a phone they sit at the bottom of the screen.",
             "Pictures stand where the book has them, with their caption. Until the picture itself is uploaded, a frame with the caption holds its place."
           ]
         },
@@ -409,6 +411,7 @@
       "sections": [
         {
           "text": [
+            "In the Layers tab every part is a section that folds: Order in play, Saved selections, each group of books, Compare layers and Extra content, each with its count in the header. Expand all and Collapse all fold them all; ‹ and › jump to the previous or next one (Alt+↑/↓, with Shift: collapse/expand all). What is folded is kept for your account.",
             "The campaign page has tabs: Overview (the story and what hangs on the campaign), Members (who sits at the table, roles, invitations), Layers (what is switched on and in which order), Rules & options and Visibility. The tab stands in the address, so a link opens it. GMs change the members; co-GMs see them.",
             "Rules & options shows the campaign’s choices by system. Every system, rule and option is a rule article — its name opens it. Whoever may change the campaign picks “Use this” beside an option to switch it right there. GMs see how many rules of the app still lack an article; those are not listed.",
             "Where several may be allowed — ability score methods, starting equipment, substitutions — each has a tick: tick or untick it right there. With none ticked, the defaults apply.",

@@ -857,7 +857,7 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 ## EP-11 Oberfläche & Navigation
 
-30 Stories · 106 Punkte · 20 steht · 5 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+31 Stories · 109 Punkte · 20 steht · 6 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -907,6 +907,7 @@ Kopfleiste, Brotkrumen, Kurzansicht als Popup, Kampagne und Ebene sichtbar. — 
 | [[REQ-315]] | Globale Kopfleiste | Spieler | 1 | 2 | steht |
 | [[REQ-317]] | Zurück an dieselbe Stelle | Spielleitung | 1 | 2 | steht |
 | [[REQ-342]] | Handbuch: alle Erklärungen an einer Stelle | Spielleitung | 1 | 5 | steht |
+| [[REQ-361]] | Lange Seiten: Bereiche klappen und springen | Spielleitung | 1 | 3 | teils |
 | [[REQ-248]] | Kurzansicht überall | Spieler | 2 | 5 | steht |
 | [[REQ-305]] | Kampagne und Ebene immer sichtbar | Spielleitung | 2 | 2 | steht |
 | [[REQ-345]] | Schwebende Werkzeugleiste für eine Auswahl | Spieler | 2 | 3 | teils |

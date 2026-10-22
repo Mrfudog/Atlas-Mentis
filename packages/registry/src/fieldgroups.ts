@@ -1088,7 +1088,8 @@ export const fieldGroups = {
    * `op`: `add` zählt dazu, `set` setzt (bei Attributen nur, wenn es höher
    * ist; beim kritischen Treffer gilt die kleinste Schwelle), `grant`
    * gewährt ein Wort (Resistenz, Immunität; `advantage`/`disadvantage` an
-   * `attack` und `attacked`), `limit` deckelt (ein gepacktes Ziel hat
+   * `attack` und `attacked`, nach Abstand an `attacked.near` und
+   * `attacked.far` — Prone, T-351), `limit` deckelt (ein gepacktes Ziel hat
    * Tempo höchstens 0, T-275). `when`: `worn` (getragen oder
    * in der Hand), `attuned` (eingestimmt **und** getragen), `carried`
    * (irgendwo dabei, nicht zu Hause und nicht am Boden), `self` (eine
