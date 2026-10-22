@@ -904,7 +904,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-302 | Der Filter gehört der Seite | 3 | **steht** | `goPage` |
-| REQ-303 | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter` |
+| REQ-303 | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter`; seit T-382 auch Zeit und Autor (`f=@added:7d`, `@changed`, `@by`), D85 |
 | REQ-318 | Ein Ebenenfilter, global und speicherbar | 2 | **steht** | T-186: keine Ebenen-Häkchen mehr auf World/Story/Rules/Compendium; „Saved selections“ im Popup der Kopfleiste (`/api/me/layer-sets`); Filtergruppen ohne `layer`/`nolayer` (Migration 080 legt die alten Angaben nach `list_filter_ebenen_alt`) |
 
 ### F-070 Navigation & Kurzansicht

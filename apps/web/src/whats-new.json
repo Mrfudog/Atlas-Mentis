@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-filter-added-changed-by",
+      "date": "2026-10-22",
+      "title": "Filter lists by when and by whom",
+      "text": "In the Compendium, World, Story and Rules, “When & who” in the filters shows what was added or changed today, in the last 7 or 30 days or between two dates, and who added it; Sort puts the newest first. Added, Changed and Added by are also columns.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-22-edit-layer-first",
       "date": "2026-10-22",
       "title": "Change an article's layer while editing",

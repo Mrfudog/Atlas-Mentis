@@ -1763,7 +1763,18 @@ export function buildApp({
       });
     };
     lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then(async (gesiebt) => {
-      const idx = buildListIndex(registry, ohneFassungImSpiel(gesiebt), (e) => rang.rank(stand.map.get(e.id) ?? e), genannt);
+      /* Herkunft (T-382): Zeiten aus dem ungesiebten Bestand, wer hinzufügte
+         neben dem Konto. Nur für Zeilen, die ohnehin dastehen. */
+      const [creators, konten] = await Promise.all([repo.creators(), repo.listUsers()]);
+      const herkunft = {
+        times: (id: string) => {
+          const e = stand.map.get(id);
+          return e ? { createdAt: e.createdAt, updatedAt: e.updatedAt } : undefined;
+        },
+        creators,
+        users: new Map(konten.map((u) => [u.id, u.name])),
+      };
+      const idx = buildListIndex(registry, ohneFassungImSpiel(gesiebt), (e) => rang.rank(stand.map.get(e.id) ?? e), genannt, herkunft);
       /* Die Namen kennt der Vergleich vom Spiel: seine Ebenen, und wohin
          seine Verweise zeigen, sind Artikel, die dieser Betrachter dort
          sieht — sonst stünde an einer Zeile die Id ihrer Ebene. */
@@ -3364,6 +3375,7 @@ export function buildApp({
       const issues = validateEntity(registry, verweis, { knownTypes: known });
       if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       await repo.putEntity(verweis);
+      await repo.addCreator(user.id, id);
       await repo.appendEvent('entity.created', id, { interfaces: verweis.interfaces, uses: original.id, layer: ebene.id, takenInto: into.id, by: user.id });
       return reply.code(201).send({ id, created: 1, taken: 1, used: true });
     }
@@ -3665,6 +3677,8 @@ export function buildApp({
         return { code: 422, body: { error: 'Validierung fehlgeschlagen', issues } };
       }
       const stored = await repo.putEntity(zuSchreiben);
+      /* Herkunft für „Added by" (T-382) — für jedes Konto, nicht nur Spielende. */
+      if (user) await repo.addCreator(user.id, id);
       if (spielerin && user) {
         await repo.addAuthored(user.id, id);
         /* Eine Figur, die sie anlegt, führt sie auch (REQ-237). */
@@ -4242,6 +4256,7 @@ export function buildApp({
     const issues = validateEntity(registry, fassung, { knownTypes: known, stageOf: stageBases([...stand.alle, fassung]) });
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
     await repo.putEntity(fassung);
+    await repo.addCreator(user.id, id);
     await repo.appendEvent('entity.created', id, { interfaces: fassung.interfaces, adapts: original.id, layer: ebene.id, by: user.id });
     return reply.code(201).send({ id, created: true });
   });

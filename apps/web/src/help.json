@@ -301,6 +301,7 @@
             "The choice is kept per page and type for your account and in the address, so a shared link shows the same table. “Reset to default” drops your choice: the campaign default shows, else the type's columns. The GM can make a choice the campaign default for everyone without their own.",
             "Filter groups are saved filters of a page — reach them as tabs or from ▾ in the header. The layers shown follow the running campaign; change them in the popup under the brand. There, “Show comparison articles in lists” adds what only a comparison layer brings, below the list and marked “not in play”; the GM brings one into play with “Enable”.",
             "Pick one type and its fields become filters. Where a type has a prerequisite (feats, magic items, classes), “Usable by” keeps what a character meets; a “?” marks a prerequisite that could not be checked.",
+            "When & who filters by when an article was added or last changed — today, the last 7 or 30 days, or between two dates — and by who added it; Sort puts the newest first. The choice stays in the address and in a saved filter group, and holds when you change the type.",
             "“New article” creates one in your write layer."
           ]
         }

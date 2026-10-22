@@ -12,7 +12,8 @@
  * - **eine Kante** (`out.kante`, `in.kante`) mit den Namen der Artikel am
  *   anderen Ende — die Gegenrichtung ist eine Abfrage (K1);
  * - **eine Angabe jeder Zeile** (`@type`, `@source`, `@layers`, `@tags`,
- *   `@status`, `@id`) — das, was jede Art hat.
+ *   `@status`, `@id`, `@created`, `@updated`, `@addedBy`) — das, was jede
+ *   Art hat.
  *
  * Was eine Wahl nennt, bleibt ein Name: eine Spalte, die das Register
  * nicht mehr kennt, steht leer und fällt beim nächsten Speichern weg.
@@ -32,6 +33,10 @@ export const BASE_COLUMNS = [
   { ref: '@tags', label: 'Tags' },
   { ref: '@status', label: 'Status' },
   { ref: '@id', label: 'ID' },
+  /* Wann und von wem (T-382): gerechnet aus dem Server, nicht aus dem Artikel. */
+  { ref: '@created', label: 'Added' },
+  { ref: '@updated', label: 'Changed' },
+  { ref: '@addedBy', label: 'Added by' },
 ] as const;
 
 export type ColumnKind = 'number' | 'bool' | 'list' | 'text';
@@ -120,7 +125,7 @@ export function cleanColumns(roh: unknown): string[] | null {
     ...new Set(
       liste
         .map((x) => (typeof x === 'string' ? x.trim() : ''))
-        .filter((x) => /^(@[a-z]+|(out|in)\.[A-Za-z][\w-]*|[A-Za-z][\w]*\.[A-Za-z][\w]*)$/.test(x)),
+        .filter((x) => /^(@[a-z][A-Za-z]*|(out|in)\.[A-Za-z][\w-]*|[A-Za-z][\w]*\.[A-Za-z][\w]*)$/.test(x)),
     ),
   ].slice(0, 30);
   return sauber;
