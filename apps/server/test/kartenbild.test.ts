@@ -151,8 +151,52 @@ describe('the map image under the fog (T-312)', () => {
     const alles = revealAll(karte, 'all');
     await repo.putEntity({ ...alles, revision: (await repo.getEntity('map_gruft'))!.revision });
     expect(fullyRevealed(alles)).toBe(true);
-    expect(bildVon((await hole('Sela', '/api/entities/map_gruft')).json() as Entity)).toBe(asset);
+    /* Ganz aufgedeckt kommt das ganze Bild — weiter über die Karte, denn
+       sie gibt das Bild frei und nicht das Asset. */
+    const ganz = bildVon((await hole('Sela', '/api/entities/map_gruft')).json() as Entity);
+    expect(ganz).toMatch(/^\/api\/maps\/map_gruft\/image\?sheet=__base&fog=[a-f0-9]{16}$/);
+    const voll = await hole('Sela', ganz);
+    expect(voll.statusCode).toBe(200);
+    expect((await pixel(voll.rawPayload, 150, 50))[2]).toBeGreaterThan(200);
     expect((await hole('Sela', `/api/assets/${asset}`)).statusCode).toBe(200);
+    await app.close();
+  });
+
+  it('gives players the image of a map they see, even when the asset itself is not shared', async () => {
+    const { app, repo, hole, asset } = await aufbau();
+    /* Das Bild ist nur für die Leitung — die Karte aber für alle. Wer die
+       Karte sieht, bekommt ihr Bild, ohne dass jemand das Asset teilt. */
+    const a = (await repo.getEntity(asset))!;
+    await repo.putEntity({ ...a, components: { ...a.components, Visibility: { audience: 'gm' } } });
+    expect((await hole('Sela', `/api/assets/${asset}`)).statusCode).toBe(404);
+    const url = bildVon((await hole('Sela', '/api/entities/map_gruft')).json() as Entity);
+    const res = await hole('Sela', url);
+    expect(res.statusCode).toBe(200);
+    /* Beschnitten bleibt es trotzdem: rechts liegt das Geheimnis. */
+    expect((await pixel(res.rawPayload, 20, 50))[0]).toBeGreaterThan(200);
+    expect((await pixel(res.rawPayload, 150, 50))[3]).toBe(0);
+    await app.close();
+  });
+
+  it('gives players the whole image of a map without fog, also when the asset is not shared', async () => {
+    const { app, repo, hole, asset, karte } = await aufbau();
+    const a = (await repo.getEntity(asset))!;
+    await repo.putEntity({ ...a, components: { ...a.components, Visibility: { audience: 'gm' } } });
+    const offen = { ...karte, components: { ...karte.components, Map: { fog: false } } };
+    await repo.putEntity({ ...offen, revision: (await repo.getEntity('map_gruft'))!.revision });
+    const sp = (await hole('Sela', '/api/entities/map_gruft')).json() as Entity;
+    expect(JSON.stringify(sp)).not.toContain(asset);
+    const res = await hole('Sela', bildVon(sp));
+    expect(res.statusCode).toBe(200);
+    expect((await pixel(res.rawPayload, 150, 50))[2]).toBeGreaterThan(200);
+    await app.close();
+  });
+
+  it('gives a map the players do not see no image either', async () => {
+    const { app, repo, hole } = await aufbau();
+    const k = (await repo.getEntity('map_gruft'))!;
+    await repo.putEntity({ ...k, components: { ...k.components, Visibility: { audience: 'gm' } } });
+    expect((await hole('Sela', '/api/maps/map_gruft/image?sheet=__base')).statusCode).toBe(404);
     await app.close();
   });
 

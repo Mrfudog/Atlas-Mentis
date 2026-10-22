@@ -9,6 +9,7 @@
  *   PUT    /api/knowledge/info/:info  — Name, Felder, Bündel ändern
  *   DELETE /api/knowledge/info/:info  — eine Information entfernen
  *   GET    /api/knowledge/:id/contents — was ein Wissen vereint (T-287)
+ *   POST   /api/knowledge/of/:id/reveal — Felder den Gruppen zuteilen, ein Klick
  *
  * **Eine neue Information ändert den Artikel nicht:** sie gilt für ihn
  * über ihre Geltung (`applies.article`) und liegt in der Ebene der
@@ -37,6 +38,7 @@ import {
   INFO_COMPONENT,
   KNOWN_BY_RELATION,
   nextId,
+  partiesOf,
   primaryInterface,
   tableRole,
   type Entity,
@@ -213,6 +215,74 @@ export function registerWissen(app: FastifyInstance, deps: WissenDeps): void {
       const f2 = await buendelSetzen(request, info.id, soll, stand);
       if (f2) return reply.code(403).send({ error: f2 });
       return sicht(request, artikel, await roh());
+    },
+  );
+
+  /**
+   * **Aufdecken** (REQ-178): der eine Klick der Leitung, mit dem die
+   * Spielenden etwas über einen Artikel erfahren — als Vorgabe den Namen
+   * statt des Decknamens. Darunter liegt dasselbe Wissen wie im Kasten
+   * Knowledge: eine Information für genau diesen Artikel, die die Felder
+   * nennt, und `knownBy` an die Gruppe. Gibt es schon eine Information
+   * für genau diese Felder, wird sie zugeteilt und keine zweite angelegt.
+   * Ohne genannte Gruppe bekommen es alle Gruppen der Kampagne; andere
+   * Felder (Basiswerte, ein Teil des Wissens) nennt `fields`.
+   */
+  app.post<{ Params: { id: string }; Body: { fields?: unknown; name?: unknown; party?: unknown } | null }>(
+    '/api/knowledge/of/:id/reveal',
+    async (request, reply) => {
+      const stand = await roh();
+      const l = await leitung(request, stand);
+      if (!l) return reply.code(403).send({ error: 'Wissen verteilt die Leitung.' });
+      const artikel = stand.map.get(request.params.id);
+      const [sichtbar] = artikel ? await sieve(request, [artikel], stand.map) : [];
+      if (!artikel || !sichtbar) return reply.code(404).send({ error: 'Nicht gefunden' });
+      const gewaehlt = liste(request.body?.fields);
+      const fields = gewaehlt.length ? gewaehlt : ['Identity.name'];
+      const partyWahl = typeof request.body?.party === 'string' ? request.body.party : '';
+      const gruppen = partyWahl
+        ? [stand.map.get(partyWahl)].filter((g): g is Entity => !!g && primaryInterface(g) === 'Party')
+        : l.kampagne
+          ? partiesOf(stand.map, l.kampagne.id)
+          : [];
+      if (!gruppen.length) {
+        return reply.code(409).send({ error: 'Es gibt keine Gruppe, der es zugeteilt werden kann. Lege unter Party eine Gruppe an und nimm die Figuren auf.' });
+      }
+      const registry = await repo.getRegistry();
+      const gleich = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+      let info = informationsOf(stand.map, artikel, registry).find((i) => {
+        const g = infoApplies(i);
+        return g?.article === artikel.id && gleich(liste((i.components?.[INFO_COMPONENT] as { fields?: unknown } | undefined)?.fields), fields);
+      });
+      if (!info) {
+        const name = typeof request.body?.name === 'string' && request.body.name.trim()
+          ? request.body.name.trim()
+          : fields.length === 1 && fields[0] === 'Identity.name'
+            ? `${entityName(artikel)}: name`
+            : `${entityName(artikel)}: ${fields.join(', ')}`;
+        const ebene = await kampagnenEbene(stand.map, l.kampagne);
+        const id = `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+        info = {
+          id,
+          interfaces: [INFO_COMPONENT],
+          name,
+          components: {
+            Identity: { name, id: nextId(stand.alle, INFO_COMPONENT) },
+            [INFO_COMPONENT]: { fields, tier: 'secret', applies: { article: artikel.id } },
+            Status: { status: 'ready' },
+          },
+          relations: ebene ? [{ id: `${id}~inLayer`, type: 'inLayer', to: ebene.id, props: {} }] : [],
+        };
+      }
+      const fehlt = gruppen.filter((g) => !(info!.relations ?? []).some((r) => r.type === KNOWN_BY_RELATION && r.to === g.id));
+      if (fehlt.length || !stand.map.has(info.id)) {
+        const f = await schreib({
+          ...info,
+          relations: [...(info.relations ?? []), ...fehlt.map((g) => ({ id: kante(info!.id, KNOWN_BY_RELATION), type: KNOWN_BY_RELATION, to: g.id, props: {} }))],
+        });
+        if (f) return reply.code(422).send({ error: f });
+      }
+      return { info: info.id, fields, parties: gruppen.map((g) => ({ id: g.id, name: entityName(g) })) };
     },
   );
 

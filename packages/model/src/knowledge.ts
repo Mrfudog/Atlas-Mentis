@@ -407,6 +407,13 @@ export function redactEntity(
   gmFields: string[] = ['Secrets.secret', 'Tactics.tactics', 'Encounter.solution', 'Encounter.hint'],
   /** Was die Kampagne Spielenden von der Initiative zeigt (T-022, `initiativeRulesOf`). */
   participantView?: PlayerViewRules,
+  /**
+   * **Ein Deckname verdeckt** (REQ-178): trägt der Artikel einen
+   * Decknamen, gilt sein Name als ungewusst, bis eine bekannte Information
+   * ihn nennt. Der Server setzt es für alle ausser der Leitung — wer
+   * einen Decknamen einträgt, meint, dass die Spielenden ihn sehen.
+   */
+  coverHides = false,
 ): Entity {
   if (!viewerId) return article;
   const gmSet = new Set(gmFields);
@@ -446,6 +453,9 @@ export function redactEntity(
   let feldErlaubt = (component: string, property: string, _eintrag?: string): boolean =>
     !gmBlank.has(property) && !gmJe.get(component)?.has(property);
   let erlaubt: (ref: FieldRef) => boolean = (ref) => !nurSL(ref);
+  /* Nennt eine **bekannte** Information den Namen? Die Restgruppe zählt
+     dafür nicht: unbeansprucht heisst nicht gewusst. */
+  let nameGewusst = false;
   if (informationsOf(entities, article, registry).length) {
     const allFields: FieldRef[] = [];
     for (const [component, card] of Object.entries(article.components ?? {})) {
@@ -463,6 +473,7 @@ export function redactEntity(
       if (!g.info) continue; /* die offene Restgruppe beansprucht nichts */
       if (!g.known) continue;
       g.fields.forEach((f) => erlaubtF.add(f));
+      if (g.fields.includes('Identity.name')) nameGewusst = true;
     }
     const rest = groups.find((g) => !g.info);
     rest?.fields.forEach((f) => { if (!nurSL(f)) erlaubtF.add(f); });
@@ -503,9 +514,13 @@ export function redactEntity(
   /* Ein Name, der gar nicht in der Karte steht, ist nicht gewusst — wie im
      langen Weg, wo er in keiner Feldliste vorkommt. */
   const hatName = 'name' in ((article.components ?? {})['Identity'] ?? {});
-  if (!hatName || !erlaubt('Identity.name')) {
+  const verdeckt = coverHides && !!wer?.cover && !nameGewusst;
+  if (!hatName || verdeckt || !erlaubt('Identity.name')) {
     const cover = wer?.cover;
-    components['Identity'] = { ...(components['Identity'] ?? {}), name: cover || 'jemand' };
+    const { aliases: _aliases, ...ohneAliasse } = components['Identity'] ?? {};
+    /* Verdeckt der Deckname, gehen die Aliasse mit: ein anderer Name für
+       dasselbe verriete den richtigen. */
+    components['Identity'] = { ...(verdeckt ? ohneAliasse : (components['Identity'] ?? {})), name: cover || 'jemand' };
   }
 
   /* Auch der bequeme Name oben am Artikel. Ihn stehen zu lassen wäre die

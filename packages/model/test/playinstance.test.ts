@@ -11,6 +11,7 @@ import {
   newPlayInstance,
   playedOf,
   redactMap,
+  releaseMap,
   resolveInstance,
   sessionEncounters,
   sessionInstance,
@@ -101,6 +102,51 @@ describe("a map in play", () => {
     expect(
       (fuerSie.relations ?? []).filter((r) => r.type === "marker"),
     ).toEqual([]);
+  });
+
+  it("release shares the map with the campaign, also when the template was for the GM only", () => {
+    /* Eine Vorlage in Vorbereitung und nur für die Leitung: die Instanz
+       erbt die Sichtbarkeit, und „Release" allein hätte nichts gezeigt. */
+    const geheim: Entity = {
+      ...vorlage,
+      components: {
+        ...vorlage.components,
+        Identity: { ...vorlage.components["Identity"], cover: "Old vault" },
+        Visibility: { audience: "gm", hiddenFrom: ["verraeter"] },
+        Status: { status: "prepared" },
+      },
+    };
+    const k = newPlayInstance(geheim, {
+      id: "inst-g",
+      number: "map-0003",
+      layer: "ly_k",
+      session: "s1",
+      at: "2026-10-22T19:00:00Z",
+    });
+    const k2: Entity = {
+      ...k,
+      components: { ...k.components, Status: { status: "prepared" } },
+    };
+    const bestand = new Map(
+      [ebene, kampagne, geheim, k2].map((e) => [e.id, e]),
+    );
+    expect(articleVisible(bestand, k2, spielerin)).toBe(false);
+    const frei = releaseMap(k2, true);
+    bestand.set(frei.id, frei);
+    expect(frei.components["Map"]).toMatchObject({ released: true, fog: true });
+    expect(frei.components["Status"]).toEqual({ status: "ready" });
+    expect(frei.components["Identity"]).toMatchObject({ cover: "Old vault" });
+    /* Die Stufe wird geöffnet, ein ausdrückliches Verbot bleibt stehen. */
+    expect(frei.components["Visibility"]).toEqual({
+      audience: "campaign",
+      hiddenFrom: ["verraeter"],
+    });
+    expect(articleVisible(bestand, frei, spielerin)).toBe(true);
+    /* Zurücknehmen nimmt nur die Freigabe: die Karte ist wieder nicht da. */
+    const zurueck = releaseMap(frei, false);
+    bestand.set(zurueck.id, zurueck);
+    expect(zurueck.components["Map"]).toMatchObject({ released: false });
+    expect(articleVisible(bestand, zurueck, spielerin)).toBe(false);
   });
 
   it("is not there for players until released — the GM always sees it", () => {

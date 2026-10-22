@@ -9,6 +9,7 @@
           "text": [
             "Play shows the map the session has as “Map on the table”. Switch the session at the top; “All maps” opens any other map without changing what the table sees.",
             "A map on the table is a map in play — its own copy for this session: tokens and fog live there, the map itself stays as prepared. Open a map and press Take into play (GM) to put it on the table; Start encounter does the same for an encounter and its map. Players see a map in play only after Release to players, with the fog already on.",
+            "Release also makes the map ready and open to the campaign; players get its image under the fog without sharing the image itself. A map with a cover name shows players that name until you press Reveal name under ⋯ View.",
             "Zoom with + and −, the mouse wheel or two fingers. A sub-map that fills the view is entered; zooming out past the edge, or the arrow at the top, leads back to the map above.",
             "On a map in play, players stay on the table map unless the GM presses Players stay here to switch it to Players change maps — then they may zoom only into maps taken into play and released in this session. The GM can always change maps."
           ]

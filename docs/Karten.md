@@ -1020,6 +1020,21 @@ flowchart LR
   die Instanz für Spielende **nicht vorhanden** — nicht in Listen, nicht
   über die Id, nicht im Live-Kanal, nicht unter Play (`heldBackMap`, in
   `articleVisible`). Danach sehen sie sie sofort mit Nebel.
+  **Freigeben heisst teilen** (`releaseMap`, 22.10.): die Instanz erbt die
+  Sichtbarkeit ihrer Vorlage, und eine Vorlage in Vorbereitung ist oft
+  `prepared` und nur für die Leitung — dann zeigte die Freigabe nichts.
+  Darum setzt sie auch `Status.status: ready` und
+  `Visibility.audience: campaign`; ein `hiddenFrom` bleibt stehen.
+  Zurücknehmen nimmt nur `released`. Der Deckname der Vorlage
+  (`Identity.cover`) geht mit auf die Instanz.
+- **Die Karte gibt ihr Bild frei, nicht das Asset** (22.10.): Spielende
+  bekommen jedes Blatt über `/api/maps/:id/image` — beschnitten unter dem
+  Nebel, ganz, wenn keiner liegt oder alles aufgedeckt ist. Gefragt wird,
+  ob sie die Karte sehen; das Asset muss niemand eigens teilen.
+  `/api/assets/:id` fragt weiter das Asset.
+- **Deckname und Aufdecken** (REQ-178): trägt die Karte einen Decknamen,
+  sehen Spielende ihn, bis die Leitung *Reveal name* drückt (⋯ View). Das
+  ist gewöhnliches Wissen (docs/Wissen.md › Aufdecken).
 - **Nebel je Instanz:** `Map.reveal` und `Map.fog` stehen an der Instanz;
   der Nebel der Vorlage gilt ihr nicht. Spiel-Tokens sind Marker der
   Instanz — die zweite Runde sieht die der ersten nicht (E-109: vorerst

@@ -55,6 +55,34 @@ export function isReleased(e: Entity): boolean {
 }
 
 /**
+ * **Freigeben heisst teilen** (T-289): wer eine Karte im Spiel freigibt,
+ * will, dass die Spielenden sie sehen. Die Instanz erbt aber die
+ * Sichtbarkeit ihrer Vorlage — und eine Vorlage in Vorbereitung ist oft
+ * `prepared` und nur für die Leitung. Dann zeigte „Release" nichts, und am
+ * Tisch fragt sich jemand, warum. Also setzt die Freigabe auch den Stand
+ * auf `ready` und die Stufe auf `campaign`. Ein ausdrückliches Verbot
+ * (`hiddenFrom`) bleibt: das hat jemand so gemeint. Zurücknehmen nimmt nur
+ * die Freigabe — die Karte ist dann ohnehin nicht da (`heldBackMap`).
+ */
+export function releaseMap(e: Entity, an: boolean): Entity {
+  const karte = {
+    ...((e.components?.["Map"] ?? {}) as Record<string, unknown>),
+    released: an,
+  };
+  if (!an) return { ...e, components: { ...e.components, Map: karte } };
+  const sicht = (e.components?.["Visibility"] ?? {}) as Record<string, unknown>;
+  return {
+    ...e,
+    components: {
+      ...e.components,
+      Map: karte,
+      Status: { ...((e.components?.["Status"] ?? {}) as Record<string, unknown>), status: "ready" },
+      Visibility: { ...sicht, audience: "campaign" },
+    },
+  };
+}
+
+/**
  * **Ist diese Karte für Spielende nicht vorhanden?** Eine Karteninstanz,
  * die die Leitung noch nicht freigegeben hat. Eine Vorlage nie — für sie
  * gilt die Sichtbarkeit wie für jeden Artikel.
@@ -109,6 +137,11 @@ export function newPlayInstance(
       ...(opts.session ? { playedIn: opts.session } : {}),
     },
   };
+  /* Der Deckname geht mit (REQ-178): `Identity` erbt eine Instanz nicht,
+     und ohne ihn stünde am Tisch der Name, den die Vorlage verdeckt. */
+  const cover = (template.components?.["Identity"] as { cover?: unknown } | undefined)?.cover;
+  if (typeof cover === "string" && cover.trim())
+    components["Identity"] = { ...(components["Identity"] ?? {}), cover };
   const sicht = template.components?.["Visibility"];
   if (sicht && Object.keys(sicht).length)
     components["Visibility"] = JSON.parse(JSON.stringify(sicht)) as Record<

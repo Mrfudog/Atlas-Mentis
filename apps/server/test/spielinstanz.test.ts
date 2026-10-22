@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 import { seedRegistry } from "@nw/registry";
-import type { Entity, Relation } from "@nw/model";
+import { releaseMap, type Entity, type Relation } from "@nw/model";
 import { buildApp } from "../src/app.js";
 import { InMemoryRepository } from "../src/repo.js";
 import { hashPassword } from "../src/auth.js";
@@ -251,6 +251,29 @@ describe("taking a map into play (T-289)", () => {
         .json()
         .rows.map((r: { id: string }) => r.id),
     ).toEqual([id]);
+  });
+
+  it("release shares a map whose template was prepared for the GM only", async () => {
+    const { repo, hole, nimm, sende } = await aufbau();
+    /* Die Vorlage in Vorbereitung und nur für die Leitung — so liegt eine
+       Karte da, bevor der Abend beginnt. */
+    const v = (await repo.getEntity("gruft"))!;
+    await repo.putEntity({
+      ...v,
+      components: {
+        ...v.components,
+        Visibility: { audience: "gm" },
+        Status: { status: "prepared" },
+      },
+    });
+    const id = await nimm("s_1", "gruft");
+    const voll = (await hole("Mira", `/api/entities/${id}`)).json() as Entity;
+    const res = await sende("Mira", "PUT", `/api/entities/${id}`, releaseMap(voll, true));
+    expect(res.statusCode, res.body).toBe(200);
+    expect((await hole("Sela", `/api/entities/${id}`)).statusCode).toBe(200);
+    expect((await hole("Sela", "/api/play?session=s_1")).json()).toMatchObject({ map: id });
+    /* Die Vorlage bleibt, wie sie war: geteilt ist der Stand am Tisch. */
+    expect((await hole("Sela", "/api/entities/gruft")).statusCode).toBe(404);
   });
 
   it("keeps two rounds on the same map apart", async () => {
