@@ -91,6 +91,17 @@ export function heldBackMap(e: Entity): boolean {
   return primaryInterface(e) === "Map" && isInstance(e) && !isReleased(e);
 }
 
+/**
+ * **Ist das eine Kartenvorlage?** (E-1, Leitung 22.10.2026) Spielende sehen
+ * nur Karten im Spiel: eine Vorlage ist Vorbereitungsstand — oft ohne
+ * Nebel und mit Sperren, die an der Instanz längst anders stehen. Über die
+ * Liste bei ihr zu landen hiess, das ganze Bild und alle Türen zu sehen,
+ * während die Karte am Tisch noch gar nicht freigegeben war.
+ */
+export function mapTemplate(e: Entity): boolean {
+  return primaryInterface(e) === "Map" && !isInstance(e);
+}
+
 /** Wann und in welcher Sitzung, wie es an der Instanz steht. */
 export function playedInfo(e: Entity): {
   at: string;

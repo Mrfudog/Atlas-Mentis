@@ -13,6 +13,7 @@ import { buildApp } from '../src/app.js';
 import { LocalChangeFeed } from '../src/live.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
+import { kartenImSpiel } from './hilfen/imspiel.js';
 
 const PASSWORT = 'nebel-wacht-am-tor';
 const ident = (name: string, id: string) => ({ Identity: { name, id, aliases: [] }, Status: { status: 'ready' } });
@@ -48,7 +49,7 @@ function bestand(): Entity[] {
 
 async function aufbau() {
   const registry = { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_a' } };
-  const repo = new InMemoryRepository(registry, bestand());
+  const repo = new InMemoryRepository(registry, kartenImSpiel(bestand()));
   const live = new LocalChangeFeed({ flushMs: 1 });
   const app = buildApp({ repo, live });
   const ids: Record<string, string> = {};

@@ -36,7 +36,7 @@
 import type { Entity, EntityId } from './types.js';
 import { knowledgeHolders } from './knowledge.js';
 import { mostSpecific, type Dimension } from './transformkeys.js';
-import { heldBackMap } from './playinstance.js';
+import { heldBackMap, mapTemplate } from './playinstance.js';
 
 /** Die Art, deren Karte die Sichtbarkeit trägt. */
 export const VISIBILITY_COMPONENT = 'Visibility';
@@ -416,6 +416,9 @@ export function articleVisible(
      (T-289, E-041): Spielende bekommen sie weder in einer Liste noch über
      die Id noch im Live-Kanal. Die Leitung der Kampagne sieht sie immer. */
   if (heldBackMap(article) && !seesUnfinished(entities, article, v)) return false;
+  /* **Spielende sehen nur Karten im Spiel** (E-1): keine Vorlage, auch
+     keine fertige für die ganze Kampagne. Eigene Karten bleiben (oben). */
+  if (mapTemplate(article) && !seesUnfinished(entities, article, v)) return false;
   /* **Unfertiges sieht nur die Leitung** (REQ-237, E-011). Wer nicht `gm`
      oder `co-gm` der Kampagne ist, der der Artikel gehört, bekommt nur,
      was `ready` ist. Das ist die grobe Frage: ein Entwurf stünde sonst mit

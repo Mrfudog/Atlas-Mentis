@@ -9,6 +9,7 @@ import type { Entity, Relation } from '@nw/model';
 import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
+import { kartenImSpiel } from './hilfen/imspiel.js';
 
 const PASSWORT = 'nebel-wacht-am-tor';
 const imLayer = (id: string): Relation => ({ id: `${id}~l`, type: 'inLayer', to: 'ly_nebel', props: {} });
@@ -46,7 +47,7 @@ const bestand: Entity[] = [
 async function aufbau() {
   const repo = new InMemoryRepository(
     { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_nebel' } },
-    bestand,
+    kartenImSpiel(bestand),
   );
   const app = buildApp({ repo });
   const konto = async (name: string, role: 'gm' | 'player', actorIds: string[] = []) =>

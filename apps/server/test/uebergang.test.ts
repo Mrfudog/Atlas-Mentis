@@ -12,6 +12,7 @@ import { buildApp } from '../src/app.js';
 import { LocalChangeFeed } from '../src/live.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
+import { kartenImSpiel } from './hilfen/imspiel.js';
 
 const PASSWORT = 'treppe-und-portal-wacht';
 const NAT = { w: 1000, h: 1000 };
@@ -58,7 +59,7 @@ function bestand(campaign: Record<string, unknown> = {}, treppe: Record<string, 
 
 async function aufbau(...args: Parameters<typeof bestand>) {
   const registry = { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_a' } };
-  const repo = new InMemoryRepository(registry, bestand(...args));
+  const repo = new InMemoryRepository(registry, kartenImSpiel(bestand(...args)));
   const app = buildApp({ repo, live: new LocalChangeFeed({ flushMs: 1 }) });
   const konto = async (name: string, roles: Record<string, 'gm' | 'player'>, actorIds: string[] = []) => {
     await repo.putUser({ id: randomUUID(), name, passwordHash: await hashPassword(PASSWORT), isAdmin: false, actorIds, roles });

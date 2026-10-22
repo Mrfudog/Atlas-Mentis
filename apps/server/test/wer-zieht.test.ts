@@ -15,6 +15,7 @@ import { buildApp } from '../src/app.js';
 import { LocalChangeFeed } from '../src/live.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
+import { kartenImSpiel } from './hilfen/imspiel.js';
 
 const PASSWORT = 'wer-zieht-am-tisch';
 const ident = (name: string, id: string) => ({ Identity: { name, id, aliases: [] }, Status: { status: 'ready' } });
@@ -62,7 +63,7 @@ function bestand(kampagne: Record<string, unknown>, kampf: boolean): Entity[] {
 
 async function aufbau(kampagne: Record<string, unknown> = {}, kampf = false) {
   const registry = { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_a' } };
-  const repo = new InMemoryRepository(registry, bestand(kampagne, kampf));
+  const repo = new InMemoryRepository(registry, kartenImSpiel(bestand(kampagne, kampf)));
   const app = buildApp({ repo, live: new LocalChangeFeed({ flushMs: 1 }) });
   const konto = async (name: string, roles: Record<string, 'gm' | 'player'>, actorIds: string[] = []) => {
     await repo.putUser({ id: randomUUID(), name, passwordHash: await hashPassword(PASSWORT), isAdmin: false, actorIds, roles });

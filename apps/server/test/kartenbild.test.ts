@@ -16,6 +16,7 @@ import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
 import { InMemoryAssetStore } from '../src/assets.js';
+import { imSpiel } from './hilfen/imspiel.js';
 
 const PASSWORT = 'nebel-wacht-am-tor';
 
@@ -76,7 +77,7 @@ async function aufbau() {
   /* Am Tisch ist das Bild fertig — ein Entwurf ginge ohnehin nicht an Spielende. */
   const a = (await repo.getEntity(asset))!;
   await repo.putEntity({ ...a, components: { ...a.components, Status: { status: 'ready' } } });
-  const karte: Entity = {
+  const roheKarte: Entity = {
     id: 'map_gruft',
     interfaces: ['Map'],
     name: 'Gruft',
@@ -87,7 +88,9 @@ async function aufbau() {
     },
     relations: [{ id: 'l1', type: 'inLayer', to: 'ly_nebel', props: {} }],
   };
-  await repo.putEntity(karte);
+  const [vorlage, karte] = imSpiel(roheKarte);
+  await repo.putEntity(vorlage!);
+  await repo.putEntity(karte!);
   return { repo, app, hole, keks, asset, karte };
 }
 

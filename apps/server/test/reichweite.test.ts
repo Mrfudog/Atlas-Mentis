@@ -16,6 +16,7 @@ vi.mock('node:crypto', async (orig) => {
 
 import type { Entity } from '@nw/model';
 import { tisch } from './hilfen/tisch.js';
+import { kartenImSpiel } from './hilfen/imspiel.js';
 
 const ident = (name: string, id: string) => ({ Identity: { name, id, aliases: [] }, Status: { status: 'ready' } });
 const im = (id: string) => ({ id: `${id}_in`, type: 'inLayer', to: 'ly_a', props: {} });
@@ -83,7 +84,7 @@ async function aufbau(ziel: { liegt?: boolean; blind?: boolean } = {}, goblinFel
   const artikel = bestand(ziel).map((e) =>
     e.id === 'map_1' ? { ...e, relations: (e.relations ?? []).map((r) => (r.id === 'mk_gob' ? { ...r, props: { ...r.props, x: x(goblinFeld) } } : r)) } : e,
   );
-  const t = await tisch({ artikel, kampagne: 'camp_a', konten: KONTEN });
+  const t = await tisch({ artikel: kartenImSpiel(artikel), kampagne: 'camp_a', konten: KONTEN });
   /** Einreichen als `wer`, bestätigen als Leitung; die Ergebnisse und die Würfe. */
   const zug = async (wer: string, steps: object[]) => {
     const p = await t.als(wer, 'POST', '/api/maps/map_1/turn-plan', { payload: { actor: 'pc_rook', steps, nat: NAT } });

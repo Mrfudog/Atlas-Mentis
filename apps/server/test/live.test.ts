@@ -14,6 +14,7 @@ import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
 import { LocalChangeFeed, leseEventId, mitKanal } from '../src/live.js';
+import { kartenImSpiel } from './hilfen/imspiel.js';
 
 const PASSWORT = 'nebel-wacht-am-tor';
 
@@ -53,7 +54,7 @@ afterEach(async () => {
 async function aufbau() {
   const repo = new InMemoryRepository(
     { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_nebel' } },
-    [
+    kartenImSpiel([
       ebene,
       runde,
       art('p_markt', 'Place', 'Der Markt'),
@@ -61,7 +62,7 @@ async function aufbau() {
       art('m_gang', 'Map', 'Der Gang'),
       art('m_geheim', 'Map', 'Der Geheimgang', { Visibility: { audience: 'gm' } }),
       art('s_eins', 'Session', 'Sitzung 1'),
-    ],
+    ]),
   );
   const feed = new LocalChangeFeed({ flushMs: 5 });
   const app = buildApp({ repo, live: feed });

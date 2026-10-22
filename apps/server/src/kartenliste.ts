@@ -15,7 +15,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { assetVersion, entityName, isMap, isPlayInstance, LAYER_RELATION, locationPath, mapImage, mapTree, mapUses, primaryInterface, type Entity, type Registry } from '@nw/model';
+import { assetVersion, entityName, INSTANCE_RELATION, isMap, isPlayInstance, LAYER_RELATION, locationPath, mapImage, mapTree, mapUses, primaryInterface, type Entity, type Registry } from '@nw/model';
 
 interface Stand {
   alle: Entity[];
@@ -51,8 +51,13 @@ export function registerKartenliste(app: FastifyInstance, deps: KartenlisteDeps)
 
   app.get('/api/maps', async (request) => {
     const stand = await roh();
-    /* Karten im Spiel stehen nicht hier, sondern unter Played an ihrer Vorlage (T-289). */
-    const karten = await sieve(request, stand.alle.filter((e) => isMap(e) && !isPlayInstance(e)), stand.map);
+    /* Karten im Spiel stehen unter Played an ihrer Vorlage (T-289) — für
+       wen die Vorlage sichtbar ist. **Spielende sehen nur Karten im Spiel**
+       (E-1): ihnen fehlt die Vorlage, also steht die freigegebene Instanz
+       hier an ihrer Stelle. Eine Regel, keine Rollenfrage. */
+    const gesiebt = await sieve(request, stand.alle.filter(isMap), stand.map);
+    const sichtbar = new Set(gesiebt.map((k) => k.id));
+    const karten = gesiebt.filter((k) => !isPlayInstance(k) || !sichtbar.has((k.relations ?? []).find((r) => r.type === INSTANCE_RELATION)?.to ?? ''));
     /* Die Namen der Ebenen nur, wo der Betrachter die Ebene sieht. */
     const ebenenIds = new Set(
       karten.flatMap((k) => (k.relations ?? []).filter((r) => r.type === LAYER_RELATION).map((r) => r.to)),
