@@ -251,7 +251,7 @@ const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
 const SPERRE_TREFFER = 14;
 /** Die Werkzeuge, die einen Punkt setzen — in ihnen öffnet Halten die Lupe (T-315). */
-const LUPE_WERKZEUGE: ReadonlySet<Werkzeug> = new Set(['wand', 'punkte', 'gitterUrsprung', 'gitterZelle', 'setzen', 'platzieren', 'notiz']);
+const LUPE_WERKZEUGE: ReadonlySet<Werkzeug> = new Set(['wand', 'punkte', 'gitterUrsprung', 'gitterZelle', 'setzen', 'platzieren', 'notiz', 'vieleck']);
 /** So lange hält man, bis die Lupe aufgeht. */
 const LUPE_MS = 280;
 /** Halbmesser der Lupe am Schirm, und wie stark sie vergrössert. */
@@ -1166,7 +1166,8 @@ interface Zeiger {
                     <a
                       class="rahmen-marker"
                       [class.nah]="k.nah"
-                      [routerLink]="weg(k.id).link"
+                      [class.durch]="rahmenDurch()"
+                      [routerLink]="absprungGesperrt() ? null : weg(k.id).link"
                       [queryParams]="weg(k.id).query"
                       [style.left.%]="k.mitte.x * 100"
                       [style.top.%]="k.mitte.y * 100"
@@ -1199,7 +1200,8 @@ interface Zeiger {
                       class="rahmen"
                       [class.form]="!!k.punkte"
                       [class.nah]="k.nah"
-                      [routerLink]="weg(k.id).link"
+                      [class.durch]="rahmenDurch()"
+                      [routerLink]="absprungGesperrt() ? null : weg(k.id).link"
                       [queryParams]="weg(k.id).query"
                       [style.left.%]="k.frame.x * 100"
                       [style.top.%]="k.frame.y * 100"
@@ -1222,6 +1224,19 @@ interface Zeiger {
                   <svg class="vieleck-vorschau" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
                     <polyline [attr.points]="v" vector-effect="non-scaling-stroke" />
                   </svg>
+                }
+                @if (werkzeug() === 'vieleck') {
+                  @if (ed.punkte()) {
+                    @for (p of vieleckFang(); track $index) {
+                      <span class="punkt fremd" [style.left.%]="p.x * 100" [style.top.%]="p.y * 100" aria-hidden="true"></span>
+                    }
+                  }
+                  @for (p of vieleckEcken(); track $index) {
+                    <span class="punkt" [class.erste]="p.erste" [style.left.%]="p.x * 100" [style.top.%]="p.y * 100" aria-hidden="true"></span>
+                  }
+                  @if (fang(); as f) {
+                    <span class="fang" [class]="'fang an-' + f.to" [style.left.%]="f.pt.x * 100" [style.top.%]="f.pt.y * 100" aria-hidden="true"></span>
+                  }
                 }
                 @if (grau()) {
                   <!-- Dunkelsicht in Graustufen (T-305): nimmt dem Bild darunter die Farbe
@@ -1696,11 +1711,20 @@ interface Zeiger {
         } @else if (werkzeug() === 'uebergang') {
           {{ !uebergangA() ? 'Tap where the passage is.' : !uebergangZiel() ? 'Choose where it leads.' : uebergangZiel() === '__karte' ? 'Pick the map the portal leads to.' : 'Tap where it leads on ' + ebeneName(uebergangZiel()) + '.' }}
         } @else if (werkzeug() === 'vieleck') {
-          {{ vieleckPunkte().length < 3 ? 'Tap the corners of the area, one after another.' : 'Tap more corners, or the first one again to finish.' }}
+          {{ vieleckPunkte().length < 3 ? 'Tap the corners of the area, one after another. Alt sets a point without snapping.' : 'Tap more corners, or the first one again (or Enter) to finish.' }}
           @if (vieleckPunkte().length >= 3) {
             <button type="button" class="klein" (click)="vieleckFertig()">Done</button>
           }
+          @if (vieleckPunkte().length) {
+            <button type="button" class="klein" (click)="vieleckZurueck()" title="Take back the last corner (Backspace)">Undo point</button>
+          }
           <button type="button" class="klein" (click)="waehle('keins')">Cancel</button>
+          <label class="klein" title="Show the corners of the other shapes on this map">
+            <input type="checkbox" [checked]="ed.punkte()" (change)="ed.setzen('points', $any($event.target).checked)" /> Show points
+          </label>
+          <label class="klein" title="Snap to corners of other shapes, walls and grid corners">
+            <input type="checkbox" [checked]="ed.einrasten()" (change)="ed.setzen('snap', $any($event.target).checked)" /> Snap
+          </label>
         } @else if (werkzeug() === 'uebergangFlaeche') {
           {{ flaecheA() ? 'Now tap the opposite corner of the area.' : 'Tap one corner of the area the passage covers.' }}
         } @else if (werkzeug() === 'schloss') {
@@ -3237,12 +3261,12 @@ export class Karte {
       const pt = this.punkt(ev);
       if (pt) this.messB.set(pt);
     }
-    if (this.werkzeug() === 'wand' && ev.pointerType === 'mouse') {
+    if ((this.werkzeug() === 'wand' || this.werkzeug() === 'vieleck') && ev.pointerType === 'mouse') {
       const pt = this.punkt(ev);
       if (pt) {
-        const f = this.einrasten(pt, ev.altKey, false);
+        const f = this.einrasten(pt, ev.altKey, false, undefined, this.vieleckFang());
         this.fang.set(f.to ? f : null);
-        if (this.wandPunkte().length) this.wandZeiger.set(f.pt);
+        if (this.werkzeug() === 'wand' && this.wandPunkte().length) this.wandZeiger.set(f.pt);
       }
     }
     if (!this.zeiger.has(ev.pointerId)) return;
@@ -3410,6 +3434,12 @@ export class Karte {
     if (!gemeint) return;
     if (ev.key === 'Escape' && (this.aktiv() !== 'auswahl' || this.ersatzVollbild())) {
       this.zurueck();
+      ev.preventDefault();
+      return;
+    }
+    if (this.werkzeug() === 'vieleck' && (ev.key === 'Backspace' || (ev.key === 'Enter' && this.vieleckPunkte().length >= 3))) {
+      if (ev.key === 'Enter') this.vieleckFertig();
+      else this.vieleckZurueck();
       ev.preventDefault();
       return;
     }
@@ -3632,7 +3662,8 @@ export class Karte {
     } else if (this.werkzeug() === 'uebergangFlaeche') {
       this.flaecheTippen(pt);
     } else if (this.werkzeug() === 'vieleck') {
-      this.vieleckTippen(pt);
+      /* Einrasten wie an den Wänden, dazu an die Ecken der übrigen Formen. */
+      this.vieleckTippen(this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse', undefined, this.vieleckFang()).pt);
     } else if (this.werkzeug() === 'schloss') {
       const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
       if (t) void this.tuerKlick(t);
@@ -4081,7 +4112,7 @@ export class Karte {
   private lupeZeigen(pt: Pt, roh: boolean, finger: boolean): void {
     this.lupe.set(pt);
     if (this.werkzeug() === 'wand') {
-      const f = this.einrasten(pt, roh, finger);
+      const f = this.einrasten(pt, roh, finger, undefined, this.vieleckFang());
       this.fang.set(f.to ? f : null);
       if (this.wandPunkte().length) this.wandZeiger.set(f.pt);
     }
@@ -4162,7 +4193,7 @@ export class Karte {
    * punkten, also beim Zoomen gleich. `roh` (Alt, langes Drücken) setzt
    * den Punkt, wo er ist; `ohne` ist der Punkt, der gerade gezogen wird.
    */
-  private einrasten(pt: Pt, roh: boolean, finger: boolean, ohne?: Pt): { pt: Pt; to: 'point' | 'grid' | 'line' | null } {
+  private einrasten(pt: Pt, roh: boolean, finger: boolean, ohne?: Pt, dazu: readonly Pt[] = []): { pt: Pt; to: 'point' | 'grid' | 'line' | null } {
     if (roh || !this.ed.einrasten()) return { pt, to: null };
     const s = this.einst();
     const geo = s ? gridGeometry(s, this.nat()) : null;
@@ -4170,7 +4201,7 @@ export class Karte {
     const ar = this.seitenverhaeltnis();
     const gleich = (q: Pt): boolean => !!ohne && q.x === ohne.x && q.y === ohne.y;
     const walls = (e ? mapWalls(e) : []).filter((w) => !gleich({ x: w.x1, y: w.y1 }) && !gleich({ x: w.x2, y: w.y2 }));
-    const punkte = [...wallPoints(e ? mapWalls(e) : [], ar), ...this.wandPunkte()].filter((q) => !gleich(q));
+    const punkte = [...wallPoints(e ? mapWalls(e) : [], ar), ...this.wandPunkte(), ...dazu].filter((q) => !gleich(q));
     const px = this.ed.staerke() * (finger ? FINGER_FAKTOR : 1);
     return snapPoint(pt, { grid: geo, points: punkte, walls }, px / this.breite(), ar);
   }
@@ -4486,6 +4517,15 @@ export class Karte {
     ]);
     this.rahmenNeu.set(null);
   }
+  /**
+   * **Kein Absprung, solange ein Werkzeug läuft** (T-327): ein Rahmen ist ein
+   * Link. Mit *Unlink* angetippt, sprang die Seite in die Unterkarte, bevor
+   * die Verknüpfung gelöst war; mit *Link shape* oder beim Messen landete der
+   * Punkt im Rahmen statt auf der Karte. Hinein geht es nur in der Auswahl.
+   */
+  protected readonly absprungGesperrt = computed(() => this.werkzeug() !== 'keins');
+  /** Rahmen lassen Antippen zur Karte durch — ausser *Unlink*, das sie antippt. */
+  protected readonly rahmenDurch = computed(() => this.absprungGesperrt() && this.werkzeug() !== 'rahmenWeg');
   protected async rahmenLoesen(ev: Event, id: string, name: string): Promise<void> {
     ev.preventDefault();
     if (!confirm(`Unlink ${name}? The map stays; it is just no longer inside this one.`)) return;
@@ -4561,6 +4601,24 @@ export class Karte {
     const p = this.vieleckPunkte();
     return p.length ? p.map((q) => `${q.x},${q.y}`).join(' ') : null;
   });
+  /**
+   * **Woran ein Vieleck einrastet** (T-327): die Ecken der Formen, die an
+   * dieser Karte schon hängen, und die eigenen — zwei Bezirke teilen so
+   * ihre Grenze, statt dass eine Lücke oder ein Streifen doppelt bleibt.
+   */
+  protected readonly vieleckFang = computed<Pt[]>(() => {
+    if (this.werkzeug() !== 'vieleck') return [];
+    const fremde = (this.kontext()?.children ?? []).flatMap((k) => (k.area ?? []).map(([x, y]) => ({ x, y })));
+    return [...fremde, ...this.vieleckPunkte()];
+  });
+  /** Die Ecken, die gerade entstehen: die erste schliesst, darum hervorgehoben. */
+  protected readonly vieleckEcken = computed(() =>
+    this.werkzeug() === 'vieleck' ? this.vieleckPunkte().map((p, i) => ({ ...p, erste: i === 0 && this.vieleckPunkte().length >= 3 })) : [],
+  );
+  /** Die letzte Ecke zurücknehmen. */
+  protected vieleckZurueck(): void {
+    this.vieleckPunkte.set(this.vieleckPunkte().slice(0, -1));
+  }
   private vieleckTippen(pt: Pt): void {
     const p = this.vieleckPunkte();
     const erste = p[0];

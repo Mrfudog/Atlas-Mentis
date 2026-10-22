@@ -200,3 +200,9 @@
   flex-wrap: wrap;
   gap: 0.3rem;
 }
+
+/* Solange ein Werkzeug läuft, gehört das Antippen der Karte, nicht dem Rahmen (T-327). */
+.rahmen.durch,
+.rahmen-marker.durch {
+  pointer-events: none;
+}

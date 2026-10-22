@@ -419,6 +419,18 @@ sagt, sagt die Kampagne, und ohne beides gilt, was vor T-327 galt.
   `frameShare`, das Gruppen-Token) — die Form sagt nur, wo die Verknüpfung
   gezeichnet wird und wo ein Klick sie trifft. *Rectangle* nimmt die Form
   wieder weg. Dasselbe freie Vieleck zeichnet am Übergang *Draw shape*.
+  **Beim Zeichnen** (22.10.): die Ecken stehen da, die erste hervorgehoben;
+  sie rasten ein wie Wände (`einrasten`), dazu an die Ecken der übrigen
+  Formen dieser Karte — zwei Bezirke teilen so ihre Grenze. Alt setzt ohne
+  Einrasten, Halten öffnet die Lupe, *Undo point* und Backspace nehmen die
+  letzte Ecke zurück, Enter schliesst. *Show points* zeigt die Ecken der
+  übrigen Formen.
+- **Kein Absprung, solange ein Werkzeug läuft** (22.10.): ein Rahmen führt
+  nur in der Auswahl hinein. Mit *Unlink* angetippt, sprang die Seite
+  früher in die Unterkarte, bevor die Verknüpfung gelöst war; mit *Link
+  shape* oder *Measure* landete der Punkt im Rahmen statt auf der Karte.
+  In jedem anderen Werkzeug lässt ein Rahmen das Antippen zur Karte durch
+  (ausser *Unlink*, das ihn antippt).
 - **Zoomtiefe** (`near`): ab welchem Anteil des Blicks der nächste
   Zoomschritt hineinführt, 10–100 %, Vorgabe 55 % (`MAP_NEAR`). Ein
   kleiner Hof in einer grossen Stadt soll früh öffnen, ein Viertel erst,
