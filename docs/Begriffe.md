@@ -1764,8 +1764,16 @@ nicht erlauben — ein Zauber ohne freie Hand, das Zaubern hinter einem
 Schild ohne Übung —, bleibt in „Your turn" stehen, mit 🔒 und dem Grund.
 Verschwände sie, wüsste niemand, warum der Zauber fehlt, und keiner käme
 auf die Idee, die Waffe wegzustecken. Die Sperre rechnet das Modell aus
-dem, was gehalten wird (`handState`); das Ausrüsten selbst kommt mit dem
-Inventar (T-244) und speist dieselbe Funktion.
+dem, was gehalten wird (`handState`); das Ausrüsten im Reiter Gear (T-244,
+`wield.ts`) speist dieselbe Funktion.
+
+**Der Griff steht an der Kante, nicht an der Waffe.** Ob ein Kampfstab mit
+einer oder zwei Händen gehalten wird, ist eine Frage an dieses Stück in
+dieser Hand — wie die Drehung im Raster. Stünde es am Gegenstand, hielte
+jede Figur jeden Kampfstab gleich. Und **verdrängt wird nicht still**:
+bevor ein Stück aus der Hand muss, fragt die Seite — verstauen, fallen
+lassen, abbrechen —, denn ein fallen gelassener Schild liegt am Boden und
+nicht im Rucksack, und das macht am Tisch einen Unterschied.
 
 ### Der Initiative-Tracker ist ein eigenes System
 

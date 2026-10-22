@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 # Requirements by Epic
@@ -327,7 +327,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-42 Stories · 109 Punkte · 7 steht · 9 teils · 26 offen — [[EP-04 Spielererlebnis]]
+42 Stories · 109 Punkte · 7 steht · 12 teils · 23 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -352,8 +352,8 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 | [[REQ-320]] | Formen frei malen, auch nicht rechteckig | Spielleitung | 2 | 2 | offen |
 | [[REQ-321]] | Stapel im Raster | Spieler | 2 | 3 | offen |
 | [[REQ-322]] | Besondere Zonen mit eigenen Regeln | Spieler | 2 | 3 | offen |
-| [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | 2 | 3 | offen |
-| [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | 2 | 3 | offen |
+| [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | 2 | 3 | teils |
+| [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | 2 | 3 | teils |
 | [[REQ-325]] | Gegenstandsartikel im Detailbereich | Spieler | 2 | 1 | offen |
 | [[REQ-326]] | Ziehen und Ablegen im Raster | Spieler | 2 | 3 | offen |
 | [[REQ-327]] | Packen am Telefon | Spieler | 2 | 2 | offen |
@@ -408,7 +408,7 @@ Körperplan des Inventarmoduls, tragende Ausrüstung als Behälter mit eigenem k
 | [[REQ-334]] | Tragende Ausrüstung als Behälter mit eigenem Raster | Spielleitung | 2 | 3 | offen |
 | [[REQ-335]] | Verbund: Zellen, die gemeinsam ein Stück tragen | Spielleitung | 2 | 2 | offen |
 | [[REQ-336]] | Festlegen, wo ein Gegenstand getragen werden darf | Spielleitung | 2 | 2 | offen |
-| [[REQ-337]] | Sehen, was weichen muss | Spieler | 2 | 2 | offen |
+| [[REQ-337]] | Sehen, was weichen muss | Spieler | 2 | 2 | teils |
 | [[REQ-338]] | Körperplätze als Plan des Moduls | Spielleitung | 2 | 3 | offen |
 | [[REQ-339]] | Tragende Ausrüstung an der Figur | Spieler | 2 | 3 | offen |
 | [[REQ-340]] | Raster und Zonen eines Trägers in der Maske | Spielleitung | 3 | 3 | offen |

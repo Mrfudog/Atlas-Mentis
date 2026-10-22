@@ -12,6 +12,14 @@ Der Bogen einer Figur: Allgemein, Kampf, Zauber, Freispiel, schnelle Änderungen
 
 Epic: [[EP-03 Kreaturen & Figuren]]
 
+## Hände im Reiter Gear (T-244)
+
+Was die Figur hält, legt sie im Reiter Gear fest (siehe [[F-026 Inventar]],
+„Ausrüsten in die Hände"). Combat › Your turn liest dieselben Hände: ein
+Zauber ohne freie Hand oder mit Schild ohne Übung bleibt sichtbar, gesperrt
+mit 🔒 und Grund, der Angriff nennt den Nachteil, der Kopf zeigt den Status
+„Spellcasting blocked".
+
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->

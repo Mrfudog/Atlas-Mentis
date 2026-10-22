@@ -5,10 +5,10 @@
  * eine Liste nach Aktionsart. Keine Logik in der Maske — die Maske fragt
  * hier und zeichnet.
  *
- * Was gehalten wird, liest sich heute aus `holds.props.slot`
- * (`mainHand`/`offHand`, REQ-225). Das Ausrüsten mit Tragplätzen und
- * Verdrängen (T-244) wartet auf die Entscheide E-074 … E-094; dann speist
- * das Inventar dieselbe Funktion (`handState`) — die Sperren hier bleiben.
+ * Was gehalten wird, liest sich aus `holds.props.slot` (`mainHand`/
+ * `offHand`, REQ-225) und `holds.props.grip` (beide Hände, T-244). Das
+ * Ausrüsten mit Verdrängen steht in `wield.ts` und speist dieselbe
+ * Funktion (`handState`) — die Sperren hier bleiben.
  */
 
 import { COMMON_ACTION_CATALOGUE, TURN_TYPES, turnTypeOf, type TurnType } from './actions.js';
@@ -70,11 +70,14 @@ export function concentrationDc(damage: number): number {
   return Math.max(10, Math.floor(cleanAmount(damage) / 2));
 }
 
-// ------------------------------------------------------------ Hände (T-244 speist später)
+// ------------------------------------------------------------ Hände (das Ausrüsten: wield.ts, T-244)
 
 /** Ein gehaltenes Stück, wie die Sperren es brauchen. */
 export interface HeldItem {
+  /** Wer es ist: die `holds`-Kante (zwei Dolche sind zwei Stücke) oder der Gegenstand. */
   id: string;
+  /** Der Gegenstand, wenn `id` die Kante ist — für den Link in „Your turn" (T-244). */
+  article?: string;
   name: string;
   /** `mainHand`, `offHand` oder `both` (beidhändig gegriffen). */
   slot: 'mainHand' | 'offHand' | 'both';
@@ -86,6 +89,8 @@ export interface HeldItem {
   focus?: boolean;
   /** Geübt (Rüstungsgruppe, Waffengruppe oder die Waffe selbst). */
   proficient?: boolean;
+  /** Eine Fernkampfwaffe (`Item.itemType: ranged weapon`) — für den hinterhältigen Angriff (T-244). */
+  ranged?: boolean;
   /** Schaden, und mit zwei Händen (vielseitig). */
   damage?: string;
   damage2?: string;
@@ -509,8 +514,9 @@ export function turnActions(o: {
     source: 'rules',
     sourceLabel: 'Rules',
     meta: main && !main.shield ? `${main.name}${gripDamage(main, both) ? ` ${gripDamage(main, both)}` : ''}` : 'unarmed',
-    does: 'With what you hold',
-    ...(main && !main.shield ? { article: main.id } : {}),
+    /* Ein Schild ohne Übung: Nachteil auf STR- und DEX-Würfe (PHB „Armor Proficiency"), T-244. */
+    does: o.hands.shieldUntrained ? 'With what you hold — disadvantage: shield without training' : 'With what you hold',
+    ...(main && !main.shield ? { article: main.article ?? main.id } : {}),
   });
   for (const a of RULE_ACTIONS) {
     out.push(a.id === 'rule:offhand' && off && !off.shield ? { ...a, meta: `${off.name}${off.damage ? ` ${off.damage}` : ''}` } : a);

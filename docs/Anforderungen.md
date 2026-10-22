@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-21. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-22. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -12,14 +12,14 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 185 steht · 55 teils · 105 offen · 10 ersetzt · 6 verworfen — 361 Stories in 80 Features und 12 Epics.
+Zusammen: 185 steht · 58 teils · 102 offen · 10 ersetzt · 6 verworfen — 361 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 53 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 44 | 28 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 42 | 7 steht · 9 teils · 26 offen |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 42 | 7 steht · 12 teils · 23 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 27 | 13 steht · 2 teils · 12 offen |
@@ -189,7 +189,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | REQ-059 | Wissen über Arten von Kreaturen | 3 | **steht** | `Facts.fact#id` über eine Information |
 | REQ-156 | Sichtbarkeit vererben | 2 | **verworfen** | `inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht |
 | REQ-177 | Einzelne Felder freigeben | 2 | **steht** | `Information.fields` je Feld und je Eintrag |
-| REQ-178 | Decknamen | 3 | **steht** | `Identity.cover` |
+| REQ-178 | Decknamen | 3 | **steht** | `Identity.cover`; verdeckt auch ohne Information, Aufdecken mit einem Klick (22.10.) |
 | REQ-179 | Zeigen, dass es mehr gibt | 4 | **steht** | „…and 3 more things" |
 | REQ-203 | Wissen nach Rang in einer Fraktion | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
 | REQ-350 | Eine Information gilt für eine Gruppe von Artikeln | 1 | **steht** | T-285: Information.applies (Typen, Bedingungen auf Felder und Kanten, Kante auf einen Artikel samt Unterarten) |
@@ -340,7 +340,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (teils) · REQ-324 Hände als Plätze mit Regeln (teils) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (teils) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -372,8 +372,8 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | REQ-320 | Formen frei malen, auch nicht rechteckig | 2 | **offen** |  |
 | REQ-321 | Stapel im Raster | 2 | **offen** |  |
 | REQ-322 | Besondere Zonen mit eigenen Regeln | 2 | **offen** |  |
-| REQ-323 | Alle möglichen Plätze eines Gegenstands | 2 | **offen** |  |
-| REQ-324 | Hände als Plätze mit Regeln | 2 | **offen** |  |
+| REQ-323 | Alle möglichen Plätze eines Gegenstands | 2 | **teils** | Ziele Hände, Raster, Not stowed, Boden mit ✓/⚠/✗ und Grund (`wieldOptions`, T-244); Körperplätze, Behälter und Telefonblatt mit der zweiten Etappe |
+| REQ-324 | Hände als Plätze mit Regeln | 2 | **teils** | Hände als Plätze, zweihändig, vielseitig (Griff an `holds.props.grip`), Schild nur Nebenhand mit Folgen ohne Übung, Fokus — `wield.ts`, Gear (T-244 Demo-Etappe); Ziehkosten aus dem Modul offen |
 | REQ-325 | Gegenstandsartikel im Detailbereich | 2 | **offen** |  |
 | REQ-326 | Ziehen und Ablegen im Raster | 2 | **offen** |  |
 | REQ-327 | Packen am Telefon | 2 | **offen** |  |
@@ -411,7 +411,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | REQ-334 | Tragende Ausrüstung als Behälter mit eigenem Raster | 2 | **offen** |  |
 | REQ-335 | Verbund: Zellen, die gemeinsam ein Stück tragen | 2 | **offen** |  |
 | REQ-336 | Festlegen, wo ein Gegenstand getragen werden darf | 2 | **offen** |  |
-| REQ-337 | Sehen, was weichen muss | 2 | **offen** |  |
+| REQ-337 | Sehen, was weichen muss | 2 | **teils** | Warnung beim Verdrängen aus den Händen: verstauen, fallen lassen, abbrechen; vielseitig wechselt den Griff (T-244); Behälter und Gürtel offen |
 | REQ-338 | Körperplätze als Plan des Moduls | 2 | **offen** |  |
 | REQ-339 | Tragende Ausrüstung an der Figur | 2 | **offen** |  |
 | REQ-340 | Raster und Zonen eines Trägers in der Maske | 3 | **offen** |  |
@@ -1024,8 +1024,8 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-320** (2, offen, Spielererlebnis) — Formen frei malen, auch nicht rechteckig
 - **REQ-321** (2, offen, Spielererlebnis) — Stapel im Raster
 - **REQ-322** (2, offen, Spielererlebnis) — Besondere Zonen mit eigenen Regeln
-- **REQ-323** (2, offen, Spielererlebnis) — Alle möglichen Plätze eines Gegenstands
-- **REQ-324** (2, offen, Spielererlebnis) — Hände als Plätze mit Regeln
+- **REQ-323** (2, teils, Spielererlebnis) — Alle möglichen Plätze eines Gegenstands — *Ziele Hände, Raster, Not stowed, Boden mit ✓/⚠/✗ und Grund (`wieldOptions`, T-244); Körperplätze, Behälter und Telefonblatt mit der zweiten Etappe*
+- **REQ-324** (2, teils, Spielererlebnis) — Hände als Plätze mit Regeln — *Hände als Plätze, zweihändig, vielseitig (Griff an `holds.props.grip`), Schild nur Nebenhand mit Folgen ohne Übung, Fokus — `wield.ts`, Gear (T-244 Demo-Etappe); Ziehkosten aus dem Modul offen*
 - **REQ-325** (2, offen, Spielererlebnis) — Gegenstandsartikel im Detailbereich
 - **REQ-326** (2, offen, Spielererlebnis) — Ziehen und Ablegen im Raster
 - **REQ-327** (2, offen, Spielererlebnis) — Packen am Telefon
@@ -1034,7 +1034,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-334** (2, offen, Spielererlebnis) — Tragende Ausrüstung als Behälter mit eigenem Raster
 - **REQ-335** (2, offen, Spielererlebnis) — Verbund: Zellen, die gemeinsam ein Stück tragen
 - **REQ-336** (2, offen, Spielererlebnis) — Festlegen, wo ein Gegenstand getragen werden darf
-- **REQ-337** (2, offen, Spielererlebnis) — Sehen, was weichen muss
+- **REQ-337** (2, teils, Spielererlebnis) — Sehen, was weichen muss — *Warnung beim Verdrängen aus den Händen: verstauen, fallen lassen, abbrechen; vielseitig wechselt den Griff (T-244); Behälter und Gürtel offen*
 - **REQ-338** (2, offen, Spielererlebnis) — Körperplätze als Plan des Moduls
 - **REQ-339** (2, offen, Spielererlebnis) — Tragende Ausrüstung an der Figur
 - **REQ-345** (2, teils, Oberfläche & Navigation) — Schwebende Werkzeugleiste für eine Auswahl — *Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt*
