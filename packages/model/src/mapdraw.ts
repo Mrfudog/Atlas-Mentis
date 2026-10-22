@@ -18,6 +18,7 @@
  */
 
 import { cellAt, cellCentre, type GridGeometry, type MapSettings, type Size, type TokenSizes } from './map.js';
+import type { ActiveEffect } from './effects.js';
 import { SIZE_SPAN, type CreatureSize } from './movement.js';
 import type { Pt } from './sight.js';
 import type { Entity } from './types.js';
@@ -602,6 +603,86 @@ export function tokenSpan(own: number | null, size: string | null | undefined, r
     .toLowerCase() as CreatureSize;
   if (rule === 'tinyHalf' && k === 'tiny') return 0.5;
   return SIZE_SPAN[k] ?? 1;
+}
+
+/** Die Grössen der Reihe nach: eine Stufe grösser ist eine Stelle weiter (T-390, Enlarge/Reduce). */
+export const SIZE_ORDER: readonly CreatureSize[] = ['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan'];
+
+/** Eine Grösse als bekanntes Wort, sonst `null` („L" oder ein Tippfehler ist keine). */
+export function creatureSize(v: unknown): CreatureSize | null {
+  const k = String(v ?? '').trim().toLowerCase();
+  return (SIZE_ORDER as readonly string[]).includes(k) ? (k as CreatureSize) : null;
+}
+
+/** Was die Wirkungen mit dem Ziel `size` zusammen sagen (T-390, REQ-396). */
+export interface SizeEffects {
+  /** Eine gesetzte Grösse („wird Large"); bei mehreren die grösste. */
+  set?: CreatureSize;
+  /** Stufen, um die sie sich danach verschiebt: Enlarge +1, Reduce −1. */
+  steps: number;
+  /** Die Artikel, aus denen sie kommen — für „woher" an der Karte. */
+  sources: string[];
+}
+
+/**
+ * **Die Grössen-Wirkungen** aus dem, was an einer Kreatur gerade wirkt
+ * (`effectsAt`): `set` mit einem Grössenwort, `add` mit Stufen. Eine Quelle
+ * zählt einmal — `effectsAt` nimmt jeden Artikel nur einmal auf, also
+ * stapelt derselbe Zustand nicht mit sich selbst (E-164, Empfehlung b).
+ */
+export function sizeEffects(effects: readonly ActiveEffect[]): SizeEffects {
+  const raus: SizeEffects = { steps: 0, sources: [] };
+  for (const { effect: e, source } of effects) {
+    if (e.target !== 'size') continue;
+    if (e.op === 'set') {
+      const g = creatureSize(e.value);
+      if (!g) continue;
+      if (!raus.set || SIZE_ORDER.indexOf(g) > SIZE_ORDER.indexOf(raus.set)) raus.set = g;
+    } else if (e.op === 'add') {
+      const n = Math.trunc(Number(e.value));
+      if (!Number.isFinite(n) || n === 0) continue;
+      raus.steps += n;
+    } else continue;
+    if (!raus.sources.includes(source)) raus.sources.push(source);
+  }
+  return raus;
+}
+
+/**
+ * **Die Grösse nach den Wirkungen**: zuerst eine gesetzte Grösse statt der
+ * des Statblocks, dann die Stufen, begrenzt auf Tiny … Gargantuan. Ohne
+ * Grösse am Statblock zählt eine Kreatur als Medium, sobald eine Stufe sie
+ * verschiebt — ein Token ohne Zahlen steht ohnehin auf einem Feld.
+ */
+export function sizeWithEffects(base: unknown, fx: SizeEffects | null | undefined): CreatureSize | null {
+  const grund = creatureSize(base);
+  if (!fx || (!fx.set && !fx.steps)) return grund;
+  const start = fx.set ?? grund ?? 'medium';
+  const i = Math.min(SIZE_ORDER.length - 1, Math.max(0, SIZE_ORDER.indexOf(start) + fx.steps));
+  return SIZE_ORDER[i]!;
+}
+
+/** Woher der Platz eines Tokens kommt (T-390). */
+export type TokenSizeFrom = 'token' | 'effects' | 'statblock' | 'default';
+
+/** Der Platz eines Tokens mit seiner Herkunft. */
+export interface TokenSize {
+  span: number;
+  /** Die Grösse, nach der gerechnet wurde (bei `token` die ohne Überschreibung). */
+  size: CreatureSize | null;
+  from: TokenSizeFrom;
+}
+
+/**
+ * **Der Platz eines Tokens und woher er kommt** (T-390): Statblock →
+ * Wirkungen → Überschreibung der Leitung am Token (`props.size`). Rechnet
+ * wie `tokenSpan`, sagt aber dazu, welche Stufe gewonnen hat.
+ */
+export function tokenSizeOf(own: number | null, base: unknown, fx: SizeEffects | null | undefined, rule: TokenSizes = 'rules'): TokenSize {
+  const size = sizeWithEffects(base, fx);
+  if (own !== null && own > 0) return { span: own, size, from: 'token' };
+  const from: TokenSizeFrom = size && size !== creatureSize(base) ? 'effects' : size ? 'statblock' : 'default';
+  return { span: tokenSpan(null, size, rule), size, from };
 }
 
 /** Die Grössen, die man am Token wählen kann (Tokens › Size). */

@@ -38,6 +38,7 @@ import { proficienciesOf, proficiencyNames } from './proficiency.js';
 import type { Entity, EntityId } from './types.js';
 import { entityName, primaryInterface } from './entity.js';
 import { resolvedLookup } from './instance.js';
+import { sizeEffects, type SizeEffects } from './mapdraw.js';
 
 export const STAT_ABILITIES = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
 export type StatAbility = (typeof STAT_ABILITIES)[number];
@@ -482,6 +483,25 @@ export function creatureStats(creature: Entity, byId: ReadonlyMap<EntityId, Enti
   const alle = resolvedLookup(byId);
   const sb = statblockOfCreature(creature, byId);
   return characterStats(alle.get(creature.id) ?? creature, sb ? alle.get(sb.id) : undefined, alle, options);
+}
+
+/**
+ * **Die Grössen-Wirkungen an einer Kreatur** (T-390): dieselben Quellen wie
+ * `creatureStats` — Gegenstände, Merkmale, Zustände an `Vitals` und aus der
+ * Initiative —, nur das Ziel `size`. Für die Karte: Enlarge macht das Token
+ * eine Stufe grösser, solange der Zustand an der Kreatur steht.
+ */
+export function creatureSizeEffects(creature: Entity, byId: ReadonlyMap<EntityId, Entity>, options: CharacterStatsOptions = {}): SizeEffects {
+  const alle = resolvedLookup(byId);
+  const sb = statblockOfCreature(creature, byId);
+  const statblock = sb ? alle.get(sb.id) : undefined;
+  return sizeEffects(
+    effectsAt(alle.get(creature.id) ?? creature, alle, {
+      ...(statblock ? { statblock } : {}),
+      ...(options.conditions ? { conditions: options.conditions } : {}),
+      ...(options.actions ? { actions: options.actions } : {}),
+    }),
+  );
 }
 
 /** Ein Teil als kurzer Text, ohne den Namen seines Artikels: „+1", „set to 19", „3 × d12: 25". */

@@ -119,6 +119,7 @@ import {
   setMarkerSize,
   snapTokenCentre,
   tokenSpan,
+  tokenSizeOf,
   TOKEN_SPANS,
   shapeOutline,
   snapPoint,
@@ -1534,6 +1535,8 @@ interface Zeiger {
                 @for (g of groessenVorschau(); track g.id) {
                   <!-- Die gewählte Grösse am Token (T-320), bevor man es antippt. -->
                   <span class="groessen-vorschau" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [style.width.px]="g.px" [style.height.px]="g.px" aria-hidden="true"></span>
+                  <!-- Woher die Grösse kommt (T-390): Statblock, Wirkung oder am Token gesetzt. -->
+                  <span class="groessen-herkunft" [style.left.%]="g.x * 100" [style.top.%]="g.y * 100" [style.margin-top.px]="g.px / 2 + 2" data-testid="token-size-from">{{ g.text }}</span>
                 }
                 @for (m of marker(); track m.rel.id) {
                   <button
@@ -2963,7 +2966,7 @@ export class Karte {
            ein Ring mehr — und gestrichelt der Nächste. */
         dran: !!zug?.current && m.to === zug.current,
         naechster: !!zug?.next && m.to === zug.next && m.to !== zug.current,
-        titel: [name, m.note, m.prepared ? 'prepared for an encounter — hidden until it starts' : m.hidden ? 'hidden from the players' : '', zug?.current === m.to ? 'their turn' : zug?.next === m.to ? 'next' : '']
+        titel: [name, m.kind === 'scenery' || m.kind === 'light' ? '' : this.groesseText(m.to, m.ownSize), m.note, m.prepared ? 'prepared for an encounter — hidden until it starts' : m.hidden ? 'hidden from the players' : '', zug?.current === m.to ? 'their turn' : zug?.next === m.to ? 'next' : '']
           .filter(Boolean)
           .join(' — '),
         selbst: !!plan && plan.rel === m.rel.id,
@@ -3975,6 +3978,25 @@ export class Karte {
     return tokenSpan(own, this.kontext()?.targets[to]?.size, this.regeln().tokenSizes);
   }
 
+  /**
+   * **Woher die Grösse eines Tokens kommt** (T-390, REQ-396): Statblock →
+   * Wirkungen → am Token gesetzt. „Huge · statblock“, „Large · Enlarged
+   * (Medium)“, „2 × 2 · set on token“ — im Tooltip und unter „Token size“.
+   */
+  protected groesseText(to: string, own: number | null): string {
+    const z = this.kontext()?.targets[to];
+    const g = tokenSizeOf(own, z?.size, null, this.regeln().tokenSizes);
+    const gross = (w: string | null | undefined) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : '');
+    const felder = `${g.span} × ${g.span}`;
+    if (g.from === 'token') return `${felder} · set on token`;
+    if (z?.sizeFrom === 'effects') {
+      const via = z.sizeVia?.length ? z.sizeVia.join(', ') : 'an effect';
+      return `${gross(z.size)} ${felder} · ${via}${z.baseSize ? ` (statblock ${gross(z.baseSize)})` : ''}`;
+    }
+    if (g.from === 'statblock') return `${gross(g.size)} ${felder} · statblock`;
+    return `${felder} · no size on the statblock`;
+  }
+
   /** Ein Token einrasten, wenn die Karte es sagt (`Map.snapTokens`) und ein Gitter hat. */
   private tokenRasten(pt: Pt, span: number): Pt {
     const s = this.einst();
@@ -3993,7 +4015,7 @@ export class Karte {
     const wahl = this.groesseWahl();
     return this.marker()
       .filter((m) => m.kind !== 'scenery' && m.kind !== 'light')
-      .map((m) => ({ id: m.rel.id, x: m.x, y: m.y, px: s.gridSize * (wahl ?? this.tokenPlatz(m.to, null)) * f }));
+      .map((m) => ({ id: m.rel.id, x: m.x, y: m.y, px: s.gridSize * (wahl ?? this.tokenPlatz(m.to, null)) * f, text: this.groesseText(m.to, m.ownSize) }));
   });
   protected groesseGeben(relId: string): void {
     const e = this.karte();
