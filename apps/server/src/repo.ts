@@ -164,6 +164,12 @@ export interface Repository {
   /** Alle Artikel, die irgendein Konto angelegt hat — was die Leitung
    *  vorgelegt bekommt. */
   authoredArticles(): Promise<string[]>;
+  /** **Wer ihn hinzugefügt hat** (T-382): genau ein Konto je Artikel, beim
+   *  Anlegen gesetzt, danach fest. Anders als `addAuthored` erlaubt es
+   *  nichts — es ist Herkunft für Filter und Spalte „Added by". */
+  addCreator(userId: string, entityId: string): Promise<void>;
+  /** Artikel-Id → Konto-Id, für alles, dessen Herkunft bekannt ist. */
+  creators(): Promise<Map<string, string>>;
 
   /** **Wer in einer Ebene schreibt** (T-098, E-001): je Konto und Ebene
    *  eine Zeile neben dem Konto (`app_user_layer`), nicht an der Ebene
@@ -312,6 +318,9 @@ export class InMemoryRepository implements Repository {
     }
     const stored: Entity = {
       ...structuredClone(entity),
+      /* Wie `created_at` in Postgres: beim ersten Schreiben gesetzt, danach
+         fest — ein zurückgeholter Artikel (Undo) bringt seinen mit (T-382). */
+      createdAt: this.entities.get(entity.id)?.createdAt ?? entity.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       revision: (vorher ?? 0) + 1,
     };
@@ -428,6 +437,14 @@ export class InMemoryRepository implements Repository {
   }
   async authoredArticles(): Promise<string[]> {
     return [...new Set([...this.users.values()].flatMap((u) => u.authoredIds ?? []))];
+  }
+  private readonly erschaffer = new Map<string, string>();
+  async addCreator(userId: string, entityId: string): Promise<void> {
+    if (!this.users.has(userId) || this.erschaffer.has(entityId)) return;
+    this.erschaffer.set(entityId, userId);
+  }
+  async creators(): Promise<Map<string, string>> {
+    return new Map(this.erschaffer);
   }
   private readonly fertig = new Map<string, ReadyStand>();
   async readyStands(): Promise<Map<string, ReadyStand>> {

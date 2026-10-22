@@ -619,6 +619,8 @@ export interface Liste {
     /** Die Marken der Treffer, gezählt (T-119). */
     tags?: { tag: string; count: number }[];
     partsHidden: number;
+    /** **Hinzugefügt von** (T-382): je Konto, `∅` für unbekannt. */
+    addedBy?: { id: string; name: string; count: number }[];
     /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt, wie viele unprüfbar bleiben. */
     usable?: Brauchbar;
   };
@@ -909,6 +911,8 @@ export interface ListenFrage {
   compare?: boolean | undefined;
   /** **Gewählte Spalten** (T-343): genau diese statt der `overview`; leer heisst nur der Name. */
   cols?: string[] | undefined;
+  /** Die Zeitzone des Browsers (T-382, `getTimezoneOffset`): „today" beginnt um Mitternacht hier. */
+  tz?: number | undefined;
 }
 
 /** Die Vorgaben der Kampagne für die Spalten (T-343, `/api/list-columns`). */
