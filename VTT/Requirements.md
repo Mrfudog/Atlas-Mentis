@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 61 | 203 | 42 steht · 10 teils · 5 offen · 2 ersetzt · 2 verworfen |
-| 2 | 126 | 433 | 68 steht · 18 teils · 32 offen · 5 ersetzt · 3 verworfen |
-| 3 | 121 | 356 | 61 steht · 25 teils · 34 offen · 1 ersetzt |
+| 2 | 130 | 459 | 68 steht · 18 teils · 36 offen · 5 ersetzt · 3 verworfen |
+| 3 | 123 | 369 | 61 steht · 25 teils · 36 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **372** | **1342** | 185 steht · 55 teils · 116 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **378** | **1381** | 185 steht · 55 teils · 122 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -411,6 +411,12 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-370]] | Assets ohne Vorbereitungsstand | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 3 | 2 | defined | offen |
 | [[REQ-371]] | Vorlage, Spielstand und Stück verständlich | Spielleitung | [[F-005 Fassungen & Varianten\|Fassungen & Varianten]] | 2 | 5 | defined | offen |
 | [[REQ-372]] | Spielende sehen nur Karten im Spiel | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 1 | 5 | defined | offen |
+| [[REQ-373]] | Werkzeugleiste mit Belegungen, Hilfe und Kürzeln | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 8 | defined | offen |
+| [[REQ-374]] | Tokens zwischen Kartenstufen | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 5 | defined | offen |
+| [[REQ-375]] | Kartenstufen ineinander übergehen lassen | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 8 | defined | offen |
+| [[REQ-376]] | Kartenbereiche | Spielleitung | [[F-059 Gebiete & Overlays\|Gebiete & Overlays]] | 2 | 8 | defined | offen |
+| [[REQ-377]] | Massstäbe und Einheiten der Karte | Spielleitung | [[F-049 Masse & Einheiten\|Masse & Einheiten]] | 2 | 5 | defined | offen |
+| [[REQ-378]] | Anlegen nach Regeln: Stand und Felder | Spielleitung | [[F-022 Schnellanlage\|Schnellanlage]] | 2 | 5 | defined | offen |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

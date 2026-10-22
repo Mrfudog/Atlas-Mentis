@@ -23,7 +23,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 | [[F-051 Initiative]] — Initiative für Leitung und Spielende, Zustände mit Dauer, Anzeige auf der Karte. | 7 | 18 | 6 steht · 1 teils |
 | [[F-052 Sitzungszustand & Live-Kanal]] — Was gerade läuft, steht an der Sitzung und kommt live zu allen; Protokoll und Statistik. | 6 | 30 | 2 steht · 1 teils · 3 offen |
 | [[F-053 Würfel]] — Würfeln für sich und für alle, mit Protokoll. | 2 | 5 | 2 steht |
-| [[F-054 Werkzeuge am Tisch]] — Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. | 12 | 48 | 4 steht · 3 teils · 4 offen · 1 ersetzt |
+| [[F-054 Werkzeuge am Tisch]] — Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. | 13 | 56 | 4 steht · 3 teils · 5 offen · 1 ersetzt |
 
 ### Wo es wohnt
 
@@ -35,7 +35,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 
 **Erklärt in:** [Architektur.md](../../docs/Architektur.md), [Spieltisch.md](../../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** [[REQ-113]] Notiz-Widget (offen) · [[REQ-114]] Schnellanlage auf dem Schirm (teils) · [[REQ-120]] Spielprotokoll (teils) · [[REQ-123]] Timer (offen) · [[REQ-128]] Kampf aus Sicht der Spielenden (teils) · [[REQ-187]] Tischanzeige (offen) · [[REQ-204]] Spielleiter-Schirm (offen) · [[REQ-205]] Ein Board je Geschichtsartikel (teils) · [[REQ-292]] Neuen Artikel aus einer Auswahl anlegen (teils) · [[REQ-362]] Spielboard: was gerade läuft (offen) · [[REQ-363]] Den Spielenden etwas zeigen (offen)
+**Offen mit Prio 1–3:** [[REQ-113]] Notiz-Widget (offen) · [[REQ-114]] Schnellanlage auf dem Schirm (teils) · [[REQ-120]] Spielprotokoll (teils) · [[REQ-123]] Timer (offen) · [[REQ-128]] Kampf aus Sicht der Spielenden (teils) · [[REQ-187]] Tischanzeige (offen) · [[REQ-204]] Spielleiter-Schirm (offen) · [[REQ-205]] Ein Board je Geschichtsartikel (teils) · [[REQ-292]] Neuen Artikel aus einer Auswahl anlegen (teils) · [[REQ-362]] Spielboard: was gerade läuft (offen) · [[REQ-363]] Den Spielenden etwas zeigen (offen) · [[REQ-373]] Werkzeugleiste mit Belegungen, Hilfe und Kürzeln (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->

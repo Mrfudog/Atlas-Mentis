@@ -265,7 +265,7 @@ Drei Teststufen für jede Änderung — Unit, Integration, E2E im Browser — un
 
 ## EP-03 Kreaturen & Figuren
 
-29 Stories · 122 Punkte · 18 steht · 2 teils · 8 offen · 1 ersetzt — [[EP-03 Kreaturen & Figuren]]
+30 Stories · 127 Punkte · 18 steht · 2 teils · 9 offen · 1 ersetzt — [[EP-03 Kreaturen & Figuren]]
 
 ### F-020 Kreatur
 
@@ -300,6 +300,7 @@ Kreatur und Statblock in einem Schritt anlegen. — [[F-022 Schnellanlage]]
 |---|---|---|---|---|---|
 | [[REQ-048]] | Kreatur schnell bearbeiten | Spielleitung | 2 | 3 | steht |
 | [[REQ-049]] | Kreatur schnell anlegen | Spielleitung | 2 | 2 | steht |
+| [[REQ-378]] | Anlegen nach Regeln: Stand und Felder | Spielleitung | 2 | 5 | offen |
 
 ### F-023 Charakterbogen
 
@@ -569,7 +570,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-27 Stories · 126 Punkte · 13 steht · 2 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
+28 Stories · 131 Punkte · 13 steht · 2 teils · 13 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -652,11 +653,12 @@ Masse beim Lesen umrechnen, auch im Fliesstext. — [[F-049 Masse & Einheiten]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-377]] | Massstäbe und Einheiten der Karte | Spielleitung | 2 | 5 | offen |
 | [[REQ-227]] | Masse im Fliesstext umrechnen | Spieler | 3 | 2 | offen |
 
 ## EP-08 Live-Spiel
 
-30 Stories · 111 Punkte · 14 steht · 6 teils · 9 offen · 1 ersetzt — [[EP-08 Live-Spiel]]
+31 Stories · 119 Punkte · 14 steht · 6 teils · 10 offen · 1 ersetzt — [[EP-08 Live-Spiel]]
 
 ### F-050 Spielleiter-Schirm
 
@@ -714,6 +716,7 @@ Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. — 
 | [[REQ-113]] | Notiz-Widget | Spielleitung | 2 | 2 | offen |
 | [[REQ-114]] | Schnellanlage auf dem Schirm | Spielleitung | 2 | 3 | teils |
 | [[REQ-292]] | Neuen Artikel aus einer Auswahl anlegen | Spielleitung | 2 | 2 | teils |
+| [[REQ-373]] | Werkzeugleiste mit Belegungen, Hilfe und Kürzeln | Spielleitung | 2 | 8 | offen |
 | [[REQ-118]] | Begegnung starten | Spielleitung | 3 | 5 | steht |
 | [[REQ-123]] | Timer | Spielleitung | 3 | 1 | offen |
 | [[REQ-124]] | Auftragsbrett als Widget | Spieler | 3 | 2 | steht |
@@ -725,7 +728,7 @@ Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. — 
 
 ## EP-09 Karten
 
-29 Stories · 129 Punkte · 18 steht · 6 teils · 5 offen — [[EP-09 Karten]]
+32 Stories · 150 Punkte · 18 steht · 6 teils · 8 offen — [[EP-09 Karten]]
 
 ### F-055 Karte & Kartenebenen
 
@@ -738,6 +741,7 @@ Karte mit Bild, Gitter, Massstab; Unterkarten zum Hineinzoomen. — [[F-055 Kart
 | [[REQ-131]] | Unterkarten zum Hineinzoomen | Spielleitung | 3 | 8 | steht |
 | [[REQ-132]] | Kartenebene festhalten | Spielleitung | 3 | 1 | offen |
 | [[REQ-293]] | Ladeanzeige für Kartenbilder | Spielleitung | 3 | 1 | steht |
+| [[REQ-375]] | Kartenstufen ineinander übergehen lassen | Spielleitung | 3 | 8 | offen |
 | [[REQ-138]] | Grosse Karten in Kacheln | Spieler | 4 | 5 | steht |
 
 ### F-056 Tokens & Marker
@@ -751,6 +755,7 @@ Marker, Kulisse, Spiel-Tokens, Gruppen-Token, Grösse. — [[F-056 Tokens & Mark
 | [[REQ-136]] | Gruppe und Quests auf der Karte | Spieler | 3 | 2 | steht |
 | [[REQ-224]] | Kreaturen nach Grösse auf der Karte | Spielleitung | 3 | 3 | steht |
 | [[REQ-294]] | Token ohne Bild zeigt den Anfangsbuchstaben | Spielleitung | 3 | 1 | teils |
+| [[REQ-374]] | Tokens zwischen Kartenstufen | Spielleitung | 3 | 5 | offen |
 | [[REQ-134]] | Kulisse auf der Karte | Spielleitung | 4 | 3 | steht |
 
 ### F-057 Nebel, Licht & Sicht
@@ -781,6 +786,7 @@ Gebiete und Hervorhebungen auf der Karte. — [[F-059 Gebiete & Overlays]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-376]] | Kartenbereiche | Spielleitung | 2 | 8 | offen |
 | [[REQ-137]] | Hervorhebungen nach Abfrage | Spielleitung | 4 | 5 | teils |
 | [[REQ-193]] | Gebiete auf der Karte | Spielleitung | 4 | 3 | steht |
 

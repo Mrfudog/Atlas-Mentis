@@ -23,19 +23,19 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 185 steht · 55 teils · 116 offen · 10 ersetzt · 6 verworfen — 372 Stories in 80 Features und 12 Epics.
+Zusammen: 185 steht · 55 teils · 122 offen · 10 ersetzt · 6 verworfen — 378 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 56 | 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 47 | 28 steht · 5 teils · 11 offen · 1 ersetzt · 2 verworfen |
-| [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
+| [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 18 steht · 2 teils · 9 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 43 | 7 steht · 9 teils · 27 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 27 | 13 steht · 2 teils · 12 offen |
-| [EP-08 Live-Spiel](#ep-08-live-spiel) | 30 | 14 steht · 6 teils · 9 offen · 1 ersetzt |
-| [EP-09 Karten](#ep-09-karten) | 29 | 18 steht · 6 teils · 5 offen |
+| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 28 | 13 steht · 2 teils · 13 offen |
+| [EP-08 Live-Spiel](#ep-08-live-spiel) | 31 | 14 steht · 6 teils · 10 offen · 1 ersetzt |
+| [EP-09 Karten](#ep-09-karten) | 32 | 18 steht · 6 teils · 8 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 22 | 4 steht · 3 teils · 15 offen |
 | [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 31 | 20 steht · 6 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
@@ -287,7 +287,7 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 
 **Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Begriffe.md](../docs/Begriffe.md)
 
-**Offen mit Prio 1–3:** REQ-055 Merkmale beim Tippen wiederverwenden (offen) · REQ-060 Begleiter und Beschwörungen (teils) · REQ-274 Charakter- und Kampagnenmanager jederzeit aufrufen (offen) · REQ-344 Gesperrte Aktionen bleiben sichtbar, mit Grund (teils)
+**Offen mit Prio 1–3:** REQ-055 Merkmale beim Tippen wiederverwenden (offen) · REQ-060 Begleiter und Beschwörungen (teils) · REQ-274 Charakter- und Kampagnenmanager jederzeit aufrufen (offen) · REQ-344 Gesperrte Aktionen bleiben sichtbar, mit Grund (teils) · REQ-378 Anlegen nach Regeln: Stand und Felder (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -318,6 +318,7 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 |---|---|---|---|---|
 | [[REQ-048]] | Kreatur schnell bearbeiten | 2 | **steht** | Bearbeiten in der Ansicht und im Dialog |
 | [[REQ-049]] | Kreatur schnell anlegen | 2 | **steht** | Anlegedialog mit Statblock-Frage, Schnellanlage aus einem Verweis |
+| [[REQ-378]] | Anlegen nach Regeln: Stand und Felder | 2 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ### F-023 Charakterbogen
 
@@ -591,7 +592,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils)
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils) · REQ-377 Massstäbe und Einheiten der Karte (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -661,6 +662,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-227]] | Masse im Fliesstext umrechnen | 3 | **offen** | umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2) |
+| [[REQ-377]] | Massstäbe und Einheiten der Karte | 2 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ## EP-08 Live-Spiel
 
@@ -674,7 +676,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils) · REQ-362 Spielboard: was gerade läuft (offen) · REQ-363 Den Spielenden etwas zeigen (offen)
+**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils) · REQ-362 Spielboard: was gerade läuft (offen) · REQ-363 Den Spielenden etwas zeigen (offen) · REQ-373 Werkzeugleiste mit Belegungen, Hilfe und Kürzeln (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -732,6 +734,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 | [[REQ-129]] | Fragen an einen Assistenten | 5 | **offen** |  |
 | [[REQ-186]] | Verschachtelte Tabellen | 3 | **steht** | `entry` auf eine Tabelle |
 | [[REQ-292]] | Neuen Artikel aus einer Auswahl anlegen | 2 | **teils** |  |
+| [[REQ-373]] | Werkzeugleiste mit Belegungen, Hilfe und Kürzeln | 2 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ## EP-09 Karten
 
@@ -745,7 +748,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 
 **Erklärt in:** [Karten.md](../docs/Karten.md)
 
-**Offen mit Prio 1–3:** REQ-132 Kartenebene festhalten (offen) · REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils) · REQ-372 Spielende sehen nur Karten im Spiel (offen)
+**Offen mit Prio 1–3:** REQ-132 Kartenebene festhalten (offen) · REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils) · REQ-372 Spielende sehen nur Karten im Spiel (offen) · REQ-374 Tokens zwischen Kartenstufen (offen) · REQ-375 Kartenstufen ineinander übergehen lassen (offen) · REQ-376 Kartenbereiche (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -759,6 +762,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 | [[REQ-138]] | Grosse Karten in Kacheln | 4 | **steht** | `Map.tiles` |
 | [[REQ-293]] | Ladeanzeige für Kartenbilder | 3 | **steht** | T-126 |
 | [[REQ-372]] | Spielende sehen nur Karten im Spiel | 1 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
+| [[REQ-375]] | Kartenstufen ineinander übergehen lassen | 3 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ### F-056 Tokens & Marker
 
@@ -770,6 +774,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 | [[REQ-136]] | Gruppe und Quests auf der Karte | 3 | **steht** | Gruppen-Token, `{PARTYWHERE}` |
 | [[REQ-224]] | Kreaturen nach Grösse auf der Karte | 3 | **steht** | Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58) |
 | [[REQ-294]] | Token ohne Bild zeigt den Anfangsbuchstaben | 3 | **teils** | Anfangsbuchstabe ja; Deckname nicht geprüft |
+| [[REQ-374]] | Tokens zwischen Kartenstufen | 3 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ### F-057 Nebel, Licht & Sicht
 
@@ -795,6 +800,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 |---|---|---|---|---|
 | [[REQ-137]] | Hervorhebungen nach Abfrage | 4 | **teils** | `territory` von Hand; keine Abfrage |
 | [[REQ-193]] | Gebiete auf der Karte | 4 | **steht** | `territory` |
+| [[REQ-376]] | Kartenbereiche | 2 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ### F-060 Reisen & Erkundung
 
@@ -1071,6 +1077,10 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-368]]** (2, offen, Inhaltsgerüst) — Immer eine laufende Kampagne oder Schreibebene — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
 - **[[REQ-369]]** (2, offen, Zugang & Betrieb) — Freigaben an der eigenen Figur — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
 - **[[REQ-371]]** (2, offen, Inhaltsgerüst) — Vorlage, Spielstand und Stück verständlich — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-373]]** (2, offen, Live-Spiel) — Werkzeugleiste mit Belegungen, Hilfe und Kürzeln — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
+- **[[REQ-376]]** (2, offen, Karten) — Kartenbereiche — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
+- **[[REQ-377]]** (2, offen, Regeln & Nachschlagen) — Massstäbe und Einheiten der Karte — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
+- **[[REQ-378]]** (2, offen, Kreaturen & Figuren) — Anlegen nach Regeln: Stand und Felder — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
 - **[[REQ-007]]** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **[[REQ-022]]** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **[[REQ-025]]** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*
@@ -1130,3 +1140,5 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-340]]** (3, offen, Spielererlebnis) — Raster und Zonen eines Trägers in der Maske
 - **[[REQ-357]]** (3, teils, Regeln & Nachschlagen) — Regelgraphen wirken am Tisch — *Option Rules from graphs (Campaign.ruleGraphs): der Zugplan sendet leavesReach, attacked, hit/missed, damaged; Reaktionen werden angeboten, die Gelegenheitsattacke kommt aus ihrer Regel. Offen: castsSpell, picksUpObject, turnStart, Folgen mit Wirkung, Fassungen.*
 - **[[REQ-370]]** (3, offen, Medien & Assets) — Assets ohne Vorbereitungsstand — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-374]]** (3, offen, Karten) — Tokens zwischen Kartenstufen — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
+- **[[REQ-375]]** (3, offen, Karten) — Kartenstufen ineinander übergehen lassen — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*

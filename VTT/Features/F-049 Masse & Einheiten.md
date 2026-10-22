@@ -15,9 +15,10 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-1 Stories · 2 Punkte · 1 offen
+2 Stories · 7 Punkte · 2 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-227]] Masse im Fliesstext umrechnen | Spieler | 3 | offen |
+| [[REQ-377]] Massstäbe und Einheiten der Karte | Spielleitung | 2 | offen |
 <!-- stories:ende -->
