@@ -12,7 +12,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 185 steht · 56 teils · 105 offen · 10 ersetzt · 6 verworfen — 362 Stories in 80 Features und 12 Epics.
+Zusammen: 185 steht · 56 teils · 110 offen · 10 ersetzt · 6 verworfen — 367 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -23,7 +23,7 @@ Zusammen: 185 steht · 56 teils · 105 offen · 10 ersetzt · 6 verworfen — 36
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 27 | 13 steht · 2 teils · 12 offen |
-| [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
+| [EP-08 Live-Spiel](#ep-08-live-spiel) | 33 | 14 steht · 6 teils · 12 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
 | [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 31 | 20 steht · 6 teils · 4 offen · 1 ersetzt |
@@ -657,7 +657,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils)
+**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils) · REQ-362 Einträge im Tracker, die keine Kreatur sind: Umgebung, Lair, Menge und Homebrew-Quelle, mit eigener Initiative-Position (z. B. 20, verliert Gleichstand) oder ohne Position (nur in der Rundenübersicht) (offen) · REQ-363 Auslöser je Option: Rundenbeginn, Rundenende, nach jedem Zug, nach Bewegung, bei Initiative X — mit Angebot an die Leitung (anzeigen, bestätigen, auslassen) (offen) · REQ-364 Kontingente je Quelle und Frequenz als Check-Marks in einer Rundenübersicht für die Leitung, mit automatischem Zurücksetzen (Beginn des eigenen Zugs, Rundenbeginn) (offen) · REQ-365 Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung (offen) · REQ-366 Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -680,6 +680,11 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 | REQ-212 | Zustände und Notizen mit Dauer | 2 | **steht** | `anchor`/`at` an `participates.props.conditions`, Notiz mit `text`; `tickEntries`, `expiresAt` (D53) |
 | REQ-213 | Initiative der Spielenden | 3 | **steht** | `redactParticipants` in `redactEntity` und im Prototyp; `turn` geht nicht an Spielende, `props.current` statt dessen (D53, D58) |
 | REQ-226 | Gegner erscheinen in Runde 1 erst in ihrem Zug | 3 | **steht** | Runde 1: Gegner erst in ihrem Zug (`turnHasCome`, `initiativeOrder`), in `redactParticipants`/`redactEntity` und im Prototyp (D58) |
+| REQ-362 | Einträge im Tracker, die keine Kreatur sind: Umgebung, Lair, Menge und Homebrew-Quelle, mit eigener Initiative-Position (z. B. 20, verliert Gleichstand) oder ohne Position (nur in der Rundenübersicht) | 2 | **offen** |  |
+| REQ-363 | Auslöser je Option: Rundenbeginn, Rundenende, nach jedem Zug, nach Bewegung, bei Initiative X — mit Angebot an die Leitung (anzeigen, bestätigen, auslassen) | 2 | **offen** |  |
+| REQ-364 | Kontingente je Quelle und Frequenz als Check-Marks in einer Rundenübersicht für die Leitung, mit automatischem Zurücksetzen (Beginn des eigenen Zugs, Rundenbeginn) | 2 | **offen** |  |
+| REQ-365 | Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung | 2 | **offen** |  |
+| REQ-366 | Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair | 3 | **offen** |  |
 
 ### F-052 Sitzungszustand & Live-Kanal
 
@@ -1040,6 +1045,10 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-339** (2, offen, Spielererlebnis) — Tragende Ausrüstung an der Figur
 - **REQ-345** (2, teils, Oberfläche & Navigation) — Schwebende Werkzeugleiste für eine Auswahl — *Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt*
 - **REQ-354** (2, offen, Zugang & Betrieb) — Wissenspunkte bei eigener Herkunft und eigenem Hintergrund
+- **REQ-362** (2, offen, Live-Spiel) — Einträge im Tracker, die keine Kreatur sind: Umgebung, Lair, Menge und Homebrew-Quelle, mit eigener Initiative-Position (z. B. 20, verliert Gleichstand) oder ohne Position (nur in der Rundenübersicht)
+- **REQ-363** (2, offen, Live-Spiel) — Auslöser je Option: Rundenbeginn, Rundenende, nach jedem Zug, nach Bewegung, bei Initiative X — mit Angebot an die Leitung (anzeigen, bestätigen, auslassen)
+- **REQ-364** (2, offen, Live-Spiel) — Kontingente je Quelle und Frequenz als Check-Marks in einer Rundenübersicht für die Leitung, mit automatischem Zurücksetzen (Beginn des eigenen Zugs, Rundenbeginn)
+- **REQ-365** (2, offen, Live-Spiel) — Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung
 - **REQ-367** (2, teils, Zugang & Betrieb) — Ebene eines Artikels im Bearbeiten ändern, als erstes Feld — *T-383: Feld „Layer“ zuerst in der Maske, Angebot aus den Schreibebenen, Prüfung im PUT gegen zielEbenen, Meldung „Moved to …“; was mit Teilen, Statblock und Inventar geschieht, wartet auf E-161*
 - **REQ-007** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **REQ-022** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
@@ -1099,3 +1108,4 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-332** (3, offen, Spielererlebnis) — Beute öffnen und nehmen
 - **REQ-340** (3, offen, Spielererlebnis) — Raster und Zonen eines Trägers in der Maske
 - **REQ-357** (3, teils, Regeln & Nachschlagen) — Regelgraphen wirken am Tisch — *Option Rules from graphs (Campaign.ruleGraphs): der Zugplan sendet leavesReach, attacked, hit/missed, damaged; Reaktionen werden angeboten, die Gelegenheitsattacke kommt aus ihrer Regel. Offen: castsSpell, picksUpObject, turnStart, Folgen mit Wirkung, Fassungen.*
+- **REQ-366** (3, offen, Live-Spiel) — Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair
