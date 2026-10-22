@@ -260,6 +260,13 @@ anderthalb Felder davon.
 Das **Sichtpolygon** (`visionPolygon`) rechnet von einem Punkt aus, bis die
 nächste Sperre den Blick hält — mit Strahlen auf jede Ecke einer Strecke
 (knapp davor, genau, knapp dahinter) in einem Raum mit gleichen Achsen.
+Danach fallen Punkte auf einer Geraden weg (`ausduennen`), **nachdem** die
+fast gleichen Punkte einer Ecke zusammengefasst sind. Bis 22.10. verglich
+das Ausdünnen jeden Punkt mit seinem rohen Vorgänger, solange noch keiner
+behalten war, und warf so ganze Wände weg: bei einer Schiessscharte schnitt
+das Polygon quer von der Tür zur Lücke, und was dahinter lag, war sichtbar.
+Formen, die so schon in `Map.reveal` stehen, bleiben aufgedeckt, bis die
+Leitung sie mit *Hide* wieder zudeckt.
 Aufgedeckt wird damit:
 
 - **beim Zug** (wenn `revealOnMove` gilt): von den Punkten des Weges aus,
