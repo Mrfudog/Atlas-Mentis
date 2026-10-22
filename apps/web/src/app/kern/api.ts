@@ -621,6 +621,11 @@ export interface Liste {
     partsHidden: number;
     /** **Hinzugefügt von** (T-382): je Konto, `∅` für unbekannt. */
     addedBy?: { id: string; name: string; count: number }[];
+    /** **Beziehungen und Felder** (T-389): wonach `@has` fragt, je mit Zahl; je gewählter Kante die Ziele. */
+    has?: {
+      choices: { ref: string; label: string; kind: 'edge' | 'field'; count: number }[];
+      targets: Record<string, { id: string; name: string; count: number }[]>;
+    };
     /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt, wie viele unprüfbar bleiben. */
     usable?: Brauchbar;
   };

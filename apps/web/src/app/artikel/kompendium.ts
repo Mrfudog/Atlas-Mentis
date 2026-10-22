@@ -21,6 +21,7 @@ import { ansichtWeg } from '../klassen/ansicht-weg';
 import { Spalten } from '../kern/spalten';
 import { Spaltenwahl } from './spaltenwahl';
 import { Zeitfilter } from './zeitfilter';
+import { Beziehungsfilter } from './beziehungsfilter';
 
 interface TypGruppe {
   label: string;
@@ -58,7 +59,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl, Zeitfilter],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl, Zeitfilter, Beziehungsfilter],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -175,6 +176,14 @@ const OFFEN = 8;
           [sortierung]="filter.sortierung()"
           (setzen)="metaSetzen($event.ref, $event.values)"
           (sortieren)="filter.sortierung.set($event); filter.blatt.set(0)"
+        />
+
+        <!-- Nach Beziehungen (T-389): als Facette @has in f=. -->
+        <nw-beziehungsfilter
+          [felder]="filter.felder()"
+          [wahlen]="liste()?.facets?.has?.choices ?? []"
+          [ziele]="liste()?.facets?.has?.targets ?? {}"
+          (setzen)="metaSetzen($event.ref, $event.values)"
         />
 
         <!-- „Usable by <Figur>" (T-180): neben einer Voraussetzung. Was der
@@ -960,7 +969,7 @@ export class Kompendium {
     return this.filter.felder()[ref]?.values?.includes(wert) ?? false;
   }
 
-  /** Eine Facette von T-382 setzen oder wegnehmen (`@added`, `@changed`, `@by`). */
+  /** Eine Facette von T-382 oder T-389 setzen oder wegnehmen (`@added`, `@changed`, `@by`, `@has`). */
   protected metaSetzen(ref: string, values: string[] | null): void {
     this.filter.felder.update((f) => {
       const { [ref]: _weg, ...rest } = f;
