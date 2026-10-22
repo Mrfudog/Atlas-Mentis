@@ -485,22 +485,26 @@
                   @if (k.platz.note) {
                     <p class="knotiz">{{ k.platz.note }}</p>
                   }
-                  <div class="kinhalt" [class.mit-karte]="istKarte(k)">
-                    @if (k.ziel && istKarte(k)) {
-                      <!-- Die Karte selbst (T-339): dieselbe Komponente wie auf der Artikelseite, gesiebt am Server. -->
-                      <nw-karte [id]="k.ziel.id" />
-                    } @else if (k.ziel) {
-                      <!-- Die Kachel wählt die Ansicht (T-310, pickView): eine gestaltete zeichnet ihren Baum. -->
-                      @if (k.ansicht === 'full') {
-                        <!-- Die ganze Seite (T-339): gezeichnet wie im Druck, als Blatt — sie scrollt in der Kachel. -->
-                        <nw-blatt [artikel]="k.ziel" ansicht="full" [rueck]="rueckVon(k.ziel)" />
-                      } @else {
-                        <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" [rueck]="rueckVon(k.ziel)" />
+                  <!-- Das Fach des Artikels nur an einer Artikelkachel (T-368): an Abfrage und
+                       Struktur stand es leer daneben und nahm ihnen die halbe Höhe. -->
+                  @if (!k.abfrage && !k.struktur) {
+                    <div class="kinhalt" [class.mit-karte]="istKarte(k)">
+                      @if (k.ziel && istKarte(k)) {
+                        <!-- Die Karte selbst (T-339): dieselbe Komponente wie auf der Artikelseite, gesiebt am Server. -->
+                        <nw-karte [id]="k.ziel.id" />
+                      } @else if (k.ziel) {
+                        <!-- Die Kachel wählt die Ansicht (T-310, pickView): eine gestaltete zeichnet ihren Baum. -->
+                        @if (k.ansicht === 'full') {
+                          <!-- Die ganze Seite (T-339): gezeichnet wie im Druck, als Blatt — sie scrollt in der Kachel. -->
+                          <nw-blatt [artikel]="k.ziel" ansicht="full" [rueck]="rueckVon(k.ziel)" />
+                        } @else {
+                          <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" [rueck]="rueckVon(k.ziel)" />
+                        }
+                      } @else if (k.kurz) {
+                        <p class="laedt">Loading…</p>
                       }
-                    } @else if (k.kurz) {
-                      <p class="laedt">Loading…</p>
-                    }
-                  </div>
+                    </div>
+                  }
                   @if (darfSchreiben() && !k.platz.locked) {
                     <div
                       class="griff"

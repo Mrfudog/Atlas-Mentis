@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { mergeStructure, netLayout } from '@nw/model';
+import { mergeStructure, netLayout, netViewBox } from '@nw/model';
 import type { StructureLayout, StructureLink, StructureNode } from '@nw/model';
 import { Api, ApiError, type StrukturAntwort } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -47,6 +47,7 @@ const RING = 150;
 @Component({
   selector: 'nw-struktur',
   imports: [NgTemplateOutlet, RouterLink, KurzLink],
+  host: { '[class.eingepasst]': 'einpassen()' },
   template: `
     <ng-template #astT let-a>
       <li [attr.data-knoten]="a.node.id">
@@ -168,6 +169,13 @@ const RING = 150;
     .quer li { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: baseline; }
     .netz { overflow: auto; }
     svg { width: 100%; height: auto; min-height: 16rem; display: block; }
+    /* In einer Kachel (T-368): das Netz nimmt die Höhe, die bleibt, und das
+       ganze Bild passt hinein (viewBox, meet) — statt in seiner eigenen
+       Grösse unten und rechts abgeschnitten zu werden. */
+    :host(.eingepasst) { display: flex; flex-direction: column; }
+    :host(.eingepasst) > * { flex: none; }
+    :host(.eingepasst) > .netz { flex: 1 1 0; min-height: 8rem; overflow: hidden; }
+    :host(.eingepasst) svg { height: 100%; min-height: 0; }
     line { stroke: var(--ink, #3b2f1e); stroke-width: 1.2; opacity: 0.55; }
     line.quer { stroke-dasharray: 4 3; }
     .spitze { fill: var(--ink, #3b2f1e); opacity: 0.55; }
@@ -186,6 +194,8 @@ export class Struktur {
   readonly tiefe = input<number | undefined>(undefined);
   /** Baum oder Netz, wie gespeichert — umschalten geht hier, ohne zu speichern. */
   readonly form0 = input<StructureLayout>('tree', { alias: 'form' });
+  /** In eine Kachel einpassen (T-368): das Netz so gross wie der Platz, den sie lässt. */
+  readonly einpassen = input(false);
 
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
@@ -318,13 +328,7 @@ export class Struktur {
         return { link, x1, y1, x2, y2, mx: (x1 + x2) / 2 + ox * 2, my: (y1 + y2) / 2 + oy * 2 - 3 };
       })
       .filter((l): l is NonNullable<typeof l> => !!l);
-    const xs = knoten.map((k) => k.x);
-    const ys = knoten.map((k) => k.y);
-    const rand = 70;
-    const x0 = Math.min(...xs) - rand;
-    const y0 = Math.min(...ys) - rand;
-    const w = Math.max(...xs) - x0 + rand;
-    const h = Math.max(...ys) - y0 + rand;
-    return { box: `${x0} ${y0} ${w} ${h}`, knoten, linien };
+    const b = netViewBox(knoten.map((k) => ({ x: k.x, y: k.y, name: k.node.name })));
+    return { box: `${b.x} ${b.y} ${b.w} ${b.h}`, knoten, linien };
   });
 }

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-board-cards-fit",
+      "date": "2026-10-22",
+      "title": "Structure and query cards use the whole card; long notes scroll",
+      "text": "A structure card in Web form now fits the whole web into the card instead of cutting it off, and structure and query cards use their full height. A text note longer than its box scrolls inside it, down to its last line.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
       "id": "2026-10-22-image-picker-files",
       "date": "2026-10-22",
       "title": "Pick images from Files and OneDrive on your phone",

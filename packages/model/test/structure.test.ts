@@ -3,6 +3,7 @@ import {
   isStructurePlacement,
   mergeStructure,
   netLayout,
+  netViewBox,
   STRUCTURE_DEFAULT_EDGES,
   STRUCTURE_DEPTH,
   structureGraph,
@@ -133,5 +134,25 @@ describe('Struktur (T-341)', () => {
     expect(zusammen.nodes.find((n) => n.id === 'Zirkel')?.more).toBe(false);
     expect(zusammen.links.some((l) => l.id === 'b-m')).toBe(true);
     expect(zusammen.root).toBe('Wacht');
+  });
+
+  it('fasst das Netz samt Namen ein (T-368)', () => {
+    const k = [
+      { x: 0, y: 0, name: 'Watch' },
+      { x: 150, y: 0, name: 'A very long faction name of the realm' },
+      { x: -150, y: 150, name: 'Bo' },
+    ];
+    const b = netViewBox(k);
+    /* Der lange Name ragt rechts über den Kreis hinaus und steht trotzdem ganz drin. */
+    expect(b.x + b.w).toBeGreaterThanOrEqual(150 + (k[1]!.name.length * 6.2) / 2);
+    /* Ein kurzer Name braucht mindestens den Rand für Kreis und „+". */
+    expect(b.x).toBeLessThanOrEqual(-150 - 24);
+    /* Oben das „+", unten der Name. */
+    expect(b.y).toBeLessThanOrEqual(-26);
+    expect(b.y + b.h).toBeGreaterThanOrEqual(150 + 34);
+  });
+
+  it('gibt für ein leeres Netz einen kleinen Ausschnitt statt NaN', () => {
+    expect(netViewBox([])).toEqual({ x: -50, y: -50, w: 100, h: 100 });
   });
 });
