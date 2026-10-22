@@ -76,9 +76,9 @@ Der Schirm, auf den man während der Sitzung schaut:
 **Spielende sehen Karten am Tisch nur noch so**, also nicht mehr über
 eine Kartenvorlage in der Liste. Der Weg *Maps* in der Basis-Leiste führt
 zu den freigegebenen Karten im Spiel. Eine Vorlage bleibt
-Vorbereitungsstand und steht für Spielende nur da, wenn die Leitung sie
-ausdrücklich teilt. Dann gilt ihr Nebel wie an einer Karte im Spiel (zu
-entscheiden: E-1, unten).
+Vorbereitungsstand, und Spielende sehen sie nie (E-136, entschieden; wie
+weit das für die Umgebung eines Spielstands gilt, ist E-139 in
+[Konzepte-2026-10-22.md](Konzepte-2026-10-22.md)).
 
 Die Anordnung der Kacheln gibt die Vorlage vor (`newPlayBoard`); die
 Leitung darf sie umstellen. Eine Kachel ohne Inhalt (kein Kampf) steht
@@ -122,11 +122,10 @@ nicht da, nach der Regel „Was nicht gilt, steht nicht da“.
   - laufende Sicht der Tokens (T-216);
   - Wissen der Figuren und ihrer Gruppe.
   Das gilt auf allen drei Boards.
-- **Koordinator** (zu entscheiden: E-2): ein Konto, das am Tisch mehrere
-  oder alle Spielerfiguren steuert, ohne Leitung zu sein. Vorschlag: keine
-  neue Rolle, sondern **mehrere Figuren am Konto**, und auf der Karte
-  steuert man die Tokens der eigenen Figuren. Eine neue Rolle hiesse eine
-  fünfte Stufe in `TableRole` und jede Siebung einmal mehr.
+- **Koordinator** (E-137, entschieden): keine eigene Rolle. Spielende
+  legen an ihrer Figur fest, wer sie sieht, für sie spielt oder sie
+  bearbeitet; die Kampagne setzt den Rahmen. Ein Koordinator ist ein
+  Konto, dem mehrere Figuren `play` geben (REQ-369).
 
 ## Was bleibt, wie es ist
 
@@ -150,12 +149,15 @@ nicht da, nach der Regel „Was nicht gilt, steht nicht da“.
    und Protokoll.
 4. **Log-Kachel** aus dem Protokoll (REQ-120 zu Ende).
 
-## Offen
+## Entschieden (22.10.2026)
 
-- **E-1:** Sehen Spielende Kartenvorlagen überhaupt, oder nur Karten im
-  Spiel? Vorschlag: nur im Spiel, ausser ausdrücklich geteilt, und dann mit
-  Nebel.
-- **E-2:** Koordinator als Rolle oder als mehrere Figuren am Konto?
-  Vorschlag: mehrere Figuren.
-- **E-3:** Erzwingen ohne Rückfrage oder als Hinweis? Vorschlag:
-  erzwingen, ausser beim Tippen; *Back* führt zurück.
+Die Nummern hiessen in der ersten Fassung E-1 bis E-3; im Projektbrett
+sind es E-136 bis E-138.
+
+- **E-136:** Spielende sehen nur Karten im Spiel, nie die Vorlage.
+  Offen ist die Umgebung eines Spielstands (E-139).
+- **E-137:** Kein Koordinator als Rolle; Freigaben an der Figur, Rahmen
+  durch die Kampagne (REQ-369).
+- **E-138:** Zeigen geht als Popup auf, das Spielende auf ihr Spielerboard
+  nehmen können („Keep on my board“); dasselbe steht in der Kachel
+  *Shown* auf dem Spielboard.
