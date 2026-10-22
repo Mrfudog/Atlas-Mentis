@@ -119,6 +119,39 @@ describe('Sichtpolygon', () => {
     expect(inShape(poly, { x: 0.5, y: 0.5 })).toBe(true);
   });
 
+  it('hält eine Wand, deren Ecken vor dem ersten gebogenen Strahl liegen (Schiessscharte)', () => {
+    /* Ein Raum, oben eine Wand mit einem V und einer schmalen Lücke in seiner
+       Spitze, links eine Tür, rechts eine Wand — nachgestellt nach einer
+       Karte auf dev (22.10.). Das Ausdünnen verglich jeden Punkt mit seinem
+       rohen Vorgänger, solange noch keiner behalten war; je Ecke gibt es drei
+       fast gleiche Strahlen, also fiel alles bis zum ersten Strahl durch die
+       Lücke weg — die Tür, die Wand oben links und der linke Arm des V. */
+    const raum: MapWall[] = [
+      { id: 'oben-links', kind: 'wall', x1: 0.1551, y1: 0.2787, x2: 0.0732, y2: 0.2797 },
+      { id: 'v-links', kind: 'wall', x1: 0.1656, y1: 0.2904, x2: 0.1551, y2: 0.2787 },
+      { id: 'v-rechts', kind: 'wall', x1: 0.1837, y1: 0.2771, x2: 0.1678, y2: 0.2906 },
+      { id: 'oben-rechts', kind: 'wall', x1: 0.2286, y1: 0.279, x2: 0.1837, y2: 0.2771 },
+      { id: 'rechts', kind: 'wall', x1: 0.1837, y1: 0.2771, x2: 0.1835, y2: 0.4284 },
+      { id: 'unten', kind: 'wall', x1: 0.2115, y1: 0.4728, x2: 0.1371, y2: 0.4712 },
+      { id: 'links-unten', kind: 'wall', x1: 0.1371, y1: 0.4712, x2: 0.1382, y2: 0.343 },
+      { id: 'tuer', kind: 'door', state: 'closed', x1: 0.1382, y1: 0.343, x2: 0.138, y2: 0.2886 },
+      { id: 'links-oben', kind: 'wall', x1: 0.1386, y1: 0.2789, x2: 0.138, y2: 0.2886 },
+    ];
+    const ar = 2223 / 3035;
+    const poly = { id: 'p', kind: 'poly' as const, pts: sightPolygon(raum, { x: 0.1561, y: 0.3094 }, ar) };
+    /* Im Raum: ja. Hinter der oberen Wand links der Lücke und hinter der Tür: nein. */
+    expect(inShape(poly, { x: 0.16, y: 0.38 })).toBe(true);
+    expect(inShape(poly, { x: 0.145, y: 0.2 })).toBe(false);
+    expect(inShape(poly, { x: 0.12, y: 0.3 })).toBe(false);
+    /* Die Ecken der Wand oben links stehen im Polygon. */
+    const nah = (x: number, y: number) => poly.pts.some(([a, b]) => Math.hypot(a - x, b - y) < 0.002);
+    expect(nah(0.1551, 0.2787)).toBe(true);
+    expect(nah(0.138, 0.2886)).toBe(true);
+    /* Durch die Lücke ein schmaler Keil nach oben, nicht mehr. */
+    expect(inShape(poly, { x: 0.195, y: 0.24 })).toBe(true);
+    expect(inShape(poly, { x: 0.172, y: 0.24 })).toBe(false);
+  });
+
   it('mit Halbmesser: nicht weiter als der Kreis', () => {
     const p = visionPolygon({ x: 0.5, y: 0.5 }, [], { w: 1, h: 1 }, 0.1);
     expect(Math.max(...p.map(([x, y]) => Math.hypot(x - 0.5, y - 0.5)))).toBeLessThanOrEqual(0.1 + 1e-9);

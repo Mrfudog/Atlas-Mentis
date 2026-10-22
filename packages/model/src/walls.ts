@@ -275,9 +275,25 @@ export function snapToGrid(p: Pt, geo: { size: number; ox: number; oy: number; w
 
 // ------------------------------------------------------------ Sichtpolygon
 
-/** Fast auf einer Geraden mit den Nachbarn: fällt weg — ein Polygon an einer Wand entlang ist sonst hundert Punkte. */
-function ausduennen(pts: Array<[number, number]>): Array<[number, number]> {
-  if (pts.length <= 3) return pts;
+/**
+ * Fast auf einer Geraden mit den Nachbarn: fällt weg — ein Polygon an einer
+ * Wand entlang ist sonst hundert Punkte.
+ *
+ * **Zuerst die Doppelten weg** (22.10.): je Ecke gibt es drei fast gleiche
+ * Strahlen. Ohne das verglich der erste Durchgang jeden Punkt mit seinem
+ * rohen Vorgänger, solange noch keiner behalten war — und das war fast immer
+ * derselbe Punkt. Bis zum ersten Strahl, der weit auseinanderlief, fiel so
+ * alles weg, auch Ecken, und das Polygon schnitt quer durch Wände.
+ */
+function ausduennen(roh: Array<[number, number]>): Array<[number, number]> {
+  if (roh.length <= 3) return roh;
+  const pts: Array<[number, number]> = [];
+  for (const p of roh) {
+    const v = pts[pts.length - 1];
+    if (!v || Math.hypot(p[0] - v[0], p[1] - v[1]) > 1e-5) pts.push(p);
+  }
+  while (pts.length > 1 && Math.hypot(pts[0]![0] - pts[pts.length - 1]![0], pts[0]![1] - pts[pts.length - 1]![1]) <= 1e-5) pts.pop();
+  if (pts.length <= 3) return pts.length >= 3 ? pts : roh;
   const out: Array<[number, number]> = [];
   const n = pts.length;
   for (let i = 0; i < n; i++) {
