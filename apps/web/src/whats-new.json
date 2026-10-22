@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-link-shape-tools",
+      "date": "2026-10-22",
+      "title": "Link shapes with visible corners, snapping and undo",
+      "text": "Sub-maps › Link shape now shows its corners, snaps them to walls, the grid and the corners of other shapes, and takes one back with Undo point or Backspace; Enter finishes. Unlink, Link shape and the other tools no longer jump into the sub-map when you tap its frame.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-22-sight-through-gaps",
+      "date": "2026-10-22",
+      "title": "Line of sight holds at narrow gaps",
+      "text": "A token next to a narrow gap — an arrow slit, two walls that do not quite meet — no longer sees through the walls beside it. Fog already revealed by the old sight stays revealed; cover it again with Fog › Hide.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-22-release-shares-maps",
       "date": "2026-10-22",
       "title": "Release shares the map — image, fog and cover name included",
