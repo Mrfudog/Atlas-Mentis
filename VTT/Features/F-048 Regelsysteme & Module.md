@@ -15,7 +15,7 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-4 Stories · 21 Punkte · 1 teils · 3 offen
+6 Stories · 39 Punkte · 1 teils · 5 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -23,6 +23,8 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 | [[REQ-287]] Regelsysteme und Module als Ebenen | Spielleitung | 2 | teils |
 | [[REQ-289]] Homebrew-Regeln erfassen | Spielleitung | 3 | offen |
 | [[REQ-319]] Inventarregeln als wählbares Modul | Spielleitung | 2 | offen |
+| [[REQ-369]] Module als Baum mit Transformationen | Spielleitung | 2 | offen |
+| [[REQ-375]] Register als Module | Verwaltung | 2 | offen |
 <!-- stories:ende -->
 
 ## Regelsystem und Mechaniken als Ebenen (E-166, T-394)

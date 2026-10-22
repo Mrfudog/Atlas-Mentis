@@ -15,11 +15,12 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-3 Stories · 18 Punkte · 3 offen
+4 Stories · 26 Punkte · 4 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-196]] Sitzung aufnehmen | Spielleitung | 4 | offen |
 | [[REQ-197]] Transkript und Recap-Entwurf | Spielleitung | 4 | offen |
 | [[REQ-198]] Sprecher im Transkript | Spielleitung | 5 | offen |
+| [[REQ-389]] Aufnahme wird Chat-Text | Spielleitung | 4 | offen |
 <!-- stories:ende -->
