@@ -55,7 +55,7 @@ describe('Übersicht der Vorgabeformen (T-394)', () => {
     expect(u.groups).toEqual([expect.objectContaining({ id: 'BL', name: 'Blades', count: 3, layer: 'ly_rm_shapes', refName: 'Sword' })]);
     const je = Object.fromEntries(u.items.map((i) => [i.id, i]));
     expect(je['sword1']).toMatchObject({ rows: ['#', '#', '#'], source: 'reference', ref: 'sword', set: { group: 'BL', ref: 'sword' } });
-    expect(je['arrow']).toMatchObject({ rows: ['#', '#', '#'], source: 'group' });
+    expect(je['arrow']).toMatchObject({ rows: ['#', '#', '#'], source: 'group', weight: 1, type: 'Item' });
     /* Der Artikel sagt dasselbe wie die Übersicht. */
     expect((await t.json<Entity>('Admin', 'GET', '/api/entities/sword1')).components?.['Item']?.['rows']).toEqual(['#', '#', '#']);
   });

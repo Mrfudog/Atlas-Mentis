@@ -2468,6 +2468,9 @@ export interface FormenUebersicht {
     id: string;
     name: string;
     type: string;
+    itemType?: string;
+    weight?: number;
+    properties?: string[];
     rows: string[] | null;
     stackSize: number | null;
     source: DefaultShape['source'];

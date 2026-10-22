@@ -62,6 +62,7 @@ const zeilen = (v: unknown): string[] | null | undefined => {
   if (Array.isArray(v)) return v.filter((z): z is string => typeof z === 'string').map((z) => z.trim()).filter(Boolean);
   return undefined;
 };
+const itemKarte = (e: Entity): Record<string, unknown> => (e.components?.['Item'] as Record<string, unknown> | undefined) ?? {};
 const zahl = (v: unknown): number | null | undefined => (v === null ? null : typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.trunc(v) : undefined);
 const text = (v: unknown): string | null | undefined => (v === null || v === '' ? null : typeof v === 'string' ? v : undefined);
 
@@ -104,6 +105,12 @@ export function registerVorgabeformen(app: FastifyInstance, deps: VorgabeformenD
     const sichtbar = new Set(gesehen.map((e) => e.id));
     const lookup = { item: (id: string) => geltende.get(id) ?? stand.map.get(id) };
 
+    /* Die Eigenschaften (`hasProperty`) zum Erkennen der Gruppe — nur die, die der Betrachter sieht. */
+    const eigenschaftsIds = new Set<string>();
+    for (const e of gesehen) for (const r of e.relations ?? []) if (r.type === 'hasProperty') eigenschaftsIds.add(r.to);
+    const eigenschaften = new Map(
+      (await sieve(request, [...eigenschaftsIds].map((id) => stand.map.get(id)).filter((x): x is Entity => !!x), stand.map)).map((x) => [x.id, entityName(x)]),
+    );
     const zaehler = new Map<string, number>();
     const items = gesehen.map((roh0) => {
       const e = geltende.get(roh0.id) ?? roh0;
@@ -115,6 +122,12 @@ export function registerVorgabeformen(app: FastifyInstance, deps: VorgabeformenD
         id: roh0.id,
         name: entityName(roh0),
         type: primaryInterface(roh0),
+        ...(typeof itemKarte(e)['itemType'] === 'string' ? { itemType: itemKarte(e)['itemType'] as string } : {}),
+        ...(typeof itemKarte(e)['weight'] === 'number' ? { weight: itemKarte(e)['weight'] as number } : {}),
+        ...(() => {
+          const p = (roh0.relations ?? []).filter((r) => r.type === 'hasProperty').map((r) => eigenschaften.get(r.to)).filter((n): n is string => !!n);
+          return p.length ? { properties: p } : {};
+        })(),
         rows: s.rows,
         stackSize: s.stackSize,
         source: s.source,
