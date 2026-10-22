@@ -23,12 +23,12 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 186 steht · 59 teils · 132 offen · 10 ersetzt · 6 verworfen — 393 Stories in 84 Features und 12 Epics.
+Zusammen: 186 steht · 59 teils · 133 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 56 | 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen |
-| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 50 | 28 steht · 7 teils · 12 offen · 1 ersetzt · 2 verworfen |
+| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 51 | 28 steht · 7 teils · 13 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 19 steht · 2 teils · 8 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 9 teils · 28 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 33 | 17 steht · 4 teils · 12 offen |
@@ -169,7 +169,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils) · REQ-371 Information aus Feld, Textteil oder Beziehung (offen) · REQ-372 Regeln lernen, wenn sie vorkommen (offen) · REQ-381 Ein Rahmen für alle Werkbank-Seiten (offen) · REQ-392 Featureseiten im Projektbrett (offen) · REQ-393 Demo-Video der Seite (teils)
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils) · REQ-368 Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden (offen) · REQ-371 Information aus Feld, Textteil oder Beziehung (offen) · REQ-372 Regeln lernen, wenn sie vorkommen (offen) · REQ-381 Ein Rahmen für alle Werkbank-Seiten (offen) · REQ-392 Featureseiten im Projektbrett (offen) · REQ-393 Demo-Video der Seite (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -211,6 +211,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-352]] | Reiter Knowledge am Artikel | 1 | **steht** | T-286: Kasten Knowledge in der Seitenspalte (Leitung), Routen /api/knowledge/…; neue Information gilt über applies.article |
 | [[REQ-353]] | Die Seite eines Wissens zeigt alles, was es vereint | 1 | **steht** | T-287: Element knowledge an der Art Knowledge, GET /api/knowledge/:id/contents (gesiebt) |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | 2 | **offen** |  |
+| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | 2 | **offen** | T-387 in Arbeit |
 | [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | 2 | **offen** |  |
 | [[REQ-372]] | Regeln lernen, wenn sie vorkommen | 3 | **offen** |  |
 
@@ -1107,6 +1108,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-364]]** (2, offen, Live-Spiel) — Kontingente je Quelle und Frequenz als Check-Marks in einer Rundenübersicht für die Leitung, mit automatischem Zurücksetzen (Beginn des eigenen Zugs, Rundenbeginn)
 - **[[REQ-365]]** (2, offen, Live-Spiel) — Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung
 - **[[REQ-367]]** (2, teils, Zugang & Betrieb) — Ebene eines Artikels im Bearbeiten ändern, als erstes Feld — *T-383: Feld „Layer“ zuerst in der Maske, Angebot aus den Schreibebenen, Prüfung im PUT gegen zielEbenen, Meldung „Moved to …“; was mit Teilen, Statblock und Inventar geschieht, wartet auf E-161*
+- **[[REQ-368]]** (2, offen, Zugang & Betrieb) — Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden — *T-387 in Arbeit*
 - **[[REQ-369]]** (2, offen, Regeln & Nachschlagen) — Module als Baum mit Transformationen
 - **[[REQ-370]]** (2, offen, Inhaltsgerüst) — Neuere Fassung zum Vergleich anfragen
 - **[[REQ-371]]** (2, offen, Zugang & Betrieb) — Information aus Feld, Textteil oder Beziehung

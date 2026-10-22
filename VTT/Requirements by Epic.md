@@ -137,7 +137,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-50 Stories · 162 Punkte · 28 steht · 7 teils · 12 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+51 Stories · 165 Punkte · 28 steht · 7 teils · 13 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -179,6 +179,7 @@ Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder dar
 | [[REQ-177]] | Einzelne Felder freigeben | Spielleitung | 2 | 3 | steht |
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | Spielleitung | 2 | 2 | steht |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | 2 | 3 | offen |
+| [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | 2 | 3 | offen |
 | [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | Spielleitung | 2 | 5 | offen |
 | [[REQ-039]] | Sichtbarkeit mit Rollenlisten und Freigabemarken | – | 3 | 8 | ersetzt |
 | [[REQ-059]] | Wissen über Arten von Kreaturen | Spielleitung | 3 | 3 | steht |
