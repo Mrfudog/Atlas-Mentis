@@ -49,8 +49,10 @@ import {
   LAYER_RELATION,
   layoutFor,
   listColumns,
+  inTimeWindow,
   meetsRequirement,
   parseRequirement,
+  parseTimeWindow,
   primaryInterface,
   requirementContext,
   requirementKeys,
@@ -60,7 +62,7 @@ import {
   typeChain,
   versionGroups,
 } from '@nw/model';
-import type { CharacterProfile, Entity, FacetDef, LayoutElement, PropertySchema, Registry, Requirement, RequirementContext } from '@nw/model';
+import type { CharacterProfile, Entity, FacetDef, TimeWindow, LayoutElement, PropertySchema, Registry, Requirement, RequirementContext } from '@nw/model';
 
 /** Ein Artikel ohne Ebenenkante steht in der Liste unter „keine Ebene". */
 export const NO_LAYER = '∅';
@@ -112,6 +114,21 @@ interface IndexZeile {
   /** Der Rang der obersten aufgeschalteten Ebene, die ihn bringt — die
    *  Fassung mit dem höchsten steht als Kopfzeile. */
   rang: number;
+  /** Wann angelegt und zuletzt geschrieben (T-382), ISO — vom Server, nicht aus dem Artikel. */
+  createdAt?: string;
+  updatedAt?: string;
+  /** Wer ihn hinzugefügt hat (T-382): die Konto-Id, wenn bekannt. */
+  addedBy?: string;
+}
+
+/** **Herkunft der Zeilen** (T-382): Zeiten und Konto, neben dem Artikel gespeichert. */
+export interface ListProvenance {
+  /** Die Zeiten aus dem ungesiebten Bestand — ein sichtbarer Artikel verrät mit ihnen nichts. */
+  times?: (id: string) => { createdAt?: string | undefined; updatedAt?: string | undefined } | undefined;
+  /** Artikel-Id → Konto-Id. */
+  creators?: ReadonlyMap<string, string>;
+  /** Konto-Id → Name. */
+  users?: ReadonlyMap<string, string>;
 }
 
 export interface ListIndex {
@@ -125,6 +142,8 @@ export interface ListIndex {
   /** Die Gegenrichtung der Kanten über das Gesiebte — für `in.kante` als Spalte (T-343). */
   ein: Map<string, { type: string; from: string }[]>;
   registry: Registry;
+  /** Konto-Id → Name, für „Added by" (T-382). */
+  users: ReadonlyMap<string, string>;
 }
 
 /**
@@ -141,6 +160,7 @@ export function buildListIndex(
    *  steht weder als Zeile noch als Name, Facette oder Ebene einer Zeile da.
    *  `null`: alle. */
   shown: ReadonlySet<string> | null = null,
+  herkunft: ListProvenance = {},
 ): ListIndex {
   const genannt = (e: Entity) => !shown || primaryInterface(e) !== 'Layer' || shown.has(e.id);
   visible = shown ? visible.filter(genannt) : visible;
@@ -259,11 +279,26 @@ export function buildListIndex(
       nummer: articleId(e),
       ...(fassungen.has(e.id) ? { fassung: fassungen.get(e.id)! } : {}),
       rang: rank(e),
+      ...zeitenVon(e, herkunft),
     });
   }
   rows.sort((a, b) => (a.sortName < b.sortName ? -1 : a.sortName > b.sortName ? 1 : a.id < b.id ? -1 : 1));
-  return { rows, names, types, typeOf, ein, registry };
+  return { rows, names, types, typeOf, ein, registry, users: herkunft.users ?? new Map() };
 }
+
+/** Zeiten und Konto einer Zeile (T-382) — leere fallen weg. */
+function zeitenVon(e: Entity, h: ListProvenance): Pick<IndexZeile, 'createdAt' | 'updatedAt' | 'addedBy'> {
+  const t = h.times?.(e.id) ?? { createdAt: e.createdAt, updatedAt: e.updatedAt };
+  const von = h.creators?.get(e.id);
+  return {
+    ...(t.createdAt ? { createdAt: t.createdAt } : {}),
+    ...(t.updatedAt ? { updatedAt: t.updatedAt } : {}),
+    ...(von ? { addedBy: von } : {}),
+  };
+}
+
+/** „Added by" ohne bekanntes Konto. */
+export const UNKNOWN_CREATOR = '∅';
 
 /**
  * Die Werte eines Artikels je Facette (T-174). Eine Kante zählt nur, wenn
@@ -417,8 +452,13 @@ export interface ListQuery {
   tag?: string[] | undefined;
   /** Diese Artikel nicht — am Server gesetzt, nie aus der Adresse (die Galerie: „unbenutzt"). */
   exclude?: ReadonlySet<string> | undefined;
-  /** `name` (Vorgabe), `type` oder eine Spalte `Typ.feld`; `-` davor kehrt um. */
+  /** `name` (Vorgabe), `type`, `created`, `updated` oder eine Spalte `Typ.feld`; `-` davor kehrt um. */
   sort?: string | undefined;
+  /** **Kürzlich hinzugefügt / geändert** (T-382): das Fenster aus `added=`/`changed=` (`parseTimeWindow`). */
+  added?: TimeWindow | undefined;
+  changed?: TimeWindow | undefined;
+  /** **Hinzugefügt von** (T-382): diese Konten; `UNKNOWN_CREATOR` für „nicht bekannt". */
+  by?: string[] | undefined;
   /** **Nach Nähe ordnen** (T-138): mit `q` zuerst der genaue Name, dann
    *  der Anfang, ein Wortanfang, ein Alias oder Deckname, zuletzt „enthält".
    *  Innerhalb einer Stufe nach Namen. Gilt nur ohne `sort`. */
@@ -495,6 +535,10 @@ export interface ListResult {
     versions?: { id: string; name: string; layers: string[]; source: string }[];
     /** Mit `usable`: die Voraussetzung lässt sich nicht prüfen (T-180). */
     usable?: 'unknown';
+    /** Wann und von wem (T-382). */
+    createdAt?: string;
+    updatedAt?: string;
+    addedBy?: string;
   }[];
   facets: {
     types: { type: string; label: string; area: string; count: number }[];
@@ -504,6 +548,8 @@ export interface ListResult {
     tags: { tag: string; count: number }[];
     /** Wie viele Teile von Statblöcken gerade ausgeblendet sind. */
     partsHidden: number;
+    /** **Hinzugefügt von** (T-382): je Konto gezählt, über die Treffer aller übrigen Filter. */
+    addedBy: { id: string; name: string; count: number }[];
     /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt
      *  und wie viele unbekannt in der Liste bleiben. */
     usable?: { id: string; name: string; hidden: number; unknown: number };
@@ -585,6 +631,9 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const ohneEbenen = q.nolayer?.length ? new Set(q.nolayer) : null;
   const nurIds = q.ids?.length ? new Set(q.ids) : null;
   const marken = q.tag?.length ? q.tag : null;
+  const autoren = q.by?.length ? new Set(q.by) : null;
+  const autorVon = (z: IndexZeile) => z.addedBy ?? UNKNOWN_CREATOR;
+  const autorOk = (z: IndexZeile) => !autoren || autoren.has(autorVon(z));
   const einTyp = q.type?.length === 1 ? q.type[0]! : undefined;
   const spalten = einTyp ? (idx.types.get(einTyp)?.columns ?? listColumns(idx.registry, einTyp)) : [];
   /* Gewählt (T-343): dann genau diese, in dieser Reihenfolge. */
@@ -621,6 +670,8 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     if (staende && !staende.has(z.status || 'ready')) continue;
     if (such && !z.such.includes(such)) continue;
     if (marken && !marken.every((t) => z.tags.includes(t))) continue;
+    if (q.added && !inTimeWindow(z.createdAt, q.added)) continue;
+    if (q.changed && !inTimeWindow(z.updatedAt, q.changed)) continue;
     if (q.exclude?.has(z.id)) continue;
     if (q.usable && z.req) {
       const v = meetsRequirement(z.req, q.usable);
@@ -640,6 +691,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
 
   const typZahl = new Map<string, number>();
   const ebenenZahl = new Map<string, number>();
+  const autorZahl = new Map<string, number>();
   const treffer: IndexZeile[] = [];
   const getypt: IndexZeile[] = [];
   let partsHidden = 0;
@@ -649,6 +701,9 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     const felder = !mitFeldern || felderOk(z);
     if (ebeneOk && felder && typOk && istTeil(z) && !teilOk(z)) partsHidden += 1;
     if (!teilOk(z)) continue;
+    /* „Added by" zählt ohne seinen eigenen Filter (T-382), wie jede Facette. */
+    if (typOk && ebeneOk && felder) autorZahl.set(autorVon(z), (autorZahl.get(autorVon(z)) ?? 0) + 1);
+    if (!autorOk(z)) continue;
     /* Die Arten zählen ohne die Art und ohne die Feldfilter: die gelten
        nur für die gewählte. */
     if (ebeneOk) typZahl.set(z.type, (typZahl.get(z.type) ?? 0) + 1);
@@ -680,7 +735,13 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
         ? z.sortName
         : nach === 'type' || nach === '@type'
           ? (idx.types.get(z.type)?.label ?? z.type)
-          : gewaehlt
+          : nach === 'created' || nach === '@created'
+            ? z.createdAt
+            : nach === 'updated' || nach === '@updated'
+              ? z.updatedAt
+              : nach === '@addedBy'
+                ? (z.addedBy ? idx.users.get(z.addedBy) : undefined)
+                : gewaehlt
             ? leerWeg(zellenVon(z)[nach] ?? (nach === '@source' ? z.source || undefined : undefined))
             : z.cols[nach];
     liste = [...treffer].sort((a, b) => {
@@ -776,6 +837,9 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       ...(z.asset ? { asset: z.asset } : {}),
       ...(z.tags.length ? { tags: z.tags } : {}),
       ...(unbekannt.has(z.id) ? { usable: 'unknown' as const } : {}),
+      ...(z.createdAt ? { createdAt: z.createdAt } : {}),
+      ...(z.updatedAt ? { updatedAt: z.updatedAt } : {}),
+      ...(z.addedBy && idx.users.has(z.addedBy) ? { addedBy: idx.users.get(z.addedBy)! } : {}),
       ...(unter.has(z.id)
         ? {
             versions: unter.get(z.id)!.map((v) => ({
@@ -802,6 +866,13 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       fields,
       tags,
       partsHidden,
+      addedBy: [...new Set([...autorZahl.keys(), ...(q.by ?? [])])]
+        .map((id) => ({
+          id,
+          name: id === UNKNOWN_CREATOR ? 'Unknown' : (idx.users.get(id) ?? 'Unknown'),
+          count: autorZahl.get(id) ?? 0,
+        }))
+        .sort((a, b) => (a.id === UNKNOWN_CREATOR ? 1 : b.id === UNKNOWN_CREATOR ? -1 : b.count - a.count || a.name.localeCompare(b.name, 'en'))),
       ...(q.usable
         ? { usable: { id: q.usable.id, name: q.usable.name, hidden: nichtErfuellt, unknown: treffer.filter((z) => unbekannt.has(z.id)).length } }
         : {}),
@@ -871,6 +942,10 @@ function gewaehlteZellen(idx: ListIndex, z: IndexZeile, spalten: readonly Gewaeh
     else if (s.ref === '@tags') wert = z.tags;
     else if (s.ref === '@status') wert = z.status || undefined;
     else if (s.ref === '@id') wert = z.nummer || undefined;
+    /* Wann und von wem (T-382): der Tag reicht in einer Zeile; sortiert wird nach der vollen Zeit. */
+    else if (s.ref === '@created') wert = z.createdAt?.slice(0, 10);
+    else if (s.ref === '@updated') wert = z.updatedAt?.slice(0, 10);
+    else if (s.ref === '@addedBy') wert = z.addedBy ? idx.users.get(z.addedBy) : undefined;
     else if (s.kante) {
       const ids =
         s.kante.dir === 'out'
@@ -1046,6 +1121,13 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
       if (values.length) fields[ref] = { values };
     }
   }
+  /* **Zeit und Autor als Facetten** (T-382): `f=@added:7d`, `f=@by:<id>|<id>`
+     — so tragen Adresse und Filtergruppen sie wie jede andere Wahl. */
+  const meta: Record<string, string[] | undefined> = {};
+  for (const k of ['@added', '@changed', '@by']) {
+    if (fields[k]) meta[k] = fields[k].values;
+    delete fields[k];
+  }
   return {
     area: typeof raw['area'] === 'string' && raw['area'] ? raw['area'] : undefined,
     type: liste(raw['type']),
@@ -1062,12 +1144,27 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     versions: raw['versions'] === '1' || raw['versions'] === 'true',
     rank: raw['rank'] === '1' || raw['rank'] === 'true',
     sort: typeof raw['sort'] === 'string' && raw['sort'] ? raw['sort'] : undefined,
+    ...zeitfilter({ ...raw, added: raw['added'] ?? meta['@added']?.[0], changed: raw['changed'] ?? meta['@changed']?.[0] }),
+    by: liste(raw['by']) ?? meta['@by'],
     offset: Math.max(0, zahl(raw['offset'], 0)),
     /* Höchstens 200 je Blatt: wer mehr will, blättert. */
     limit: Math.min(200, Math.max(1, zahl(raw['limit'], 50))),
     fields,
     ...(cols ? { columns: cols } : {}),
   };
+}
+
+/**
+ * `added=`, `changed=` (T-382): `today`, `7d`, `30d` oder `von..bis`, mit
+ * der Zeitzone des Browsers (`tz`, Minuten wie `getTimezoneOffset`).
+ * Unsinn filtert nicht — er steht in der Adresse und ist sonst harmlos.
+ */
+function zeitfilter(raw: Record<string, unknown>, jetzt: Date = new Date()): Pick<ListQuery, 'added' | 'changed'> {
+  const tz = Number(raw['tz']);
+  const fenster = (v: unknown) => (typeof v === 'string' ? parseTimeWindow(v, jetzt, Number.isFinite(tz) ? tz : 0) : null);
+  const added = fenster(raw['added']);
+  const changed = fenster(raw['changed']);
+  return { ...(added ? { added } : {}), ...(changed ? { changed } : {}) };
 }
 
 // ------------------------------------------------------------------ Suche
