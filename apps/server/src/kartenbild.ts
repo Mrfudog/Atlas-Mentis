@@ -4,8 +4,7 @@
  *
  * Bis T-312 ging das Kartenbild ganz hinaus und wurde im Browser zugedeckt
  * — wer die Entwicklerwerkzeuge öffnete, sah die Karte. Jetzt gilt für
- * Spielende an einer Karte mit Nebel, **bis alles aufgedeckt ist**
- * (`fullyRevealed`):
+ * Spielende an jeder Karte:
  *
  * - **Die Blätter zeigen auf eine eigene Adresse** (`kartenbildAdressen`,
  *   nach `redactMap` im Sieb): `Image.image` und `Map.sheets[].image`
@@ -14,7 +13,14 @@
  * - **Die Route liefert nur das Aufgedeckte** (`GET /api/maps/:id/image`):
  *   das Bild mit der Maske des Aufgedeckten (`revealMaskSvg`), der Rest
  *   durchsichtig — gerechnet aus den Formen, die *dieser* Betrachter sieht
- *   (`revealFor`, Nebel je Figur), also aus der gesiebten Karte.
+ *   (`revealFor`, Nebel je Figur), also aus der gesiebten Karte. Ohne
+ *   Nebel oder ganz aufgedeckt das ganze Bild.
+ * - **Die Karte gibt ihr Bild frei, nicht das Asset.** Wer die Karte sieht,
+ *   bekommt das Bild ihrer Blätter, auch wenn das Asset selbst nur für die
+ *   Leitung ist — sonst müsste die Leitung jedes Kartenbild einzeln teilen,
+ *   und wer es vergisst, zeigt den Spielenden eine Karte ohne Bild. Darum
+ *   geht auch ein ganz aufgedecktes Blatt über diese Route und nicht über
+ *   `/api/assets/:id`, das weiter das Asset fragt.
  * - **Das Original bleibt zurück**: `/api/assets/:id` gibt es einem
  *   Spielenden nicht, solange es unter einem Nebel liegt, den er sieht
  *   (`zurueckgehalten`) — auch nicht als Vorschau.
@@ -70,24 +76,22 @@ export function istKartenbildAdresse(v: unknown): boolean {
 /** Der Nebelstand eines Blattes: was sich ändert, wenn das Bild sich ändern muss. */
 export function nebelStand(map: Entity, sheet: string, version: string): string {
   return createHash('sha256')
-    .update(JSON.stringify([version, sheet, revealShapes(map)]))
+    .update(JSON.stringify([version, sheet, fullyRevealed(map) ? 'full' : revealShapes(map)]))
     .digest('hex')
     .slice(0, 16);
 }
 
 /**
  * Tauscht an einer **gesiebten** Karte (nach `redactMap`, nie für die
- * Leitung) die Bilder der Blätter gegen beschnittene Adressen, solange
- * nicht alles aufgedeckt ist. Adressen nach aussen bleiben, wie sie sind.
+ * Leitung) die Bilder der Blätter gegen Adressen der Karte — beschnitten,
+ * solange nicht alles aufgedeckt ist, sonst ganz. Adressen nach aussen
+ * bleiben, wie sie sind.
  */
 export function kartenbildAdressen(map: Entity, version: (assetId: string) => string): Entity {
   if (!isMap(map)) return map;
   /* **Je Ebene** (T-307): jede hat ihren Nebel und ihre Bilder. */
   let e = map;
-  for (const f of mapFloors(map)) {
-    const v = floorView(e, f.id);
-    if (!fullyRevealed(v)) e = withFloorView(e, f.id, ebenenAdressen(v, f.id, version));
-  }
+  for (const f of mapFloors(map)) e = withFloorView(e, f.id, ebenenAdressen(floorView(e, f.id), f.id, version));
   return e;
 }
 
@@ -135,7 +139,7 @@ function ebenenAdressen(map: Entity, floor: string, version: (assetId: string) =
 
 /** Trägt die Karte irgendwo eine beschnittene Adresse? Dann ist sie für diesen Betrachter unter Nebel. */
 export function traegtBeschnitt(map: Entity): boolean {
-  return alleBlaetter(map).some((b) => istKartenbildAdresse(b.image));
+  return alleBlaetter(map).some((b) => istKartenbildAdresse(b.image) && !fullyRevealed(b.view));
 }
 
 /**
@@ -257,17 +261,19 @@ export function registerKartenbild(app: FastifyInstance, deps: KartenbildDeps): 
       const asset = stand.map.get(quelle);
       const registry = await repo.getRegistry();
       if (!asset || !typeChain(registry, primaryInterface(asset)).includes('Asset')) return nichts();
-      const [bildGesehen] = await sieve(request, [await geltend(asset, stand.map)], stand.map);
-      if (!bildGesehen) return nichts();
+      /* Gefragt wird die Karte, nicht das Asset: wer sie sieht, sieht ihr
+         Bild, soweit aufgedeckt. Ein Blatt der Leitung hat er schon oben
+         nicht (`hatBlatt`). */
       const ref = String((asset.components?.['Asset'] as { ref?: unknown } | undefined)?.ref ?? '');
       if (!validKey(ref)) return nichts();
 
       const version = assetVersion(asset);
-      /* Für die Leitung, oder wenn alles aufgedeckt ist, bekommt der
-         Betrachter keine beschnittene Adresse — fragt er trotzdem hier,
-         bekommt er das ganze Bild (gerechnet ist da nichts). */
-      const beschnitten = istKartenbildAdresse(hat.image);
-      const stempel = beschnitten ? nebelStand(ebeneGesiebt, blatt, version) : 'full';
+      /* Die Leitung bekommt keine Adresse der Karte — fragt sie trotzdem
+         hier, bekommt sie das ganze Bild. Ist alles aufgedeckt, ist auch
+         für Spielende nichts zu rechnen. */
+      const gesiebteAdresse = istKartenbildAdresse(hat.image);
+      const beschnitten = gesiebteAdresse && !fullyRevealed(ebeneGesiebt);
+      const stempel = gesiebteAdresse ? nebelStand(ebeneGesiebt, blatt, version) : 'full';
       const vorschau = request.query.size === 'thumb';
       const etag = `"${version}-${stempel}${vorschau ? '-t' : ''}"`;
       const fest = request.query.fog === stempel;
