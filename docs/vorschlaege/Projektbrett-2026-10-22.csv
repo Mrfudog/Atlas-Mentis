@@ -1,0 +1,51 @@
+Nr,Typ,Titel,Status,Story,Feature,PR / Ort,Notiz
+T-359,Aufgabe,Spielende sehen nur Karten im Spiel; Sichtbarkeitstests je Rolle,In Arbeit,"REQ-372, REQ-359","F-055, F-080",Zweig feature/nur-karten-im-spiel,wartet auf E-139
+T-360,Aufgabe,Move to layer in der Werkbank,Offen,REQ-365,F-016,,
+T-361,Aufgabe,Setting als Ebene; Gedankenwelt anlegen,Offen,REQ-100,F-004,,nach E-141
+T-362,Aufgabe,Sorten als Listen,Offen,REQ-366,F-003,,nach E-142
+T-363,Aufgabe,"Seite Admin: Konten, Kampagnen, Inhalte je Konto",Offen,"REQ-367, REQ-229",F-010,,nach E-144
+T-364,Aufgabe,Immer laufende Kampagne oder Schreibebene; Spielstand in die Ebene der Sitzung,Offen,REQ-368,F-004,,
+T-365,Aufgabe,"Freigaben an der Figur (view/play/edit), Rahmen der Kampagne",Offen,REQ-369,F-012,,E-137 entschieden
+T-366,Aufgabe,"Assets ohne Status, mit Migration",Offen,REQ-370,F-062,,nach E-143
+T-367,Aufgabe,Instanz-Muster an der Art; Anzeige Template · in play · adapted,Offen,REQ-371,F-005,,nach E-140
+T-368,Aufgabe,Ecken gespeicherter Formen verschieben,Zusammengeführt,REQ-142,F-061,,→ T-370
+T-369,Aufgabe,"Zeigen als Popup, Keep on my board, Kachel Shown",Offen,REQ-363,F-052,,E-138 entschieden
+T-370,Aufgabe,"Gesetzte Punkte ziehen (Entwurf und gespeicherte Formen, Wände, Fenster, Bereiche)",Offen,REQ-142,F-061,,enthält T-368
+T-371,Aufgabe,"Tools-Editor der Karte: ein Häkchen je Gruppe, Erzwungenes mit Grund",Offen,REQ-131,F-055,,Fehler
+T-372,Aufgabe,"Werkzeugleiste mit Belegungen, Hilfe und Kürzeln",Offen,REQ-373,F-054,Vorschlag #353,nach E-145
+T-373,Aufgabe,Verknüpfung auch von der tieferen Karte einstellen,Offen,REQ-131,F-055,,
+T-374,Aufgabe,Tokens zwischen Kartenstufen je Verknüpfung,Offen,REQ-374,F-056,,baut auf T-328
+T-375,Aufgabe,"Übergang zwischen Stufen: Form der tieferen Karte, Umgebung, weicher Rand, Masken",Offen,REQ-375,F-055,,"nach E-146, mit E-121"
+T-376,Aufgabe,Rand der Karte darüber als Vorgabe; Titel und Kante je Betrachter,Offen,REQ-131,F-055,,
+T-377,Aufgabe,"Kartenbereiche (Bezirk, Fraktionsgebiet, Biom, Suchgebiet; Verknüpfung als Art)",Offen,"REQ-376, REQ-193",F-059,,nach E-147
+T-378,Aufgabe,Massstäbe und Einheiten der Karte,Offen,REQ-377,F-049,,
+T-379,Aufgabe,"Anlegen nach Regeln: Stand je Art/Ebene, Felder der Schnellanlage",Offen,REQ-378,F-022,,nach E-148
+T-380,Aufgabe,"Bühne flackert nicht, wenn die Karte sie genau füllt",Erledigt,REQ-130,F-055,#352,
+T-381,Aufgabe,Kartenbild über die Karte statt über das Asset freigeben,Erledigt,REQ-139,F-057,#352,D75
+T-382,Aufgabe,Release setzt ready und campaign; Deckname geht auf die Instanz,Erledigt,REQ-131,F-055,#352,D76
+T-383,Aufgabe,Deckname verdeckt ohne Information; Reveal name,Erledigt,REQ-178,F-012,#352,D77
+T-384,Aufgabe,Sichtpolygon: Ausdünnen wirft keine Wände mehr weg,Erledigt,REQ-139,F-057,#355,
+T-385,Aufgabe,"Rahmen springen nicht während eines Werkzeugs; Link shape mit Ecken, Einrasten, Undo",Erledigt,"REQ-131, REQ-142","F-055, F-061",#356,
+T-386,Aufgabe,Hineinzoomen nur am Fokus; Zoomtiefe mit jetzigem Stand; keine Lupe mit der Maus; Wände zurücknehmen,Erledigt,"REQ-131, REQ-142","F-055, F-061",#358,"D80, D81, D82"
+T-387,Aufgabe,Vorschlag: Leiste und Tasten,Erledigt,REQ-373,F-054,#353 (offen),ersetzt docs/Werkzeuge.md im alten Repo Nebelwacht
+T-388,Aufgabe,Vorschlag und Stories: Spieltisch als drei Boards,Erledigt,"REQ-362, REQ-363, REQ-364, REQ-119","F-067, F-052, F-025",#354,
+T-389,Aufgabe,"Konzepte und Aufstellung vom 22.10., Stories REQ-365 bis 378",Erledigt,REQ-365–378,—,#357,
+E-136,Entscheidung,"Spielende sehen nur Karten im Spiel, nie die Vorlage",Entschieden,REQ-372,F-055,,D78
+E-137,Entscheidung,"Kein Koordinator als Rolle; Freigaben an der Figur, Rahmen durch die Kampagne",Entschieden,REQ-369,F-012,,D79; vorher „E-2“
+E-138,Entscheidung,"Zeigen als Popup, auf das Spielerboard nehmen, Kachel auf dem Spielboard",Entschieden,REQ-363,F-052,,D83; vorher „E-3“
+E-139,Entscheidung,"Umgebung eines Spielstands für Spielende: Vorlage als Bild und Rahmen, nie als Artikel?",Offen,REQ-372,F-055,,
+E-140,Entscheidung,"Instanzierung als drei Muster (Fassung, Spielstand, Stück), Angabe an der Art",Offen,REQ-371,F-005,,
+E-141,Entscheidung,"Setting als Ebenenart setting (ersetzt world), modular über Fassungen",Offen,REQ-100,F-004,,
+E-142,Entscheidung,"Sorten als Listen-Registerzeilen mit extends, erweiterbar im Feld",Offen,REQ-366,F-003,,
+E-143,Entscheidung,Assets ohne Vorbereitungsstand,Offen,REQ-370,F-062,,
+E-144,Entscheidung,"Inhalte je Konto freigeben (app_user_content), Vorgabe alles",Offen,REQ-367,F-010,,
+E-145,Entscheidung,"Tastenbild: Shift in Stufen, Alt frei, Ctrl weiter; Leiste im Karussell",Offen,REQ-373,F-054,#353,
+E-146,Entscheidung,"Übergang zwischen Stufen an der Kante insideMap, Masken als Form, Bild unverändert",Offen,REQ-375,F-055,,
+E-147,Entscheidung,Kartenbereich als Kante mit Form; Verknüpfung als Art davon,Offen,REQ-376,F-059,,
+E-148,Entscheidung,Vorgabe-Stand: Regel an der Kampagne mit Ebene als Bedingung,Offen,REQ-378,F-022,,
+E-149,Entscheidung,"Die Karte gibt ihr Bild frei, nicht das Asset","Entschieden (umgesetzt, zur Bestätigung)",REQ-139,F-057,#352,D75
+E-150,Entscheidung,"Freigeben heisst teilen: ready + campaign, hiddenFrom bleibt","Entschieden (umgesetzt, zur Bestätigung)",REQ-131,F-055,#352,D76
+E-151,Entscheidung,Ein Deckname verdeckt auch ohne Information; Aliasse gehen mit,"Entschieden (umgesetzt, zur Bestätigung)",REQ-178,F-012,#352,D77
+E-152,Entscheidung,"Hineinzoomen nur, wo Zeiger bzw. Mitte des Blicks liegt","Entschieden (umgesetzt, zur Bestätigung)",REQ-131,F-055,#358,D80
+E-153,Entscheidung,"Lupe nur für Finger und Stift, nicht für die Maus","Entschieden (umgesetzt, zur Bestätigung)",REQ-142,F-061,#358,D81
+E-154,Entscheidung,"Rückgängig auf der Karte nimmt nur Wände zurück, nicht die ganze Karte","Entschieden (umgesetzt, zur Bestätigung)",REQ-142,F-061,#358,D82

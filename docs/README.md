@@ -68,6 +68,7 @@ von Hand ändern.
 | [Verweisfelder.md](Verweisfelder.md) | Welche Felder Verweise wurden (T-078, T-099) | Protokoll | Hand |
 | [Karten.md](Karten.md) | Zeichenebenen, Sperren, Unterkarten; die Karte in der Seite; der Zugplan (T-198) | gilt | Hand |
 | [vorschlaege/Ansichten-Bedarf.md](vorschlaege/Ansichten-Bedarf.md) | Ansichten: Bestand je Art und Ort, Bedarf je Stufe, was T-234 anlegte und was offen ist (E-124) | Vorschlag, Bestand | Hand, Tabelle aus `scripts/ansichten.mjs` |
+| [vorschlaege/Projektbrett-2026-10-22.md](vorschlaege/Projektbrett-2026-10-22.md) | Alle Aufgaben und Entscheidungen vom 22.10., zusammengeführt, mit CSV zum Übernehmen ins Projektbrett | Bestand | Hand, CSV |
 | [vorschlaege/Aufstellung-2026-10-22.md](vorschlaege/Aufstellung-2026-10-22.md) | Alle Wünsche vom 22.10.: Stand, Feature, Story, Aufgabe und Entscheidung (T-370 bis T-379, E-145 bis E-148) | Bestand, Vorschlag | Hand |
 | [vorschlaege/Konzepte-2026-10-22.md](vorschlaege/Konzepte-2026-10-22.md) | Instanzierung als drei Muster, Karten nur im Spiel, Settings modular, Sorten als Listen, Assets ohne Stand, Verwaltung, Freigaben an der Figur, Zeigen (E-136 bis E-144, T-359 bis T-369) | Vorschlag | Hand |
 | [vorschlaege/Spieltisch-als-Boards.md](vorschlaege/Spieltisch-als-Boards.md) | Der Tisch als drei Boards — Kampagnenboard, Spielerboard, Spielboard —, Zeigen und Ansicht erzwingen, Boards wechseln (REQ-362 bis 364, REQ-119) | Vorschlag | Hand |
