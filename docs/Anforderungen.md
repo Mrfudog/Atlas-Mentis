@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-21. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-22. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -12,18 +12,18 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 185 steht · 55 teils · 105 offen · 10 ersetzt · 6 verworfen — 361 Stories in 80 Features und 12 Epics.
+Zusammen: 185 steht · 55 teils · 108 offen · 10 ersetzt · 6 verworfen — 364 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 53 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 44 | 28 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 42 | 7 steht · 9 teils · 26 offen |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 43 | 7 steht · 9 teils · 27 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 27 | 13 steht · 2 teils · 12 offen |
-| [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
+| [EP-08 Live-Spiel](#ep-08-live-spiel) | 30 | 14 steht · 6 teils · 9 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
 | [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 31 | 20 steht · 6 teils · 4 offen · 1 ersetzt |
@@ -189,7 +189,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | REQ-059 | Wissen über Arten von Kreaturen | 3 | **steht** | `Facts.fact#id` über eine Information |
 | REQ-156 | Sichtbarkeit vererben | 2 | **verworfen** | `inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht |
 | REQ-177 | Einzelne Felder freigeben | 2 | **steht** | `Information.fields` je Feld und je Eintrag |
-| REQ-178 | Decknamen | 3 | **steht** | `Identity.cover` |
+| REQ-178 | Decknamen | 3 | **steht** | `Identity.cover`; verdeckt auch ohne Information, Aufdecken mit einem Klick (22.10.) |
 | REQ-179 | Zeigen, dass es mehr gibt | 4 | **steht** | „…and 3 more things" |
 | REQ-203 | Wissen nach Rang in einer Fraktion | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
 | REQ-350 | Eine Information gilt für eine Gruppe von Artikeln | 1 | **steht** | T-285: Information.applies (Typen, Bedingungen auf Felder und Kanten, Kante auf einen Artikel samt Unterarten) |
@@ -340,7 +340,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils) · REQ-364 Zwischen den Boards wechseln (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -353,6 +353,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | REQ-194 | Untere Leiste am Telefon wählen | 4 | **offen** |  |
 | REQ-311 | Spieleransicht mit der eigenen Figur im Fokus | 2 | **teils** | Entwurf Player/PlayerPhone |
 | REQ-346 | Was die Kampagne meiner Figur gezeigt hat | 1 | **teils** | Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen |
+| REQ-364 | Zwischen den Boards wechseln | 1 | **offen** | Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md |
 
 ### F-026 Inventar
 
@@ -656,7 +657,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils)
+**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils) · REQ-362 Spielboard: was gerade läuft (offen) · REQ-363 Den Spielenden etwas zeigen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -688,6 +689,8 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 | REQ-117 | Wer am Sitzungszustand schreibt | 3 | **steht** | `Session.stewardship` gm/table |
 | REQ-120 | Spielprotokoll | 3 | **teils** | Würfe im Protokoll; Zustandsereignisse nicht gespeichert |
 | REQ-121 | Statistik | 4 | **offen** |  |
+| REQ-362 | Spielboard: was gerade läuft | 1 | **offen** | Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md |
+| REQ-363 | Den Spielenden etwas zeigen | 1 | **offen** | Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md |
 
 ### F-053 Würfel
 
@@ -873,7 +876,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-111 | Boards | 2 | **steht** | `Board`, `placed` |
-| REQ-119 | Boards der Spielenden | 3 | **offen** |  |
+| REQ-119 | Boards der Spielenden | 3 | **offen** | Erweitert 22.10.: ein Board je Figur und Kampagne (docs/vorschlaege/Spieltisch-als-Boards.md) |
 | REQ-157 | Frei anordnen auf dem Board | 2 | **steht** | `placed` mit x, y, w, h, z; in der Seite die Leinwand `/boards` (W4) |
 | REQ-158 | Ansicht je Platzierung | 2 | **steht** | `placed.view` |
 | REQ-159 | Anker und Bereiche auf dem Board | 3 | **steht** | `Board.anchors`; in der Seite als Reiter über dem Board, mit Rechteck ein einklappbarer Bereich (T-073) |
@@ -995,6 +998,9 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-344** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
 - **REQ-346** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
 - **REQ-361** (1, teils, Oberfläche & Navigation) — Lange Seiten: Bereiche klappen und springen — *Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); Assistent, Facetten, Register, Artikel-, Figur- und Ebenenseite folgen*
+- **REQ-362** (1, offen, Live-Spiel) — Spielboard: was gerade läuft — *Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md*
+- **REQ-363** (1, offen, Live-Spiel) — Den Spielenden etwas zeigen — *Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md*
+- **REQ-364** (1, offen, Spielererlebnis) — Zwischen den Boards wechseln — *Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md*
 - **REQ-041** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **REQ-072** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **REQ-079** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
@@ -1052,7 +1058,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-086** (3, teils, Kampagne & Sitzungen) — Gruppenübersicht — *Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung*
 - **REQ-088** (3, teils, Zugang & Betrieb) — Massenänderungen an Wissen und Rechten — *Massenbearbeitung ohne Wissen*
 - **REQ-109** (3, teils, Spielererlebnis) — Lore-Texte von Spielenden — *Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041)*
-- **REQ-119** (3, offen, Oberfläche & Navigation) — Boards der Spielenden
+- **REQ-119** (3, offen, Oberfläche & Navigation) — Boards der Spielenden — *Erweitert 22.10.: ein Board je Figur und Kampagne (docs/vorschlaege/Spieltisch-als-Boards.md)*
 - **REQ-120** (3, teils, Live-Spiel) — Spielprotokoll — *Würfe im Protokoll; Zustandsereignisse nicht gespeichert*
 - **REQ-123** (3, offen, Live-Spiel) — Timer
 - **REQ-128** (3, teils, Live-Spiel) — Kampf aus Sicht der Spielenden — *dieselbe Ansicht, gesiebt*
