@@ -15,7 +15,7 @@ Epic: [[EP-01 Inhaltsgerüst]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-5 Stories · 7 Punkte · 3 steht · 1 teils · 1 ersetzt
+6 Stories · 12 Punkte · 3 steht · 1 teils · 1 offen · 1 ersetzt
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -24,4 +24,5 @@ Epic: [[EP-01 Inhaltsgerüst]]
 | [[REQ-258]] Verweisfeld nennt, welche Artikel es annimmt | Spielleitung | 2 | teils |
 | [[REQ-259]] Vorgabewerte für Felder | Spielleitung | 3 | steht |
 | [[REQ-261]] Sorte einer Art als freies Feld mit Vorschlägen | Spielleitung | 2 | steht |
+| [[REQ-366]] Sorten als Listen | Spielleitung | 2 | offen |
 <!-- stories:ende -->

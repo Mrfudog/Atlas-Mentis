@@ -68,6 +68,7 @@ von Hand ändern.
 | [Verweisfelder.md](Verweisfelder.md) | Welche Felder Verweise wurden (T-078, T-099) | Protokoll | Hand |
 | [Karten.md](Karten.md) | Zeichenebenen, Sperren, Unterkarten; die Karte in der Seite; der Zugplan (T-198) | gilt | Hand |
 | [vorschlaege/Ansichten-Bedarf.md](vorschlaege/Ansichten-Bedarf.md) | Ansichten: Bestand je Art und Ort, Bedarf je Stufe, was T-234 anlegte und was offen ist (E-124) | Vorschlag, Bestand | Hand, Tabelle aus `scripts/ansichten.mjs` |
+| [vorschlaege/Konzepte-2026-10-22.md](vorschlaege/Konzepte-2026-10-22.md) | Instanzierung als drei Muster, Karten nur im Spiel, Settings modular, Sorten als Listen, Assets ohne Stand, Verwaltung, Freigaben an der Figur, Zeigen (E-136 bis E-144, T-359 bis T-369) | Vorschlag | Hand |
 | [vorschlaege/Spieltisch-als-Boards.md](vorschlaege/Spieltisch-als-Boards.md) | Der Tisch als drei Boards — Kampagnenboard, Spielerboard, Spielboard —, Zeigen und Ansicht erzwingen, Boards wechseln (REQ-362 bis 364, REQ-119) | Vorschlag | Hand |
 | [vorschlaege/Karten-VTT-Vergleich.md](vorschlaege/Karten-VTT-Vergleich.md) | Was andere VTTs an der Karte können und was wir übernehmen (T-203) | Vorschlag | Hand |
 | [vorschlaege/Regel-Builder.md](vorschlaege/Regel-Builder.md) | Versuch: Regeln als Knoten (Auslöser → Bedingung → Folge), hinter einem Schalter (T-270, E-102) | Versuch, Bericht | Hand |

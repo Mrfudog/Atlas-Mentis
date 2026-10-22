@@ -15,7 +15,7 @@ Epic: [[EP-10 Medien & Assets]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-8 Stories · 29 Punkte · 3 steht · 1 teils · 4 offen
+9 Stories · 31 Punkte · 3 steht · 1 teils · 5 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -27,4 +27,5 @@ Epic: [[EP-10 Medien & Assets]]
 | [[REQ-148]] Bilder von aussen | Spielleitung | 3 | steht |
 | [[REQ-150]] Audio ablegen | Spielleitung | 5 | offen |
 | [[REQ-151]] 3D-Dateien | Spielleitung | 5 | offen |
+| [[REQ-370]] Assets ohne Vorbereitungsstand | Spielleitung | 3 | offen |
 <!-- stories:ende -->

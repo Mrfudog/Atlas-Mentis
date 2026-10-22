@@ -14,7 +14,7 @@ Sprung: [[#EP-01 Inhaltsgerüst]] · [[#EP-02 Zugang & Betrieb]] · [[#EP-03 Kre
 
 ## EP-01 Inhaltsgerüst
 
-53 Stories · 177 Punkte · 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
+56 Stories · 190 Punkte · 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
 
 ### F-001 Artikelmodell
 
@@ -55,6 +55,7 @@ Was ein Feld halten darf: Formen, Aufzählungszeilen, Spannen, Verweisziele, Vor
 | [[REQ-023]] | Status idea/planned/used/discarded | – | 2 | 1 | ersetzt |
 | [[REQ-258]] | Verweisfeld nennt, welche Artikel es annimmt | Spielleitung | 2 | 2 | teils |
 | [[REQ-261]] | Sorte einer Art als freies Feld mit Vorschlägen | Spielleitung | 2 | 1 | steht |
+| [[REQ-366]] | Sorten als Listen | Spielleitung | 2 | 5 | offen |
 | [[REQ-259]] | Vorgabewerte für Felder | Spielleitung | 3 | 1 | steht |
 
 ### F-004 Ebenen & Stapel
@@ -74,6 +75,7 @@ Ebenen, Gruppen von Ebenen, Herausgeber, Aufschalten (auch teilweise) und was im
 | [[REQ-245]] | Ebenen beschreiben sich selbst | Spielleitung | 2 | 2 | steht |
 | [[REQ-249]] | Ebenen nach Herausgeber | Spielleitung | 2 | 3 | teils |
 | [[REQ-255]] | Ebenen teilweise aufschalten | Spielleitung | 2 | 3 | steht |
+| [[REQ-368]] | Immer eine laufende Kampagne oder Schreibebene | Spielleitung | 2 | 3 | offen |
 | [[REQ-007]] | Stapel für Fortgeschrittene | Spielleitung | 3 | 5 | offen |
 | [[REQ-045]] | Ebenen-Aktionen am Artikel | Spielleitung | 3 | 8 | offen |
 | [[REQ-253]] | Ebenen und Artikel kopieren | Spielleitung | 3 | 5 | offen |
@@ -88,6 +90,7 @@ Dieselbe Sache aus einer anderen Quelle (Fassung, Überschreibung) und eine verw
 | [[REQ-009]] | Überschreiben in der eigenen Ebene | Spielleitung | 2 | 3 | steht |
 | [[REQ-264]] | Vergleichsebenen der Kampagne | Spielleitung | 2 | 3 | teils |
 | [[REQ-310]] | Fassungen am Feld zeigen | Spielleitung | 2 | 3 | steht |
+| [[REQ-371]] | Vorlage, Spielstand und Stück verständlich | Spielleitung | 2 | 5 | offen |
 | [[REQ-108]] | Lore der Kampagne abweichen lassen | Spielleitung | 3 | 3 | steht |
 
 ### F-006 Ansichten & Anordnung
@@ -134,7 +137,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-44 Stories · 137 Punkte · 28 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+47 Stories · 152 Punkte · 28 steht · 5 teils · 11 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -145,6 +148,7 @@ Passwort je Konto, Einladungen, Kontoverwaltung in der Seite, Demo. — [[F-010 
 | [[REQ-031]] | Anmelden mit Passwort | Spieler | 1 | 2 | steht |
 | [[REQ-033]] | Konten | Verwaltung | 1 | 2 | steht |
 | [[REQ-034]] | Einladen per Link | Spielleitung | 2 | 2 | steht |
+| [[REQ-367]] | Verwaltung: Konten, Kampagnen und Inhalte | Verwaltung | 2 | 8 | offen |
 | [[REQ-229]] | Konten in der Seite verwalten | Verwaltung | 3 | 2 | offen |
 | [[REQ-032]] | Anmeldung über Nextcloud/OIDC | – | 4 | 5 | verworfen |
 | [[REQ-228]] | Verlorene Einladung neu ausgeben | Spielleitung | 4 | 1 | offen |
@@ -176,6 +180,7 @@ Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder dar
 | [[REQ-177]] | Einzelne Felder freigeben | Spielleitung | 2 | 3 | steht |
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | Spielleitung | 2 | 2 | steht |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | 2 | 3 | offen |
+| [[REQ-369]] | Freigaben an der eigenen Figur | Spieler | 2 | 5 | offen |
 | [[REQ-039]] | Sichtbarkeit mit Rollenlisten und Freigabemarken | – | 3 | 8 | ersetzt |
 | [[REQ-059]] | Wissen über Arten von Kreaturen | Spielleitung | 3 | 3 | steht |
 | [[REQ-178]] | Decknamen | Spielleitung | 3 | 1 | steht |
@@ -216,6 +221,7 @@ Prüfungen über den Bestand, Massenänderungen mit Vorschau und Rückgängig (/
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-365]] | Artikel in eine andere Ebene schieben | Spielleitung | 2 | 2 | offen |
 | [[REQ-088]] | Massenänderungen an Wissen und Rechten | Spielleitung | 3 | 3 | teils |
 | [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | Spielleitung | 3 | 5 | steht |
 
@@ -719,7 +725,7 @@ Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. — 
 
 ## EP-09 Karten
 
-28 Stories · 124 Punkte · 18 steht · 6 teils · 4 offen — [[EP-09 Karten]]
+29 Stories · 129 Punkte · 18 steht · 6 teils · 5 offen — [[EP-09 Karten]]
 
 ### F-055 Karte & Kartenebenen
 
@@ -727,6 +733,7 @@ Karte mit Bild, Gitter, Massstab; Unterkarten zum Hineinzoomen. — [[F-055 Kart
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-372]] | Spielende sehen nur Karten im Spiel | Spielleitung | 1 | 5 | offen |
 | [[REQ-130]] | Karte mit Gitter und Massstab | Spielleitung | 3 | 2 | steht |
 | [[REQ-131]] | Unterkarten zum Hineinzoomen | Spielleitung | 3 | 8 | steht |
 | [[REQ-132]] | Kartenebene festhalten | Spielleitung | 3 | 1 | offen |
@@ -800,7 +807,7 @@ Zeichnen, Assets platzieren, Effekte. — [[F-061 Karteneditor]]
 
 ## EP-10 Medien & Assets
 
-21 Stories · 81 Punkte · 4 steht · 3 teils · 14 offen — [[EP-10 Medien & Assets]]
+22 Stories · 83 Punkte · 4 steht · 3 teils · 15 offen — [[EP-10 Medien & Assets]]
 
 ### F-062 Asset-Ablage
 
@@ -814,6 +821,7 @@ Wo Bilder und Dateien liegen und wie sie gefunden werden. — [[F-062 Asset-Abla
 | [[REQ-146]] | Grosse Dateien auf dem NAS | Verwaltung | 2 | 5 | offen |
 | [[REQ-022]] | Vorschaubilder und Kacheln | Spieler | 3 | 5 | offen |
 | [[REQ-148]] | Bilder von aussen | Spielleitung | 3 | 1 | steht |
+| [[REQ-370]] | Assets ohne Vorbereitungsstand | Spielleitung | 3 | 2 | offen |
 | [[REQ-150]] | Audio ablegen | Spielleitung | 5 | 2 | offen |
 | [[REQ-151]] | 3D-Dateien | Spielleitung | 5 | 8 | offen |
 
