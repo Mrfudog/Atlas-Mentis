@@ -12,11 +12,13 @@ import {
   type InventoryFrame,
   type Shape,
 } from '@nw/model';
-import { Api, ApiError } from '../kern/api';
+import { RouterLink } from '@angular/router';
+import { Api, ApiError, type FormenUebersicht } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { formBildStil, maskenStil } from '../kern/formbild';
 import { BildWahl, bildAdresse } from './bild';
+import { Wahl } from './wahl';
 
 /** Das Malraster beginnt mit 5 × 5 und wächst am Rand bis hierhin. */
 const START = 5;
@@ -53,7 +55,7 @@ function ausListe(text: string): string[] {
  */
 @Component({
   selector: 'nw-form',
-  imports: [BildWahl],
+  imports: [BildWahl, RouterLink, Wahl],
   template: `
     @if (karte(); as k) {
       <section class="form" aria-label="Shape">
@@ -96,9 +98,39 @@ function ausListe(text: string): string[] {
             · Stack size {{ k['stackSize'] ?? '—' }}
             @if (bild()?.own) { · own inventory image }
           </p>
+          @if (herkunftText(); as h) {
+            <p class="herkunft" data-ref="shape-origin">
+              {{ h }}
+              @if (herkunft()?.ref; as r) { <a [routerLink]="['/artikel', r]">{{ refName() ?? 'reference item' }}</a> }
+              · <a routerLink="/inventory/shapes">Item shapes</a>
+            </p>
+          }
+          @if (gruppenOffen()) {
+            <div class="gruppenwahl">
+              @if (formen(); as f) {
+                @if (f.target) {
+                  <label>Group
+                    <select [value]="herkunft()?.group ?? ''" (change)="setzeVorgabe({ group: $any($event.target).value || null })">
+                      <option value="">— none —</option>
+                      @for (g of f.groups; track g.id) { <option [value]="g.id">{{ g.name }}</option> }
+                    </select>
+                  </label>
+                  <label>Reference item
+                    <nw-wahl [wert]="herkunft()?.ref ?? ''" [arten]="['Item']" [ausser]="artikel().id" [anlegbar]="false" label="Reference item" (wertChange)="setzeVorgabe({ ref: $event || null })" />
+                  </label>
+                } @else {
+                  <p class="hinweis">No default-shapes layer you write is turned on in this campaign.</p>
+                }
+              } @else { <p class="hinweis">Loading…</p> }
+            </div>
+          }
           @if (darf()) {
             <div class="knoepfe">
               <button type="button" class="knopf" (click)="anfangen()">Edit shape</button>
+              <button type="button" class="knopf" (click)="gruppenWahl()" [attr.aria-pressed]="gruppenOffen()">Group &amp; reference</button>
+              @if (herkunft()?.source === 'item') {
+                <button type="button" class="knopf" (click)="vorgabe()" title="Remove the shape painted on this item; it then follows its group or reference item">Use the default</button>
+              }
               <button type="button" class="knopf" (click)="bildOeffnen()">Adjust inventory image</button>
             </div>
           }
@@ -228,6 +260,9 @@ function ausListe(text: string): string[] {
     .dreher img { display: block; user-select: none; }
     .zeilen { font-family: var(--mono, monospace); letter-spacing: 0.3em; margin: 0.5rem 0; padding: 0.4rem 0.6rem; background: var(--surface); border-radius: 4px; width: max-content; max-width: 100%; overflow-x: auto; }
     .masse { margin: 0.25rem 0 0.5rem; color: var(--dim); }
+    .herkunft { margin: 0 0 0.5rem; color: var(--dim); font-size: 0.9rem; }
+    .gruppenwahl { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.4rem 0.8rem; margin: 0 0 0.5rem; }
+    .gruppenwahl label { display: flex; flex-direction: column; font-size: 0.85rem; color: var(--dim); gap: 0.15rem; }
     .hinweis { font-size: 0.85rem; color: var(--muted, var(--dim)); margin: 0.25rem 0 0.5rem; }
     .knoepfe { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.25rem 0; }
     .liste { display: flex; flex-direction: column; gap: 0.25rem; max-width: 20rem; }
@@ -255,6 +290,7 @@ export class Form {
 
   protected readonly karte = computed(() => (this.artikel().components?.['Item'] as Record<string, unknown> | undefined) ?? null);
   protected readonly darf = computed(() => this.session.darfSchreiben()(this.artikel().id));
+  /* Eine Form gilt, wenn eine dasteht — am Gegenstand oder aus den Vorgabeformen (`refs.shape`). */
   protected readonly eigeneForm = computed(() => shapeRows(this.karte()?.['rows']).length > 0);
   /** Die Form, wie gespeichert; ohne Angabe ein Feld (`itemShape`). */
   protected readonly form = computed<Shape>(() => itemShape(this.karte()?.['rows']));
@@ -265,6 +301,29 @@ export class Form {
     const b = this.artikel().components?.['Image']?.['image'];
     return typeof b === 'string' ? b : '';
   });
+
+  /** Woher Form und Stapel kommen (`refs.shape`, T-394, REQ-333). */
+  protected readonly herkunft = computed(() => this.bestand.form().get(this.artikel().id));
+  protected readonly refName = computed(() => {
+    const h = this.herkunft();
+    return h?.refName ?? (h?.ref ? this.bestand.name()(h.ref) : undefined);
+  });
+  protected readonly herkunftText = computed(() => {
+    const h = this.herkunft();
+    if (!h) return null;
+    const g = h.group ? ` ${h.groupName ?? h.group}` : '';
+    switch (h.source) {
+      case 'item': return 'Shape painted on this item.';
+      case 'own': return 'Own shape in the default shapes.';
+      case 'reference': return 'Shape from its reference item';
+      case 'random': return `Shape drawn by price from group${g}.`;
+      case 'group': return h.ref ? `Shape of group${g}, from its reference item` : `Shape of group${g}.`;
+      case 'none': return `Not carried in the inventory (group${g}).`;
+      default: return null;
+    }
+  });
+  protected readonly gruppenOffen = signal(false);
+  protected readonly formen = signal<FormenUebersicht | null>(null);
 
   protected readonly ansicht = signal<'grid' | 'list'>('grid');
   protected readonly rot = signal(0);
@@ -450,6 +509,40 @@ export class Form {
       item['inventoryFrame'] = { ...r };
     });
     if (!this.fehler()) this.bildOffen.set(false);
+  }
+
+  // ------------------------------------------------------------ Vorgabeformen (T-394)
+
+  protected async gruppenWahl(): Promise<void> {
+    this.gruppenOffen.set(!this.gruppenOffen());
+    if (this.gruppenOffen() && !this.formen()) {
+      try {
+        this.formen.set(await this.api.shapeOverview(true));
+      } catch (error) {
+        this.fehler.set(error instanceof ApiError ? error.message : 'The groups could not be loaded.');
+      }
+    }
+  }
+  /** Gruppe oder Referenz im Untermodul setzen — nicht am Gegenstand (E-165). */
+  protected async setzeVorgabe(patch: Record<string, unknown>): Promise<void> {
+    const id = this.artikel().id;
+    this.arbeitet.set(true);
+    this.fehler.set(null);
+    try {
+      await this.api.setShapeItem(id, patch);
+      await this.bestand.oeffnen(id, true);
+    } catch (error) {
+      this.fehler.set(error instanceof ApiError ? error.message : 'Could not save.');
+    } finally {
+      this.arbeitet.set(false);
+    }
+  }
+  /** Die gemalte Form vom Gegenstand nehmen: danach gilt die Vorgabe. */
+  protected async vorgabe(): Promise<void> {
+    await this.schreibe((item) => {
+      delete item['rows'];
+      delete item['stackSize'];
+    });
   }
 
   /** Geschrieben wird die Karte `Item` des ganzen Artikels, wie er gerade ist. */

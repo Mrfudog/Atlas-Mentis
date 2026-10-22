@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-23-item-shapes-overview",
+      "date": "2026-10-23",
+      "title": "Item shapes by group, with reference items",
+      "text": "Rules & options › Inventory › Item shapes lists the shape groups and every item with the shape that applies and where it comes from. Change a group and every item without its own follows; give a +1 Longsword the Longsword as reference item and it takes its shape. The Shape panel on an item says where its shape comes from, and Group & reference sets both there.",
+      "area": "Inventory",
+      "link": "/inventory/shapes"
+    },
+    {
       "id": "2026-10-22-rule-systems-as-layers",
       "date": "2026-10-22",
       "title": "Inventory is a rule system with its mechanics",

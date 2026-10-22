@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, DefaultShape, ShapeGroup, ShapeItem, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -225,6 +225,8 @@ export interface Bezuege {
    * fertigen Stands, `old`, ob die Antwort dieser Stand ist (`?stand=ready`).
    */
   ready?: { at: string; old: boolean };
+  /** Woher Form und Stapel eines Gegenstands kommen (T-394, REQ-333): am Gegenstand, im Untermodul, vom Referenzgegenstand, aus der Gruppe. */
+  shape?: DefaultShape & { groupName?: string; refName?: string };
   /** Die geltende Sichtbarkeitsstufe und woher sie kommt (T-252, T-277) — nur am ganzen Artikel. */
   audience?: { audience: string; source: 'article' | 'campaign' | 'layer' | 'default'; rule?: string };
   /** „Im Buch lesen" (T-091): die Ebene mit Text und die Stelle — der Abschnitt selbst oder die Seite. */
@@ -1513,6 +1515,18 @@ export class Api {
   campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[]; missing?: number; choices?: Record<string, { id: string; name: string; does: string }[]> }> {
     return this.call(`/api/campaigns/${encodeURIComponent(id)}/rules`);
   }
+  /** Die Vorgabeformen der laufenden Kampagne (T-394): Ebenen, Gruppen, je Gegenstand Form und Herkunft. */
+  shapeOverview(nurGruppen = false): Promise<FormenUebersicht> {
+    return this.call(`/api/inventory/shapes${nurGruppen ? '?only=groups' : ''}`);
+  }
+  /** Eine Gruppe der Vorgabeformen ändern oder anlegen; `null` nimmt ein Feld heraus. */
+  setShapeGroup(id: string, patch: Record<string, unknown>): Promise<{ layer: string }> {
+    return this.call(`/api/inventory/shapes/groups/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(patch) });
+  }
+  /** Was das Untermodul über einen Gegenstand sagt: Gruppe, Referenz, eigene Form, Stapel (`rows: []` heisst keine Form). */
+  setShapeItem(id: string, patch: Record<string, unknown>): Promise<{ layer: string }> {
+    return this.call(`/api/inventory/shapes/items/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(patch) });
+  }
   /** Regelset und Gruppen der laufenden Kampagne, mit den Inventaren, zwischen denen Sachen wandern (T-127). */
   inventory(): Promise<InventarLage> {
     return this.call('/api/inventory');
@@ -2442,3 +2456,27 @@ export interface Quelleninhalt {
   removes?: number;
   onlyInPlay?: true;
 }
+
+/** Die Übersicht der Vorgabeformen (T-394, `GET /api/inventory/shapes`). */
+export interface FormenUebersicht {
+  campaign: { id: string; name: string } | null;
+  layers: { id: string; name: string; type: string; writable: boolean }[];
+  /** Wohin geschrieben wird, ohne Angabe: die spezifischste Formebene, die der Betrachter schreibt. */
+  target: string | null;
+  groups: (ShapeGroup & { count: number; layer?: string; refName?: string })[];
+  items: {
+    id: string;
+    name: string;
+    type: string;
+    rows: string[] | null;
+    stackSize: number | null;
+    source: DefaultShape['source'];
+    group?: string;
+    ref?: string;
+    refName?: string;
+    /** Was im Untermodul eigens für ihn steht, und in welcher Ebene. */
+    set?: Partial<ShapeItem>;
+    setIn?: string;
+  }[];
+}
+

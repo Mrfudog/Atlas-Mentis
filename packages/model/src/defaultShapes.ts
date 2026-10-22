@@ -343,8 +343,13 @@ export function withDefaultShape(entity: Entity, idx: ShapeIndex, lookup: ShapeL
  */
 export function campaignShapeDefaults(entities: Map<EntityId, Entity>, campaign: Entity | null | undefined): ShapeDefaults {
   if (!campaign) return { groups: [], items: [] };
-  const ebenen = resolvedStack(entities, campaign).filter((l) => l.components?.[SHAPE_DEFAULTS_CARD]);
+  const ebenen = resolvedStack(entities, campaign).filter(isShapesLayer);
   return mergeShapeDefaults(ebenen.map(shapeDefaultsOf));
+}
+
+/** Eine Ebene mit Vorgabeformen: sie trägt die Karte, oder sie ist die Mechanik `shapes` (E-166), auch noch leer. */
+export function isShapesLayer(l: Entity): boolean {
+  return !!l.components?.[SHAPE_DEFAULTS_CARD] || (l.components?.['RuleMechanic'] as { method?: unknown } | undefined)?.method === 'shapes';
 }
 
 /** Sagt das Untermodul überhaupt etwas? Sonst lohnt keine Rechnung. */
@@ -375,4 +380,49 @@ export function stripDefaultShape(sent: Entity, stored: Entity | null | undefine
   }
   if (!geaendert) return sent;
   return { ...sent, components: { ...(sent.components ?? {}), Item: neu } } as Entity;
+}
+
+/** Eine Änderung an einem Eintrag: ein Wert setzt, `null` nimmt das Feld heraus, fehlend lässt es stehen. */
+export type ShapePatch<T> = { [K in keyof T]?: T[K] | null };
+
+function flicken<T extends { id: string }>(liste: readonly T[], id: string, patch: Record<string, unknown>, grund: Record<string, unknown>): T[] {
+  const alt = liste.find((x) => x.id === id);
+  const neu: Record<string, unknown> = { ...(alt ?? grund) };
+  for (const [k, v] of Object.entries(patch)) {
+    if (k === 'id' || v === undefined) continue;
+    if (v === null) delete neu[k];
+    else neu[k] = v;
+  }
+  const leer = Object.keys(neu).every((k) => k === 'id' || (k === 'name' && !alt));
+  const rest = liste.filter((x) => x.id !== id);
+  return leer ? rest : alt ? liste.map((x) => (x.id === id ? (neu as T) : x)) : [...rest, neu as T];
+}
+
+/**
+ * **Einen Gegenstand im Untermodul ändern** (T-394): Gruppe, Referenz,
+ * eigene Form, Stapel. Ein Eintrag ohne Angabe fällt weg — dann folgt der
+ * Gegenstand wieder ganz seiner Gruppe. Für „ausdrücklich keine Form“ steht
+ * `rows: []`, das als `null` gespeichert wird.
+ */
+export function withShapeItem(card: Record<string, unknown> | undefined, id: EntityId, patch: ShapePatch<Omit<ShapeItem, 'id'>>): Record<string, unknown> {
+  const k = card ?? {};
+  const items = Array.isArray(k['shapeItems']) ? (k['shapeItems'] as ShapeItem[]) : [];
+  /* `rows: []` heisst „ausdrücklich keine Form“ und wird `null` gespeichert;
+     `rows: null` nimmt die eigene Form heraus. */
+  const keine = Array.isArray(patch.rows) && patch.rows.length === 0;
+  const { rows: _r, ...rest } = patch;
+  let neu = flicken(items, id, keine ? rest : (patch as Record<string, unknown>), { id });
+  if (keine) {
+    const da = neu.some((e) => e.id === id);
+    neu = da ? neu.map((e) => (e.id === id ? { ...e, rows: null } : e)) : [...neu, { id, rows: null }];
+  }
+  return { ...k, shapeGroups: Array.isArray(k['shapeGroups']) ? k['shapeGroups'] : [], shapeItems: neu };
+}
+
+/** **Eine Gruppe ändern oder anlegen** (T-394); ohne Namen keine neue Gruppe. */
+export function withShapeGroup(card: Record<string, unknown> | undefined, id: string, patch: ShapePatch<Omit<ShapeGroup, 'id'>>): Record<string, unknown> {
+  const k = card ?? {};
+  const gruppen = Array.isArray(k['shapeGroups']) ? (k['shapeGroups'] as ShapeGroup[]) : [];
+  if (!gruppen.some((g) => g.id === id) && !patch.name) return { ...k };
+  return { ...k, shapeGroups: flicken(gruppen, id, patch as Record<string, unknown>, { id }), shapeItems: Array.isArray(k['shapeItems']) ? k['shapeItems'] : [] };
 }

@@ -64,6 +64,9 @@ export class Bestand {
   /** Die geltende Sichtbarkeitsstufe je geöffnetem Artikel (`refs.audience`, T-277). */
   private readonly _stufe = signal<ReadonlyMap<string, NonNullable<Bezuege['audience']>>>(new Map());
   readonly stufe = this._stufe.asReadonly();
+  /** Woher Form und Stapel je geöffnetem Gegenstand kommen (`refs.shape`, T-394). */
+  private readonly _form = signal<ReadonlyMap<string, NonNullable<Bezuege['shape']>>>(new Map());
+  readonly form = this._form.asReadonly();
   /** Das Bild je geöffnetem Artikel, wie der Server es rechnet (`refs.image`, T-211) — auch das geerbte des Statblocks. */
   private readonly _bild = signal<ReadonlyMap<string, NonNullable<Bezuege['image']>>>(new Map());
   readonly bild = this._bild.asReadonly();
@@ -222,6 +225,13 @@ export class Bestand {
         this._laden.update((m) => {
           const n = new Map(m);
           if (refs?.shop) n.set(id, refs.shop);
+          else n.delete(id);
+          return n;
+        });
+        this._form.update((m) => {
+          if (!refs?.shape && !m.has(id)) return m;
+          const n = new Map(m);
+          if (refs?.shape) n.set(id, refs.shape);
           else n.delete(id);
           return n;
         });

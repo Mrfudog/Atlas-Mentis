@@ -189,6 +189,7 @@ import { registerKarten } from './karten.js';
 import { registerKartenliste } from './kartenliste.js';
 import { registerRegeloptionen } from './regeloptionen.js';
 import { registerGlossar } from './glossar.js';
+import { registerVorgabeformen } from './vorgabeformen.js';
 import { registerWissen } from './wissen.js';
 import { registerSichtbarkeit } from './sichtbarkeit.js';
 import { registerZugplan, zugSperre } from './zugplan.js';
@@ -1253,6 +1254,8 @@ export function buildApp({
     if (url === '/api/play/take' && request.method === 'POST') return;
     /* Enhancements an einem Stück (T-300): die Route prüft Leitung und Kampagnenregel selbst (`aufwertung.ts`). */
     if (/^\/api\/entities\/[^/]+\/enhancements(\/[^/]+)?$/.test(url) && (request.method === 'POST' || request.method === 'DELETE')) return;
+    /* Die Vorgabeformen (T-394): die Route prüft die Ebene selbst (`vorgabeformen.ts`). */
+    if (/^\/api\/inventory\/shapes\/(groups|items)\/[^/]+$/.test(url) && request.method === 'PUT') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -2091,12 +2094,15 @@ export function buildApp({
   }
 
   /** Ein Gegenstand mit seiner Vorgabeform (T-394); andere Artikel bleiben, wie sie sind. */
-  async function mitVorgabeform(e: Entity): Promise<{ entity: Entity; shape?: DefaultShape }> {
+  async function mitVorgabeform(e: Entity): Promise<{ entity: Entity; shape?: DefaultShape & { groupName?: string; refName?: string } }> {
     if (!typeChain(await repo.getRegistry(), primaryInterface(e)).includes('Item')) return { entity: e };
     const vf = await vorgabeformen();
     if (!vf) return { entity: e };
     const { entity, shape } = withDefaultShape(e, vf.idx, vf);
-    return shape.source === 'unset' ? { entity } : { entity, shape };
+    if (shape.source === 'unset') return { entity };
+    /* Der Name der Gruppe für die Herkunft am Element Shape. */
+    const groupName = shape.group ? vf.idx.groups.get(shape.group)?.name : undefined;
+    return { entity, shape: groupName ? { ...shape, groupName } : shape };
   }
 
   async function kandidaten(request: FastifyRequest, ziele: Iterable<string>): Promise<Map<string, Entity[]>> {
@@ -3154,6 +3160,21 @@ export function buildApp({
   registerRegeloptionen(app, { repo, roh, sieve });
   /* Das Glossar (T-242): Wörter der App und sichtbare Glossarartikel, mit Nennungen. */
   registerGlossar(app, { roh, sieve });
+  /* Die Vorgabeformen des Inventars (T-394): Übersicht, Gruppen, Werte je Gegenstand. */
+  registerVorgabeformen(app, {
+    roh,
+    registry: () => repo.getRegistry(),
+    kampagne: (map, registry) => kampagneIn(map, registry.settings ?? null),
+    sieve,
+    geltend,
+    angemeldet: async (request) => !!(await viewerOf(request)),
+    schreibt: async (request, id) => {
+      const user = await viewerOf(request);
+      return !!user && mayWrite(user, await ownedBy(user), id);
+    },
+    schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet),
+    frisch: async (id) => (await repo.getEntity(id)) ?? null,
+  });
   /* Der Reiter Knowledge am Artikel (T-286): Informationen und ihre Bündel. */
   registerWissen(app, {
     repo,
@@ -3291,6 +3312,8 @@ export function buildApp({
       if (!r || !(await sieve(request, [r], stand.map)).length) {
         const { ref: _weg, ...ohne } = vorgabe.shape;
         vorgabe.shape = ohne;
+      } else {
+        vorgabe.shape = { ...vorgabe.shape, refName: entityName(r) };
       }
     }
     const einer = vorgabe?.entity;
