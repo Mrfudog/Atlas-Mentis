@@ -390,7 +390,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | [[REQ-326]] | Ziehen und Ablegen im Raster | 2 | **offen** |  |
 | [[REQ-327]] | Packen am Telefon | 2 | **offen** |  |
 | [[REQ-328]] | Ablage für nicht Verstautes | 2 | **offen** |  |
-| [[REQ-333]] | Vorgaben für Formen und Stapel | 2 | **teils** | T-394 Schritt 2: Auflösung beim Lesen mit Gruppe, Referenzgegenstand, Zufallsform und Herkunft (refs.shape) steht; Modulrahmen (E-166), Übersicht, Wahl am Gegenstand und Daten folgen. |
+| [[REQ-333]] | Vorgaben für Formen und Stapel | 2 | **teils** | T-394: Auflösung beim Lesen (Gruppe, Referenzgegenstand, Zufallsform, Herkunft refs.shape), Rahmen als Regelmechanik (E-166) und Umzug der Formen aus den Ergänzungen (Migration 141) stehen; Übersicht, Wahl am Gegenstand und Daten der Gruppen folgen. |
 | [[REQ-355]] | Tragraster, Zonen und Behälter einstellen | 2 | **steht** | Rules & options › Inventory: Grössen, Zonen je Spalte, Behältervorlagen gemalt, Fallenlassen/Verstauen, Körperplätze (T-291). |
 | [[REQ-356]] | Tragblatt aus Bausteinen mit Zonen und Bedingungen | 2 | **steht** | Einstellung carrySheet: Bausteine mit Form, Zonen und Bedingungen, aneinandergefügt (assembleCarry); Editor mit Vorschau für Grösse und STR, Zonenmaler auch für Behältervorlagen (T-298). |
 
@@ -1047,7 +1047,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-326]]** (2, offen, Spielererlebnis) — Ziehen und Ablegen im Raster
 - **[[REQ-327]]** (2, offen, Spielererlebnis) — Packen am Telefon
 - **[[REQ-328]]** (2, offen, Spielererlebnis) — Ablage für nicht Verstautes
-- **[[REQ-333]]** (2, teils, Spielererlebnis) — Vorgaben für Formen und Stapel — *T-394 Schritt 2: Auflösung beim Lesen mit Gruppe, Referenzgegenstand, Zufallsform und Herkunft (refs.shape) steht; Modulrahmen (E-166), Übersicht, Wahl am Gegenstand und Daten folgen.*
+- **[[REQ-333]]** (2, teils, Spielererlebnis) — Vorgaben für Formen und Stapel — *T-394: Auflösung beim Lesen (Gruppe, Referenzgegenstand, Zufallsform, Herkunft refs.shape), Rahmen als Regelmechanik (E-166) und Umzug der Formen aus den Ergänzungen (Migration 141) stehen; Übersicht, Wahl am Gegenstand und Daten der Gruppen folgen.*
 - **[[REQ-334]]** (2, offen, Spielererlebnis) — Tragende Ausrüstung als Behälter mit eigenem Raster
 - **[[REQ-335]]** (2, offen, Spielererlebnis) — Verbund: Zellen, die gemeinsam ein Stück tragen
 - **[[REQ-336]]** (2, offen, Spielererlebnis) — Festlegen, wo ein Gegenstand getragen werden darf
