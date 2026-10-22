@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { IMAGE_ACCEPT, imageFileProblem } from '@nw/model';
 import type { Entity } from '@nw/model';
 import { Api, ApiError, type BildVerwendung } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
@@ -61,7 +62,7 @@ import { BildStand, bildVersion } from '../artikel/bild';
         <h2>Replace image</h2>
         @if (!datei()) {
           <label class="knopf">
-            <input type="file" accept="image/*" (change)="gewaehlt($event)" [disabled]="laedt()" />
+            <input type="file" [accept]="accept" (change)="gewaehlt($event)" [disabled]="laedt()" />
             Choose a new image…
           </label>
         } @else {
@@ -163,6 +164,8 @@ export class BildPanel {
   protected readonly datei = signal<File | null>(null);
   protected readonly laedt = signal(false);
   protected readonly problem = signal<string | null>(null);
+  /** Konkrete Typen statt `image/*`: so öffnet das Telefon auch seine Dateien (T-369). */
+  protected readonly accept = IMAGE_ACCEPT;
 
   protected readonly darfQuelle = computed(() => this.session.darfSchreiben()(this.artikel().id));
   protected readonly darfFassung = computed(() => this.session.darfAnlegen());
@@ -201,8 +204,9 @@ export class BildPanel {
     const el = ev.target as HTMLInputElement;
     const f = el.files?.[0] ?? null;
     el.value = '';
-    this.problem.set(null);
-    this.datei.set(f);
+    const nein = f && imageFileProblem(f);
+    this.problem.set(nein || null);
+    this.datei.set(nein ? null : f);
   }
 
   protected async ersetze(wie: 'fassung' | 'quelle'): Promise<void> {

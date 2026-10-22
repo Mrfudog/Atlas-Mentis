@@ -85,6 +85,14 @@
           ]
         },
         {
+          "heading": "Adding an image from your phone",
+          "text": [
+            "At any image field (an article, a character, a map, a board) tap Upload image; on Images, Upload images.",
+            "Your phone shows its own menu: Photo Library, Take Photo, and Browse or Files. Under Browse/Files pick OneDrive (or another storage) and the image.",
+            "JPEG, PNG, WebP, GIF and AVIF are taken. A HEIC photo from Files is refused with a note — choose it from the photo library instead, where the phone converts it, or save it as JPEG."
+          ]
+        },
+        {
           "heading": "Making a new kind of article",
           "text": [
             "Registry › Types › New type: name it, choose its area and what it takes in, add its fields. It can be created right away — no code change."
