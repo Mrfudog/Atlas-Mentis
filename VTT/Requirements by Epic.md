@@ -14,7 +14,7 @@ Sprung: [[#EP-01 Inhaltsgerüst]] · [[#EP-02 Zugang & Betrieb]] · [[#EP-03 Kre
 
 ## EP-01 Inhaltsgerüst
 
-53 Stories · 177 Punkte · 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
+56 Stories · 190 Punkte · 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
 
 ### F-001 Artikelmodell
 
@@ -74,6 +74,7 @@ Ebenen, Gruppen von Ebenen, Herausgeber, Aufschalten (auch teilweise) und was im
 | [[REQ-245]] | Ebenen beschreiben sich selbst | Spielleitung | 2 | 2 | steht |
 | [[REQ-249]] | Ebenen nach Herausgeber | Spielleitung | 2 | 3 | teils |
 | [[REQ-255]] | Ebenen teilweise aufschalten | Spielleitung | 2 | 3 | steht |
+| [[REQ-370]] | Neuere Fassung zum Vergleich anfragen | Spieler | 2 | 3 | offen |
 | [[REQ-007]] | Stapel für Fortgeschrittene | Spielleitung | 3 | 5 | offen |
 | [[REQ-045]] | Ebenen-Aktionen am Artikel | Spielleitung | 3 | 8 | offen |
 | [[REQ-253]] | Ebenen und Artikel kopieren | Spielleitung | 3 | 5 | offen |
@@ -99,6 +100,8 @@ Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohn
 | [[REQ-026]] | Ansichten festlegen | Spielleitung | 1 | 3 | steht |
 | [[REQ-256]] | Ansichten ohne Code definieren | Spielleitung | 1 | 8 | steht |
 | [[REQ-164]] | Darstellungsstufen als eigenes System | – | 2 | 3 | ersetzt |
+| [[REQ-376]] | Sammlungsansichten neben Artikelansichten | Spielleitung | 2 | 5 | offen |
+| [[REQ-383]] | Ansicht je Artikeltyp teilen, mit Vorschau als Spieler | Spielleitung | 2 | 5 | offen |
 
 ### F-007 Verweise & Platzhalter
 
@@ -134,7 +137,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-45 Stories · 139 Punkte · 28 steht · 6 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+50 Stories · 162 Punkte · 28 steht · 7 teils · 12 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -176,9 +179,11 @@ Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder dar
 | [[REQ-177]] | Einzelne Felder freigeben | Spielleitung | 2 | 3 | steht |
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | Spielleitung | 2 | 2 | steht |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | 2 | 3 | offen |
+| [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | Spielleitung | 2 | 5 | offen |
 | [[REQ-039]] | Sichtbarkeit mit Rollenlisten und Freigabemarken | – | 3 | 8 | ersetzt |
 | [[REQ-059]] | Wissen über Arten von Kreaturen | Spielleitung | 3 | 3 | steht |
 | [[REQ-178]] | Decknamen | Spielleitung | 3 | 1 | steht |
+| [[REQ-372]] | Regeln lernen, wenn sie vorkommen | Spieler | 3 | 5 | offen |
 | [[REQ-179]] | Zeigen, dass es mehr gibt | Spieler | 4 | 1 | steht |
 
 ### F-013 Schreibrechte & Freigabe
@@ -217,6 +222,7 @@ Prüfungen über den Bestand, Massenänderungen mit Vorschau und Rückgängig (/
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-381]] | Ein Rahmen für alle Werkbank-Seiten | Verwaltung | 2 | 5 | offen |
 | [[REQ-088]] | Massenänderungen an Wissen und Rechten | Spielleitung | 3 | 3 | teils |
 | [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | Spielleitung | 3 | 5 | steht |
 
@@ -258,9 +264,18 @@ Drei Teststufen für jede Änderung — Unit, Integration, E2E im Browser — un
 |---|---|---|---|---|---|
 | [[REQ-359]] | Jede Änderung im Browser geprüft | Verwaltung | 1 | 5 | steht |
 
+### F-084 Projektsteuerung & Vermittlung
+
+Was die Seite kann, geplant hat und offen lässt, für die Leitung sichtbar machen: Featureseiten im Projektbrett, Demo-Video. — [[F-084 Projektsteuerung & Vermittlung]]
+
+| ID | Story | Rolle | Prio | Aufwand | Stand |
+|---|---|---|---|---|---|
+| [[REQ-392]] | Featureseiten im Projektbrett | Spielleitung | 2 | 5 | offen |
+| [[REQ-393]] | Demo-Video der Seite | Spielleitung | 3 | 3 | teils |
+
 ## EP-03 Kreaturen & Figuren
 
-29 Stories · 122 Punkte · 18 steht · 2 teils · 8 offen · 1 ersetzt — [[EP-03 Kreaturen & Figuren]]
+30 Stories · 125 Punkte · 19 steht · 2 teils · 8 offen · 1 ersetzt — [[EP-03 Kreaturen & Figuren]]
 
 ### F-020 Kreatur
 
@@ -306,6 +321,7 @@ Der Bogen einer Figur: Allgemein, Kampf, Zauber, Freispiel, schnelle Änderungen
 | [[REQ-344]] | Gesperrte Aktionen bleiben sichtbar, mit Grund | Spieler | 1 | 3 | teils |
 | [[REQ-051]] | Schnelle Änderungen am Bogen | Spieler | 2 | 3 | steht |
 | [[REQ-063]] | Charakterbogen: Allgemein | Spieler | 2 | 5 | steht |
+| [[REQ-390]] | Kurze und lange Rast | Spieler | 2 | 3 | steht |
 | [[REQ-066]] | Charakterbogen: Kampf | Spieler | 3 | 5 | steht |
 | [[REQ-067]] | Charakterbogen: Zauber | Spieler | 3 | 5 | steht |
 | [[REQ-068]] | Charakterbogen: Freispiel | Spieler | 4 | 3 | offen |
@@ -328,7 +344,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-42 Stories · 109 Punkte · 7 steht · 9 teils · 26 offen — [[EP-04 Spielererlebnis]]
+44 Stories · 120 Punkte · 7 steht · 9 teils · 28 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -367,6 +383,7 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 | [[REQ-216]] | Behälter in Behältern | Spieler | 3 | 2 | teils |
 | [[REQ-217]] | Ziehen am Bogen | Spieler | 3 | 2 | steht |
 | [[REQ-225]] | Fallenlassen und Verstauen | Spieler | 3 | 1 | teils |
+| [[REQ-391]] | Tragestufen mit Folgen | Spieler | 3 | 3 | offen |
 | [[REQ-065]] | Inventar als Raster | Spieler | 4 | 8 | steht |
 | [[REQ-214]] | Ausrüstungsfigur | Spieler | 4 | 2 | steht |
 | [[REQ-276]] | Unverstaute Gegenstände gelten als liegengelassen | Spielleitung | 4 | 2 | offen |
@@ -391,6 +408,7 @@ Fäden zwischen Leitung und Spielenden, daraus Kampagneninhalt. — [[F-028 Chat
 | [[REQ-202]] | Chats bleiben privat | Spieler | 2 | 2 | offen |
 | [[REQ-200]] | Chat mit der Leitung und unter Spielenden | Spieler | 3 | 5 | offen |
 | [[REQ-201]] | Aus dem Chat wird Inhalt | Spielleitung | 3 | 3 | offen |
+| [[REQ-388]] | Chat während der Sitzung | Spieler | 4 | 8 | offen |
 
 ### F-078 Beute
 
@@ -416,7 +434,7 @@ Körperplan des Inventarmoduls, tragende Ausrüstung als Behälter mit eigenem k
 
 ## EP-05 Kampagne & Sitzungen
 
-31 Stories · 106 Punkte · 17 steht · 3 teils · 11 offen — [[EP-05 Kampagne & Sitzungen]]
+33 Stories · 119 Punkte · 17 steht · 4 teils · 12 offen — [[EP-05 Kampagne & Sitzungen]]
 
 ### F-029 Kampagne
 
@@ -503,7 +521,16 @@ Audio aufnehmen, transkribieren, Recap-Entwurf. — [[F-036 Sitzungsmitschnitt]]
 |---|---|---|---|---|---|
 | [[REQ-196]] | Sitzung aufnehmen | Spielleitung | 4 | 5 | offen |
 | [[REQ-197]] | Transkript und Recap-Entwurf | Spielleitung | 4 | 8 | offen |
+| [[REQ-389]] | Aufnahme wird Chat-Text | Spielleitung | 4 | 8 | offen |
 | [[REQ-198]] | Sprecher im Transkript | Spielleitung | 5 | 5 | offen |
+
+### F-083 Quest-Generator
+
+Ein Modul, das aus einem Wurf auf eine Quest- oder Encounter-Tabelle Quest, Questgegenstände und Kanten in einem Schritt anlegt. — [[F-083 Quest-Generator]]
+
+| ID | Story | Rolle | Prio | Aufwand | Stand |
+|---|---|---|---|---|---|
+| [[REQ-377]] | Quest aus einer Tabelle würfeln | Spielleitung | 3 | 5 | teils |
 
 ## EP-06 Welt & Lore
 
@@ -563,7 +590,7 @@ Namen für Figuren und Orte erzeugen. — [[F-041 Namensgenerator]]
 
 ## EP-07 Regeln & Nachschlagen
 
-27 Stories · 126 Punkte · 13 steht · 2 teils · 12 offen — [[EP-07 Regeln & Nachschlagen]]
+29 Stories · 144 Punkte · 13 steht · 2 teils · 14 offen — [[EP-07 Regeln & Nachschlagen]]
 
 ### F-042 Bereich Rules & Kompendium
 
@@ -637,6 +664,8 @@ Regelsysteme und Module als Ebenen, je Sorte ein Modul, gewählt an der Kampagne
 |---|---|---|---|---|---|
 | [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | offen |
 | [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | 2 | 5 | offen |
+| [[REQ-369]] | Module als Baum mit Transformationen | Spielleitung | 2 | 5 | offen |
+| [[REQ-375]] | Register als Module | Verwaltung | 2 | 13 | offen |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | 3 | 3 | offen |
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | 5 | offen |
 
@@ -722,7 +751,7 @@ Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. — 
 
 ## EP-09 Karten
 
-28 Stories · 124 Punkte · 18 steht · 6 teils · 4 offen — [[EP-09 Karten]]
+29 Stories · 132 Punkte · 18 steht · 6 teils · 5 offen — [[EP-09 Karten]]
 
 ### F-055 Karte & Kartenebenen
 
@@ -730,6 +759,7 @@ Karte mit Bild, Gitter, Massstab; Unterkarten zum Hineinzoomen. — [[F-055 Kart
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-385]] | Karten-Widget mit Werkzeugen, Ebenen und Grössen | Spielleitung | 2 | 8 | offen |
 | [[REQ-130]] | Karte mit Gitter und Massstab | Spielleitung | 3 | 2 | steht |
 | [[REQ-131]] | Unterkarten zum Hineinzoomen | Spielleitung | 3 | 8 | steht |
 | [[REQ-132]] | Kartenebene festhalten | Spielleitung | 3 | 1 | offen |
@@ -803,7 +833,7 @@ Zeichnen, Assets platzieren, Effekte. — [[F-061 Karteneditor]]
 
 ## EP-10 Medien & Assets
 
-21 Stories · 81 Punkte · 4 steht · 3 teils · 14 offen — [[EP-10 Medien & Assets]]
+23 Stories · 89 Punkte · 4 steht · 3 teils · 16 offen — [[EP-10 Medien & Assets]]
 
 ### F-062 Asset-Ablage
 
@@ -858,12 +888,14 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-378]] | Regelbuch-PDFs privat ablegen | Spielleitung | 2 | 3 | offen |
+| [[REQ-379]] | Vom Artikel auf Seite und Stelle im PDF springen | Spielleitung | 2 | 5 | offen |
 | [[REQ-149]] | PDF mit Seitensprung | Spieler | 4 | 5 | offen |
 | [[REQ-152]] | Texte aus PDF erkennen | Spielleitung | 5 | 13 | offen |
 
 ## EP-11 Oberfläche & Navigation
 
-31 Stories · 109 Punkte · 20 steht · 6 teils · 4 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+38 Stories · 157 Punkte · 20 steht · 7 teils · 10 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -902,6 +934,7 @@ Filter einer Seite, gespeicherte Filtergruppen. — [[F-069 Filter & Filtergrupp
 |---|---|---|---|---|---|
 | [[REQ-303]] | Filtergruppen je Seite | Spielleitung | 2 | 3 | steht |
 | [[REQ-318]] | Ein Ebenenfilter, global und speicherbar | Spielleitung | 2 | 3 | steht |
+| [[REQ-386]] | Suche und Filter in den Modulen | Spielleitung | 2 | 3 | offen |
 | [[REQ-302]] | Der Filter gehört der Seite | Spielleitung | 3 | 1 | steht |
 
 ### F-070 Navigation & Kurzansicht
@@ -924,6 +957,7 @@ Felder dort bearbeiten, wo sie stehen; optionale Felder; Löschen mit Rückfrage
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-394]] | Artikel löschen, einzeln und mehrere, mit Rückgängig | Spielleitung | 2 | 3 | teils |
 | [[REQ-299]] | Optionale Felder verdeckt | Spielleitung | 3 | 2 | steht |
 | [[REQ-307]] | Löschen mit Rückfrage in der Seite | Spielleitung | 3 | 1 | steht |
 
@@ -937,10 +971,29 @@ Pergament wie die Bücher, Lesbarkeit, Stilkonzept, Sprache der Oberfläche. —
 | [[REQ-300]] | Gestaltung wie die Bücher | Spielleitung | 3 | 3 | teils |
 | [[REQ-306]] | Lesbarkeit im Feinschliff | Spieler | 3 | 2 | steht |
 | [[REQ-301]] | Stilkonzept in der Verwaltung anpassen | Verwaltung | 4 | 3 | offen |
+| [[REQ-382]] | Design und Werkzeuge in anderen Projekten nutzen | Verwaltung | 4 | 8 | offen |
+
+### F-081 Widgets & Kacheln
+
+Ein Muster für Ansichten, Board-Kacheln, Play-Schirm und Seiten: Vorlagen mit Bereichen, jeder Bereich hält ein Widget oder Ansichtselemente; der Katalog der Widgets. — [[F-081 Widgets & Kacheln]]
+
+| ID | Story | Rolle | Prio | Aufwand | Stand |
+|---|---|---|---|---|---|
+| [[REQ-373]] | Ein Muster für Ansichten, Kacheln und Seiten | Spielleitung | 2 | 8 | offen |
+| [[REQ-384]] | Widget-Katalog | Spielleitung | 2 | 13 | offen |
+| [[REQ-387]] | Kachel-Vorlagen anpassen | Spielleitung | 3 | 5 | offen |
+
+### F-082 Viewpoints
+
+Telefon, Tablet, Desktop, Beamer und TV als Viewpoints mit eigenem Gerüst, eigenen Werkzeugen und eigenem Verhalten statt nur Breakpoints. — [[F-082 Viewpoints]]
+
+| ID | Story | Rolle | Prio | Aufwand | Stand |
+|---|---|---|---|---|---|
+| [[REQ-374]] | Viewpoints statt nur Breakpoints | Spielleitung | 3 | 8 | offen |
 
 ## EP-12 Import & Inhalte
 
-10 Stories · 39 Punkte · 5 steht · 2 teils · 1 offen · 2 verworfen — [[EP-12 Import & Inhalte]]
+11 Stories · 47 Punkte · 5 steht · 2 teils · 2 offen · 2 verworfen — [[EP-12 Import & Inhalte]]
 
 ### F-073 5e.tools-Import
 
@@ -961,6 +1014,7 @@ Pakete wie Kibbles’ Compendium über die API laden. — [[F-074 Regelwerke and
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-314]] | Regelwerk eines Drittverlags laden | Spielleitung | 3 | 5 | teils |
+| [[REQ-380]] | Bücher über konfigurierbare Strukturen zerlegen | Verwaltung | 3 | 8 | offen |
 
 ### F-075 Obsidian-Vault
 

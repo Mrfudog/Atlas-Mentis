@@ -15,9 +15,10 @@ Epic: [[EP-12 Import & Inhalte]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-1 Stories · 5 Punkte · 1 teils
+2 Stories · 13 Punkte · 1 teils · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-314]] Regelwerk eines Drittverlags laden | Spielleitung | 3 | teils |
+| [[REQ-380]] Bücher über konfigurierbare Strukturen zerlegen | Verwaltung | 3 | offen |
 <!-- stories:ende -->

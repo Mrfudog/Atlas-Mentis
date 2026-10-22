@@ -15,10 +15,11 @@ Epic: [[EP-02 Zugang & Betrieb]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-2 Stories · 8 Punkte · 1 steht · 1 teils
+3 Stories · 13 Punkte · 1 steht · 1 teils · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-088]] Massenänderungen an Wissen und Rechten | Spielleitung | 3 | teils |
 | [[REQ-235]] Werkbank: Prüfungen und Massenänderungen | Spielleitung | 3 | steht |
+| [[REQ-381]] Ein Rahmen für alle Werkbank-Seiten | Verwaltung | 2 | offen |
 <!-- stories:ende -->

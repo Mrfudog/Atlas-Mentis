@@ -15,13 +15,14 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-3 Stories · 7 Punkte · 3 steht
+4 Stories · 10 Punkte · 3 steht · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-302]] Der Filter gehört der Seite | Spielleitung | 3 | steht |
 | [[REQ-303]] Filtergruppen je Seite | Spielleitung | 2 | steht |
 | [[REQ-318]] Ein Ebenenfilter, global und speicherbar | Spielleitung | 2 | steht |
+| [[REQ-386]] Suche und Filter in den Modulen | Spielleitung | 2 | offen |
 <!-- stories:ende -->
 
 ## Wann und von wem (T-382)

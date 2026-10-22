@@ -20,7 +20,7 @@ tags: ["vtt", "epic"]
 | Feature | Stories | Punkte | Stand |
 |---|---|---|---|
 | [[F-073 5e.tools-Import]] — Einmal einlesen, danach ergänzen; jede Quelle in ihre Ebene. | 5 | 22 | 3 steht · 2 verworfen |
-| [[F-074 Regelwerke anderer Verlage]] — Pakete wie Kibbles’ Compendium über die API laden. | 1 | 5 | 1 teils |
+| [[F-074 Regelwerke anderer Verlage]] — Pakete wie Kibbles’ Compendium über die API laden. | 2 | 13 | 1 teils · 1 offen |
 | [[F-075 Obsidian-Vault]] — Notizen aus dem Vault einlesen. | 1 | 5 | 1 offen |
 | [[F-076 Artikelprüfung & Nachtarbeit]] — Artikel nachts auf Vollständigkeit prüfen und ergänzen, mit Protokoll. | 2 | 4 | 2 steht |
 | [[F-077 KI-Inhalte]] — Von Claude erzeugte Inhalte in eigener Ebene, z. B. Preise. | 1 | 3 | 1 teils |
@@ -35,7 +35,7 @@ tags: ["vtt", "epic"]
 
 **Erklärt in:** [5etools-Abgleich.md](../../docs/5etools-Abgleich.md), [5etools-Arbeitsplan.md](../../docs/5etools-Arbeitsplan.md), [5etools-Bericht.md](../../docs/5etools-Bericht.md), [Betrieb.md](../../docs/Betrieb.md), [Nachtarbeit](../../docs/Nachtarbeit)
 
-**Offen mit Prio 1–3:** [[REQ-288]] Preise für jeden Gegenstand (teils) · [[REQ-308]] Obsidian-Vault einlesen (offen) · [[REQ-314]] Regelwerk eines Drittverlags laden (teils)
+**Offen mit Prio 1–3:** [[REQ-288]] Preise für jeden Gegenstand (teils) · [[REQ-308]] Obsidian-Vault einlesen (offen) · [[REQ-314]] Regelwerk eines Drittverlags laden (teils) · [[REQ-380]] Bücher über konfigurierbare Strukturen zerlegen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
