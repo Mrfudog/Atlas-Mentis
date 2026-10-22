@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view, umsetzung]
 status: derived
-updated: 2026-10-21
+updated: 2026-10-22
 source: ../docs/Anforderungen.md
 ---
 
@@ -11,7 +11,7 @@ source: ../docs/Anforderungen.md
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-21. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-22. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -23,12 +23,12 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 185 steht · 55 teils · 105 offen · 10 ersetzt · 6 verworfen — 361 Stories in 80 Features und 12 Epics.
+Zusammen: 185 steht · 56 teils · 105 offen · 10 ersetzt · 6 verworfen — 362 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 53 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
-| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 44 | 28 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen |
+| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 45 | 28 steht · 6 teils · 8 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 42 | 7 steht · 9 teils · 26 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
@@ -166,7 +166,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen)
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -200,7 +200,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-059]] | Wissen über Arten von Kreaturen | 3 | **steht** | `Facts.fact#id` über eine Information |
 | [[REQ-156]] | Sichtbarkeit vererben | 2 | **verworfen** | `inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht |
 | [[REQ-177]] | Einzelne Felder freigeben | 2 | **steht** | `Information.fields` je Feld und je Eintrag |
-| [[REQ-178]] | Decknamen | 3 | **steht** | `Identity.cover` |
+| [[REQ-178]] | Decknamen | 3 | **steht** | `Identity.cover`; verdeckt auch ohne Information, Aufdecken mit einem Klick (22.10.) |
 | [[REQ-179]] | Zeigen, dass es mehr gibt | 4 | **steht** | „…and 3 more things" |
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
 | [[REQ-350]] | Eine Information gilt für eine Gruppe von Artikeln | 1 | **steht** | T-285: Information.applies (Typen, Bedingungen auf Felder und Kanten, Kante auf einen Artikel samt Unterarten) |
@@ -218,6 +218,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-237]] | Spielende legen Artikel an, die Leitung gibt frei | 2 | **steht** | `isReady`, `Viewer.own`, `entity_ready` (T-075, D72, D74) |
 | [[REQ-242]] | Felder der eigenen Figur sperren | 3 | **offen** | die eigene Figur verwaltet der Spieler ganz (E-014 d) |
 | [[REQ-316]] | Eigene Ebene je Spieler als Vorgabe | 1 | **steht** | T-164: Spielerebene je Konto und Kampagne, Vorgabe zum Anlegen, Übernahme durch die Leitung; Migration 069 |
+| [[REQ-367]] | Ebene eines Artikels im Bearbeiten ändern, als erstes Feld | 2 | **teils** | T-383: Feld „Layer“ zuerst in der Maske, Angebot aus den Schreibebenen, Prüfung im PUT gegen zielEbenen, Meldung „Moved to …“; was mit Teilen, Statblock und Inventar geschieht, wartet auf E-161 |
 
 ### F-014 Sicht eines Spielers
 
@@ -1050,6 +1051,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-339]]** (2, offen, Spielererlebnis) — Tragende Ausrüstung an der Figur
 - **[[REQ-345]]** (2, teils, Oberfläche & Navigation) — Schwebende Werkzeugleiste für eine Auswahl — *Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt*
 - **[[REQ-354]]** (2, offen, Zugang & Betrieb) — Wissenspunkte bei eigener Herkunft und eigenem Hintergrund
+- **[[REQ-367]]** (2, teils, Zugang & Betrieb) — Ebene eines Artikels im Bearbeiten ändern, als erstes Feld — *T-383: Feld „Layer“ zuerst in der Maske, Angebot aus den Schreibebenen, Prüfung im PUT gegen zielEbenen, Meldung „Moved to …“; was mit Teilen, Statblock und Inventar geschieht, wartet auf E-161*
 - **[[REQ-007]]** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **[[REQ-022]]** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **[[REQ-025]]** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*

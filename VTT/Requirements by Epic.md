@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 # Requirements by Epic
@@ -134,7 +134,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-44 Stories · 137 Punkte · 28 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+45 Stories · 139 Punkte · 28 steht · 6 teils · 8 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -190,6 +190,7 @@ Wer was schreibt (je Ebene, eigene Artikel), Status ready als Freigabe, gesperrt
 | [[REQ-316]] | Eigene Ebene je Spieler als Vorgabe | Spieler | 1 | 3 | steht |
 | [[REQ-041]] | Wer was schreiben darf | Spielleitung | 2 | 3 | teils |
 | [[REQ-237]] | Spielende legen Artikel an, die Leitung gibt frei | Spieler | 2 | 5 | steht |
+| [[REQ-367]] | Ebene eines Artikels im Bearbeiten ändern, als erstes Feld | Spielleitung | 2 | 2 | teils |
 | [[REQ-242]] | Felder der eigenen Figur sperren | Spielleitung | 3 | 5 | offen |
 | [[REQ-042]] | Schreibrecht je Feldgruppe | Spielleitung | 4 | 5 | offen |
 
