@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view, umsetzung]
 status: derived
-updated: 2026-10-21
+updated: 2026-10-22
 source: ../docs/Anforderungen.md
 ---
 
@@ -11,7 +11,7 @@ source: ../docs/Anforderungen.md
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-21. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-22. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -23,20 +23,20 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 185 steht · 55 teils · 105 offen · 10 ersetzt · 6 verworfen — 361 Stories in 80 Features und 12 Epics.
+Zusammen: 185 steht · 55 teils · 122 offen · 10 ersetzt · 6 verworfen — 378 Stories in 80 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
-| [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 53 | 33 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
-| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 44 | 28 steht · 5 teils · 8 offen · 1 ersetzt · 2 verworfen |
-| [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 29 | 18 steht · 2 teils · 8 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 42 | 7 steht · 9 teils · 26 offen |
+| [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 56 | 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen |
+| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 47 | 28 steht · 5 teils · 11 offen · 1 ersetzt · 2 verworfen |
+| [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 18 steht · 2 teils · 9 offen · 1 ersetzt |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 43 | 7 steht · 9 teils · 27 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
-| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 27 | 13 steht · 2 teils · 12 offen |
-| [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
-| [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
-| [EP-10 Medien & Assets](#ep-10-medien--assets) | 21 | 4 steht · 3 teils · 14 offen |
+| [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 28 | 13 steht · 2 teils · 13 offen |
+| [EP-08 Live-Spiel](#ep-08-live-spiel) | 31 | 14 steht · 6 teils · 10 offen · 1 ersetzt |
+| [EP-09 Karten](#ep-09-karten) | 32 | 18 steht · 6 teils · 8 offen |
+| [EP-10 Medien & Assets](#ep-10-medien--assets) | 22 | 4 steht · 3 teils · 15 offen |
 | [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 31 | 20 steht · 6 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
@@ -52,7 +52,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 **Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Begriffe.md](../docs/Begriffe.md), [Ebenen.md](../docs/Ebenen.md), [Artikeltypen.md](../docs/Artikeltypen.md), [Durchgang.md](../docs/Durchgang.md)
 
-**Offen mit Prio 1–3:** REQ-003 Änderungsverlauf je Artikel (teils) · REQ-006 Stapel: was in der Kampagne gilt (teils) · REQ-007 Stapel für Fortgeschrittene (offen) · REQ-008 Varianten einer Sache (teils) · REQ-013 Verweise nach Nummer, getippt nach Name (teils) · REQ-045 Ebenen-Aktionen am Artikel (offen) · REQ-100 Welt als Ebene (teils) · REQ-102 Artikel je Stapel und Wissen zeichnen (teils) · REQ-176 Ähnliches vor dem Anlegen vorschlagen (teils) · REQ-249 Ebenen nach Herausgeber (teils) · REQ-253 Ebenen und Artikel kopieren (offen) · REQ-258 Verweisfeld nennt, welche Artikel es annimmt (teils) · REQ-264 Vergleichsebenen der Kampagne (teils)
+**Offen mit Prio 1–3:** REQ-003 Änderungsverlauf je Artikel (teils) · REQ-006 Stapel: was in der Kampagne gilt (teils) · REQ-007 Stapel für Fortgeschrittene (offen) · REQ-008 Varianten einer Sache (teils) · REQ-013 Verweise nach Nummer, getippt nach Name (teils) · REQ-045 Ebenen-Aktionen am Artikel (offen) · REQ-100 Welt als Ebene (teils) · REQ-102 Artikel je Stapel und Wissen zeichnen (teils) · REQ-176 Ähnliches vor dem Anlegen vorschlagen (teils) · REQ-249 Ebenen nach Herausgeber (teils) · REQ-253 Ebenen und Artikel kopieren (offen) · REQ-258 Verweisfeld nennt, welche Artikel es annimmt (teils) · REQ-264 Vergleichsebenen der Kampagne (teils) · REQ-366 Sorten als Listen (offen) · REQ-368 Immer eine laufende Kampagne oder Schreibebene (offen) · REQ-371 Vorlage, Spielstand und Stück verständlich (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -90,6 +90,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | [[REQ-258]] | Verweisfeld nennt, welche Artikel es annimmt | 2 | **teils** | `PropertySchema.target`, `link_wrong_type`; Vorschläge in den Sichtbarkeitsfeldern für jede Art noch nicht überall |
 | [[REQ-259]] | Vorgabewerte für Felder | 3 | **steht** | `default` am Feld |
 | [[REQ-261]] | Sorte einer Art als freies Feld mit Vorschlägen | 2 | **steht** | `Creature.kind`, `Place.kind`, `suggest` |
+| [[REQ-366]] | Sorten als Listen | 2 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
 
 ### F-004 Ebenen & Stapel
 
@@ -101,7 +102,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | [[REQ-007]] | Stapel für Fortgeschrittene | 3 | **offen** |  |
 | [[REQ-044]] | Herkunft am Artikel sehen | 2 | **steht** | Herkunft am Artikelkopf, Ansicht `stack` |
 | [[REQ-045]] | Ebenen-Aktionen am Artikel | 3 | **offen** |  |
-| [[REQ-100]] | Welt als Ebene | 1 | **teils** | `Layer.kind: world`; keine Mitglieder je Welt |
+| [[REQ-100]] | Welt als Ebene | 1 | **teils** | `Layer.kind: world`; Konzept Setting als Ebene (docs/vorschlaege/Konzepte-2026-10-22.md §3) |
 | [[REQ-102]] | Artikel je Stapel und Wissen zeichnen | 2 | **teils** | Prototyp ja; Server ohne Stapel — Abgleich A2 |
 | [[REQ-244]] | Ebenen gruppieren | 2 | **steht** | `kind: group`, `partOf`, `resolvedStack` (T-088, E-022 b); Gruppe ganz schalten und Häkchen aus dem Stand der Bücher: `groupSwitched` (T-185) |
 | [[REQ-245]] | Ebenen beschreiben sich selbst | 2 | **steht** | Titel, Kürzel, Beschreibung an der Ebene (T-088) |
@@ -109,6 +110,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | [[REQ-253]] | Ebenen und Artikel kopieren | 3 | **offen** | später; Kopie ohne `overrides` |
 | [[REQ-255]] | Ebenen teilweise aufschalten | 2 | **steht** | `activates` mit Auswahl nach Bereich und Art (T-105) |
 | [[REQ-348]] | Ebene am Artikel immer sichtbar | 1 | **steht** | T-251: Ebenen-Marke im Kopf jeder Artikelseite (Ebene, Ebenen der Fassungen, Grund), in der Kurzansicht und knapp in Listenzeilen |
+| [[REQ-368]] | Immer eine laufende Kampagne oder Schreibebene | 2 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
 
 ### F-005 Fassungen & Varianten
 
@@ -119,6 +121,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | [[REQ-108]] | Lore der Kampagne abweichen lassen | 3 | **steht** | `overrides` in der Kampagnenebene |
 | [[REQ-264]] | Vergleichsebenen der Kampagne | 2 | **teils** | Vergleichsebenen an der Kampagne; Wahl im Kampagnen-Popup und gruppenweise offen |
 | [[REQ-310]] | Fassungen am Feld zeigen | 2 | **steht** | T-092, T-103 |
+| [[REQ-371]] | Vorlage, Spielstand und Stück verständlich | 2 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
 
 ### F-006 Ansichten & Anordnung
 
@@ -166,7 +169,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen)
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-365 Artikel in eine andere Ebene schieben (offen) · REQ-367 Verwaltung: Konten, Kampagnen und Inhalte (offen) · REQ-369 Freigaben an der eigenen Figur (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -181,6 +184,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-228]] | Verlorene Einladung neu ausgeben | 4 | **offen** | heute widerrufen und neu anlegen (W3) |
 | [[REQ-229]] | Konten in der Seite verwalten | 3 | **offen** | nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3) |
 | [[REQ-266]] | Demo-Zugang | 5 | **offen** |  |
+| [[REQ-367]] | Verwaltung: Konten, Kampagnen und Inhalte | 2 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
 
 ### F-011 Rollen je Kampagne
 
@@ -200,7 +204,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-059]] | Wissen über Arten von Kreaturen | 3 | **steht** | `Facts.fact#id` über eine Information |
 | [[REQ-156]] | Sichtbarkeit vererben | 2 | **verworfen** | `inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht |
 | [[REQ-177]] | Einzelne Felder freigeben | 2 | **steht** | `Information.fields` je Feld und je Eintrag |
-| [[REQ-178]] | Decknamen | 3 | **steht** | `Identity.cover` |
+| [[REQ-178]] | Decknamen | 3 | **steht** | `Identity.cover`; verdeckt auch ohne Information, Aufdecken mit einem Klick (22.10.) |
 | [[REQ-179]] | Zeigen, dass es mehr gibt | 4 | **steht** | „…and 3 more things" |
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
 | [[REQ-350]] | Eine Information gilt für eine Gruppe von Artikeln | 1 | **steht** | T-285: Information.applies (Typen, Bedingungen auf Felder und Kanten, Kante auf einen Artikel samt Unterarten) |
@@ -208,6 +212,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-352]] | Reiter Knowledge am Artikel | 1 | **steht** | T-286: Kasten Knowledge in der Seitenspalte (Leitung), Routen /api/knowledge/…; neue Information gilt über applies.article |
 | [[REQ-353]] | Die Seite eines Wissens zeigt alles, was es vereint | 1 | **steht** | T-287: Element knowledge an der Art Knowledge, GET /api/knowledge/:id/contents (gesiebt) |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | 2 | **offen** |  |
+| [[REQ-369]] | Freigaben an der eigenen Figur | 2 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
 
 ### F-013 Schreibrechte & Freigabe
 
@@ -238,6 +243,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 |---|---|---|---|---|
 | [[REQ-088]] | Massenänderungen an Wissen und Rechten | 3 | **teils** | Massenbearbeitung ohne Wissen |
 | [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68) |
+| [[REQ-365]] | Artikel in eine andere Ebene schieben | 2 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
 
 ### F-017 Ausrollen & Sicherung
 
@@ -281,7 +287,7 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 
 **Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Begriffe.md](../docs/Begriffe.md)
 
-**Offen mit Prio 1–3:** REQ-055 Merkmale beim Tippen wiederverwenden (offen) · REQ-060 Begleiter und Beschwörungen (teils) · REQ-274 Charakter- und Kampagnenmanager jederzeit aufrufen (offen) · REQ-344 Gesperrte Aktionen bleiben sichtbar, mit Grund (teils)
+**Offen mit Prio 1–3:** REQ-055 Merkmale beim Tippen wiederverwenden (offen) · REQ-060 Begleiter und Beschwörungen (teils) · REQ-274 Charakter- und Kampagnenmanager jederzeit aufrufen (offen) · REQ-344 Gesperrte Aktionen bleiben sichtbar, mit Grund (teils) · REQ-378 Anlegen nach Regeln: Stand und Felder (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -312,6 +318,7 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 |---|---|---|---|---|
 | [[REQ-048]] | Kreatur schnell bearbeiten | 2 | **steht** | Bearbeiten in der Ansicht und im Dialog |
 | [[REQ-049]] | Kreatur schnell anlegen | 2 | **steht** | Anlegedialog mit Statblock-Frage, Schnellanlage aus einem Verweis |
+| [[REQ-378]] | Anlegen nach Regeln: Stand und Felder | 2 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ### F-023 Charakterbogen
 
@@ -351,7 +358,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (offen) · REQ-324 Hände als Plätze mit Regeln (offen) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (offen) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (offen) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils) · REQ-364 Zwischen den Boards wechseln (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -364,6 +371,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | [[REQ-194]] | Untere Leiste am Telefon wählen | 4 | **offen** |  |
 | [[REQ-311]] | Spieleransicht mit der eigenen Figur im Fokus | 2 | **teils** | Entwurf Player/PlayerPhone |
 | [[REQ-346]] | Was die Kampagne meiner Figur gezeigt hat | 1 | **teils** | Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen |
+| [[REQ-364]] | Zwischen den Boards wechseln | 1 | **offen** | Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md |
 
 ### F-026 Inventar
 
@@ -584,7 +592,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils)
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (offen) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils) · REQ-377 Massstäbe und Einheiten der Karte (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -654,6 +662,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-227]] | Masse im Fliesstext umrechnen | 3 | **offen** | umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2) |
+| [[REQ-377]] | Massstäbe und Einheiten der Karte | 2 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ## EP-08 Live-Spiel
 
@@ -667,7 +676,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils)
+**Offen mit Prio 1–3:** REQ-113 Notiz-Widget (offen) · REQ-114 Schnellanlage auf dem Schirm (teils) · REQ-120 Spielprotokoll (teils) · REQ-123 Timer (offen) · REQ-128 Kampf aus Sicht der Spielenden (teils) · REQ-187 Tischanzeige (offen) · REQ-204 Spielleiter-Schirm (offen) · REQ-205 Ein Board je Geschichtsartikel (teils) · REQ-292 Neuen Artikel aus einer Auswahl anlegen (teils) · REQ-362 Spielboard: was gerade läuft (offen) · REQ-363 Den Spielenden etwas zeigen (offen) · REQ-373 Werkzeugleiste mit Belegungen, Hilfe und Kürzeln (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -699,6 +708,8 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 | [[REQ-117]] | Wer am Sitzungszustand schreibt | 3 | **steht** | `Session.stewardship` gm/table |
 | [[REQ-120]] | Spielprotokoll | 3 | **teils** | Würfe im Protokoll; Zustandsereignisse nicht gespeichert |
 | [[REQ-121]] | Statistik | 4 | **offen** |  |
+| [[REQ-362]] | Spielboard: was gerade läuft | 1 | **offen** | Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md |
+| [[REQ-363]] | Den Spielenden etwas zeigen | 1 | **offen** | Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md |
 
 ### F-053 Würfel
 
@@ -723,6 +734,7 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 | [[REQ-129]] | Fragen an einen Assistenten | 5 | **offen** |  |
 | [[REQ-186]] | Verschachtelte Tabellen | 3 | **steht** | `entry` auf eine Tabelle |
 | [[REQ-292]] | Neuen Artikel aus einer Auswahl anlegen | 2 | **teils** |  |
+| [[REQ-373]] | Werkzeugleiste mit Belegungen, Hilfe und Kürzeln | 2 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ## EP-09 Karten
 
@@ -736,7 +748,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 
 **Erklärt in:** [Karten.md](../docs/Karten.md)
 
-**Offen mit Prio 1–3:** REQ-132 Kartenebene festhalten (offen) · REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils)
+**Offen mit Prio 1–3:** REQ-132 Kartenebene festhalten (offen) · REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils) · REQ-372 Spielende sehen nur Karten im Spiel (offen) · REQ-374 Tokens zwischen Kartenstufen (offen) · REQ-375 Kartenstufen ineinander übergehen lassen (offen) · REQ-376 Kartenbereiche (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -749,6 +761,8 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 | [[REQ-132]] | Kartenebene festhalten | 3 | **offen** |  |
 | [[REQ-138]] | Grosse Karten in Kacheln | 4 | **steht** | `Map.tiles` |
 | [[REQ-293]] | Ladeanzeige für Kartenbilder | 3 | **steht** | T-126 |
+| [[REQ-372]] | Spielende sehen nur Karten im Spiel | 1 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
+| [[REQ-375]] | Kartenstufen ineinander übergehen lassen | 3 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ### F-056 Tokens & Marker
 
@@ -760,6 +774,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 | [[REQ-136]] | Gruppe und Quests auf der Karte | 3 | **steht** | Gruppen-Token, `{PARTYWHERE}` |
 | [[REQ-224]] | Kreaturen nach Grösse auf der Karte | 3 | **steht** | Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58) |
 | [[REQ-294]] | Token ohne Bild zeigt den Anfangsbuchstaben | 3 | **teils** | Anfangsbuchstabe ja; Deckname nicht geprüft |
+| [[REQ-374]] | Tokens zwischen Kartenstufen | 3 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ### F-057 Nebel, Licht & Sicht
 
@@ -785,6 +800,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 |---|---|---|---|---|
 | [[REQ-137]] | Hervorhebungen nach Abfrage | 4 | **teils** | `territory` von Hand; keine Abfrage |
 | [[REQ-193]] | Gebiete auf der Karte | 4 | **steht** | `territory` |
+| [[REQ-376]] | Kartenbereiche | 2 | **offen** | Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md |
 
 ### F-060 Reisen & Erkundung
 
@@ -813,7 +829,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 **Erklärt in:** [Betrieb.md](../docs/Betrieb.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen) · REQ-329 Bilder im Inventar (offen) · REQ-330 Inventory image an einen Gegenstand binden (offen)
+**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen) · REQ-329 Bilder im Inventar (offen) · REQ-330 Inventory image an einen Gegenstand binden (offen) · REQ-370 Assets ohne Vorbereitungsstand (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -829,6 +845,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 | [[REQ-148]] | Bilder von aussen | 3 | **steht** | `Asset.backend: external` |
 | [[REQ-150]] | Audio ablegen | 5 | **offen** |  |
 | [[REQ-151]] | 3D-Dateien | 5 | **offen** |  |
+| [[REQ-370]] | Assets ohne Vorbereitungsstand | 3 | **offen** | Konzept docs/vorschlaege/Konzepte-2026-10-22.md |
 
 ### F-063 Bildverwaltung
 
@@ -884,7 +901,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-111]] | Boards | 2 | **steht** | `Board`, `placed` |
-| [[REQ-119]] | Boards der Spielenden | 3 | **offen** |  |
+| [[REQ-119]] | Boards der Spielenden | 3 | **offen** | Erweitert 22.10.: ein Board je Figur und Kampagne (docs/vorschlaege/Spieltisch-als-Boards.md) |
 | [[REQ-157]] | Frei anordnen auf dem Board | 2 | **steht** | `placed` mit x, y, w, h, z; in der Seite die Leinwand `/boards` (W4) |
 | [[REQ-158]] | Ansicht je Platzierung | 2 | **steht** | `placed.view` |
 | [[REQ-159]] | Anker und Bereiche auf dem Board | 3 | **steht** | `Board.anchors`; in der Seite als Reiter über dem Board, mit Rechteck ein einklappbarer Bereich (T-073) |
@@ -1001,11 +1018,15 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-013]]** (1, teils, Inhaltsgerüst) — Verweise nach Nummer, getippt nach Name — *`[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben*
 - **[[REQ-018]]** (1, offen, Regeln & Nachschlagen) — Wirkungen von Regeln beschreiben — *keine `effects[]`; Regeln sind Text mit `{VAR}`*
 - **[[REQ-069]]** (1, teils, Spielererlebnis) — Am Telefon spielen — *Spielerseite bei 390 px ohne Überlauf, Kopf eingeklappt (T-247); Inventar am Telefon wartet auf T-244*
-- **[[REQ-100]]** (1, teils, Inhaltsgerüst) — Welt als Ebene — *`Layer.kind: world`; keine Mitglieder je Welt*
+- **[[REQ-100]]** (1, teils, Inhaltsgerüst) — Welt als Ebene — *`Layer.kind: world`; Konzept Setting als Ebene (docs/vorschlaege/Konzepte-2026-10-22.md §3)*
 - **[[REQ-145]]** (1, teils, Medien & Assets) — Ablage in der Seite — *Assets als Artikel; Ablage im Artefakt*
 - **[[REQ-344]]** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
 - **[[REQ-346]]** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
 - **[[REQ-361]]** (1, teils, Oberfläche & Navigation) — Lange Seiten: Bereiche klappen und springen — *Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); Assistent, Facetten, Register, Artikel-, Figur- und Ebenenseite folgen*
+- **[[REQ-362]]** (1, offen, Live-Spiel) — Spielboard: was gerade läuft — *Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md*
+- **[[REQ-363]]** (1, offen, Live-Spiel) — Den Spielenden etwas zeigen — *Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md*
+- **[[REQ-364]]** (1, offen, Spielererlebnis) — Zwischen den Boards wechseln — *Vorschlag docs/vorschlaege/Spieltisch-als-Boards.md*
+- **[[REQ-372]]** (1, offen, Karten) — Spielende sehen nur Karten im Spiel — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
 - **[[REQ-041]]** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **[[REQ-072]]** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **[[REQ-079]]** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
@@ -1050,6 +1071,16 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-339]]** (2, offen, Spielererlebnis) — Tragende Ausrüstung an der Figur
 - **[[REQ-345]]** (2, teils, Oberfläche & Navigation) — Schwebende Werkzeugleiste für eine Auswahl — *Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt*
 - **[[REQ-354]]** (2, offen, Zugang & Betrieb) — Wissenspunkte bei eigener Herkunft und eigenem Hintergrund
+- **[[REQ-365]]** (2, offen, Zugang & Betrieb) — Artikel in eine andere Ebene schieben — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-366]]** (2, offen, Inhaltsgerüst) — Sorten als Listen — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-367]]** (2, offen, Zugang & Betrieb) — Verwaltung: Konten, Kampagnen und Inhalte — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-368]]** (2, offen, Inhaltsgerüst) — Immer eine laufende Kampagne oder Schreibebene — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-369]]** (2, offen, Zugang & Betrieb) — Freigaben an der eigenen Figur — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-371]]** (2, offen, Inhaltsgerüst) — Vorlage, Spielstand und Stück verständlich — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-373]]** (2, offen, Live-Spiel) — Werkzeugleiste mit Belegungen, Hilfe und Kürzeln — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
+- **[[REQ-376]]** (2, offen, Karten) — Kartenbereiche — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
+- **[[REQ-377]]** (2, offen, Regeln & Nachschlagen) — Massstäbe und Einheiten der Karte — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
+- **[[REQ-378]]** (2, offen, Kreaturen & Figuren) — Anlegen nach Regeln: Stand und Felder — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
 - **[[REQ-007]]** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **[[REQ-022]]** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **[[REQ-025]]** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*
@@ -1063,7 +1094,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-086]]** (3, teils, Kampagne & Sitzungen) — Gruppenübersicht — *Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung*
 - **[[REQ-088]]** (3, teils, Zugang & Betrieb) — Massenänderungen an Wissen und Rechten — *Massenbearbeitung ohne Wissen*
 - **[[REQ-109]]** (3, teils, Spielererlebnis) — Lore-Texte von Spielenden — *Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041)*
-- **[[REQ-119]]** (3, offen, Oberfläche & Navigation) — Boards der Spielenden
+- **[[REQ-119]]** (3, offen, Oberfläche & Navigation) — Boards der Spielenden — *Erweitert 22.10.: ein Board je Figur und Kampagne (docs/vorschlaege/Spieltisch-als-Boards.md)*
 - **[[REQ-120]]** (3, teils, Live-Spiel) — Spielprotokoll — *Würfe im Protokoll; Zustandsereignisse nicht gespeichert*
 - **[[REQ-123]]** (3, offen, Live-Spiel) — Timer
 - **[[REQ-128]]** (3, teils, Live-Spiel) — Kampf aus Sicht der Spielenden — *dieselbe Ansicht, gesiebt*
@@ -1108,3 +1139,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-332]]** (3, offen, Spielererlebnis) — Beute öffnen und nehmen
 - **[[REQ-340]]** (3, offen, Spielererlebnis) — Raster und Zonen eines Trägers in der Maske
 - **[[REQ-357]]** (3, teils, Regeln & Nachschlagen) — Regelgraphen wirken am Tisch — *Option Rules from graphs (Campaign.ruleGraphs): der Zugplan sendet leavesReach, attacked, hit/missed, damaged; Reaktionen werden angeboten, die Gelegenheitsattacke kommt aus ihrer Regel. Offen: castsSpell, picksUpObject, turnStart, Folgen mit Wirkung, Fassungen.*
+- **[[REQ-370]]** (3, offen, Medien & Assets) — Assets ohne Vorbereitungsstand — *Konzept docs/vorschlaege/Konzepte-2026-10-22.md*
+- **[[REQ-374]]** (3, offen, Karten) — Tokens zwischen Kartenstufen — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*
+- **[[REQ-375]]** (3, offen, Karten) — Kartenstufen ineinander übergehen lassen — *Aufstellung docs/vorschlaege/Aufstellung-2026-10-22.md*

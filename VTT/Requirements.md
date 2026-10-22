@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, registry]
 status: derived
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 # Requirements Registry
@@ -28,12 +28,12 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
-| 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 120 | 405 | 68 steht · 18 teils · 26 offen · 5 ersetzt · 3 verworfen |
-| 3 | 120 | 354 | 61 steht · 25 teils · 33 offen · 1 ersetzt |
+| 1 | 61 | 203 | 42 steht · 10 teils · 5 offen · 2 ersetzt · 2 verworfen |
+| 2 | 130 | 459 | 68 steht · 18 teils · 36 offen · 5 ersetzt · 3 verworfen |
+| 3 | 123 | 369 | 61 steht · 25 teils · 36 offen · 1 ersetzt |
 | 4 | 45 | 196 | 13 steht · 2 teils · 27 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **361** | **1291** | 185 steht · 55 teils · 105 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **378** | **1381** | 185 steht · 55 teils · 122 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -400,6 +400,23 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-359]] | Jede Änderung im Browser geprüft | Verwaltung | [[F-080 Qualität & Tests\|Qualität & Tests]] | 1 | 5 | defined | steht |
 | [[REQ-360]] | Struktur einer Fraktion als Organigramm oder Netz | Spielleitung | [[F-067 Boards\|Boards]] | 2 | 8 | defined | steht |
 | [[REQ-361]] | Lange Seiten: Bereiche klappen und springen | Spielleitung | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 1 | 3 | in progress | teils |
+| [[REQ-362]] | Spielboard: was gerade läuft | Spieler | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 1 | 8 | defined | offen |
+| [[REQ-363]] | Den Spielenden etwas zeigen | Spielleitung | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 1 | 5 | defined | offen |
+| [[REQ-364]] | Zwischen den Boards wechseln | Spieler | [[F-025 Spieleransicht & Telefon\|Spieleransicht & Telefon]] | 1 | 3 | defined | offen |
+| [[REQ-365]] | Artikel in eine andere Ebene schieben | Spielleitung | [[F-016 Werkbank\|Werkbank]] | 2 | 2 | defined | offen |
+| [[REQ-366]] | Sorten als Listen | Spielleitung | [[F-003 Feldformen & Aufzählungen\|Feldformen & Aufzählungen]] | 2 | 5 | defined | offen |
+| [[REQ-367]] | Verwaltung: Konten, Kampagnen und Inhalte | Verwaltung | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 2 | 8 | defined | offen |
+| [[REQ-368]] | Immer eine laufende Kampagne oder Schreibebene | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | defined | offen |
+| [[REQ-369]] | Freigaben an der eigenen Figur | Spieler | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 5 | defined | offen |
+| [[REQ-370]] | Assets ohne Vorbereitungsstand | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 3 | 2 | defined | offen |
+| [[REQ-371]] | Vorlage, Spielstand und Stück verständlich | Spielleitung | [[F-005 Fassungen & Varianten\|Fassungen & Varianten]] | 2 | 5 | defined | offen |
+| [[REQ-372]] | Spielende sehen nur Karten im Spiel | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 1 | 5 | defined | offen |
+| [[REQ-373]] | Werkzeugleiste mit Belegungen, Hilfe und Kürzeln | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 8 | defined | offen |
+| [[REQ-374]] | Tokens zwischen Kartenstufen | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 5 | defined | offen |
+| [[REQ-375]] | Kartenstufen ineinander übergehen lassen | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 8 | defined | offen |
+| [[REQ-376]] | Kartenbereiche | Spielleitung | [[F-059 Gebiete & Overlays\|Gebiete & Overlays]] | 2 | 8 | defined | offen |
+| [[REQ-377]] | Massstäbe und Einheiten der Karte | Spielleitung | [[F-049 Masse & Einheiten\|Masse & Einheiten]] | 2 | 5 | defined | offen |
+| [[REQ-378]] | Anlegen nach Regeln: Stand und Felder | Spielleitung | [[F-022 Schnellanlage\|Schnellanlage]] | 2 | 5 | defined | offen |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

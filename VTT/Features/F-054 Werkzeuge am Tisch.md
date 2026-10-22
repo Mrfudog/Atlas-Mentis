@@ -15,7 +15,7 @@ Epic: [[EP-08 Live-Spiel]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-12 Stories · 48 Punkte · 4 steht · 3 teils · 4 offen · 1 ersetzt
+13 Stories · 56 Punkte · 4 steht · 3 teils · 5 offen · 1 ersetzt
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -31,4 +31,5 @@ Epic: [[EP-08 Live-Spiel]]
 | [[REQ-129]] Fragen an einen Assistenten | Spielleitung | 5 | offen |
 | [[REQ-186]] Verschachtelte Tabellen | Spielleitung | 3 | steht |
 | [[REQ-292]] Neuen Artikel aus einer Auswahl anlegen | Spielleitung | 2 | teils |
+| [[REQ-373]] Werkzeugleiste mit Belegungen, Hilfe und Kürzeln | Spielleitung | 2 | offen |
 <!-- stories:ende -->

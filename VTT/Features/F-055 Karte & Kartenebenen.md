@@ -15,7 +15,7 @@ Epic: [[EP-09 Karten]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-5 Stories · 17 Punkte · 4 steht · 1 offen
+7 Stories · 30 Punkte · 4 steht · 3 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -24,4 +24,6 @@ Epic: [[EP-09 Karten]]
 | [[REQ-132]] Kartenebene festhalten | Spielleitung | 3 | offen |
 | [[REQ-138]] Grosse Karten in Kacheln | Spieler | 4 | steht |
 | [[REQ-293]] Ladeanzeige für Kartenbilder | Spielleitung | 3 | steht |
+| [[REQ-372]] Spielende sehen nur Karten im Spiel | Spielleitung | 1 | offen |
+| [[REQ-375]] Kartenstufen ineinander übergehen lassen | Spielleitung | 3 | offen |
 <!-- stories:ende -->

@@ -15,7 +15,7 @@ Epic: [[EP-01 Inhaltsgerüst]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-5 Stories · 14 Punkte · 3 steht · 2 teils
+6 Stories · 19 Punkte · 3 steht · 2 teils · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -24,4 +24,5 @@ Epic: [[EP-01 Inhaltsgerüst]]
 | [[REQ-108]] Lore der Kampagne abweichen lassen | Spielleitung | 3 | steht |
 | [[REQ-264]] Vergleichsebenen der Kampagne | Spielleitung | 2 | teils |
 | [[REQ-310]] Fassungen am Feld zeigen | Spielleitung | 2 | steht |
+| [[REQ-371]] Vorlage, Spielstand und Stück verständlich | Spielleitung | 2 | offen |
 <!-- stories:ende -->

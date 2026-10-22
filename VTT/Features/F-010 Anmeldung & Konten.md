@@ -15,7 +15,7 @@ Epic: [[EP-02 Zugang & Betrieb]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-7 Stories · 17 Punkte · 3 steht · 3 offen · 1 verworfen
+8 Stories · 25 Punkte · 3 steht · 4 offen · 1 verworfen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -26,4 +26,5 @@ Epic: [[EP-02 Zugang & Betrieb]]
 | [[REQ-228]] Verlorene Einladung neu ausgeben | Spielleitung | 4 | offen |
 | [[REQ-229]] Konten in der Seite verwalten | Verwaltung | 3 | offen |
 | [[REQ-266]] Demo-Zugang | Verwaltung | 5 | offen |
+| [[REQ-367]] Verwaltung: Konten, Kampagnen und Inhalte | Verwaltung | 2 | offen |
 <!-- stories:ende -->

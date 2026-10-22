@@ -19,13 +19,13 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
 | Feature | Stories | Punkte | Stand |
 |---|---|---|---|
-| [[F-010 Anmeldung & Konten]] — Passwort je Konto, Einladungen, Kontoverwaltung in der Seite, Demo. | 7 | 17 | 3 steht · 3 offen · 1 verworfen |
+| [[F-010 Anmeldung & Konten]] — Passwort je Konto, Einladungen, Kontoverwaltung in der Seite, Demo. | 8 | 25 | 3 steht · 4 offen · 1 verworfen |
 | [[F-011 Rollen je Kampagne]] — gm, co-gm, player, spectator am Konto je Kampagne; Verwaltung der Installation. | 3 | 6 | 3 steht |
-| [[F-012 Sichtbarkeit & Wissen]] — Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder darin (Information, Wissen, Deckname). | 14 | 40 | 11 steht · 1 offen · 1 ersetzt · 1 verworfen |
+| [[F-012 Sichtbarkeit & Wissen]] — Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder darin (Information, Wissen, Deckname). | 15 | 45 | 11 steht · 2 offen · 1 ersetzt · 1 verworfen |
 | [[F-013 Schreibrechte & Freigabe]] — Wer was schreibt (je Ebene, eigene Artikel), Status ready als Freigabe, gesperrte Felder. | 5 | 21 | 2 steht · 1 teils · 2 offen |
 | [[F-014 Sicht eines Spielers]] — Die Leitung sieht die Seite, wie ein bestimmtes Konto sie sieht. | 1 | 5 | 1 steht |
 | [[F-015 API-Tokens & Werkzeugzugang]] — Tokens am Konto für Skripte und Claude-Sitzungen. | 2 | 3 | 1 steht · 1 teils |
-| [[F-016 Werkbank]] — Prüfungen über den Bestand, Massenänderungen mit Vorschau und Rückgängig (/werkbank). | 2 | 8 | 1 steht · 1 teils |
+| [[F-016 Werkbank]] — Prüfungen über den Bestand, Massenänderungen mit Vorschau und Rückgängig (/werkbank). | 3 | 10 | 1 steht · 1 teils · 1 offen |
 | [[F-017 Ausrollen & Sicherung]] — CI/CD nach Hetzner, dev und prod, Sicherungen, Spiegelung, Netz. | 5 | 12 | 3 steht · 1 teils · 1 offen |
 | [[F-018 Übernahme dev - prod]] — Artikel auf dev vorbereiten und nach prod übernehmen, Konflikte lösen. | 2 | 10 | 1 teils · 1 offen |
 | [[F-019 Leistung & Laden]] — Listen am Server, schnelle Navigation, Ladeanzeige. | 2 | 10 | 2 steht |
@@ -41,7 +41,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../../docs/Zugang.md), [Wissen.md](../../docs/Wissen.md), [Betrieb.md](../../docs/Betrieb.md), [Architektur.md](../../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** [[REQ-041]] Wer was schreiben darf (teils) · [[REQ-088]] Massenänderungen an Wissen und Rechten (teils) · [[REQ-229]] Konten in der Seite verwalten (offen) · [[REQ-242]] Felder der eigenen Figur sperren (offen) · [[REQ-268]] Dev-Token aus der Werkbank erzeugen (teils) · [[REQ-269]] Ankündigen, wann produktiv gearbeitet werden kann (teils) · [[REQ-270]] Artikel von dev nach prod übernehmen (teils) · [[REQ-271]] Konflikte bei der Übernahme nebeneinander lösen (offen) · [[REQ-354]] Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen)
+**Offen mit Prio 1–3:** [[REQ-041]] Wer was schreiben darf (teils) · [[REQ-088]] Massenänderungen an Wissen und Rechten (teils) · [[REQ-229]] Konten in der Seite verwalten (offen) · [[REQ-242]] Felder der eigenen Figur sperren (offen) · [[REQ-268]] Dev-Token aus der Werkbank erzeugen (teils) · [[REQ-269]] Ankündigen, wann produktiv gearbeitet werden kann (teils) · [[REQ-270]] Artikel von dev nach prod übernehmen (teils) · [[REQ-271]] Konflikte bei der Übernahme nebeneinander lösen (offen) · [[REQ-354]] Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · [[REQ-365]] Artikel in eine andere Ebene schieben (offen) · [[REQ-367]] Verwaltung: Konten, Kampagnen und Inhalte (offen) · [[REQ-369]] Freigaben an der eigenen Figur (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->

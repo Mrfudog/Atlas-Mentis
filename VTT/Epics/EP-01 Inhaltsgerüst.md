@@ -21,9 +21,9 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 |---|---|---|---|
 | [[F-001 Artikelmodell]] — Peg, Karten je Art, Kanten, Bezeichner — wie ein Artikel gespeichert wird. | 9 | 25 | 5 steht · 2 ersetzt · 2 verworfen |
 | [[F-002 Register]] — Die Seite /registry: Typen, Felder, Kanten, Listen und Ansichten anlegen und ändern, mit Zählung vorher. | 6 | 24 | 6 steht |
-| [[F-003 Feldformen & Aufzählungen]] — Was ein Feld halten darf: Formen, Aufzählungszeilen, Spannen, Verweisziele, Vorgaben, freie Sorten. | 5 | 7 | 3 steht · 1 teils · 1 ersetzt |
-| [[F-004 Ebenen & Stapel]] — Ebenen, Gruppen von Ebenen, Herausgeber, Aufschalten (auch teilweise) und was im Stapel einer Kampagne steht. | 14 | 55 | 7 steht · 4 teils · 3 offen |
-| [[F-005 Fassungen & Varianten]] — Dieselbe Sache aus einer anderen Quelle (Fassung, Überschreibung) und eine verwandte Sache (Variante); Vergleichsebenen. | 5 | 14 | 3 steht · 2 teils |
+| [[F-003 Feldformen & Aufzählungen]] — Was ein Feld halten darf: Formen, Aufzählungszeilen, Spannen, Verweisziele, Vorgaben, freie Sorten. | 6 | 12 | 3 steht · 1 teils · 1 offen · 1 ersetzt |
+| [[F-004 Ebenen & Stapel]] — Ebenen, Gruppen von Ebenen, Herausgeber, Aufschalten (auch teilweise) und was im Stapel einer Kampagne steht. | 15 | 58 | 7 steht · 4 teils · 4 offen |
+| [[F-005 Fassungen & Varianten]] — Dieselbe Sache aus einer anderen Quelle (Fassung, Überschreibung) und eine verwandte Sache (Variante); Vergleichsebenen. | 6 | 19 | 3 steht · 2 teils · 1 offen |
 | [[F-006 Ansichten & Anordnung]] — Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohne Code. | 3 | 14 | 2 steht · 1 ersetzt |
 | [[F-007 Verweise & Platzhalter]] — [[Verweise]] nach Nummer, Rückbezüge, {VAR}-Platzhalter, Regelverweise im Text. | 6 | 20 | 4 steht · 2 teils |
 | [[F-008 Kanten verstehen]] — Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. | 2 | 10 | 1 steht · 1 offen |
@@ -39,7 +39,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 **Erklärt in:** [Datenmodell.md](../../docs/Datenmodell.md), [Begriffe.md](../../docs/Begriffe.md), [Ebenen.md](../../docs/Ebenen.md), [Artikeltypen.md](../../docs/Artikeltypen.md), [Durchgang.md](../../docs/Durchgang.md)
 
-**Offen mit Prio 1–3:** [[REQ-003]] Änderungsverlauf je Artikel (teils) · [[REQ-006]] Stapel: was in der Kampagne gilt (teils) · [[REQ-007]] Stapel für Fortgeschrittene (offen) · [[REQ-008]] Varianten einer Sache (teils) · [[REQ-013]] Verweise nach Nummer, getippt nach Name (teils) · [[REQ-045]] Ebenen-Aktionen am Artikel (offen) · [[REQ-100]] Welt als Ebene (teils) · [[REQ-102]] Artikel je Stapel und Wissen zeichnen (teils) · [[REQ-176]] Ähnliches vor dem Anlegen vorschlagen (teils) · [[REQ-249]] Ebenen nach Herausgeber (teils) · [[REQ-253]] Ebenen und Artikel kopieren (offen) · [[REQ-258]] Verweisfeld nennt, welche Artikel es annimmt (teils) · [[REQ-264]] Vergleichsebenen der Kampagne (teils)
+**Offen mit Prio 1–3:** [[REQ-003]] Änderungsverlauf je Artikel (teils) · [[REQ-006]] Stapel: was in der Kampagne gilt (teils) · [[REQ-007]] Stapel für Fortgeschrittene (offen) · [[REQ-008]] Varianten einer Sache (teils) · [[REQ-013]] Verweise nach Nummer, getippt nach Name (teils) · [[REQ-045]] Ebenen-Aktionen am Artikel (offen) · [[REQ-100]] Welt als Ebene (teils) · [[REQ-102]] Artikel je Stapel und Wissen zeichnen (teils) · [[REQ-176]] Ähnliches vor dem Anlegen vorschlagen (teils) · [[REQ-249]] Ebenen nach Herausgeber (teils) · [[REQ-253]] Ebenen und Artikel kopieren (offen) · [[REQ-258]] Verweisfeld nennt, welche Artikel es annimmt (teils) · [[REQ-264]] Vergleichsebenen der Kampagne (teils) · [[REQ-366]] Sorten als Listen (offen) · [[REQ-368]] Immer eine laufende Kampagne oder Schreibebene (offen) · [[REQ-371]] Vorlage, Spielstand und Stück verständlich (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
