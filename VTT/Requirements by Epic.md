@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 # Requirements by Epic
@@ -327,7 +327,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-42 Stories · 109 Punkte · 7 steht · 9 teils · 26 offen — [[EP-04 Spielererlebnis]]
+43 Stories · 112 Punkte · 7 steht · 9 teils · 27 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -337,6 +337,7 @@ Die Seite aus Sicht der Spielenden, auch am Telefon. — [[F-025 Spieleransicht 
 |---|---|---|---|---|---|
 | [[REQ-069]] | Am Telefon spielen | Spieler | 1 | 3 | teils |
 | [[REQ-346]] | Was die Kampagne meiner Figur gezeigt hat | Spieler | 1 | 3 | teils |
+| [[REQ-364]] | Zwischen den Boards wechseln | Spieler | 1 | 3 | offen |
 | [[REQ-311]] | Spieleransicht mit der eigenen Figur im Fokus | Spieler | 2 | 5 | teils |
 | [[REQ-074]] | Schnellzugriffe | Spieler | 3 | 1 | teils |
 | [[REQ-194]] | Untere Leiste am Telefon wählen | Spieler | 4 | 1 | offen |
@@ -649,7 +650,7 @@ Masse beim Lesen umrechnen, auch im Fliesstext. — [[F-049 Masse & Einheiten]]
 
 ## EP-08 Live-Spiel
 
-28 Stories · 98 Punkte · 14 steht · 6 teils · 7 offen · 1 ersetzt — [[EP-08 Live-Spiel]]
+30 Stories · 111 Punkte · 14 steht · 6 teils · 9 offen · 1 ersetzt — [[EP-08 Live-Spiel]]
 
 ### F-050 Spielleiter-Schirm
 
@@ -681,6 +682,8 @@ Was gerade läuft, steht an der Sitzung und kommt live zu allen; Protokoll und S
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-362]] | Spielboard: was gerade läuft | Spieler | 1 | 8 | offen |
+| [[REQ-363]] | Den Spielenden etwas zeigen | Spielleitung | 1 | 5 | offen |
 | [[REQ-116]] | Was gerade läuft, steht an der Sitzung | Spielleitung | 2 | 8 | steht |
 | [[REQ-117]] | Wer am Sitzungszustand schreibt | Spielleitung | 3 | 3 | steht |
 | [[REQ-120]] | Spielprotokoll | Spielleitung | 3 | 3 | teils |
