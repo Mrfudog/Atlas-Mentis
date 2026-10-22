@@ -9,6 +9,14 @@
       "link": "/boards"
     },
     {
+      "id": "2026-10-22-image-picker-files",
+      "date": "2026-10-22",
+      "title": "Pick images from Files and OneDrive on your phone",
+      "text": "Upload image now opens your phone's full picker, not just the photos: choose Browse or Files to take an image from OneDrive or any other storage. HEIC files from Files get a note on what to do instead.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
       "id": "2026-10-22-zoom-focus-undo-walls",
       "date": "2026-10-22",
       "title": "Zoom into the sub-map you point at; undo walls",
