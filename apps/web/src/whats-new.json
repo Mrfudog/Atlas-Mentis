@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "id": "2026-10-23-inventory-anchor-cell",
+      "date": "2026-10-23",
+      "title": "Place a piece by the cell you hold it by",
+      "text": "In the grid inventory, tap a piece on one of its cells, then tap a free cell: the piece lands with exactly that cell there, so a sword or a T-shape goes where you point. The held cell is marked; tap another of its cells to change it.",
+      "area": "Inventory"
+    },
+    {
       "id": "2026-10-23-item-shapes-overview",
       "date": "2026-10-23",
       "title": "Item shapes by group, with reference items",

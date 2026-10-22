@@ -77,3 +77,9 @@ Form kommt, und setzt Gruppe und Referenzgegenstand („Group &
 reference“). Geschrieben wird in die Karte `ShapeDefaults` einer
 Formebene, gegen die gelesene Revision.
 
+**Ankerzelle** (REQ-402, T-406): Wer ein liegendes Stück an einer seiner
+Zellen wählt, hält es dort; ein Tippen auf ein freies Feld legt es so ab,
+dass genau diese Zelle dort liegt (`grabAnchor`, `placeByAnchor`). Aus
+„Not stowed“ hält man es am ersten belegten Feld der obersten Zeile
+(`defaultAnchor`). Die Ankerzelle ist markiert.
+
