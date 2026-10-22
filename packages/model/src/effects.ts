@@ -88,6 +88,9 @@ export const EFFECT_TARGETS: Record<string, string> = {
      weiter weg Nachteil — eine Wirkung je Seite der Grenze. */
   'attacked.near': 'attack rolls against it from within 5 ft.',
   'attacked.far': 'attack rolls against it from farther than 5 ft.',
+  /* Grösse (T-390): `add` verschiebt um Stufen (Enlarge +1, Reduce −1),
+     `set` setzt ein Grössenwort — gelesen von der Karte (`sizeEffects`). */
+  size: 'size',
 };
 
 /** Ein Eintrag von `Effects.effects`. */
@@ -374,6 +377,8 @@ export function effectText(e: Effect): string {
   const vorzeichen = Number.isFinite(n) && v !== '' ? `${n >= 0 ? '+' : '−'}${Math.abs(n)}` : v;
   let satz: string;
   if (e.target === 'critThreshold' && e.op === 'set') satz = `critical hit on ${v}–20`;
+  else if (e.target === 'size' && e.op === 'add' && Number.isFinite(n) && v !== '')
+    satz = `${Math.abs(n) === 1 ? 'one size' : `${Math.abs(n)} sizes`} ${n >= 0 ? 'larger' : 'smaller'}`;
   else if (e.target === 'capacity') satz = `holds ${v} lb.`;
   else if (e.target.startsWith('speed.') && e.op === 'set' && !Number.isFinite(n)) satz = `${name} equal to ${EFFECT_TARGETS[`speed.${v}`] ?? v}`;
   else if (e.target.startsWith('speed.') && e.op === 'add') satz = `${vorzeichen} ft. ${name}`;

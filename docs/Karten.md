@@ -199,6 +199,31 @@ ein Feld. Der Server gibt die Grösse je Ziel im Kartenkontext mit
 (`targets[id].size`, gesiebt gelesen). Dieselbe Zahl zeichnet das Token
 und rastet es ein.
 
+**Statblock → Wirkungen → Token** (T-390, REQ-396): ein eingelesenes
+Monster ist selbst ein Statblock — das Token zeigt direkt darauf, und der
+Server liest die Grösse dann an ihm (vorher nur über `belongsTo`, der
+Drache stand auf einem Feld). Danach die **Wirkungen** mit Ziel `size`
+(`add` verschiebt um Stufen — Enlarge +1, Reduce −1 —, `set` setzt ein
+Grössenwort, die grösste gilt; zuerst `set`, dann die Stufen, begrenzt auf
+tiny … gargantuan; ein Quellartikel zählt einmal, E-164): aus allem, was an
+der Kreatur wirkt (`creatureSizeEffects`, dieselben Quellen wie
+`creatureStats`), samt ihren Zuständen in der Begegnung auf der Karte.
+Zuletzt die Überschreibung der Leitung am Token. Der Kontext sagt
+`size` (gilt), `baseSize` (Statblock, wenn eine Wirkung sie ändert),
+`sizeFrom` (`statblock` · `effects`) und für die Leitung `sizeVia` (Namen
+der Quellen); `tokenSizeOf` rechnet daraus Platz und Herkunft
+(`token` · `effects` · `statblock` · `default`). Gespeichert wird nur die
+Überschreibung — bestehende Tokens folgen ohne Migration (D8).
+
+```mermaid
+flowchart LR
+  SB[Statblock.size] --> W{Wirkungen size}
+  W -->|set, dann ±Stufen| G[geltende Grösse]
+  G --> T{props.size am Token?}
+  T -->|ja| U[Überschreibung der Leitung]
+  T -->|nein| P[Platz nach Campaign.tokenSizes]
+```
+
 **Einrasten** (`Map.snapTokens`, Vorgabe an; `snapTokenCentre`): beim
 Ziehen, Setzen und Platzieren landet der Mittelpunkt so, dass der Platz
 auf dem Gitter liegt — ein Feld in der Feldmitte, zwei Felder auf einer
