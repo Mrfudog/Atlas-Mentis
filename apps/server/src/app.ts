@@ -1255,7 +1255,7 @@ export function buildApp({
     /* Enhancements an einem Stück (T-300): die Route prüft Leitung und Kampagnenregel selbst (`aufwertung.ts`). */
     if (/^\/api\/entities\/[^/]+\/enhancements(\/[^/]+)?$/.test(url) && (request.method === 'POST' || request.method === 'DELETE')) return;
     /* Die Vorgabeformen (T-394): die Route prüft die Ebene selbst (`vorgabeformen.ts`). */
-    if (/^\/api\/inventory\/shapes\/(groups|items)\/[^/]+$/.test(url) && request.method === 'PUT') return;
+    if (/^\/api\/inventory\/shapes(\/(groups|items)\/[^/]+)?$/.test(url) && request.method === 'PUT') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
