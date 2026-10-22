@@ -395,6 +395,13 @@ const APP: AppTerm[] = [
     translations: { de: 'Schreibebene' },
   },
   {
+    term: 'Delete from your layer',
+    aliases: ['Delete', 'Deselected'],
+    sort: 'app',
+    definition: 'Deleting removes only articles that lie in your write layer and that you may write; others in a selection are deselected and stay. Undo right after brings the deleted ones back with their links.',
+    translations: { de: 'Löschen aus der eigenen Ebene' },
+  },
+  {
     term: 'Roll log',
     sort: 'app',
     definition: 'The block “Log” on an article: every roll made on it, newest first — on a creature with the rolls on its statblock, on a session every roll made during it.',

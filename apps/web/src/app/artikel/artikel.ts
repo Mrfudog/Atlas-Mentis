@@ -33,6 +33,7 @@ import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } fro
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { BegriffLink, Glossar } from '../kern/glossar';
+import { Loeschen } from '../kern/loeschen';
 import { Session } from '../kern/session';
 import { Stapel } from '../kern/stapel';
 import {
@@ -220,8 +221,18 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Kapitelteil,
   ],
   template: `
+    <!-- Gelöscht (T-381): die Meldung mit Undo statt des Artikels. -->
+    @if (geloeschtHier(); as g) {
+      <p class="hinweis geloescht" role="status">
+        {{ g.text }}
+        @if (g.lauf) {
+          <button type="button" (click)="loeschenZurueck(g.lauf)">Undo</button>
+        }
+        <a [routerLink]="'/' + (bereich() || 'compendium')">Back to {{ bereichName() }}</a>
+      </p>
+    }
     @if (artikel(); as e) {
-      <div class="buch">
+      <div class="buch" [hidden]="!!geloeschtHier()">
         <nav aria-label="Breadcrumb" class="brot">
           <!-- Hierher über „Open" aus einer Auswahl (T-131): zuerst der Weg zurück. -->
           @if (zurueck(); as z) {
@@ -346,6 +357,13 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   </button>
                 </span>
               }
+            }
+            <!-- Löschen (T-381): nur was in der eigenen Schreibebene liegt; sonst sagt die Meldung, wohin wechseln. -->
+            @if (darfSchreiben() && !zeigtAlten() && !bearbeitet() && !original() && loeschbar()) {
+              <button type="button" class="gefahr" [disabled]="passtAn()" (click)="loeschen()"
+                      title="Delete this article (only in your write layer). You can undo it right after.">
+                Delete
+              </button>
             }
             @if (bearbeitet()) {
               <button type="button" class="pri" [disabled]="speichert()" (click)="speichern()">
@@ -2153,6 +2171,52 @@ export class Artikel implements SchnellKontext {
       this.anpassFehler.set(x instanceof Error ? x.message : String(x));
     } finally {
       this.passtAn.set(false);
+    }
+  }
+
+  /** Nach dem Löschen (T-381): was gesagt wird, und der Lauf für Undo. */
+  private readonly geloescht = signal<{ id: string; text: string; lauf: string | null } | null>(null);
+  /* Nur für diesen Artikel: wer weiter navigiert, sieht den nächsten. */
+  protected readonly geloeschtHier = computed(() => {
+    const g = this.geloescht();
+    return g && g.id === this.id() ? g : null;
+  });
+  private readonly loescher = inject(Loeschen);
+  /** Ebenen, Kampagnen und Teile eines Buchs haben eigene Wege. */
+  protected readonly loeschbar = computed(() => {
+    const e = this.artikel();
+    return !!e && !['Layer', 'Campaign'].includes(this.art(e));
+  });
+
+  protected async loeschen(): Promise<void> {
+    const e = this.artikel();
+    if (!e) return;
+    this.passtAn.set(true);
+    this.anpassFehler.set(null);
+    try {
+      const r = await this.loescher.loeschen([e.id], () =>
+        typeof confirm !== 'function' || confirm(`Delete “${this.name(e)}”? You can undo it right after.`),
+      );
+      if (!r) return;
+      if (!r.geloescht.length) {
+        this.anpassFehler.set(r.hinweis ?? `${r.text}.`);
+        return;
+      }
+      this.geloescht.set({ id: e.id, text: `Deleted “${this.name(e)}”.`, lauf: r.lauf });
+    } catch (x) {
+      this.anpassFehler.set(x instanceof Error ? x.message : String(x));
+    } finally {
+      this.passtAn.set(false);
+    }
+  }
+
+  protected async loeschenZurueck(lauf: string): Promise<void> {
+    try {
+      await this.api.undo(lauf);
+      this.geloescht.set(null);
+      await this.bestand.oeffnen(this.id(), true);
+    } catch (x) {
+      this.geloescht.set({ id: this.id(), text: x instanceof Error ? x.message : 'Undo failed — ask the GM to undo it in the Workbench.', lauf: null });
     }
   }
 

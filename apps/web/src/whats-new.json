@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-22-delete-articles",
+      "date": "2026-10-22",
+      "title": "Delete articles and images from your layer",
+      "text": "Images › Delete removes the selected images, and Delete on an article page removes that article — only what lies in your write layer; the rest of a selection is deselected and the message says how many. Undo right after brings everything back.",
+      "area": "Articles",
+      "link": "/images"
+    },
+    {
       "id": "2026-10-22-filter-added-changed-by",
       "date": "2026-10-22",
       "title": "Filter lists by when and by whom",

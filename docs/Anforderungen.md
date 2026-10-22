@@ -227,7 +227,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-088 | Massenänderungen an Wissen und Rechten | 3 | **teils** | Massenbearbeitung ohne Wissen |
-| REQ-235 | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68) |
+| REQ-235 | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68); seit T-381 löscht jedes Konto aus seiner Schreibebene (`POST /api/entities/delete`, Galerie und Artikelseite, D84). Offen: Papierkorb-Seite (E-160) |
 
 ### F-017 Ausrollen & Sicherung
 

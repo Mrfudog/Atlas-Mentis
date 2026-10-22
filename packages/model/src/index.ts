@@ -84,5 +84,6 @@ export * from './ruleTable.js';
 export * from './transform.js';
 export * from './groupvisibility.js';
 export * from './rest.js';
+export * from './deletion.js';
 export * from './timefilter.js';
 export * from './layermove.js';

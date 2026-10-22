@@ -197,6 +197,15 @@
           ]
         },
         {
+          "heading": "Deleting articles and images",
+          "text": [
+            "1. Choose the layer you work in: the layers popup in the header shows your write layer. Only articles in it can be deleted.",
+            "2. In Images, tick the images to delete (or use 🗑 on one); on an article page, use Delete.",
+            "3. Confirm. The question says how many will be deleted and how many are deselected because they come from other layers.",
+            "4. The message reads like “3 deleted, 2 from other layers deselected”. Undo brings everything back, with the links that pointed to it; the GM can also undo it later in the Workbench."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."
