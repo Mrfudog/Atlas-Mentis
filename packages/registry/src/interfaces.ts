@@ -1055,6 +1055,10 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'se-f', el: 'fields', fields: 'all' },
         { id: 'se-b', el: 'prose', fields: 'all' },
         { id: 'se-r', el: 'relations' },
+        /* Was zur Sitzung gehört (T-422, REQ-427): die Szenen und
+           Begegnungen, die `partOf` auf sie zeigen — nur ihre, nicht das
+           ganze Kapitel. Am Ende, wie es Migration 142 anhängt. */
+        { id: 'se-parts', el: 'parts' },
       ],
     },
   },

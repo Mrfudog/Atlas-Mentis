@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-23-arc-lists-scenes",
+      "date": "2026-10-23",
+      "title": "Arcs, scenes and sessions list what belongs to them",
+      "text": "An arc now lists its scenes and encounters under Contains, a scene its encounters, and a session the scenes and encounters that are part of it — each with its kind. Link them with part of; the session shows only its own, the chapter all of them.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
       "id": "2026-10-23-write-outside-campaign",
       "date": "2026-10-23",
       "title": "Write into layers outside the campaign layer",

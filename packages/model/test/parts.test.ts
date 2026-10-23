@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isBookPart, nextRank, partName, partsIndex } from '../src/parts.js';
+import { isBookPart, looseParts, nextRank, partName, partsIndex } from '../src/parts.js';
 import { linkFinder } from '../src/entity.js';
 import { readingOrder } from '../src/reading.js';
 import type { Entity } from '../src/types.js';
@@ -89,5 +89,38 @@ describe('Teile als Verweisziel (T-108)', () => {
   it('heissen nach ihren ersten Worten, ohne Markdown', () => {
     expect(partName('**Surprise.** The [[rule-0001|DM]] determines who might be surprised.', 40)).toBe('Surprise. The DM determines who might…');
     expect(partName('Kurz.')).toBe('Kurz.');
+  });
+});
+
+/**
+ * **Was ohne Rang an einem Ganzen hängt** (T-422, REQ-427): die Szenen
+ * eines Arcs, die Begegnungen einer Szene, was zu einer Session gehört.
+ * Nicht im Lesefluss (`partsIndex`), aber an seinem Ganzen aufgezählt.
+ */
+describe('looseParts (T-422)', () => {
+  const e = (id: string, nr: string, rels: Entity['relations'] = [], sort?: number): Entity => ({
+    id,
+    name: id,
+    interfaces: ['Scene'],
+    components: { Identity: { name: id, id: nr, aliases: [] }, ...(sort === undefined ? {} : { Time: { sort } }) },
+    relations: rels,
+  });
+  const auf = (x: string, to: string, rank?: number) => ({ id: `${x}~p-${to}`, type: 'partOf', to, props: rank === undefined ? {} : { rank } });
+
+  it('nimmt nur Kanten ohne Rang, geordnet nach Zeit, dann Nummer', () => {
+    const alle = [
+      e('b', 'scene-0010', [auf('b', 'arc')]),
+      e('a', 'scene-0002', [auf('a', 'arc')]),
+      e('frueh', 'scene-0099', [auf('frueh', 'arc')], 1),
+      e('im_fluss', 'scene-0001', [auf('im_fluss', 'arc', 1)]),
+      e('anderswo', 'scene-0003', [auf('anderswo', 'arc2')]),
+      e('arc', 'arc-0001', [auf('arc', 'arc')]),
+    ];
+    expect(looseParts(alle, 'arc').map((x) => x.id)).toEqual(['frueh', 'a', 'b']);
+  });
+
+  it('leer, wenn nichts hängt; ein Artikel hängt nicht an sich selbst', () => {
+    expect(looseParts([e('x', 'scene-0001', [auf('x', 'x')])], 'x')).toEqual([]);
+    expect(looseParts([], 'arc')).toEqual([]);
   });
 });

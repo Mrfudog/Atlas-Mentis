@@ -90,8 +90,11 @@ describe('a chapter made of parts (T-108)', () => {
     expect(t.parts[1].target.id).toBe('sb_goblin');
     const zurueck = (await rufe('Basil', 'GET', '/api/entities/arc_k1_chapter/backlinks')).json();
     expect(zurueck.map((b: { from: { id: string } }) => b.from.id)).toEqual(['sc_cave']);
-    /* Ein Arc hat seine Szenen, nicht die Absätze des Kapitels. */
-    expect((await rufe('Basil', 'GET', '/api/entities/arc_k1/parts')).json().parts).toEqual([]);
+    /* Ein Arc hat seine Szenen, nicht die Absätze des Kapitels — im
+       Lesefluss nichts, angehängt die Szene (T-422). */
+    const arc = (await rufe('Basil', 'GET', '/api/entities/arc_k1/parts')).json();
+    expect(arc.parts).toEqual([]);
+    expect(arc.contains.map((c: { id: string }) => c.id)).toEqual(['sc_cave']);
     /* Was die Leitung liest, sehen Spielende nicht. */
     expect((await rufe('Sela', 'GET', '/api/entities/arc_k1_chapter/parts')).statusCode).toBe(404);
   });
@@ -179,5 +182,28 @@ describe('an illustration in the book text (T-210)', () => {
     const rufe = await mitBildern();
     const t = (await rufe('Sela', 'GET', '/api/entities/ch_pic/parts')).json();
     expect(t.parts.map((p: { id: string }) => p.id)).toEqual(['pa_eins', 'il_view', 'pa_zwei']);
+  });
+});
+
+describe('a story article lists what hangs on it (T-422, REQ-427)', () => {
+  it('an arc lists its scenes and encounters, a session its own; players see only what they may', async () => {
+    const { repo, rufe } = await aufbau();
+    const neu = (x: Entity) => repo.putEntity(x);
+    await neu({ id: 'sc_gm', name: 'Secret door', interfaces: ['Scene'], components: { ...id('Secret door', 'scene-0003'), ...gm, Status: { status: 'ready' } }, relations: [in_('sc_gm', 'ly_a'), teil('sc_gm', 'arc_eigen')] });
+    await neu({ id: 'enc_rats', name: 'Rats', interfaces: ['Encounter'], components: { ...id('Rats', 'encounter-0001'), Status: { status: 'ready' } }, relations: [in_('enc_rats', 'ly_a'), teil('enc_rats', 'sc_eigen'), teil('enc_rats', 'ses_2')] });
+    await neu({ id: 'ses_2', name: 'Session 2', interfaces: ['Session'], components: { ...id('Session 2', 'session-0002'), Status: { status: 'ready' } }, relations: [in_('ses_2', 'ly_a')] });
+
+    const arc = (await rufe('Basil', 'GET', '/api/entities/arc_eigen/parts')).json();
+    expect(arc.contains.map((c: { id: string }) => c.id)).toEqual(['sc_eigen', 'sc_gm']);
+    expect(arc.contains[0]).toMatchObject({ entity: { id: 'sc_eigen' } });
+    /* Die Gruppe (Szene) zeigt ihre Begegnung, die Session dieselbe. */
+    expect((await rufe('Basil', 'GET', '/api/entities/sc_eigen/parts')).json().contains.map((c: { id: string }) => c.id)).toEqual(['enc_rats']);
+    expect((await rufe('Basil', 'GET', '/api/entities/ses_2/parts')).json().contains.map((c: { id: string }) => c.id)).toEqual(['enc_rats']);
+    /* Die Spielerin sieht die geheime Szene nicht. */
+    expect((await rufe('Sela', 'GET', '/api/entities/arc_eigen/parts')).json().contains.map((c: { id: string }) => c.id)).toEqual(['sc_eigen']);
+    /* Ein Ort, an dem etwas hängt, bekommt keine Liste — nur Story-Arten. */
+    await neu({ id: 'pl_hof', name: 'Hof', interfaces: ['Place'], components: { ...id('Hof', 'place-0001'), Status: { status: 'ready' } }, relations: [in_('pl_hof', 'ly_a')] });
+    await neu({ id: 'pl_brunnen', name: 'Brunnen', interfaces: ['Place'], components: { ...id('Brunnen', 'place-0002'), Status: { status: 'ready' } }, relations: [in_('pl_brunnen', 'ly_a'), teil('pl_brunnen', 'pl_hof')] });
+    expect((await rufe('Basil', 'GET', '/api/entities/pl_hof/parts')).json().contains).toEqual([]);
   });
 });

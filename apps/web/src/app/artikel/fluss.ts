@@ -88,6 +88,23 @@ interface Zeile {
         }
       </section>
     }
+    <!-- Was ohne Rang daran hängt (T-422, REQ-427): die Szenen eines Arcs, die Begegnungen einer Szene oder Session. -->
+    @if (enthaelt().length) {
+      <section class="enthaelt" aria-label="Contains">
+        <h3>Contains <span class="dim">({{ enthaelt().length }})</span></h3>
+        <ul>
+          @for (c of enthaelt(); track c.id) {
+            <li>
+              <span class="leg">{{ c.art }}</span>
+              <a [routerLink]="['/artikel', c.id]" [nwQuick]="c.id">{{ c.name }}</a>
+              @if (c.zusatz) {
+                <span class="dim">{{ c.zusatz }}</span>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
     @if (fehler(); as f) {
       <p class="fehler" role="alert">{{ f }}</p>
     }
@@ -122,6 +139,23 @@ export class Fluss {
       this.fehler.set(x instanceof Error ? x.message : String(x));
     }
   }
+
+  /** Die Liste „Contains" (T-422): Art, Name, und was die Zeile kurz sagt — Begegnungsart, Stand. */
+  protected readonly enthaelt = computed(() => {
+    const t = this.teile();
+    const r = this.bestand.registry();
+    if (!t?.contains?.length || !r) return [];
+    return t.contains.map((c) => {
+      const e = c.entity;
+      const typ = primaryInterface(e);
+      const arten = (e.components?.['Encounter'] as { kind?: unknown } | undefined)?.kind;
+      const stand = (e.components?.['Status'] as { status?: unknown } | undefined)?.status;
+      const zusatz = [Array.isArray(arten) ? arten.join(', ') : '', typeof stand === 'string' && stand !== 'ready' ? stand : '']
+        .filter(Boolean)
+        .join(' · ');
+      return { id: c.id, name: entityName(e), art: r.interfaces[typ]?.label ?? typ, zusatz };
+    });
+  });
 
   protected readonly zeilen = computed<Zeile[]>(() => {
     const t = this.teile();

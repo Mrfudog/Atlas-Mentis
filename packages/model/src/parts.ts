@@ -88,6 +88,26 @@ export function partsIndex(all: Iterable<Entity>): Map<EntityId, RankedPart[]> {
   return out;
 }
 
+/**
+ * **Was ohne Rang an einem Ganzen hängt** (T-422, REQ-427): die Szenen
+ * eines Arcs, die Begegnungen einer Szene oder Session — `partOf` ohne
+ * `rank`. Es steht nicht im Lesefluss (`partsIndex`), wird an seinem
+ * Ganzen aber aufgezählt: nach `Time.sort`, ohne Zeit dahinter, dann nach
+ * Nummer. Welche Arten dort stehen, entscheidet der Aufrufer.
+ */
+export function looseParts(all: Iterable<Entity>, whole: EntityId): Entity[] {
+  const out: Entity[] = [];
+  for (const e of all) {
+    if (e.id === whole) continue;
+    if ((e.relations ?? []).some((r) => r.type === PART_EDGE && r.to === whole && partRank(r) === undefined)) out.push(e);
+  }
+  const zeit = (e: Entity): number => {
+    const v = Number((e.components?.['Time'] as { sort?: unknown } | undefined)?.sort);
+    return Number.isFinite(v) ? v : Number.POSITIVE_INFINITY;
+  };
+  return out.sort((a, b) => zeit(a) - zeit(b) || articleId(a).localeCompare(articleId(b), 'en', { numeric: true }));
+}
+
 /** Der nächste freie Rang an einem Ganzen: hinter dem letzten Teil. */
 export function nextRank(index: ReadonlyMap<EntityId, RankedPart[]>, whole: EntityId): number {
   const l = index.get(whole);
