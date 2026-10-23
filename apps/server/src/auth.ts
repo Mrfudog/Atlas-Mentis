@@ -22,7 +22,7 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
-import { LAYER_COMPONENT, layersOf, type Entity, type TableRole } from '@nw/model';
+import { isLayer, layersOf, type Entity, type TableRole } from '@nw/model';
 
 /** Wie lange eine Sitzung ohne Wiedersehen gilt. Eine Woche: lange genug,
  *  dass niemand mitten in der Sitzung herausfliegt, kurz genug, dass ein
@@ -194,7 +194,7 @@ export function mayWrite(user: User | null, ownedIds: Set<string>, id: string): 
  */
 export function inWritableLayers(e: Entity, writable: ReadonlySet<string>): boolean {
   if (!writable.size) return false;
-  if ((e.interfaces ?? [])[0] === LAYER_COMPONENT && writable.has(e.id)) return true;
+  if (isLayer(e) && writable.has(e.id)) return true;
   const ebenen = layersOf(e);
   return ebenen.length > 0 && ebenen.every((l) => writable.has(l));
 }

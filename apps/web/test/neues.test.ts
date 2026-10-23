@@ -6,8 +6,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { EINTRAEGE, abKonto, istNeu, seitKonto, standAus, standNach, type NeuEintrag } from '../src/app/kern/neues';
+import { abKonto, istNeu, seitKonto, standAus, standNach, type NeuEintrag } from '../src/app/kern/neues';
 import { routes } from '../src/app/app.routes';
+import daten from '../src/whats-new.json';
+
+const EINTRAEGE = (daten as { entries: NeuEintrag[] }).entries;
 
 const e = (id: string, date: string): NeuEintrag => ({
   id,

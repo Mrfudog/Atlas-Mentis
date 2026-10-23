@@ -26,13 +26,15 @@ import {
   resolveView,
   isBookPart,
   isMap,
+  isLayer,
 } from '@nw/model';
 import type { Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
-import { pickView, spellcastingOf, withCastRelations } from '@nw/model';
+import { bringsIntoLayer, homeLayers, pickView, spellcastingOf, withCastRelations, withHomeLayer } from '@nw/model';
 import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { BegriffLink, Glossar } from '../kern/glossar';
+import { Loeschen } from '../kern/loeschen';
 import { Session } from '../kern/session';
 import { Stapel } from '../kern/stapel';
 import {
@@ -220,8 +222,18 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Kapitelteil,
   ],
   template: `
+    <!-- Gelöscht (T-381): die Meldung mit Undo statt des Artikels. -->
+    @if (geloeschtHier(); as g) {
+      <p class="hinweis geloescht" role="status">
+        {{ g.text }}
+        @if (g.lauf) {
+          <button type="button" (click)="loeschenZurueck(g.lauf)">Undo</button>
+        }
+        <a [routerLink]="'/' + (bereich() || 'compendium')">Back to {{ bereichName() }}</a>
+      </p>
+    }
     @if (artikel(); as e) {
-      <div class="buch">
+      <div class="buch" [hidden]="!!geloeschtHier()">
         <nav aria-label="Breadcrumb" class="brot">
           <!-- Hierher über „Open" aus einer Auswahl (T-131): zuerst der Weg zurück. -->
           @if (zurueck(); as z) {
@@ -262,7 +274,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
             <!-- Die Leseansicht (T-091): an der Stelle im Buch — auf der
                  Seite der Ebene, wo das Buch als Element steht (T-191). -->
             @if (leseZiel(); as z) {
-              @if (!bearbeitet() && art(e) !== 'Layer') {
+              @if (!bearbeitet() && !istEbene(e)) {
                 <a class="knopf" [routerLink]="['/artikel', z.layer]" [queryParams]="leseParams(z)">Read in book</a>
               }
             }
@@ -347,6 +359,13 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 </span>
               }
             }
+            <!-- Löschen (T-381): nur was in der eigenen Schreibebene liegt; sonst sagt die Meldung, wohin wechseln. -->
+            @if (darfSchreiben() && !zeigtAlten() && !bearbeitet() && !original() && loeschbar()) {
+              <button type="button" class="gefahr" [disabled]="passtAn()" (click)="loeschen()"
+                      title="Delete this article (only in your write layer). You can undo it right after.">
+                Delete
+              </button>
+            }
             @if (bearbeitet()) {
               <button type="button" class="pri" [disabled]="speichert()" (click)="speichern()">
                 {{ speichert() ? 'Saving…' : 'Save' }}
@@ -361,6 +380,13 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         <!-- Wohin die Änderung geht (T-161): in diesen Artikel und damit
              in seine Ebene — damit niemand aus Versehen ein geteiltes
              Regelwerk ändert. -->
+        <!-- Nach dem Verschieben (T-383): wo der Artikel jetzt liegt. -->
+        @if (verschoben(); as v) {
+          <p class="hinweis" role="status">
+            Moved to <b>{{ v }}</b>.
+            <button type="button" class="klein" (click)="verschoben.set(null)">OK</button>
+          </p>
+        }
         @if (bearbeitet() && schreibZiel(); as z) {
           <p class="hinweis" [class.fehler]="z.fremd" role="status">
             @if (z.ebenen.length) {
@@ -385,7 +411,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
           </p>
         }
         <!-- Wer die Ebene herausgibt und warum (T-109) — gerechnet, geändert wird die Kante. -->
-        @if (art(e) === 'Layer' && !zeigtAlten()) {
+        @if (istEbene(e) && !zeigtAlten()) {
           <nw-herausgeber [ebene]="e.id" />
         }
         @if (original(); as o) {
@@ -516,6 +542,33 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
               }
 
               <div class="maske">
+                <!-- Die Ebene steht immer zuerst (T-383): wohin der Artikel gehört,
+                     bevor man sagt, was darin steht. Angeboten werden die Ebenen,
+                     in denen man schreibt; geprüft wird am Server. -->
+                @if (ebenenWahl(); as w) {
+                  <label class="ebenenfeld" data-ref="layer" style="grid-column: 1 / -1">
+                    <span>Layer</span>
+                    <select [ngModel]="entwurfEbene()" (ngModelChange)="entwurfEbene.set($event)" name="layer"
+                            aria-describedby="ebenenfeld-hinweis" style="max-width: 24rem">
+                      @for (o of w.optionen; track o.id) {
+                        <option [value]="o.id">{{ o.name }}{{ o.zusatz ? ' — ' + o.zusatz : '' }}</option>
+                      }
+                      @if (w.ohne) {
+                        <option value="">No layer (administration only)</option>
+                      }
+                    </select>
+                    <small id="ebenenfeld-hinweis" class="dim">
+                      @if (ebeneGewechselt()) {
+                        Saving moves this article from {{ w.jetzt || 'no layer' }} to <b>{{ ebenenName(entwurfEbene()) }}</b>.
+                        Its links, versions and parts stay where they are.
+                      } @else if (w.mehrere) {
+                        In {{ w.jetzt }}. Choosing a layer puts it into that one only.
+                      } @else {
+                        The layer this article belongs to. You can move it into any layer you write in.
+                      }
+                    </small>
+                  </label>
+                }
                 @for (f of sichtbareFelder(); track f.ref) {
                   <label [attr.data-ref]="f.ref">
                     <span>{{ f.label }}@if (f.pflicht) {<i class="pflicht" title="required">*</i>}</span>
@@ -1484,6 +1537,11 @@ export class Artikel implements SchnellKontext {
   protected name(e: Entity): string {
     return entityName(e);
   }
+  /** Eine Ebene, auch ein Regelsystem oder eine Regelmechanik (E-166). */
+  protected istEbene(e: Entity): boolean {
+    return isLayer(e);
+  }
+
   protected art(e: Entity): string {
     return primaryInterface(e);
   }
@@ -1987,6 +2045,42 @@ export class Artikel implements SchnellKontext {
   /** „Adapt" anbieten — der Server hat es mit dem Artikel gesagt (`refs.adaptable`). */
   protected readonly anpassbar = computed(() => this.bestand.anpassbar().has(this.id()));
   /**
+   * **Die Ebene im Bearbeiten** (T-383): die, in der der Artikel liegt,
+   * und die Schreibebenen dieses Kontos, die in der laufenden Kampagne im
+   * Spiel sind (`GET /api/layers/write`, T-161). Die Verwaltung darf ihn
+   * auch aus jeder Ebene nehmen. Die Maske schlägt vor, der Server prüft.
+   */
+  protected readonly entwurfEbene = signal('');
+  /** Wohin der Artikel beim letzten Speichern verschoben wurde — die Meldung oben. */
+  protected readonly verschoben = signal<string | null>(null);
+  protected readonly ebenenWahl = computed(() => {
+    const e = this.artikel();
+    if (!e || isLayer(e)) return null;
+    const name = this.bestand.name();
+    const jetzt = homeLayers(e.relations);
+    const optionen = new Map<string, { id: string; name: string; zusatz?: string }>();
+    for (const id of jetzt) optionen.set(id, { id, name: name(id) ?? id, zusatz: 'now' });
+    for (const o of this.stapel.schreib()?.options ?? []) {
+      if (o.selectable && !optionen.has(o.id)) optionen.set(o.id, { id: o.id, name: o.name });
+    }
+    const ohne = this.session.isAdmin();
+    if (!optionen.size && !ohne) return null;
+    return {
+      optionen: [...optionen.values()],
+      jetzt: jetzt.map((id) => name(id) ?? id).join(', '),
+      mehrere: jetzt.length > 1,
+      ohne,
+    };
+  });
+  /** Womit die Maske anfing — gewechselt ist erst, was jemand anders wählt. */
+  private readonly ebeneAnfang = signal('');
+  protected readonly ebeneGewechselt = computed(() => !!this.ebenenWahl() && this.entwurfEbene() !== this.ebeneAnfang());
+  protected ebenenName(id: string): string {
+    if (!id) return 'no layer';
+    return this.ebenenWahl()?.optionen.find((o) => o.id === id)?.name ?? this.bestand.name()(id) ?? id;
+  }
+
+  /**
    * **Wohin eine Änderung geht** (T-161): die Ebenen des Artikels, und ob
    * das die Schreibebene ist. Eine Fassung liegt schon in der eigenen.
    */
@@ -2083,6 +2177,52 @@ export class Artikel implements SchnellKontext {
       this.anpassFehler.set(x instanceof Error ? x.message : String(x));
     } finally {
       this.passtAn.set(false);
+    }
+  }
+
+  /** Nach dem Löschen (T-381): was gesagt wird, und der Lauf für Undo. */
+  private readonly geloescht = signal<{ id: string; text: string; lauf: string | null } | null>(null);
+  /* Nur für diesen Artikel: wer weiter navigiert, sieht den nächsten. */
+  protected readonly geloeschtHier = computed(() => {
+    const g = this.geloescht();
+    return g && g.id === this.id() ? g : null;
+  });
+  private readonly loescher = inject(Loeschen);
+  /** Ebenen, Kampagnen und Teile eines Buchs haben eigene Wege. */
+  protected readonly loeschbar = computed(() => {
+    const e = this.artikel();
+    return !!e && !isLayer(e) && this.art(e) !== 'Campaign';
+  });
+
+  protected async loeschen(): Promise<void> {
+    const e = this.artikel();
+    if (!e) return;
+    this.passtAn.set(true);
+    this.anpassFehler.set(null);
+    try {
+      const r = await this.loescher.loeschen([e.id], () =>
+        typeof confirm !== 'function' || confirm(`Delete “${this.name(e)}”? You can undo it right after.`),
+      );
+      if (!r) return;
+      if (!r.geloescht.length) {
+        this.anpassFehler.set(r.hinweis ?? `${r.text}.`);
+        return;
+      }
+      this.geloescht.set({ id: e.id, text: `Deleted “${this.name(e)}”.`, lauf: r.lauf });
+    } catch (x) {
+      this.anpassFehler.set(x instanceof Error ? x.message : String(x));
+    } finally {
+      this.passtAn.set(false);
+    }
+  }
+
+  protected async loeschenZurueck(lauf: string): Promise<void> {
+    try {
+      await this.api.undo(lauf);
+      this.geloescht.set(null);
+      await this.bestand.oeffnen(this.id(), true);
+    } catch (x) {
+      this.geloescht.set({ id: this.id(), text: x instanceof Error ? x.message : 'Undo failed — ask the GM to undo it in the Workbench.', lauf: null });
     }
   }
 
@@ -2210,6 +2350,9 @@ export class Artikel implements SchnellKontext {
        aus dem Bestand gelesen — der lädt den Artikel womöglich neu, und
        dann wäre die eigene Ausgangslage still eine andere. */
     this.basis.set(structuredClone(e));
+    this.entwurfEbene.set(homeLayers(e.relations)[0] ?? '');
+    this.ebeneAnfang.set(this.entwurfEbene());
+    this.verschoben.set(null);
     this.zusammen.set(null);
     this.entwurf.set(null);
     this.bearbeitet.set(true);
@@ -2381,7 +2524,9 @@ export class Artikel implements SchnellKontext {
   protected hauptKanten(): KantenEntwurf[] {
     const ks = this.entwurfKanten();
     const zu = antwortenJeEintrag(ks);
-    return ks.filter((k) => !zu.has(k.id));
+    /* Woher der Artikel kommt, sagt das Feld „Layer" oben (T-383) — eine
+       zweite Eingabe dafür in der Kantenliste liefe ihm davon. */
+    return ks.filter((k) => !zu.has(k.id) && !bringsIntoLayer(k));
   }
   protected unterKanten(k: { id: string }): KantenEntwurf[] {
     if (!this.reg()) return [];
@@ -2465,11 +2610,16 @@ export class Artikel implements SchnellKontext {
       });
     }
 
-    const relations = kantenAusEntwurf(this.entwurfKanten());
-
     const basis = this.basis() ?? alt;
+    const kanten = kantenAusEntwurf(this.entwurfKanten());
+    /* Die Ebene nur anfassen, wenn sie gewählt wurde (T-383) — sonst
+       bliebe ein Artikel in zwei Ebenen beim Speichern still in einer. */
+    const ziel = this.ebeneGewechselt() ? this.entwurfEbene() : null;
+    const relations = ziel !== null ? withHomeLayer(kanten, ziel || null, basis.id) : kanten;
+    const nachher = ziel !== null ? this.ebenenName(ziel) : null;
     const neu = { ...basis, components, relations } as Entity;
     await this.schreibe(neu, basis, offen);
+    if (nachher !== null && !this.bearbeitet()) this.verschoben.set(nachher);
   }
 
   /**

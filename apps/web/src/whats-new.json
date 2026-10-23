@@ -1,12 +1,92 @@
 {
   "entries": [
     {
-      "id": "2026-10-22-gear-hands",
-      "date": "2026-10-22",
+      "id": "2026-10-23-gear-hands",
+      "date": "2026-10-23",
       "title": "Gear: take items into your hands",
       "text": "In a character’s Gear tab, tap an item in the grid, then Main hand or Off hand — or drag it there. Two-handed weapons take both hands, a shield goes on the off hand, and versatile weapons switch grip with One hand / Two hands. A warning asks before anything is pushed out, and Your turn shows what your hands block, with the reason.",
       "area": "Characters",
       "link": "/world"
+    },
+    {
+      "id": "2026-10-23-item-shapes-overview",
+      "date": "2026-10-23",
+      "title": "Item shapes by group, with reference items",
+      "text": "Rules & options › Inventory › Item shapes lists the shape groups and every item with the shape that applies and where it comes from. Change a group and every item without its own follows; give a +1 Longsword the Longsword as reference item and it takes its shape. The Shape panel on an item says where its shape comes from, and Group & reference sets both there.",
+      "area": "Inventory",
+      "link": "/inventory/shapes"
+    },
+    {
+      "id": "2026-10-22-campaign-articles-layers",
+      "date": "2026-10-22",
+      "title": "See each article's layer on the campaign page and set its visibility",
+      "text": "Layers and Visibility on the campaign page now list every article in play with its layer, publisher and who sees it. Filter and sort by layer, type or visibility, set one article's visibility in its row, or tick several and set it for all at once.",
+      "area": "Campaign",
+      "link": "/campaign?tab=visibility"
+    },
+    {
+      "id": "2026-10-22-rule-systems-as-layers",
+      "date": "2026-10-22",
+      "title": "Inventory is a rule system with its mechanics",
+      "text": "Inventory now stands as a rule system layer with the mechanics Weight, Slots, Grid and Default shapes. Each mechanic says which others it works with — the grid works with weight. Default shapes gives items their shape and stack size from groups and reference items, once its data is in.",
+      "area": "Rules",
+      "link": "/artikel/ly_rs_inventory"
+    },
+    {
+      "id": "2026-10-22-token-size-from-statblock",
+      "date": "2026-10-22",
+      "title": "Tokens take their size from the statblock and from effects",
+      "text": "A dragon placed on a map now covers its squares straight away — also monsters that are only a statblock. Effects with target size, such as Enlarge or Reduce, change it while they last, and Tokens › Token size still overrides it; the tooltip says where the size comes from.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-22-filter-relations",
+      "date": "2026-10-22",
+      "title": "Filter lists by relations",
+      "text": "“Relations” in the filters of the Compendium, World, Story and Rules finds articles that have a link or none, at least so many, or a link to one article — members of a faction, items with a grid shape.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-22-delete-articles",
+      "date": "2026-10-22",
+      "title": "Delete articles and images from your layer",
+      "text": "Images › Delete removes the selected images, and Delete on an article page removes that article — only what lies in your write layer; the rest of a selection is deselected and the message says how many. Undo right after brings everything back.",
+      "area": "Articles",
+      "link": "/images"
+    },
+    {
+      "id": "2026-10-22-filter-added-changed-by",
+      "date": "2026-10-22",
+      "title": "Filter lists by when and by whom",
+      "text": "In the Compendium, World, Story and Rules, “When & who” in the filters shows what was added or changed today, in the last 7 or 30 days or between two dates, and who added it; Sort puts the newest first. Added, Changed and Added by are also columns.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-22-edit-layer-first",
+      "date": "2026-10-22",
+      "title": "Change an article's layer while editing",
+      "text": "Edit now starts with the Layer field. Choose another of your write layers and Save moves the article there; the page tells you where it is now.",
+      "area": "Articles",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-22-board-cards-fit",
+      "date": "2026-10-22",
+      "title": "Structure and query cards use the whole card; long notes scroll",
+      "text": "A structure card in Web form now fits the whole web into the card instead of cutting it off, and structure and query cards use their full height. A text note longer than its box scrolls inside it, down to its last line.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-22-image-picker-files",
+      "date": "2026-10-22",
+      "title": "Pick images from Files and OneDrive on your phone",
+      "text": "Upload image now opens your phone's full picker, not just the photos: choose Browse or Files to take an image from OneDrive or any other storage. HEIC files from Files get a note on what to do instead.",
+      "area": "Images",
+      "link": "/images"
     },
     {
       "id": "2026-10-22-zoom-focus-undo-walls",

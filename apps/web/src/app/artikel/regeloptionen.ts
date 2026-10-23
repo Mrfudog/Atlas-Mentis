@@ -68,6 +68,9 @@ import { Tragraster } from './tragraster';
             <h3>{{ s.label }}</h3>
           }
           <p class="was"><nw-text [text]="s.does" inline /></p>
+          @if (s.key === 'inventory') {
+            <p class="was"><a routerLink="/inventory/shapes">Item shapes</a> — shapes and stack sizes by group, reference item and local overrides (T-394).</p>
+          }
           @for (o of s.options; track o.key) {
             <article class="option">
               <div class="optionskopf">

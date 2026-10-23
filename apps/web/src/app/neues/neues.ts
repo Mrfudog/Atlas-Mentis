@@ -253,7 +253,7 @@ export class NeuesSeite {
   protected readonly ab = this.neues.ab;
   /** Die Verwaltung klappt auch auf, was vor ihrem Konto lag (T-163). */
   protected readonly alles = signal(false);
-  private readonly liste = computed(() => (this.alles() ? this.neues.alle : this.neues.eintraege()));
+  private readonly liste = computed(() => (this.alles() ? this.neues.alle() : this.neues.eintraege()));
   /** Was beim Öffnen neu war — gemerkt, bevor der Stand weiterrückt. */
   protected readonly neu = signal<Set<string>>(new Set());
   protected readonly bereich = signal<string | null>(null);
@@ -278,7 +278,7 @@ export class NeuesSeite {
   }
 
   private async oeffnen(): Promise<void> {
-    await this.neues.laden();
+    await Promise.all([this.neues.laden(), this.neues.eintraegeHolen()]);
     this.neu.set(this.neues.neuJetzt());
     await this.neues.gesehen();
   }

@@ -27,6 +27,10 @@ import {
   markerViewForType,
   type MarkerView,
   statblockSize,
+  creatureSize,
+  creatureSizeEffects,
+  sizeWithEffects,
+  type SizeEffects,
   assetVersion,
   tokenLook,
   type TokenLook,
@@ -130,8 +134,14 @@ export interface MarkerZiel {
   version?: string;
   /** Wie das Bild als Token gezeigt wird (T-297): fertiges Rundtoken oder Ausschnitt. */
   look?: TokenLook;
-  /** Die Grösse des Statblocks (T-317) — daraus rechnet die Seite den Platz des Tokens (`tokenSpan`). */
+  /** Die Grösse nach Statblock und Wirkungen (T-317, T-390) — daraus rechnet die Seite den Platz des Tokens (`tokenSpan`). */
   size?: string;
+  /** Die Grösse des Statblocks, wenn eine Wirkung sie ändert (T-390). */
+  baseSize?: string;
+  /** Woher `size` kommt: vom Statblock oder aus Wirkungen (T-390). */
+  sizeFrom?: 'statblock' | 'effects';
+  /** Die Quellen der Grössen-Wirkungen (Namen), nur für die Leitung. */
+  sizeVia?: string[];
   /** Wie Artikel dieser Art als Marker stehen (`InterfaceDef.markerView`, T-214); fehlt: die Art sagt nichts. */
   view?: MarkerView;
 }
@@ -442,6 +452,34 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       const g = wem ? statblockSize(stand.map, sb) : null;
       if (wem && g && !groesseVon.has(wem)) groesseVon.set(wem, g);
     }
+    /* **Ein Monster ist sein Statblock** (T-390): eingelesene Kreaturen
+       (5e.tools) haben keine Figur, das Token zeigt direkt auf den
+       Statblock — seine Grösse steht an ihm selbst. Vorher fehlte sie, und
+       der Drache stand auf einem Feld. */
+    for (const z of ziele) {
+      if (groesseVon.has(z.id) || primaryInterface(z) !== 'Statblock') continue;
+      const g = statblockSize(stand.map, z);
+      if (g) groesseVon.set(z.id, g);
+    }
+    /* **Grösse nach Wirkungen** (T-390, REQ-396): Statblock → Wirkungen →
+       Überschreibung am Token (die rechnet die Seite, `tokenSizeOf`).
+       Wirkungen kommen aus dem, was an der Kreatur wirkt, und aus ihren
+       Zuständen in der Begegnung auf dieser Karte. Gerechnet am rohen
+       Bestand: die Grösse zeigt das Token ohnehin; woher sie kommt (die
+       Namen der Quellen), bekommt nur die Leitung. */
+    const kampfFuerGroesse = encounterOnMap(stand.alle, karte.id);
+    const kampfZustaende = new Map<string, string[]>();
+    for (const r of (kampfFuerGroesse ? resolvePlay(stand.map, kampfFuerGroesse) : null)?.relations ?? []) {
+      const c = (r.props as { conditions?: unknown } | undefined)?.conditions;
+      if (r.type === 'participates' && Array.isArray(c)) kampfZustaende.set(r.to, c.filter((x): x is string => typeof x === 'string'));
+    }
+    const groessenWirkung = new Map<string, SizeEffects>();
+    for (const z of ziele) {
+      const roh = stand.map.get(z.id);
+      if (!roh) continue;
+      const fx = creatureSizeEffects(roh, stand.map, kampfZustaende.has(z.id) ? { conditions: kampfZustaende.get(z.id)! } : {});
+      if (fx.set || fx.steps) groessenWirkung.set(z.id, fx);
+    }
     const targets: Record<string, MarkerZiel> = {};
     for (const z of ziele) {
       const bild = tokenVon.get(z.id) ?? bildVon(z);
@@ -453,7 +491,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         ...(bild ? { image: bild } : {}),
         ...(v ? { version: v } : {}),
         ...(asset ? { look: tokenLook(asset) } : {}),
-        ...(groesseVon.has(z.id) ? { size: groesseVon.get(z.id)! } : {}),
+        ...groesseFuer(groesseVon.get(z.id), groessenWirkung.get(z.id), leitetKarte, stand.map),
         ...(markerViewForType(register, primaryInterface(z)) ? { view: markerViewForType(register, primaryInterface(z))! } : {}),
       };
     }
@@ -682,4 +720,26 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         .sort((a, b) => a.name.localeCompare(b.name, 'de')),
     };
   });
+}
+
+/**
+ * **Grösse, Herkunft und Quellen eines Tokenziels** (T-390): die Felder von
+ * `MarkerZiel`, die die Grösse betreffen. Die Namen der Quellen nur für die
+ * Leitung — ein Zustand, den Spielende nicht kennen, steht sonst als Name da.
+ */
+function groesseFuer(
+  basis: string | undefined,
+  fx: SizeEffects | undefined,
+  leitung: boolean,
+  bestand: ReadonlyMap<string, Entity>,
+): Pick<MarkerZiel, 'size' | 'baseSize' | 'sizeFrom' | 'sizeVia'> {
+  const g = sizeWithEffects(basis, fx);
+  if (!g) return basis ? { size: basis, sizeFrom: 'statblock' } : {};
+  if (!fx || g === creatureSize(basis)) return { size: g, sizeFrom: 'statblock' };
+  return {
+    size: g,
+    ...(basis ? { baseSize: basis } : {}),
+    sizeFrom: 'effects',
+    ...(leitung ? { sizeVia: fx.sources.map((id) => entityName(bestand.get(id)) || id) } : {}),
+  };
 }

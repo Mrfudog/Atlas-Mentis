@@ -15,7 +15,7 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-4 Stories · 10 Punkte · 1 steht · 1 teils · 1 offen · 1 ersetzt
+5 Stories · 18 Punkte · 1 steht · 1 teils · 2 offen · 1 ersetzt
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -23,4 +23,5 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 | [[REQ-300]] Gestaltung wie die Bücher | Spielleitung | 3 | teils |
 | [[REQ-301]] Stilkonzept in der Verwaltung anpassen | Verwaltung | 4 | offen |
 | [[REQ-306]] Lesbarkeit im Feinschliff | Spieler | 3 | steht |
+| [[REQ-382]] Design und Werkzeuge in anderen Projekten nutzen | Verwaltung | 4 | offen |
 <!-- stories:ende -->

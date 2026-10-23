@@ -1438,6 +1438,34 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
+   * **Regelsystem und Regelmechanik sind Ebenen** (E-166): eigene Arten,
+   * damit „ist ein Regelsystem“ keine Bedeutung eines `kind`-Wortes wird.
+   * Sie erben alles von `Layer` — aufschalten, ordnen, schreiben — und
+   * stehen in `LAYER_TYPES` (`packages/model/src/stack.ts`).
+   */
+  RuleSystem: {
+    name: 'RuleSystem',
+    label: 'Rule system',
+    extends: ['Layer'],
+    schema: merge(g.RuleSystemInfo),
+  },
+
+  /* Die Karte der Vorgabeformen (T-394, E-165): nur an Regelmechaniken. */
+  ShapeDefaults: {
+    name: 'ShapeDefaults',
+    label: 'Default shapes',
+    abstract: true,
+    schema: g.ShapeDefaults.schema,
+  },
+
+  RuleMechanic: {
+    name: 'RuleMechanic',
+    label: 'Rule mechanic',
+    extends: ['Layer', 'ShapeDefaults'],
+    schema: merge(g.RuleMechanicInfo),
+  },
+
+  /**
    * Eine Gruppe von Menschen. Sie trägt kein Blatt, keine Werte und keine
    * Ausrüstung — sie ist da, damit Wissen einen Empfänger hat, der grösser
    * ist als eine Figur und anders als eine Party.

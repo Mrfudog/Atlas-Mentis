@@ -21,6 +21,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
+import { HAS_REF, isHasEdge, parseHasTerm } from '@nw/model';
 
 /** Ein Feldfilter: gewählte Werte (ODER) oder eine Spanne. */
 export type Feldfilter = { values?: string[]; min?: number; max?: number };
@@ -113,12 +114,19 @@ export class ListenFilter {
   /**
    * Die Art aus der Adresse. Wechselt sie, beginnt die Liste auf Blatt 1,
    * und die Feldfilter und die Sortierung der alten Art gehen — Grad und
-   * Schule sagen einem Gegenstand nichts.
+   * Schule sagen einem Gegenstand nichts. „Added", „Changed" und „Added by"
+   * bleiben: sie gelten für jede Art.
    */
   typ(t: string | undefined): void {
     if (this.letzterTyp !== null && this.letzterTyp !== t) {
       this.blatt.set(0);
-      this.felder.set({});
+      /* Wann und von wem (T-382, `@…`) gilt für jede Art und bleibt;
+         von `@has` (T-389) nur die Kanten — ein Feld gehört seiner Art. */
+      const bleibt = Object.entries(this.felder())
+        .filter(([ref]) => ref.startsWith('@'))
+        .map(([ref, f]): [string, Feldfilter] => (ref === HAS_REF ? [ref, { ...f, values: (f.values ?? []).filter((v) => isHasEdge(parseHasTerm(v)?.ref ?? '')) }] : [ref, f]))
+        .filter(([ref, f]) => ref !== HAS_REF || !!f.values?.length);
+      this.felder.set(Object.fromEntries(bleibt));
       this.sortierung.set('');
     }
     this.letzterTyp = t;

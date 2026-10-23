@@ -65,6 +65,7 @@ import {
   isBookPart,
   partRank,
   primaryInterface,
+  isLayer,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
@@ -537,14 +538,14 @@ async function ebenenErgaenzen(repo: Repository, registry: Registry, ausDatei: E
   const zuSchreiben: Entity[] = [];
   let neu = 0;
   let ergaenzt = 0;
-  for (const datei of ausDatei.filter((e) => e.interfaces?.[0] === 'Layer')) {
+  for (const datei of ausDatei.filter((e) => isLayer(e))) {
     const alt = bestand.get(datei.id);
     if (!alt) {
       zuSchreiben.push(datei);
       neu += 1;
       continue;
     }
-    if (alt.interfaces?.[0] !== 'Layer') continue;
+    if (!isLayer(alt)) continue;
     const components = { ...alt.components };
     let anders = false;
     for (const karte of ['Layer', 'Description'] as const) {
@@ -613,7 +614,7 @@ function nurNeueZeilen(aktuell: Registry, roh: Record<string, unknown>): Record<
  */
 function findeEbene(wahl: string | true, neu: Entity[], bestand: Entity[]): Entity {
   const ebenen = new Map<string, Entity>();
-  for (const e of [...bestand, ...neu]) if (e.interfaces?.includes('Layer')) ebenen.set(e.id, e);
+  for (const e of [...bestand, ...neu]) if (isLayer(e) || e.interfaces?.includes('Layer')) ebenen.set(e.id, e);
   if (wahl === true) {
     const ziele = new Set<string>();
     for (const e of neu) for (const r of e.relations ?? []) if (r.type === 'inLayer') ziele.add(r.to);

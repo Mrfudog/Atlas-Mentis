@@ -22,7 +22,7 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 | [[F-020 Kreatur]] — Die Artikelart Creature mit kind, Beziehungen, Begleitern. | 4 | 10 | 3 steht · 1 teils |
 | [[F-021 Statblock]] — Die Zahlen einer Kreatur, aus Regeln zusammengesetzt; Vorlage und Instanz. | 7 | 28 | 4 steht · 3 offen |
 | [[F-022 Schnellanlage]] — Kreatur und Statblock in einem Schritt anlegen. | 2 | 5 | 2 steht |
-| [[F-023 Charakterbogen]] — Der Bogen einer Figur: Allgemein, Kampf, Zauber, Freispiel, schnelle Änderungen. | 8 | 32 | 5 steht · 1 teils · 1 offen · 1 ersetzt |
+| [[F-023 Charakterbogen]] — Der Bogen einer Figur: Allgemein, Kampf, Zauber, Freispiel, schnelle Änderungen. | 9 | 35 | 6 steht · 1 teils · 1 offen · 1 ersetzt |
 | [[F-024 Charaktermanager]] — Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, Attribute, Ausrüstung, Sprachen. | 8 | 47 | 4 steht · 4 offen |
 
 ### Wo es wohnt

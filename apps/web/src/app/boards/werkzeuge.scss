@@ -150,8 +150,12 @@
   box-sizing: border-box;
   transform-origin: 50% 50%;
 }
+/* Eine Notiz zeigt ihren ganzen Text (T-368): reicht der Kasten nicht,
+   scrollt sie, statt den Rest still abzuschneiden. */
 .form.f-text {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.25rem 0.4rem;
   border-radius: 4px;
   line-height: 1.35;

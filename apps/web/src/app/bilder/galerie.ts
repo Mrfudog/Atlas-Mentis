@@ -1,8 +1,9 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { describeAsset } from '@nw/model';
+import { IMAGE_ACCEPT, describeAsset, imageFileProblem } from '@nw/model';
 import { Api, ApiError, type BulkAntwort, type Liste, type ListenZeile } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
+import { Loeschen } from '../kern/loeschen';
 import { Session } from '../kern/session';
 import { Bild, klassenName } from '../artikel/bild';
 
@@ -91,7 +92,7 @@ const BLATT = 60;
               }
             </select>
             <label class="knopf">
-              <input type="file" accept="image/*" multiple (change)="hochladen($event)" [disabled]="laedt()" />
+              <input type="file" [accept]="accept" multiple (change)="hochladen($event)" [disabled]="laedt()" />
               {{ laedt() ? 'Uploading…' : 'Upload images' }}
             </label>
           </div>
@@ -125,6 +126,9 @@ const BLATT = 60;
                 <button type="button" (click)="verwenden(auswahl(), 'prop')" [disabled]="arbeitet()">prop</button>
               </span>
             }
+            @if (session.darfAnlegen() || session.leitung()) {
+              <button type="button" class="gefahr" (click)="loeschen(auswahl())" [disabled]="arbeitet()" title="Delete the selected images in your write layer; the others are deselected">Delete</button>
+            }
             <button type="button" class="leise" (click)="auswahl.set([])">Clear selection</button>
           </div>
         }
@@ -142,6 +146,9 @@ const BLATT = 60;
         @if (ergebnis(); as r) {
           <p class="ergebnis" role="status">
             {{ r.text }}
+            @if (r.hinweis) {
+              <span class="dim">{{ r.hinweis }}</span>
+            }
             @for (o of r.open ?? []; track o.id) {
               <a [routerLink]="['/artikel', o.id]">Open {{ o.name }}</a>
             }
@@ -198,6 +205,7 @@ const BLATT = 60;
                     <option value="token">Token</option>
                     <option value="prop">Prop</option>
                   </select>
+                  <button type="button" class="weg-bild" (click)="loeschen([z.id])" [disabled]="arbeitet()" [attr.aria-label]="'Delete ' + z.name" title="Delete (only in your write layer)">🗑</button>
                 }
               </li>
             }
@@ -234,7 +242,10 @@ export class Galerie {
   protected readonly laedt = signal(false);
   protected readonly arbeitet = signal(false);
   protected readonly problem = signal<string | null>(null);
-  protected readonly ergebnis = signal<{ text: string; lauf: string | null; open?: { id: string; name: string }[] } | null>(null);
+  /** Konkrete Typen statt `image/*`: so öffnet das Telefon auch seine Dateien (T-369). */
+  protected readonly accept = IMAGE_ACCEPT;
+  protected readonly ergebnis = signal<{ text: string; lauf: string | null; open?: { id: string; name: string }[]; hinweis?: string } | null>(null);
+  private readonly loescher = inject(Loeschen);
   /** An welcher Kachel gerade eine Marke getippt wird. */
   protected readonly markeAnKachel = signal<string | null>(null);
   /** Für welche Bilder ein Token gewählt wird — und die Kreaturen zur Wahl. */
@@ -392,6 +403,29 @@ export class Galerie {
     await this.hole(this.frage(), 0);
   }
 
+  /**
+   * **Löschen** (T-381): einzeln an der Kachel oder die ganze Auswahl.
+   * Gelöscht wird, was in der Schreibebene liegt; der Rest bleibt stehen
+   * und wird abgewählt — die Meldung sagt beides, mit Undo.
+   */
+  protected async loeschen(ids: string[]): Promise<void> {
+    if (!ids.length) return;
+    this.arbeitet.set(true);
+    this.problem.set(null);
+    try {
+      const r = await this.loescher.loeschen(ids);
+      if (!r) return;
+      const weg = new Set([...r.geloescht, ...r.abgewaehlt]);
+      this.auswahl.set(this.auswahl().filter((id) => !weg.has(id)));
+      this.ergebnis.set({ text: `${r.text}.`, lauf: r.lauf, ...(r.hinweis ? { hinweis: r.hinweis } : {}) });
+      if (r.geloescht.length) await this.hole(this.frage(), 0);
+    } catch (e) {
+      this.problem.set(e instanceof ApiError ? e.message : 'Deleting failed — reload and try again.');
+    } finally {
+      this.arbeitet.set(false);
+    }
+  }
+
   protected async zurueck(lauf: string): Promise<void> {
     try {
       await this.api.undo(lauf);
@@ -407,6 +441,16 @@ export class Galerie {
     const dateien = [...(el.files ?? [])];
     el.value = '';
     if (!dateien.length) return;
+    const nein = dateien
+      .map((d) => {
+        const p = imageFileProblem(d);
+        return p ? `${d.name}: ${p}` : null;
+      })
+      .find(Boolean);
+    if (nein) {
+      this.problem.set(nein);
+      return;
+    }
     this.laedt.set(true);
     this.problem.set(null);
     try {

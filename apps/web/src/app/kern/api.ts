@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, DefaultShape, ShapeGroup, ShapeItem, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -69,6 +69,12 @@ export interface BulkAntwort {
   ms: number;
   id?: string | null;
   error?: string;
+}
+/** Antwort von `POST /api/entities/delete` (T-381). */
+export interface LoeschAntwort extends BulkAntwort {
+  deselected: { id: string; name: string; reason: 'other-layer' | 'not-writable' | 'not-found' | 'protected'; layers?: string[] }[];
+  /** Die Ebene, aus der gelöscht wurde; `null` für die Verwaltung ohne Schreibebene. */
+  layer: { id: string; name: string } | null;
 }
 export interface BulkLauf {
   id: string;
@@ -219,6 +225,8 @@ export interface Bezuege {
    * fertigen Stands, `old`, ob die Antwort dieser Stand ist (`?stand=ready`).
    */
   ready?: { at: string; old: boolean };
+  /** Woher Form und Stapel eines Gegenstands kommen (T-394, REQ-333): am Gegenstand, im Untermodul, vom Referenzgegenstand, aus der Gruppe. */
+  shape?: DefaultShape & { groupName?: string; refName?: string };
   /** Die geltende Sichtbarkeitsstufe und woher sie kommt (T-252, T-277) — nur am ganzen Artikel. */
   audience?: { audience: string; source: 'article' | 'campaign' | 'layer' | 'default'; rule?: string };
   /** „Im Buch lesen" (T-091): die Ebene mit Text und die Stelle — der Abschnitt selbst oder die Seite. */
@@ -613,6 +621,13 @@ export interface Liste {
     /** Die Marken der Treffer, gezählt (T-119). */
     tags?: { tag: string; count: number }[];
     partsHidden: number;
+    /** **Hinzugefügt von** (T-382): je Konto, `∅` für unbekannt. */
+    addedBy?: { id: string; name: string; count: number }[];
+    /** **Beziehungen und Felder** (T-389): wonach `@has` fragt, je mit Zahl; je gewählter Kante die Ziele. */
+    has?: {
+      choices: { ref: string; label: string; kind: 'edge' | 'field'; count: number }[];
+      targets: Record<string, { id: string; name: string; count: number }[]>;
+    };
     /** Mit `usable` (T-180): für wen, wie viele die Figur nicht erfüllt, wie viele unprüfbar bleiben. */
     usable?: Brauchbar;
   };
@@ -903,6 +918,8 @@ export interface ListenFrage {
   compare?: boolean | undefined;
   /** **Gewählte Spalten** (T-343): genau diese statt der `overview`; leer heisst nur der Name. */
   cols?: string[] | undefined;
+  /** Die Zeitzone des Browsers (T-382, `getTimezoneOffset`): „today" beginnt um Mitternacht hier. */
+  tz?: number | undefined;
 }
 
 /** Die Vorgaben der Kampagne für die Spalten (T-343, `/api/list-columns`). */
@@ -1123,6 +1140,58 @@ export interface SichtUebersicht {
   rules: VisibilityRule[];
   nodes: SichtKnoten[];
 }
+/** Eine Ebene an einer Zeile der Artikelliste (T-387): Name, Herausgeber, Gruppen. */
+export interface SichtEbene {
+  id: string;
+  name: string;
+  publisher: string;
+  groups: { id: string; name: string }[];
+}
+/** Ein Artikel der Kampagne mit Ebene und Sichtbarkeit (T-387, REQ-368). */
+export interface SichtArtikel {
+  id: string;
+  name: string;
+  type: string;
+  typeLabel: string;
+  layers: SichtEbene[];
+  audience: Audience;
+  source: AudienceSource;
+  rule?: string;
+  own: { audience?: Audience; revealedTo: number; hiddenFrom: number };
+  /** Je Spielerspalte, was der Artikel selbst sagt. */
+  players: Record<string, 'show' | 'hide'>;
+  /** Welche Spalten ihn sehen. */
+  seenBy: string[];
+  writable: boolean;
+}
+export interface SichtArtikelListe {
+  may: Recht;
+  columns: SichtSpalte[];
+  total: number;
+  all: number;
+  offset: number;
+  limit: number;
+  facets: {
+    layers: (SichtEbene & { n: number })[];
+    types: { key: string; label: string; n: number }[];
+    levels: Partial<Record<Audience, number>>;
+  };
+  rows: SichtArtikel[];
+}
+export interface SichtArtikelFrage {
+  layer?: string;
+  type?: string;
+  level?: Audience | '';
+  q?: string;
+  sort?: 'name' | 'layer' | 'type' | 'level';
+  dir?: 'asc' | 'desc';
+  offset?: number;
+  limit?: number;
+}
+export type SichtArtikelAenderung =
+  | { audience: Audience | null }
+  | { player: { key: string; mode: 'show' | 'hide' | 'follow' } }
+  | { follow: true };
 export interface Mitglieder {
   campaign: { id: string; name: string; exists: boolean };
   may: Recht;
@@ -1498,6 +1567,18 @@ export class Api {
   campaignRules(id: string): Promise<{ campaign: { id: string; name: string }; sorts: RuleSortState[]; missing?: number; choices?: Record<string, { id: string; name: string; does: string }[]> }> {
     return this.call(`/api/campaigns/${encodeURIComponent(id)}/rules`);
   }
+  /** Die Vorgabeformen der laufenden Kampagne (T-394): Ebenen, Gruppen, je Gegenstand Form und Herkunft. */
+  shapeOverview(nurGruppen = false): Promise<FormenUebersicht> {
+    return this.call(`/api/inventory/shapes${nurGruppen ? '?only=groups' : ''}`);
+  }
+  /** Eine Gruppe der Vorgabeformen ändern oder anlegen; `null` nimmt ein Feld heraus. */
+  setShapeGroup(id: string, patch: Record<string, unknown>): Promise<{ layer: string }> {
+    return this.call(`/api/inventory/shapes/groups/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(patch) });
+  }
+  /** Was das Untermodul über einen Gegenstand sagt: Gruppe, Referenz, eigene Form, Stapel (`rows: []` heisst keine Form). */
+  setShapeItem(id: string, patch: Record<string, unknown>): Promise<{ layer: string }> {
+    return this.call(`/api/inventory/shapes/items/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(patch) });
+  }
   /** Regelset und Gruppen der laufenden Kampagne, mit den Inventaren, zwischen denen Sachen wandern (T-127). */
   inventory(): Promise<InventarLage> {
     return this.call('/api/inventory');
@@ -1823,6 +1904,16 @@ export class Api {
   dropLayerEditor(layer: string, user: string): Promise<{ ok: true }> {
     return this.call(`/api/layers/${encodeURIComponent(layer)}/editors/${encodeURIComponent(user)}`, { method: 'DELETE' });
   }
+  /**
+   * **Artikel löschen aus der eigenen Ebene** (T-381): gelöscht wird, was
+   * in der Schreibebene liegt und geschrieben werden darf; der Rest kommt
+   * als `deselected` zurück. `dryRun` zählt nur; mehr als einen löschen
+   * verlangt `confirmDelete` mit der Zahl aus der Vorschau. Zurück über
+   * `undo(id)`.
+   */
+  deleteArticles(ids: string[], opts: { dryRun?: boolean; confirmDelete?: number } = {}): Promise<LoeschAntwort> {
+    return this.call<LoeschAntwort>('/api/entities/delete', { method: 'POST', body: JSON.stringify({ ids, ...opts }) });
+  }
   /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
   deleteEntity(id: string): Promise<{ ok: true }> {
     return this.call(`/api/entities/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -2040,6 +2131,24 @@ export class Api {
   }
   followGroup(campaign: string, ids: string[]): Promise<{ ok: true; done: string[]; refused: { id: string; error: string }[] }> {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/visibility/follow`, { method: 'POST', body: JSON.stringify({ ids }) });
+  }
+  /** Jeder Artikel mit seiner Ebene (T-387): gefiltert, sortiert und geblättert am Server. */
+  campaignVisibilityArticles(campaign: string, frage: SichtArtikelFrage): Promise<SichtArtikelListe> {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(frage)) if (v !== undefined && v !== '') p.set(k, String(v));
+    const q = p.toString();
+    return this.call<SichtArtikelListe>(`/api/campaigns/${encodeURIComponent(campaign)}/visibility/articles${q ? '?' + q : ''}`);
+  }
+  /** Sichtbarkeit je Artikel setzen, auch für eine Auswahl (T-387). */
+  setArticleVisibility(
+    campaign: string,
+    ids: string[],
+    aenderung: SichtArtikelAenderung,
+  ): Promise<{ ok: true; done: string[]; unchanged: string[]; refused: { id: string; name: string; error: string }[] }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/visibility/articles`, {
+      method: 'POST',
+      body: JSON.stringify({ ids, ...aenderung }),
+    });
   }
   members(campaign: string): Promise<Mitglieder> {
     return this.call<Mitglieder>(`/api/campaigns/${encodeURIComponent(campaign)}/members`);
@@ -2262,7 +2371,7 @@ export interface KartenKontext {
   /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
   /** `size`: die Grösse des Statblocks (T-317), für den Platz des Tokens. */
   /** `view`: wie Artikel dieser Art als Marker stehen (T-214, `InterfaceDef.markerView`). */
-  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; view?: MarkerView }>;
+  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; baseSize?: string; sizeFrom?: 'statblock' | 'effects'; sizeVia?: string[]; view?: MarkerView }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
@@ -2417,3 +2526,30 @@ export interface Quelleninhalt {
   removes?: number;
   onlyInPlay?: true;
 }
+
+/** Die Übersicht der Vorgabeformen (T-394, `GET /api/inventory/shapes`). */
+export interface FormenUebersicht {
+  campaign: { id: string; name: string } | null;
+  layers: { id: string; name: string; type: string; writable: boolean }[];
+  /** Wohin geschrieben wird, ohne Angabe: die spezifischste Formebene, die der Betrachter schreibt. */
+  target: string | null;
+  groups: (ShapeGroup & { count: number; layer?: string; refName?: string })[];
+  items: {
+    id: string;
+    name: string;
+    type: string;
+    itemType?: string;
+    weight?: number;
+    properties?: string[];
+    rows: string[] | null;
+    stackSize: number | null;
+    source: DefaultShape['source'];
+    group?: string;
+    ref?: string;
+    refName?: string;
+    /** Was im Untermodul eigens für ihn steht, und in welcher Ebene. */
+    set?: Partial<ShapeItem>;
+    setIn?: string;
+  }[];
+}
+

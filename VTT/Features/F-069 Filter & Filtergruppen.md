@@ -15,11 +15,40 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-3 Stories · 7 Punkte · 3 steht
+4 Stories · 10 Punkte · 3 steht · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-302]] Der Filter gehört der Seite | Spielleitung | 3 | steht |
 | [[REQ-303]] Filtergruppen je Seite | Spielleitung | 2 | steht |
 | [[REQ-318]] Ein Ebenenfilter, global und speicherbar | Spielleitung | 2 | steht |
+| [[REQ-386]] Suche und Filter in den Modulen | Spielleitung | 2 | offen |
 <!-- stories:ende -->
+
+## Wann und von wem (T-382)
+
+„When & who" in der Seitenleiste jeder Übersicht: **Added** und **Changed** (`today`, `7d`, `30d`, `von..bis`) lesen `created_at`/`updated_at` des Artikels, **Added by** liest `entity_creator` — eine Tabelle neben dem Konto, gesetzt beim Anlegen, Hochladen, bei Fassungen und beim Holen, nachgezogen aus `app_user_article` und `entity.created` (Migration 139). Die Wahl reist als Facette in `f=` (`@added:7d`, `@by:<konto>`), darum gilt sie in Adresse und Filtergruppen ohne eigenes Feld; „heute" rechnet der Server mit der Zeitzone des Browsers (`tz`, `parseTimeWindow`). Siehe [[REQ-303]], D85.
+
+```mermaid
+flowchart LR
+  A[Seitenleiste: When & who] -->|f=@added:7d, @by:id| B[GET /api/list]
+  B --> C[gesiebter Index]
+  D[(entity: created_at, updated_at)] --> C
+  E[(entity_creator)] --> C
+  C -->|Fenster, Konto, Sortierung| F[Zeilen + Facette Added by]
+```
+
+## Nach Beziehungen (T-389)
+
+„Relations" in der Seitenleiste jeder Übersicht (Story REQ-395, auf dem Brett; die Notiz bringt der Abgleich Brett → Vault): eine Kante **hat** / **hat keine** / **mindestens n** / **höchstens n**, und an „hat" ein Ziel („member of: Guild"); mit gewählter Art auch ein **Feld** — die Rasterform eines Gegenstands ist `Item.rows`, ein Feld mit `format: 'grid'` und keine Kante. Die Bedingungen reisen als Facette `@has` in `f=` (`@has:out.memberOf=<id>|!Item.rows|out.carries>=3`) und gelten zusammen; gelesen werden sie mit `parseHasTerm`, geprüft mit `matchesHas` (`packages/model/src/relationfilter.ts`). Welche Kanten zur Wahl stehen, sagt das Register (`hasEdgeChoices`: `from`/`to` die `extends`-Kette hoch, `*` für jede Art); ohne Art nur, was in den Treffern vorkommt. **Gesiebt wird vorher:** eine ausgehende Kante zählt nur mit sichtbarem Ziel, eine eingehende nur mit sichtbarer Quelle; Felder mit `many` stehen nicht zur Wahl, weil das Wissen ihre Einträge einzeln zurückhält. Siehe D86.
+
+```mermaid
+flowchart LR
+  A[Seitenleiste: Relations] -->|f=@has:…| B[GET /api/list]
+  B --> C[gesiebter Index]
+  C -->|Kanten mit sichtbarem Ende, ein| D[matchesHas]
+  D --> E[Zeilen]
+  D --> F[facets.has: Wahl mit Zahl, Ziele]
+  F --> A
+```
+

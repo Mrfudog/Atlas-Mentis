@@ -15,7 +15,7 @@ Epic: [[EP-02 Zugang & Betrieb]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-5 Stories · 21 Punkte · 2 steht · 1 teils · 2 offen
+6 Stories · 23 Punkte · 2 steht · 2 teils · 2 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -24,4 +24,14 @@ Epic: [[EP-02 Zugang & Betrieb]]
 | [[REQ-237]] Spielende legen Artikel an, die Leitung gibt frei | Spieler | 2 | steht |
 | [[REQ-242]] Felder der eigenen Figur sperren | Spielleitung | 3 | offen |
 | [[REQ-316]] Eigene Ebene je Spieler als Vorgabe | Spieler | 1 | steht |
+| [[REQ-367]] Ebene eines Artikels im Bearbeiten ändern, als erstes Feld | Spielleitung | 2 | teils |
 <!-- stories:ende -->
+
+## Ebene im Bearbeiten (T-383)
+
+Das erste Feld der Maske ist die Ebene. Gespeichert wird sie als Kante
+`inLayer` (`withHomeLayer` in `packages/model/src/layermove.ts`), geprüft im
+selben `PUT` wie alles andere: was dazukommt (`layerChange`), muss eine
+Schreibebene des Kontos in der laufenden Kampagne sein (`zielEbenen`), aus
+jeder Ebene heraus nimmt nur die Verwaltung. Was mitwandert, ist offen:
+E-161. Story: [[REQ-367]].

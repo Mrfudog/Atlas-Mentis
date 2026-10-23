@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-22. 88 Schnittstellen, 70 Kantenarten.
+Stand 2026-10-22. 91 Schnittstellen, 71 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -2945,7 +2945,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 34 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 37 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -3752,6 +3752,103 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
+### Rule mechanic
+
+`RuleMechanic` · erbt von `Layer` ← `ShapeDefaults` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Notes`
+
+**Eigene Felder**
+
+- `method` *weight | slots | grid | shapes*
+
+**Geerbte Felder**
+
+- *`Layer`* — `kind` *system | expansion | book | adventure | world | pack | campaign | player | test | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*, `groupBy` *category | publisher*, `defaultAudience` *Audience: public | campaign | players | gm*
+- *`ShapeDefaults`* — `shapeGroups` *array*, `shapeItems` *array*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `compatibleWith` → RuleMechanic — „compatible with"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- RuleMechanic — `compatibleWith` → „also works with"
+- * — `inLayer` → „brings"
+- Campaign — `activates` → „In play in"
+- Campaign — `layerRule` → „Type rule in"
+- Campaign — `enables` → „Enabled in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Layer (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `contents`, `reader`
+
+### Rule system
+
+`RuleSystem` · erbt von `Layer` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Notes`
+
+**Eigene Felder**
+
+- `sort` *inventory | items | crafting | abilities | equipment | character | travel | units | map | combat | table*
+
+**Geerbte Felder**
+
+- *`Layer`* — `kind` *system | expansion | book | adventure | world | pack | campaign | player | test | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*, `groupBy` *category | publisher*, `defaultAudience` *Audience: public | campaign | players | gm*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `inLayer` → „brings"
+- Campaign — `activates` → „In play in"
+- Campaign — `layerRule` → „Type rule in"
+- Campaign — `enables` → „Enabled in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Layer (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `contents`, `reader`
+
 ### Secrets — *abstrakt*
 
 `Secrets`
@@ -3759,6 +3856,37 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Eigene Felder**
 
 - `secret` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Default shapes — *abstrakt*
+
+`ShapeDefaults`
+
+**Eigene Felder**
+
+- `shapeGroups` *array*, `shapeItems` *array*
 
 **Kanten von hier**
 

@@ -59,3 +59,25 @@ flowchart TB
   T & N -->|+ am Knoten| API
 ```
 
+### Nichts abschneiden (T-368, 22.10.2026)
+
+Gemeldet: das Netz stand nur zur Hälfte in der Kachel, Notizen zeigten
+nur einen Teil ihres Texts. Drei Ursachen, drei Behebungen:
+
+```mermaid
+flowchart LR
+  K[Kachel] --> F{Art}
+  F -->|Artikel| A[ein Fach: Ansicht der Kachel, scrollt]
+  F -->|Abfrage, Struktur| B[ein Fach — vorher ein leeres zweites,<br/>das die halbe Höhe nahm]
+  B --> N[Netz: SVG füllt den Rest,<br/>viewBox aus netViewBox samt Namen]
+  T[Text-Notiz] --> S[scrollt im Kasten statt abzuschneiden]
+```
+
+- Das Fach des Artikels steht nur noch an einer Artikelkachel.
+- Das Netz wird in die Kachel eingepasst (`einpassen` an `nw-struktur`);
+  der Ausschnitt rechnet `netViewBox` (Modell) mit der Breite der Namen.
+- Eine Text-Notiz (`Board.shapes`, `kind: text`) scrollt, ihre
+  Scrollleiste verschiebt sie nicht.
+- Geprüft: `apps/web/e2e/board-kacheln.spec.ts` (1360/390 px, Leitung
+  und Spielerin), Unit in `packages/model/test/structure.test.ts`.
+

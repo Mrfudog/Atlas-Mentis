@@ -15,12 +15,37 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-4 Stories · 21 Punkte · 4 offen
+6 Stories · 39 Punkte · 1 teils · 5 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-223]] Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | offen |
-| [[REQ-287]] Regelsysteme und Module als Ebenen | Spielleitung | 2 | offen |
+| [[REQ-287]] Regelsysteme und Module als Ebenen | Spielleitung | 2 | teils |
 | [[REQ-289]] Homebrew-Regeln erfassen | Spielleitung | 3 | offen |
 | [[REQ-319]] Inventarregeln als wählbares Modul | Spielleitung | 2 | offen |
+| [[REQ-369]] Module als Baum mit Transformationen | Spielleitung | 2 | offen |
+| [[REQ-375]] Register als Module | Verwaltung | 2 | offen |
 <!-- stories:ende -->
+
+## Regelsystem und Mechaniken als Ebenen (E-166, T-394)
+
+Inventory ist ein Regelsystem (Ebene der Art `RuleSystem`, als Gruppe);
+seine Optionen sind Regelmechaniken (Ebenen der Art `RuleMechanic`), die
+sagen, mit welchen anderen sie zusammen gelten. Angelegt beim Start
+(`RULE_SYSTEM_LAYERS`), wo sie fehlen.
+
+```mermaid
+flowchart LR
+  K["Kampagne"] -- activates --> I["Inventory (RuleSystem, Gruppe)"]
+  W["Weight"] -- partOf --> I
+  S["Slots"] -- partOf --> I
+  G["Grid"] -- partOf --> I
+  D["Default shapes (ShapeDefaults)"] -- partOf --> I
+  G -. compatibleWith .- W
+  D -. compatibleWith .- G
+  D -. compatibleWith .- S
+```
+
+Was am Tisch zählt, sagt vorerst `Campaign.inventory`. Regel: Datenmodell
+§ 10.1a; Entscheid D88.
+

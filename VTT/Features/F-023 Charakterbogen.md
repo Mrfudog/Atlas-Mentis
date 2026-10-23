@@ -23,7 +23,7 @@ mit 🔒 und Grund, der Angriff nennt den Nachteil, der Kopf zeigt den Status
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-8 Stories · 32 Punkte · 5 steht · 1 teils · 1 offen · 1 ersetzt
+9 Stories · 35 Punkte · 6 steht · 1 teils · 1 offen · 1 ersetzt
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -35,4 +35,5 @@ mit 🔒 und Grund, der Angriff nennt den Nachteil, der Kopf zeigt den Status
 | [[REQ-073]] Eigene Anordnung des Bogens je Nutzer | – | 4 | ersetzt |
 | [[REQ-343]] Konzentration und Zustandsdauer in der Statuszeile | Spieler | 1 | steht |
 | [[REQ-344]] Gesperrte Aktionen bleiben sichtbar, mit Grund | Spieler | 1 | teils |
+| [[REQ-390]] Kurze und lange Rast | Spieler | 2 | steht |
 <!-- stories:ende -->

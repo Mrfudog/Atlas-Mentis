@@ -10,7 +10,8 @@ import { TestBed } from '@angular/core/testing';
 import { seedRegistry } from '@nw/registry';
 import type { Entity } from '@nw/model';
 import { Api } from '../src/app/kern/api';
-import { Bild, bildAdresse, bildDes } from '../src/app/artikel/bild';
+import { Bild, BildWahl, bildAdresse, bildDes } from '../src/app/artikel/bild';
+import { IMAGE_ACCEPT } from '@nw/model';
 import { eingabeArt } from '../src/app/artikel/felder';
 
 describe('bildAdresse', () => {
@@ -161,5 +162,38 @@ describe('loading indicator (T-126)', () => {
     el.querySelector('img')!.dispatchEvent(new Event('error'));
     f.detectChanges();
     expect(el.querySelector('nw-ladeanzeige')).toBeNull();
+  });
+});
+
+describe('image picker on a phone (T-369)', () => {
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    vi.unstubAllGlobals();
+  });
+
+  const zeichne = () => {
+    const f = TestBed.createComponent(BildWahl);
+    f.detectChanges();
+    return f;
+  };
+
+  it('offers files with concrete types; only “Take photo” asks for the camera', () => {
+    const el = zeichne().nativeElement as HTMLElement;
+    const datei = el.querySelector<HTMLInputElement>('input[data-bildwahl="datei"]')!;
+    const kamera = el.querySelector<HTMLInputElement>('input[data-bildwahl="kamera"]')!;
+    expect(datei.getAttribute('accept')).toBe(IMAGE_ACCEPT);
+    expect(datei.hasAttribute('capture')).toBe(false);
+    expect(kamera.getAttribute('capture')).toBe('environment');
+    expect([...el.querySelectorAll('input[type=file]')].some((i) => i.getAttribute('accept') === 'image/*')).toBe(false);
+  });
+
+  it('says what to do with a HEIC file and does not upload it', async () => {
+    const hoch = vi.fn();
+    vi.stubGlobal('fetch', hoch);
+    const f = zeichne();
+    await f.componentInstance.hoch(new File([new Uint8Array([1])], 'IMG_0001.HEIC', { type: 'image/heic' }));
+    f.detectChanges();
+    expect(hoch).not.toHaveBeenCalled();
+    expect((f.nativeElement as HTMLElement).querySelector('[role=alert]')?.textContent).toMatch(/HEIC.*JPEG/);
   });
 });

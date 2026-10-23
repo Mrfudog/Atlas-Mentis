@@ -56,13 +56,16 @@ const KANTEN: Record<string, { label: string; does: string }> = {
       </form>
     }
     @if (tile()?.root; as wurzel) {
-      <nw-struktur [wurzel]="wurzel" [kanten]="tile()!.edges" [tiefe]="tile()!.depth" [form]="tile()!.layout" />
+      <nw-struktur [wurzel]="wurzel" [kanten]="tile()!.edges" [tiefe]="tile()!.depth" [form]="tile()!.layout" [einpassen]="true" />
     } @else {
       <p class="leer">{{ spielend() ? 'Nothing to show yet.' : 'No start yet — open ⚙ and choose a faction, place or family.' }}</p>
     }
   `,
   styles: `
-    :host { display: block; font-size: 0.9rem; }
+    /* So hoch wie das Fach der Kachel, damit die Struktur den Rest nimmt (T-368). */
+    :host { display: flex; flex-direction: column; height: 100%; font-size: 0.9rem; }
+    :host > * { flex: none; }
+    :host > nw-struktur { flex: 1 1 auto; min-height: 10rem; }
     .einst { display: grid; gap: 0.4rem; padding: 0.4rem 0 0.6rem; border-bottom: 1px dashed var(--rule, #c9b98f); margin-bottom: 0.5rem; }
     .einst label { display: grid; gap: 0.15rem; }
     .einst fieldset { display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; border: 1px solid var(--line2, #c9b98f); border-radius: 4px; padding: 0.3rem 0.5rem; margin: 0; }

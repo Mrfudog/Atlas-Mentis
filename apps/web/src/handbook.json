@@ -85,6 +85,34 @@
           ]
         },
         {
+          "heading": "Adding an image from your phone",
+          "text": [
+            "At any image field (an article, a character, a map, a board) tap Upload image; on Images, Upload images.",
+            "Your phone shows its own menu: Photo Library, Take Photo, and Browse or Files. Under Browse/Files pick OneDrive (or another storage) and the image.",
+            "JPEG, PNG, WebP, GIF and AVIF are taken. A HEIC photo from Files is refused with a note — choose it from the photo library instead, where the phone converts it, or save it as JPEG."
+          ]
+        },
+        {
+          "heading": "Deciding who sees single articles",
+          "text": [
+            "Open the campaign page and the Layers or Visibility tab. Under the layers or the groups stands “Articles and their layers”: every article in play with its layer and who sees it.",
+            "Narrow the list: type part of a name, or pick a layer, a type or a visibility. Sort by layer to see each book's articles together.",
+            "For one article, pick Public, Table, Players or GM in its row. Click a player's name in the row to show it to that player only; click again to hide it from them, a third time to follow the visibility again.",
+            "For several, tick them (or “all shown”) and use the bar above the list: the same levels, Follow the group, and Show to / Hide from each player. The selection stays, so you can set a level and then show the same articles to one player.",
+            "The message says how many changed. Articles in a layer you do not write — a rulebook several campaigns share — stay as they are; set their group above instead.",
+            "↺ in a row, or Follow the group, removes the article's own setting: the campaign's rule for its group or the layer's default applies again."
+          ]
+        },
+        {
+          "heading": "Moving an article to another layer",
+          "text": [
+            "Open the article and press Edit. The first field is Layer, on the phone as on a wide screen.",
+            "Choose the layer it should belong to. The list holds the layer it is in now and the layers you write in that are switched on in this campaign — the same ones as under Writes to in the header.",
+            "Save. The page says Moved to … and the layer mark under the title shows the new one. Links to the article stay; its versions and the parts of a chapter stay in their own layers.",
+            "A layer you do not write in is refused with a message; choose one of your write layers or ask the GM."
+          ]
+        },
+        {
           "heading": "Making a new kind of article",
           "text": [
             "Registry › Types › New type: name it, choose its area and what it takes in, add its fields. It can be created right away — no code change."
@@ -134,10 +162,18 @@
             "Open the map and set its grid first: Grid (G) › Pick a square on two corners of one square on the image, then line it up with the arrows (Shift for bigger steps) and the fine size slider, choose what one square or hex is (5 ft on a battle map, 6 mi on a region map), and Save grid. Colour, Opacity and Show grid change how it looks. On a phone, hold to open the loupe and aim with the crosshair.",
             "Walls (W): draw the rooms with Rectangle or Polygon, corridors with a closed or open Polyline; Snap keeps the corners together. Then pick Door and draw each door across its opening — with Cut walls on, the wall underneath ends at the door's edges.",
             "Check with View as › all players: doors are boxes the players can click, and the walls hold sight and light. Points moves a corner later; erasing a door offers to close the wall again.",
-            "Put the tokens on: with Tokens snap to the grid on they cover their squares — set a token's own size with Tokens › Token size. Played lists the maps in play from this map; Open in Play goes straight to one.",
+            "Put the tokens on: with Tokens snap to the grid on they cover their squares — a token takes its size from its statblock, one size larger or smaller while an effect with target size (Enlarge, Reduce) is on the creature; set a token's own size with Tokens › Token size, and “by size” takes it back. The token's tooltip says where its size comes from. Played lists the maps in play from this map; Open in Play goes straight to one.",
             "Furnish it with assets: Tokens › Add asset puts a crate, a table or a lantern down (the same one may stand many times), and Tokens › Asset sets the one you tap — size, height ÷ width, rotation, Movable in play, and what it Blocks (a crate as an obstacle holds movement, a cupboard as a wall holds sight and light too). Assets are fixed by default: in play only movable ones move, and they move on the map in play, not on this map.",
             "Floors (E): a tower, a cellar, a ship's decks are floors of one map. + Floor adds one with its own image, grid, scale and walls — set them with Grid and Walls while it is shown. Give each floor a building part (West tower) and a height range in feet: the bar groups by building part and sorts by height, so a storey of one tower can sit level with two of another. GM only keeps a floor from the players for good, Held back until you release it.",
             "Add passage connects floors: tap where the stairs, ladder, bridge or portal is, choose where it leads, then tap the spot on that floor — or pick another map for a portal. Tap a passage to set View through (stand on it and see the other side, like stairs) or only walk through, and One way (no way back). Draw area (two corners, rounded to squares) makes it cover several squares, at either end — a passage without one covers its own square. A token dropped in the area stands there; tap the passage and Take … through to move it to a free square of the other end, or Send all through to move everyone in the area. A player drops their token on a portal to go through. Under Who, when, cost a passage can differ from the campaign: who sends tokens through (GM, players or both), when in an encounter (any time, own turn, end of round), what it costs (movement and action, counted in Plan turn) and whether the GM confirms; the campaign default is under Rules & options › Map."
+          ]
+        },
+        {
+          "heading": "Setting item shapes by group",
+          "text": [
+            "Turn on the rule system Inventory for the campaign (campaign page › layers): it brings the mechanics Weight, Slots, Grid and Default shapes. Each mechanic says which others it works with — the grid works with weight.",
+            "Open Rules & options › Inventory › Item shapes. Create or pick a group on the left, set its shape and stack size, and give it a reference item if one item stands for the whole group. Items are put into groups on the right with Edit › Group.",
+            "For a variant such as +1 Longsword choose the Longsword as reference item: it takes the Longsword’s shape and stack size, and follows when the Longsword changes. A shape painted on an item’s own Shape element still wins; the element says where its shape comes from, and Use the default removes the painted one again."
           ]
         },
         {
@@ -178,6 +214,35 @@
             "Give the members of a faction their memberOf edge with a rank, hang a circle of it under it with part of, and set what it controls and what it thinks of others (Relationships, with tags).",
             "On the session board, choose Structure (⌥), then ⚙ › Choose… and the faction. Tree shows the chart; Web the net of relationships. Click a name for its quick card, + to look one step further.",
             "Mark a card GM only to keep it from players; otherwise each player sees the entries and lines they know. The faction’s own page shows the same structure — in the view designer it is the element Structure."
+          ]
+        },
+        {
+          "heading": "Finding what was added recently",
+          "text": [
+            "1. Open the Compendium or an area (World, Story, Rules) and, on a phone, Filters.",
+            "2. Open “When & who”. Under Added choose Today, Last 7 days, Last 30 days or Between dates…; Changed works the same for the last edit.",
+            "3. Tick a name under Added by to see only what that person added; “Unknown” are articles from before this was recorded or loaded from a book.",
+            "4. Sort: Newest added first. To keep the view, save it as a filter group (▾ in the header) — it remembers When & who like any other filter.",
+            "5. Under Columns, Added, Changed and Added by can stand in the table."
+          ]
+        },
+        {
+          "heading": "Deleting articles and images",
+          "text": [
+            "1. Choose the layer you work in: the layers popup in the header shows your write layer. Only articles in it can be deleted.",
+            "2. In Images, tick the images to delete (or use 🗑 on one); on an article page, use Delete.",
+            "3. Confirm. The question says how many will be deleted and how many are deselected because they come from other layers.",
+            "4. The message reads like “3 deleted, 2 from other layers deselected”. Undo brings everything back, with the links that pointed to it; the GM can also undo it later in the Workbench."
+          ]
+        },
+        {
+          "heading": "Filtering by relations",
+          "text": [
+            "1. Open the Compendium or an area (World, Story, Rules) and, on a phone, Filters.",
+            "2. Pick a type if you want its fields too — for example Item.",
+            "3. Open “Relations”, choose a relation or field (the number says how many in the list have it), then has, has none, at least or at most, and Add. Example: Item, Shape, has — the items with a grid shape.",
+            "4. For a relation set to has, pick an article under it — “member of: Guild” keeps the guild's members.",
+            "5. Add more conditions; all of them apply. × removes one. The choice stays in the address and in a filter group saved with ▾ in the header."
           ]
         },
         {
