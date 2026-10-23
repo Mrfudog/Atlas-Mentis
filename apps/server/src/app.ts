@@ -157,7 +157,7 @@ import {
 } from '@nw/model';
 import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
 import { seedRegistry } from '@nw/registry';
-import { RevisionConflict } from './repo.js';
+import { RelationIdTaken, RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
@@ -376,6 +376,20 @@ export function buildApp({
      liegt um das Repository, bevor irgendeine Route oder ein Modul es
      bekommt — so vergisst es keine. */
   repo = mitKanal(repo, live);
+
+  /* **Eine vergebene Kanten-Id ist kein Serverfehler** (T-410): sie kommt
+     aus dem, was geschrieben werden sollte, und die Meldung sagt, was zu
+     tun ist. Alles andere geht weiter an Fastify. */
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof RelationIdTaken) {
+      return reply.code(409).send({
+        error: `The link id ${error.id} is already used by another article (${error.entity}). Reload the page and try again; if it keeps happening, report it.`,
+        relation: error.id,
+        entity: error.entity,
+      });
+    }
+    return reply.send(error);
+  });
 
   void app.register(fastifyCookie);
   /* Hochladen (T-114): eine Datei je Anfrage, und die Grenze gilt schon

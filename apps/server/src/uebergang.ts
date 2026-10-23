@@ -117,7 +117,10 @@ export async function durchschicken(
     .filter((m) => m.kind === 'play' || m.kind === 'party')
     .map((m) => ({ x: m.x, y: m.y }));
   const spots = landingSpots(ende, geo, belegt, rels.length);
-  const vergeben = new Set((ziel.relations ?? []).map((r) => r.id));
+  /* Auch die Ids der Quellkarte gelten als vergeben (T-410): die Zielkarte
+     wird zuerst geschrieben, und solange hängt die Kante noch an der
+     Quelle — in Postgres ist `relation.id` eindeutig über alle Artikel. */
+  const vergeben = new Set([...(ziel.relations ?? []), ...(o.karte.relations ?? [])].map((r) => r.id));
   const dazu = [];
   const moved: Durchgang['moved'] = [];
   for (const [i, rel] of rels.entries()) {

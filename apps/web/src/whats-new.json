@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-23-shared-layer-on",
+      "date": "2026-10-23",
+      "title": "Turn on layers that other campaigns already use",
+      "text": "A new campaign can now turn on any layer, including the rulebooks and layers other campaigns already have — the tick no longer jumps back with a server error. If a link ever collides, the page now says so and what to do instead of “Internal server error”.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-23-inventory-anchor-cell",
       "date": "2026-10-23",
       "title": "Place a piece by the cell you hold it by",

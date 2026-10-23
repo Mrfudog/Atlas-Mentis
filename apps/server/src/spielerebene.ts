@@ -26,6 +26,7 @@ import {
   ACTIVATES_RELATION,
   CAMPAIGN_TYPE,
   LAYER_COMPONENT,
+  activatesId,
   activeStack,
   campaignLayer,
   entityName,
@@ -101,7 +102,7 @@ export async function sorgeSpielerEbene(repo: Repository, userId: string, campai
     ...kampagne,
     relations: [
       ...(kampagne.relations ?? []),
-      { id: `${ACTIVATES_RELATION}-${id}`, type: ACTIVATES_RELATION, to: id, props: { order } },
+      { id: activatesId(kampagne, id), type: ACTIVATES_RELATION, to: id, props: { order } },
     ],
   };
 
