@@ -86,7 +86,7 @@ async function schalten(repo: InMemoryRepository, layer: string, an: boolean) {
 const ebenenVon = (e: Entity) => (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
 
 describe('write layer (T-161)', () => {
-  it('is the player layer by default, offers only layers in play, and is chosen on the server', async () => {
+  it('is the player layer by default, offers own layers also outside play (T-418), and is chosen on the server', async () => {
     const { repo, als, ly } = await aufbau();
     const vorher = (await als('Sela', 'GET', '/api/layers/write')).json();
     expect(vorher).toMatchObject({ layer: { id: ly }, default: { id: ly }, chosen: false, dropped: null, none: false });
@@ -94,8 +94,11 @@ describe('write layer (T-161)', () => {
 
     const eigene = (await als('Sela', 'POST', '/api/layers', { name: 'Selas Notizen' })).json() as { id: string };
     const liste = (await als('Sela', 'GET', '/api/layers/write')).json().options as { id: string; selectable: boolean; why?: string }[];
-    expect(liste.find((o) => o.id === eigene.id)).toMatchObject({ selectable: false, why: 'Not switched on in this campaign.' });
-    expect((await als('Sela', 'PUT', '/api/layers/write', { layer: eigene.id })).statusCode).toBe(403);
+    /* Wählbar, aber mit Hinweis: was dort entsteht, steht hier erst, wenn die Kampagne sie aufschaltet. */
+    expect(liste.find((o) => o.id === eigene.id)).toMatchObject({ selectable: true, inPlay: false });
+    expect(liste.find((o) => o.id === eigene.id)?.why).toMatch(/does not show here until/);
+    /* Ein Regelwerk, in dem sie nicht schreibt, bleibt gesperrt. */
+    expect((await als('Sela', 'PUT', '/api/layers/write', { layer: 'ly_regeln' })).statusCode).toBe(403);
     /* Nur über die eigene Route — die Einstellungen nehmen den Schlüssel nicht. */
     expect((await als('Sela', 'PUT', '/api/me/prefs/writeLayer', { value: { camp_nebel: 'ly_regeln' } })).statusCode).toBe(400);
 
@@ -109,15 +112,23 @@ describe('write layer (T-161)', () => {
     const genannt = (await als('Sela', 'POST', '/api/entities', { type: 'Place', name: 'Lager', relations: [{ type: 'inLayer', to: ly }] })).json() as Entity;
     expect(ebenenVon(genannt)).toEqual([ly]);
 
-    /* Fällt sie aus dem Stapel, gilt die Vorgabe — und die Antwort sagt es. */
+    /* Fällt sie aus dem Stapel, bleibt die Wahl (T-418) — sie ist eine
+       eigene Ebene und weiter wählbar; die Option sagt, dass sie hier nicht
+       im Spiel ist, und die Kopfleiste zeigt es. */
     await schalten(repo, eigene.id, false);
+    const aus = (await als('Sela', 'GET', '/api/layers/write')).json();
+    expect(aus).toMatchObject({ layer: { id: eigene.id }, chosen: true, dropped: null });
+    expect(aus.options.find((o: { id: string }) => o.id === eigene.id)).toMatchObject({ inPlay: false });
+    const danach = (await als('Sela', 'POST', '/api/entities', { type: 'Place', name: 'Brunnen' })).json() as Entity;
+    expect(ebenenVon(danach)).toEqual([eigene.id]);
+
+    /* Fällt das Recht weg (die Ebene geht), gilt die Vorgabe — und die Antwort sagt es. */
+    await repo.deleteEntity(eigene.id);
     expect((await als('Sela', 'GET', '/api/layers/write')).json()).toMatchObject({
       layer: { id: ly },
       chosen: false,
-      dropped: { id: eigene.id, name: 'Selas Notizen' },
+      dropped: { id: eigene.id },
     });
-    const danach = (await als('Sela', 'POST', '/api/entities', { type: 'Place', name: 'Brunnen' })).json() as Entity;
-    expect(ebenenVon(danach)).toEqual([ly]);
     /* Zurück zur Vorgabe. */
     expect((await als('Sela', 'PUT', '/api/layers/write', { layer: null })).json()).toMatchObject({ chosen: false, dropped: null });
   });

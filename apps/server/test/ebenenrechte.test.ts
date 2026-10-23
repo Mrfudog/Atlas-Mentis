@@ -152,9 +152,10 @@ describe('own layers', () => {
     const ly = (neu.json() as { id: string }).id;
     let mine = (await als('Sela', 'GET', '/api/layers/mine')).json();
     expect(mine.layers).toEqual([expect.objectContaining({ id: ly, owner: true, inPlay: false })]);
-    /* Noch nicht im Spiel: angelegt wird wie bisher in die Ebene der Runde. */
+    /* Noch nicht im Spiel: angelegt wird trotzdem dort (T-418) — die eigene
+       Ebene ist ein Ort zum Vorbereiten, auch bevor die Leitung sie aufschaltet. */
     const vorher = (await als('Sela', 'POST', '/api/entities', { type: 'Place', name: 'Früh', relations: [{ type: 'inLayer', to: ly }] })).json() as Entity;
-    expect(vorher.relations?.filter((r) => r.type === 'inLayer').map((r) => r.to)).toEqual(['ly_nebel']);
+    expect(vorher.relations?.filter((r) => r.type === 'inLayer').map((r) => r.to)).toEqual([ly]);
 
     expect((await als('Mira', 'POST', `/api/campaigns/camp_nebel/layers/${ly}`)).statusCode).toBe(200);
     mine = (await als('Sela', 'GET', '/api/layers/mine')).json();

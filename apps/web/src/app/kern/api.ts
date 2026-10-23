@@ -1275,7 +1275,9 @@ export interface SchreibOption {
   /** Bei `playerOf`: wessen. */
   player?: string;
   selectable: boolean;
-  /** Warum nicht wählbar. */
+  /** Ob die laufende Kampagne sie aufschaltet (T-418); was ausserhalb liegt, steht hier nicht da. */
+  inPlay?: boolean;
+  /** Warum nicht wählbar — oder, wählbar ausserhalb des Stapels, was das heisst. */
   why?: string;
 }
 

@@ -107,7 +107,7 @@
           "heading": "Moving an article to another layer",
           "text": [
             "Open the article and press Edit. The first field is Layer, on the phone as on a wide screen.",
-            "Choose the layer it should belong to. The list holds the layer it is in now and the layers you write in that are switched on in this campaign — the same ones as under Writes to in the header.",
+            "Choose the layer it should belong to. The list holds the layer it is in now and every layer you write in — the same ones as under Writes to in the header. Layers this campaign does not turn on are marked “not in this campaign”: after saving, the article no longer shows here until the campaign turns that layer on.",
             "Save. The page says Moved to … and the layer mark under the title shows the new one. Links to the article stay; its versions and the parts of a chapter stay in their own layers.",
             "A layer you do not write in is refused with a message; choose one of your write layers or ask the GM."
           ]

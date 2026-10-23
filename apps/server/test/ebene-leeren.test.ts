@@ -162,15 +162,16 @@ describe("chosen write layer (T-176)", () => {
     ).toBe("ly_nebel");
   });
 
-  it("only a layer one writes and that is in play; for another account only the administration", async () => {
+  it("only a layer one writes, also one not in play (T-418); for another account only the administration", async () => {
     const { als, ids, testebene, repo } = await aufbau();
-    /* Nicht aufgeschaltet: was dort entstünde, gälte nirgends. */
+    /* Nicht aufgeschaltet: wählbar seit T-418 — was dort entsteht, steht in
+       dieser Kampagne erst, wenn sie die Ebene aufschaltet. */
     const lose = (
       await als("Mira", "POST", "/api/layers", { name: "Lose" })
     ).json().id as string;
     expect(
       (await als("Mira", "PUT", `/api/layers/${lose}/default`, {})).statusCode,
-    ).toBe(409);
+    ).toBe(200);
     /* In einem Regelwerk schreibt sie nicht. */
     expect(
       (await als("Mira", "PUT", "/api/layers/ly_regeln/default", {}))

@@ -561,6 +561,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                       @if (ebeneGewechselt()) {
                         Saving moves this article from {{ w.jetzt || 'no layer' }} to <b>{{ ebenenName(entwurfEbene()) }}</b>.
                         Its links, versions and parts stay where they are.
+                        @if (ausserhalb(entwurfEbene())) {
+                          <b style="color: var(--warn)">That layer is not turned on in this campaign: after saving, the article no longer shows here.</b>
+                        }
                       } @else if (w.mehrere) {
                         In {{ w.jetzt }}. Choosing a layer puts it into that one only.
                       } @else {
@@ -2061,7 +2064,8 @@ export class Artikel implements SchnellKontext {
     const optionen = new Map<string, { id: string; name: string; zusatz?: string }>();
     for (const id of jetzt) optionen.set(id, { id, name: name(id) ?? id, zusatz: 'now' });
     for (const o of this.stapel.schreib()?.options ?? []) {
-      if (o.selectable && !optionen.has(o.id)) optionen.set(o.id, { id: o.id, name: o.name });
+      /* Auch Ebenen ausserhalb der Kampagne (T-418), gekennzeichnet. */
+      if (o.selectable && !optionen.has(o.id)) optionen.set(o.id, { id: o.id, name: o.name, ...(o.inPlay === false ? { zusatz: 'not in this campaign' } : {}) });
     }
     const ohne = this.session.isAdmin();
     if (!optionen.size && !ohne) return null;
@@ -2075,6 +2079,10 @@ export class Artikel implements SchnellKontext {
   /** Womit die Maske anfing — gewechselt ist erst, was jemand anders wählt. */
   private readonly ebeneAnfang = signal('');
   protected readonly ebeneGewechselt = computed(() => !!this.ebenenWahl() && this.entwurfEbene() !== this.ebeneAnfang());
+  /** Liegt diese Ebene ausserhalb des Stapels der laufenden Kampagne (T-418)? */
+  protected ausserhalb(id: string): boolean {
+    return !!id && (this.stapel.schreib()?.options ?? []).some((o) => o.id === id && o.inPlay === false);
+  }
   protected ebenenName(id: string): string {
     if (!id) return 'no layer';
     return this.ebenenWahl()?.optionen.find((o) => o.id === id)?.name ?? this.bestand.name()(id) ?? id;

@@ -1204,15 +1204,26 @@ Konto nicht.
 **Die Schreibebene** (T-161): wohin ein Konto in der laufenden Kampagne
 anlegt, wenn es keine Ebene nennt. Ohne Wahl ist es die Vorgabe oben
 (`grundEbene`: als `player` die Spielerebene, als Leitung die Ebene der
-Kampagne); **gewählt wird im Popup der Kopfleiste** unter den Zielebenen
-(`zielEbenen`) — Gruppen und nicht aufgeschaltete Ebenen stehen dort
-ausgegraut mit dem Grund. **Gespeichert am Server je Konto und Kampagne**
+Kampagne); **gewählt wird im Popup der Kopfleiste** unter den
+**Schreibzielen** (`schreibZiele`, T-418): den Zielebenen (`zielEbenen`, im
+Spiel) und dazu jeder Ebene ausserhalb des Stapels, in der das Konto
+schreibt — die Verwaltung jede Ebene ausser Gruppen und fremden
+Spielerebenen, also auch eine aufgeschaltete, die ihr nicht gehört (das
+Regelwerk eines Drittverlags). Die ausserhalb tragen `inPlay: false` und
+stehen zugeklappt unter „Layers not in this campaign": **was dort entsteht,
+steht in dieser Kampagne erst, wenn sie die Ebene aufschaltet** — die
+Kopfleiste und der Anlegedialog sagen es. Gruppen stehen ausgegraut mit dem
+Grund. Dieselbe Liste gilt für das Anlegen mit genannter Ebene und für das
+Verschieben am Artikel (`PUT /api/entities/:id`); Fassungen, Übernahme und
+die Vorgabe bleiben bei `zielEbenen`, denn eine Fassung ausserhalb des
+Stapels gälte nirgends. **Gespeichert am Server je Konto und Kampagne**
 (Einstellung `writeLayer`: Kampagne → Ebene), gesetzt nur über
-`PUT /api/layers/write`, das gegen die Zielebenen prüft; `/api/me/prefs`
-nimmt den Schlüssel nicht. **Gelesen wird immer gegen die Zielebenen**
-(`schreibEbene`): fällt die gewählte aus dem Stapel oder entfällt das
-Recht, gilt die Vorgabe, und `GET /api/layers/write` sagt es (`dropped`);
-die Wahl bleibt stehen und gilt wieder, sobald die Ebene zurück ist.
+`PUT /api/layers/write`, das gegen die Schreibziele prüft; `/api/me/prefs`
+nimmt den Schlüssel nicht. **Gelesen wird immer gegen die Schreibziele**
+(`schreibEbene`): entfällt das Recht (die Ebene geht, die Rolle geht), gilt
+die Vorgabe, und `GET /api/layers/write` sagt es (`dropped`). Schaltet die
+Kampagne eine gewählte Ebene ab, bleibt die Wahl und ist als „not in play"
+gekennzeichnet.
 Sie wirkt beim **Anlegen** (auch aus einem Verweisfeld, eine im Dialog
 genannte Ebene geht vor), bei **Fassungen** (`adapt` ohne `{ layer }`,
 `adaptTo` mit ihr vorn — nur eine *gewählte*, ohne Wahl fragt der Server bei
