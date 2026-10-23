@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 142 | 520 | 69 steht · 23 teils · 42 offen · 5 ersetzt · 3 verworfen |
+| 2 | 142 | 520 | 69 steht · 26 teils · 39 offen · 5 ersetzt · 3 verworfen |
 | 3 | 128 | 394 | 61 steht · 27 teils · 39 offen · 1 ersetzt |
 | 4 | 48 | 220 | 13 steht · 2 teils · 30 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **394** | **1470** | 186 steht · 62 teils · 130 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **394** | **1470** | 186 steht · 65 teils · 127 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -361,8 +361,8 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-320]] | Formen frei malen, auch nicht rechteckig | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | offen |
 | [[REQ-321]] | Stapel im Raster | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
 | [[REQ-322]] | Besondere Zonen mit eigenen Regeln | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
-| [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
-| [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
+| [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | teils |
+| [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | teils |
 | [[REQ-325]] | Gegenstandsartikel im Detailbereich | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 1 | defined | offen |
 | [[REQ-326]] | Ziehen und Ablegen im Raster | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
 | [[REQ-327]] | Packen am Telefon | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | offen |
@@ -375,7 +375,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-334]] | Tragende Ausrüstung als Behälter mit eigenem Raster | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
 | [[REQ-335]] | Verbund: Zellen, die gemeinsam ein Stück tragen | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | offen |
 | [[REQ-336]] | Festlegen, wo ein Gegenstand getragen werden darf | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | offen |
-| [[REQ-337]] | Sehen, was weichen muss | Spieler | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | offen |
+| [[REQ-337]] | Sehen, was weichen muss | Spieler | [[F-079 Tragplätze\|Tragplätze]] | 2 | 2 | defined | teils |
 | [[REQ-338]] | Körperplätze als Plan des Moduls | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
 | [[REQ-339]] | Tragende Ausrüstung an der Figur | Spieler | [[F-079 Tragplätze\|Tragplätze]] | 2 | 3 | defined | offen |
 | [[REQ-340]] | Raster und Zonen eines Trägers in der Maske | Spielleitung | [[F-079 Tragplätze\|Tragplätze]] | 3 | 3 | defined | offen |

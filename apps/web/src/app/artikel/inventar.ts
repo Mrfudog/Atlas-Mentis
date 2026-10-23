@@ -32,8 +32,28 @@ import {
   type InventoryFrame,
   type Shape,
   zoneMap,
+  applyWield,
+  dropProps,
+  handChecks,
+  handCost,
+  handSummary,
+  heldDetail,
+  heldPlaceOf,
+  primaryInterface,
+  stowProps,
+  stowSpots,
+  typeChain,
+  wieldOptions,
+  wieldPlan,
+  wieldTargetLabel,
+  type DisplaceTo,
+  type HandPlace,
+  type HeldItem,
+  type WieldOption,
+  type WieldPlan,
 } from '@nw/model';
 import type { Entity, Relation } from '@nw/model';
+import { FigurDaten } from '../bogen/daten';
 import { Api, ApiError, type InventarLage } from '../kern/api';
 import { zonenFarbe as farbeDerZone } from '../kern/zonenfarbe';
 import { Bestand } from '../kern/bestand';
@@ -160,6 +180,81 @@ interface Ziel {
         }
       </div>
 
+      <!-- Die Hände (T-244): nur am eigenen Inventar einer Figur. Ein Stück
+           antippen (Raster, Liste, Hand), dann einen Platz — oder es ziehen. -->
+      @if (lage(); as l) {
+        <div class="ausruesten">
+          <section class="haende" aria-label="Hands">
+            <h4>Hands <small>{{ summary() }}</small></h4>
+            <div class="hplaetze">
+              @for (h of handPlaetze(); track h.place) {
+                <div class="hplatz" [attr.data-hand]="h.place" [class.belegt]="!!h.held"
+                     [class.ziel]="h.ziel === 'ok'" [class.verdraengt]="h.ziel === 'warn'" [class.nein]="h.ziel === 'no'"
+                     [attr.title]="h.warum || null">
+                  <span class="hlbl">{{ h.label }} <small>· {{ h.kosten }}</small></span>
+                  <button type="button" class="hstueck" [attr.aria-pressed]="!!h.stueck && h.stueck.key === wahl()"
+                          [attr.aria-label]="h.label + ': ' + (h.held?.name ?? 'free') + (wahlStueck() && h.ziel !== 'no' ? ' — put ' + wahlStueck()!.name + ' here' : '')"
+                          (pointerdown)="h.stueck && ziehAn($event, h.stueck)" (click)="hand(h.place)">
+                    {{ h.held ? h.held.name : h.griff ? '— grip on the ' + h.griff : '— free' }}
+                  </button>
+                  @if (h.held) { <small class="hdetail">{{ h.detail }}</small> }
+                  @if (h.vielseitig && darf()) {
+                    <div class="griff" role="group" aria-label="Grip">
+                      <button type="button" [attr.aria-pressed]="!l.haende().both" (click)="griff(false)">One hand</button>
+                      <button type="button" [attr.aria-pressed]="l.haende().both" (click)="griff(true)">Two hands</button>
+                    </div>
+                  }
+                  @if (h.stueck && darf()) {
+                    <button type="button" class="klein" (click)="wegstecken(h.stueck)">Stow</button>
+                  }
+                </div>
+              }
+            </div>
+            <ul class="pruefungen">
+              @for (c of pruefungen(); track c.key) {
+                <li [class]="c.state">{{ c.state === 'ok' ? '✓' : c.state === 'warn' ? '⚠' : '✗' }} {{ c.text }}</li>
+              }
+            </ul>
+          </section>
+
+          <section class="detail" aria-label="Item">
+            @if (ausstehend(); as a) {
+              <div class="warnung" role="alertdialog" aria-label="Something has to move">
+                <b>⚠ {{ a.titel }}</b>
+                <p>{{ a.text }}</p>
+                <div class="knoepfe">
+                  <button type="button" class="pri" (click)="bestaetigen('stow')">{{ a.verstauen }}</button>
+                  @if (a.fallen) { <button type="button" (click)="bestaetigen('ground')">{{ a.fallen }}</button> }
+                  <button type="button" (click)="ausstehend.set(null)">Cancel</button>
+                </div>
+              </div>
+            }
+            @if (wahlStueck(); as p) {
+              <h4>{{ p.name }} @if (p.qty !== 1) { <small>×{{ p.qty }}</small> }
+                <a class="auf" [routerLink]="['/artikel', p.item]" [nwQuick]="p.item" aria-label="Open article">↗</a>
+              </h4>
+              <p class="wo">Now: {{ jetzt(p) }}</p>
+              <p class="wo"><b>Where it can go</b> · {{ zieleOk() }} places</p>
+              <ul class="ziele">
+                @for (o of ziele2(); track o.target) {
+                  <li [class.ok]="o.ok" [class.hier]="o.here">
+                    <span class="icon" [class]="o.here ? 'hier' : !o.ok ? 'no' : o.displaces.length || o.regrips ? 'warn' : 'ok'">{{ o.here ? '●' : !o.ok ? '✗' : o.displaces.length || o.regrips ? '⚠' : '✓' }}</span>
+                    <span class="zname"><b>{{ zielLabel(o.target) }}</b>
+                      <small>{{ o.here ? 'here now' : !o.ok ? o.why : o.displaces.length ? 'moves ' + o.displaces.join(', ') + ' out' : o.regrips ? o.regrips + ' goes to one hand' : '' }}</small>
+                    </span>
+                    @if (darf()) {
+                      <button type="button" class="klein" [disabled]="!o.ok" (click)="zuZiel(p, o)">{{ o.here ? 'Here' : o.target === 'ground' ? 'Drop' : o.target === 'aside' ? 'Set aside' : o.target === 'stow' ? 'Stow' : 'Put here' }}</button>
+                    }
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="leer">Pick an item — in the grid, in a hand or under “Not stowed” — then tap a hand, or see every place it can go here.</p>
+            }
+          </section>
+        </div>
+      }
+
       @if (unverstaut().length) {
         <section class="vor" aria-label="Not stowed">
           <h4>Not stowed <small>{{ verstauText() }}</small></h4>
@@ -208,6 +303,7 @@ interface Ziel {
                     [style.background]="z.stueck ? z.stueck.farbe : z.zone ? zonenFarbe(z.zone) : null"
                     [attr.aria-label]="zellLabel(z)" [title]="zellLabel(z)"
                     [disabled]="!darf() && !z.stueck"
+                    (pointerdown)="z.stueck && ziehAn($event, z.stueck)"
                     (click)="zelle(z.x, z.y)">
               @if (z.anker && z.stueck && !z.stueck.bild) { <span class="kurz">{{ z.stueck.name.slice(0, 3) }}</span> }
             </button>
@@ -387,6 +483,42 @@ interface Ziel {
       font: inherit; cursor: grab; touch-action: none; user-select: none;
     }
     .stueck.zieht { opacity: 0.5; }
+    .ausruesten { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 0.6rem 1rem; align-items: start; }
+    .haende h4, .detail h4 { margin: 0 0 0.3rem; font-family: var(--caps); font-weight: normal; }
+    .haende h4 small, .detail h4 small { font-family: inherit; color: var(--dim); font-size: 0.85rem; margin-left: 0.3rem; }
+    .hplaetze { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+    .hplatz { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; padding: 0.4rem 0.5rem; border: 1px dashed var(--line); border-radius: 6px; background: var(--surface); }
+    .hplatz.belegt { border-style: solid; border-color: var(--accent); }
+    .hplatz.ziel { border: 2px solid var(--good, #3a7d44); }
+    .hplatz.verdraengt { border: 2px solid var(--warn); }
+    .hplatz.nein { opacity: 0.6; }
+    .hlbl { font-size: 0.8rem; color: var(--dim); }
+    .hstueck { min-height: 44px; text-align: left; font: inherit; color: var(--heading); background: var(--paper, var(--surface)); border: 1px solid var(--line); border-radius: 4px; padding: 0.2rem 0.5rem; cursor: pointer; overflow-wrap: anywhere; user-select: none; }
+    .hdetail { color: var(--dim); }
+    .griff { display: inline-flex; border: 1px solid var(--accent); border-radius: 6px; overflow: hidden; width: max-content; max-width: 100%; }
+    .griff button { min-height: 36px; border: 0; border-radius: 0; padding: 0 0.6rem; background: none; font: inherit; font-size: 0.85rem; }
+    .griff button[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); }
+    .pruefungen { list-style: none; margin: 0.5rem 0 0; padding: 0; font-size: 0.9rem; }
+    .pruefungen .ok { color: var(--good, #3a7d44); }
+    .pruefungen .warn { color: var(--warn); }
+    .pruefungen .no { color: var(--hp, var(--warn)); }
+    .detail { min-width: 0; }
+    .detail .wo { margin: 0.1rem 0; color: var(--dim); font-size: 0.9rem; }
+    .ziele { list-style: none; margin: 0.3rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+    .ziele li { display: flex; align-items: center; gap: 0.5rem; }
+    .ziele .zname { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .ziele .zname small { color: var(--dim); }
+    .ziele li:not(.ok) .zname b { color: var(--dim); }
+    .ziele .icon { flex: none; width: 1rem; text-align: center; }
+    .ziele .icon.ok { color: var(--good, #3a7d44); }
+    .ziele .icon.warn { color: var(--warn); }
+    .ziele .icon.hier { color: var(--accent); }
+    .ziele .icon.no { color: var(--dim); }
+    .ziele button { min-height: 36px; }
+    .warnung { border: 1px solid var(--warn); border-radius: 6px; padding: 0.5rem 0.6rem; margin-bottom: 0.5rem; background: var(--paper, var(--surface)); }
+    .warnung p { margin: 0.3rem 0; }
+    .warnung .knoepfe { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .warnung button { min-height: 40px; }
     .geist {
       position: fixed; z-index: 50; pointer-events: none; transform: translate(-50%, -120%);
       padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
@@ -410,6 +542,7 @@ export class Inventar {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly api = inject(Api);
   private readonly lageDienst = inject(InventarLageDienst);
+  private readonly figurDaten = inject(FigurDaten);
 
   protected readonly tiers = TIERS;
   protected readonly muenzarten = ['pp', 'gp', 'sp', 'cp'] as const;
@@ -641,6 +774,203 @@ export class Inventar {
   });
   protected readonly muenzen = computed(() => coins(this.karte()['copper']));
 
+  // ------------------------------------------------------------ Hände (T-244)
+
+  /**
+   * **Die Figur, wenn dies ihr eigenes Inventar ist** — dann stehen die
+   * Hände darüber. Nicht an der Gruppe, nicht in einem Behälter: wer dort
+   * etwas in die Hand nimmt, nimmt es zuerst heraus.
+   */
+  private readonly figur = computed(() => {
+    const t = this.traeger();
+    const r = this.bestand.registry();
+    if (!t || !r || this.tiefe() > 0) return null;
+    if (!(t.relations ?? []).some((k) => k.type === 'carries' && k.to === this.inventar().id)) return null;
+    return typeChain(r, primaryInterface(t)).includes('Creature') ? t : null;
+  });
+  /** Was die Spielerseite über die Figur weiss (Hände, Übungen) — dieselbe Rechnung wie Kopf und „Your turn". */
+  protected readonly lage = computed(() => {
+    const f = this.figur();
+    return f ? this.figurDaten.fuer(f.id) : null;
+  });
+  private readonly gehalten = computed<HeldItem[]>(() => this.lage()?.gehalten() ?? []);
+  protected readonly wahlStueck = computed(() => this.stuecke().find((s) => s.key === this.wahl()) ?? null);
+  protected readonly summary = computed(() => {
+    const l = this.lage();
+    return l ? handSummary(l.haende()) : '';
+  });
+  protected readonly pruefungen = computed(() => {
+    const l = this.lage();
+    return l ? handChecks(l.haende(), { sneakAttack: l.hinterhaeltig() }) : [];
+  });
+
+  /** Ist im Raster Platz für dieses Stück? `null`: dieses Inventar zählt nicht im Raster. */
+  private platzFuer(p: Stueck): boolean | null {
+    if (this.regel() !== 'grid') return null;
+    return this.liegtIm(p) || !!firstFreeSpot(this.kiste(), this.stuecke().filter((s) => s.key !== p.key), p);
+  }
+
+  /** Alle Ziele des gewählten Stücks mit ✓ ⚠ ✗ (`wieldOptions`). */
+  protected readonly ziele2 = computed<WieldOption[]>(() => {
+    const p = this.wahlStueck();
+    const w = p ? this.lage()?.ausruestbar().get(p.key) : undefined;
+    if (!p || !w) return [];
+    return wieldOptions(this.gehalten(), w, {
+      hand: heldPlaceOf(p.kante.props),
+      inGrid: this.regel() === 'grid' && this.liegtIm(p),
+      unstowed: p.offen,
+      ground: p.tier === 'ground',
+    }, this.platzFuer(p));
+  });
+  protected readonly zieleOk = computed(() => this.ziele2().filter((o) => o.ok).length);
+
+  /** Die zwei Hände, mit dem, was sie halten, und ob das gewählte Stück hinein darf. */
+  protected readonly handPlaetze = computed(() => {
+    const l = this.lage();
+    if (!l) return [];
+    const h = l.haende();
+    const opts = this.ziele2();
+    const stueckVon = (x: HeldItem | null) => (x ? this.stuecke().find((s) => s.key === x.id) ?? null : null);
+    const zielVon = (place: HandPlace): { ziel: 'ok' | 'warn' | 'no' | null; warum: string } => {
+      if (!this.wahlStueck()) return { ziel: null, warum: '' };
+      /* Die Haupthand nimmt eine zweihändige Waffe in beide (`wieldPlan`). */
+      const o = opts.find((x) => x.target === place);
+      if (!o || o.here) return { ziel: null, warum: '' };
+      if (!o.ok) return { ziel: 'no', warum: o.why };
+      return { ziel: o.displaces.length || o.regrips ? 'warn' : 'ok', warum: '' };
+    };
+    const main = h.main;
+    const off = h.both ? null : h.off;
+    return [
+      { place: 'mainHand' as HandPlace, label: 'Main hand', held: main, stueck: stueckVon(main), griff: null as string | null,
+        kosten: handCost(main), detail: main ? heldDetail(main, h.both) : '', vielseitig: !!main && main.properties.includes('versatile') && !main.shield, ...zielVon('mainHand') },
+      { place: 'offHand' as HandPlace, label: 'Off hand', held: off, stueck: stueckVon(off), griff: h.both ? h.main?.name ?? null : null,
+        kosten: handCost(off), detail: off ? heldDetail(off, false) : '', vielseitig: false, ...zielVon('offHand') },
+    ];
+  });
+
+  /** Wartet auf „verstauen / fallen lassen / abbrechen" (Runde 8). */
+  protected readonly ausstehend = signal<{ key: string; place: HandPlace; plan: WieldPlan; titel: string; text: string; verstauen: string; fallen: string | null } | null>(null);
+
+  protected zielLabel(t: WieldOption['target']): string {
+    return wieldTargetLabel(t);
+  }
+
+  protected jetzt(p: Stueck): string {
+    const hand = heldPlaceOf(p.kante.props);
+    if (hand) return wieldTargetLabel(hand).toLowerCase();
+    if (p.offen) return 'not stowed';
+    if (p.tier === 'ground') return 'on the ground';
+    if (this.regel() === 'grid') return this.liegtIm(p) ? `in the grid${this.zoneVon(p) ? ` · ${this.zoneVon(p)} to draw` : ''}` : 'not in the grid';
+    return p.slot || p.tier;
+  }
+
+  /** Eine Hand angetippt: ein gewähltes Stück kommt hinein, sonst wird gewählt, was sie hält. */
+  protected hand(place: HandPlace): void {
+    if (this.gezogen) {
+      this.gezogen = false;
+      return;
+    }
+    const p = this.wahlStueck();
+    const hier = this.handPlaetze().find((h) => h.place === place)?.stueck ?? null;
+    if (p && this.darf() && p.key !== hier?.key) return void this.ausruesten(p, place);
+    if (hier) this.waehle(hier.key);
+  }
+
+  /** Ein Ziel aus der Liste „Where it can go". */
+  protected zuZiel(p: Stueck, o: WieldOption): void {
+    if (!o.ok) return;
+    if (o.target === 'stow') return this.wegstecken(p);
+    if (o.target === 'aside') return void this.propsSetzen(p, { ...stowProps(p.kante.props ?? {}, null, true) });
+    if (o.target === 'ground') return void this.propsSetzen(p, dropProps(p.kante.props ?? {}));
+    this.ausruesten(p, o.target);
+  }
+
+  /** Der Griff der vielseitigen Waffe in der Haupthand: eine oder zwei Hände. */
+  protected griff(zwei: boolean): void {
+    const main = this.gehalten().find((h) => h.slot === 'mainHand' || h.slot === 'both');
+    const p = main ? this.stuecke().find((s) => s.key === main.id) : undefined;
+    if (p) this.ausruesten(p, zwei ? 'both' : 'mainHand');
+  }
+
+  /**
+   * **In die Hand** (T-244): `wieldPlan` sagt, ob es geht und wer weichen
+   * muss. Muss jemand weichen, fragt die Warnung zuerst (verstauen, fallen
+   * lassen, abbrechen); sonst wird gleich geschrieben.
+   */
+  protected ausruesten(p: Stueck, place: HandPlace, wohin?: DisplaceTo): void {
+    const w = this.lage()?.ausruestbar().get(p.key);
+    if (!w) return;
+    const plan = wieldPlan(this.gehalten(), w, place);
+    if (plan.why) return void this.hinweis.set(`${p.name}: ${plan.why}.`);
+    if (!wohin && (plan.displaced.length || plan.regrip)) {
+      const namen = plan.displaced.map((h) => h.name).join(' and ');
+      if (!plan.displaced.length && plan.regrip) {
+        this.ausstehend.set({
+          key: p.key, place, plan, titel: 'Grip changes',
+          text: `The ${p.name} takes the off hand — the ${plan.regrip.name} goes to one hand${plan.regrip.damage ? ` (${plan.regrip.damage})` : ''}.`,
+          verstauen: 'Switch to one hand', fallen: null,
+        });
+        return;
+      }
+      const spots = this.spotsFuer(p, plan);
+      const wo = this.regel() !== 'grid' ? 'into your things' : Object.values(spots).every(Boolean) ? 'into the grid' : 'no room — set aside';
+      this.ausstehend.set({
+        key: p.key, place, plan, titel: 'Something has to move',
+        text: `${p.name} needs ${plan.place === 'both' ? 'both hands' : plan.place === 'offHand' ? 'the off hand' : 'the main hand'}: ${namen} ${plan.displaced.length > 1 ? 'have' : 'has'} to go.`
+          + (plan.regrip ? ` The ${plan.regrip.name} goes to one hand.` : ''),
+        verstauen: `Stow ${namen} (${wo})`,
+        fallen: `Drop ${namen} (free)`,
+      });
+      return;
+    }
+    this.ausstehend.set(null);
+    void this.wieldSchreiben(p, plan, wohin ?? 'stow');
+  }
+
+  protected bestaetigen(wohin: DisplaceTo): void {
+    const a = this.ausstehend();
+    const p = a ? this.stuecke().find((s) => s.key === a.key) : undefined;
+    this.ausstehend.set(null);
+    if (p && a) this.ausruesten(p, a.place, wohin);
+  }
+
+  /** Freie Plätze für das, was verdrängt wird; das Stück selbst macht seinen Platz frei. */
+  private spotsFuer(p: Stueck, plan: WieldPlan): Record<string, { gx: number; gy: number; rot: number } | null> {
+    if (this.regel() !== 'grid') return {};
+    const weg = this.stuecke().filter((s) => plan.displaced.some((h) => h.id === s.key));
+    const liegen = this.stuecke().filter((s) => this.liegtIm(s));
+    return stowSpots(this.kiste(), liegen, weg, p.qty > 1 ? [] : [p.key]);
+  }
+
+  private async wieldSchreiben(p: Stueck, plan: WieldPlan, wohin: DisplaceTo): Promise<void> {
+    const inv = this.inventar();
+    const relations = applyWield(inv.relations ?? [], {
+      edgeId: p.key,
+      plan,
+      newId: `${inv.id}~holds-${Date.now().toString(36)}`,
+      displacedTo: wohin,
+      edgeOf: (id) => id,
+      spots: this.spotsFuer(p, plan),
+      grid: this.regel() === 'grid',
+    });
+    await this.schreiben([{ ...inv, relations }]);
+  }
+
+  /** **Verstauen** aus der Hand: an den ersten freien Platz im Raster, sonst unter „Not stowed". */
+  protected wegstecken(p: Stueck): void {
+    const grid = this.regel() === 'grid';
+    const spot = grid ? firstFreeSpot(this.kiste(), this.stuecke().filter((s) => s.key !== p.key && this.liegtIm(s)), { ...p, gx: null, gy: null }) : null;
+    if (grid && !spot) this.hinweis.set(`No room for ${p.name} in the grid — it is set aside under “Not stowed”.`);
+    void this.propsSetzen(p, stowProps(p.kante.props ?? {}, spot, grid));
+  }
+
+  /** Die Angaben an der Kante ersetzen. */
+  private async propsSetzen(p: Stueck, props: Record<string, unknown>): Promise<void> {
+    const inv = this.inventar();
+    await this.schreiben([{ ...inv, relations: (inv.relations ?? []).map((r) => (r.id === p.key ? { ...r, props } : r)) }]);
+  }
+
   constructor() {
     void this.lageDienst.laden();
     /* Die Gegenstände ganz holen (Form, Gewicht, ob Behälter) — in einer Anfrage. */
@@ -723,6 +1053,10 @@ export class Inventar {
   // ------------------------------------------------------------ schreiben
 
   protected zelle(x: number, y: number): void {
+    if (this.gezogen) {
+      this.gezogen = false;
+      return;
+    }
     if (this.formModus()) return void this.malen(x, y);
     const z = this.zellen().find((c) => c.x === x && c.y === y);
     const gewaehlt = this.stuecke().find((s) => s.key === this.wahl());
@@ -741,7 +1075,7 @@ export class Inventar {
       this.hinweis.set(`${gewaehlt.name} doesn’t fit there.`);
       return;
     }
-    void this.setze(gewaehlt, { gx, gy, rot: gewaehlt.rot ?? 0, slot: undefined, tier: 'pack', unstowed: undefined });
+    void this.setze(gewaehlt, { gx, gy, rot: gewaehlt.rot ?? 0, slot: undefined, grip: undefined, tier: 'pack', unstowed: undefined });
   }
 
   protected drehen(p: Stueck): void {
@@ -768,7 +1102,7 @@ export class Inventar {
   protected hinlegen(p: Stueck): void {
     const spot = firstFreeSpot(this.kiste(), this.stuecke(), p);
     if (!spot) return void this.hinweis.set(`No room for ${p.name} in the grid.`);
-    void this.setze(p, { ...spot, slot: undefined, tier: 'pack', unstowed: undefined });
+    void this.setze(p, { ...spot, slot: undefined, grip: undefined, tier: 'pack', unstowed: undefined });
   }
 
   /**
@@ -796,7 +1130,7 @@ export class Inventar {
    * Rasters liegt es dort, wenn es passt — dieselbe Prüfung wie beim Tippen.
    */
   protected ziehAn(ev: PointerEvent, p: Stueck): void {
-    if (!this.darf() || this.regel() !== 'grid' || ev.button > 0) return;
+    if (!this.darf() || (this.regel() !== 'grid' && !this.lage()) || ev.button > 0) return;
     const el = ev.currentTarget as HTMLElement;
     el.setPointerCapture?.(ev.pointerId);
     this.gezogen = false;
@@ -824,16 +1158,21 @@ export class Inventar {
     el.addEventListener('pointercancel', ende);
   }
 
-  /** Wo das gezogene Stück losgelassen wurde: eine Zelle dieses Rasters, sonst nichts. */
+  /** Wo das gezogene Stück losgelassen wurde: eine Hand (T-244), eine Zelle dieses Rasters, sonst nichts. */
   private fallen(p: Stueck, x: number, y: number): void {
     const unter = document.elementFromPoint(x, y) as HTMLElement | null;
+    const hand = unter?.closest<HTMLElement>('[data-hand]');
+    if (hand && this.host.nativeElement.contains(hand)) {
+      if (heldPlaceOf(p.kante.props) !== hand.dataset['hand']) this.ausruesten(p, hand.dataset['hand'] as HandPlace);
+      return;
+    }
     const zelle = unter?.closest<HTMLElement>('[data-x]');
     const raster = zelle?.closest<HTMLElement>('.raster');
     if (!zelle || !raster || raster.dataset['inv'] !== this.inventar().id || !this.host.nativeElement.contains(raster)) return;
     /* Abgelegt mit der Ankerzelle auf der Zelle unter dem Finger (REQ-402). */
     const { gx, gy } = placeByAnchor(Number(zelle.dataset['x']), Number(zelle.dataset['y']), defaultAnchor(p.rows, p.rot ?? 0, !!p.flip));
     if (!fitsAt(this.kiste(), this.stuecke(), p, gx, gy)) return void this.hinweis.set(`${p.name} doesn’t fit there.`);
-    void this.setze(p, { gx, gy, rot: p.rot ?? 0, slot: undefined, tier: 'pack', unstowed: undefined });
+    void this.setze(p, { gx, gy, rot: p.rot ?? 0, slot: undefined, grip: undefined, tier: 'pack', unstowed: undefined });
   }
 
   protected herausnehmen(p: Stueck): void {

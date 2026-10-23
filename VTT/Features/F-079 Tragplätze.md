@@ -17,14 +17,14 @@ Epic: [[EP-04 Spielererlebnis]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-7 Stories · 18 Punkte · 7 offen
+7 Stories · 18 Punkte · 1 teils · 6 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-334]] Tragende Ausrüstung als Behälter mit eigenem Raster | Spielleitung | 2 | offen |
 | [[REQ-335]] Verbund: Zellen, die gemeinsam ein Stück tragen | Spielleitung | 2 | offen |
 | [[REQ-336]] Festlegen, wo ein Gegenstand getragen werden darf | Spielleitung | 2 | offen |
-| [[REQ-337]] Sehen, was weichen muss | Spieler | 2 | offen |
+| [[REQ-337]] Sehen, was weichen muss | Spieler | 2 | teils |
 | [[REQ-338]] Körperplätze als Plan des Moduls | Spielleitung | 2 | offen |
 | [[REQ-339]] Tragende Ausrüstung an der Figur | Spieler | 2 | offen |
 | [[REQ-340]] Raster und Zonen eines Trägers in der Maske | Spielleitung | 3 | offen |

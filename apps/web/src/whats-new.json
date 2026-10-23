@@ -8,6 +8,14 @@
       "area": "Inventory"
     },
     {
+      "id": "2026-10-23-gear-hands",
+      "date": "2026-10-23",
+      "title": "Gear: take items into your hands",
+      "text": "In a character’s Gear tab, tap an item in the grid, then Main hand or Off hand — or drag it there. Two-handed weapons take both hands, a shield goes on the off hand, and versatile weapons switch grip with One hand / Two hands. A warning asks before anything is pushed out, and Your turn shows what your hands block, with the reason.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
       "id": "2026-10-23-item-shapes-overview",
       "date": "2026-10-23",
       "title": "Item shapes by group, with reference items",

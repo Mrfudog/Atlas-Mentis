@@ -1,11 +1,8 @@
 import { EnvironmentInjector, Injectable, computed, effect, inject, untracked, type Signal } from '@angular/core';
-import { castRelations, characterStats, entityName, handState, hasProficiency, inHand, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, spellcastingOf, turnActions, turnRows } from '@nw/model';
-import type { CharacterStats, Entity, HandState, HeldItem, KnownSpell, ProficiencyList, Relation, SheetHeader, TurnRow } from '@nw/model';
+import { castRelations, characterStats, entityName, handState, hasProficiency, heldPlaceOf, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, spellcastingOf, turnActions, turnRows, wieldItemOf } from '@nw/model';
+import type { CharacterStats, Entity, HandState, HeldItem, KnownSpell, ProficiencyList, Relation, SheetHeader, TurnRow, WieldItem } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
-
-/** Gegenstandsarten, die als Zauberfokus in der Hand gelten (PHB „Spellcasting Focus"). */
-const FOKUS = new Set(['spellcasting focus', 'staff', 'rod', 'wand']);
 
 /** Was die Spielerseite über eine Figur weiss — einmal gerechnet, von Kopf, Zug und Zaubern gelesen. */
 export interface FigurLage {
@@ -16,6 +13,10 @@ export interface FigurLage {
   kopf: Signal<SheetHeader | null>;
   gehalten: Signal<HeldItem[]>;
   haende: Signal<HandState>;
+  /** Jedes Stück im Inventar der Figur, wie das Ausrüsten es braucht — je `holds`-Kante (T-244). */
+  ausruestbar: Signal<Map<string, WieldItem>>;
+  /** Hat die Figur den hinterhältigen Angriff (eine Aktion des Statblocks so genannt)? */
+  hinterhaeltig: Signal<boolean>;
   /** Die Zauber der Figur als Kanten `casts` (eigene und gerechnete, T-309), mit dem Zauber, wo er da ist. */
   zauber: Signal<{ kante: Relation; spell: Entity | undefined }[]>;
   /** Gold bei der Figur und bei der Gruppe, in Kupfer (T-245 baut weiter). */
@@ -80,9 +81,8 @@ export class FigurDaten {
       const i = inventarId();
       return i ? b.voll().get(i) : undefined;
     });
-    const handKanten = computed(() =>
-      (inventar()?.relations ?? []).filter((k) => k.type === 'holds' && inHand({ slot: k.props?.['slot'] as string, tier: k.props?.['tier'] as string })),
-    );
+    const holdsKanten = computed(() => (inventar()?.relations ?? []).filter((k) => k.type === 'holds'));
+    const handKanten = computed(() => holdsKanten().filter((k) => heldPlaceOf(k.props) !== null));
 
     /* Die Gruppe (`memberOfParty`) und ihr Inventar — nur für das Gold. */
     const gruppeId = computed(() => (figur()?.relations ?? []).find((k) => k.type === 'memberOfParty')?.to);
@@ -141,8 +141,10 @@ export class FigurDaten {
       ].filter((x): x is string => !!x);
       if (ids.length) untracked(() => void b.holen(ids));
     }, { injector: this.injector });
+    /* Die Eigenschaften jedes Stücks im Inventar (T-244): auch was noch im
+       Raster liegt, muss wissen, ob es zweihändig ist. */
     effect(() => {
-      const eig = handKanten()
+      const eig = holdsKanten()
         .map((k) => b.voll().get(k.to))
         .flatMap((it) => (it?.relations ?? []).filter((k) => k.type === 'hasProperty').map((k) => k.to));
       if (eig.length) untracked(() => void b.holen(eig));
@@ -166,36 +168,35 @@ export class FigurDaten {
       if (fehlt.length) untracked(() => void b.holen(fehlt));
     }, { injector: this.injector });
 
-    const gehalten = computed<HeldItem[]>(() => {
+    /* Jedes Stück, wie das Ausrüsten es braucht (T-244, `wieldItemOf`): die
+       Eigenschaften aus `hasProperty`, die Übung aus der Rechnung T-239. */
+    const ausruestbar = computed(() => {
       const name = b.name();
-      return handKanten().map((k) => {
+      const p = uebungen();
+      const raus = new Map<string, WieldItem>();
+      for (const k of holdsKanten()) {
         const it = b.voll().get(k.to);
-        const item = (it?.components?.['Item'] ?? {}) as Record<string, unknown>;
-        const weapon = (it?.components?.['Weapon'] ?? {}) as Record<string, unknown>;
-        const armor = (it?.components?.['Armor'] ?? {}) as Record<string, unknown>;
-        const art = String(item['itemType'] ?? '').toLowerCase();
-        const shield = armor['armorType'] === 'shield' || art === 'shield';
-        const props = (it?.relations ?? []).filter((r) => r.type === 'hasProperty').map((r) => (name(r.to) ?? '').toLowerCase()).filter(Boolean);
-        /* Der Griff mit beiden Händen (vielseitig) kommt mit T-244; bis
-           dahin belegt nur eine zweihändige Waffe beide (`handState`). */
-        const slot: HeldItem['slot'] = k.props?.['slot'] === 'offHand' ? 'offHand' : 'mainHand';
-        const p = uebungen();
-        const proficient = shield
-          ? hasProficiency(p, 'shield')
-          : !it?.components?.['Weapon'] || hasProficiency(p, String(weapon['category'] ?? '')) || hasProficiency(p, entityName(it));
-        return {
-          id: k.to,
+        const props = (it?.relations ?? []).filter((r) => r.type === 'hasProperty').map((r) => name(r.to) ?? '').filter(Boolean);
+        raus.set(k.id, wieldItemOf(it, {
+          id: k.id,
+          article: k.to,
           name: it ? entityName(it) : name(k.to) ?? k.to,
-          slot,
-          properties: props,
-          shield,
-          focus: FOKUS.has(art),
-          proficient,
-          ...(typeof weapon['damage'] === 'string' ? { damage: weapon['damage'] as string } : {}),
-          ...(typeof weapon['damage2'] === 'string' ? { damage2: weapon['damage2'] as string } : {}),
-        };
-      });
+          propertyNames: props,
+          proficient: (w) => !!w && hasProficiency(p, w),
+        }));
+      }
+      return raus;
     });
+    /* Was in der Hand liegt — mit dem Griff von der Kante (`holds.props.grip`). */
+    const gehalten = computed<HeldItem[]>(() =>
+      handKanten().flatMap((k) => {
+        const w = ausruestbar().get(k.id);
+        const slot = heldPlaceOf(k.props);
+        if (!w || !slot) return [];
+        const { worn: _w, ...rest } = w;
+        return [{ ...rest, slot }];
+      }),
+    );
     const haende = computed(() => handState(gehalten()));
 
     const zauber = computed(() => castsKanten().map((kante) => ({ kante, spell: b.voll().get(kante.to) })));
@@ -260,6 +261,8 @@ export class FigurDaten {
       figur,
       statblock,
       ohneStatblock: computed(() => statblockId() === null),
+      ausruestbar,
+      hinterhaeltig: computed(() => teilIds().some((id) => /sneak attack/i.test(b.name()(id) ?? ''))),
       kopf,
       gehalten,
       haende,
