@@ -1890,6 +1890,10 @@ export class Api {
     return this.call(`/api/layers/${encodeURIComponent(id)}/takeover`, { method: 'POST' });
   }
   /** Eine eigene Ebene anlegen — sie gehört mir. */
+  /** Vorschläge für ein freies Feld (T-423): die Liste und was an Sichtbarem dasteht. */
+  suggest(field: string): Promise<{ field: string; values: { value: string; count: number; listed: boolean }[] }> {
+    return this.call(`/api/suggest?field=${encodeURIComponent(field)}`);
+  }
   createLayer(name: string): Promise<{ id: string; name: string }> {
     return this.call('/api/layers', { method: 'POST', body: JSON.stringify({ name }) });
   }

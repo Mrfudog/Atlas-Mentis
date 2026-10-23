@@ -124,6 +124,18 @@ export const enums: Record<string, EnumDef> = {
     values: ['combat', 'social', 'puzzle', 'exploration', 'hazard', 'trap', 'resource', 'story'],
   },
 
+  /**
+   * **Was für ein Ort** (T-423): von der Leitung gepflegt, unter Registry ›
+   * Lists. Die Werte stehen deutsch, weil sie Kampagneninhalt sind
+   * (CLAUDE.md › Sprache). `Place.kind` nennt die Zeile mit `suggest`: sie
+   * schlägt vor und hält nicht.
+   */
+  PlaceKind: {
+    name: 'PlaceKind',
+    label: 'Place type',
+    values: ['Reich', 'Stadt', 'Distrikt', 'Gasse', 'Gebäude', 'Raum', 'Wildnis'],
+  },
+
   State: {
     name: 'State',
     label: 'State',

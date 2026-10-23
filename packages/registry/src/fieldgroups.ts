@@ -1279,10 +1279,16 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
+        /* **Eine Liste, die die Leitung pflegt** (T-423): die Sorten von
+           Orten sind Kampagneninhalt — sie stehen als Zeile `PlaceKind` im
+           Register (Registry › Lists) und nicht mehr am Feld, und mit
+           `suggest` darf auch ein Wort stehen, das die Liste noch nicht
+           kennt. */
         kind: {
           type: 'string',
           title: 'Place type',
-          enum: ['Reich', 'Stadt', 'Distrikt', 'Gasse', 'Gebäude', 'Raum', 'Wildnis'],
+          enumRef: 'PlaceKind',
+          suggest: true,
         },
         environment: { type: 'string', suggest: true, title: 'Environment' },
         /* `settlementType` fiel weg: `kind` sagt es schon, mit
@@ -2691,7 +2697,9 @@ export const fieldGroups = {
            Gespräch kippt in einen Kampf. Leer heisst „nicht gesagt“, nicht
            „Kampf“ — die Migration 077 setzt `combat` nur, wo schon jemand
            mitkämpft. */
-        kind: { type: 'array', title: 'Kind', items: { type: 'string' }, enumRef: 'EncounterKind' },
+        /* Frei mit Vorschlag (T-423): die Liste `EncounterKind` schlägt vor,
+           ein eigenes Wort (Hindernis, Rast …) darf stehen. */
+        kind: { type: 'array', title: 'Kind', items: { type: 'string' }, enumRef: 'EncounterKind', suggest: true },
         xpBudget: { type: 'number', title: 'XP budget' },
         /* Wo der Kampf steht, während er läuft — die Initiative schreibt
            es. Es hiess `state`, wie drei weitere Felder in drei weiteren

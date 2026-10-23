@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-23-lists-suggest",
+      "date": "2026-10-23",
+      "title": "Own words in kind fields, place types as a list, colour picker",
+      "text": "Encounter kind and Place type now suggest the values of their list and those already in use, and take your own word too. Place types are a list under Registry › Lists. In the registry, any list field can hold or only suggest. Colour fields, like a faction’s colour, open a colour picker.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-23-arc-lists-scenes",
       "date": "2026-10-23",
       "title": "Arcs, scenes and sessions list what belongs to them",

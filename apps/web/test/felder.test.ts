@@ -319,3 +319,21 @@ describe('stehtDa', () => {
     }
   });
 });
+
+/* T-423: Farbe und „frei mit Vorschlag". */
+describe('eingabeArt — Farbe und Vorschlag (T-423)', () => {
+  it('eine Farbe bekommt den Farbwähler', () => {
+    expect(eingabeArt({ type: 'string', format: 'color' })).toBe('farbe');
+  });
+  it('suggest gewinnt über eine genannte Liste, ein Wort bleibt frei', () => {
+    expect(eingabeArt({ type: 'string', enumRef: 'PlaceKind', suggest: true })).toBe('vorschlag');
+    expect(eingabeArt({ type: 'string', suggest: true })).toBe('vorschlag');
+    expect(eingabeArt({ type: 'string', enumRef: 'PlaceKind' })).toBe('auswahl');
+  });
+  it('mehrere Werte mit suggest: Chips, ein eigenes Wort erlaubt', () => {
+    const p = { type: 'array', items: { type: 'string' }, enumRef: 'EncounterKind', suggest: true } as const;
+    expect(eingabeArt(p)).toBe('mehrfach');
+    expect(suchgruppen({ enums: { EncounterKind: { name: 'EncounterKind', values: ['combat'] } }, interfaces: {} } as never, p).frei).toBe(true);
+    expect(suchgruppen({ enums: { EncounterKind: { name: 'EncounterKind', values: ['combat'] } }, interfaces: {} } as never, { ...p, suggest: false }).frei).toBe(false);
+  });
+});

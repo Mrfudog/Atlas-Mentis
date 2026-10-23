@@ -124,6 +124,7 @@ import {
   linkCandidates,
   nextId,
   typeChain,
+  enumOptions,
   publisherOf,
   BOOK_PART_TYPES,
   CHAPTER_TYPE,
@@ -4266,6 +4267,41 @@ export function buildApp({
    * wartet auf niemanden (E-014 d) und steht nicht darin. `canReady` sagt,
    * ob dieser Betrachter den Knopf hat (`gm`, nicht `co-gm`).
    */
+  /**
+   * **Vorschläge für ein freies Feld** (T-423): `?field=Typ.feld`. Was die
+   * Liste des Feldes kennt (`enumOptions`, auch ohne Nutzung) und was an
+   * sichtbaren Artikeln dieser Art schon dasteht, das Häufigste zuerst.
+   * Nur für Felder mit `suggest` — sonst hält die Liste, und die Maske
+   * zeigt eine Auswahl. Gesiebt wie jede Route: was jemand nicht sieht,
+   * schlägt ihm nichts vor (CLAUDE.md › „nur aus sichtbaren Artikeln").
+   */
+  app.get<{ Querystring: { field?: string } }>('/api/suggest', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Not signed in.' });
+    const [typ, feld] = String(request.query.field ?? '').split('.');
+    const registry = await repo.getRegistry();
+    const prop = typ && feld ? registry.interfaces[typ]?.schema?.properties?.[feld] : undefined;
+    if (!prop) return reply.code(400).send({ error: `There is no field ${request.query.field ?? ''}. Name it as Type.field, e.g. Encounter.kind.` });
+    if (!prop.suggest || !typ || !feld) return reply.code(400).send({ error: `${typ}.${feld} does not suggest values; it is a fixed list or plain text. Turn on “suggests values in use” in the registry first.` });
+    const alle = await repo.listEntities();
+    const art = alle.filter((e) => typeChain(registry, primaryInterface(e)).includes(typ));
+    const sichtbar = await sieve(request, art, alle);
+    const zahl = new Map<string, number>();
+    for (const e of sichtbar) {
+      const wert = (e.components?.[typ] as Record<string, unknown> | undefined)?.[feld];
+      for (const w of Array.isArray(wert) ? wert : [wert]) {
+        if (typeof w !== 'string' || !w.trim()) continue;
+        zahl.set(w.trim(), (zahl.get(w.trim()) ?? 0) + 1);
+      }
+    }
+    const liste: string[] = prop.enumRef || prop.enum ? (enumOptions(registry, prop) ?? []) : [];
+    for (const w of liste) if (!zahl.has(w)) zahl.set(w, 0);
+    const values = [...zahl]
+      .map(([value, count]) => ({ value, count, listed: liste.includes(value) }))
+      .sort((x, y) => y.count - x.count || Number(y.listed) - Number(x.listed) || x.value.localeCompare(y.value));
+    return { field: `${typ}.${feld}`, values };
+  });
+
   app.get('/api/unready', async (request, reply) => {
     const user = await viewerOf(request);
     if (!user || !isLeitung(user)) return reply.code(403).send({ error: 'Das sieht die Leitung.' });

@@ -557,7 +557,11 @@ wiederkommen, werden sie neu geschrieben.
   Namen ihrer sichtbaren Artikel (Untertypen ja, Instanzen nein; `enumWhere`
   engt ein), und `Typ.feld` nennt die Liste eines Feldes
   (`Weapon.category`). Wer eine Art nennt, gibt `enumOptions()` die
-  sichtbaren Artikel mit. **Die Zeile hält, die Art schlägt vor:** ein
+  sichtbaren Artikel mit. **Frei mit Vorschlag** (T-423): mit `suggest`
+  schlägt auch eine Zeile nur vor — `Encounter.kind`, `Place.kind`
+  (`PlaceKind`); die Maske holt Liste und Werte in Gebrauch über
+  `GET /api/suggest`. Werte, die ein Ablauf liest, halten weiter.
+  **Die Zeile hält, die Art schlägt vor:** ein
   Feld, das eine Art nennt, prüft `validateEntity` nicht gegen die Liste
   (`enumHolds`) — ein Name ist der heutige Stand.
 - **Eine Zahl mit Grenzen ist eine Spanne** (`min`, `max`), keine

@@ -614,4 +614,13 @@ describe('enumRef auf eine Artikelart (M6)', () => {
     const codes = validateEntity(reg, e).filter((i) => i.code === 'value_not_allowed');
     expect(codes.map((i) => i.property)).toEqual(['saves']);
   });
+
+  /* T-423: „frei mit Vorschlag" — die Liste schlägt vor, ein eigenes Wort
+     darf stehen, wenn das Feld `suggest` sagt. */
+  it('mit suggest schlägt auch eine Zeile nur vor', () => {
+    const offen = { ...reg.interfaces['Sheet']!.schema!.properties['saves']!, suggest: true };
+    expect(enumHolds(reg, offen)).toBe(false);
+    expect(enumHolds(reg, { enum: ['a', 'b'], suggest: true })).toBe(false);
+    expect(enumHolds(reg, { enum: ['a', 'b'] })).toBe(true);
+  });
 });
