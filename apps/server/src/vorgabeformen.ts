@@ -162,6 +162,7 @@ export function registerVorgabeformen(app: FastifyInstance, deps: VorgabeformenD
     request: FastifyRequest,
     layerId: string | undefined,
     aenderung: (karte: Record<string, unknown> | undefined) => Record<string, unknown>,
+    nurZaehlen = false,
   ): Promise<{ code: number; body: unknown }> {
     const stand = await roh();
     const reg = await registry();
@@ -182,6 +183,7 @@ export function registerVorgabeformen(app: FastifyInstance, deps: VorgabeformenD
     let l: Entity | null = stand.map.get(id) ?? null;
     for (let versuch = 0; versuch < 5 && l; versuch += 1) {
       const karte = aenderung(l.components?.[SHAPE_DEFAULTS_CARD] as Record<string, unknown> | undefined);
+      if (nurZaehlen) return { code: 200, body: { layer: id } };
       try {
         const r = await schreibeGeprueft({ ...l, components: { ...l.components, [SHAPE_DEFAULTS_CARD]: karte } }, l.revision ?? null);
         if ('issues' in r) return { code: 422, body: { error: 'The change does not fit the layer. Check the reference item and the shape.', issues: r.issues } };
@@ -220,4 +222,28 @@ export function registerVorgabeformen(app: FastifyInstance, deps: VorgabeformenD
     const r = await aendern(request, typeof b['layer'] === 'string' ? b['layer'] : undefined, (k) => withShapeItem(k, request.params.id, patch as never));
     return reply.code(r.code).send(r.body);
   });
+
+  /**
+   * **Viele Werte auf einmal** (T-394 Schritt 5, E-127): Gruppen und Werte
+   * je Gegenstand werden Feld für Feld über die Karte gelegt
+   * (`mergeShapeDefaults`) — ein Schreibvorgang statt zweitausend. Mit
+   * `dryRun` wird nur gezählt, was neu wäre und was sich ändert.
+   */
+  app.put<{ Body: { layer?: unknown; shapeGroups?: unknown; shapeItems?: unknown; dryRun?: unknown } | null }>('/api/inventory/shapes', async (request, reply) => {
+    const b = request.body ?? {};
+    const neu = shapeDefaultsOf({ id: '_', name: '', interfaces: [], components: { [SHAPE_DEFAULTS_CARD]: { shapeGroups: b.shapeGroups, shapeItems: b.shapeItems } } } as Entity);
+    let zaehlung = { groups: { added: 0, changed: 0 }, items: { added: 0, changed: 0 } };
+    const r = await aendern(request, typeof b.layer === 'string' ? b.layer : undefined, (karte) => {
+      const alt = shapeDefaultsOf({ id: '_', name: '', interfaces: [], components: { [SHAPE_DEFAULTS_CARD]: karte ?? {} } } as Entity);
+      const ag = new Map(alt.groups.map((g) => [g.id, JSON.stringify(g)]));
+      const ai = new Map(alt.items.map((e) => [e.id, JSON.stringify(e)]));
+      const zusammen = mergeShapeDefaults([alt, neu]);
+      zaehlung = { groups: { added: 0, changed: 0 }, items: { added: 0, changed: 0 } };
+      for (const g of zusammen.groups) if (!ag.has(g.id)) zaehlung.groups.added++; else if (ag.get(g.id) !== JSON.stringify(g)) zaehlung.groups.changed++;
+      for (const e of zusammen.items) if (!ai.has(e.id)) zaehlung.items.added++; else if (ai.get(e.id) !== JSON.stringify(e)) zaehlung.items.changed++;
+      return { ...(karte ?? {}), shapeGroups: zusammen.groups, shapeItems: zusammen.items };
+    }, b.dryRun === true);
+    return reply.code(r.code).send(r.code === 200 ? { ...(r.body as object), ...zaehlung, dryRun: b.dryRun === true } : r.body);
+  });
 }
+

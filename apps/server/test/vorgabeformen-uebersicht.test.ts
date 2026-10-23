@@ -126,3 +126,29 @@ describe('gleichzeitig (T-394)', () => {
     expect(u.items.find((i) => i.id === 'arrow')?.group).toBe('A');
   });
 });
+
+describe('viele Werte auf einmal (T-394 Schritt 5)', () => {
+  it('legt Gruppen und Werte Feld für Feld über die Karte, mit Probelauf', async () => {
+    const t = await aufbau();
+    await t.als('Admin', 'PUT', '/api/inventory/shapes/items/arrow', { payload: { stackSize: 16 } });
+    const body = {
+      shapeGroups: [{ id: 'AM', name: 'Ammunition', rows: ['#', '#'], stackSize: 32 }],
+      shapeItems: [{ id: 'arrow', group: 'AM' }, { id: 'sword', group: 'AM', rows: ['###'] }],
+    };
+    const probe = await t.als('Admin', 'PUT', '/api/inventory/shapes', { payload: { ...body, dryRun: true } });
+    expect(probe.json()).toMatchObject({ dryRun: true, groups: { added: 1, changed: 0 }, items: { added: 1, changed: 1 } });
+    expect((await t.json<Uebersicht>('Admin', 'GET', '/api/inventory/shapes')).groups).toEqual([]);
+
+    const r = await t.als('Admin', 'PUT', '/api/inventory/shapes', { payload: body });
+    expect(r.json()).toMatchObject({ dryRun: false, groups: { added: 1 }, items: { added: 1, changed: 1 } });
+    const u = await t.json<Uebersicht>('Admin', 'GET', '/api/inventory/shapes');
+    /* Der Stapel von vorher bleibt, die Gruppe kommt dazu. */
+    expect(u.items.find((i) => i.id === 'arrow')?.set).toEqual({ id: 'arrow', stackSize: 16, group: 'AM' });
+    expect(u.items.find((i) => i.id === 'sword')).toMatchObject({ rows: ['###'], source: 'own' });
+  });
+
+  it('wer die Ebene nicht schreibt, bekommt 403', async () => {
+    const t = await aufbau();
+    expect((await t.als('Mira', 'PUT', '/api/inventory/shapes', { payload: { shapeGroups: [{ id: 'X', name: 'X' }] } })).statusCode).toBe(403);
+  });
+});
