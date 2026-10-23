@@ -128,6 +128,17 @@
           ]
         },
         {
+          "heading": "Equipping your hands",
+          "text": [
+            "Open your character and the Gear tab. At the top are your hands: Main hand and Off hand, each with what it holds and what drawing or stowing costs.",
+            "Tap the item you want in the grid (or in the list, or under “Not stowed”). The hands it may go into light up; on the right, “Where it can go” lists every place with ✓, ⚠ or ✗ and the reason.",
+            "Tap Main hand — or Put here in the list. A two-handed weapon takes both hands. For a versatile weapon, One hand / Two hands under the main hand switches the grip and the damage die.",
+            "Tap the shield, then Off hand. If the main hand holds something in two hands, a warning asks what to do: stow it, drop it (free) or cancel — a versatile weapon only goes to one hand.",
+            "Read the lines under the hands: without training a shield gives no AC bonus and blocks spellcasting. Open Combat: Your turn shows the blocked spells with 🔒 and the same reason.",
+            "Stow under a hand puts the item back into the first free place in the grid; when there is none it waits under “Not stowed”."
+          ]
+        },
+        {
           "heading": "Giving a character a +1 dagger",
           "text": [
             "Give the character a dagger as usual — bought, looted or handed over, it arrives as their own piece. Open the piece (from the inventory) and, under Enhancements, choose Add enhancement: +1 Weapon. Add Silvered too if you like; only enhancements whose “Variant applies to” fits are offered first, and one that does not fit is refused.",

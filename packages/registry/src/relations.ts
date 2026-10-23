@@ -766,6 +766,11 @@ export const relations: Record<string, RelationDef> = {
             'ringR1', 'ringR2', 'ringR3', 'ringR4', 'ringL1', 'ringL2', 'ringL3', 'ringL4',
             'neck1', 'neck2', 'neck3', 'neck4'],
         },
+        /* **Der Griff** (T-244): `two` heisst beide Hände — eine
+           vielseitige Waffe mit dem zweiten Würfel, eine zweihändige zum
+           Angreifen. An der Kante wie die Drehung: dieselbe Waffe liegt
+           hier in einer Hand und dort in zweien. Nur mit `slot: mainHand`. */
+        grip: { type: 'string', title: 'Grip', enum: ['one', 'two'], description: 'Two: held in both hands (versatile damage, or a two-handed weapon ready to attack).' },
         gx: { type: 'number', title: 'Grid column' },
         gy: { type: 'number', title: 'Grid row' },
         /* Die Drehung im Raster schrieb der Prototyp schon immer; hier

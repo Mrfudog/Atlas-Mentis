@@ -23,7 +23,6 @@
  */
 
 import { Injectable, computed, inject, signal } from '@angular/core';
-import daten from '../../whats-new.json';
 import { Api } from './api';
 import { Session } from './session';
 
@@ -58,7 +57,13 @@ export interface NeuStand {
 /** So weit zurück stehen Ids in der Liste; was älter ist, deckt `until`. */
 const FENSTER_TAGE = 120;
 
-export const EINTRAEGE: readonly NeuEintrag[] = (daten as { entries: NeuEintrag[] }).entries;
+/** Die Einträge, nachgeladen: die Datei wächst mit jedem Pull Request und
+ *  gehört nicht ins Startpaket (Grenze in `angular.json`) — der Punkt in der
+ *  Kopfleiste darf einen Augenblick später kommen. */
+export async function eintraegeLaden(): Promise<readonly NeuEintrag[]> {
+  const m = await import('../../whats-new.json');
+  return ((m.default ?? m) as { entries: NeuEintrag[] }).entries;
+}
 
 /** Ist dieser Eintrag neu für diesen Stand? Ohne Stand ist alles neu. */
 export function istNeu(e: NeuEintrag, stand: NeuStand | null): boolean {
@@ -108,13 +113,16 @@ export class Neues {
   private readonly session = inject(Session);
   private readonly _stand = signal<NeuStand | null | undefined>(undefined);
   private fuer: string | null = null;
+  private readonly _alle = signal<readonly NeuEintrag[]>([]);
+  private geladen?: Promise<void>;
 
-  /** Alle Einträge — die Verwaltung darf sie aufklappen. */
-  readonly alle = EINTRAEGE;
+  /** Alle Einträge — die Verwaltung darf sie aufklappen. Leer, bis
+   *  `eintraegeHolen()` sie gebracht hat. */
+  readonly alle = this._alle.asReadonly();
   /** Seit wann dieses Konto Einträge sieht (T-163). */
   readonly ab = computed(() => abKonto(this.session.user()?.createdAt));
   /** Was dieses Konto angeht: seit seiner Anlage. */
-  readonly eintraege = computed(() => seitKonto(EINTRAEGE, this.ab()));
+  readonly eintraege = computed(() => seitKonto(this._alle(), this.ab()));
   /** Wie viele Einträge neu sind; 0, solange der Stand nicht da ist — ein
    *  Punkt, der beim Laden aufblitzt, ist ein falscher Alarm. */
   readonly anzahl = computed(() => {
@@ -122,8 +130,20 @@ export class Neues {
     return s === undefined ? 0 : this.eintraege().filter((e) => istNeu(e, s)).length;
   });
 
+  /** Die Einträge holen — einmal; wer sie braucht, wartet darauf. */
+  eintraegeHolen(): Promise<void> {
+    return (this.geladen ??= eintraegeLaden().then(
+      (e) => this._alle.set(e),
+      () => {
+        /* Ohne Datei keine Einträge — beim nächsten Mal wieder versuchen. */
+        this.geladen = undefined;
+      },
+    ));
+  }
+
   /** Den Stand dieses Kontos holen — einmal je Konto. */
   async laden(): Promise<void> {
+    void this.eintraegeHolen();
     const wer = this.session.user()?.id ?? null;
     if (!wer || this.fuer === wer) return;
     this.fuer = wer;
@@ -155,7 +175,8 @@ export class Neues {
     if (this.session.viewAs() || !this.session.user()) return;
     /* Über alle Einträge: was vor der Anlage lag, gilt damit auch als
        gesehen, falls die Verwaltung es später aufklappt. */
-    const stand = standNach(this.alle);
+    await this.eintraegeHolen();
+    const stand = standNach(this._alle());
     this._stand.set(stand);
     try {
       await this.api.setPref('whatsNew', stand);
