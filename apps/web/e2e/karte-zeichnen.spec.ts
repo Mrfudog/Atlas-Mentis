@@ -74,24 +74,25 @@ test('walls: pan after a pause, undo a point and the last wall', async ({
 
   await fertig.click();
   await expect(leitung.locator('svg.sperren line.sperre')).toHaveCount(1);
+  /* Erst die Wand am Server abwarten: sonst trifft „0 Wände“ unten schon
+     vor diesem Schreiben zu (die Karte war leer), und das Neuladen kommt,
+     bevor das Zurücknehmen abgeschickt ist. */
+  const ctx = await api.als('leitung');
+  const waendeAmServer = async (): Promise<number> =>
+    (
+      (
+        (await (await ctx.get(`/api/entities/${karte.id}`)).json()) as {
+          components?: { Map?: { walls?: unknown[] } };
+        }
+      ).components?.Map?.walls ?? []
+    ).length;
+  await expect.poll(waendeAmServer).toBe(1);
   await expect(leitung.getByRole('button', { name: 'Undo', exact: true })).toBeEnabled();
   await leitung.keyboard.press('Control+z');
   await expect(leitung.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled();
   await expect(leitung.locator('svg.sperren line.sperre')).toHaveCount(0);
   /* Gespeichert, nicht nur gezeichnet: nach dem Neuladen bleibt sie weg. */
-  const ctx = await api.als('leitung');
-  await expect
-    .poll(
-      async () =>
-        (
-          (
-            (await (await ctx.get(`/api/entities/${karte.id}`)).json()) as {
-              components?: { Map?: { walls?: unknown[] } };
-            }
-          ).components?.Map?.walls ?? []
-        ).length,
-    )
-    .toBe(0);
+  await expect.poll(waendeAmServer).toBe(0);
   await leitung.reload();
   await leitung.getByRole('button', { name: 'Walls', exact: true }).click();
   await expect(leitung.locator('svg.sperren line.sperre')).toHaveCount(0);
