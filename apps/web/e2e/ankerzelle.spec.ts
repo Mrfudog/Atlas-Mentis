@@ -21,7 +21,7 @@ test('the cell you pick a piece by lands on the cell you tap', async ({ leitung,
     /* Angefasst an der rechten Zelle des Balkens (Form-Zelle 2,1 bei Lage 2,1 → Raster 4,2) — sobald das Stück liegt. */
     await expect(zelle(4, 2)).toHaveClass(/belegt/);
     await zelle(4, 2).click();
-    await expect(zelle(4, 2)).toHaveAttribute('data-griff', '');
+    await expect(zelle(4, 2)).toHaveAttribute('data-halt', '');
     /* Abgelegt auf 7,4: die Ankerzelle liegt dort, das Stück also bei 5,3. */
     await zelle(7, 4).click();
     await expect(zelle(7, 4)).toHaveClass(/belegt/);

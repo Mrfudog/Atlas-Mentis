@@ -299,7 +299,7 @@ interface Ziel {
           @for (z of zellen(); track z.key) {
             <button type="button" class="zelle" [attr.data-x]="z.x" [attr.data-y]="z.y"
                     [class.zu]="!z.offen && !formModus()" [class.aus]="!z.offen && formModus()"
-                    [class.belegt]="!!z.stueck" [class.gewaehlt]="!!z.stueck && z.stueck.key === wahl()" [class.griff]="z.griff" [attr.data-griff]="z.griff ? '' : null"
+                    [class.belegt]="!!z.stueck" [class.gewaehlt]="!!z.stueck && z.stueck.key === wahl()" [class.halt]="z.halt" [attr.data-halt]="z.halt ? '' : null"
                     [style.background]="z.stueck ? z.stueck.farbe : z.zone ? zonenFarbe(z.zone) : null"
                     [attr.aria-label]="zellLabel(z)" [title]="zellLabel(z)"
                     [disabled]="!darf() && !z.stueck"
@@ -450,7 +450,7 @@ interface Ziel {
     .zelle.aus { opacity: 0.25; border-style: dashed; }
     .zelle.gewaehlt { outline: 2px solid var(--accent); outline-offset: -2px; }
     /* Die Ankerzelle (REQ-402): hier angefasst, landet sie auf dem Zielfeld. */
-    .zelle.griff { box-shadow: inset 0 0 0 3px var(--heading); }
+    .zelle.halt { box-shadow: inset 0 0 0 3px var(--heading); }
     .kurz { pointer-events: none; }
     .werkzeug { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; align-items: center; }
     .werkzeug .an { background: var(--accent); color: var(--accent-ink); }
@@ -552,7 +552,7 @@ export class Inventar {
    * der es angefasst wurde, in seiner Form, wie sie liegt. Abgelegt wird so,
    * dass sie auf dem Zielfeld landet; ohne Wahl gilt `defaultAnchor`.
    */
-  protected readonly griff = signal<GrabAnchor | null>(null);
+  protected readonly halt = signal<GrabAnchor | null>(null);
   protected readonly offen = signal<ReadonlySet<string>>(new Set());
   protected readonly formModus = signal(false);
   protected readonly pinsel = signal('#');
@@ -667,14 +667,14 @@ export class Inventar {
         }
     }
     const gewaehlt = this.stuecke().find((p) => p.key === this.wahl() && pieceInShape(box, p));
-    const griff = gewaehlt ? (this.griff() ?? defaultAnchor(gewaehlt.rows, gewaehlt.rot ?? 0, !!gewaehlt.flip)) : null;
-    const griffZelle = gewaehlt && griff ? `${gewaehlt.gx! + griff.x},${gewaehlt.gy! + griff.y}` : '';
-    const out: { key: string; x: number; y: number; offen: boolean; zone: string; stueck: Stueck | null; anker: boolean; griff: boolean }[] = [];
+    const halt = gewaehlt ? (this.halt() ?? defaultAnchor(gewaehlt.rows, gewaehlt.rot ?? 0, !!gewaehlt.flip)) : null;
+    const haltZelle = gewaehlt && halt ? `${gewaehlt.gx! + halt.x},${gewaehlt.gy! + halt.y}` : '';
+    const out: { key: string; x: number; y: number; offen: boolean; zone: string; stueck: Stueck | null; anker: boolean; halt: boolean }[] = [];
     for (let y = 0; y < box.h; y++)
       for (let x = 0; x < box.w; x++) {
         const key = `${x},${y}`;
         const b = belegt.get(key);
-        out.push({ key, x, y, offen: filled(box, x, y), zone: zonen[key] ?? '', stueck: b?.stueck ?? null, anker: !!b?.anker, griff: key === griffZelle });
+        out.push({ key, x, y, offen: filled(box, x, y), zone: zonen[key] ?? '', stueck: b?.stueck ?? null, anker: !!b?.anker, halt: key === haltZelle });
       }
     return out;
   });
@@ -1015,14 +1015,14 @@ export class Inventar {
 
   protected waehle(key: string): void {
     this.hinweis.set(null);
-    this.griff.set(null);
+    this.halt.set(null);
     this.wahl.set(this.wahl() === key ? null : key);
   }
 
   /** Ein liegendes Stück an einer seiner Zellen wählen: diese Zelle wird sein Anker (REQ-402). */
   private anfassen(p: Stueck, x: number, y: number): void {
     this.waehle(p.key);
-    if (this.wahl() === p.key && this.liegtIm(p)) this.griff.set(grabAnchor(p.rows, p.rot ?? 0, !!p.flip, p.gx!, p.gy!, x, y));
+    if (this.wahl() === p.key && this.liegtIm(p)) this.halt.set(grabAnchor(p.rows, p.rot ?? 0, !!p.flip, p.gx!, p.gy!, x, y));
   }
 
   protected umschalten(id: string): void {
@@ -1064,12 +1064,12 @@ export class Inventar {
     /* Eine andere Zelle desselben Stücks: das ist ein neuer Anker, kein Abwählen (REQ-402). */
     if (z?.stueck && gewaehlt && z.stueck.key === gewaehlt.key) {
       const neu = grabAnchor(gewaehlt.rows, gewaehlt.rot ?? 0, !!gewaehlt.flip, gewaehlt.gx!, gewaehlt.gy!, x, y);
-      const alt = this.griff() ?? defaultAnchor(gewaehlt.rows, gewaehlt.rot ?? 0, !!gewaehlt.flip);
-      if (neu && (neu.x !== alt.x || neu.y !== alt.y)) return void this.griff.set(neu);
+      const alt = this.halt() ?? defaultAnchor(gewaehlt.rows, gewaehlt.rot ?? 0, !!gewaehlt.flip);
+      if (neu && (neu.x !== alt.x || neu.y !== alt.y)) return void this.halt.set(neu);
       return this.waehle(gewaehlt.key);
     }
     if (!gewaehlt || !this.darf()) return;
-    const { gx, gy } = placeByAnchor(x, y, this.griff() ?? defaultAnchor(gewaehlt.rows, gewaehlt.rot ?? 0, !!gewaehlt.flip));
+    const { gx, gy } = placeByAnchor(x, y, this.halt() ?? defaultAnchor(gewaehlt.rows, gewaehlt.rot ?? 0, !!gewaehlt.flip));
     if (!fitsAt(this.kiste(), this.stuecke(), gewaehlt, gx, gy)) {
       if (z?.stueck) return this.anfassen(z.stueck, x, y);
       this.hinweis.set(`${gewaehlt.name} doesn’t fit there.`);
@@ -1079,7 +1079,7 @@ export class Inventar {
   }
 
   protected drehen(p: Stueck): void {
-    this.griff.set(null);
+    this.halt.set(null);
     const rot = ((p.rot ?? 0) + 90) % 360;
     if (this.liegtIm(p) && !fitsAt(this.kiste(), this.stuecke(), p, p.gx!, p.gy!, rot)) {
       this.hinweis.set(`Turned, ${p.name} doesn’t fit here — take it off the grid first.`);
@@ -1090,7 +1090,7 @@ export class Inventar {
 
   /** **Spiegeln** (T-142): wie Drehen, an der Kante (`holds.props.flip`), nur wo die Form es ändert. */
   protected spiegeln(p: Stueck): void {
-    this.griff.set(null);
+    this.halt.set(null);
     const flip = !p.flip;
     if (this.liegtIm(p) && !fitsAt(this.kiste(), this.stuecke(), p, p.gx!, p.gy!, p.rot ?? 0, flip)) {
       this.hinweis.set(`Mirrored, ${p.name} doesn’t fit here — take it off the grid first.`);
