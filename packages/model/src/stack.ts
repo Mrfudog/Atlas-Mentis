@@ -1108,6 +1108,16 @@ export function activatingIndex(entities: Map<EntityId, Entity>): Map<EntityId, 
  * Kante steht und nicht an der Spezifität der Ebene hängt. Die übrigen
  * Kanten bleiben, wie sie sind.
  */
+/**
+ * **Die Id einer neuen Kante `activates`** (T-410): mit der Kampagne
+ * vorn. In Postgres ist `relation.id` eindeutig über alle Artikel; ohne
+ * die Kampagne stiess die Kante der zweiten Kampagne, die dieselbe Ebene
+ * aufschaltet, auf die der ersten. Eine bestehende Kante behält ihre Id.
+ */
+export function activatesId(campaign: Entity, to: EntityId, mode?: string): string {
+  return `${campaign.id}~${ACTIVATES_RELATION}-${mode ? `${mode}-` : ''}${to}`;
+}
+
 export function withStack(campaign: Entity, layerIds: readonly EntityId[]): Entity {
   const alt = aufschalten(campaign);
   const ins = new Set(layerIds);
@@ -1119,7 +1129,7 @@ export function withStack(campaign: Entity, layerIds: readonly EntityId[]): Enti
   );
   const neu: Rel[] = [...new Set(layerIds)].map((to, i) => ({
     /* Eine Kante, die bleibt, behält ihre Id. */
-    id: alt.find((r) => r.to === to)?.id ?? `${ACTIVATES_RELATION}-${to}`,
+    id: alt.find((r) => r.to === to)?.id ?? activatesId(campaign, to),
     type: ACTIVATES_RELATION,
     to,
     props: { ...(alt.find((r) => r.to === to)?.props ?? {}), order: (i + 1) * 10 },
@@ -1140,7 +1150,7 @@ export function withCompare(campaign: Entity, layerIds: readonly EntityId[]): En
   const neu: Rel[] = [...new Set(layerIds)]
     .filter((to) => !imSpiel.has(to))
     .map((to, i) => ({
-      id: alt.find((r) => r.to === to)?.id ?? `${ACTIVATES_RELATION}-${COMPARE_MODE}-${to}`,
+      id: alt.find((r) => r.to === to)?.id ?? activatesId(campaign, to, COMPARE_MODE),
       type: ACTIVATES_RELATION,
       to,
       /* Die Auswahl (T-105) bleibt an der Kante. */
@@ -1229,7 +1239,7 @@ export function withOff(campaign: Entity, layerIds: readonly EntityId[]): Entity
   const neu: Rel[] = [...new Set(layerIds)]
     .filter((to) => !imSpiel.has(to))
     .map((to) => ({
-      id: alt.find((r) => r.to === to)?.id ?? `${ACTIVATES_RELATION}-${OFF_MODE}-${to}`,
+      id: alt.find((r) => r.to === to)?.id ?? activatesId(campaign, to, OFF_MODE),
       type: ACTIVATES_RELATION,
       to,
       props: { mode: OFF_MODE },
