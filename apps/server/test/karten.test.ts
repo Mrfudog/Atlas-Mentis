@@ -212,7 +212,9 @@ describe('/api/play', () => {
      und die gewählte Karte lag in Play nie auf dem Tisch. */
   it('reads the map the session form writes (card Session)', async () => {
     const { hole, repo } = await aufbau();
-    const s3 = { ...(await repo.getEntity('s_1'))!, id: 's_3', components: { Identity: { name: 'Abend 3', id: 'session-s_3', aliases: [] }, Time: { sort: 3 }, Session: { activeMap: 'gruft' } } };
+    const s1 = (await repo.getEntity('s_1'))!;
+    /* Eine Kopie braucht eigene Kanten-Ids — sie sind eindeutig über alle Artikel (T-410). */
+    const s3 = { ...s1, relations: (s1.relations ?? []).map((r) => ({ ...r, id: r.id.replace(/^s_1/, 's_3') })), id: 's_3', components: { Identity: { name: 'Abend 3', id: 'session-s_3', aliases: [] }, Time: { sort: 3 }, Session: { activeMap: 'gruft' } } };
     await repo.putEntity(s3);
     const p = (await hole('Mira', '/api/play')).json();
     expect(p).toMatchObject({ session: 's_3', map: 'gruft' });

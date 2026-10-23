@@ -9,7 +9,7 @@
 import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
 import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
-import { RevisionConflict } from './repo.js';
+import { RelationIdTaken, RevisionConflict } from './repo.js';
 import type { EventFilter, LayerGrant, ListFilterRow, PutOptions, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
 import type { ApiToken, Invite, TokenScope, User } from './auth.js';
 
@@ -396,6 +396,13 @@ export class PgRepository implements Repository {
       /* Zwei legen denselben Artikel gleichzeitig an: der zweite ist zu spät. */
       if (options.expectRevision === null && (error as { code?: string }).code === '23505') {
         throw new RevisionConflict(entity.id, null, 1);
+      }
+      /* Eine Kanten-Id, die ein anderer Artikel schon trägt (T-410). */
+      const pg = error as { code?: string; constraint?: string; table?: string; detail?: string };
+      if (pg.code === '23505' && (pg.constraint === 'relation_pkey' || pg.table === 'relation')) {
+        const id = /\(id\)=\((.*)\)/.exec(pg.detail ?? '')?.[1] ?? '';
+        const bei = id ? await this.pool.query<Row>('select from_id from relation where id = $1', [id]).catch(() => null) : null;
+        throw new RelationIdTaken(id, String(bei?.rows[0]?.['from_id'] ?? ''));
       }
       throw error;
     } finally {

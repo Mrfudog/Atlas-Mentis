@@ -36,6 +36,21 @@ export class RevisionConflict extends Error {
   }
 }
 
+/**
+ * **Eine Kanten-Id ist schon an einem anderen Artikel vergeben** (T-410).
+ * In Postgres ist `relation.id` der Primärschlüssel über alle Artikel;
+ * der Speicher im Test prüft dasselbe, sonst sieht ihn kein Test. Am Ende
+ * steht eine 409 mit Ausweg statt einer 500.
+ */
+export class RelationIdTaken extends Error {
+  constructor(
+    readonly id: string,
+    readonly entity: string,
+  ) {
+    super(`Kanten-Id ${id} ist schon vergeben (an ${entity})`);
+  }
+}
+
 /** Wogegen geschrieben wird: eine Revision, oder `null` für „neu". Ohne
  *  Angabe wird nicht geprüft — das tun Einfuhr, Massenänderung und die
  *  Folgeschreiben einer Route, die selbst schon geprüft hat. */
@@ -315,6 +330,14 @@ export class InMemoryRepository implements Repository {
     const vorher = this.entities.get(entity.id)?.revision ?? null;
     if (options.expectRevision !== undefined && options.expectRevision !== vorher) {
       throw new RevisionConflict(entity.id, options.expectRevision, vorher);
+    }
+    /* Wie der Primärschlüssel `relation.id` in Postgres (T-410). */
+    const eigene = new Set((entity.relations ?? []).map((r) => r.id));
+    if (eigene.size < (entity.relations ?? []).length) throw new RelationIdTaken([...eigene][0] ?? '', entity.id);
+    for (const [andererId, anderer] of this.entities) {
+      if (andererId === entity.id) continue;
+      const doppelt = (anderer.relations ?? []).find((r) => eigene.has(r.id));
+      if (doppelt) throw new RelationIdTaken(doppelt.id, andererId);
     }
     const stored: Entity = {
       ...structuredClone(entity),
