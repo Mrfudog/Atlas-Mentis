@@ -28,6 +28,7 @@ import {
   isGroupLayer,
   isReadingNode,
   layersInGroup,
+  looseParts,
   partsIndex,
   primaryInterface,
   readingOrder,
@@ -35,6 +36,7 @@ import {
   replacedIds,
   type ReadingNode,
   isLayer,
+  typeChain,
 } from '@nw/model';
 import type { Entity } from '@nw/model';
 import type { User } from './auth.js';
@@ -448,7 +450,24 @@ export function registerLesen(
       relations: alles.flatMap((e) => e.relations ?? []),
     });
     for (const e of alles) refs.names[e.id] = entityName(e);
-    return { id: ganzes.id, parts, refs };
+    /* **Was ohne Rang daran hängt** (T-422, REQ-427): an einer Story-Art
+       (Arc, Session, Scene …) die Szenen und Begegnungen, die `partOf`
+       ohne `rank` auf sie zeigen — die Gruppe ihre Begegnungen, die Session,
+       was zu ihr gehört. Nicht im Lesefluss, also eine eigene Liste. Ein
+       Ort mit Unterorten bekommt keine: dort ist es Geographie, nicht
+       Erzählung. */
+    const registry = await deps.repo.getRegistry();
+    const erzaehlt = (e: Entity) => {
+      const kette = typeChain(registry, primaryInterface(e));
+      return kette.includes('Story') || kette.includes('Encounter');
+    };
+    const lose = typeChain(registry, primaryInterface(ganzes)).includes('Story')
+      ? auch.flatMap((id) => looseParts(stand.alle, id)).filter((e) => erzaehlt(e) && !gesehen.has(e.id) && gesehen.add(e.id))
+      : [];
+    const loseSichtbar = await gesiebt(request, lose, stand);
+    const contains = lose.filter((e) => loseSichtbar.has(e.id)).map((e) => ({ id: e.id, entity: loseSichtbar.get(e.id)! }));
+    for (const c of contains) refs.names[c.id] = entityName(c.entity);
+    return { id: ganzes.id, parts, contains, refs };
   });
 
   app.put<{ Params: { layer: string }; Body: { id?: unknown } | null }>('/api/read/:layer/position', async (request, reply) => {
