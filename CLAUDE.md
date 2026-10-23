@@ -345,10 +345,16 @@ wiederkommen, werden sie neu geschrieben.
   (`POST /api/layers/:layer/takeover`: Inhalt in die Kampagnenebene, leere
   Ebene weg).
   **Die Schreibebene wählt jedes Konto selbst** (T-161, `schreibebene.ts`):
-  im Popup der Kopfleiste unter seinen Zielebenen, gespeichert am Server je
-  Konto und Kampagne (`writeLayer`, nur über `PUT /api/layers/write`),
-  beim Lesen gegen `zielEbenen` geprüft — fällt sie weg, gilt die Vorgabe
-  (`grundEbene`) mit Hinweis. Anlegen nimmt sie, eine genannte Ebene geht
+  im Popup der Kopfleiste unter seinen **Schreibzielen** (`schreibZiele`,
+  T-418: die Zielebenen und jede Ebene ausserhalb des Stapels, in der es
+  schreibt — die Verwaltung jede ausser Gruppen und fremden
+  Spielerebenen; die ausserhalb als `inPlay: false`, „not in play"),
+  gespeichert am Server je Konto und Kampagne (`writeLayer`, nur über
+  `PUT /api/layers/write`), beim Lesen gegen die Schreibziele geprüft —
+  fällt das Recht weg, gilt die Vorgabe (`grundEbene`) mit Hinweis.
+  Dieselbe Liste gilt beim Anlegen mit genannter Ebene und beim
+  Verschieben am Artikel; Fassungen und Übernahme bleiben bei
+  `zielEbenen`, denn eine Fassung ausserhalb des Stapels gälte nirgends. Anlegen nimmt sie, eine genannte Ebene geht
   vor; Fassungen und Übernahme nehmen nur eine *gewählte*. Die Verwaltung
   legt ohne Wahl weiter ausserhalb jeder Ebene an.
   **Gewählt schlägt gerechnet** (T-176): auch Account › Layers wählt

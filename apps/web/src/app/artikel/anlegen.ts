@@ -77,10 +77,14 @@ import { mitnahmeParams } from '../figur/mitnahme';
             <span>Layer</span>
             <select [value]="ebene()" (change)="ebene.set($any($event.target).value)">
               @for (l of wahlEbenen(); track l.id) {
-                <option [value]="l.id" [selected]="l.id === ebene()">{{ l.name }}{{ l.id === w.layer?.id ? ' (write layer)' : '' }}</option>
+                <option [value]="l.id" [selected]="l.id === ebene()">{{ l.name }}{{ l.id === w.layer?.id ? ' (write layer)' : '' }}{{ l.inPlay === false ? ' — not in this campaign' : '' }}</option>
               }
             </select>
           </label>
+          <!-- Ausserhalb des Stapels (T-418): angelegt wird dort, gezeigt erst, wenn die Kampagne die Ebene aufschaltet. -->
+          @if (ebeneAusserhalb()) {
+            <p class="hinweis ziel">That layer is not turned on in this campaign: the new article will not show here until it is.</p>
+          }
         } @else {
           <p class="hinweis ziel">Goes to <b>{{ w.layer?.name ?? 'no layer' }}</b>.</p>
         }
@@ -203,6 +207,7 @@ export class Anlegen {
 
   /** Die Ebenen, in die hier angelegt werden kann (T-161): die wählbaren aus der Kopfleiste. */
   protected readonly wahlEbenen = computed(() => (this.stapel.schreib()?.options ?? []).filter((o) => o.selectable));
+  protected readonly ebeneAusserhalb = computed(() => this.wahlEbenen().some((o) => o.id === this.ebene() && o.inPlay === false));
   /** Für diesen einen Artikel; vorgewählt die Schreibebene. */
   protected readonly ebene = linkedSignal(() => this.stapel.schreib()?.layer?.id ?? '');
 

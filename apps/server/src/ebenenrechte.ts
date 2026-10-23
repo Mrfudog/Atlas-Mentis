@@ -65,6 +65,8 @@ interface Deps {
   viewerOf(request: FastifyRequest): Promise<User | null>;
   schreibEbenen(user: User | null, map: Map<string, Entity>): Promise<Set<string>>;
   zielEbenen(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity[]>;
+  /** Wohin geschrieben werden darf, auch ausserhalb des Stapels (T-418). */
+  schreibZiele(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Array<{ layer: Entity; inPlay: boolean }>>;
   kampagnenEbene(map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
   vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
   schreibEbene(
@@ -92,7 +94,7 @@ const NAME_MAX = 80;
 
 export function registerEbenenrechte(
   app: FastifyInstance,
-  { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene, vorgabeEbene, schreibEbene }: Deps,
+  { repo, viewerOf, schreibEbenen, zielEbenen, schreibZiele, kampagnenEbene, vorgabeEbene, schreibEbene }: Deps,
 ): void {
   const nein = (reply: FastifyReply, code: number, error: string) => reply.code(code).send({ error });
   const bestand = async () => new Map((await repo.listEntities()).map((e) => [e.id, e]));
@@ -196,8 +198,10 @@ export function registerEbenenrechte(
     const map = await bestand();
     const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
     const s = await schreibEbene(user, map, kampagne);
-    const ziele = await zielEbenen(user, map, kampagne);
-    const zielIds = ziele.map((l) => l.id);
+    /* Auch Ebenen ausserhalb des Stapels (T-418): wählbar, mit `inPlay: false`. */
+    const ziele = await schreibZiele(user, map, kampagne);
+    const zielIds = ziele.map((x) => x.layer.id);
+    const imSpiel = new Set(ziele.filter((x) => x.inPlay).map((x) => x.layer.id));
     const kurz = (l: Entity | null | undefined) => (l ? { id: l.id, name: entityName(l) } : null);
     const kEbene = await kampagnenEbene(map, kampagne);
     const spieler = spielerEbenen(await repo.layerGrants());
@@ -224,23 +228,28 @@ export function registerEbenenrechte(
                       ? 'admin'
                       : 'gm';
         const selectable = zielIds.includes(l.id);
-        const why = selectable
-          ? undefined
-          : isGroupLayer(l)
+        const inPlay = imSpiel.has(l.id);
+        const why = !selectable
+          ? isGroupLayer(l)
             ? 'A group of layers — articles go into one layer.'
-            : 'Not switched on in this campaign.';
+            : 'Not switched on in this campaign.'
+          : !inPlay
+            ? 'Not switched on in this campaign — what you put there does not show here until the campaign turns it on.'
+            : undefined;
         return {
           id: l.id,
           name: entityName(l),
           reason,
           ...(sp && sp.userId !== user.id ? { player: namen.get(sp.userId) ?? sp.userId } : {}),
           selectable,
+          inPlay,
           ...(why ? { why } : {}),
         };
       })
       .sort(
         (a, b) =>
           Number(b.selectable) - Number(a.selectable) ||
+          Number(b.inPlay) - Number(a.inPlay) ||
           (zielIds.indexOf(a.id) + 1 || 1e9) - (zielIds.indexOf(b.id) + 1 || 1e9) ||
           a.name.localeCompare(b.name, 'de'),
       );
@@ -272,8 +281,8 @@ export function registerEbenenrechte(
     if (!kampagne) return nein(reply, 409, 'Es läuft keine Kampagne.');
     const roh = request.body?.layer;
     const layer = typeof roh === 'string' && roh ? roh : null;
-    if (layer && !(await zielEbenen(user, map, kampagne)).some((l) => l.id === layer)) {
-      return nein(reply, 403, 'In diese Ebene schreibst du in dieser Kampagne nicht.');
+    if (layer && !(await schreibZiele(user, map, kampagne)).some((x) => x.layer.id === layer)) {
+      return nein(reply, 403, 'You do not write in this layer. Choose one of the layers listed under “Writes to”.');
     }
     await repo.putPref(user.id, WRITE_LAYER_PREF, mitWahl(await repo.getPrefs(user.id), kampagne.id, layer));
     return schreibStand(user);
@@ -313,8 +322,8 @@ export function registerEbenenrechte(
     if (!kampagne) return nein(reply, 409, 'Es läuft keine Kampagne.');
     const l = map.get(request.params.layer);
     if (!istEbene(l)) return nein(reply, 404, 'Diese Ebene gibt es nicht.');
-    if (!(await zielEbenen(ziel, map, kampagne)).some((x) => x.id === l.id)) {
-      return nein(reply, 409, `${ziel.name} schreibt nicht in „${entityName(l)}", oder sie ist in ${entityName(kampagne)} nicht aufgeschaltet.`);
+    if (!(await schreibZiele(ziel, map, kampagne)).some((x) => x.layer.id === l.id)) {
+      return nein(reply, 409, `${ziel.name} does not write in “${entityName(l)}”. Give the account the layer first (Account › Layers).`);
     }
     const wahl = (await repo.getPrefs(ziel.id))[WRITE_LAYER_PREF];
     await repo.putPref(ziel.id, WRITE_LAYER_PREF, { ...(wahl && typeof wahl === 'object' ? wahl : {}), [kampagne.id]: l.id });

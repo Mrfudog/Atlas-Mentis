@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "id": "2026-10-23-write-outside-campaign",
+      "date": "2026-10-23",
+      "title": "Write into layers outside the campaign layer",
+      "text": "Writes to in the header, the Layer field in Edit and New article now offer every layer you write in — the administration also ones it does not own, like an imported rulebook. Layers this campaign does not turn on are marked “not in play”: what you put there shows here only once the campaign turns them on.",
+      "area": "Campaign"
+    },
+    {
       "id": "2026-10-23-shared-layer-on",
       "date": "2026-10-23",
       "title": "Turn on layers that other campaigns already use",

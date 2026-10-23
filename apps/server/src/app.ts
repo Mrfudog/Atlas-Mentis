@@ -671,7 +671,8 @@ export function buildApp({
     if (!user || user.disabledAt || !kampagne) return { layer: grund, grund, chosen: null, dropped: null };
     const wahl = gewaehlteEbene(await repo.getPrefs(user.id), kampagne.id);
     if (!wahl) return { layer: grund, grund, chosen: null, dropped: null };
-    const l = (await zielEbenen(user, map, kampagne)).find((x) => x.id === wahl);
+    /* Gewählt werden darf auch eine Ebene ausserhalb des Stapels (T-418). */
+    const l = (await schreibZiele(user, map, kampagne)).find((x) => x.layer.id === wahl)?.layer;
     return l ? { layer: l, grund, chosen: wahl, dropped: null } : { layer: grund, grund, chosen: wahl, dropped: wahl };
   }
 
@@ -703,6 +704,46 @@ export function buildApp({
       .filter((l) => !isGroupLayer(l) && schreibt.has(l.id))
       .reverse();
     return [...imSpiel.filter((l) => l.id === eigene?.id), ...imSpiel.filter((l) => l.id !== eigene?.id)];
+  }
+
+  /**
+   * **Wohin dieses Konto schreiben darf** (T-418, REQ-417): die Zielebenen
+   * und dazu die Ebenen ausserhalb des Stapels, in denen es schreibt — die
+   * Verwaltung jede Ebene ausser Gruppen und fremden Spielerebenen. Für
+   * „Writes to", das Anlegen und das Verschieben am Artikel; Fassungen und
+   * die Vorgabe bleiben bei `zielEbenen`, denn eine Fassung ausserhalb des
+   * Stapels gälte nirgends. Im Spiel zuerst, in der Reihenfolge von
+   * `zielEbenen`; was nicht aufgeschaltet ist, trägt `inPlay: false`.
+   */
+  async function schreibZiele(
+    user: User | null,
+    map: Map<string, Entity>,
+    kampagne: Entity | null,
+  ): Promise<Array<{ layer: Entity; inPlay: boolean }>> {
+    if (!user || user.disabledAt || !kampagne) return [];
+    const imSpiel = await zielEbenen(user, map, kampagne);
+    const stapel = new Set(resolvedStack(map, kampagne).map((l) => l.id));
+    const spieler = spielerEbenen(await repo.layerGrants());
+    const fremdeSpielerebene = (id: string) => {
+      const sp = spieler.get(id);
+      return !!sp && sp.userId !== user.id;
+    };
+    const kandidaten = user.isAdmin
+      ? [...map.values()].filter((e) => isLayer(e)).map((e) => e.id)
+      : [...(await schreibEbenen(user, map))];
+    /* Die Verwaltung schreibt jede Ebene im Spiel, nicht nur ihre eigenen. */
+    const dazuImSpiel = user.isAdmin
+      ? resolvedStack(map, kampagne).filter((l) => !isGroupLayer(l) && !fremdeSpielerebene(l.id) && !imSpiel.some((x) => x.id === l.id))
+      : [];
+    const draussen = kandidaten
+      .map((id) => map.get(id))
+      .filter((l): l is Entity => !!l && isLayer(l) && !isGroupLayer(l) && !stapel.has(l.id) && !fremdeSpielerebene(l.id))
+      .sort((a, b) => entityName(a).localeCompare(entityName(b)));
+    return [
+      ...imSpiel.map((layer) => ({ layer, inPlay: true })),
+      ...dazuImSpiel.reverse().map((layer) => ({ layer, inPlay: true })),
+      ...draussen.map((layer) => ({ layer, inPlay: false })),
+    ];
   }
 
   /** Was ein Konto schreiben darf: seine Figur und was an ihr hängt, was
@@ -1108,7 +1149,7 @@ export function buildApp({
   /* Einladungen, Kampagnen, Mitglieder und Konten: `verwaltung.ts` (W3). */
   registerVerwaltung(app, { repo, viewerOf });
   /* Eigene Ebenen und wer darin schreibt: `ebenenrechte.ts` (T-098). */
-  registerEbenenrechte(app, { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene, vorgabeEbene, schreibEbene });
+  registerEbenenrechte(app, { repo, viewerOf, schreibEbenen, zielEbenen, schreibZiele, kampagnenEbene, vorgabeEbene, schreibEbene });
 
   app.post('/api/logout', async (request, reply) => {
     const token = request.cookies?.[COOKIE];
@@ -3680,7 +3721,8 @@ export function buildApp({
       let spielerin = false;
       if (user && !user.isAdmin) {
         const kampagne = currentCampaign(stand.map, registry.settings ?? null);
-        const ziele = await zielEbenen(user, stand.map, kampagne);
+        /* Genannt oder gewählt werden darf auch eine Ebene ausserhalb des Stapels (T-418). */
+        const ziele = (await schreibZiele(user, stand.map, kampagne)).map((x) => x.layer);
         const genannt = relations.filter((r) => r.type === 'inLayer').map((r) => r.to);
         const spielt = !!kampagne && user.roles?.[kampagne.id] === 'player';
         /* Die Ebene gibt der Server, nicht die Maske: angelegt wird in eine
@@ -3692,7 +3734,7 @@ export function buildApp({
         let ziel =
           ziele.find((l) => genannt.includes(l.id)) ??
           ziele.find((l) => l.id === wahl?.id) ??
-          (spielt ? null : (ziele[0] ?? null));
+          (spielt ? null : ((await zielEbenen(user, stand.map, kampagne))[0] ?? null));
         /* Als Spielerin in die Vorgabe: die eigene Spielerebene, sonst die
            Ebene der Kampagne (T-164). Was dort liegt, hat sie angelegt. */
         const vorgabe = spielt ? await grundEbene(user, stand.map, kampagne) : null;
@@ -3928,7 +3970,7 @@ export function buildApp({
         }
         const map = new Map((await repo.listEntities()).map((e) => [e.id, e]));
         const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
-        const ziele = new Set((await zielEbenen(wer, map, kampagne)).map((l) => l.id));
+        const ziele = new Set((await schreibZiele(wer, map, kampagne)).map((x) => x.layer.id));
         const fremd = wechsel.added.filter((l) => !ziele.has(l));
         if (fremd.length) {
           const namen = fremd.map((l) => (map.get(l) ? entityName(map.get(l)!) : l)).join(', ');

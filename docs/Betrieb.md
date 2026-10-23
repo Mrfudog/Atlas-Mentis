@@ -1142,7 +1142,8 @@ Verweise im Fliesstext auf gelöschte Artikel bleiben stehen; `checks
 brokenLinks` zählt sie.
 
 **Die Schreibebene wählen** (T-176): *Make default* an einer Ebene, in der
-man schreibt und die im Spiel ist, legt fest, wohin neue Artikel gehen
+man schreibt — seit T-418 auch einer, die die Kampagne nicht aufschaltet —,
+legt fest, wohin neue Artikel gehen
 (`PUT /api/layers/<ebene>/default`, die Verwaltung auch für ein anderes
 Konto mit `{ "user": "<konto-id>" }`; zurück: `DELETE /api/layers/default`).
 Gespeichert ist es als Kontoeinstellung `writeLayer` je Kampagne. Die

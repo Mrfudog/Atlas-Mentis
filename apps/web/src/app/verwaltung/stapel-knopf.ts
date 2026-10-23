@@ -1,7 +1,8 @@
 import type { ElementRef } from '@angular/core';
 import { Component, HostListener, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import type { SchreibOption } from '../kern/api';
+import type { SchreibOption, Schreibstand } from '../kern/api';
 import { Stapel } from '../kern/stapel';
 import { KampagnenEbenenListe } from './ebenen';
 import { SichtKnopf } from './sicht-knopf';
@@ -32,7 +33,7 @@ import { SichtKnopf } from './sicht-knopf';
  */
 @Component({
   selector: 'nw-stapel',
-  imports: [RouterLink, KampagnenEbenenListe, SichtKnopf],
+  imports: [RouterLink, NgTemplateOutlet, KampagnenEbenenListe, SichtKnopf],
   template: `
     @if (stapel.laufend(); as k) {
       @if (!vollbild()) {
@@ -48,9 +49,12 @@ import { SichtKnopf } from './sicht-knopf';
           <span class="kname">{{ k.name }}</span>
           <span class="kzahl">{{ zahlText() }}</span>
           @if (stapel.schreib(); as w) {
-            <span class="schreib" [class.weg]="!!w.dropped">
+            <span class="schreib" [class.weg]="!!w.dropped" [class.ausserhalb]="schreibAusserhalb()">
               <span class="lang">Writes to</span><span class="kurz" aria-hidden="true">✎</span>
               <span class="sname">{{ schreibName() }}</span>
+              @if (schreibAusserhalb()) {
+                <span class="marke" title="This layer is not turned on in this campaign: what you create there does not show here.">not in play</span>
+              }
             </span>
           }
         </button>
@@ -101,9 +105,23 @@ import { SichtKnopf } from './sicht-knopf';
                 </span>
               </label>
               <!-- Die Vorgabe steht oben schon als eigene Zeile. -->
-              @for (o of w.options; track o.id) {
+              @for (o of imSpiel(); track o.id) {
                 @if (o.id !== w.default?.id) {
-                <label class="option" [class.aus]="!o.selectable" [title]="o.why ?? ''">
+                  <ng-container *ngTemplateOutlet="schreibOption; context: { $implicit: o, w: w }" />
+                }
+              }
+              <!-- Ausserhalb des Stapels (T-418): wählbar, zugeklappt — was dort entsteht, steht hier erst, wenn die Kampagne die Ebene aufschaltet. -->
+              @if (draussen().length) {
+                <details class="draussen" [open]="draussenOffen(w)">
+                  <summary>Layers not in this campaign ({{ draussen().length }})</summary>
+                  <p class="fuss">You write in these, but this campaign does not turn them on: what you create there does not show here until it does.</p>
+                  @for (o of draussen(); track o.id) {
+                    <ng-container *ngTemplateOutlet="schreibOption; context: { $implicit: o, w: w }" />
+                  }
+                </details>
+              }
+              <ng-template #schreibOption let-o let-w="w">
+                <label class="option" [class.aus]="!o.selectable" [class.ausserhalb]="o.selectable && o.inPlay === false" [title]="o.why ?? ''">
                   <input
                     type="radio"
                     name="schreib"
@@ -112,12 +130,11 @@ import { SichtKnopf } from './sicht-knopf';
                     (change)="schreibWaehlen(o.id)"
                   />
                   <span>
-                    {{ o.name }}
-                    <small>{{ grund(o) }}@if (o.why) { — {{ o.why }} }</small>
+                    {{ o.name }}@if (o.selectable && o.inPlay === false) { <span class="marke">not in play</span> }
+                    <small>{{ grund(o) }}@if (o.why && !(o.selectable && o.inPlay === false)) { — {{ o.why }} }</small>
                   </span>
                 </label>
-                }
-              }
+              </ng-template>
               <p class="fuss">Saved for your account in this campaign, on every device. Create dialogs can still pick another layer.</p>
             </fieldset>
           }
@@ -248,6 +265,23 @@ import { SichtKnopf } from './sicht-knopf';
       opacity: 0.6;
       cursor: not-allowed;
     }
+    /* Ausserhalb des Stapels (T-418): wählbar, aber gekennzeichnet. */
+    .marke {
+      margin-left: 0.3rem;
+      padding: 0 0.3rem;
+      border: 1px solid var(--warn);
+      border-radius: 0.2rem;
+      color: var(--warn);
+      font-size: 0.75em;
+      white-space: nowrap;
+    }
+    .draussen summary {
+      cursor: pointer;
+      margin: 0.4rem 0;
+    }
+    .schreib.ausserhalb .sname {
+      color: var(--warn);
+    }
     .schleier {
       position: fixed;
       inset: 0;
@@ -365,10 +399,24 @@ export class StapelKnopf {
 
   protected readonly waehlt = signal(false);
 
+  /** Die Ebenen zur Wahl, die die Kampagne aufschaltet — und die übrigen, in denen ich schreibe (T-418). */
+  protected readonly imSpiel = computed(() => (this.stapel.schreib()?.options ?? []).filter((o) => o.inPlay !== false || !o.selectable));
+  protected readonly draussen = computed(() => (this.stapel.schreib()?.options ?? []).filter((o) => o.inPlay === false && o.selectable));
+  /** Offen, wenn die gewählte Ebene dort liegt — sonst sähe man nicht, was gilt. */
+  protected draussenOffen(w: Schreibstand): boolean {
+    return !!w.chosen && this.draussen().some((o) => o.id === w.layer?.id);
+  }
+
   /** Was in der Kopfleiste hinter „Writes to" steht. */
   protected readonly schreibName = computed(() => {
     const w = this.stapel.schreib();
     return w?.layer?.name ?? (w?.none ? 'no layer' : '—');
+  });
+
+  /** Die Schreibebene liegt ausserhalb des Stapels (T-418) — die Kopfleiste sagt es. */
+  protected readonly schreibAusserhalb = computed(() => {
+    const w = this.stapel.schreib();
+    return !!w?.layer && w.options.some((o) => o.id === w.layer?.id && o.inPlay === false);
   });
 
   protected readonly vorgabeText = computed(() => {
