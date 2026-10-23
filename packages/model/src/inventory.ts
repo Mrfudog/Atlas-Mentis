@@ -646,3 +646,40 @@ export function insideOf(item: EntityId, byId: ReadonlyMap<EntityId, Entity>): S
   }
   return raus;
 }
+
+// ------------------------------------------------------------ Ankerzelle (REQ-402)
+
+/** Eine Zelle in der Form eines Stücks, so wie es liegt (gedreht, gespiegelt). */
+export interface GrabAnchor {
+  x: number;
+  y: number;
+}
+
+/**
+ * **Die Ankerzelle, wenn keine gewählt ist** (REQ-402): das erste belegte
+ * Feld der obersten Zeile. Wer ein Stück aus der Liste auf eine Zelle
+ * legt, meint diese Zelle für das Stück — bei `.#.` über `###` wäre die
+ * Ecke oben links ein leeres Feld, und das Stück läge um eins versetzt.
+ */
+export function defaultAnchor(rows: unknown, rot = 0, flip = false): GrabAnchor {
+  const f = itemShape(rows, rot, flip);
+  for (let y = 0; y < f.h; y += 1) for (let x = 0; x < f.w; x += 1) if (filled(f, x, y)) return { x, y };
+  return { x: 0, y: 0 };
+}
+
+/**
+ * **Die Zelle, an der ein liegendes Stück angefasst wurde**, in seiner Form
+ * (REQ-402): die Rasterzelle minus seine Lage. `null`, wenn die Zelle
+ * nicht zum Stück gehört.
+ */
+export function grabAnchor(rows: unknown, rot: number, flip: boolean, gx: number, gy: number, cellX: number, cellY: number): GrabAnchor | null {
+  const f = itemShape(rows, rot, flip);
+  const x = cellX - gx;
+  const y = cellY - gy;
+  return x >= 0 && y >= 0 && x < f.w && y < f.h && filled(f, x, y) ? { x, y } : null;
+}
+
+/** **Wohin das Stück kommt**, wenn seine Ankerzelle auf dieser Zelle landen soll (REQ-402). */
+export function placeByAnchor(cellX: number, cellY: number, anchor: GrabAnchor): { gx: number; gy: number } {
+  return { gx: cellX - anchor.x, gy: cellY - anchor.y };
+}
