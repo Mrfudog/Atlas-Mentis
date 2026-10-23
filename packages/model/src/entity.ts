@@ -287,7 +287,7 @@ export function linkedTypes(
 }
 
 /** Was ein Feld mit `enumRef` liest — die Felder, die dafür zählen. */
-type EnumProp = Pick<PropertySchema, 'enum' | 'enumRef' | 'enumWhere'>;
+type EnumProp = Pick<PropertySchema, 'enum' | 'enumRef' | 'enumWhere' | 'suggest'>;
 
 /** Eine Werteliste je genanntem Namen, mit ihrer Herkunft. */
 export interface EnumGroup {
@@ -352,6 +352,11 @@ export function enumHolds(
   prop: EnumProp | undefined,
 ): boolean {
   if (!prop) return false;
+  /* **Frei mit Vorschlag** (T-423): sagt das Feld `suggest`, schlägt auch
+     eine Liste nur vor — die Sorten einer Begegnung, die Art eines Orts
+     sind Kampagneninhalt, und ein neues Wort ist ein Eintrag und kein
+     Fehler. */
+  if (prop.suggest) return false;
   if (prop.enum?.length) return true;
   return enumRefs(prop).every((n) => enumRefKind(registry, n) !== 'type');
 }

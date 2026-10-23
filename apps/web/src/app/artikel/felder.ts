@@ -22,7 +22,11 @@ export type Eingabe =
   | 'verweis'
   | 'verweise'
   | 'mehrfach'
-  | 'bild';
+  | 'bild'
+  /** Eine Farbe (`format: 'color'`, T-423): Farbwähler und der Wert daneben. */
+  | 'farbe'
+  /** Frei mit Vorschlag (`suggest`, T-423): ein Wort, die Maske bietet an, was die Liste kennt und was dasteht. */
+  | 'vorschlag';
 
 export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   if (!p) return 'text';
@@ -49,6 +53,10 @@ export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   if (p.format === 'link') return 'verweis';
   /* Ein Bild wird hochgeladen oder gewählt, nicht als Id getippt (T-114). */
   if (p.format === 'asset') return 'bild';
+  if (p.format === 'color') return 'farbe';
+  /* Frei mit Vorschlag (T-423): auch wenn eine Liste genannt ist — sie
+     schlägt dann vor und hält nicht (`enumHolds`). */
+  if (p.suggest && p.type === 'string') return 'vorschlag';
   if ((Array.isArray(p.enum) && p.enum.length) || p.enumRef) return 'auswahl';
   if (p.type === 'boolean') return 'jaNein';
   if (p.type === 'number' || p.type === 'integer') return 'zahl';
@@ -160,7 +168,8 @@ export function suchgruppen(
   }
   if (offen.length) gruppen.unshift({ of: offen });
   const arten = [p.enumRef ?? []].flat().some((n) => enumRefKind(r, n) === 'type');
-  return { gruppen, feste, frei: arten };
+  /* Mit `suggest` darf auch neben einer Liste ein eigenes Wort stehen (T-423). */
+  return { gruppen, feste, frei: arten || !!p.suggest };
 }
 
 /** Und hinein: ein Feld zeigt, was drinsteht, und nicht „undefined". */

@@ -631,6 +631,24 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                       @case ('zahl') {
                         <input type="text" inputmode="decimal" [(ngModel)]="f.wert" [name]="f.ref" />
                       }
+                      <!-- Eine Farbe (T-423): gewählt, nicht als #8b5cf6 getippt; der Wert steht daneben. -->
+                      @case ('farbe') {
+                        <span class="farbwahl">
+                          <input type="color" [ngModel]="f.wert || '#000000'" (ngModelChange)="f.wert = $event" [name]="f.ref + '-farbe'"
+                                 [attr.aria-label]="f.label" />
+                          <input type="text" [(ngModel)]="f.wert" [name]="f.ref" placeholder="#8b5cf6" maxlength="9" style="max-width: 7rem" />
+                        </span>
+                      }
+                      <!-- Frei mit Vorschlag (T-423): die Liste und was dasteht, ein eigenes Wort geht auch. -->
+                      @case ('vorschlag') {
+                        <input type="text" [(ngModel)]="f.wert" [name]="f.ref" [attr.list]="'vorschlag-' + f.ref"
+                               (focus)="vorschlaegeLaden(f.ref)" autocomplete="off" />
+                        <datalist [id]="'vorschlag-' + f.ref">
+                          @for (v of vorschlaegeFuer(f.ref, f.werte); track v) {
+                            <option [value]="v"></option>
+                          }
+                        </datalist>
+                      }
                       @case ('liste') {
                         <input type="text" [(ngModel)]="f.wert" [name]="f.ref" placeholder="one, two, three" />
                       }
@@ -2082,6 +2100,21 @@ export class Artikel implements SchnellKontext {
   /** Liegt diese Ebene ausserhalb des Stapels der laufenden Kampagne (T-418)? */
   protected ausserhalb(id: string): boolean {
     return !!id && (this.stapel.schreib()?.options ?? []).some((o) => o.id === id && o.inPlay === false);
+  }
+  /** Vorschläge je Feld (T-423), geholt beim ersten Fokus — `GET /api/suggest`, gesiebt am Server. */
+  private readonly vorschlaege = signal<Record<string, string[]>>({});
+  protected vorschlaegeLaden(ref: string): void {
+    if (this.vorschlaege()[ref]) return;
+    this.vorschlaege.update((v) => ({ ...v, [ref]: [] }));
+    void this.api
+      .suggest(ref)
+      .then((r) => this.vorschlaege.update((v) => ({ ...v, [ref]: r.values.map((x) => x.value) })))
+      .catch(() => undefined);
+  }
+  /** Was angeboten wird: vom Server, solange er nicht geantwortet hat die Liste des Feldes. */
+  protected vorschlaegeFuer(ref: string, liste: string[]): string[] {
+    const v = this.vorschlaege()[ref];
+    return v?.length ? v : liste;
   }
   protected ebenenName(id: string): string {
     if (!id) return 'no layer';

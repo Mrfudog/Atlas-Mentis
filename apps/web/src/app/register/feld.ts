@@ -171,6 +171,22 @@ import {
           <nw-reg-facette [hint]="p.facet" [darf]="darf()" [feld]="true" (aendern)="setzen({ facet: $event })" />
         }
 
+        <!-- Eine Liste hält oder schlägt vor (T-423): mit „suggests“ darf ein eigenes Wort stehen. -->
+        @if (art() === 'choice' || art() === 'choices') {
+          <label class="f">
+            <span>List</span>
+            <select [disabled]="!darf() || !!p.derived" (change)="schalter('suggest', $any($event.target).value === '1')">
+              <option value="" [selected]="!p.suggest">holds — only values from the list</option>
+              <option value="1" [selected]="!!p.suggest">suggests — the list and values in use, own words allowed</option>
+            </select>
+          </label>
+          <p class="hint">
+            <b>Suggests</b> is for a kind of thing that belongs to the campaign (place type, encounter kind): the list
+            offers its values and what other articles carry, and a new word is simply saved. <b>Holds</b> is for values
+            the app works with (a phase, a rule option): anything else is refused on save.
+          </p>
+        }
+
         @if (art() === 'text' && !p.format) {
           <label class="f">
             <span>Input</span>

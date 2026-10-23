@@ -556,3 +556,17 @@ p.leer {
     box-shadow: 0 -4px 18px rgb(0 0 0 / 0.25);
   }
 }
+
+/* Farbwähler mit dem Wert daneben (T-423). */
+.farbwahl {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.farbwahl input[type='color'] {
+  width: 2.6rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: none;
+}
