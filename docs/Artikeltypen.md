@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-23. 91 Schnittstellen, 71 Kantenarten.
+Stand 2026-10-26. 91 Schnittstellen, 71 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -1166,7 +1166,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Session`): `live`, `prep`, `description`, `fields`, `prose`, `relations`, `parts`
+**Gezeichnet** (aus `Session`): `live`, `prep`, `description`, `fields`, `prose`, `relations`, `collection`
 
 ### Story
 

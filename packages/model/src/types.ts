@@ -619,7 +619,18 @@ export type LayoutElementKind =
    * gerechnet am Server über das, was der Betrachter sieht
    * (`structure.ts`). Dasselbe wie die Kachel „Structure" auf dem Board.
    */
-  | 'structure';
+  | 'structure'
+  /**
+   * **Eine Sammlung** (T-425, REQ-430, E-142): die Artikel am Ende des
+   * Pfads, jeder in der Ansicht **seiner eigenen** Art (`view`, je Zielart
+   * `viewByType`) — als Kacheln (`quick`) oder Liste (`overview`), sortiert
+   * und auf Wunsch nach Art gruppiert. Die Session zeigt so ihre Szenen und
+   * Begegnungen; wer die Kurzansicht der Szene im Designer ändert, ändert
+   * die Kacheln mit. Gesiebt hat der Server: es steht nur da, was der
+   * Betrachter bekommt. „Table from edges" und die Liste „Contains" gehen
+   * darin auf (Schnitt 3).
+   */
+  | 'collection';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the
@@ -703,6 +714,22 @@ export interface LayoutElement {
   depth?: number;
   /** `structure`: Baum (Organigramm) oder Netz. */
   layout?: 'tree' | 'net';
+  /** `collection`: nur Artikel dieser Arten (die `extends`-Kette hoch); leer heisst jede. */
+  types?: string[];
+  /** `collection`: Kacheln (Vorgabe) oder Liste. */
+  show?: 'tiles' | 'list';
+  /**
+   * `collection`: in welcher Ansicht jeder Treffer steht (eine Gruppe wie
+   * `quick` oder eine eigene); ohne Angabe `quick` bei Kacheln, `overview`
+   * in der Liste. Das Element wählt, nicht die Kante (E-172).
+   */
+  view?: string;
+  /** `collection`: dieselbe Wahl je Zielart, gelesen die `extends`-Kette hoch. */
+  viewByType?: Record<string, string>;
+  /** `collection`: `Time.sort` (Vorgabe, dann Nummer), `name`, `id` oder ein Feld `Typ.feld`. */
+  sort?: { by: string; desc?: boolean };
+  /** `collection`: nach Art gruppiert, je Art eine Überschrift. */
+  groupBy?: 'type';
 }
 
 /**
