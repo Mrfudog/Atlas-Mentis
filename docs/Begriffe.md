@@ -697,6 +697,19 @@ stehen blieb. Ob leere Felder mit „—" dastehen und ob Ungenanntes am Ende
 folgt, sagt die Ansicht: die Artikelseite lässt nichts fallen, die
 Karte und der Druck nehmen, was sie nennen.
 
+**Was an einem Artikel hängt, zeigt er in der Ansicht seiner Art**
+(Collection, T-425). Die Session zeigt ihre Szenen als Kacheln, und jede
+Kachel ist die Kurzansicht der Szene — keine Tabelle mit Spalten, die man
+für die Session eigens festlegt. Der Grund: wie eine Szene aussieht, sagt
+die Szene, und wer ihre Kurzansicht ändert, will die Änderung überall
+sehen, auf dem Board wie an der Session. Eine zweite Darstellung derselben
+Szene „für die Session" wäre die Stelle, die beim Alten stehen bleibt.
+Darum wählt **das Element** die Ansicht, nicht die Kante (E-172): eine
+Kante sagt, *dass* zwei Artikel zusammengehören, nicht, wie der eine im
+anderen aussieht. Und darum zeigt eine Collection in einer Kachel keine
+weitere: eine Session, die ihre Szenen zeigt, die ihre Begegnungen zeigen,
+die ihre Kreaturen zeigen, wäre am Ende der halbe Bestand.
+
 Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
 und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
 Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine

@@ -1,8 +1,8 @@
 /**
  * **Arc, Szene und Session zeigen, was zu ihnen gehört** (T-422, REQ-427):
  * die Leitung hängt eine Szene (Encounter group) an ihr Kapitel (Arc) und
- * eine Begegnung an die Szene und an die Session — die Seiten zeigen sie
- * unter „Contains", die Session nur ihre. Die Spielerin sieht eine
+ * eine Begegnung an die Szene und an die Session — Arc und Szene zeigen sie
+ * unter „Contains", die Session nur ihre (seit T-425 als Collection). Die Spielerin sieht eine
  * geheime Szene nicht (gesiebt am Server).
  */
 import { test, expect } from './hilfen';
@@ -28,10 +28,12 @@ test('arc, scene and session list what hangs on them under Contains', async ({ l
   await leitung.goto(`/artikel/${gruppe.id}`);
   await expect(leitung.getByRole('region', { name: 'Contains' })).toContainText('combat, resource');
 
+  /* Die Session zeigt ihre seit T-425 über eine Collection (sitzung-sammlung.spec.ts), nicht mehr unter „Contains". */
   await leitung.goto(`/artikel/${sitzung.id}`);
-  const inSitzung = leitung.getByRole('region', { name: 'Contains' });
-  await expect(inSitzung.getByRole('link', { name: ratten.name })).toBeVisible();
+  const inSitzung = leitung.getByRole('region', { name: 'Scenes and encounters' });
+  await expect(inSitzung.getByRole('link', { name: ratten.name, exact: true })).toBeVisible();
   await expect(inSitzung.getByRole('link', { name: gruppe.name })).toHaveCount(0);
+  await expect(leitung.getByRole('region', { name: 'Contains' })).toHaveCount(0);
 
   await spielerin.goto(`/artikel/${arc.id}`);
   const ihre = spielerin.getByRole('region', { name: 'Contains' });

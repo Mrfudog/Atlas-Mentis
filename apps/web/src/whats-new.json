@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-collection",
+      "date": "2026-10-26",
+      "title": "Sessions show their scenes and encounters as tiles",
+      "text": "A session now shows the scenes and encounters that belong to it as tiles, grouped by type — each in the quick view of its own type, so a change to the scene’s quick view shows there too. In the view designer, the new element Collection does the same for any edge: follow an edge, pick the types, tiles or a list, the view of each article and the order.",
+      "area": "Story",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-26-image-picker-any-file",
       "date": "2026-10-26",
       "title": "Upload image now reaches OneDrive on Android too",
@@ -581,7 +589,9 @@
       "text": "Selected cells are hatched grey and the grid no longer moves while you select; the page scrolls beside it. Blocks and zones move up and down, blocks are removed from their header, and a bar at the bottom keeps Save in reach while changes are unsaved.",
       "area": "Inventory",
       "link": "/campaign",
-      "query": { "tab": "rules" }
+      "query": {
+        "tab": "rules"
+      }
     },
     {
       "id": "2026-10-19-character-locks",
@@ -598,7 +608,9 @@
       "text": "Rules & options › Inventory now builds the carry grid from blocks: paint zones as cells with a duration, set when a block applies (size, strength or any statblock field) and see the joined grid for any size and STR. Zones are easier to tell apart, in the inventory too.",
       "area": "Inventory",
       "link": "/campaign",
-      "query": { "tab": "rules" }
+      "query": {
+        "tab": "rules"
+      }
     },
     {
       "id": "2026-10-19-adjust-token",
@@ -623,7 +635,9 @@
       "text": "Rules & options › Inventory now draws Basil’s sheet: pick the grid side per creature size, set the zone of each column on the grid, paint container templates and choose what dropping, stowing and body slots cost.",
       "area": "Inventory",
       "link": "/campaign",
-      "query": { "tab": "rules" }
+      "query": {
+        "tab": "rules"
+      }
     },
     {
       "id": "2026-10-19-creature-image-from-statblock",
@@ -640,7 +654,9 @@
       "text": "Ability score methods, starting equipment methods and material substitutions now list every one in play with a tick — switch each on or off right on Rules & options. With none ticked, the defaults apply.",
       "area": "Campaign",
       "link": "/campaign",
-      "query": { "tab": "rules" }
+      "query": {
+        "tab": "rules"
+      }
     },
     {
       "id": "2026-10-19-knowledge-page",
@@ -649,7 +665,9 @@
       "text": "The page of a knowledge now writes out everything it brings together — each information with its articles and exactly the fields it covers. Players read what their character knows there; whoever does not know it sees only that it exists.",
       "area": "Knowledge",
       "link": "/rules",
-      "query": { "type": "Knowledge" }
+      "query": {
+        "type": "Knowledge"
+      }
     },
     {
       "id": "2026-10-19-knowledge-box",
@@ -666,7 +684,9 @@
       "text": "An information can now hold for a group of articles — every orc, say — with “Applies to”, the way a view applies. Knowledge can be given to an ancestry, background, class, subclass or feat: every character who has it knows.",
       "area": "Knowledge",
       "link": "/rules",
-      "query": { "type": "Knowledge" }
+      "query": {
+        "type": "Knowledge"
+      }
     },
     {
       "id": "2026-10-19-one-view-editor",
@@ -675,7 +695,9 @@
       "text": "The view designer is now the editor for every view — Registry › Views, “Design” on a type’s page, and “Design this view” in an article’s Full edit, with the preview on the open article. Arrange elements as an indented tree, nest them in columns, sections or tabs, and save for every article, the whole type, or one article.",
       "area": "Registry",
       "link": "/registry",
-      "query": { "tab": "views" }
+      "query": {
+        "tab": "views"
+      }
     },
     {
       "id": "2026-10-19-rule-builder-builds-on",
@@ -692,7 +714,9 @@
       "text": "Every system, rule and option on a campaign’s Rules & options tab is now a rule article of its own, in the layer it comes from — open it by its name, edit it like any article. The rule builder (experiment) lists the same articles by system and saves rules, texts and nodes into them.",
       "area": "Campaign",
       "link": "/campaign",
-      "query": { "tab": "rules" }
+      "query": {
+        "tab": "rules"
+      }
     },
     {
       "id": "2026-10-18-known-blueprints-rule",
@@ -701,7 +725,9 @@
       "text": "Rules & options › Crafting has “Known blueprints”: all from the start (Kibbles), only taught, or by rarity — every blueprint up to a rarity (common to start) for a tool the character is proficient in, plus what was taught.",
       "area": "Campaign",
       "link": "/campaign",
-      "query": { "tab": "rules" }
+      "query": {
+        "tab": "rules"
+      }
     },
     {
       "id": "2026-10-18-view-designer-experiment",
@@ -710,7 +736,9 @@
       "text": "Game masters can switch on the View designer in Rules & options › Experiments: build a view from sections, columns, tiles and tables, show values of linked articles, and say which articles it applies to. Articles and board cards then offer every view that applies.",
       "area": "Registry",
       "link": "/registry",
-      "query": { "tab": "views" }
+      "query": {
+        "tab": "views"
+      }
     },
     {
       "id": "2026-10-18-crafting-starts-with-all",
@@ -719,7 +747,9 @@
       "text": "A character who has not learned a blueprint yet no longer sees an empty Crafting tab: it starts with all blueprints and says why. “<Name> knows” shows how many are learned.",
       "area": "Characters",
       "link": "/world",
-      "query": { "type": "PlayerCharacter" }
+      "query": {
+        "type": "PlayerCharacter"
+      }
     },
     {
       "id": "2026-10-18-numbers-with-parts",
@@ -728,7 +758,9 @@
       "text": "Ability scores now include the bonuses of origin, background, choices and items everywhere — header, statblock, quick view and prerequisites. Below the statblock, “How the numbers come about” breaks down every ability, proficiency bonus, hit points, AC, initiative, speed and senses, each part linked to its source.",
       "area": "Characters",
       "link": "/world",
-      "query": { "type": "PlayerCharacter" }
+      "query": {
+        "type": "PlayerCharacter"
+      }
     },
     {
       "id": "2026-10-18-visibility-by-group",
@@ -737,7 +769,9 @@
       "text": "The campaign page has a Visibility tab: every group of articles — by layer, type, area or tag, in the order you choose — with how many each player, the table and the public see. Set a group to Public, Table, Players or GM, show or hide it for one player, and see which articles say it themselves. A layer can now set a default for its articles.",
       "area": "Campaign",
       "link": "/campaign",
-      "query": { "tab": "visibility" }
+      "query": {
+        "tab": "visibility"
+      }
     },
     {
       "id": "2026-10-18-rule-builder-engines",
@@ -754,7 +788,9 @@
       "text": "On the campaign’s Rules & options tab, pick “Use this” beside a variant to switch it at once — no edit form needed. Option and variant names link straight to the rule article that explains them; a variant without its own article points to the one of its option.",
       "area": "Campaign",
       "link": "/campaign",
-      "query": { "tab": "rules" }
+      "query": {
+        "tab": "rules"
+      }
     },
     {
       "id": "2026-10-18-view-as-header",
@@ -763,7 +799,9 @@
       "text": "GMs and co-GMs find “View as ▾” under the campaign in the header: pick a player, spectator or co-GM and every page shows what they would see, read only. Alt+Shift+V switches back; on a phone it sits in the campaign popup.",
       "area": "Campaign",
       "link": "/campaign",
-      "query": { "tab": "members" }
+      "query": {
+        "tab": "members"
+      }
     },
     {
       "id": "2026-10-18-rule-builder-experiment",
@@ -788,7 +826,9 @@
       "text": "A character is now proficient in what its class, background, origin, feats and choices grant — a tool chosen at the background counts in Crafting. Below the statblock, each saving throw, proficiency and expertise shows its source, linked to the article.",
       "area": "Characters",
       "link": "/world",
-      "query": { "type": "PlayerCharacter" }
+      "query": {
+        "type": "PlayerCharacter"
+      }
     },
     {
       "id": "2026-10-18-campaign-tabs",
@@ -797,7 +837,9 @@
       "text": "The campaign page is split into tabs — Overview, Members, Layers and Rules & options — instead of one long page. The tab stands in the address, so you can share a link straight to the layers or the members.",
       "area": "Campaign",
       "link": "/campaign",
-      "query": { "tab": "layers" }
+      "query": {
+        "tab": "layers"
+      }
     },
     {
       "id": "2026-10-16-character-crafting-campaign",
@@ -806,7 +848,9 @@
       "text": "Crafting on a character lists its blueprints — known or all — with filters for ready now, almost (one or two missing) and tool, opens the workbench of the one you pick with material from you and your party, and shows your orders with their checks. Campaign gathers what you were given: handouts, sessions, quests, people, encounters, maps and places.",
       "area": "Characters",
       "link": "/world",
-      "query": { "type": "PlayerCharacter" }
+      "query": {
+        "type": "PlayerCharacter"
+      }
     },
     {
       "id": "2026-10-16-spells-tab",
@@ -815,7 +859,9 @@
       "text": "Characters who cast spells have a Spells tab: ability, attack, save DC, slots and concentration on top, every spell by level with casting time, range and components, and Cast, which uses the lowest free slot and starts concentration. Below, your spell lists with what is possible for you now, and how you learn spells.",
       "area": "Characters",
       "link": "/world",
-      "query": { "type": "PlayerCharacter" }
+      "query": {
+        "type": "PlayerCharacter"
+      }
     },
     {
       "id": "2026-10-16-your-turn",
@@ -824,7 +870,9 @@
       "text": "A character's Combat tab starts with Your turn: every action by type — rules, statblock features, spells by casting time, potions — with a filter by type and by source. Mark Action, Bonus and Reaction as used, start a new turn. What your hands block stays in the list with the reason. Tap a row for its toolbar and details.",
       "area": "Characters",
       "link": "/world",
-      "query": { "type": "PlayerCharacter" }
+      "query": {
+        "type": "PlayerCharacter"
+      }
     },
     {
       "id": "2026-10-16-player-sheet-header",
@@ -833,7 +881,9 @@
       "text": "A character's page opens with its header: hit points with an amount for Damage (temporary hit points first), Heal and Temp, vitals and spellcasting behind the arrows, hit dice, slots and inspiration as pips, gold and the abilities. The status row shows concentration and conditions with their duration and asks for the concentration save after damage. Below, the groups are tabs.",
       "area": "Characters",
       "link": "/world",
-      "query": { "type": "PlayerCharacter" }
+      "query": {
+        "type": "PlayerCharacter"
+      }
     },
     {
       "id": "2026-10-16-handbook-glossary",
@@ -1026,7 +1076,9 @@
       "text": "Clicking a statblock or a creature — in the compendium preview, a popup, on a board or a map token — now shows AC, HP, speed, initiative, passive Perception and CR as one row of tiles; a character adds its current HP and conditions. The full statblock as in the book stays on the article page.",
       "area": "Rules",
       "link": "/rules",
-      "query": { "type": "Statblock" }
+      "query": {
+        "type": "Statblock"
+      }
     },
     {
       "id": "2026-10-15-rules-and-options",
@@ -1035,7 +1087,9 @@
       "text": "Open a campaign and switch to “Rules & options”: inventory, crafting, ability scores, starting equipment, feats, languages, travel and units, grouped, each with a sentence on what it does and the variant in use. Each variant links the rule article that explains it; where none exists yet, the GM can write one with a click.",
       "area": "Story",
       "link": "/story",
-      "query": { "type": "Campaign" }
+      "query": {
+        "type": "Campaign"
+      }
     },
     {
       "id": "2026-10-15-only-layers-in-play",
@@ -1044,8 +1098,8 @@
       "text": "Lists, search, articles and their versions now name only the layers your campaign puts in play (and its compare layers). Layers that are off no longer appear as articles, filters or sources; a single line says how many articles are hidden and links to the campaign, where layers are turned on and off.",
       "area": "Campaign",
       "link": "/campaign"
-  },
-  {
+    },
+    {
       "id": "2026-10-15-builder-hit-points",
       "date": "2026-10-15",
       "title": "Hit points in the character builder, and Edit opens the builder",
@@ -1108,7 +1162,9 @@
       "text": "An encounter can now say what it is: combat, social, puzzle, exploration, hazard, trap, resource or story — several at once, for a talk that turns into a fight. The kind shows in the encounter list and you can filter by it. Encounters that already had combatants are marked as combat.",
       "area": "Compendium",
       "link": "/compendium",
-      "query": { "type": "Encounter" }
+      "query": {
+        "type": "Encounter"
+      }
     },
     {
       "id": "2026-10-15-named-creatures",
@@ -1117,7 +1173,9 @@
       "text": "A named creature from an imported book or adventure now stands in World as a creature of its own, with its statblock attached, in the same layer. You can give it relationships, factions and a place on the map like any character you made yourself.",
       "area": "World",
       "link": "/world",
-      "query": { "type": "Creature" }
+      "query": {
+        "type": "Creature"
+      }
     },
     {
       "id": "2026-10-15-rolls-log",
@@ -1134,7 +1192,9 @@
       "text": "Imported books and adventures now bring their places: keyed rooms, sections with their own map, and sections that describe a city, realm or building become Place articles in the book's layer, nested inside each other, linked to their scenes and maps. In the reading view a section shows the place it describes, one click away.",
       "area": "World",
       "link": "/world",
-      "query": { "type": "Place" }
+      "query": {
+        "type": "Place"
+      }
     },
     {
       "id": "2026-10-15-list-filters",
@@ -1143,7 +1203,9 @@
       "text": "Pick a type in the compendium or an area and the sidebar offers a filter for each of its fields and connections: spells by level, school, components, concentration, ritual, saving throw, damage type and the class that grants them; items by type, rarity, attunement, price and more. The choice stays in the address, so you can share it or save it as a filter group.",
       "area": "Navigation",
       "link": "/rules",
-      "query": { "type": "Spell" }
+      "query": {
+        "type": "Spell"
+      }
     },
     {
       "id": "2026-10-15-write-layer",

@@ -106,7 +106,7 @@ const LayoutWhenSchema = z.object({
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'knowledgeContents', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'shape', 'stats', 'token', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs', 'section', 'columns', 'tileGroup', 'carousel', 'collapsible', 'quote', 'badges', 'edgeTable', 'structure']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'knowledgeContents', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'shape', 'stats', 'token', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs', 'section', 'columns', 'tileGroup', 'carousel', 'collapsible', 'quote', 'badges', 'edgeTable', 'structure', 'collection']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),
@@ -133,6 +133,13 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
     edges: z.array(z.string()).optional(),
     depth: z.number().optional(),
     layout: z.enum(['tree', 'net']).optional(),
+    /* Eine Sammlung (T-425): Arten, Darstellung, Ansicht je Treffer, Ordnung. */
+    types: z.array(z.string()).optional(),
+    show: z.enum(['tiles', 'list']).optional(),
+    view: z.string().optional(),
+    viewByType: z.record(z.string(), z.string()).optional(),
+    sort: z.object({ by: z.string(), desc: z.boolean().optional() }).optional(),
+    groupBy: z.literal('type').optional(),
     tabs: z
       .array(
         z.object({

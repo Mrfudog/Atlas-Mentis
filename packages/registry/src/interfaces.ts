@@ -1057,8 +1057,18 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'se-r', el: 'relations' },
         /* Was zur Sitzung gehört (T-422, REQ-427): die Szenen und
            Begegnungen, die `partOf` auf sie zeigen — nur ihre, nicht das
-           ganze Kapitel. Am Ende, wie es Migration 142 anhängt. */
-        { id: 'se-parts', el: 'parts' },
+           ganze Kapitel. Seit T-425 (REQ-430) eine Collection: jede in
+           ihrer eigenen Kurzansicht, als Kacheln, nach Art gruppiert. Sie
+           ersetzt `parts` (Migration 144), das hier nur „Contains" zeigte. */
+        {
+          id: 'se-contains',
+          el: 'collection',
+          text: 'Scenes and encounters',
+          path: [{ relation: 'partOf', dir: 'in' }],
+          types: ['Scene', 'Encounter'],
+          show: 'tiles',
+          groupBy: 'type',
+        },
       ],
     },
   },

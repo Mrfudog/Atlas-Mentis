@@ -1,7 +1,10 @@
-import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, Directive, InjectionToken, computed, effect, forwardRef, inject, input, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
+  collectionGroups,
+  collectionHits,
+  collectionView,
   elementTakes,
   entityName,
   entriesOf,
@@ -14,7 +17,7 @@ import {
   typeChain,
   isLayer,
 } from '@nw/model';
-import type { Entity, IncomingEdge, LayoutElement, PathHit, Registry, VarScopes } from '@nw/model';
+import type { CollectionGroup, Entity, IncomingEdge, LayoutElement, PathHit, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Text } from '../artikel/text';
 import { Statblock } from '../artikel/statblock';
@@ -27,6 +30,29 @@ import { Lesen } from '../lesen/lesen';
 import { Tabellenzeilen } from '../artikel/tabellenzeilen';
 import { Bild, bildDes } from '../artikel/bild';
 import { Struktur } from '../struktur/struktur';
+import { Vorschau } from '../artikel/vorschau';
+
+/**
+ * **Wie tief eine Sammlung steckt** (T-425): jede Kachel einer Collection
+ * zählt eine Stufe weiter. Steht in der Kurzansicht einer Szene wieder eine
+ * Collection, zeichnet sie dort nichts — sonst zeigte die Session ihre
+ * Szenen, die Szenen ihre Begegnungen, die Begegnungen ihre Kreaturen, und
+ * am Ende stünde der halbe Bestand auf einer Seite.
+ */
+export const SAMMLUNGSTIEFE = new InjectionToken<number>('Sammlungstiefe', { providedIn: 'root', factory: () => 0 });
+
+/** Ein Fach einer Sammlung: was darin steht, ist eine Stufe tiefer. */
+@Directive({
+  selector: '[nwSammelfach]',
+  providers: [{ provide: SAMMLUNGSTIEFE, useFactory: () => inject(SAMMLUNGSTIEFE, { skipSelf: true }) + 1 }],
+})
+export class Sammelfach {}
+
+/** Eine Collection, wie der Zeichner sie braucht. */
+interface Sammlung {
+  anzahl: number;
+  gruppen: CollectionGroup[];
+}
 
 /** Ein Wert, wie ihn ein Element zeigt. */
 interface Wert {
@@ -63,7 +89,8 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-ansichtsbaum',
-  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild, Struktur],
+  /* Die Kurzansicht kennt den Baum und der Baum die Kurzansicht (Collection, T-425): `forwardRef` löst den Kreis. */
+  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild, Struktur, Sammelfach, forwardRef(() => Vorschau)],
   template: `
     <ng-template #knoten let-el>
       @switch (el.el) {
@@ -197,6 +224,45 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
             }
           }
         }
+        @case ('collection') {
+          <!-- Eine Sammlung (T-425, REQ-430): jeder Treffer in der Ansicht seiner eigenen Art — die Views werden wiederverwendet. -->
+          @if (sammlung(el); as s) {
+            @if (s.anzahl) {
+              <section class="sammlung" [attr.data-el]="el.id" [attr.aria-label]="el.text || 'Collection'">
+                @if (el.text) {
+                  <h3>{{ el.text }} <span class="zahl">{{ s.anzahl }}</span></h3>
+                }
+                @for (g of s.gruppen; track g.key) {
+                  @if (g.label) {
+                    <h4 class="gruppe">{{ g.label }} <span class="zahl">{{ g.hits.length }}</span></h4>
+                  }
+                  @if ((el.show ?? 'tiles') === 'tiles') {
+                    <div class="sammelkacheln">
+                      @for (h of g.hits; track h.entity.id) {
+                        <article class="sammelkachel" nwSammelfach>
+                          <a class="kname" [routerLink]="['/artikel', h.entity.id]">{{ name(h.entity) }}</a>
+                          <nw-vorschau [id]="h.entity.id" [ansicht]="ansichtFuer(el, h.entity)" [eingebettet]="true" [rueck]="false" />
+                        </article>
+                      }
+                    </div>
+                  } @else {
+                    <ul class="sammelliste">
+                      @for (h of g.hits; track h.entity.id) {
+                        <li nwSammelfach>
+                          <a class="kname" [routerLink]="['/artikel', h.entity.id]">{{ name(h.entity) }}</a>
+                          @if (!g.label) {
+                            <span class="art">{{ artName(h.entity) }}</span>
+                          }
+                          <nw-vorschau [id]="h.entity.id" [ansicht]="ansichtFuer(el, h.entity)" [eingebettet]="true" [rueck]="false" />
+                        </li>
+                      }
+                    </ul>
+                  }
+                }
+              </section>
+            }
+          }
+        }
         @case ('structure') {
           <!-- Die Struktur (T-341): vom Artikel aus, gesiebt am Server; erst geladen, wenn sie zu sehen ist (T-348). -->
           @defer (on viewport) {
@@ -285,6 +351,8 @@ export class Ansichtsbaum {
   readonly rueck = input<readonly IncomingEdge[]>([]);
 
   private readonly bestand = inject(Bestand);
+  /** In einer Kachel einer Collection: dort zeichnet eine weitere Collection nichts (eine Stufe, T-425). */
+  private readonly tiefe = inject(SAMMLUNGSTIEFE);
   private readonly reg = computed(() => this.register() ?? this.bestand.registry());
   private readonly folien = signal<Record<string, number>>({});
 
@@ -368,6 +436,32 @@ export class Ansichtsbaum {
       werte: el.fields === undefined && el.el === 'edgeTable' ? [] : this.werte(r, h.entity, el),
       props: h.props,
     }));
+  }
+
+  /**
+   * **Die Treffer einer Collection** (T-425): dem Pfad gefolgt, auf die
+   * Arten eingeengt, geordnet und gruppiert (`collectionHits`). Was der
+   * Server zurückhielt, ist nicht in `voll` und fehlt.
+   */
+  protected sammlung(el: LayoutElement): Sammlung | null {
+    const r = this.reg();
+    if (!r || this.tiefe > 0) return null;
+    const hits = collectionHits(r, this.artikel(), el, {
+      get: (id) => (id === this.artikel().id ? this.artikel() : this.bestand.voll().get(id)),
+      incoming: (id) => this.eingehend(id),
+    });
+    return { anzahl: hits.length, gruppen: collectionGroups(r, hits, el) };
+  }
+
+  /** In welcher Ansicht ein Treffer steht: das Element wählt, je Zielart (E-172). */
+  protected ansichtFuer(el: LayoutElement, e: Entity): string {
+    const r = this.reg();
+    return r ? collectionView(r, el, primaryInterface(e)) : 'quick';
+  }
+
+  protected artName(e: Entity): string {
+    const typ = primaryInterface(e);
+    return this.reg()?.interfaces[typ]?.label ?? typ;
   }
 
   /** Die Tabellen eines Elements `table`: der Artikel selbst, oder die am Ende seines Pfads. */

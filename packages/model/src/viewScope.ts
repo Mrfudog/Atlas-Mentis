@@ -299,7 +299,7 @@ export function isContainer(el: Pick<LayoutElement, 'el'>): boolean {
  * zeichnet, zeichnet es `nw-ansichtsbaum` an seiner Stelle — ein
  * Collapsible in der Kurzansicht ist sonst einfach weg.
  */
-export const TREE_ELEMENTS: readonly string[] = [...CONTAINER_ELEMENTS, 'tileGroup', 'quote', 'badges', 'edgeTable', 'table', 'structure'];
+export const TREE_ELEMENTS: readonly string[] = [...CONTAINER_ELEMENTS, 'tileGroup', 'quote', 'badges', 'edgeTable', 'table', 'structure', 'collection'];
 
 export function drawnByTree(el: Pick<LayoutElement, 'el'>): boolean {
   return TREE_ELEMENTS.includes(el.el);

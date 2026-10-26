@@ -70,6 +70,7 @@ von Hand ändern.
 | [vorschlaege/Ansichten-Bedarf.md](vorschlaege/Ansichten-Bedarf.md) | Ansichten: Bestand je Art und Ort, Bedarf je Stufe, was T-234 anlegte und was offen ist (E-124) | Vorschlag, Bestand | Hand, Tabelle aus `scripts/ansichten.mjs` |
 | [vorschlaege/Karten-VTT-Vergleich.md](vorschlaege/Karten-VTT-Vergleich.md) | Was andere VTTs an der Karte können und was wir übernehmen (T-203) | Vorschlag | Hand |
 | [vorschlaege/Regel-Builder.md](vorschlaege/Regel-Builder.md) | Versuch: Regeln als Knoten (Auslöser → Bedingung → Folge), hinter einem Schalter (T-270, E-102) | Versuch, Bericht | Hand |
+| [vorschlaege/Verknuepfte-Ansichten.md](vorschlaege/Verknuepfte-Ansichten.md) | Verknüpfte Artikel in Ansichten (Collection), Schichten, Werkzeugleiste als Muster, Design-Tokens, Erfassungsmasken: Bestand, Entscheide E-168–E-172, was sich am Bestand ändert, Schnitte (T-425) | Vorschlag, Bestand | Hand |
 | [vorschlaege/Regeln-Uebersicht.md](vorschlaege/Regeln-Uebersicht.md) | Alle Regeln in Gruppen: was Einstellung oder Rechenwerk bleibt, was Graph wird, welche Bausteine fehlen (T-270, E-102) | Vorschlag | Hand |
 | [Regelsysteme.md](Regelsysteme.md) | Regelsysteme als Behälter (T-132) | Entscheidungsvorlage, E-044 | Hand |
 | [Regelwirkung.md](Regelwirkung.md) | Wirken die Regeln am Tisch? Grundlinie für die Prüfung nach jedem Release (T-322, T-275) | gilt | Hand |
