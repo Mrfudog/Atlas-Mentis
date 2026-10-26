@@ -56,7 +56,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'prose', name: 'Long text', icon: '☰', tip: 'Long texts (paragraphs, secrets, read-aloud), each under its title.', werte: true },
       { el: 'image', name: 'Image', icon: '▣', tip: 'The image of the article, with its caption.' },
       { el: 'relations', name: 'Relations', icon: '↔', tip: 'Its edges with their targets. The article page has them in its side column.', seite: true },
-      { el: 'linked', name: 'Linked article', icon: '⛓', tip: 'The fields of what hangs on an asField edge (the statblock of a creature), editable in place; without one, Create and From a template.', seite: true },
+      { el: 'linked', name: 'Linked article', icon: '⛓', tip: 'The fields of what hangs on an asField edge (the statblock of a creature), editable in place; without one, Create and From a template. Follow any edge to show the linked article in a view you choose — the place of a scene as its quick view.', seite: true },
       { el: 'composed', name: 'Sections', icon: '§', tip: 'What it is composed of (traits, actions …), per section.', seite: true },
       { el: 'parts', name: 'Parts', icon: '⋮', tip: 'The parts of a chapter or scene, in their order.', seite: true },
       { el: 'usedBy', name: 'Used by', icon: '⤺', tip: 'Who composes this article, by creature type.', seite: true, ungezeichnet: true },

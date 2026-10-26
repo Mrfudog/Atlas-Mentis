@@ -154,4 +154,21 @@ describe('collection in a view (T-425)', () => {
     const namen = [...(f.nativeElement as HTMLElement).querySelectorAll('.sammelliste .kname')].map((a) => a.textContent?.trim());
     expect(namen).toEqual(['Der Alte', 'Die Miene']);
   });
+
+  it('linked article with an edge: the first target in the view the element chooses (T-425, E-172)', () => {
+    const ort: Entity = { id: 'pl_hof', interfaces: ['Place'], name: 'The yard', components: id('The yard', 'place-0001') };
+    const mitOrt = { ...session, relations: [{ type: 'happensAt', to: 'pl_hof' }] };
+    TestBed.overrideProvider(Bestand, { useValue: bestand([mitOrt, ort]) });
+    const f = TestBed.createComponent(Ansichtsbaum);
+    Object.assign(f.componentInstance, { artikel: signal(mitOrt), layout: signal([{ id: 'where', el: 'linked', text: 'Where', path: [{ relation: 'happensAt' }], view: 'handout' }]), rueck: signal([]), register: signal(null) });
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('.verknuepft h3')?.textContent).toBe('Where');
+    expect(el.querySelector('.verknuepft .kname')?.textContent?.trim()).toBe('The yard');
+    expect(el.querySelector('.verknuepft nw-vorschau')?.textContent?.trim()).toBe('pl_hof · handout');
+  });
+
+  it('linked article without an edge stays for the article page', () => {
+    expect(zeichnen([{ id: 'l', el: 'linked' }]).querySelector('.verknuepft')).toBeNull();
+  });
 });

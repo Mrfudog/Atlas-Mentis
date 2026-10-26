@@ -463,13 +463,15 @@ export class Ansichtsdesigner {
     return eintrag(el.el)?.tip ?? '';
   }
   protected nurSeite(el: LayoutElement): boolean {
+    /* „Linked article" mit Kante zeichnet auch der Baum (T-425). */
+    if (el.el === 'linked' && el.path?.length) return false;
     return !!eintrag(el.el)?.seite;
   }
   protected nimmtWerte(el: LayoutElement): boolean {
-    return !!eintrag(el.el)?.werte;
+    return el.el === 'linked' || !!eintrag(el.el)?.werte;
   }
   protected mitTitel(el: LayoutElement): boolean {
-    return ['heading', 'text', 'section', 'collapsible', 'carousel', 'edgeTable', 'collection', TAB_NODE].includes(el.el);
+    return ['heading', 'text', 'section', 'collapsible', 'carousel', 'edgeTable', 'collection', 'linked', TAB_NODE].includes(el.el);
   }
   protected istReiter(el: LayoutElement): boolean {
     return (el.el as string) === TAB_NODE;

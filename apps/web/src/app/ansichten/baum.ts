@@ -300,6 +300,20 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
             }
           }
         }
+        @case ('linked') {
+          <!-- Ein verknüpfter Artikel (T-425, E-172): das erste Ziel der Kante, in der Ansicht, die das Element wählt. -->
+          @if (verknuepft(el); as v) {
+            <section class="verknuepft" [attr.data-el]="el.id" [attr.aria-label]="el.text || name(v)">
+              @if (el.text) {
+                <h3>{{ el.text }}</h3>
+              }
+              <article class="sammelkachel" nwSammelfach>
+                <a class="kname" [routerLink]="['/artikel', v.id]">{{ name(v) }}</a>
+                <nw-vorschau [id]="v.id" [ansicht]="el.view || 'quick'" [eingebettet]="true" [rueck]="false" />
+              </article>
+            </section>
+          }
+        }
         @case ('structure') {
           <!-- Die Struktur (T-341): vom Artikel aus, gesiebt am Server; erst geladen, wenn sie zu sehen ist (T-348). -->
           @defer (on viewport) {
@@ -551,6 +565,17 @@ export class Ansichtsbaum {
     } catch {
       this.gefragt.delete(key);
     }
+  }
+
+  /** Das Ziel eines „Linked article" mit Pfad: das erste, das der Betrachter bekommt (eine Stufe wie die Collection). */
+  protected verknuepft(el: LayoutElement): Entity | null {
+    const r = this.reg();
+    if (!r || this.tiefe > 0 || !el.path?.length) return null;
+    const hits = collectionHits(r, this.artikel(), { ...el, sort: el.sort ?? { by: 'name' } }, {
+      get: (id) => (id === this.artikel().id ? this.artikel() : this.bestand.voll().get(id)),
+      incoming: (id) => this.eingehend(id),
+    });
+    return hits[0]?.entity ?? null;
   }
 
   /** In welcher Ansicht ein Treffer steht: das Element wählt, je Zielart (E-172). */
