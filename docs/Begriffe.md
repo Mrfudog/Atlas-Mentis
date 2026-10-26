@@ -730,6 +730,14 @@ Eine Collection darf ihre Artikel auch aus einem **Filter** nehmen (alle
 Gerüchte mit der Marke „rumour"): dieselbe Frage wie im Kompendium, also
 dieselbe Siebung am Server.
 
+**Eine Gruppe ist eine Collection, kein Wort** (T-425, E-174). „Simple
+Melee Weapons" stand als Liste an einem Feld, „Damage Types" als
+Aufzählung, „Reagenz, mindestens ungewöhnlich" als Materialgruppe — drei
+Antworten auf dieselbe Frage. Eine Collection sagt ihre Regel einmal und
+nimmt von Hand dazu oder heraus, was die Regel nicht trifft; eine
+Materialgruppe ist eine davon. Gruppe und Fraktion bleiben eigene Arten:
+sie wissen und sehen (A8), eine Collection ordnet nur.
+
 **Eine Farbe ist ein Token, kein Farbcode** (T-425, E-170). Wer im
 Designer „Kopf rot" sagt, meint das Rot der Seite — im dunklen Modus ein
 anderes. Ein Farbcode am Element wüsste davon nichts, und der Kontrast

@@ -287,7 +287,7 @@ Neue Wörter fürs Glossar und für Begriffe.md:
 7. **Erfassungsmasken (REQ-432)**, dazu „nur `idea`, solange Pflichtfelder fehlen“.
 8. **Abläufe (REQ-440, REQ-433)**: Element `steps`, der Assistent als Vorgabe der Spielerfigur, `levelUp` als abgeleitete Ansicht.
 9. **Pflicht je Stand (REQ-441)**: `requiredFor`, Status und Ebene immer Pflicht, Migrationen „ready“ und „Unassigned“. Das kann auch früher kommen, weil es von den Schnitten 1 bis 6 unabhängig ist.
-10. **Collections als Artikel (REQ-438)** und **Laden mit `sells`/`buys` (REQ-439)**, `MaterialGroup` als Untertyp, `wares` in der Palette.
+10. **Collections als Artikel (REQ-438)** und **Laden mit `sells`/`buys` (REQ-439)**, `MaterialGroup` als Untertyp, `wares` in der Palette. *Teil 1 steht (26.10.): Art `Collection` mit Regel, `inCollection` mit `exclude`, Quelle `members`, `MaterialGroup` als Untertyp (Migration 149). Offen: Laden mit `sells`/`buys` auf Collections, Materialgruppe liest `inCollection`.*
 11. **Dieselbe Leiste an Board, Karte und Spielerseite**, dazu Baum und Graph als Darstellung und die leeren Plätze erwarteter Kanten (REQ-426).
 
 Unabhängig von T-425, aber damit abgestimmt:

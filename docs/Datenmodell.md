@@ -1881,6 +1881,21 @@ eine andere Schicht bringt und im Designer nie zu sehen war, nimmt sie
 nicht weg. Gespeichert wird in `view_def.config` wie jede Ansicht; eine
 Migration braucht es nicht.
 
+### Collection als Artikel (T-425, REQ-438, E-174)
+
+Eine **Collection** ist eine Art unter `Rule`: eine Gruppe von Artikeln
+des Regelwerks. Ihre **Regel** steht in der Karte `Collection` (`types`
+mit Untertypen, `tags`, `fields` wie der Filter des Kompendiums,
+`Typ.feld:Wert|Wert`); von Hand kommt dazu, was über **`inCollection`**
+hineinzeigt (von jeder Art, `props.exclude` nimmt aus — die Ausnahme
+schlägt die Regel). Unterkollektionen hängen über `partOf`. Gezeigt
+werden die Mitglieder mit dem Element `collection`, Quelle `members`
+(`col-members` an der Art): die Regel fragt `GET /api/list`
+(`collectionRuleQuery`, höchstens 200 wie die Liste), die Kanten kommen
+aus den Rückbezügen — beides gesiebt. **`MaterialGroup` ist ein Untertyp**
+(Migration 149, `extends: ['Collection']`): ihre Karte bleibt, sie erbt
+`Rule` weiter.
+
 ### Design-Tokens (T-425, REQ-437, E-170 a)
 
 Farben sind **Registerzeilen** (`Registry.tokens`, Tabelle `token_def`,
@@ -2496,7 +2511,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-26: 64 Artikelarten, 27 Grundtypen, 71 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-26: 65 Artikelarten, 27 Grundtypen, 72 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2577,6 +2592,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` `partOf` `knownBy` | quick, full, overview |
 | `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `casts` `grants` `partOf` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` `partOf` `knownBy` | full |
 | `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `grants` `partOf` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` `partOf` `knownBy` | quick, full, overview |
+| `Collection` | `Rule` | `types` `tags` `fields` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` | full |
 | `Condition` | `Rule` `Effects` | `kind` `stage` `recovery` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | overview |
 | `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | — |
 | `EquipmentMethod` | `Rule` | `method` `gold` `budget` `magic` `itemTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsEquipment` `grants` `partOf` | overview |
@@ -2588,7 +2604,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `hasProperty` `partOf` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | full |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
-| `MaterialGroup` | `Rule` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `needs` | — |
+| `MaterialGroup` | `Collection` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` `needs` | — |
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | quick, full |
 | `Rule` | `Source` `Vars` | `kind` `autolink` `key` `graph` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `loot` | — |
@@ -2661,6 +2677,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `hasProperty` | Weapon \| Item \| Armor → ItemProperty |  | — | — |
 | `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `grip` `gx` `gy` `rot` `flip` `attuned` `note` `reservedFor` `forNeed` `unstowed` |
 | `includes` | Knowledge → Information |  | — | — |
+| `inCollection` | * → Collection |  | — | `exclude` |
 | `inLayer` | * → Layer |  | — | `mode` `addedAt` |
 | `insideMap` | Map → Map | ja | — | `x` `y` `w` `h` `area` `near` `show` `showPlayers` `outer` `align` |
 | `instanceOf` | Statblock \| Item \| CraftingOrder \| Map \| Encounter → same | ja | — | — |
