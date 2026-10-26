@@ -423,6 +423,13 @@ wiederkommen, werden sie neu geschrieben.
   Art gilt, bleibt an der Art. Reiter (`tabs`) stehen im Baum des
   Designers als Knoten `tab` (`tabsAsTree`/`treeAsTabs`) und werden wieder
   als `tabs` gespeichert.
+  **Was an einem Artikel hängt, steht in der Ansicht seiner Art**
+  (Element `collection`, T-425, E-142, E-172): die Session zeigt ihre
+  Szenen und Begegnungen als Kacheln, jede die Kurzansicht ihrer Art
+  (`nw-vorschau` eingebettet) — das Element wählt die Ansicht
+  (`view`, `viewByType`), nicht die Kante; eine Collection in einer Kachel
+  zeichnet nichts (eine Stufe). Konzept und Entscheide E-139, E-142,
+  E-168–E-183: [docs/vorschlaege/Verknuepfte-Ansichten.md](docs/vorschlaege/Verknuepfte-Ansichten.md).
 - **Ein Typ darf ein geerbtes Feld umbenennen** (`InterfaceDef.titles`,
   `Typ.feld` → Beschriftung, die `extends`-Kette hoch geerbt wie `area`).
   `Time.until` heisst an einem Auftrag „Deadline" und an einem Ereignis

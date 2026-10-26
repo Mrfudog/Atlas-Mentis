@@ -1751,7 +1751,7 @@ Druck fragen dort; `layoutFor` rufen nur noch Stellen, die nach dem **Typ**
 fragen (Designer, Typseite, Listenspalten, „hat die Art ein Element") — ein
 Test zählt sie (`packages/model/test/pickView.test.ts`). Was nur der Baum
 kennt (`drawnByTree`: die Behälter, `tileGroup`, `quote`, `badges`,
-`edgeTable`, `table`), zeichnet `nw-ansichtsbaum` an seiner Stelle, auch
+`edgeTable`, `table`, `structure`, `collection`), zeichnet `nw-ansichtsbaum` an seiner Stelle, auch
 in einer Ortsansicht; eine gestaltete zeichnet er ganz. Die
 Listenspalten (`listColumns`, `overview`) bleiben eine Frage des Typs:
 eine Tabelle hat für alle Zeilen dieselben Spalten.
@@ -1778,7 +1778,26 @@ mit Würfelspalte und „Roll" (`rollTableOf`, `rowForRoll` in
 100), bei einem Würfeltopf ohne Spalten wird sie aus den Gewichten
 gezählt — gerechnet, nicht gespeichert (D8). Gewürfelt wird am Server, der
 Wurf steht im Log des Artikels (T-172). `edgeTable` zeigt Kanten und ihre
-Ziele, nicht Zeilen. Gezählt, wie viele
+Ziele, nicht Zeilen.
+
+**Das Element `collection`** (T-425, REQ-430, E-142, E-172) zeigt die
+Artikel am Ende seines Pfads **in der Ansicht ihrer eigenen Art**: die
+Session über `← partOf` ihre Szenen und Begegnungen. `types` engt auf
+Arten ein (die `extends`-Kette hoch), `show` sagt Kacheln (`tiles`,
+Vorgabe) oder Liste (`list`), `view` die Ansicht je Treffer (sonst `quick`
+bei Kacheln, `overview` in der Liste) und `viewByType` dieselbe Wahl je
+Zielart — **das Element wählt, nicht die Kante**. `sort.by` ordnet nach
+`Time.sort` (Vorgabe, dann Nummer), `name`, `id` oder einem Feld
+`Typ.feld`, `sort.desc` umgekehrt; ein fehlender Wert steht hinten.
+`groupBy: 'type'` setzt je Art eine Überschrift (`collectionHits`,
+`collectionGroups`, `collectionView` in `packages/model/src/collection.ts`).
+Gezeichnet wird jede Kachel als eingebettete Kurzansicht (`nw-vorschau`)
+— die Views werden wiederverwendet, eine Sonderseite gibt es nicht.
+Gesiebt hat der Server: die Treffer kommen über die Rückbezüge und
+`/api/entities/:id`, was zurückgehalten ist, fehlt. **Eine Stufe:** in
+einer Kachel zeichnet eine weitere Collection nichts. Die Session trägt
+sie seit Migration 144 statt `parts` (die feste Liste „Contains" aus
+T-422 bleibt an Arc und Szene, bis Schnitt 3 sie ablöst). Gezählt, wie viele
 Artikel eine Ansicht bekommen, wird am Server (`/api/registry/usage`,
 `views`), im Stapel.
 
@@ -2368,7 +2387,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-23: 64 Artikelarten, 27 Grundtypen, 71 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-26: 64 Artikelarten, 27 Grundtypen, 71 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
