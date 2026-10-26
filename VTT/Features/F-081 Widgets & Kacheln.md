@@ -21,7 +21,7 @@ Angelegt im Abgleich Brett ↔ Vault vom 22.10.2026.
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-373]] Ein Muster für Ansichten, Kacheln und Seiten | Spielleitung | 2 | offen |
+| [[REQ-373]] Widgets als Ansichtselement und als eigene Ansicht | Spielleitung | 2 | offen |
 | [[REQ-384]] Widget-Katalog | Spielleitung | 2 | offen |
 | [[REQ-387]] Kachel-Vorlagen anpassen | Spielleitung | 3 | offen |
 <!-- stories:ende -->

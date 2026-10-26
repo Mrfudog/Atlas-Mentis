@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, registry]
 status: derived
-updated: 2026-10-22
+updated: 2026-10-26
 ---
 
 # Requirements Registry
@@ -29,9 +29,9 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 142 | 520 | 69 steht · 26 teils · 39 offen · 5 ersetzt · 3 verworfen |
+| 2 | 141 | 515 | 69 steht · 26 teils · 38 offen · 5 ersetzt · 3 verworfen |
 | 3 | 128 | 394 | 61 steht · 27 teils · 39 offen · 1 ersetzt |
-| 4 | 48 | 220 | 13 steht · 2 teils · 30 offen · 2 ersetzt · 1 verworfen |
+| 4 | 49 | 225 | 13 steht · 2 teils · 31 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
 | **Zusammen** | **394** | **1470** | 186 steht · 65 teils · 127 offen · 10 ersetzt · 6 verworfen |
 
@@ -407,17 +407,17 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-366]] | Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair | Spielleitung | [[F-051 Initiative\|Initiative]] | 3 | 3 | defined | offen |
 | [[REQ-367]] | Ebene eines Artikels im Bearbeiten ändern, als erstes Feld | Spielleitung | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 2 | 2 | in progress | teils |
 | [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 3 | in progress | teils |
-| [[REQ-369]] | Module als Baum mit Transformationen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 5 | defined | offen |
+| [[REQ-369]] | Module als Baum mit selbst gesetzten Transformationen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 5 | defined | offen |
 | [[REQ-370]] | Neuere Fassung zum Vergleich anfragen | Spieler | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | defined | offen |
-| [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 5 | defined | offen |
-| [[REQ-372]] | Regeln lernen, wenn sie vorkommen | Spieler | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 3 | 5 | idea | offen |
-| [[REQ-373]] | Ein Muster für Ansichten, Kacheln und Seiten | Spielleitung | [[F-081 Widgets & Kacheln\|Widgets & Kacheln]] | 2 | 8 | defined | offen |
+| [[REQ-371]] | Informationen selbst definieren: benannte Auswahl aus Feldern, Textteilen und Beziehungen | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 5 | defined | offen |
+| [[REQ-372]] | Regeln lernen, wenn sie vorkommen | Spieler | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 3 | 5 | defined | offen |
+| [[REQ-373]] | Widgets als Ansichtselement und als eigene Ansicht | Spielleitung | [[F-081 Widgets & Kacheln\|Widgets & Kacheln]] | 2 | 8 | defined | offen |
 | [[REQ-374]] | Viewpoints statt nur Breakpoints | Spielleitung | [[F-082 Viewpoints\|Viewpoints]] | 3 | 8 | defined | offen |
 | [[REQ-375]] | Register als Module | Verwaltung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 13 | defined | offen |
 | [[REQ-376]] | Sammlungsansichten neben Artikelansichten | Spielleitung | [[F-006 Ansichten & Anordnung\|Ansichten & Anordnung]] | 2 | 5 | defined | offen |
 | [[REQ-377]] | Quest aus einer Tabelle würfeln | Spielleitung | [[F-083 Quest-Generator\|Quest-Generator]] | 3 | 5 | defined | teils |
-| [[REQ-378]] | Regelbuch-PDFs privat ablegen | Spielleitung | [[F-066 PDF & OCR\|PDF & OCR]] | 2 | 3 | defined | offen |
-| [[REQ-379]] | Vom Artikel auf Seite und Stelle im PDF springen | Spielleitung | [[F-066 PDF & OCR\|PDF & OCR]] | 2 | 5 | defined | offen |
+| [[REQ-378]] | Regelbuch-PDFs auf dem Server, geteilt nach ihrer Ebene | Spielleitung | [[F-066 PDF & OCR\|PDF & OCR]] | 2 | 3 | defined | offen |
+| [[REQ-379]] | Vom Artikel auf Seite und Stelle im PDF springen | Spielleitung | [[F-066 PDF & OCR\|PDF & OCR]] | 4 | 5 | defined | offen |
 | [[REQ-380]] | Bücher über konfigurierbare Strukturen zerlegen | Verwaltung | [[F-074 Regelwerke anderer Verlage\|Regelwerke anderer Verlage]] | 3 | 8 | defined | offen |
 | [[REQ-381]] | Ein Rahmen für alle Werkbank-Seiten | Verwaltung | [[F-016 Werkbank\|Werkbank]] | 2 | 5 | defined | offen |
 | [[REQ-382]] | Design und Werkzeuge in anderen Projekten nutzen | Verwaltung | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 4 | 8 | idea | offen |

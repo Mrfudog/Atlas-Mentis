@@ -23,7 +23,7 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 | [[REQ-287]] Regelsysteme und Module als Ebenen | Spielleitung | 2 | teils |
 | [[REQ-289]] Homebrew-Regeln erfassen | Spielleitung | 3 | offen |
 | [[REQ-319]] Inventarregeln als wählbares Modul | Spielleitung | 2 | offen |
-| [[REQ-369]] Module als Baum mit Transformationen | Spielleitung | 2 | offen |
+| [[REQ-369]] Module als Baum mit selbst gesetzten Transformationen | Spielleitung | 2 | offen |
 | [[REQ-375]] Register als Module | Verwaltung | 2 | offen |
 <!-- stories:ende -->
 

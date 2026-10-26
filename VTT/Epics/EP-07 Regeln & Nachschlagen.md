@@ -38,7 +38,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../../docs/Regelsysteme.md), [Datenmodell.md](../../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** [[REQ-018]] Wirkungen von Regeln beschreiben (offen) · [[REQ-092]] Zauber als Artikel (offen) · [[REQ-227]] Masse im Fliesstext umrechnen (offen) · [[REQ-287]] Regelsysteme und Module als Ebenen (teils) · [[REQ-289]] Homebrew-Regeln erfassen (offen) · [[REQ-313]] Zustände als Artikel (teils) · [[REQ-319]] Inventarregeln als wählbares Modul (offen) · [[REQ-357]] Regelgraphen wirken am Tisch (teils) · [[REQ-369]] Module als Baum mit Transformationen (offen) · [[REQ-375]] Register als Module (offen)
+**Offen mit Prio 1–3:** [[REQ-018]] Wirkungen von Regeln beschreiben (offen) · [[REQ-092]] Zauber als Artikel (offen) · [[REQ-227]] Masse im Fliesstext umrechnen (offen) · [[REQ-287]] Regelsysteme und Module als Ebenen (teils) · [[REQ-289]] Homebrew-Regeln erfassen (offen) · [[REQ-313]] Zustände als Artikel (teils) · [[REQ-319]] Inventarregeln als wählbares Modul (offen) · [[REQ-357]] Regelgraphen wirken am Tisch (teils) · [[REQ-369]] Module als Baum mit selbst gesetzten Transformationen (offen) · [[REQ-375]] Register als Module (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->

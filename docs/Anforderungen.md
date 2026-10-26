@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-22. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-26. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -158,7 +158,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils) · REQ-368 Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden (teils) · REQ-371 Information aus Feld, Textteil oder Beziehung (offen) · REQ-372 Regeln lernen, wenn sie vorkommen (offen) · REQ-381 Ein Rahmen für alle Werkbank-Seiten (offen) · REQ-392 Featureseiten im Projektbrett (offen) · REQ-393 Demo-Video der Seite (teils)
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils) · REQ-368 Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden (teils) · REQ-371 Informationen selbst definieren: benannte Auswahl aus Feldern, Textteilen und Beziehungen (offen) · REQ-372 Regeln lernen, wenn sie vorkommen (offen) · REQ-381 Ein Rahmen für alle Werkbank-Seiten (offen) · REQ-392 Featureseiten im Projektbrett (offen) · REQ-393 Demo-Video der Seite (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -201,7 +201,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | REQ-353 | Die Seite eines Wissens zeigt alles, was es vereint | 1 | **steht** | T-287: Element knowledge an der Art Knowledge, GET /api/knowledge/:id/contents (gesiebt) |
 | REQ-354 | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | 2 | **offen** |  |
 | REQ-368 | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | 2 | **teils** | T-387: Liste mit Ebene, Filter, Sortierung, Sichtbarkeit je Artikel und für eine Auswahl stehen; Ebene wechseln aus der Liste wartet auf E-161, Vorrang je Artikel auf E-111, Artikel in fremden Ebenen auf E-162 |
-| REQ-371 | Information aus Feld, Textteil oder Beziehung | 2 | **offen** |  |
+| REQ-371 | Informationen selbst definieren: benannte Auswahl aus Feldern, Textteilen und Beziehungen | 2 | **offen** |  |
 | REQ-372 | Regeln lernen, wenn sie vorkommen | 3 | **offen** |  |
 
 ### F-013 Schreibrechte & Freigabe
@@ -598,7 +598,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 **Erklärt in:** [Regelsysteme.md](../docs/Regelsysteme.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (teils) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils) · REQ-369 Module als Baum mit Transformationen (offen) · REQ-375 Register als Module (offen)
+**Offen mit Prio 1–3:** REQ-018 Wirkungen von Regeln beschreiben (offen) · REQ-092 Zauber als Artikel (offen) · REQ-227 Masse im Fliesstext umrechnen (offen) · REQ-287 Regelsysteme und Module als Ebenen (teils) · REQ-289 Homebrew-Regeln erfassen (offen) · REQ-313 Zustände als Artikel (teils) · REQ-319 Inventarregeln als wählbares Modul (offen) · REQ-357 Regelgraphen wirken am Tisch (teils) · REQ-369 Module als Baum mit selbst gesetzten Transformationen (offen) · REQ-375 Register als Module (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -662,7 +662,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 | REQ-287 | Regelsysteme und Module als Ebenen | 2 | **teils** | E-044, T-132; entschieden als Ebenen: E-078, E-090–E-094, E-166. T-394 Schritt 1: Arten RuleSystem und RuleMechanic, Kante compatibleWith, Inventory mit Weight, Slots, Grid und Default shapes beim Start angelegt; die Wahl am Tisch liest weiter Campaign.inventory. Handwerk und die übrigen Teilsysteme folgen (T-132). |
 | REQ-289 | Homebrew-Regeln erfassen | 3 | **offen** | wenn das Gerüst steht |
 | REQ-319 | Inventarregeln als wählbares Modul | 2 | **offen** |  |
-| REQ-369 | Module als Baum mit Transformationen | 2 | **offen** |  |
+| REQ-369 | Module als Baum mit selbst gesetzten Transformationen | 2 | **offen** |  |
 | REQ-375 | Register als Module | 2 | **offen** |  |
 
 ### F-049 Masse & Einheiten
@@ -835,7 +835,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 **Erklärt in:** [Betrieb.md](../docs/Betrieb.md), [Datenmodell.md](../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen) · REQ-329 Bilder im Inventar (offen) · REQ-330 Inventory image an einen Gegenstand binden (offen) · REQ-378 Regelbuch-PDFs privat ablegen (offen) · REQ-379 Vom Artikel auf Seite und Stelle im PDF springen (offen)
+**Offen mit Prio 1–3:** REQ-022 Vorschaubilder und Kacheln (offen) · REQ-145 Ablage in der Seite (teils) · REQ-146 Grosse Dateien auf dem NAS (offen) · REQ-147 Bilder hochladen (teils) · REQ-167 Drucken (offen) · REQ-295 Bild ersetzen als Fassung oder neue Quelle (offen) · REQ-296 Bildklassen (teils) · REQ-297 Bilder aus 5e.tools einlesen und verknüpfen (offen) · REQ-329 Bilder im Inventar (offen) · REQ-330 Inventory image an einen Gegenstand binden (offen) · REQ-378 Regelbuch-PDFs auf dem Server, geteilt nach ihrer Ebene (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -884,8 +884,8 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 |---|---|---|---|---|
 | REQ-149 | PDF mit Seitensprung | 4 | **offen** |  |
 | REQ-152 | Texte aus PDF erkennen | 5 | **offen** |  |
-| REQ-378 | Regelbuch-PDFs privat ablegen | 2 | **offen** |  |
-| REQ-379 | Vom Artikel auf Seite und Stelle im PDF springen | 2 | **offen** |  |
+| REQ-378 | Regelbuch-PDFs auf dem Server, geteilt nach ihrer Ebene | 2 | **offen** |  |
+| REQ-379 | Vom Artikel auf Seite und Stelle im PDF springen | 4 | **offen** |  |
 
 ## EP-11 Oberfläche & Navigation
 
@@ -899,7 +899,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [UI-Arbeitsplan.md](../docs/UI-Arbeitsplan.md), [Web-Arbeitsplan.md](../docs/Web-Arbeitsplan.md), [design](../docs/design)
 
-**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils) · REQ-345 Schwebende Werkzeugleiste für eine Auswahl (teils) · REQ-361 Lange Seiten: Bereiche klappen und springen (teils) · REQ-373 Ein Muster für Ansichten, Kacheln und Seiten (offen) · REQ-374 Viewpoints statt nur Breakpoints (offen) · REQ-384 Widget-Katalog (offen) · REQ-386 Suche und Filter in den Modulen (offen) · REQ-387 Kachel-Vorlagen anpassen (offen) · REQ-394 Artikel löschen, einzeln und mehrere, mit Rückgängig (teils)
+**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils) · REQ-345 Schwebende Werkzeugleiste für eine Auswahl (teils) · REQ-361 Lange Seiten: Bereiche klappen und springen (teils) · REQ-373 Widgets als Ansichtselement und als eigene Ansicht (offen) · REQ-374 Viewpoints statt nur Breakpoints (offen) · REQ-384 Widget-Katalog (offen) · REQ-386 Suche und Filter in den Modulen (offen) · REQ-387 Kachel-Vorlagen anpassen (offen) · REQ-394 Artikel löschen, einzeln und mehrere, mit Rückgängig (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -971,7 +971,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-373 | Ein Muster für Ansichten, Kacheln und Seiten | 2 | **offen** |  |
+| REQ-373 | Widgets als Ansichtselement und als eigene Ansicht | 2 | **offen** |  |
 | REQ-384 | Widget-Katalog | 2 | **offen** |  |
 | REQ-387 | Kachel-Vorlagen anpassen | 3 | **offen** |  |
 
@@ -1098,14 +1098,13 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-365** (2, offen, Live-Spiel) — Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung
 - **REQ-367** (2, teils, Zugang & Betrieb) — Ebene eines Artikels im Bearbeiten ändern, als erstes Feld — *T-383: Feld „Layer“ zuerst in der Maske, Angebot aus den Schreibebenen, Prüfung im PUT gegen zielEbenen, Meldung „Moved to …“; was mit Teilen, Statblock und Inventar geschieht, wartet auf E-161*
 - **REQ-368** (2, teils, Zugang & Betrieb) — Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden — *T-387: Liste mit Ebene, Filter, Sortierung, Sichtbarkeit je Artikel und für eine Auswahl stehen; Ebene wechseln aus der Liste wartet auf E-161, Vorrang je Artikel auf E-111, Artikel in fremden Ebenen auf E-162*
-- **REQ-369** (2, offen, Regeln & Nachschlagen) — Module als Baum mit Transformationen
+- **REQ-369** (2, offen, Regeln & Nachschlagen) — Module als Baum mit selbst gesetzten Transformationen
 - **REQ-370** (2, offen, Inhaltsgerüst) — Neuere Fassung zum Vergleich anfragen
-- **REQ-371** (2, offen, Zugang & Betrieb) — Information aus Feld, Textteil oder Beziehung
-- **REQ-373** (2, offen, Oberfläche & Navigation) — Ein Muster für Ansichten, Kacheln und Seiten
+- **REQ-371** (2, offen, Zugang & Betrieb) — Informationen selbst definieren: benannte Auswahl aus Feldern, Textteilen und Beziehungen
+- **REQ-373** (2, offen, Oberfläche & Navigation) — Widgets als Ansichtselement und als eigene Ansicht
 - **REQ-375** (2, offen, Regeln & Nachschlagen) — Register als Module
 - **REQ-376** (2, offen, Inhaltsgerüst) — Sammlungsansichten neben Artikelansichten
-- **REQ-378** (2, offen, Medien & Assets) — Regelbuch-PDFs privat ablegen
-- **REQ-379** (2, offen, Medien & Assets) — Vom Artikel auf Seite und Stelle im PDF springen
+- **REQ-378** (2, offen, Medien & Assets) — Regelbuch-PDFs auf dem Server, geteilt nach ihrer Ebene
 - **REQ-381** (2, offen, Zugang & Betrieb) — Ein Rahmen für alle Werkbank-Seiten
 - **REQ-383** (2, offen, Inhaltsgerüst) — Ansicht je Artikeltyp teilen, mit Vorschau als Spieler
 - **REQ-384** (2, offen, Oberfläche & Navigation) — Widget-Katalog

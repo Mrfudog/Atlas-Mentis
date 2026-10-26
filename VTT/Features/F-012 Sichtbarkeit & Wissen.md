@@ -34,6 +34,6 @@ Epic: [[EP-02 Zugang & Betrieb]]
 | [[REQ-353]] Die Seite eines Wissens zeigt alles, was es vereint | Spieler | 1 | steht |
 | [[REQ-354]] Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | 2 | offen |
 | [[REQ-368]] Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | 2 | teils |
-| [[REQ-371]] Information aus Feld, Textteil oder Beziehung | Spielleitung | 2 | offen |
+| [[REQ-371]] Informationen selbst definieren: benannte Auswahl aus Feldern, Textteilen und Beziehungen | Spielleitung | 2 | offen |
 | [[REQ-372]] Regeln lernen, wenn sie vorkommen | Spieler | 3 | offen |
 <!-- stories:ende -->

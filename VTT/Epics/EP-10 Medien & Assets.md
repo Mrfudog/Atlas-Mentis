@@ -33,7 +33,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 **Erklärt in:** [Betrieb.md](../../docs/Betrieb.md), [Datenmodell.md](../../docs/Datenmodell.md)
 
-**Offen mit Prio 1–3:** [[REQ-022]] Vorschaubilder und Kacheln (offen) · [[REQ-145]] Ablage in der Seite (teils) · [[REQ-146]] Grosse Dateien auf dem NAS (offen) · [[REQ-147]] Bilder hochladen (teils) · [[REQ-167]] Drucken (offen) · [[REQ-295]] Bild ersetzen als Fassung oder neue Quelle (offen) · [[REQ-296]] Bildklassen (teils) · [[REQ-297]] Bilder aus 5e.tools einlesen und verknüpfen (offen) · [[REQ-329]] Bilder im Inventar (offen) · [[REQ-330]] Inventory image an einen Gegenstand binden (offen) · [[REQ-378]] Regelbuch-PDFs privat ablegen (offen) · [[REQ-379]] Vom Artikel auf Seite und Stelle im PDF springen (offen)
+**Offen mit Prio 1–3:** [[REQ-022]] Vorschaubilder und Kacheln (offen) · [[REQ-145]] Ablage in der Seite (teils) · [[REQ-146]] Grosse Dateien auf dem NAS (offen) · [[REQ-147]] Bilder hochladen (teils) · [[REQ-167]] Drucken (offen) · [[REQ-295]] Bild ersetzen als Fassung oder neue Quelle (offen) · [[REQ-296]] Bildklassen (teils) · [[REQ-297]] Bilder aus 5e.tools einlesen und verknüpfen (offen) · [[REQ-329]] Bilder im Inventar (offen) · [[REQ-330]] Inventory image an einen Gegenstand binden (offen) · [[REQ-378]] Regelbuch-PDFs auf dem Server, geteilt nach ihrer Ebene (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
