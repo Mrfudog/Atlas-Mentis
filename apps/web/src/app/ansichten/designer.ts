@@ -27,6 +27,7 @@ import {
   treeAsTabs,
   typeChain,
   typeList,
+  viewGroup,
   viewKeys,
   whenText,
   STRUCTURE_DEFAULT_EDGES,
@@ -365,7 +366,7 @@ export class Ansichtsdesigner {
     return !!eintrag(el.el)?.werte;
   }
   protected mitTitel(el: LayoutElement): boolean {
-    return ['heading', 'text', 'section', 'collapsible', 'carousel', 'edgeTable', TAB_NODE].includes(el.el);
+    return ['heading', 'text', 'section', 'collapsible', 'carousel', 'edgeTable', 'collection', TAB_NODE].includes(el.el);
   }
   protected istReiter(el: LayoutElement): boolean {
     return (el.el as string) === TAB_NODE;
@@ -455,6 +456,28 @@ export class Ansichtsdesigner {
     const el = this.auswahl();
     const alt = el?.props ?? [];
     this.setze({ props: alt.includes(p) ? alt.filter((x) => x !== p) : [...alt, p] });
+  }
+
+  // ------------------------------------------------------------ Collection (T-425)
+
+  /** Die Ansichten, in denen ein Treffer stehen kann: die der Orte und jede eigene Gruppe. */
+  protected readonly ansichtsGruppen = computed(() => {
+    const r = this.reg();
+    const eigene = r ? Object.entries(r.views).map(([k, d]) => viewGroup(k, d)) : [];
+    return [...new Set<string>([...GRUPPEN, ...eigene])];
+  });
+  /** Die Ordnungen, die man wählt; ein Feld `Typ.feld` tippt man. */
+  protected readonly SORTIERUNGEN = ['Time.sort', 'name', 'id'] as const;
+  protected sammlungArten(el: LayoutElement): string {
+    return (el.types ?? []).join(', ');
+  }
+  protected setzeArten(text: string): void {
+    const arten = this.liste(text);
+    this.setze({ types: arten?.length ? arten : null });
+  }
+  protected setzeSortierung(by: string, desc: boolean): void {
+    const b = by.trim();
+    this.setze({ sort: !b || (b === 'Time.sort' && !desc) ? null : { by: b, ...(desc ? { desc: true } : {}) } });
   }
 
   /** „Only when" (T-184): leer heisst immer. */

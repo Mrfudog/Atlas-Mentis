@@ -253,6 +253,43 @@
                 }
               </select>
             }
+            @if (el.el === 'collection') {
+              <!-- Eine Sammlung (T-425): Arten, Darstellung, Ansicht je Treffer, Ordnung, Gruppierung. -->
+              <p class="sub">{{ el.path?.length ? 'Every article at the end of the edge, in the view of its own type.' : 'Follow an edge first — from a session: ← partOf.' }}</p>
+              <label class="f">
+                <span class="lbl">Only these types</span>
+                <input type="text" [value]="sammlungArten(el)" [disabled]="!darf()" placeholder="Scene, Encounter" (change)="setzeArten(optionWert($event))" />
+              </label>
+              <p class="sub">Empty: every type. A type takes its subtypes.</p>
+              <div class="lbl">Shows as</div>
+              <div class="chips">
+                @for (o of ['tiles', 'list']; track o) {
+                  <button type="button" class="chipb" [disabled]="!darf()" [attr.aria-pressed]="(el.show ?? 'tiles') === o" (click)="setze({ show: o === 'tiles' ? null : o })">{{ o }}</button>
+                }
+              </div>
+              <label class="f">
+                <span class="lbl">Each in the view</span>
+                <select [disabled]="!darf()" (change)="setze({ view: optionWert($event) || null })" aria-label="Each in the view">
+                  <option value="" [selected]="!el.view">{{ (el.show ?? 'tiles') === 'tiles' ? 'quick (tiles)' : 'overview (list)' }}</option>
+                  @for (g of ansichtsGruppen(); track g) {
+                    <option [value]="g" [selected]="el.view === g">{{ g }}</option>
+                  }
+                </select>
+              </label>
+              <p class="sub">The view of the article's own type — change it in that type, and every collection shows the change.</p>
+              <label class="f">
+                <span class="lbl">Order by</span>
+                <input type="text" list="sammlung-ordnung" [value]="el.sort?.by ?? 'Time.sort'" [disabled]="!darf()" (change)="setzeSortierung(optionWert($event), !!el.sort?.desc)" />
+                <datalist id="sammlung-ordnung">
+                  @for (o of SORTIERUNGEN; track o) {
+                    <option [value]="o"></option>
+                  }
+                </datalist>
+              </label>
+              <label class="haken"><input type="checkbox" [checked]="!!el.sort?.desc" [disabled]="!darf()" (change)="setzeSortierung(el.sort?.by ?? 'Time.sort', $any($event.target).checked)" /> descending</label>
+              <p class="sub">Time.sort, then number; or name, id, or a field like Scene.difficulty. Without a value it stands last.</p>
+              <label class="haken"><input type="checkbox" [checked]="el.groupBy === 'type'" [disabled]="!darf()" (change)="setze({ groupBy: $any($event.target).checked ? 'type' : null })" /> group by type</label>
+            }
             @if (el.el === 'edgeTable') {
               <p class="sub">One row per {{ el.path?.length ? 'article at the end' : 'edge — follow one first' }}; edge values as columns:</p>
               <div class="chips">
@@ -268,7 +305,7 @@
                 Every {{ el.el === 'prose' ? 'long text' : 'field' }} the type has <span class="sub">— what an earlier element shows stays there</span>
               </label>
             }
-            @if (istListe(el.fields)) {
+            @if (el.el !== 'collection' && istListe(el.fields)) {
               <ul class="gewaehlt">
                 @for (f of el.fields; track f; let i = $index) {
                   <li><span>{{ text(f) }}</span>
@@ -287,7 +324,7 @@
                 }
               </div>
             }
-            @if (darf()) {
+            @if (darf() && el.el !== 'collection') {
               <div class="chips" role="radiogroup" aria-label="Add to">
                 <button type="button" class="chipb" role="radio" [attr.aria-checked]="wertZiel() === 'fields'" [attr.aria-pressed]="wertZiel() === 'fields'"
                         [disabled]="el.fields === 'all'" (click)="wertZiel.set('fields')">+ value</button>

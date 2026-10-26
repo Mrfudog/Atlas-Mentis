@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, output } from '@angular/core';
+import { Component, computed, effect, forwardRef, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
 import {
@@ -59,7 +59,8 @@ interface Stueck {
  */
 @Component({
   selector: 'nw-vorschau',
-  imports: [RouterLink, Text, QuelleText, KurzLink, Bild, Kennzahlen, TokenBild, Ansichtsbaum],
+  /* Der Baum zeichnet Kurzansichten (Collection, T-425), die Kurzansicht den Baum: `forwardRef` in beiden Richtungen. */
+  imports: [RouterLink, Text, QuelleText, KurzLink, Bild, Kennzahlen, TokenBild, forwardRef(() => Ansichtsbaum)],
   template: `
     <aside class="vorschau" [class.eingebettet]="eingebettet()" aria-label="Preview">
       @if (!eingebettet()) {
