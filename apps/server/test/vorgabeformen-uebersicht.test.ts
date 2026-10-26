@@ -51,8 +51,9 @@ describe('Übersicht der Vorgabeformen (T-394)', () => {
     expect((await t.als('Admin', 'PUT', '/api/inventory/shapes/items/arrow', { payload: { group: 'BL' } })).statusCode).toBe(200);
 
     const u = await t.json<Uebersicht>('Admin', 'GET', '/api/inventory/shapes');
-    expect(u.target).toBe('ly_rm_shapes');
-    expect(u.groups).toEqual([expect.objectContaining({ id: 'BL', name: 'Blades', count: 3, layer: 'ly_rm_shapes', refName: 'Sword' })]);
+    /* Ohne Angabe die spezifischste Formebene: das Raster, mit dem die Formen kommen. */
+    expect(u.target).toBe('ly_rm_grid');
+    expect(u.groups).toEqual([expect.objectContaining({ id: 'BL', name: 'Blades', count: 3, layer: 'ly_rm_grid', refName: 'Sword' })]);
     const je = Object.fromEntries(u.items.map((i) => [i.id, i]));
     expect(je['sword1']).toMatchObject({ rows: ['#', '#', '#'], source: 'reference', ref: 'sword', set: { group: 'BL', ref: 'sword' } });
     expect(je['arrow']).toMatchObject({ rows: ['#', '#', '#'], source: 'group', weight: 1, type: 'Item' });
@@ -112,9 +113,9 @@ describe('gleichzeitig (T-394)', () => {
     const echt = t.repo.putEntity.bind(t.repo);
     let einmal = true;
     t.repo.putEntity = (async (e: Entity, opts?: { expectRevision?: number | null }) => {
-      if (einmal && e.id === 'ly_rm_shapes') {
+      if (einmal && e.id === 'ly_rm_grid') {
         einmal = false;
-        const da = (await t.repo.getEntity('ly_rm_shapes'))!;
+        const da = (await t.repo.getEntity('ly_rm_grid'))!;
         const k = da.components?.['ShapeDefaults'] as { shapeGroups: unknown[]; shapeItems: unknown[] };
         await echt({ ...da, components: { ...da.components, ShapeDefaults: { ...k, shapeGroups: [...k.shapeGroups, { id: 'B', name: 'B' }] } } });
       }
@@ -191,5 +192,26 @@ describe('in die Ebene selbst (T-394)', () => {
     const falsch = await t.als('Admin', 'PUT', '/api/inventory/shapes', { payload: { layer: 'ly_rm_weight', shapeGroups: [{ id: 'X', name: 'X' }] } });
     expect(falsch.statusCode).toBe(404);
     expect(falsch.json().error).toMatch(/Default shapes/);
+  });
+});
+
+describe('am Raster (T-394)', () => {
+  it('in die Ebene von Grid geschrieben, kommen die Formen mit dem Raster in jede Kampagne, die es aufschaltet', async () => {
+    const t = await tisch({
+      kampagne: 'camp',
+      artikel: [
+        { id: 'camp', interfaces: ['Campaign'], components: ident('Runde', 'campaign-0001'), relations: [{ id: 'a1', type: 'activates', to: 'ly_rm_grid', props: { order: 10 } }] },
+        ding('sword', 'Sword', 10),
+      ],
+      konten: { Admin: { admin: true } },
+    });
+    await regelsystemeNachziehen(t.repo);
+    const r = await t.als('Admin', 'PUT', '/api/inventory/shapes', {
+      payload: { layer: 'ly_rm_grid', shapeGroups: [{ id: 'BL', name: 'Blades', rows: ['#', '#'] }], shapeItems: [{ id: 'sword', group: 'BL' }] },
+    });
+    expect(r.statusCode).toBe(200);
+    const u = await t.json<Uebersicht>('Admin', 'GET', '/api/inventory/shapes');
+    expect(u.layers.map((l) => l.id)).toEqual(['ly_rm_grid']);
+    expect(u.items.find((i) => i.id === 'sword')).toMatchObject({ rows: ['#', '#'], source: 'group', group: 'BL' });
   });
 });

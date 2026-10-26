@@ -347,9 +347,15 @@ export function campaignShapeDefaults(entities: Map<EntityId, Entity>, campaign:
   return mergeShapeDefaults(ebenen.map(shapeDefaultsOf));
 }
 
-/** Eine Ebene mit Vorgabeformen: sie trägt die Karte, oder sie ist die Mechanik `shapes` (E-166), auch noch leer. */
+/** Mechaniken, die Vorgabeformen tragen, auch noch leer: das Raster (die
+ *  Formen kommen mit dem Regelwerk, Wunsch der Leitung zu T-394) und die
+ *  Mechanik Default shapes (E-166). */
+const FORM_METHODEN = new Set(['grid', 'shapes']);
+
+/** Eine Ebene mit Vorgabeformen: sie trägt die Karte, oder sie ist eine Mechanik aus `FORM_METHODEN`. */
 export function isShapesLayer(l: Entity): boolean {
-  return !!l.components?.[SHAPE_DEFAULTS_CARD] || (l.components?.['RuleMechanic'] as { method?: unknown } | undefined)?.method === 'shapes';
+  const method = (l.components?.['RuleMechanic'] as { method?: unknown } | undefined)?.method;
+  return !!l.components?.[SHAPE_DEFAULTS_CARD] || (typeof method === 'string' && FORM_METHODEN.has(method));
 }
 
 /** Sagt das Untermodul überhaupt etwas? Sonst lohnt keine Rechnung. */
