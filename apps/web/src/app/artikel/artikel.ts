@@ -1608,7 +1608,7 @@ export class Artikel implements SchnellKontext {
     const gelesen = (e.relations ?? []).some((k) => k.type === 'hasClass' || k.type === 'hasAncestry')
       ? withCastRelations(e, spellcastingOf(e, undefined, this.bestand.voll()))
       : e;
-    return forArticle(pickView(e, this.entwurfsRegister() ?? r, 'full', { exact: true }).layout, gelesen, this.rueckKanten());
+    return forArticle(pickView(e, this.entwurfsRegister() ?? r, 'full', { exact: true, incoming: this.rueckKanten() }).layout, gelesen, this.rueckKanten());
   });
 
   protected readonly stuecke = computed<Stueck[]>(() => {

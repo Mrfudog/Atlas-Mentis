@@ -730,6 +730,13 @@ export interface LayoutElement {
   sort?: { by: string; desc?: boolean };
   /** `collection`: nach Art gruppiert, je Art eine Überschrift. */
   groupBy?: 'type';
+  /**
+   * **Die Position als Zahl** (T-425, E-168): wohin ein Element in der
+   * zusammengesetzten Ansicht kommt. Ohne Angabe zählt die Reihenfolge
+   * (10, 20, 30 …), also setzt `pos: 15` zwischen das erste und das
+   * zweite. Gleiche Zahlen sind kein Fehler, sondern Reihenfolge (E-173).
+   */
+  pos?: number;
 }
 
 /**
@@ -871,6 +878,18 @@ export interface ViewDef {
   group?: string;
   /** **Wofür sie gilt**; ohne Angabe für jeden Artikel (global). */
   applies?: ViewApplies;
+  /**
+   * **Ein Beitrag statt einer Ansicht** (T-425, E-168, REQ-434): legt sich
+   * über die Ansicht seiner Gruppe, statt sie zu ersetzen — fügt Elemente
+   * hinzu (auch mit Position `pos` und Bedingung `when`), nimmt weg,
+   * stellt um. Geltung wie jede Ansicht (`applies`): ohne für alle Artikel,
+   * mit Typ, Bedingung oder einem Artikel. Ein Beitrag ist keine Ansicht
+   * zum Wählen; gezeichnet wird, was sich aus allen geltenden ergibt
+   * (`composeView`).
+   */
+  adjust?: LayoutAdjust;
+  /** Bei gleicher Genauigkeit gewinnt die höhere Priorität (E-173); ohne Angabe 0. */
+  priority?: number;
 }
 
 export interface Registry {

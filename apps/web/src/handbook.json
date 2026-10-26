@@ -158,6 +158,15 @@
           ]
         },
         {
+          "heading": "Changing a view with an overlay",
+          "text": [
+            "Open the view in the designer (Registry › Views › Full, say). To change it for one article, pick it as the example and choose Save for … › only this article; for all articles with a field value or an edge, choose all with a condition and add it. Tick “as an overlay”.",
+            "Add, move or remove elements as usual. An overlay keeps only that difference: a new element gets a position between its neighbours (10, 20, 30 … are the elements of the view; 15 lands between the first and the second), a changed one is replaced where it stands, a removed one is left out. Everything else keeps following the view, also when it changes later.",
+            "Set a priority if two overlays of the same kind meet. Save. The overlay stands under its view in Registry › Views; elements it brings show its name in the designer’s tree.",
+            "Overlays stack from general to specific: every article › type › condition › one article. If two overlays change the same element, the more specific one wins; ⚠ in the designer and Workbench › View conflicts say where."
+          ]
+        },
+        {
           "heading": "Drawing a map",
           "text": [
             "First set the map's kind (battle, region, world …) in its fields: the tool bar shows the tools of that kind — walls, fog and light on battle maps, Sub-maps on the others. ⚙ Tools at the end of the bar changes which, for the whole campaign. On a world or region map, Sub-maps › Link map drags a frame and links the map that lies there; Link shape taps the corners of a free shape. Link settings sets per link how deep you zoom before it opens, how the GM and the players see it, and whether the sub-map shows this map faded around it. Align to parent grid makes a town map take exactly the hexes of a region map its feet cover: its size comes from both scales, its centre snaps into a hex (on squares, its corner to a grid corner). The stored frame stays, so switching it off restores the free size. A measured distance inside a sub-map is also given in the unit of the map above, and Measure › Add to route sums up legs over several maps — the start of a journey. Markers you set on the region inside a town's area wait in the town under To place until you confirm or move them; what stands in the town shows on the region by itself.",

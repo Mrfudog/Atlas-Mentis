@@ -22,6 +22,7 @@ import { beschreibeAbweichung, registerAbweichung } from './registerabgleich.js'
 import { RULE_OPTIONS } from './ruleOptions.js';
 import type { Entity, Registry } from './types.js';
 import { stageBases, validateEntity } from './validate.js';
+import { viewConflicts } from './viewScope.js';
 
 export interface CheckHit {
   /** Peg-Id — der Weg zum Artikel (`/artikel/:id`). */
@@ -358,6 +359,27 @@ export const CHECKS: Check[] = [
         if (adressen.length) raus.push(hit(e, adressen.map((a) => `${a.field}: ${a.url}`).join(', ')));
       }
       return raus;
+    },
+  },
+  {
+    /* T-425, E-173: zwei Beiträge zu einer Ansicht fassen dasselbe Element
+       an, oder zwei Elemente wollen an dieselbe Stelle. Beides ist erlaubt
+       und hat eine Regel (genauere Schicht, Priorität) — hier steht, wo. */
+    key: 'viewConflicts',
+    label: 'View conflicts',
+    description:
+      'Two overlays on a view change the same element (the more specific one wins), or two elements claim the same position (the higher priority, then the more specific overlay comes first). Neither is an error; this lists where it happens.',
+    run({ registry, exists }) {
+      return viewConflicts(registry, (id) => exists.get(id)).map((k) => ({
+        id: `view:${k.group}:${k.type}:${k.kind}:${k.element}`,
+        name: `${k.group} › ${k.type}`,
+        type: 'view',
+        reason:
+          k.kind === 'conflict'
+            ? `“${k.element}” is changed by ${k.sources.join(' and ')} — ${k.winner} wins`
+            : `“${k.element}” shares position ${k.position} with ${k.sources.join(', ')}`,
+        registry: registerOrt('views', k.winner ?? k.sources.find((s) => !s.startsWith('type ') && !s.startsWith('view ')) ?? k.group),
+      }));
     },
   },
   {

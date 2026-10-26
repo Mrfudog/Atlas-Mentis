@@ -1801,6 +1801,55 @@ T-422 bleibt an Arc und Szene, bis Schnitt 3 sie ablöst). Gezählt, wie viele
 Artikel eine Ansicht bekommen, wird am Server (`/api/registry/usage`,
 `views`), im Stapel.
 
+### Schichten (T-425, E-168, E-173)
+
+Eine Ansichtszeile mit **`adjust`** ist keine Ansicht, sondern eine
+**Schicht** (UI: *overlay*) über der Ansicht ihrer Gruppe (`group`). Sie
+ersetzt nichts: sie fügt Elemente hinzu (`extra`), nimmt weg (`drop`),
+blendet Felder aus (`hide`), ergänzt (`add`) oder ersetzt ein Element mit
+derselben Id an seiner Stelle. Ihre Geltung (`applies`) sagt, für wen —
+alle, ein Typ, eine Bedingung (Feld, Kante, eingehende Kante), ein
+Artikel —, und daraus ihre Genauigkeit (`appliesScope`).
+
+```mermaid
+flowchart LR
+  T["Anordnung der Art<br/>(layoutFor)"] --> G["Schichten: alle"]
+  G --> Ty["Schichten: Typ"]
+  Ty --> B["Schichten: Bedingung"]
+  B --> A["Schichten: Artikel"]
+  A --> S["nach Position sortiert<br/>(pos, Priorität, Genauigkeit)"]
+  S --> W["forArticle: when"]
+```
+
+`pickView` legt die geltenden Schichten der Reihe nach über die Anordnung
+(allgemein vor genau, bei gleicher Genauigkeit nach `priority`) und
+sortiert danach nach **Position** (`LayoutElement.pos`): was keine nennt,
+zählt in der Grundlage still 10, 20, 30 … — fest, auch wenn eine Schicht
+ein früheres Element wegnimmt; was eine Schicht ohne Position bringt,
+folgt seinem Vorgänger. Bei gleicher Position geht die höhere Priorität
+vor, dann die genauere Schicht. `ViewPick` trägt dazu `origin` (woher
+jedes Element kommt), `conflicts` und `positions`.
+
+**Konflikte** (E-173): fassen zwei Schichten dasselbe Element an
+(`conflict`), gilt die spätere — die genauere, bei gleicher die höher
+priorisierte; steht ein Element mit Absicht auf der Position eines anderen
+(`tie`), ordnet Priorität und Genauigkeit. Beides ist kein Fehler: der
+Designer zeigt ⚠, die Werkbank-Prüfung `viewConflicts` listet es je Gruppe
+und Art (`viewConflicts` in `viewScope.ts`; ein Artikel-Beitrag zählt bei
+der Art seines Artikels).
+
+Eine Schicht steht nicht zur Wahl (Kachel, Druck, Leiste „Views") und
+wird nicht als gestaltete gezeichnet (`isContribution`, `isDesignedView`
+ist für sie falsch). Der Designer speichert „nur dieser Artikel" und „mit
+Bedingung" auf Wunsch als Schicht: `contributionFrom` rechnet den
+Unterschied gegen das, was ohne sie gezeichnet würde — ein neues oder
+verschobenes Element bekommt eine Position zwischen seinen Nachbarn, ein
+geändertes wird an seiner Stelle ersetzt, `order` schreibt sie nie (eine
+Reihenfolge über alles stiesse mit jeder anderen Schicht zusammen). Was
+eine andere Schicht bringt und im Designer nie zu sehen war, nimmt sie
+nicht weg. Gespeichert wird in `view_def.config` wie jede Ansicht; eine
+Migration braucht es nicht.
+
 ### Ein Editor für alle Ansichten (T-276)
 
 Der Designer ist seit T-276 der einzige Editor; Registry › Views (die

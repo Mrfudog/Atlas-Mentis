@@ -140,6 +140,8 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
     viewByType: z.record(z.string(), z.string()).optional(),
     sort: z.object({ by: z.string(), desc: z.boolean().optional() }).optional(),
     groupBy: z.literal('type').optional(),
+    /* Die Position in einer zusammengesetzten Ansicht (T-425, E-168). */
+    pos: z.number().optional(),
     tabs: z
       .array(
         z.object({
@@ -233,6 +235,9 @@ export const ViewDefSchema = z.object({
       article: z.string().optional(),
     })
     .optional(),
+  /* Ein Beitrag (T-425, E-168): legt sich über die Ansicht seiner Gruppe. */
+  adjust: LayoutAdjustSchema.optional(),
+  priority: z.number().optional(),
 });
 
 export const RegistrySchema = z.object({

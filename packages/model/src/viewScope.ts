@@ -50,7 +50,16 @@ export function viewGroup(key: string, def: ViewDef | undefined): string {
  * bisher. `viewsFor(…, { designed: false })` fragt ohne sie.
  */
 export function isDesignedView(def: ViewDef | undefined): boolean {
-  return !!def && (def.group !== undefined || def.applies !== undefined);
+  return !!def && !def.adjust && (def.group !== undefined || def.applies !== undefined);
+}
+
+/**
+ * **Ein Beitrag** (T-425, E-168): eine Ansichtszeile mit `adjust` legt sich
+ * über die Ansicht ihrer Gruppe, statt sie zu ersetzen. Sie steht nicht zur
+ * Wahl und wird nicht für sich gezeichnet — sie ist eine Schicht.
+ */
+export function isContribution(def: ViewDef | undefined): boolean {
+  return !!def?.adjust;
 }
 
 /** Die Genauigkeit, die eine Geltung hat — aus dem, was dasteht. */
@@ -118,7 +127,8 @@ export function viewsFor(
   const raus: (ViewChoice & { rang: number; i: number })[] = [];
   viewKeys(registry).forEach((key, i) => {
     const def = registry.views[key];
-    if (!def) return;
+    /* Ein Beitrag ist eine Schicht, keine Ansicht zum Wählen (E-168). */
+    if (!def || isContribution(def)) return;
     const gestaltet = isDesignedView(def);
     if (gestaltet && opts.designed === false) return;
     if (def.applies) {
@@ -166,6 +176,28 @@ export interface ViewPick {
   mode: 'view' | 'own' | 'adjusted';
   /** Aus dem Designer (Gruppe oder Geltung) — dann zeichnet sie ihren Baum ganz. */
   designed: boolean;
+  /** Woher jedes Element kommt: die Grundlage (`type Shop`, `view full`) und die Beiträge, die es anfassen (E-168). */
+  origin: Record<string, string[]>;
+  /** Gleichstände und Konflikte der Schichten (E-173). */
+  conflicts: ViewConflict[];
+  /** Die Position, nach der jedes Element steht (E-168) — für den Designer (`contributionFrom`). */
+  positions: Record<string, number>;
+}
+
+/**
+ * **Ein Konflikt der Schichten** (E-173): `conflict` — zwei Beiträge
+ * ändern dasselbe Element, `winner` gilt (die genauere Schicht, bei
+ * gleicher Genauigkeit die höhere Priorität); `tie` — ein Element steht
+ * mit Absicht auf derselben Position wie ein anderes, die Reihenfolge
+ * entscheidet dann Priorität und Genauigkeit. Beides ist kein Fehler,
+ * aber etwas, das die Leitung sehen soll.
+ */
+export interface ViewConflict {
+  kind: 'conflict' | 'tie';
+  element: string;
+  sources: string[];
+  winner?: string;
+  position?: number;
 }
 
 /**
@@ -189,7 +221,7 @@ export function pickView(
   entity: Gelesen,
   registry: Pick<Registry, 'interfaces' | 'views'>,
   place: string,
-  opts: { incoming?: readonly { type: string }[]; exact?: boolean; fallback?: string } = {},
+  opts: { incoming?: readonly { type: string }[]; exact?: boolean; fallback?: string; force?: string } = {},
 ): ViewPick {
   if (!registry.views[place] && RETIRED_PLACES[place]) place = RETIRED_PLACES[place]!;
   const def = registry.views[place];
@@ -198,7 +230,227 @@ export function pickView(
     key = viewFor(entity, registry, opts.fallback, { incoming: opts.incoming });
   }
   const { layout, from, mode } = layoutFor(registry, key, entity.interfaces?.[0] ?? '');
-  return { key, layout, from, mode, designed: isDesignedView(registry.views[key]) };
+  const designed = isDesignedView(registry.views[key]);
+  /* Die Schichten (E-168): was für diesen Artikel an Beiträgen der Gruppe gilt, legt sich darüber. */
+  /* `force` nimmt einen Beitrag auch ohne passenden Artikel mit — der Designer zeigt die Schicht, die er bearbeitet. */
+  const beitraege = contributionsFor(registry, viewGroup(key, registry.views[key]), (d, k) => k === opts.force || appliesHolds(registry, d.applies, entity, opts.incoming ?? []));
+  const grund = from ? `type ${from}` : `view ${key}`;
+  const c = composeLayout(layout, grund, from ? SPEC.type : SPEC.global, beitraege);
+  return { key, layout: c.layout, from, mode, designed, origin: c.origin, conflicts: c.conflicts, positions: c.positions };
+}
+
+/**
+ * **Die zusammengesetzte Ansicht** (T-425, E-168, E-173): was ein Ort für
+ * diesen Artikel zeichnet, mit Herkunft je Element und den Konflikten —
+ * für den Designer und die Werkbank. Dasselbe wie `pickView`.
+ */
+export function composeView(
+  entity: Gelesen,
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  place: string,
+  opts: { incoming?: readonly { type: string }[]; exact?: boolean; fallback?: string; force?: string } = {},
+): ViewPick {
+  return pickView(entity, registry, place, opts);
+}
+
+/** Wie genau eine Schicht ist: global < Typ < Bedingung < Artikel. */
+const SPEC: Record<ViewScope, number> = { global: 0, type: 1, condition: 2, article: 3 };
+
+interface Beitrag {
+  key: string;
+  adjust: LayoutAdjust;
+  spec: number;
+  prio: number;
+}
+
+/** Die Beiträge einer Gruppe, die gelten — von allgemein nach genau, bei gleicher Genauigkeit nach Priorität. */
+function contributionsFor(registry: Pick<Registry, 'views'>, group: string, gilt: (def: ViewDef, key: string) => boolean): Beitrag[] {
+  const raus: (Beitrag & { i: number })[] = [];
+  viewKeys(registry).forEach((key, i) => {
+    const def = registry.views[key];
+    if (!def?.adjust || viewGroup(key, def) !== group || !gilt(def, key)) return;
+    raus.push({ key, adjust: def.adjust, spec: SPEC[appliesScope(def.applies)], prio: def.priority ?? 0, i });
+  });
+  return raus.sort((a, b) => a.spec - b.spec || a.prio - b.prio || a.i - b.i);
+}
+
+/**
+ * **Die Schichten anwenden.** Jeder Beitrag wirkt auf das Ergebnis des
+ * vorigen (`applyAdjust`); ein Element, das ein Beitrag mit derselben Id
+ * bringt, ersetzt das alte an seiner Stelle. Fassen zwei Beiträge
+ * dasselbe Element an, ist das ein Konflikt — der spätere (genauere oder
+ * höher priorisierte) gilt. Danach wird nach Position sortiert: was keine
+ * nennt, zählt in der Grundlage 10, 20, 30 … (still, und darum fest —
+ * nimmt ein Beitrag das erste weg, bleibt das zweite bei 20); was ein
+ * Beitrag ohne Position bringt, folgt seinem Vorgänger. Bei gleicher Zahl
+ * geht die höhere Priorität vor, dann die genauere Schicht.
+ */
+function composeLayout(
+  basis: readonly LayoutElement[],
+  grund: string,
+  grundSpec: number,
+  beitraege: readonly Beitrag[],
+): { layout: LayoutElement[]; origin: Record<string, string[]>; conflicts: ViewConflict[]; positions: Record<string, number> } {
+  const origin: Record<string, string[]> = {};
+  const still = new Map<string, number>();
+  let zaehler = 0;
+  for (const el of basis) {
+    origin[el.id] = [grund];
+    still.set(el.id, el.pos ?? (zaehler += 10));
+  }
+  if (!beitraege.length) return { layout: [...basis], origin, conflicts: [], positions: Object.fromEntries(still) };
+  let layout = [...basis];
+  const wer = new Map<string, string>();
+  const rang = new Map<string, { spec: number; prio: number; quelle: string }>();
+  const conflicts: ViewConflict[] = [];
+  for (const b of beitraege) {
+    const a = b.adjust;
+    const extra = a.extra ?? [];
+    const neu: LayoutElement[] = [];
+    for (const x of extra) {
+      const i = layout.findIndex((e) => e.id === x.id);
+      if (i >= 0) layout[i] = x;
+      else neu.push(x);
+    }
+    layout = applyAdjust(layout, { ...a, extra: neu });
+    const ids = new Set([...(a.drop ?? []), ...Object.keys(a.add ?? {}), ...extra.map((x) => x.id), ...(a.order ?? [])]);
+    for (const id of ids) {
+      const vorher = wer.get(id);
+      if (vorher && vorher !== b.key) conflicts.push({ kind: 'conflict', element: id, sources: [vorher, b.key], winner: b.key });
+      wer.set(id, b.key);
+      const o = (origin[id] ??= []);
+      if (!o.includes(b.key)) o.push(b.key);
+    }
+    for (const x of extra) rang.set(x.id, { spec: b.spec, prio: b.prio, quelle: b.key });
+  }
+  let vorher = 0;
+  const gesetzt = layout.map((el, i) => {
+    const r = rang.get(el.id) ?? { spec: grundSpec, prio: 0, quelle: origin[el.id]?.[0] ?? grund };
+    const pos = el.pos ?? still.get(el.id) ?? vorher;
+    const folgt = el.pos === undefined && !still.has(el.id);
+    vorher = pos;
+    return { el, i, r, pos, folgt, eigen: el.pos !== undefined && el.pos !== still.get(el.id) };
+  });
+  gesetzt.sort((x, y) => x.pos - y.pos || +x.folgt - +y.folgt || (x.folgt ? x.i - y.i : 0) || y.r.prio - x.r.prio || y.r.spec - x.r.spec || x.i - y.i);
+  /* Gleichstände melden: eine Position, mehrere Elemente, mindestens eins mit Absicht dorthin gesetzt. */
+  const nachPos = new Map<number, typeof gesetzt>();
+  for (const g of gesetzt) nachPos.set(g.pos, [...(nachPos.get(g.pos) ?? []), g]);
+  for (const [pos, gruppe] of nachPos) {
+    const erster = gruppe.find((g) => g.eigen);
+    if (gruppe.length < 2 || !erster) continue;
+    const andere = gruppe.filter((g) => g !== erster && !g.folgt).map((g) => g.r.quelle);
+    if (!andere.length) continue;
+    conflicts.push({ kind: 'tie', element: erster.el.id, sources: [erster.r.quelle, ...new Set(andere)], position: pos });
+  }
+  return { layout: gesetzt.map((g) => g.el), origin, conflicts, positions: Object.fromEntries(gesetzt.map((g) => [g.el.id, g.pos])) };
+}
+
+/**
+ * **Ein Beitrag aus dem Entwurf** (T-425, E-168): was der Designer als
+ * Schicht speichert. `basis` ist, was ohne diesen Beitrag gezeichnet würde,
+ * `positions` dessen Positionen (`ViewPick.positions`). Was fehlt, geht
+ * (`drop`); was neu ist, verschoben oder anders eingestellt, kommt als
+ * `extra` — ein geändertes an seiner Stelle mit derselben Id, ein neues
+ * oder verschobenes mit einer Position zwischen seinen Nachbarn. Kein
+ * `order`: eine Reihenfolge über alle Elemente stiesse mit jeder anderen
+ * Schicht zusammen.
+ */
+export function contributionFrom(
+  basis: readonly LayoutElement[],
+  positions: Readonly<Record<string, number>>,
+  tree: readonly LayoutElement[],
+  hide?: readonly string[],
+): LayoutAdjust {
+  const inBasis = new Map(basis.map((e) => [e.id, e]));
+  const imBaum = new Set(tree.map((e) => e.id));
+  const adj: LayoutAdjust = {};
+  const drop = basis.filter((e) => !imBaum.has(e.id)).map((e) => e.id);
+  if (drop.length) adj.drop = drop;
+  if (hide?.length) adj.hide = [...hide];
+  /* Anker: Elemente der Grundlage, die in aufsteigender Position bleiben. */
+  let zuletzt = -Infinity;
+  const anker = tree.map((el) => {
+    const b = inBasis.get(el.id);
+    const p = b ? positions[el.id] : undefined;
+    if (b && p !== undefined && p > zuletzt && el.pos === b.pos) {
+      zuletzt = p;
+      return p;
+    }
+    return null;
+  });
+  const extra: LayoutElement[] = [];
+  tree.forEach((el, i) => {
+    const b = inBasis.get(el.id);
+    if (anker[i] !== null) {
+      if (!gleich(el, b)) extra.push(kopie([el])[0]!);
+      return;
+    }
+    let j = i - 1;
+    while (j >= 0 && anker[j] === null) j--;
+    let k = i + 1;
+    while (k < tree.length && anker[k] === null) k++;
+    const lo = j >= 0 ? anker[j]! : k < tree.length ? Math.min(0, anker[k]! - 10) : 0;
+    const hi = k < tree.length ? anker[k]! : lo + 10 * (k - j);
+    const p = lo + ((hi - lo) * (i - j)) / (k - j);
+    extra.push({ ...kopie([el])[0]!, pos: Math.round(p * 100) / 100 });
+  });
+  if (extra.length) adj.extra = extra;
+  return adj;
+}
+
+/** Ein Konflikt der Schichten, für eine Gruppe und eine Art (die Werkbank, E-173). */
+export interface ViewConflictRow extends ViewConflict {
+  group: string;
+  type: string;
+}
+
+/**
+ * **Konflikte im ganzen Register** (E-173): je Gruppe mit Beiträgen und je
+ * anlegbare Art, was sich überschneidet — als gälte jede Bedingung. Ein
+ * Beitrag für einen Artikel zählt bei dessen Art (`typeOf`), sonst nicht.
+ * Dasselbe Paar an mehreren Arten steht einmal da.
+ */
+export function viewConflicts(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  typeOf: (id: string) => string | undefined = () => undefined,
+): ViewConflictRow[] {
+  const gruppen = new Set<string>();
+  for (const key of viewKeys(registry)) {
+    const def = registry.views[key];
+    if (def?.adjust) gruppen.add(viewGroup(key, def));
+  }
+  const raus: ViewConflictRow[] = [];
+  const gesehen = new Set<string>();
+  const arten = Object.entries(registry.interfaces)
+    .filter(([, d]) => !d.abstract)
+    .map(([n]) => n)
+    .sort();
+  for (const group of gruppen) {
+    for (const type of arten) {
+      const kette = typeChain(registry, type);
+      const gilt = (def: ViewDef): boolean => {
+        const a = def.applies;
+        if (!a) return true;
+        if (a.types?.length && !a.types.some((t) => kette.includes(t))) return false;
+        if (a.article) {
+          const t = typeOf(a.article);
+          return t === type;
+        }
+        return true;
+      };
+      const beitraege = contributionsFor(registry, group, gilt);
+      if (!beitraege.length) continue;
+      const { layout, from } = registry.views[group] ? layoutFor(registry, group, type) : { layout: [], from: null };
+      const c = composeLayout(layout, from ? `type ${from}` : `view ${group}`, from ? SPEC.type : SPEC.global, beitraege);
+      for (const k of c.conflicts) {
+        const schluessel = `${group}|${k.kind}|${k.element}|${k.sources.join(',')}`;
+        if (gesehen.has(schluessel)) continue;
+        gesehen.add(schluessel);
+        raus.push({ ...k, group, type });
+      }
+    }
+  }
+  return raus;
 }
 
 /** Wie viele Artikel eine Ansicht bekommen — für die Liste im Register. */

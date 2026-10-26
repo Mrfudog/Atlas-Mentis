@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { appliesText, countElements, isDesignedView, viewGroup, viewKeys } from '@nw/model';
+import { appliesText, countElements, isContribution, isDesignedView, viewGroup, viewKeys } from '@nw/model';
 import { ansichtsTeile } from './uebersicht';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit } from '../register/arbeit';
@@ -51,7 +51,7 @@ import { RegisterArbeit } from '../register/arbeit';
           @for (t of offen().has(z.key) ? z.teile : []; track t.view + (t.type ?? '')) {
             <div role="row" class="zeile unter">
               <span role="cell">↳ {{ t.label }}</span>
-              <span role="cell">{{ t.art === 'type' ? 'type' : 'designed' }}</span>
+              <span role="cell">{{ t.art === 'type' ? 'type' : t.art === 'overlay' ? 'overlay' : 'designed' }}</span>
               <span role="cell">{{ t.wie }}</span>
               <span role="cell"></span>
               <span role="cell"></span>
@@ -146,7 +146,7 @@ export class Ansichtsliste {
     const unter = (key: string) => {
       const d = r.views[key];
       const g = viewGroup(key, d);
-      return isDesignedView(d) && g !== key && !!r.views[g] && !isDesignedView(r.views[g]);
+      return (isDesignedView(d) || isContribution(d)) && g !== key && !!r.views[g] && !isDesignedView(r.views[g]);
     };
     return viewKeys(r).filter((k) => !unter(k)).map((key) => {
       const def = r.views[key]!;
@@ -168,9 +168,11 @@ export class Ansichtsliste {
 function zaehlText(teile: { art: string }[]): string {
   const typen = teile.filter((t) => t.art === 'type').length;
   const gestaltet = teile.filter((t) => t.art === 'designed').length;
+  const schichten = teile.filter((t) => t.art === 'overlay').length;
   return [
     typen ? `${typen} ${typen === 1 ? 'type says' : 'types say'} their own` : '',
     gestaltet ? `${gestaltet} designed ${gestaltet === 1 ? 'view' : 'views'}` : '',
+    schichten ? `${schichten} ${schichten === 1 ? 'overlay' : 'overlays'}` : '',
   ]
     .filter(Boolean)
     .join(' · ');

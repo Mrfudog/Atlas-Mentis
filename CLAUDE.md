@@ -390,6 +390,14 @@ wiederkommen, werden sie neu geschrieben.
   `viewsFor` rechnet die geltenden, genaueste zuerst (Artikel › Bedingung ›
   Typ › global); wo eine gebraucht wird, gilt die genaueste, wo gewählt
   wird (Kachel, Leiste „Views" am Artikel), stehen alle.
+  **Eine Zeile mit `adjust` ist eine Schicht** (UI *overlay*, T-425,
+  E-168, E-173): sie legt sich über die Ansicht ihrer Gruppe, statt sie zu
+  ersetzen — allgemein vor Typ vor Bedingung vor Artikel, gleich genau nach
+  `priority` —, und die Elemente stehen nach Position (`pos`; ohne Angabe
+  still 10, 20 … der Grundlage). Fassen zwei Schichten dasselbe an, gilt
+  die genauere; der Designer zeigt ⚠, die Werkbank `viewConflicts`. Eine
+  Schicht steht nicht zur Wahl (`isContribution`); der Designer speichert
+  sie als Unterschied (`contributionFrom`, nie `order`).
   **Ein Editor** (T-276): der Designer (`ansichten/designer.ts`) bearbeitet
   jede Ansicht — Registry › Views, „Design" an der Typseite (mit
   vorgewähltem Typ), „Design this view" im Full edit des Artikels. Beim

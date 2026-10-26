@@ -152,6 +152,12 @@
             <button type="button" class="knoten" (click)="gewaehlt.set(z.el.id)">
               <span class="ico" aria-hidden="true">{{ z.icon }}</span><b>{{ z.name }}</b>
               <span class="sum">{{ z.sum }}{{ z.zu ? ' · ' + z.kinder + ' inside' : '' }}</span>
+              @for (q of herkunft(z.el.id); track q) {
+                <span class="pill schicht-von" [title]="'From the overlay ' + q">{{ q }}</span>
+              }
+              @if (warnung(z.el.id); as w) {
+                <span class="warn" [title]="w" [attr.aria-label]="w">⚠</span>
+              }
             </button>
             @if (darf()) {
               <span class="griffe">
@@ -364,12 +370,12 @@
   <section class="karte geltung" aria-label="Save for">
     <b class="h3">Save for …</b>
     <div class="chips" role="radiogroup" aria-label="Save for">
-      @if (!gestaltet()) {
+      @if (!gestaltet() && !istBeitrag()) {
         <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'view'" [attr.aria-pressed]="speichernAls() === 'view'" (click)="speichernAls.set('view')">every article (the view itself)</button>
         <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'type'" [attr.aria-pressed]="speichernAls() === 'type'" (click)="speichernAls.set('type'); zielTyp() || zielTyp.set(probeTyp())">every article of {{ zielTyp() || probeTyp() ? typLabel(zielTyp() || probeTyp()) : 'a type' }}</button>
       }
-      @if (schluessel() && gestaltet()) {
-        <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'this'" [attr.aria-pressed]="speichernAls() === 'this'" (click)="speichernAls.set('this')">this view (all it applies to)</button>
+      @if (schluessel() && (gestaltet() || istBeitrag())) {
+        <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'this'" [attr.aria-pressed]="speichernAls() === 'this'" (click)="speichernAls.set('this')">{{ istBeitrag() ? 'this overlay' : 'this view' }} (all it applies to)</button>
       }
       @if (probe()) {
         <button type="button" class="chipb" role="radio" [attr.aria-checked]="speichernAls() === 'article'" [attr.aria-pressed]="speichernAls() === 'article'" (click)="speichernAls.set('article')">only {{ probeName() }}</button>
@@ -427,7 +433,11 @@
         }
       </details>
     } @else if (speichernAls() === 'article') {
-      <p class="sub">A new view in the group <b>{{ gruppe() }}</b> for {{ probeName() }} alone — the most specific one wins.</p>
+      @if (speichertSchicht()) {
+        <p class="sub">An overlay on <b>{{ gruppe() }}</b> for {{ probeName() }} alone: what you add, move or take away here; everything else keeps following the view.</p>
+      } @else {
+        <p class="sub">A new view in the group <b>{{ gruppe() }}</b> for {{ probeName() }} alone — the most specific one wins.</p>
+      }
     } @else {
       <div class="chips">
         @for (t of geltung().types ?? []; track t) {
@@ -471,6 +481,26 @@
         <p><span class="pill">only {{ bestand.name()(a) ?? a }} <button type="button" class="klein" (click)="artikelWeg()" aria-label="Not only this article">×</button></span></p>
       }
       <button type="button" class="klein" (click)="bedingungDazu()">+ condition (field value, edge)</button>
+    }
+    @if (schichtMoeglich()) {
+      <div class="schicht">
+        <label class="haken"><input type="checkbox" [checked]="speichertSchicht()" [disabled]="istBeitrag() || !darf()" (change)="alsSchicht.set($any($event.target).checked)" />
+          as an overlay — saves only what you add, move or take away; the rest keeps following {{ gruppe() }}</label>
+        @if (speichertSchicht()) {
+          <label class="f prio">
+            <span class="lbl">Priority</span>
+            <input type="number" [value]="prioritaet() ?? 0" [disabled]="!darf()" (change)="prioritaet.set(+optionWert($event) || null)" aria-label="Priority" />
+          </label>
+          <p class="sub">Overlays stack from general to specific: every article › type › condition › only this article. Among overlays of the same kind, the higher priority wins. An element sits by its position; a new one lands between its neighbours.</p>
+          @if (konflikte().length) {
+            <ul class="konflikte" aria-label="Conflicts">
+              @for (c of konflikte(); track c.kind + c.element) {
+                <li>⚠ <b>{{ c.element }}</b> — {{ warnung(c.element) }}</li>
+              }
+            </ul>
+          }
+        }
+      </div>
     }
     <p class="sub">The most specific view wins where one is needed: only this article › condition › type › every article. Where you pick (a board card, the view bar of an article), every view that applies is offered.</p>
   </section>
