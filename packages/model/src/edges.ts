@@ -102,6 +102,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'collectionMembers',
+    label: 'Collection members',
+    area: 'display',
+    does: 'adds an article to a collection by hand, next to what the collection’s rule takes, or with Exclude takes it out (T-425, E-174); the collection’s page lists its members',
+    uses: {
+      [M + 'collection.ts']: ['inCollection'],
+      [W + 'ansichten/baum.ts']: ['inCollection'],
+    },
+  },
+  {
     key: 'ruleMechanics',
     label: 'Rule mechanics',
     area: 'stack',

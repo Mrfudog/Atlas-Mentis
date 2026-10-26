@@ -49,6 +49,22 @@ flowchart LR
   D --> T["Tabelle · props + fields"]
 ```
 
+## Collection als Artikel (T-425, REQ-438, 26.10.2026)
+
+Eine Collection (unter Rule) gruppiert Artikel nach Regel und von Hand
+(`inCollection`, `exclude`); ihre Seite zeigt die Mitglieder, gesiebt.
+`MaterialGroup` ist ein Untertyp (E-174).
+
+```mermaid
+flowchart LR
+  C["Collection<br/>types · tags · fields"] -->|collectionRuleQuery| L["GET /api/list"]
+  I["inCollection<br/>(exclude)"] --> R["Rückbezüge"]
+  L --> M["Mitglieder"]
+  R --> M
+  M --> E["Element collection<br/>source members"]
+  MG["MaterialGroup"] -.extends.-> C
+```
+
 ## Design-Tokens (T-425, REQ-437, 26.10.2026)
 
 Farben sind Registerzeilen mit Rolle und Wert hell/dunkel (E-170 a). Ein

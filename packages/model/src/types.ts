@@ -718,8 +718,12 @@ export interface LayoutElement {
   types?: string[];
   /** `collection`: Kacheln (Vorgabe), Liste oder Tabelle (Spalten aus `fields` und `props`). */
   show?: 'tiles' | 'list' | 'table';
-  /** `collection`: woher die Treffer kommen — über den Pfad (Vorgabe) oder ein Filter über alles Sichtbare. */
-  source?: 'linked' | 'filter';
+  /**
+   * `collection`: woher die Treffer kommen — über den Pfad (Vorgabe), ein
+   * Filter über alles Sichtbare, oder `members`: die Mitglieder des
+   * Artikels selbst, wenn er eine Collection ist (Regel und `inCollection`).
+   */
+  source?: 'linked' | 'filter' | 'members';
   /** `collection` mit Quelle Filter: Marken, Feldbedingungen (`Typ.feld:Wert|Wert`) und Suchtext, wie im Kompendium. */
   filter?: { tags?: string[]; fields?: string[]; q?: string };
   /** `collection` mit Quelle Filter: höchstens so viele (Vorgabe 24). */

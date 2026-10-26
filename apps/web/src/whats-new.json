@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-collection-articles",
+      "date": "2026-10-26",
+      "title": "Collections: group articles by rule or by hand",
+      "text": "Create a Collection under Rules — Simple Melee Weapons, Damage Types — and give it a rule of types, tags and field conditions; add other articles by hand with the edge “in collection”, or exclude one. Its page lists the members, and players see only those they may.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
       "id": "2026-10-26-design-tokens",
       "date": "2026-10-26",
       "title": "Colour a view with design tokens",

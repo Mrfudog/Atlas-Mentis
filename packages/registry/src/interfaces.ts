@@ -1302,11 +1302,37 @@ export const interfaces: Record<string, InterfaceDef> = {
    * Gruppe statt auf einen Gegenstand. Eine Regel, kein Gegenstand: man
    * trägt sie nicht, man erfüllt sie.
    */
+  /**
+   * **Eine Collection** (T-425, REQ-438, E-174): eine Gruppe von Artikeln
+   * des Regelwerks — Simple Melee Weapons, Damage Types, Creature Types.
+   * Mitglieder kommen nach Regel (Arten, Marken, Feldbedingungen, wie im
+   * Kompendium) und von Hand über `inCollection`; dieselbe Kante mit
+   * `exclude` nimmt aus. Unterkollektionen hängen über `partOf`. Gezeigt
+   * werden die Mitglieder mit dem Element `collection` (Quelle `members`).
+   */
+  Collection: {
+    name: 'Collection',
+    area: 'rules',
+    label: 'Collection',
+    extends: ['Rule'],
+    schema: merge(g.CollectionInfo),
+    views: {
+      full: {
+        adjust: {
+          extra: [{ id: 'col-members', el: 'collection', text: 'Members', source: 'members', show: 'list', groupBy: 'type', sort: { by: 'name' }, pos: 25 }],
+        },
+      },
+    },
+  },
+
+  /* Eine Materialgruppe ist eine Collection mit eigener Regel (E-174): sie
+     nimmt Stücke nach Materialart und Seltenheit, und von Hand dazu kommt,
+     was über `inCollection` hineinzeigt. Die Karte `MaterialGroup` bleibt. */
   MaterialGroup: {
     name: 'MaterialGroup',
     area: 'rules',
     label: 'Material group',
-    extends: ['Rule'],
+    extends: ['Collection'],
     schema: merge(g.MaterialGroupInfo),
   },
 

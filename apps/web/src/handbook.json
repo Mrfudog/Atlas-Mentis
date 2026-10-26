@@ -158,6 +158,14 @@
           ]
         },
         {
+          "heading": "Grouping articles in a collection",
+          "text": [
+            "Create a Collection under Rules and give it a rule: the types it takes (with their subtypes), the tags they must all carry, and field conditions like Weapon.category:simple melee — the same as the filters of the Compendium.",
+            "To add an article the rule does not take, link it with the edge “in collection”; to take one out that the rule would take, use the same edge with Exclude.",
+            "The collection’s page lists its members by type. Players see only the members they may see. A material group is a collection too: a recipe needs “any reagent”, and the group says which pieces count."
+          ]
+        },
+        {
           "heading": "Giving a view its colours",
           "text": [
             "Select an element in the view designer and open Design. Head, Surface, Frame and Text each take a token — a named colour with a light and a dark value. Tokens the view already uses come first, marked ●.",

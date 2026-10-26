@@ -2463,6 +2463,31 @@ export const fieldGroups = {
    * Mitglieder gäbe es nur, wenn jemand sie nachführt — die Eigenschaften
    * stehen am Stück ohnehin. Was leer ist, schränkt nicht ein.
    */
+  CollectionInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        types: {
+          type: 'array',
+          title: 'Of the types',
+          items: { type: 'string' },
+          description: 'Every visible article of these types and their subtypes belongs to the collection, if the other conditions hold too. Empty with no other condition: only what is added by hand.',
+        },
+        tags: {
+          type: 'array',
+          title: 'Tagged',
+          items: { type: 'string' },
+          description: 'Only articles with all of these tags.',
+        },
+        fields: {
+          type: 'array',
+          title: 'Field conditions',
+          items: { type: 'string' },
+          description: 'Type.field:value|value or Type.field:1..3, as in the compendium filter — e.g. Weapon.category:simple melee.',
+        },
+      },
+    },
+  },
   MaterialGroupInfo: {
     schema: {
       type: 'object',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
-import { collectionGroups, collectionHits, collectionQuery, collectionView } from '../src/collection.js';
+import { collectionGroups, collectionHits, collectionQuery, collectionRuleQuery, collectionView } from '../src/collection.js';
 import { incomingIndex, pickView } from '../src/viewScope.js';
 import { RegistrySchema } from '../src/validate.js';
 import type { Entity, LayoutElement } from '../src/types.js';
@@ -168,5 +168,35 @@ describe('Vorgaben (T-425, Schnitt 3)', () => {
   it('die Session behält ihre eigene', () => {
     expect(ids('Session')).toContain('se-contains');
     expect(ids('Session')).not.toContain('st-contains');
+  });
+});
+
+describe('Collection als Artikel (T-425, REQ-438, E-174)', () => {
+  const sammlung: Entity = {
+    id: 'col_simple',
+    interfaces: ['Collection'],
+    name: 'Simple melee weapons',
+    components: { ...id('Simple melee weapons', 'collection-0001'), Collection: { types: ['Weapon'], fields: ['Weapon.category:simple melee'], tags: ['core'] } },
+  };
+  it('collectionRuleQuery: die Regel der Sammlung als Frage an die Liste, bis zur Grenze der Liste (200)', () => {
+    expect(collectionRuleQuery(sammlung)).toEqual({ of: ['Weapon'], tag: ['core'], f: ['Weapon.category:simple melee'], limit: 200 });
+    expect(collectionRuleQuery({ ...sammlung, components: { Identity: { name: 'Leer' } } })).toBeNull();
+  });
+  it('Mitglieder: was die Regel findet, dazu von Hand, ohne die Ausgenommenen', () => {
+    const dolch: Entity = { id: 'w_dolch', interfaces: ['Weapon'], name: 'Dagger', components: id('Dagger', 'weapon-0001') };
+    const keule: Entity = { id: 'w_keule', interfaces: ['Weapon'], name: 'Club', components: id('Club', 'weapon-0002') };
+    const peitsche: Entity = { id: 'w_peitsche', interfaces: ['Weapon'], name: 'Whip', components: id('Whip', 'weapon-0003'), relations: [{ type: 'inCollection', to: 'col_simple' }] };
+    const r = incomingIndex([peitsche, { ...keule, relations: [{ type: 'inCollection', to: 'col_simple', props: { exclude: true } }] }]);
+    const el: LayoutElement = { id: 'm', el: 'collection', source: 'members', sort: { by: 'name' } };
+    const m = new Map([dolch, keule, peitsche].map((e) => [e.id, e]));
+    const hits = collectionHits(seedRegistry, sammlung, el, { get: (x) => m.get(x), incoming: (x) => r.get(x) ?? [], found: [dolch, keule] });
+    expect(hits.map((h) => h.entity.id)).toEqual(['w_dolch', 'w_peitsche']);
+  });
+  it('das Register kennt die Art, die Kante und zeigt die Mitglieder an der Sammlung', () => {
+    expect(seedRegistry.interfaces['Collection']).toMatchObject({ area: 'rules' });
+    expect(seedRegistry.relations['inCollection']).toMatchObject({ to: ['Collection'] });
+    expect(seedRegistry.interfaces['MaterialGroup']?.extends).toEqual(['Collection']);
+    const l = pickView({ id: 'c', interfaces: ['Collection'], components: {} }, seedRegistry, 'full').layout;
+    expect(l.find((x) => x.el === 'collection')).toMatchObject({ source: 'members' });
   });
 });

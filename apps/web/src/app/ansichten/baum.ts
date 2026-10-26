@@ -5,6 +5,7 @@ import {
   collectionGroups,
   collectionHits,
   collectionQuery,
+  collectionRuleQuery,
   collectionView,
   elementTakes,
   entityName,
@@ -437,6 +438,10 @@ export class Ansichtsbaum {
         if (el.path?.length) {
           for (const id of this.erreichbar(el)) ids.add(id);
         }
+        /* Mitglieder von Hand (E-174): wer über `inCollection` hineinzeigt. */
+        if (el.el === 'collection' && el.source === 'members') {
+          for (const k of this.eingehend(this.artikel().id)) if (k.type === 'inCollection') ids.add(k.from);
+        }
         if (el.children) sammle(el.children);
       }
     };
@@ -506,7 +511,7 @@ export class Ansichtsbaum {
   protected sammlung(el: LayoutElement): Sammlung | null {
     const r = this.reg();
     if (!r || this.tiefe > 0) return null;
-    const frage = collectionQuery(el);
+    const frage = this.frageVon(el);
     const voll = this.bestand.voll();
     const found = frage
       ? (this.gefunden().get(JSON.stringify(frage)) ?? []).map((id) => voll.get(id)).filter((e): e is Entity => !!e)
@@ -539,6 +544,11 @@ export class Ansichtsbaum {
     };
   }
 
+  /** Die Frage einer Sammlung: ihr Filter, oder bei `members` die Regel der Collection, an der sie steht (E-174). */
+  private frageVon(el: LayoutElement): CollectionQuery | null {
+    return el.source === 'members' ? collectionRuleQuery(this.artikel()) : collectionQuery(el);
+  }
+
   /** Was die Filter-Sammlungen gefunden haben, je Frage (T-425): die Ids, die der Server schickte. */
   private readonly gefunden = signal<ReadonlyMap<string, string[]>>(new Map());
   private readonly gefragt = new Set<string>();
@@ -548,7 +558,7 @@ export class Ansichtsbaum {
     const raus: CollectionQuery[] = [];
     const sammle = (els: readonly LayoutElement[]): void => {
       for (const el of els) {
-        const f = el.el === 'collection' ? collectionQuery(el) : null;
+        const f = el.el === 'collection' ? this.frageVon(el) : null;
         if (f) raus.push(f);
         if (el.children) sammle(el.children);
       }

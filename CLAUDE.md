@@ -402,6 +402,11 @@ wiederkommen, werden sie neu geschrieben.
   (`LEISTE`) und suchen, Rückgängig/Wiederholen über den Entwurf
   (`history.ts`, ein Muster), Kopieren/Einfügen über die Ablage
   (`kern/ablage.ts`), am gewählten Element die schwebende Leiste.
+  **Eine Collection ist auch ein Artikel** (T-425, E-174, Art unter
+  `Rule`): Mitglieder nach Regel (`Collection.types`/`tags`/`fields`, über
+  `GET /api/list`) und von Hand (`inCollection`, `exclude` nimmt aus); das
+  Element `collection` mit Quelle `members` zeigt sie. `MaterialGroup`
+  ist ein Untertyp.
   **Farben sind Design-Tokens** (T-425, E-170, `Registry.tokens`,
   `token_def`): Rolle, Wert hell und dunkel; ein Element nennt je Stelle
   (`head`, `surface`, `frame`, `text`) ein Token (`style`), die Ansicht je
