@@ -14,6 +14,7 @@ import {
   type Entity,
   type ShapeDefaults,
 } from '../src/index.js';
+import { isShapesLayer } from '../src/defaultShapes.js';
 
 /* Vorgabeformen im Inventarmodul (T-394, E-165). Erfundene Gegenstände und Gruppen. */
 
@@ -291,5 +292,19 @@ describe('withShapeItem / withShapeGroup (T-394)', () => {
     expect(k['shapeGroups']).toEqual([{ id: 'G', name: 'Gems', rows: ['#'], stackSize: 16 }]);
     k = withShapeGroup(k, 'G', { stackSize: 8, rows: null });
     expect(k['shapeGroups']).toEqual([{ id: 'G', name: 'Gems', stackSize: 8 }]);
+  });
+});
+
+describe('welche Ebene Formen trägt (T-394)', () => {
+  const mech = (method: string, extra: Record<string, unknown> = {}): Entity =>
+    ({ id: `ly_rm_${method}`, name: method, interfaces: ['RuleMechanic'], components: { RuleMechanic: { method }, ...extra }, relations: [] }) as Entity;
+  it('das Raster bringt die Vorgaben mit, auch noch leer — sie kommen mit dem Regelwerk', () => {
+    expect(isShapesLayer(mech('grid'))).toBe(true);
+    expect(isShapesLayer(mech('shapes'))).toBe(true);
+  });
+  it('Gewicht und Slots kennen keine Formen, ausser sie tragen die Karte', () => {
+    expect(isShapesLayer(mech('weight'))).toBe(false);
+    expect(isShapesLayer(mech('slots'))).toBe(false);
+    expect(isShapesLayer(mech('slots', { ShapeDefaults: { shapeGroups: [] } }))).toBe(true);
   });
 });

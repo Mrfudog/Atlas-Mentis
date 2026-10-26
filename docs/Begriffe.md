@@ -2375,7 +2375,9 @@ ersten Tippfehler.
 E-165). Eine Ergänzung je Gegenstand hätte jede Form hundertfach
 gespeichert: wer die Hausregel ändert (Pfeile 32 statt 20 je Stapel),
 müsste jeden Pfeil anfassen, und neue Gegenstände blieben ohne. Darum
-trägt das Untermodul „Default shapes“ des Inventars **Gruppen** mit einer
+trägt das Untermodul „Default shapes“ des Inventars — seine Werte stehen
+in der Ebene von **Grid**, damit sie mit dem Regelwerk kommen und nicht
+mit einer Kampagne (D90) — **Gruppen** mit einer
 Form und Werte **je Gegenstand** (welche Gruppe, welcher
 **Referenzgegenstand**, eine eigene Form), und gerechnet wird beim Lesen.
 Der Referenzgegenstand ist der Grund, warum ein „+1 Longsword“ wie ein

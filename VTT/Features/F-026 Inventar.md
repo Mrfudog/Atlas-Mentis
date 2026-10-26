@@ -80,7 +80,9 @@ schwebende Werkzeugleiste, Telefon-Muster.
 
 Form und Stapel eines Gegenstands werden beim Lesen gerechnet (D8): aus
 dem Untermodul „Default shapes“ des Inventarmoduls — Gruppen und Werte je
-Gegenstand —, nicht aus Artikeln je Gegenstand. Der erste Treffer gilt:
+Gegenstand —, nicht aus Artikeln je Gegenstand. Die Werte stehen in der
+Ebene der Mechanik **Grid** und kommen so mit dem Regelwerk (D90); eine
+Kampagne schaltet sie auf und passt sie mit einer eigenen Ebene darüber an. Der erste Treffer gilt:
 
 ```mermaid
 flowchart TD

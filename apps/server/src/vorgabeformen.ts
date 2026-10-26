@@ -16,6 +16,7 @@ import {
   indexShapeDefaults,
   mergeShapeDefaults,
   primaryInterface,
+  isLayer,
   isShapesLayer,
   resolvedStack,
   shapeDefaultsOf,
@@ -165,16 +166,28 @@ export function registerVorgabeformen(app: FastifyInstance, deps: VorgabeformenD
     nurZaehlen = false,
   ): Promise<{ code: number; body: unknown }> {
     const stand = await roh();
-    const reg = await registry();
-    const ebenen = formEbenen(stand.map, kampagneVon(stand.map, reg));
-    const ziele: string[] = [];
-    for (const l of ebenen) if (await schreibt(request, l.id)) ziele.push(l.id);
-    const id = layerId ?? ziele[ziele.length - 1];
-    if (!id) {
-      return { code: 403, body: { error: 'No default-shapes layer you write is turned on in this campaign. Turn on Inventory, or ask the administration to assign you its Default shapes layer.' } };
-    }
-    if (!ziele.includes(id)) {
-      return { code: 403, body: { error: 'You do not write in this layer, or it is not turned on in this campaign. Choose one of the layers marked as writable.' } };
+    let id = layerId;
+    if (id) {
+      /* **Geschrieben wird in die Ebene selbst**, nicht in eine Kampagne:
+         die Formen gehören dem Modul, eine Kampagne schaltet es nur auf
+         (und passt es mit einer eigenen Ebene darüber an). Ob sie gerade
+         irgendwo aufgeschaltet ist, spielt beim Schreiben keine Rolle. */
+      const l = stand.map.get(id);
+      if (!l || !isLayer(l) || !isShapesLayer(l)) {
+        return { code: 404, body: { error: 'This is not a Default shapes layer. Name the layer of the mechanic Default shapes, or one that already carries shapes.' } };
+      }
+      if (!(await schreibt(request, id))) {
+        return { code: 403, body: { error: 'You do not write in this layer. Ask the administration or its owner to add you as an editor.' } };
+      }
+    } else {
+      /* Ohne Angabe: die spezifischste Formebene der laufenden Kampagne, die man schreibt. */
+      const reg = await registry();
+      const ziele: string[] = [];
+      for (const l of formEbenen(stand.map, kampagneVon(stand.map, reg))) if (await schreibt(request, l.id)) ziele.push(l.id);
+      id = ziele[ziele.length - 1];
+      if (!id) {
+        return { code: 403, body: { error: 'No default-shapes layer you write is turned on in this campaign. Turn on Inventory, or ask the administration to assign you its Default shapes layer.' } };
+      }
     }
     /* **Gegen die gelesene Revision** — zwei Änderungen an derselben Karte
        zur selben Zeit gingen sonst eine verloren (die Karte ist eine Liste
