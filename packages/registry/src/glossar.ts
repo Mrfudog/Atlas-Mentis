@@ -80,6 +80,16 @@ const APP: AppTerm[] = [
     see: '/registry',
   },
   {
+    term: 'Board sketch',
+    aliases: ['Board preview'],
+    sort: 'app',
+    definition: 'The quick view of a board: the board drawn small, with a box and a name for every card on it.',
+    effect: 'Shows in the popup of a board, under the + of a search hit and wherever a collection shows boards. Cards the GM keeps hidden are not in a player’s sketch — the server leaves them out.',
+    example: 'Search “Session 3 board”, open + : two boxes, “The old man” top left and “The mine” to the right.',
+    translations: { de: 'Board-Skizze' },
+    see: '/boards',
+  },
+  {
     term: 'Overlay',
     aliases: ['View overlay'],
     sort: 'app',

@@ -278,7 +278,7 @@ Neue Wörter fürs Glossar und für Begriffe.md:
    - `edgeTable` migrieren.
    - Vorgaben für Arc, Scene, Encounter, Place, Faction.
    - Die feste Liste „Contains“ fällt ganz weg.
-4. **Linked article mit Kante und Ansicht**, dazu die Quick-Ansichten von Map und Board.
+4. **Linked article mit Kante und Ansicht**, dazu die Quick-Ansichten von Map und Board. *Steht (26.10.): `linked` mit `path` und `view`; Board-Skizze (`boardSketch`); Map zeigte ihr Bild schon (erbt `Image`); Szene „Contains“ als Liste.*
 5. **Werkzeugleiste (REQ-436) im Designer**:
    - Einfügen, Kontext, Allgemein.
    - Einstellungen am Element.

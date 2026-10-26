@@ -453,7 +453,9 @@ export function anordnen(
          die in seinen Artikel schreiben. `except` nennt Arten am anderen
          Ende; das Inventar hat an der Kreatur seinen eigenen Reiter. */
       case 'linked':
-        out.push({ id: el.id, art: 'verlinkt', ausser: [...(el.except ?? [])] });
+        /* Mit Pfad (T-425, E-172): ein Ziel über eine Kante, in der gewählten Ansicht — der Baum zeichnet es. */
+        if (el.path?.length) out.push({ id: el.id, art: 'baum', layout: [el] });
+        else out.push({ id: el.id, art: 'verlinkt', ausser: [...(el.except ?? [])] });
         break;
       /* Das Inventar (T-125, Darstellung): am Träger das über `carries`
          getragene, an einem Inventar das, was es selbst hält — gezeichnet

@@ -1808,8 +1808,27 @@ Kompendium (`collectionQuery`), gesiebt am Server. **Vorgaben:** die
 Session trägt `se-contains` (Migration 144), jede andere Geschichte
 `st-contains` an `Story` (Arc, Szene, Kampagne; Position 65, nach den
 Teilen), ein Ort `o-within` (Unterorte, Liste) und `o-residents` (wer dort
-lebt, Kacheln; Migration 145). Die feste Liste „Contains" aus T-422 und
-`contains` an `/api/entities/:id/parts` gibt es nicht mehr. Gezählt, wie viele
+lebt, Kacheln; Migration 145); die Szene stellt `st-contains` als Liste
+ein (Migration 147). Die feste Liste „Contains" aus T-422 und
+`contains` an `/api/entities/:id/parts` gibt es nicht mehr.
+
+**Ein Element gleicher Id stellt um** (T-425): bringt eine Anpassung
+(`adjust.extra`) ein Element mit einer Id, die es schon gibt, ersetzt es
+dieses an Ort und Stelle (`applyAdjust`) — so stellt eine Unterart ein
+geerbtes Element anders ein, ohne es zu verdoppeln. Eine ausdrückliche
+Position (`pos`) an einer Art stellt ein Element auch ohne Schicht an
+seinen Platz.
+
+**„Linked article" mit Kante** (T-425, E-172): ohne `path` zeichnet die
+Seite wie bisher die Felder einer `asField`-Kante, bearbeitbar; mit `path`
+zeichnet der Baum das erste Ziel in der Ansicht, die das Element nennt
+(`view`, Vorgabe `quick`) — der Ort einer Szene als Karte.
+
+**Die Kurzansicht eines Boards** ist eine Skizze (`bq-board`, Position 35
+vor dem Bild, Migration 147): `boardSketch` in `packages/model/src/board.ts`
+rechnet Fläche, Farbe und je Kachel ein Rechteck mit Namen; was „GM only"
+ist, hat der Server vorher weggenommen (`redactBoard`). Eine Karte zeigt
+in `quick` ihr Bild (`Image.image`), wie jede Art mit Bild. Gezählt, wie viele
 Artikel eine Ansicht bekommen, wird am Server (`/api/registry/usage`,
 `views`), im Stapel.
 
@@ -2515,7 +2534,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Campaign` | `Story` `VisibilityRules` | `compareFor` `playerStart` `languages` `feats` `hitPoints` `inventory` `itemPricing` `enhancementsBy` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `craftLearning` `craftLearnRarity` `playerRolls` `ruleGraphs` `combat` `initNames` `initHealth` `initEffects` `initActions` `initColumns` `initQuickActions` `turnPlanner` `fog` `moves` `tokenMove` `revealOnMove` `doors` `tokenSizes` `passageTrigger` `passageWhen` `passageMove` `passageAction` `passageConfirm` `mapLinkShow` `mapLinkShowPlayers` `mapLinkOuter` `mapTools` `markerViews` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, handout, full |
-| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
+| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, full |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `mapNavigation` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
 | `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, full |
 
@@ -2556,7 +2575,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
+| `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full, quick |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, overview, full |
 | `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `markerView` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | quick, full |

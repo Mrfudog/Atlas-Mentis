@@ -340,7 +340,22 @@
                 Every {{ el.el === 'prose' ? 'long text' : 'field' }} the type has <span class="sub">— what an earlier element shows stays there</span>
               </label>
             }
-            @if ((el.el !== 'collection' || el.show === 'table') && istListe(el.fields)) {
+            @if (el.el === 'linked') {
+              <!-- Linked article (T-425, E-172): ohne Kante die Felder der asField-Kante, bearbeitbar; mit Kante ein Ziel in einer Ansicht. -->
+              <p class="sub">{{ el.path?.length ? 'The first article at the end of the edge, in the view you choose.' : 'Without an edge: the fields of what hangs on an asField edge (the statblock of a creature), editable in place. Follow an edge to show any linked article in a view.' }}</p>
+              @if (el.path?.length) {
+                <label class="f">
+                  <span class="lbl">Shown in the view</span>
+                  <select [disabled]="!darf()" (change)="setze({ view: optionWert($event) || null })" aria-label="Shown in the view">
+                    <option value="" [selected]="!el.view">quick</option>
+                    @for (g of ansichtsGruppen(); track g) {
+                      <option [value]="g" [selected]="el.view === g">{{ g }}</option>
+                    }
+                  </select>
+                </label>
+              }
+            }
+            @if (el.el !== 'linked' && (el.el !== 'collection' || el.show === 'table') && istListe(el.fields)) {
               <ul class="gewaehlt">
                 @for (f of el.fields; track f; let i = $index) {
                   <li><span>{{ text(f) }}</span>
@@ -359,7 +374,7 @@
                 }
               </div>
             }
-            @if (darf() && (el.el !== 'collection' || el.show === 'table')) {
+            @if (darf() && el.el !== 'linked' && (el.el !== 'collection' || el.show === 'table')) {
               <div class="chips" role="radiogroup" aria-label="Add to">
                 <button type="button" class="chipb" role="radio" [attr.aria-checked]="wertZiel() === 'fields'" [attr.aria-pressed]="wertZiel() === 'fields'"
                         [disabled]="el.fields === 'all'" (click)="wertZiel.set('fields')">+ value</button>

@@ -555,7 +555,10 @@ export function isContainer(el: Pick<LayoutElement, 'el'>): boolean {
  */
 export const TREE_ELEMENTS: readonly string[] = [...CONTAINER_ELEMENTS, 'tileGroup', 'quote', 'badges', 'edgeTable', 'table', 'structure', 'collection'];
 
-export function drawnByTree(el: Pick<LayoutElement, 'el'>): boolean {
+export function drawnByTree(el: Pick<LayoutElement, 'el'> & Partial<Pick<LayoutElement, 'path'>>): boolean {
+  /* „Linked article" mit Pfad (T-425, E-172): ein Ziel in einer Ansicht — das zeichnet der Baum;
+     ohne Pfad bleibt es die bearbeitbare `asField`-Seite. */
+  if (el.el === 'linked') return !!el.path?.length;
   return TREE_ELEMENTS.includes(el.el);
 }
 

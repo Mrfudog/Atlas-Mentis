@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
 import {
   LAYER_RELATION,
+  boardSketch,
   elementTakes,
   entityName,
   entriesOf,
@@ -17,7 +18,7 @@ import {
   unitsFor,
   isLayer,
 } from '@nw/model';
-import type { Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
+import type { BoardSketch, Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { QuelleText } from '../kern/quellen';
 import { Text } from './text';
@@ -31,7 +32,8 @@ import { Ansichtsbaum } from '../ansichten/baum';
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source', 'Status', 'Tags'];
 
 interface Stueck {
-  kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild' | 'kennzahlen' | 'token' | 'baum';
+  kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild' | 'kennzahlen' | 'token' | 'baum' | 'skizze';
+  skizze?: BoardSketch;
   /** Ein Element, das nur der Baum zeichnet (T-310): Collapsible, Columns, Table … */
   baum?: LayoutElement[];
   key: string;
@@ -100,6 +102,24 @@ interface Stueck {
             }
             @case ('kennzahlen') {
               <nw-kennzahlen [artikel]="e" />
+            }
+            @case ('skizze') {
+              <!-- Ein Board, klein (T-425): wo die Kacheln liegen und wie sie heissen. -->
+              @if (s.skizze; as sk) {
+                <div class="bildfach">
+                  <svg class="skizze" [attr.viewBox]="'0 0 ' + sk.width + ' ' + sk.height" role="img" [attr.aria-label]="'Board with ' + sk.cards.length + ' cards'">
+                    <rect x="0" y="0" [attr.width]="sk.width" [attr.height]="sk.height" class="flaeche" [attr.fill]="sk.background || null" />
+                    @for (k of sk.cards; track k.id + $index) {
+                      <g>
+                        <rect class="karte" [attr.x]="k.x" [attr.y]="k.y" [attr.width]="k.w" [attr.height]="k.h" rx="8" />
+                        @if (k.name) {
+                          <text [attr.x]="k.x + 12" [attr.y]="k.y + 40" class="kname">{{ k.name }}</text>
+                        }
+                      </g>
+                    }
+                  </svg>
+                </div>
+              }
             }
             @case ('bild') {
               <!-- Im Rahmen (Popup, Marker) schneidet das Fach unten ab statt zu scrollen (T-346). -->
@@ -192,6 +212,27 @@ interface Stueck {
       flex: 0 1 auto;
       min-height: 0;
       overflow: hidden;
+    }
+    /* Die Skizze eines Boards (T-425): Fläche und Kacheln, die Namen gross genug für klein. */
+    .skizze {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 14rem;
+    }
+    .skizze .flaeche {
+      fill: var(--paper-2, #f3ead7);
+      stroke: var(--line);
+      stroke-width: 4;
+    }
+    .skizze .karte {
+      fill: var(--paper);
+      stroke: var(--ink, #3b2f22);
+      stroke-width: 4;
+    }
+    .skizze .kname {
+      font: 600 32px var(--sans, sans-serif);
+      fill: var(--ink, #3b2f22);
     }
     .vorschau.eingebettet {
       border: 0;
@@ -384,6 +425,9 @@ export class Vorschau {
         /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
         const bild = bildDes(e, r, this.bestand.bild().get(e.id));
         if (bild) raus.push({ kind: 'bild', key: el.id, bild });
+      } else if (el.el === 'board') {
+        const n = this.bestand.name();
+        raus.push({ kind: 'skizze', key: el.id, skizze: boardSketch(e, (x) => n(x)) });
       } else if (el.el === 'stats') {
         /* Die Kennzahlen (T-206) — sie holen ihren Statblock selbst. */
         raus.push({ kind: 'kennzahlen', key: el.id });

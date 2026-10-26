@@ -69,6 +69,34 @@ export function boardCard(board: Entity): BoardCard {
   };
 }
 
+/** Eine verkleinerte Tafel (T-425): die Fläche und je Kachel ein Rechteck mit Namen. */
+export interface BoardSketch {
+  width: number;
+  height: number;
+  background?: string;
+  cards: { id: string; x: number; y: number; w: number; h: number; name: string }[];
+}
+
+/**
+ * **Die Skizze eines Boards** für seine Kurzansicht (T-425): die Fläche,
+ * ihre Farbe und was darauf liegt, von unten nach oben — was über den Rand
+ * ragt, vergrössert die Fläche. Gezeichnet wird klein, also keine Inhalte,
+ * nur Lage und Name; was für Spielende verborgen ist, hat der Server schon
+ * weggenommen (`redactBoard`).
+ */
+export function boardSketch(board: Entity, name: (id: string) => string | undefined): BoardSketch {
+  const karte = boardCard(board);
+  const c = (board.components?.[BOARD_TYPE] ?? {}) as Record<string, unknown>;
+  const cards = placementsOf(board).map((r) => {
+    const p = placementOf(r);
+    return { id: r.to, x: p.x, y: p.y, w: p.w, h: p.h, name: name(r.to) ?? '' };
+  });
+  const width = Math.max(karte.width, ...cards.map((k) => k.x + k.w));
+  const height = Math.max(karte.height, ...cards.map((k) => k.y + k.h));
+  const farbe = c['backgroundColor'];
+  return { width, height, ...(typeof farbe === 'string' && farbe ? { background: farbe } : {}), cards };
+}
+
 /** Die Platzierung einer Kante, mit den Vorgaben für das, was fehlt. */
 export function placementOf(rel: Relation): BoardPlacement {
   const p = (rel.props ?? {}) as Record<string, unknown>;
