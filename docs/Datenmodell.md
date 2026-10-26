@@ -1722,7 +1722,8 @@ keine Bedingung darauf.
 Item` ist `[{ relation: 'shopkeeper', dir: 'in', type: 'Shop' }, {
 relation: 'sells', type: 'Item' }]` (`followPath`). Neu dazu: `tileGroup`,
 `quote`, `badges`, `edgeTable` (je Kante eine Zeile, `props` nennt die
-Eigenschaften der Kante als Spalten). `reader` nimmt `toc` (`left`, `top`,
+Eigenschaften der Kante als Spalten — seit T-425 eine Collection als
+Tabelle, Migration 146; der Zeichner kennt es weiter). `reader` nimmt `toc` (`left`, `top`,
 `off`) und `side` (Werte am Rand `right`, `bottom`, `none`). `when` je
 Element bleibt und sieht auch Kinder und eingehende Kanten (`forArticle`).
 
@@ -1777,15 +1778,17 @@ mit Würfelspalte und „Roll" (`rollTableOf`, `rowForRoll` in
 `rollTable.ts`): die Spanne steht in der ersten Zelle („2–3", „00" ist
 100), bei einem Würfeltopf ohne Spalten wird sie aus den Gewichten
 gezählt — gerechnet, nicht gespeichert (D8). Gewürfelt wird am Server, der
-Wurf steht im Log des Artikels (T-172). `edgeTable` zeigt Kanten und ihre
-Ziele, nicht Zeilen.
+Wurf steht im Log des Artikels (T-172). Eine Collection als Tabelle zeigt
+Kanten und ihre Ziele, nicht Zeilen.
 
 **Das Element `collection`** (T-425, REQ-430, E-142, E-172) zeigt die
 Artikel am Ende seines Pfads **in der Ansicht ihrer eigenen Art**: die
 Session über `← partOf` ihre Szenen und Begegnungen. `types` engt auf
 Arten ein (die `extends`-Kette hoch), `show` sagt Kacheln (`tiles`,
-Vorgabe) oder Liste (`list`), `view` die Ansicht je Treffer (sonst `quick`
-bei Kacheln, `overview` in der Liste) und `viewByType` dieselbe Wahl je
+Vorgabe), Liste (`list`) oder Tabelle (`table`: Name, Art, die Werte der
+Kante aus `props` und die Felder aus `fields` als Spalten — was früher
+`edgeTable` war), `view` die Ansicht je Treffer (sonst `quick` bei
+Kacheln, `overview` in Liste und Tabelle) und `viewByType` dieselbe Wahl je
 Zielart — **das Element wählt, nicht die Kante**. `sort.by` ordnet nach
 `Time.sort` (Vorgabe, dann Nummer), `name`, `id` oder einem Feld
 `Typ.feld`, `sort.desc` umgekehrt; ein fehlender Wert steht hinten.
@@ -1795,9 +1798,18 @@ Gezeichnet wird jede Kachel als eingebettete Kurzansicht (`nw-vorschau`)
 — die Views werden wiederverwendet, eine Sonderseite gibt es nicht.
 Gesiebt hat der Server: die Treffer kommen über die Rückbezüge und
 `/api/entities/:id`, was zurückgehalten ist, fehlt. **Eine Stufe:** in
-einer Kachel zeichnet eine weitere Collection nichts. Die Session trägt
-sie seit Migration 144 statt `parts` (die feste Liste „Contains" aus
-T-422 bleibt an Arc und Szene, bis Schnitt 3 sie ablöst). Gezählt, wie viele
+einer Kachel zeichnet eine weitere Collection nichts. `unranked` nimmt
+nur Kanten ohne `rank` — was mit Rang dasteht, zeigt der Lesefluss
+(`parts`). **Quelle Filter** (`source: 'filter'`): statt eines Pfads
+jeder sichtbare Artikel, der passt — `types` (mit Untertypen),
+`filter.tags`, `filter.fields` (`Typ.feld:Wert|Wert`), `filter.q`,
+höchstens `limit` (Vorgabe 24); gefragt wird `GET /api/list` wie im
+Kompendium (`collectionQuery`), gesiebt am Server. **Vorgaben:** die
+Session trägt `se-contains` (Migration 144), jede andere Geschichte
+`st-contains` an `Story` (Arc, Szene, Kampagne; Position 65, nach den
+Teilen), ein Ort `o-within` (Unterorte, Liste) und `o-residents` (wer dort
+lebt, Kacheln; Migration 145). Die feste Liste „Contains" aus T-422 und
+`contains` an `/api/entities/:id/parts` gibt es nicht mehr. Gezählt, wie viele
 Artikel eine Ansicht bekommen, wird am Server (`/api/registry/usage`,
 `views`), im Stapel.
 
@@ -2505,7 +2517,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, handout, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `mapNavigation` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
-| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
+| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, full |
 
 **Rules**
 

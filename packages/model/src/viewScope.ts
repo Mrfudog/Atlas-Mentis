@@ -298,7 +298,9 @@ function composeLayout(
     origin[el.id] = [grund];
     still.set(el.id, el.pos ?? (zaehler += 10));
   }
-  if (!beitraege.length) return { layout: [...basis], origin, conflicts: [], positions: Object.fromEntries(still) };
+  /* Ohne Schicht und ohne ausdrückliche Position bleibt alles, wie es steht; eine Art darf mit `pos`
+     ein Element zwischen die der Ansicht stellen (T-425, Vorgaben). */
+  if (!beitraege.length && !basis.some((el) => el.pos !== undefined)) return { layout: [...basis], origin, conflicts: [], positions: Object.fromEntries(still) };
   let layout = [...basis];
   const wer = new Map<string, string>();
   const rang = new Map<string, { spec: number; prio: number; quelle: string }>();

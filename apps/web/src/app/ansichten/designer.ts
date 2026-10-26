@@ -478,7 +478,12 @@ export class Ansichtsdesigner {
   // ------------------------------------------------------------ Werte
 
   /** Die Art, an der die Werte des gewählten Elements gelesen werden — am Ende seines Pfads. */
-  protected readonly endTyp = computed(() => pathEndType(this.probeTyp(), this.auswahl()?.path));
+  protected readonly endTyp = computed(() => {
+    const el = this.auswahl();
+    /* Eine Sammlung zeigt Felder ihrer Arten, nicht die des Artikels, an dem sie steht (T-425). */
+    if (el?.el === 'collection' && el.types?.length) return el.types[0]!;
+    return pathEndType(this.probeTyp(), el?.path);
+  });
   protected readonly pfadText = computed(() => pathText(this.auswahl()?.path, this.probeTyp() || 'this article'));
   protected readonly weiter = computed(() => {
     const r = this.reg();
@@ -577,6 +582,21 @@ export class Ansichtsdesigner {
   protected setzeArten(text: string): void {
     const arten = this.liste(text);
     this.setze({ types: arten?.length ? arten : null });
+  }
+  /** Der Filter einer Sammlung (T-425): Marken und Feldbedingungen als Liste, Text als Wort. */
+  protected setzeFilter(teil: 'tags' | 'fields' | 'q', text: string): void {
+    const el = this.auswahl();
+    if (!el) return;
+    const f: NonNullable<LayoutElement['filter']> = { ...(el.filter ?? {}) };
+    if (teil === 'q') {
+      if (text.trim()) f.q = text.trim();
+      else delete f.q;
+    } else {
+      const l = this.liste(text);
+      if (l?.length) f[teil] = l;
+      else delete f[teil];
+    }
+    this.setze({ filter: Object.keys(f).length ? f : null });
   }
   protected setzeSortierung(by: string, desc: boolean): void {
     const b = by.trim();

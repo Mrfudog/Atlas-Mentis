@@ -567,8 +567,6 @@ export interface LeseStueck {
 export interface Teile {
   id: string;
   parts: { id: string; entity: Entity; target?: Entity }[];
-  /** Was ohne Rang an einer Story-Art hängt (T-422): Szenen am Arc, Begegnungen an Szene und Session. */
-  contains?: { id: string; entity: Entity }[];
   refs: Bezuege;
 }
 export interface LeseTreffer {

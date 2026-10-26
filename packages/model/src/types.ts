@@ -716,8 +716,16 @@ export interface LayoutElement {
   layout?: 'tree' | 'net';
   /** `collection`: nur Artikel dieser Arten (die `extends`-Kette hoch); leer heisst jede. */
   types?: string[];
-  /** `collection`: Kacheln (Vorgabe) oder Liste. */
-  show?: 'tiles' | 'list';
+  /** `collection`: Kacheln (Vorgabe), Liste oder Tabelle (Spalten aus `fields` und `props`). */
+  show?: 'tiles' | 'list' | 'table';
+  /** `collection`: woher die Treffer kommen — über den Pfad (Vorgabe) oder ein Filter über alles Sichtbare. */
+  source?: 'linked' | 'filter';
+  /** `collection` mit Quelle Filter: Marken, Feldbedingungen (`Typ.feld:Wert|Wert`) und Suchtext, wie im Kompendium. */
+  filter?: { tags?: string[]; fields?: string[]; q?: string };
+  /** `collection` mit Quelle Filter: höchstens so viele (Vorgabe 24). */
+  limit?: number;
+  /** `collection`: nur Kanten ohne `rank` — was mit Rang dasteht, zeigt der Lesefluss (`parts`). */
+  unranked?: boolean;
   /**
    * `collection`: in welcher Ansicht jeder Treffer steht (eine Gruppe wie
    * `quick` oder eine eigene); ohne Angabe `quick` bei Kacheln, `overview`

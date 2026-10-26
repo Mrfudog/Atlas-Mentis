@@ -28,7 +28,11 @@ describe('composeView (T-425, E-168)', () => {
     for (const typ of ['Session', 'Creature', 'Shop', 'Item', 'Scene']) {
       const e: Entity = { id: 'x', interfaces: [typ], name: 'x', components: {} };
       for (const ort of ['overview', 'quick', 'full', 'print']) {
-        expect(pickView(e, seedRegistry, ort).layout).toEqual(layoutFor(seedRegistry, ort, typ).layout);
+        const basis = layoutFor(seedRegistry, ort, typ).layout;
+        const neu = pickView(e, seedRegistry, ort).layout;
+        /* Dieselben Elemente; nur eine ausdrückliche Position (`st-contains`, 65) stellt um. */
+        if (basis.some((x) => x.pos !== undefined)) expect(ids(neu).sort()).toEqual(ids(basis).sort());
+        else expect(neu).toEqual(basis);
       }
     }
   });

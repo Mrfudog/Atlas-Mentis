@@ -29,6 +29,26 @@ flowchart LR
   H --> K["je Treffer nw-vorschau<br/>Ansicht der Zielart (quick)"]
 ```
 
+## Collection fertig (T-425, 26.10.2026)
+
+Eine Collection zeigt als Kacheln, Liste oder **Tabelle** (die frühere
+„Table from edges", Migration 146) und nimmt ihre Artikel über einen Pfad
+oder aus einem **Filter** wie im Kompendium. Vorgaben: jede Geschichte
+zeigt, was ohne Rang zu ihr gehört (`st-contains` an `Story`, ersetzt
+„Contains"), ein Ort seine Unterorte und Bewohner (Migration 145).
+
+```mermaid
+flowchart LR
+  E["Element collection"] -->|source linked| P["Pfad · Rückbezüge"]
+  E -->|source filter| F["GET /api/list<br/>types, tags, fields, q"]
+  P --> H["collectionHits<br/>unranked, types, sort"]
+  F --> H
+  H --> D{"show"}
+  D --> K["Kacheln · quick"]
+  D --> L["Liste · overview"]
+  D --> T["Tabelle · props + fields"]
+```
+
 ## Schichten (T-425, 26.10.2026)
 
 Eine Ansicht lässt sich für alle, einen Typ, eine Bedingung (Feld, Kante)

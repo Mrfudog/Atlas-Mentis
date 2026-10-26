@@ -436,7 +436,11 @@ wiederkommen, werden sie neu geschrieben.
   Szenen und Begegnungen als Kacheln, jede die Kurzansicht ihrer Art
   (`nw-vorschau` eingebettet) — das Element wählt die Ansicht
   (`view`, `viewByType`), nicht die Kante; eine Collection in einer Kachel
-  zeichnet nichts (eine Stufe). Konzept und Entscheide E-139, E-142,
+  zeichnet nichts (eine Stufe). Kacheln, Liste oder Tabelle (die frühere
+  „Table from edges", Migration 146); Quelle ein Pfad oder ein Filter wie
+  im Kompendium (`collectionQuery`). Was ohne Rang an einer Geschichte
+  hängt, zeigt `st-contains` an `Story` — die feste Liste „Contains" ist
+  weg —, ein Ort seine Unterorte und Bewohner. Konzept und Entscheide E-139, E-142,
   E-168–E-183: [docs/vorschlaege/Verknuepfte-Ansichten.md](docs/vorschlaege/Verknuepfte-Ansichten.md).
 - **Ein Typ darf ein geerbtes Feld umbenennen** (`InterfaceDef.titles`,
   `Typ.feld` → Beschriftung, die `extends`-Kette hoch geerbt wie `area`).
