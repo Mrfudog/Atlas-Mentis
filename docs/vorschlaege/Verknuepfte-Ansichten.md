@@ -1,7 +1,7 @@
 # Verknüpfte Artikel in Ansichten und Werkzeugleiste im Designer (T-425)
 
 Konzept vom 25.10.2026 für REQ-430 und REQ-431, erweitert am 26.10. um
-REQ-432 bis REQ-437. Stand: **Entscheide gefallen (26.10.)**, wartet auf
+REQ-432 bis REQ-437. Stand: **Entscheide gefallen (26.10., zuletzt E-173 bis E-176)**, wartet auf
 Basils Freigabe der Übersicht unten.
 
 Zwei Vorschläge vom 25.10. haben die Entscheide geändert:
@@ -185,6 +185,10 @@ Popup. Eine Sonderseite gibt es nicht.
 | E-171 | Werkzeugleiste | **a**: eine Leiste (Desktop oben, Telefon unten) mit drei Zonen: Einfügen, Kontext und Allgemein (Auswählen, Kopieren, Einfügen, Duplizieren, Löschen, Rückgängig, Wiederholen, Fertig). Die Einstellungen stehen am Element in der Vorschau. |
 | E-170 | Design-Tokens | **a**: Registerzeilen mit Name, Rolle, Wert hell und Wert dunkel; der Kontrast wird geprüft. Jedes Element hat benannte Stellen (Kopf, Fläche, Rahmen, Text). Die Ansicht gibt je Elementart vor, das Element darf überschreiben. Die Auswahl zeigt zuerst die genutzten Tokens. |
 | E-169 | Erfassungsmasken | **a**: zwei Ortsansichten, `create` (schnell, Dialog) und `createFull` (ausführlich). Ohne Gestaltung fällt jede auf das Heutige zurück. Die Spielerfigur bekommt in `create` das Element **Character builder**. |
+| E-173 | Gleiche Position in zwei Schichten | **a, dazu in der Werkbank**: Die Position ist eine Sortierzahl. Bei Gleichstand ordnet die Priorität, dann die genauere Schicht. Ändern zwei Schichten dasselbe Element, gewinnt die genauere, und die Priorität kann das drehen. Der Designer markiert beides mit ⚠ und den Quellen; die Werkbank-Prüfung „View conflicts“ listet es je Ansicht, mit Sprung in den Designer. |
+| E-174 | Gruppierungen des Regelwerks | **Eigener Entscheid**: Artikeltyp **Collection** (unter Rule). Mitglieder kommen nach Regel (Typ, Felder, Kanten) und von Hand über die Kante `inCollection` (Mitglied → Collection); dieselbe Kante mit `props.exclude` nimmt aus. Unterkollektionen hängen über `partOf`. `MaterialGroup` wird ein Untertyp. Party und Fraktion bleiben eigene Arten (Träger von Wissen und Sichtbarkeit, A8) und lassen sich als Quelle des Elements Collection zeigen. |
+| E-175 | Laden ohne `buys` | **a**: Er kauft alles zu `Shop.buyRate` (leer 50 %, E-045 b). Mit `buys`-Kanten kauft er nur das Genannte (Gegenstand oder Collection), zu ihrem Satz. `sells` geht auf einen Gegenstand oder eine Collection; eine einzelne Kante schlägt die Collection. |
+| E-176 | Geführte Abläufe | **Eigener Entscheid: View mit Steps.** `steps` ist ein Layout-Element der Erfassungsansichten, jedes Kind ist eine Seite. Der Ablauf ergibt sich aus den Regelelementen und der Ansicht. `levelUp` ist eine Ansicht, die per Schicht vom Creator ableitet, und weitere Abläufe sind weitere Ansichten. Ein Fortschritt wird nicht eigens gespeichert: Wo man steht, ergibt sich aus dem, was befüllt ist. **Fehlen Pflichtfelder, darf der Artikel nur mit Status `idea` gespeichert werden.** |
 
 Neue Stories vom 26.10.:
 - REQ-432: Erfassungsmasken
@@ -193,6 +197,9 @@ Neue Stories vom 26.10.:
 - REQ-435: Ansicht eingebundener Artikel
 - REQ-436: Werkzeugleiste als Muster
 - REQ-437: Design-Tokens
+- REQ-438: Collections als Artikel
+- REQ-439: Laden mit `sells`/`buys` auf Gegenstand oder Collection
+- REQ-440: Abläufe als Ansicht mit Steps
 
 REQ-430 und REQ-431 sind an die Entscheide angepasst.
 
@@ -223,6 +230,12 @@ Eigenschaft dazu (E-172).
 | **Farben** | CSS-Variablen in `styles.scss` (hell, dunkel, Druck) | Registerzeilen `tokens`, mit den heutigen Werten vorbelegt | nein, bis jemand eins setzt | neuer Registerteil, Migration, Abgleich |
 | **Ansichtsdesigner** | Palette links, Baum, Einstellungen rechts | Leiste oben, Vorschau mit Einstellungen am Element, Baum zum Ordnen | **ja**: Die Arbeitsweise ändert sich (entschieden in E-171) | Handbuch und Hilfe ziehen nach |
 | **Board-Leiste, schwebende Leiste der Spielerseite** | eigene Leisten | dieselbe Komponente (REQ-436) | **ja**, später | eigener Schnitt |
+| **Prüfung beim Speichern** (`validateEntity`) | ein fehlendes Pflichtfeld lehnt ab | fehlt eines, ist nur Status `idea` erlaubt; `prepared`/`ready` verlangen alle | **ja**: Ein halb angelegter Artikel lässt sich als Idee speichern | Arten ohne `Status`-Karte zählen als fertig und lehnen weiter ab. Spielende sehen eine Idee nicht (D72), ausser es ist ihr eigener Artikel. Bestehende Artikel bleiben gültig. |
+| **Assistent der Spielerfigur** (`/characters/new`) | eigene Seite, Schritte aus `builderSteps` | Vorgabe der `create`-Ansicht der Spielerfigur mit Element `steps`; `levelUp` leitet davon ab | nein, solange niemand anpasst | Die Seite bleibt erreichbar und leitet in die Ansicht. Ein halber Charakter ist eine Idee (oben). |
+| **Laden** (`sells`-Kanten, `Shop`) | `sells` nur auf Gegenstände, Ankauf von allem zur Hälfte | `sells` und neu `buys` auf Gegenstand oder Collection, Waren gerechnet | nein, bis jemand Collections nutzt | Bestehende Kanten bleiben gültig, neue Kantenart `buys`, Feld `Shop.buyRate` (E-045 b). Element `wares` kommt in die Palette. |
+| **Ansicht `shop`** (am Ladenhalter) | „Wares“ als Table from edges über die rohen `sells`-Kanten | Element `wares` über den Pfad `shopkeeper ←`, mit gerechneten Preisen | **ja**: Preise mit Abschlägen statt roher Kanteneigenschaften | Migration der Ansichtszeile |
+| **`MaterialGroup`** (Handwerk) | eigene Regelart mit Kriterien und Gegenständen | Untertyp von Collection | nein | Felder und Gruppen bleiben, Migration ohne Verlust. Die Ersatzregeln (T-197) lesen weiter dasselbe. |
+| **Neu: Artikeltyp Collection, Kante `inCollection`** | – | Gruppierungen des Regelwerks als Artikel | nein, bis welche angelegt sind | Registerzeile und Migration. Der 5e.tools-Import kann die Collections des Grundregelwerks später anlegen, ohne Artikel umzuschreiben. |
 | **Regeln in CLAUDE.md** | „Vier Ansichten“, „Die Anordnung wohnt am Typ“, „Der Ort wählt die Gruppe …“ | um Schichten, Collection, Tokens und Erfassung ergänzt | – | im selben Commit wie die Änderung, dazu Datenmodell, Begriffe, „How it works“, Handbuch, Glossar, What's new |
 
 Neue Wörter fürs Glossar und für Begriffe.md:
@@ -230,6 +243,8 @@ Neue Wörter fürs Glossar und für Begriffe.md:
 - Schicht
 - Token
 - Erfassungsmaske (create)
+- Steps (Seite eines Ablaufs)
+- `inCollection`, `buys`
 
 ## Schnitte (neu, 26.10.)
 
@@ -241,6 +256,7 @@ Neue Wörter fürs Glossar und für Begriffe.md:
    - Positionen und Bedingungen in `adjust`, ausgewertet in `forArticle`/`viewsFor`.
    - Der Designer zeigt die Herkunft je Element.
    - Beispiel: „Map an Position 40, wenn onMap“ in der Schicht „alle Artikel“.
+   - Gleichstände und Konflikte mit ⚠ im Designer, Prüfung „View conflicts“ in der Werkbank (E-173).
 3. **Collection fertig.**
    - Filter-Quelle, Tabelle, Gruppierung.
    - `edgeTable` migrieren.
@@ -252,5 +268,7 @@ Neue Wörter fürs Glossar und für Begriffe.md:
    - Einstellungen am Element.
    - Kopieren, Einfügen, Duplizieren, Rückgängig, Wiederholen.
 6. **Design-Tokens (REQ-437)**: Registerteil, Stellen je Element, Vorgaben je Ansicht.
-7. **Erfassungsmasken (REQ-432)** und **Character builder (REQ-433)**.
-8. **Dieselbe Leiste an Board, Karte und Spielerseite**, dazu Baum und Graph als Darstellung und die leeren Plätze erwarteter Kanten (REQ-426).
+7. **Erfassungsmasken (REQ-432)**, dazu „nur `idea`, solange Pflichtfelder fehlen“.
+8. **Abläufe (REQ-440, REQ-433)**: Element `steps`, der Assistent als Vorgabe der Spielerfigur, `levelUp` als abgeleitete Ansicht.
+9. **Collections als Artikel (REQ-438)** und **Laden mit `sells`/`buys` (REQ-439)**, `MaterialGroup` als Untertyp, `wares` in der Palette.
+10. **Dieselbe Leiste an Board, Karte und Spielerseite**, dazu Baum und Graph als Darstellung und die leeren Plätze erwarteter Kanten (REQ-426).
