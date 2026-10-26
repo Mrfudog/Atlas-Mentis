@@ -131,7 +131,7 @@ const APP: AppTerm[] = [
     term: 'Default shapes',
     aliases: ['Shape group', 'Item group (inventory)'],
     sort: 'app',
-    definition: 'The part of the inventory module that gives items their shape and stack size from groups — blades, arrows, potions — instead of storing them on every item.',
+    definition: 'The part of the inventory module that gives items their shape and stack size from groups — blades, arrows, potions — instead of storing them on every item. They come with the Grid mechanic, so a campaign that turns on the grid gets them.',
     effect: 'Worked out when an item is read: its own shape first, then its reference item, then the group (art objects draw a shape by price). Changing a group changes every item that says nothing of its own.',
     example: '+1 Longsword has no shape of its own and takes the Longsword’s.',
     translations: { de: 'Vorgabeformen' },
