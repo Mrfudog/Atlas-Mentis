@@ -195,6 +195,7 @@ Popup. Eine Sonderseite gibt es nicht.
 | E-180 | Kanten als Pflicht | **a**: Kanten tragen dieselbe Angabe wie Felder; `inLayer` ist immer Pflicht. |
 | E-181 | Ebenen und Collections | **Eigener Entscheid**: Ebenenbaum Game system › Edition › Release (Official, Playtest, Third party) › Modul; jede Stufe ist eine Ebene. Herausgeber, Buchart, Setting und Epoche sind Felder am Modul, gruppiert über Collections. Aufschalten als Baum bis zum Artikel (REQ-444, REQ-445, gehört zu T-421). |
 | E-182 | Ebene Pflicht: Ausnahmen | **Eigener Entscheid**: Ausgenommen sind nur Ebenen. Eine Ebene „Unassigned“ dient als Parkplatz und Todo; die Migration legt dort ab, was heute keine Ebene hat (dev: 6 Bilder), Kampagnen gehen in ihre Kampagnenebene. |
+| E-183 | Kampagne im Ebenenbaum | **a**: Modul wie ein Abenteuer, unter Game system › Edition › Release „Homebrew“ (neuer Wert). Der Kampagnenartikel liegt in seiner eigenen Kampagnenebene. Besitzer und Buchart Campaign sind Felder, „Basils Kampagnen“ ist eine Collection. REQ-414 ist angepasst. |
 
 Neue Stories vom 26.10.:
 - REQ-432: Erfassungsmasken
@@ -245,7 +246,7 @@ Eigenschaft dazu (E-172).
 | **Board-Leiste, schwebende Leiste der Spielerseite** | eigene Leisten | dieselbe Komponente (REQ-436) | **ja**, später | eigener Schnitt |
 | **Pflicht** (`validateEntity`) | Wenige Felder sind immer Pflicht (Name, Nummer, drei Spezialfelder); das Fehlen lehnt ab | immer Pflicht: Name, Nummer, Status, Ebene (ausser an Ebenen); dazu `requiredFor` je Stand, geprüft beim Setzen des Stands | **ja**: Ein Stand lässt sich erst setzen, wenn alles da ist; Ideen bleiben schnell | Bestehende Artikel behalten ihren Stand (E-178). Spielende sehen fremde Ideen nicht (D72). |
 | **Artikel ohne Status-Karte** (dev: 138) | gelten als fertig | ausdrücklich `ready` | nein | Migration mit Prüfabfrage (E-179) |
-| **Artikel ohne Ebene** (dev: 6 Bilder, 2 Kampagnen) | gehören niemandem | Ebene „Unassigned“ bzw. Kampagnenebene | nein, in der Werkbank als Todo | Migration (E-182) |
+| **Artikel ohne Ebene** (dev: 6 Bilder, 2 Kampagnen) | gehören niemandem | Ebene „Unassigned“; Kampagnen in ihre Kampagnenebene (E-183) | nein, in der Werkbank als Todo | Migration (E-182) |
 | **Assistent der Spielerfigur** (`/characters/new`) | eigene Seite, Schritte aus `builderSteps` | Vorgabe der `create`-Ansicht der Spielerfigur mit Element `steps`; `levelUp` leitet davon ab | nein, solange niemand anpasst | Die Seite bleibt erreichbar und leitet in die Ansicht. Ein halber Charakter ist eine Idee (oben). |
 | **Laden** (`sells`-Kanten, `Shop`) | `sells` nur auf Gegenstände, Ankauf von allem zur Hälfte | `sells` und neu `buys` auf Gegenstand oder Collection, Waren gerechnet | nein, bis jemand Collections nutzt | Bestehende Kanten bleiben gültig, neue Kantenart `buys`, Feld `Shop.buyRate` (E-045 b). Element `wares` kommt in die Palette. |
 | **Ansicht `shop`** (am Ladenhalter) | „Wares“ als Table from edges über die rohen `sells`-Kanten | Element `wares` über den Pfad `shopkeeper ←`, mit gerechneten Preisen | **ja**: Preise mit Abschlägen statt roher Kanteneigenschaften | Migration der Ansichtszeile |
