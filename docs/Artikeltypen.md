@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-26. 91 Schnittstellen, 71 Kantenarten.
+Stand 2026-10-26. 92 Schnittstellen, 72 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -46,6 +46,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
 - `enchantedWith` → Item — „enhanced with"
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -99,6 +100,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -151,6 +153,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `worships` → Deity — „worships"
 - `owes` → Creature — „owes"
+- `inCollection` → Collection — „in collection"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
 - `discount` → Creature | Party | Faction — „discount for"
@@ -220,6 +223,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -266,6 +270,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -315,6 +320,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `worships` → Deity — „worships"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `controls` → Place — „controls"
 - `discount` → Creature | Party | Faction — „discount for"
@@ -370,6 +376,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -421,6 +428,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
 - `enchantedWith` → Item — „enhanced with"
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -484,6 +492,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
 - `enchantedWith` → Item — „enhanced with"
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -540,6 +549,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `abilityPool` → AbilityMethod — „rolled ability pool"
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `partyOf` → Campaign — „party of"
 - `carries` → Inventory — „carries"
@@ -596,6 +606,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -662,6 +673,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `hasBackground` → Background — „background"
 - `chose` → Choices — „chose"
 - `owes` → Creature — „owes"
+- `inCollection` → Collection — „in collection"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
 - `discount` → Creature | Party | Faction — „discount for"
@@ -733,6 +745,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `sells` → Item — „sells"
 - `discount` → Creature | Party | Faction — „discount for"
@@ -796,6 +809,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
 - `enchantedWith` → Item — „enhanced with"
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -850,6 +864,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -904,6 +919,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
@@ -965,6 +981,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `allowsMethod` → AbilityMethod — „allows ability method"
 - `allowsSubstitution` → Substitution — „allows substitution"
 - `allowsEquipment` → EquipmentMethod — „allows equipment method"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
@@ -1026,6 +1043,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `questGiver` → Creature | Faction — „given by"
@@ -1079,6 +1097,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
@@ -1136,6 +1155,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `leftBehind` → Item — „left behind"
@@ -1193,6 +1213,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
@@ -1228,7 +1249,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Rules
 
-*Woran man sich hält.* — 28 Arten.
+*Woran man sich hält.* — 29 Arten.
 
 ### Ability score method
 
@@ -1255,6 +1276,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1308,6 +1330,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1359,6 +1382,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1416,6 +1440,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `subraceOf` → Ancestry — „subrace of"
 - `grants` → Rule — „grants"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1477,6 +1502,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1538,6 +1564,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `spellList` → Spell — „spell list"
 - `grants` → Rule — „grants"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1569,6 +1596,59 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `Class (angepasst)`): `image`, `description`, `classOverview`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
+### Collection
+
+`Collection` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `types` *array*, `tags` *array*, `fields` *array*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- * — `inCollection` → „members (by hand)"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Collection (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `collection`
+
 ### Condition
 
 `Condition` · erbt von `Rule` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
@@ -1596,6 +1676,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `stageOf` → Condition — „stage of"
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1651,6 +1732,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `stageOf` → Condition — „stage of"
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1703,6 +1785,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1758,6 +1841,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1814,6 +1898,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1867,6 +1952,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
 - `explains` → * — „explains"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1915,6 +2001,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `knownBy` → Creature | Party | Faction | Ancestry | Background | Class | Subclass | Feat — „known by"
@@ -1960,6 +2047,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `holds` → Item — „holds"
 - `knowledge` → Information — „knowledge about it"
@@ -2008,6 +2096,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2051,6 +2140,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `knownBy` → Creature | Party | Faction | Ancestry | Background | Class | Subclass | Feat — „known by"
@@ -2099,6 +2189,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2127,7 +2218,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Material group
 
-`MaterialGroup` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`MaterialGroup` · erbt von `Collection` ← `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -2135,6 +2226,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
+- *`Collection`* — `types` *array*, `tags` *array*, `fields` *array*
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
@@ -2150,6 +2242,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2163,6 +2256,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- * — `inCollection` → „members (by hand)"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2175,7 +2269,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Collection (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `collection`
 
 ### Recipe
 
@@ -2200,6 +2294,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `needs` → Item | MaterialGroup — „needs"
@@ -2249,6 +2344,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2300,6 +2396,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2352,6 +2449,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2411,6 +2509,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `belongsTo` → Creature — „belongs to"
 - `casts` → Spell — „casts"
 - `equips` → Item — „equips"
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2468,6 +2567,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `spellList` → Spell — „spell list"
 - `subclassOf` → Class — „subclass of"
 - `grants` → Rule — „grants"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2522,6 +2622,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2571,6 +2672,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `entry` → * — „entry"
@@ -2619,6 +2721,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2670,6 +2773,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2723,6 +2827,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2770,6 +2875,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `needs` → Item | MaterialGroup — „needs"
@@ -2823,6 +2929,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `features` → Creature | Statblock | Faction | Hazard — „features"
@@ -2876,6 +2983,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `mapOf` → Place | Story — „map of"
@@ -2920,6 +3028,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2957,6 +3066,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3000,6 +3110,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3035,6 +3146,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3078,6 +3190,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `chapterOf` → Story — „chapter of"
 - `describedIn` → Article | Story | BookPart — „described in"
@@ -3112,6 +3225,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3144,6 +3258,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3175,6 +3290,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3206,6 +3322,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3245,6 +3362,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3278,6 +3396,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3317,6 +3436,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3350,6 +3470,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3386,6 +3507,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3419,6 +3541,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3460,6 +3583,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3496,6 +3620,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3527,6 +3652,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3567,6 +3693,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3600,6 +3727,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3631,6 +3759,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3662,6 +3791,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3693,6 +3823,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3729,6 +3860,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3774,6 +3906,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3823,6 +3956,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -3859,6 +3993,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3890,6 +4025,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3921,6 +4057,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3952,6 +4089,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -3983,6 +4121,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -4014,6 +4153,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -4045,6 +4185,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -4076,6 +4217,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -4107,6 +4249,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -4138,6 +4281,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -4169,6 +4313,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -4200,6 +4345,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"

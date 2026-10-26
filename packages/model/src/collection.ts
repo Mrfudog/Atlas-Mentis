@@ -62,9 +62,14 @@ export function collectionQuery(el: LayoutElement): CollectionQuery | null {
  */
 export function collectionHits(registry: Pick<Registry, 'interfaces'>, entity: Entity, el: LayoutElement, ctx: Ctx): PathHit[] {
   const filter = el.source === 'filter';
-  if (!filter && !el.path?.length) return [];
+  const mitglieder = el.source === 'members';
+  if (!filter && !mitglieder && !el.path?.length) return [];
   const arten = el.types?.length ? el.types : null;
-  const roh: PathHit[] = filter ? (ctx.found ?? []).map((e) => ({ entity: e, props: {} })) : followPath(registry, entity, el.path, ctx);
+  const roh: PathHit[] = filter
+    ? (ctx.found ?? []).map((e) => ({ entity: e, props: {} }))
+    : mitglieder
+      ? membersOf(entity, ctx)
+      : followPath(registry, entity, el.path, ctx);
   const hits = roh.filter(
     (h) =>
       h.entity.id !== entity.id &&
@@ -86,6 +91,52 @@ export function collectionHits(registry: Pick<Registry, 'interfaces'>, entity: E
     const c = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), 'en', { numeric: true });
     return richtung * c || nummer(a, b);
   });
+}
+
+/** Die Kante, mit der ein Artikel von Hand in eine Collection kommt (E-174); `props.exclude` nimmt ihn aus. */
+export const IN_COLLECTION = 'inCollection';
+
+/**
+ * Wie viele Mitglieder eine Collection-Regel höchstens fragt: so viele, wie
+ * `GET /api/list` je Anfrage gibt (200). Mehr bräuchte eine höhere Grenze
+ * am Server — die wird nicht still angehoben (Grundanforderung 5).
+ */
+export const COLLECTION_MEMBER_LIMIT = 200;
+
+/**
+ * **Die Regel einer Collection als Frage** (T-425, REQ-438, E-174): Arten
+ * mit ihren Untertypen, Marken und Feldbedingungen aus `Collection` — wie
+ * der Filter des Kompendiums, gesiebt am Server. Ohne Regel `null`: dann
+ * zählt nur, was von Hand dazukam.
+ */
+export function collectionRuleQuery(entity: Pick<Entity, 'components'>): CollectionQuery | null {
+  const k = (entity.components?.['Collection'] ?? {}) as { types?: unknown; tags?: unknown; fields?: unknown };
+  const liste = (v: unknown) => (Array.isArray(v) ? v.map(String).map((x) => x.trim()).filter(Boolean) : []);
+  const of = liste(k.types);
+  const tag = liste(k.tags);
+  const f = liste(k.fields);
+  if (!of.length && !tag.length && !f.length) return null;
+  return { ...(of.length ? { of } : {}), ...(tag.length ? { tag } : {}), ...(f.length ? { f } : {}), limit: COLLECTION_MEMBER_LIMIT };
+}
+
+/**
+ * **Die Mitglieder**: was die Regel fand (`ctx.found`), dazu, wer über
+ * `inCollection` hineinzeigt, ohne die, deren Kante `exclude` sagt — die
+ * Ausnahme schlägt die Regel, wie eine einzelne Kante eine Gruppe schlägt.
+ */
+function membersOf(entity: Entity, ctx: Ctx): PathHit[] {
+  const ein = ctx.incoming(entity.id).filter((k) => k.type === IN_COLLECTION);
+  const raus = new Set(ein.filter((k) => k.props?.['exclude'] === true).map((k) => k.from));
+  const seen = new Set<string>();
+  const hits: PathHit[] = [];
+  const dazu = (e: Entity | undefined, props: Record<string, unknown> = {}) => {
+    if (!e || raus.has(e.id) || seen.has(e.id)) return;
+    seen.add(e.id);
+    hits.push({ entity: e, props });
+  };
+  for (const e of ctx.found ?? []) dazu(e);
+  for (const k of ein) if (k.props?.['exclude'] !== true) dazu(ctx.get(k.from), k.props ?? {});
+  return hits;
 }
 
 /** Ein Feld `Typ.feld` als Sortierwert; Zahlen bleiben Zahlen, leer ist keiner. */

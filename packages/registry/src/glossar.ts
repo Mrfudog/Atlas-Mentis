@@ -71,9 +71,10 @@ const APP: AppTerm[] = [
   },
   {
     term: 'Collection',
-    aliases: ['Collection element'],
+    aliases: ['Collection element', 'Collection article'],
     sort: 'app',
-    definition: 'An element of a view that shows the articles at the end of an edge — the scenes and encounters of a session — or every article that fits a filter, each in the view of its own type: as tiles in their quick view, as a list or a table in their overview, in order and grouped by type if you like.',
+    types: ['Collection'],
+    definition: 'A group of articles. As an article of the rules (Simple Melee Weapons, Damage Types), its members come by rule — types, tags, field conditions — and by hand through the edge “in collection”, which can also exclude. As an element of a view, it shows the articles at the end of an edge — the scenes and encounters of a session —, every article that fits a filter, or the members of the collection it stands on, each in the view of its own type: as tiles, a list or a table, in order and grouped by type if you like.',
     effect: 'Views are reused: change the quick view of a scene, and its tile on every session changes too. Players see only what they may — the server holds back the rest. Inside a tile, another collection shows nothing, so a page never unfolds into half the campaign.',
     example: 'Session 1 shows “Scenes and encounters”: under Scene the tiles “The old man” and “The mine”, under Encounter “Rats” — each with its description and key values.',
     translations: { de: 'Sammlung' },

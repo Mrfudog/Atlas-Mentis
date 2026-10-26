@@ -490,6 +490,20 @@ export const relations: Record<string, RelationDef> = {
     to: ['Creature'],
   },
 
+  inCollection: {
+    type: 'inCollection',
+    label: 'in collection',
+    inverseLabel: 'members (by hand)',
+    means: 'An article belongs to a collection by hand, next to what its rule takes; with Exclude it is taken out even where the rule would take it.',
+    from: ['*'],
+    to: ['Collection'],
+    props: {
+      type: 'object',
+      properties: {
+        exclude: { type: 'boolean', title: 'Exclude', description: 'Takes the article out of the collection, even where its rule would take it (T-425, E-174).' },
+      },
+    },
+  },
   memberOf: {
     type: 'memberOf',
     label: 'member of',
