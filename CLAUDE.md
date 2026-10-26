@@ -440,7 +440,12 @@ wiederkommen, werden sie neu geschrieben.
   „Table from edges", Migration 146); Quelle ein Pfad oder ein Filter wie
   im Kompendium (`collectionQuery`). Was ohne Rang an einer Geschichte
   hängt, zeigt `st-contains` an `Story` — die feste Liste „Contains" ist
-  weg —, ein Ort seine Unterorte und Bewohner. Konzept und Entscheide E-139, E-142,
+  weg —, ein Ort seine Unterorte und Bewohner. **„Linked article" mit
+  Kante** (`path`) zeigt ein Ziel in einer gewählten Ansicht; ohne bleibt
+  es die bearbeitbare `asField`-Seite. Ein Element gleicher Id in
+  `adjust.extra` stellt das geerbte an Ort und Stelle um (die Szene zeigt
+  „Contains" als Liste); die Kurzansicht eines Boards ist eine Skizze
+  (`boardSketch`). Konzept und Entscheide E-139, E-142,
   E-168–E-183: [docs/vorschlaege/Verknuepfte-Ansichten.md](docs/vorschlaege/Verknuepfte-Ansichten.md).
 - **Ein Typ darf ein geerbtes Feld umbenennen** (`InterfaceDef.titles`,
   `Typ.feld` → Beschriftung, die `extends`-Kette hoch geerbt wie `area`).

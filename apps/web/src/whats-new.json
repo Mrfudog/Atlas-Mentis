@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-linked-article-board-sketch",
+      "date": "2026-10-26",
+      "title": "Show a linked article in any view, and boards as a sketch",
+      "text": "In the view designer, Linked article can now follow any edge and show the article at its end in a view you choose — the place of a scene as its quick view. A board’s quick view is a small sketch of its cards, in the popup and under the + of a search hit. Scenes list their encounters; arcs keep them as tiles.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
       "id": "2026-10-26-collections-everywhere",
       "date": "2026-10-26",
       "title": "Arcs, scenes and places show what belongs to them as tiles",

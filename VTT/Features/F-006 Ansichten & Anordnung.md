@@ -49,6 +49,22 @@ flowchart LR
   D --> T["Tabelle · props + fields"]
 ```
 
+## Linked article und Board-Skizze (T-425, 26.10.2026)
+
+„Linked article" folgt auf Wunsch einer Kante und zeigt das Ziel in einer
+gewählten Ansicht (E-172); ohne Kante bleibt es die bearbeitbare
+`asField`-Seite. Die Kurzansicht eines Boards ist eine Skizze
+(`boardSketch`); eine Szene zeigt „Contains" als Liste (Element gleicher
+Id stellt um, Migration 147).
+
+```mermaid
+flowchart LR
+  L["Element linked"] -->|ohne path| S["Seite: asField, bearbeitbar"]
+  L -->|mit path| B["Baum: erstes Ziel"] --> V["nw-vorschau in view"]
+  Br["Board quick"] --> K["boardSketch<br/>Fläche + Kacheln"]
+  R["redactBoard am Server"] --> K
+```
+
 ## Schichten (T-425, 26.10.2026)
 
 Eine Ansicht lässt sich für alle, einen Typ, eine Bedingung (Feld, Kante)
