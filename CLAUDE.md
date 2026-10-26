@@ -398,6 +398,10 @@ wiederkommen, werden sie neu geschrieben.
   die genauere; der Designer zeigt ⚠, die Werkbank `viewConflicts`. Eine
   Schicht steht nicht zur Wahl (`isContribution`); der Designer speichert
   sie als Unterschied (`contributionFrom`, nie `order`).
+  **Die Leiste des Designers** (T-425, E-171): oben einfügen nach Gruppe
+  (`LEISTE`) und suchen, Rückgängig/Wiederholen über den Entwurf
+  (`history.ts`, ein Muster), Kopieren/Einfügen über die Ablage
+  (`kern/ablage.ts`), am gewählten Element die schwebende Leiste.
   **Ein Editor** (T-276): der Designer (`ansichten/designer.ts`) bearbeitet
   jede Ansicht — Registry › Views, „Design" an der Typseite (mit
   vorgewähltem Typ), „Design this view" im Full edit des Artikels. Beim

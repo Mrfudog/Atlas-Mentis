@@ -49,6 +49,24 @@ flowchart LR
   D --> T["Tabelle · props + fields"]
 ```
 
+## Die Leiste im Designer (T-425, REQ-436, 26.10.2026)
+
+Eine Leiste mit drei Zonen (E-171): oben **Einfügen** nach Gruppe und
+Suche, rechts **Allgemein** (Rückgängig, Wiederholen, Kopieren,
+Einfügen), am gewählten Element schwebend der **Kontext** (ordnen,
+duplizieren, kopieren, entfernen, fertig). Verlauf und Ablage sind Muster
+für jede Leiste (`history.ts`, `kern/ablage.ts`).
+
+```mermaid
+flowchart LR
+  O["Leiste oben<br/>Einfügen · Suche"] -->|dazu| B["Baum (Entwurf)"]
+  A["Allgemein<br/>Undo · Redo · Copy · Paste"] --> V["Verlauf<br/>history.ts"]
+  K["Schwebend am Element<br/>↑ ↓ → ← · Duplicate · Copy · Remove"] -->|aendere| B
+  B --> V
+  A --> Ab["Ablage<br/>kern/ablage.ts"]
+  B -->|Save| R["Register"]
+```
+
 ## Linked article und Board-Skizze (T-425, 26.10.2026)
 
 „Linked article" folgt auf Wunsch einer Kante und zeigt das Ziel in einer
