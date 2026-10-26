@@ -1315,6 +1315,15 @@ export const fieldGroups = {
            einem Feld „Gold" hiesse, dass eines davon leer steht und keiner
            weiss, welches gilt. Gelesen von `parsePriceMod`. */
         priceMod: { type: 'string', title: 'Price modifier (−10 gp, −10 %)' },
+        /* Was der Laden beim Ankauf zahlt, in Prozent des Listenpreises
+           (E-045 b, E-175 a); leer die Hälfte, wie 5e. Eine `buys`-Kante
+           darf für ihr Ziel einen eigenen Satz nennen. */
+        buyRate: {
+          type: 'number',
+          min: 0,
+          title: 'Buy rate (% of list price)',
+          description: 'What the shop pays when it buys, in per cent of the list price. Empty: 50 %. A buys edge may name its own rate; with buys edges the shop buys only what they name.',
+        },
       },
     },
   },

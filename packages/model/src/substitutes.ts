@@ -215,7 +215,11 @@ export function materialFit(target: Entity, piece: Entity, ctx: FitContext, isGr
   const p = materialProfile(piece);
   let grund: string;
   if (isGroup) {
-    const g = gruppenGrund(materialGroupOf(target), p, ctx.rarities);
+    /* Von Hand in die Gruppe gelegt oder herausgenommen (`inCollection`, REQ-438):
+       die einzelne Kante schlägt die Regel, wie überall bei Collections. */
+    const hand = (piece.relations ?? []).find((r) => r.type === 'inCollection' && r.to === target.id);
+    if (hand && hand.props?.['exclude'] !== true) return { ok: true, ratio: 1 };
+    const g = hand ? `taken out of ${entityName(target) || 'the group'}` : gruppenGrund(materialGroupOf(target), p, ctx.rarities);
     if (!g) return { ok: true, ratio: 1 };
     grund = g;
   } else {

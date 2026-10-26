@@ -12,7 +12,8 @@
  * der Betrachter bekommen hat, und was fehlt, fällt weg.
  */
 
-import { articleId, entityName, primaryInterface, typeChain } from './entity.js';
+import { articleId, entityName, primaryInterface, tagsOf, typeChain } from './entity.js';
+import { isInstance } from './instance.js';
 import { followPath, type IncomingEdge, type PathHit } from './viewScope.js';
 import type { Entity, LayoutElement, Registry } from './types.js';
 
@@ -137,6 +138,75 @@ function membersOf(entity: Entity, ctx: Ctx): PathHit[] {
   for (const e of ctx.found ?? []) dazu(e);
   for (const k of ein) if (k.props?.['exclude'] !== true) dazu(ctx.get(k.from), k.props ?? {});
   return hits;
+}
+
+/**
+ * **Die Mitglieder einer Collection im Bestand** (T-425, REQ-438, REQ-439):
+ * dieselbe Regel wie `collectionRuleQuery`, hier ohne Server gerechnet —
+ * für den Laden, der „verkauft einfache Waffen" in Waren auflöst, und die
+ * Materialgruppe. Arten gelten die `extends`-Kette hoch, Marken alle,
+ * Feldbedingungen wie im Kompendium (`Typ.feld:a|b`, `Typ.feld:min..max`).
+ * Dazu, wer über `inCollection` hineinzeigt; `exclude` nimmt heraus.
+ * Instanzen zählen nicht (sie stehen in keiner Liste), die Collection
+ * selbst auch nicht. Geordnet nach Name, höchstens
+ * `COLLECTION_MEMBER_LIMIT` — wie am Server.
+ */
+export function collectionMemberIds(
+  registry: Pick<Registry, 'interfaces'>,
+  collection: Entity,
+  entities: ReadonlyMap<string, Entity>,
+): string[] {
+  const regel = collectionRuleQuery(collection);
+  const drin = new Set<string>();
+  const raus = new Set<string>();
+  for (const e of entities.values()) {
+    for (const r of e.relations ?? []) {
+      if (r.type !== IN_COLLECTION || r.to !== collection.id) continue;
+      (r.props?.['exclude'] === true ? raus : drin).add(e.id);
+    }
+  }
+  const treffer: Entity[] = [];
+  for (const e of entities.values()) {
+    if (e.id === collection.id || raus.has(e.id) || isInstance(e)) continue;
+    if (drin.has(e.id) || (regel && passtZurRegel(registry, regel, e))) treffer.push(e);
+  }
+  return treffer
+    .sort((a, b) => entityName(a).localeCompare(entityName(b), 'en', { numeric: true }) || a.id.localeCompare(b.id))
+    .slice(0, COLLECTION_MEMBER_LIMIT)
+    .map((e) => e.id);
+}
+
+/** Trifft die Regel diesen Artikel? Eine Bedingung, die sich nicht lesen lässt, gilt nicht. */
+function passtZurRegel(registry: Pick<Registry, 'interfaces'>, q: CollectionQuery, e: Entity): boolean {
+  if (q.of?.length) {
+    const typ = primaryInterface(e);
+    const kette = typeChain(registry, typ);
+    if (!q.of.some((t) => (kette.length ? kette : [typ]).includes(t))) return false;
+  }
+  if (q.tag?.length) {
+    const marken = tagsOf(e);
+    if (!q.tag.every((t) => marken.includes(t))) return false;
+  }
+  for (const f of q.f ?? []) {
+    const punkt = f.indexOf(':');
+    if (punkt <= 0) continue;
+    const [typ = '', key = ''] = f.slice(0, punkt).split('.');
+    const rest = f.slice(punkt + 1);
+    const roh = (e.components?.[typ] as Record<string, unknown> | undefined)?.[key];
+    const spanne = /^(-?[\d.]*)\.\.(-?[\d.]*)$/.exec(rest);
+    if (spanne) {
+      const n = typeof roh === 'number' ? roh : Number(roh);
+      if (roh === undefined || roh === null || roh === '' || !Number.isFinite(n)) return false;
+      if (spanne[1] && n < Number(spanne[1])) return false;
+      if (spanne[2] && n > Number(spanne[2])) return false;
+      continue;
+    }
+    const gesucht = rest.split('|').filter(Boolean);
+    if (!gesucht.length) continue;
+    const werte = (Array.isArray(roh) ? roh : [roh]).filter((x) => x !== undefined && x !== null && x !== '').map(String);
+    if (!gesucht.some((w) => werte.includes(w))) return false;
+  }
+  return true;
 }
 
 /** Ein Feld `Typ.feld` als Sortierwert; Zahlen bleiben Zahlen, leer ist keiner. */

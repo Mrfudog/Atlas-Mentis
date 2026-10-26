@@ -884,15 +884,24 @@ export function pathOptions(registry: Pick<Registry, 'relations' | 'interfaces'>
     const echt = (l ?? []).filter((t) => t !== '*' && t !== 'same');
     return echt.length === 1 ? echt[0]! : null;
   };
+  /* Wenige Ziele (`sells` → Item oder Collection, REQ-439): je Ziel ein Schritt,
+     damit `shopkeeper › Shop › sells › Item` wählbar bleibt; viele: einer für alle. */
+  const enden = (l: readonly string[] | undefined): (string | null)[] => {
+    const echt = (l ?? []).filter((t) => t !== '*' && t !== 'same');
+    const eins = ende(l);
+    return eins ? [eins] : echt.length > 1 && echt.length <= 4 ? echt : [null];
+  };
   const raus: PathOption[] = [];
   for (const def of Object.values(registry.relations)) {
     if (nennt(def.from)) {
-      const end = ende(def.to);
-      raus.push({ step: { relation: def.type, ...(end ? { type: end } : {}) }, label: `${def.label} → ${end ?? 'any'}`, end });
+      for (const end of enden(def.to)) {
+        raus.push({ step: { relation: def.type, ...(end ? { type: end } : {}) }, label: `${def.label} → ${end ?? 'any'}`, end });
+      }
     }
     if (nennt(def.to)) {
-      const end = ende(def.from);
-      raus.push({ step: { relation: def.type, dir: 'in', ...(end ? { type: end } : {}) }, label: `← ${def.label} (${end ?? 'any'})`, end });
+      for (const end of enden(def.from)) {
+        raus.push({ step: { relation: def.type, dir: 'in', ...(end ? { type: end } : {}) }, label: `← ${def.label} (${end ?? 'any'})`, end });
+      }
     }
   }
   return raus.sort((a, b) => a.label.localeCompare(b.label, 'en'));

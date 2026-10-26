@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-26. 92 Schnittstellen, 72 Kantenarten.
+Stand 2026-10-26. 92 Schnittstellen, 73 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -61,6 +61,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
@@ -443,6 +444,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
@@ -507,6 +509,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
@@ -725,7 +728,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `priceMod` *string*
+- `priceMod` *string*, `buyRate` *0…∞*
 
 **Geerbte Felder**
 
@@ -747,7 +750,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
-- `sells` → Item — „sells"
+- `sells` → Item | Collection — „sells"
+- `buys` → Item | Collection — „buys"
 - `discount` → Creature | Party | Faction — „discount for"
 - `shopkeeper` → Creature — „shopkeeper"
 - `describedIn` → Article | Story | BookPart — „described in"
@@ -824,6 +828,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - GlossaryTerm — `explains` → „explained by"
 - Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
 - Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
@@ -1637,6 +1642,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - * — `inCollection` → „members (by hand)"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2258,6 +2265,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - * — `inCollection` → „members (by hand)"
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
