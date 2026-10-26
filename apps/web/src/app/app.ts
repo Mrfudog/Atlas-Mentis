@@ -12,6 +12,7 @@ import { Suche, tipptGerade } from './kern/suche';
 import { SucheComponent } from './suche/suche';
 import { Stapel } from './kern/stapel';
 import { Bestand } from './kern/bestand';
+import { TokenFarben } from './kern/tokenfarben';
 import { Rueckweg } from './kern/rueckweg';
 import { StapelKnopf } from './verwaltung/stapel-knopf';
 import { SichtKnopf } from './verwaltung/sicht-knopf';
@@ -598,6 +599,8 @@ export class App {
   /** Die laufende Kampagne in der Leiste (T-143). */
   private readonly stapel = inject(Stapel);
   private readonly bestand = inject(Bestand);
+  /* Die Farben der Design-Tokens als CSS-Variablen (T-425, E-170). */
+  private readonly tokenFarben = inject(TokenFarben);
 
   protected readonly api = inject(Api);
   protected readonly suche = inject(Suche);

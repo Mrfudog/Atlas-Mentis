@@ -34,6 +34,7 @@ import {
   primaryInterface,
   tabsAsTree,
   treeAsTabs,
+  usedTokens,
   typeChain,
   typeList,
   viewGroup,
@@ -43,7 +44,7 @@ import {
   STRUCTURE_DEPTH,
   STRUCTURE_EDGES,
 } from '@nw/model';
-import type { Entity, History, IncomingEdge, LayoutElement, LayoutWhen, Registry, TreeMove, ViewApplies, ViewDef, ViewPathStep } from '@nw/model';
+import type { ElementStyle, Entity, History, IncomingEdge, LayoutElement, TokenRole, TokenSlot, LayoutWhen, Registry, TreeMove, ViewApplies, ViewDef, ViewPathStep } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit } from '../register/arbeit';
 import { techName } from '../register/regeln';
@@ -168,6 +169,7 @@ export class Ansichtsdesigner {
   private readonly startIds = signal<ReadonlySet<string>>(new Set());
 
   protected readonly reg = this.bestand.registry;
+  private readonly regDa = computed(() => !!this.reg());
   protected readonly def = computed<ViewDef | undefined>(() => {
     const k = this.schluessel();
     return k ? this.reg()?.views[k] : undefined;
@@ -231,12 +233,14 @@ export class Ansichtsdesigner {
 
   constructor() {
     /* Eine andere Ansicht (oder ein anderer Typ) gewählt: der Entwurf fängt bei dem an, was dort gilt. */
+    /* Nur Ansicht, Typ und „Register da" lösen das aus — nicht jede Änderung am Register:
+       schreibt jemand anderes gleichzeitig (eine Mitleiterin, ein Token), bliebe sonst vom
+       Entwurf und seinem Verlauf nichts übrig (T-425). */
     effect(() => {
       const k = this.schluessel();
       const t = this.startTyp();
-      const r = this.reg();
-      if (!r) return;
-      untracked(() => this.beginne(r, k, t));
+      if (!this.regDa()) return;
+      untracked(() => this.beginne(this.reg()!, k, t));
     });
     effect(() => this.entwurf.emit({ baum: this.entwurfsBaum(), gestaltet: this.alsGestaltet(), register: this.entwurfsRegister() }));
   }
@@ -254,6 +258,7 @@ export class Ansichtsdesigner {
     this.fest.set(false);
     this.alsSchicht.set(true);
     this.prioritaet.set(def?.priority ?? null);
+    this.ansichtStile.set(structuredClone(def?.styles ?? {}));
     if (def && isContribution(def)) {
       /* Eine Schicht: der Baum ist, was mit ihr gezeichnet wird; gespeichert wird nur der Unterschied. */
       const g = viewGroup(k!, def);
@@ -524,6 +529,57 @@ export class Ansichtsdesigner {
     if (!tat) return;
     ev.preventDefault();
     tat();
+  }
+
+  // ------------------------------------------------------------ Design (T-425, REQ-437, E-170)
+
+  /** Die Stellen eines Elements und welche Rollen dort passen. */
+  protected readonly STELLEN: { slot: TokenSlot; label: string; roles: readonly TokenRole[] }[] = [
+    { slot: 'head', label: 'Head', roles: ['text', 'accent'] },
+    { slot: 'surface', label: 'Surface', roles: ['surface'] },
+    { slot: 'frame', label: 'Frame', roles: ['line', 'accent'] },
+    { slot: 'text', label: 'Text', roles: ['text', 'accent'] },
+  ];
+  /** Was die Ansicht je Elementart vorgibt (`ViewDef.styles`) — gespeichert mit der Ansicht. */
+  protected readonly ansichtStile = signal<Record<string, ElementStyle>>({});
+
+  protected tokenName(name: string): string {
+    return this.reg()?.tokens?.[name]?.label ?? name;
+  }
+
+  /** Die Tokens für eine Stelle, die schon genutzten zuerst (E-170). */
+  protected tokenWahl(slot: TokenSlot): { name: string; label: string; genutzt: boolean }[] {
+    const rollen = this.STELLEN.find((x) => x.slot === slot)?.roles ?? [];
+    const genutzt = new Set(usedTokens(treeAsTabs(this.baum()), { styles: this.ansichtStile() }));
+    return Object.entries(this.reg()?.tokens ?? {})
+      .filter(([, d]) => rollen.includes(d.role))
+      .map(([name, d]) => ({ name, label: d.label, genutzt: genutzt.has(name) }))
+      .sort((a, b) => +b.genutzt - +a.genutzt || a.label.localeCompare(b.label));
+  }
+
+  protected setzeStil(slot: TokenSlot, name: string): void {
+    const el = this.auswahl();
+    if (!el) return;
+    const s: ElementStyle = { ...(el.style ?? {}) };
+    if (name) s[slot] = name;
+    else delete s[slot];
+    this.setze({ style: Object.keys(s).length ? s : null });
+  }
+
+  /** Das Design dieses Elements gilt für jedes seiner Art in der Ansicht; es selbst sagt dann nichts mehr. */
+  protected stilFuerAlle(el: LayoutElement): void {
+    if (!el.style) return;
+    const stil = { ...el.style };
+    this.ansichtStile.update((m) => ({ ...m, [el.el]: stil }));
+    this.setze({ style: null });
+  }
+
+  protected stilFuerAlleWeg(el: LayoutElement): void {
+    this.ansichtStile.update((m) => {
+      const n = { ...m };
+      delete n[el.el];
+      return n;
+    });
   }
 
   /** Die Suche der Leiste: Treffer aus allen Gruppen. */
@@ -874,6 +930,10 @@ export class Ansichtsdesigner {
     else delete d.rest;
     if (this.leer()) d.empty = 'show';
     else delete d.empty;
+    /* Das Design je Elementart (E-170) gehört der Ansicht selbst. */
+    const stile = this.ansichtStile();
+    if (Object.keys(stile).length) d.styles = structuredClone(stile);
+    else delete d.styles;
     return d;
   }
 

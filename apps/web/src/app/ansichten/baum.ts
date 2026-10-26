@@ -20,6 +20,7 @@ import {
 } from '@nw/model';
 import type { CollectionGroup, CollectionQuery, Entity, IncomingEdge, LayoutElement, PathHit, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
+import { Stil } from '../muster/stil';
 import { Text } from '../artikel/text';
 import { Statblock } from '../artikel/statblock';
 import { Zauber } from '../artikel/zauber';
@@ -91,9 +92,11 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
 @Component({
   selector: 'nw-ansichtsbaum',
   /* Die Kurzansicht kennt den Baum und der Baum die Kurzansicht (Collection, T-425): `forwardRef` löst den Kreis. */
-  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild, Struktur, Sammelfach, forwardRef(() => Vorschau)],
+  imports: [NgTemplateOutlet, RouterLink, Stil, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild, Struktur, Sammelfach, forwardRef(() => Vorschau)],
   template: `
     <ng-template #knoten let-el>
+      <!-- Das Design des Elements (T-425, E-170): Tokens an Kopf, Fläche, Rahmen, Text. -->
+      <div [nwStil]="el.style">
       @switch (el.el) {
         @case ('section') {
           <section class="abschnitt" [attr.data-el]="el.id">
@@ -383,6 +386,7 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
           }
         }
       }
+      </div>
     </ng-template>
 
     @for (el of baum(); track el.id) {

@@ -18,7 +18,8 @@ import {
   unitsFor,
   isLayer,
 } from '@nw/model';
-import type { BoardSketch, Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
+import type { BoardSketch, ElementStyle, Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
+import { Stil } from '../muster/stil';
 import { Bestand } from '../kern/bestand';
 import { QuelleText } from '../kern/quellen';
 import { Text } from './text';
@@ -34,6 +35,8 @@ const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source', 'Status', 'Tags'];
 interface Stueck {
   kind: 'text' | 'felder' | 'prosa' | 'teile' | 'bild' | 'kennzahlen' | 'token' | 'baum' | 'skizze';
   skizze?: BoardSketch;
+  /** Das Design des Elements (T-425, E-170). */
+  stil?: ElementStyle;
   /** Ein Element, das nur der Baum zeichnet (T-310): Collapsible, Columns, Table … */
   baum?: LayoutElement[];
   key: string;
@@ -62,7 +65,7 @@ interface Stueck {
 @Component({
   selector: 'nw-vorschau',
   /* Der Baum zeichnet Kurzansichten (Collection, T-425), die Kurzansicht den Baum: `forwardRef` in beiden Richtungen. */
-  imports: [RouterLink, Text, QuelleText, KurzLink, Bild, Kennzahlen, TokenBild, forwardRef(() => Ansichtsbaum)],
+  imports: [RouterLink, Stil, Text, QuelleText, KurzLink, Bild, Kennzahlen, TokenBild, forwardRef(() => Ansichtsbaum)],
   template: `
     <aside class="vorschau" [class.eingebettet]="eingebettet()" aria-label="Preview">
       @if (!eingebettet()) {
@@ -90,6 +93,7 @@ interface Stueck {
           <div class="linie" aria-hidden="true"></div>
         }
         @for (s of stuecke(); track s.key) {
+          <div [nwStil]="s.stil">
           @switch (s.kind) {
             @case ('text') {
               <nw-text [text]="s.text!" [scopes]="scopes()" />
@@ -173,6 +177,7 @@ interface Stueck {
               }
             }
           }
+          </div>
         }
         @if (!eingebettet()) {
           <div class="knoepfe">
@@ -424,27 +429,27 @@ export class Vorschau {
       } else if (el.el === 'image') {
         /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
         const bild = bildDes(e, r, this.bestand.bild().get(e.id));
-        if (bild) raus.push({ kind: 'bild', key: el.id, bild });
+        if (bild) raus.push({ kind: 'bild', key: el.id, stil: el.style, bild });
       } else if (el.el === 'board') {
         const n = this.bestand.name();
-        raus.push({ kind: 'skizze', key: el.id, skizze: boardSketch(e, (x) => n(x)) });
+        raus.push({ kind: 'skizze', key: el.id, stil: el.style, skizze: boardSketch(e, (x) => n(x)) });
       } else if (el.el === 'stats') {
         /* Die Kennzahlen (T-206) — sie holen ihren Statblock selbst. */
-        raus.push({ kind: 'kennzahlen', key: el.id });
+        raus.push({ kind: 'kennzahlen', key: el.id, stil: el.style });
       } else if (el.el === 'token') {
-        raus.push({ kind: 'token', key: el.id });
+        raus.push({ kind: 'token', key: el.id, stil: el.style });
       } else if (el.el === 'description') {
         const d = (e.components?.['Description'] as { description?: string } | undefined)?.description;
-        if (d) raus.push({ kind: 'text', key: el.id, text: d });
+        if (d) raus.push({ kind: 'text', key: el.id, stil: el.style, text: d });
       } else if (el.el === 'fields') {
         const felder = this.felder(e, r, typ, el, leer, genommen);
-        if (felder.length) raus.push({ kind: 'felder', key: el.id, felder });
+        if (felder.length) raus.push({ kind: 'felder', key: el.id, stil: el.style, felder });
       } else if (el.el === 'prose') {
         const prosa = this.prosa(e, r, typ, el);
-        if (prosa.length) raus.push({ kind: 'prosa', key: el.id, prosa });
+        if (prosa.length) raus.push({ kind: 'prosa', key: el.id, stil: el.style, prosa });
       } else if (el.el === 'composed') {
         const teile = this.teile(e, r);
-        if (teile.length) raus.push({ kind: 'teile', key: el.id, teile });
+        if (teile.length) raus.push({ kind: 'teile', key: el.id, stil: el.style, teile });
       }
     }
     if (view?.rest) {
