@@ -1,8 +1,8 @@
 /**
  * Regelsysteme und Regelmechaniken als Ebenen (E-166, T-394): der Start
- * legt Inventory mit Weight, Slots, Grid und Default shapes an; eine
+ * legt Inventory mit Weight, Slots und Grid an; eine
  * Kampagne, die Inventory aufschaltet, bringt die Mechaniken, und die
- * Vorgabeformen aus Default shapes gelten. Erfundene Gegenstände.
+ * Vorgabeformen aus Grid gelten. Erfundene Gegenstände.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -33,13 +33,15 @@ describe('Regelsysteme beim Start (E-166)', () => {
   it('legt Inventory und seine Mechaniken an, gültig und mit Nummer', async () => {
     const t = await aufbau();
     const reg = await t.repo.getRegistry();
-    for (const id of ['ly_rs_inventory', 'ly_rm_weight', 'ly_rm_slots', 'ly_rm_grid', 'ly_rm_shapes']) {
+    for (const id of ['ly_rs_inventory', 'ly_rm_weight', 'ly_rm_slots', 'ly_rm_grid']) {
       const e = await t.repo.getEntity(id);
       expect(e, id).toBeTruthy();
       expect(validateEntity(reg, e!), id).toEqual([]);
     }
     expect((await t.repo.getEntity('ly_rs_inventory'))?.components?.['Identity']).toMatchObject({ name: 'Inventory', id: 'rulesystem-0001' });
-    expect((await t.repo.getEntity('ly_rm_shapes'))?.components?.['Identity']).toMatchObject({ id: 'rulemechanic-0004' });
+    expect((await t.repo.getEntity('ly_rm_grid'))?.components?.['Identity']).toMatchObject({ id: 'rulemechanic-0003' });
+    /* Ein Formmodul, nicht zwei (D91): die Formen trägt Grid, eine eigene Mechanik gibt es nicht. */
+    expect(await t.repo.getEntity('ly_rm_shapes')).toBeFalsy();
   });
 
   it('legt nichts doppelt an und lässt Geändertes stehen', async () => {
@@ -54,7 +56,7 @@ describe('Regelsysteme beim Start (E-166)', () => {
     const t = await aufbau();
     const alle = new Map((await t.repo.listEntities()).map((e) => [e.id, e]));
     expect(compatibleMechanics(alle, 'ly_rm_weight')).toEqual(['ly_rm_grid']);
-    expect(compatibleMechanics(alle, 'ly_rm_grid').sort()).toEqual(['ly_rm_shapes', 'ly_rm_weight']);
+    expect(compatibleMechanics(alle, 'ly_rm_grid')).toEqual(['ly_rm_weight']);
   });
 
   it('die Mechaniken sind Ebenen: sichtbar für Leitung und Spielerin', async () => {
@@ -65,14 +67,14 @@ describe('Regelsysteme beim Start (E-166)', () => {
     }
   });
 
-  it('Inventory aufgeschaltet: die Vorgabeformen aus Default shapes gelten', async () => {
+  it('Inventory aufgeschaltet: die Vorgabeformen aus Grid gelten', async () => {
     const t = await aufbau();
-    const formen = (await t.repo.getEntity('ly_rm_shapes'))!;
+    const formen = (await t.repo.getEntity('ly_rm_grid'))!;
     await t.repo.putEntity({
       ...formen,
       components: { ...formen.components, ShapeDefaults: { shapeGroups: [{ id: 'AM', name: 'Ammunition', rows: ['#', '#'], stackSize: 32 }], shapeItems: [{ id: 'arrow', group: 'AM' }] } },
     });
-    expect(validateEntity(await t.repo.getRegistry(), (await t.repo.getEntity('ly_rm_shapes'))!)).toEqual([]);
+    expect(validateEntity(await t.repo.getRegistry(), (await t.repo.getEntity('ly_rm_grid'))!)).toEqual([]);
     for (const wer of ['Mira', 'Sela']) {
       const e = await t.json<Entity & { refs?: { shape?: unknown } }>(wer, 'GET', '/api/entities/arrow');
       expect(e.components?.['Item']).toMatchObject({ rows: ['#', '#'], stackSize: 32 });
@@ -82,7 +84,7 @@ describe('Regelsysteme beim Start (E-166)', () => {
 
   it('ohne Inventory in der Kampagne gilt keine Vorgabe', async () => {
     const t = await aufbau(false);
-    const formen = (await t.repo.getEntity('ly_rm_shapes'))!;
+    const formen = (await t.repo.getEntity('ly_rm_grid'))!;
     await t.repo.putEntity({ ...formen, components: { ...formen.components, ShapeDefaults: { shapeGroups: [{ id: 'AM', name: 'A', rows: ['#'] }], shapeItems: [{ id: 'arrow', group: 'AM' }] } } });
     const e = await t.json<Entity>('Mira', 'GET', '/api/entities/arrow');
     expect(e.components?.['Item']?.['rows']).toBeUndefined();

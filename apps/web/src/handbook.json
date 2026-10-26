@@ -173,7 +173,7 @@
         {
           "heading": "Setting item shapes by group",
           "text": [
-            "Turn on the rule system Inventory for the campaign (campaign page › layers): it brings the mechanics Weight, Slots, Grid and Default shapes. Each mechanic says which others it works with — the grid works with weight.",
+            "Turn on the rule system Inventory for the campaign (campaign page › layers): it brings the mechanics Weight, Slots and Grid; the grid brings the default item shapes. Each mechanic says which others it works with — the grid works with weight.",
             "Open Rules & options › Inventory › Item shapes. Create or pick a group on the left, set its shape and stack size, and give it a reference item if one item stands for the whole group. Items are put into groups on the right with Edit › Group.",
             "For a variant such as +1 Longsword choose the Longsword as reference item: it takes the Longsword’s shape and stack size, and follows when the Longsword changes. A shape painted on an item’s own Shape element still wins; the element says where its shape comes from, and Use the default removes the painted one again."
           ]

@@ -2364,7 +2364,7 @@ wenn die Ebene ausgeht.
 **Ein Regelsystem und seine Mechaniken sind Ebenen** (E-166). Die
 Leitung wählt die Regeln, nach denen ihre Runde spielt, wie sie Bücher
 wählt: durch Aufschalten. Inventory ist ein **Regelsystem** (eine Gruppe),
-Grid, Weight, Slots und Default shapes sind seine **Regelmechaniken**. Eine
+Grid, Weight und Slots sind seine **Regelmechaniken**. Eine
 Mechanik sagt, mit welchen anderen sie zusammen gilt (`compatibleWith`:
 das Raster mit dem Gewicht) — so steht die Regel „es gibt nur ein
 Inventar“ nicht im Code, sondern als fehlende Kante in den Daten. Eigene

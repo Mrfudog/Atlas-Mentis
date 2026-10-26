@@ -802,7 +802,7 @@ const TYPES: AppTerm[] = [
     sort: 'type',
     types: ['RuleMechanic'],
     aliases: ['Rule option layer'],
-    definition: 'A layer that is one option of a rule system — Weight, Slots, Grid, Default shapes — and says which other mechanics it works with.',
+    definition: 'A layer that is one option of a rule system — Weight, Slots, Grid — and says which other mechanics it works with.',
     effect: 'Mechanics joined by compatible with can apply together (the grid with weight); others of the same system exclude each other.',
     translations: { de: 'Regelmechanik' },
   },

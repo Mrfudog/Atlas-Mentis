@@ -174,7 +174,7 @@ export function registerVorgabeformen(app: FastifyInstance, deps: VorgabeformenD
          irgendwo aufgeschaltet ist, spielt beim Schreiben keine Rolle. */
       const l = stand.map.get(id);
       if (!l || !isLayer(l) || !isShapesLayer(l)) {
-        return { code: 404, body: { error: 'This is not a Default shapes layer. Name the layer of the mechanic Default shapes, or one that already carries shapes.' } };
+        return { code: 404, body: { error: 'This layer carries no default shapes. Name the layer of the mechanic Grid, or one that already carries shapes.' } };
       }
       if (!(await schreibt(request, id))) {
         return { code: 403, body: { error: 'You do not write in this layer. Ask the administration or its owner to add you as an editor.' } };
@@ -186,7 +186,7 @@ export function registerVorgabeformen(app: FastifyInstance, deps: VorgabeformenD
       for (const l of formEbenen(stand.map, kampagneVon(stand.map, reg))) if (await schreibt(request, l.id)) ziele.push(l.id);
       id = ziele[ziele.length - 1];
       if (!id) {
-        return { code: 403, body: { error: 'No default-shapes layer you write is turned on in this campaign. Turn on Inventory, or ask the administration to assign you its Default shapes layer.' } };
+        return { code: 403, body: { error: 'No default-shapes layer you write is turned on in this campaign. Turn on Inventory, or ask the administration to add you as an editor of its Grid layer.' } };
       }
     }
     /* **Gegen die gelesene Revision** — zwei Änderungen an derselben Karte
