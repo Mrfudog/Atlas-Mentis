@@ -685,6 +685,16 @@ const APP: AppTerm[] = [
     translations: { de: 'Dein Zug' },
   },
   {
+    term: 'Design token',
+    aliases: ['Token', 'Tokens'],
+    sort: 'app',
+    definition: 'A named colour with a role — surface, text, accent or line — and a value for the light and the dark mode. An element in the view designer names a token for its head, surface, frame or text, never a colour code.',
+    effect: 'Registry › Tokens lists them with their contrast; text needs 4.5:1 on its surface, an accent 3:1, and the workbench lists what falls short. A view can give every element of a kind the same design; an element may override it.',
+    example: 'Quick of a shop: every section with its head in Accent and its surface in Paper — dark mode takes the dark values by itself.',
+    translations: { de: 'Design-Token' },
+    see: '/registry?tab=tokens',
+  },
+  {
     term: 'Designer bar',
     aliases: ['Insert bar'],
     sort: 'app',

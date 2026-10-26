@@ -402,6 +402,12 @@ wiederkommen, werden sie neu geschrieben.
   (`LEISTE`) und suchen, Rückgängig/Wiederholen über den Entwurf
   (`history.ts`, ein Muster), Kopieren/Einfügen über die Ablage
   (`kern/ablage.ts`), am gewählten Element die schwebende Leiste.
+  **Farben sind Design-Tokens** (T-425, E-170, `Registry.tokens`,
+  `token_def`): Rolle, Wert hell und dunkel; ein Element nennt je Stelle
+  (`head`, `surface`, `frame`, `text`) ein Token (`style`), die Ansicht je
+  Elementart eine Vorgabe (`styles`), `pickView` mischt sie ein. Kontrast
+  prüft die Werkbank (`tokenContrast`), gepflegt wird unter Registry ›
+  Tokens. Nie ein Farbcode am Element.
   **Ein Editor** (T-276): der Designer (`ansichten/designer.ts`) bearbeitet
   jede Ansicht — Registry › Views, „Design" an der Typseite (mit
   vorgewähltem Typ), „Design this view" im Full edit des Artikels. Beim

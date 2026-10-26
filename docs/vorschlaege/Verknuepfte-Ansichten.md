@@ -283,7 +283,7 @@ Neue Wörter fürs Glossar und für Begriffe.md:
    - Einfügen, Kontext, Allgemein.
    - Einstellungen am Element.
    - Kopieren, Einfügen, Duplizieren, Rückgängig, Wiederholen.
-6. **Design-Tokens (REQ-437)**: Registerteil, Stellen je Element, Vorgaben je Ansicht.
+6. **Design-Tokens (REQ-437)**: Registerteil, Stellen je Element, Vorgaben je Ansicht. *Steht (26.10.): `Registry.tokens` (Migration 148), vier Stellen, `ViewDef.styles`, Kontrast (Text 4.5, Akzent 3) in der Werkbank, Registry › Tokens, Design-Block im Designer. Werte aus Feldern (`field:`) kommen später.*
 7. **Erfassungsmasken (REQ-432)**, dazu „nur `idea`, solange Pflichtfelder fehlen“.
 8. **Abläufe (REQ-440, REQ-433)**: Element `steps`, der Assistent als Vorgabe der Spielerfigur, `levelUp` als abgeleitete Ansicht.
 9. **Pflicht je Stand (REQ-441)**: `requiredFor`, Status und Ebene immer Pflicht, Migrationen „ready“ und „Unassigned“. Das kann auch früher kommen, weil es von den Schnitten 1 bis 6 unabhängig ist.

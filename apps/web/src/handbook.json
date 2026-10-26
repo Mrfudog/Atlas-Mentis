@@ -158,6 +158,14 @@
           ]
         },
         {
+          "heading": "Giving a view its colours",
+          "text": [
+            "Select an element in the view designer and open Design. Head, Surface, Frame and Text each take a token — a named colour with a light and a dark value. Tokens the view already uses come first, marked ●.",
+            "To give every element of that kind the same design, press “Use for every … in this view”; an element can still set its own. Save as usual.",
+            "Registry › Tokens holds the colours: change a value, add a token, see the contrast in both modes. The workbench check Token contrast lists a text below 4.5:1 or an accent below 3:1 on its surface."
+          ]
+        },
+        {
           "heading": "Changing a view with an overlay",
           "text": [
             "Open the view in the designer (Registry › Views › Full, say). To change it for one article, pick it as the example and choose Save for … › only this article; for all articles with a field value or an edge, choose all with a condition and add it. Tick “as an overlay”.",

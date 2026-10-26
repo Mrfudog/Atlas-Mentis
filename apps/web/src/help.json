@@ -416,6 +416,14 @@
             "Move elements with ↑ ↓, → into the container above (a section, columns, a tab …) and ← out again, or drag them. Collapse a container to keep the tree short. Values can come from linked articles, by following an edge; “Leave out” and “Only when” say what an element skips and where it shows.",
             "“Save for …” says where the change goes: every article (the view itself, with its name, order, the rest at the end and empty fields), every article of a type (preselected when you come from one; an adjustment where possible, else its own arrangement), one article, or a new view with a condition. Overview, Quick, Full and Print can be rebuilt but not deleted; the + of a search hit shows Quick.",
             "A type’s page lists the views that apply to it, and from where; “Design” opens the designer with the type chosen.",
+            "Design under a selected element gives its head, surface, frame and text a token — a colour with a light and a dark value. “Use for every … in this view” makes it the view’s design for that kind of element."
+          ]
+        },
+        {
+          "title": "Tokens",
+          "text": [
+            "Registry › Tokens lists the colours elements can use: role, light and dark value, the surface a text stands on, the contrast in both modes and how many views use each.",
+            "Add a token by name; delete one only when no view uses it. The workbench lists tokens whose contrast falls short.",
             "One article or a condition can also be saved as an overlay: tick “as an overlay” and only what you added, moved or took away is kept, with a priority; the rest keeps following the view.",
             "Elements from other overlays carry their name in the tree; ⚠ marks where two overlays change the same element or share a position. Overlays stand under their view in Registry › Views; the workbench lists their conflicts."
           ]

@@ -730,6 +730,12 @@ Eine Collection darf ihre Artikel auch aus einem **Filter** nehmen (alle
 Gerüchte mit der Marke „rumour"): dieselbe Frage wie im Kompendium, also
 dieselbe Siebung am Server.
 
+**Eine Farbe ist ein Token, kein Farbcode** (T-425, E-170). Wer im
+Designer „Kopf rot" sagt, meint das Rot der Seite — im dunklen Modus ein
+anderes. Ein Farbcode am Element wüsste davon nichts, und der Kontrast
+liesse sich nicht prüfen. Darum nennt ein Element ein Token mit Rolle und
+zwei Werten, und eine Farbe ändert man einmal, unter Registry › Tokens.
+
 Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
 und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
 Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine

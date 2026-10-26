@@ -1881,6 +1881,25 @@ eine andere Schicht bringt und im Designer nie zu sehen war, nimmt sie
 nicht weg. Gespeichert wird in `view_def.config` wie jede Ansicht; eine
 Migration braucht es nicht.
 
+### Design-Tokens (T-425, REQ-437, E-170 a)
+
+Farben sind **Registerzeilen** (`Registry.tokens`, Tabelle `token_def`,
+Migration 148): Name, Rolle (`surface`, `text`, `accent`, `line`), Wert
+`light` und `dark`, für Text und Akzent die Fläche `on` (Vorgabe `paper`).
+Die Startzeilen tragen die Werte aus `styles.scss`
+(`packages/registry/src/tokens.ts`). Ein Element nennt an seinen **Stellen**
+(`head`, `surface`, `frame`, `text`) ein Token (`LayoutElement.style`), die
+Ansicht je Elementart eine Vorgabe (`ViewDef.styles`); `pickView` mischt
+die Vorgabe in die Elemente (`withViewStyles`), das Element schlägt sie je
+Stelle, und ein Token, das es nicht gibt, gilt nicht (`elementStyle`).
+Gezeichnet wird über CSS-Variablen `--tok-<name>` (`kern/tokenfarben.ts`,
+hell und dunkel wie `styles.scss`) und die Hülle `[nwStil]`
+(`muster/stil.ts`, `display: contents`) im Baum, auf der Artikelseite und
+in der Kurzansicht. **Kontrast** (`tokenContrast`): Text 4.5:1, Akzent 3:1
+auf seiner Fläche, je Modus; die Werkbank-Prüfung `tokenContrast` meldet
+es. Gepflegt wird unter Registry › Tokens; löschen geht nur, was keine
+Ansicht nennt.
+
 ### Ein Editor für alle Ansichten (T-276)
 
 **Die Leiste** (T-425, REQ-436, E-171): oben im Designer die Gruppen zum

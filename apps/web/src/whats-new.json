@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-design-tokens",
+      "date": "2026-10-26",
+      "title": "Colour a view with design tokens",
+      "text": "In the view designer, an element’s head, surface, frame and text take a design token — a named colour with a light and a dark value — and a view can give every element of a kind the same design. Registry › Tokens lists the colours with their contrast, and the workbench warns when a text reads too weak on its surface.",
+      "area": "Registry",
+      "link": "/registry?tab=tokens"
+    },
+    {
       "id": "2026-10-26-designer-bar",
       "date": "2026-10-26",
       "title": "View designer: one bar to insert, undo, copy and paste",

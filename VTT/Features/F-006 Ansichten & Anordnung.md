@@ -49,6 +49,22 @@ flowchart LR
   D --> T["Tabelle · props + fields"]
 ```
 
+## Design-Tokens (T-425, REQ-437, 26.10.2026)
+
+Farben sind Registerzeilen mit Rolle und Wert hell/dunkel (E-170 a). Ein
+Element nennt je Stelle ein Token, die Ansicht je Elementart eine Vorgabe;
+der Kontrast wird geprüft (Werkbank), gepflegt wird unter Registry › Tokens.
+
+```mermaid
+flowchart LR
+  T["Registry.tokens<br/>Rolle · hell · dunkel"] --> C["--tok-name<br/>kern/tokenfarben.ts"]
+  V["ViewDef.styles<br/>je Elementart"] --> P["pickView<br/>withViewStyles"]
+  E["el.style<br/>je Stelle"] --> P
+  P --> H["[nwStil]-Hülle<br/>Baum · Seite · Kurzansicht"]
+  C --> H
+  T --> K["tokenContrast<br/>Werkbank"]
+```
+
 ## Die Leiste im Designer (T-425, REQ-436, 26.10.2026)
 
 Eine Leiste mit drei Zonen (E-171): oben **Einfügen** nach Gruppe und
