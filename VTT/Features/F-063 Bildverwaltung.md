@@ -30,22 +30,25 @@ Epic: [[EP-10 Medien & Assets]]
 
 Alle drei Bildwähler — das Bildfeld eines Artikels (`nw-bildwahl`, auch
 Figur, Karte, Board, Inventar), die Bildübersicht (`/images`) und
-„Replace image" — nehmen dieselbe Liste `IMAGE_ACCEPT` aus
-`packages/model/src/assets.ts`: konkrete Medientypen und Endungen statt
-`image/*`, ohne `capture`. Mit `image/*` öffnet Android nur die
-Fotoauswahl; mit der Liste kommt das Datei-Menü des Systems, darin auch
-OneDrive, Fotos und Kamera bleiben. Nur „Take photo" fragt ausdrücklich
-nach der Kamera.
+„Replace image" — sind **allgemeine Dateiwähler ohne `accept` und ohne
+`capture`**; geprüft wird nach der Wahl mit `imageFileProblem` aus
+`packages/model/src/assets.ts` (Formate in `IMAGE_FORMATS`). Nur „Take
+photo" fragt ausdrücklich nach der Kamera (`accept="image/*"
+capture="environment"`).
 
-HEIC steht bewusst nicht in der Liste: der Server liest es nicht, und
-ohne HEIC wandelt iOS ein Foto aus der Mediathek selbst in JPEG. Kommt
-eine HEIC-Datei aus den Dateien, sagt `imageFileProblem`, was zu tun ist,
-bevor etwas hochgeht. Eine Datei ohne Medientyp (manche Cloud-Anbieter)
-gilt nach ihrer Endung.
+**Warum ohne `accept`:** der erste Versuch (22.10., PR #360) nannte die
+Bildtypen einzeln statt `image/*`. Chrome auf Android öffnet aber die
+Fotoauswahl des Systems, sobald `accept` *nur* Bild- oder Videotypen
+nennt — gleich in welcher Schreibweise —, und OneDrive war weiter nicht
+erreichbar. Ohne `accept` kommt das Datei-Menü (26.10.).
+
+HEIC und SVG liest der Server nicht; `imageFileProblem` sagt, was zu tun
+ist, bevor etwas hochgeht. Eine Datei ohne Medientyp (manche
+Cloud-Anbieter) gilt nach ihrer Endung.
 
 ```mermaid
 flowchart LR
-  W[Bildwähler<br/>accept = IMAGE_ACCEPT] --> S{System-Menü}
+  W[Dateiwähler<br/>ohne accept] --> S{System-Menü}
   S --> F[Fotos / Kamera]
   S --> D[Dateien · OneDrive]
   F --> P[imageFileProblem]

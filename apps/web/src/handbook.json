@@ -89,8 +89,8 @@
           "heading": "Adding an image from your phone",
           "text": [
             "At any image field (an article, a character, a map, a board) tap Upload image; on Images, Upload images.",
-            "Your phone shows its own menu: Photo Library, Take Photo, and Browse or Files. Under Browse/Files pick OneDrive (or another storage) and the image.",
-            "JPEG, PNG, WebP, GIF and AVIF are taken. A HEIC photo from Files is refused with a note — choose it from the photo library instead, where the phone converts it, or save it as JPEG."
+            "Your phone shows its file menu (on Android it may open Files or Recent first): choose Browse or Files, then OneDrive (or another storage) and the image. Photos and the camera are in the same menu; Take photo goes straight to the camera.",
+            "Any file can be chosen; it is checked afterwards. JPEG, PNG, WebP, GIF and AVIF are taken; animated GIF and WebP are kept as they are. A HEIC photo from Files is refused with a note — save it as JPEG or PNG first."
           ]
         },
         {
