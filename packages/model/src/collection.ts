@@ -16,7 +16,38 @@ import { articleId, entityName, primaryInterface, typeChain } from './entity.js'
 import { followPath, type IncomingEdge, type PathHit } from './viewScope.js';
 import type { Entity, LayoutElement, Registry } from './types.js';
 
-type Ctx = { get: (id: string) => Entity | undefined; incoming: (id: string) => readonly IncomingEdge[] };
+type Ctx = {
+  get: (id: string) => Entity | undefined;
+  incoming: (id: string) => readonly IncomingEdge[];
+  /** Quelle Filter: was der Server auf `collectionQuery` geantwortet hat (gesiebt). */
+  found?: readonly Entity[];
+};
+
+/** Was eine Sammlung mit Quelle Filter fragt — `GET /api/list` wie im Kompendium; `null` für eine verknüpfte. */
+export interface CollectionQuery {
+  of?: string[];
+  tag?: string[];
+  f?: string[];
+  q?: string;
+  limit: number;
+}
+
+/**
+ * **Die Frage einer Filter-Sammlung** (T-425, E-142): Arten mit ihren
+ * Untertypen, Marken, Feldbedingungen, Suchtext — dieselben Angaben wie die
+ * Filter des Kompendiums, gesiebt am Server. Ohne Grenze 24: eine Sammlung
+ * auf einer Seite ist keine Liste von allem.
+ */
+export function collectionQuery(el: LayoutElement): CollectionQuery | null {
+  if (el.source !== 'filter') return null;
+  return {
+    ...(el.types?.length ? { of: [...el.types] } : {}),
+    ...(el.filter?.tags?.length ? { tag: [...el.filter.tags] } : {}),
+    ...(el.filter?.fields?.length ? { f: [...el.filter.fields] } : {}),
+    ...(el.filter?.q?.trim() ? { q: el.filter.q.trim() } : {}),
+    limit: el.limit ?? 24,
+  };
+}
 
 /**
  * **Die Treffer einer Sammlung**: dem Pfad folgen, auf die genannten Arten
@@ -30,10 +61,16 @@ type Ctx = { get: (id: string) => Entity | undefined; incoming: (id: string) => 
  * auch absteigend: eine Szene ohne Zeit ist keine, die zuerst kommt.
  */
 export function collectionHits(registry: Pick<Registry, 'interfaces'>, entity: Entity, el: LayoutElement, ctx: Ctx): PathHit[] {
-  if (!el.path?.length) return [];
+  const filter = el.source === 'filter';
+  if (!filter && !el.path?.length) return [];
   const arten = el.types?.length ? el.types : null;
-  const hits = followPath(registry, entity, el.path, ctx).filter(
-    (h) => h.entity.id !== entity.id && (!arten || arten.some((t) => typeChain(registry, primaryInterface(h.entity)).includes(t))),
+  const roh: PathHit[] = filter ? (ctx.found ?? []).map((e) => ({ entity: e, props: {} })) : followPath(registry, entity, el.path, ctx);
+  const hits = roh.filter(
+    (h) =>
+      h.entity.id !== entity.id &&
+      (!arten || arten.some((t) => typeChain(registry, primaryInterface(h.entity)).includes(t))) &&
+      /* Mit Rang steht ein Teil im Lesefluss (`parts`); `unranked` zeigt, was dort nicht steht (T-422). */
+      (!el.unranked || h.props['rank'] === undefined),
   );
   const by = el.sort?.by ?? 'Time.sort';
   const richtung = el.sort?.desc ? -1 : 1;
@@ -98,5 +135,5 @@ export function collectionView(registry: Pick<Registry, 'interfaces'>, el: Layou
       if (v) return v;
     }
   }
-  return el.view || (el.show === 'list' ? 'overview' : 'quick');
+  return el.view || (el.show === 'list' || el.show === 'table' ? 'overview' : 'quick');
 }

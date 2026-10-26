@@ -135,7 +135,14 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
     layout: z.enum(['tree', 'net']).optional(),
     /* Eine Sammlung (T-425): Arten, Darstellung, Ansicht je Treffer, Ordnung. */
     types: z.array(z.string()).optional(),
-    show: z.enum(['tiles', 'list']).optional(),
+    show: z.enum(['tiles', 'list', 'table']).optional(),
+    source: z.enum(['linked', 'filter']).optional(),
+    filter: z
+      .object({ tags: z.array(z.string()).optional(), fields: z.array(z.string()).optional(), q: z.string().optional() })
+      .strict()
+      .optional(),
+    limit: z.number().int().positive().optional(),
+    unranked: z.boolean().optional(),
     view: z.string().optional(),
     viewByType: z.record(z.string(), z.string()).optional(),
     sort: z.object({ by: z.string(), desc: z.boolean().optional() }).optional(),
