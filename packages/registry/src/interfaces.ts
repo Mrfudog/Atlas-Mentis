@@ -386,6 +386,11 @@ export const interfaces: Record<string, InterfaceDef> = {
         /* Worauf man hier würfelt. Die Tabelle gehört nicht dem Ort — sie
            gilt für ihn, und das steht an der Kante `tableFor`. */
         { id: 'o-table', el: 'table' },
+        /* Was in diesem Ort liegt und wer hier lebt (T-425): je in der
+           Ansicht seiner Art — die Unterorte als Liste, die Bewohner als
+           Karten. */
+        { id: 'o-within', el: 'collection', text: 'Places within', path: [{ relation: 'partOf', dir: 'in' }], types: ['Place'], show: 'list', sort: { by: 'name' } },
+        { id: 'o-residents', el: 'collection', text: 'Residents', path: [{ relation: 'livesIn', dir: 'in' }], types: ['Creature'], show: 'tiles', sort: { by: 'name' } },
         { id: 'o-r', el: 'relations' },
       ],
     },
@@ -886,6 +891,30 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Story',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
     schema: merge(g.StoryInfo),
+    /* **Was ohne Rang zu einer Geschichte gehört** (T-425, löst „Contains"
+       aus T-422 ab): die Szenen eines Arcs, die Begegnungen einer Szene —
+       als Kacheln in der Kurzansicht ihrer Art, gleich nach den Teilen
+       (Position 65 liegt zwischen `l-parts` und `l-c`). Was mit Rang
+       dasteht, zeigt der Lesefluss. */
+    views: {
+      full: {
+        adjust: {
+          extra: [
+            {
+              id: 'st-contains',
+              el: 'collection',
+              text: 'Contains',
+              path: [{ relation: 'partOf', dir: 'in' }],
+              types: ['Story', 'Encounter'],
+              unranked: true,
+              show: 'tiles',
+              groupBy: 'type',
+              pos: 65,
+            },
+          ],
+        },
+      },
+    },
   },
 
   /**

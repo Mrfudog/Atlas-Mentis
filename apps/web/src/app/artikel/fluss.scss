@@ -102,35 +102,3 @@
   margin-top: 0.25rem;
 }
 
-/* „Contains" (T-422): was ohne Rang an einer Story-Art hängt. */
-.enthaelt {
-  margin-top: 1rem;
-}
-.enthaelt h3 {
-  font-family: var(--caps);
-  font-size: 1rem;
-  margin: 0 0 0.4rem;
-}
-.enthaelt ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.enthaelt li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  align-items: baseline;
-  padding: 0.2rem 0;
-  border-bottom: 1px solid var(--line);
-}
-.enthaelt .leg {
-  font-family: var(--caps);
-  font-size: 0.75rem;
-  color: var(--dim);
-  min-width: 5.5rem;
-}
-.enthaelt .dim {
-  color: var(--dim);
-  font-size: 0.85rem;
-}

@@ -9,7 +9,8 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
-import type { Entity } from '@nw/model';
+import { collectionHits, pickView } from '@nw/model';
+import type { Entity, IncomingEdge, Registry } from '@nw/model';
 import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
@@ -94,7 +95,9 @@ describe('a chapter made of parts (T-108)', () => {
        Lesefluss nichts, angehängt die Szene (T-422). */
     const arc = (await rufe('Basil', 'GET', '/api/entities/arc_k1/parts')).json();
     expect(arc.parts).toEqual([]);
-    expect(arc.contains.map((c: { id: string }) => c.id)).toEqual(['sc_cave']);
+    /* „Contains" gibt es nicht mehr: das zeigt die Collection der Ansicht (T-425). */
+    expect(arc.contains).toBeUndefined();
+    expect(await sammlung(rufe, 'Basil', 'arc_k1')).toEqual(['sc_cave']);
     /* Was die Leitung liest, sehen Spielende nicht. */
     expect((await rufe('Sela', 'GET', '/api/entities/arc_k1_chapter/parts')).statusCode).toBe(404);
   });
@@ -185,25 +188,43 @@ describe('an illustration in the book text (T-210)', () => {
   });
 });
 
-describe('a story article lists what hangs on it (T-422, REQ-427)', () => {
-  it('an arc lists its scenes and encounters, a session its own; players see only what they may', async () => {
+describe('a story article shows what hangs on it through its collection (T-422, T-425)', () => {
+  it('an arc shows its scenes, a scene and a session their encounter; players see only what they may; a place shows no story list', async () => {
     const { repo, rufe } = await aufbau();
     const neu = (x: Entity) => repo.putEntity(x);
     await neu({ id: 'sc_gm', name: 'Secret door', interfaces: ['Scene'], components: { ...id('Secret door', 'scene-0003'), ...gm, Status: { status: 'ready' } }, relations: [in_('sc_gm', 'ly_a'), teil('sc_gm', 'arc_eigen')] });
     await neu({ id: 'enc_rats', name: 'Rats', interfaces: ['Encounter'], components: { ...id('Rats', 'encounter-0001'), Status: { status: 'ready' } }, relations: [in_('enc_rats', 'ly_a'), teil('enc_rats', 'sc_eigen'), teil('enc_rats', 'ses_2')] });
     await neu({ id: 'ses_2', name: 'Session 2', interfaces: ['Session'], components: { ...id('Session 2', 'session-0002'), Status: { status: 'ready' } }, relations: [in_('ses_2', 'ly_a')] });
 
-    const arc = (await rufe('Basil', 'GET', '/api/entities/arc_eigen/parts')).json();
-    expect(arc.contains.map((c: { id: string }) => c.id)).toEqual(['sc_eigen', 'sc_gm']);
-    expect(arc.contains[0]).toMatchObject({ entity: { id: 'sc_eigen' } });
-    /* Die Gruppe (Szene) zeigt ihre Begegnung, die Session dieselbe. */
-    expect((await rufe('Basil', 'GET', '/api/entities/sc_eigen/parts')).json().contains.map((c: { id: string }) => c.id)).toEqual(['enc_rats']);
-    expect((await rufe('Basil', 'GET', '/api/entities/ses_2/parts')).json().contains.map((c: { id: string }) => c.id)).toEqual(['enc_rats']);
+    expect(await sammlung(rufe, 'Basil', 'arc_eigen')).toEqual(['sc_eigen', 'sc_gm']);
+    expect(await sammlung(rufe, 'Basil', 'sc_eigen')).toEqual(['enc_rats']);
+    expect(await sammlung(rufe, 'Basil', 'ses_2')).toEqual(['enc_rats']);
     /* Die Spielerin sieht die geheime Szene nicht. */
-    expect((await rufe('Sela', 'GET', '/api/entities/arc_eigen/parts')).json().contains.map((c: { id: string }) => c.id)).toEqual(['sc_eigen']);
-    /* Ein Ort, an dem etwas hängt, bekommt keine Liste — nur Story-Arten. */
+    expect(await sammlung(rufe, 'Sela', 'arc_eigen')).toEqual(['sc_eigen']);
+    /* Ein Ort zeigt Unterorte (o-within), keine Geschichte. */
     await neu({ id: 'pl_hof', name: 'Hof', interfaces: ['Place'], components: { ...id('Hof', 'place-0001'), Status: { status: 'ready' } }, relations: [in_('pl_hof', 'ly_a')] });
     await neu({ id: 'pl_brunnen', name: 'Brunnen', interfaces: ['Place'], components: { ...id('Brunnen', 'place-0002'), Status: { status: 'ready' } }, relations: [in_('pl_brunnen', 'ly_a'), teil('pl_brunnen', 'pl_hof')] });
-    expect((await rufe('Basil', 'GET', '/api/entities/pl_hof/parts')).json().contains).toEqual([]);
+    expect(await sammlung(rufe, 'Basil', 'pl_hof')).toEqual(['pl_brunnen']);
   });
 });
+
+/**
+ * Wie die Artikelseite: die Ansicht `full` der Art (`pickView`), darin die
+ * erste Collection, ihre Treffer über die Rückbezüge und die Artikel, die
+ * die Rolle bekommt.
+ */
+type Rufe = Awaited<ReturnType<typeof aufbau>>['rufe'];
+async function sammlung(rufe: Rufe, wer: string, id: string): Promise<string[]> {
+  const registry = (await rufe(wer, 'GET', '/api/registry')).json() as Registry;
+  const e = (await rufe(wer, 'GET', `/api/entities/${id}`)).json() as Entity;
+  const el = pickView(e, registry, 'full', { exact: true }).layout.find((x) => x.el === 'collection');
+  if (!el) return [];
+  const rueck = (await rufe(wer, 'GET', `/api/entities/${id}/backlinks`)).json() as { relation: { type: string; props?: Record<string, unknown> }; from: { id: string } }[];
+  const incoming: IncomingEdge[] = rueck.map((b) => ({ type: b.relation.type, from: b.from.id, props: b.relation.props }));
+  const geholt = new Map<string, Entity>();
+  for (const k of incoming) {
+    const res = await rufe(wer, 'GET', `/api/entities/${k.from}`);
+    if (res.statusCode === 200) geholt.set(k.from, res.json() as Entity);
+  }
+  return collectionHits(registry, e, el, { get: (x) => geholt.get(x), incoming: (x) => (x === id ? incoming : []) }).map((h) => h.entity.id);
+}
