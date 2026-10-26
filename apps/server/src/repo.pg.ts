@@ -19,7 +19,7 @@ export class PgRepository implements Repository {
   constructor(private readonly pool: Pool) {}
 
   async getRegistry(): Promise<Registry> {
-    const [interfaces, relations, views, units, vars, enums, settings] = await Promise.all([
+    const [interfaces, relations, views, units, vars, enums, settings, tokens] = await Promise.all([
       this.pool.query<Row>('select * from interface_def'),
       this.pool.query<Row>('select * from relation_def'),
       this.pool.query<Row>('select * from view_def order by ord'),
@@ -27,6 +27,7 @@ export class PgRepository implements Repository {
       this.pool.query<Row>('select * from var_def'),
       this.pool.query<Row>('select * from enum_def'),
       this.pool.query<Row>('select * from setting_def'),
+      this.pool.query<Row>('select * from token_def'),
     ]);
 
     const registry: Registry = { interfaces: {}, relations: {}, views: {}, units: {}, vars: {} };
@@ -108,6 +109,11 @@ export class PgRepository implements Repository {
       registry.settings = {};
       for (const r of settings.rows) registry.settings[r['key'] as string] = r['value'] as string;
     }
+    /* Design-Tokens (Migration 148, T-425): eine Zeile je Token, ganz als JSON. */
+    if (tokens.rows.length) {
+      registry.tokens = {};
+      for (const r of tokens.rows) registry.tokens[r['name'] as string] = r['config'] as NonNullable<Registry['tokens']>[string];
+    }
 
     return registry;
   }
@@ -177,6 +183,11 @@ export class PgRepository implements Repository {
         await client.query('delete from enum_def');
         for (const [name, def] of Object.entries((value ?? {}) as NonNullable<Registry['enums']>)) {
           await client.query('insert into enum_def(name,config) values ($1,$2)', [name, JSON.stringify(def)]);
+        }
+      } else if (part === 'tokens') {
+        await client.query('delete from token_def');
+        for (const [name, def] of Object.entries((value ?? {}) as NonNullable<Registry['tokens']>)) {
+          await client.query('insert into token_def(name,config) values ($1,$2)', [name, JSON.stringify(def)]);
         }
       } else if (part === 'settings') {
         await client.query('delete from setting_def');

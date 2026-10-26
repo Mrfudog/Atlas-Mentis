@@ -15,6 +15,7 @@
 
 import type { Entity, LayoutAdjust, LayoutElement, LayoutWhen, Registry, ViewApplies, ViewDef, ViewPathStep } from './types.js';
 import { primaryInterface, typeChain } from './entity.js';
+import { withViewStyles } from './tokens.js';
 import { RETIRED_PLACES, applyAdjust, layoutFor, viewKeys, whenHolds } from './views.js';
 
 /** Wie genau eine Ansicht gilt; die Reihenfolge ist die Rangfolge. */
@@ -236,7 +237,10 @@ export function pickView(
   const beitraege = contributionsFor(registry, viewGroup(key, registry.views[key]), (d, k) => k === opts.force || appliesHolds(registry, d.applies, entity, opts.incoming ?? []));
   const grund = from ? `type ${from}` : `view ${key}`;
   const c = composeLayout(layout, grund, from ? SPEC.type : SPEC.global, beitraege);
-  return { key, layout: c.layout, from, mode, designed, origin: c.origin, conflicts: c.conflicts, positions: c.positions };
+  /* Das Design der Ansicht je Elementart (T-425, E-170) steht danach am Element. */
+  const gruppe = registry.views[viewGroup(key, registry.views[key])];
+  const layoutMitStil = withViewStyles(c.layout, { styles: { ...(gruppe?.styles ?? {}), ...(registry.views[key]?.styles ?? {}) } });
+  return { key, layout: layoutMitStil, from, mode, designed, origin: c.origin, conflicts: c.conflicts, positions: c.positions };
 }
 
 /**

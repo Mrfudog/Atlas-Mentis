@@ -405,6 +405,28 @@
               <input type="text" [value]="el.when?.incoming ?? ''" [disabled]="!darf()" placeholder="shopkeeper" (change)="wennSetzen({ incoming: optionWert($event).trim() || undefined })" /></label>
             <p class="sub">The element shows only on articles that match; what it would have shown falls to a later element that takes all fields.</p>
           </details>
+          <!-- Design (T-425, REQ-437, E-170): Tokens an Kopf, Fläche, Rahmen und Text, keine Farbcodes. -->
+          <details class="design" [open]="!!el.style || !!ansichtStile()[el.el]">
+            <summary>Design <span class="sub">{{ el.style ? 'own' : ansichtStile()[el.el] ? 'as the view says' : 'plain' }}</span></summary>
+            @for (st of STELLEN; track st.slot) {
+              <label class="f">
+                <span class="lbl">{{ st.label }}</span>
+                <select [disabled]="!darf()" (change)="setzeStil(st.slot, optionWert($event))" [attr.aria-label]="'Design: ' + st.label">
+                  <option value="" [selected]="!el.style?.[st.slot]">{{ ansichtStile()[el.el]?.[st.slot] ? 'as the view says (' + tokenName(ansichtStile()[el.el]![st.slot]!) + ')' : '— none' }}</option>
+                  @for (t of tokenWahl(st.slot); track t.name) {
+                    <option [value]="t.name" [selected]="el.style?.[st.slot] === t.name">{{ t.genutzt ? '● ' : '' }}{{ t.label }}</option>
+                  }
+                </select>
+              </label>
+            }
+            <p class="sub">Tokens, not colours: each has a light and a dark value, and the workbench checks their contrast. ● marks those this view already uses. Manage them under Registry › Tokens.</p>
+            @if (darf() && (speichernAls() === 'view' || speichernAls() === 'this')) {
+              <button type="button" class="klein" [disabled]="!el.style" (click)="stilFuerAlle(el)">Use for every {{ elementName(el) }} in this view</button>
+              @if (ansichtStile()[el.el]) {
+                <button type="button" class="klein" (click)="stilFuerAlleWeg(el)">Drop the view’s design for {{ elementName(el) }}</button>
+              }
+            }
+          </details>
         }
       } @else {
         <p class="sub">Select an element in the structure.</p>

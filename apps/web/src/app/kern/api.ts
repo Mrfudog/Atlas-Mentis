@@ -1304,7 +1304,7 @@ export interface EbenenUebernahme {
 }
 
 /** Die Teile des Registers, die `PUT /api/registry/:part` nimmt. */
-export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enums' | 'settings';
+export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enums' | 'settings' | 'tokens';
 
 /** Wie das Banner nennt, was eine Anfrage lädt. */
 export function wasLaedt(path: string): string {
