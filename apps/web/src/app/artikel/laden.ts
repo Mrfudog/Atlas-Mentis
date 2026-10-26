@@ -15,6 +15,7 @@ const ABGELEHNT: Record<string, string> = {
   tooPoor: 'Not enough money.',
   reserved: 'That piece is reserved for crafting.',
   notEmpty: 'Empty the container first.',
+  notBought: 'This shop does not buy that — it buys only what its “buys” edges name. Try another shop.',
   noInventory: 'This character carries no inventory yet.',
 };
 
@@ -58,11 +59,14 @@ const ABGELEHNT: Record<string, string> = {
       }
       @if (liste().length) {
         <ul>
-          @for (w of liste(); track w.edge) {
+          @for (w of liste(); track w.edge + '|' + w.item) {
             <li [class.weg]="!w.available">
               <span class="name">
                 <a [routerLink]="['/artikel', w.item]" [nwQuick]="w.item">{{ w.name }}</a>
                 <small class="menge">{{ menge(w) }}</small>
+                @if (w.viaName) {
+                  <small class="ueber" title="Sold as part of a collection (sells → collection)">from {{ w.viaName }}</small>
+                }
               </span>
               <span class="preis">
                 @if (w.price !== undefined) {
@@ -102,7 +106,7 @@ const ABGELEHNT: Record<string, string> = {
           }
         </ul>
       } @else {
-        <p class="hinweis">This shop sells nothing yet. Add a “sells” edge to an item.</p>
+        <p class="hinweis">This shop sells nothing yet. Add a “sells” edge to an item or a collection.</p>
       }
       @if (figur(); as f) {
         @if (f.inventory) {
@@ -113,7 +117,14 @@ const ABGELEHNT: Record<string, string> = {
                 <li>
                   <span class="name">{{ v.name }} <small class="menge">× {{ v.qty }}</small></span>
                   <span class="preis">
-                    @if (v.price !== undefined) { {{ geld(v.price) }} each } @else { <span class="leer">no price</span> }
+                    @if (v.price !== undefined) {
+                      {{ geld(v.price) }} each
+                      @if (v.rate !== undefined) { <small class="satz" [attr.title]="ankaufWoher(v)">{{ v.rate }} %</small> }
+                    } @else if (v.refused === 'notBought') {
+                      <span class="leer" title="The shop buys only what its buys edges name">not bought here</span>
+                    } @else {
+                      <span class="leer">no price</span>
+                    }
                   </span>
                   <span class="kauf">
                     @if (v.price !== undefined) {
@@ -124,7 +135,7 @@ const ABGELEHNT: Record<string, string> = {
                 </li>
               }
             </ul>
-            <p class="hinweis">The shop pays half the list price. Reserved pieces are not listed.</p>
+            <p class="hinweis">{{ ankaufHinweis() }} Reserved pieces are not listed.</p>
           } @else {
             <p class="hinweis">{{ f.name }} carries nothing to sell.</p>
           }
@@ -145,6 +156,7 @@ const ABGELEHNT: Record<string, string> = {
     li.weg .name a, li.weg .preis { opacity: .55; }
     .name { min-width: 0; overflow-wrap: anywhere; }
     .menge { margin-left: .4rem; color: var(--dim); }
+    .ueber, .satz { margin-left: .4rem; color: var(--dim); font-style: italic; }
     .preis { text-align: right; white-space: nowrap; }
     .preis s { color: var(--dim); margin-right: .35rem; }
     .herkunft { grid-column: 1 / -1; font-size: .85em; color: var(--dim); display: flex; flex-wrap: wrap; gap: .1rem .9rem; }
@@ -189,7 +201,7 @@ export class Laden {
   protected kaufen(w: Ware, n: number): Promise<void> {
     const f = this.figur();
     if (!f) return Promise.resolve();
-    return this.handeln(() => this.api.buy(this.id(), f.id, w.edge, n), (h) => `Bought ${h.qty} × ${h.item.name} for ${this.geld(h.total)}.`);
+    return this.handeln(() => this.api.buy(this.id(), f.id, w.edge, n, w.item), (h) => `Bought ${h.qty} × ${h.item.name} for ${this.geld(h.total)}.`);
   }
 
   protected verkaufen(v: Verkaeuflich, n: number): Promise<void> {
@@ -226,9 +238,25 @@ export class Laden {
     if (!w.available) return w.qty === 0 ? 'sold out' : 'not available';
     return w.qty === undefined ? '' : `× ${w.qty}`;
   }
+  /** Woher der Ankaufssatz eines Stücks kommt (E-175): die Kante, die Collection, der Laden. */
+  protected ankaufWoher(v: Verkaeuflich): string {
+    if (v.from === 'edge') return 'The shop buys this item at this rate (buys edge).';
+    if (v.from === 'collection') return `The shop buys ${v.viaName ?? 'a collection'} at this rate.`;
+    return 'The buy rate of the shop (empty: 50 %).';
+  }
+
+  /** Was unter der Ankaufsliste steht: die Hälfte, ein eigener Satz oder nur das Genannte. */
+  protected ankaufHinweis(): string {
+    const liste = this.figur()?.sellable ?? [];
+    if (liste.some((v) => v.refused === 'notBought' || v.from === 'edge' || v.from === 'collection')) return 'The shop buys only what its buys edges name, at their rates.';
+    const satz = liste.find((v) => v.rate !== undefined)?.rate;
+    return satz === undefined || satz === 50 ? 'The shop pays half the list price.' : `The shop pays ${satz} % of the list price.`;
+  }
+
   protected woher(s: Preisschritt): string {
     if (s.by === 'shop') return 'shop';
     if (s.by === 'ware') return 'this item';
+    if (s.by === 'collection') return s.giverName ? `collection ${s.giverName}` : 'collection';
     const von = s.giverName ?? 'a discount';
     const ab = s.rank ? ` from ${s.rank}` : '';
     /* Eine Fraktion, die ihren eigenen Mitgliedern gibt, zeigt auf sich selbst. */

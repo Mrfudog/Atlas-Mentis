@@ -45,7 +45,8 @@
  * Schritt wird auf Kupfer gerundet, und der Preis fällt nicht unter null.
  */
 
-import { entityName } from './entity.js';
+import { collectionMemberIds } from './collection.js';
+import { entityName, primaryInterface, typeChain } from './entity.js';
 import { itemPrice } from './equipment.js';
 import { factionRanks } from './knowledge.js';
 import { followsTemplate, isInstance, resolveInstance, templateOf } from './instance.js';
@@ -54,6 +55,10 @@ import { overridersIndex, resolveArticle } from './stack.js';
 import type { Entity, EntityId, Registry } from './types.js';
 
 export const SHOP_TYPE = 'Shop';
+/** Die Art, deren Artikel ein Laden als Kategorie verkauft oder ankauft (E-174, E-175). */
+const COLLECTION_TYPE = 'Collection';
+/** Der Ankaufssatz, wenn der Laden keinen nennt: die Hälfte, die Regel aus 5e (E-045 b). */
+export const DEFAULT_BUY_RATE = 50;
 
 /** Münzen in Kupfer, wie 5e sie zählt. */
 const MUENZE: Readonly<Record<string, number>> = { pp: 1000, gp: 100, ep: 50, sp: 10, cp: 1 };
@@ -77,8 +82,8 @@ export function parsePriceMod(raw: unknown): PriceMod | null {
 
 /** Woher ein Abschlag kommt. */
 export interface PriceStep {
-  by: 'shop' | 'ware' | 'discount';
-  /** Wer ihn gibt: der Laden, eine Fraktion, ein Ladenhalter. */
+  by: 'shop' | 'ware' | 'collection' | 'discount';
+  /** Wer ihn gibt: der Laden, eine Fraktion, ein Ladenhalter — oder die Collection, über die die Ware kommt. */
   giver?: EntityId;
   /** An wen er geht: die Figur, ihre Gruppe, ihre Fraktion. */
   target?: EntityId;
@@ -92,9 +97,11 @@ export interface PriceStep {
 }
 
 export interface WareOffer {
-  /** Die Id der `sells`-Kante. */
+  /** Die Id der `sells`-Kante — bei einer Collection teilen sich ihre Mitglieder eine. */
   edge: string;
   item: EntityId;
+  /** Über welche Collection die Ware kommt (REQ-439); fehlt bei einer Kante auf den Gegenstand. */
+  via?: EntityId;
   name: string;
   /** Leer heisst: so viele, wie man will. */
   qty?: number;
@@ -114,10 +121,20 @@ export interface ShopContext {
   entities: ReadonlyMap<EntityId, Entity>;
   /** Wer kauft: eine Figur oder eine Gruppe. Ohne: der Preis am Tisch. */
   buyer?: Entity;
+  /** Für Collections (`sells` auf eine Kategorie): ihre Regel gilt die `extends`-Kette hoch. */
+  registry?: Pick<Registry, 'interfaces'>;
 }
 
 const zahl = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const kanten = (e: Entity | undefined, type: string) => (e?.relations ?? []).filter((r) => r.type === type);
+const OHNE_REGISTER: Pick<Registry, 'interfaces'> = { interfaces: {} };
+
+/** Ist dieser Artikel eine Collection (oder ein Untertyp wie die Materialgruppe)? */
+function istSammlung(e: Entity, registry: Pick<Registry, 'interfaces'>): boolean {
+  const typ = primaryInterface(e);
+  const kette = typeChain(registry, typ);
+  return (kette.length ? kette : [typ]).includes(COLLECTION_TYPE) || !!e.components?.[COLLECTION_TYPE];
+}
 
 /** Wer an diesem Laden Rabatte gibt: er selbst, wer ihn kontrolliert, wer ihn hält. */
 export function shopGivers(shop: Entity, entities: ReadonlyMap<EntityId, Entity>): Entity[] {
@@ -218,27 +235,38 @@ export function withVersionPrices(
   return out;
 }
 
-/** Die Waren eines Ladens mit ihren Preisen für diesen Käufer — in Reihenfolge der Kanten. */
+/**
+ * Die Waren eines Ladens mit ihren Preisen für diesen Käufer — in
+ * Reihenfolge der Kanten. **Eine Kante auf eine Collection** (REQ-439,
+ * E-175) steht für ihre Mitglieder (`collectionMemberIds`, nach Name),
+ * mit der Collection als Herkunft (`via`): ihr Abschlag gilt für jede, ihr
+ * `available` auch. Eine Menge oder einen eigenen Preis trägt sie nicht —
+ * eine Zahl für vierzig Waffen wäre keine. **Eine einzelne Kante schlägt
+ * die Collection**, gleich wo sie steht, und von zwei Collections mit
+ * demselben Mitglied gilt die erste.
+ */
 export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
   const laden = ladenAbschlaege(shop, ctx);
+  const registry = ctx.registry ?? OHNE_REGISTER;
+  const alle = kanten(shop, 'sells');
+  const einzeln = new Set(alle.filter((r) => { const z = ctx.entities.get(r.to); return z && !istSammlung(z, registry); }).map((r) => r.to));
+  const gesehen = new Set<EntityId>();
   const out: WareOffer[] = [];
-  for (const r of kanten(shop, 'sells')) {
-    const item = ctx.entities.get(r.to);
-    if (!item) continue;
+  const ware = (r: (typeof alle)[number], item: Entity, sammlung?: Entity) => {
     /* Ein angekauftes Stück mit Eigenem ist eine Instanz (T-133): ihr Preis steht an der Vorlage. */
     const list = itemPrice(resolveInstance(ctx.entities, item));
     const note = (resolveInstance(ctx.entities, item).components?.['Item'] ?? {})['priceNote'];
     const listNote = list !== undefined && typeof note === 'string' && note.trim() ? note.trim() : undefined;
-    const eigen = zahl(r.props?.['price']);
+    const eigen = sammlung ? undefined : zahl(r.props?.['price']);
     const base = eigen !== undefined && eigen >= 0 ? eigen : list;
-    const ware = typeof r.props?.['mod'] === 'string' && (r.props['mod'] as string).trim()
-      ? [{ by: 'ware' as const, mod: (r.props['mod'] as string).trim() }]
-      : [];
-    const { price, steps } = applyPriceMods(base, [...laden, ...ware]);
-    const qty = zahl(r.props?.['qty']);
+    const mod = typeof r.props?.['mod'] === 'string' ? (r.props['mod'] as string).trim() : '';
+    const wareMod = mod ? [sammlung ? { by: 'collection' as const, giver: sammlung.id, mod } : { by: 'ware' as const, mod }] : [];
+    const { price, steps } = applyPriceMods(base, [...laden, ...wareMod]);
+    const qty = sammlung ? undefined : zahl(r.props?.['qty']);
     out.push({
       edge: r.id,
       item: item.id,
+      ...(sammlung ? { via: sammlung.id } : {}),
       name: entityName(item),
       ...(qty !== undefined ? { qty } : {}),
       available: r.props?.['available'] !== false && qty !== 0,
@@ -248,6 +276,21 @@ export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
       ...(price !== undefined ? { price } : {}),
       steps,
     });
+  };
+  for (const r of alle) {
+    const ziel = ctx.entities.get(r.to);
+    if (!ziel) continue;
+    if (!istSammlung(ziel, registry)) {
+      ware(r, ziel);
+      continue;
+    }
+    for (const id of collectionMemberIds(registry, ziel, ctx.entities)) {
+      const item = ctx.entities.get(id);
+      /* Nur Gegenstände: eine Collection darf auch Zauber sammeln, verkauft wird davon nichts. */
+      if (!item?.components?.['Item'] || einzeln.has(id) || gesehen.has(id)) continue;
+      gesehen.add(id);
+      ware(r, item, ziel);
+    }
   }
   return out;
 }
@@ -260,7 +303,7 @@ export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
  * `tooFew` mehr verlangt als da ist, `noPrice` eine Ware ohne Grundpreis
  * — verschenkt wird nichts, nur weil niemand einen Preis eingetragen hat.
  */
-export type TradeRefusal = 'missing' | 'unavailable' | 'soldOut' | 'tooFew' | 'noPrice' | 'tooPoor' | 'reserved' | 'notEmpty';
+export type TradeRefusal = 'missing' | 'unavailable' | 'soldOut' | 'tooFew' | 'noPrice' | 'tooPoor' | 'reserved' | 'notEmpty' | 'notBought';
 
 const INVENTORY = 'Inventory';
 const kupferIn = (inv: Entity): number => Math.max(0, Math.trunc(Number(inv.components?.[INVENTORY]?.['copper']) || 0));
@@ -356,8 +399,8 @@ export function buyWare(
 /**
  * **Was ein Laden für ein Stück zahlt** (T-133): die Hälfte des
  * Listenpreises, abgerundet auf Kupfer — die Regel aus 5e. Rabatte gelten
- * beim Kaufen, nicht hier. Ob ein Laden einen eigenen Satz trägt, ist
- * offen (E-045); diese Stelle ist die eine, die es dann rechnet. Eine
+ * beim Kaufen, nicht hier. Ein Laden mit eigenem Satz oder `buys`-Kanten
+ * rechnet mit `buybackFor` (E-045 b, E-175); das hier ist dessen Vorgabe. Eine
  * Instanz zählt mit dem Preis ihrer Vorlage, solange sie keinen eigenen hat.
  */
 export function buybackPrice(
@@ -371,8 +414,75 @@ export function buybackPrice(
 }
 
 /**
+ * **Woher ein Ankaufspreis kommt** (E-175 a): eine `buys`-Kante auf den
+ * Gegenstand (`edge`), eine auf eine Collection, in der er steht
+ * (`collection`), oder — ohne jede `buys`-Kante — der Satz des Ladens
+ * (`shop`).
+ */
+export type BuybackSource = 'edge' | 'collection' | 'shop';
+
+export interface BuybackOffer {
+  /** Was der Laden je Stück zahlt, in Kupfer. */
+  unit: number;
+  /** Der Satz in Prozent des Listenpreises. */
+  rate: number;
+  from: BuybackSource;
+  /** Die Kante zielt hierhin: der Gegenstand oder die Collection. */
+  via?: EntityId;
+  /** Ein Abschlag an der `buys`-Kante (`+1 gp`, `−10 %`), mit Herkunft. */
+  steps: PriceStep[];
+}
+
+const satz = (v: unknown): number | undefined => {
+  const n = zahl(v);
+  return n !== undefined && n >= 0 ? n : undefined;
+};
+
+/**
+ * **Was ein Laden für ein Stück zahlt** (T-425, REQ-439, E-175 a). Ohne
+ * `buys`-Kante kauft er alles zu `Shop.buyRate` (leer 50 %, E-045 b). Mit
+ * `buys`-Kanten kauft er nur das Genannte: eine Kante auf den Gegenstand
+ * (oder bei einem Stück auf seinen Grundartikel) schlägt eine auf eine
+ * Collection, von mehreren Collections gilt die erste. Der Satz steht an
+ * der Kante (`props.rate`), sonst gilt der des Ladens; `props.mod`
+ * schlägt danach ab oder auf. Abgerundet auf Kupfer, nie unter null.
+ * Rabatte gelten beim Kaufen, nicht hier.
+ */
+export function buybackFor(
+  shop: Entity,
+  item: Entity | undefined,
+  entities: ReadonlyMap<EntityId, Entity>,
+  registry: Pick<Registry, 'interfaces'> = OHNE_REGISTER,
+  pricing: ItemPricing = 'combined',
+): BuybackOffer | { refused: 'noPrice' | 'notBought' } {
+  if (!item) return { refused: 'noPrice' };
+  /* Ein Stück mit Enhancements zählt mit seinem gerechneten Preis (T-300). */
+  const list = piecePrice(entities, item, pricing);
+  if (list === undefined) return { refused: 'noPrice' };
+  const laden = satz(shop.components?.[SHOP_TYPE]?.['buyRate']) ?? DEFAULT_BUY_RATE;
+  const buys = kanten(shop, 'buys');
+  const rechne = (rate: number, from: BuybackSource, via?: EntityId, mod?: unknown): BuybackOffer => {
+    const roh = Math.floor((list * rate) / 100);
+    const m = typeof mod === 'string' && mod.trim() ? [{ by: 'ware' as const, mod: mod.trim() }] : [];
+    const { price, steps } = applyPriceMods(roh, m);
+    return { unit: Math.max(0, Math.floor(price ?? roh)), rate, from, ...(via ? { via } : {}), steps };
+  };
+  if (!buys.length) return rechne(laden, 'shop');
+  const grund = (isInstance(item) ? templateOf(entities, item)?.id : undefined) ?? item.id;
+  const direkt = buys.find((r) => r.to === grund || r.to === item.id);
+  if (direkt) return rechne(satz(direkt.props?.['rate']) ?? laden, 'edge', direkt.to, direkt.props?.['mod']);
+  for (const r of buys) {
+    const ziel = entities.get(r.to);
+    if (!ziel || !istSammlung(ziel, registry)) continue;
+    if (collectionMemberIds(registry, ziel, entities).includes(grund)) return rechne(satz(r.props?.['rate']) ?? laden, 'collection', ziel.id, r.props?.['mod']);
+  }
+  return { refused: 'notBought' };
+}
+
+/**
  * **Verkaufen** (T-133): `qty` Stück vom Stapel `edgeId` aus dem Inventar
- * an den Laden, zum Ankaufspreis (`buybackPrice`). Ein reserviertes Stück
+ * an den Laden, zum Ankaufspreis des Ladens (`buybackFor`: seine `buys`-Kanten,
+ * sonst `Shop.buyRate`; kauft er es nicht, `notBought`). Ein reserviertes Stück
  * (`reservedFor`, T-128) bleibt, wo es ist, und ein Behälter, in dem noch
  * etwas liegt, auch — sein Inhalt ginge sonst mit über den Tresen.
  *
@@ -390,15 +500,19 @@ export function sellPiece(
   edgeId: string,
   qty: number,
   entities: ReadonlyMap<EntityId, Entity>,
-): { shop: Entity; inventory: Entity; item: EntityId; qty: number; unit: number; total: number; orphan?: EntityId } | { refused: TradeRefusal } {
+  registry?: Pick<Registry, 'interfaces'>,
+):
+  | { shop: Entity; inventory: Entity; item: EntityId; qty: number; unit: number; total: number; rate: number; from: BuybackSource; via?: EntityId; orphan?: EntityId }
+  | { refused: TradeRefusal } {
   const kante = (inventory.relations ?? []).find((r) => r.id === edgeId && r.type === 'holds');
   if (!kante) return { refused: 'missing' };
   if (kante.props?.['reservedFor']) return { refused: 'reserved' };
   const item = entities.get(kante.to);
   const voll = kanten(item, 'carries').some((c) => kanten(entities.get(c.to), 'holds').length > 0);
   if (voll) return { refused: 'notEmpty' };
-  const unit = buybackPrice(item, entities);
-  if (unit === undefined) return { refused: 'noPrice' };
+  const angebot = buybackFor(shop, item, entities, registry);
+  if ('refused' in angebot) return angebot;
+  const unit = angebot.unit;
   const alle = stueck(kante.props?.['qty']);
   const n = stueck(qty);
   if (n > alle) return { refused: 'tooFew' };
@@ -426,6 +540,9 @@ export function sellPiece(
     qty: n,
     unit,
     total,
+    rate: angebot.rate,
+    from: angebot.from,
+    ...(angebot.via ? { via: angebot.via } : {}),
     ...(instanz && beliebig && weg ? { orphan: instanz.id } : {}),
   };
 }

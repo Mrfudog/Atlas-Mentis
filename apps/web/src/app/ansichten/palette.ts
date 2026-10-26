@@ -75,6 +75,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'sheet', name: 'Character sheet', icon: '❤', tip: 'The header of a creature: hit points, vitals and spellcasting, hit dice, slots, gold, abilities and the status row. Stands above the tabs.', seite: true },
       { el: 'turn', name: 'Your turn', icon: '⏵', tip: 'Every action of the creature by action type, with Used and New turn; what the hands block stays visible with the reason.', seite: true },
       { el: 'spells', name: 'Spells', icon: '✧', tip: 'Spellcasting: ability, attack, save DC, slots; every spell by level with Cast.', seite: true },
+      { el: 'wares', name: 'Wares', icon: '🛒', tip: 'On a shop what it sells — single items and every item of a collection it sells — with prices for the chosen character, Buy, and what the shop buys back at which rate. Draws nothing elsewhere.', seite: true },
       { el: 'inventory', name: 'Inventory', icon: '🎒', tip: 'The inventory it carries and what that holds.', seite: true },
       { el: 'knowledgeContents', name: 'Knowledge contents', icon: '🧠', tip: 'On a knowledge: every information it brings together, written out with the fields the viewer may read. Draws nothing elsewhere.', seite: true },
       { el: 'crafting', name: 'Crafting', icon: '⚒', tip: 'On a recipe the workbench, on a trade its tools and recipes, on a tool or character what it can craft. Draws nothing elsewhere.', seite: true },

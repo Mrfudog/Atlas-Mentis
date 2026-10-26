@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-shop-collections",
+      "date": "2026-10-26",
+      "title": "Shops sell and buy by collection",
+      "text": "A shop can now sell a whole collection — “sells → Simple weapons” — and say with “buys” edges what it buys back and at which rate; without them it buys everything at its buy rate. The wares show where an item comes from, and the sell list what the shop does not take.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
       "id": "2026-10-26-collection-articles",
       "date": "2026-10-26",
       "title": "Collections: group articles by rule or by hand",

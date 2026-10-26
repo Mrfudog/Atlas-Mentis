@@ -2659,6 +2659,19 @@ kostet im einen Laden zehn Gold und im anderen zwölf, und es gibt hier drei
 davon und dort keine. Ein Feld am Gegenstand könnte nur eine der beiden
 Wahrheiten tragen.
 
+**Ein Laden verkauft und kauft auch Kategorien** (T-425, REQ-439, E-175).
+Ein Schmied „verkauft einfache Waffen, kauft alle Waffen zu 40 %" — das
+sind zwei Kanten auf Collections (`sells`, `buys`) und nicht vierzig auf
+einzelne Waffen, die bei jeder neuen Waffe eine Kante zu wenig hätten.
+Die Waren werden beim Lesen aus der Collection gerechnet. **Die einzelne
+Kante schlägt die Kategorie**, wie überall bei Collections: der Dolch mit
+eigenem Preis bleibt der Dolch mit eigenem Preis. Eine Menge an einer
+Kategorie gibt es nicht — „drei" für alle Waffen zusammen hiesse nichts.
+**Ankauf:** ein Laden ohne `buys` kauft alles, zur Hälfte oder zu seinem
+Satz (`Shop.buyRate`) — so blieb jeder bestehende Laden, wie er war. Wer
+`buys` zieht, sagt damit auch, was der Laden *nicht* nimmt: der Schmied
+kauft kein Seil, und die Maske sagt das, statt einen Preis zu zeigen.
+
 **Ein Abschlag ist ein Wort** — `−10 gp` oder `−10 %`. Zwei Zahlenfelder
 (Gold, Prozent) hiessen, dass eines leer steht und niemand weiss, welches
 gilt; das Wort sagt es beim Lesen. Was sich nicht lesen lässt, zählt nicht

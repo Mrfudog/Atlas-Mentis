@@ -166,6 +166,14 @@
           ]
         },
         {
+          "heading": "Stocking a shop by category",
+          "text": [
+            "On a shop, draw a “sells” edge to an item or to a collection. A collection stands for all its items: “sells → Simple weapons” offers every simple weapon, each with the collection’s mark-down; quantity and own price belong on an edge to a single item.",
+            "A single item beats the collection: sell the dagger directly with its own price, and it is listed once, at that price.",
+            "Without a “buys” edge the shop buys everything at its Buy rate (empty: half the list price). Draw “buys” edges to say what it takes — an item or a collection, each with its own rate — and it buys nothing else; the sell list says “not bought here”."
+          ]
+        },
+        {
           "heading": "Giving a view its colours",
           "text": [
             "Select an element in the view designer and open Design. Head, Surface, Frame and Text each take a token — a named colour with a light and a dark value. Tokens the view already uses come first, marked ●.",

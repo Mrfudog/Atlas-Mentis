@@ -1494,6 +1494,15 @@ flowchart LR
   `price` (in Kupfer, statt `Item.copperPrice`), `mod` (nur diese Ware),
   `available`. Wer ihn hält, steht an `shopkeeper`; eine Fraktion, die ihn
   kontrolliert, an ihrer Kante `controls`.
+- **`sells` auf eine Collection** (T-425, REQ-439, E-175): die Kante steht
+  für die Mitglieder der Collection (`collectionMemberIds`, dieselbe Regel
+  wie die Seite der Collection, im Bestand gerechnet, nur Gegenstände,
+  nach Name, höchstens 200), jede mit der Collection als Herkunft (`via`).
+  `mod` und `available` gelten für jede, `qty` und `price` nicht — eine
+  Menge für vierzig Waffen wäre keine. **Eine einzelne Kante schlägt die
+  Collection**, gleich wo sie steht; von zwei Collections mit demselben
+  Mitglied gilt die erste. Gesiebt wird jede Ware einzeln. Gekauft wird
+  mit Kante **und** Gegenstand (`item`), denn die Kante allein nennt viele.
 - **Ein Preis sagt, woher er kommt** (T-139, E-046): `Item.copperPrice`
   in Kupfer, daneben `Item.priceNote`. Leer heisst Listenpreis der
   Quelle; sonst steht da, wie gerechnet oder geschätzt wurde —
@@ -1554,9 +1563,18 @@ flowchart LR
   nichts), `tooPoor`; ohne Inventar gibt es nichts zu bezahlen.
 - **Verkaufen** (`POST /api/shops/:id/sell`, `sellPiece`): ein Stapel aus
   dem Inventar der Figur oder einem Behälter darin (nicht dem der Gruppe),
-  zum **Ankaufspreis** `buybackPrice` = halber Listenpreis, abgerundet (5e;
-  ob ein Laden einen eigenen Satz trägt, ist offen: E-045). Rabatte gelten
-  nur beim Kaufen. Ein **reserviertes** Stück (`holds.props.reservedFor`,
+  zum **Ankaufspreis** dieses Ladens (`buybackFor`, E-045 b, E-175 a):
+  **ohne `buys`-Kante kauft er alles** zu `Shop.buyRate` Prozent des
+  Listenpreises (leer 50 %, die Regel aus 5e) — so verhält sich jeder
+  bestehende Laden wie bisher. **Mit `buys`-Kanten** (Laden → Gegenstand
+  oder Collection, `props.rate` in Prozent, sonst der Satz des Ladens,
+  `props.mod` ein Abschlag danach) kauft er **nur das Genannte**: eine
+  Kante auf den Gegenstand (bei einem Stück auf seinen Grundartikel)
+  schlägt die Collection, von mehreren Collections gilt die erste; was
+  keine nennt, lehnt er ab (`notBought`). Abgerundet auf Kupfer, nie unter
+  0. Rabatte gelten nur beim Kaufen. `refs.shop.mine[].sellable` nennt je
+  Stück Preis, Satz und Herkunft (`rate`, `from`, `viaName`) oder
+  `refused: 'notBought'`. Ein **reserviertes** Stück (`holds.props.reservedFor`,
   T-128) und ein Behälter, in dem noch etwas liegt, bleiben. Eine
   Instanz, die **nicht abweicht**, zählt als Grundartikel: führt der Laden
   ihn mit gezählter Menge, steigt sie, und ist der Stapel ganz verkauft,
@@ -1571,12 +1589,16 @@ flowchart LR
 - **Protokoll:** `shop.bought` und `shop.sold` am Laden — Figur, Konto,
   Gegenstand, Menge, Stückpreis, Summe, beim Kauf Listen- und Grundpreis
   und jeder Abschlag mit Herkunft (`steps`), beim Verkauf die Regel
-  (`rule: 'half'`).
+  (`rule: { rate, from, via }`; bis T-425 `'half'`).
+- Migration 150 trägt `sells` auf Collections, `buys` und `Shop.buyRate`
+  nach; kein Laden und keine Kante ändert sich.
 
 ```mermaid
 flowchart LR
   F[Faction<br/>ranks Wick·Flame·Beacon] -- controls --> S[Shop<br/>priceMod −10 %]
   S -- "sells<br/>qty 3 · mod −1 gp" --> I[Item<br/>copperPrice 1000]
+  S -- "sells · mod −10 %" --> C[Collection<br/>Weapon, tag simple]
+  S -- "buys · rate 40" --> W[Collection<br/>Weapon]
   S -- shopkeeper --> K[Creature]
   F -- "discount<br/>−10 % · rank Flame" --> F
   K -- "discount −2 gp" --> P[PlayerCharacter]
@@ -2511,7 +2533,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-26: 65 Artikelarten, 27 Grundtypen, 72 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-26: 65 Artikelarten, 27 Grundtypen, 73 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2555,20 +2577,20 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
+| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
 | `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | quick, handout, overview, full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, handout, overview |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | quick |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `partOf` `controls` `discount` `regards` | `memberOf` `partOf` `discount` `questGiver` `features` `knownBy` `regards` | quick, handout, full |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | `features` | quick, overview |
-| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `availability` `copperPrice` `priceNote` `stackSize` `weight` `lightBright` `lightDim` `rows` `width*` `height*` `cells*` `inventoryImage` `inventoryFrame` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, handout, overview, full |
-| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
+| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `availability` `copperPrice` `priceNote` `stackSize` `weight` `lightBright` `lightDim` `rows` `width*` `height*` `cells*` `inventoryImage` `inventoryFrame` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, handout, overview, full |
+| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | quick, full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` `Source` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, handout, full |
 | `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | — |
-| `Shop` | `Place` | `priceMod` | `partOf` `sells` `discount` `shopkeeper` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
-| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
+| `Shop` | `Place` | `priceMod` `buyRate` | `partOf` `sells` `buys` `discount` `shopkeeper` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
+| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
 **story**
@@ -2592,7 +2614,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` `partOf` `knownBy` | quick, full, overview |
 | `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `casts` `grants` `partOf` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` `partOf` `knownBy` | full |
 | `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `grants` `partOf` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` `partOf` `knownBy` | quick, full, overview |
-| `Collection` | `Rule` | `types` `tags` `fields` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` | full |
+| `Collection` | `Rule` | `types` `tags` `fields` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` `sells` `buys` | full |
 | `Condition` | `Rule` `Effects` | `kind` `stage` `recovery` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | overview |
 | `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | — |
 | `EquipmentMethod` | `Rule` | `method` `gold` `budget` `magic` `itemTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsEquipment` `grants` `partOf` | overview |
@@ -2604,7 +2626,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `hasProperty` `partOf` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | full |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
-| `MaterialGroup` | `Collection` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` `needs` | — |
+| `MaterialGroup` | `Collection` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` `sells` `buys` `needs` | — |
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | quick, full |
 | `Rule` | `Source` `Vars` | `kind` `autolink` `key` `graph` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `loot` | — |
@@ -2652,6 +2674,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `allowsMethod` | Campaign → AbilityMethod |  | — | — |
 | `allowsSubstitution` | Campaign → Substitution |  | — | — |
 | `belongsTo` | Statblock → Creature | ja | Feld am `to`-Ende | — |
+| `buys` | Shop → Item \| Collection |  | — | `rate` `mod` |
 | `carries` | Creature \| Party \| Item → Inventory | ja | Feld am `from`-Ende | — |
 | `casts` | Statblock \| PlayerCharacter \| Item \| Subclass \| Ancestry \| Feat \| Faction \| Rule → Spell |  | — | `mode` `uses` `ability` `level` `charges` `fromLevel` |
 | `chapterOf` | Chapter → Story | ja | — | — |
@@ -2705,7 +2728,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |
 | `route` | Place → Place |  | — | `hours` `terrain` `signal` `hidden` `oneWay` |
-| `sells` | Shop → Item |  | — | `qty` `price` `mod` `available` |
+| `sells` | Shop → Item \| Collection |  | — | `qty` `price` `mod` `available` |
 | `shopkeeper` | Shop → Creature |  | — | — |
 | `spellList` | Class \| Subclass → Spell |  | — | `optional` |
 | `stageOf` | Condition → Condition | ja | — | — |

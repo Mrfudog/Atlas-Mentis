@@ -81,6 +81,16 @@ const APP: AppTerm[] = [
     see: '/registry',
   },
   {
+    term: 'Buy rate',
+    aliases: ['buys', 'Buyback'],
+    sort: 'app',
+    definition: 'What a shop pays when it buys, in per cent of the list price. Without a “buys” edge a shop buys everything at its buy rate (empty: 50 %); with “buys” edges — to an item or a collection, each with its own rate — it buys only what they name.',
+    effect: 'Worked out on the server when a character sells: an edge to the item beats one to a collection, and what no edge names is “not bought here”.',
+    example: 'The Anvil buys “Weapons” at 40 %: a longsword of 15 gp fetches 6 gp; a rope is not bought.',
+    translations: { de: 'Ankaufssatz' },
+    see: '/world',
+  },
+  {
     term: 'Board sketch',
     aliases: ['Board preview'],
     sort: 'app',
