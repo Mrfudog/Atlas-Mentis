@@ -1,5 +1,5 @@
 import { Component, Injectable, computed, effect, inject, input, output, signal } from '@angular/core';
-import { IMAGE_ACCEPT, imageFileProblem, primaryInterface, typeChain } from '@nw/model';
+import { imageFileProblem, primaryInterface, typeChain } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import { Api, ApiError, type ListenZeile } from '../kern/api';
 import { Ladeanzeige } from '../kern/ladeanzeige';
@@ -363,11 +363,11 @@ export class BildRaster {
       }
       <div class="wege">
         <label class="knopf">
-          <input type="file" [accept]="accept" data-bildwahl="datei" (change)="gewaehlt($event)" [disabled]="laedt()" />
+          <input type="file" data-bildwahl="datei" (change)="gewaehlt($event)" [disabled]="laedt()" />
           {{ laedt() ? 'Uploading…' : 'Upload image' }}
         </label>
         <label class="knopf kamera">
-          <input type="file" [accept]="accept" capture="environment" data-bildwahl="kamera" (change)="gewaehlt($event)" [disabled]="laedt()" />
+          <input type="file" accept="image/*" capture="environment" data-bildwahl="kamera" (change)="gewaehlt($event)" [disabled]="laedt()" />
           Take photo
         </label>
         <button type="button" class="knopf" (click)="modus.set(modus() === 'wahl' ? null : 'wahl')" [attr.aria-expanded]="modus() === 'wahl'">
@@ -477,8 +477,6 @@ export class BildWahl {
   private readonly api = inject(Api);
   protected readonly laedt = signal(false);
   protected readonly problem = signal<string | null>(null);
-  /** Konkrete Typen statt `image/*`, ohne `capture` — sonst bietet das Telefon nur Fotos an (T-369). */
-  protected readonly accept = IMAGE_ACCEPT;
   protected readonly drueber = signal(false);
   protected readonly modus = signal<'wahl' | 'adresse' | null>(null);
   protected readonly istAdresse = computed(() => /^https?:\/\//i.test(this.wert() ?? ''));

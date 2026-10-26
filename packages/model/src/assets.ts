@@ -521,15 +521,16 @@ export function imageAddresses(registry: Pick<Registry, 'interfaces'>, e: Entity
 }
 
 /**
- * **Was ein Bildwähler annimmt** (T-369) — dieselben Formate wie der
- * Server (`ASSET_MIMES`), als Medientypen *und* Endungen. Mit
- * `accept="image/*"` öffnet Android nur die Fotoauswahl und iOS bietet
- * Dateien nur versteckt an; eine Liste konkreter Typen öffnet das
- * Datei-Menü des Systems (Dateien, OneDrive …), Fotos und Kamera bleiben
- * darin. Die Endungen braucht es, weil ein Dateianbieter den Medientyp
- * nicht immer mitgibt. **Kein HEIC:** der Server liest es nicht, und
- * ohne HEIC in der Liste wandelt iOS ein Foto aus der Mediathek selbst
- * in JPEG; kommt eines aus den Dateien, sagt `imageFileProblem` es.
+ * **Was ein Bild sein darf** (T-369) — dieselben Formate wie der Server
+ * (`ASSET_MIMES`), als Medientypen *und* Endungen, weil ein Dateianbieter
+ * den Medientyp nicht immer mitgibt.
+ *
+ * **Der Dateiwähler trägt kein `accept`.** Nennt es nur Bildtypen — ob
+ * `image/*` oder einzeln —, öffnet Chrome auf Android die Fotoauswahl des
+ * Systems, und Dateien (OneDrive …) sind nicht erreichbar; das war der
+ * erste Versuch. Ohne `accept` kommt das Datei-Menü mit Kamera, Fotos und
+ * Dateien, und geprüft wird nach der Wahl (`imageFileProblem`). Kein
+ * HEIC: der Server liest es nicht, die Meldung sagt, was zu tun ist.
  */
 export const IMAGE_FORMATS = [
   { mime: 'image/jpeg', ext: ['.jpg', '.jpeg'] },
@@ -538,9 +539,6 @@ export const IMAGE_FORMATS = [
   { mime: 'image/gif', ext: ['.gif'] },
   { mime: 'image/avif', ext: ['.avif'] },
 ] as const;
-
-/** Der Wert für `<input type="file" accept>`. */
-export const IMAGE_ACCEPT = IMAGE_FORMATS.flatMap((f) => [f.mime, ...f.ext]).join(',');
 
 /**
  * Warum eine gewählte Datei nicht hochgeht, oder `null`. Gelesen wird
