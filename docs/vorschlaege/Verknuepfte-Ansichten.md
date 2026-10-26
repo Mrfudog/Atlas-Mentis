@@ -1,7 +1,12 @@
 # Verknüpfte Artikel in Ansichten und Werkzeugleiste im Designer (T-425)
 
-Konzept vom 25.10.2026 für REQ-430 und REQ-431. Stand: **wartet auf Basil**
-(E-139, E-142 und die Reihenfolge der Schnitte).
+Konzept vom 25.10.2026 für REQ-430 und REQ-431, erweitert am 26.10. um
+REQ-432 bis REQ-437. Stand: **Entscheide gefallen (26.10.)**, wartet auf
+Basils Freigabe der Übersicht unten.
+
+Zwei Vorschläge vom 25.10. haben die Entscheide geändert:
+- Aus dem Element `articles` wurde `collection` (E-142).
+- Die Ansicht wählt immer das Element (E-172).
 
 ## Bestand (preprod 68e9f601, dev)
 
@@ -49,7 +54,7 @@ damit „Der Alte“ und „Die Miene“ (beides Scenes).
   Pfad.
 - Es gibt keine Design-Werte (Hintergrund, Ton, Rahmen).
 
-## 1. Element „Linked articles“ (`articles`)
+## 1. Element „Linked articles“ (`articles`, seit E-142: `collection`)
 
 Ein neues Werte-Element. Es nimmt Table from edges und Contains in sich auf.
 **Die Views werden wiederverwendet:** jeder Treffer wird mit
@@ -169,21 +174,83 @@ Popup. Eine Sonderseite gibt es nicht.
 6. **Dieselbe Leiste für Board-Kacheln und Seiten**, sobald E-139 entschieden
    ist.
 
-## Entscheide
+## Entscheide (26.10.2026, mit Basil im Chat)
 
-**E-139 (ein Muster für Ansichten, Kacheln, Seiten):** Empfehlung **a**, in
-Raten.
-- Mit T-425 werden das Element und die Leiste so gebaut, dass sie nichts von
-  „Artikelseite“ wissen. Die Leiste ist `nw-werkzeugleiste` plus ein
-  Einfüge-Kopf, und jedes Element zeichnet `nw-ansichtsbaum`.
-- Die Board-Kachel zeichnet schon heute eine gestaltete Ansicht. Schnitt 6
-  braucht darum keinen Umbau der Kacheln, nur die Leiste dort.
+| Entscheid | Frage | Entschieden |
+|---|---|---|
+| E-168 | Ansichten auf jeder Ebene zusammenführen | **a, Schichten**: global → Typkette → Bedingungen (Feld, Kante) → Artikel. Jede Schicht fügt hinzu, ändert, verschiebt oder blendet aus. Die Position ist eine Zahl; an derselben Stelle entscheidet die Priorität, dann die genauere Schicht. |
+| E-139 | Ein Muster für Ansichten, Kacheln, Seiten | **a, in Raten**: zuerst der Ansichtsdesigner, danach Board, Play und Seiten mit derselben Leiste. |
+| E-142 | Sammlungen | **Eigener Entscheid**: ein Element **Collection** mit Quelle *verknüpft* (Kanten) oder *Filter* (sichtbare Artikel wie im Kompendium), Darstellung (Liste, Kacheln, Tabelle, Baum, Graph), Sortierung, Gruppierung und Ansicht je Treffer. Eine eigene Sorte Sammlungsansicht gibt es nicht. Wiederverwendet wird über Kopieren und die Schichten. REQ-376 ist damit `dropped` und wird durch REQ-430 ersetzt. |
+| E-172 | Ansicht eines eingebundenen Artikels | **Eigener Entscheid**: Das Element wählt. **Linked article** zeigt ein Ziel; Kante und Ansicht sind wählbar, bei `asField` bleibt es bearbeitbar wie heute. **Collection** zeigt viele, mit einer Vorgabe je Zielart. An der Kante wird nichts gespeichert; die Board-Kachel behält `placed.view`. |
+| E-171 | Werkzeugleiste | **a**: eine Leiste (Desktop oben, Telefon unten) mit drei Zonen: Einfügen, Kontext und Allgemein (Auswählen, Kopieren, Einfügen, Duplizieren, Löschen, Rückgängig, Wiederholen, Fertig). Die Einstellungen stehen am Element in der Vorschau. |
+| E-170 | Design-Tokens | **a**: Registerzeilen mit Name, Rolle, Wert hell und Wert dunkel; der Kontrast wird geprüft. Jedes Element hat benannte Stellen (Kopf, Fläche, Rahmen, Text). Die Ansicht gibt je Elementart vor, das Element darf überschreiben. Die Auswahl zeigt zuerst die genutzten Tokens. |
+| E-169 | Erfassungsmasken | **a**: zwei Ortsansichten, `create` (schnell, Dialog) und `createFull` (ausführlich). Ohne Gestaltung fällt jede auf das Heutige zurück. Die Spielerfigur bekommt in `create` das Element **Character builder**. |
 
-**E-142 (Tabellen als Ansicht oder Widget):** Empfehlung **a**, in Raten.
-- Zuerst ist „Linked articles“ das Widget, das eine Sammlung zeigt. Wie die
-  Sammlung aussieht (`show`, Spalten, Gruppierung), steht am Element.
-- Sobald ein zweiter Ort dieselbe Sammlungsansicht braucht (Kompendium,
-  Board), wird sie zu einer `ViewDef` mit Art „collection“, und das Element
-  nennt sie (`collection: '<key>'`).
-- Vorher wäre die Sammlungsansicht eine Zeile ohne zweiten Nutzer (CLAUDE.md:
-  eine Liste mit genau einem Nutzer bleibt am Feld).
+Neue Stories vom 26.10.:
+- REQ-432: Erfassungsmasken
+- REQ-433: Charaktererstellung
+- REQ-434: Schichten
+- REQ-435: Ansicht eingebundener Artikel
+- REQ-436: Werkzeugleiste als Muster
+- REQ-437: Design-Tokens
+
+REQ-430 und REQ-431 sind an die Entscheide angepasst.
+
+## Was sich am Bestand ändert
+
+Gezählt auf dev am 26.10.2026:
+- 91 Arten, davon 43 mit eigenen Ansichten: 41 eigene Anordnungen und 43 Anpassungen.
+- 6 Ansichten: overview, quick, full, print, handout, shop. Gestaltet ist nur `shop`, eine eigene Gruppe mit Geltung „Kreatur mit eingehendem shopkeeper“.
+
+**Kein Artikel wird umgeschrieben, und es gehen keine Daten verloren.** Felder,
+Kanten und Ebenen bleiben, wie sie sind. An Kanten kommt keine neue
+Eigenschaft dazu (E-172).
+
+| Was | Heute | Danach | Sichtbar? | Wie |
+|---|---|---|---|---|
+| **Artikel** (Daten) | – | unverändert | nein | – |
+| **Eigene Anordnungen je Art** (41) | ersetzen, was darüber gilt | eine Schicht, die alles setzt | nein, sie zeichnen gleich | Die Positionen werden beim Lesen aus der Reihenfolge gerechnet (10, 20, …) und erst gespeichert, wenn jemand verschiebt. Eine Migration gibt es nicht. |
+| **Anpassungen je Art** (43) | `adjust` (drop, hide, add, extra, order) | gleich, dazu wahlweise Position und Bedingung | nein | Die Form wird erweitert, nichts wird umgeschrieben. |
+| **Gestaltete Ansicht `shop`** | eigene Gruppe, wählbar auf Kachel und Leiste | unverändert | nein | Eine eigene Gruppe ist keine Schicht von `full`. |
+| **„Table from edges“** (2 Stellen: Party › quick „Members“, `shop` „Wares“) | Element `edgeTable` | Collection, Darstellung Tabelle | nein (gleiche Spalten) | Eine Migration schreibt beide Zeilen um (`path` → `source.edges`, `props` → Spalten). Alte Zeilen werden weiter gelesen. Vorher/Nachher-Bild. |
+| **Liste „Contains“** (`nw-fluss`; auf dev an 29 Arcs, 1596 Scenes, 2 Sessions, 48 Encounters) | feste Liste unter dem Text: Name, Art, Begegnungsart | ein Collection-Element in `full` von Arc, Scene, Session, Encounter | **ja**: Statt einer festen Zeile steht jeder Treffer in seiner Ansicht | Vorgabe: Session und Arc als Kacheln (quick), Scene als Liste (overview). Migration wie 142, danach fällt die feste Liste weg. |
+| **Element `parts`** (Lesefluss mit Rang) | Kapitel, Szene, Session | unverändert | nein | – |
+| **Element „Linked article“** (`linked`, 3 Stellen: Statblock an der Kreatur, Gegenstand, `full`) | Felder einer `asField`-Kante, bearbeitbar | gleich, dazu wahlweise jede Kante und eine Ansicht | nein | Die Erweiterung ist optional. |
+| **Quick-Ansicht von Map** | Felder, Map.kind | dazu die Karte klein | **ja**: Popup, Marker und Kachel einer Karte zeigen sie | neue Vorgabe in `packages/registry`, Migration |
+| **Quick-Ansicht von Board** | keine eigene | die Tafel verkleinert | **ja**: Kachel und Popup eines Boards | wie oben |
+| **Quick-Ansicht von Table** | Zeilen (Element `table`) | unverändert | nein | – |
+| **Anlegen** („New article“) | Name, Art, Pflichtfelder ohne Vorgabe; Spielerfigur verweist auf den Assistenten | gleich, solange eine Art kein `create` hat | nein | Neu sind zwei Ortsansichten in `PLACE_VIEWS`. `create` der Spielerfigur startet den Assistenten direkt statt über den Verweis. |
+| **Farben** | CSS-Variablen in `styles.scss` (hell, dunkel, Druck) | Registerzeilen `tokens`, mit den heutigen Werten vorbelegt | nein, bis jemand eins setzt | neuer Registerteil, Migration, Abgleich |
+| **Ansichtsdesigner** | Palette links, Baum, Einstellungen rechts | Leiste oben, Vorschau mit Einstellungen am Element, Baum zum Ordnen | **ja**: Die Arbeitsweise ändert sich (entschieden in E-171) | Handbuch und Hilfe ziehen nach |
+| **Board-Leiste, schwebende Leiste der Spielerseite** | eigene Leisten | dieselbe Komponente (REQ-436) | **ja**, später | eigener Schnitt |
+| **Regeln in CLAUDE.md** | „Vier Ansichten“, „Die Anordnung wohnt am Typ“, „Der Ort wählt die Gruppe …“ | um Schichten, Collection, Tokens und Erfassung ergänzt | – | im selben Commit wie die Änderung, dazu Datenmodell, Begriffe, „How it works“, Handbuch, Glossar, What's new |
+
+Neue Wörter fürs Glossar und für Begriffe.md:
+- Collection
+- Schicht
+- Token
+- Erfassungsmaske (create)
+
+## Schnitte (neu, 26.10.)
+
+1. **Session zeigt Szenen und Begegnungen über eine Collection.**
+   - Quelle verknüpft, Darstellung Liste und Kacheln, Ansicht je Treffer, Sortierung.
+   - Vorgabe an der Session (Migration). Die feste Liste „Contains“ fällt dort weg.
+   - Test zuerst rot.
+2. **Schichten (E-168).**
+   - Positionen und Bedingungen in `adjust`, ausgewertet in `forArticle`/`viewsFor`.
+   - Der Designer zeigt die Herkunft je Element.
+   - Beispiel: „Map an Position 40, wenn onMap“ in der Schicht „alle Artikel“.
+3. **Collection fertig.**
+   - Filter-Quelle, Tabelle, Gruppierung.
+   - `edgeTable` migrieren.
+   - Vorgaben für Arc, Scene, Encounter, Place, Faction.
+   - Die feste Liste „Contains“ fällt ganz weg.
+4. **Linked article mit Kante und Ansicht**, dazu die Quick-Ansichten von Map und Board.
+5. **Werkzeugleiste (REQ-436) im Designer**:
+   - Einfügen, Kontext, Allgemein.
+   - Einstellungen am Element.
+   - Kopieren, Einfügen, Duplizieren, Rückgängig, Wiederholen.
+6. **Design-Tokens (REQ-437)**: Registerteil, Stellen je Element, Vorgaben je Ansicht.
+7. **Erfassungsmasken (REQ-432)** und **Character builder (REQ-433)**.
+8. **Dieselbe Leiste an Board, Karte und Spielerseite**, dazu Baum und Graph als Darstellung und die leeren Plätze erwarteter Kanten (REQ-426).
