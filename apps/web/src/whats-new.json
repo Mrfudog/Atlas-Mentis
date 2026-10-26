@@ -9,6 +9,14 @@
       "link": "/registry"
     },
     {
+      "id": "2026-10-26-image-picker-any-file",
+      "date": "2026-10-26",
+      "title": "Upload image now reaches OneDrive on Android too",
+      "text": "Upload image opens the full file menu instead of only the photo picker, so you can pick an image from OneDrive or any other storage. The file is checked after you choose it; anything that is not a supported image says what to do instead.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
       "id": "2026-10-23-lists-suggest",
       "date": "2026-10-23",
       "title": "Own words in kind fields, place types as a list, colour picker",
