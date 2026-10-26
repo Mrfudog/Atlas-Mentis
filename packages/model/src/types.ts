@@ -745,6 +745,8 @@ export interface LayoutElement {
    * zweite. Gleiche Zahlen sind kein Fehler, sondern Reihenfolge (E-173).
    */
   pos?: number;
+  /** Design (T-425, E-170 a): je Stelle ein Token — überschreibt die Vorgabe der Ansicht für diese Elementart. */
+  style?: ElementStyle;
 }
 
 /**
@@ -898,7 +900,29 @@ export interface ViewDef {
   adjust?: LayoutAdjust;
   /** Bei gleicher Genauigkeit gewinnt die höhere Priorität (E-173); ohne Angabe 0. */
   priority?: number;
+  /** Design je Elementart (T-425, E-170 a): `section` → Kopf in `accent`. Ein Element darf je Stelle überschreiben. */
+  styles?: Record<string, ElementStyle>;
 }
+
+/** Wofür ein Token gedacht ist — eine Fläche, ein Text, ein Akzent, eine Linie. */
+export type TokenRole = 'surface' | 'text' | 'accent' | 'line';
+
+/** Ein Design-Token (T-425, E-170 a). */
+export interface TokenDef {
+  label: string;
+  role: TokenRole;
+  /** Farbe im hellen Modus, `#rrggbb` (oder `rgba(…)`, dann ohne Kontrastprüfung). */
+  light: string;
+  /** Farbe im dunklen Modus. */
+  dark: string;
+  /** Ein Text oder Akzent: auf welcher Fläche er stehen soll (Vorgabe `paper`) — dagegen wird der Kontrast geprüft. */
+  on?: string;
+  description?: string;
+}
+
+/** Die benannten Stellen eines Elements, an denen ein Token stehen darf. */
+export type TokenSlot = 'head' | 'surface' | 'frame' | 'text';
+export type ElementStyle = Partial<Record<TokenSlot, string>>;
 
 export interface Registry {
   interfaces: Record<string, InterfaceDef>;
@@ -912,6 +936,13 @@ export interface Registry {
    * Optional, weil ein Register ohne geteilte Aufzählung vollständig ist.
    */
   enums?: Record<string, EnumDef>;
+  /**
+   * **Design-Tokens** (T-425, REQ-437, E-170 a): benannte Farben mit Rolle,
+   * Wert hell und dunkel. Ein Element nennt je Stelle ein Token
+   * (`LayoutElement.style`), keine Farbe — so bleibt hell und dunkel
+   * zusammen, und der Kontrast lässt sich prüfen.
+   */
+  tokens?: Record<string, TokenDef>;
   views: Record<string, ViewDef>;
   /** Einheiten und wie sie ineinander umgerechnet werden. */
   units: Record<string, UnitDef>;

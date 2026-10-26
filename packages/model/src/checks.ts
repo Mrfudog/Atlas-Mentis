@@ -23,6 +23,7 @@ import { RULE_OPTIONS } from './ruleOptions.js';
 import type { Entity, Registry } from './types.js';
 import { stageBases, validateEntity } from './validate.js';
 import { viewConflicts } from './viewScope.js';
+import { MIN_CONTRAST, tokenContrast } from './tokens.js';
 
 export interface CheckHit {
   /** Peg-Id — der Weg zum Artikel (`/artikel/:id`). */
@@ -379,6 +380,21 @@ export const CHECKS: Check[] = [
             ? `“${k.element}” is changed by ${k.sources.join(' and ')} — ${k.winner} wins`
             : `“${k.element}” shares position ${k.position} with ${k.sources.join(', ')}`,
         registry: registerOrt('views', k.winner ?? k.sources.find((s) => !s.startsWith('type ') && !s.startsWith('view ')) ?? k.group),
+      }));
+    },
+  },
+  {
+    /* T-425, E-170: ein Text oder Akzent steht auf seiner Fläche zu schwach. */
+    key: 'tokenContrast',
+    label: 'Token contrast',
+    description: `A text token reads below ${MIN_CONTRAST.text}:1 on the surface it is meant for, or an accent below ${MIN_CONTRAST.accent}:1 — in the light or the dark mode. Change one of the two colours under Registry › Tokens.`,
+    run({ registry }) {
+      return tokenContrast(registry).map((k) => ({
+        id: `token:${k.token}:${k.mode}`,
+        name: registry.tokens?.[k.token]?.label ?? k.token,
+        type: 'token',
+        reason: `${k.ratio}:1 on ${registry.tokens?.[k.on]?.label ?? k.on} (${k.mode})`,
+        registry: { tab: 'tokens', token: k.token },
       }));
     },
   },

@@ -3,6 +3,7 @@ export * from './calc.js';
 export * from './views.js';
 export * from './viewScope.js';
 export * from './history.js';
+export * from './tokens.js';
 export * from './collection.js';
 export * from './rollTable.js';
 export * from './inline.js';
