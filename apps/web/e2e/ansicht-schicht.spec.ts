@@ -27,7 +27,8 @@ async function mitSperre<T>(fn: () => Promise<T>): Promise<T> {
     } catch {
       /* Eine Sperre aus einem abgebrochenen Lauf gilt nach zwei Minuten als frei. */
       try {
-        if (Date.now() - statSync(SPERRE).mtimeMs > 120_000) rmSync(SPERRE, { recursive: true, force: true });
+        if (Date.now() - statSync(SPERRE).mtimeMs > 120_000)
+          rmSync(SPERRE, { recursive: true, force: true });
       } catch {
         /* schon weg */
       }
@@ -111,6 +112,54 @@ test('a layer for one article adds an element to its page, and the designer save
       const gespeichert = ((await (await als.get('/api/registry')).json()) as { views: Views })
         .views[key]!;
       expect(gespeichert['layout']).toBeUndefined();
+    } finally {
+      await schichtSetzen(als, key, null);
+    }
+  });
+});
+
+test('a linked article with an edge shows the place of a scene in its quick view (T-425, E-172)', async ({
+  leitung,
+  spielerin,
+  api,
+  eindeutig,
+}, info) => {
+  const fertig = { Status: { status: 'ready' } };
+  const ort = await api.anlegen('leitung', 'Place', eindeutig('Crossroads'), {
+    fields: { 'Description.description': 'Four roads meet under an old oak.' },
+  });
+  const szene = await api.anlegen('leitung', 'Scene', eindeutig('Meeting'), {
+    relations: [{ type: 'happensAt', to: ort.id }],
+  });
+  for (const a of [ort, szene]) await api.setzen('leitung', a.id, fertig);
+  const key = `e2eLinked${info.project.name}${info.workerIndex}${Date.now()}`;
+  const als = await api.als('leitung');
+  test.setTimeout(180_000);
+  await mitSperre(async () => {
+    await schichtSetzen(als, key, {
+      label: 'Where it happens',
+      fields: 'all',
+      group: 'full',
+      applies: { types: ['Scene'], article: szene.id },
+      adjust: {
+        extra: [
+          {
+            id: 'e2e-where',
+            el: 'linked',
+            text: 'Where',
+            path: [{ relation: 'happensAt' }],
+            pos: 5,
+          },
+        ],
+      },
+    });
+    try {
+      for (const seite of [leitung, spielerin]) {
+        await seite.goto(`/artikel/${szene.id}`);
+        const wo = seite.getByRole('region', { name: 'Where' });
+        await expect(wo.getByRole('link', { name: ort.name, exact: true })).toBeVisible();
+        await expect(wo).toContainText('Four roads meet under an old oak.');
+      }
     } finally {
       await schichtSetzen(als, key, null);
     }

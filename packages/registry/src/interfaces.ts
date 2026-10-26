@@ -1108,6 +1108,27 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Scene / Encounter',
     extends: ['Story', 'Tactics', 'Difficulty'],
     schema: merge(g.SceneInfo),
+    /* Die Begegnungen einer Szene als Liste (T-425): dasselbe `st-contains`
+       wie an `Story`, an Ort und Stelle anders eingestellt. */
+    views: {
+      full: {
+        adjust: {
+          extra: [
+            {
+              id: 'st-contains',
+              el: 'collection',
+              text: 'Contains',
+              path: [{ relation: 'partOf', dir: 'in' }],
+              types: ['Story', 'Encounter'],
+              unranked: true,
+              show: 'list',
+              groupBy: 'type',
+              pos: 65,
+            },
+          ],
+        },
+      },
+    },
   },
 
   /**
@@ -1382,6 +1403,9 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'b-board', el: 'board' },
         { id: 'b-f', el: 'fields', fields: 'all', except: ['Board.shapes', 'Board.anchors'] },
       ],
+      /* Klein, wie ein Bild am Ende der Karte (T-425): wo die Kacheln liegen und wie sie heissen —
+         Position 35, vor dem Bild (`q-img`), das in `quick` zuletzt steht (T-346). */
+      quick: { adjust: { extra: [{ id: 'bq-board', el: 'board', pos: 35 }] } },
     },
   },
 
