@@ -364,3 +364,25 @@ a.chipb[aria-current='true'] .sub {
   flex-direction: column;
   gap: 0.35rem;
 }
+
+/* Schichten (T-425, E-168): Herkunft je Element, Konflikte. */
+.schicht-von {
+  font-size: 0.75em;
+  margin-left: 0.4em;
+  opacity: 0.8;
+}
+.warn {
+  margin-left: 0.4em;
+  color: var(--warn, #9a5b00);
+}
+.schicht {
+  margin-top: 0.6em;
+  .prio input {
+    width: 5em;
+  }
+}
+.konflikte {
+  margin: 0.4em 0 0;
+  padding-left: 1.2em;
+  font-size: 0.9em;
+}
