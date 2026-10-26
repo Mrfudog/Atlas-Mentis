@@ -351,7 +351,7 @@ export interface AppOptions {
   sicherung?: Sicherung | null;
 }
 
-const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
+const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings', 'tokens'] as const;
 type RegistryPart = (typeof REGISTRY_PARTS)[number];
 
 function isRegistryPart(value: string): value is RegistryPart {
@@ -1429,6 +1429,7 @@ export function buildApp({
         case 'vars': await repo.putRegistryPart('vars', parsed.data.vars); break;
         case 'enums': await repo.putRegistryPart('enums', parsed.data.enums ?? {}); break;
         case 'settings': await repo.putRegistryPart('settings', parsed.data.settings ?? {}); break;
+        case 'tokens': await repo.putRegistryPart('tokens', parsed.data.tokens ?? {}); break;
       }
       await repo.appendEvent('registry.written', undefined, { part });
       return { ok: true, part };
