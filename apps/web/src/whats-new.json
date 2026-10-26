@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-overlays",
+      "date": "2026-10-26",
+      "title": "Overlays: change a view for one article or a condition without copying it",
+      "text": "In the view designer, save for one article or for a condition “as an overlay”: only what you add, move or take away is kept, and everything else keeps following the view. Elements sit by position, so “map at position 15” lands in the same place on every type. Where two overlays meet, the designer marks it with ⚠ and the workbench lists it under View conflicts.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
       "id": "2026-10-26-collection",
       "date": "2026-10-26",
       "title": "Sessions show their scenes and encounters as tiles",

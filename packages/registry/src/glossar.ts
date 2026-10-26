@@ -80,6 +80,16 @@ const APP: AppTerm[] = [
     see: '/registry',
   },
   {
+    term: 'Overlay',
+    aliases: ['View overlay'],
+    sort: 'app',
+    definition: 'A change laid over a view instead of replacing it: it adds, moves or takes away elements, for every article, a type, articles with a field value or an edge, or one article. What it does not say keeps following the view.',
+    effect: 'Overlays stack from general to specific — every article, type, condition, one article. Each element sits by its position, a number; a new element lands between its neighbours. Where two overlays change the same element, the more specific one wins, and among equals the higher priority; the designer marks it with ⚠ and the workbench lists it under View conflicts.',
+    example: 'An overlay on Full for every article: “Map at position 15, only when the article is on a map”. Every session, place and shop with a map shows it right after its first element; one session whose overlay takes it away again does not.',
+    translations: { de: 'Schicht' },
+    see: '/registry',
+  },
+  {
     term: 'Structure card',
     aliases: ['Structure', 'Organisation chart', 'Relationship web'],
     sort: 'app',

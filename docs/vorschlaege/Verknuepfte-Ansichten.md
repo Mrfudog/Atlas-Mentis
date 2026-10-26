@@ -268,7 +268,7 @@ Neue Wörter fürs Glossar und für Begriffe.md:
    - Quelle verknüpft, Darstellung Liste und Kacheln, Ansicht je Treffer, Sortierung.
    - Vorgabe an der Session (Migration). Die feste Liste „Contains“ fällt dort weg.
    - Test zuerst rot.
-2. **Schichten (E-168).**
+2. **Schichten (E-168).** *Steht (26.10.): `pickView` mit Schichten, `contributionFrom`, Designer, Prüfung `viewConflicts`; im UI „overlay“, weil „layer“ die Ebene ist.*
    - Positionen und Bedingungen in `adjust`, ausgewertet in `forArticle`/`viewsFor`.
    - Der Designer zeigt die Herkunft je Element.
    - Beispiel: „Map an Position 40, wenn onMap“ in der Schicht „alle Artikel“.

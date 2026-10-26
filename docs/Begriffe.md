@@ -710,6 +710,18 @@ anderen aussieht. Und darum zeigt eine Collection in einer Kachel keine
 weitere: eine Session, die ihre Szenen zeigt, die ihre Begegnungen zeigen,
 die ihre Kreaturen zeigen, wäre am Ende der halbe Bestand.
 
+**Eine Änderung für wenige ist eine Schicht, keine Kopie** (T-425,
+E-168). Wer für eine Session die Karte nach oben holen wollte, legte bisher
+eine gestaltete Ansicht nur für sie an — eine Abschrift von Full, die von
+da an nicht mehr erfuhr, was sich an Full änderte. Eine Schicht (*overlay*)
+sagt nur den Unterschied: „Karte an Position 15", „ohne Beziehungen", und
+alles andere folgt weiter der Ansicht. Die Position ist eine Zahl und
+keine Reihenfolge, weil eine Reihenfolge über alle Elemente jede andere
+Schicht überschriebe; 15 heisst an jeder Art „nach dem ersten". Dass zwei
+Schichten sich treffen, ist kein Fehler, sondern zu sehen — darum ⚠ im
+Designer und die Prüfung in der Werkbank statt eines Verbots. Im
+Englischen heisst sie *overlay*, weil *layer* die Ebene ist.
+
 Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
 und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
 Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine

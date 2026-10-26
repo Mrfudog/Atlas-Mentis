@@ -29,6 +29,25 @@ flowchart LR
   H --> K["je Treffer nw-vorschau<br/>Ansicht der Zielart (quick)"]
 ```
 
+## Schichten (T-425, 26.10.2026)
+
+Eine Ansicht lässt sich für alle, einen Typ, eine Bedingung (Feld, Kante)
+oder einen Artikel **überlagern**, statt sie zu kopieren (E-168): eine
+Ansichtszeile mit `adjust` (UI *overlay*) fügt hinzu, verschiebt, nimmt
+weg; der Rest folgt der Ansicht. Elemente stehen nach Position (`pos`,
+still 10, 20 … der Grundlage), gleich genau ordnet `priority`. Treffen
+sich zwei Schichten, zeigt der Designer ⚠ und die Werkbank die Prüfung
+„View conflicts“ (E-173). Der Designer speichert „nur dieser Artikel“ und
+„mit Bedingung“ auf Wunsch als Schicht (`contributionFrom`).
+
+```mermaid
+flowchart LR
+  T["Anordnung der Art"] --> G["alle"] --> Ty["Typ"] --> B["Bedingung"] --> A["Artikel"]
+  A --> S["nach pos, Priorität, Genauigkeit"]
+  S --> D["Designer: Herkunft, ⚠"]
+  S --> W["Werkbank: View conflicts"]
+```
+
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
 5 Stories · 24 Punkte · 2 steht · 2 offen · 1 ersetzt
 
