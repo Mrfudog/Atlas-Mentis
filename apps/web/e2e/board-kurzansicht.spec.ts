@@ -28,7 +28,9 @@ test('the quick view of a board shows a sketch of its cards', async ({
     [spielerin, 1],
   ] as const) {
     await seite.goto('/');
-    await seite.keyboard.press('Control+k');
+    /* Über den Knopf, wie man es tippt: Strg+K hört die Seite erst, wenn sie ganz geladen ist,
+       und am Telefon gibt es keine Tastatur. Kopfleiste oder Basisleiste — der sichtbare. */
+    await seite.getByRole('button', { name: 'Search', exact: true }).filter({ visible: true }).first().click();
     await seite.getByRole('combobox', { name: 'Search articles' }).fill(brett.name);
     await seite.getByRole('button', { name: `More about ${brett.name}` }).click();
     await expect(seite.getByRole('img', { name: `Board with ${karten} cards` })).toBeVisible();
