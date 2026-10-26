@@ -722,6 +722,14 @@ Schichten sich treffen, ist kein Fehler, sondern zu sehen — darum ⚠ im
 Designer und die Prüfung in der Werkbank statt eines Verbots. Im
 Englischen heisst sie *overlay*, weil *layer* die Ebene ist.
 
+Die feste Liste „Contains" (T-422) war eine zweite Darstellung derselben
+Szenen, die sich nicht gestalten liess; seit T-425 ist sie eine
+Collection an `Story`, und **„Table from edges" ist eine Collection als
+Tabelle** — ein Element, das zeigt, was an einem Artikel hängt, nicht drei.
+Eine Collection darf ihre Artikel auch aus einem **Filter** nehmen (alle
+Gerüchte mit der Marke „rumour"): dieselbe Frage wie im Kompendium, also
+dieselbe Siebung am Server.
+
 Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
 und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
 Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine

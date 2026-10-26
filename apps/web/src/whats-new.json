@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-collections-everywhere",
+      "date": "2026-10-26",
+      "title": "Arcs, scenes and places show what belongs to them as tiles",
+      "text": "An arc shows its scenes, a scene its encounters — as tiles in their own quick view, grouped by type, instead of the plain Contains list. A place shows the places within it and who lives there. In the view designer, a Collection can now also be a table, with the edge’s values and fields as columns, and can gather its articles from a filter of types, tags and fields, like the Compendium.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
       "id": "2026-10-26-overlays",
       "date": "2026-10-26",
       "title": "Overlays: change a view for one article or a condition without copying it",

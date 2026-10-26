@@ -273,7 +273,7 @@ Neue Wörter fürs Glossar und für Begriffe.md:
    - Der Designer zeigt die Herkunft je Element.
    - Beispiel: „Map an Position 40, wenn onMap“ in der Schicht „alle Artikel“.
    - Gleichstände und Konflikte mit ⚠ im Designer, Prüfung „View conflicts“ in der Werkbank (E-173).
-3. **Collection fertig.**
+3. **Collection fertig.** *Steht (26.10.): Tabelle, Filter-Quelle, `unranked`, `st-contains` an Story, Unterorte und Bewohner am Ort, `edgeTable` migriert (146), „Contains" weg. Faction und Encounter bekommen keine Vorgabe: die Struktur zeigt die Mitglieder, die Initiative die Beteiligten.*
    - Filter-Quelle, Tabelle, Gruppierung.
    - `edgeTable` migrieren.
    - Vorgaben für Arc, Scene, Encounter, Place, Faction.
