@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-designer-bar",
+      "date": "2026-10-26",
+      "title": "View designer: one bar to insert, undo, copy and paste",
+      "text": "The view designer has a bar on top: insert elements by group or find them by name, undo and redo every change until you save, copy an element and paste it into another view. A selected element gets a floating toolbar to move, duplicate or remove it, and the keys Ctrl+Z, Ctrl+Shift+Z, Ctrl+C, Ctrl+V and Ctrl+D work there too.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
       "id": "2026-10-26-linked-article-board-sketch",
       "date": "2026-10-26",
       "title": "Show a linked article in any view, and boards as a sketch",

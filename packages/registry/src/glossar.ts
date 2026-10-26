@@ -358,7 +358,7 @@ const APP: AppTerm[] = [
     sort: 'app',
     aliases: ['View editor'],
     definition: 'The one editor for views: a view as a tree of elements — sections, columns, tabs, tile groups, carousels, collapsibles, quotes, badges, tables from edges, the rows of a table, the page elements — each with its values, also from linked articles.',
-    effect: 'Registry › Views, “Design” on a type’s page, or “Design this view” on an article. Saving asks where the change goes: every article, every article of a type (preselected: the type you came from), one article, or a new view with a condition. Elements can be searched.',
+    effect: 'Registry › Views, “Design” on a type’s page, or “Design this view” on an article. The designer bar inserts elements by group and finds them by name, with undo, redo, copy and paste; the selected element has a floating toolbar to move, duplicate or remove it. Saving asks where the change goes: every article, every article of a type (preselected: the type you came from), one article, or a new view with a condition.',
     translations: { de: 'Ansichtsdesigner' },
   },
   {
@@ -683,6 +683,15 @@ const APP: AppTerm[] = [
     sort: 'app',
     definition: 'The list of everything a character can do on its turn, by action type, with what is used this turn. What the hands block stays visible with the reason.',
     translations: { de: 'Dein Zug' },
+  },
+  {
+    term: 'Designer bar',
+    aliases: ['Insert bar'],
+    sort: 'app',
+    definition: 'The bar above the structure of the view designer: groups to insert elements (Fields, Links, Text, Image, Layout, Table, Graph, Game, Pages), a search for any element, and undo, redo, copy and paste.',
+    effect: 'Undo and redo go through every change of the draft until you save; copy keeps an element for pasting into another view. Nothing of it is saved by itself.',
+    translations: { de: 'Designer-Leiste' },
+    see: '/registry',
   },
   {
     term: 'Floating toolbar',

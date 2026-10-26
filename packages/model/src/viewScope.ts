@@ -802,6 +802,41 @@ export function patchElement(tree: readonly LayoutElement[], id: string, patch: 
   return neu;
 }
 
+/**
+ * **Eine Kopie mit freien Ids** (T-425, E-171): ein Element und alles darin,
+ * jede Id, die es im Baum schon gibt, wird `id-2`, `id-3` … — sonst stünde
+ * dasselbe Element zweimal da, und eine Schicht träfe beide.
+ */
+function frischeKopie(tree: readonly LayoutElement[], el: LayoutElement): LayoutElement {
+  const belegt: LayoutElement[] = [...kopie(tree)];
+  const neu = kopie([el])[0]!;
+  const umbenennen = (x: LayoutElement): void => {
+    x.id = freeElementId(belegt, x.id);
+    belegt.push({ id: x.id, el: x.el });
+    x.children?.forEach(umbenennen);
+    x.tabs?.forEach((t) => t.layout.forEach(umbenennen));
+  };
+  umbenennen(neu);
+  return neu;
+}
+
+/** **Duplizieren** (T-425): die Kopie gleich hinter dem Original, im selben Behälter. */
+export function duplicateElement(tree: readonly LayoutElement[], id: string): { tree: LayoutElement[]; id: string | null } {
+  const el = findElement(tree, id);
+  if (!el) return { tree: tree as LayoutElement[], id: null };
+  const neu = kopie(tree);
+  const f = finde(neu, id)!;
+  const doppel = frischeKopie(tree, el);
+  f.liste.splice(f.i + 1, 0, doppel);
+  return { tree: neu, id: doppel.id };
+}
+
+/** **Einfügen** (T-425): in den gewählten Behälter oder hinter das gewählte Element, sonst ans Ende — mit freien Ids. */
+export function pasteElement(tree: readonly LayoutElement[], el: LayoutElement, at: string | null): { tree: LayoutElement[]; id: string } {
+  const neu = frischeKopie(tree, el);
+  return { tree: insertElement(tree, neu, at), id: neu.id };
+}
+
 /** Eine freie Id im Baum: `basis`, `basis-2` … */
 export function freeElementId(tree: readonly LayoutElement[], basis: string): string {
   const ids = new Set<string>();

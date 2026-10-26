@@ -279,7 +279,7 @@ Neue Wörter fürs Glossar und für Begriffe.md:
    - Vorgaben für Arc, Scene, Encounter, Place, Faction.
    - Die feste Liste „Contains“ fällt ganz weg.
 4. **Linked article mit Kante und Ansicht**, dazu die Quick-Ansichten von Map und Board. *Steht (26.10.): `linked` mit `path` und `view`; Board-Skizze (`boardSketch`); Map zeigte ihr Bild schon (erbt `Image`); Szene „Contains“ als Liste.*
-5. **Werkzeugleiste (REQ-436) im Designer**:
+5. **Werkzeugleiste (REQ-436) im Designer**: *Steht (26.10.): Leiste oben mit Gruppen und Suche, Undo/Redo/Copy/Paste, schwebende Leiste am Element, Tasten; Verlauf (`history.ts`) und Ablage (`kern/ablage.ts`) als Muster. Die Einstellungen bleiben rechts; „am Element in der Vorschau" kommt mit den Tokens (Schnitt 6), wenn es dort mehr einzustellen gibt.*
    - Einfügen, Kontext, Allgemein.
    - Einstellungen am Element.
    - Kopieren, Einfügen, Duplizieren, Rückgängig, Wiederholen.

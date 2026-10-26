@@ -1,4 +1,4 @@
-<div class="designer" [class.kompakt]="kompakt()">
+<div class="designer" [class.kompakt]="kompakt()" (keydown)="taste($event)">
   <div class="kopfzeile">
     @if (kompakt()) {
       <label class="f">
@@ -91,53 +91,54 @@
     </section>
   }
 
-  <div class="arbeit">
-    @if (!kompakt()) {
-      <aside class="karte palette" aria-label="Elements">
-        <b class="h3">Elements</b>
-        <span class="sub">adds into the selected container, or after the selected element</span>
-        <input type="search" class="element-suche" placeholder="Find an element …" aria-label="Find an element"
-               [value]="elementSuche()" (input)="elementSuche.set(optionWert($event))" />
-        @for (g of paletteGefiltert(); track g.cat) {
-          <details class="kat" [open]="g.cat !== 'Pages' || !!elementSuche().trim()">
-            <summary class="lbl">{{ g.cat }}</summary>
+  <!-- Die Leiste (T-425, REQ-436, E-171): oben einfügen und allgemein, am gewählten Element schwebend. -->
+  <div class="leiste-oben" role="toolbar" aria-label="Insert and edit">
+    <div class="einfuegen" role="group" aria-label="Insert">
+      @for (g of leiste; track g.name) {
+        <details class="gruppe" #d>
+          <summary [attr.title]="'Insert ' + g.name"><span class="ico" aria-hidden="true">{{ g.icon }}</span><span class="wort">{{ g.name }}</span></summary>
+          <div class="menue" role="menu" [attr.aria-label]="g.name">
             @for (p of g.items; track p.el) {
-              <button type="button" class="pal" (click)="dazu(p.el)" [title]="p.tip" [disabled]="!darf()">
+              <button type="button" role="menuitem" class="pal" (click)="dazu(p.el); d.open = false" [title]="p.tip" [disabled]="!darf()">
                 <span class="ico" aria-hidden="true">{{ p.icon }}</span><span class="pname">{{ p.name }}</span>
-                @if (p.neu) {
-                  <span class="neu">new</span>
-                }
                 @if (p.seite) {
                   <span class="nurseite" title="Drawn by the article page and the print; a designed view, the quick view and a board tile show a note in its place">article page only</span>
                 }
               </button>
             }
-          </details>
-        } @empty {
-          <p class="sub">No element matches.</p>
+          </div>
+        </details>
+      }
+      <div class="finden">
+        <input type="search" class="element-suche" placeholder="Find an element …" aria-label="Find an element"
+               [value]="elementSuche()" (input)="elementSuche.set(optionWert($event))" (keydown.escape)="elementSuche.set('')" />
+        @if (elementSuche().trim()) {
+          <div class="menue offen" role="menu" aria-label="Elements found">
+            @for (p of suchTreffer(); track p.el) {
+              <button type="button" role="menuitem" class="pal" (click)="dazu(p.el); elementSuche.set('')" [title]="p.tip" [disabled]="!darf()">
+                <span class="ico" aria-hidden="true">{{ p.icon }}</span><span class="pname">{{ p.name }}</span>
+              </button>
+            } @empty {
+              <p class="sub">No element matches.</p>
+            }
+          </div>
         }
-      </aside>
-    }
+      </div>
+    </div>
+    <div class="allgemein" role="group" aria-label="Edit">
+      <button type="button" class="klein" [disabled]="!kannRueck()" (click)="rueckgaengig()" aria-label="Undo" title="Undo (Ctrl+Z)">↶</button>
+      <button type="button" class="klein" [disabled]="!kannVor()" (click)="wiederholen()" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+      <button type="button" class="klein" [disabled]="!gewaehlt()" (click)="kopieren()" aria-label="Copy" title="Copy the selected element (Ctrl+C)">⎘</button>
+      <button type="button" class="klein" [disabled]="!abgelegt() || !darf()" (click)="einfuegen()" aria-label="Paste" [title]="abgelegt() ? 'Paste ' + abgelegt() + ' (Ctrl+V)' : 'Copy an element first'">📋</button>
+    </div>
+  </div>
+  <p class="sub leiste-hinweis">New elements go into the selected container, or after the selected element.</p>
 
+  <div class="arbeit">
     <section class="karte struktur" aria-label="Structure">
       <div class="zeile">
         <b class="h3">Structure</b><span class="sub">select an element to configure it · drag to move</span>
       </div>
-      @if (kompakt()) {
-        <label class="f">
-          <span class="lbl">+ Element</span>
-          <select (change)="dazu(optionWert($event)); $any($event.target).value = ''" aria-label="Add an element" [disabled]="!darf()">
-            <option value="">Add …</option>
-            @for (g of palette; track g.cat) {
-              <optgroup [label]="g.cat">
-                @for (p of g.items; track p.el) {
-                  <option [value]="p.el">{{ p.name }}</option>
-                }
-              </optgroup>
-            }
-          </select>
-        </label>
-      }
       <ul class="baum" role="tree" aria-label="Elements of the view">
         @for (z of zeilen(); track z.el.id) {
           <li role="treeitem" [attr.aria-selected]="gewaehlt() === z.el.id" [attr.aria-expanded]="z.kinder ? !z.zu : null"
@@ -410,6 +411,11 @@
       }
     </aside>
   </div>
+
+  @if (auswahl(); as gw) {
+    <nw-werkzeugleiste [titel]="elementName(gw)" [aktionen]="kontextAktionen()" [rueckgaengigMoeglich]="kannRueck()" beschriftung="Selected element"
+                       (aktion)="kontext($event)" (rueckgaengig)="rueckgaengig()" (fertig)="gewaehlt.set(null)" />
+  }
 
   <section class="karte geltung" aria-label="Save for">
     <b class="h3">Save for …</b>

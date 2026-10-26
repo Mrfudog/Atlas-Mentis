@@ -1883,6 +1883,16 @@ Migration braucht es nicht.
 
 ### Ein Editor für alle Ansichten (T-276)
 
+**Die Leiste** (T-425, REQ-436, E-171): oben im Designer die Gruppen zum
+Einfügen (`LEISTE` in `ansichten/palette.ts`, jedes Element in genau
+einer), die Suche und allgemein Rückgängig, Wiederholen, Kopieren,
+Einfügen; am gewählten Element die schwebende `nw-werkzeugleiste` (ordnen,
+duplizieren, kopieren, entfernen). Der Verlauf ist ein Muster ohne Wissen
+über seinen Inhalt (`packages/model/src/history.ts`, höchstens
+`HISTORY_LIMIT` Schritte), die Ablage ebenso (`kern/ablage.ts`, je Sorte);
+`duplicateElement` und `pasteElement` geben jedem Element eine freie Id,
+auch innen. Gespeichert wird weiter erst mit „Save".
+
 Der Designer ist seit T-276 der einzige Editor; Registry › Views (die
 Liste), „Design" an der Typseite und „Design this view" im Full edit eines
 Artikels (am Telefon ein Blatt von unten, die Seite darüber zeichnet den

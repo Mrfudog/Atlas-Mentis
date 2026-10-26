@@ -94,6 +94,34 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
   },
 ];
 
+/**
+ * **Die Gruppen der Leiste oben** (T-425, REQ-436, E-171): zum Einfügen
+ * nach dem, was man zeigen will, nicht nach Sorte im Code. Jedes Element
+ * der Palette steht in genau einer; was keine nennt, steht unter „More"
+ * (ein Test prüft das).
+ */
+export const LEISTE: { name: string; icon: string; els: readonly string[] }[] = [
+  { name: 'Fields', icon: '≡', els: ['fields', 'tileGroup', 'badges', 'quote', 'stats'] },
+  { name: 'Links', icon: '⛓', els: ['collection', 'linked', 'relations', 'composed', 'usedBy', 'standing'] },
+  { name: 'Text', icon: '¶', els: ['heading', 'text', 'description', 'prose'] },
+  { name: 'Image', icon: '▣', els: ['image', 'token', 'shape'] },
+  { name: 'Layout', icon: '▥', els: ['section', 'columns', 'tabs', 'carousel', 'collapsible'] },
+  { name: 'Table', icon: '⊞', els: ['table'] },
+  { name: 'Graph', icon: '⌥', els: ['structure'] },
+  { name: 'Game', icon: '⚔', els: ['statblock', 'spell', 'item', 'sheet', 'turn', 'spells', 'inventory', 'knowledgeContents', 'crafting', 'initiative', 'campaign'] },
+  { name: 'Pages', icon: '☷', els: ['parts', 'reader', 'contents', 'classOverview', 'originOverview', 'rules'] },
+];
+
+/** Die Gruppen mit ihren Einträgen, „More" für den Rest. */
+export function leistenGruppen(): { name: string; icon: string; items: PaletteEintrag[] }[] {
+  const alle = PALETTE.flatMap((g) => g.items);
+  const raus = LEISTE.map((g) => ({ name: g.name, icon: g.icon, items: g.els.map((el) => alle.find((p) => p.el === el)).filter((p): p is PaletteEintrag => !!p) }));
+  const genannt = new Set(LEISTE.flatMap((g) => g.els));
+  const rest = alle.filter((p) => !genannt.has(p.el));
+  if (rest.length) raus.push({ name: 'More', icon: '…', items: rest });
+  return raus;
+}
+
 /** Der Knoten eines Reiters (nur im Designer; gespeichert als `tabs`). */
 export const REITER: PaletteEintrag = { el: 'tab', name: 'Tab', icon: '▭', tip: 'One tab of the tabs above; its elements show when it is open.' };
 
