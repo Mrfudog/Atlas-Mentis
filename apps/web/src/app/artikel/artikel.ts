@@ -28,9 +28,10 @@ import {
   isMap,
   isLayer,
 } from '@nw/model';
-import type { Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import type { ElementStyle, Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { bringsIntoLayer, homeLayers, pickView, spellcastingOf, withCastRelations, withHomeLayer } from '@nw/model';
 import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
+import { Stil } from '../muster/stil';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { BegriffLink, Glossar } from '../kern/glossar';
@@ -177,6 +178,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
   imports: [
     RouterLink,
     FormsModule,
+    Stil,
     Bogen,
     Reiterleiste,
     Zug,
@@ -833,6 +835,8 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 @if (st.id === ersterImReiter() && reiter().length > 1) {
                   <nw-reiterleiste [reiter]="reiter()" [aktiv]="aktiverReiter()" (waehle)="zeigeReiter($event)" />
                 }
+                <!-- Das Design des Elements (T-425, E-170): Tokens aus der Ansicht und am Element. -->
+                <div [nwStil]="stilVon(st.id)">
                 @switch (st.art) {
                   @case ('bogen') {
                     <nw-bogen [artikel]="e" />
@@ -1018,6 +1022,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                     }
                   }
                 }
+                </div>
               }
               <!-- Was eine Fassung anders sagt, wo die Seite kein Feld dafür
                    zeichnet — ein Feld, das kein Element der Anordnung nimmt
@@ -1642,6 +1647,24 @@ export class Artikel implements SchnellKontext {
     const w = this.tab();
     return w && ids.includes(w) ? w : ids[0] ?? null;
   });
+  /** Das Design je Element der Anordnung (T-425, E-170): gesucht nach Id, auch in Behältern. */
+  private readonly stile = computed(() => {
+    const m = new Map<string, ElementStyle>();
+    const e = this.artikel();
+    const r = this.reg();
+    if (!e || !r) return m;
+    const geh = (l: readonly LayoutElement[]): void =>
+      l.forEach((el) => {
+        if (el.style) m.set(el.id, el.style);
+        if (el.children) geh(el.children);
+        for (const t of el.tabs ?? []) geh(t.layout);
+      });
+    geh(pickView(e, this.entwurfsRegister() ?? r, 'full', { exact: true, incoming: this.rueckKanten() }).layout);
+    return m;
+  });
+  protected stilVon(id: string): ElementStyle | undefined {
+    return this.stile().get(id);
+  }
   protected readonly sichtbareStuecke = computed(() => {
     const a = this.aktiverReiter();
     return this.stuecke().filter((x) => !NOCH_NICHT.has(x.art) && (!x.reiter || !a || x.reiter === a));

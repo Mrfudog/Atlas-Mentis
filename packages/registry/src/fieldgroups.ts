@@ -1315,6 +1315,15 @@ export const fieldGroups = {
            einem Feld „Gold" hiesse, dass eines davon leer steht und keiner
            weiss, welches gilt. Gelesen von `parsePriceMod`. */
         priceMod: { type: 'string', title: 'Price modifier (−10 gp, −10 %)' },
+        /* Was der Laden beim Ankauf zahlt, in Prozent des Listenpreises
+           (E-045 b, E-175 a); leer die Hälfte, wie 5e. Eine `buys`-Kante
+           darf für ihr Ziel einen eigenen Satz nennen. */
+        buyRate: {
+          type: 'number',
+          min: 0,
+          title: 'Buy rate (% of list price)',
+          description: 'What the shop pays when it buys, in per cent of the list price. Empty: 50 %. A buys edge may name its own rate; with buys edges the shop buys only what they name.',
+        },
       },
     },
   },
@@ -2463,6 +2472,31 @@ export const fieldGroups = {
    * Mitglieder gäbe es nur, wenn jemand sie nachführt — die Eigenschaften
    * stehen am Stück ohnehin. Was leer ist, schränkt nicht ein.
    */
+  CollectionInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        types: {
+          type: 'array',
+          title: 'Of the types',
+          items: { type: 'string' },
+          description: 'Every visible article of these types and their subtypes belongs to the collection, if the other conditions hold too. Empty with no other condition: only what is added by hand.',
+        },
+        tags: {
+          type: 'array',
+          title: 'Tagged',
+          items: { type: 'string' },
+          description: 'Only articles with all of these tags.',
+        },
+        fields: {
+          type: 'array',
+          title: 'Field conditions',
+          items: { type: 'string' },
+          description: 'Type.field:value|value or Type.field:1..3, as in the compendium filter — e.g. Weapon.category:simple melee.',
+        },
+      },
+    },
+  },
   MaterialGroupInfo: {
     schema: {
       type: 'object',

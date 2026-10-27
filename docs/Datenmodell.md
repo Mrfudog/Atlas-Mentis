@@ -1494,6 +1494,15 @@ flowchart LR
   `price` (in Kupfer, statt `Item.copperPrice`), `mod` (nur diese Ware),
   `available`. Wer ihn hält, steht an `shopkeeper`; eine Fraktion, die ihn
   kontrolliert, an ihrer Kante `controls`.
+- **`sells` auf eine Collection** (T-425, REQ-439, E-175): die Kante steht
+  für die Mitglieder der Collection (`collectionMemberIds`, dieselbe Regel
+  wie die Seite der Collection, im Bestand gerechnet, nur Gegenstände,
+  nach Name, höchstens 200), jede mit der Collection als Herkunft (`via`).
+  `mod` und `available` gelten für jede, `qty` und `price` nicht — eine
+  Menge für vierzig Waffen wäre keine. **Eine einzelne Kante schlägt die
+  Collection**, gleich wo sie steht; von zwei Collections mit demselben
+  Mitglied gilt die erste. Gesiebt wird jede Ware einzeln. Gekauft wird
+  mit Kante **und** Gegenstand (`item`), denn die Kante allein nennt viele.
 - **Ein Preis sagt, woher er kommt** (T-139, E-046): `Item.copperPrice`
   in Kupfer, daneben `Item.priceNote`. Leer heisst Listenpreis der
   Quelle; sonst steht da, wie gerechnet oder geschätzt wurde —
@@ -1554,9 +1563,18 @@ flowchart LR
   nichts), `tooPoor`; ohne Inventar gibt es nichts zu bezahlen.
 - **Verkaufen** (`POST /api/shops/:id/sell`, `sellPiece`): ein Stapel aus
   dem Inventar der Figur oder einem Behälter darin (nicht dem der Gruppe),
-  zum **Ankaufspreis** `buybackPrice` = halber Listenpreis, abgerundet (5e;
-  ob ein Laden einen eigenen Satz trägt, ist offen: E-045). Rabatte gelten
-  nur beim Kaufen. Ein **reserviertes** Stück (`holds.props.reservedFor`,
+  zum **Ankaufspreis** dieses Ladens (`buybackFor`, E-045 b, E-175 a):
+  **ohne `buys`-Kante kauft er alles** zu `Shop.buyRate` Prozent des
+  Listenpreises (leer 50 %, die Regel aus 5e) — so verhält sich jeder
+  bestehende Laden wie bisher. **Mit `buys`-Kanten** (Laden → Gegenstand
+  oder Collection, `props.rate` in Prozent, sonst der Satz des Ladens,
+  `props.mod` ein Abschlag danach) kauft er **nur das Genannte**: eine
+  Kante auf den Gegenstand (bei einem Stück auf seinen Grundartikel)
+  schlägt die Collection, von mehreren Collections gilt die erste; was
+  keine nennt, lehnt er ab (`notBought`). Abgerundet auf Kupfer, nie unter
+  0. Rabatte gelten nur beim Kaufen. `refs.shop.mine[].sellable` nennt je
+  Stück Preis, Satz und Herkunft (`rate`, `from`, `viaName`) oder
+  `refused: 'notBought'`. Ein **reserviertes** Stück (`holds.props.reservedFor`,
   T-128) und ein Behälter, in dem noch etwas liegt, bleiben. Eine
   Instanz, die **nicht abweicht**, zählt als Grundartikel: führt der Laden
   ihn mit gezählter Menge, steigt sie, und ist der Stapel ganz verkauft,
@@ -1571,12 +1589,16 @@ flowchart LR
 - **Protokoll:** `shop.bought` und `shop.sold` am Laden — Figur, Konto,
   Gegenstand, Menge, Stückpreis, Summe, beim Kauf Listen- und Grundpreis
   und jeder Abschlag mit Herkunft (`steps`), beim Verkauf die Regel
-  (`rule: 'half'`).
+  (`rule: { rate, from, via }`; bis T-425 `'half'`).
+- Migration 150 trägt `sells` auf Collections, `buys` und `Shop.buyRate`
+  nach; kein Laden und keine Kante ändert sich.
 
 ```mermaid
 flowchart LR
   F[Faction<br/>ranks Wick·Flame·Beacon] -- controls --> S[Shop<br/>priceMod −10 %]
   S -- "sells<br/>qty 3 · mod −1 gp" --> I[Item<br/>copperPrice 1000]
+  S -- "sells · mod −10 %" --> C[Collection<br/>Weapon, tag simple]
+  S -- "buys · rate 40" --> W[Collection<br/>Weapon]
   S -- shopkeeper --> K[Creature]
   F -- "discount<br/>−10 % · rank Flame" --> F
   K -- "discount −2 gp" --> P[PlayerCharacter]
@@ -1722,7 +1744,8 @@ keine Bedingung darauf.
 Item` ist `[{ relation: 'shopkeeper', dir: 'in', type: 'Shop' }, {
 relation: 'sells', type: 'Item' }]` (`followPath`). Neu dazu: `tileGroup`,
 `quote`, `badges`, `edgeTable` (je Kante eine Zeile, `props` nennt die
-Eigenschaften der Kante als Spalten). `reader` nimmt `toc` (`left`, `top`,
+Eigenschaften der Kante als Spalten — seit T-425 eine Collection als
+Tabelle, Migration 146; der Zeichner kennt es weiter). `reader` nimmt `toc` (`left`, `top`,
 `off`) und `side` (Werte am Rand `right`, `bottom`, `none`). `when` je
 Element bleibt und sieht auch Kinder und eingehende Kanten (`forArticle`).
 
@@ -1777,15 +1800,17 @@ mit Würfelspalte und „Roll" (`rollTableOf`, `rowForRoll` in
 `rollTable.ts`): die Spanne steht in der ersten Zelle („2–3", „00" ist
 100), bei einem Würfeltopf ohne Spalten wird sie aus den Gewichten
 gezählt — gerechnet, nicht gespeichert (D8). Gewürfelt wird am Server, der
-Wurf steht im Log des Artikels (T-172). `edgeTable` zeigt Kanten und ihre
-Ziele, nicht Zeilen.
+Wurf steht im Log des Artikels (T-172). Eine Collection als Tabelle zeigt
+Kanten und ihre Ziele, nicht Zeilen.
 
 **Das Element `collection`** (T-425, REQ-430, E-142, E-172) zeigt die
 Artikel am Ende seines Pfads **in der Ansicht ihrer eigenen Art**: die
 Session über `← partOf` ihre Szenen und Begegnungen. `types` engt auf
 Arten ein (die `extends`-Kette hoch), `show` sagt Kacheln (`tiles`,
-Vorgabe) oder Liste (`list`), `view` die Ansicht je Treffer (sonst `quick`
-bei Kacheln, `overview` in der Liste) und `viewByType` dieselbe Wahl je
+Vorgabe), Liste (`list`) oder Tabelle (`table`: Name, Art, die Werte der
+Kante aus `props` und die Felder aus `fields` als Spalten — was früher
+`edgeTable` war), `view` die Ansicht je Treffer (sonst `quick` bei
+Kacheln, `overview` in Liste und Tabelle) und `viewByType` dieselbe Wahl je
 Zielart — **das Element wählt, nicht die Kante**. `sort.by` ordnet nach
 `Time.sort` (Vorgabe, dann Nummer), `name`, `id` oder einem Feld
 `Typ.feld`, `sort.desc` umgekehrt; ein fehlender Wert steht hinten.
@@ -1795,9 +1820,37 @@ Gezeichnet wird jede Kachel als eingebettete Kurzansicht (`nw-vorschau`)
 — die Views werden wiederverwendet, eine Sonderseite gibt es nicht.
 Gesiebt hat der Server: die Treffer kommen über die Rückbezüge und
 `/api/entities/:id`, was zurückgehalten ist, fehlt. **Eine Stufe:** in
-einer Kachel zeichnet eine weitere Collection nichts. Die Session trägt
-sie seit Migration 144 statt `parts` (die feste Liste „Contains" aus
-T-422 bleibt an Arc und Szene, bis Schnitt 3 sie ablöst). Gezählt, wie viele
+einer Kachel zeichnet eine weitere Collection nichts. `unranked` nimmt
+nur Kanten ohne `rank` — was mit Rang dasteht, zeigt der Lesefluss
+(`parts`). **Quelle Filter** (`source: 'filter'`): statt eines Pfads
+jeder sichtbare Artikel, der passt — `types` (mit Untertypen),
+`filter.tags`, `filter.fields` (`Typ.feld:Wert|Wert`), `filter.q`,
+höchstens `limit` (Vorgabe 24); gefragt wird `GET /api/list` wie im
+Kompendium (`collectionQuery`), gesiebt am Server. **Vorgaben:** die
+Session trägt `se-contains` (Migration 144), jede andere Geschichte
+`st-contains` an `Story` (Arc, Szene, Kampagne; Position 65, nach den
+Teilen), ein Ort `o-within` (Unterorte, Liste) und `o-residents` (wer dort
+lebt, Kacheln; Migration 145); die Szene stellt `st-contains` als Liste
+ein (Migration 147). Die feste Liste „Contains" aus T-422 und
+`contains` an `/api/entities/:id/parts` gibt es nicht mehr.
+
+**Ein Element gleicher Id stellt um** (T-425): bringt eine Anpassung
+(`adjust.extra`) ein Element mit einer Id, die es schon gibt, ersetzt es
+dieses an Ort und Stelle (`applyAdjust`) — so stellt eine Unterart ein
+geerbtes Element anders ein, ohne es zu verdoppeln. Eine ausdrückliche
+Position (`pos`) an einer Art stellt ein Element auch ohne Schicht an
+seinen Platz.
+
+**„Linked article" mit Kante** (T-425, E-172): ohne `path` zeichnet die
+Seite wie bisher die Felder einer `asField`-Kante, bearbeitbar; mit `path`
+zeichnet der Baum das erste Ziel in der Ansicht, die das Element nennt
+(`view`, Vorgabe `quick`) — der Ort einer Szene als Karte.
+
+**Die Kurzansicht eines Boards** ist eine Skizze (`bq-board`, Position 35
+vor dem Bild, Migration 147): `boardSketch` in `packages/model/src/board.ts`
+rechnet Fläche, Farbe und je Kachel ein Rechteck mit Namen; was „GM only"
+ist, hat der Server vorher weggenommen (`redactBoard`). Eine Karte zeigt
+in `quick` ihr Bild (`Image.image`), wie jede Art mit Bild. Gezählt, wie viele
 Artikel eine Ansicht bekommen, wird am Server (`/api/registry/usage`,
 `views`), im Stapel.
 
@@ -1850,7 +1903,51 @@ eine andere Schicht bringt und im Designer nie zu sehen war, nimmt sie
 nicht weg. Gespeichert wird in `view_def.config` wie jede Ansicht; eine
 Migration braucht es nicht.
 
+### Collection als Artikel (T-425, REQ-438, E-174)
+
+Eine **Collection** ist eine Art unter `Rule`: eine Gruppe von Artikeln
+des Regelwerks. Ihre **Regel** steht in der Karte `Collection` (`types`
+mit Untertypen, `tags`, `fields` wie der Filter des Kompendiums,
+`Typ.feld:Wert|Wert`); von Hand kommt dazu, was über **`inCollection`**
+hineinzeigt (von jeder Art, `props.exclude` nimmt aus — die Ausnahme
+schlägt die Regel). Unterkollektionen hängen über `partOf`. Gezeigt
+werden die Mitglieder mit dem Element `collection`, Quelle `members`
+(`col-members` an der Art): die Regel fragt `GET /api/list`
+(`collectionRuleQuery`, höchstens 200 wie die Liste), die Kanten kommen
+aus den Rückbezügen — beides gesiebt. **`MaterialGroup` ist ein Untertyp**
+(Migration 149, `extends: ['Collection']`): ihre Karte bleibt, sie erbt
+`Rule` weiter.
+
+### Design-Tokens (T-425, REQ-437, E-170 a)
+
+Farben sind **Registerzeilen** (`Registry.tokens`, Tabelle `token_def`,
+Migration 148): Name, Rolle (`surface`, `text`, `accent`, `line`), Wert
+`light` und `dark`, für Text und Akzent die Fläche `on` (Vorgabe `paper`).
+Die Startzeilen tragen die Werte aus `styles.scss`
+(`packages/registry/src/tokens.ts`). Ein Element nennt an seinen **Stellen**
+(`head`, `surface`, `frame`, `text`) ein Token (`LayoutElement.style`), die
+Ansicht je Elementart eine Vorgabe (`ViewDef.styles`); `pickView` mischt
+die Vorgabe in die Elemente (`withViewStyles`), das Element schlägt sie je
+Stelle, und ein Token, das es nicht gibt, gilt nicht (`elementStyle`).
+Gezeichnet wird über CSS-Variablen `--tok-<name>` (`kern/tokenfarben.ts`,
+hell und dunkel wie `styles.scss`) und die Hülle `[nwStil]`
+(`muster/stil.ts`, `display: contents`) im Baum, auf der Artikelseite und
+in der Kurzansicht. **Kontrast** (`tokenContrast`): Text 4.5:1, Akzent 3:1
+auf seiner Fläche, je Modus; die Werkbank-Prüfung `tokenContrast` meldet
+es. Gepflegt wird unter Registry › Tokens; löschen geht nur, was keine
+Ansicht nennt.
+
 ### Ein Editor für alle Ansichten (T-276)
+
+**Die Leiste** (T-425, REQ-436, E-171): oben im Designer die Gruppen zum
+Einfügen (`LEISTE` in `ansichten/palette.ts`, jedes Element in genau
+einer), die Suche und allgemein Rückgängig, Wiederholen, Kopieren,
+Einfügen; am gewählten Element die schwebende `nw-werkzeugleiste` (ordnen,
+duplizieren, kopieren, entfernen). Der Verlauf ist ein Muster ohne Wissen
+über seinen Inhalt (`packages/model/src/history.ts`, höchstens
+`HISTORY_LIMIT` Schritte), die Ablage ebenso (`kern/ablage.ts`, je Sorte);
+`duplicateElement` und `pasteElement` geben jedem Element eine freie Id,
+auch innen. Gespeichert wird weiter erst mit „Save".
 
 Der Designer ist seit T-276 der einzige Editor; Registry › Views (die
 Liste), „Design" an der Typseite und „Design this view" im Full edit eines
@@ -2436,7 +2533,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-26: 64 Artikelarten, 27 Grundtypen, 71 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-26: 65 Artikelarten, 27 Grundtypen, 73 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2480,20 +2577,20 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
+| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
 | `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | quick, handout, overview, full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, handout, overview |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | quick |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `partOf` `controls` `discount` `regards` | `memberOf` `partOf` `discount` `questGiver` `features` `knownBy` `regards` | quick, handout, full |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | `features` | quick, overview |
-| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `availability` `copperPrice` `priceNote` `stackSize` `weight` `lightBright` `lightDim` `rows` `width*` `height*` `cells*` `inventoryImage` `inventoryFrame` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, handout, overview, full |
-| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
+| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `availability` `copperPrice` `priceNote` `stackSize` `weight` `lightBright` `lightDim` `rows` `width*` `height*` `cells*` `inventoryImage` `inventoryFrame` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, handout, overview, full |
+| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | quick, full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` `Source` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, handout, full |
 | `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | — |
-| `Shop` | `Place` | `priceMod` | `partOf` `sells` `discount` `shopkeeper` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
-| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
+| `Shop` | `Place` | `priceMod` `buyRate` | `partOf` `sells` `buys` `discount` `shopkeeper` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
+| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
 **story**
@@ -2503,9 +2600,9 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
 | `Campaign` | `Story` `VisibilityRules` | `compareFor` `playerStart` `languages` `feats` `hitPoints` `inventory` `itemPricing` `enhancementsBy` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `craftLearning` `craftLearnRarity` `playerRolls` `ruleGraphs` `combat` `initNames` `initHealth` `initEffects` `initActions` `initColumns` `initQuickActions` `turnPlanner` `fog` `moves` `tokenMove` `revealOnMove` `doors` `tokenSizes` `passageTrigger` `passageWhen` `passageMove` `passageAction` `passageConfirm` `mapLinkShow` `mapLinkShowPlayers` `mapLinkOuter` `mapTools` `markerViews` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, handout, full |
-| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
+| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, full |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `mapNavigation` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
-| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
+| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, full |
 
 **Rules**
 
@@ -2517,6 +2614,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` `partOf` `knownBy` | quick, full, overview |
 | `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `casts` `grants` `partOf` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` `partOf` `knownBy` | full |
 | `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `startingGold` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `grants` `partOf` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` `partOf` `knownBy` | quick, full, overview |
+| `Collection` | `Rule` | `types` `tags` `fields` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` `sells` `buys` | full |
 | `Condition` | `Rule` `Effects` | `kind` `stage` `recovery` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | overview |
 | `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` `casts` `partOf` | `composedOf` `stageOf` `affects` `grants` `partOf` | — |
 | `EquipmentMethod` | `Rule` | `method` `gold` `budget` `magic` `itemTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsEquipment` `grants` `partOf` | overview |
@@ -2528,7 +2626,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `hasProperty` `partOf` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | full |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
-| `MaterialGroup` | `Rule` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `needs` | — |
+| `MaterialGroup` | `Collection` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` `sells` `buys` `needs` | — |
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | quick, full |
 | `Rule` | `Source` `Vars` | `kind` `autolink` `key` `graph` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `loot` | — |
@@ -2544,7 +2642,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
+| `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full, quick |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, overview, full |
 | `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `markerView` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | quick, full |
@@ -2576,6 +2674,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `allowsMethod` | Campaign → AbilityMethod |  | — | — |
 | `allowsSubstitution` | Campaign → Substitution |  | — | — |
 | `belongsTo` | Statblock → Creature | ja | Feld am `to`-Ende | — |
+| `buys` | Shop → Item \| Collection |  | — | `rate` `mod` |
 | `carries` | Creature \| Party \| Item → Inventory | ja | Feld am `from`-Ende | — |
 | `casts` | Statblock \| PlayerCharacter \| Item \| Subclass \| Ancestry \| Feat \| Faction \| Rule → Spell |  | — | `mode` `uses` `ability` `level` `charges` `fromLevel` |
 | `chapterOf` | Chapter → Story | ja | — | — |
@@ -2601,6 +2700,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `hasProperty` | Weapon \| Item \| Armor → ItemProperty |  | — | — |
 | `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `grip` `gx` `gy` `rot` `flip` `attuned` `note` `reservedFor` `forNeed` `unstowed` |
 | `includes` | Knowledge → Information |  | — | — |
+| `inCollection` | * → Collection |  | — | `exclude` |
 | `inLayer` | * → Layer |  | — | `mode` `addedAt` |
 | `insideMap` | Map → Map | ja | — | `x` `y` `w` `h` `area` `near` `show` `showPlayers` `outer` `align` |
 | `instanceOf` | Statblock \| Item \| CraftingOrder \| Map \| Encounter → same | ja | — | — |
@@ -2628,7 +2728,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |
 | `route` | Place → Place |  | — | `hours` `terrain` `signal` `hidden` `oneWay` |
-| `sells` | Shop → Item |  | — | `qty` `price` `mod` `available` |
+| `sells` | Shop → Item \| Collection |  | — | `qty` `price` `mod` `available` |
 | `shopkeeper` | Shop → Creature |  | — | — |
 | `spellList` | Class \| Subclass → Spell |  | — | `optional` |
 | `stageOf` | Condition → Condition | ja | — | — |

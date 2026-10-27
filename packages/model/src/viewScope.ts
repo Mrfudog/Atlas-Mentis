@@ -15,6 +15,7 @@
 
 import type { Entity, LayoutAdjust, LayoutElement, LayoutWhen, Registry, ViewApplies, ViewDef, ViewPathStep } from './types.js';
 import { primaryInterface, typeChain } from './entity.js';
+import { withViewStyles } from './tokens.js';
 import { RETIRED_PLACES, applyAdjust, layoutFor, viewKeys, whenHolds } from './views.js';
 
 /** Wie genau eine Ansicht gilt; die Reihenfolge ist die Rangfolge. */
@@ -236,7 +237,10 @@ export function pickView(
   const beitraege = contributionsFor(registry, viewGroup(key, registry.views[key]), (d, k) => k === opts.force || appliesHolds(registry, d.applies, entity, opts.incoming ?? []));
   const grund = from ? `type ${from}` : `view ${key}`;
   const c = composeLayout(layout, grund, from ? SPEC.type : SPEC.global, beitraege);
-  return { key, layout: c.layout, from, mode, designed, origin: c.origin, conflicts: c.conflicts, positions: c.positions };
+  /* Das Design der Ansicht je Elementart (T-425, E-170) steht danach am Element. */
+  const gruppe = registry.views[viewGroup(key, registry.views[key])];
+  const layoutMitStil = withViewStyles(c.layout, { styles: { ...(gruppe?.styles ?? {}), ...(registry.views[key]?.styles ?? {}) } });
+  return { key, layout: layoutMitStil, from, mode, designed, origin: c.origin, conflicts: c.conflicts, positions: c.positions };
 }
 
 /**
@@ -298,7 +302,9 @@ function composeLayout(
     origin[el.id] = [grund];
     still.set(el.id, el.pos ?? (zaehler += 10));
   }
-  if (!beitraege.length) return { layout: [...basis], origin, conflicts: [], positions: Object.fromEntries(still) };
+  /* Ohne Schicht und ohne ausdrückliche Position bleibt alles, wie es steht; eine Art darf mit `pos`
+     ein Element zwischen die der Ansicht stellen (T-425, Vorgaben). */
+  if (!beitraege.length && !basis.some((el) => el.pos !== undefined)) return { layout: [...basis], origin, conflicts: [], positions: Object.fromEntries(still) };
   let layout = [...basis];
   const wer = new Map<string, string>();
   const rang = new Map<string, { spec: number; prio: number; quelle: string }>();
@@ -553,7 +559,10 @@ export function isContainer(el: Pick<LayoutElement, 'el'>): boolean {
  */
 export const TREE_ELEMENTS: readonly string[] = [...CONTAINER_ELEMENTS, 'tileGroup', 'quote', 'badges', 'edgeTable', 'table', 'structure', 'collection'];
 
-export function drawnByTree(el: Pick<LayoutElement, 'el'>): boolean {
+export function drawnByTree(el: Pick<LayoutElement, 'el'> & Partial<Pick<LayoutElement, 'path'>>): boolean {
+  /* „Linked article" mit Pfad (T-425, E-172): ein Ziel in einer Ansicht — das zeichnet der Baum;
+     ohne Pfad bleibt es die bearbeitbare `asField`-Seite. */
+  if (el.el === 'linked') return !!el.path?.length;
   return TREE_ELEMENTS.includes(el.el);
 }
 
@@ -797,6 +806,41 @@ export function patchElement(tree: readonly LayoutElement[], id: string, patch: 
   return neu;
 }
 
+/**
+ * **Eine Kopie mit freien Ids** (T-425, E-171): ein Element und alles darin,
+ * jede Id, die es im Baum schon gibt, wird `id-2`, `id-3` … — sonst stünde
+ * dasselbe Element zweimal da, und eine Schicht träfe beide.
+ */
+function frischeKopie(tree: readonly LayoutElement[], el: LayoutElement): LayoutElement {
+  const belegt: LayoutElement[] = [...kopie(tree)];
+  const neu = kopie([el])[0]!;
+  const umbenennen = (x: LayoutElement): void => {
+    x.id = freeElementId(belegt, x.id);
+    belegt.push({ id: x.id, el: x.el });
+    x.children?.forEach(umbenennen);
+    x.tabs?.forEach((t) => t.layout.forEach(umbenennen));
+  };
+  umbenennen(neu);
+  return neu;
+}
+
+/** **Duplizieren** (T-425): die Kopie gleich hinter dem Original, im selben Behälter. */
+export function duplicateElement(tree: readonly LayoutElement[], id: string): { tree: LayoutElement[]; id: string | null } {
+  const el = findElement(tree, id);
+  if (!el) return { tree: tree as LayoutElement[], id: null };
+  const neu = kopie(tree);
+  const f = finde(neu, id)!;
+  const doppel = frischeKopie(tree, el);
+  f.liste.splice(f.i + 1, 0, doppel);
+  return { tree: neu, id: doppel.id };
+}
+
+/** **Einfügen** (T-425): in den gewählten Behälter oder hinter das gewählte Element, sonst ans Ende — mit freien Ids. */
+export function pasteElement(tree: readonly LayoutElement[], el: LayoutElement, at: string | null): { tree: LayoutElement[]; id: string } {
+  const neu = frischeKopie(tree, el);
+  return { tree: insertElement(tree, neu, at), id: neu.id };
+}
+
 /** Eine freie Id im Baum: `basis`, `basis-2` … */
 export function freeElementId(tree: readonly LayoutElement[], basis: string): string {
   const ids = new Set<string>();
@@ -840,15 +884,24 @@ export function pathOptions(registry: Pick<Registry, 'relations' | 'interfaces'>
     const echt = (l ?? []).filter((t) => t !== '*' && t !== 'same');
     return echt.length === 1 ? echt[0]! : null;
   };
+  /* Wenige Ziele (`sells` → Item oder Collection, REQ-439): je Ziel ein Schritt,
+     damit `shopkeeper › Shop › sells › Item` wählbar bleibt; viele: einer für alle. */
+  const enden = (l: readonly string[] | undefined): (string | null)[] => {
+    const echt = (l ?? []).filter((t) => t !== '*' && t !== 'same');
+    const eins = ende(l);
+    return eins ? [eins] : echt.length > 1 && echt.length <= 4 ? echt : [null];
+  };
   const raus: PathOption[] = [];
   for (const def of Object.values(registry.relations)) {
     if (nennt(def.from)) {
-      const end = ende(def.to);
-      raus.push({ step: { relation: def.type, ...(end ? { type: end } : {}) }, label: `${def.label} → ${end ?? 'any'}`, end });
+      for (const end of enden(def.to)) {
+        raus.push({ step: { relation: def.type, ...(end ? { type: end } : {}) }, label: `${def.label} → ${end ?? 'any'}`, end });
+      }
     }
     if (nennt(def.to)) {
-      const end = ende(def.from);
-      raus.push({ step: { relation: def.type, dir: 'in', ...(end ? { type: end } : {}) }, label: `← ${def.label} (${end ?? 'any'})`, end });
+      for (const end of enden(def.from)) {
+        raus.push({ step: { relation: def.type, dir: 'in', ...(end ? { type: end } : {}) }, label: `← ${def.label} (${end ?? 'any'})`, end });
+      }
     }
   }
   return raus.sort((a, b) => a.label.localeCompare(b.label, 'en'));

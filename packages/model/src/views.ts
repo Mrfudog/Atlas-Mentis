@@ -205,7 +205,13 @@ export function applyAdjust(layout: readonly LayoutElement[], adjust: LayoutAdju
         }
         return el;
       });
-  const out = [...passe(layout), ...(adjust.extra ?? []).filter((x) => !drop.has(x.id))];
+  /* Ein Element mit einer Id, die es schon gibt, stellt dieses an Ort und Stelle anders ein
+     (T-425): die Szene zeigt das geerbte „Contains" als Liste, ohne es zu verdoppeln. */
+  const extra = (adjust.extra ?? []).filter((x) => !drop.has(x.id));
+  const ersetzt = new Map(extra.map((x) => [x.id, x]));
+  const basis = passe(layout).map((el) => ersetzt.get(el.id) ?? el);
+  const da = new Set(basis.map((el) => el.id));
+  const out = [...basis, ...extra.filter((x) => !da.has(x.id))];
   const order = adjust.order ?? [];
   if (!order.length) return out;
   const rang = (el: LayoutElement) => {

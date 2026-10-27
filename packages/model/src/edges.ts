@@ -102,6 +102,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'collectionMembers',
+    label: 'Collection members',
+    area: 'display',
+    does: 'adds an article to a collection by hand, next to what the collection’s rule takes, or with Exclude takes it out (T-425, E-174); the collection’s page lists its members',
+    uses: {
+      [M + 'collection.ts']: ['inCollection'],
+      [W + 'ansichten/baum.ts']: ['inCollection'],
+    },
+  },
+  {
     key: 'ruleMechanics',
     label: 'Rule mechanics',
     area: 'stack',
@@ -240,7 +250,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     area: 'character',
     does: 'decides which pieces a crafter may use for a recipe’s material when crafting starts — the item it names, any piece of a material group whose type, rarity and tags fit, or a substitute by a rule the campaign plays — and says why a piece does not fit (T-197)',
     uses: {
-      [M + 'substitutes.ts']: ['allowsSubstitution'],
+      [M + 'substitutes.ts']: ['allowsSubstitution', 'inCollection'],
     },
   },
   {
@@ -267,11 +277,11 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'shopPrice',
     label: 'Shop prices',
     area: 'character',
-    does: 'prices a shop’s wares for a buyer — the ware’s own price and mark-down, the shop’s, and the discounts of the shop, the factions controlling it and its shopkeepers to the buyer, their party or their faction from a rank',
+    does: 'prices a shop’s wares for a buyer — single items and every item of a collection it sells (REQ-439) —, the ware’s own price and mark-down, the shop’s, and the discounts of the shop, the factions controlling it and its shopkeepers to the buyer, their party or their faction from a rank',
     uses: {
-      [M + 'shop.ts']: ['controls', 'discount', 'memberOf', 'memberOfParty', 'sells', 'shopkeeper'],
+      [M + 'shop.ts']: ['buys', 'controls', 'discount', 'memberOf', 'memberOfParty', 'sells', 'shopkeeper'],
       /* Was der Betrachter vom Laden sehen darf: die Waren und wer ihn kontrolliert. */
-      [S + 'app.ts']: ['controls', 'sells'],
+      [S + 'app.ts']: ['buys', 'controls', 'sells'],
     },
   },
   {
@@ -291,9 +301,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'shopTrade',
     label: 'Buying and selling',
     area: 'character',
-    does: 'buys a ware into the inventory the character carries and sells a piece from it or a container inside — the counted quantity on the shop falls or rises, a loose stack of the same item grows, and a reserved piece or a container holding something stays (T-133)',
+    does: 'buys a ware into the inventory the character carries and sells a piece from it or a container inside at the shop’s buy rate, or the rate of the buys edge that names it or its collection (E-175) — the counted quantity on the shop falls or rises, a loose stack of the same item grows, and a reserved piece or a container holding something stays (T-133)',
     uses: {
-      [M + 'shop.ts']: ['carries', 'holds', 'sells'],
+      [M + 'shop.ts']: ['buys', 'carries', 'holds', 'sells'],
       [S + 'laden.ts']: ['carries', 'holds'],
     },
   },

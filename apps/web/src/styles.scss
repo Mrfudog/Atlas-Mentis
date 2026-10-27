@@ -268,3 +268,26 @@ button.begriff {
     padding-bottom: calc(3.75rem + var(--basis-unten, 0px) + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Design eines Elements (T-425, E-170 a, `muster/stil.ts`): die Hülle ist
+   unsichtbar, ihr Inhalt nimmt die Tokens an den Stellen, die gesetzt sind. */
+.el-hut {
+  display: contents;
+}
+.el-hut.mit-surface > * {
+  background: var(--el-surface);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.el-hut.mit-frame > * {
+  border: 2px solid var(--el-frame);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.el-hut.mit-text > * {
+  color: var(--el-text);
+}
+.el-hut.mit-head > * :is(h2, h3, h4, summary),
+.el-hut.mit-head > :is(h2, h3, h4) {
+  color: var(--el-head);
+}

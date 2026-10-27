@@ -490,6 +490,20 @@ export const relations: Record<string, RelationDef> = {
     to: ['Creature'],
   },
 
+  inCollection: {
+    type: 'inCollection',
+    label: 'in collection',
+    inverseLabel: 'members (by hand)',
+    means: 'An article belongs to a collection by hand, next to what its rule takes; with Exclude it is taken out even where the rule would take it.',
+    from: ['*'],
+    to: ['Collection'],
+    props: {
+      type: 'object',
+      properties: {
+        exclude: { type: 'boolean', title: 'Exclude', description: 'Takes the article out of the collection, even where its rule would take it (T-425, E-174).' },
+      },
+    },
+  },
   memberOf: {
     type: 'memberOf',
     label: 'member of',
@@ -603,9 +617,12 @@ export const relations: Record<string, RelationDef> = {
     type: 'sells',
     label: 'sells',
     inverseLabel: 'sold at',
-    means: 'A shop sells an item, with quantity, its own price and mark-down; the item lists where it is sold.',
+    means: 'A shop sells an item — or every item in a collection —, with quantity, its own price and mark-down; the item lists where it is sold.',
     from: ['Shop'],
-    to: ['Item'],
+    /* Eine Collection steht für ihre Mitglieder (REQ-439, E-175): „verkauft
+       einfache Waffen" ist eine Kante und nicht vierzig. Menge und eigener
+       Preis gelten dann nicht, Abschlag und `available` für jede. */
+    to: ['Item', 'Collection'],
     props: {
       type: 'object',
       properties: {
@@ -613,6 +630,29 @@ export const relations: Record<string, RelationDef> = {
         price: { type: 'number', min: 0, title: 'Price in copper (instead of list price)' },
         mod: { type: 'string', title: 'Price modifier (−1 gp, −10 %)' },
         available: { type: 'boolean', title: 'Available', default: true },
+      },
+    },
+  },
+
+  /**
+   * **Was ein Laden ankauft** (T-425, REQ-439, E-175 a): ein Gegenstand
+   * oder eine Collection, zu einem Satz in Prozent des Listenpreises
+   * (`rate`, leer: `Shop.buyRate`) und mit einem Abschlag (`mod`). Ohne
+   * jede `buys`-Kante kauft der Laden alles zu `Shop.buyRate`; mit ihnen
+   * nur das Genannte. Eine Kante auf den Gegenstand schlägt die Collection.
+   */
+  buys: {
+    type: 'buys',
+    label: 'buys',
+    inverseLabel: 'bought at',
+    means: 'A shop buys an item, or every item in a collection, at a rate of the list price; without any buys edge it buys everything at its buy rate.',
+    from: ['Shop'],
+    to: ['Item', 'Collection'],
+    props: {
+      type: 'object',
+      properties: {
+        rate: { type: 'number', min: 0, title: 'Buy rate (% of list price)', description: 'Empty: the buy rate of the shop, or 50 %.' },
+        mod: { type: 'string', title: 'Price modifier (−1 gp, −10 %)' },
       },
     },
   },

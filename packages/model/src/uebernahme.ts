@@ -355,7 +355,7 @@ export function withDependencies(all: ReadonlyMap<string, Entity>, ids: Iterable
 }
 
 /** Die Teile des Registers, die eine Übernahme kennt. */
-export const TRANSFER_REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'enums', 'units', 'vars', 'settings'] as const;
+export const TRANSFER_REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'enums', 'units', 'vars', 'settings', 'tokens'] as const;
 export type TransferRegistryPart = (typeof TRANSFER_REGISTRY_PARTS)[number];
 
 /** `interfaces:Spell` → Teil und Name; Unsinn → null. */

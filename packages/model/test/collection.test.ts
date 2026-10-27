@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
-import { collectionGroups, collectionHits, collectionView } from '../src/collection.js';
-import { incomingIndex } from '../src/viewScope.js';
+import { collectionGroups, collectionHits, collectionQuery, collectionRuleQuery, collectionView } from '../src/collection.js';
+import { incomingIndex, pickView } from '../src/viewScope.js';
 import { RegistrySchema } from '../src/validate.js';
 import type { Entity, LayoutElement } from '../src/types.js';
 
@@ -110,5 +110,93 @@ describe('Register (T-425)', () => {
     const c = liste.find((x) => x.el === 'collection');
     expect(c).toMatchObject({ path: [{ relation: 'partOf', dir: 'in' }], types: ['Scene', 'Encounter'], show: 'tiles' });
     expect(liste.some((x) => x.el === 'parts')).toBe(false);
+  });
+});
+
+describe('Collection fertig (T-425, Schnitt 3)', () => {
+  it('unranked: was mit Rang im Lesefluss steht, bleibt draussen', () => {
+    const kapitel: Entity = { ...frueh, id: 'sc_kapitel', relations: [{ type: 'partOf', to: 'ses_1', props: { rank: 1 } }] };
+    const r = incomingIndex([...alle, kapitel]);
+    const c = { get: (x: string) => [...alle, kapitel].find((e) => e.id === x), incoming: (x: string) => r.get(x) ?? [] };
+    expect(collectionHits(seedRegistry, session, el(), c).map((h) => h.entity.id)).toContain('sc_kapitel');
+    expect(collectionHits(seedRegistry, session, el({ unranked: true }), c).map((h) => h.entity.id)).not.toContain('sc_kapitel');
+  });
+
+  it('Quelle Filter: die gefundenen Artikel, eingeengt, geordnet, ohne den Artikel selbst', () => {
+    const f = el({ source: 'filter', path: undefined, types: ['Scene'], sort: { by: 'name' } });
+    const hits = collectionHits(seedRegistry, session, f, { ...ctx(), found: [session, ratten, miene, alter] });
+    expect(hits.map((h) => h.entity.id)).toEqual(['sc_alter', 'sc_miene']);
+  });
+
+  it('collectionQuery: was der Server für einen Filter gefragt wird', () => {
+    expect(collectionQuery(el({ source: 'filter', types: ['Scene', 'Encounter'], filter: { tags: ['rumour'], fields: ['Status.status:ready'], q: 'mine' }, limit: 6 }))).toEqual({
+      of: ['Scene', 'Encounter'],
+      tag: ['rumour'],
+      f: ['Status.status:ready'],
+      q: 'mine',
+      limit: 6,
+    });
+    expect(collectionQuery(el({ source: 'filter' }))).toEqual({ limit: 24 });
+    expect(collectionQuery(el())).toBeNull();
+  });
+
+  it('eine Tabelle zeigt ihre Treffer in der Übersicht', () => {
+    expect(collectionView(seedRegistry, el({ show: 'table' }), 'Scene')).toBe('overview');
+  });
+
+  it('die Prüfung behält Tabelle, Filter, Grenze und unranked', () => {
+    const e = el({ show: 'table', source: 'filter', filter: { tags: ['x'], fields: ['Status.status:ready'], q: 'a' }, limit: 5, unranked: true, props: ['rank'], fields: ['Status.status'] });
+    const r = RegistrySchema.parse({ ...seedRegistry, views: { ...seedRegistry.views, probe: { label: 'Probe', fields: 'all', group: 'probe', layout: [e] } } });
+    expect(r.views['probe']!.layout).toEqual([e]);
+  });
+});
+
+describe('Vorgaben (T-425, Schnitt 3)', () => {
+  const ids = (typ: string) => pickView({ id: 'x', interfaces: [typ], components: {} }, seedRegistry, 'full').layout.map((x) => x.id);
+  it('jede Geschichte zeigt, was ohne Rang zu ihr gehört — gleich nach ihren Teilen', () => {
+    for (const typ of ['Arc', 'Scene']) {
+      const l = ids(typ);
+      expect(l).toContain('st-contains');
+      expect(l.indexOf('st-contains')).toBe(l.indexOf('l-parts') + 1);
+    }
+    const c = pickView({ id: 'x', interfaces: ['Arc'], components: {} }, seedRegistry, 'full').layout.find((x) => x.id === 'st-contains');
+    expect(c).toMatchObject({ el: 'collection', path: [{ relation: 'partOf', dir: 'in' }], types: ['Story', 'Encounter'], unranked: true });
+  });
+  it('ein Ort zeigt seine Unterorte und wer dort lebt', () => {
+    expect(ids('Place')).toEqual(expect.arrayContaining(['o-within', 'o-residents']));
+  });
+  it('die Session behält ihre eigene', () => {
+    expect(ids('Session')).toContain('se-contains');
+    expect(ids('Session')).not.toContain('st-contains');
+  });
+});
+
+describe('Collection als Artikel (T-425, REQ-438, E-174)', () => {
+  const sammlung: Entity = {
+    id: 'col_simple',
+    interfaces: ['Collection'],
+    name: 'Simple melee weapons',
+    components: { ...id('Simple melee weapons', 'collection-0001'), Collection: { types: ['Weapon'], fields: ['Weapon.category:simple melee'], tags: ['core'] } },
+  };
+  it('collectionRuleQuery: die Regel der Sammlung als Frage an die Liste, bis zur Grenze der Liste (200)', () => {
+    expect(collectionRuleQuery(sammlung)).toEqual({ of: ['Weapon'], tag: ['core'], f: ['Weapon.category:simple melee'], limit: 200 });
+    expect(collectionRuleQuery({ ...sammlung, components: { Identity: { name: 'Leer' } } })).toBeNull();
+  });
+  it('Mitglieder: was die Regel findet, dazu von Hand, ohne die Ausgenommenen', () => {
+    const dolch: Entity = { id: 'w_dolch', interfaces: ['Weapon'], name: 'Dagger', components: id('Dagger', 'weapon-0001') };
+    const keule: Entity = { id: 'w_keule', interfaces: ['Weapon'], name: 'Club', components: id('Club', 'weapon-0002') };
+    const peitsche: Entity = { id: 'w_peitsche', interfaces: ['Weapon'], name: 'Whip', components: id('Whip', 'weapon-0003'), relations: [{ type: 'inCollection', to: 'col_simple' }] };
+    const r = incomingIndex([peitsche, { ...keule, relations: [{ type: 'inCollection', to: 'col_simple', props: { exclude: true } }] }]);
+    const el: LayoutElement = { id: 'm', el: 'collection', source: 'members', sort: { by: 'name' } };
+    const m = new Map([dolch, keule, peitsche].map((e) => [e.id, e]));
+    const hits = collectionHits(seedRegistry, sammlung, el, { get: (x) => m.get(x), incoming: (x) => r.get(x) ?? [], found: [dolch, keule] });
+    expect(hits.map((h) => h.entity.id)).toEqual(['w_dolch', 'w_peitsche']);
+  });
+  it('das Register kennt die Art, die Kante und zeigt die Mitglieder an der Sammlung', () => {
+    expect(seedRegistry.interfaces['Collection']).toMatchObject({ area: 'rules' });
+    expect(seedRegistry.relations['inCollection']).toMatchObject({ to: ['Collection'] });
+    expect(seedRegistry.interfaces['MaterialGroup']?.extends).toEqual(['Collection']);
+    const l = pickView({ id: 'c', interfaces: ['Collection'], components: {} }, seedRegistry, 'full').layout;
+    expect(l.find((x) => x.el === 'collection')).toMatchObject({ source: 'members' });
   });
 });

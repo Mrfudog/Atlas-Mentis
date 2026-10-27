@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import {
   collectionGroups,
   collectionHits,
+  collectionQuery,
+  collectionRuleQuery,
   collectionView,
   elementTakes,
   entityName,
@@ -17,8 +19,9 @@ import {
   typeChain,
   isLayer,
 } from '@nw/model';
-import type { CollectionGroup, Entity, IncomingEdge, LayoutElement, PathHit, Registry, VarScopes } from '@nw/model';
+import type { CollectionGroup, CollectionQuery, Entity, IncomingEdge, LayoutElement, PathHit, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
+import { Stil } from '../muster/stil';
 import { Text } from '../artikel/text';
 import { Statblock } from '../artikel/statblock';
 import { Zauber } from '../artikel/zauber';
@@ -90,9 +93,11 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
 @Component({
   selector: 'nw-ansichtsbaum',
   /* Die Kurzansicht kennt den Baum und der Baum die Kurzansicht (Collection, T-425): `forwardRef` löst den Kreis. */
-  imports: [NgTemplateOutlet, RouterLink, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild, Struktur, Sammelfach, forwardRef(() => Vorschau)],
+  imports: [NgTemplateOutlet, RouterLink, Stil, Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Form, Lesen, Tabellenzeilen, Bild, Struktur, Sammelfach, forwardRef(() => Vorschau)],
   template: `
     <ng-template #knoten let-el>
+      <!-- Das Design des Elements (T-425, E-170): Tokens an Kopf, Fläche, Rahmen, Text. -->
+      <div [nwStil]="el.style">
       @switch (el.el) {
         @case ('section') {
           <section class="abschnitt" [attr.data-el]="el.id">
@@ -245,6 +250,42 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
                         </article>
                       }
                     </div>
+                  } @else if (el.show === 'table') {
+                    <!-- Als Tabelle (T-425): Name, Art, die Werte der Kante und die genannten Felder. -->
+                    @if (tabelle(el, g.hits); as tb) {
+                      <table class="kantentabelle sammeltabelle">
+                        <thead>
+                          <tr>
+                            <th scope="col">Name</th>
+                            @if (!g.label) {
+                              <th scope="col">Type</th>
+                            }
+                            @for (p of el.props ?? []; track p) {
+                              <th scope="col">{{ propTitel(el, p) }}</th>
+                            }
+                            @for (k of tb.kopf; track k.ref) {
+                              <th scope="col">{{ k.label }}</th>
+                            }
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (z of tb.zeilen; track z.id) {
+                            <tr>
+                              <td><a class="kname" [routerLink]="['/artikel', z.id]">{{ z.name }}</a></td>
+                              @if (!g.label) {
+                                <td class="art">{{ z.art }}</td>
+                              }
+                              @for (p of el.props ?? []; track p) {
+                                <td>{{ alsText(z.props[p]) || '—' }}</td>
+                              }
+                              @for (w of z.werte; track w.ref) {
+                                <td>{{ w.wert || '—' }}</td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    }
                   } @else {
                     <ul class="sammelliste">
                       @for (h of g.hits; track h.entity.id) {
@@ -261,6 +302,20 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
                 }
               </section>
             }
+          }
+        }
+        @case ('linked') {
+          <!-- Ein verknüpfter Artikel (T-425, E-172): das erste Ziel der Kante, in der Ansicht, die das Element wählt. -->
+          @if (verknuepft(el); as v) {
+            <section class="verknuepft" [attr.data-el]="el.id" [attr.aria-label]="el.text || name(v)">
+              @if (el.text) {
+                <h3>{{ el.text }}</h3>
+              }
+              <article class="sammelkachel" nwSammelfach>
+                <a class="kname" [routerLink]="['/artikel', v.id]">{{ name(v) }}</a>
+                <nw-vorschau [id]="v.id" [ansicht]="el.view || 'quick'" [eingebettet]="true" [rueck]="false" />
+              </article>
+            </section>
           }
         }
         @case ('structure') {
@@ -332,6 +387,7 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
           }
         }
       }
+      </div>
     </ng-template>
 
     @for (el of baum(); track el.id) {
@@ -382,6 +438,10 @@ export class Ansichtsbaum {
         if (el.path?.length) {
           for (const id of this.erreichbar(el)) ids.add(id);
         }
+        /* Mitglieder von Hand (E-174): wer über `inCollection` hineinzeigt. */
+        if (el.el === 'collection' && el.source === 'members') {
+          for (const k of this.eingehend(this.artikel().id)) if (k.type === 'inCollection') ids.add(k.from);
+        }
         if (el.children) sammle(el.children);
       }
     };
@@ -393,6 +453,11 @@ export class Ansichtsbaum {
     effect(() => {
       const ids = this.brauche();
       if (ids.length) untracked(() => void this.bestand.holen(ids));
+    });
+    /* Filter-Sammlungen fragen den Server, wie das Kompendium — gesiebt dort (T-425). */
+    effect(() => {
+      const f = this.fragen();
+      untracked(() => f.forEach((x) => void this.frage(x)));
     });
   }
 
@@ -446,11 +511,85 @@ export class Ansichtsbaum {
   protected sammlung(el: LayoutElement): Sammlung | null {
     const r = this.reg();
     if (!r || this.tiefe > 0) return null;
+    const frage = this.frageVon(el);
+    const voll = this.bestand.voll();
+    const found = frage
+      ? (this.gefunden().get(JSON.stringify(frage)) ?? []).map((id) => voll.get(id)).filter((e): e is Entity => !!e)
+      : undefined;
     const hits = collectionHits(r, this.artikel(), el, {
+      get: (id) => (id === this.artikel().id ? this.artikel() : voll.get(id)),
+      incoming: (id) => this.eingehend(id),
+      ...(found ? { found } : {}),
+    });
+    return { anzahl: hits.length, gruppen: collectionGroups(r, hits, el) };
+  }
+
+  /** Eine Gruppe als Tabelle: die Spalten sind die Felder, die irgendein Treffer füllt — in der Reihenfolge des ersten. */
+  protected tabelle(el: LayoutElement, hits: readonly PathHit[]): { kopf: Wert[]; zeilen: { id: string; name: string; art: string; props: Record<string, unknown>; werte: Wert[] }[] } | null {
+    const r = this.reg();
+    if (!r || !hits.length) return null;
+    const mitFeldern = el.fields !== undefined;
+    const roh = hits.map((h) => ({ h, werte: mitFeldern ? this.werte(r, h.entity, el) : [] }));
+    const kopf: Wert[] = [];
+    for (const z of roh) for (const w of z.werte) if (!kopf.some((k) => k.ref === w.ref)) kopf.push({ ...w, wert: '' });
+    return {
+      kopf,
+      zeilen: roh.map(({ h, werte }) => ({
+        id: h.entity.id,
+        name: entityName(h.entity),
+        art: this.artName(h.entity),
+        props: h.props,
+        werte: kopf.map((k) => werte.find((w) => w.ref === k.ref) ?? { ...k, wert: '' }),
+      })),
+    };
+  }
+
+  /** Die Frage einer Sammlung: ihr Filter, oder bei `members` die Regel der Collection, an der sie steht (E-174). */
+  private frageVon(el: LayoutElement): CollectionQuery | null {
+    return el.source === 'members' ? collectionRuleQuery(this.artikel()) : collectionQuery(el);
+  }
+
+  /** Was die Filter-Sammlungen gefunden haben, je Frage (T-425): die Ids, die der Server schickte. */
+  private readonly gefunden = signal<ReadonlyMap<string, string[]>>(new Map());
+  private readonly gefragt = new Set<string>();
+
+  /** Die Fragen der Filter-Sammlungen in diesem Baum. */
+  private readonly fragen = computed(() => {
+    const raus: CollectionQuery[] = [];
+    const sammle = (els: readonly LayoutElement[]): void => {
+      for (const el of els) {
+        const f = el.el === 'collection' ? this.frageVon(el) : null;
+        if (f) raus.push(f);
+        if (el.children) sammle(el.children);
+      }
+    };
+    if (this.tiefe === 0) sammle(this.baum());
+    return raus;
+  });
+
+  private async frage(f: CollectionQuery): Promise<void> {
+    const key = JSON.stringify(f);
+    if (this.gefragt.has(key)) return;
+    this.gefragt.add(key);
+    try {
+      const l = await this.bestand.liste(f);
+      const ids = l.rows.map((z) => z.id);
+      await this.bestand.holen(ids);
+      this.gefunden.update((m) => new Map(m).set(key, ids));
+    } catch {
+      this.gefragt.delete(key);
+    }
+  }
+
+  /** Das Ziel eines „Linked article" mit Pfad: das erste, das der Betrachter bekommt (eine Stufe wie die Collection). */
+  protected verknuepft(el: LayoutElement): Entity | null {
+    const r = this.reg();
+    if (!r || this.tiefe > 0 || !el.path?.length) return null;
+    const hits = collectionHits(r, this.artikel(), { ...el, sort: el.sort ?? { by: 'name' } }, {
       get: (id) => (id === this.artikel().id ? this.artikel() : this.bestand.voll().get(id)),
       incoming: (id) => this.eingehend(id),
     });
-    return { anzahl: hits.length, gruppen: collectionGroups(r, hits, el) };
+    return hits[0]?.entity ?? null;
   }
 
   /** In welcher Ansicht ein Treffer steht: das Element wählt, je Zielart (E-172). */
