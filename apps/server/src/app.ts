@@ -48,6 +48,10 @@ import {
   campaignLayer,
   campaignOf,
   isReady,
+  reachableState,
+  stateGapMessage,
+  stateOf,
+  stateRefusal,
   primaryInterface,
   seesUnfinished,
   tableRole,
@@ -4144,9 +4148,10 @@ export function buildApp({
         /* Ohne Stand in der Art gibt es nichts, worauf er fallen könnte. */
         const traegtStand = typeChain(registry, primaryInterface(entity)).includes(STATUS_COMPONENT);
         if (warFertig && vorher && traegtStand && kern(vorher) !== kern(entity)) {
+          /* Auf den höchsten Stand bis `prepared`, den er erreicht (E-178). */
           entity.components = {
             ...(entity.components ?? {}),
-            [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: 'prepared' },
+            [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: reachableState(registry, entity, 'prepared') },
           };
           zurueck = { entity: vorher, at: typeof vorher.updatedAt === 'string' ? vorher.updatedAt : new Date().toISOString() };
         } else if (!warFertig && isReady(entity)) {
@@ -4168,7 +4173,7 @@ export function buildApp({
       throw error;
     }
     if ('issues' in ergebnis) {
-      return { code: 422, body: { error: 'Validierung fehlgeschlagen', issues: ergebnis.issues } };
+      return { code: 422, body: { error: abgelehnt(ergebnis.issues), issues: ergebnis.issues } };
     }
     await repo.appendEvent('entity.written', entity.id, {
       interfaces: entity.interfaces,
@@ -4194,6 +4199,15 @@ export function buildApp({
    * Instanz wird aufgelöst geprüft und ausgedünnt gespeichert. `vorher`
    * läuft nach der Prüfung und vor dem Schreiben.
    */
+  /**
+   * **Was die Maske bei einer Ablehnung sagt**: fehlt die Pflicht eines
+   * Stands (T-425, E-178), deren Satz — er sagt, was zu tun ist —, sonst
+   * die allgemeine Meldung mit den Einzelheiten in `issues`.
+   */
+  function abgelehnt(issues: readonly { code: string; message: string }[]): string {
+    return issues.find((i) => i.code === 'state_gaps')?.message ?? 'Validierung fehlgeschlagen';
+  }
+
   async function schreibeGeprueft(
     entity: Entity,
     vorher?: () => Promise<void>,
@@ -4225,7 +4239,16 @@ export function buildApp({
       zuSchreiben = thinInstance(alle, entity);
     }
 
-    const issues = [...validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen }), ...doppelteWahlen(liste.find((e) => e.id === entity.id), entity, liste)];
+    const davor = liste.find((e) => e.id === entity.id);
+    /* **Pflicht je Stand** (T-425, E-178): wer den Stand hebt, erfüllt die
+       Pflicht des neuen; wer ihn hält, behält ihn (die Werkbank sagt, was
+       fehlt). Geprüft am aufgelösten Artikel, wie alles andere. */
+    const luecken = stateRefusal(registry, davor && isInstance(davor) ? resolveInstance(new Map(liste.map((e) => [e.id, e])), davor) : davor, zuPruefen);
+    const issues = [
+      ...validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen }),
+      ...doppelteWahlen(davor, entity, liste),
+      ...(luecken ? [{ code: 'state_gaps' as const, component: STATUS_COMPONENT, property: 'status', message: stateGapMessage(stateOf(zuPruefen) ?? '', luecken) }] : []),
+    ];
     if (issues.length) return { issues };
     if (vorher) await vorher();
     return {
@@ -4283,7 +4306,7 @@ export function buildApp({
     };
     const ergebnis = await schreibeGeprueft(neu, () => repo.dropReadyStand(e.id));
     if ('issues' in ergebnis) {
-      return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
+      return reply.code(422).send({ error: abgelehnt(ergebnis.issues), issues: ergebnis.issues });
     }
     await repo.appendEvent('entity.ready', e.id, { by: user?.id ?? null });
     return ergebnis.stored;

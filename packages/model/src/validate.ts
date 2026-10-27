@@ -51,6 +51,8 @@ const propertySchema = z
     target: linkTargetSchema.optional(),
     alwaysEdit: z.boolean().optional(),
     prominent: z.boolean().optional(),
+    /* Pflicht erst für einen Stand (E-177). */
+    requiredFor: z.enum(['prepared', 'ready']).optional(),
     description: z.string().optional(),
     glossary: z.string().optional(),
     editOnly: z.boolean().optional(),
@@ -182,6 +184,8 @@ export const InterfaceDefSchema = z.object({
   units: z.enum(['imperial', 'metric', 'both']).optional(),
   /* `Typ.feld` → Beschriftung. Eine Beschriftung und keine Feldliste. */
   titles: z.record(z.string(), z.string()).optional(),
+  /* `Typ.feld` oder `edge:<Art>` → Stand, ab dem es Pflicht ist (E-177). */
+  requiredFor: z.record(z.string(), z.enum(['prepared', 'ready', 'none'])).optional(),
   /* `Typ.feld` → Ziel (T-119): wie `target` am Feld, nur für diese Art. */
   targets: z.record(z.string(), linkTargetSchema).optional(),
   /* Wie ein Artikel dieser Art als Marker steht (T-214). */
@@ -215,6 +219,7 @@ export const RelationDefSchema = z.object({
   to: z.array(z.string()).optional(),
   owned: z.boolean().optional(),
   cardinality: z.enum(['one', 'many']).optional(),
+  requiredFor: z.enum(['prepared', 'ready']).optional(),
   /* An welchem Ende die Kante sich wie ein Feld liest. */
   asField: z.enum(['from', 'to']).optional(),
   section: z.string().optional(),
@@ -321,6 +326,9 @@ export interface ValidationIssue {
     /* Zwei Einträge eines Feldes mit derselben `id` (REQ-238): was an
        der Id hängt, wüsste nicht, welcher gemeint ist. */
     | 'entry_id_twice'
+    /* Ein Stand wird gesetzt, dessen Pflicht fehlt (T-425, E-178,
+       `stateRefusal`) — gemeldet vom Server, der den Stand davor kennt. */
+    | 'state_gaps'
     /* Eine Wahl der Figur nimmt, was sie schon hat (T-299,
        `newChoiceDuplicates`) — gemeldet vom Server, nicht von hier. */
     | 'choice_duplicate';

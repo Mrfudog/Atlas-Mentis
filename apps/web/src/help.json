@@ -404,7 +404,8 @@
           "text": [
             "The types of articles, their fields, edges, lists and views. A new type is a new row — create it here. Before something is removed, the registry counts what uses it.",
             "A type’s page has chapters — This type, Own fields, Inherited, Edges from here and Views. On a phone they are tabs; on a wider screen the fields stand on the left, the short settings and the edges on the right.",
-            "“How it works” explains the model with a worked example."
+            "“How it works” explains the model with a worked example.",
+            "A field or an edge kind can be required always, or only for a state: “to be prepared” or “to be ready”. An idea may go without it, but the article can only be set to that state once it is filled; the workbench lists articles at a state that miss something under Ready with gaps."
           ]
         },
         {

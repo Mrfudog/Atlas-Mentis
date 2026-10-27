@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-27-required-for-a-state",
+      "date": "2026-10-27",
+      "title": "Fields required only for prepared or ready",
+      "text": "In the registry a field or edge kind can now be required only to be prepared or to be ready: ideas stay quick, and an article cannot be set to that state while something is missing — the message says what. The workbench lists articles under Ready with gaps.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-26-shop-collections",
       "date": "2026-10-26",
       "title": "Shops sell and buy by collection",

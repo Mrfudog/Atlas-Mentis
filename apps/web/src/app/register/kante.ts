@@ -97,6 +97,18 @@ import { RegFacette } from './facette';
           </select>
         </label>
         <p class="hint">At most one: the form replaces the edge instead of adding a second.</p>
+        <label class="f">
+          <span>Required</span>
+          <select [disabled]="!darf()" (change)="setzen({ requiredFor: $any($event.target).value || undefined })">
+            <option value="" [selected]="!d.requiredFor">no</option>
+            <option value="prepared" [selected]="d.requiredFor === 'prepared'">to be prepared</option>
+            <option value="ready" [selected]="d.requiredFor === 'ready'">to be ready</option>
+          </select>
+        </label>
+        <p class="hint">
+          An article at the start of the edge can only be set to that state once it has at least one — a scene
+          needs a place before it is ready. An idea may go without; a type can change this for itself.
+        </p>
         <label class="f haken">
           <input type="checkbox" [checked]="!!d.owned" [disabled]="!darf()"
             (change)="setzen({ owned: $any($event.target).checked || undefined })" />

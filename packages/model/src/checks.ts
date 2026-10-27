@@ -24,6 +24,7 @@ import type { Entity, Registry } from './types.js';
 import { stageBases, validateEntity } from './validate.js';
 import { viewConflicts } from './viewScope.js';
 import { MIN_CONTRAST, tokenContrast } from './tokens.js';
+import { stateGaps, stateOf } from './readiness.js';
 
 export interface CheckHit {
   /** Peg-Id — der Weg zum Artikel (`/artikel/:id`). */
@@ -381,6 +382,24 @@ export const CHECKS: Check[] = [
             : `“${k.element}” shares position ${k.position} with ${k.sources.join(', ')}`,
         registry: registerOrt('views', k.winner ?? k.sources.find((s) => !s.startsWith('type ') && !s.startsWith('view ')) ?? k.group),
       }));
+    },
+  },
+  {
+    /* T-425, E-178: ein Artikel trägt einen Stand, dessen Pflicht er nicht
+       (mehr) erfüllt — gesetzt vor der Pflicht oder danach geleert. Er
+       behält den Stand; hier steht, was fehlt. */
+    key: 'readyWithGaps',
+    label: 'Ready with gaps',
+    description: 'Articles at prepared or ready that miss a field or edge their type requires for that state (requiredFor). They keep their state; fill in what is missing, or set a lower state.',
+    run({ registry, entities }) {
+      const raus: CheckHit[] = [];
+      for (const e of entities) {
+        const stand = stateOf(e);
+        if (!stand || isInstance(e)) continue;
+        const luecken = stateGaps(registry, e, stand);
+        if (luecken.length) raus.push(hit(e, `${stand}, missing: ${luecken.map((g) => g.label).join(', ')}`));
+      }
+      return raus;
     },
   },
   {

@@ -8,40 +8,8 @@
  * sie nicht. Desktop und Telefon schreiben das Register nebeneinander, also
  * wird nach dem Schreiben nachgesehen und notfalls wiederholt.
  */
-import { mkdirSync, rmSync, statSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type { APIRequestContext } from '@playwright/test';
-import { test, expect } from './hilfen';
-
-/* Das Register wird als Ganzes geschrieben: zwei Projekte, die zugleich
-   lesen und schreiben, verlören die Änderung des anderen. Eine Sperre im
-   Dateisystem macht den Abschnitt nacheinander. */
-const SPERRE = join(tmpdir(), 'atlas-e2e-register-sperre');
-async function mitSperre<T>(fn: () => Promise<T>): Promise<T> {
-  const bis = Date.now() + 120_000;
-  for (;;) {
-    try {
-      mkdirSync(SPERRE, { recursive: false });
-      break;
-    } catch {
-      /* Eine Sperre aus einem abgebrochenen Lauf gilt nach zwei Minuten als frei. */
-      try {
-        if (Date.now() - statSync(SPERRE).mtimeMs > 120_000)
-          rmSync(SPERRE, { recursive: true, force: true });
-      } catch {
-        /* schon weg */
-      }
-      if (Date.now() > bis) throw new Error('Registersperre nicht frei');
-      await new Promise((r) => setTimeout(r, 250));
-    }
-  }
-  try {
-    return await fn();
-  } finally {
-    rmSync(SPERRE, { recursive: true, force: true });
-  }
-}
+import { test, expect, mitSperre } from './hilfen';
 
 type Views = Record<string, Record<string, unknown>>;
 

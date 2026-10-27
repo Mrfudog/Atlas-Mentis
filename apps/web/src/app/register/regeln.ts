@@ -284,6 +284,7 @@ export function fieldMentions(registry: Registry, owner: string, key: string): s
   }
   for (const [t, def] of Object.entries(registry.interfaces)) {
     if (def.titles?.[ref]) out.push(`${t} renames it`);
+    if (def.requiredFor?.[ref]) out.push(`${t} sets when it is required`);
     if (Object.values(def.views ?? {}).some((l) => layoutNennt(l, ref))) out.push(`${t} arranges it in a view`);
     for (const [k, p] of Object.entries(def.schema?.properties ?? {})) {
       if (enumRefs(p).includes(ref)) out.push(`${t}.${k} takes its choices`);
@@ -311,6 +312,11 @@ export function removeField(ifs: Ifs, owner: string, key: string): void {
     if (def.titles?.[ref] !== undefined) {
       delete def.titles[ref];
       if (!Object.keys(def.titles).length) delete def.titles;
+    }
+    /* Pflicht je Stand je Art (T-425, E-177) nennt das Feld ebenso. */
+    if (def.requiredFor?.[ref] !== undefined) {
+      delete def.requiredFor[ref];
+      if (!Object.keys(def.requiredFor).length) delete def.requiredFor;
     }
   }
 }
@@ -341,6 +347,10 @@ export function renameField(ifs: Ifs, owner: string, alt: string, neu: string): 
     if (def.titles?.[vorher] !== undefined) {
       def.titles[nachher] = def.titles[vorher]!;
       delete def.titles[vorher];
+    }
+    if (def.requiredFor?.[vorher] !== undefined) {
+      def.requiredFor[nachher] = def.requiredFor[vorher]!;
+      delete def.requiredFor[vorher];
     }
     for (const l of Object.values(def.views ?? {})) layoutUmbenennen(l, vorher, nachher);
     for (const p of Object.values(def.schema?.properties ?? {})) {

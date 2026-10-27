@@ -1233,6 +1233,16 @@ fertig**: eine Ebene oder ein Regelteil ohne Status-Karte verschwände sonst
 für alle Spielenden, und niemand wüsste, warum — dieselbe Überlegung wie bei
 `public` als Vorgabe.
 
+**Pflicht hat zwei Stufen** (T-425, REQ-441, E-177). Name und Nummer sind
+immer Pflicht; eine Beschreibung oder ein Ort einer Szene erst, wenn sie
+`prepared` oder `ready` wird. Wer eine Idee festhält, soll nicht erst
+zwanzig Felder füllen — und was die Runde sieht, soll vollständig sein.
+Darum steht `requiredFor` am Feld und nicht in einer Liste je Stand: ein
+Feld, das morgen dazukommt, bringt seine Pflicht mit. **Geprüft wird beim
+Heben des Stands, nicht bei jedem Speichern** (E-178): ein fertiger Artikel,
+dem jemand später ein Feld leert, verschwände sonst beim nächsten Tippfehler
+aus der Runde. Er bleibt fertig, und die Werkbank sagt, was fehlt.
+
 **Ändert eine Spielerin etwas Fertiges, gilt für die anderen der fertige
 Stand weiter** (E-012, D74). Er fällt auf `prepared`, und der Stand davor
 bleibt als Kopie am Server (`entity_ready`) — nicht als zweite Karte im
