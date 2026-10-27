@@ -1,4 +1,4 @@
--- Ein Formmodul, nicht zwei (T-394, D91, Entscheid der Leitung 26.10.).
+-- Ein Formmodul, nicht zwei (T-394, D96, Entscheid der Leitung 26.10.).
 --
 -- Die Vorgabeformen stehen in der Ebene der Mechanik Grid (D90); die
 -- Mechanik „Default shapes“ (`ly_rm_shapes`) brachte daneben eine zweite,

@@ -1834,7 +1834,21 @@ export function buildApp({
         return !w || !gespielt.has(w);
       });
     };
-    lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then(async (gesiebt) => {
+    /* **Mit Vorgabeform** (T-394): Form und Stapel eines Gegenstands
+       stehen im Modul, nicht am Artikel — der Index liest sie wie die
+       Artikelseite, sonst fände „hat Shape" (`@has:Item.rows`) und die
+       Spalte Shape keinen Gegenstand, dessen Form aus Grid kommt. */
+    const vf = await vorgabeformen();
+    const projektion = listProjection(registry);
+    const istGegenstand = new Map<string, boolean>();
+    const mitForm = (e: Entity): Entity => {
+      if (!vf) return projektion(e);
+      const typ = primaryInterface(e);
+      let ja = istGegenstand.get(typ);
+      if (ja === undefined) istGegenstand.set(typ, (ja = typeChain(registry, typ).includes('Item')));
+      return projektion(ja ? withDefaultShape(e, vf.idx, vf).entity : e);
+    };
+    lauf = sieve(request, stand.alle, stand.map, mitForm, stapel).then(async (gesiebt) => {
       /* Herkunft (T-382): Zeiten aus dem ungesiebten Bestand, wer hinzufügte
          neben dem Konto. Nur für Zeilen, die ohnehin dastehen. */
       const [creators, konten] = await Promise.all([repo.creators(), repo.listUsers()]);

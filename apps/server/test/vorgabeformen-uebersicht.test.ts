@@ -215,3 +215,28 @@ describe('am Raster (T-394)', () => {
     expect(u.items.find((i) => i.id === 'sword')).toMatchObject({ rows: ['#', '#'], source: 'group', group: 'BL' });
   });
 });
+
+describe('in der Liste (T-394)', () => {
+  it('„hat Shape" findet Gegenstände, deren Form aus dem Modul kommt — für Leitung und Spielerin', async () => {
+    const t = await tisch({
+      kampagne: 'camp',
+      artikel: [
+        { id: 'camp', interfaces: ['Campaign'], components: ident('Runde', 'campaign-0001'), relations: [{ id: 'a1', type: 'activates', to: 'ly_rm_grid', props: { order: 10 } }] },
+        ding('sword', 'Sword', 10),
+        ding('stone', 'Stone', 14),
+      ],
+      konten: { Admin: { admin: true }, Mira: { roles: { camp: 'gm' } }, Sela: { roles: { camp: 'player' } } },
+    });
+    await regelsystemeNachziehen(t.repo);
+    await t.als('Admin', 'PUT', '/api/inventory/shapes', {
+      payload: { layer: 'ly_rm_grid', shapeGroups: [{ id: 'BL', name: 'Blades', rows: ['#', '#'] }], shapeItems: [{ id: 'sword', group: 'BL' }] },
+    });
+    const f = (s: string) => `f=${encodeURIComponent(`@has:${s}`)}`;
+    for (const wer of ['Mira', 'Sela']) {
+      const mit = await t.json<{ rows: { id: string }[] }>(wer, 'GET', `/api/list?type=Item&${f('Item.rows')}`);
+      expect(mit.rows.map((r) => r.id), wer).toEqual(['sword']);
+      const ohne = await t.json<{ rows: { id: string }[] }>(wer, 'GET', `/api/list?type=Item&${f('!Item.rows')}`);
+      expect(ohne.rows.map((r) => r.id), wer).toEqual(['stone']);
+    }
+  });
+});

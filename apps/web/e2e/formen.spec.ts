@@ -3,7 +3,8 @@
  * und legt eine Gruppe an; ein „+1“-Gegenstand erbt die Form seines
  * Referenzgegenstands. Die Übersicht unter /inventory/shapes zeigt Gruppe
  * und Herkunft, das Element Shape am Gegenstand sagt, woher seine Form
- * kommt — für die Leitung und die Spielerin, auf dem Desktop wie am Telefon.
+ * kommt, und der Filter „hat Shape“ der Liste findet ihn — für die
+ * Leitung und die Spielerin, auf dem Desktop wie am Telefon.
  */
 import type { Page } from '@playwright/test';
 import { test, expect } from './hilfen';
@@ -43,5 +44,12 @@ test('an item takes its shape from its reference item, and the overview says so'
     const herkunft = seite.locator('[data-ref="shape-origin"]');
     await expect(herkunft).toContainText('Shape from its reference item');
     await expect(herkunft.getByRole('link', { name: schwert.name })).toBeVisible();
+
+    /* In der Liste: „hat Shape" findet beide, auch den, dessen Form nur
+       vom Referenzgegenstand kommt — gerechnet wie am Artikel. */
+    await seite.goto(`/compendium?type=Item&f=${encodeURIComponent('@has:Item.rows')}`);
+    const tabelle = seite.getByRole('table');
+    await expect(tabelle.getByText(plus.name, { exact: true })).toBeVisible();
+    await expect(tabelle.getByText(schwert.name, { exact: true })).toBeVisible();
   }
 });
