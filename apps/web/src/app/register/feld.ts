@@ -122,14 +122,18 @@ import {
 
         <label class="f">
           <span>Required</span>
-          <select [disabled]="!darf() || !!p.derived" (change)="pflichtSetzen($any($event.target).value === '1')">
-            <option value="" [selected]="!pflicht()">no</option>
-            <option value="1" [selected]="pflicht()">yes</option>
+          <select [disabled]="!darf() || !!p.derived" (change)="pflichtWahl($any($event.target).value)">
+            <option value="" [selected]="!pflicht() && !p.requiredFor">no</option>
+            <option value="always" [selected]="pflicht()">always</option>
+            <option value="prepared" [selected]="!pflicht() && p.requiredFor === 'prepared'">to be prepared</option>
+            <option value="ready" [selected]="!pflicht() && p.requiredFor === 'ready'">to be ready</option>
           </select>
         </label>
         <p class="hint">
-          A required field must be filled before an article is saved — every article of a type that takes
-          {{ label(owner()) }}.
+          <b>Always</b>: the field must be filled before an article is saved — every article of a type that takes
+          {{ label(owner()) }}. <b>To be prepared</b> or <b>to be ready</b>: an idea may stay empty, but the article
+          can only be set to that state once the field is filled; one that already has the state keeps it, and the
+          workbench lists it under Ready with gaps. A type can change this for itself.
         </p>
 
         @if (!p.derived && !p.readOnly) {
@@ -554,6 +558,16 @@ export class RegFeld {
       'Change it',
       () => this.feldAendern((p) => setFieldKind(p, kind)),
     );
+  }
+
+  /** Pflicht: nie, immer (`required`) oder erst für einen Stand (`requiredFor`, T-425, E-177). */
+  protected async pflichtWahl(wert: string): Promise<void> {
+    const stand = wert === 'prepared' || wert === 'ready' ? wert : undefined;
+    /* Nacheinander: zwei Registerschreibungen zugleich überschrieben sich. */
+    if ((this.reg()?.interfaces[this.owner()]?.schema?.properties[this.key()]?.requiredFor ?? undefined) !== stand) {
+      await this.setzen({ requiredFor: stand });
+    }
+    if (this.pflicht() !== (wert === 'always')) this.pflichtSetzen(wert === 'always');
   }
 
   protected pflichtSetzen(an: boolean): void {

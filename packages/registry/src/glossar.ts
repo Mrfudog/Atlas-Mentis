@@ -81,6 +81,16 @@ const APP: AppTerm[] = [
     see: '/registry',
   },
   {
+    term: 'Required for a state',
+    aliases: ['requiredFor', 'Ready with gaps'],
+    sort: 'app',
+    definition: 'A field or edge kind that must be filled before an article can be set to prepared or ready — an idea may go without it. Next to it, a field can be required always.',
+    effect: 'Checked when the state is raised: the save is refused with a message that names what is missing. An article that already has the state keeps it; the workbench lists it under Ready with gaps. A player’s change to a ready article falls back to the highest state it meets.',
+    example: 'Scenes need a description to be ready: a scene idea saves without one, but Mark ready says “To set ready, fill in: Description.”',
+    translations: { de: 'Pflicht je Stand' },
+    see: '/registry',
+  },
+  {
     term: 'Buy rate',
     aliases: ['buys', 'Buyback'],
     sort: 'app',

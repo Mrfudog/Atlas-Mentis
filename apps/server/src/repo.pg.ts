@@ -50,6 +50,8 @@ export class PgRepository implements Repository {
         targets: (r['targets'] as InterfaceDef['targets']) ?? undefined,
         /* Wie Artikel dieser Art als Marker stehen (T-214, Migration 133). */
         markerView: (r['marker_view'] as InterfaceDef['markerView']) ?? undefined,
+        /* Pflicht je Stand für diese Art (T-425, E-177, Migration 151). */
+        ...(r['required_for'] ? { requiredFor: r['required_for'] as InterfaceDef['requiredFor'] } : {}),
       };
     }
     for (const r of relations.rows) {
@@ -67,6 +69,8 @@ export class PgRepository implements Repository {
         /* Was sie bedeutet und bewirken soll (T-111, Migration 045). */
         means: (r['means'] as string | null) ?? undefined,
         intended: (r['intended'] as string | null) ?? undefined,
+        /* Pflicht für einen Stand am Anfang der Kante (T-425, E-180, Migration 151). */
+        ...(r['required_for'] ? { requiredFor: r['required_for'] as RelationDef['requiredFor'] } : {}),
         /* Als Filter in der Liste (T-174): `false` oder `{label, order}`. */
         ...(r['facet'] !== null && r['facet'] !== undefined ? { facet: r['facet'] as RelationDef['facet'] } : {}),
         /* Was die Kante selbst trägt — geschrieben wurde es immer, gelesen
@@ -140,6 +144,10 @@ export class PgRepository implements Repository {
           if (def.markerView) {
             await client.query('update interface_def set marker_view = $2 where name = $1', [name, def.markerView]);
           }
+          /* `required_for` (T-425, Migration 151) ebenso nur, wo die Art es sagt. */
+          if (def.requiredFor && Object.keys(def.requiredFor).length) {
+            await client.query('update interface_def set required_for = $2 where name = $1', [name, JSON.stringify(def.requiredFor)]);
+          }
         }
       } else if (part === 'relations') {
         await client.query('delete from relation_def');
@@ -155,6 +163,9 @@ export class PgRepository implements Repository {
              schreibt dieselbe Zeile auch in eine Datenbank vor 073. */
           if (def.facet !== undefined) {
             await client.query('update relation_def set facet = $2 where type = $1', [type, JSON.stringify(def.facet)]);
+          }
+          if (def.requiredFor) {
+            await client.query('update relation_def set required_for = $2 where type = $1', [type, def.requiredFor]);
           }
         }
       } else if (part === 'views') {

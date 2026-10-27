@@ -182,6 +182,14 @@ export interface PropertySchema {
    */
   prominent?: boolean;
   /**
+   * **Pflicht erst für einen Stand** (T-425, REQ-441, E-177): `prepared`
+   * oder `ready`. Ein Artikel lässt sich erst auf diesen Stand setzen,
+   * wenn das Feld gefüllt ist; eine Idee bleibt schnell. `required` gilt
+   * daneben immer. Ein Typ darf es für sich überschreiben
+   * (`InterfaceDef.requiredFor`).
+   */
+  requiredFor?: RequiredState;
+  /**
    * **Was das Feld meint**, in einem Satz, auf Englisch — gezeigt in der
    * Auswahl „+ Add field“ (T-195). Die Beschriftung sagt, wie es heisst;
    * wer ein Feld zum ersten Mal hinzufügt, will wissen, wofür.
@@ -272,6 +280,9 @@ export interface LinkTarget {
   where?: { component: string; property: string; value?: unknown };
 }
 
+/** Ein Stand, für den etwas Pflicht sein kann (E-177): `idea` braucht nie mehr als `required`. */
+export type RequiredState = 'prepared' | 'ready';
+
 export interface ObjectSchema {
   type: 'object';
   required?: string[];
@@ -352,6 +363,14 @@ export interface InterfaceDef {
    */
   titles?: Record<string, string>;
   /**
+   * **Pflicht je Stand für diese Art** (T-425, E-177): `Typ.feld` oder
+   * `edge:<Kantenart>` → `prepared`, `ready` oder `none` (hebt eine
+   * geerbte Pflicht auf). Die `extends`-Kette hoch geerbt wie `titles`;
+   * die genaueste Art gewinnt. Die Beschreibung muss an der Szene für
+   * `ready` dastehen, an einer Regel nicht — ohne zweites Feld.
+   */
+  requiredFor?: Record<string, RequiredState | 'none'>;
+  /**
    * **Wohin ein geerbtes Feld hier zeigen soll** (T-119): `Typ.feld` →
    * Ziel, aufgelöst die `extends`-Kette hoch wie `titles`. Eine Karte nennt
    * `Image.image` und bietet dort Kartenbilder an, jeder andere Artikel
@@ -420,6 +439,12 @@ export interface RelationDef {
   /** The target is deleted with the source. */
   owned?: boolean;
   cardinality?: 'one' | 'many';
+  /**
+   * **Pflicht erst für einen Stand** (T-425, E-180): der Artikel am
+   * Anfang der Kante braucht mindestens eine, bevor er `prepared` bzw.
+   * `ready` wird. Je Art überschreibbar mit `edge:<Kantenart>`.
+   */
+  requiredFor?: RequiredState;
   /**
    * **An welchem Ende diese Verbindung sich wie ein Feld liest** — `from`
    * oder `to`.

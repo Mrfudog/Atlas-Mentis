@@ -638,6 +638,12 @@ wiederkommen, werden sie neu geschrieben.
   fertig.** `ready` setzen nur die Verwaltung und `gm`; der Server prüft
   es, die Maske bietet es Spielenden nicht an. Kein eigenes Feld „zur
   Abnahme" (E-011) — das wäre ein zweiter Stand.
+  **Pflicht je Stand** (T-425, REQ-441, E-177, E-178): `requiredFor:
+  prepared | ready` an Feld oder Kantenart, je Art überschreibbar
+  (`InterfaceDef.requiredFor`, `none` hebt auf); geprüft beim Heben des
+  Stands (`stateRefusal`, 422 `state_gaps` mit Satz, was fehlt), wer den
+  Stand hat, behält ihn (Werkbank `readyWithGaps`), der Rückfall nach D74
+  geht auf den höchsten erreichbaren Stand (`reachableState`).
   **Die eigene Figur ist ausgenommen** (D74, E-014 d): Spielercharakter
   samt Statblock und Inventar verwaltet der Spieler ganz, setzt auch
   `ready`, und die Mitspielenden sehen sie in jedem Stand

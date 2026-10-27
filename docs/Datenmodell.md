@@ -256,6 +256,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | F6 | **Immer bearbeitbar steht am Feld und nur dort** (`alwaysEdit`). |
 | F7 | **Vorgeschlagen wird nur, wo das Feld es sagt** (`suggest`), und nur aus Artikeln, die man sehen darf. |
 | F8 | **Status ist der Vorbereitungsstand** (`idea` · `prepared` · `ready`). Wie weit eine Sache am Tisch ist, sagt das Feld der Art (`Quest.progress`, `Encounter.phase`, `Place.state`). |
+| F8a | **Pflicht je Stand** (T-425, REQ-441, E-177, E-178, E-180): `required` gilt immer; `requiredFor: prepared \| ready` am Feld oder an der Kantenart (für den Anfang der Kante) erst für diesen Stand, `ready` schliesst `prepared` ein. Je Art überschreibbar mit `InterfaceDef.requiredFor` (`Typ.feld` oder `edge:<Art>` → Stand, `none` hebt auf), die `extends`-Kette hoch, die genaueste gewinnt (`requiredForOf`). **Geprüft beim Heben des Stands** (`stateRefusal`, am Server in `schreibeGeprueft`, auch für „Mark ready"): mit Lücken 422 `state_gaps` und ein Satz, was fehlt (`stateGapMessage`). Wer den Stand hat, behält ihn; die Werkbank zeigt `readyWithGaps`. Der Rückfall nach D74 geht auf den höchsten erreichbaren Stand (`reachableState`). Neu angelegt gilt `idea` (Vorgabe `Status.status`). Migration 151: Spalten `required_for` an `interface_def` und `relation_def`; leer heisst wie bisher. |
 | F9 | **Beim Bearbeiten ist jedes Feld erreichbar** (T-195), auch die aus `Identity`; nur der Name bleibt Überschrift. Gezeigt werden Pflichtfelder, Felder mit Wert (die Vorgabe zählt nicht), `alwaysEdit` und `prominent`; die übrigen holt „+ Add field“ — nach Bestandteil gruppiert, mit Suche und der `description` des Felds (sonst was es hält). |
 | F10 | **Was eine Beschreibung braucht, ist ein Artikel und keine Wortliste.** Zustände sind Artikel der Art `Condition`, Reisehandlungen Regelartikel mit `Rule.kind` `travel`; Felder, die sie brauchen, verweisen (`Vitals.conditions` auf `Condition`, `Party.actions`). Eine Einstellung hält nur, was ein Wort oder eine Zahl ist (`gridSize`, `units`). `skills` (Fertigkeit → Attribut) war eine solche und ist seit M6 weg: die Fertigkeit ist ein Artikel und trägt ihr Attribut selbst. |
 | F11 | **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10). Verweise nennen die Nummer, nicht den Namen (M11); Würfel sind `{{…}}`, Platzhalter `{VAR}` (M12). Siehe 4.4. |
@@ -2533,7 +2534,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-26: 65 Artikelarten, 27 Grundtypen, 73 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-27: 65 Artikelarten, 27 Grundtypen, 73 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 

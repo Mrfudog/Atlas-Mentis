@@ -81,6 +81,16 @@ describe('the registry page', () => {
     expect(r.interfaces['Beast']!.titles).toBeUndefined();
   });
 
+  it('moves and removes the required-for-a-state of a type with the field (T-425, E-177)', () => {
+    const r = reg();
+    r.interfaces['Beast']!.requiredFor = { 'Stats.dex': 'ready' };
+    expect(fieldMentions(r, 'Stats', 'dex')).toContain('Beast sets when it is required');
+    renameField(r.interfaces, 'Stats', 'dex', 'agi');
+    expect(r.interfaces['Beast']!.requiredFor).toEqual({ 'Stats.agi': 'ready' });
+    removeField(r.interfaces, 'Stats', 'agi');
+    expect(r.interfaces['Beast']!.requiredFor).toBeUndefined();
+  });
+
   it('knows what leaves the chain, what comes in via another, and what would turn in a circle', () => {
     const r = reg();
     expect(droppedBy(r, 'Beast', 'Stats')).toEqual(['Stats', 'Named']);
