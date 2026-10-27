@@ -144,7 +144,7 @@ describe('Kaufen und Verkaufen (T-133)', () => {
     const r = await app.inject({ method: 'GET', url: '/api/entities/laden', headers: { cookie: await anmelden('spiel') } });
     const [ash] = r.json().refs.shop.mine;
     expect(ash).toMatchObject({ inventory: 'inv-f', purse: 2000 });
-    expect(ash.sellable).toEqual([{ inventory: 'inv-f', edge: 'h1', item: 'laterne', name: 'Lantern', qty: 1, price: 500 }]);
+    expect(ash.sellable).toEqual([{ inventory: 'inv-f', edge: 'h1', item: 'laterne', name: 'Lantern', qty: 1, price: 500, rate: 50, from: 'shop' }]);
   });
 
   it('kauft zum Preis des Servers: Menge sinkt, Stück ins Inventar, Münzen ab, Protokoll', async () => {
@@ -183,7 +183,7 @@ describe('Kaufen und Verkaufen (T-133)', () => {
     expect((await repo.getEntity('inv-f'))?.relations?.some((x) => x.id === 'h1')).toBe(false);
     expect((await verkaufen('spiel', { actor: 'f', inventory: 'inv-f', edge: 'h2' })).json().refused).toBe('reserved');
     const [ev] = await repo.listEvents({ name: 'shop.sold', limit: 5 });
-    expect(ev?.payload).toMatchObject({ actor: 'f', item: 'laterne', total: 500, rule: 'half' });
+    expect(ev?.payload).toMatchObject({ actor: 'f', item: 'laterne', total: 500, rule: { rate: 50, from: 'shop' } });
   });
 
   it('legt Gekauftes als Instanz an (T-150) und verkauft sie wieder — danach ist sie weg', async () => {

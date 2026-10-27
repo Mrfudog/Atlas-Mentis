@@ -269,7 +269,7 @@ export interface Fertigungswerte {
 
 /** Woher ein Abschlag am Preis kommt (`shopWares`, T-129); Namen nur, wo der Betrachter den Geber sieht. */
 export interface Preisschritt {
-  by: 'shop' | 'ware' | 'discount';
+  by: 'shop' | 'ware' | 'collection' | 'discount';
   giver?: string;
   giverName?: string;
   target?: string;
@@ -282,6 +282,9 @@ export interface Preisschritt {
 export interface Ware {
   edge: string;
   item: string;
+  /** Über welche Collection die Ware kommt (`sells` → Collection, REQ-439), mit Namen, wo sichtbar. */
+  via?: string;
+  viaName?: string;
   name: string;
   qty?: number;
   available: boolean;
@@ -300,6 +303,12 @@ export interface Verkaeuflich {
   name: string;
   qty: number;
   price?: number;
+  /** Der Ankaufssatz in Prozent und woher er kommt (E-175): `buys`-Kante, Collection oder Laden. */
+  rate?: number;
+  from?: 'edge' | 'collection' | 'shop';
+  viaName?: string;
+  /** `notBought`: der Laden kauft es nicht (er nennt, was er kauft). */
+  refused?: 'notBought';
 }
 export interface Ladenwaren {
   table: Ware[];
@@ -567,8 +576,6 @@ export interface LeseStueck {
 export interface Teile {
   id: string;
   parts: { id: string; entity: Entity; target?: Entity }[];
-  /** Was ohne Rang an einer Story-Art hängt (T-422): Szenen am Arc, Begegnungen an Szene und Session. */
-  contains?: { id: string; entity: Entity }[];
   refs: Bezuege;
 }
 export interface LeseTreffer {
@@ -1306,7 +1313,7 @@ export interface EbenenUebernahme {
 }
 
 /** Die Teile des Registers, die `PUT /api/registry/:part` nimmt. */
-export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enums' | 'settings';
+export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enums' | 'settings' | 'tokens';
 
 /** Wie das Banner nennt, was eine Anfrage lädt. */
 export function wasLaedt(path: string): string {
@@ -1613,8 +1620,8 @@ export class Api {
     return this.call(`/api/inventories/${encodeURIComponent(inventory)}/give`, { method: 'POST', body: JSON.stringify({ item, qty }) });
   }
 
-  buy(shop: string, actor: string, edge: string, qty: number): Promise<Handel> {
-    return this.call(`/api/shops/${encodeURIComponent(shop)}/buy`, { method: 'POST', body: JSON.stringify({ actor, edge, qty }) });
+  buy(shop: string, actor: string, edge: string, qty: number, item?: string): Promise<Handel> {
+    return this.call(`/api/shops/${encodeURIComponent(shop)}/buy`, { method: 'POST', body: JSON.stringify({ actor, edge, qty, ...(item ? { item } : {}) }) });
   }
   /** Die Sitzung beenden (T-140): je nach Kampagne bleibt Unverstautes liegen. */
   endSession(id: string): Promise<{ rule: string; left: { inventory: string; edge: string; item: string; qty: number }[] }> {

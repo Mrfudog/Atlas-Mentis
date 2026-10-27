@@ -240,7 +240,11 @@ describe('pathOptions (T-268)', () => {
     const { pathOptions } = await import('../src/viewScope.js');
     const k = pathOptions(seedRegistry, 'Creature').find((o) => o.step.relation === 'shopkeeper');
     expect(k?.step).toEqual({ relation: 'shopkeeper', dir: 'in', type: 'Shop' });
-    const s = pathOptions(seedRegistry, 'Shop').find((o) => o.step.relation === 'sells');
-    expect(s?.step).toEqual({ relation: 'sells', type: 'Item' });
+    /* Zwei Ziele (REQ-439): je Ziel ein Schritt, damit `sells › Item` wählbar bleibt. */
+    const s = pathOptions(seedRegistry, 'Shop').filter((o) => o.step.relation === 'sells');
+    expect(s.map((o) => o.step)).toEqual([
+      { relation: 'sells', type: 'Collection' },
+      { relation: 'sells', type: 'Item' },
+    ]);
   });
 });

@@ -47,3 +47,18 @@ describe('wahlAnsichten', () => {
     expect(wahlAnsichten(reg).map((v) => v.key)).toEqual(['quick', 'full']);
   });
 });
+
+describe('layers (T-425, E-168)', () => {
+  const mitSchicht = {
+    ...reg,
+    views: { ...reg.views, karte: { label: 'Map if linked', order: 10, group: 'quick', fields: 'all', adjust: { extra: [{ id: 'm', el: 'map', pos: 15 }] } } },
+  } as unknown as Registry;
+  it('an overlay stands under its group, named as an overlay', () => {
+    const t = ansichtsTeile(mitSchicht, 'quick');
+    expect(t.at(-1)).toMatchObject({ art: 'overlay', label: 'Map if linked', view: 'karte' });
+    expect(ansichtsTeile(mitSchicht, 'karte')).toEqual([expect.objectContaining({ art: 'overlay', view: 'karte' })]);
+  });
+  it('is not offered at the top as a view to pick', () => {
+    expect(wahlAnsichten(mitSchicht).map((v) => v.key)).toEqual(['quick', 'full']);
+  });
+});

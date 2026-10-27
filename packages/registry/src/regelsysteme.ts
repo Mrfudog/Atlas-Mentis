@@ -8,7 +8,7 @@
  *
  * Grid gilt mit Weight (Leitung, 22.10.). Die Vorgabeformen trägt Grid
  * selbst (D90); eine eigene Mechanik Default shapes gibt es nicht mehr —
- * ein Formmodul, nicht zwei (D91, Migration 145).
+ * ein Formmodul, nicht zwei (D91, Migration 151).
  */
 
 import type { Entity } from '@nw/model';

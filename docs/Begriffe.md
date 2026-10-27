@@ -710,6 +710,40 @@ anderen aussieht. Und darum zeigt eine Collection in einer Kachel keine
 weitere: eine Session, die ihre Szenen zeigt, die ihre Begegnungen zeigen,
 die ihre Kreaturen zeigen, wäre am Ende der halbe Bestand.
 
+**Eine Änderung für wenige ist eine Schicht, keine Kopie** (T-425,
+E-168). Wer für eine Session die Karte nach oben holen wollte, legte bisher
+eine gestaltete Ansicht nur für sie an — eine Abschrift von Full, die von
+da an nicht mehr erfuhr, was sich an Full änderte. Eine Schicht (*overlay*)
+sagt nur den Unterschied: „Karte an Position 15", „ohne Beziehungen", und
+alles andere folgt weiter der Ansicht. Die Position ist eine Zahl und
+keine Reihenfolge, weil eine Reihenfolge über alle Elemente jede andere
+Schicht überschriebe; 15 heisst an jeder Art „nach dem ersten". Dass zwei
+Schichten sich treffen, ist kein Fehler, sondern zu sehen — darum ⚠ im
+Designer und die Prüfung in der Werkbank statt eines Verbots. Im
+Englischen heisst sie *overlay*, weil *layer* die Ebene ist.
+
+Die feste Liste „Contains" (T-422) war eine zweite Darstellung derselben
+Szenen, die sich nicht gestalten liess; seit T-425 ist sie eine
+Collection an `Story`, und **„Table from edges" ist eine Collection als
+Tabelle** — ein Element, das zeigt, was an einem Artikel hängt, nicht drei.
+Eine Collection darf ihre Artikel auch aus einem **Filter** nehmen (alle
+Gerüchte mit der Marke „rumour"): dieselbe Frage wie im Kompendium, also
+dieselbe Siebung am Server.
+
+**Eine Gruppe ist eine Collection, kein Wort** (T-425, E-174). „Simple
+Melee Weapons" stand als Liste an einem Feld, „Damage Types" als
+Aufzählung, „Reagenz, mindestens ungewöhnlich" als Materialgruppe — drei
+Antworten auf dieselbe Frage. Eine Collection sagt ihre Regel einmal und
+nimmt von Hand dazu oder heraus, was die Regel nicht trifft; eine
+Materialgruppe ist eine davon. Gruppe und Fraktion bleiben eigene Arten:
+sie wissen und sehen (A8), eine Collection ordnet nur.
+
+**Eine Farbe ist ein Token, kein Farbcode** (T-425, E-170). Wer im
+Designer „Kopf rot" sagt, meint das Rot der Seite — im dunklen Modus ein
+anderes. Ein Farbcode am Element wüsste davon nichts, und der Kontrast
+liesse sich nicht prüfen. Darum nennt ein Element ein Token mit Rolle und
+zwei Werten, und eine Farbe ändert man einmal, unter Registry › Tokens.
+
 Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
 und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
 Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine
@@ -2624,6 +2658,19 @@ steht nicht am Gegenstand, sondern an der Kante `sells`: dieselbe Laterne
 kostet im einen Laden zehn Gold und im anderen zwölf, und es gibt hier drei
 davon und dort keine. Ein Feld am Gegenstand könnte nur eine der beiden
 Wahrheiten tragen.
+
+**Ein Laden verkauft und kauft auch Kategorien** (T-425, REQ-439, E-175).
+Ein Schmied „verkauft einfache Waffen, kauft alle Waffen zu 40 %" — das
+sind zwei Kanten auf Collections (`sells`, `buys`) und nicht vierzig auf
+einzelne Waffen, die bei jeder neuen Waffe eine Kante zu wenig hätten.
+Die Waren werden beim Lesen aus der Collection gerechnet. **Die einzelne
+Kante schlägt die Kategorie**, wie überall bei Collections: der Dolch mit
+eigenem Preis bleibt der Dolch mit eigenem Preis. Eine Menge an einer
+Kategorie gibt es nicht — „drei" für alle Waffen zusammen hiesse nichts.
+**Ankauf:** ein Laden ohne `buys` kauft alles, zur Hälfte oder zu seinem
+Satz (`Shop.buyRate`) — so blieb jeder bestehende Laden, wie er war. Wer
+`buys` zieht, sagt damit auch, was der Laden *nicht* nimmt: der Schmied
+kauft kein Seil, und die Maske sagt das, statt einen Preis zu zeigen.
 
 **Ein Abschlag ist ein Wort** — `−10 gp` oder `−10 %`. Zwei Zahlenfelder
 (Gold, Prozent) hiessen, dass eines leer steht und niemand weiss, welches

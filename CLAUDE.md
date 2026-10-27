@@ -390,6 +390,29 @@ wiederkommen, werden sie neu geschrieben.
   `viewsFor` rechnet die geltenden, genaueste zuerst (Artikel › Bedingung ›
   Typ › global); wo eine gebraucht wird, gilt die genaueste, wo gewählt
   wird (Kachel, Leiste „Views" am Artikel), stehen alle.
+  **Eine Zeile mit `adjust` ist eine Schicht** (UI *overlay*, T-425,
+  E-168, E-173): sie legt sich über die Ansicht ihrer Gruppe, statt sie zu
+  ersetzen — allgemein vor Typ vor Bedingung vor Artikel, gleich genau nach
+  `priority` —, und die Elemente stehen nach Position (`pos`; ohne Angabe
+  still 10, 20 … der Grundlage). Fassen zwei Schichten dasselbe an, gilt
+  die genauere; der Designer zeigt ⚠, die Werkbank `viewConflicts`. Eine
+  Schicht steht nicht zur Wahl (`isContribution`); der Designer speichert
+  sie als Unterschied (`contributionFrom`, nie `order`).
+  **Die Leiste des Designers** (T-425, E-171): oben einfügen nach Gruppe
+  (`LEISTE`) und suchen, Rückgängig/Wiederholen über den Entwurf
+  (`history.ts`, ein Muster), Kopieren/Einfügen über die Ablage
+  (`kern/ablage.ts`), am gewählten Element die schwebende Leiste.
+  **Eine Collection ist auch ein Artikel** (T-425, E-174, Art unter
+  `Rule`): Mitglieder nach Regel (`Collection.types`/`tags`/`fields`, über
+  `GET /api/list`) und von Hand (`inCollection`, `exclude` nimmt aus); das
+  Element `collection` mit Quelle `members` zeigt sie. `MaterialGroup`
+  ist ein Untertyp.
+  **Farben sind Design-Tokens** (T-425, E-170, `Registry.tokens`,
+  `token_def`): Rolle, Wert hell und dunkel; ein Element nennt je Stelle
+  (`head`, `surface`, `frame`, `text`) ein Token (`style`), die Ansicht je
+  Elementart eine Vorgabe (`styles`), `pickView` mischt sie ein. Kontrast
+  prüft die Werkbank (`tokenContrast`), gepflegt wird unter Registry ›
+  Tokens. Nie ein Farbcode am Element.
   **Ein Editor** (T-276): der Designer (`ansichten/designer.ts`) bearbeitet
   jede Ansicht — Registry › Views, „Design" an der Typseite (mit
   vorgewähltem Typ), „Design this view" im Full edit des Artikels. Beim
@@ -428,7 +451,16 @@ wiederkommen, werden sie neu geschrieben.
   Szenen und Begegnungen als Kacheln, jede die Kurzansicht ihrer Art
   (`nw-vorschau` eingebettet) — das Element wählt die Ansicht
   (`view`, `viewByType`), nicht die Kante; eine Collection in einer Kachel
-  zeichnet nichts (eine Stufe). Konzept und Entscheide E-139, E-142,
+  zeichnet nichts (eine Stufe). Kacheln, Liste oder Tabelle (die frühere
+  „Table from edges", Migration 146); Quelle ein Pfad oder ein Filter wie
+  im Kompendium (`collectionQuery`). Was ohne Rang an einer Geschichte
+  hängt, zeigt `st-contains` an `Story` — die feste Liste „Contains" ist
+  weg —, ein Ort seine Unterorte und Bewohner. **„Linked article" mit
+  Kante** (`path`) zeigt ein Ziel in einer gewählten Ansicht; ohne bleibt
+  es die bearbeitbare `asField`-Seite. Ein Element gleicher Id in
+  `adjust.extra` stellt das geerbte an Ort und Stelle um (die Szene zeigt
+  „Contains" als Liste); die Kurzansicht eines Boards ist eine Skizze
+  (`boardSketch`). Konzept und Entscheide E-139, E-142,
   E-168–E-183: [docs/vorschlaege/Verknuepfte-Ansichten.md](docs/vorschlaege/Verknuepfte-Ansichten.md).
 - **Ein Typ darf ein geerbtes Feld umbenennen** (`InterfaceDef.titles`,
   `Typ.feld` → Beschriftung, die `extends`-Kette hoch geerbt wie `area`).

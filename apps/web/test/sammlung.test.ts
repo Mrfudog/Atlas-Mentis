@@ -57,6 +57,7 @@ function bestand(sichtbar: readonly Entity[]) {
     bild: signal(new Map()),
     name: computed(() => (x: string) => voll().get(x)?.name),
     holen: vi.fn(async () => undefined),
+    liste: vi.fn(async () => ({ rows: sichtbar.filter((e) => e.interfaces[0] === 'Scene').map((e) => ({ id: e.id, name: e.name, type: 'Scene' })), total: 2 })),
     oeffnen: vi.fn(async () => undefined),
     load: vi.fn(async () => undefined),
   };
@@ -125,5 +126,49 @@ describe('collection in a view (T-425)', () => {
     expect(zeilen.map((z) => z.querySelector('.kname')?.textContent?.trim())).toEqual(['Rats', 'Der Alte', 'Die Miene']);
     expect(zeilen[1]!.querySelector('.art')?.textContent).toBe(seedRegistry.interfaces['Scene']!.label);
     expect(zeilen[1]!.querySelector('nw-vorschau')?.textContent?.trim()).toBe('sc_alter · overview');
+  });
+
+  it('as a table: name, type, the values named, one row per article', () => {
+    const mitWert = { ...alter, components: { ...alter.components, Status: { status: 'prepared' } } };
+    TestBed.overrideProvider(Bestand, { useValue: bestand([session, mitWert, miene, ratten]) });
+    const el = zeichnen([{ ...sammlung, show: 'table', groupBy: undefined, fields: ['Status.status'] }]);
+    const kopf = [...el.querySelectorAll('.sammeltabelle th')].map((t) => t.textContent?.trim());
+    expect(kopf[0]).toBe('Name');
+    expect(kopf[1]).toBe('Type');
+    expect(kopf.length).toBe(3);
+    const zeilen = [...el.querySelectorAll('.sammeltabelle tbody tr')].map((z) => [...z.querySelectorAll('td')].map((d) => d.textContent?.trim()));
+    expect(zeilen.map((z) => z[0])).toEqual(['Rats', 'Der Alte', 'Die Miene']);
+    expect(zeilen[1]![2]).toBe('prepared');
+    expect(zeilen[0]![2]).toBe('—');
+  });
+
+  it('from a filter: asks the server like the compendium and shows what it sent', async () => {
+    const b = bestand([session, alter, miene, ratten]);
+    TestBed.overrideProvider(Bestand, { useValue: b });
+    const f = TestBed.createComponent(Ansichtsbaum);
+    Object.assign(f.componentInstance, { artikel: signal(session), layout: signal([{ id: 'c', el: 'collection', source: 'filter', types: ['Scene'], filter: { tags: ['rumour'] }, show: 'list' }]), rueck: signal([]), register: signal(null) });
+    f.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    f.detectChanges();
+    expect(b.liste).toHaveBeenCalledWith({ of: ['Scene'], tag: ['rumour'], limit: 24 });
+    const namen = [...(f.nativeElement as HTMLElement).querySelectorAll('.sammelliste .kname')].map((a) => a.textContent?.trim());
+    expect(namen).toEqual(['Der Alte', 'Die Miene']);
+  });
+
+  it('linked article with an edge: the first target in the view the element chooses (T-425, E-172)', () => {
+    const ort: Entity = { id: 'pl_hof', interfaces: ['Place'], name: 'The yard', components: id('The yard', 'place-0001') };
+    const mitOrt = { ...session, relations: [{ type: 'happensAt', to: 'pl_hof' }] };
+    TestBed.overrideProvider(Bestand, { useValue: bestand([mitOrt, ort]) });
+    const f = TestBed.createComponent(Ansichtsbaum);
+    Object.assign(f.componentInstance, { artikel: signal(mitOrt), layout: signal([{ id: 'where', el: 'linked', text: 'Where', path: [{ relation: 'happensAt' }], view: 'handout' }]), rueck: signal([]), register: signal(null) });
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('.verknuepft h3')?.textContent).toBe('Where');
+    expect(el.querySelector('.verknuepft .kname')?.textContent?.trim()).toBe('The yard');
+    expect(el.querySelector('.verknuepft nw-vorschau')?.textContent?.trim()).toBe('pl_hof · handout');
+  });
+
+  it('linked article without an edge stays for the article page', () => {
+    expect(zeichnen([{ id: 'l', el: 'linked' }]).querySelector('.verknuepft')).toBeNull();
   });
 });

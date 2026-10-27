@@ -92,7 +92,7 @@ select {
 }
 .arbeit {
   display: grid;
-  grid-template-columns: 13rem minmax(0, 1fr) 20rem;
+  grid-template-columns: minmax(0, 1fr) 20rem;
   gap: 0.8rem;
   align-items: start;
 }
@@ -104,13 +104,85 @@ select {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-.palette {
+/* Die Leiste oben (T-425, REQ-436, E-171): Gruppen zum Einfügen, die Suche, allgemein rechts. */
+.leiste-oben {
+  position: sticky;
+  top: 0;
+  z-index: 6;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.einfuegen,
+.allgemein {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.25rem;
 }
-.kat {
-  margin-top: 0.5rem;
+.gruppe {
+  position: relative;
+}
+.gruppe > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.88rem;
+}
+.gruppe > summary::-webkit-details-marker {
+  display: none;
+}
+.gruppe[open] > summary,
+.gruppe > summary:hover {
+  background: var(--paper);
+}
+.menue {
+  position: absolute;
+  z-index: 7;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 15rem;
+  max-height: 60vh;
+  overflow: auto;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.finden {
+  position: relative;
+}
+.finden .element-suche {
+  min-width: 11rem;
+}
+.leiste-hinweis {
+  margin: 0 0 0.6rem;
+}
+@media (max-width: 600px) {
+  .gruppe .wort {
+    display: none;
+  }
+  .menue {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: calc(8px + var(--basis-unten, 0px));
+    min-width: 0;
+  }
 }
 .pal {
   display: flex;
@@ -363,4 +435,26 @@ a.chipb[aria-current='true'] .sub {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+/* Schichten (T-425, E-168): Herkunft je Element, Konflikte. */
+.schicht-von {
+  font-size: 0.75em;
+  margin-left: 0.4em;
+  opacity: 0.8;
+}
+.warn {
+  margin-left: 0.4em;
+  color: var(--warn, #9a5b00);
+}
+.schicht {
+  margin-top: 0.6em;
+  .prio input {
+    width: 5em;
+  }
+}
+.konflikte {
+  margin: 0.4em 0 0;
+  padding-left: 1.2em;
+  font-size: 0.9em;
 }

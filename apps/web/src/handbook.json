@@ -151,10 +151,43 @@
         {
           "heading": "Designing a view",
           "text": [
-            "Registry › Views lists every view; Design opens one in the view designer — from a type’s page with that type chosen, from an article with “Design this view” in Full edit. The preview stands on top; add elements from the palette, move them with ↑ ↓ → ← or by dragging, and give each its values — follow an edge to show fields of linked articles, such as the wares of the shop a creature keeps.",
+            "Registry › Views lists every view; Design opens one in the view designer — from a type’s page with that type chosen, from an article with “Design this view” in Full edit. The preview stands on top; add elements from the groups of the bar below it (or find one by name), move them with ↑ ↓ → ← in the bar of the selected element or by dragging, duplicate, copy and paste them, undo and redo every step until you save, and give each its values — follow an edge to show fields of linked articles, such as the wares of the shop a creature keeps.",
             "Saving asks where the change goes: every article, every article of a type (preselected when you come from a type; saved as an adjustment — only the difference, so new fields of the view still come — wherever that can say it, otherwise as the type’s own arrangement), only this article, or a new view with a condition. The most specific view that applies wins — everywhere: the popup on a named article and on a map marker, the preview beside a list, a board card, the article page and the print ask the same question. Board cards and the View row above an article offer every one that applies.",
             "Every kind of article comes with views that fit it: the card (Quick) — also under the + of a search hit — shows the values you recognise it by at the top — level, school, casting time and range of a spell, phase of an encounter, kind of a map — then its description, and its picture last, where a popup or board tile cuts it off at the bottom when space runs out; the Handout adds what you hand the players with it, such as an item’s rarity or a place’s environment; a spell becomes a spell card. Change any of them in the designer.",
-            "For the rows of a random table use the element Table: its die column and Roll, which saves the roll in the rolls log and marks the row. Table from edges shows edges and their targets, not rows. To show the articles at the end of an edge in their own view — the scenes of a session —, use Collection: follow an edge (from a session: ← partOf), name the types, choose tiles or a list, the view of each article, the order and whether to group by type. Elements marked “article page only” are drawn by the page and the print; a designed view shows a note in their place."
+            "For the rows of a random table use the element Table: its die column and Roll, which saves the roll in the rolls log and marks the row. To show the articles at the end of an edge in their own view — the scenes of a session —, use Collection: follow an edge (from a session: ← partOf), name the types, choose tiles, a list or a table (with the edge’s values and fields as columns), the view of each article, the order and whether to group by type. Or let it gather from a filter — types, tags, field conditions, text — like the Compendium. For a single linked article — the place a scene happens at — use Linked article and follow the edge: it shows the article in the view you choose; without an edge it stays the editable statblock or inventory of a creature. Elements marked “article page only” are drawn by the page and the print; a designed view shows a note in their place."
+          ]
+        },
+        {
+          "heading": "Grouping articles in a collection",
+          "text": [
+            "Create a Collection under Rules and give it a rule: the types it takes (with their subtypes), the tags they must all carry, and field conditions like Weapon.category:simple melee — the same as the filters of the Compendium.",
+            "To add an article the rule does not take, link it with the edge “in collection”; to take one out that the rule would take, use the same edge with Exclude.",
+            "The collection’s page lists its members by type. Players see only the members they may see. A material group is a collection too: a recipe needs “any reagent”, and the group says which pieces count."
+          ]
+        },
+        {
+          "heading": "Stocking a shop by category",
+          "text": [
+            "On a shop, draw a “sells” edge to an item or to a collection. A collection stands for all its items: “sells → Simple weapons” offers every simple weapon, each with the collection’s mark-down; quantity and own price belong on an edge to a single item.",
+            "A single item beats the collection: sell the dagger directly with its own price, and it is listed once, at that price.",
+            "Without a “buys” edge the shop buys everything at its Buy rate (empty: half the list price). Draw “buys” edges to say what it takes — an item or a collection, each with its own rate — and it buys nothing else; the sell list says “not bought here”."
+          ]
+        },
+        {
+          "heading": "Giving a view its colours",
+          "text": [
+            "Select an element in the view designer and open Design. Head, Surface, Frame and Text each take a token — a named colour with a light and a dark value. Tokens the view already uses come first, marked ●.",
+            "To give every element of that kind the same design, press “Use for every … in this view”; an element can still set its own. Save as usual.",
+            "Registry › Tokens holds the colours: change a value, add a token, see the contrast in both modes. The workbench check Token contrast lists a text below 4.5:1 or an accent below 3:1 on its surface."
+          ]
+        },
+        {
+          "heading": "Changing a view with an overlay",
+          "text": [
+            "Open the view in the designer (Registry › Views › Full, say). To change it for one article, pick it as the example and choose Save for … › only this article; for all articles with a field value or an edge, choose all with a condition and add it. Tick “as an overlay”.",
+            "Add, move or remove elements as usual. An overlay keeps only that difference: a new element gets a position between its neighbours (10, 20, 30 … are the elements of the view; 15 lands between the first and the second), a changed one is replaced where it stands, a removed one is left out. Everything else keeps following the view, also when it changes later.",
+            "Set a priority if two overlays of the same kind meet. Save. The overlay stands under its view in Registry › Views; elements it brings show its name in the designer’s tree.",
+            "Overlays stack from general to specific: every article › type › condition › one article. If two overlays change the same element, the more specific one wins; ⚠ in the designer and Workbench › View conflicts say where."
           ]
         },
         {

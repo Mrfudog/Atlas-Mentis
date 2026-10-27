@@ -268,26 +268,26 @@ Neue Wörter fürs Glossar und für Begriffe.md:
    - Quelle verknüpft, Darstellung Liste und Kacheln, Ansicht je Treffer, Sortierung.
    - Vorgabe an der Session (Migration). Die feste Liste „Contains“ fällt dort weg.
    - Test zuerst rot.
-2. **Schichten (E-168).**
+2. **Schichten (E-168).** *Steht (26.10.): `pickView` mit Schichten, `contributionFrom`, Designer, Prüfung `viewConflicts`; im UI „overlay“, weil „layer“ die Ebene ist.*
    - Positionen und Bedingungen in `adjust`, ausgewertet in `forArticle`/`viewsFor`.
    - Der Designer zeigt die Herkunft je Element.
    - Beispiel: „Map an Position 40, wenn onMap“ in der Schicht „alle Artikel“.
    - Gleichstände und Konflikte mit ⚠ im Designer, Prüfung „View conflicts“ in der Werkbank (E-173).
-3. **Collection fertig.**
+3. **Collection fertig.** *Steht (26.10.): Tabelle, Filter-Quelle, `unranked`, `st-contains` an Story, Unterorte und Bewohner am Ort, `edgeTable` migriert (146), „Contains" weg. Faction und Encounter bekommen keine Vorgabe: die Struktur zeigt die Mitglieder, die Initiative die Beteiligten.*
    - Filter-Quelle, Tabelle, Gruppierung.
    - `edgeTable` migrieren.
    - Vorgaben für Arc, Scene, Encounter, Place, Faction.
    - Die feste Liste „Contains“ fällt ganz weg.
-4. **Linked article mit Kante und Ansicht**, dazu die Quick-Ansichten von Map und Board.
-5. **Werkzeugleiste (REQ-436) im Designer**:
+4. **Linked article mit Kante und Ansicht**, dazu die Quick-Ansichten von Map und Board. *Steht (26.10.): `linked` mit `path` und `view`; Board-Skizze (`boardSketch`); Map zeigte ihr Bild schon (erbt `Image`); Szene „Contains“ als Liste.*
+5. **Werkzeugleiste (REQ-436) im Designer**: *Steht (26.10.): Leiste oben mit Gruppen und Suche, Undo/Redo/Copy/Paste, schwebende Leiste am Element, Tasten; Verlauf (`history.ts`) und Ablage (`kern/ablage.ts`) als Muster. Die Einstellungen bleiben rechts; „am Element in der Vorschau" kommt mit den Tokens (Schnitt 6), wenn es dort mehr einzustellen gibt.*
    - Einfügen, Kontext, Allgemein.
    - Einstellungen am Element.
    - Kopieren, Einfügen, Duplizieren, Rückgängig, Wiederholen.
-6. **Design-Tokens (REQ-437)**: Registerteil, Stellen je Element, Vorgaben je Ansicht.
+6. **Design-Tokens (REQ-437)**: Registerteil, Stellen je Element, Vorgaben je Ansicht. *Steht (26.10.): `Registry.tokens` (Migration 148), vier Stellen, `ViewDef.styles`, Kontrast (Text 4.5, Akzent 3) in der Werkbank, Registry › Tokens, Design-Block im Designer. Werte aus Feldern (`field:`) kommen später.*
 7. **Erfassungsmasken (REQ-432)**, dazu „nur `idea`, solange Pflichtfelder fehlen“.
 8. **Abläufe (REQ-440, REQ-433)**: Element `steps`, der Assistent als Vorgabe der Spielerfigur, `levelUp` als abgeleitete Ansicht.
 9. **Pflicht je Stand (REQ-441)**: `requiredFor`, Status und Ebene immer Pflicht, Migrationen „ready“ und „Unassigned“. Das kann auch früher kommen, weil es von den Schnitten 1 bis 6 unabhängig ist.
-10. **Collections als Artikel (REQ-438)** und **Laden mit `sells`/`buys` (REQ-439)**, `MaterialGroup` als Untertyp, `wares` in der Palette.
+10. **Collections als Artikel (REQ-438)** und **Laden mit `sells`/`buys` (REQ-439)**, `MaterialGroup` als Untertyp, `wares` in der Palette. *Teil 1 steht (26.10.): Art `Collection` mit Regel, `inCollection` mit `exclude`, Quelle `members`, `MaterialGroup` als Untertyp (Migration 149). Teil 2 steht (26.10.): `sells` auf Collections, `buys` mit Satz, `Shop.buyRate` (Migration 150), Materialgruppe liest `inCollection`, `wares` in der Palette. Offen: `wares` über einen Pfad.*
 11. **Dieselbe Leiste an Board, Karte und Spielerseite**, dazu Baum und Graph als Darstellung und die leeren Plätze erwarteter Kanten (REQ-426).
 
 Unabhängig von T-425, aber damit abgestimmt:

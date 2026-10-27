@@ -46,6 +46,10 @@ export async function seedRegistryInto(
   if (!Object.keys(current.settings ?? {}).length && seed.settings) {
     await schreibe('settings', seed.settings);
   }
+  /* Design-Tokens (T-425, Migration 148): wie Aufzählungen nur, solange der Teil leer ist. */
+  if (!Object.keys(current.tokens ?? {}).length && Object.keys(seed.tokens ?? {}).length) {
+    await schreibe('tokens', seed.tokens);
+  }
   /* Einheiten schrieb der Seed nie (T-123): eine frische Datenbank hatte
      keine, und ein Mass rechnete nicht um. Gleiche Regel wie oben. */
   if (!Object.keys(current.units ?? {}).length && Object.keys(seed.units ?? {}).length) {

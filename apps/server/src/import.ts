@@ -71,7 +71,7 @@ import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
 
 /** Die Registerteile, die die Ablage speichert. */
-const TEILE = ['interfaces', 'relations', 'views', 'units', 'vars', 'enums', 'settings'] as const;
+const TEILE = ['interfaces', 'relations', 'views', 'units', 'vars', 'enums', 'settings', 'tokens'] as const;
 
 export interface ImportErgebnis {
   text: string;
@@ -693,7 +693,8 @@ function kantenText(kanten: string[], was: string): string {
 /**
  * Die Registerteile der Datei, die die Ablage kennt. Was sie nicht kennt,
  * kommt als Name zurück und steht in der Meldung — still weggelassen sähe
- * es aus wie übernommen. `enums` und `settings` kennt sie seit Migration 019.
+ * es aus wie übernommen. `enums` und `settings` kennt sie seit Migration 019,
+ * `tokens` seit Migration 148 (T-425).
  */
 async function schreibeRegister(repo: Repository, roh: unknown, registry: Registry): Promise<string[]> {
   if (roh === undefined) return [];
@@ -709,6 +710,7 @@ async function schreibeRegister(repo: Repository, roh: unknown, registry: Regist
       case 'vars': await repo.putRegistryPart('vars', registry.vars); break;
       case 'enums': await repo.putRegistryPart('enums', registry.enums ?? {}); break;
       case 'settings': await repo.putRegistryPart('settings', registry.settings ?? {}); break;
+      case 'tokens': await repo.putRegistryPart('tokens', registry.tokens ?? {}); break;
     }
   }
   return liegen;

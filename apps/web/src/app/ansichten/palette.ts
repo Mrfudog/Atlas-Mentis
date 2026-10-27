@@ -50,14 +50,13 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'tileGroup', name: 'Tile group', icon: '▦', tip: 'Fields as tiles: label above, value large.', werte: true, neu: true },
       { el: 'quote', name: 'Quote', icon: '❝', tip: 'A field as a quote — a voice, a motto.', werte: true, neu: true },
       { el: 'badges', name: 'Badges', icon: '◉', tip: 'Values as badges — tags, conditions, properties.', werte: true, neu: true },
-      { el: 'edgeTable', name: 'Table from edges', icon: '⊞', tip: 'One row per edge: its target and the edge’s own values. For the rows of a table: Table.', werte: true, neu: true },
-      { el: 'collection', name: 'Collection', icon: '⧉', tip: 'The articles at the end of an edge — the scenes and encounters of a session —, each in the view of its own type: as tiles (quick) or a list (overview), in order, grouped by type if you like. Change the quick view of a scene, and its tile changes too. Players see only what they may.', werte: true, neu: true },
+      { el: 'collection', name: 'Collection', icon: '⧉', tip: 'The articles at the end of an edge — the scenes and encounters of a session — or every article that fits a filter, each in the view of its own type: as tiles (quick), a list (overview) or a table with the edge’s values and fields as columns, in order, grouped by type if you like. Change the quick view of a scene, and its tile changes too. Players see only what they may.', werte: true, neu: true },
       { el: 'structure', name: 'Structure', icon: '⌥', tip: 'An organisation chart or relationship web from this article: members and ranks, parts and sub-factions, what it controls, who regards whom — the tags on the lines. Players see only what they may.', neu: true },
       { el: 'table', name: 'Table', icon: '⚄', tip: 'The rows of a table with its die column and Roll — the roll is saved in the rolls log and its row marked.', neu: true },
       { el: 'prose', name: 'Long text', icon: '☰', tip: 'Long texts (paragraphs, secrets, read-aloud), each under its title.', werte: true },
       { el: 'image', name: 'Image', icon: '▣', tip: 'The image of the article, with its caption.' },
       { el: 'relations', name: 'Relations', icon: '↔', tip: 'Its edges with their targets. The article page has them in its side column.', seite: true },
-      { el: 'linked', name: 'Linked article', icon: '⛓', tip: 'The fields of what hangs on an asField edge (the statblock of a creature), editable in place; without one, Create and From a template.', seite: true },
+      { el: 'linked', name: 'Linked article', icon: '⛓', tip: 'The fields of what hangs on an asField edge (the statblock of a creature), editable in place; without one, Create and From a template. Follow any edge to show the linked article in a view you choose — the place of a scene as its quick view.', seite: true },
       { el: 'composed', name: 'Sections', icon: '§', tip: 'What it is composed of (traits, actions …), per section.', seite: true },
       { el: 'parts', name: 'Parts', icon: '⋮', tip: 'The parts of a chapter or scene, in their order.', seite: true },
       { el: 'usedBy', name: 'Used by', icon: '⤺', tip: 'Who composes this article, by creature type.', seite: true, ungezeichnet: true },
@@ -76,6 +75,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'sheet', name: 'Character sheet', icon: '❤', tip: 'The header of a creature: hit points, vitals and spellcasting, hit dice, slots, gold, abilities and the status row. Stands above the tabs.', seite: true },
       { el: 'turn', name: 'Your turn', icon: '⏵', tip: 'Every action of the creature by action type, with Used and New turn; what the hands block stays visible with the reason.', seite: true },
       { el: 'spells', name: 'Spells', icon: '✧', tip: 'Spellcasting: ability, attack, save DC, slots; every spell by level with Cast.', seite: true },
+      { el: 'wares', name: 'Wares', icon: '🛒', tip: 'On a shop what it sells — single items and every item of a collection it sells — with prices for the chosen character, Buy, and what the shop buys back at which rate. Draws nothing elsewhere.', seite: true },
       { el: 'inventory', name: 'Inventory', icon: '🎒', tip: 'The inventory it carries and what that holds.', seite: true },
       { el: 'knowledgeContents', name: 'Knowledge contents', icon: '🧠', tip: 'On a knowledge: every information it brings together, written out with the fields the viewer may read. Draws nothing elsewhere.', seite: true },
       { el: 'crafting', name: 'Crafting', icon: '⚒', tip: 'On a recipe the workbench, on a trade its tools and recipes, on a tool or character what it can craft. Draws nothing elsewhere.', seite: true },
@@ -94,6 +94,34 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
     ],
   },
 ];
+
+/**
+ * **Die Gruppen der Leiste oben** (T-425, REQ-436, E-171): zum Einfügen
+ * nach dem, was man zeigen will, nicht nach Sorte im Code. Jedes Element
+ * der Palette steht in genau einer; was keine nennt, steht unter „More"
+ * (ein Test prüft das).
+ */
+export const LEISTE: { name: string; icon: string; els: readonly string[] }[] = [
+  { name: 'Fields', icon: '≡', els: ['fields', 'tileGroup', 'badges', 'quote', 'stats'] },
+  { name: 'Links', icon: '⛓', els: ['collection', 'linked', 'relations', 'composed', 'usedBy', 'standing'] },
+  { name: 'Text', icon: '¶', els: ['heading', 'text', 'description', 'prose'] },
+  { name: 'Image', icon: '▣', els: ['image', 'token', 'shape'] },
+  { name: 'Layout', icon: '▥', els: ['section', 'columns', 'tabs', 'carousel', 'collapsible'] },
+  { name: 'Table', icon: '⊞', els: ['table'] },
+  { name: 'Graph', icon: '⌥', els: ['structure'] },
+  { name: 'Game', icon: '⚔', els: ['statblock', 'spell', 'item', 'sheet', 'turn', 'spells', 'inventory', 'knowledgeContents', 'crafting', 'initiative', 'campaign'] },
+  { name: 'Pages', icon: '☷', els: ['parts', 'reader', 'contents', 'classOverview', 'originOverview', 'rules'] },
+];
+
+/** Die Gruppen mit ihren Einträgen, „More" für den Rest. */
+export function leistenGruppen(): { name: string; icon: string; items: PaletteEintrag[] }[] {
+  const alle = PALETTE.flatMap((g) => g.items);
+  const raus = LEISTE.map((g) => ({ name: g.name, icon: g.icon, items: g.els.map((el) => alle.find((p) => p.el === el)).filter((p): p is PaletteEintrag => !!p) }));
+  const genannt = new Set(LEISTE.flatMap((g) => g.els));
+  const rest = alle.filter((p) => !genannt.has(p.el));
+  if (rest.length) raus.push({ name: 'More', icon: '…', items: rest });
+  return raus;
+}
 
 /** Der Knoten eines Reiters (nur im Designer; gespeichert als `tabs`). */
 export const REITER: PaletteEintrag = { el: 'tab', name: 'Tab', icon: '▭', tip: 'One tab of the tabs above; its elements show when it is open.' };

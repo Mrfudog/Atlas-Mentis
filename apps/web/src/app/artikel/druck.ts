@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { entityName, primaryInterface, viewKeys, viewsFor } from '@nw/model';
+import { entityName, isContribution, primaryInterface, viewKeys, viewsFor } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Blatt } from './blatt';
 
@@ -151,7 +151,7 @@ export class Druck {
     const r = this.bestand.registry();
     const e = this.artikel();
     /* Was für diesen Artikel gilt, genaueste zuerst (T-310) — auch gestaltete. */
-    return r && e ? viewsFor(e, r).map((v) => v.key) : r ? viewKeys(r) : [];
+    return r && e ? viewsFor(e, r).map((v) => v.key) : r ? viewKeys(r).filter((k) => !isContribution(r.views[k])) : [];
   });
   protected readonly ansicht = computed(() => {
     const v = this.view();

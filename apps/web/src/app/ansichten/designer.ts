@@ -4,6 +4,12 @@ import {
   PLACE_VIEWS,
   TAB_NODE,
   adjustFrom,
+  contributionFrom,
+  duplicateElement,
+  emptyHistory,
+  historyPush,
+  historyRedo,
+  historyUndo,
   appliesHolds,
   appliesText,
   canMove,
@@ -13,6 +19,7 @@ import {
   holdsChildren,
   insertElement,
   isAdjust,
+  isContribution,
   isDesignedView,
   layoutFor,
   moveToElement,
@@ -21,10 +28,13 @@ import {
   patchElement,
   pathEndType,
   pathOptions,
+  pasteElement,
   pathText,
+  pickView,
   primaryInterface,
   tabsAsTree,
   treeAsTabs,
+  usedTokens,
   typeChain,
   typeList,
   viewGroup,
@@ -34,13 +44,15 @@ import {
   STRUCTURE_DEPTH,
   STRUCTURE_EDGES,
 } from '@nw/model';
-import type { Entity, IncomingEdge, LayoutElement, LayoutWhen, Registry, TreeMove, ViewApplies, ViewDef, ViewPathStep } from '@nw/model';
+import type { ElementStyle, Entity, History, IncomingEdge, LayoutElement, TokenRole, TokenSlot, LayoutWhen, Registry, TreeMove, ViewApplies, ViewDef, ViewPathStep } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit } from '../register/arbeit';
 import { techName } from '../register/regeln';
 import { RegVorschau } from '../register/vorschau';
 import { Ansichtsbaum } from './baum';
-import { GRUPPEN, ORTE, PALETTE, eintrag, eintragText } from './palette';
+import { GRUPPEN, ORTE, PALETTE, eintrag, eintragText, leistenGruppen } from './palette';
+import { Ablage } from '../kern/ablage';
+import { Werkzeugleiste, type LeistenAktion } from '../muster/werkzeugleiste';
 import { anpassungLeer, ansichtsTeile, sagtEigenes } from './uebersicht';
 
 /** Eine Zeile des Baums, flach gezeichnet mit Einzug. */
@@ -60,6 +72,9 @@ interface Zeile {
  * Anordnung oder angepasst), diese gestaltete Ansicht, nur dieser Artikel,
  * oder eine neue Ansicht mit Bedingungen.
  */
+/** Was der Designer in der Ablage ablegt (T-425). */
+const ABLAGE_SORTE = 'layout-element';
+
 export type Speichern = 'view' | 'type' | 'this' | 'article' | 'condition';
 
 /** Was der Designer der Seite gibt, an der er gestaltet: den Entwurf, und wie er zu zeichnen ist. */
@@ -90,7 +105,7 @@ export interface AnsichtsEntwurf {
  */
 @Component({
   selector: 'nw-ansichtsdesigner',
-  imports: [RouterLink, Ansichtsbaum, RegVorschau],
+  imports: [RouterLink, Ansichtsbaum, RegVorschau, Werkzeugleiste],
   templateUrl: './designer.html',
   styleUrl: './designer.scss',
 })
@@ -146,8 +161,15 @@ export class Ansichtsdesigner {
   protected readonly beispielId = signal<string | null>(null);
   protected readonly beispielSuche = signal('');
   protected readonly beispielTreffer = signal<{ id: string; name: string; type: string }[]>([]);
+  /** Als Schicht speichern (T-425, E-168): hinzufügen, verschieben, ausblenden — der Rest folgt der Ansicht. */
+  protected readonly alsSchicht = signal(true);
+  protected readonly prioritaet = signal<number | null>(null);
+  /** Was beim Beginnen im Baum stand: nur das kann eine Schicht wegnehmen — was andere Schichten
+   *  bringen und hier nie zu sehen war, bleibt stehen. */
+  private readonly startIds = signal<ReadonlySet<string>>(new Set());
 
   protected readonly reg = this.bestand.registry;
+  private readonly regDa = computed(() => !!this.reg());
   protected readonly def = computed<ViewDef | undefined>(() => {
     const k = this.schluessel();
     return k ? this.reg()?.views[k] : undefined;
@@ -160,6 +182,15 @@ export class Ansichtsdesigner {
     const k = this.schluessel();
     return k ? (ORTE[k] ?? (this.gestaltet() ? '' : 'Your own view: chosen on a board tile and when printing.')) : '';
   });
+  /** Die geöffnete Zeile ist ein Beitrag (eine Schicht, E-168). */
+  protected readonly istBeitrag = computed(() => isContribution(this.def()));
+  /** Kann als Schicht gespeichert werden: die Gruppe ist eine Ortsansicht, nicht selbst gestaltet. */
+  protected readonly schichtMoeglich = computed(() => {
+    const d = this.reg()?.views[this.gruppe().trim()];
+    if (!d || isDesignedView(d) || isContribution(d)) return false;
+    return this.istBeitrag() || this.speichernAls() === 'article' || this.speichernAls() === 'condition';
+  });
+  protected readonly speichertSchicht = computed(() => this.schichtMoeglich() && (this.istBeitrag() || this.alsSchicht()));
   /** Gespeichert wird als gestaltete Ansicht (eigener Zeichner). */
   protected readonly alsGestaltet = computed(() => ['this', 'article', 'condition'].includes(this.speichernAls()));
 
@@ -202,12 +233,14 @@ export class Ansichtsdesigner {
 
   constructor() {
     /* Eine andere Ansicht (oder ein anderer Typ) gewählt: der Entwurf fängt bei dem an, was dort gilt. */
+    /* Nur Ansicht, Typ und „Register da" lösen das aus — nicht jede Änderung am Register:
+       schreibt jemand anderes gleichzeitig (eine Mitleiterin, ein Token), bliebe sonst vom
+       Entwurf und seinem Verlauf nichts übrig (T-425). */
     effect(() => {
       const k = this.schluessel();
       const t = this.startTyp();
-      const r = this.reg();
-      if (!r) return;
-      untracked(() => this.beginne(r, k, t));
+      if (!this.regDa()) return;
+      untracked(() => this.beginne(this.reg()!, k, t));
     });
     effect(() => this.entwurf.emit({ baum: this.entwurfsBaum(), gestaltet: this.alsGestaltet(), register: this.entwurfsRegister() }));
   }
@@ -223,10 +256,26 @@ export class Ansichtsdesigner {
     this.versteckt.set([]);
     this.zielTyp.set(t ?? '');
     this.fest.set(false);
+    this.alsSchicht.set(true);
+    this.prioritaet.set(def?.priority ?? null);
+    this.ansichtStile.set(structuredClone(def?.styles ?? {}));
+    if (def && isContribution(def)) {
+      /* Eine Schicht: der Baum ist, was mit ihr gezeichnet wird; gespeichert wird nur der Unterschied. */
+      const g = viewGroup(k!, def);
+      this.gruppe.set(g);
+      this.geltung.set(structuredClone(def.applies ?? {}));
+      this.versteckt.set([...(def.adjust?.hide ?? [])]);
+      this.speichernAls.set('this');
+      const typ = t ?? def.applies?.types?.[0] ?? '';
+      const e = this.beispiel() ?? { id: def.applies?.article ?? '', name: '', interfaces: [typ], components: {} };
+      this.setzeBaum(pickView(e, r, g, { force: k! }).layout);
+      if (def.applies?.article && !this.beispiel()) this.waehleBeispiel(def.applies.article);
+      return;
+    }
     if (!def || isDesignedView(def)) {
       this.gruppe.set(def ? (def.group ?? k ?? '') : 'quick');
       this.geltung.set(structuredClone(def?.applies ?? (t ? { types: [t] } : {})));
-      this.baum.set(tabsAsTree(structuredClone(def?.layout ?? [])));
+      this.setzeBaum(def?.layout ?? []);
       this.speichernAls.set(def ? 'this' : this.beispiel() ? 'article' : 'condition');
       if (def?.applies?.article && !this.beispiel()) this.waehleBeispiel(def.applies.article);
       return;
@@ -243,12 +292,83 @@ export class Ansichtsdesigner {
       this.fest.set(ownLayout(eigen) && !isAdjust(eigen));
       if (isAdjust(eigen)) this.versteckt.set([...(eigen.adjust.hide ?? [])]);
       this.speichernAls.set('type');
-      this.baum.set(tabsAsTree(structuredClone(layoutFor(r, k!, t).layout)));
+      this.setzeBaum(layoutFor(r, k!, t).layout);
     } else {
       this.speichernAls.set('view');
-      this.baum.set(tabsAsTree(structuredClone(def.layout ?? [])));
+      this.setzeBaum(def.layout ?? []);
     }
   }
+
+  private setzeBaum(layout: readonly LayoutElement[]): void {
+    this.baum.set(tabsAsTree(structuredClone(layout as LayoutElement[])));
+    this.verlauf.set(emptyHistory());
+    this.startIds.set(new Set(layout.map((e) => e.id)));
+  }
+
+  // ------------------------------------------------------------ Schichten (T-425, E-168)
+
+  /** Der Artikel, für den die Schicht gerechnet wird: das Beispiel, sonst ein Platzhalter des Typs. */
+  private schichtArtikel(): Entity {
+    return this.probe() ?? { id: this.geltung().article ?? '', name: '', interfaces: [this.probeTyp()], components: {} };
+  }
+  /** Was ohne diese Schicht gezeichnet würde — die Grundlage des Unterschieds. */
+  protected readonly schichtBasis = computed(() => {
+    const r = this.reg();
+    if (!r || !this.speichertSchicht()) return null;
+    const k = this.schluessel();
+    const views = { ...r.views };
+    if (k && this.istBeitrag()) delete views[k];
+    return pickView(this.schichtArtikel(), { ...r, views }, this.gruppe().trim(), { incoming: this.probeRueck() });
+  });
+  /** Der Beitrag, wie er gespeichert würde. */
+  protected readonly schichtAnpassung = computed(() => {
+    const b = this.schichtBasis();
+    if (!b) return null;
+    const baum = treeAsTabs(this.baum());
+    const im = new Set(baum.map((e) => e.id));
+    const start = this.startIds();
+    return contributionFrom(
+      b.layout.filter((e) => im.has(e.id) || start.has(e.id)),
+      b.positions,
+      baum,
+      this.versteckt(),
+    );
+  });
+  private schichtZeile(applies: ViewApplies): ViewDef {
+    const label = this.label().trim() || 'Overlay';
+    const d: ViewDef = { label, fields: 'all', group: this.gruppe().trim(), adjust: this.schichtAnpassung() ?? {} };
+    if (Object.keys(applies).length) d.applies = applies;
+    if (this.prioritaet() !== null && this.prioritaet() !== 0) d.priority = this.prioritaet()!;
+    return d;
+  }
+  /** Mit dem Entwurf als Schicht: Herkunft je Element und die Konflikte (E-173). */
+  protected readonly schichtStand = computed(() => {
+    const r = this.reg();
+    const a = this.schichtAnpassung();
+    if (!r || !a) return null;
+    const k = this.istBeitrag() && this.schluessel() ? this.schluessel()! : '(this draft)';
+    const geltung = this.geltungZumSpeichern();
+    const zeile = this.schichtZeile(typeof geltung === 'string' ? {} : geltung);
+    return pickView(this.schichtArtikel(), { ...r, views: { ...r.views, [k]: zeile } }, this.gruppe().trim(), { incoming: this.probeRueck(), force: k });
+  });
+  /** Die Schichten, aus denen ein Element kommt (ohne die Grundlage). */
+  protected herkunft(id: string): string[] {
+    const o = this.schichtStand()?.origin[id] ?? [];
+    return o.filter((q) => !q.startsWith('type ') && !q.startsWith('view ')).map((q) => (q === '(this draft)' ? 'this overlay' : (this.reg()?.views[q]?.label ?? q)));
+  }
+  protected warnung(id: string): string | null {
+    const c = this.schichtStand()?.conflicts.filter((x) => x.element === id) ?? [];
+    if (!c.length) return null;
+    const name = (q: string) => (q === '(this draft)' ? 'this overlay' : (this.reg()?.views[q]?.label ?? q));
+    return c
+      .map((x) =>
+        x.kind === 'conflict'
+          ? `Changed by ${x.sources.map(name).join(' and ')} — ${name(x.winner ?? '')} wins.`
+          : `Shares position ${x.position} with ${x.sources.slice(1).map(name).join(', ')} — priority, then the more specific overlay, comes first.`,
+      )
+      .join(' ');
+  }
+  protected readonly konflikte = computed(() => this.schichtStand()?.conflicts ?? []);
 
   // ------------------------------------------------------------ Baum
 
@@ -295,7 +415,7 @@ export class Ansichtsdesigner {
     if (el === 'tabs') neu.children = [{ id: freeElementId(this.baum(), 'tab'), el: 'tab' as LayoutElement['el'], text: 'Tab', children: [] }];
     if (el === 'prose') neu.fields = 'all';
     else if (p?.werte && el !== 'reader') neu.fields = [];
-    this.baum.set(insertElement(this.baum(), neu, this.gewaehlt()));
+    this.aendere(insertElement(this.baum(), neu, this.gewaehlt()));
     this.gewaehlt.set(neu.id);
   }
 
@@ -303,8 +423,167 @@ export class Ansichtsdesigner {
     const el = this.auswahl();
     if (el?.el !== 'tabs') return;
     const neu: LayoutElement = { id: freeElementId(this.baum(), 'tab'), el: 'tab' as LayoutElement['el'], text: 'Tab', children: [] };
-    this.baum.set(insertElement(this.baum(), neu, el.id));
+    this.aendere(insertElement(this.baum(), neu, el.id));
   }
+
+  // ------------------------------------------------------------ Leiste (T-425, REQ-436, E-171)
+
+  private readonly ablage = inject(Ablage);
+  /** Die Gruppen der Leiste oben, zum Einfügen. */
+  protected readonly leiste = leistenGruppen();
+  /** Stände des Baums zum Rückgängigmachen — nur im Entwurf, gespeichert wird mit „Save". */
+  protected readonly verlauf = signal<History<LayoutElement[]>>(emptyHistory());
+  protected readonly kannRueck = computed(() => this.verlauf().past.length > 0);
+  protected readonly kannVor = computed(() => this.verlauf().future.length > 0);
+  protected readonly abgelegt = computed(() => {
+    const a = this.ablage.stand();
+    return a?.sorte === ABLAGE_SORTE ? a.name : null;
+  });
+
+  /** Jede Änderung am Baum geht hierdurch: der Stand davor kommt in den Verlauf. */
+  private aendere(neu: LayoutElement[]): void {
+    const vorher = this.baum();
+    if (JSON.stringify(vorher) === JSON.stringify(neu)) return;
+    this.verlauf.update((h) => historyPush(h, vorher));
+    this.baum.set(neu);
+  }
+
+  protected rueckgaengig(): void {
+    const u = historyUndo(this.verlauf(), this.baum());
+    if (!u) return;
+    this.verlauf.set(u.history);
+    this.baum.set(u.state);
+    if (this.gewaehlt() && !findElement(u.state, this.gewaehlt()!)) this.gewaehlt.set(null);
+  }
+
+  protected wiederholen(): void {
+    const v = historyRedo(this.verlauf(), this.baum());
+    if (!v) return;
+    this.verlauf.set(v.history);
+    this.baum.set(v.state);
+    if (this.gewaehlt() && !findElement(v.state, this.gewaehlt()!)) this.gewaehlt.set(null);
+  }
+
+  protected kopieren(): void {
+    const el = this.auswahl();
+    if (el) this.ablage.nimm(ABLAGE_SORTE, el, this.elementName(el));
+  }
+
+  protected einfuegen(): void {
+    const el = this.ablage.hole<LayoutElement>(ABLAGE_SORTE);
+    if (!el || !this.darf()) return;
+    const p = pasteElement(this.baum(), el, this.gewaehlt());
+    this.aendere(p.tree);
+    this.gewaehlt.set(p.id);
+  }
+
+  protected duplizieren(): void {
+    const id = this.gewaehlt();
+    if (!id || !this.darf()) return;
+    const d = duplicateElement(this.baum(), id);
+    if (!d.id) return;
+    this.aendere(d.tree);
+    this.gewaehlt.set(d.id);
+  }
+
+  /** Was die schwebende Leiste am gewählten Element anbietet — nur, was geht. */
+  protected readonly kontextAktionen = computed<LeistenAktion[]>(() => {
+    const id = this.gewaehlt();
+    if (!id || !this.darf()) return [];
+    const ops: [TreeMove, string, string][] = [
+      ['up', '↑', 'Up'],
+      ['down', '↓', 'Down'],
+      ['into', '→', 'Into the container above'],
+      ['out', '←', 'Out of the container'],
+    ];
+    return [
+      ...ops.map(([op, icon, label]) => ({ id: op, icon, label, gesperrt: !this.kann(id, op), grund: this.kann(id, op) ? label : `${label}: not possible here` })),
+      { id: 'duplicate', icon: '⧉', label: 'Duplicate' },
+      { id: 'copy', icon: '⎘', label: 'Copy' },
+      { id: 'remove', icon: '🗑', label: 'Remove' },
+    ];
+  });
+
+  protected kontext(aktion: string): void {
+    const id = this.gewaehlt();
+    if (!id) return;
+    if (aktion === 'duplicate') this.duplizieren();
+    else if (aktion === 'copy') this.kopieren();
+    else this.bewege(id, aktion as TreeMove);
+  }
+
+  /** Die Tasten des Designers: Rückgängig, Wiederholen, Kopieren, Einfügen, Duplizieren, Entfernen — nicht in Eingaben. */
+  protected taste(ev: KeyboardEvent): void {
+    const ziel = ev.target as HTMLElement | null;
+    if (ziel && (ziel.closest('input, textarea, select, [contenteditable="true"]') || ziel.isContentEditable)) return;
+    const mod = ev.ctrlKey || ev.metaKey;
+    const k = ev.key.toLowerCase();
+    let tat: (() => void) | null = null;
+    if (mod && k === 'z' && !ev.shiftKey) tat = () => this.rueckgaengig();
+    else if (mod && ((k === 'z' && ev.shiftKey) || k === 'y')) tat = () => this.wiederholen();
+    else if (mod && k === 'c' && this.gewaehlt()) tat = () => this.kopieren();
+    else if (mod && k === 'v' && this.abgelegt()) tat = () => this.einfuegen();
+    else if (mod && k === 'd' && this.gewaehlt()) tat = () => this.duplizieren();
+    else if ((ev.key === 'Delete' || ev.key === 'Backspace') && this.gewaehlt() && this.darf()) tat = () => this.bewege(this.gewaehlt()!, 'remove');
+    else if (ev.key === 'Escape' && this.gewaehlt()) tat = () => this.gewaehlt.set(null);
+    if (!tat) return;
+    ev.preventDefault();
+    tat();
+  }
+
+  // ------------------------------------------------------------ Design (T-425, REQ-437, E-170)
+
+  /** Die Stellen eines Elements und welche Rollen dort passen. */
+  protected readonly STELLEN: { slot: TokenSlot; label: string; roles: readonly TokenRole[] }[] = [
+    { slot: 'head', label: 'Head', roles: ['text', 'accent'] },
+    { slot: 'surface', label: 'Surface', roles: ['surface'] },
+    { slot: 'frame', label: 'Frame', roles: ['line', 'accent'] },
+    { slot: 'text', label: 'Text', roles: ['text', 'accent'] },
+  ];
+  /** Was die Ansicht je Elementart vorgibt (`ViewDef.styles`) — gespeichert mit der Ansicht. */
+  protected readonly ansichtStile = signal<Record<string, ElementStyle>>({});
+
+  protected tokenName(name: string): string {
+    return this.reg()?.tokens?.[name]?.label ?? name;
+  }
+
+  /** Die Tokens für eine Stelle, die schon genutzten zuerst (E-170). */
+  protected tokenWahl(slot: TokenSlot): { name: string; label: string; genutzt: boolean }[] {
+    const rollen = this.STELLEN.find((x) => x.slot === slot)?.roles ?? [];
+    const genutzt = new Set(usedTokens(treeAsTabs(this.baum()), { styles: this.ansichtStile() }));
+    return Object.entries(this.reg()?.tokens ?? {})
+      .filter(([, d]) => rollen.includes(d.role))
+      .map(([name, d]) => ({ name, label: d.label, genutzt: genutzt.has(name) }))
+      .sort((a, b) => +b.genutzt - +a.genutzt || a.label.localeCompare(b.label));
+  }
+
+  protected setzeStil(slot: TokenSlot, name: string): void {
+    const el = this.auswahl();
+    if (!el) return;
+    const s: ElementStyle = { ...(el.style ?? {}) };
+    if (name) s[slot] = name;
+    else delete s[slot];
+    this.setze({ style: Object.keys(s).length ? s : null });
+  }
+
+  /** Das Design dieses Elements gilt für jedes seiner Art in der Ansicht; es selbst sagt dann nichts mehr. */
+  protected stilFuerAlle(el: LayoutElement): void {
+    if (!el.style) return;
+    const stil = { ...el.style };
+    this.ansichtStile.update((m) => ({ ...m, [el.el]: stil }));
+    this.setze({ style: null });
+  }
+
+  protected stilFuerAlleWeg(el: LayoutElement): void {
+    this.ansichtStile.update((m) => {
+      const n = { ...m };
+      delete n[el.el];
+      return n;
+    });
+  }
+
+  /** Die Suche der Leiste: Treffer aus allen Gruppen. */
+  protected readonly suchTreffer = computed(() => (this.elementSuche().trim() ? this.paletteGefiltert().flatMap((g) => g.items) : []));
 
   protected kann(id: string, op: TreeMove): boolean {
     return canMove(this.baum(), id, op);
@@ -312,7 +591,7 @@ export class Ansichtsdesigner {
 
   protected bewege(id: string, op: TreeMove, ev?: Event): void {
     ev?.stopPropagation();
-    this.baum.set(moveTree(this.baum(), id, op));
+    this.aendere(moveTree(this.baum(), id, op));
     if (op === 'remove' && this.gewaehlt() === id) this.gewaehlt.set(null);
   }
 
@@ -333,7 +612,7 @@ export class Ansichtsdesigner {
     const vorher = this.baum();
     let neu = holdsChildren(ziel) ? moveToElement(vorher, id, ziel.id, 'into') : vorher;
     if (neu === vorher || JSON.stringify(neu) === JSON.stringify(vorher)) neu = moveToElement(vorher, id, ziel.id, 'after');
-    this.baum.set(neu);
+    this.aendere(neu);
   }
 
   /* Die Struktur (T-341): Kanten zum Ankreuzen, leer heisst die Vorgabe. */
@@ -350,7 +629,7 @@ export class Ansichtsdesigner {
 
   protected setze(patch: Partial<Record<keyof LayoutElement, unknown>>): void {
     const id = this.gewaehlt();
-    if (id) this.baum.set(patchElement(this.baum(), id, patch));
+    if (id) this.aendere(patchElement(this.baum(), id, patch));
   }
 
   protected elementName(el: LayoutElement): string {
@@ -360,13 +639,15 @@ export class Ansichtsdesigner {
     return eintrag(el.el)?.tip ?? '';
   }
   protected nurSeite(el: LayoutElement): boolean {
+    /* „Linked article" mit Kante zeichnet auch der Baum (T-425). */
+    if (el.el === 'linked' && el.path?.length) return false;
     return !!eintrag(el.el)?.seite;
   }
   protected nimmtWerte(el: LayoutElement): boolean {
-    return !!eintrag(el.el)?.werte;
+    return el.el === 'linked' || !!eintrag(el.el)?.werte;
   }
   protected mitTitel(el: LayoutElement): boolean {
-    return ['heading', 'text', 'section', 'collapsible', 'carousel', 'edgeTable', 'collection', TAB_NODE].includes(el.el);
+    return ['heading', 'text', 'section', 'collapsible', 'carousel', 'edgeTable', 'collection', 'linked', TAB_NODE].includes(el.el);
   }
   protected istReiter(el: LayoutElement): boolean {
     return (el.el as string) === TAB_NODE;
@@ -375,7 +656,12 @@ export class Ansichtsdesigner {
   // ------------------------------------------------------------ Werte
 
   /** Die Art, an der die Werte des gewählten Elements gelesen werden — am Ende seines Pfads. */
-  protected readonly endTyp = computed(() => pathEndType(this.probeTyp(), this.auswahl()?.path));
+  protected readonly endTyp = computed(() => {
+    const el = this.auswahl();
+    /* Eine Sammlung zeigt Felder ihrer Arten, nicht die des Artikels, an dem sie steht (T-425). */
+    if (el?.el === 'collection' && el.types?.length) return el.types[0]!;
+    return pathEndType(this.probeTyp(), el?.path);
+  });
   protected readonly pfadText = computed(() => pathText(this.auswahl()?.path, this.probeTyp() || 'this article'));
   protected readonly weiter = computed(() => {
     const r = this.reg();
@@ -474,6 +760,21 @@ export class Ansichtsdesigner {
   protected setzeArten(text: string): void {
     const arten = this.liste(text);
     this.setze({ types: arten?.length ? arten : null });
+  }
+  /** Der Filter einer Sammlung (T-425): Marken und Feldbedingungen als Liste, Text als Wort. */
+  protected setzeFilter(teil: 'tags' | 'fields' | 'q', text: string): void {
+    const el = this.auswahl();
+    if (!el) return;
+    const f: NonNullable<LayoutElement['filter']> = { ...(el.filter ?? {}) };
+    if (teil === 'q') {
+      if (text.trim()) f.q = text.trim();
+      else delete f.q;
+    } else {
+      const l = this.liste(text);
+      if (l?.length) f[teil] = l;
+      else delete f[teil];
+    }
+    this.setze({ filter: Object.keys(f).length ? f : null });
   }
   protected setzeSortierung(by: string, desc: boolean): void {
     const b = by.trim();
@@ -629,6 +930,10 @@ export class Ansichtsdesigner {
     else delete d.rest;
     if (this.leer()) d.empty = 'show';
     else delete d.empty;
+    /* Das Design je Elementart (E-170) gehört der Ansicht selbst. */
+    const stile = this.ansichtStile();
+    if (Object.keys(stile).length) d.styles = structuredClone(stile);
+    else delete d.styles;
     return d;
   }
 
@@ -660,7 +965,7 @@ export class Ansichtsdesigner {
       this.arbeit.fehler.set('An arrangement is a list of elements [ … ].');
       return;
     }
-    this.baum.set(tabsAsTree(w as LayoutElement[]));
+    this.aendere(tabsAsTree(w as LayoutElement[]));
   }
 
   // ------------------------------------------------------------ Beispiel
@@ -722,18 +1027,26 @@ export class Ansichtsdesigner {
       return;
     }
     const probe = this.probe();
-    let applies: ViewApplies = structuredClone(this.geltung());
-    if (als === 'article') {
-      if (!probe) {
-        this.arbeit.fehler.set('Pick an article first.');
-        return;
-      }
-      applies = { types: [primaryInterface(probe)], article: probe.id };
-    } else if (als === 'condition') {
-      delete applies.article;
+    const applies = this.geltungZumSpeichern();
+    if (typeof applies === 'string') {
+      this.arbeit.fehler.set(applies);
+      return;
     }
-    applies.where = (applies.where ?? []).filter((w) => w.field || w.relation || w.incoming);
-    if (!applies.where.length) delete applies.where;
+    if (this.speichertSchicht()) {
+      /* Eine Schicht (E-168): nur der Unterschied, unter ihrer Gruppe. */
+      const zeile = this.schichtZeile(applies);
+      const schluessel =
+        als === 'this' && k ? k : techName(als === 'article' && probe ? `${zeile.label} ${entityName(probe)}` : zeile.label, r.views, true);
+      if (als === 'article' && probe && !zeile.label.includes(entityName(probe))) zeile.label = `${zeile.label} · ${entityName(probe)}`;
+      const vorher = als === 'this' && k ? r.views[k] : undefined;
+      if (vorher?.order !== undefined) zeile.order = vorher.order;
+      const ok = await this.arbeit.aendern('views', (views) => {
+        zeile.order ??= Math.max(0, ...Object.values(views).map((v) => v.order ?? 0)) + 1;
+        views[schluessel] = zeile;
+      });
+      if (ok) this.fertig.emit(schluessel);
+      return;
+    }
     const label = this.label().trim() || 'View';
     const gruppe = this.gruppe().trim() || techName(label, {}, true);
     let key = k;
@@ -753,6 +1066,23 @@ export class Ansichtsdesigner {
       views[fest] = def;
     });
     if (ok) this.fertig.emit(fest);
+  }
+
+  /** Die Geltung, wie sie gespeichert würde — oder was fehlt. */
+  private geltungZumSpeichern(): ViewApplies | string {
+    const als = this.speichernAls();
+    const probe = this.probe();
+    let applies: ViewApplies = structuredClone(this.geltung());
+    if (als === 'article') {
+      if (!probe) return 'Pick an article first.';
+      applies = { types: [primaryInterface(probe)], article: probe.id };
+    } else if (als === 'condition') {
+      delete applies.article;
+    }
+    applies.where = (applies.where ?? []).filter((w) => w.field || w.relation || w.incoming);
+    if (!applies.where.length) delete applies.where;
+    if (!applies.types?.length) delete applies.types;
+    return applies;
   }
 
   /** Der Typ folgt wieder der allgemeinen Ansicht (T-318): seine Zeile für sie geht. */

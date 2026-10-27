@@ -10,10 +10,11 @@ import { RegListe } from './liste';
 import { techName } from './regeln';
 import { RegTyp } from './typ';
 import { Ansichtsliste } from '../ansichten/liste';
+import { RegTokens } from './tokens';
 import { Ansichtsdesigner } from '../ansichten/designer';
 import { wahlAnsichten } from '../ansichten/uebersicht';
 
-type Reiter = 'types' | 'edges' | 'lists' | 'views';
+type Reiter = 'types' | 'edges' | 'lists' | 'views' | 'tokens';
 
 /**
  * **Das Register** (W5): die Zeilen, aus denen alles besteht — Typen,
@@ -33,7 +34,7 @@ type Reiter = 'types' | 'edges' | 'lists' | 'views';
  */
 @Component({
   selector: 'nw-register',
-  imports: [RouterLink, RegTyp, RegKante, RegKantentabelle, RegListe, Ansichtsliste, Ansichtsdesigner],
+  imports: [RouterLink, RegTyp, RegKante, RegKantentabelle, RegListe, Ansichtsliste, Ansichtsdesigner, RegTokens],
   template: `
     <div class="seite">
       <nav class="leiste" [class.zu]="!!gewaehlt() && !listeOffen()" aria-label="Registry rows">
@@ -154,6 +155,9 @@ type Reiter = 'types' | 'edges' | 'lists' | 'views';
                                (fertig)="designFertig($event)" />
         } @else if (reiter() === 'views') {
           <nw-ansichtsliste />
+        } @else if (reiter() === 'tokens') {
+          <!-- Design-Tokens (T-425, REQ-437, E-170). -->
+          <nw-reg-tokens [darf]="darf()" />
         } @else if (reiter() === 'edges') {
           <!-- Wie Kanten wirken (T-111): je Kantenart Bedeutung und
                Wirkung, gerechnet aus den Auswertern (edgeEffects). -->
@@ -217,11 +221,12 @@ export class Register {
     { k: 'edges', label: 'Edges' },
     { k: 'lists', label: 'Lists' },
     { k: 'views', label: 'Views' },
+    { k: 'tokens', label: 'Tokens' },
   ];
 
   protected readonly darf = this.session.darfRegister;
   protected readonly reiter = computed<Reiter>(() =>
-    this.tab() === 'edges' ? 'edges' : this.tab() === 'lists' ? 'lists' : this.tab() === 'views' ? 'views' : 'types',
+    this.tab() === 'edges' ? 'edges' : this.tab() === 'lists' ? 'lists' : this.tab() === 'views' ? 'views' : this.tab() === 'tokens' ? 'tokens' : 'types',
   );
   protected readonly reiterLabel = computed(() => this.reiterListe.find((r) => r.k === this.reiter())!.label.toLowerCase());
   protected readonly gewaehlt = computed(() =>
@@ -319,6 +324,12 @@ export class Register {
       return viewKeys(r)
         .map((name) => ({ name, label: r.views[name]?.label ?? name, zusatz: name, query: { tab: 'views', view: name } }))
         .filter((z) => passt(z.name, z.label));
+    }
+    if (this.reiter() === 'tokens') {
+      return Object.entries(r.tokens ?? {})
+        .map(([name, d]) => ({ name, label: d.label, zusatz: d.role, query: { tab: 'tokens' } }))
+        .filter((z) => passt(z.name, z.label))
+        .sort((a, b) => a.label.localeCompare(b.label, 'en'));
     }
     if (this.reiter() === 'lists') {
       return Object.entries(r.enums ?? {})

@@ -145,7 +145,7 @@ import {
   type ShapeIndex,
   isSupplement,
   pickDeletable,
-  buybackPrice,
+  buybackFor,
   reservedFor,
   SHOP_TYPE,
   type WareOffer,
@@ -351,7 +351,7 @@ export interface AppOptions {
   sicherung?: Sicherung | null;
 }
 
-const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
+const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings', 'tokens'] as const;
 type RegistryPart = (typeof REGISTRY_PARTS)[number];
 
 function isRegistryPart(value: string): value is RegistryPart {
@@ -1429,6 +1429,7 @@ export function buildApp({
         case 'vars': await repo.putRegistryPart('vars', parsed.data.vars); break;
         case 'enums': await repo.putRegistryPart('enums', parsed.data.enums ?? {}); break;
         case 'settings': await repo.putRegistryPart('settings', parsed.data.settings ?? {}); break;
+        case 'tokens': await repo.putRegistryPart('tokens', parsed.data.tokens ?? {}); break;
       }
       await repo.appendEvent('registry.written', undefined, { part });
       return { ok: true, part };
@@ -2249,7 +2250,11 @@ export function buildApp({
     const kampagne = currentCampaign(map, registry.settings ?? null);
     const roherStand = map;
     map = withVersionPrices(map, kampagne, registry);
-    const verkauft = (e.relations ?? []).filter((r) => r.type === 'sells').map((r) => map.get(r.to)).filter((x): x is Entity => !!x);
+    /* Eine Kante auf eine Collection steht für ihre Mitglieder (REQ-439): gesiebt wird jede Ware einzeln. */
+    const alleWaren = shopWares(e, { entities: map, registry });
+    const verkauft = [...new Set([...(e.relations ?? []).filter((r) => r.type === 'sells' || r.type === 'buys').map((r) => r.to), ...alleWaren.map((w) => w.item)])]
+      .map((id) => map.get(id))
+      .filter((x): x is Entity => !!x);
     const user = await viewerOf(request);
     const figuren = (user?.actorIds ?? []).map((id) => map.get(id)).filter((x): x is Entity => !!x);
     const genannt = new Set<string>();
@@ -2271,6 +2276,7 @@ export function buildApp({
         .filter((x) => sichtbar.has(x.item))
         .map((x) => ({
           ...x,
+          ...(name(x.via) ? { viaName: name(x.via) } : {}),
           steps: x.steps.map((st) => {
             const g = name(st.giver);
             const t = name(st.target);
@@ -2278,15 +2284,17 @@ export function buildApp({
           }),
         }));
     return {
-      table: benannt(shopWares(e, { entities: map })),
-      mine: figuren.map((f) => ({ id: f.id, name: entityName(f), ...geldbeutel(f), wares: benannt(shopWares(e, { entities: map, buyer: f })) })),
+      table: benannt(alleWaren),
+      mine: figuren.map((f) => ({ id: f.id, name: entityName(f), ...geldbeutel(f), wares: benannt(shopWares(e, { entities: map, buyer: f, registry })) })),
     };
 
     /**
      * Was die Figur hat (T-133): ihr Geld (`Inventory.copper` am Inventar,
      * das sie trägt) und was sie diesem Laden verkaufen kann — die freien
      * Stücke aus ihrem Inventar und den Behältern darin, mit dem
-     * Ankaufspreis (`buybackPrice`, E-045). Reserviertes fehlt (T-128).
+     * Ankaufspreis dieses Ladens (`buybackFor`, E-045 b, E-175): Satz und
+     * Herkunft, oder `refused: 'notBought'`, wenn er es nicht ankauft.
+     * Reserviertes fehlt (T-128).
      */
     function geldbeutel(f: Entity) {
       const invId = (f.relations ?? []).find((r) => r.type === 'carries')?.to;
@@ -2301,10 +2309,17 @@ export function buildApp({
             item: r.to,
             name: map.get(r.to) ? pieceName(map, map.get(r.to)!) : entityName(undefined),
             qty: Math.max(1, Math.trunc(Number(r.props?.['qty']) || 1)),
-            ...(buybackPrice(map.get(r.to), map) !== undefined ? { price: buybackPrice(map.get(r.to), map) } : {}),
+            ...ankauf(map.get(r.to)),
           })),
       );
       return { inventory: invId, purse, sellable };
+    }
+
+    function ankauf(stueck: Entity | undefined) {
+      const a = buybackFor(e, stueck, map, registry);
+      if ('refused' in a) return a.refused === 'notBought' ? { refused: a.refused } : {};
+      const via = name(a.via);
+      return { price: a.unit, rate: a.rate, from: a.from, ...(via ? { viaName: via } : {}), ...(a.steps.length ? { steps: a.steps } : {}) };
     }
   }
 

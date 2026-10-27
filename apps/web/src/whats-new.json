@@ -1,6 +1,62 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-shop-collections",
+      "date": "2026-10-26",
+      "title": "Shops sell and buy by collection",
+      "text": "A shop can now sell a whole collection — “sells → Simple weapons” — and say with “buys” edges what it buys back and at which rate; without them it buys everything at its buy rate. The wares show where an item comes from, and the sell list what the shop does not take.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-26-collection-articles",
+      "date": "2026-10-26",
+      "title": "Collections: group articles by rule or by hand",
+      "text": "Create a Collection under Rules — Simple Melee Weapons, Damage Types — and give it a rule of types, tags and field conditions; add other articles by hand with the edge “in collection”, or exclude one. Its page lists the members, and players see only those they may.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-26-design-tokens",
+      "date": "2026-10-26",
+      "title": "Colour a view with design tokens",
+      "text": "In the view designer, an element’s head, surface, frame and text take a design token — a named colour with a light and a dark value — and a view can give every element of a kind the same design. Registry › Tokens lists the colours with their contrast, and the workbench warns when a text reads too weak on its surface.",
+      "area": "Registry",
+      "link": "/registry?tab=tokens"
+    },
+    {
+      "id": "2026-10-26-designer-bar",
+      "date": "2026-10-26",
+      "title": "View designer: one bar to insert, undo, copy and paste",
+      "text": "The view designer has a bar on top: insert elements by group or find them by name, undo and redo every change until you save, copy an element and paste it into another view. A selected element gets a floating toolbar to move, duplicate or remove it, and the keys Ctrl+Z, Ctrl+Shift+Z, Ctrl+C, Ctrl+V and Ctrl+D work there too.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
+      "id": "2026-10-26-linked-article-board-sketch",
+      "date": "2026-10-26",
+      "title": "Show a linked article in any view, and boards as a sketch",
+      "text": "In the view designer, Linked article can now follow any edge and show the article at its end in a view you choose — the place of a scene as its quick view. A board’s quick view is a small sketch of its cards, in the popup and under the + of a search hit. Scenes list their encounters; arcs keep them as tiles.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
+      "id": "2026-10-26-collections-everywhere",
+      "date": "2026-10-26",
+      "title": "Arcs, scenes and places show what belongs to them as tiles",
+      "text": "An arc shows its scenes, a scene its encounters — as tiles in their own quick view, grouped by type, instead of the plain Contains list. A place shows the places within it and who lives there. In the view designer, a Collection can now also be a table, with the edge’s values and fields as columns, and can gather its articles from a filter of types, tags and fields, like the Compendium.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
+      "id": "2026-10-26-overlays",
+      "date": "2026-10-26",
+      "title": "Overlays: change a view for one article or a condition without copying it",
+      "text": "In the view designer, save for one article or for a condition “as an overlay”: only what you add, move or take away is kept, and everything else keeps following the view. Elements sit by position, so “map at position 15” lands in the same place on every type. Where two overlays meet, the designer marks it with ⚠ and the workbench lists it under View conflicts.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
       "id": "2026-10-26-shapes-with-grid",
       "date": "2026-10-26",
       "title": "Item shapes come with the grid",

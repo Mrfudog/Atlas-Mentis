@@ -386,6 +386,11 @@ export const interfaces: Record<string, InterfaceDef> = {
         /* Worauf man hier würfelt. Die Tabelle gehört nicht dem Ort — sie
            gilt für ihn, und das steht an der Kante `tableFor`. */
         { id: 'o-table', el: 'table' },
+        /* Was in diesem Ort liegt und wer hier lebt (T-425): je in der
+           Ansicht seiner Art — die Unterorte als Liste, die Bewohner als
+           Karten. */
+        { id: 'o-within', el: 'collection', text: 'Places within', path: [{ relation: 'partOf', dir: 'in' }], types: ['Place'], show: 'list', sort: { by: 'name' } },
+        { id: 'o-residents', el: 'collection', text: 'Residents', path: [{ relation: 'livesIn', dir: 'in' }], types: ['Creature'], show: 'tiles', sort: { by: 'name' } },
         { id: 'o-r', el: 'relations' },
       ],
     },
@@ -886,6 +891,30 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Story',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
     schema: merge(g.StoryInfo),
+    /* **Was ohne Rang zu einer Geschichte gehört** (T-425, löst „Contains"
+       aus T-422 ab): die Szenen eines Arcs, die Begegnungen einer Szene —
+       als Kacheln in der Kurzansicht ihrer Art, gleich nach den Teilen
+       (Position 65 liegt zwischen `l-parts` und `l-c`). Was mit Rang
+       dasteht, zeigt der Lesefluss. */
+    views: {
+      full: {
+        adjust: {
+          extra: [
+            {
+              id: 'st-contains',
+              el: 'collection',
+              text: 'Contains',
+              path: [{ relation: 'partOf', dir: 'in' }],
+              types: ['Story', 'Encounter'],
+              unranked: true,
+              show: 'tiles',
+              groupBy: 'type',
+              pos: 65,
+            },
+          ],
+        },
+      },
+    },
   },
 
   /**
@@ -1079,6 +1108,27 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Scene / Encounter',
     extends: ['Story', 'Tactics', 'Difficulty'],
     schema: merge(g.SceneInfo),
+    /* Die Begegnungen einer Szene als Liste (T-425): dasselbe `st-contains`
+       wie an `Story`, an Ort und Stelle anders eingestellt. */
+    views: {
+      full: {
+        adjust: {
+          extra: [
+            {
+              id: 'st-contains',
+              el: 'collection',
+              text: 'Contains',
+              path: [{ relation: 'partOf', dir: 'in' }],
+              types: ['Story', 'Encounter'],
+              unranked: true,
+              show: 'list',
+              groupBy: 'type',
+              pos: 65,
+            },
+          ],
+        },
+      },
+    },
   },
 
   /**
@@ -1252,11 +1302,37 @@ export const interfaces: Record<string, InterfaceDef> = {
    * Gruppe statt auf einen Gegenstand. Eine Regel, kein Gegenstand: man
    * trägt sie nicht, man erfüllt sie.
    */
+  /**
+   * **Eine Collection** (T-425, REQ-438, E-174): eine Gruppe von Artikeln
+   * des Regelwerks — Simple Melee Weapons, Damage Types, Creature Types.
+   * Mitglieder kommen nach Regel (Arten, Marken, Feldbedingungen, wie im
+   * Kompendium) und von Hand über `inCollection`; dieselbe Kante mit
+   * `exclude` nimmt aus. Unterkollektionen hängen über `partOf`. Gezeigt
+   * werden die Mitglieder mit dem Element `collection` (Quelle `members`).
+   */
+  Collection: {
+    name: 'Collection',
+    area: 'rules',
+    label: 'Collection',
+    extends: ['Rule'],
+    schema: merge(g.CollectionInfo),
+    views: {
+      full: {
+        adjust: {
+          extra: [{ id: 'col-members', el: 'collection', text: 'Members', source: 'members', show: 'list', groupBy: 'type', sort: { by: 'name' }, pos: 25 }],
+        },
+      },
+    },
+  },
+
+  /* Eine Materialgruppe ist eine Collection mit eigener Regel (E-174): sie
+     nimmt Stücke nach Materialart und Seltenheit, und von Hand dazu kommt,
+     was über `inCollection` hineinzeigt. Die Karte `MaterialGroup` bleibt. */
   MaterialGroup: {
     name: 'MaterialGroup',
     area: 'rules',
     label: 'Material group',
-    extends: ['Rule'],
+    extends: ['Collection'],
     schema: merge(g.MaterialGroupInfo),
   },
 
@@ -1353,6 +1429,9 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'b-board', el: 'board' },
         { id: 'b-f', el: 'fields', fields: 'all', except: ['Board.shapes', 'Board.anchors'] },
       ],
+      /* Klein, wie ein Bild am Ende der Karte (T-425): wo die Kacheln liegen und wie sie heissen —
+         Position 35, vor dem Bild (`q-img`), das in `quick` zuletzt steht (T-346). */
+      quick: { adjust: { extra: [{ id: 'bq-board', el: 'board', pos: 35 }] } },
     },
   },
 

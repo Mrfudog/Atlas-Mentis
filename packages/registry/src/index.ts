@@ -5,6 +5,7 @@ import { relations } from './relations.js';
 import { views } from './views.js';
 import { units } from './units.js';
 import { enums } from './enums.js';
+import { tokens } from './tokens.js';
 
 /* Die Ansichten je Art (T-110 Schritt 7) an ihre Art gehängt — was eine
    Art in `interfaces.ts` selbst sagt, bleibt und geht vor. */
@@ -103,5 +104,5 @@ export const settings: Record<string, string> = {
 };
 
 /** The rows a fresh database is seeded with. */
-export const seedRegistry: Registry = { interfaces, relations, views, units, enums, vars, settings };
+export const seedRegistry: Registry = { interfaces, relations, views, units, enums, tokens, vars, settings };
 export { RULE_SYSTEM_LAYERS } from './regelsysteme.js';

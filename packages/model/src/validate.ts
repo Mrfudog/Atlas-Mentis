@@ -135,11 +135,21 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
     layout: z.enum(['tree', 'net']).optional(),
     /* Eine Sammlung (T-425): Arten, Darstellung, Ansicht je Treffer, Ordnung. */
     types: z.array(z.string()).optional(),
-    show: z.enum(['tiles', 'list']).optional(),
+    show: z.enum(['tiles', 'list', 'table']).optional(),
+    source: z.enum(['linked', 'filter', 'members']).optional(),
+    filter: z
+      .object({ tags: z.array(z.string()).optional(), fields: z.array(z.string()).optional(), q: z.string().optional() })
+      .strict()
+      .optional(),
+    limit: z.number().int().positive().optional(),
+    unranked: z.boolean().optional(),
     view: z.string().optional(),
     viewByType: z.record(z.string(), z.string()).optional(),
     sort: z.object({ by: z.string(), desc: z.boolean().optional() }).optional(),
     groupBy: z.literal('type').optional(),
+    /* Die Position in einer zusammengesetzten Ansicht (T-425, E-168). */
+    pos: z.number().optional(),
+    style: z.object({ head: z.string().optional(), surface: z.string().optional(), frame: z.string().optional(), text: z.string().optional() }).strict().optional(),
     tabs: z
       .array(
         z.object({
@@ -233,7 +243,22 @@ export const ViewDefSchema = z.object({
       article: z.string().optional(),
     })
     .optional(),
+  /* Ein Beitrag (T-425, E-168): legt sich über die Ansicht seiner Gruppe. */
+  adjust: LayoutAdjustSchema.optional(),
+  priority: z.number().optional(),
+  styles: z.record(z.string(), z.object({ head: z.string().optional(), surface: z.string().optional(), frame: z.string().optional(), text: z.string().optional() }).strict()).optional(),
 });
+
+const TokenSchema = z
+  .object({
+    label: z.string(),
+    role: z.enum(['surface', 'text', 'accent', 'line']),
+    light: z.string().min(1),
+    dark: z.string().min(1),
+    on: z.string().optional(),
+    description: z.string().optional(),
+  })
+  .strict();
 
 export const RegistrySchema = z.object({
   interfaces: z.record(z.string(), InterfaceDefSchema),
@@ -241,6 +266,7 @@ export const RegistrySchema = z.object({
   views: z.record(z.string(), ViewDefSchema),
   units: z.record(z.string(), UnitDefSchema),
   enums: z.record(z.string(), EnumDefSchema).optional(),
+  tokens: z.record(z.string(), TokenSchema).optional(),
   vars: z.record(z.string(), z.string()),
   settings: z.record(z.string(), z.string()).optional(),
 });

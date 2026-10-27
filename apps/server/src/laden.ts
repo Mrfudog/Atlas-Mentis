@@ -68,6 +68,7 @@ const GRUND: Record<TradeRefusal, string> = {
   tooPoor: 'Zu wenig Geld.',
   reserved: 'Das Stück ist reserviert.',
   notEmpty: 'Im Behälter liegt noch etwas.',
+  notBought: 'Das kauft dieser Laden nicht an — er nennt, was er kauft (buys). Versuch es in einem anderen Laden.',
 };
 
 /** Die Inventare einer Figur: das, das sie trägt, und die Behälter darin. */
@@ -135,7 +136,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
     return null;
   }
 
-  app.post<{ Params: { id: string }; Body: { actor?: unknown; edge?: unknown; qty?: unknown } | null }>(
+  app.post<{ Params: { id: string }; Body: { actor?: unknown; edge?: unknown; item?: unknown; qty?: unknown } | null }>(
     '/api/shops/:id/buy',
     async (request, reply) => {
       const v = await vorbereiten(request);
@@ -145,7 +146,10 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
          geltenden Fassung, etwa aus „AI generated prices". */
       const registry = await repo.getRegistry();
       const map = withVersionPrices(new Map(stand.map).set(laden.id, laden), kampagne, registry);
-      const offer = shopWares(laden, { entities: map, buyer: figur }).find((w) => w.edge === String(request.body?.edge ?? ''));
+      /* Eine Kante auf eine Collection steht für viele Waren (REQ-439): die Ware nennt dann `item`. */
+      const kante = String(request.body?.edge ?? '');
+      const gewuenscht = request.body?.item === undefined ? undefined : String(request.body.item);
+      const offer = shopWares(laden, { entities: map, buyer: figur, registry }).find((w) => w.edge === kante && (gewuenscht === undefined || w.item === gewuenscht));
       const item = offer ? stand.map.get(offer.item) : undefined;
       /* Eine Ware, die dieser Betrachter nicht sieht, gibt es für ihn nicht —
          gesiebt wird die geltende Fassung, das Original steht nicht im Spiel. */
@@ -234,7 +238,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
       if (!inventar) return reply.code(409).send({ error: GRUND.missing, refused: 'missing' });
       const qty = Number(request.body?.qty ?? 1);
       const preise = withVersionPrices(stand.map, kampagne, await repo.getRegistry());
-      const r = sellPiece(laden, inventar, String(request.body?.edge ?? ''), Number.isFinite(qty) ? qty : 1, preise);
+      const r = sellPiece(laden, inventar, String(request.body?.edge ?? ''), Number.isFinite(qty) ? qty : 1, preise, await repo.getRegistry());
       if ('refused' in r) return reply.code(409).send({ error: GRUND[r.refused], refused: r.refused });
       const neu = r.shop === laden ? [r.inventory] : [r.shop, r.inventory];
       const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]), user);
@@ -249,8 +253,8 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
         qty: r.qty,
         unit: r.unit,
         total: r.total,
-        /* Woher der Ankaufspreis kommt (E-045): heute immer die Hälfte. */
-        rule: 'half',
+        /* Woher der Ankaufspreis kommt (E-045 b, E-175): der Satz und wessen. */
+        rule: { rate: r.rate, from: r.from, ...(r.via ? { via: r.via } : {}) },
         inventory: inventar.id,
         by: user.id,
       });
