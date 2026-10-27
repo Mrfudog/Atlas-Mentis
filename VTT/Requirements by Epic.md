@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-22
+updated: 2026-10-27
 ---
 
 # Requirements by Epic
@@ -180,7 +180,7 @@ Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder dar
 | [[REQ-203]] | Wissen nach Rang in einer Fraktion | Spielleitung | 2 | 2 | steht |
 | [[REQ-354]] | Wissenspunkte bei eigener Herkunft und eigenem Hintergrund | Spieler | 2 | 3 | offen |
 | [[REQ-368]] | Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden | Spielleitung | 2 | 3 | teils |
-| [[REQ-371]] | Information aus Feld, Textteil oder Beziehung | Spielleitung | 2 | 5 | offen |
+| [[REQ-371]] | Informationen selbst definieren: benannte Auswahl aus Feldern, Textteilen und Beziehungen | Spielleitung | 2 | 5 | offen |
 | [[REQ-039]] | Sichtbarkeit mit Rollenlisten und Freigabemarken | – | 3 | 8 | ersetzt |
 | [[REQ-059]] | Wissen über Arten von Kreaturen | Spielleitung | 3 | 3 | steht |
 | [[REQ-178]] | Decknamen | Spielleitung | 3 | 1 | steht |
@@ -665,7 +665,7 @@ Regelsysteme und Module als Ebenen, je Sorte ein Modul, gewählt an der Kampagne
 |---|---|---|---|---|---|
 | [[REQ-287]] | Regelsysteme und Module als Ebenen | Spielleitung | 2 | 8 | teils |
 | [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | 2 | 5 | offen |
-| [[REQ-369]] | Module als Baum mit Transformationen | Spielleitung | 2 | 5 | offen |
+| [[REQ-369]] | Module als Baum mit selbst gesetzten Transformationen | Spielleitung | 2 | 5 | offen |
 | [[REQ-375]] | Register als Module | Verwaltung | 2 | 13 | offen |
 | [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | 3 | 3 | offen |
 | [[REQ-223]] | Rahmen für Regelsysteme wie Taverne | Spielleitung | 4 | 5 | offen |
@@ -889,9 +889,9 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-378]] | Regelbuch-PDFs privat ablegen | Spielleitung | 2 | 3 | offen |
-| [[REQ-379]] | Vom Artikel auf Seite und Stelle im PDF springen | Spielleitung | 2 | 5 | offen |
+| [[REQ-378]] | Regelbuch-PDFs auf dem Server, geteilt nach ihrer Ebene | Spielleitung | 2 | 3 | offen |
 | [[REQ-149]] | PDF mit Seitensprung | Spieler | 4 | 5 | offen |
+| [[REQ-379]] | Vom Artikel auf Seite und Stelle im PDF springen | Spielleitung | 4 | 5 | offen |
 | [[REQ-152]] | Texte aus PDF erkennen | Spielleitung | 5 | 13 | offen |
 
 ## EP-11 Oberfläche & Navigation
@@ -980,7 +980,7 @@ Ein Muster für Ansichten, Board-Kacheln, Play-Schirm und Seiten: Vorlagen mit B
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-373]] | Ein Muster für Ansichten, Kacheln und Seiten | Spielleitung | 2 | 8 | offen |
+| [[REQ-373]] | Widgets als Ansichtselement und als eigene Ansicht | Spielleitung | 2 | 8 | offen |
 | [[REQ-384]] | Widget-Katalog | Spielleitung | 2 | 13 | offen |
 | [[REQ-387]] | Kachel-Vorlagen anpassen | Spielleitung | 3 | 5 | offen |
 
