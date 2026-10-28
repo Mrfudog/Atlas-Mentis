@@ -88,6 +88,12 @@
       } @else if (schluessel(); as k) {
         <nw-reg-vorschau [ansicht]="k" [register]="entwurfsRegister()" [typ]="speichernAls() === 'type' ? zielTyp() : (typ() ?? null)" />
       }
+      @if (maskeOhnePflicht().length) {
+        <p class="hinweis warnung" role="note">
+          ⚠ This form does not ask for {{ maskeOhnePflicht().join(', ') }}, which the type requires. Creating asks for
+          them anyway — add them to a field list to place them yourself.
+        </p>
+      }
     </section>
   }
 

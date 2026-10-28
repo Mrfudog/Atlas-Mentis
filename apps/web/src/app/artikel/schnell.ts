@@ -12,7 +12,7 @@ import {
   untracked,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { LAYER_RELATION, areaOf, entityName, enumOptions, fieldTitle, typeChain, viewFields } from '@nw/model';
+import { LAYER_RELATION, areaOf, createLayout, entityName, enumOptions, fieldTitle, typeChain, viewFields } from '@nw/model';
 import type { Entity, PropertySchema, Registry } from '@nw/model';
 import { Api, ApiError, type MeineEbene } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -367,9 +367,14 @@ export class Schnell {
     if (!r || !typ) return [];
     const raus: Eingabe[] = pflichtFelder(r, typ).map((p) => ({ ...p, pflicht: true, art: artVon(p.prop, p.werte) }));
     const schon = new Set(raus.map((p) => p.ref));
-    const quick = viewFields(r, 'quick', typ).elements.filter((el) => el.el === 'fields').flatMap((el) => el.fields);
+    /* Die gestaltete Erfassungsmaske `create` (REQ-432, E-169) sagt, was
+       gefragt wird, ohne Obergrenze; ohne Gestaltung die einfachen Felder
+       der Kurzansicht, höchstens acht. Pflichtfelder stehen immer vorn. */
+    const maske = createLayout(r, 'create', typ);
+    const quick = maske.designed ? maske.fields : viewFields(r, 'quick', typ).elements.filter((el) => el.el === 'fields').flatMap((el) => el.fields);
+    const grenze = maske.designed ? Number.MAX_SAFE_INTEGER : QUICK_HOECHSTENS;
     for (const ref of quick) {
-      if (raus.length >= QUICK_HOECHSTENS || schon.has(ref)) continue;
+      if (raus.length >= grenze || schon.has(ref)) continue;
       const [t, k] = ref.split('.');
       if (!t || !k || t === 'Identity' || t === 'Visibility') continue;
       const prop = r.interfaces[t]?.schema?.properties?.[k];

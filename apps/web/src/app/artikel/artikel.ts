@@ -21,6 +21,7 @@ import {
   mergeEntity,
   proseFields,
   relationsFrom,
+  createLayout,
   primaryInterface,
   relationDef,
   resolveView,
@@ -1441,7 +1442,20 @@ export class Artikel implements SchnellKontext {
      sehen darf, sieht dieselbe Ansicht mit weniger darin. */
   private readonly view = computed<ViewDef | null>(() => {
     const r = this.entwurfsRegister() ?? this.reg();
-    return r ? resolveView(r, 'full') : null;
+    return r ? resolveView(r, this.seitenOrt()) : null;
+  });
+
+  /**
+   * **Welche Ansicht die Seite zeichnet**: `full`, ausser gleich nach
+   * „New article“ (`?edit=create`) im Bearbeiten — dann die ausführliche
+   * Erfassungsmaske `createFull`, wenn die Art sie gestaltet (REQ-432,
+   * E-169). Nach dem Bearbeiten wieder `full`.
+   */
+  protected readonly seitenOrt = computed<'full' | 'createFull'>(() => {
+    const e = this.artikel();
+    const r = this.entwurfsRegister() ?? this.reg();
+    if (this.edit() !== 'create' || !this.bearbeitet() || !e || !r) return 'full';
+    return createLayout(r, 'createFull', primaryInterface(e)).designed ? 'createFull' : 'full';
   });
 
   protected typLabel(typ: string): string {
@@ -1613,7 +1627,7 @@ export class Artikel implements SchnellKontext {
     const gelesen = (e.relations ?? []).some((k) => k.type === 'hasClass' || k.type === 'hasAncestry')
       ? withCastRelations(e, spellcastingOf(e, undefined, this.bestand.voll()))
       : e;
-    return forArticle(pickView(e, this.entwurfsRegister() ?? r, 'full', { exact: true, incoming: this.rueckKanten() }).layout, gelesen, this.rueckKanten());
+    return forArticle(pickView(e, this.entwurfsRegister() ?? r, this.seitenOrt(), { exact: true, incoming: this.rueckKanten() }).layout, gelesen, this.rueckKanten());
   });
 
   protected readonly stuecke = computed<Stueck[]>(() => {
@@ -1659,7 +1673,7 @@ export class Artikel implements SchnellKontext {
         if (el.children) geh(el.children);
         for (const t of el.tabs ?? []) geh(t.layout);
       });
-    geh(pickView(e, this.entwurfsRegister() ?? r, 'full', { exact: true, incoming: this.rueckKanten() }).layout);
+    geh(pickView(e, this.entwurfsRegister() ?? r, this.seitenOrt(), { exact: true, incoming: this.rueckKanten() }).layout);
     return m;
   });
   protected stilVon(id: string): ElementStyle | undefined {
@@ -2386,6 +2400,15 @@ export class Artikel implements SchnellKontext {
           frei: suche.frei,
         });
       }
+    }
+    /* Gleich nach „New article“ (`?edit=create`) stehen die Felder der
+       gestalteten Erfassungsmaske da, auch leer, und vorn in ihrer
+       Reihenfolge (REQ-432, E-169); die übrigen holt „+ Add field“. */
+    const maske = this.edit() === 'create' ? createLayout(r, 'createFull', primaryInterface(e)) : null;
+    if (maske?.designed) {
+      const rang = new Map(maske.fields.map((ref, i) => [ref, i]));
+      for (const ref of maske.fields) if (out.some((f) => f.ref === ref)) da.add(ref);
+      out.sort((a, b) => (rang.get(a.ref) ?? rang.size) - (rang.get(b.ref) ?? rang.size));
     }
     this.felder.set(out);
     this.gezeigt.set(da);

@@ -96,7 +96,17 @@ export function attachedDerived(
  * daneben wählt man dort, wo gewählt wird (die Kachel auf dem Board, der
  * Druck).
  */
-export const PLACE_VIEWS = ['overview', 'quick', 'full', 'print'] as const;
+export const PLACE_VIEWS = ['overview', 'quick', 'full', 'print', 'create', 'createFull'] as const;
+
+/**
+ * **Die Erfassungsmasken** (T-425, REQ-432, E-169): `create` ist der
+ * schnelle Weg (der Dialog, auch aus einer Auswahl), `createFull` der
+ * ausführliche (die Artikelseite im Bearbeiten nach „New article“). Beide
+ * sind Ansichten wie jede und werden im Designer gestaltet; Untertypen
+ * erben sie die `extends`-Kette hoch.
+ */
+export const CREATE_VIEWS = ['create', 'createFull'] as const;
+export type CreateView = (typeof CREATE_VIEWS)[number];
 
 /**
  * **Orte, die es nicht mehr gibt, und wohin sie fallen** (T-346): die
@@ -347,6 +357,70 @@ export function listColumns(
           if (elementTakes(el, name, key)) dazu(name, key);
         }
       }
+    }
+  }
+  return raus;
+}
+
+/**
+ * **Was eine Erfassungsmaske fragt** (T-425, REQ-432, E-169): die Felder
+ * ihrer Feldelemente für diese Art, und ob sie überhaupt gestaltet ist —
+ * eine Art (oder ein Obertyp) sagt etwas dafür, oder die Ansicht selbst
+ * nennt Felder. **Ohne Gestaltung gilt das Heutige**: der Dialog fragt die
+ * Pflichtfelder und die einfachen Felder der Kurzansicht, „New article“
+ * öffnet die Seite `full` im Bearbeiten. Pflichtfelder fragt der Dialog
+ * immer, auch wenn die Maske sie nicht nennt (der Designer warnt).
+ */
+export function createLayout(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  place: CreateView,
+  type: string,
+): { fields: string[]; designed: boolean } {
+  if (!registry.views[place]) return { fields: [], designed: false };
+  const { from, layout } = layoutFor(registry, place, type);
+  /* `viewFields` klappt ganze Typen aus, ordnet aber nach dem Typ; gefragt
+     wird in der Reihenfolge, in der die Maske die Felder nennt. */
+  const genannt: string[] = [];
+  const geh = (els: readonly LayoutElement[]): void =>
+    els.forEach((el) => {
+      if (el.el === 'fields' && Array.isArray(el.fields)) genannt.push(...el.fields);
+      geh(el.children ?? []);
+      for (const t of el.tabs ?? []) geh(t.layout);
+    });
+  geh(layout);
+  const rang = (ref: string): number => {
+    const i = genannt.indexOf(ref);
+    return i < 0 ? genannt.length : i;
+  };
+  const fields = viewFields(registry, place, type)
+    .elements.filter((e) => e.el === 'fields')
+    .flatMap((e) => e.fields)
+    .sort((a, b) => rang(a) - rang(b));
+  return { fields, designed: from !== null || fields.length > 0 };
+}
+
+/**
+ * **Welche Pflichtfelder eine Erfassungsmaske nicht nennt** (T-425,
+ * REQ-432): `required` der Art die Kette hoch, ohne Name und Nummer (die
+ * setzt das Anlegen), ohne gerechnete und ohne solche mit Vorgabe. Der
+ * Designer warnt damit; der Dialog fragt sie trotzdem.
+ */
+export function createMissingRequired(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  type: string,
+  layout: readonly LayoutElement[],
+): string[] {
+  const flach = (els: readonly LayoutElement[]): LayoutElement[] =>
+    els.flatMap((el) => [el, ...flach(el.children ?? []), ...(el.tabs ?? []).flatMap((t) => flach(t.layout))]);
+  const felder = flach(layout).filter((el) => el.el === 'fields');
+  const raus: string[] = [];
+  for (const t of typeChain(registry, type)) {
+    const schema = registry.interfaces[t]?.schema;
+    for (const k of schema?.required ?? []) {
+      const prop = schema?.properties[k];
+      if (!prop || prop.derived || prop.default !== undefined) continue;
+      if (t === 'Identity' && (k === 'name' || k === 'id')) continue;
+      if (!felder.some((el) => elementTakes(el, t, k))) raus.push(`${t}.${k}`);
     }
   }
   return raus;

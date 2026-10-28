@@ -81,6 +81,16 @@ const APP: AppTerm[] = [
     see: '/registry',
   },
   {
+    term: 'Create form',
+    aliases: ['Create', 'Create (full)', 'createFull'],
+    sort: 'app',
+    definition: 'One of two views that say what creating an article asks: Create for the quick dialog, Create (full) for the article page right after New article.',
+    effect: 'The fields a type’s form names are asked in that order; required fields are asked anyway. A type without a form keeps the old behaviour.',
+    example: 'A shop form that asks keeper, buy rate and wares first, so a new shop is usable at once.',
+    translations: { de: 'Erfassungsmaske' },
+    see: '/registry',
+  },
+  {
     term: 'Unassigned',
     aliases: ['Parking layer'],
     sort: 'app',

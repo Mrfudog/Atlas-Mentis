@@ -169,6 +169,43 @@ export const views: Record<string, ViewDef> = {
   },
 
   /**
+   * **Die schnelle Erfassungsmaske** (T-425, REQ-432, E-169): der Dialog
+   * „Create …“, am Tisch und aus einer Auswahl. Leer — welche Felder man
+   * beim schnellen Anlegen fragt, weiss die Art; ohne Angabe fragt der
+   * Dialog wie bisher die Pflichtfelder und die einfachen Felder der
+   * Kurzansicht.
+   */
+  create: {
+    label: 'Create',
+    order: 6,
+    fields: 'none',
+    description: false,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: false,
+    layout: [{ id: 'cr-f', el: 'fields', fields: [] }],
+  },
+
+  /**
+   * **Die ausführliche Erfassungsmaske** (T-425, REQ-432, E-169): die
+   * Artikelseite im Bearbeiten nach „New article“. Leer — ohne Gestaltung
+   * öffnet sich die Seite `full`; gestaltet eine Art sie, steht beim
+   * ersten Bearbeiten genau diese Anordnung da.
+   */
+  createFull: {
+    label: 'Create (full)',
+    order: 7,
+    fields: 'none',
+    description: true,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: false,
+    layout: [{ id: 'cf-f', el: 'fields', fields: [] }],
+  },
+
+  /**
    * **Ein Handzettel** (T-110 Schritt 7) — die erste eigene Ansicht: was man
    * den Spielenden über einen Ort, eine Szene, eine Figur in die Hand gibt.
    * Beschreibung, Absatz und Vorlesetext, keine Werte und keine Geheimnisse.

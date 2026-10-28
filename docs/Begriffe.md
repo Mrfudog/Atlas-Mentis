@@ -642,7 +642,7 @@ Ein Bild **ersetzen** heisst zweierlei, und die Maske fragt:
 
 ## Ansicht
 
-Wie ein Artikel gezeichnet wird. Es gibt **vier**, nach denen ein Ort fragt,
+Wie ein Artikel gezeichnet wird. Es gibt **sechs**, nach denen ein Ort fragt,
 und welche gilt, sagt der Ort und kein Schalter:
 
 | Ansicht | Wo sie gilt | Was sie zeigt |
@@ -651,6 +651,16 @@ und welche gilt, sagt der Ort und kein Schalter:
 | **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel und am Marker, das „+" eines Suchtreffers, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat — die Kennwerte oben, das Bild zuletzt |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 | **Print** | „Print" an der Artikelseite | Was auf ein Blatt A4 gehört — ohne Knöpfe und Seitenspalte |
+| **Create** (Erfassungsmaske) | Der schnelle Dialog, wenn man aus einer Auswahl etwas Neues anlegt | Was man beim Anlegen sofort wissen will — die Leitung legt es je Art fest (T-425, REQ-432) |
+| **Create (full)** | Die Artikelseite gleich nach „New article“ | Die ausführliche Maske: ihre Felder stehen vorn, auch leer |
+
+Die beiden **Erfassungsmasken** sind Ansichten, weil sie dieselbe Frage
+stellen — welche Felder, in welcher Reihenfolge — und weil sie dann im
+selben Designer gestaltet werden. Lesen tut man in ihnen nicht, darum
+stehen sie nicht in der Leiste „Views“. Und weil eine Maske das Anlegen
+schneller machen soll und nicht strenger, fragt der Dialog die
+Pflichtfelder trotzdem: eine Maske, die eines vergisst, verhindert sonst
+das Anlegen — der Designer sagt es stattdessen.
 
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es an diesen Orten
 nicht. Ein Verweis ist ein Verweis, und eine Artikelseite ist eine

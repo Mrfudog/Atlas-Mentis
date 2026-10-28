@@ -158,6 +158,14 @@
           ]
         },
         {
+          "heading": "Designing what creating asks",
+          "text": [
+            "Open Registry › Views and design Create for a type: the fields it names are what the quick dialog asks when you create such an article from a picker — in that order, as many as you like. Required fields are always asked; the designer warns when the form leaves one out.",
+            "Design Create (full) for the type, too: New article then opens the new article in edit with exactly those fields first, even while they are empty. Everything else stays behind + Add field.",
+            "A type without a design keeps the old behaviour: the dialog asks required fields and the simple fields of the card, New article opens the full page."
+          ]
+        },
+        {
           "heading": "Sorting what waits in Unassigned",
           "text": [
             "Every article has a layer. What has no other one waits in the layer Unassigned — for example an image uploaded without an article, or something the administration took out of every layer.",

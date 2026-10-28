@@ -376,11 +376,18 @@ wiederkommen, werden sie neu geschrieben.
   noch nennt, bekommt `quick`, `RETIRED_PLACES`), `full` auf der
   Artikelseite, `print` auf dem Blatt hinter „Print" (T-110). **In `quick`
   steht das Relevanteste oben und das Bild zuletzt** — der Kartenrahmen
-  schneidet es unten ab, statt es zu verkleinern. **Eigene
+  schneidet es unten ab, statt es zu verkleinern. **Dazu zwei
+  Erfassungsmasken** (T-425, REQ-432, E-169): `create` fragt der schnelle
+  Dialog (auch aus einer Auswahl), `createFull` zeigt die Artikelseite im
+  Bearbeiten gleich nach „New article“ (`?edit=create`), mit den Feldern
+  der Maske vorn, auch leer; ohne Gestaltung einer Art gilt das Heutige
+  (`createLayout`), Pflichtfelder fragt der Dialog immer, der Designer
+  warnt (`createMissingRequired`). Die Leiste „Views“ bietet sie nicht an.
+  **Eigene
   Ansichten** legt man im Register an (Registry › Views, E-030 b; die
   erste ist der Handzettel `handout`); gewählt
   werden sie nur, wo ohnehin gewählt wird — die Kachel und der Druck. Die
-  vier, nach denen ein Ort fragt (`PLACE_VIEWS`), lassen sich umbauen, nicht
+  sechs, nach denen ein Ort fragt (`PLACE_VIEWS`), lassen sich umbauen, nicht
   löschen. **Die Kurzansicht** (`quick`) steht auch als Popup an
   jedem genannten Artikel (`nwQuick`, `nw-kurzpopup`, T-093): ein Klick
   zeigt die Karte, „Open article" führt hin. Einen Wähler gibt es nicht —

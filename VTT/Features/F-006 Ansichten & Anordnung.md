@@ -65,6 +65,26 @@ flowchart LR
   MG["MaterialGroup"] -.extends.-> C
 ```
 
+## Erfassungsmasken (T-425, REQ-432, 28.10.2026)
+
+Zwei Ortsansichten sagen, was das Anlegen fragt (E-169 a): `create` den
+schnellen Dialog aus einer Auswahl, `createFull` die Artikelseite gleich
+nach „New article“ (`?edit=create`), mit den Feldern der Maske vorn, auch
+leer. Ohne Gestaltung einer Art gilt das Heutige. Pflichtfelder fragt der
+Dialog immer; der Designer warnt, wenn die Maske eines auslässt. Offen
+für Schnitt 8: das Element `steps` und der Assistent der Spielerfigur als
+Vorgabe ihrer `create`-Maske (E-176).
+
+```mermaid
+flowchart LR
+  T["InterfaceDef.views<br/>create · createFull"] --> L["createLayout<br/>Felder · designed"]
+  L -->|designed| S["Dialog nw-schnell<br/>Felder der Maske"]
+  L -->|nicht gestaltet| Q["quick-Felder<br/>höchstens 8"]
+  L -->|designed| N["New article<br/>?edit=create"]
+  N --> A["Artikelseite<br/>Maske vorn, auch leer"]
+  T --> W["createMissingRequired<br/>Warnung im Designer"]
+```
+
 ## Design-Tokens (T-425, REQ-437, 26.10.2026)
 
 Farben sind Registerzeilen mit Rolle und Wert hell/dunkel (E-170 a). Ein

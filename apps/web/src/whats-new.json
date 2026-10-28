@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-create-forms",
+      "date": "2026-10-28",
+      "title": "Decide what creating asks",
+      "text": "Design the views Create and Create (full) for a type under Registry › Views: the quick dialog then asks the fields you chose, and New article opens the new article with them first.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-28-unassigned",
       "date": "2026-10-28",
       "title": "Every article has a layer: Unassigned",
