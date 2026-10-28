@@ -285,8 +285,13 @@ export type TrackerOp =
   | { op: 'effect'; edge: string; entry: TimedEntry }
   | { op: 'removeEffect'; edge: string; index: number }
   | { op: 'flags'; edge: string; revealed?: boolean; identified?: boolean; ally?: boolean }
-  | { op: 'add'; to: EntityId; init?: number; ally?: boolean; label?: string }
+  /* `count` (T-333): so viele Kämpfer auf einmal — je einer eine eigene
+     Kante, denn Trefferpunkte und Zustände stehen an der Kante. */
+  | { op: 'add'; to: EntityId; init?: number; ally?: boolean; label?: string; count?: number }
   | { op: 'remove'; edge: string };
+
+/** Wie viele Kämpfer „Add" höchstens auf einmal anlegt (T-333). */
+export const MAX_ADD = 20;
 
 export interface TrackerDeps {
   /** 1 bis 20. */
@@ -408,13 +413,24 @@ export function applyTrackerOp(
     }
     case 'add': {
       if (!entities.get(op.to)) return { error: 'No such creature.' };
-      const props: ParticipantProps = {};
+      const anzahl = op.count == null ? 1 : Number(op.count);
+      if (!Number.isInteger(anzahl) || anzahl < 1 || anzahl > MAX_ADD) return { error: `Add between 1 and ${MAX_ADD} at once.` };
       const init = Number(op.init);
-      props.init = op.init != null && Number.isFinite(init) ? init : deps.d20() + initiativeMod(entities, op.to);
-      if (op.ally) props.ally = true;
-      if (op.label?.trim()) props.label = op.label.trim();
-      const neu = { id: deps.newId(), type: PARTICIPATES, to: op.to, props } as Relation;
-      return { encounter: behalteZug(entities, encounter, [...rel, neu]) };
+      const name = op.label?.trim() || entityName(entities.get(op.to));
+      /* Durchgezählt wird nach dem höchsten „Name n“, der schon dasteht —
+         zwei Wölfe und noch zwei sind Wolf 1 bis 4, nicht zweimal Wolf 1. */
+      const muster = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} (\\d+)$`);
+      const schon = Math.max(0, ...rel.filter((r) => r.type === PARTICIPATES).map((r) => Number(muster.exec(String(propsVon(r).label ?? ''))?.[1] ?? 0)));
+      const neu: Relation[] = [];
+      for (let i = 1; i <= anzahl; i++) {
+        const props: ParticipantProps = {};
+        props.init = op.init != null && Number.isFinite(init) ? init : deps.d20() + initiativeMod(entities, op.to);
+        if (op.ally) props.ally = true;
+        if (anzahl > 1) props.label = `${name} ${schon + i}`;
+        else if (op.label?.trim()) props.label = op.label.trim();
+        neu.push({ id: deps.newId(), type: PARTICIPATES, to: op.to, props } as Relation);
+      }
+      return { encounter: behalteZug(entities, encounter, [...rel, ...neu]) };
     }
     case 'remove': {
       /* Einträge, die an seinem Zug zählten, verlieren ihren Anker: sie zählen dann am eigenen Zug. */

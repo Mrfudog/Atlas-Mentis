@@ -170,6 +170,14 @@ describe('the initiative tracker (T-022)', () => {
     expect(gm.rows[0]!.current).toBe(true);
   });
 
+  it('adds several at once, each its own row with its own hit points (T-333)', async () => {
+    const { sicht, tue } = await aufbau();
+    expect((await tue('Mira', { op: 'add', to: 'npc_ghul', init: 3, count: 2 })).statusCode).toBe(200);
+    const gm = await sicht('Mira');
+    expect(gm.rows.filter((r) => r.name.startsWith('Ghul ')).map((r) => r.name).sort()).toEqual(['Ghul 1', 'Ghul 2']);
+    expect((await tue('Mira', { op: 'add', to: 'npc_ghul', count: 50 })).statusCode).toBe(422);
+  });
+
   it('opens a row with what the combatant can do, for players only what the campaign shows', async () => {
     let { sicht, tue } = await aufbau();
     const gm = await sicht('Mira');
