@@ -48,8 +48,12 @@ test('search, a field filter and a chosen column', async ({ leitung, spielerin, 
   if (!(await haken.isChecked())) await haken.check();
   /* Am Telefon zeigt die Tabelle nur Name und die erste Spalte
      (kompendium.scss) — also kommt die gewählte nach vorn. */
-  const quelle = wahl.getByRole('button', { name: 'Remove Source' });
-  if (await quelle.isVisible()) await quelle.click();
+  /* Seit T-344 zeigt ein Ort von sich aus „Place type“ und „Environment“;
+     was vor der gewählten Spalte steht, geht weg. */
+  for (const vorne of ['Place type', 'Source']) {
+    const weg = wahl.getByRole('button', { name: `Remove ${vorne}`, exact: true });
+    if (await weg.isVisible()) await weg.click();
+  }
   await wahl.getByRole('button', { name: 'Apply' }).click();
   await expect(wahl).toBeHidden();
   await expect(zeilen.getByRole('columnheader', { name: /Environment/ })).toBeVisible();

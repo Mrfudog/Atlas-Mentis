@@ -2587,13 +2587,13 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
 | `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | quick, handout, overview, full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, handout, overview |
-| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | quick |
-| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `partOf` `controls` `discount` `regards` | `memberOf` `partOf` `discount` `questGiver` `features` `knownBy` `regards` | quick, handout, full |
+| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | overview, quick |
+| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `casts` `partOf` `controls` `discount` `regards` | `memberOf` `partOf` `discount` `questGiver` `features` `knownBy` `regards` | overview, quick, handout, full |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | `features` | quick, overview |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `availability` `copperPrice` `priceNote` `stackSize` `weight` `lightBright` `lightDim` `rows` `width*` `height*` `cells*` `inventoryImage` `inventoryFrame` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, handout, overview, full |
 | `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
-| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | quick, full |
-| `Place` | `Image` `Lore` `ReadAloud` `Secrets` `Source` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, handout, full |
+| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | overview, quick, full |
+| `Place` | `Image` `Lore` `ReadAloud` `Secrets` `Source` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | overview, quick, handout, full |
 | `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | create |
 | `Shop` | `Place` | `priceMod` `buyRate` | `partOf` `sells` `buys` `discount` `shopkeeper` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
 | `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `enchantedWith` `carries` `instanceOf` | `equips` `enchantedWith` `sells` `buys` `holds` `leftBehind` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, handout, overview |
@@ -2603,12 +2603,12 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick |
+| `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | overview, quick |
 | `Campaign` | `Story` `VisibilityRules` | `compareFor` `playerStart` `languages` `feats` `hitPoints` `inventory` `itemPricing` `enhancementsBy` `stowing` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` `craftLearning` `craftLearnRarity` `playerRolls` `ruleGraphs` `combat` `initNames` `initHealth` `initEffects` `initActions` `initColumns` `initQuickActions` `turnPlanner` `fog` `moves` `tokenMove` `revealOnMove` `doors` `tokenSizes` `passageTrigger` `passageWhen` `passageMove` `passageAction` `passageConfirm` `mapLinkShow` `mapLinkShowPlayers` `mapLinkOuter` `mapTools` `markerViews` | `allowsMethod` `allowsSubstitution` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` `layerRule` `enables` | `partOf` `chapterOf` `describedIn` `partyOf` `mapOf` | full |
-| `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, handout, full |
-| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, full |
+| `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | overview, quick, handout, full |
+| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | overview, quick, full |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `mapNavigation` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `leftBehind` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | full |
-| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | quick, full |
+| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `describedIn` `mapOf` | overview, quick, full |
 
 **Rules**
 
@@ -2633,7 +2633,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Knowledge` | — | — | `knownBy` `includes` | — | full |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | overview |
 | `MaterialGroup` | `Collection` | `materialTypes` `rarityMin` `rarityMax` `tags` `items` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `inCollection` `partOf` `sells` `buys` `needs` | — |
-| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | quick, full |
+| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | overview, quick, full |
 | `Rule` | `Source` `Vars` | `kind` `autolink` `key` `graph` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `loot` | — |
 | `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `casts` `spellList` `grants` `partOf` | quick, print, handout, overview, full |
@@ -2649,9 +2649,9 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full, quick |
-| `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
+| `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | overview, full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, overview, full |
-| `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `markerView` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | quick, full |
+| `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `markerView` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | overview, quick, full |
 | `Note` | — | — | — | — | — |
 
 **Ohne Bereich**
