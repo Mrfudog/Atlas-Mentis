@@ -1057,6 +1057,11 @@ export const relations: Record<string, RelationDef> = {
           default: 'static',
         },
         size: { type: 'number', title: 'Size in squares', default: 1 },
+        /* Welcher Grössen-Zustand gilt, wenn sich mehrere überlappen
+           (T-428, E-164): die Id der Quelle. An der Kante, weil es eine
+           Wahl der Leitung an diesem Token ist; leer: der zuletzt
+           hinzugekommene. */
+        sizeSource: { type: 'string', title: 'Size effect that applies' },
         /* Gedreht wird an der Kante und nicht am Bild: dasselbe Fass steht
            auf einer Karte quer und auf der nächsten längs, und ein
            gedrehtes Bild als eigenes Asset wäre ein zweites Fass. */

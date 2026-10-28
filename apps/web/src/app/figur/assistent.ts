@@ -34,6 +34,9 @@ import {
   duplicateText,
   heldBefore,
   heldValue,
+  missingProficiencies,
+  missingText,
+  proficientBefore,
   type HeldValue,
   chosenResult,
   enumOptions,
@@ -849,17 +852,21 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                       @for (m of gefiltert(liste, s.id); track m.wert) {
                         <li>
                           @let da = schonDa(s, m.wert, m.label);
-                          <label [class.an]="antwort(s).includes(m.wert)" [class.gesperrt]="!!da && !antwort(s).includes(m.wert)" [class.doppelt]="!!da && antwort(s).includes(m.wert)">
+                          <!-- Expertise nur auf Geübtes (T-303). -->
+                          @let fehlt = ohneUebung(s, m.wert, m.label);
+                          <label [class.an]="antwort(s).includes(m.wert)" [class.gesperrt]="(!!da || fehlt) && !antwort(s).includes(m.wert)" [class.doppelt]="(!!da || fehlt) && antwort(s).includes(m.wert)">
                             <input
                               [type]="(s.at.choice.count ?? 1) > 1 ? 'checkbox' : 'radio'"
                               [name]="s.id"
                               [checked]="antwort(s).includes(m.wert)"
-                              [disabled]="!antwort(s).includes(m.wert) && (!!da || ((s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)))"
+                              [disabled]="!antwort(s).includes(m.wert) && (!!da || fehlt || ((s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)))"
                               (change)="kreuze(s, m.wert)"
                             />
                             <span class="name"><nw-text [text]="m.label" inline /></span>
                             @if (da) {
                               <span class="dim woher">from {{ da.from }}</span>
+                            } @else if (fehlt) {
+                              <span class="dim woher">not proficient yet</span>
                             } @else if (m.hinweis) {
                               <span class="dim">{{ m.hinweis }}</span>
                             }
@@ -2072,13 +2079,35 @@ export class Assistent {
     const q = this.quellen();
     return new Map(choicesAtCharacter(d, q).map((at) => [choiceKey(at), heldBefore(d, q, at)] as const));
   });
-  /** Die Doppelungen im Entwurf, als Sätze je Wahl. */
+  /**
+   * **Worin die Figur vor jeder Expertise-Wahl geübt ist** (T-303) — nur
+   * für Wahlen, die die Übung verlangen (`proficientBefore`).
+   */
+  private readonly geuebt = computed(() => {
+    const d = this.entwurf();
+    const q = this.quellen();
+    const raus = new Map<string, Map<string, HeldValue>>();
+    for (const at of choicesAtCharacter(d, q)) {
+      const g = proficientBefore(d, q, at);
+      if (g) raus.set(choiceKey(at), g);
+    }
+    return raus;
+  });
+  /** Die Doppelungen im Entwurf und Expertise ohne Übung (T-303), als Sätze je Wahl. */
   private readonly doppelungen = computed(() => {
     const q = this.quellen();
     const raus = new Map<string, string[]>();
     for (const d of choiceDuplicates(this.entwurf(), q)) raus.set(d.choice, [...(raus.get(d.choice) ?? []), duplicateText(d, q)]);
+    for (const m of missingProficiencies(this.entwurf(), q)) raus.set(m.choice, [...(raus.get(m.choice) ?? []), missingText(m, q)]);
     return raus;
   });
+
+  /** Verlangt die Wahl Übung und fehlt sie bei diesem Wert? (T-303) */
+  protected ohneUebung(s: WahlSchritt, wert: string, label?: string): boolean {
+    const g = this.geuebt().get(choiceKey(s.at));
+    if (!g) return false;
+    return !(heldValue(g, wert, this.quellen()) ?? (label ? g.get(label.trim().toLowerCase()) : undefined));
+  }
 
   /** Ist dieser Wert für die Wahl schon da — und woher? */
   protected schonDa(s: WahlSchritt, wert: string, label?: string): HeldValue | undefined {
