@@ -109,7 +109,9 @@
           "text": [
             "Open the article and press Edit. The first field is Layer, on the phone as on a wide screen.",
             "Choose the layer it should belong to. The list holds the layer it is in now and every layer you write in — the same ones as under Writes to in the header. Layers this campaign does not turn on are marked “not in this campaign”: after saving, the article no longer shows here until the campaign turns that layer on.",
-            "Save. The page says Moved to … and the layer mark under the title shows the new one. Links to the article stay; its versions and the parts of a chapter stay in their own layers.",
+            "Save. If something hangs on the article — the parts of a chapter or place, its own statblock, its inventory and the pieces in it — a list opens first: what goes along? Everything in the same old layer that you write is ticked. A line says where else an article is linked (“also linked from …”, text means a [[link]] in a text), so you see a part that another chapter also uses before you take it along. Untick what should stay, then Move with … or Move only the article.",
+            "The page says Moved to … (with how many more) and the layer mark under the title shows the new one. Undo move puts the articles that went along back. Links to the article stay, and so do its versions.",
+            "Several at once: on the campaign page under Layers and Visibility, tick articles in Articles and their layers, choose Move to layer…, then Move…. The same list asks what goes along; the move is one run you can undo there or in the Workbench.",
             "A layer you do not write in is refused with a message; choose one of your write layers or ask the GM."
           ]
         },

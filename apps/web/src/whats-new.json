@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-move-layer-followers",
+      "date": "2026-10-28",
+      "title": "Moving an article takes its parts along",
+      "text": "When you move an article to another layer, a list now asks what goes along: its parts, its own statblock, its inventory and the pieces in it — ticked when they lie in the same old layer — with where else each is linked. On the campaign page you can move a whole selection the same way, and undo it.",
+      "area": "Campaign",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-tracker-damage-types",
       "date": "2026-10-28",
       "title": "Damage types in the tracker, effects on saves and spells",

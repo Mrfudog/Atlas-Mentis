@@ -124,6 +124,9 @@ import {
   articleId,
   entityName,
   layerChange,
+  describeChange,
+  layerMoveChanges,
+  layerMovePlan,
   idLinks,
   linkCandidates,
   nextId,
@@ -162,7 +165,7 @@ import {
   missingText,
   duplicateText,
 } from '@nw/model';
-import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
+import type { BulkChange, BulkPlan, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
 import { seedRegistry, UNASSIGNED_LAYER_ROW } from '@nw/registry';
 import { RelationIdTaken, RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
@@ -1235,7 +1238,7 @@ export function buildApp({
       /* Die Übernahme (T-130): lesen und vorschauen schreibt nichts. */
       url === '/api/transfer/peer/read' ||
       url === '/api/transfer/preview' ||
-      ((url === '/api/bulk' || url === '/api/entities/delete') && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
+      ((url === '/api/bulk' || url === '/api/entities/delete' || url === '/api/entities/move-layer') && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
     const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && !liestNur;
 
     if (!user) {
@@ -1297,6 +1300,8 @@ export function buildApp({
     if (url === '/api/layers' || url.startsWith('/api/layers/')) return;
     /* Löschen aus der eigenen Ebene (T-381): die Route prüft je Artikel selbst (`pickDeletable`). */
     if (url === '/api/entities/delete' && request.method === 'POST') return;
+    /* Ebene wechseln mit Mitläufern (T-402): die Route prüft Zielebene und Artikel selbst. */
+    if (url === '/api/entities/move-layer' && request.method === 'POST') return;
     /* „Edit" an einem fremden Artikel legt eine Fassung an (T-098): die
        Route prüft die Zielebene selbst. */
     if (/^\/api\/entities\/[^/]+\/adapt$/.test(url) && request.method === 'POST') return;
@@ -4849,9 +4854,10 @@ export function buildApp({
     roh: Map<string, Entity>,
     auftrag: BulkRequest,
     ausgewaehlt: string[],
-    art?: 'delete-own',
+    art?: 'delete-own' | 'move-layer',
+    vorgeplant?: BulkPlan,
   ): Promise<{ code: number; body: Record<string, unknown> }> {
-    const plan = planBulk(registry, roh, ausgewaehlt, auftrag.ops);
+    const plan = vorgeplant ?? planBulk(registry, roh, ausgewaehlt, auftrag.ops);
     const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, plan.changes, art === 'delete-own');
     const loescht = geprueft.filter((c) => !c.after).length;
     const limit = auftrag.limit ?? 50;
@@ -5022,6 +5028,93 @@ export function buildApp({
         for (const id of wahl.ids) await repo.dropReadyStand(id);
       }
       return reply.code(r.code).send({ ...r.body, ...extra });
+    },
+  );
+
+  /**
+   * **Eine Ebene wechseln, mit dem, was dazugehört** (T-402, E-161 a+c).
+   * `dryRun` gibt den Plan (`layerMovePlan`): die Mitläufer — Teile,
+   * eigener Statblock, Inventar und Stücke — mit Häkchen vorgewählt, wenn
+   * sie in derselben alten Ebene liegen und das Konto sie schreibt, und je
+   * Mitläufer, wo er sonst noch verknüpft ist. Ohne `dryRun` wird
+   * verschoben, was genannt ist (`ids`) und was `include` nennt (sonst die
+   * vorgewählten); abgewählte bleiben. Geschrieben als **eine**
+   * Massenänderung, also zurück über `POST /api/bulk/:id/undo`, auch für
+   * Spielende. Hinein nur in eine Schreibebene (dieselbe Regel wie `PUT`,
+   * T-383); Fassungen und Kanten bleiben. `from` nennt die alte Ebene, wenn
+   * der Artikel selbst schon verschoben ist (im Bearbeiten: erst `PUT`).
+   */
+  app.post<{ Body: { ids?: unknown; layer?: unknown; from?: unknown; include?: unknown; dryRun?: unknown } | null }>(
+    '/api/entities/move-layer',
+    async (request, reply) => {
+      const echt = await werIst(request);
+      if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+      if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nicht verschoben.' });
+      const b = request.body ?? {};
+      const strings = (x: unknown) => (Array.isArray(x) ? [...new Set(x.filter((y): y is string => typeof y === 'string' && !!y))] : null);
+      const ids = strings(b.ids) ?? [];
+      if (!ids.length) return reply.code(400).send({ error: 'Sag, welche Artikel: { "ids": [...], "layer": "…" }.' });
+      if (ids.length > 1000) return reply.code(400).send({ error: 'Höchstens 1000 Artikel auf einmal — teile die Auswahl.' });
+      const user = echt.user;
+      const alle = await repo.listEntities();
+      const roh = new Map(alle.map((e) => [e.id, e]));
+      const registry = await repo.getRegistry();
+      const layer = typeof b.layer === 'string' && b.layer ? b.layer : null;
+      const ziel = layer ? roh.get(layer) : null;
+      if (layer && (!ziel || !isLayer(ziel))) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
+      if (!layer && !user.isAdmin) {
+        return reply.code(403).send({ error: 'Only the administration keeps articles outside every layer. Choose one of your write layers.' });
+      }
+      if (layer && !user.isAdmin) {
+        const kampagne = currentCampaign(roh, registry.settings ?? null);
+        const ziele = new Set((await schreibZiele(user, roh, kampagne)).map((x) => x.layer.id));
+        if (!ziele.has(layer)) {
+          return reply.code(403).send({
+            error: `You do not write in ${entityName(ziel!)} in this campaign. Choose one of your write layers (see “Writes to” in the header).`,
+          });
+        }
+      }
+      const sichtbar = new Set(
+        [...(await sieve(request, alle, alle)), ...(await sieve(request, alle, alle, undefined, 'unactivated'))].map((e) => e.id),
+      );
+      const fehlt = ids.filter((id) => !sichtbar.has(id) || !roh.has(id));
+      if (fehlt.length) return reply.code(404).send({ error: `Nicht gefunden: ${fehlt.join(', ')}` });
+      /* Eine Ebene hängt in Gruppen, nicht in einer Ebene. */
+      if (ids.some((id) => isLayer(roh.get(id)))) return reply.code(400).send({ error: 'A layer is not moved into another layer — put it into a group on its page.' });
+      const eigen = user.isAdmin ? null : await ownedBy(user);
+      const darf = (id: string) => !eigen || mayWrite(user, eigen, id);
+      const voll = layerMovePlan(registry, roh, ids, { layer, from: strings(b.from) ?? undefined, mayWrite: darf });
+      /* Was das Konto nicht sieht, steht nicht im Plan — auch nicht als Name. */
+      const plan = {
+        roots: voll.roots,
+        followers: voll.followers
+          .filter((f) => sichtbar.has(f.id))
+          .map((f) => ({ ...f, linkedFrom: f.linkedFrom.filter((x) => sichtbar.has(x.id)) })),
+      };
+      const target = ziel ? { id: ziel.id, name: entityName(ziel) } : null;
+      const layerNames: Record<string, string> = {};
+      for (const l of [...plan.roots.flatMap((x) => x.layers), ...plan.followers.flatMap((x) => x.layers)]) {
+        if (roh.get(l)) layerNames[l] = entityName(roh.get(l)!);
+      }
+      const gewaehlt = strings(b.include);
+      const mit = plan.followers.filter((f) => (gewaehlt ? gewaehlt.includes(f.id) && f.writable : f.preselected)).map((f) => f.id);
+      const changes = layerMoveChanges(roh, [...ids, ...mit], layer).map((c) => ({
+        ...c,
+        summary: describeChange(c.before, c.after),
+      }));
+      const auftrag: BulkRequest = {
+        select: { ids: [...ids, ...mit] },
+        ops: [],
+        dryRun: b.dryRun === true,
+        limit: 200,
+        note: `Move ${ids.length === 1 ? entityName(roh.get(ids[0]!)) : `${ids.length} articles`}${mit.length ? ` with ${mit.length} more` : ''} to ${target?.name ?? 'no layer'}`,
+      };
+      const r = await fuehreLaufAus(request, echt, registry, roh, auftrag, [...ids, ...mit], 'move-layer', {
+        selected: ids.length + mit.length,
+        changes,
+        skipped: [],
+      });
+      return reply.code(r.code).send({ ...r.body, ...plan, target, layerNames, moving: mit });
     },
   );
 

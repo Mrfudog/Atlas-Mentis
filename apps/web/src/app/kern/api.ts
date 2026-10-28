@@ -76,6 +76,29 @@ export interface LoeschAntwort extends BulkAntwort {
   /** Die Ebene, aus der gelöscht wurde; `null` für die Verwaltung ohne Schreibebene. */
   layer: { id: string; name: string } | null;
 }
+/** Ein Mitläufer beim Ebenenwechsel (T-402, `layerMovePlan`). */
+export interface EbenenMitlaeufer {
+  id: string;
+  name: string;
+  type: string;
+  via: string;
+  of: string;
+  root: string;
+  layers: string[];
+  sameLayer: boolean;
+  writable: boolean;
+  already: boolean;
+  preselected: boolean;
+  linkedFrom: { id: string; name: string; via: string }[];
+}
+/** Antwort von `POST /api/entities/move-layer` (T-402). */
+export interface EbenenWechsel extends BulkAntwort {
+  roots: { id: string; name: string; type: string; layers: string[] }[];
+  followers: EbenenMitlaeufer[];
+  target: { id: string; name: string } | null;
+  layerNames: Record<string, string>;
+  moving: string[];
+}
 export interface BulkLauf {
   id: string;
   at: string;
@@ -1929,6 +1952,15 @@ export class Api {
    */
   deleteArticles(ids: string[], opts: { dryRun?: boolean; confirmDelete?: number } = {}): Promise<LoeschAntwort> {
     return this.call<LoeschAntwort>('/api/entities/delete', { method: 'POST', body: JSON.stringify({ ids, ...opts }) });
+  }
+  /**
+   * **Ebene wechseln mit Mitläufern** (T-402): `dryRun` gibt den Plan,
+   * sonst wird verschoben — `include` nennt die Mitläufer (ohne: die
+   * vorgewählten), `from` die alte Ebene, wenn der Artikel schon liegt.
+   * Zurück über `undo(id)`.
+   */
+  moveLayer(ids: string[], layer: string | null, opts: { dryRun?: boolean; include?: string[]; from?: string[] } = {}): Promise<EbenenWechsel> {
+    return this.call<EbenenWechsel>('/api/entities/move-layer', { method: 'POST', body: JSON.stringify({ ids, layer, ...opts }) });
   }
   /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
   deleteEntity(id: string): Promise<{ ok: true }> {

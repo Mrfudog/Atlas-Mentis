@@ -1,7 +1,9 @@
 {
   "pages": [
     {
-      "routes": ["play"],
+      "routes": [
+        "play"
+      ],
       "title": "Play — the table map",
       "sections": [
         {
@@ -130,7 +132,9 @@
       ]
     },
     {
-      "routes": ["maps"],
+      "routes": [
+        "maps"
+      ],
       "title": "Maps",
       "sections": [
         {
@@ -143,7 +147,9 @@
       ]
     },
     {
-      "routes": ["images"],
+      "routes": [
+        "images"
+      ],
       "title": "Images",
       "sections": [
         {
@@ -158,7 +164,10 @@
       ]
     },
     {
-      "routes": ["characters/new", "characters/:id/edit"],
+      "routes": [
+        "characters/new",
+        "characters/:id/edit"
+      ],
       "title": "Character assistant",
       "sections": [
         {
@@ -176,7 +185,9 @@
       ]
     },
     {
-      "routes": ["artikel/:id"],
+      "routes": [
+        "artikel/:id"
+      ],
       "title": "Article",
       "sections": [
         {
@@ -283,7 +294,9 @@
       ]
     },
     {
-      "routes": ["artikel/:id/print"],
+      "routes": [
+        "artikel/:id/print"
+      ],
       "title": "Print",
       "sections": [
         {
@@ -294,7 +307,9 @@
       ]
     },
     {
-      "routes": ["artikel/:id/compare/:other"],
+      "routes": [
+        "artikel/:id/compare/:other"
+      ],
       "title": "Compare versions",
       "sections": [
         {
@@ -305,7 +320,12 @@
       ]
     },
     {
-      "routes": ["compendium", "world", "story", "rules"],
+      "routes": [
+        "compendium",
+        "world",
+        "story",
+        "rules"
+      ],
       "title": "Lists of articles",
       "sections": [
         {
@@ -325,7 +345,10 @@
       ]
     },
     {
-      "routes": ["boards", "boards/:id"],
+      "routes": [
+        "boards",
+        "boards/:id"
+      ],
       "title": "Boards",
       "sections": [
         {
@@ -382,7 +405,11 @@
       ]
     },
     {
-      "routes": ["classes", "ancestries", "backgrounds"],
+      "routes": [
+        "classes",
+        "ancestries",
+        "backgrounds"
+      ],
       "title": "Classes, ancestries and backgrounds",
       "sections": [
         {
@@ -393,7 +420,9 @@
       ]
     },
     {
-      "routes": ["werkbank"],
+      "routes": [
+        "werkbank"
+      ],
       "title": "Workbench",
       "sections": [
         {
@@ -405,7 +434,9 @@
       ]
     },
     {
-      "routes": ["registry"],
+      "routes": [
+        "registry"
+      ],
       "title": "Registry",
       "sections": [
         {
@@ -445,7 +476,9 @@
       ]
     },
     {
-      "routes": ["campaign"],
+      "routes": [
+        "campaign"
+      ],
       "title": "Campaign",
       "sections": [
         {
@@ -463,13 +496,16 @@
             "Visibility shows who sees what, per group: rows are groups (layer, then type — change the steps above the table), columns are Public, Table, each player and GM, each cell how many articles of the group that column sees.",
             "Pick an audience for a group, click a player's cell to show or hide the group for that player only, ↺ goes back to the layer's default. Articles with their own setting win over the group; “own” lists them, and “Follow the group” removes their setting.",
             "Below the groups, under Layers and under Visibility, “Articles and their layers” lists every article in play with its layer, the layer's publisher, its visibility and where that comes from (own setting, campaign rule, layer default). Filter by name, layer, type and visibility, sort by name, layer, type or visibility.",
+            "To move articles to another layer, tick them, choose Move to layer… and press Move…. A list shows what goes along — parts, own statblock, inventory and pieces, ticked when they lie in the same old layer — and where else each one is linked. Untick what should stay; Undo move takes the whole move back.",
             "Set one article's visibility right in its row (Public, Table, Players, GM; ↺ follows the group again), or click a player to show or hide it for that player only. Tick several, or “all shown”, and set it for all at once. Articles in a layer you do not write stay as they are and say so: set them for their group above instead. To move an article to another layer, open it and use Edit › Layer."
           ]
         }
       ]
     },
     {
-      "routes": ["account"],
+      "routes": [
+        "account"
+      ],
       "title": "Account",
       "sections": [
         {
@@ -480,7 +516,9 @@
       ]
     },
     {
-      "routes": ["whats-new"],
+      "routes": [
+        "whats-new"
+      ],
       "title": "What's new",
       "sections": [
         {
@@ -491,7 +529,9 @@
       ]
     },
     {
-      "routes": ["handbook"],
+      "routes": [
+        "handbook"
+      ],
       "title": "Handbook",
       "sections": [
         {
@@ -510,7 +550,9 @@
       ]
     },
     {
-      "routes": ["lab/rules"],
+      "routes": [
+        "lab/rules"
+      ],
       "title": "Rule builder (experiment)",
       "sections": [
         {
@@ -547,7 +589,9 @@
       ]
     },
     {
-      "routes": ["inventory/shapes"],
+      "routes": [
+        "inventory/shapes"
+      ],
       "title": "Item shapes",
       "sections": [
         {
