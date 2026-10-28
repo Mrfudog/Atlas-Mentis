@@ -353,7 +353,7 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 | [[REQ-250]] | Startausrüstung je Kampagne | 2 | **steht** | Startausrüstung nach Kampagnenregel (T-096) |
 | [[REQ-251]] | Sprachen der Kampagne | 1 | **steht** | `Campaign.languages` (T-095) |
 | [[REQ-273]] | Eigene Verfahren für Attributswerte | 2 | **steht** | E-016 |
-| [[REQ-274]] | Charakter- und Kampagnenmanager jederzeit aufrufen | 3 | **offen** |  |
+| [[REQ-274]] | Charakter- und Kampagnenmanager jederzeit aufrufen | 3 | **offen** | Kampagnenteil steht (T-141, PR #437: Decisions auf /campaign › Overview); Figurenteil offen, wartet auf den Assistenten als Ansicht (T-436 → T-451). |
 
 ## EP-04 Spielererlebnis
 
@@ -1162,7 +1162,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-253]]** (3, offen, Inhaltsgerüst) — Ebenen und Artikel kopieren — *später; Kopie ohne `overrides`*
 - **[[REQ-268]]** (3, teils, Zugang & Betrieb) — Dev-Token aus der Werkbank erzeugen — *Tokens am Konto in `konto/`; aus der Werkbank für andere Konten nicht*
 - **[[REQ-271]]** (3, offen, Zugang & Betrieb) — Konflikte bei der Übernahme nebeneinander lösen — *Konflikte werden heute nur gemeldet*
-- **[[REQ-274]]** (3, offen, Kreaturen & Figuren) — Charakter- und Kampagnenmanager jederzeit aufrufen
+- **[[REQ-274]]** (3, offen, Kreaturen & Figuren) — Charakter- und Kampagnenmanager jederzeit aufrufen — *Kampagnenteil steht (T-141, PR #437: Decisions auf /campaign › Overview); Figurenteil offen, wartet auf den Assistenten als Ansicht (T-436 → T-451).*
 - **[[REQ-283]]** (3, offen, Kampagne & Sitzungen) — Kampagnen-Ladebildschirm
 - **[[REQ-285]]** (3, teils, Welt & Lore) — Fraktionspreise — *`discount` nach Rang, `controls`*
 - **[[REQ-288]]** (3, teils, Import & Inhalte) — Preise für jeden Gegenstand — *T-139 (`priceNote`) läuft*
