@@ -2493,7 +2493,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *link → Condition*, `legendaryActions` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
+- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *link → Condition*, `legendaryActions` *1…∞*, `legendaryActionsLair` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
 
 **Geerbte Felder**
 

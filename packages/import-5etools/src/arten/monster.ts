@@ -432,6 +432,7 @@ export function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
   if (keinZustand.length) wb.anmerkung(sb, 'condition-immunities', `Condition immunities: ${[...new Set(keinZustand)].join(', ')}`);
   if (zustandNoten.length) wb.notiz('Zustandsimmunität mit Bedingung (Bedingung entfällt)');
   wb.feld(sb, S, 'legendaryActions', zahl(e['legendaryActions']) ?? (e['legendary'] ? 3 : undefined));
+  wb.feld(sb, S, 'legendaryActionsLair', zahl(e['legendaryActionsLair']));
 
   /* Werte, Rettungswürfe, Fertigkeiten. Was nicht aus Übung und
      Übungsbonus folgt, steht als fester Bonus (S1). */
