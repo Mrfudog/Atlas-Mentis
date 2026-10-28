@@ -33,7 +33,8 @@ import {
 } from '@nw/model';
 import type { CreateStep, ElementStyle, Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { bringsIntoLayer, homeLayers, pickView, spellcastingOf, withCastRelations, withHomeLayer } from '@nw/model';
-import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
+import { Api, ApiError, type EbenenWechsel, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
+import { Mitlaeufer } from '../verwaltung/mitlaeufer';
 import { Stil } from '../muster/stil';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
@@ -181,6 +182,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
   providers: [{ provide: SCHNELL_KONTEXT, useExisting: forwardRef(() => Artikel) }, WurfZiel],
   imports: [
     RouterLink,
+    Mitlaeufer,
     Klappleiste,
     FormsModule,
     Stil,
@@ -395,8 +397,15 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         @if (verschoben(); as v) {
           <p class="hinweis" role="status">
             Moved to <b>{{ v }}</b>.
+            @if (verschobenLauf(); as l) {
+              <button type="button" class="klein" (click)="verschiebenZurueck(l)">Undo move</button>
+            }
             <button type="button" class="klein" (click)="verschoben.set(null)">OK</button>
           </p>
+        }
+        <!-- Was mitgeht (T-402, E-161): vor dem Speichern gefragt, wenn etwas dranhängt. -->
+        @if (mitlaeuferPlan(); as p) {
+          <nw-mitlaeufer [plan]="p" [laeuft]="speichert()" (los)="mitlaeuferLos($event)" (abbrechen)="mitlaeuferPlan.set(null)" />
         }
         @if (bearbeitet() && schreibZiel(); as z) {
           <p class="hinweis" [class.fehler]="z.fremd" role="status">
@@ -2695,6 +2704,23 @@ export class Artikel implements SchnellKontext {
   protected async speichern(): Promise<void> {
     const alt = this.artikel();
     if (!alt || this.speichert()) return;
+    /* **Erst fragen, was mitgeht** (T-402, E-161 a+c): hängt etwas am
+       Artikel — Teile, Statblock, Inventar —, steht vor dem Speichern die
+       Liste mit Häkchen. Ohne Mitläufer wird gespeichert wie bisher. */
+    if (this.ebeneGewechselt() && this.mitlaeuferWahl === null) {
+      try {
+        const plan = await this.api.moveLayer([alt.id], this.entwurfEbene() || null, { dryRun: true });
+        if (plan.followers.length) {
+          this.mitlaeuferPlan.set(plan);
+          return;
+        }
+      } catch {
+        /* Ohne Plan bleibt der Ebenenwechsel, wie er war (T-383): nur der Artikel. */
+      }
+    }
+    const mitnehmen = this.mitlaeuferWahl ?? [];
+    this.mitlaeuferWahl = null;
+    const alteEbenen = homeLayers(alt.relations);
     this.speichert.set(true);
     this.problem.set(null);
     this.maengel.set([]);
@@ -2756,7 +2782,40 @@ export class Artikel implements SchnellKontext {
     const nachher = ziel !== null ? this.ebenenName(ziel) : null;
     const neu = { ...basis, components, relations } as Entity;
     await this.schreibe(neu, basis, offen);
-    if (nachher !== null && !this.bearbeitet()) this.verschoben.set(nachher);
+    if (nachher !== null && !this.bearbeitet()) {
+      this.verschoben.set(nachher);
+      this.verschobenLauf.set(null);
+      /* Die gewählten Mitläufer aus der alten Ebene, als ein Lauf mit Undo. */
+      if (mitnehmen.length) {
+        try {
+          const r = await this.api.moveLayer([basis.id], ziel || null, { from: alteEbenen, include: mitnehmen });
+          this.verschoben.set(`${nachher} with ${r.moving.length} more`);
+          this.verschobenLauf.set(r.id ?? null);
+        } catch (e) {
+          this.problem.set(e instanceof ApiError ? e.message : 'The articles that go along could not be moved.');
+        }
+      }
+    }
+  }
+
+  /** Die Mitläufer, die im Dialog gewählt wurden (T-402); `null`: noch nicht gefragt. */
+  private mitlaeuferWahl: string[] | null = null;
+  protected readonly mitlaeuferPlan = signal<EbenenWechsel | null>(null);
+  /** Der Lauf, der die Mitläufer verschob — „Undo move" nimmt ihn zurück. */
+  protected readonly verschobenLauf = signal<string | null>(null);
+  protected async mitlaeuferLos(ids: string[]): Promise<void> {
+    this.mitlaeuferPlan.set(null);
+    this.mitlaeuferWahl = ids;
+    await this.speichern();
+  }
+  protected async verschiebenZurueck(lauf: string): Promise<void> {
+    try {
+      await this.api.undo(lauf);
+      this.verschobenLauf.set(null);
+      this.verschoben.set('back: the articles that went along are in their old layer again (the article itself: Edit › Layer)');
+    } catch (e) {
+      this.problem.set(e instanceof ApiError ? e.message : 'Could not undo the move.');
+    }
   }
 
   /**

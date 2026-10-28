@@ -10,6 +10,9 @@ import {
   type SichtArtikelListe,
   type SichtSpalte,
 } from '../kern/api';
+import type { EbenenWechsel } from '../kern/api';
+import { Stapel } from '../kern/stapel';
+import { Mitlaeufer } from './mitlaeufer';
 
 /** Die Stufen, wie die Übersicht sie nennt — `campaign` heisst am Tisch „Table". */
 const STUFEN: { key: Audience; label: string }[] = [
@@ -38,12 +41,13 @@ const SEITE = 50;
  * Auswahl (wie in der Galerie): eine Stufe, ↺ zurück zur Gruppe, je
  * Spielende/r zeigen oder verbergen. Was die Leitung nicht schreibt (eine
  * geteilte Ebene), bleibt und sagt warum; wohin das gehört, ist E-162.
- * Die Ebene wechseln geht hier noch nicht (E-161) — am Artikel unter
- * Edit › Layer (T-383).
+ * **Die Ebene wechseln** (T-402, E-161 a+c) geht für eine Auswahl: in eine
+ * der eigenen Schreibebenen, mit der Liste dessen, was mitgeht (Teile,
+ * Statblock, Inventar), als ein Lauf mit Undo.
  */
 @Component({
   selector: 'nw-kampagnen-artikel',
-  imports: [RouterLink],
+  imports: [RouterLink, Mitlaeufer],
   template: `
     <section class="artikel" aria-labelledby="artikel-titel">
       <h2 id="artikel-titel">Articles and their layers</h2>
@@ -122,8 +126,27 @@ const SEITE = 50;
                 </button>
               </span>
             }
+            @if (ziele().length) {
+              <span class="umzug">
+                <select aria-label="Move the selection to layer" [value]="umzugZiel()" (change)="umzugZiel.set($any($event.target).value)">
+                  <option value="">Move to layer…</option>
+                  @for (z of ziele(); track z.id) {
+                    <option [value]="z.id">{{ z.name }}</option>
+                  }
+                </select>
+                <button type="button" class="klein" [disabled]="laeuft() || !umzugZiel()" (click)="umzugPlanen()">Move…</button>
+              </span>
+            }
             <button type="button" class="leise" (click)="auswahl.set([])">Clear selection</button>
           </div>
+          @if (umzugPlan(); as p) {
+            <nw-mitlaeufer [plan]="p" [laeuft]="laeuft()" (los)="umziehen($event)" (abbrechen)="umzugPlan.set(null)" />
+          }
+        }
+        @if (umzugLauf(); as l) {
+          <p class="meldung" role="status">
+            <button type="button" class="klein" [disabled]="laeuft()" (click)="umzugZurueck(l)">Undo move</button>
+          </p>
         }
         <div class="kopf">
           @if (darf()) {
@@ -290,6 +313,15 @@ const SEITE = 50;
       border-radius: 6px;
       background: color-mix(in srgb, var(--accent) 6%, transparent);
     }
+    .umzug {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+    .umzug select {
+      min-height: 32px;
+      max-width: 100%;
+    }
     .spielerknoepfe {
       display: inline-flex;
       gap: 0.25rem;
@@ -455,6 +487,7 @@ export class KampagnenArtikel {
   readonly sortierung = input<'name' | 'layer'>('name');
 
   private readonly api = inject(Api);
+  private readonly stapel = inject(Stapel);
 
   protected readonly stufen = STUFEN;
   protected readonly nichtSchreibbar =
@@ -480,6 +513,11 @@ export class KampagnenArtikel {
   }
 
   protected readonly darf = computed(() => this.liste()?.may === 'manage');
+  /** Wohin eine Auswahl gehen kann: die Schreibebenen dieses Kontos (T-161), geprüft am Server. */
+  protected readonly ziele = computed(() => (this.stapel.schreib()?.options ?? []).filter((o) => o.selectable).map((o) => ({ id: o.id, name: o.name })));
+  protected readonly umzugZiel = signal('');
+  protected readonly umzugPlan = signal<EbenenWechsel | null>(null);
+  protected readonly umzugLauf = signal<string | null>(null);
   protected readonly spieler = computed(() => (this.liste()?.columns ?? []).filter((s) => s.kind === 'player'));
   protected readonly alleGewaehlt = computed(() => {
     const rows = this.liste()?.rows ?? [];
@@ -581,6 +619,61 @@ export class KampagnenArtikel {
       this.liste.set(d);
     } catch (e) {
       this.fehler.set(e instanceof ApiError ? e.message : 'That did not work.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  /** Zuerst der Plan (T-402): ohne Mitläufer wird gleich verschoben. */
+  protected async umzugPlanen(): Promise<void> {
+    const ids = this.auswahl();
+    const ziel = this.umzugZiel();
+    if (!ids.length || !ziel) return;
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      const p = await this.api.moveLayer(ids, ziel, { dryRun: true });
+      if (p.followers.length) this.umzugPlan.set(p);
+      else {
+        this.laeuft.set(false);
+        await this.umziehen([]);
+      }
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'That did not work.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  protected async umziehen(mit: string[]): Promise<void> {
+    const ids = this.auswahl();
+    const ziel = this.umzugZiel();
+    this.umzugPlan.set(null);
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      const r = await this.api.moveLayer(ids, ziel, { include: mit });
+      const teile = [`${r.changed} moved to ${r.target?.name ?? 'no layer'}`];
+      if (r.rejectedCount) teile.push(`${r.rejectedCount} not moved (${r.rejected[0]?.name}: ${r.rejected[0]?.issues[0]})`);
+      this.meldung.set(teile.join(', ') + '.');
+      this.umzugLauf.set(r.id ?? null);
+      await this.laden(this.kampagne());
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'That did not work.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  protected async umzugZurueck(lauf: string): Promise<void> {
+    this.laeuft.set(true);
+    try {
+      await this.api.undo(lauf);
+      this.umzugLauf.set(null);
+      this.meldung.set('Move undone.');
+      await this.laden(this.kampagne());
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'Could not undo the move.');
     } finally {
       this.laeuft.set(false);
     }

@@ -1245,8 +1245,36 @@ selben `PUT` wie alles andere. Dort prüft der Server, was dazukommt
 (`layerChange`): jede neue Ebene muss unter den Zielebenen des Kontos stehen,
 und aus jeder Ebene heraus nimmt einen Artikel nur die Verwaltung. Den
 Artikel zu schreiben heisst nicht, ihn in ein fremdes Regelwerk legen zu
-dürfen. Kanten und Fassungen bleiben; ob Teile, Statblock und Inventar
-mitwandern, ist offen (E-161).
+dürfen. Kanten und Fassungen bleiben.
+
+**Was mitgeht** (T-402, E-161 a+c): ein Artikel kommt nicht allein, wenn
+etwas an ihm hängt. `layerMovePlan` sammelt die **Mitläufer** — Teile
+(`partOf`, auch Teile von Teilen), den eigenen Statblock bzw. dessen
+Instanz (Kante mit `asField: 'to'`), das Inventar (`asField: 'from'`) und
+die Stücke darin (`holds` auf eine Instanz; ein Grundartikel im Inventar
+steht für sich). Vorgewählt ist, was in derselben alten Ebene liegt, das
+Konto schreibt und nicht schon im Ziel liegt; die übrigen stehen in der
+Liste und bleiben. Je Mitläufer steht, wo er sonst noch hängt — Kanten und
+`[[Verweise]]` von ausserhalb des Laufs —, damit niemand ein Teil mitnimmt,
+das ein anderes Kapitel auch braucht. Ebenen gehen nie mit.
+`POST /api/entities/move-layer { ids, layer, include?, from?, dryRun? }`
+zeigt mit `dryRun` den Plan und schreibt sonst **eine** Massenänderung
+(`kind: 'move-layer'`), die Undo zurücknimmt; die Zielebene muss eine
+Schreibebene sein wie beim `PUT`. Im Bearbeiten wird erst gespeichert
+(`PUT` mit der neuen Ebene) und dann mit `from` = alte Ebene nachgezogen.
+
+```mermaid
+flowchart LR
+  A["Artikel<br/>Ebene A → B"] --> P{"layerMovePlan"}
+  P -- "partOf ←" --> T["Teile"]
+  P -- "belongsTo ←" --> S["eigener Statblock"]
+  P -- "carries →" --> I["Inventar"]
+  I -- "holds → (Instanz)" --> St["Stücke"]
+  T & S & I & St --> W{"in A, schreibbar,<br/>nicht schon in B?"}
+  W -- ja --> V["vorgewählt ☑"]
+  W -- nein --> N["gelistet ☐, bleibt"]
+  V --> L["ein Lauf (bulk, move-layer)<br/>Undo"]
+```
 
 ```mermaid
 flowchart TB
