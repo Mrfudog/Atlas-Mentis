@@ -40,7 +40,7 @@ export function bedingungText(t: HasTerm, label: string, ziel?: string): string 
 @Component({
   selector: 'nw-beziehungsfilter',
   template: `
-    <details class="facette" [open]="offen()" (toggle)="offen.set($any($event.target).open)">
+    <details class="facette" data-bereich [open]="offen()" (toggle)="offen.set($any($event.target).open)">
       <summary class="leg">
         Relations
         @if (bedingungen().length) {

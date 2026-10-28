@@ -2352,6 +2352,16 @@ export interface ZugLage {
 }
 
 /** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */
+/**
+ * Überlappende Grössen-Zustände eines Tokens (T-428, E-164): zwischen
+ * welchen die Leitung wählt; `chosen: null` heisst, es gilt der zuletzt
+ * hinzugekommene. Nur für die Leitung.
+ */
+export interface SizeChoice {
+  options: { id: string; name: string }[];
+  chosen: string | null;
+}
+
 export interface KartenKontext {
   parents: { id: string; name: string }[];
   /** Die Unterkarten mit ihrer Verknüpfung (T-327); `own` und `template` nur für die Leitung. */
@@ -2390,7 +2400,7 @@ export interface KartenKontext {
   /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
   /** `size`: die Grösse des Statblocks (T-317), für den Platz des Tokens. */
   /** `view`: wie Artikel dieser Art als Marker stehen (T-214, `InterfaceDef.markerView`). */
-  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; baseSize?: string; sizeFrom?: 'statblock' | 'effects'; sizeVia?: string[]; view?: MarkerView }>;
+  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; baseSize?: string; sizeFrom?: 'statblock' | 'effects'; sizeVia?: string[]; sizePassed?: string[]; sizeChoice?: SizeChoice; view?: MarkerView }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;

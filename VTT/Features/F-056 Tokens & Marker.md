@@ -22,7 +22,17 @@ in der Begegnung) verschieben sie, solange sie gelten; die Leitung
 überschreibt sie am einzelnen Token (Tokens › Token size, „by size" setzt
 zurück). Der Tooltip und die Beschriftung unter „Token size" sagen, woher
 die Grösse kommt. Gespeichert wird nur die Überschreibung (D8). Story auf
-dem Brett: REQ-396; offen: E-164 (mehrere Grössen-Wirkungen).
+dem Brett: REQ-396.
+
+**Mehrere Grössen-Zustände** (E-164, T-428): jede Quelle ist ein eigener
+Zustand mit Dauer (Enlarged, Reduced, ein Trank …); in der Initiative zählt
+die Dauer herunter, und ist sie um, fällt die Grösse zurück. Überlappen sich
+zwei, wird **nicht summiert**: es gilt einer. Ohne Wahl der zuletzt
+hinzugekommene, und das Token sagt „2 size effects — choose"; die Leitung
+tippt das Token an und wählt unter „Size effect that applies", welcher gilt.
+Die Wahl steht am Token (`props.sizeSource`), nicht an der Kreatur. Der
+Tooltip nennt den geltenden und die übergangenen („over Enlarged");
+Spielende sehen die Grösse, aber keine Namen.
 
 ```mermaid
 flowchart LR

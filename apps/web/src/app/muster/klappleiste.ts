@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, input, output } from '@angular/core';
+import { Component, DestroyRef, ElementRef, inject, input, output } from '@angular/core';
 
 /** Wonach eine Seite ihre Bereiche nennt, wenn sie nichts anderes sagt. */
 export const BEREICH = '[data-bereich]';
@@ -54,30 +54,57 @@ export function tasteAktion(
 }
 
 /**
+ * **Klappbar ohne `<details>`** (T-359): ein Kapitel (`nw-kapitelteil`),
+ * eine Gruppe im Register. Es sagt es mit `data-klappbar`, seinen Stand mit
+ * `data-offen="true|false"`, und es klappt selbst, wenn die Leiste es mit
+ * dem Ereignis `klappen` (`detail`: auf?) darum bittet — so merkt sich die
+ * Seite den Stand wie nach einem Klick, und die Leiste kennt keine Seite.
+ */
+export const KLAPPEN = 'klappen';
+
+/** Ist dieser Bereich klappbar, und steht er offen? `null`: nicht klappbar. */
+export function klappStand(el: Element): boolean | null {
+  if (el instanceof HTMLDetailsElement) return el.open;
+  if (!el.hasAttribute('data-klappbar')) return null;
+  return el.getAttribute('data-offen') !== 'false';
+}
+
+/** Einen Bereich auf- oder zuklappen; `true`, wenn sich etwas ändern sollte. */
+export function klappe(el: Element, auf: boolean): boolean {
+  const stand = klappStand(el);
+  if (stand === null || stand === auf) return false;
+  if (el instanceof HTMLDetailsElement) el.open = auf;
+  else el.dispatchEvent(new CustomEvent<boolean>(KLAPPEN, { detail: auf }));
+  return true;
+}
+
+/**
  * Die Bereiche unter einer Wurzel, die gerade dastehen: was in einem
- * zugeklappten Bereich liegt, ist nicht erreichbar und wird übersprungen.
+ * zugeklappten Bereich liegt, ist nicht erreichbar und wird übersprungen —
+ * ebenso, was die Seite gerade nicht zeigt (ein anderer Reiter der Kapitel
+ * am Telefon; `checkVisibility`, wo der Browser es kann).
  */
 export function bereicheIn(wurzel: ParentNode, auswahl = BEREICH): HTMLElement[] {
   return Array.from(wurzel.querySelectorAll<HTMLElement>(auswahl)).filter((el) => {
     for (let p = el.parentElement; p && p !== wurzel; p = p.parentElement) {
-      if (p instanceof HTMLDetailsElement && !p.open) return false;
+      if (klappStand(p) === false) return false;
     }
-    return !el.hidden;
+    if (el.hidden) return false;
+    const sichtbar = (el as HTMLElement & { checkVisibility?: () => boolean }).checkVisibility;
+    return sichtbar ? sichtbar.call(el) : true;
   });
 }
 
 /**
  * Alle klappbaren Bereiche auf- oder zuklappen; gibt zurück, wie viele sich
- * geändert haben. Klappbar ist ein `<details>`: sein `toggle` geht an die
- * Seite wie bei einem Klick, also merkt sie sich den Stand wie sonst auch.
+ * geändert haben. Ein `<details>` schickt sein `toggle` an die Seite wie bei
+ * einem Klick, ein anderer klappbarer Bereich bekommt `klappen` — in beiden
+ * Fällen merkt sich die Seite den Stand wie sonst auch.
  */
 export function alleKlappen(wurzel: ParentNode, auf: boolean, auswahl = BEREICH): number {
   let n = 0;
   for (const el of Array.from(wurzel.querySelectorAll<HTMLElement>(auswahl))) {
-    if (el instanceof HTMLDetailsElement && el.open !== auf) {
-      el.open = auf;
-      n++;
-    }
+    if (klappe(el, auf)) n++;
   }
   return n;
 }
@@ -96,8 +123,9 @@ export function alleKlappen(wurzel: ParentNode, auf: boolean, auswahl = BEREICH)
  * zweite Ablage hier wäre die Stelle, die nach dem ersten Klick von Hand
  * etwas anderes sagt.
  *
- * Was kein `<details>` ist (die Abschnitte der Leseansicht), wird nur
- * angesprungen; `klappbar = false` lässt dann die beiden Klappknöpfe weg,
+ * Klappbar ist ein `<details>` oder ein Bereich mit `data-klappbar`
+ * (`klappe`, T-359: Kapitel, Gruppen im Register). Was beides nicht ist
+ * (die Abschnitte der Leseansicht), wird nur angesprungen; `klappbar = false` lässt dann die beiden Klappknöpfe weg,
  * und `(ende)` sagt der Seite, dass vorn oder hinten nichts mehr kommt —
  * die Leseansicht blättert dann ins nächste Kapitel.
  */
@@ -169,7 +197,17 @@ export function alleKlappen(wurzel: ParentNode, auf: boolean, auswahl = BEREICH)
   `,
 })
 export class Klappleiste {
+  /** Die Leisten, die gerade stehen — für die Frage, wem die Tasten gehören. */
+  private static readonly alle = new Set<Klappleiste>();
+  /** Tastendrücke, die eine Leiste schon beantwortet hat. */
+  private static readonly beantwortet = new WeakSet<Event>();
+
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  constructor() {
+    Klappleiste.alle.add(this);
+    inject(DestroyRef).onDestroy(() => Klappleiste.alle.delete(this));
+  }
 
   /** Wo die Bereiche stehen — sonst unter dem Elternelement der Leiste. */
   readonly wurzel = input<HTMLElement | null>(null);
@@ -223,7 +261,7 @@ export class Klappleiste {
     }
     const ziel = b[i];
     /* Angesprungen heisst aufgeklappt — wie die Sprungleiste der Kapitel. */
-    if (ziel instanceof HTMLDetailsElement && this.klappbar()) ziel.open = true;
+    if (this.klappbar()) klappe(ziel, true);
     /* Ohne Gleiten: ein zweiter Tastendruck misst sonst mitten im Flug. */
     ziel.scrollIntoView?.({ block: 'start' });
     /* Der Fokus geht mit, damit Tab im angesprungenen Bereich weitermacht. */
@@ -234,11 +272,37 @@ export class Klappleiste {
     this.zuletzt = ziel;
   }
 
+  /** Steht die Leiste gerade da? Ein verborgener Reiter hat seine eigene. */
+  private steht(): boolean {
+    return !!this.host.nativeElement.getClientRects?.().length;
+  }
+
+  /**
+   * **Wem die Tasten gehören** (T-359): eine Leiste kann in einer anderen
+   * stehen — die Leseansicht in der Ebenenseite. Es antwortet die innerste
+   * sichtbare Leiste, deren Bereich den Fokus hält; hält keine ihn, die
+   * innerste überhaupt. Sonst sprängen beide, und eine Taste wären zwei
+   * Sprünge.
+   */
+  private zustaendig(): boolean {
+    const sichtbar = [...Klappleiste.alle].filter((l) => l.steht() && l.wurzelEl());
+    const fokus = document.activeElement;
+    const mitFokus = sichtbar.filter((l) => fokus && l.wurzelEl()!.contains(fokus));
+    const kandidaten = mitFokus.length ? mitFokus : sichtbar;
+    const innerste = kandidaten.reduce<Klappleiste | null>(
+      (a, b) => (!a || (a.wurzelEl()!.contains(b.wurzelEl()!) && a.wurzelEl() !== b.wurzelEl()) ? b : a),
+      null,
+    );
+    return !innerste || innerste === this;
+  }
+
   protected taste(e: KeyboardEvent): void {
-    /* Nur die Leiste, die gerade dasteht — ein verborgener Reiter hat seine eigene. */
-    if (!this.host.nativeElement.getClientRects?.().length) return;
+    /* Schon beantwortet — von der zuständigen Leiste, die vor dieser hörte
+       und den Fokus schon versetzt hat. */
+    if (Klappleiste.beantwortet.has(e) || !this.steht()) return;
     const a = tasteAktion(e);
-    if (!a) return;
+    if (!a || !this.zustaendig()) return;
+    Klappleiste.beantwortet.add(e);
     e.preventDefault();
     if (a === 'auf' || a === 'zu') {
       if (this.klappbar()) this.alle(a === 'auf');

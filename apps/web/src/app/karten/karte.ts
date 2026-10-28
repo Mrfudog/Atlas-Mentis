@@ -118,6 +118,7 @@ import {
   setGrid,
   gridStroke,
   setMarkerSize,
+  setMarkerSizeSource,
   snapTokenCentre,
   tokenSpan,
   tokenSizeOf,
@@ -166,7 +167,7 @@ import {
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
 import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
-import { Api, type GespieltZeile, type KartenKontext } from '../kern/api';
+import { Api, type GespieltZeile, type KartenKontext, type SizeChoice } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Vorschau } from '../artikel/vorschau';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -1608,6 +1609,15 @@ interface Zeiger {
                         <option value="" [selected]="!w.view">as the map ({{ ansichtLabel(w.geerbt) }})</option>
                         @for (v of MARKER_VIEWS; track v.key) {
                           <option [value]="v.key" [selected]="w.view === v.key">{{ v.label }}</option>
+                        }
+                      </select>
+                    }
+                    @if (groessenWahl(w.to); as gw) {
+                      <!-- **Überlappende Grössen-Zustände** (T-428, E-164): die Leitung wählt, welcher gilt. -->
+                      <select class="klein" (change)="groessenQuelleSetzen(w.rel.id, $any($event.target).value)" aria-label="Size effect that applies" title="Several size effects overlap — choose which one sets the token's size">
+                        <option value="" [selected]="!gw.chosen">latest ({{ gw.options[gw.options.length - 1]?.name }})</option>
+                        @for (o of gw.options; track o.id) {
+                          <option [value]="o.id" [selected]="gw.chosen === o.id">{{ o.name }}</option>
                         }
                       </select>
                     }
@@ -3135,6 +3145,19 @@ export class Karte {
     if (e) void this.schreiben(withMarkerView(e, relId, isMarkerView(v) ? v : null));
   }
 
+  /**
+   * **Welcher Grössen-Zustand gilt** (T-428, E-164): überlappen sich
+   * mehrere, wählt die Leitung am Token (`props.sizeSource`); leer heisst
+   * „der zuletzt hinzugekommene".
+   */
+  protected groessenWahl(to: string): SizeChoice | null {
+    return this.kontext()?.targets[to]?.sizeChoice ?? null;
+  }
+  protected groessenQuelleSetzen(relId: string, v: string): void {
+    const e = this.karte();
+    if (e) void this.schreiben(setMarkerSizeSource(e, relId, v || null));
+  }
+
   private nachZug = false;
   private griff: { id: string; to: string; sx: number; sy: number; zieht: boolean; pointer: number; von: Pt; selbst: boolean; span: number | null } | null = null;
 
@@ -4006,11 +4029,17 @@ export class Karte {
     const gross = (w: string | null | undefined) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : '');
     const felder = `${g.span} × ${g.span}`;
     if (g.from === 'token') return `${felder} · set on token`;
+    /* Überlappen sich Grössen-Zustände (T-428): welche übergangen sind, und ohne Wahl der Hinweis. */
+    const wahl = z?.sizeChoice;
+    const dazu = [
+      z?.sizePassed?.length ? `over ${z.sizePassed.join(', ')}` : '',
+      wahl && !wahl.chosen ? `${wahl.options.length} size effects — choose` : '',
+    ].filter(Boolean).map((t) => ` · ${t}`).join('');
     if (z?.sizeFrom === 'effects') {
       const via = z.sizeVia?.length ? z.sizeVia.join(', ') : 'an effect';
-      return `${gross(z.size)} ${felder} · ${via}${z.baseSize ? ` (statblock ${gross(z.baseSize)})` : ''}`;
+      return `${gross(z.size)} ${felder} · ${via}${z.baseSize ? ` (statblock ${gross(z.baseSize)})` : ''}${dazu}`;
     }
-    if (g.from === 'statblock') return `${gross(g.size)} ${felder} · statblock`;
+    if (g.from === 'statblock') return `${gross(g.size)} ${felder} · statblock${dazu}`;
     return `${felder} · no size on the statblock`;
   }
 
