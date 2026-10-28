@@ -1116,7 +1116,7 @@ export const fieldGroups = {
             required: ['id', 'target', 'op'],
             properties: {
               id: { type: 'string', title: 'Id' },
-              /* `ability.str`, `ac`, `speed.walk`, `speed.*`, `spellSaveDc`,
+              /* `ability.str`, `ac`, `ac.base` (Formel, T-355), `speed.walk`, `speed.*`, `spellSaveDc`,
                  `spellAttack`, `save`, `save.dex`, `resist`, `immune`,
                  `vulnerable`, `conditionImmune`, `critThreshold`, `carry`,
                  `capacity`, `weapon`, `weapon.attack`, `weapon.damage`, `spellDamage`,

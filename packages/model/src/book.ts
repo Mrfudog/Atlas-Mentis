@@ -203,6 +203,12 @@ export interface StatblockContext {
   kindOf?: (name: string) => string | undefined;
   /** Der Name eines Verweisziels (`conditionImmunities`, T-078). */
   nameOf?: (id: string) => string | undefined;
+  /**
+   * Die Wirkungen an der Figur, als Summen je Ziel (`effectTotals(…).add`,
+   * T-355): `check` zählt in die passive Wahrnehmung. Ohne Angabe, wie
+   * am Statblock einer Vorlage: keine.
+   */
+  effects?: Readonly<Record<string, number>>;
 }
 
 const STATBLOCK_PLACED = new Set([
@@ -371,7 +377,8 @@ export function passivePerception(entity: Entity, ctx: StatblockContext = {}): n
   const geuebt = [...list(pr['proficient']), ...list(pr['expertise'])].find((n) => n.toLowerCase() === 'perception');
   const grund = (geuebt && ctx.skillAbility?.(geuebt)) || 'wis';
   const b = checkBonus({ proficient: pr['proficient'], expertise: pr['expertise'], prof: sb['prof'], bonuses: sb['bonuses'], score: ab[grund] }, 'Perception');
-  return b === null ? null : 10 + b;
+  /* Passiv heisst: alles, was auf die Probe wirkt (PHB), also auch `check` (T-355). */
+  return b === null ? null : 10 + b + (ctx.effects?.['check'] ?? 0);
 }
 
 // ------------------------------------------------------------ Kennzahlen

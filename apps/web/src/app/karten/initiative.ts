@@ -1,7 +1,8 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import type { QuickAction, TrackerOp, TrackerRow, TrackerView } from '@nw/model';
+import { enumOptions, type QuickAction, type TrackerOp, type TrackerRow, type TrackerView } from '@nw/model';
 import { Api } from '../kern/api';
+import { Bestand } from '../kern/bestand';
 import { BegriffLink, Glossar } from '../kern/glossar';
 import { KurzLink } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
@@ -76,6 +77,9 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
 
       @if (fehler(); as f) {
         <p class="fehler" role="alert">{{ f }}</p>
+      }
+      @if (ergebnis(); as e) {
+        <p class="dim" role="status">{{ e }}</p>
       }
       @if (!sicht()) {
         <p class="dim">Loading…</p>
@@ -198,6 +202,18 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
                 @if (o.edge === r.edge && (o.was === 'damage' || o.was === 'heal')) {
                   <form class="eingabe" (submit)="$event.preventDefault(); tpAendern(r, o.was, betrag.value)">
                     <label>{{ o.was === 'damage' ? 'Damage' : 'Healing' }} <input #betrag type="number" min="0" step="1" inputmode="numeric" autofocus /></label>
+                    @if (o.was === 'damage') {
+                      <!-- Die Art entscheidet über Resistenz, Immunität, Verwundbarkeit (T-355). -->
+                      <label>
+                        Type
+                        <select aria-label="Damage type" (change)="schadensArt.set($any($event.target).value)">
+                          <option value="" [selected]="!schadensArt()">untyped</option>
+                          @for (a of schadensArten(); track a) {
+                            <option [value]="a" [selected]="a === schadensArt()">{{ a }}</option>
+                          }
+                        </select>
+                      </label>
+                    }
                     <button type="submit" class="klein">Apply</button>
                     <button type="button" class="klein" (click)="offen.set(null)">Cancel</button>
                   </form>
@@ -610,6 +626,12 @@ export class Initiative {
 
   protected readonly sicht = signal<(TrackerView & { off?: boolean }) | null>(null);
   protected readonly fehler = signal<string | null>(null);
+  /** Was der letzte Schaden ergab — Abwehr, Stand, Konzentrationsprobe (T-355). */
+  protected readonly ergebnis = signal<string | null>(null);
+  private readonly bestand = inject(Bestand);
+  /** Die Schadensarten aus der Zeile `DamageType`; die letzte gewählte bleibt für den nächsten Treffer. */
+  protected readonly schadensArten = computed(() => enumOptions(this.bestand.registry() ?? { enums: {}, interfaces: {} }, { enumRef: 'DamageType' }) ?? []);
+  protected readonly schadensArt = signal('');
   protected readonly laeuft = signal(false);
   protected readonly offen = signal<Offen>(null);
   protected readonly initEdit = signal<string | null>(null);
@@ -736,7 +758,8 @@ export class Initiative {
     this.laeuft.set(true);
     this.fehler.set(null);
     try {
-      await this.api.trackerOp(this.begegnung(), op);
+      const r = await this.api.trackerOp(this.begegnung(), op);
+      this.ergebnis.set(r.text ?? null);
       await this.holen(this.begegnung());
       return true;
     } catch (e) {
@@ -785,6 +808,8 @@ export class Initiative {
         this.anker.set('');
         this.verborgen.set(false);
       }
+      /* Die Schadensarten stehen im Register — einmal laden, dann liegt es da. */
+      if (q === 'damage') void this.bestand.load();
       this.offen.set({ edge: r.edge, was: q });
       return;
     }
@@ -796,7 +821,9 @@ export class Initiative {
   protected async tpAendern(r: TrackerRow, was: 'damage' | 'heal', roh: string): Promise<void> {
     const n = Math.abs(Number(roh));
     if (!roh.trim() || !Number.isFinite(n)) return;
-    if (await this.tue({ op: 'hp', edge: r.edge, delta: was === 'damage' ? -n : n })) this.offen.set(null);
+    /* Schaden geht mit seiner Art an den Server, der nach der Abwehr abzieht (T-355). */
+    const op: TrackerOp = was === 'damage' ? { op: 'damage', edge: r.edge, amount: n, ...(this.schadensArt() ? { type: this.schadensArt() } : {}) } : { op: 'hp', edge: r.edge, delta: n };
+    if (await this.tue(op)) this.offen.set(null);
   }
 
   protected async effektSetzen(r: TrackerRow): Promise<void> {

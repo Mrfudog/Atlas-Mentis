@@ -14,6 +14,7 @@
 import { COMMON_ACTION_CATALOGUE, TURN_TYPES, turnTypeOf, type TurnType } from './actions.js';
 import { keyStats, signedBook, type StatblockContext } from './book.js';
 import { abilityMod, derivedValue } from './calc.js';
+import { effectsAt, effectTotals } from './effects.js';
 import { hitPointLevels } from './hitpoints.js';
 import { proficienciesOf, proficiencyNames } from './proficiency.js';
 import type { Entity, EntityId, Registry } from './types.js';
@@ -356,7 +357,12 @@ export function sheetHeader(
     : null;
   const prof = zahl(sb['prof']) ?? levelProf;
 
-  const ks = keyStats(registry, statblock, character, ctx);
+  /* **Die Wirkungen an der Figur** (T-355): Merkmale, Zustände, getragene
+     Stücke — `save`, `save.<attr>`, `spellSaveDc`, `spellAttack`, `check`
+     wirken hier, wie `saveBonus` sie für die Konzentration liest. */
+  const add = ctx.effects ?? effectTotals(effectsAt(character, byId, statblock ? { statblock } : {})).add;
+  const wirkung = (...ziele: string[]) => ziele.reduce((n, k) => n + (add[k] ?? 0), 0);
+  const ks = keyStats(registry, statblock, character, { ...ctx, effects: add });
   const tile = (k: string) => ks.tiles.find((t) => t.key === k);
   const vitals: SheetCell[] = [];
   const ac = tile('ac');
@@ -380,7 +386,8 @@ export function sheetHeader(
     const mod = modOf(key);
     const fest = zahl(bonuses[key]);
     const geuebt = saves.has(key);
-    const save = fest ?? (mod === null ? null : mod + (geuebt && prof !== null ? prof : 0));
+    const roh = fest ?? (mod === null ? null : mod + (geuebt && prof !== null ? prof : 0));
+    const save = roh === null ? null : roh + wirkung('save', `save.${key}`);
     return { key, label: key.toUpperCase(), score, mod, save, saveProficient: geuebt };
   });
 
@@ -396,13 +403,15 @@ export function sheetHeader(
   if (sc || spells.length) {
     const scProps = registry.interfaces['Statblock']?.schema?.properties ?? {};
     const abil = typeof sc?.['spellAbility'] === 'string' ? (sc['spellAbility'] as string) : '';
-    const dc = scProps['spellDc'] ? derivedValue(scProps['spellDc'], sb, statblock?.components) : undefined;
-    const atk = scProps['spellAttack'] ? derivedValue(scProps['spellAttack'], sb, statblock?.components) : undefined;
+    const dcRoh = scProps['spellDc'] ? derivedValue(scProps['spellDc'], sb, statblock?.components) : undefined;
+    const atkRoh = scProps['spellAttack'] ? derivedValue(scProps['spellAttack'], sb, statblock?.components) : undefined;
+    const dc = dcRoh === undefined ? undefined : dcRoh + wirkung('spellSaveDc');
+    const atk = atkRoh === undefined ? undefined : atkRoh + wirkung('spellAttack');
     const am = abil ? modOf(abil.toLowerCase()) : null;
     casting = [
       { key: 'ability', label: 'Ability', value: abil ? abil.toUpperCase() : '—' },
-      { key: 'attack', label: 'Spell attack', value: atk === undefined ? '—' : signedBook(atk), ...(am !== null && prof !== null ? { why: `${abil.toUpperCase()} ${signedBook(am)} · prof ${signedBook(prof)}` } : {}) },
-      { key: 'dc', label: 'Save DC', value: dc === undefined ? '—' : String(dc), why: '8 + ability + prof' },
+      { key: 'attack', label: 'Spell attack', value: atk === undefined ? '—' : signedBook(atk), ...(am !== null && prof !== null ? { why: `${abil.toUpperCase()} ${signedBook(am)} · prof ${signedBook(prof)}${wirkung('spellAttack') ? ` · effects ${signedBook(wirkung('spellAttack'))}` : ''}` } : {}) },
+      { key: 'dc', label: 'Save DC', value: dc === undefined ? '—' : String(dc), why: `8 + ability + prof${wirkung('spellSaveDc') ? ` · effects ${signedBook(wirkung('spellSaveDc'))}` : ''}` },
     ];
     for (const s of slots) casting.push({ key: `slots${s.level}`, label: `Slots ${ordinalShort(s.level)}`, value: `${s.max - s.used} / ${s.max}`, why: 'back on a long rest' });
     const cantrips = spells.filter((s) => s.level === 0).length;

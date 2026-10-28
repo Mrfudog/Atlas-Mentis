@@ -1690,7 +1690,8 @@ export class Api {
     return this.call(`/api/encounters/${encodeURIComponent(id)}/tracker`);
   }
   /** Eine Änderung am Tracker: Zug, Initiative, Trefferpunkte, Effekt, Teilnehmer. */
-  trackerOp(id: string, op: TrackerOp): Promise<{ ok: true }> {
+  /** `text`: was ein Schaden ergab (Abwehr, Stand, Konzentrationsprobe, T-355). */
+  trackerOp(id: string, op: TrackerOp): Promise<{ ok: true; text?: string }> {
     return this.call(`/api/encounters/${encodeURIComponent(id)}/tracker`, { method: 'POST', body: JSON.stringify(op) });
   }
   /** Die Seitenleiste der Karte (T-203): Gruppe, und für die Leitung die Begegnungen der Sitzung. */

@@ -45,6 +45,8 @@
             "GM: ▶ Start rolls initiative and runs the encounter; Next turn ends the current turn, counts effects down and starts the next; ◀ goes back without bringing expired effects back. Tap an initiative to change it.",
             "Skip passes over the current combatant, ⤒ goes back to the top in the same round, and ▸ on a row makes that combatant current — none of these count effects down. The head shows the round and, for the GM, Turn x/y.",
             "Each row has the quick actions the campaign picked — Damage, Heal, Effect, Reroll, Remove — and 👁 shows or hides a foe from the players. Combatants without recorded hit points are at full. Add a combatant at the bottom.",
+            "Damage asks for its type (fire, slashing …): the server takes off what is left after resistances, immunities and vulnerabilities, temporary hit points first, and the line above the order says why.",
+            "A combatant who concentrates makes the Constitution save at once (DC 10 or half the damage), rolled into the log. A player character's hit points stay the same in the tracker and on the character sheet.",
             "▾ opens a row with what the combatant can do: traits, actions, bonus actions, reactions and spells from its statblock, with rolls. Players see this for the party, and for foes only if the campaign shows foes' actions.",
             "When a turn changes, the new row lights up briefly; ✦ turns this off for your account, and it stays still if your device asks for reduced motion.",
             "An effect is a condition or a note with a duration: it counts down at the start or end of a combatant's turn — its own or another's — and drops at zero. Without rounds it stays until removed; hidden effects show only to the GM.",

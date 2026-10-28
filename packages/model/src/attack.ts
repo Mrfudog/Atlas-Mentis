@@ -161,6 +161,32 @@ export function attackNumbers(action: Card | undefined, stats: Card, edge: Card 
   };
 }
 
+/**
+ * **Was Wirkungen an einem Angriff ändern** (T-355): ein Zauberangriff
+ * nimmt `spellAttack` und `spellDamage`, ein Waffenangriff `weapon.attack`,
+ * `weapon.damage` und `weapon` (beides). `add` sind die Summen der
+ * Wirkungen an der Figur (`effectTotals(…).add`) — Merkmale, Zustände,
+ * getragene Stücke. Was an der Waffe selbst steht (`when: self`), kennt die
+ * Kachel nicht: sie hängt an einer Aktion, nicht an einem Gegenstand.
+ */
+export function withEffectBonuses(n: AttackNumbers, add: Readonly<Record<string, number>>): AttackNumbers {
+  const zauber = n.kinds.some((k) => k.includes('spell'));
+  const waffe = n.kinds.some((k) => k.includes('weapon'));
+  const z = (k: string) => add[k] ?? 0;
+  const treffer = zauber ? z('spellAttack') : waffe ? z('weapon.attack') + z('weapon') : 0;
+  const schaden = zauber ? z('spellDamage') : waffe ? z('weapon.damage') + z('weapon') : 0;
+  if (!treffer && !schaden) return n;
+  const damageBonus = schaden ? (n.damageBonus ?? 0) + schaden : n.damageBonus;
+  const damage = n.damageDice ? n.damageDice + (damageBonus ? signed(damageBonus) : '') : damageBonus !== null ? String(damageBonus) : '';
+  return {
+    ...n,
+    toHit: n.toHit === null ? null : n.toHit + treffer,
+    damageBonus,
+    damage,
+    average: n.damageDice ? averageOf(n.damageDice, damageBonus ?? 0) : damageBonus,
+  };
+}
+
 const ART: Record<string, string> = {
   'melee weapon': 'Melee Weapon Attack',
   'ranged weapon': 'Ranged Weapon Attack',
