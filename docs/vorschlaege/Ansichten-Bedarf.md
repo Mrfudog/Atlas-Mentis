@@ -1,7 +1,8 @@
 # Ansichten: Bestand, Bedarf je Art und Stufe
 
 Stand 21.10.2026, T-234; **nachgeführt mit T-346** (Abschnitt
-„quick: Reihenfolge je Art", die Suche liest `quick`). Gelesen aus dem Register (`packages/registry`,
+„quick: Reihenfolge je Art", die Suche liest `quick`) und mit **T-344**
+(Spalten der Übersicht, 28.10.). Gelesen aus dem Register (`packages/registry`,
 `seedRegistry`) mit `node packages/registry/scripts/ansichten.mjs` — das
 Skript schreibt die Tabelle unten neu (`… <Typ>` je Art Element für Element,
 `--json` maschinenlesbar). Gestaltete Ansichten aus dem Designer stehen in der
@@ -36,8 +37,16 @@ dafür legt dieser Stand an, die Vorgabe der Kachel gehört T-339. Offen: E-124 
   mehr; das „+" der Suche nimmt **abgeleitet** dieselben Werte wie die Karte
   (45 Arten). **Nachher:** quick 46, handout 12, search 45.
 - **Nicht umgesetzt, weil es eine Entscheidung braucht:** Varianten einer
-  Art an einem Ort (Kreatur „Kampf", Ort „Reiseführer") — E-124. Spalten
-  der Übersicht für Arten ohne (T-344). Grosse Blöcke zerlegen: T-282.
+  Art an einem Ort (Kreatur „Kampf", Ort „Reiseführer") — E-124. Grosse
+  Blöcke zerlegen: T-282.
+- **Spalten der Übersicht (T-344, Migration 156):** elf Arten, die für
+  `overview` nichts sagten, nehmen die Werte der Karte, soweit sie als
+  Spalte taugen — Rohwerte, kein Mass, kein langer Text (das Ziel einer
+  Fraktion ist beides: lang und oft ein Geheimnis). Untertypen erben sie:
+  Shop von Place, Arc, Szene, Sitzung und Kampagne von Story. Das ist die
+  Vorgabe hinter „Reset to default" der Spaltenwahl (T-343).
+  Vorher/Nachher bei 1360 und 390 px:
+  [`docs/Nachtarbeit/T-344-bilder/`](../Nachtarbeit/T-344-bilder/).
 
 ## Bedarf: Art × Stufe
 
@@ -52,19 +61,19 @@ alle offen und brauchen keinen Zettel.
 | Item / Weapon / Armor / Material | ● | ● Art, Seltenheit, Einstimmung (+ Kenndaten) | ● `item`, `crafting` | ● `item` | **● dieselben Werte** | **● wie quick** | |
 | Statblock | ● | ● `stats` | ● `statblock` | ● `statblock` | — | — | Zahlen teilt man nicht aus |
 | Creature / PlayerCharacter | ● | ● `stats`, Art, Volk, Rolle, Haltung | ● Bogen (`sheet`, `turn`, `spells` …) | — | **● nur Volk** | **● wie quick** | Haltung, Rolle sind Leitung; Variante „Kampf" → E-124 |
-| Place / Shop | — | ● Art, Umgebung | ● `crawl` (Shop: `wares`) | — | **● Art, Umgebung** | **● wie quick** | Variante „Reiseführer" → E-124; Spalten → T-344 |
-| Faction | — | ● Art, Ziel | — | — | **● nur Art** | **● wie quick** | Ziel ist oft Geheimnis; Struktur → T-341 |
+| Place / Shop | **● Art, Umgebung** (T-344) | ● Art, Umgebung | ● `crawl` (Shop: `wares`) | — | **● Art, Umgebung** | **● wie quick** | Variante „Reiseführer" → E-124 |
+| Faction | **● Art** (T-344) | ● Art, Ziel | — | — | **● nur Art** | **● wie quick** | Ziel ist oft Geheimnis; Struktur → T-341 |
 | Deity | ● | ● Pantheon, Gesinnung | — | — | **● Pantheon, Domänen** | **● wie quick** | |
 | Hazard | ● | ● Art, Bedrohung | — | — | — | **● wie quick** | eine Falle teilt man nicht aus |
-| Quest | — | ● Stand, Lohn | ● | — | **● Stand, Lohn** | **● wie quick** | Spalten → T-344 |
-| Scene | — | ● Modus, Schwierigkeit | — | — | — (Vorlesetext global) | **● wie quick** | |
+| Quest | **● Stand, Lohn** (T-344) | ● Stand, Lohn | ● | — | **● Stand, Lohn** | **● wie quick** | |
+| Scene | **● Modus, Schwierigkeit** (+ ○ Story) | ● Modus, Schwierigkeit | — | — | — (Vorlesetext global) | **● wie quick** | |
 | Encounter | ● | **● Art, Phase, Schwierigkeit** | ● `initiative` | — | — | **● wie quick** | |
-| Map | — | **● Art** | ● `map` | — | — | **● wie quick** | Masse nicht auf der Karte (Rohwert) |
-| Recipe | — | **● Beruf, Zeit** | ● `crafting` | — | — | **● wie quick** | |
-| Party | — | **● Stufe, Motto** | ● `inventory`, `crafting` | — | — | **● wie quick** | |
-| Event | — | **● Art, Datum** | — | — | — | **● wie quick** | |
-| Story / Session | — | **● Art, gespielt am** | Session: `live`, `prep` | — | — | **● wie quick** | Session erbt von Story |
-| Arc | — | **● Stufen von/bis** (+ ○ Story) | — | — | — | **● wie quick** | |
+| Map | **● Art** (T-344) | **● Art** | ● `map` | — | — | **● wie quick** | Masse nicht auf der Karte (Rohwert) |
+| Recipe / CraftingOrder | **● Beruf** (Auftrag: + Ausgang) | **● Beruf, Zeit** | ● `crafting` | — | — | **● wie quick** | |
+| Party | **● Stufe** (T-344) | **● Stufe, Motto** | ● `inventory`, `crafting` | — | — | **● wie quick** | |
+| Event | **● Art, Datum** (T-344) | **● Art, Datum** | — | — | — | **● wie quick** | |
+| Story / Session | **● Art, gespielt am** (T-344) | **● Art, gespielt am** | Session: `live`, `prep` | — | — | **● wie quick** | Session erbt von Story |
+| Arc | **● Stufen von/bis** (+ ○ Story) | **● Stufen von/bis** (+ ○ Story) | — | — | — | **● wie quick** | |
 | Class / Ancestry / Background | ● | ● | ● Übersicht | — | — | **● wie quick** (Class, Ancestry) | |
 | Feat, Rule und Unterarten | ● | ● (○ Rule) | — | — | — | **● wie quick** | |
 | Campaign | — | — | ● viele Blöcke | — | — | — | |
@@ -222,9 +231,8 @@ Vorgängerin (die Grundreihenfolge gilt für alle).
   gewählt an der Leiste „Views" und auf der Kachel. Ob solche Ansichten mit
   dem Register kommen (Startzeilen) oder die Leitung sie im Designer anlegt,
   ist ihre Entscheidung. Umsetzung danach: T-345.
-- **T-344 — Spalten der Übersicht** (Vorgabe, auf die T-343 „Reset to default“ zurückgeht) für Place, Faction, Quest, Scene, Event,
-  Story, Arc, Party, Map, Recipe: heute nur Name und Beschreibung im
-  Kompendium. Klein, aber es ändert, was Listen zeigen.
+- ~~**T-344 — Spalten der Übersicht**~~ umgesetzt am 28.10. (oben,
+  Kurzfassung; Migration 156).
 - **T-282 — grosse Blöcke.** Die Liste unten; am dringendsten `sheet`,
   `turn`, `spells` der Kreatur und `crawl` am Ort, weil eine Variante
   (E-124) Teile daraus bräuchte.
