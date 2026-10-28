@@ -40,7 +40,7 @@ import { Text } from './text';
         @for (a of b.abilities; track a.key) {
           <div role="listitem">
             <div class="k">{{ a.label }}</div>
-            <div>{{ a.score ?? '—' }} {{ a.mod }}</div>
+            <div>{{ a.score ?? '—' }} @if (a.check) {<span class="probe">(<nw-text inline [text]="wuerfel(a.check.expr)" [wurfLabel]="a.check.label" />)</span>} @else {<span>{{ a.mod }}</span>}</div>
             <nw-abw [liste]="an(a.label)" />
           </div>
         }
@@ -48,7 +48,18 @@ import { Text } from './text';
       <div class="linie" aria-hidden="true"></div>
       <div class="zeilen">
         @for (z of b.details; track z.label) {
-          <p><strong [nwBegriff]="feldBegriff(z.ref)">{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
+          <p>
+            <strong [nwBegriff]="feldBegriff(z.ref)">{{ z.label }}</strong>
+            <!-- Fertigkeiten und Rettungswürfe würfeln (T-181): je Eintrag ein Knopf, beschriftet im Log. -->
+            @if (z.rolls?.length) {
+              @for (w of z.rolls; track w.label; let letzte = $last) {
+                <span class="wurfteil">{{ w.name }} <nw-text inline [text]="wuerfel(w.expr)" [wurfLabel]="w.label" />{{ letzte ? '' : ',' }}</span>
+              }
+            } @else {
+              <nw-text inline [text]="z.text" />
+            }
+            <nw-abw [liste]="an(z.label)" />
+          </p>
         }
         @for (z of b.extra; track z.label) {
           <p class="zusatz"><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
@@ -181,6 +192,11 @@ export class Statblock {
     });
     return zeilenVergleich(b ? zeilen(b) : [], andere);
   });
+
+  /** Ein Wurf als Text (`{{+6}}`, M12) — so zeichnet ihn `nw-text` als Knopf. */
+  protected wuerfel(expr: string): string {
+    return `{{${expr}}}`;
+  }
 
   protected an(label: string): Abweichung[] {
     return this.vgl().an.get(label.trim().toLowerCase()) ?? [];

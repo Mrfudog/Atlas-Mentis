@@ -9,6 +9,14 @@
       "link": "/handbook"
     },
     {
+      "id": "2026-10-28-statblock-rolls",
+      "date": "2026-10-28",
+      "title": "Roll skills, saves and crafting checks",
+      "text": "On a statblock, skill and saving throw bonuses and ability modifiers are now dice to click; the log says “Stealth check” or “DEX save”. Crafting has “Roll check”, which rolls with the crafter's own bonus on the server. A long rolls log now pages past the first thousand rolls.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-tracker-damage-types",
       "date": "2026-10-28",
       "title": "Damage types in the tracker, effects on saves and spells",
