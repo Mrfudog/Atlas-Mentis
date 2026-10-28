@@ -104,5 +104,6 @@
    "ifEmpty": true
   }
  ],
- "note": "T-437: Legendary Actions im Lair aus 5e.tools (legendaryActionsLair) nachtragen"
+ "note": "T-437: Legendary Actions im Lair aus 5e.tools (legendaryActionsLair) nachtragen",
+ "allLayers": true
 }
