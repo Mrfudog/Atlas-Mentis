@@ -478,6 +478,16 @@ const APP: AppTerm[] = [
     see: '/handbook',
   },
   {
+    term: 'Preferred version',
+    aliases: ['Prefer this version', 'First for some types'],
+    sort: 'app',
+    definition: 'Where two layers in play bring a version of the same thing, the campaign can say which one lists and links show — one article, or one layer for some types.',
+    effect: 'Without a preference the higher layer in Order in play wins. A preferred article wins over its other versions, a layer put first for a type wins for that type; nothing is written into any book, and nothing comes into play that was not.',
+    example: 'Weapons: PHB 2024 first, while the 2014 book stays higher for everything else.',
+    translations: { de: 'Vorrang' },
+    see: '/campaign',
+  },
+  {
     term: 'View as',
     aliases: ['Viewing as'],
     sort: 'app',

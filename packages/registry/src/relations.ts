@@ -1650,6 +1650,29 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /**
+   * **Vorrang an der Kampagne** (T-403, E-111 a): welche Fassung derselben
+   * Sache Listen und Verweise zeigen, wenn mehrere Ebenen sie bringen — ein
+   * Artikel („Prefer this version") oder eine Ebene für einzelne Arten
+   * („Weapons: PHB 2024 first"). `over` nennt, worüber; ohne: über alles.
+   * Kein Buch wird beschrieben; ins Spiel bringt der Vorrang nichts.
+   */
+  prefers: {
+    type: 'prefers',
+    label: 'Prefers',
+    inverseLabel: 'Preferred in',
+    means: 'A campaign shows this version first among the versions of the same thing — a single article, or a layer for some types; the article or layer lists the campaigns that prefer it.',
+    from: ['Campaign'],
+    to: ['*'],
+    props: {
+      type: 'object',
+      properties: {
+        over: { type: 'string', title: 'Over' },
+        types: { type: 'array', items: { type: 'string' }, title: 'Types' },
+      },
+    },
+  },
+
+  /**
    * **Eine Instanz liest ihre Vorlage.** Gespeichert wird an ihr nur, was
    * abweicht; gelesen wird beides zusammen (`resolveInstance` im Modell).
    * Eine Korrektur an der Vorlage erreicht jede Instanz, die das Feld nicht

@@ -73,6 +73,8 @@ import {
   type StackClash,
   type StackOutcome,
   isLayer,
+  preferencesOf,
+  withPreference,
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
 import { sorgeSpielerEbene } from './spielerebene.js';
@@ -558,6 +560,18 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       may: recht,
       layers: [...an, ...aus],
       extra,
+      /* Vorrang (T-403): je Artikel oder je Ebene für Arten, mit Namen. */
+      preferences: preferencesOf(kampagne).map((p) => {
+        const z = alle.get(p.to);
+        return {
+          to: p.to,
+          name: entityName(z) || p.to,
+          kind: isLayer(z) ? ('layer' as const) : ('article' as const),
+          ...(z && !isLayer(z) ? { type: (z.interfaces ?? [])[0] ?? '' } : {}),
+          types: p.types,
+          ...(p.over ? { over: p.over, overName: entityName(alle.get(p.over)) || p.over } : {}),
+        };
+      }),
       /* Wer die Vergleichsebenen sieht (T-092): `gm` (Vorgabe) oder `players`. */
       compareFor: compareFor === 'players' ? ('players' as const) : ('gm' as const),
     };
@@ -779,6 +793,66 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     await repo.appendEvent(on ? 'campaign.enabled' : 'campaign.disabled', c, { article: ziel.id, by: user.id });
     return { ok: true, enabled: on, state: await ebenenSicht(user, c, recht) };
   };
+  /**
+   * **Vorrang setzen** (T-403, E-111 a): `PUT { to, over?, types? }` — ein
+   * Artikel im Spiel steht dann vor seinen anderen Fassungen, eine Ebene im
+   * Spiel für die genannten Arten vor den anderen Ebenen (`over`: nur vor
+   * dieser). `DELETE …/prefers/:to` nimmt ihn weg, mit `?type=` nur eine
+   * Art. Nur die Leitung, wie die Freigabe; kein Buch wird beschrieben.
+   */
+  app.put<{ Params: { c: string }; Body: { to?: unknown; over?: unknown; types?: unknown } | null }>(
+    '/api/campaigns/:c/prefers',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Den Vorrang setzt die Leitung; ein Mitleiter sieht ihn nur.');
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      const b = request.body ?? {};
+      const ziel = typeof b.to === 'string' ? alle.get(b.to) : undefined;
+      if (!ziel) return nein(reply, 404, 'Nicht gefunden');
+      const registry = await repo.getRegistry();
+      const types = Array.isArray(b.types) ? b.types.filter((t): t is string => typeof t === 'string' && !!t) : [];
+      const fremd = types.filter((t) => !registry.interfaces[t]);
+      if (fremd.length) return nein(reply, 400, `Diese Art gibt es nicht: ${fremd.join(', ')}`);
+      const over = typeof b.over === 'string' && b.over ? b.over : null;
+      if (over && !alle.has(over)) return nein(reply, 404, 'Worüber der Vorrang gelten soll, gibt es nicht.');
+      if (isLayer(ziel)) {
+        if (!types.length) return nein(reply, 400, 'Eine ganze Ebene stellt die Reihenfolge in Order in play nach vorn; hier nennt der Vorrang Arten.');
+        if (!resolvedStack(alle, kampagne).some((l) => l.id === ziel.id)) return nein(reply, 409, 'Diese Ebene ist in dieser Kampagne nicht im Spiel.');
+      } else {
+        if (types.length) return nein(reply, 400, 'Arten nennt nur der Vorrang einer Ebene.');
+        if (!playStack(alle, kampagne, registry).inPlay(ziel)) return nein(reply, 409, 'Dieser Artikel ist in dieser Kampagne nicht im Spiel.');
+      }
+      const geschrieben = withPreference(kampagne, ziel.id, { over, types });
+      const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+      const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.prefers', c, { to: ziel.id, over, types, by: user.id });
+      return { ok: true, state: await ebenenSicht(user, c, recht) };
+    },
+  );
+  app.delete<{ Params: { c: string; to: string }; Querystring: { type?: string } }>(
+    '/api/campaigns/:c/prefers/:to',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Den Vorrang setzt die Leitung; ein Mitleiter sieht ihn nur.');
+      const kampagne = await repo.getEntity(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      if (!preferencesOf(kampagne).some((p) => p.to === request.params.to)) return nein(reply, 404, 'Diesen Vorrang gibt es hier nicht.');
+      const geschrieben = withPreference(kampagne, request.params.to, null, request.query.type || undefined);
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.prefers', c, { to: request.params.to, removed: request.query.type || true, by: user.id });
+      return { ok: true, state: await ebenenSicht(user, c, recht) };
+    },
+  );
   app.put<{ Params: { c: string; id: string } }>('/api/campaigns/:c/enabled/:id', freigabe(true));
   app.delete<{ Params: { c: string; id: string } }>('/api/campaigns/:c/enabled/:id', freigabe(false));
 

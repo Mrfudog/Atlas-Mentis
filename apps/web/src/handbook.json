@@ -125,6 +125,15 @@
           ]
         },
         {
+          "heading": "Choosing which version shows",
+          "text": [
+            "When two layers in play bring a version of the same thing — the Dagger of 2014 and of 2024 — lists and links show the one from the higher layer in Order in play.",
+            "To change that for one article, open it and press Prefer this version in Versions, or press it in Articles and their layers on the campaign page. Stop preferring goes back to the order.",
+            "To change it for a whole type, open Layers › Order in play, and under First for some types choose a type and a layer, then Put first — “Weapons: PHB 2024 first” while 2014 stays higher for everything else. × removes it.",
+            "A preferred article wins over a type, a type over the order. Nothing is written into the books, and nothing comes into play that was not. The GM sets it; a co-GM sees it."
+          ]
+        },
+        {
           "heading": "Making a new kind of article",
           "text": [
             "Registry › Types › New type: name it, choose its area and what it takes in, add its fields. It can be created right away — no code change."

@@ -503,6 +503,16 @@ export function geltendeFassung(
   if (imSpiel.length < 2) return null;
   const g = versionInPlay(imSpiel, ranks);
   if (!g) return null;
+  /* **Mit Vorrang** (T-403): sagt der Server, welche gezeigt wird, und
+     bevorzugt die Kampagne sie, gilt das vor der Reihenfolge. */
+  const gezeigt = f.shown ? { entity: basis, preferred: !!f.preferred } : f.versions.find((v) => v.shown && v.play);
+  const gezeigtEntity = gezeigt?.entity;
+  if (gezeigtEntity && gezeigt.preferred) {
+    const ebene = layersOf(gezeigtEntity).find((l) => ranks.has(l));
+    const k = ebene ? (ebenen.get(ebene)?.short ?? '?') : '?';
+    const wer = gezeigtEntity.id === basis.id ? 'this one' : `the ${k} version`;
+    return { id: gezeigtEntity.id, satz: `In play: ${k}. The campaign prefers it over the other versions, so lists and links show ${wer}.` };
+  }
   const kurz = (id: string) => ebenen.get(id)?.short ?? '?';
   const andere = imSpiel
     .filter((e) => e.id !== g.entity.id)
@@ -630,6 +640,17 @@ export class FassungsAbzeichen {
           @if (geltend(); as g) {
             <p class="geltend">{{ g.satz }}</p>
           }
+          <!-- Vorrang an der Kampagne (T-403, E-111 a): diese Fassung vorn. -->
+          @if (f.mayPrefer && f.campaign && geltend()) {
+            <p class="vorrang">
+              @if (f.preferred) {
+                <span class="dim">This version is preferred in {{ f.campaign.name }}.</span>
+                <button type="button" class="klein" [disabled]="laeuft()" (click)="vorrangWeg(artikel())">Stop preferring</button>
+              } @else if (!f.shown) {
+                <button type="button" class="klein" [disabled]="laeuft()" (click)="vorziehen(artikel())">Prefer this version</button>
+              }
+            </p>
+          }
           <ul class="kanten">
             @for (v of f.versions; track v.entity.id) {
               <li>
@@ -648,6 +669,16 @@ export class FassungsAbzeichen {
                 <!-- Was sie anders hat, in einem Satz (T-173, Punkt 2). -->
                 @if (saetze().get(v.entity.id); as satz) {
                   <span class="satz" [class.gleich]="satz.startsWith('Same')">{{ satz }}</span>
+                }
+                @if (v.shown && geltend()) {
+                  <span class="dim">shown in lists{{ v.preferred ? ' · preferred' : '' }}</span>
+                }
+                @if (f.mayPrefer && f.campaign && v.play && geltend()) {
+                  @if (v.preferred) {
+                    <button type="button" class="klein" [disabled]="laeuft()" (click)="vorrangWeg(v.entity.id)">Stop preferring</button>
+                  } @else if (!v.shown) {
+                    <button type="button" class="klein" [disabled]="laeuft()" (click)="vorziehen(v.entity.id)">Prefer</button>
+                  }
                 }
                 @if (v.adoptable && f.campaign) {
                   <button type="button" class="klein" [disabled]="laeuft()" (click)="uebernehmen(v)">
@@ -684,6 +715,13 @@ export class FassungsAbzeichen {
       font-family: var(--caps);
       font-size: 1rem;
       color: var(--accent);
+    }
+    .vorrang {
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
     }
     .kanten {
       list-style: none;
@@ -841,6 +879,24 @@ export class FassungsKasten {
     await this.tun(async () => {
       const r = await this.api.unadopt(c.id, v.adoptedAs!);
       this.gewechselt.emit(r.over ?? v.entity.id);
+    });
+  }
+
+  /** Diese Fassung in der Kampagne vorn (T-403) — kein Buch wird beschrieben. */
+  protected async vorziehen(id: string): Promise<void> {
+    const c = this.fassungen()?.campaign;
+    if (!c) return;
+    await this.tun(async () => {
+      await this.api.prefer(c.id, id);
+      this.gewechselt.emit(this.artikel());
+    });
+  }
+  protected async vorrangWeg(id: string): Promise<void> {
+    const c = this.fassungen()?.campaign;
+    if (!c) return;
+    await this.tun(async () => {
+      await this.api.unprefer(c.id, id);
+      this.gewechselt.emit(this.artikel());
     });
   }
 

@@ -162,6 +162,77 @@ export function layerRules(campaign: Entity | null): Map<EntityId, LayerFilter> 
   return out;
 }
 
+/**
+ * **Vorrang an der Kampagne** (T-403, E-111 a): die Kante `prefers` von der
+ * Kampagne an einen Artikel („Prefer this version") oder an eine Ebene mit
+ * `props.types` („Weapons: PHB 2024 first"). `props.over` nennt, worüber
+ * der Vorrang gilt — eine Ebene oder einen Artikel; ohne: über alles. Kein
+ * Buch wird beschrieben, und ins Spiel bringt der Vorrang nichts: er ordnet
+ * nur, welche Fassung derselben Sache Listen und Verweise zeigen.
+ * Reihenfolge: Artikel vor Art vor Ebenenreihenfolge.
+ */
+export const PREFERS_RELATION = 'prefers';
+/** Um so viel steht ein bevorzugter Artikel bzw. eine bevorzugte Art über dem, worüber sie gilt. */
+const VORRANG_ARTIKEL = 0.4;
+const VORRANG_ART = 0.2;
+
+export interface Preference {
+  to: EntityId;
+  over?: EntityId;
+  /** An einer Ebene: die Arten, für die sie vorne steht. Leer an einem Artikel. */
+  types: string[];
+}
+
+/** Die Vorränge einer Kampagne, wie an ihren Kanten. */
+export function preferencesOf(campaign: Entity | null): Preference[] {
+  return kanten(campaign ?? undefined, PREFERS_RELATION).map((r) => {
+    const p = (r.props ?? {}) as { over?: unknown; types?: unknown };
+    return {
+      to: r.to,
+      ...(typeof p.over === 'string' && p.over ? { over: p.over } : {}),
+      types: Array.isArray(p.types) ? p.types.filter((t): t is string => typeof t === 'string') : [],
+    };
+  });
+}
+
+/**
+ * **Einen Vorrang setzen oder nehmen** (T-403). Je Ziel eine Kante; an
+ * einer Ebene kommen Arten dazu (`types` wird vereinigt), `null` mit
+ * `type` nimmt eine Art weg — ohne Art bleibt keine Kante stehen, denn
+ * „die ganze Ebene vorne" ist die Reihenfolge in Order in play.
+ */
+export function withPreference(
+  campaign: Entity,
+  to: EntityId,
+  pref: { over?: EntityId | null; types?: readonly string[] } | null,
+  type?: string,
+): Entity {
+  const alt = preferencesOf(campaign).find((p) => p.to === to);
+  const rest = (campaign.relations ?? []).filter((r) => !(r.type === PREFERS_RELATION && r.to === to));
+  let neu: Preference | null;
+  if (!pref) {
+    const types = type && alt ? alt.types.filter((t) => t !== type) : [];
+    neu = type && alt && types.length ? { ...alt, types } : null;
+  } else {
+    const types = [...new Set([...(alt?.types ?? []), ...(pref.types ?? [])])];
+    const over = pref.over === null ? undefined : (pref.over ?? alt?.over);
+    neu = { to, ...(over ? { over } : {}), types };
+  }
+  if (!neu) return { ...campaign, relations: rest };
+  return {
+    ...campaign,
+    relations: [
+      ...rest,
+      {
+        id: `${PREFERS_RELATION}-${to}`,
+        type: PREFERS_RELATION,
+        to,
+        props: { ...(neu.over ? { over: neu.over } : {}), ...(neu.types.length ? { types: neu.types } : {}) },
+      },
+    ],
+  };
+}
+
 /** Die einzeln freigegebenen Artikel einer Kampagne (T-187). */
 export function enabledArticles(campaign: Entity | null): Set<EntityId> {
   return new Set(kanten(campaign ?? undefined, ENABLES_RELATION).map((r) => r.to));
@@ -874,6 +945,30 @@ export function playStack(
     for (const r of ziele) ueberschrieben.add(r.to);
   }
   const imStapel = (entity: Entity): boolean => stapelFrage(entity, zaehlt, frei);
+  const grundRang = (entity: Entity): number => {
+    let best = frei.has(entity.id) ? PICK_RANK : 0;
+    for (const r of kanten(entity, LAYER_RELATION)) {
+      if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
+      best = Math.max(best, zaehlt(entity, r.to));
+    }
+    return best;
+  };
+  /* Der Vorrang der Kampagne (T-403): je Artikel bzw. je Ebene, und worüber. */
+  const vorrangArtikel = new Map<EntityId, Preference>();
+  const vorrangArt = new Map<EntityId, Preference[]>();
+  for (const p of preferencesOf(campaign)) {
+    if (rang.has(p.to)) {
+      if (p.types.length) (vorrangArt.get(p.to) ?? vorrangArt.set(p.to, []).get(p.to)!).push(p);
+    } else vorrangArtikel.set(p.to, p);
+  }
+  const oben = rang.size;
+  /** Der Rang dessen, worüber ein Vorrang gilt — eine Ebene, ein Artikel, sonst ganz oben. */
+  const ueber = (p: Preference): number => {
+    if (!p.over) return oben;
+    if (rang.has(p.over)) return rang.get(p.over)!;
+    const e = entities.get(p.over);
+    return e ? grundRang(e) : oben;
+  };
   return {
     inPlay: (entity) => imStapel(entity) && !ueberschrieben.has(entity.id) && !isSupplement(entity),
     inStack: imStapel,
@@ -887,12 +982,19 @@ export function playStack(
       ),
     enabled: (entity) => frei.has(entity.id) && !kanten(entity, LAYER_RELATION).some((r) => zaehlt(entity, r.to) > 0),
     rank: (entity) => {
-      let best = frei.has(entity.id) ? PICK_RANK : 0;
+      const best = grundRang(entity);
+      /* Vorrang (T-403): nur, was ohnehin im Spiel ist, rückt nach vorn. */
+      if (best <= 0 || (!vorrangArtikel.size && !vorrangArt.size)) return best;
+      const a = vorrangArtikel.get(entity.id);
+      if (a) return Math.max(best, ueber(a)) + VORRANG_ARTIKEL;
+      let raus = best;
+      const typ = (entity.interfaces ?? [])[0] ?? '';
       for (const r of kanten(entity, LAYER_RELATION)) {
-        if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
-        best = Math.max(best, zaehlt(entity, r.to));
+        for (const v of vorrangArt.get(r.to) ?? []) {
+          if (v.types.includes(typ) && zaehlt(entity, r.to) > 0) raus = Math.max(raus, Math.max(best, ueber(v)) + VORRANG_ART);
+        }
       }
-      return best;
+      return raus;
     },
     unactivated: (entity) => {
       const ebenen = kanten(entity, LAYER_RELATION);
