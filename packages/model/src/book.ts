@@ -29,6 +29,7 @@ import { isDice } from './dice.js';
 import { entityName, fieldTitle, primaryInterface, relationDef } from './entity.js';
 import type { VarScopes } from './inline.js';
 import { convertText, formatMeasure, unitsFor, type UnitMode } from './units.js';
+import { DND_COINS, formatMoney } from './money.js';
 import type { Entity, LayoutElementKind, PropertySchema, Registry } from './types.js';
 
 type Card = Record<string, unknown>;
@@ -751,12 +752,9 @@ const AUFLADEN: Record<string, string> = {
   shortRest: 'after a short rest', longRest: 'after a long rest', special: 'special',
 };
 
-/** Kupfer als Münzen, wie das Buch den Preis schreibt: 1500 → „15 gp". */
+/** Kupfer als Münzen, wie das Buch den Preis schreibt: 1500 → „15 gp" (T-357: `formatMoney`). */
 export function coinText(copper: number): string {
-  const fmt = (n: number) => n.toLocaleString('en-US');
-  if (copper % 100 === 0) return `${fmt(copper / 100)} gp`;
-  if (copper % 10 === 0) return `${fmt(copper / 10)} sp`;
-  return `${fmt(copper)} cp`;
+  return formatMoney(copper, DND_COINS, { mode: 'book' });
 }
 
 function wuerfel(expr: string): string {
