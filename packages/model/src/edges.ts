@@ -288,9 +288,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'enhancements',
     label: 'Enhancements',
     area: 'character',
-    does: 'works out the name, price, rarity and bonuses of a piece from its base item and the enhancements on it (+1, silvered …), checks each against what it applies to, and lets the GM add or remove them (T-300)',
+    does: 'works out the name, price, rarity and bonuses of a piece from its base item and the enhancements on it (+1, silvered …), checks each against what it applies to, and lets the GM add or remove them (T-300); reads what an item’s properties do on the sheet from their data, with the versatile die from the edge (T-324)',
     uses: {
-      [M + 'enhancement.ts']: ['enchantedWith'],
+      [M + 'enhancement.ts']: ['enchantedWith', 'hasProperty'],
       /* Lesen mit gerechnetem Namen und Preis, und das Schreiben prüft, wer anhängt. */
       [S + 'app.ts']: ['enchantedWith'],
       /* Anhängen und abnehmen; Spielende an Stücken in einem Inventar, das sie schreiben. */

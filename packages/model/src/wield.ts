@@ -6,8 +6,9 @@
  * bisher. Hier steht nur, **wer wohin darf und wer dafür weichen muss**,
  * und wie die Kanten danach aussehen. Keine Logik in der Maske.
  *
- * Die Eigenschaften kommen aus dem Gegenstand (`hasProperty`-Ziele, ihre
- * Namen klein) und aus `Item.itemType` — keine Liste von Waffen im Code.
+ * Die Eigenschaften kommen aus dem Gegenstand: was seine
+ * `hasProperty`-Ziele bewirken (`ItemFeature.mechanics`, T-324, E-163 —
+ * nicht ihr Name) und `Item.itemType` — keine Liste von Waffen im Code.
  * Der Griff mit beiden Händen steht an der Kante (`holds.props.grip`),
  * wie die Drehung: dieselbe Waffe liegt hier in einer Hand und dort in
  * zweien.
@@ -44,13 +45,21 @@ export function isVersatile(it: { properties: readonly string[] }): boolean {
 }
 
 /**
- * **Ein Gegenstand fürs Ausrüsten**, aus seinem Artikel. `propertyNames`
- * sind die Namen seiner `hasProperty`-Ziele, `proficient` fragt die
- * Übungen der Figur (Waffengruppe, Waffe selbst, `shield`).
+ * **Ein Gegenstand fürs Ausrüsten**, aus seinem Artikel. `mechanics` ist,
+ * was seine `hasProperty`-Ziele bewirken, `versatileDamage` der Würfel von
+ * der Kante (beides aus `itemFeaturesOf`), `proficient` fragt die Übungen
+ * der Figur (Waffengruppe, Waffe selbst, `shield`).
  */
 export function wieldItemOf(
   item: Entity | undefined,
-  o: { id: string; name: string; propertyNames: readonly string[]; proficient: (what: string) => boolean; article?: string },
+  o: {
+    id: string;
+    name: string;
+    mechanics: readonly string[];
+    versatileDamage?: string;
+    proficient: (what: string) => boolean;
+    article?: string;
+  },
 ): WieldItem {
   const it = (item?.components?.['Item'] ?? {}) as Record<string, unknown>;
   const weapon = item?.components?.['Weapon'] as Record<string, unknown> | undefined;
@@ -65,14 +74,15 @@ export function wieldItemOf(
     id: o.id,
     ...(o.article ? { article: o.article } : {}),
     name,
-    properties: o.propertyNames.map((p) => p.toLowerCase()).filter(Boolean),
+    properties: o.mechanics.filter(Boolean),
     shield,
     focus: FOCUS_ITEM_TYPES.includes(art),
     proficient,
     ...(RUESTUNG.has(art) || (armor['armorType'] && !shield) ? { worn: true } : {}),
     ...(art === 'ranged weapon' ? { ranged: true } : {}),
     ...(typeof weapon?.['damage'] === 'string' ? { damage: weapon['damage'] as string } : {}),
-    ...(typeof weapon?.['damage2'] === 'string' ? { damage2: weapon['damage2'] as string } : {}),
+    /* Der Würfel an der Kante geht vor (T-324); `Weapon.damage2` gilt, bis die Kante ihn trägt. */
+    ...(o.versatileDamage ? { damage2: o.versatileDamage } : typeof weapon?.['damage2'] === 'string' ? { damage2: weapon['damage2'] as string } : {}),
   };
 }
 

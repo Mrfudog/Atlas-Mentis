@@ -7,11 +7,14 @@
  * T-150) — mit einer Kante `enchantedWith` auf die Eigenschaft. Mehrere
  * sind erlaubt: ein versilberter +1-Dolch hat zwei.
  *
- * **Eine Eigenschaft ist ein Gegenstand mit `appliesTo`** — so legt der
- * Importer die allgemeinen Varianten seit jeher an, und eine eigene Art
- * dafür hätte jede eingelesene Variante umgezogen. Dazu kommen an `Item`
- * die Namensregel (`namePrefix`, `nameSuffix`) und der **Aufpreis**
- * (`priceAdd` in Kupfer, `priceMult` als Faktor auf den Grundpreis).
+ * **Ein Enhancement ist ein Regelartikel** (T-324, E-163): eine Sorte des
+ * Gegenstandsmerkmals (`ItemFeature`), wie die Waffeneigenschaft
+ * (`ItemProperty`) die andere ist. Am Merkmal stehen `appliesTo`, die
+ * Namensregel (`namePrefix`, `nameSuffix`) und der **Aufpreis**
+ * (`priceAdd` in Kupfer, `priceMult` als Faktor auf den Grundpreis), am
+ * Enhancement Seltenheit und Boni. Bis T-324 war es ein Gegenstand mit
+ * `appliesTo`; Migration 161 hat die eingelesenen umgezogen, und was
+ * davon noch als Gegenstand steht, liest sich wie vorher.
  *
  * **Gerechnet, nie gespeichert** (D8): Name, Preis, Seltenheit und Boni des
  * Stücks entstehen beim Lesen (`enhanceItem`) und gehen als `enchanted`
@@ -21,8 +24,9 @@
  * mehr.
  *
  * **Warum „Enhancement" und nicht „Item property":** so heisst schon die
- * Art `ItemProperty` (Finesse, Heavy, D48). Ein Wort für zwei Sachen ist
- * so schlecht wie zwei Wörter für eine (docs/Begriffe.md).
+ * Sorte `ItemProperty` (Finesse, Heavy, D48); beide zusammen sind
+ * „Item features". Ein Wort für zwei Sachen ist so schlecht wie zwei
+ * Wörter für eine (docs/Begriffe.md).
  *
  * **Welcher Preis gilt, sagt die Kampagne** (`Campaign.itemPricing`):
  * `combined` rechnet Grundpreis und Aufpreise zusammen, `base` nimmt nur
@@ -48,6 +52,21 @@ type Lookup = ReadonlyMap<EntityId, Entity>;
 type Card = Record<string, unknown>;
 
 const card = (e: Entity | undefined): Card => (e?.components?.['Item'] ?? {}) as Card;
+
+/** Das Gegenstandsmerkmal (T-324, E-163): Art und ihre beiden Sorten. */
+export const ITEM_FEATURE = 'ItemFeature';
+export const ENHANCEMENT = 'Enhancement';
+
+/**
+ * **Die Werte eines Merkmals**, aus seinen Karten: `ItemFeature`
+ * (woran, Namensteile, Aufpreis, Wirkung) und `Enhancement` (Seltenheit,
+ * Boni). Ein Enhancement, das noch als Gegenstand steht (vor Migration
+ * 161, T-324), trägt sie in `Item`; das gilt, bis es umgezogen ist.
+ */
+function merkmal(e: Entity | undefined): Card {
+  const c = e?.components ?? {};
+  return { ...(c['Item'] ?? {}), ...(c[ENHANCEMENT] ?? {}), ...(c[ITEM_FEATURE] ?? {}) } as Card;
+}
 const zahl = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const text = (v: unknown): string => (typeof v === 'string' ? v : '');
 
@@ -67,10 +86,51 @@ export function enhancementsByOf(campaign: Entity | null | undefined): Enhanceme
   return roh === 'players' ? 'players' : 'gm';
 }
 
-/** Ist dieser Gegenstand eine Eigenschaft, die an andere kommt? */
+/**
+ * **Ist das ein Enhancement?** Ein Artikel der Art `Enhancement` (T-324);
+ * oder, vor Migration 161, ein Gegenstand mit `appliesTo`.
+ */
 export function isEnhancement(e: Entity | undefined): boolean {
+  if (!e) return false;
+  if ((e.interfaces ?? []).includes(ENHANCEMENT)) return true;
   const a = card(e)['appliesTo'];
   return Array.isArray(a) && a.length > 0;
+}
+
+/** Die Wirkungen, die `ItemFeature.mechanics` kennt (E-163). */
+export const ITEM_MECHANICS = ['two-handed', 'versatile', 'light', 'finesse'] as const;
+
+/**
+ * **Was ein Merkmal am Bogen bewirkt** — aus seinen Daten
+ * (`ItemFeature.mechanics`), nie aus seinem Namen (E-163): eine
+ * Hausregel-Eigenschaft „Long Grip" darf zweihändig sein, ohne so zu
+ * heissen, und „Versatile" auf Deutsch hiesse nicht mehr so.
+ */
+export function featureMechanics(feature: Entity | undefined): string[] {
+  const m = merkmal(feature)['mechanics'];
+  return Array.isArray(m) ? m.filter((x): x is string => typeof x === 'string' && x !== '') : [];
+}
+
+/**
+ * **Die Eigenschaften eines Gegenstands, wie der Bogen sie braucht**
+ * (T-324): die Wirkungen seiner `hasProperty`-Ziele, und der vielseitige
+ * Würfel aus der Kante (`hasProperty.props.damage`, „Versatile 1d10" ist
+ * die Sache dieses Gegenstands, nicht der Eigenschaft).
+ */
+export function itemFeaturesOf(
+  item: Entity | undefined,
+  lookup: (id: EntityId) => Entity | undefined,
+): { mechanics: string[]; versatileDamage?: string } {
+  const mechanics = new Set<string>();
+  let versatileDamage: string | undefined;
+  for (const r of item?.relations ?? []) {
+    if (r.type !== 'hasProperty') continue;
+    const m = featureMechanics(lookup(r.to));
+    for (const x of m) mechanics.add(x);
+    const d = text(r.props?.['damage']);
+    if (d && m.includes('versatile')) versatileDamage = d;
+  }
+  return { mechanics: [...mechanics], ...(versatileDamage ? { versatileDamage } : {}) };
 }
 
 /**
@@ -132,7 +192,7 @@ function merkmale(base: Entity): { worte: Set<string>; paare: Map<string, Set<st
  * beim Einlesen fehlte, die Leitung aus. Ohne `appliesTo` passt sie überall.
  */
 export function enhancementFits(property: Entity, base: Entity): boolean {
-  const gilt = (card(property)['appliesTo'] as unknown[] | undefined) ?? [];
+  const gilt = (merkmal(property)['appliesTo'] as unknown[] | undefined) ?? [];
   if (!Array.isArray(gilt) || !gilt.length) return true;
   const { worte, paare } = merkmale(base);
   return gilt.some((g) => {
@@ -151,13 +211,14 @@ const SELTEN = ['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary', 
 
 /** Was eine Eigenschaft am Preis tut. `undefined`: sie sagt es nicht. */
 export function surchargeOf(property: Entity): { add: number; mult: number } | undefined {
-  const it = card(property);
+  const it = merkmal(property);
   const add = zahl(it['priceAdd']);
   const mult = zahl(it['priceMult']);
   if (add !== undefined || mult !== undefined) return { add: add ?? 0, mult: mult ?? 1 };
-  /* Ohne eigene Angabe ist ihr Preis der Aufpreis: „+1 Weapon" für
-     1,000 gp heisst, ein +1-Dolch kostet den Dolch und 1,000 gp. */
-  const preis = zahl(it['copperPrice']);
+  /* Vor Migration 161 (T-324): ein Gegenstand ohne eigene Angabe nimmt
+     seinen Preis als Aufpreis. Ein `Enhancement` hat keinen Preis — die
+     Migration hat ihn nach `priceAdd` gelegt. */
+  const preis = zahl(card(property)['copperPrice']);
   return preis !== undefined ? { add: preis, mult: 1 } : undefined;
 }
 
@@ -222,8 +283,8 @@ export function enhanceItem(entities: Lookup, item: Entity, pricing: ItemPricing
   let name: string;
   if (vorlage && eigener && eigener !== baseName) name = eigener;
   else {
-    const vor = props.map((p) => text(card(p)['namePrefix'])).join('');
-    const nach = props.map((p) => text(card(p)['nameSuffix'])).join('');
+    const vor = props.map((p) => text(merkmal(p)['namePrefix'])).join('');
+    const nach = props.map((p) => text(merkmal(p)['nameSuffix'])).join('');
     name = vor || nach ? `${vor}${baseName}${nach}`.replace(/\s+/g, ' ').trim() : `${baseName} (${props.map(nameVon).join(', ')})`;
   }
 
@@ -263,11 +324,12 @@ export function enhanceItem(entities: Lookup, item: Entity, pricing: ItemPricing
     ...(price !== undefined ? { price } : {}),
   };
 
-  const stufen = [card(voll)['rarity'], ...props.map((p) => card(p)['rarity'])].map((r) => text(r)).filter((r) => SELTEN.includes(r));
+  const karten = [card(voll), ...props.map(merkmal)];
+  const stufen = karten.map((k) => text(k['rarity'])).filter((r) => SELTEN.includes(r));
   if (stufen.length) raus.rarity = stufen.reduce((a, b) => (SELTEN.indexOf(b) > SELTEN.indexOf(a) ? b : a));
-  if ([voll, ...props].some((e) => card(e)['attunement'] === true)) raus.attunement = true;
+  if (karten.some((k) => k['attunement'] === true)) raus.attunement = true;
   for (const b of BONI) {
-    const werte = [voll, ...props].map((e) => zahl(card(e)[b])).filter((n): n is number => n !== undefined);
+    const werte = karten.map((k) => zahl(k[b])).filter((n): n is number => n !== undefined);
     if (werte.length) raus[b] = werte.reduce((a, n) => a + n, 0);
   }
   return raus;
@@ -288,12 +350,12 @@ export function piecePrice(entities: Lookup, item: Entity | undefined, pricing: 
 export function enhancementRefusal(entities: Lookup, item: Entity, propertyId: EntityId): string | null {
   const p = entities.get(propertyId);
   if (!p) return 'unknown enhancement';
-  if (!isEnhancement(p)) return `${nameVon(p)} is not an enhancement (it has no “Variant applies to”)`;
+  if (!isEnhancement(p)) return `${nameVon(p)} is not an enhancement`;
   const kette = templateChain(entities, item);
   if (!kette.length) return 'only a piece (an instance of an item) takes enhancements';
   const vorlage = kette[kette.length - 1]!;
   if (!enhancementFits(p, resolveInstance(entities, vorlage))) {
-    return `${nameVon(p)} applies to ${((card(p)['appliesTo'] as string[]) ?? []).join(' or ')}, not to ${nameVon(vorlage)}`;
+    return `${nameVon(p)} applies to ${((merkmal(p)['appliesTo'] as string[]) ?? []).join(' or ')}, not to ${nameVon(vorlage)}`;
   }
   if ((item.relations ?? []).some((r) => r.type === ENCHANTED_RELATION && r.to === propertyId)) return `${nameVon(p)} is already on it`;
   return null;

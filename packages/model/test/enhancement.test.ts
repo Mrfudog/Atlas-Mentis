@@ -5,6 +5,9 @@ import {
   enhancementFits,
   enhancementRefusal,
   entityName,
+  featureMechanics,
+  isEnhancement,
+  itemFeaturesOf,
   followsTemplate,
   itemPricingOf,
   newInstance,
@@ -134,5 +137,67 @@ describe('Enhancements (T-300, E-107)', () => {
   it('der Laden kauft zum gerechneten Preis an', () => {
     const s = stueck('plus1', 'silvered');
     expect(buybackPrice(s, bestand(s))).toBe(Math.floor(110200 / 2));
+  });
+});
+
+/* T-324, E-163: das Enhancement ist ein Regelartikel mit eigenen Karten. */
+describe('Gegenstandsmerkmale (T-324, E-163)', () => {
+  const regel: Entity = {
+    id: 'plus2',
+    name: '+2 Weapon',
+    interfaces: ['Enhancement'],
+    components: {
+      Identity: { name: '+2 Weapon', id: 'item-0004' },
+      ItemFeature: { appliesTo: ['weapon'], namePrefix: '+2 ', priceAdd: 400000 },
+      Enhancement: { rarity: 'rare', bonusWeapon: 2 },
+    },
+    relations: [],
+  };
+  const versilbertNeu: Entity = {
+    id: 'silv2',
+    name: 'Silvered',
+    interfaces: ['Enhancement'],
+    components: { Identity: { name: 'Silvered' }, ItemFeature: { appliesTo: ['weapon'], namePrefix: 'Silvered ', priceAdd: 10000 } },
+    relations: [],
+  };
+
+  it('rechnet aus ItemFeature und Enhancement wie vorher aus Item', () => {
+    const s = stueck('plus2', 'silv2');
+    const e = enhanceItem(bestand(s, regel, versilbertNeu), s)!;
+    expect(e.name).toBe('+2 Silvered Dagger');
+    expect(e.price).toBe(200 + 400000 + 10000);
+    expect(e.rarity).toBe('rare');
+    expect(e.bonusWeapon).toBe(2);
+  });
+
+  it('erkennt ein Enhancement an seiner Art, auch ohne eigene Enhancement-Karte', () => {
+    expect(isEnhancement(versilbertNeu)).toBe(true);
+    expect(isEnhancement(plus1)).toBe(true); // noch als Gegenstand (vor Migration 161)
+    expect(isEnhancement(dolch)).toBe(false);
+    const s = stueck();
+    expect(enhancementRefusal(bestand(s, versilbertNeu), s, 'silv2')).toBeNull();
+  });
+
+  it('ein Enhancement ohne Aufpreis hat keinen Preis — sein Name ist kein Preis', () => {
+    const ohne: Entity = { ...versilbertNeu, id: 'ohne', components: { Identity: { name: 'Plain' }, ItemFeature: { appliesTo: ['weapon'] } } };
+    const s = stueck('ohne');
+    expect(enhanceItem(bestand(s, ohne), s)!.price).toBeUndefined();
+  });
+
+  it('liest die Wirkung einer Eigenschaft aus ihren Daten, nicht aus ihrem Namen', () => {
+    const lang: Entity = { id: 'lg', name: 'Long Grip', interfaces: ['ItemProperty'], components: { ItemFeature: { mechanics: ['two-handed'] } }, relations: [] };
+    const namensgleich: Entity = { id: 'v', name: 'Versatile', interfaces: ['ItemProperty'], components: {}, relations: [] };
+    expect(featureMechanics(lang)).toEqual(['two-handed']);
+    expect(featureMechanics(namensgleich)).toEqual([]);
+    const vielseitig: Entity = { id: 'vs', name: 'Vielseitig', interfaces: ['ItemProperty'], components: { ItemFeature: { mechanics: ['versatile'] } }, relations: [] };
+    const schwert: Entity = {
+      id: 'ls', name: 'Longsword', interfaces: ['Weapon'], components: {},
+      relations: [
+        { id: 'ls~1', type: 'hasProperty', to: 'vs', props: { damage: '1d10' } },
+        { id: 'ls~2', type: 'hasProperty', to: 'lg', props: {} },
+      ],
+    };
+    const m = new Map([lang, namensgleich, vielseitig].map((e) => [e.id, e]));
+    expect(itemFeaturesOf(schwert, (id) => m.get(id))).toEqual({ mechanics: ['versatile', 'two-handed'], versatileDamage: '1d10' });
   });
 });

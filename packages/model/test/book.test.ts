@@ -266,9 +266,9 @@ describe('Der Gegenstand wie im Buch', () => {
   it('setzt Art, Seltenheit und Einstimmung kursiv unter den Namen', () => {
     const b = itemBook(imperial, {
       id: 'ft', interfaces: ['Item'], name: 'Flame Tongue',
-      components: { Item: { rarity: 'rare', attunement: true, appliesTo: ['sword'] } },
+      components: { Item: { rarity: 'rare', attunement: true } },
     }, 'Item');
-    expect(b.byline).toBe('Item (any sword), rare (requires attunement)');
+    expect(b.byline).toBe('Item, rare (requires attunement)');
   });
 
   it('schreibt Rüstung, Preis und Gewicht als Zeilen', () => {

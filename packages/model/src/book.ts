@@ -773,7 +773,7 @@ export interface ItemBook {
 }
 
 const ITEM_PLACED = new Set([
-  'Item.itemType', 'Item.rarity', 'Item.attunement', 'Item.attunementNote', 'Item.appliesTo',
+  'Item.itemType', 'Item.rarity', 'Item.attunement', 'Item.attunementNote',
   'Item.charges', 'Item.recharge', 'Item.rechargeAmount', 'Item.bonusWeapon', 'Item.bonusAc',
   'Item.bonusSpellAttack', 'Item.bonusSave', 'Item.copperPrice', 'Item.priceNote', 'Item.weight',
   'Weapon.category', 'Weapon.damage', 'Weapon.damage2', 'Weapon.damageType', 'Weapon.range',
@@ -810,11 +810,11 @@ export function itemBook(
   const props = registry.interfaces['Item']?.schema?.properties ?? {};
 
   const art = str(it['itemType']) || typeLabel.toLowerCase();
-  const passt = list(it['appliesTo']);
+  /* „(any sword)" stand hier, solange eine Variante ein Gegenstand war;
+     seit T-324 ist sie ein Gegenstandsmerkmal und sagt es in `appliesTo`. */
   const worte: string[] = [];
   if (str(wp?.['category'])) worte.push(`${str(wp!['category'])} weapon`);
-  if (art) worte.push(`${art}${passt.length ? ` (any ${passt.join(' or ')})` : ''}`);
-  else if (passt.length) worte.push(`any ${passt.join(' or ')}`);
+  if (art) worte.push(art);
   const seltenheit = str(it['rarity']);
   if (seltenheit && seltenheit !== 'none' && seltenheit !== 'unknown') worte.push(seltenheit);
   let byline = capitalize(worte.join(', '));

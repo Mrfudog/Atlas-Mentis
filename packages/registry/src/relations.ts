@@ -454,7 +454,12 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
-  /** Weapon properties are pooled rules, referenced rather than copied. */
+  /**
+   * Weapon properties are pooled rules, referenced rather than copied.
+   * **Was bei diesem Gegenstand gilt, steht an der Kante** (T-324, E-163):
+   * Versatile ist eine Regel, 1d10 ist die des Langschwerts; Thrown eine,
+   * 20/60 die des Dolchs — wie `composedOf` am Statblock.
+   */
   hasProperty: {
     type: 'hasProperty',
     label: 'has property',
@@ -462,6 +467,14 @@ export const relations: Record<string, RelationDef> = {
     means: 'A weapon, armour or item has a property (finesse, heavy); the property lists the items that have it.',
     from: ['Weapon', 'Item', 'Armor'],
     to: ['ItemProperty'],
+    props: {
+      type: 'object',
+      properties: {
+        damage: { type: 'string', title: 'Damage', description: 'The damage this property gives here, such as 1d10 for versatile.' },
+        range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range', description: 'The range this property gives here, such as 20/60 for thrown.' },
+        note: { type: 'string', title: 'Only here' },
+      },
+    },
   },
 
   /**
@@ -475,7 +488,8 @@ export const relations: Record<string, RelationDef> = {
     inverseLabel: 'enhances',
     means: 'A piece of an item carries an enhancement such as +1 Weapon or Silvered; its name, price and bonuses are worked out from both.',
     from: ['Item'],
-    to: ['Item'],
+    /* Seit T-324 (E-163) ein Regelartikel und kein Gegenstand mehr. */
+    to: ['Enhancement'],
   },
 
   /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
