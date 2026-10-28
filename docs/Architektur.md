@@ -342,6 +342,11 @@ sequenceDiagram
   geht nur an wen den alten Stand sah. `session` trägt `activeMap`,
   `activeEncounter`, `activeScene`, `nowPlaying` aus dem **gesiebten**
   Artikel.
+- **Gemeldet wird nur, was er anders sieht** (T-399, REQ-398): die Route
+  siebt den Artikel vor und nach dem Schreiben je Empfänger und schweigt,
+  wenn beides gleich ist (Revision und Zeitstempel zählen nicht). Zieht ein
+  verborgener Gegner oder ein Token unter dem Nebel, erfährt es die
+  Leitung — die Spielerin nicht, auch nicht über den Takt der Meldungen.
 - **Ein Token auf der Karte ist eine Kante der Karte** (`marker`): es
   bewegt sich, und die Karte meldet `entity`. Eine eigene Meldung mit
   Koordinaten käme erst, wenn die Karte im Web versteckte Tokens selbst
