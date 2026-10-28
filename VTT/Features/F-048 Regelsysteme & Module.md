@@ -39,11 +39,8 @@ flowchart LR
   K["Kampagne"] -- activates --> I["Inventory (RuleSystem, Gruppe)"]
   W["Weight"] -- partOf --> I
   S["Slots"] -- partOf --> I
-  G["Grid"] -- partOf --> I
-  D["Default shapes (ShapeDefaults)"] -- partOf --> I
+  G["Grid (trägt ShapeDefaults, D90/D96)"] -- partOf --> I
   G -. compatibleWith .- W
-  D -. compatibleWith .- G
-  D -. compatibleWith .- S
 ```
 
 Was am Tisch zählt, sagt vorerst `Campaign.inventory`. Regel: Datenmodell

@@ -1,14 +1,14 @@
 /**
  * **Die Regelsysteme, die jede Installation hat** (E-166, T-394): das
- * Regelsystem Inventory mit seinen Mechaniken Weight, Slots, Grid und
- * Default shapes. Ebenen, also Artikel — aber Startzeilen wie das
+ * Regelsystem Inventory mit seinen Mechaniken Weight, Slots und Grid.
+ * Ebenen, also Artikel — aber Startzeilen wie das
  * Register: der Start legt an, was fehlt (`regelsystemeNachziehen` am
  * Server), und lässt stehen, was da ist; was die Leitung daran ändert,
  * bleibt. Die Nummer (`Identity.id`) vergibt der Server beim Anlegen.
  *
- * Grid gilt mit Weight (Leitung, 22.10.), Default shapes mit Grid und
- * Slots — die Formen und Stapel braucht nur, wer im Raster oder nach
- * Slots zählt.
+ * Grid gilt mit Weight (Leitung, 22.10.). Die Vorgabeformen trägt Grid
+ * selbst (D90); eine eigene Mechanik Default shapes gibt es nicht mehr —
+ * ein Formmodul, nicht zwei (D96, Migration 151).
  */
 
 import type { Entity } from '@nw/model';
@@ -47,7 +47,4 @@ export const RULE_SYSTEM_LAYERS: readonly Entity[] = [
   ebene('ly_rm_grid', 'RuleMechanic', 'Grid', { kind: 'pack', order: 5 }, { method: 'grid' },
     'Carrying in a grid: every item takes its shape, and containers have zones that set how long drawing takes.',
     [{ type: 'partOf', to: INV }, { type: 'compatibleWith', to: 'ly_rm_weight' }]),
-  ebene('ly_rm_shapes', 'RuleMechanic', 'Default shapes', { kind: 'pack', order: 6 }, { method: 'shapes' },
-    'Shapes and stack sizes for items, from groups and reference items, worked out when an item is read.',
-    [{ type: 'partOf', to: INV }, { type: 'compatibleWith', to: 'ly_rm_grid' }, { type: 'compatibleWith', to: 'ly_rm_slots' }]),
 ];

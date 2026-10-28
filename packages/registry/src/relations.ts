@@ -1511,8 +1511,8 @@ export const relations: Record<string, RelationDef> = {
   // ---------------------------------------------------------------- layers
 
   /**
-   * **Welche Regelmechaniken zusammen gelten** (E-166): Grid mit Weight,
-   * Default shapes mit Grid. Einmal gespeichert, gilt in beide Richtungen
+   * **Welche Regelmechaniken zusammen gelten** (E-166): Grid mit Weight.
+   * Einmal gespeichert, gilt in beide Richtungen
    * (die Gegenrichtung ist eine Abfrage, `compatibleMechanics`). Was nicht
    * so verbunden ist, schliesst sich innerhalb eines Regelsystems aus.
    */

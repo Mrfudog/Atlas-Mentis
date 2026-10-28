@@ -3395,8 +3395,8 @@ export const fieldGroups = {
   },
 
   /**
-   * **Eine Regelmechanik ist eine Ebene** (E-166): Grid, Weight, Slots,
-   * Default shapes — eine Option eines Regelsystems (`partOf`), die sagt,
+   * **Eine Regelmechanik ist eine Ebene** (E-166): Grid, Weight, Slots —
+   * eine Option eines Regelsystems (`partOf`), die sagt,
    * mit welchen anderen sie zusammen gilt (Kante `compatibleWith`).
    * `method` ist das Wort, das die Laufzeit ausführt; was am Tisch zählt,
    * wählt vorerst `Campaign.inventory`.

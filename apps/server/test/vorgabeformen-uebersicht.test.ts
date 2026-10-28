@@ -167,31 +167,31 @@ describe('in die Ebene selbst (T-394)', () => {
       konten: { Admin: { admin: true }, Mira: { roles: { camp: 'gm' } }, Tom: { roles: { camp: 'gm' } } },
     });
     await regelsystemeNachziehen(t.repo);
-    await t.repo.grantLayer(t.ids.get('Mira')!, 'ly_rm_shapes');
+    await t.repo.grantLayer(t.ids.get('Mira')!, 'ly_rm_grid');
     return t;
   }
   const karte = async (t: Awaited<ReturnType<typeof ohneInventar>>) =>
-    (await t.repo.getEntity('ly_rm_shapes'))?.components?.['ShapeDefaults'] as { shapeGroups?: { id: string }[] } | undefined;
+    (await t.repo.getEntity('ly_rm_grid'))?.components?.['ShapeDefaults'] as { shapeGroups?: { id: string }[] } | undefined;
 
   it('wer die Ebene schreibt, schreibt sie, auch wenn keine Kampagne sie aufschaltet', async () => {
     const t = await ohneInventar();
-    const body = { layer: 'ly_rm_shapes', shapeGroups: [{ id: 'BL', name: 'Blades', rows: ['#'] }] };
+    const body = { layer: 'ly_rm_grid', shapeGroups: [{ id: 'BL', name: 'Blades', rows: ['#'] }] };
     const probe = await t.als('Mira', 'PUT', '/api/inventory/shapes', { payload: { ...body, dryRun: true } });
     expect(probe.statusCode).toBe(200);
-    expect(probe.json()).toMatchObject({ layer: 'ly_rm_shapes', dryRun: true, groups: { added: 1 } });
+    expect(probe.json()).toMatchObject({ layer: 'ly_rm_grid', dryRun: true, groups: { added: 1 } });
     expect((await t.als('Mira', 'PUT', '/api/inventory/shapes', { payload: body })).statusCode).toBe(200);
     expect((await karte(t))?.shapeGroups?.map((g) => g.id)).toEqual(['BL']);
-    expect((await t.als('Admin', 'PUT', '/api/inventory/shapes/items/sword', { payload: { layer: 'ly_rm_shapes', group: 'BL' } })).statusCode).toBe(200);
+    expect((await t.als('Admin', 'PUT', '/api/inventory/shapes/items/sword', { payload: { layer: 'ly_rm_grid', group: 'BL' } })).statusCode).toBe(200);
   });
 
   it('wer sie nicht schreibt, bleibt draussen; eine Ebene ohne Formen ist kein Ziel', async () => {
     const t = await ohneInventar();
-    const r = await t.als('Tom', 'PUT', '/api/inventory/shapes', { payload: { layer: 'ly_rm_shapes', shapeGroups: [{ id: 'X', name: 'X' }] } });
+    const r = await t.als('Tom', 'PUT', '/api/inventory/shapes', { payload: { layer: 'ly_rm_grid', shapeGroups: [{ id: 'X', name: 'X' }] } });
     expect(r.statusCode).toBe(403);
     expect((await karte(t))?.shapeGroups ?? []).toEqual([]);
-    const falsch = await t.als('Admin', 'PUT', '/api/inventory/shapes', { payload: { layer: 'ly_rm_weight', shapeGroups: [{ id: 'X', name: 'X' }] } });
+    const falsch = await t.als('Admin', 'PUT', '/api/inventory/shapes', { payload: { layer: 'ly_rm_slots', shapeGroups: [{ id: 'X', name: 'X' }] } });
     expect(falsch.statusCode).toBe(404);
-    expect(falsch.json().error).toMatch(/Default shapes/);
+    expect(falsch.json().error).toMatch(/Grid/);
   });
 });
 

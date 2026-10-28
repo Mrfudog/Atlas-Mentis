@@ -89,6 +89,14 @@
       "link": "/registry?tab=views"
     },
     {
+      "id": "2026-10-26-shapes-with-grid",
+      "date": "2026-10-26",
+      "title": "Item shapes come with the grid",
+      "text": "The default shapes and stack sizes of items now come with the Grid mechanic of the Inventory rule system: turn on the grid and every item finds its shape. There is one shapes module instead of two; a campaign changes shapes with its own layer on top.",
+      "area": "Inventory",
+      "link": "/inventory/shapes"
+    },
+    {
       "id": "2026-10-26-collection",
       "date": "2026-10-26",
       "title": "Sessions show their scenes and encounters as tiles",
