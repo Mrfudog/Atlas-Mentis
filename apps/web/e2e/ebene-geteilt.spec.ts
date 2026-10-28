@@ -9,7 +9,8 @@ import { test, expect } from './hilfen';
 
 test('the GM turns on a layer that two other campaigns already use, and it stays on', async ({ leitung, spielerin, api, lauf, eindeutig }) => {
   const verwaltung = await api.als('verwaltung');
-  const ok = async (r: { ok(): boolean; status(): number; text(): Promise<string> }) => {
+  /* Generisch, damit die Antwort ihr `json()` behält (T-429). */
+  const ok = async <R extends { ok(): boolean; status(): number; text(): Promise<string> }>(r: R) => {
     expect(r.ok(), `${r.status()} ${await r.text()}`).toBe(true);
     return r;
   };
