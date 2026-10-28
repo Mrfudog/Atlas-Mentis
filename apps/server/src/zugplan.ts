@@ -100,9 +100,8 @@ import {
   commonAction,
   attackRollMode,
   rangeBand,
-  damageAfterDefenses,
-  concentrationCheck,
-  applyDamage,
+  damageAtTable,
+  damageLines,
   checkBonus,
   type CharacterStats,
   type CommonAction,
@@ -1099,9 +1098,9 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
 
   /**
    * **Schaden abziehen** (T-275, Punkt 2): nach der Abwehr des Ziels
-   * (`damageAfterDefenses`), von der Teilnehmerkante in der Begegnung und
-   * — bei einer Spielerfigur oder ausserhalb einer Begegnung — von
-   * `Vitals` (zeitweilige zuerst, `applyDamage`). Konzentriert sich das
+   * (`damageAtTable`, dieselbe Rechnung wie der Tracker, T-355), von der
+   * Teilnehmerkante in der Begegnung und — bei einer Spielerfigur oder
+   * ausserhalb einer Begegnung — von `Vitals`. Konzentriert sich das
    * Ziel, würfelt der Server den KON-Rettungswurf gegen den SG ins Log
    * (E-128); misslingt er, endet die Konzentration.
    */
@@ -1116,40 +1115,17 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     hidden: boolean,
   ): Promise<string> {
     const st = werteAmTisch(f, stand, ziel);
-    const d = damageAfterDefenses(gewuerfelt, art, st.defenses);
-    const teile: string[] = [];
-    if (d.why) teile.push(`${d.why === 'immune' ? 'immune' : d.why === 'resistant' ? 'resistant' : 'vulnerable'} (${d.word}) → ${d.amount}`);
     const jetzt = aktuell(f, stand, ziel.id) ?? ziel;
     const v = (jetzt.components?.['Vitals'] ?? {}) as Record<string, unknown>;
-    const max = st.hp.value;
     const k = teilnahme(f, ziel.id);
-    const kp = ((k?.props ?? {}) as ParticipantProps);
-    const pc = primaryInterface(ziel) === 'PlayerCharacter';
-    let neu: number | null = null;
-    if (!k || pc) {
-      const hp = Number.isFinite(Number(v['hp'])) && v['hp'] !== undefined && v['hp'] !== null && v['hp'] !== '' ? Number(v['hp']) : (max ?? null);
-      if (hp !== null) {
-        const r = applyDamage({ hp, temp: Number(v['hpTemp']) || 0 }, d.amount);
-        neu = r.hp;
-        const vitals: Record<string, unknown> = { ...v, hp: r.hp };
-        if (r.temp) vitals['hpTemp'] = r.temp;
-        else delete vitals['hpTemp'];
-        f.geaendert.set(ziel.id, { ...jetzt, components: { ...jetzt.components, Vitals: vitals } });
-      }
-    }
-    if (k) {
-      const basis = kp.hp != null && Number.isFinite(Number(kp.hp)) ? Number(kp.hp) : (max ?? null);
-      const hp = neu ?? (basis === null ? null : Math.max(0, basis - d.amount));
-      if (hp !== null) {
-        teilnehmerAendern(f, ziel.id, (p) => ({ ...p, hp, involved: true }));
-        neu = hp;
-      }
-    }
-    if (neu !== null) teile.push(`${entityName(ziel)} at ${neu}${max !== null ? `/${max}` : ''} HP`);
+    const d = damageAtTable({ stats: st, vitals: v, edge: k ? ((k.props ?? {}) as ParticipantProps) : null, pc: primaryInterface(ziel) === 'PlayerCharacter', rolled: gewuerfelt, type: art });
+    if (d.vitals) f.geaendert.set(ziel.id, { ...jetzt, components: { ...jetzt.components, Vitals: d.vitals } });
+    if (d.edgeHp !== null) teilnehmerAendern(f, ziel.id, (p) => ({ ...p, hp: d.edgeHp!, involved: true }));
+    const teile = damageLines(entityName(ziel), d);
     /* Die Konzentrationsprobe (PHB): SG 10 oder der halbe Schaden. */
-    const auf = typeof v['concentration'] === 'string' && v['concentration'] ? (v['concentration'] as string) : null;
-    if (auf && d.amount > 0) {
-      const probe = concentrationCheck(st, d.amount);
+    if (d.concentration) {
+      const probe = d.concentration;
+      const auf = probe.spell;
       const zauber = stand.map.get(auf);
       const r = await wurf(ziel, von, `1d20${probe.bonus === null ? '' : probe.bonus < 0 ? probe.bonus : `+${probe.bonus}`}`, `${entityName(ziel)}: concentration save, DC ${probe.dc}`, kampagne, hidden, stand);
       if (r) {

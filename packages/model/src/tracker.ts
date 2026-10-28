@@ -12,6 +12,8 @@
  * Schaden), steht nicht hier.
  */
 import { commonAction } from './actions.js';
+import { damageAtTable, type TableDamage } from './damage.js';
+import { creatureStats } from './stats.js';
 import { bookSections, type BookSection } from './book.js';
 import { entityName, primaryInterface } from './entity.js';
 import {
@@ -29,6 +31,8 @@ import {
   expiresAt,
   isNote,
   hpWord,
+  entryActions,
+  entryConditions,
 } from './initiative.js';
 import { resolveInstance } from './instance.js';
 import type { Entity, EntityId, Registry, Relation } from './types.js';
@@ -276,6 +280,8 @@ export type TrackerOp =
   | { op: 'end' }
   | { op: 'init'; edge: string; value?: number; reroll?: boolean }
   | { op: 'hp'; edge: string; delta?: number; value?: number }
+  /* Schaden mit Art (T-355): nach der Abwehr, wie im Zugplan (`trackerDamage`). */
+  | { op: 'damage'; edge: string; amount: number; type?: string }
   | { op: 'effect'; edge: string; entry: TimedEntry }
   | { op: 'removeEffect'; edge: string; index: number }
   | { op: 'flags'; edge: string; revealed?: boolean; identified?: boolean; ally?: boolean }
@@ -303,6 +309,36 @@ function sauberEintrag(e: TimedEntry): TimedEntry | null {
   if (typeof e.source === 'string' && e.source.trim()) raus.source = e.source.trim();
   if (e.hidden) raus.hidden = true;
   return raus;
+}
+
+/**
+ * **Schaden im Tracker** (T-355): derselbe Abzug wie im Zugplan
+ * (`damageAtTable`) — nach der Abwehr des Teilnehmers, mit den Zuständen
+ * und Aktionen seiner Einträge gelesen. Gibt die Begegnung mit dem neuen
+ * Stand an der Kante zurück, die Figur mit neuen `Vitals` (eine
+ * Spielerfigur, E-128), die Rechnung und den Tischnamen. Die fällige
+ * Konzentrationsprobe würfelt der Aufrufer (`damage.concentration`).
+ */
+export function trackerDamage(
+  entities: Lookup,
+  encounter: Entity,
+  op: { edge: string; amount: unknown; type?: unknown },
+): { encounter: Entity; creature: Entity | null; damage: TableDamage; name: string } | { error: string } {
+  const rel = encounter.relations ?? [];
+  const kante = rel.find((r) => r.id === op.edge && r.type === PARTICIPATES);
+  if (!kante) return { error: 'No such combatant in this encounter.' };
+  const betrag = Number(op.amount);
+  if (op.amount === null || op.amount === '' || !Number.isFinite(betrag) || betrag < 0) return { error: 'Damage must be a number.' };
+  const ziel = entities.get(kante.to);
+  if (!ziel) return { error: 'No such creature.' };
+  const p = propsVon(kante);
+  const stats = creatureStats(ziel, entities, { conditions: entryConditions(p.conditions), actions: entryActions(p.conditions) });
+  const vitals = (ziel.components?.['Vitals'] ?? {}) as Record<string, unknown>;
+  const art = typeof op.type === 'string' ? op.type.trim().slice(0, 40) : '';
+  const damage = damageAtTable({ stats, vitals, edge: p, pc: primaryInterface(ziel) === 'PlayerCharacter', rolled: Math.trunc(betrag), type: art });
+  const relations = damage.edgeHp === null ? rel : rel.map((r) => (r === kante ? { ...r, props: { ...p, hp: damage.edgeHp! } as Relation['props'] } : r));
+  const creature = damage.vitals ? { ...ziel, components: { ...ziel.components, Vitals: damage.vitals } } : null;
+  return { encounter: mitKampf(encounter, relations, {}), creature, damage, name: p.label || entityName(ziel) };
 }
 
 /**
@@ -349,6 +385,10 @@ export function applyTrackerOp(
       /* Heilen hört am Maximum auf; Schaden darf unter null — „wie tief" sagt der Tisch. */
       if (op.value == null && Number(op.delta) > 0 && max != null) hp = Math.min(hp, Math.max(max, basis));
       return { encounter: mitKampf(encounter, setze((x) => ({ ...x, hp })), {}) };
+    }
+    case 'damage': {
+      const r = trackerDamage(entities, encounter, op);
+      return 'error' in r ? r : { encounter: r.encounter };
     }
     case 'effect': {
       const e = sauberEintrag(op.entry ?? {});

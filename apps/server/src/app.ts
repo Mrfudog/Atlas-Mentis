@@ -3937,7 +3937,7 @@ export function buildApp({
   });
   registerKampfstart(app, { repo, feed: live, viewerOf, roh, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e), insSpiel: insSpiel(spielDeps) });
   /* Der Initiative-Tracker (T-022): die Reihe gesiebt, Züge und Effekte durch die Leitung. */
-  registerTracker(app, { repo, viewerOf, roh, geltend, sieve: (request, entities, bestand) => sieve(request, entities, bestand), schreibeGeprueft: (e) => schreibeGeprueft(e) });
+  registerTracker(app, { repo, feed: live, viewerOf, roh, geltend, sieve: (request, entities, bestand) => sieve(request, entities, bestand), schreibeGeprueft: (e) => schreibeGeprueft(e) });
   /* Karten finden (T-202): die Liste unter Play › Maps und wo eine Karte vorkommt. */
   registerKartenliste(app, { roh, sieve, registry: () => repo.getRegistry() });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
