@@ -53,6 +53,26 @@ export interface BookLine {
   text: string;
   /** `Typ.feld`, woher der Wert kommt — wo es genau eines ist. */
   ref?: string;
+  /**
+   * **Was sich in dieser Zeile würfeln lässt** (T-181, REQ-070): je Eintrag
+   * der Name, wie er dasteht („Stealth"), der Ausdruck (`+6`, ein W20 mit
+   * Bonus) und die Beschriftung im Log („Stealth check"). Der Text bleibt
+   * daneben stehen — verglichen und gedruckt wird er, gewürfelt hieraus.
+   */
+  rolls?: BookRoll[];
+}
+
+/** Ein Wurf in einer Buchzeile — Fertigkeit, Rettungswurf, Attributsprobe. */
+export interface BookRoll {
+  name: string;
+  /** `+6`, `-1`: ein W20 mit Bonus (M12). */
+  expr: string;
+  label: string;
+}
+
+/** Der Ausdruck für einen W20 mit Bonus (`+3`, `-1`) — so, wie ihn `{{…}}` liest. */
+export function d20Expr(bonus: number): string {
+  return bonus < 0 ? `${bonus}` : `+${bonus}`;
 }
 
 // ------------------------------------------------------------------ Kleinzeug
@@ -184,6 +204,8 @@ export interface AbilityCell {
   score: number | null;
   /** „(+2)", „(−1)" — leer ohne Wert. */
   mod: string;
+  /** Die Attributsprobe (T-181), ohne Wert keine. */
+  check?: BookRoll;
 }
 
 export interface StatblockBook {
@@ -271,6 +293,7 @@ export function statblockBook(
       label: abilityProps[key]?.title ?? key.toUpperCase(),
       score,
       mod: score === null ? '' : `(${signedBook(abilityMod(score))})`,
+      ...(score === null ? {} : { check: { name: key.toUpperCase(), expr: d20Expr(abilityMod(score)), label: `${key.toUpperCase()} check` } }),
     };
   });
 
@@ -293,6 +316,10 @@ export function statblockBook(
         })
         .join(', '),
       ref: 'Proficiencies.saves',
+      rolls: saves.flatMap((s) => {
+        const b = bonusFuer(s, s, 1);
+        return b === null ? [] : [{ name: capitalize(s), expr: d20Expr(b), label: `${s.toUpperCase()} save` }];
+      }),
     });
   }
 
@@ -314,6 +341,10 @@ export function statblockBook(
         })
         .join(', '),
       ref: 'Proficiencies.proficient',
+      rolls: fertigkeiten.flatMap((n) => {
+        const b = fertigkeitBonus(n);
+        return b === null ? [] : [{ name: n, expr: d20Expr(b), label: `${n} check` }];
+      }),
     });
   }
   if (sonst.length) details.push({ label: 'Proficiencies', text: sonst.join(', ') });
