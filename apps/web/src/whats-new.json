@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-deleted-trash",
+      "date": "2026-10-28",
+      "title": "Deleted: restore within 30 days",
+      "text": "What you delete now waits 30 days in Deleted (Account › Deleted articles). Restore one article or everything from one deletion; the GM sees what others deleted too. Empty trash deletes it for good — only then do images lose their files.",
+      "area": "Articles",
+      "link": "/trash"
+    },
+    {
       "id": "2026-10-28-statblock-rolls",
       "date": "2026-10-28",
       "title": "Roll skills, saves and crafting checks",

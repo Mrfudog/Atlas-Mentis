@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Session } from '../kern/session';
 import { ApiTokens } from './api-tokens';
 import { MeineEbenen } from './ebenen';
@@ -9,7 +10,7 @@ import { MeineEbenen } from './ebenen';
  */
 @Component({
   selector: 'nw-konto',
-  imports: [ApiTokens, MeineEbenen],
+  imports: [ApiTokens, MeineEbenen, RouterLink],
   template: `
     <div class="seite">
       <h1>Account</h1>
@@ -22,6 +23,8 @@ import { MeineEbenen } from './ebenen';
           · {{ r }}
         }
       </p>
+      <!-- Der Papierkorb (T-400): was ich gelöscht habe, 30 Tage lang. -->
+      <p><a routerLink="/trash">Deleted articles</a> <span class="dim">— restore what you deleted in the last 30 days.</span></p>
 
       <!-- In welchen Ebenen ich schreibe, und eigene anlegen (T-098). -->
       <nw-meine-ebenen />

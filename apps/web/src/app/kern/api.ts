@@ -76,6 +76,26 @@ export interface LoeschAntwort extends BulkAntwort {
   /** Die Ebene, aus der gelöscht wurde; `null` für die Verwaltung ohne Schreibebene. */
   layer: { id: string; name: string } | null;
 }
+/** Ein gelöschter Artikel im Papierkorb (T-400). */
+export interface KorbArtikel {
+  id: string;
+  name: string;
+  type: string;
+  layers: { id: string; name: string }[];
+  /** Wie viele Teile mit ihm gingen. */
+  parts: number;
+  restored: boolean;
+}
+/** Ein Löschlauf im Papierkorb (T-400), die neusten zuerst. */
+export interface KorbLauf {
+  id: string;
+  at: string;
+  /** Ab dann endgültig (30 Tage nach `at`). */
+  expires: string;
+  by: { id: string | null; name: string };
+  own: boolean;
+  items: KorbArtikel[];
+}
 export interface BulkLauf {
   id: string;
   at: string;
@@ -1327,6 +1347,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/campaigns')) return 'campaign';
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk') || path.startsWith('/api/transfer')) return 'workbench';
   if (path.startsWith('/api/read')) return 'book';
+  if (path.startsWith('/api/trash')) return 'deleted articles';
   if (path.startsWith('/api/layers')) return 'layers';
   if (path.startsWith('/api/filters')) return 'filter groups';
   if (path.startsWith('/api/maps') || path.startsWith('/api/play')) return 'map';
@@ -1929,6 +1950,18 @@ export class Api {
    */
   deleteArticles(ids: string[], opts: { dryRun?: boolean; confirmDelete?: number } = {}): Promise<LoeschAntwort> {
     return this.call<LoeschAntwort>('/api/entities/delete', { method: 'POST', body: JSON.stringify({ ids, ...opts }) });
+  }
+  /** Der Papierkorb (T-400): die eigenen Löschläufe, als Leitung alle; endgültig nach `days`. */
+  trash(): Promise<{ days: number; runs: KorbLauf[] }> {
+    return this.call('/api/trash');
+  }
+  /** Einzelne Artikel (`ids`) oder alles Übrige eines Laufs zurückholen (T-400). */
+  restoreTrash(lauf: string, ids?: string[]): Promise<{ restored: string[]; done: boolean }> {
+    return this.call(`/api/trash/${encodeURIComponent(lauf)}/restore`, { method: 'POST', body: JSON.stringify(ids ? { ids } : {}) });
+  }
+  /** „Empty trash" (T-400): endgültig, auch für die Werkbank. */
+  emptyTrash(): Promise<{ emptied: number }> {
+    return this.call('/api/trash/empty', { method: 'POST', body: '{}' });
   }
   /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
   deleteEntity(id: string): Promise<{ ok: true }> {

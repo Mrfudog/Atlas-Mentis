@@ -236,6 +236,10 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         @if (g.lauf) {
           <button type="button" (click)="loeschenZurueck(g.lauf)">Undo</button>
         }
+        <!-- … und liegt 30 Tage im Papierkorb (T-400). -->
+        @if (g.lauf) {
+          <a routerLink="/trash" class="korb">In Deleted for 30 days</a>
+        }
         <a [routerLink]="'/' + (bereich() || 'compendium')">Back to {{ bereichName() }}</a>
       </p>
     }
@@ -2321,7 +2325,7 @@ export class Artikel implements SchnellKontext {
     this.anpassFehler.set(null);
     try {
       const r = await this.loescher.loeschen([e.id], () =>
-        typeof confirm !== 'function' || confirm(`Delete “${this.name(e)}”? You can undo it right after.`),
+        typeof confirm !== 'function' || confirm(`Delete “${this.name(e)}”? You can undo it right after, or restore it from Deleted within 30 days.`),
       );
       if (!r) return;
       if (!r.geloescht.length) {
