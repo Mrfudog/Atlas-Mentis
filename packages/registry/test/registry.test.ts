@@ -959,7 +959,7 @@ describe('the rule family', () => {
   const i = seedRegistry.interfaces;
 
   it('puts every rule kind below Rule, and Disease below Condition', () => {
-    for (const n of ['Condition', 'ActionType', 'Action', 'Feature', 'ItemProperty']) {
+    for (const n of ['Condition', 'ActionType', 'Action', 'Feature', 'ItemFeature']) {
       expect(i[n]?.extends).toContain('Rule');
     }
     expect(i['Disease']?.extends).toEqual(['Condition']);
@@ -985,6 +985,22 @@ describe('the rule family', () => {
     expect(seedRegistry.relations['affects']).toMatchObject({ from: ['Rule'], to: ['Rule'] });
     expect(seedRegistry.relations['hasProperty']?.to).toEqual(['ItemProperty']);
     expect(seedRegistry.relations['worships']?.to).toEqual(['Deity']);
+  });
+
+  /* T-324, E-163: was an einen Gegenstand kommt, ist ein Regelartikel. */
+  it('makes item properties and enhancements two sorts of one item feature', () => {
+    expect(i['ItemFeature']).toMatchObject({ area: 'rules', abstract: true });
+    expect(i['ItemProperty']?.extends).toEqual(['ItemFeature']);
+    expect(i['Enhancement']?.extends).toEqual(['ItemFeature']);
+    expect(Object.keys(i['ItemFeature'].schema.properties)).toEqual(
+      expect.arrayContaining(['appliesTo', 'namePrefix', 'nameSuffix', 'priceAdd', 'priceMult', 'mechanics']),
+    );
+    expect(Object.keys(i['Enhancement'].schema.properties)).toEqual(expect.arrayContaining(['rarity', 'bonusWeapon', 'bonusAc']));
+    /* Am Grundgegenstand steht nichts mehr davon. */
+    for (const f of ['appliesTo', 'namePrefix', 'nameSuffix', 'priceAdd', 'priceMult']) expect(i['Item'].schema.properties[f]).toBeUndefined();
+    expect(seedRegistry.relations['enchantedWith']?.to).toEqual(['Enhancement']);
+    /* Die Werte des Einzelfalls stehen an der Kante. */
+    expect(Object.keys(seedRegistry.relations['hasProperty']?.props?.properties ?? {})).toEqual(['damage', 'range', 'note']);
   });
 
   it('carries the licence flag, the faction goal and the table columns', () => {

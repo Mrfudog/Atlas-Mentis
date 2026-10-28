@@ -76,6 +76,29 @@ Zweite Etappe (T-244): Gürtel als Gegenstand mit Raster und Verbund,
 Köcher mit Filter, Verstaukosten aus dem Modul, Stapel teilen, Anker,
 schwebende Werkzeugleiste, Telefon-Muster.
 
+## Gegenstandsmerkmale (T-324, E-163)
+
+Was an einen Gegenstand kommt, ohne selbst einer zu sein, ist ein
+**Regelartikel** der Art `ItemFeature` — wie ein Monstermerkmal am
+Statblock. Zwei Sorten: die **Eigenschaft** (`ItemProperty`: Finesse,
+Versatile, Two-Handed) hängt mit `hasProperty` am Gegenstand, das
+**Enhancement** (+1 Weapon, Silvered) mit `enchantedWith` an einem Stück.
+Was ein Merkmal am Bogen bewirkt, steht in seinem Feld `mechanics`, nicht
+in seinem Namen; was es bei diesem Gegenstand heisst (Versatile 1d10,
+Thrown 20/60), an der Kante. Name, Preis und Boni des Stücks rechnet das
+Lesen (D8). Migration 163 hat die eingelesenen Varianten zu Enhancements
+gemacht; Felder, die ein Merkmal nicht trägt, stehen in ihren Notizen.
+
+```mermaid
+flowchart LR
+  W[Longsword<br>Weapon] -- hasProperty<br>damage 1d10 --> V[Versatile<br>ItemProperty<br>mechanics: versatile]
+  S[Stück von Longsword] -- instanceOf --> W
+  S -- enchantedWith --> P[+1 Weapon<br>Enhancement<br>Präfix, Aufpreis, Bonus]
+  S -- enchantedWith --> Si[Silvered<br>Enhancement]
+  V -. mechanics .-> B[Bogen: Griff mit beiden Händen<br>nimmt den Würfel der Kante]
+  P -. enhanceItem .-> N[„+1 Silvered Longsword“<br>Preis gerechnet]
+```
+
 ## Vorgabeformen (T-394, E-165)
 
 Form und Stapel eines Gegenstands werden beim Lesen gerechnet (D8): aus

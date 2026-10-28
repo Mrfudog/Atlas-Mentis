@@ -1,5 +1,5 @@
 import { EnvironmentInjector, Injectable, computed, effect, inject, untracked, type Signal } from '@angular/core';
-import { castRelations, characterStats, entityName, handState, hasProficiency, heldPlaceOf, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, spellcastingOf, turnActions, turnRows, wieldItemOf } from '@nw/model';
+import { castRelations, characterStats, entityName, handState, hasProficiency, heldPlaceOf, itemFeaturesOf, primaryInterface, proficienciesOf, sheetHeader, linkedTypes, spellcastingOf, turnActions, turnRows, wieldItemOf } from '@nw/model';
 import type { CharacterStats, Entity, HandState, HeldItem, KnownSpell, ProficiencyList, Relation, SheetHeader, TurnRow, WieldItem } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -169,19 +169,21 @@ export class FigurDaten {
     }, { injector: this.injector });
 
     /* Jedes Stück, wie das Ausrüsten es braucht (T-244, `wieldItemOf`): die
-       Eigenschaften aus `hasProperty`, die Übung aus der Rechnung T-239. */
+       Wirkungen der Eigenschaften aus `hasProperty`, die Übung aus der Rechnung T-239. */
     const ausruestbar = computed(() => {
       const name = b.name();
       const p = uebungen();
       const raus = new Map<string, WieldItem>();
       for (const k of holdsKanten()) {
         const it = b.voll().get(k.to);
-        const props = (it?.relations ?? []).filter((r) => r.type === 'hasProperty').map((r) => name(r.to) ?? '').filter(Boolean);
+        /* Was die Eigenschaften bewirken, steht in ihren Daten (T-324, E-163). */
+        const merkmale = itemFeaturesOf(it, (id) => b.voll().get(id));
         raus.set(k.id, wieldItemOf(it, {
           id: k.id,
           article: k.to,
           name: it ? entityName(it) : name(k.to) ?? k.to,
-          propertyNames: props,
+          mechanics: merkmale.mechanics,
+          ...(merkmale.versatileDamage ? { versatileDamage: merkmale.versatileDamage } : {}),
           proficient: (w) => !!w && hasProficiency(p, w),
         }));
       }

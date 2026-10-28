@@ -2310,15 +2310,37 @@ dieses Stück kommt die Regel mit der Kante `enchantedWith`.
 
 Das Wort ist **Enhancement** und nicht „Item property": so heisst seit D48
 schon die Art `ItemProperty` (Finesse, Heavy), und ein Wort für zwei Sachen
-ist so schlecht wie zwei Wörter für eine. Eine eigene Art ist es nicht: ein
-Gegenstand mit `appliesTo` *ist* eines, so wie der Importer die Varianten
-immer schon angelegt hat.
+ist so schlecht wie zwei Wörter für eine. Bis T-324 war ein Enhancement ein
+Gegenstand mit `appliesTo`, so wie der Importer die Varianten angelegt
+hatte. Das hiess: „+1 Weapon" stand in jeder Gegenstandsliste, im Laden und
+unter den Inventarformen, und hatte Felder für Gewicht und Form, die nichts
+bedeuten — eine Regel, die sich als Ding ausgab.
+
+**Gegenstandsmerkmal — eine Regel, die an einen Gegenstand kommt** (T-324,
+E-163). Ein Monster bekommt „Pack Tactics" nicht als Kopie in seinen
+Statblock, sondern als Kante auf einen Regelartikel, den Wolf und Kobold
+teilen. Genauso jetzt der Gegenstand: Finesse, Versatile und +1 Weapon sind
+Regelartikel der Art `ItemFeature`, in zwei Sorten — die **Eigenschaft**
+(`ItemProperty`, Kante `hasProperty` vom Gegenstand) und das
+**Enhancement** (Kante `enchantedWith` vom Stück). Zwei Sorten und nicht
+eine, weil eine Kante Arten nennt: an den Dolch selbst gehört Finesse,
+an *ein* Stück davon +1.
+
+Was ein Merkmal **bewirkt**, steht in seinen Daten (`mechanics`), nicht in
+seinem Namen. Der Bogen fragte vorher „heisst eine Eigenschaft
+two-handed?" — dann hätte eine Hausregel „Long Grip" nicht zweihändig sein
+können, und eine umbenannte Eigenschaft hätte still aufgehört zu wirken.
+Was das Merkmal **bei diesem Gegenstand** heisst, steht an der Kante:
+Versatile ist eine Regel, 1d10 ist die des Langschwerts — wie der Biss am
+Statblock, dessen Würfel die Kante `composedOf` trägt.
 
 Was das Stück heisst und kostet, wird **gerechnet** und nie gespeichert —
 stünde der Preis in seiner Karte, hielte das Ausdünnen ihn für eine
 Abweichung, und eine Korrektur am Dolch erreichte das Stück nie mehr. Der
 **Aufpreis** (Surcharge) sagt, wie ein Enhancement den Grundpreis ändert: ein
-Betrag (`priceAdd`), ein Faktor (`priceMult`), sonst sein eigener Preis.
+Betrag (`priceAdd`), ein Faktor (`priceMult`); ohne beides gibt es keinen
+Preis statt eines falschen. (Als Gegenstand galt sein eigener Preis als
+Aufpreis; Migration 163 hat ihn nach `priceAdd` gelegt.)
 Welche Rechnung gilt, sagt die Kampagne (`itemPricing`: kombiniert,
 Grundpreis, nicht gerechnet) — manche Tische handeln magische Gegenstände
 nicht nach Liste.

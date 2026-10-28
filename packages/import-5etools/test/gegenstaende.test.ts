@@ -63,12 +63,12 @@ describe('Gegenstände beim Einlesen (T-089)', () => {
   });
 
   it('liest Boni ohne eigenes Feld als Wirkung', () => {
-    expect(wirkungen(finde('+1 Aim Weapon'))).toEqual([{ id: 'weapon-attack', target: 'weapon.attack', op: 'add', value: 1, when: 'self' }]);
-    expect(wirkungen(finde('Keen Wood')).map((w) => [w.target, w.value])).toEqual([
+    expect(wirkungen(finde('+1 Aim Weapon', 'Enhancement'))).toEqual([{ id: 'weapon-attack', target: 'weapon.attack', op: 'add', value: 1, when: 'self' }]);
+    expect(wirkungen(finde('Keen Wood', 'Enhancement')).map((w) => [w.target, w.value])).toEqual([
       ['weapon.damage', 2],
       ['spellDamage', 1],
     ]);
-    expect(wirkungen(finde('Keen Wood'))[0]!.when).toBe('self');
+    expect(wirkungen(finde('Keen Wood', 'Enhancement'))[0]!.when).toBe('self');
     expect(wirkungen(finde('Lucky Pin')).map((w) => [w.target, w.value])).toEqual([
       ['check', 1],
       ['prof', 1],
@@ -78,12 +78,15 @@ describe('Gegenstände beim Einlesen (T-089)', () => {
     expect(wirkungen(finde('Archer Cuffs'))).toEqual([{ id: 'weapon-damage', target: 'weapon.damage', op: 'add', value: 2 }]);
   });
 
-  it('schreibt Varianten als Enhancement: Namensteile und Aufpreis (T-300)', () => {
-    const glanz = finde('Glinting Weapon').components['Item'] as Record<string, unknown>;
+  it('schreibt Varianten als Enhancement: Namensteile und Aufpreis (T-300, T-324)', () => {
+    const v = finde('Glinting Weapon', 'Enhancement');
+    expect(v.components['Item']).toBeUndefined();
+    const glanz = v.components['ItemFeature'] as Record<string, unknown>;
     expect(glanz['namePrefix']).toBe('Glinting ');
     expect(glanz['priceAdd']).toBe(5000);
     expect(glanz['priceMult']).toBeUndefined();
-    const trim = finde('Heavy Plate Trim').components['Item'] as Record<string, unknown>;
+    expect(glanz['appliesTo']).toEqual(['weapon']);
+    const trim = finde('Heavy Plate Trim', 'Enhancement').components['ItemFeature'] as Record<string, unknown>;
     expect(trim['nameSuffix']).toBe(' with Trim');
     expect(trim['priceMult']).toBe(3);
   });

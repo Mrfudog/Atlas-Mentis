@@ -636,13 +636,45 @@ export const interfaces: Record<string, InterfaceDef> = {
     views: { overview: [{ id: 'ftr-ov', el: 'fields', fields: ['Feature.featureType'] }] },
   },
 
-  /** Gegenstandseigenschaft: Finesse, Versatile, Heavy (D48). */
+  /**
+   * **Gegenstandsmerkmal** (T-324, E-163): die Regel, die an einen
+   * Gegenstand kommt — wie ein Monstermerkmal an den Statblock. Am
+   * Grundgegenstand steht davon nichts; er zeigt mit einer Kante darauf,
+   * und welche Kante, sagt die Sorte: `hasProperty` auf eine Eigenschaft,
+   * `enchantedWith` (am Stück) auf ein Enhancement.
+   */
+  ItemFeature: {
+    name: 'ItemFeature',
+    area: 'rules',
+    label: 'Item feature',
+    abstract: true,
+    /* Bild, Begleittext, Geheimnisse und Fakten, weil eine Variante wie
+       Flame Tongue sie als Gegenstand trug — Migration 163 zieht sie mit. */
+    extends: ['Rule', 'Effects', 'Image', 'Lore', 'Secrets', 'Facts'],
+    schema: merge(g.ItemFeatureInfo),
+  },
+
+  /** Gegenstandseigenschaft: Finesse, Versatile, Heavy (D48), seit T-324 ein Gegenstandsmerkmal. */
   ItemProperty: {
     name: 'ItemProperty',
     area: 'rules',
     label: 'Item property',
-    extends: ['Rule'],
+    extends: ['ItemFeature'],
     schema: merge(g.ItemPropertyInfo),
+  },
+
+  /**
+   * **Enhancement** (T-300, T-324): +1 Weapon, Silvered, Adamantine — kommt
+   * mit `enchantedWith` an ein Stück; Name, Preis, Seltenheit und Boni des
+   * Stücks rechnet das Lesen (`enhanceItem`, D8).
+   */
+  Enhancement: {
+    name: 'Enhancement',
+    area: 'rules',
+    label: 'Enhancement',
+    extends: ['ItemFeature'],
+    schema: merge(g.EnhancementInfo),
+    views: { overview: [{ id: 'enh-ov', el: 'fields', fields: ['Enhancement.rarity', 'ItemFeature.appliesTo'] }] },
   },
 
   /**

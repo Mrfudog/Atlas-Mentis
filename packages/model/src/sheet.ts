@@ -82,7 +82,7 @@ export interface HeldItem {
   name: string;
   /** `mainHand`, `offHand` oder `both` (beidhändig gegriffen). */
   slot: 'mainHand' | 'offHand' | 'both';
-  /** Die Namen seiner Eigenschaften (`hasProperty`-Ziele), klein geschrieben. */
+  /** Was seine Eigenschaften bewirken (`ItemFeature.mechanics` der `hasProperty`-Ziele, T-324): `two-handed`, `versatile`, `light`, `finesse`. */
   properties: readonly string[];
   /** Ein Schild (`Armor.armorType: shield`). */
   shield?: boolean;
