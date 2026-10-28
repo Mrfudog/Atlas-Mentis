@@ -60,6 +60,7 @@ import {
   stateRefusal,
   primaryInterface,
   seesUnfinished,
+  leadsArticle,
   tableRole,
   partiesOf,
   inventoryRulesOf,
@@ -1774,8 +1775,18 @@ export function buildApp({
     const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
     const sichtbar = messeSync('s.sichtbar', () => entities.filter((e) => articleVisible(alle, e, auge)));
     /* Ein Deckname verdeckt für alle ausser der Leitung (REQ-178). */
+    /* **Die Leitung der Kampagne des Artikels bekommt ihn ungesiebt im
+       Wissen** (T-447, T-455; E-204 a, E-208 a): ohne eigene Figur hiess
+       `augen` `[]`, und das Sieb nahm ihr Geheimnisse, Taktik, Lösung und
+       Hinweise ihrer eigenen Runde weg und vor Kampfbeginn jeden Gegner
+       der Begegnung (`redactParticipants`). Die Grenze ist die Rolle in
+       der Kampagne des Artikels (`leadsArticle`), wie beim Decknamen —
+       die Leitung einer anderen Runde bleibt Betrachter, die Spielerin
+       wird weiter gesiebt. Die Sichtbarkeit (`articleVisible`) bleibt. */
     const gewusst = messeSync('s.wissen', () =>
-      sichtbar.map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge))),
+      sichtbar.map((e) =>
+        redactEntity(registry, alle, schmal ? schmal(e) : e, leadsArticle(alle, e, auge) ? undefined : augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge)),
+      ),
     );
     return gewusst
       .map((e) =>
