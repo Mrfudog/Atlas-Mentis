@@ -43,7 +43,7 @@ export interface User {
   /** **In welcher Kampagne eine Figur dem Konto gehört** (T-412,
    *  Entscheid der Leitung 23.10.: „pro Kampagne zuweisen") — Figur →
    *  Kampagne. Fehlt eine Figur hier, ist die Kampagne unbekannt (Bestand
-   *  vor Migration 156, den sie nicht zuordnen konnte); dann gilt sie wie
+   *  vor Migration 157, den sie nicht zuordnen konnte); dann gilt sie wie
    *  bisher überall. `actorIds` einer Anfrage nennt nur die Figuren der
    *  laufenden Kampagne (`inKampagne`). */
   actorCampaigns?: Record<string, string>;
