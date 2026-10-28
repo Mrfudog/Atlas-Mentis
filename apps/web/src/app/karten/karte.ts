@@ -5296,6 +5296,8 @@ export class Karte {
     try {
       const r = await this.api.moveToken(this.id(), { rel, to, ...(nat ? { nat } : {}) });
       if (r.proposal) this.hinweis.set(VORSCHLAG_GESENDET);
+      /* Was die Figur unterwegs bemerkt und betritt (T-350). */
+      else if (r.seen?.length) this.hinweis.set(r.seen.join(' '));
       await this.bestand.oeffnen(this.id(), true, false);
       await this.kontextHolen(this.id());
     } catch (err) {

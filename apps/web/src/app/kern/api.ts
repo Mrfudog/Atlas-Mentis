@@ -1846,7 +1846,7 @@ export class Api {
   moveToken(
     map: string,
     body: { rel: string; to?: { x: number; y: number }; via?: string; nat?: { w: number; h: number }; path?: { x: number; y: number }[]; feet?: number },
-  ): Promise<{ moved?: string; proposal?: TurnPlan; floor?: string; map?: string }> {
+  ): Promise<{ moved?: string; proposal?: TurnPlan; floor?: string; map?: string; seen?: string[] }> {
     return this.call(`/api/maps/${encodeURIComponent(map)}/move`, { method: 'POST', body: JSON.stringify(body) });
   }
   /**

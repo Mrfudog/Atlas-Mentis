@@ -287,6 +287,11 @@ function sperrenVon(map: Entity, nat?: Size): MapWall[] {
   return w;
 }
 
+/** Die Sperren, die gelten (gezeichnet und aus Assets) — für Rechnungen ausserhalb dieser Datei, etwa das Bemerken unterwegs (T-350). */
+export function mapBlockers(map: Entity, nat?: Size): MapWall[] {
+  return sperrenVon(map, nat);
+}
+
 /** Die Sperren ohne die des Assets `relId` — dieselbe Liste, wenn es keine hat. */
 function ohneAsset(walls: MapWall[], relId: string): MapWall[] {
   const p = `asset:${relId}:`;

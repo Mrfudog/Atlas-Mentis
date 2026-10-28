@@ -59,6 +59,11 @@ import {
   carriedLights,
   darkvisionFor,
   revealSeenAlong,
+  hiddenOnMap,
+  senseNumbers,
+  spotsAlong,
+  zonesEntered,
+  partyMembers,
   wallsClear,
   fogOn,
   opportunityAttacks,
@@ -562,6 +567,68 @@ export function wegAufdecken(
   return revealSeenAlong(karte, pts, nat, () => `s-${randomUUID()}`, figur, darkvisionFor(bestand, figur), carriedLights(bestand, karte));
 }
 
+/**
+ * **Was eine Figur unterwegs bemerkt und betritt** (T-350, REQ-209,
+ * REQ-208): auf dem Weg eines Zuges fragt jedes Feld, ob die Figur von dort
+ * einen Versteckten (Heimlichkeit) oder eine versteckte Zone
+ * (`hiddenUntil`) bemerkt — dann steht er da (`hidden` weg, `found`). Nur
+ * die Seite der Spielenden bemerkt; was die Leitung zieht, sieht sie
+ * ohnehin. Wer eine Zone mit Wirkung betritt, bekommt eine Zeile, gewürfelt
+ * wird nicht. Ohne Gitter oder ohne Felder im Weg: nichts.
+ */
+export function bemerkenUnterwegs(
+  karte: Entity,
+  stand: Stand,
+  kampf: Entity | null,
+  figur: string,
+  rel: string,
+  path: readonly { x: number; y: number }[],
+  nat: { w: number; h: number } | null,
+): { karte: Entity; zeilen: string[] } {
+  const geo = nat ? gridGeometry(mapSettings(karte), nat) : null;
+  if (!geo || !nat || path.length < 2) return { karte, zeilen: [] };
+  const pts = path.map((c) => cellPoint(geo, c));
+  const zeilen: string[] = [];
+  const wer = entityName(stand.map.get(figur) ?? { id: figur, name: figur, interfaces: [], components: {}, relations: [] });
+  const sinne = (id: string) => {
+    const e = stand.map.get(id);
+    return e ? senseNumbers(creatureStats(resolveInstance(stand.map, e), stand.map)) : null;
+  };
+  let neu = karte;
+  if (seiteVon(stand, kampf, figur) === 'party') {
+    /* Die Gruppe sieht mit den Augen ihres besten Mitglieds — das Gruppen-Token steht für alle. */
+    const eigen = stand.map.get(figur);
+    const augen = eigen && primaryInterface(eigen) === 'Party' ? partyMembers(stand.map, figur).map((m) => sinne(m.id)) : [sinne(figur)];
+    const pp = Math.max(10, ...augen.map((x) => x?.pp ?? 10));
+    const darkvision = Math.max(0, ...augen.map((x) => x?.darkvision ?? 0), darkvisionFor(stand.map, figur));
+    const kandidaten = hiddenOnMap(karte, stand.map, geo, rel, (to) => sinne(to)?.stealth ?? null);
+    const gesehen = spotsAlong(karte, nat, stand.map, pts, { pp, darkvision }, kandidaten, carriedLights(stand.map, karte));
+    if (gesehen.length) {
+      const weg = new Map(gesehen.map((g) => [g.rel, g]));
+      neu = {
+        ...karte,
+        relations: (karte.relations ?? []).map((r) => {
+          const g = weg.get(r.id);
+          if (!g) return r;
+          const props = (r.props ?? {}) as Record<string, unknown>;
+          if (g.kind === 'zone') return { ...r, props: { ...props, found: true } as Relation['props'] };
+          const { hidden: _weg, ...rest } = props;
+          return { ...r, props: rest as Relation['props'] };
+        }),
+      };
+      for (const g of gesehen) {
+        const name = entityName(stand.map.get(g.to) ?? { id: g.to, name: g.kind === 'zone' ? 'a hidden zone' : 'someone', interfaces: [], components: {}, relations: [] });
+        zeilen.push(g.kind === 'zone' ? `${wer} notices ${name} (PP ${g.pp} vs ${g.dc}).` : `${wer} spots ${name} (PP ${g.pp} vs ${g.dc}).`);
+      }
+    }
+  }
+  for (const z of zonesEntered(neu, stand.map, pts)) {
+    const name = entityName(stand.map.get(z.to) ?? { id: z.to, name: 'a zone', interfaces: [], components: {}, relations: [] });
+    zeilen.push(`${wer} enters ${name}: ${z.line}.`);
+  }
+  return { karte: neu, zeilen };
+}
+
 export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   const { repo, feed, viewerOf, roh, sieve, geltend, schreibeGeprueft } = deps;
 
@@ -1054,9 +1121,21 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
 
       let neu = moveMarker(roheKarte, marker.rel.id, to);
       if (!asset && regeln.revealOnMove && fogOn(roheKarte) && nat) neu = onFloor(neu, ebene, (v) => wegAufdecken(v, marker.to, schritt, marker, nat, stand.map));
+      /* Unterwegs bemerken und betreten (T-350): dieselbe Rechnung wie im Zugplan. */
+      let seen: string[] = [];
+      if (!asset) {
+        neu = onFloor(neu, ebene, (v) => {
+          /* Ohne Felder vom Browser: von dort, wo das Token stand, bis wohin es kam. */
+          const g = nat ? gridGeometry(mapSettings(v), nat) : null;
+          const weg = schritt.path.length > 1 || !g ? schritt.path : [cellAt(g, marker), cellAt(g, to)];
+          const b = bemerkenUnterwegs(v, stand, encounterOnMap(stand.alle, roheKarte.id), marker.to, marker.rel.id, weg, nat);
+          seen = b.zeilen;
+          return b.karte;
+        });
+      }
       const r = await schreibeGeprueft(neu);
       if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
-      return { moved: marker.rel.id, to };
+      return { moved: marker.rel.id, to, ...(seen.length ? { seen } : {}) };
     },
   );
 
@@ -1483,7 +1562,16 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
              Felder, sonst die Gerade —, für die Figur, die ihn ging. */
           if (aufdecken && plan.nat && von) karte = onFloor(karte, ebene, (v) => wegAufdecken(v, figur.id, s, von, plan.nat!, stand.map));
         }
-        results.push({ step: s.id, text: `Moved ${s.feet} ft.` });
+        /* Unterwegs bemerken und betreten (T-350): Versteckte, versteckte Zonen, Zonen mit Wirkung. */
+        let unterwegs: string[] = [];
+        if (rel) {
+          karte = onFloor(karte, ebene, (v) => {
+            const b = bemerkenUnterwegs(v, stand, kampf, figur.id, rel, s.path, plan.nat ?? null);
+            unterwegs = b.zeilen;
+            return b.karte;
+          });
+        }
+        results.push({ step: s.id, text: [`Moved ${s.feet} ft.`, ...unterwegs].join(' ') });
         continue;
       }
       if (s.kind === 'passage') {
