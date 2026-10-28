@@ -616,34 +616,60 @@ export function creatureSize(v: unknown): CreatureSize | null {
 
 /** Was die Wirkungen mit dem Ziel `size` zusammen sagen (T-390, REQ-396). */
 export interface SizeEffects {
-  /** Eine gesetzte Grösse („wird Large"); bei mehreren die grösste. */
+  /** Eine gesetzte Grösse („wird Large"); bei mehreren derselben Quelle die grösste. */
   set?: CreatureSize;
   /** Stufen, um die sie sich danach verschiebt: Enlarge +1, Reduce −1. */
   steps: number;
-  /** Die Artikel, aus denen sie kommen — für „woher" an der Karte. */
+  /** Die Quelle, die gilt — für „woher" an der Karte. */
   sources: string[];
+  /** Überlappen sich mehrere (T-428): die übergangenen, in ihrer Reihenfolge. */
+  passed?: string[];
+  /** Überlappen sich mehrere: alle, zwischen denen die Leitung wählt. */
+  options?: string[];
+  /** Überlappen sich mehrere: hat die Leitung gewählt (sonst gilt der zuletzt hinzugekommene)? */
+  chosen?: boolean;
 }
 
 /**
  * **Die Grössen-Wirkungen** aus dem, was an einer Kreatur gerade wirkt
  * (`effectsAt`): `set` mit einem Grössenwort, `add` mit Stufen. Eine Quelle
  * zählt einmal — `effectsAt` nimmt jeden Artikel nur einmal auf, also
- * stapelt derselbe Zustand nicht mit sich selbst (E-164, Empfehlung b).
+ * stapelt derselbe Zustand nicht mit sich selbst.
+ *
+ * **Überlappen sich Quellen, wird nicht summiert** (E-164, T-428): jede
+ * Quelle ist ein eigener Zustand mit Dauer, und es gilt **eine** — die, die
+ * die Leitung am Token gewählt hat (`choose`, `props.sizeSource`), sonst
+ * die zuletzt hinzugekommene (die letzte in der Reihenfolge von
+ * `effectsAt`: Gegenstände, Merkmale, Zustände an `Vitals`, dann die der
+ * Initiative, je in der Reihenfolge ihres Eintrags). Ist die gewählte
+ * abgelaufen, gilt wieder die zuletzt hinzugekommene.
  */
-export function sizeEffects(effects: readonly ActiveEffect[]): SizeEffects {
-  const raus: SizeEffects = { steps: 0, sources: [] };
+export function sizeEffects(effects: readonly ActiveEffect[], choose?: string | null): SizeEffects {
+  const je = new Map<string, { set?: CreatureSize; steps: number }>();
   for (const { effect: e, source } of effects) {
     if (e.target !== 'size') continue;
+    const q = je.get(source) ?? { steps: 0 };
     if (e.op === 'set') {
       const g = creatureSize(e.value);
       if (!g) continue;
-      if (!raus.set || SIZE_ORDER.indexOf(g) > SIZE_ORDER.indexOf(raus.set)) raus.set = g;
+      if (!q.set || SIZE_ORDER.indexOf(g) > SIZE_ORDER.indexOf(q.set)) q.set = g;
     } else if (e.op === 'add') {
       const n = Math.trunc(Number(e.value));
       if (!Number.isFinite(n) || n === 0) continue;
-      raus.steps += n;
+      q.steps += n;
     } else continue;
-    if (!raus.sources.includes(source)) raus.sources.push(source);
+    je.set(source, q);
+  }
+  const alle = [...je.keys()];
+  if (!alle.length) return { steps: 0, sources: [] };
+  const gewaehlt = !!choose && je.has(choose);
+  const gilt = gewaehlt ? choose! : alle[alle.length - 1]!;
+  const q = je.get(gilt)!;
+  const raus: SizeEffects = { ...(q.set ? { set: q.set } : {}), steps: q.steps, sources: [gilt] };
+  if (alle.length > 1) {
+    raus.passed = alle.filter((id) => id !== gilt);
+    raus.options = alle;
+    raus.chosen = gewaehlt;
   }
   return raus;
 }
@@ -707,6 +733,23 @@ export function snapTokenCentre(p: Pt, geo: GridGeometry | null, span: number): 
     return Math.min(1, Math.max(0, (o + (links + sp / 2) * geo.size) / laenge));
   };
   return { x: achse(p.x, geo.ox, geo.w), y: achse(p.y, geo.oy, geo.h) };
+}
+
+/**
+ * **Welcher Grössen-Zustand an diesem Token gilt** (T-428, E-164):
+ * `props.sizeSource` an der Kante, nicht am Artikel — dieselbe Kreatur kann
+ * auf zwei Karten stehen, und die Wahl ist eine der Leitung am Tisch.
+ * `null` nimmt sie weg; dann gilt der zuletzt hinzugekommene.
+ */
+export function setMarkerSizeSource(map: Entity, relId: string, source: string | null): Entity {
+  return {
+    ...map,
+    relations: (map.relations ?? []).map((r) => {
+      if (r.id !== relId) return r;
+      const { sizeSource: _alt, ...props } = (r.props ?? {}) as Record<string, unknown>;
+      return { ...r, props: source ? { ...props, sizeSource: source } : props };
+    }),
+  };
 }
 
 /** Die Grösse eines Tokens setzen (`props.size`); `null` nimmt sie weg — dann gilt sein Statblock. */
