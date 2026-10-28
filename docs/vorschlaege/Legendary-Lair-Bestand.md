@@ -108,6 +108,12 @@ Nach Gewicht für T-375/T-376:
    im Statblock selbst. Klärt eine Importer-Prüfung.
 5. **26 Lair-Action-Artikel hängen an keinem Statblock**: Gruppen, deren
    Statblöcke nicht hereinkamen oder auf eine andere Fassung zeigen.
+   **Geklärt in T-438** (Zahlen je Ursache in
+   [Nachtarbeit 28.10.](../Nachtarbeit/2026-10-28-T-437-T-438.md)): die 32
+   aus Lücke 4 erwähnen Lair Actions nur im Spielart-Kasten — nichts zu
+   verknüpfen. Von den 26 sind 5 behebbar (Statblöcke, die ihre Gruppe
+   nicht nennen; der Importer nimmt jetzt die gleichnamige Gruppe derselben
+   Quelle), 21 haben in der Quelle keinen Statblock.
 6. **Mythic Trait und Legendary Resistance haben keine Anwendungsgrenze
    als Feld.** Ob sie Zähler werden, entscheidet E-185 (Nr. 3 und 4).
    Erst danach: `Feature.uses` und der Mythic Trait als erkennbares
