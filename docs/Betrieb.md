@@ -531,6 +531,11 @@ Buch nennt (die Aktionsarten), liegt in „D&D 5e (2014) — no book given"
 (`e5_unsourced_2014`, unter Official). „D&D 5e (2014)" selbst ist seit
 T-109 eine **Gruppe** aller offiziellen 2014-Bücher: aufgeschaltet bringt
 sie alle, ein einzelnes Buch darin lässt sich abschalten.
+**Der Name einer Buchebene** kommt aus `books.json`/`adventures.json`;
+fehlt dort der Kopf, aus `js/parser.js` (`Parser.SOURCE_JSON_TO_FULL`,
+T-420) — darum holt die Pipeline `data` **und** `js`. Erst ohne beides
+heisst die Ebene nach ihrem Kürzel. Ein Lauf `only-new` benennt
+bestehende Ebenen nicht um; das tut eine Massenänderung (`set name`).
 Eine Kampagne schaltet auf der Kampagnenseite die Bücher auf, die sie
 nutzt (Liste mit Häkchen, nach Grundregelwerk, Quellenbuch und Abenteuer
 gruppiert). **Ein Abenteuer** (`kind: adventure`, T-082) bringt dabei
