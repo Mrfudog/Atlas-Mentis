@@ -3008,6 +3008,15 @@ wie ein Token auf seinen Artikel. Was die Karte selbst rechnen kann (Kosten,
 Licht, Sicht, wer es bemerkt), rechnet sie; was der Tisch würfelt, zeigt sie
 und schreibt es ins Protokoll, wenn jemand hineinläuft.
 
+**Gezeichnet wird, was gerechnet wird** (T-219). Eine Zone und ein Gebiet
+stehen als Felder auf der Karte, nicht als die Linie, die jemand gezogen
+hat: ein Feld gehört dazu, wenn seine Mitte darin liegt, und genau so
+zählt der Zugplan das Gelände. Zeichnete die Karte die feine Linie, sähe
+ein Feld halb im Eis aus wie Eis, und der Plan rechnete es als trocken —
+man glaubte dem Bild und verlöre die Bewegung. Und eine Fläche gehört
+**einer Ebene** wie ein Marker: der Schlamm im Keller liegt nicht auf dem
+Turmdach, nur weil beide dieselbe Karte sind.
+
 **Ein Oger ist vier Felder und nicht ein grosses** (D58). Ein Token nimmt
 nach der Grösse seines Statblocks einen Platz ein — large 2 × 2, huge 3 × 3,
 gargantuan 4 × 4 —, und alles, was die Karte rechnet, rechnet mit dem
