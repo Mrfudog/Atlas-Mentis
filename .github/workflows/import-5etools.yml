@@ -148,7 +148,8 @@ jobs:
           src="$RUNNER_TEMP/5etools-src"
           git clone --depth 1 --filter=blob:none --sparse ${SOURCE_REF:+--branch "$SOURCE_REF"} \
             https://github.com/5etools-mirror-3/5etools-src.git "$src"
-          git -C "$src" sparse-checkout set data
+          # `js/` für die Titel der Quellen ohne Kopf in books/adventures (T-420, `js/parser.js`).
+          git -C "$src" sparse-checkout set data js
           echo "Stand: $(git -C "$src" log -1 --format='%h %cs %s')"
 
       - name: Datei erzeugen

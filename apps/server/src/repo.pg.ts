@@ -500,6 +500,13 @@ export class PgRepository implements Repository {
   /* Die Figuren kommen aus der Verbundtabelle und werden hier
      hineingelegt. `array_agg` liefert `{null}` für ein Konto ohne Figur —
      das eine Element ist dann null und kein Name. */
+  /** Figur → Kampagne (T-412); nur Zeichenketten zählen. */
+  private static figurenKampagnen(roh: unknown): Record<string, string> {
+    const out: Record<string, string> = {};
+    if (roh && typeof roh === 'object') for (const [a, c] of Object.entries(roh)) if (typeof c === 'string' && c) out[a] = c;
+    return out;
+  }
+
   private static toUser(row: Row): StoredUser {
     const raw = (row['actor_ids'] as (string | null)[] | null) ?? [];
     return {
@@ -508,6 +515,7 @@ export class PgRepository implements Repository {
       passwordHash: String(row['password_hash']),
       isAdmin: row['is_admin'] === true,
       actorIds: raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
+      actorCampaigns: PgRepository.figurenKampagnen(row['actor_campaigns']),
       roles: PgRepository.rollen(row['roles']),
       authoredIds: ((row['authored_ids'] as (string | null)[] | null) ?? []).filter(
         (x): x is string => typeof x === 'string' && x.length > 0,
@@ -544,6 +552,7 @@ export class PgRepository implements Repository {
    *  Konto Kampagnen hat. */
   private static readonly USER_SELECT = `
     select u.*, array_agg(a.actor_id order by a.added_at) as actor_ids,
+           coalesce(jsonb_object_agg(a.actor_id, a.campaign_id) filter (where a.campaign_id is not null), '{}'::jsonb) as actor_campaigns,
            (select coalesce(jsonb_object_agg(m.campaign_id, m.role), '{}'::jsonb)
               from campaign_member m where m.user_id = u.id) as roles,
            array(select w.entity_id from app_user_article w
@@ -875,10 +884,15 @@ export class PgRepository implements Repository {
         [user.id, ids],
       );
       if (ids.length) {
+        /* Die Kampagne je Figur (T-412): gesetzt, wenn sie bekannt ist;
+           eine bekannte wird nie durch „unbekannt" überschrieben. */
+        const k = user.actorCampaigns ?? {};
         await client.query(
-          `insert into app_user_actor(user_id, actor_id)
-             select $1, unnest($2::text[]) on conflict do nothing`,
-          [user.id, ids],
+          `insert into app_user_actor(user_id, actor_id, campaign_id)
+             select $1, a, c from unnest($2::text[], $3::text[]) as x(a, c)
+             on conflict (user_id, actor_id) do update
+               set campaign_id = coalesce(excluded.campaign_id, app_user_actor.campaign_id)`,
+          [user.id, ids, ids.map((a) => k[a] ?? null)],
         );
       }
       /* Die Rollen ebenso: was nicht mehr dasteht, geht; was dasteht, wird

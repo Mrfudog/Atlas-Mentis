@@ -61,6 +61,7 @@ import {
   entityName,
   isLayer,
 } from '@nw/model';
+import { figurenIn } from './figurenzuteilung.js';
 import type { Entity, Registry } from '@nw/model';
 import type { User } from './auth.js';
 
@@ -158,7 +159,7 @@ export function kampagnenAusfuhr(
     : (() => {
         /* Die Regeln je Gruppe dieser Kampagne gelten auch hier (T-252). */
         const campaignRules = campaignVisibility(karte, registry, kampagne);
-        return { actors: optionen.user.actorIds ?? [], roles: optionen.user.roles ?? {}, ...(campaignRules ? { campaignRules } : {}) };
+        return { actors: figurenIn(optionen.user, kampagne.id), roles: optionen.user.roles ?? {}, ...(campaignRules ? { campaignRules } : {}) };
       })();
   const entities = alle
     .filter((e) => optionen.all || gehoertDazu(e, kampagne, eigene, an))

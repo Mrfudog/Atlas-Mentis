@@ -17,6 +17,7 @@
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { inKampagne } from './figurenzuteilung.js';
 import {
   AUDIENCE_ORDER,
   applyTransform,
@@ -161,7 +162,8 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
     /* **Die Spalten**: wer ohne Rolle schaut (Public), wer zuschaut (Table:
        jede Rolle), jede Spielerin mit ihrem Betrachter, wie das Sieb ihn
        baut, und die Leitung. */
-    const konten = (await repo.listUsers()).filter((u) => isTableRole(u.roles?.[c]) && !u.disabledAt);
+    /* Je Spielerin nur ihre Figuren dieser Kampagne (T-412). */
+    const konten = (await repo.listUsers()).filter((u) => isTableRole(u.roles?.[c]) && !u.disabledAt).map((u) => inKampagne(u, c));
     const spieler = konten.filter((u) => u.roles[c] === 'player').sort((a, b) => a.name.localeCompare(b.name, 'de'));
     const spalten: Spalte[] = [
       { key: 'public', label: 'Public', kind: 'public' },
