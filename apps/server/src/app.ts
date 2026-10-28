@@ -196,6 +196,7 @@ import { registerAbfrage } from './abfrage.js';
 import { registerStruktur } from './struktur.js';
 import { registerKampagnenboard } from './kampagnenboard.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
+import { registerWegwerfen } from './wegwerfen.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
@@ -1345,6 +1346,8 @@ export function buildApp({
     if (/^\/api\/sessions\/[^/]+\/(end|pick-up)$/.test(url) && request.method === 'POST') return;
     /* Geben (T-150): die Route fragt `mayWrite` am Inventar selbst (`stueck.ts`). */
     if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
+    /* Wegwerfen und Zurücklegen (T-407): die Routen fragen Leitung und `mayWrite` selbst (`wegwerfen.ts`). */
+    if (/^\/api\/inventories\/[^/]+\/discard(\/[^/]+\/undo)?$/.test(url) && request.method === 'POST') return;
     /* Die Abfrage-Kachel (T-340): ziehen und zurücksetzen prüft die Route am Board selbst (`abfrage.ts`). */
     if (/^\/api\/boards\/[^/]+\/query\/[^/]+\/(draw|reset)$/.test(url) && request.method === 'POST') return;
     /* Der Zugplan (T-198): die Routen prüfen Figur und Leitung selbst (`zugplan.ts`). */
@@ -3421,6 +3424,16 @@ export function buildApp({
     },
   });
   /* Geben (T-150): Beute, Geschenke, was die Leitung austeilt — als Instanz. */
+  /* Wie am `PUT`: was das Konto schreibt, und als Leitung, was Spielende ihr vorlegen (D72). */
+  const darfInventarSchreiben = async (request: FastifyRequest, id: string): Promise<boolean> => {
+    const user = await viewerOf(request);
+    if (!user) return false;
+    if (mayWrite(user, await ownedBy(user), id)) return true;
+    if (!(await repo.authorsOf(id)).length) return false;
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const da = alle.get(id);
+    return !!da && maySetReady(user, alle, da);
+  };
   registerGeben(app, {
     repo,
     viewerOf,
@@ -3428,16 +3441,16 @@ export function buildApp({
     sieve,
     schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet),
     kampagnenEbene,
-    /* Wie am `PUT`: was das Konto schreibt, und als Leitung, was Spielende ihr vorlegen (D72). */
-    darfSchreiben: async (request, id) => {
-      const user = await viewerOf(request);
-      if (!user) return false;
-      if (mayWrite(user, await ownedBy(user), id)) return true;
-      if (!(await repo.authorsOf(id)).length) return false;
-      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-      const da = alle.get(id);
-      return !!da && maySetReady(user, alle, da);
-    },
+    darfSchreiben: darfInventarSchreiben,
+  });
+  /* Wegwerfen mit Rückgängig und Verkaufen am Stück (T-407, REQ-404): `wegwerfen.ts`. */
+  registerWegwerfen(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve,
+    schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet),
+    darfSchreiben: darfInventarSchreiben,
   });
 
   /* **Der Live-Kanal** (T-116, REQ-116): `GET /api/live`, je Empfänger

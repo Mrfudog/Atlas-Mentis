@@ -4,8 +4,8 @@
  *
  * Der Preis wird **hier** gerechnet (`shopWares` für die kaufende Figur,
  * D8) — was die Maske schickt, ist Ware, Menge und Figur, nie ein Betrag.
- * Gehandelt wird für eine eigene Figur (D74, wie beim Inventar), die
- * Leitung handelt für jede. Laden und Inventar werden gegen die gelesene
+ * Gehandelt wird für eine eigene Figur (D74, wie beim Inventar) oder für
+ * die Gruppe, in der sie steht (T-407); die Leitung handelt für jede. Laden und Inventar werden gegen die gelesene
  * Revision geschrieben: kaufen zwei gleichzeitig die letzte Laterne, geht
  * einer leer aus, statt dass beide sie bekommen. **Was gekauft wird,
  * entsteht als Instanz** des Grundartikels (`newInstance`, T-150) in der
@@ -40,6 +40,7 @@ import {
 import type { User } from './auth.js';
 import { RevisionConflict, type Repository } from './repo.js';
 import { reservierteSperre } from './reservierung.js';
+import { handeltFuer } from './wegwerfen.js';
 
 interface Stand {
   alle: Entity[];
@@ -107,7 +108,8 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
     const figur = stand.map.get(actorId);
     if (!figur) return { fehler: { code: 400, error: 'Für wen? Die Figur fehlt.' } };
     /* Wie beim Inventar (D74): die eigene Figur, und die Leitung für jede. */
-    if (!leitet && !(user.actorIds ?? []).includes(figur.id)) return { fehler: { code: 403, error: 'Das ist nicht deine Figur.' } };
+    /* Für die Gruppe handelt jedes ihrer Mitglieder (T-407): verkauft wird aus ihrer Truhe, das Geld geht dorthin. */
+    if (!leitet && !handeltFuer(user, figur, stand.map)) return { fehler: { code: 403, error: 'Das ist nicht deine Figur.' } };
     /* Frisch gelesen: gegen diese Revision wird geschrieben. */
     const laden = (await repo.getEntity(roherLaden.id)) ?? roherLaden;
     return { user, stand, laden, figur, kampagne, leitet };

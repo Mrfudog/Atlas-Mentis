@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-discard-sell",
+      "date": "2026-10-29",
+      "title": "Discard and sell right at the piece",
+      "text": "In an inventory, a picked piece now has Discard and Sell instead of Remove. Discard asks how many and takes the piece out of the game, with Undo right after. Sell lists the shops you can see with what each pays — those where the scene in play is come first — and puts the coins into the purse.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-item-features",
       "date": "2026-10-28",
       "title": "Enhancements and item properties are rules articles",
