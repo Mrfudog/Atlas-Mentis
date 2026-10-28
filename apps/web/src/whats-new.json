@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-designer-phone",
+      "date": "2026-10-28",
+      "title": "Designing a view on a phone",
+      "text": "On a phone, Design this view now opens the designer in its Design tab instead of a sheet that covered Edit and the view bar.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-28-steps",
       "date": "2026-10-28",
       "title": "Guided creation in steps",
