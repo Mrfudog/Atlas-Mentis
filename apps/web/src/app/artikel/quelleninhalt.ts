@@ -243,9 +243,11 @@ export class Quelleninhalt {
       const k = await this.api.campaignLayers(c);
       const an = k.layers.filter((x) => x.active).map((x) => x.id);
       const aus = k.layers.filter((x) => x.off).map((x) => x.id);
-      if (d.state.off) return this.api.setCampaignLayers(c, an, aus.filter((x) => x !== l));
+      /* Gegen den eben gelesenen Stand (T-449). */
+      const rev = k.campaign.revision;
+      if (d.state.off) return this.api.setCampaignLayers(c, an, aus.filter((x) => x !== l), rev);
       /* Eigene Kante: herausnehmen. Über eine Gruppe: ausdrücklich aus (T-088). */
-      return d.state.own ? this.api.setCampaignLayers(c, an.filter((x) => x !== l), aus) : this.api.setCampaignLayers(c, an, [...aus, l]);
+      return d.state.own ? this.api.setCampaignLayers(c, an.filter((x) => x !== l), aus, rev) : this.api.setCampaignLayers(c, an, [...aus, l], rev);
     });
   }
 

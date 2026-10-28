@@ -57,6 +57,21 @@ describe('Api', () => {
     expect(api.neueVersion()).toBe(false);
   });
 
+  it('sends a whole stack against the revision it was computed on (If-Match, T-449)', async () => {
+    const gesehen: (Record<string, string> | undefined)[] = [];
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      gesehen.push(init.headers as Record<string, string>);
+      return { ok: true, status: 200, headers: new Headers(), text: async () => JSON.stringify({ ok: true, layers: [] }) } as Response;
+    });
+    const api = TestBed.inject(Api);
+    await api.setCampaignLayers('camp_a', ['ly1'], undefined, 7);
+    await api.setCampaignCompare('camp_a', { layers: ['ly2'] }, 8);
+    /* `players` allein ist eine Änderung, kein Stand; ohne Revision nichts. */
+    await api.setCampaignCompare('camp_a', { players: true }, 8);
+    await api.setCampaignLayers('camp_a', ['ly1']);
+    expect(gesehen.map((h) => h?.['If-Match'])).toEqual(['"7"', '"8"', undefined, undefined]);
+  });
+
   it('names what is loading', () => {
     expect(wasLaedt('/api/registry/usage')).toBe('registry');
     expect(wasLaedt('/api/list?area=rules')).toBe('list');

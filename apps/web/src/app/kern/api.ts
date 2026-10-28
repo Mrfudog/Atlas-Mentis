@@ -821,8 +821,14 @@ export interface KampagnenGeschichte {
   adventures: (GeschichtsZeile & { layer: string; chapters: GeschichtsZeile[] })[];
 }
 
+/** `If-Match` für ein Schreiben gegen einen gelesenen Stand (T-449); ohne Revision nichts. */
+export function ifMatch(revision: number | null | undefined): RequestInit {
+  return typeof revision === 'number' ? { headers: { 'If-Match': `"${revision}"` } } : {};
+}
+
 export interface KampagnenEbenen {
-  campaign: { id: string; name: string };
+  /** `revision`: gegen diesen Stand schickt die Seite den ganzen Stapel (`If-Match`, T-449). */
+  campaign: { id: string; name: string; revision?: number | null };
   may: Recht;
   /** Die aufgeschalteten von unten nach oben, darunter die übrigen. */
   layers: KampagnenEbene[];
@@ -2351,11 +2357,19 @@ export class Api {
   }
   /** Der ganze Stapel, von unten nach oben; was fehlt, ist danach aus.
    *  `off` (T-088): die Ebenen, die trotz aufgeschalteter Gruppe aus sind;
-   *  ohne bleiben die Abschaltungen, wie sie sind. */
-  setCampaignLayers(campaign: string, layers: string[], off?: string[]): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {
+   *  ohne bleiben die Abschaltungen, wie sie sind. `revision` (T-449):
+   *  der Stand, gegen den die Liste gerechnet ist — hat inzwischen jemand
+   *  anders geschaltet, antwortet der Server 409 statt still zu überschreiben. */
+  setCampaignLayers(
+    campaign: string,
+    layers: string[],
+    off?: string[],
+    revision?: number | null,
+  ): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/layers`, {
       method: 'PUT',
       body: JSON.stringify(off ? { layers, off } : { layers }),
+      ...ifMatch(revision),
     });
   }
   /** Quellenkürzel → voller Titel (T-088) und → Herausgeber (T-094). */
@@ -2366,10 +2380,13 @@ export class Api {
   setCampaignCompare(
     campaign: string,
     neu: { layers?: string[]; players?: boolean },
+    revision?: number | null,
   ): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/compare`, {
       method: 'PUT',
       body: JSON.stringify(neu),
+      /* Nur die ganze Liste ist ein Stand; `players` allein ist eine Änderung. */
+      ...(neu.layers ? ifMatch(revision) : {}),
     });
   }
   /** Eine Ebene dazuschalten; der Server sucht ihr den Platz im Stapel. */
