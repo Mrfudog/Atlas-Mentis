@@ -383,6 +383,12 @@ wiederkommen, werden sie neu geschrieben.
   der Maske vorn, auch leer; ohne Gestaltung einer Art gilt das Heutige
   (`createLayout`), Pflichtfelder fragt der Dialog immer, der Designer
   warnt (`createMissingRequired`). Die Leiste „Views“ bietet sie nicht an.
+  **Ein Ablauf ist eine Maske mit `steps`** (REQ-440, E-176,
+  `packages/model/src/steps.ts`): jedes Kind eine Seite mit Zurück und
+  Weiter; wo man steht, liest `currentStep` aus dem Befüllten, gespeichert
+  wird kein Fortschritt. Das Element `builder` in `create` führt „New
+  article“ in den Charakter-Assistenten — Vorgabe der Spielerfigur
+  (Migration 154).
   **Eigene
   Ansichten** legt man im Register an (Registry › Views, E-030 b; die
   erste ist der Handzettel `handout`); gewählt

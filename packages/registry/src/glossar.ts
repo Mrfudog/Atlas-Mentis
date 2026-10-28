@@ -81,6 +81,16 @@ const APP: AppTerm[] = [
     see: '/registry',
   },
   {
+    term: 'Steps',
+    aliases: ['Guided flow', 'Step'],
+    sort: 'app',
+    definition: 'An element of a create form that splits it into pages, one shown at a time with Back and Next.',
+    effect: 'Each element inside is a page; its heading is the page title. Where you are is read from what is filled in — nothing else is saved.',
+    example: 'A shop created in three pages: keeper, prices, wares.',
+    translations: { de: 'Ablauf' },
+    see: '/registry',
+  },
+  {
     term: 'Create form',
     aliases: ['Create', 'Create (full)', 'createFull'],
     sort: 'app',

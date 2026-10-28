@@ -428,6 +428,8 @@ export class Ansichtsdesigner {
     if (p && holdsChildren(neu)) neu.children = [];
     if (el === 'section' || el === 'collapsible') neu.text = p?.name ?? '';
     if (el === 'tabs') neu.children = [{ id: freeElementId(this.baum(), 'tab'), el: 'tab' as LayoutElement['el'], text: 'Tab', children: [] }];
+    /* Ein Ablauf beginnt mit einer Seite (REQ-440); weitere sind Abschnitte darin. */
+    if (el === 'steps') neu.children = [{ id: freeElementId(this.baum(), 'section'), el: 'section', text: 'Step 1', children: [] }];
     if (el === 'prose') neu.fields = 'all';
     else if (p?.werte && el !== 'reader') neu.fields = [];
     this.aendere(insertElement(this.baum(), neu, this.gewaehlt()));

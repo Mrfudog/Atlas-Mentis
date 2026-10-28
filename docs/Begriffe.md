@@ -662,6 +662,17 @@ schneller machen soll und nicht strenger, fragt der Dialog die
 Pflichtfelder trotzdem: eine Maske, die eines vergisst, verhindert sonst
 das Anlegen — der Designer sagt es stattdessen.
 
+**Ein Ablauf ist eine Maske mit Seiten** (T-425, REQ-440, E-176). Der
+Charakter-Assistent war eine eigene Seite mit eigenem Code; ein zweiter
+Ablauf hätte eine zweite gebraucht. Jetzt ist ein Ablauf das Element
+`steps` in einer Erfassungsmaske, jedes Kind eine Seite. **Wo man steht,
+steht nirgends** — es wird aus dem gelesen, was befüllt ist. Ein
+gespeicherter Fortschritt wäre die zweite Stelle, die falsch steht,
+sobald jemand den Artikel ausserhalb des Ablaufs bearbeitet. Die
+Spielerfigur nimmt den Assistenten über das Element `builder` in ihrer
+Maske `create`: dieselbe Frage („was fragt das Anlegen?“), eine andere
+Antwort.
+
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es an diesen Orten
 nicht. Ein Verweis ist ein Verweis, und eine Artikelseite ist eine
 Artikelseite — wer das jedes Mal sagen muss, sagt es irgendwann falsch.

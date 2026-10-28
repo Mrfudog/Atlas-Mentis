@@ -363,6 +363,12 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Player character',
     extends: ['Creature'],
     schema: merge(g.CharacterInfo),
+    /* Anlegen führt in den Assistenten (T-425, REQ-433, E-169): Abstammung,
+       Hintergrund und Klasse sind Kanten mit Wahlen, die keine Feldmaske
+       fragen kann. */
+    views: {
+      create: [{ id: 'pc-builder', el: 'builder' }],
+    },
   },
 
   Place: {

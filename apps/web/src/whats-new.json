@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-steps",
+      "date": "2026-10-28",
+      "title": "Guided creation in steps",
+      "text": "Add the element Steps to a type’s Create (full) view to walk through creating it page by page, with Back and Next. New article for a player character now opens the character builder directly.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-28-create-forms",
       "date": "2026-10-28",
       "title": "Decide what creating asks",

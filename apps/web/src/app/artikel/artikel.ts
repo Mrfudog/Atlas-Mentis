@@ -22,6 +22,8 @@ import {
   proseFields,
   relationsFrom,
   createLayout,
+  createSteps,
+  currentStep,
   primaryInterface,
   relationDef,
   resolveView,
@@ -29,7 +31,7 @@ import {
   isMap,
   isLayer,
 } from '@nw/model';
-import type { ElementStyle, Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import type { CreateStep, ElementStyle, Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { bringsIntoLayer, homeLayers, pickView, spellcastingOf, withCastRelations, withHomeLayer } from '@nw/model';
 import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
 import { Stil } from '../muster/stil';
@@ -544,6 +546,21 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 </ul>
               }
 
+              <!-- Ein geführter Ablauf (T-425, REQ-440, E-176): eine Seite auf einmal;
+                   wo man anfängt, liest currentStep aus dem Befüllten. -->
+              @if (schritte(); as st) {
+                <nav class="schritte" aria-label="Steps">
+                  <ol>
+                    @for (s of st; track s.id; let i = $index) {
+                      <li>
+                        <button type="button" class="chipb" [attr.aria-current]="i === schritt() ? 'step' : null" (click)="schritt.set(i)">
+                          {{ i + 1 }}. {{ s.title }}
+                        </button>
+                      </li>
+                    }
+                  </ol>
+                </nav>
+              }
               <div class="maske">
                 <!-- Die Ebene steht immer zuerst (T-383): wohin der Artikel gehört,
                      bevor man sagt, was darin steht. Angeboten werden die Ebenen,
@@ -667,6 +684,13 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   </label>
                 }
               </div>
+              @if (schritte(); as st) {
+                <div class="schrittknoepfe">
+                  <button type="button" [disabled]="schritt() === 0" (click)="schritt.set(schritt() - 1)">Back</button>
+                  <span class="dim">Step {{ schritt() + 1 }} of {{ st.length }}</span>
+                  <button type="button" class="pri" [disabled]="schritt() >= st.length - 1" (click)="schritt.set(schritt() + 1)">Next</button>
+                </div>
+              }
               <!-- T-195: die übrigen Felder sind erreichbar, nicht ausgebreitet. -->
               @if (weitereZahl()) {
                 <div class="feldwahl-anker">
@@ -2027,8 +2051,19 @@ export class Artikel implements SchnellKontext {
   protected readonly gezeigt = signal<ReadonlySet<string>>(new Set());
   protected readonly sichtbareFelder = computed(() => {
     const da = this.gezeigt();
-    return this.felder().filter((f) => da.has(f.ref));
+    const alle = this.felder().filter((f) => da.has(f.ref));
+    /* Im Ablauf (REQ-440): die Felder der aktuellen Seite; was keine Seite
+       nennt (Pflicht, Stand), steht auf der letzten. */
+    const st = this.schritte();
+    if (!st?.length) return alle;
+    const i = Math.min(this.schritt(), st.length - 1);
+    const hier = new Set(st[i]!.fields);
+    const genannt = new Set(st.flatMap((s) => s.fields));
+    return alle.filter((f) => hier.has(f.ref) || (i === st.length - 1 && !genannt.has(f.ref)));
   });
+  /** Die Seiten eines Ablaufs in der Maske `createFull` (T-425, E-176), sonst `null`. */
+  protected readonly schritte = signal<CreateStep[] | null>(null);
+  protected readonly schritt = signal(0);
   /** Die übrigen, nach Bestandteil gruppiert, für die Auswahl. */
   protected readonly feldwahlOffen = signal(false);
   protected readonly feldSuche = signal('');
@@ -2405,11 +2440,15 @@ export class Artikel implements SchnellKontext {
        gestalteten Erfassungsmaske da, auch leer, und vorn in ihrer
        Reihenfolge (REQ-432, E-169); die übrigen holt „+ Add field“. */
     const maske = this.edit() === 'create' ? createLayout(r, 'createFull', primaryInterface(e)) : null;
+    const st = maske?.designed ? createSteps(r, 'createFull', primaryInterface(e)) : null;
     if (maske?.designed) {
-      const rang = new Map(maske.fields.map((ref, i) => [ref, i]));
-      for (const ref of maske.fields) if (out.some((f) => f.ref === ref)) da.add(ref);
+      const felder = [...maske.fields, ...(st ?? []).flatMap((s) => s.fields)];
+      const rang = new Map(felder.map((ref, i) => [ref, i]));
+      for (const ref of felder) if (out.some((f) => f.ref === ref)) da.add(ref);
       out.sort((a, b) => (rang.get(a.ref) ?? rang.size) - (rang.get(b.ref) ?? rang.size));
     }
+    this.schritte.set(st);
+    this.schritt.set(st ? currentStep(r, st, e) : 0);
     this.felder.set(out);
     this.gezeigt.set(da);
     this.feldwahlOffen.set(false);

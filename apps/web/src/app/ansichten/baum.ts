@@ -116,6 +116,19 @@ const NICHT_ALS_WERT = ['Identity', 'Visibility', 'Source'];
             }
           </div>
         }
+        @case ('steps') {
+          <!-- Gelesen stehen die Seiten eines Ablaufs untereinander (T-425, REQ-440). -->
+          <ol class="ablauf" [attr.data-el]="el.id">
+            @for (k of el.children ?? []; track k.id) {
+              <li><ng-container *ngTemplateOutlet="knoten; context: { $implicit: k }" /></li>
+            }
+          </ol>
+        }
+        @case ('builder') {
+          <p class="hinweis" [attr.data-el]="el.id">
+            <a routerLink="/characters/new">Open the character builder</a> — ancestry, background, class and their choices, step by step.
+          </p>
+        }
         @case ('collapsible') {
           <details class="klapp" [open]="!!el.open">
             <summary>{{ el.text || 'More' }}</summary>

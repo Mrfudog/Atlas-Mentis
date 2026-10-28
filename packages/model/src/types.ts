@@ -655,7 +655,21 @@ export type LayoutElementKind =
    * Betrachter bekommt. „Table from edges" und die Liste „Contains" gehen
    * darin auf (Schnitt 3).
    */
-  | 'collection';
+  | 'collection'
+  /**
+   * **Ein geführter Ablauf** (T-425, REQ-440, E-176): jedes Kind ist eine
+   * Seite, sein `text` ihr Titel. In einer Erfassungsmaske zeigt die
+   * Bearbeitung eine Seite auf einmal mit Zurück und Weiter; wo man steht,
+   * liest `currentStep` aus dem Befüllten. Gelesen stehen die Kinder
+   * untereinander.
+   */
+  | 'steps'
+  /**
+   * **Der Charakter-Assistent** (T-425, REQ-433, E-169): in der Maske
+   * `create` heisst es, dass „New article“ in den Assistenten führt; auf
+   * einer Seite steht ein Verweis darauf.
+   */
+  | 'builder';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the
