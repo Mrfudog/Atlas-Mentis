@@ -76,6 +76,7 @@ import {
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
 import { sorgeSpielerEbene } from './spielerebene.js';
+import { figurenIn, mitFiguren } from './figurenzuteilung.js';
 import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
 import { inDieGruppe, neueGruppe } from './gruppe.js';
 import { BOARD_EVENT } from './kampagnenboard.js';
@@ -915,7 +916,8 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         isAdmin: u.isAdmin,
         disabled: !!u.disabledAt,
         self: u.id === user.id,
-        actors: figurenMitNamen(alle, u.actorIds ?? []),
+        /* Nur die Figuren dieser Kampagne (T-412). */
+        actors: figurenMitNamen(alle, figurenIn(u, c)),
       }))
       .sort((a, b) => ORDNUNG[a.role] - ORDNUNG[b.role] || a.name.localeCompare(b.name, 'de'));
     /* Die Figuren, die diese Kampagne vergeben darf — für die Auswahl beim
@@ -1048,7 +1050,9 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       }
       const gewollt = new Set(roh as string[]);
       const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-      const bisher = ok.ziel.actorIds ?? [];
+      /* Gefragt und ersetzt wird nur in dieser Kampagne (T-412): die Figuren
+         anderer Runden bleiben, wie sie sind. */
+      const bisher = figurenIn(ok.ziel, c);
       const admin = ok.user.isAdmin;
       for (const id of gewollt) {
         if (bisher.includes(id)) continue;
@@ -1063,7 +1067,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         (id) => gewollt.has(id) || (!admin && alle.has(id) && !vergebbar(alle, id, c)),
       );
       const neu = [...bleibt, ...[...gewollt].filter((id) => !bisher.includes(id))];
-      await repo.putUser({ ...ok.ziel, actorIds: neu });
+      await repo.putUser(mitFiguren(ok.ziel, c, neu));
       await repo.appendEvent('member.actors', ok.ziel.id, { campaign: c, actors: neu, by: ok.user.id });
       const party =
         ok.ziel.roles[c] === 'player' && request.body?.party !== false
