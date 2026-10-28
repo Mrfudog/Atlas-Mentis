@@ -119,7 +119,8 @@ export class Statblock {
       const of = this.quellen();
       if (!namen.length || !of.length) return;
       untracked(() => {
-        for (const q of namen) void this.bestand.liste({ of, q, limit: 20 }).catch(() => undefined);
+        /* Je Übung einmal je Sitzung (T-443), nicht bei jedem neuen Artikelstand. */
+        for (const q of namen) void this.bestand.nachschlagen({ of, q, limit: 20 }).catch(() => undefined);
       });
     });
     /* Worauf eine Fertigkeit rechnet, steht an ihrem Artikel — den holt,

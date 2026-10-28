@@ -125,6 +125,26 @@ export class Bestand {
    * aufnehmen. Für Seiten, die eine Handvoll Artikel einer Art brauchen
    * (die Boards, die Klassen, die Geschichte); das Kompendium fragt selbst.
    */
+  /**
+   * **Einmal nachschlagen** (T-443): dieselbe Frage geht je Sitzung nur
+   * einmal hinaus — der Statblock fragt je Übung nach ihrem Artikel, und
+   * nach jedem Neuholen des Artikels fragte er alle von vorn (auf dev
+   * Dutzende Anfragen nach einem Schaden, und das Speichern stand dahinter
+   * an). Die Zeilen landen wie bei `liste` in `kurz`. Scheitert die Frage,
+   * darf sie wieder gestellt werden.
+   */
+  nachschlagen(frage: ListenFrage): Promise<void> {
+    const schluessel = JSON.stringify(Object.entries(frage).sort(([a], [b]) => a.localeCompare(b)));
+    let p = this.nachgeschlagen.get(schluessel);
+    if (!p) {
+      p = this.liste(frage).then(() => undefined);
+      p.catch(() => this.nachgeschlagen.delete(schluessel));
+      this.nachgeschlagen.set(schluessel, p);
+    }
+    return p;
+  }
+  private readonly nachgeschlagen = new Map<string, Promise<void>>();
+
   async liste(frage: ListenFrage): Promise<Liste> {
     const r = await this.api.list(frage);
     const kurz = new Map(this._kurz());

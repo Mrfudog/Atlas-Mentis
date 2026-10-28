@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-sheet-lookups-once",
+      "date": "2026-10-28",
+      "title": "Sheets stay quick after damage",
+      "text": "A character sheet looks up its proficiencies once instead of again after every change. On a large installation, damage and healing now show in seconds instead of after a long wait.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-first-damage",
       "date": "2026-10-28",
       "title": "First damage shows at once",
