@@ -95,6 +95,9 @@ Nach Gewicht für T-375/T-376:
    2025: „3 (4 in Lair)") verlieren die Lair-Zahl beim Import. Das ist
    ein Importfehler, unabhängig von den Entscheiden: ein Feld
    `Statblock.legendaryActionsLair` und der Importer schreibt es.
+   **Behoben in T-437:** das Feld steht im Register, der Importer
+   schreibt es, und der Satz über den Legendären Aktionen nennt die
+   Zahl im Lair.
 3. **Lair Actions sind ein Artikel je Gruppe, nicht je Option.** Für eine
    Lair-Zeile mit Freitext (E-154) reicht das; für Zähler je Option nicht.
    Initiative 20 steht nur im Text. Der Tracker kann die Regel-Vorgabe 20

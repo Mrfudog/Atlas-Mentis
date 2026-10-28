@@ -185,4 +185,18 @@ describe('GET /api/rolls — das Log am Artikel (T-172)', () => {
     expect(e).toHaveLength(1);
     expect(e[0]!.subjectName).toBeNull();
   });
+
+  it('liest über 1000 Einträge hinaus, seitenweise aus der Datenbank (T-181)', async () => {
+    const { repo, log } = await aufbau();
+    const gwen = (await repo.findUserByName('gwen'))!;
+    for (let i = 0; i < 1205; i++) {
+      await repo.appendEvent('roll', 'cr_wolf', { expr: '1d6', total: 3, rolls: [3], modifier: 0, label: `w${i}`, by: { id: gwen.id, name: 'Gwen' }, campaign: 'camp_a', session: null });
+    }
+    const erste = (await log('Sela', 'subject=cr_wolf&limit=200')).json() as { entries: RollEntry[]; total: number; next: number | null };
+    expect(erste.total).toBe(1205);
+    expect(erste.entries[0]!.label).toBe('w1204');
+    const letzte = (await log('Sela', 'subject=cr_wolf&offset=1200&limit=25')).json() as { entries: RollEntry[]; next: number | null };
+    expect(letzte.entries.map((e) => e.label)).toEqual(['w4', 'w3', 'w2', 'w1', 'w0']);
+    expect(letzte.next).toBeNull();
+  });
 });

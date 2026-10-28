@@ -578,6 +578,9 @@ export const fieldGroups = {
            `Action`-Artikel mit der Aktionsart „Legendary Action" über
            `composedOf`. */
         legendaryActions: { type: 'number', min: 1, title: 'Legendary actions per round' },
+        /* Neuere Statblöcke haben im Lair mehr („3 (4 in Lair)", T-437).
+           Leer heisst: im Lair gleich viele. */
+        legendaryActionsLair: { type: 'number', min: 1, title: 'Legendary actions in lair' },
         /* **Boni, die nicht aus Übung und Übungsbonus folgen** — bei Monstern
            häufig: der Goblin hat Heimlichkeit +6, wo DEX und Übung +4 ergäben.
            `{ "Stealth": 6, "dex": 4 }`: Fertigkeit oder Attribut (für den

@@ -53,6 +53,26 @@ export interface BookLine {
   text: string;
   /** `Typ.feld`, woher der Wert kommt — wo es genau eines ist. */
   ref?: string;
+  /**
+   * **Was sich in dieser Zeile würfeln lässt** (T-181, REQ-070): je Eintrag
+   * der Name, wie er dasteht („Stealth"), der Ausdruck (`+6`, ein W20 mit
+   * Bonus) und die Beschriftung im Log („Stealth check"). Der Text bleibt
+   * daneben stehen — verglichen und gedruckt wird er, gewürfelt hieraus.
+   */
+  rolls?: BookRoll[];
+}
+
+/** Ein Wurf in einer Buchzeile — Fertigkeit, Rettungswurf, Attributsprobe. */
+export interface BookRoll {
+  name: string;
+  /** `+6`, `-1`: ein W20 mit Bonus (M12). */
+  expr: string;
+  label: string;
+}
+
+/** Der Ausdruck für einen W20 mit Bonus (`+3`, `-1`) — so, wie ihn `{{…}}` liest. */
+export function d20Expr(bonus: number): string {
+  return bonus < 0 ? `${bonus}` : `+${bonus}`;
 }
 
 // ------------------------------------------------------------------ Kleinzeug
@@ -184,6 +204,8 @@ export interface AbilityCell {
   score: number | null;
   /** „(+2)", „(−1)" — leer ohne Wert. */
   mod: string;
+  /** Die Attributsprobe (T-181), ohne Wert keine. */
+  check?: BookRoll;
 }
 
 export interface StatblockBook {
@@ -217,7 +239,7 @@ const STATBLOCK_PLACED = new Set([
   'Statblock.acNote', 'Statblock.hp', 'Statblock.hpFormula', 'Statblock.speed', 'Statblock.cr',
   'Statblock.prof', 'Statblock.senses', 'Statblock.languageNote', 'Statblock.resistances',
   'Statblock.vulnerabilities', 'Statblock.immunities', 'Statblock.conditionImmunities',
-  'Statblock.bonuses', 'Statblock.legendaryActions',
+  'Statblock.bonuses', 'Statblock.legendaryActions', 'Statblock.legendaryActionsLair',
   'Abilities', 'Proficiencies.proficient', 'Proficiencies.expertise', 'Proficiencies.saves',
 ]);
 
@@ -271,6 +293,7 @@ export function statblockBook(
       label: abilityProps[key]?.title ?? key.toUpperCase(),
       score,
       mod: score === null ? '' : `(${signedBook(abilityMod(score))})`,
+      ...(score === null ? {} : { check: { name: key.toUpperCase(), expr: d20Expr(abilityMod(score)), label: `${key.toUpperCase()} check` } }),
     };
   });
 
@@ -293,6 +316,10 @@ export function statblockBook(
         })
         .join(', '),
       ref: 'Proficiencies.saves',
+      rolls: saves.flatMap((s) => {
+        const b = bonusFuer(s, s, 1);
+        return b === null ? [] : [{ name: capitalize(s), expr: d20Expr(b), label: `${s.toUpperCase()} save` }];
+      }),
     });
   }
 
@@ -314,6 +341,10 @@ export function statblockBook(
         })
         .join(', '),
       ref: 'Proficiencies.proficient',
+      rolls: fertigkeiten.flatMap((n) => {
+        const b = fertigkeitBonus(n);
+        return b === null ? [] : [{ name: n, expr: d20Expr(b), label: `${n} check` }];
+      }),
     });
   }
   if (sonst.length) details.push({ label: 'Proficiencies', text: sonst.join(', ') });
@@ -619,13 +650,17 @@ export function bookSections(
 
   /* Der Satz über den Legendären Aktionen steht im Buch vor ihnen; die Zahl
      ist ein Feld des Statblocks, der Satz ist Regeltext. */
-  const anzahl = num((owner.components?.['Statblock'] as Card | undefined)?.['legendaryActions']);
+  const sbKarte = owner.components?.['Statblock'] as Card | undefined;
+  const anzahl = num(sbKarte?.['legendaryActions']);
   if (anzahl !== null) {
     const wer = capitalize(creatureRef(bindung, entityName(owner)));
+    /* Im Lair mehr (T-437) — nur genannt, wenn es abweicht. */
+    const lair = num(sbKarte?.['legendaryActionsLair']);
+    const imLair = lair !== null && lair !== anzahl ? ` (${lair} in its lair)` : '';
     for (const s of sections.values()) {
       if (!/legendary/i.test(s.title)) continue;
       s.intro =
-        `${wer} can take ${anzahl} legendary action${anzahl === 1 ? '' : 's'}, choosing from the options below. ` +
+        `${wer} can take ${anzahl} legendary action${anzahl === 1 ? '' : 's'}${imLair}, choosing from the options below. ` +
         `Only one legendary action option can be used at a time and only at the end of another creature's turn. ` +
         `${wer} regains spent legendary actions at the start of its turn.`;
     }

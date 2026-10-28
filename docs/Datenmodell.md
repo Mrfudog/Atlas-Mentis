@@ -515,7 +515,7 @@ flowchart LR
 
 | | Regel | Geprüft durch |
 |---|---|---|
-| S1 | **Der Statblock wächst** (M5): `languageNote` (was keine Sprache ist: „telepathy 120 ft.", „any four languages"), `conditionImmunities` (Verweise auf `Condition`-Artikel, seit T-078; vorher ihre Namen), `legendaryActions` (Anzahl je Runde), `bonuses` (`{"Stealth": 6}` — feste Boni, die nicht aus Übung folgen; der Bogen nimmt sie statt der Rechnung), `token` (Asset). `size` liest die Zeile `Size`, englisch. Er nimmt `Proficiencies`, `Lore` und `Image` dazu; die Umgebung eines Monsters sind Marken. | `validateEntity` |
+| S1 | **Der Statblock wächst** (M5): `languageNote` (was keine Sprache ist: „telepathy 120 ft.", „any four languages"), `conditionImmunities` (Verweise auf `Condition`-Artikel, seit T-078; vorher ihre Namen), `legendaryActions` (Anzahl je Runde), `legendaryActionsLair` (Anzahl im Lair, wo sie abweicht — „3 (4 in Lair)", T-437; der Satz über den Legendären Aktionen nennt sie), `bonuses` (`{"Stealth": 6}` — feste Boni, die nicht aus Übung folgen; der Bogen nimmt sie statt der Rechnung), `token` (Asset). `size` liest die Zeile `Size`, englisch. Er nimmt `Proficiencies`, `Lore` und `Image` dazu; die Umgebung eines Monsters sind Marken. | `validateEntity` |
 | S2 | **Die Übungen wohnen am Statblock**, nicht an der Kreatur: sie gehören zu den Zahlen (Übungsbonus, Attribut). An beiden Stellen wären sie zwei Antworten auf „worin ist sie geübt". | Register (`typeChain`) |
 | S3 | **Was ein Statblock führt, ist die Kante `equips`** (Statblock → Item): der Gegenstand aus dem Buch, kein Inventar. | Kantenprüfung |
 | C1 | **Klasse, Unterklasse, Abstammung, Hintergrund sind Arten unter `Rule`** (Bereich `rules`). Jede nimmt `Proficiencies` (was sie fest gewährt — die Beschriftung heisst dort „Grants proficiency in") und `Choices` (was zu wählen ist, C6). Die Klasse trägt `hitDie`, `primaryAbility`, `startingEquipment`, `multiclassRequirement`, `multiclassProficient`, `subclassTitle`, mit der Unterklasse `casterProgression` und `spellAbility`; die Abstammung `size`, `speed`, `abilityBonus` (`{"con": 2}`), `age`, `darkvision`, `resistances`. | `validateEntity` |
@@ -2520,13 +2520,24 @@ flowchart LR
 | W1 | **Ein Wurf ist ein Eintrag `roll`** im `event_log`, `subject` der Artikel. `payload` (`RollPayload`): `expr` (mit Vorteil umgeschrieben, `asked` der Ausdruck davor), `rolls` (die einzelnen Würfel und festen Glieder), `modifier`, `total`, `mode` (`adv`/`dis`), `nat` und `crit` (`crit`/`fumble`, nur bei genau einem gezählten W20), `label`, `by` (Konto, Name), `actor` (die Figur), `campaign`, `session`, `hidden`, `entered` (am Tisch gewürfelt und eingetragen, die Handwerksprobe). | `packages/model/src/rolls.ts`, `apps/server/src/wuerfe.ts` |
 | W2 | **Vorteil** schreibt den ersten W20 zu `2d20kh1` (Nachteil `kl1`, `withAdvantage`); Schaden bleibt, wie er ist. | `dice.ts` |
 | W3 | **Die Figur** ist die genannte, wenn sie dem Konto gehört, sonst der Artikel selbst oder die Figur seines Statblocks, sonst die einzige des Kontos. **Die Sitzung** ist die genannte (Play), am Sitzungsartikel er selbst, sonst die am Tisch (`tischSitzung`: die jüngste, an der Karte, Kampf oder Szene läuft). | `wuerfe.ts` |
-| W4 | **Das Log eines Artikels** (`GET /api/rolls`): neueste zuerst, seitenweise, nach Person und Sitzung filterbar. An einer Kreatur auch die Würfe auf ihrem Statblock (`belongsTo` hoch), an einer Sitzung alle, die während ihr fielen (`payload.session`). Gelesen werden die letzten 1000 Einträge. | `wuerfe.ts` |
+| W4 | **Das Log eines Artikels** (`GET /api/rolls`): neueste zuerst, seitenweise, nach Person und Sitzung filterbar. An einer Kreatur auch die Würfe auf ihrem Statblock (`belongsTo` hoch), an einer Sitzung alle, die während ihr fielen (`payload.session`). **Gelesen wird Fenster um Fenster** (je 1000 aus der Datenbank, geordnet nach `at` und `id`, T-181), bis keiner mehr kommt — „Total“ stimmt auch nach dem tausendsten Wurf; ab 50 000 Einträgen hört es auf und sagt `capped`. | `wuerfe.ts` |
 | W5 | **Sichtbarkeit** (`rollVisible`): wer den Artikel nicht sieht (`articleVisible` über das Sieb), sieht seine Würfe nicht. Danach sieht ihn, wer gewürfelt hat, die Leitung der Kampagne des Wurfs jeden, einen verdeckten (`hidden`) sonst niemand, alle übrigen mit einer Rolle an diesem Tisch. Verdeckt würfelt nur die Leitung; `Campaign.playerRolls: 'gm'` macht jeden Wurf der Spielenden verdeckt — festgehalten beim Wurf, ein späteres Umstellen deckt nichts auf. Der Live-Kanal siebt mit derselben Rechnung. | `rolls.ts`, `live.ts` |
 | W6 | **Würfe sind Spielgeschehen, kein Inhalt:** sie stehen in keiner Ausfuhr und keiner Übertragung dev→prod. Das Protokoll ist append-only; ein gelöschter Artikel lässt seine Würfe stehen („deleted article"). | — |
 
-Offen: Proben und Rettungswürfe aus dem Bogen, Tabellenwürfe und
-Initiative würfeln noch nicht hierüber — es gibt sie in der Seite noch
-nicht als Knöpfe; wer sie baut, nimmt `POST /api/rolls`.
+| W7 | **Was gewürfelt wird, sagt der Statblock** (T-181): `statblockBook` gibt an den Zeilen *Saving Throws* und *Skills* je Eintrag einen Wurf mit (`BookLine.rolls`: Name, Ausdruck `+6`, Beschriftung „Stealth check“ / „DEX save“), an jedem Attribut die Probe (`AbilityCell.check`, „DEX check“). Der Statblock zeichnet sie als Würfelknöpfe; die Beschriftung steht im Log. Angriff und Schaden würfeln aus dem Aktionstext (`{{+4}}`, `attackLine`), Tabellen über ihre Zeile (T-310), Initiative beim Kampfbeginn (`kampfstart.ts`). | `book.ts`, `artikel/statblock.ts` |
+| W8 | **Die Handwerksprobe würfelt der Server, wenn man will** (T-181): `POST /api/crafting/:id/roll` mit `{ roll: true }` würfelt W20 plus den Bonus der Figur aus ihrem Statblock — Attribut des Rezepts, Übung mit dem Werkzeug, Expertise, feste Buchzahl (`handwerksBonus` → `checkBonus`, dieselbe Rechnung wie am Bogen). Der Eintrag trägt die Würfel und kein `entered`. Ohne Statblock oder Attributswert 422: dann bleibt das Eintragen (`{ total, nat }`). | `apps/server/src/handwerk.ts` |
+
+```mermaid
+flowchart LR
+  B["Statblock<br/>Skills: Stealth [+6]"] -->|"label: Stealth check"| R["POST /api/rolls"]
+  H["Werkbank<br/>Roll check"] -->|"roll: true"| C["POST /api/crafting/:id/roll<br/>W20 + handwerksBonus"]
+  R --> E[("event_log · roll")]
+  C --> E
+  E -->|"Fenster um Fenster"| L["Log am Artikel"]
+```
+
+Offen: eine Würfel-Werkzeugleiste (REQ-407) ist nicht geplant; sie
+nähme denselben Weg (`POST /api/rolls` mit `label`, `subject`, `mode`).
 
 ### 12.2 Übernahme zwischen Installationen (T-130, REQ-155)
 
@@ -2671,7 +2682,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Rule` | `Source` `Vars` | `kind` `autolink` `key` `graph` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` `casts` `partOf` | `composedOf` `affects` `grants` `partOf` `loot` | — |
 | `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` `casts` `partOf` | `composedOf` `affects` `casts` `spellList` `grants` `partOf` | quick, print, handout, overview, full |
-| `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `carryExtra*` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | print, overview, quick, full |
+| `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `carryExtra*` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `legendaryActionsLair` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | print, overview, quick, full |
 | `Subclass` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `spellList` `subclassOf` `grants` `partOf` `tableFor` | `composedOf` `affects` `chose` `grants` `partOf` `knownBy` | overview |
 | `Substitution` | `Rule` | `replaces` `with` `withTags` `rarity` `ratio` | `affects` `casts` `partOf` | `composedOf` `affects` `allowsSubstitution` `grants` `partOf` | — |
 | `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | overview, full |
