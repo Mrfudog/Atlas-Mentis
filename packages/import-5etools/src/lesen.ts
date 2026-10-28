@@ -119,6 +119,12 @@ export interface Datenstand {
   /** Je 5e.tools-Art alle Einträge, ungesiebt. */
   arten: Map<string, Knoten[]>;
   quellen: Map<string, Quelle>;
+  /**
+   * Volle Namen der Quellen, die `books.json`/`adventures.json` nicht
+   * führen (T-420), aus `js/parser.js` — Kürzel klein → Titel. Ohne die
+   * Datei leer; dann heisst die Ebene nach ihrem Kürzel wie bisher.
+   */
+  quellenNamen?: Map<string, string>;
   /** Je Abenteuer (Kürzel, klein) sein Textbaum aus `adventure/` (T-082). */
   abenteuer?: Map<string, Abenteuer>;
   /** Je Buch (Kürzel, klein) sein Textbaum aus `book/` (T-108). */
@@ -143,6 +149,45 @@ function sammle(dir: string, out: string[]): void {
     if (statSync(p).isDirectory()) sammle(p, out);
     else if (f.endsWith('.json')) out.push(p);
   }
+}
+
+/**
+ * **Die vollen Titel aus `js/parser.js`** (T-420): `Parser.SRC_X = "Kürzel"`
+ * und `Parser.SOURCE_JSON_TO_FULL[Parser.SRC_X] = "Titel"`, auch als
+ * Vorlage mit `${Parser.…}`. Gelesen wird nur, was sich ganz auflösen
+ * lässt — ausgeführt wird nichts (die Datei ist fremder Code).
+ */
+export function quellenNamenAusParser(text: string): Map<string, string> {
+  const konst = new Map<string, string>();
+  const wert = (roh: string): string | undefined => {
+    const t = roh.trim();
+    const q = /^"((?:[^"\\]|\\.)*)"$/.exec(t);
+    if (q) return JSON.parse(`"${q[1]}"`) as string;
+    const v = /^`([^`]*)`$/.exec(t);
+    if (!v) return undefined;
+    let fehlt = false;
+    const out = v[1]!.replace(/\$\{Parser\.([A-Za-z0-9_]+)\}/g, (_, n: string) => {
+      const x = konst.get(n);
+      if (x === undefined) fehlt = true;
+      return x ?? '';
+    });
+    return fehlt || out.includes('${') ? undefined : out;
+  };
+  const namen = new Map<string, string>();
+  for (const zeile of text.split('\n')) {
+    const k = /^Parser\.([A-Za-z0-9_]+)\s*=\s*(.+?);\s*$/.exec(zeile);
+    if (k) {
+      const w = wert(k[2]!);
+      if (w !== undefined) konst.set(k[1]!, w);
+      continue;
+    }
+    const n = /^Parser\.SOURCE_JSON_TO_FULL\[Parser\.([A-Za-z0-9_]+)\]\s*=\s*(.+?);\s*$/.exec(zeile);
+    if (!n) continue;
+    const kuerzel = konst.get(n[1]!);
+    const titel = wert(n[2]!);
+    if (kuerzel && titel) namen.set(kuerzel.toLowerCase(), titel);
+  }
+  return namen;
 }
 
 /** Alle Listen aus `data/`. */
@@ -191,13 +236,20 @@ export function lies(datenPfad: string): Datenstand {
   };
   meta('books.json', 'book', 'book');
   meta('adventures.json', 'adventure', 'adventure');
+  /* Was die Kopfdateien nicht nennen, nennt `js/parser.js` (T-420). */
+  const quellenNamen = new Map<string, string>();
+  try {
+    for (const [k, n] of quellenNamenAusParser(readFileSync(join(datenPfad, '..', 'js', 'parser.js'), 'utf8'))) if (!quellen.has(k)) quellenNamen.set(k, n);
+  } catch {
+    /* ohne parser.js keine Ersatznamen */
+  }
   let zauberlisten: Knoten | undefined;
   try {
     zauberlisten = JSON.parse(readFileSync(join(datenPfad, 'generated', 'gendata-spell-source-lookup.json'), 'utf8')) as Knoten;
   } catch {
     /* ohne Nachschlagedatei keine Zauberlisten — kein Fehler */
   }
-  return { arten, quellen, abenteuer: liesAbenteuer(datenPfad), buecher: liesBuecher(datenPfad), ...(zauberlisten ? { zauberlisten } : {}) };
+  return { arten, quellen, quellenNamen, abenteuer: liesAbenteuer(datenPfad), buecher: liesBuecher(datenPfad), ...(zauberlisten ? { zauberlisten } : {}) };
 }
 
 /**
