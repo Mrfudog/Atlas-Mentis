@@ -1063,6 +1063,16 @@ Verspricht eine Kante mehr, als heute jemand liest — `affects` mit `effect`,
 evaluated yet". Sobald ein Auswerter sie liest, muss `intended` weg: der
 Test lässt beides nicht zugleich stehen.
 
+### Vorrang steht an der Kampagne, nicht im Buch (T-403, E-111)
+
+Wer den Dolch aus 2024 über den aus 2014 zieht, während das Buch von 2014
+sonst vorne bleibt, sagt etwas über **seine Runde** und nichts über die
+Bücher. Darum ist der Vorrang eine Kante von der Kampagne (`prefers`) wie
+`enables` und `layerRule`, und kein Feld an einer Ebene: ein Grundregelwerk,
+das drei Runden aufschalten, bliebe sonst für alle drei umsortiert. Er
+ordnet nur — was keine Ebene ins Spiel bringt, bringt auch kein Vorrang.
+Artikel vor Art vor Reihenfolge, weil das Genauere das bewusstere ist.
+
 ### Eine Stufe ist ein Zustand, eine Wirkung ist eine Kante
 
 „Exhaustion 3" ist ein Artikel der Art `Condition` mit `stage` 3 und einer

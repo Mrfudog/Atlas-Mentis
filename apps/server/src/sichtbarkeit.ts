@@ -27,6 +27,9 @@ import {
   GROUP_RELATION,
   layersOf,
   playerSetting,
+  playStack,
+  preferencesOf,
+  versionGroups,
   effectiveAudience,
   entityName,
   isBookPart,
@@ -420,6 +423,28 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
 
       const treffer = filterArticleRows(alle, frage);
       const seite = treffer.slice(offset, offset + limit);
+      /* **Fassungen derselben Sache** (T-403): wie viele es gibt, welche
+         Listen und Verweise zeigen (der höchste Rang, mit dem Vorrang der
+         Kampagne) und welche die Leitung bevorzugt — dort steht „Prefer
+         this version". */
+      const gruppe = versionGroups(zeilen);
+      const rang = playStack(map, z.kampagne, registry);
+      const kopf = new Map<string, { id: string; r: number }>();
+      const zahl = new Map<string, number>();
+      for (const e of zeilen) {
+        const g = gruppe.get(e.id);
+        if (!g) continue;
+        zahl.set(g, (zahl.get(g) ?? 0) + 1);
+        const r = rang.rank(e);
+        const k = kopf.get(g);
+        if (!k || r > k.r) kopf.set(g, { id: e.id, r });
+      }
+      const bevorzugt = new Set(preferencesOf(z.kampagne).map((p) => p.to));
+      const fassungen = (id: string) => {
+        const g = gruppe.get(id);
+        if (!g || (zahl.get(g) ?? 0) < 2) return {};
+        return { versions: { n: zahl.get(g)!, shown: kopf.get(g)?.id === id, ...(bevorzugt.has(id) ? { preferred: true } : {}) } };
+      };
       const darf = await deps.schreibbar(user);
       return {
         may: z.recht,
@@ -462,6 +487,7 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
             players,
             seenBy,
             writable: user.isAdmin || darf(r.id),
+            ...fassungen(r.id),
           };
         }),
       };
