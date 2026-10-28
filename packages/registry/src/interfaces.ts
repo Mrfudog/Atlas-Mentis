@@ -1516,6 +1516,13 @@ export const interfaces: Record<string, InterfaceDef> = {
           when: { field: 'Encounter.kind', has: ['trap', 'hazard'] },
         },
         { id: 'e-yield', el: 'fields', fields: ['Encounter.check'], when: { field: 'Encounter.kind', has: ['resource', 'exploration', 'hazard', 'trap'] } },
+        /* Was vorbereitet ist (T-333): Ort, Karte und Beute als Gruppen —
+           Elemente wie jedes andere, also im Ansichtsdesigner verschieb-
+           und abschaltbar. Leer steht keine da („kein Treffer, kein
+           Kasten"); angelegt werden sie unter „Edit" › Relations. */
+        { id: 'e-place', el: 'collection', text: 'Place', path: [{ relation: 'happensAt' }], show: 'tiles', view: 'quick' },
+        { id: 'e-map', el: 'collection', text: 'Map', path: [{ relation: 'onMap' }], show: 'list' },
+        { id: 'e-loot', el: 'collection', text: 'Loot', path: [{ relation: 'loot' }], show: 'table', props: ['qty', 'chance'] },
         { id: 'e-f', el: 'fields', fields: 'all' },
         { id: 'e-b', el: 'prose', fields: 'all' },
       ],

@@ -904,12 +904,14 @@ export const relations: Record<string, RelationDef> = {
     to: ['*'],
   },
 
+  /* Seit T-333 auch die Begegnung: der Ort, an dem sie vorbereitet ist —
+     unabhängig davon, ob Szene und Begegnung eins werden (E-118). */
   happensAt: {
     type: 'happensAt',
     label: 'happens at',
-    inverseLabel: 'scenes here',
-    means: 'A story happens at a place; the place lists the scenes there.',
-    from: ['Story'],
+    inverseLabel: 'scenes and encounters here',
+    means: 'A story or encounter happens at a place; the place lists the scenes and encounters there.',
+    from: ['Story', 'Encounter'],
     to: ['Place'],
   },
 

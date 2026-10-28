@@ -633,7 +633,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
-- Story — `happensAt` → „scenes here"
+- Story | Encounter — `happensAt` → „scenes and encounters here"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -778,7 +778,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
-- Story — `happensAt` → „scenes here"
+- Story | Encounter — `happensAt` → „scenes and encounters here"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -3114,6 +3114,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
+- `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `participates` → Creature | Statblock | Party — „in the fight"
@@ -3140,7 +3141,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `prose`, `fields`, `prose`, `fields`, `standing`, `collection`, `fields`, `fields`, `prose`
+**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `prose`, `fields`, `prose`, `fields`, `standing`, `collection`, `fields`, `collection`, `collection`, `collection`, `fields`, `prose`
 
 ### Map
 
