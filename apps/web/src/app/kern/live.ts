@@ -52,13 +52,34 @@ export interface LiveEmpfang {
 /** Ein Transport öffnet eine Verbindung und gibt das Schliessen zurück. */
 export type LiveTransport = (empfang: LiveEmpfang) => () => void;
 
+/** Wann der Transport eine Verbindung für tot hält (T-399). */
+export interface SseWache {
+  /** So lange ohne jedes Ereignis — auch ohne `ping` —, und es wird neu verbunden (ms). */
+  stillMs?: number;
+  /** Kommt die Seite zurück (sichtbar, wieder online) und war so lange still, sofort neu (ms). */
+  zurueckMs?: number;
+  /** Wie oft nachgesehen wird (ms). */
+  pruefMs?: number;
+}
+
 /**
  * **Server-Sent Events** (`EventSource`). Der Browser verbindet selbst
  * wieder und schickt dabei `Last-Event-ID`; gibt er auf (der Server sagte
  * 401 oder 503 beim Start), wird hier nach einer Pause neu verbunden —
  * mit `?since=`, weil ein neues `EventSource` den Kopf nicht setzen kann.
+ *
+ * **Eine still tote Verbindung** (T-399, REQ-398 Akzeptanz 2): ein Telefon,
+ * das schlief oder das Netz wechselte, hält oft eine Verbindung, die nichts
+ * mehr bringt und keinen Fehler meldet. Der Server schickt darum alle 25 s
+ * ein `ping`; bleibt `stillMs` lang alles aus, oder kommt die Seite nach
+ * `zurueckMs` Stille wieder in den Blick oder ins Netz, verbindet der
+ * Transport selbst neu — mit `?since=`, also kommt nach, was dazwischen
+ * geschah.
  */
-export function sseTransport(url = '/api/live'): LiveTransport {
+export function sseTransport(url = '/api/live', wache: SseWache = {}): LiveTransport {
+  const stillMs = wache.stillMs ?? 60_000;
+  const zurueckMs = wache.zurueckMs ?? 30_000;
+  const pruefMs = wache.pruefMs ?? 5_000;
   return (empfang) => {
     if (typeof EventSource === 'undefined') return () => undefined;
     let quelle: EventSource | null = null;
@@ -66,14 +87,17 @@ export function sseTransport(url = '/api/live'): LiveTransport {
     let pause = 1000;
     let uhr: ReturnType<typeof setTimeout> | null = null;
     let zu = false;
+    let zuletzt = Date.now();
     const NAMEN = ['hello', 'entity', 'gone', 'session', 'registry', 'reset', 'roll', 'plan'];
 
     const oeffne = (): void => {
       if (zu) return;
       empfang.stand('verbindet');
+      zuletzt = Date.now();
       quelle = new EventSource(letzte ? `${url}?since=${encodeURIComponent(letzte)}` : url, { withCredentials: true });
       quelle.onopen = () => {
         pause = 1000;
+        zuletzt = Date.now();
         empfang.stand('offen');
       };
       quelle.onerror = () => {
@@ -88,9 +112,13 @@ export function sseTransport(url = '/api/live'): LiveTransport {
           empfang.stand('verbindet');
         }
       };
+      quelle.addEventListener('ping', () => {
+        zuletzt = Date.now();
+      });
       for (const name of NAMEN) {
         quelle.addEventListener(name, (ev) => {
           const m = ev as MessageEvent<string>;
+          zuletzt = Date.now();
           if (m.lastEventId) letzte = m.lastEventId;
           try {
             empfang.ereignis(name, JSON.parse(m.data));
@@ -100,10 +128,29 @@ export function sseTransport(url = '/api/live'): LiveTransport {
         });
       }
     };
+    /** Die alte Verbindung zu, eine neue auf — ab dem, was zuletzt kam. */
+    const neu = (): void => {
+      if (zu || !quelle) return;
+      quelle.close();
+      quelle = null;
+      oeffne();
+    };
+    const wach = setInterval(() => {
+      if (Date.now() - zuletzt > stillMs) neu();
+    }, pruefMs);
+    const zurueck = (): void => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (Date.now() - zuletzt > zurueckMs) neu();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', zurueck);
+    if (typeof window !== 'undefined') window.addEventListener('online', zurueck);
     oeffne();
     return () => {
       zu = true;
       if (uhr) clearTimeout(uhr);
+      clearInterval(wach);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', zurueck);
+      if (typeof window !== 'undefined') window.removeEventListener('online', zurueck);
       quelle?.close();
       quelle = null;
       empfang.stand('aus');
