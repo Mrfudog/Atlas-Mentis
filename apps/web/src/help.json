@@ -252,6 +252,13 @@
           ]
         },
         {
+          "heading": "Encounters",
+          "text": [
+            "An encounter shows what its kind needs: a conversation (social) lists who takes part — the creatures and factions it features — with what each thinks of the party; change that on the creature, under its relationships. A trap or hazard shows its hazards as cards.",
+            "GM: under each hint of a puzzle, “Reveal to the party” tells the party that one hint and nothing else; a revealed hint says “The party knows this hint”."
+          ]
+        },
+        {
           "heading": "Crafting (recipes)",
           "text": [
             "On a recipe, “Start crafting” makes a crafting order. Its material stays reserved in the inventory of the character and the party until the order ends.",

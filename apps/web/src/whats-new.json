@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-encounter-stances",
+      "date": "2026-10-28",
+      "title": "Who stands where, and hints with one click",
+      "text": "A conversation encounter lists who takes part and what each thinks of the party. Under each puzzle hint the GM can press “Reveal to the party” to share just that hint. Trap and hazard encounters show their hazards as cards.",
+      "area": "Story",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-deleted-trash",
       "date": "2026-10-28",
       "title": "Deleted: restore within 30 days",
