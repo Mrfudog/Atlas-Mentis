@@ -1178,6 +1178,14 @@ function formAus(x: unknown, i: number): RevealShape | null {
   return { id, kind: 'rect', x: Math.min(x0, x0 + w), y: Math.min(y0, y0 + h), w: Math.abs(w), h: Math.abs(h), ...wem };
 }
 
+/**
+ * Eine Form aus den Angaben an einer Kante (`zone`, T-349), gelesen wie die
+ * in `Map.reveal`: ein Rechteck darf negativ stehen, Unlesbares ist `null`.
+ */
+export function shapeOf(props: unknown): RevealShape | null {
+  return formAus(props, 0);
+}
+
 /** Die aufgedeckten Formen, wie sie in `Map.reveal` stehen; Unlesbares fällt weg. */
 export function revealShapes(e: Entity): RevealShape[] {
   return rohReveal(e).flatMap((x, i) => formAus(x, i) ?? []);

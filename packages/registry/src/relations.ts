@@ -1141,7 +1141,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'zone',
     inverseLabel: 'lies on',
     means: 'A map has a zone of a kind (difficult terrain, darkness); the zone kind lists where it lies.',
-    intended: 'Draw on the map screen and count it: a zone should change movement and sight where it lies.',
     from: ['Map'],
     to: ['ZoneKind'],
     props: {

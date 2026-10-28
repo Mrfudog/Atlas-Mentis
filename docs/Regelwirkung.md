@@ -25,13 +25,13 @@ zu entstehen.
 | 3 | Zwei Aktionskataloge, zwei Kostenleser; nur Dash/Disengage wirken | **eine Quelle**; Dodge, Help, Hide wirken (Vorteil/Nachteil), Ready als Eintrag | `COMMON_ACTION_CATALOGUE`, `turnTypeOf`/`costOf` (`actions.ts`); Server `aktionWirkt`, `trefferWurf` | `apps/server/test/regelwirkung.test.ts` › Punkt 3, `regelwirkung.test.ts` › Punkt 3 |
 | 4 | Zwei Übungsbonus-Formeln | **eine Quelle** | `proficiencyBonus` (`calc.ts`), Register `profBonus(hasClass.level)` | `regelwirkung.test.ts` › Punkt 4 |
 | 5 | Passive Wahrnehmung ohne Übung/Expertise | **wirkt** | `checkBonus` (`calc.ts`), Register `10+check(wis.Perception)`, Bogen `passivePerception` | `regelwirkung.test.ts` › Punkt 5 |
-| 6 | Zugraster sperrt Verbündete, kein schwieriges Gelände | Folgeaufgabe | — | — |
+| 6 | Zugraster sperrt Verbündete, kein schwieriges Gelände | **wirkt** (T-349): durch Verbündete ja, auf ihnen enden nein; Zonen mit `moveCost` kosten je Feld mehr; der Server rechnet die Fuss nach | `planGrid`, `mapTerrain`, `terrainCosts` (`zugplan.ts`), `pathFeet` (`movement.ts`); Server `planDurchlass`, `wegeNachrechnen` | `packages/model/test/zugplan-raster.test.ts`, `apps/server/test/zugplan-raster.test.ts`, E2E `zugplan-raster.spec.ts` |
 | 7 | drawStage, handActions, Sicht, Reise, tickEntries nur im Prototyp | Folgeaufgabe | — | — |
 | 8 | Reichweite nur in der Maske, lange Reichweite ohne Nachteil | Folgeaufgabe | — | — |
 | 9 | Kein Auslöser für Rasten | **wirkt** (T-352): kurze Rast (Trefferwürfel), lange Rast (TP, Trefferwürfel, Plätze, Erschöpfung, Todesrettungen) am Bogen; offen: Pakt-Plätze bei kurzer Rast, Merkmale mit Nutzungen, Rast für die ganze Gruppe | `longRest`, `spendHitDie`, `stageDown` (`rest.ts`); Bogen `kopf.ts` | `packages/model/test/rest.test.ts` |
 | 10 | Tragestufen ohne Folge, ZoneInfo unausgewertet | Folgeaufgabe | — | — |
 | 11 | Registerformeln als Brücke zu Automationen | Grundlage: `profBonus`, `check` sind neue Funktionen des Rechenwerks | `calc.ts` (`FUNCTIONS`) | `regelwirkung.test.ts` › Punkt 4, 5 |
-| 12 | Kanten mit `intended` ohne Auswerter | `equips` wird gelesen (Wirkungen), `intended` weg; `affects`, `zone`, `loot`, `entry`, `route` offen | `itemsAt` | `edges.test.ts` |
+| 12 | Kanten mit `intended` ohne Auswerter | `equips` wird gelesen (Wirkungen), `zone` vom Zugplan (Bewegungskosten, T-349), `intended` dort weg; `affects`, `loot`, `entry`, `route` offen | `itemsAt`, `mapTerrain` | `edges.test.ts` |
 
 ## Punkt 1 — was jetzt wirkt
 
@@ -105,6 +105,47 @@ den Betrag weiter ohne Abwehr ab; Wirkungen, die nur unter einer
 Bedingung gelten (Restrained: Nachteil auf DEX-Rettungswürfe, Paralyzed:
 Krit in 5 ft), brauchen noch eigene Ziele.
 
+## Punkt 6 — was jetzt wirkt (T-349)
+
+Das Raster des Zugplans (`planGrid`) kennt drei Sorten Feld: frei,
+**gesperrt** (Gegner, Wände) und **Durchgang** (Verbündete, `noStop`): man
+darf hindurch, aber nicht darauf stehen bleiben — 5e erlaubt das Ziehen
+durch den Platz einer freundlichen Kreatur. Wer verbündet ist, sagt der
+Server (`seiteVon`: Gruppe, Spielerfiguren, `ally` an der Begegnung; die
+Seite der planenden Figur zählt) und schickt die Markerkanten als
+`passable` mit.
+
+Schwieriges Gelände sind die Zonen der Karte (Kante `zone` auf eine
+`ZoneKind` mit `moveCost` über 1, REQ-208): `mapTerrain` liest sie als
+Formen mit Kosten, `terrainCosts` rastert sie aufs Gitter (die Mitte eines
+Feldes in der Form; das teuerste gilt). Eine Zone mit `hiddenUntil` zählt
+für Spielende erst, wenn sie gefunden ist (`props.found`) — ein Umweg um
+eine unbekannte Falle hätte sie verraten. Die Leitung sieht und zählt sie.
+
+Der Server glaubt die Fuss der Maske nicht: `wegeNachrechnen` baut dasselbe
+Raster aus der gesiebten Karte und zählt je Bewegung mit `pathFeet` nach.
+Ein Weg muss beim Token anfangen (oder wo der letzte endete), Schritt für
+Schritt gehen und darf nicht durch einen Gegner, eine Wand oder bis auf
+einen Verbündeten führen; dann prüft `planBudget` das Tempo mit den
+nachgerechneten Fuss.
+
+```mermaid
+flowchart LR
+  K[Karte: Marker, Wände, Zonen] --> D[planDurchlass<br/>passable + terrain]
+  D --> G[planGrid<br/>blocked · noStop · cost]
+  G --> M[Maske: planReach, planPath]
+  M -->|Weg + behauptete Fuss| S[Server: wegeNachrechnen]
+  G --> S
+  S -->|pathFeet| B[planBudget]
+  B -->|zu weit| X[422]
+  B -->|passt| P[Plan mit den Fuss des Servers]
+```
+
+Noch nicht: die Diagonalen zählen je Bewegung von vorn (wie die Maske), die
+Grösse der planenden Figur (`span`) nimmt das Raster des Plans noch nicht
+mit, und Gelände, das nur für einige gilt (Spinnennetz, Wurzeln einer
+Druidin), bräuchte eine Regel an der Zonenart.
+
 ## Prüfen nach einem Release
 
 1. `pnpm vitest run packages/model/test/regelwirkung.test.ts apps/server/test/regelwirkung.test.ts` — grün.
@@ -116,4 +157,7 @@ Krit in 5 ft), brauchen noch eigene Ziele.
    Einen Bogenschuss über die lange Reichweite planen → „with
    disadvantage"; einen Schlag auf ein entferntes Ziel einreichen → 422
    „out of range"; Zustand „Prone" am Ziel → aus 5 ft Vorteil.
+   Auf einer Karte mit einer Zone „Difficult terrain“ (`moveCost` 2): der
+   Bereich zeigt die Felder braun und reicht dahinter kürzer; ein Weg durch
+   eine verbündete Figur geht, auf ihr enden nicht (T-349).
 3. Diese Tabelle nachziehen, wenn eine Lücke geschlossen ist.

@@ -148,6 +148,12 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
             <p class="stand" role="status">
               @if (modus() === 'move') {
                 Tap a blue square to move there ({{ budget().left.movement }} ft left).
+                @if (lage()?.terrain?.length) {
+                  Brown squares are difficult terrain: each costs double.
+                }
+                @if (lage()?.passable?.length) {
+                  You may pass through allies but not stop on them.
+                }
                 <button type="button" class="klein" (click)="modus.set('idle')">Done</button>
               } @else if (gewaehlt(); as t) {
                 Pick a target for <b>{{ t.name }}</b> (range {{ t.range }} ft{{ t.longRange ? ', long ' + t.longRange : '' }}).
@@ -667,6 +673,8 @@ export class Zugplaner {
       paths: wege,
       steps: this.schritte(),
       threats: l.threats ?? [],
+      passable: l.passable ?? [],
+      terrain: l.terrain ?? [],
     };
   });
 

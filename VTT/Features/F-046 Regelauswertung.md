@@ -64,3 +64,32 @@ flowchart LR
   `feet`.
 - Die Zustandsartikel auf dev: Protokoll
   `docs/Nachtarbeit/2026-10-21-T-351.md`.
+
+## Verbündete und schwieriges Gelände im Zugplan (T-349)
+
+Stand 28.10.2026. Der Weg im Zugplan geht **durch Verbündete**, endet aber
+nicht auf ihnen, und **schwieriges Gelände** aus den Zonen der Karte
+(`ZoneKind.moveCost`, 2 = doppelt) kostet je Feld mehr. Die Maske zeigt
+solche Felder im Bereich braun. Der Server zählt die Fuss eines
+eingereichten Wegs selbst und lehnt einen zu langen ab — was die Maske
+behauptet, zählt nicht.
+
+```mermaid
+flowchart LR
+  K[Karte: Marker, Wände, Zonen] --> D[planDurchlass: passable + terrain]
+  D --> G[planGrid: blocked · noStop · cost]
+  G --> M[Maske: Bereich und Weg]
+  M -->|Weg| S[Server: wegeNachrechnen / pathFeet]
+  S --> B{planBudget}
+  B -->|zu weit oder blockiert| X[422]
+  B -->|passt| P[Plan mit den Fuss des Servers]
+```
+
+- Wer verbündet ist: `seiteVon` am Server (Gruppe, Spielerfiguren,
+  `ally` an der Begegnung), mitgeschickt als `passable` (Markerkanten).
+- Gelände: `mapTerrain` und `terrainCosts` (`packages/model/src/zugplan.ts`);
+  eine versteckte Zone (`hiddenUntil`) zählt für Spielende erst, wenn sie
+  gefunden ist.
+- Nachrechnen: `pathFeet` (`packages/model/src/movement.ts`) — Schritt für
+  Schritt, mit Wänden, Gegnern und dem Ende nicht auf einem Verbündeten.
+- Grundlinie und Prüfschritte: [docs/Regelwirkung.md](../../docs/Regelwirkung.md) › Punkt 6.
