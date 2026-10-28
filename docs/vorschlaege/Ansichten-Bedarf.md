@@ -39,7 +39,7 @@ dafür legt dieser Stand an, die Vorgabe der Kachel gehört T-339. Offen: E-124 
 - **Nicht umgesetzt, weil es eine Entscheidung braucht:** Varianten einer
   Art an einem Ort (Kreatur „Kampf", Ort „Reiseführer") — E-124. Grosse
   Blöcke zerlegen: T-282.
-- **Spalten der Übersicht (T-344, Migration 156):** elf Arten, die für
+- **Spalten der Übersicht (T-344, Migration 158):** elf Arten, die für
   `overview` nichts sagten, nehmen die Werte der Karte, soweit sie als
   Spalte taugen — Rohwerte, kein Mass, kein langer Text (das Ziel einer
   Fraktion ist beides: lang und oft ein Geheimnis). Untertypen erben sie:
@@ -232,7 +232,7 @@ Vorgängerin (die Grundreihenfolge gilt für alle).
   dem Register kommen (Startzeilen) oder die Leitung sie im Designer anlegt,
   ist ihre Entscheidung. Umsetzung danach: T-345.
 - ~~**T-344 — Spalten der Übersicht**~~ umgesetzt am 28.10. (oben,
-  Kurzfassung; Migration 156).
+  Kurzfassung; Migration 158).
 - **T-282 — grosse Blöcke.** Die Liste unten; am dringendsten `sheet`,
   `turn`, `spells` der Kreatur und `crawl` am Ort, weil eine Variante
   (E-124) Teile daraus bräuchte.

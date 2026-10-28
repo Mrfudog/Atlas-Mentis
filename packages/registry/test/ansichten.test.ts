@@ -13,7 +13,7 @@ import { seedRegistry, typeViews } from '../src/index.js';
 const migration = (n: string) => readFileSync(new URL(`../../../apps/server/migrations/${n}.sql`, import.meta.url), 'utf8');
 const sql = migration('052_ansichten_je_art');
 /* Migrationen, die eine Zeile aus 052 später nachziehen — die letzte gilt. */
-const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '094_quelleninhalt', '123_ansichten_je_art_und_stufe', '137_struktur', '156_vorgabespalten'].map(migration);
+const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '094_quelleninhalt', '123_ansichten_je_art_und_stufe', '137_struktur', '158_vorgabespalten'].map(migration);
 /* Die Suche liest quick, quick neu geordnet (T-346): andere Form, eigene Prüfung. */
 const zusammen = migration('127_quick_statt_search');
 
