@@ -243,8 +243,8 @@ geraten:
 
 | Gruppe | Regel | Quelle in 5etools-src |
 |---|---|---|
-| **Official** | jedes Buch aus `data/books.json` / `data/adventures.json`, das nicht Partnered ist | `SourceUtil.isSiteSource`: was die Seite selbst führt, ist kein Homebrew |
-| **Partnered** | RMBRE, RMR, EGW, ToR, DD, FS, US, CRCotN, HftT, LRDT, TD | `Parser.SOURCES_PARTNERED_WOTC` in `js/parser.js` — seit Dez. 2025 leer und auskommentiert, weil D&D Beyond diese Bücher als „Official" führt; die alte Liste gilt hier, damit Partner-Inhalte erkennbar bleiben |
+| **Official** | jedes Buch aus `data/books.json` / `data/adventures.json`, seit 28.10.2026 auch die Partner-Bücher (E-193) | `SourceUtil.isSiteSource`: was die Seite selbst führt, ist kein Homebrew |
+| Partnered (Kategorie, seit E-193 kein Herausgeber) | RMBRE, RMR, EGW, ToR, DD, FS, US, CRCotN, HftT, LRDT, TD | `Parser.SOURCES_PARTNERED_WOTC` in `js/parser.js` — seit Dez. 2025 leer und auskommentiert, weil D&D Beyond diese Bücher als „Official" führt; die alte Liste gilt hier, damit Partner-Inhalte erkennbar bleiben. Die Gruppe behält ihre Id `e5_publisher_partnered`, ordnet aber nicht mehr nach Herausgeber (Migration 155), und kommt nicht in „D&D 5e (2014)" |
 | **Third party** | legt der Importer nie an | `5etools-src` enthält kein Buch eines fremden Verlags; Drittanbieter kämen über Homebrew (`partnered`-Kennzeichen an der Quelle in `homebrew/`), das wir nicht einlesen |
 | **Homebrew** | jede hier angelegte Ebene ohne Herausgeber-Gruppe — die Kampagnenebenen, eigene Ebenen; eine eingelesene ohne Gruppe heisst **Unknown** (T-109; bis 28.10. „Unassigned“, das Wort trägt seither die Parkplatz-Ebene) | `BrewUtil2.hasSourceJson`: Homebrew liegt nicht in `5etools-src` |
 | Non-standard | `SOURCES_NON_STANDARD_WOTC` und Kürzel mit `PS…` (Plane Shift) oder `MCV…` | „UA/Etc. Sources" der Blocklist, `SourceUtil.isNonstandardSourceWotc` ohne UA (UA kommt nicht herein) |
@@ -261,8 +261,8 @@ Ebene an eine andere Herausgeber-Gruppe):
 
 - *EGW mit ToR, DD, FS, US; CRCotN* (Darrington Press / Critical Role),
   *RMR, RMBRE, HftT* (Rick and Morty), *LRDT* (LEGO), *TD* (Tarot Deck,
-  Clarkson Potter): als **Partnered** eingeordnet, obwohl 5e.tools und D&D
-  Beyond sie seit Dez. 2025 als offiziell führen.
+  Clarkson Potter): seit 28.10.2026 **Official** wie bei 5e.tools und D&D
+  Beyond (E-193), dazu in der Kategorie Partnered.
 - *HF, HFFotM, HFLotT* (Kyle Newman), *PaF* (Andrew Wheeler), *CaBoMP*
   (Stacy King): lizenzierte Koch- und Bastelbücher fremder Verlage, die
   5e.tools nie als Partner führte — **Official**. Rezepte kommen ohnehin
