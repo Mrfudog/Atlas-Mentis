@@ -1610,6 +1610,40 @@ flowchart LR
   P -- memberOfParty --> G
 ```
 
+### 9.7 Geld: Betrag, Sorten, Kurs (T-357, Teil 1)
+
+Geld ist **eine ganze Zahl in der kleinsten Sorte** einer Währung und wird
+beim Lesen in Sorten gezeigt (D8, wie die Masse). Die heutigen Felder
+(`Item.copperPrice`, `Inventory.copper`, `price` an `sells`) sind das schon:
+Kupfer ist die kleinste Sorte der Standardwährung, es ändert sich keine Zahl.
+Gerechnet wird in `packages/model/src/money.ts`:
+
+| Funktion | Was sie tut |
+|---|---|
+| `parseMoney` | „2 gp 5 sp", „2.5 gp", „250 cp", „1,500 gp" → 250 / 150000; eine nackte Zahl gilt in der kleinsten Sorte (oder `bareCoin`); Unsinn, unbekannte Sorte oder Bruchteil der kleinsten → `null` |
+| `formatMoney` | `mixed` „2 gp 5 sp" (Vorgabe), `single` „2.5 gp", `book` „25 sp" — `book` ist `coinText` |
+| `toCoins` | gierig in Sorten bis zur Anzeigesorte; Sorten mit `change: false` (Elektrum) werden gelesen, aber nicht ausgegeben |
+| `parseMoneyRange` | Filter: „1–10 gp", „5 sp - 2 gp", „>= 5 gp", „< 1 gp" → `{min, max}` in der kleinsten Sorte |
+| `exchangeMoney` | über die Basis (`rate` je Währung: Wert einer kleinsten Sorte in kleinsten Sorten der Basiswährung), Gebühr in Prozent, abgerundet zugunsten des Wechslers; ohne Kurs `null` |
+
+```mermaid
+flowchart LR
+  T["Eingabe „2 gp 5 sp“"] -- parseMoney --> Z["250<br/>(kleinste Sorte)"]
+  Z -- "formatMoney mixed" --> M["2 gp 5 sp"]
+  Z -- "formatMoney single" --> S["2.5 gp"]
+  Z -- "formatMoney book" --> B["25 sp"]
+  Z -- "exchangeMoney<br/>rate 1 → rate 5" --> W["50 pinch Salt"]
+  C["CurrencyDef<br/>cp 1 · sp 10 · ep 50 · gp 100 · pp 1000"] -.-> Z
+```
+
+**Offen, und darum noch nicht gebaut:** woher eine Währung kommt (Artikel
+`Currency` in einer Ebene oder Registerzeile, **E-130**) und wie die Börse
+zählt (Münzen je Sorte oder Gesamtwert, **E-129**). `CurrencyDef` ist nur
+die gelesene Form, die beide Optionen liefern können; `DND_COINS` ist die
+eine Währung, die heute gilt, und zieht um, sobald E-130 sagt, wohin. Ebenso
+offen: das Feldformat `money`, die Währungswahl am Preis (Modul
+„Currencies"), Bezahlen mit Wechselgeld und die Migration der Kupferfelder.
+
 ---
 
 ## 10. Ansichten und Anordnung
