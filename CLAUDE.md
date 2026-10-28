@@ -232,7 +232,7 @@ wiederkommen, werden sie neu geschrieben.
   Gruppen ordnen nach Kategorie oder, mit `groupBy: 'publisher'`, nach
   Herausgeber (T-094) — für den Stapel gleich. **Der Herausgeber einer
   Ebene wird gerechnet** (`publisherOf`): ihre Herausgeber-Gruppe, sonst
-  Homebrew, wenn sie hier angelegt wurde, und „Unassigned", wenn sie
+  Homebrew, wenn sie hier angelegt wurde, und „Unknown", wenn sie
   eingelesen ist (T-109); ein Feld dafür gibt es nicht — die Ebenenseite
   zeigt den Grund und hängt die `partOf`-Kante um.
   **Was nicht aufgeschaltet ist, steht nicht da** (T-207, `shownLayers`):
@@ -310,8 +310,9 @@ wiederkommen, werden sie neu geschrieben.
   gehört keiner davon.
   `Layer.kind` kennt zwar ein Wort `campaign`, bleibt aber **Beschreibung**:
   ein Feld, das gleichzeitig Regel ist, leckt beim ersten Tippfehler.
-  **Offen:** ohne Ebenenkante gehört ein Artikel niemandem besonders (65 von
-  75 heute) — das stimmt bei *einer* Kampagne und nicht mehr bei zweien.
+  Seit Migration 152 hat jeder Artikel eine Ebene (E-182); was keine
+  andere hatte, liegt in „Unassigned“ und gehört so niemandem besonders,
+  bis es verschoben ist.
   Ebenso offen: die laufende Kampagne ist eine globale Einstellung.
   **Eine Spielerebene gehört der Kampagne, die sie aufschaltet**, wie die
   Kampagnenebene (T-164): genau eine, also sieht deren Leitung darin, was
@@ -356,7 +357,13 @@ wiederkommen, werden sie neu geschrieben.
   Verschieben am Artikel; Fassungen und Übernahme bleiben bei
   `zielEbenen`, denn eine Fassung ausserhalb des Stapels gälte nirgends. Anlegen nimmt sie, eine genannte Ebene geht
   vor; Fassungen und Übernahme nehmen nur eine *gewählte*. Die Verwaltung
-  legt ohne Wahl weiter ausserhalb jeder Ebene an.
+  legt ohne Wahl in die Ebene der laufenden Kampagne an, ohne Kampagne in
+  die **Parkplatz-Ebene „Unassigned“** (`UNASSIGNED_LAYER`, E-182, E-186):
+  **jeder Artikel hat eine Ebene** (ausser Ebenen selbst), und wer die
+  letzte wegnimmt, wird abgewiesen — die Verwaltung legt ihn stattdessen
+  dorthin. „Unassigned“ ist eine gewöhnliche Ebene, von Hand aufschaltbar;
+  die Werkbank führt ihren Inhalt (`unassigned`). Eine **Kampagne liegt in
+  ihrer eigenen Ebene** (E-183), und der Stapel nimmt Kampagnen aus.
   **Gewählt schlägt gerechnet** (T-176): auch Account › Layers wählt
   („Make default", `PUT /api/layers/:layer/default`, die Verwaltung auch für
   ein anderes Konto) — dieselbe Einstellung. **Eine Ebene leeren**
@@ -635,7 +642,9 @@ wiederkommen, werden sie neu geschrieben.
   (`articleVisible`, `isReady`): wer nicht `gm`/`co-gm` der Kampagne des
   Artikels ist, sieht nur `ready` — ausser Eigenem (angelegt oder
   schreibbar, `Viewer.own`). **Ohne Status-Karte zählt ein Artikel als
-  fertig.** `ready` setzen nur die Verwaltung und `gm`; der Server prüft
+  fertig**; seit Migration 152 trägt jeder einen Stand (E-179: was keinen
+  hatte, steht auf `ready`), neu angelegt `idea`, und wer ihn leert, wird
+  abgewiesen. `ready` setzen nur die Verwaltung und `gm`; der Server prüft
   es, die Maske bietet es Spielenden nicht an. Kein eigenes Feld „zur
   Abnahme" (E-011) — das wäre ein zweiter Stand.
   **Pflicht je Stand** (T-425, REQ-441, E-177, E-178): `requiredFor:

@@ -106,3 +106,4 @@ export const settings: Record<string, string> = {
 /** The rows a fresh database is seeded with. */
 export const seedRegistry: Registry = { interfaces, relations, views, units, enums, tokens, vars, settings };
 export { RULE_SYSTEM_LAYERS } from './regelsysteme.js';
+export { START_LAYERS, UNASSIGNED_LAYER_ROW } from './startebenen.js';

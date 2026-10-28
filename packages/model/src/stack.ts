@@ -269,8 +269,22 @@ export const groupingOf = (e: Entity | undefined): 'publisher' | 'category' =>
 
 /** Was eine Ebene ist, die hier angelegt wurde und in keiner Herausgeber-Gruppe steht (T-094, T-109). */
 export const HOMEBREW = 'Homebrew';
-/** Was eine eingelesene Ebene ist, die in keiner Herausgeber-Gruppe steht (T-109). */
-export const UNASSIGNED = 'Unassigned';
+/**
+ * Was eine eingelesene Ebene ist, die in keiner Herausgeber-Gruppe steht
+ * (T-109). Hiess bis 28.10. „Unassigned“; das Wort trägt seither die
+ * Parkplatz-Ebene (`UNASSIGNED_LAYER`, E-182, E-186) — zwei Dinge mit einem
+ * Namen wären zwei Fragen mit einer Antwort.
+ */
+export const UNKNOWN_PUBLISHER = 'Unknown';
+
+/**
+ * **Die Parkplatz-Ebene** (T-425, E-182, E-186): jeder Artikel hat eine
+ * Ebene; was keine andere hat, liegt hier. Eine gewöhnliche Ebene — die
+ * Leitung schaltet sie von Hand auf, die Werkbank führt ihren Inhalt als
+ * offene Arbeit (`unassigned`). Angelegt beim Start (Startzeile in
+ * `@nw/registry`) und von Migration 152.
+ */
+export const UNASSIGNED_LAYER = 'ly_unassigned';
 
 /** Der Herausgeber einer Ebene samt Begründung (T-109): der Name, die Gruppen, aus denen er kommt, und ein Satz, warum. */
 export interface PublisherInfo {
@@ -316,7 +330,7 @@ export function publisherInfo(
   }
   return homebrew?.has(layer.id)
     ? { name: HOMEBREW, groups: [], why: 'Not part of any publisher group, and made here rather than imported.' }
-    : { name: UNASSIGNED, groups: [], why: 'Not part of any publisher group.' };
+    : { name: UNKNOWN_PUBLISHER, groups: [], why: 'Not part of any publisher group, and imported — who published it is not recorded.' };
 }
 
 /** Nur der Name aus `publisherInfo` — die Marke in Listen und auf der Kampagnenseite. */
@@ -605,6 +619,10 @@ function sicht(
 function stapelFrage(entity: Entity, zaehlt: (e: Entity, layer: EntityId) => number, frei: ReadonlySet<EntityId>): boolean {
   const ebenen = kanten(entity, LAYER_RELATION);
   if (!ebenen.length) return true;
+  /* **Eine Kampagne steht immer da** (E-183): sie liegt in ihrer eigenen
+     Ebene, und die schaltet nur sie selbst auf — liefe eine andere, fände
+     man sie sonst nicht einmal mehr, um zu ihr zu wechseln. */
+  if (entity.interfaces?.[0] === CAMPAIGN_TYPE) return true;
   let addAt = frei.has(entity.id) ? PICK_RANK : 0;
   let remAt = 0;
   for (const r of ebenen) {

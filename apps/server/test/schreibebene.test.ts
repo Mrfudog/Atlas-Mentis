@@ -133,7 +133,7 @@ describe('write layer (T-161)', () => {
     expect((await als('Sela', 'PUT', '/api/layers/write', { layer: null })).json()).toMatchObject({ chosen: false, dropped: null });
   });
 
-  it('puts versions into the GM write layer, and the administration only writes into a layer it chose', async () => {
+  it('puts versions into the GM write layer, and the administration writes into the campaign layer until it chooses one', async () => {
     const { repo, als } = await aufbau();
     const mira = (await als('Mira', 'GET', '/api/layers/write')).json();
     expect(mira).toMatchObject({ layer: { id: 'ly_nebel' }, default: { id: 'ly_nebel' } });
@@ -155,7 +155,8 @@ describe('write layer (T-161)', () => {
 
     const ohne = (await als('Vera', 'GET', '/api/layers/write')).json();
     expect(ohne).toMatchObject({ layer: null, none: true });
-    expect(ebenenVon((await als('Vera', 'POST', '/api/entities', { type: 'Place', name: 'Irgendwo' })).json())).toEqual([]);
+    /* Ohne Wahl die Kampagnenebene (E-182) — eine Ebene hat jeder Artikel. */
+    expect(ebenenVon((await als('Vera', 'POST', '/api/entities', { type: 'Place', name: 'Irgendwo' })).json())).toEqual(['ly_nebel']);
     expect((await als('Vera', 'PUT', '/api/layers/write', { layer: 'ly_nebel' })).statusCode).toBe(200);
     expect(ebenenVon((await als('Vera', 'POST', '/api/entities', { type: 'Place', name: 'Dort' })).json())).toEqual(['ly_nebel']);
   });

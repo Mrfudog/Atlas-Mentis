@@ -577,7 +577,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     does: 'checks it when saving and on the workbench — stages of a condition, conditions in a fight, a replacement of the same type, templates and copies, and what goes along when a bulk change deletes',
     uses: {
       [M + 'validate.ts']: ['overrides', 'participates', 'stageOf'],
-      [M + 'checks.ts']: ['instanceOf', 'variantOf'],
+      [M + 'checks.ts']: ['inLayer', 'instanceOf', 'variantOf'],
       [M + 'bulk.ts']: ['holds', 'inLayer', 'instanceOf', 'variantOf'],
     },
   },

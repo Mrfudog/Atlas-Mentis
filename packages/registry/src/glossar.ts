@@ -81,6 +81,16 @@ const APP: AppTerm[] = [
     see: '/registry',
   },
   {
+    term: 'Unassigned',
+    aliases: ['Parking layer'],
+    sort: 'app',
+    definition: 'The layer where an article waits that has no other layer. Every article lies in a layer; Unassigned is an ordinary one that no campaign switches on by itself.',
+    effect: 'The workbench lists its articles, and articles with no layer at all, under Unassigned. Taking an article out of every layer puts it here; a campaign that switches the layer on sees them.',
+    example: 'An image uploaded without an article lands in Unassigned until you move it to the layer of the item that shows it.',
+    translations: { de: 'Nicht zugeordnet' },
+    see: '/werkbank',
+  },
+  {
     term: 'Required for a state',
     aliases: ['requiredFor', 'Ready with gaps'],
     sort: 'app',

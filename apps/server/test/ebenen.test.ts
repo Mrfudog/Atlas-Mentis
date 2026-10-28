@@ -364,13 +364,13 @@ describe('the campaign page switches layers on', () => {
     expect(zeile(l, 'e5_book_phb').publisherWhy).toBe('Because this layer is part of the publisher group Official.');
     /* Ohne Herausgeber-Gruppe (T-109): eingelesen heisst „Unassigned",
        Homebrew ist nur, was ein Konto oder eine Kampagne hier anlegte. */
-    expect(zeile(l, 'e5_book_mm')).toMatchObject({ publisher: 'Unassigned', publisherWhy: 'Not part of any publisher group.' });
+    expect(zeile(l, 'e5_book_mm')).toMatchObject({ publisher: 'Unknown', publisherWhy: 'Not part of any publisher group, and imported — who published it is not recorded.' });
     expect(zeile(l, 'ly_a')).toMatchObject({ publisher: 'Homebrew' });
     /* Kürzel nur aus Ebenen im Spiel (T-207): erst aufgeschaltet stehen sie da. */
     expect((await rufe('Sela', 'GET', '/api/sources')).json().publishers).toEqual({});
     await rufe('Basil', 'POST', '/api/campaigns/camp_a/layers/e5_group_core');
     const q = (await rufe('Sela', 'GET', '/api/sources')).json();
-    expect(q.publishers).toMatchObject({ PLA: 'Official', MON: 'Unassigned' });
+    expect(q.publishers).toMatchObject({ PLA: 'Official', MON: 'Unknown' });
   });
 
   it('shows the publisher at the layer and lets the admin hang it under another one (T-109)', async () => {
@@ -382,7 +382,7 @@ describe('the campaign page switches layers on', () => {
       });
     }
     let p = (await rufe('Basil', 'GET', '/api/layers/e5_book_mm/publisher')).json();
-    expect(p).toMatchObject({ name: 'Unassigned', groups: [], canChange: false });
+    expect(p).toMatchObject({ name: 'Unknown', groups: [], canChange: false });
     expect(p.options.map((o: { name: string }) => o.name)).toEqual(['Official', 'Partnered']);
     expect((await rufe('Basil', 'PUT', '/api/layers/e5_book_mm/publisher', { groups: ['e5_publisher_official'] })).statusCode).toBe(403);
     expect((await rufe('Admin', 'PUT', '/api/layers/e5_book_mm/publisher', { groups: ['e5_group_core'] })).statusCode).toBe(400);

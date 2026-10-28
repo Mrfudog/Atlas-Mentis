@@ -1233,6 +1233,16 @@ fertig**: eine Ebene oder ein Regelteil ohne Status-Karte verschwände sonst
 für alle Spielenden, und niemand wüsste, warum — dieselbe Überlegung wie bei
 `public` als Vorgabe.
 
+**Jeder Artikel hat eine Ebene und einen Stand** (T-425, E-179, E-182).
+Ohne Ebene gehörte ein Artikel niemandem besonders — bei einer Kampagne
+egal, bei zweien eine offene Frage, wem er gehört und wer ihn schreibt.
+Darum gibt es einen **Parkplatz**, die Ebene „Unassigned“: was keine andere
+Ebene hat, wartet dort, und die Werkbank zählt es als offene Arbeit. Eine
+Sonderregel im Stapel bekommt sie nicht — sie ist eine Ebene wie jede, die
+man von Hand aufschaltet (E-186). Ausgenommen ist nur die Kampagne selbst:
+sie liegt in ihrer eigenen Ebene, aber der Stapel fragt bei ihr nicht nach,
+denn wer die Runde wechselt, muss die andere sehen.
+
 **Pflicht hat zwei Stufen** (T-425, REQ-441, E-177). Name und Nummer sind
 immer Pflicht; eine Beschreibung oder ein Ort einer Szene erst, wenn sie
 `prepared` oder `ready` wird. Wer eine Idee festhält, soll nicht erst
@@ -1699,7 +1709,8 @@ Ansicht sie gehört, und die Marke an einer Ebene wird aus ihr gerechnet.
 Was in keiner Herausgeber-Gruppe steht, ist **Homebrew** — aber nur, wenn
 es hier entstand: eigener Inhalt braucht keinen Verlag, um als eigener
 erkannt zu werden. Was eingelesen wurde und an keinem Verlag hängt, heisst
-**Unassigned** (T-109). Bis dahin hiess auch die alte Sammelebene
+**Unknown** (T-109; bis 28.10. „Unassigned“ — das Wort gehört seither der
+Parkplatz-Ebene, in der liegt, was keine andere Ebene hat). Bis dahin hiess auch die alte Sammelebene
 „D&D 5e (2014)" Homebrew, und weil die Marke an keinem Feld stand, sah
 niemand, woher sie kam und wie man sie ändert. Darum steht der Grund jetzt
 an der Ebene, und geändert wird dort die Kante — nicht ein Feld, das der

@@ -338,7 +338,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
           @if (lose().length) {
             <details class="gruppe" data-bereich [open]="offen().has('-')" (toggle)="merke('-', $event)">
               <summary>
-                <span class="gname">{{ ansicht() === 'publisher' ? 'No publisher group (Homebrew, Unassigned)' : 'Other books' }}</span>
+                <span class="gname">{{ ansicht() === 'publisher' ? 'No publisher group (Homebrew, Unknown)' : 'Other books' }}</span>
                 <span class="dim">{{ anZahl(lose()) }} of {{ lose().length }} on</span>
               </summary>
               <ul class="ebenen buecher">

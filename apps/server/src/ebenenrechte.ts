@@ -48,7 +48,7 @@ import { mitWahl } from './schreibebene.js';
  * einer Einfuhr kommt. Was der Importer für 5e.tools anlegt, trägt Pegs
  * mit `e5_` (`Werkbank.anlegen`, `buchEbeneId` …) — daran halten sich
  * auch die Migrationen 026, 034, 037 und 044. Ohne Herausgeber-Gruppe
- * heissen diese Homebrew, die eingelesenen „Unassigned" (`publisherInfo`).
+ * heissen diese Homebrew, die eingelesenen „Unknown" (`publisherInfo`).
  * Ein Konto, eine Kampagne oder ein Besitz daran wäre die schwächere
  * Frage: eine Kampagnenebene, die zwei Runden teilen, ist niemandes
  * Kampagnenebene und trotzdem hier entstanden.

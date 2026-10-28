@@ -37,7 +37,7 @@ wer den Stand hat, behält ihn, und die Werkbank zeigt „Ready with gaps“.
 Logik in `packages/model/src/readiness.ts`, Migration 151.
 
 Offen (Schnitt 9b): Status und Ebene immer Pflicht, Migrationen „ready“
-für Artikel ohne Status (E-179) und „Unassigned“ (E-182, E-186).
+für Artikel ohne Status (E-179) und „Unassigned“ (E-182, E-186) — umgesetzt am 28.10. (Schnitt 9b, Migration 152), siehe F-004.
 
 ```mermaid
 stateDiagram-v2

@@ -338,7 +338,13 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       interfaces: [CAMPAIGN_TYPE],
       name,
       components: { Identity: { name, id: nextId(alle, CAMPAIGN_TYPE), aliases: [] } },
-      relations: [{ id: `${id}~activates-${ebeneId}`, type: 'activates', to: ebeneId, props: { order: 100 } }],
+      relations: [
+        { id: `${id}~activates-${ebeneId}`, type: 'activates', to: ebeneId, props: { order: 100 } },
+        /* Die Kampagne liegt in ihrer eigenen Ebene (E-183, E-182): jeder
+           Artikel hat eine. Der Stapel nimmt Kampagnen aus — sonst fände
+           man diese nicht, während eine andere läuft. */
+        { id: `${id}~inLayer-1`, type: 'inLayer', to: ebeneId, props: {} },
+      ],
     };
     const gruppe = neueGruppe(alle, entity, ebeneId);
     /* **Und ihr Board** (T-342): der Startpunkt für Spielende, aus der

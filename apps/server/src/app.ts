@@ -161,7 +161,7 @@ import {
   duplicateText,
 } from '@nw/model';
 import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
-import { seedRegistry } from '@nw/registry';
+import { seedRegistry, UNASSIGNED_LAYER_ROW } from '@nw/registry';
 import { RelationIdTaken, RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
@@ -3813,18 +3813,24 @@ export function buildApp({
           if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
         }
       } else if (user && !LAYER_TYPES.has(type) && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
-        /* **Die Verwaltung legt an, wo sie nichts sagt** — wie bisher ohne
-           Ebene, ausser sie hat für die laufende Kampagne eine Schreibebene
-           gewählt (T-161, T-176): dann dort, damit Tests in der Testebene
-           landen und mit „Empty this layer" wieder gehen. */
+        /* **Die Verwaltung legt an, wo sie nichts sagt** — in ihre für die
+           laufende Kampagne gewählte Schreibebene (T-161, T-176), damit Tests
+           in der Testebene landen und mit „Empty this layer" wieder gehen;
+           ohne Wahl in die Parkplatz-Ebene „Unassigned“ (E-182): jeder
+           Artikel hat eine Ebene, und die Werkbank führt ihn als offen. */
         const kampagne = currentCampaign(stand.map, registry.settings ?? null);
         const gewaehlt = await gewaehlteSchreibEbene(user, stand.map, kampagne);
-        if (gewaehlt) relations.push({ id: `${id}~inLayer-1`, type: LAYER_RELATION, to: gewaehlt.id, props: {} });
+        /* Ohne Wahl die Ebene der laufenden Kampagne — dort sucht man, was
+           man eben angelegt hat; erst ohne Kampagne der Parkplatz. */
+        const ziel = gewaehlt?.id ?? (await kampagnenEbene(stand.map, kampagne))?.id ?? (await parkplatz(stand.map)).id;
+        relations.push({ id: `${id}~inLayer-1`, type: LAYER_RELATION, to: ziel, props: {} });
       }
       const entity: Entity = { id, interfaces: [type], name, components, relations };
 
       const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
       known.set(id, type);
+      /* Die Parkplatz-Ebene kann eben erst entstanden sein (`parkplatz`). */
+      if (relations.some((r) => r.type === LAYER_RELATION && r.to === UNASSIGNED_LAYER_ROW.id)) known.set(UNASSIGNED_LAYER_ROW.id, 'Layer');
       /* **Aus einer Vorlage angelegt** (T-125): eine Instanz nennt ihre
          Vorlage mit `instanceOf`. Die muss es geben, sie muss von derselben
          Art sein, und wer anlegt, muss sie sehen — sonst läse er über die
@@ -3998,6 +4004,13 @@ export function buildApp({
     if (vorherRoh) {
       const wechsel = layerChange(vorherRoh, entity);
       const wer = await viewerOf(request);
+      /* **Aus jeder Ebene heraus heisst: nach „Unassigned“** (E-182): auch
+         die Verwaltung lässt keinen Artikel ohne Ebene; was sie aus allen
+         nimmt, liegt danach auf dem Parkplatz und in der Werkbank. */
+      if (wer?.isAdmin && wechsel.homeless) {
+        const platz = await parkplatz(new Map((await repo.listEntities()).map((e) => [e.id, e])));
+        entity = { ...entity, relations: [...(entity.relations ?? []), { id: `${entity.id}~inLayer-unassigned`, type: LAYER_RELATION, to: platz.id, props: {} }] };
+      }
       if (wer && !wer.isAdmin && (wechsel.added.length || wechsel.homeless)) {
         if (wechsel.homeless) {
           return { code: 403, body: { error: 'Only the administration keeps articles outside every layer. Choose one of your write layers.' } };
@@ -4200,12 +4213,31 @@ export function buildApp({
    * läuft nach der Prüfung und vor dem Schreiben.
    */
   /**
+   * **Die Parkplatz-Ebene „Unassigned“** (E-182, E-186): der Start legt sie
+   * an (`regelsystemeNachziehen`); fehlt sie trotzdem — eine Datenbank, die
+   * noch nicht neu gestartet wurde, ein Test ohne Start —, dann hier.
+   */
+  async function parkplatz(map: ReadonlyMap<string, Entity>): Promise<Entity> {
+    const da = map.get(UNASSIGNED_LAYER_ROW.id) ?? (await repo.getEntity(UNASSIGNED_LAYER_ROW.id));
+    if (da) return da;
+    const ident = UNASSIGNED_LAYER_ROW.components?.['Identity'] as Record<string, unknown>;
+    const neu: Entity = { ...UNASSIGNED_LAYER_ROW, components: { ...UNASSIGNED_LAYER_ROW.components, Identity: { ...ident, id: nextId([...map.values()], 'Layer') } } };
+    return repo.putEntity(neu);
+  }
+
+  /**
    * **Was die Maske bei einer Ablehnung sagt**: fehlt die Pflicht eines
    * Stands (T-425, E-178), deren Satz — er sagt, was zu tun ist —, sonst
    * die allgemeine Meldung mit den Einzelheiten in `issues`.
    */
   function abgelehnt(issues: readonly { code: string; message: string }[]): string {
-    return issues.find((i) => i.code === 'state_gaps')?.message ?? 'Validierung fehlgeschlagen';
+    return issues.find((i) => i.code === 'state_gaps' || i.code === 'layer_required' || i.code === 'status_required')?.message ?? 'Validierung fehlgeschlagen';
+  }
+
+  /** Eine Instanz aufgelöst (ihr Stand kann an der Vorlage stehen), sonst der Artikel selbst. */
+  function resolveInstanceIfAny(liste: readonly Entity[], e: Entity | undefined): Entity {
+    if (!e) return { id: '', interfaces: [], components: {}, relations: [] } as unknown as Entity;
+    return isInstance(e) ? resolveInstance(new Map(liste.map((x) => [x.id, x])), e) : e;
   }
 
   async function schreibeGeprueft(
@@ -4244,9 +4276,19 @@ export function buildApp({
        Pflicht des neuen; wer ihn hält, behält ihn (die Werkbank sagt, was
        fehlt). Geprüft am aufgelösten Artikel, wie alles andere. */
     const luecken = stateRefusal(registry, davor && isInstance(davor) ? resolveInstance(new Map(liste.map((e) => [e.id, e])), davor) : davor, zuPruefen);
+    /* **Ebene und Stand sind immer da** (E-179, E-182): wer sie einem
+       Artikel nimmt, der sie hatte, wird abgewiesen — verschoben wird in
+       eine andere Ebene, nicht ins Nichts. Ebenen selbst liegen in keiner. */
+    const typ = primaryInterface(entity);
+    const hatEbene = (e: Entity | undefined) => (e?.relations ?? []).some((r) => r.type === LAYER_RELATION);
+    const hatStand = (e: Entity | undefined) => !!stateOf(resolveInstanceIfAny(liste, e));
+    const ohneEbene = !!davor && !LAYER_TYPES.has(typ) && hatEbene(davor) && !hatEbene(entity);
+    const ohneStand = !!davor && hatStand(davor) && !hatStand(zuPruefen);
     const issues = [
       ...validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen }),
       ...doppelteWahlen(davor, entity, liste),
+      ...(ohneEbene ? [{ code: 'layer_required' as const, message: 'Every article needs a layer. Move it to another layer instead of removing the last one — Unassigned if none fits.' }] : []),
+      ...(ohneStand ? [{ code: 'status_required' as const, component: STATUS_COMPONENT, property: 'status', message: 'Every article needs a state. Set idea, prepared or ready instead of clearing it.' }] : []),
       ...(luecken ? [{ code: 'state_gaps' as const, component: STATUS_COMPONENT, property: 'status', message: stateGapMessage(stateOf(zuPruefen) ?? '', luecken) }] : []),
     ];
     if (issues.length) return { issues };
@@ -4625,7 +4667,13 @@ export function buildApp({
     if (typeof wer === 'string') return reply.code(403).send({ error: wer });
     const t0 = Date.now();
     const alle = await repo.listEntities();
-    const gesiebt = await sieve(request, alle, alle);
+    const imSpiel = await sieve(request, alle, alle);
+    /* **Der Parkplatz zählt mit** (E-186): was in „Unassigned“ liegt, steht
+       in keiner laufenden Kampagne — die Werkbank führt es trotzdem als
+       offene Arbeit. Gesiebt nach Sichtbarkeit, nur nicht nach dem Stapel. */
+    const geparkt = alle.filter((e) => (e.relations ?? []).some((r) => r.type === LAYER_RELATION && r.to === UNASSIGNED_LAYER_ROW.id));
+    const daIds = new Set(imSpiel.map((e) => e.id));
+    const gesiebt = [...imSpiel, ...(await sieve(request, geparkt, alle, undefined, 'unactivated')).filter((e) => !daIds.has(e.id))];
     const registry = await repo.getRegistry();
     const exists = new Map(alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
     const roh = String(request.query.limit ?? '50');
