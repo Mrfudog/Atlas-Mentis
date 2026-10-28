@@ -64,7 +64,7 @@ async function aufbau() {
     ],
   );
   const feed = new LocalChangeFeed({ flushMs: 5 });
-  const app = buildApp({ repo, live: feed });
+  const app = buildApp({ repo, live: feed, liveHeartbeatMs: 40 });
   await app.listen({ port: 0, host: '127.0.0.1' });
   const port = (app.server.address() as AddressInfo).port;
   offen.push(() => app.close());
@@ -274,6 +274,14 @@ describe('live channel (T-116)', () => {
 
     const fremd = await geraet('Sela', '0badc0de.3');
     await fremd.warte((e) => e.some((x) => x.event === 'reset'));
+  });
+
+  it('sends a heartbeat the browser can see, so a dead connection is noticed (T-399)', async () => {
+    const { geraet } = await aufbau();
+    const sela = await geraet('Sela');
+    const ev = await sela.warte((e) => e.some((x) => x.event === 'ping'));
+    /* Ohne Id: ein Lebenszeichen verschiebt nicht, wo das Nachholen anfängt. */
+    expect(ev.find((x) => x.event === 'ping')?.id).toBeUndefined();
   });
 
   it('tells about registry rows', async () => {

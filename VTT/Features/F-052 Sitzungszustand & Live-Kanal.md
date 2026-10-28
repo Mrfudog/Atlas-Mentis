@@ -44,3 +44,12 @@ flowchart LR
 - **Nur was er anders sieht:** zieht ein verborgener Gegner oder ein Token
   unter dem Nebel, erfährt es die Leitung, die Spielerin nicht — auch nicht
   über den Takt der Meldungen.
+- **Wiederverbinden:** der Server schickt alle 25 s ein `ping`. Bleibt es
+  aus — das Telefon schlief, das Netz wechselte —, verbindet die Seite
+  selbst neu und holt nach, was sie verpasste; der Punkt in der Kopfleiste
+  ist solange hohl. War zu viel weg (`reset`), fragen Karte, Play,
+  Initiative und Zugplaner neu.
+- **Gleichzeitig auf der Karte:** zieht die Leitung ein Token, während
+  jemand anders ein anderes zieht oder den Nebel ändert, gelten beide
+  Änderungen. Wer dasselbe Token zur selben Zeit zieht, verliert gegen den,
+  der zuerst speicherte, und sieht „Someone else changed this meanwhile“.

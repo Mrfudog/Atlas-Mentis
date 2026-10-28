@@ -206,9 +206,14 @@ export class Play {
       if (!t) return;
       if ((e.type === 'Map' && !t.map) || e.id === t.map) this.holen(this.session());
     });
+    /* Etwas verpasst (`reset`, T-399): neu fragen, was auf dem Tisch liegt. */
+    const abNeu = inject(Live).onNeu((was) => {
+      if (was === 'reset') this.holen(this.session());
+    });
     inject(DestroyRef).onDestroy(() => {
       ab();
       abKarte();
+      abNeu();
     });
   }
 
