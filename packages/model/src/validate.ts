@@ -335,7 +335,9 @@ export interface ValidationIssue {
     | 'status_required'
     /* Eine Wahl der Figur nimmt, was sie schon hat (T-299,
        `newChoiceDuplicates`) — gemeldet vom Server, nicht von hier. */
-    | 'choice_duplicate';
+    | 'choice_duplicate'
+    /* T-303: Expertise auf etwas ohne Übung. */
+    | 'choice_unproficient';
   message: string;
   /** Die Art, deren Karte es betrifft. */
   component?: string;

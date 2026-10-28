@@ -20,6 +20,7 @@ import { Bild } from './bild';
 import { ansichtWeg } from '../klassen/ansicht-weg';
 import { Spalten } from '../kern/spalten';
 import { Spaltenwahl } from './spaltenwahl';
+import { Klappleiste } from '../muster/klappleiste';
 import { Zeitfilter } from './zeitfilter';
 import { Beziehungsfilter } from './beziehungsfilter';
 
@@ -59,7 +60,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl, Zeitfilter, Beziehungsfilter],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl, Zeitfilter, Beziehungsfilter, Klappleiste],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -72,6 +73,10 @@ const OFFEN = 8;
             (input)="suchen($any($event.target).value)"
           />
         </label>
+
+        <!-- Die Klappleiste (T-359): alle Facetten auf und zu, von einer zur
+             nächsten. Nicht fest — die Filter sind am Telefon selbst ein Blatt. -->
+        <nw-klappleiste class="facettenleiste" beschriftung="Filter sections" [fest]="false" />
 
         <!-- Die Ansichten des Bereichs Rules (W6, T-166): wie im Buch statt als Zeile. -->
         @if (bereich() === 'rules') {
@@ -114,7 +119,7 @@ const OFFEN = 8;
         <!-- Facetten aus dem Register (T-174): jedes Feld und jede Kante der
              Art, die etwas unterscheidet — aufklappbar, gewählte offen. -->
         @for (f of liste()?.facets?.fields ?? []; track f.ref; let i = $index) {
-          <details class="facette" [open]="facetteOffen(f.ref, i)" (toggle)="facetteUmschalten(f.ref, $any($event.target).open)">
+          <details class="facette" data-bereich [open]="facetteOffen(f.ref, i)" (toggle)="facetteUmschalten(f.ref, $any($event.target).open)">
             <summary class="leg">
               {{ f.label }}
               @if (filter.felder()[f.ref]; as w) {
@@ -189,7 +194,7 @@ const OFFEN = 8;
         <!-- „Usable by <Figur>" (T-180): neben einer Voraussetzung. Was der
              Server nicht prüfen kann, bleibt in der Liste und trägt ein „?". -->
         @if (zeigtBrauchbar()) {
-          <details class="facette" open>
+          <details class="facette" data-bereich open>
             <summary class="leg">Usable by</summary>
             <select class="brauchbar" aria-label="Usable by character" (change)="brauchbarSetzen($any($event.target).value)">
               <option value="" [selected]="!usable()">Anyone</option>
