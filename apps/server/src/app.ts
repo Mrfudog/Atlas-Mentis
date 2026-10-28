@@ -25,6 +25,12 @@ import {
   RegistrySchema,
   conditionProblem,
   planBulk,
+  planRestore,
+  TRASH_DAYS,
+  trashExpired,
+  trashExpires,
+  trashItems,
+  type TrashChange,
   runChecks,
   selectEntities,
   storedKey,
@@ -125,6 +131,9 @@ import {
   entityName,
   layerChange,
   preferencesOf,
+  describeChange,
+  layerMoveChanges,
+  layerMovePlan,
   idLinks,
   linkCandidates,
   nextId,
@@ -163,10 +172,10 @@ import {
   missingText,
   duplicateText,
 } from '@nw/model';
-import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
+import type { BulkChange, BulkPlan, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
 import { seedRegistry, UNASSIGNED_LAYER_ROW } from '@nw/registry';
 import { RelationIdTaken, RevisionConflict } from './repo.js';
-import type { ReadyStand, Repository } from './repo.js';
+import type { ReadyStand, Repository, StoredEvent } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
 import { rechtAn, registerVerwaltung, siehtVergleich } from './verwaltung.js';
@@ -1236,7 +1245,7 @@ export function buildApp({
       /* Die Übernahme (T-130): lesen und vorschauen schreibt nichts. */
       url === '/api/transfer/peer/read' ||
       url === '/api/transfer/preview' ||
-      ((url === '/api/bulk' || url === '/api/entities/delete') && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
+      ((url === '/api/bulk' || url === '/api/entities/delete' || url === '/api/entities/move-layer') && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
     const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && !liestNur;
 
     if (!user) {
@@ -1289,6 +1298,8 @@ export function buildApp({
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Das eigene Leeren einer Ebene zurücknehmen (T-176): die Route prüft, wer es war. */
     if (/^\/api\/bulk\/[^/]+\/undo$/.test(url)) return;
+    /* Der Papierkorb (T-400): die Routen prüfen je Lauf, wessen er ist. */
+    if (url === '/api/trash/empty' || /^\/api\/trash\/[^/]+\/restore$/.test(url)) return;
     /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
@@ -1298,6 +1309,8 @@ export function buildApp({
     if (url === '/api/layers' || url.startsWith('/api/layers/')) return;
     /* Löschen aus der eigenen Ebene (T-381): die Route prüft je Artikel selbst (`pickDeletable`). */
     if (url === '/api/entities/delete' && request.method === 'POST') return;
+    /* Ebene wechseln mit Mitläufern (T-402): die Route prüft Zielebene und Artikel selbst. */
+    if (url === '/api/entities/move-layer' && request.method === 'POST') return;
     /* „Edit" an einem fremden Artikel legt eine Fassung an (T-098): die
        Route prüft die Zielebene selbst. */
     if (/^\/api\/entities\/[^/]+\/adapt$/.test(url) && request.method === 'POST') return;
@@ -4869,9 +4882,10 @@ export function buildApp({
     roh: Map<string, Entity>,
     auftrag: BulkRequest,
     ausgewaehlt: string[],
-    art?: 'delete-own',
+    art?: 'delete-own' | 'move-layer',
+    vorgeplant?: BulkPlan,
   ): Promise<{ code: number; body: Record<string, unknown> }> {
-    const plan = planBulk(registry, roh, ausgewaehlt, auftrag.ops);
+    const plan = vorgeplant ?? planBulk(registry, roh, ausgewaehlt, auftrag.ops);
     const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, plan.changes, art === 'delete-own');
     const loescht = geprueft.filter((c) => !c.after).length;
     const limit = auftrag.limit ?? 50;
@@ -5045,6 +5059,93 @@ export function buildApp({
     },
   );
 
+  /**
+   * **Eine Ebene wechseln, mit dem, was dazugehört** (T-402, E-161 a+c).
+   * `dryRun` gibt den Plan (`layerMovePlan`): die Mitläufer — Teile,
+   * eigener Statblock, Inventar und Stücke — mit Häkchen vorgewählt, wenn
+   * sie in derselben alten Ebene liegen und das Konto sie schreibt, und je
+   * Mitläufer, wo er sonst noch verknüpft ist. Ohne `dryRun` wird
+   * verschoben, was genannt ist (`ids`) und was `include` nennt (sonst die
+   * vorgewählten); abgewählte bleiben. Geschrieben als **eine**
+   * Massenänderung, also zurück über `POST /api/bulk/:id/undo`, auch für
+   * Spielende. Hinein nur in eine Schreibebene (dieselbe Regel wie `PUT`,
+   * T-383); Fassungen und Kanten bleiben. `from` nennt die alte Ebene, wenn
+   * der Artikel selbst schon verschoben ist (im Bearbeiten: erst `PUT`).
+   */
+  app.post<{ Body: { ids?: unknown; layer?: unknown; from?: unknown; include?: unknown; dryRun?: unknown } | null }>(
+    '/api/entities/move-layer',
+    async (request, reply) => {
+      const echt = await werIst(request);
+      if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+      if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nicht verschoben.' });
+      const b = request.body ?? {};
+      const strings = (x: unknown) => (Array.isArray(x) ? [...new Set(x.filter((y): y is string => typeof y === 'string' && !!y))] : null);
+      const ids = strings(b.ids) ?? [];
+      if (!ids.length) return reply.code(400).send({ error: 'Sag, welche Artikel: { "ids": [...], "layer": "…" }.' });
+      if (ids.length > 1000) return reply.code(400).send({ error: 'Höchstens 1000 Artikel auf einmal — teile die Auswahl.' });
+      const user = echt.user;
+      const alle = await repo.listEntities();
+      const roh = new Map(alle.map((e) => [e.id, e]));
+      const registry = await repo.getRegistry();
+      const layer = typeof b.layer === 'string' && b.layer ? b.layer : null;
+      const ziel = layer ? roh.get(layer) : null;
+      if (layer && (!ziel || !isLayer(ziel))) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
+      if (!layer && !user.isAdmin) {
+        return reply.code(403).send({ error: 'Only the administration keeps articles outside every layer. Choose one of your write layers.' });
+      }
+      if (layer && !user.isAdmin) {
+        const kampagne = currentCampaign(roh, registry.settings ?? null);
+        const ziele = new Set((await schreibZiele(user, roh, kampagne)).map((x) => x.layer.id));
+        if (!ziele.has(layer)) {
+          return reply.code(403).send({
+            error: `You do not write in ${entityName(ziel!)} in this campaign. Choose one of your write layers (see “Writes to” in the header).`,
+          });
+        }
+      }
+      const sichtbar = new Set(
+        [...(await sieve(request, alle, alle)), ...(await sieve(request, alle, alle, undefined, 'unactivated'))].map((e) => e.id),
+      );
+      const fehlt = ids.filter((id) => !sichtbar.has(id) || !roh.has(id));
+      if (fehlt.length) return reply.code(404).send({ error: `Nicht gefunden: ${fehlt.join(', ')}` });
+      /* Eine Ebene hängt in Gruppen, nicht in einer Ebene. */
+      if (ids.some((id) => isLayer(roh.get(id)))) return reply.code(400).send({ error: 'A layer is not moved into another layer — put it into a group on its page.' });
+      const eigen = user.isAdmin ? null : await ownedBy(user);
+      const darf = (id: string) => !eigen || mayWrite(user, eigen, id);
+      const voll = layerMovePlan(registry, roh, ids, { layer, from: strings(b.from) ?? undefined, mayWrite: darf });
+      /* Was das Konto nicht sieht, steht nicht im Plan — auch nicht als Name. */
+      const plan = {
+        roots: voll.roots,
+        followers: voll.followers
+          .filter((f) => sichtbar.has(f.id))
+          .map((f) => ({ ...f, linkedFrom: f.linkedFrom.filter((x) => sichtbar.has(x.id)) })),
+      };
+      const target = ziel ? { id: ziel.id, name: entityName(ziel) } : null;
+      const layerNames: Record<string, string> = {};
+      for (const l of [...plan.roots.flatMap((x) => x.layers), ...plan.followers.flatMap((x) => x.layers)]) {
+        if (roh.get(l)) layerNames[l] = entityName(roh.get(l)!);
+      }
+      const gewaehlt = strings(b.include);
+      const mit = plan.followers.filter((f) => (gewaehlt ? gewaehlt.includes(f.id) && f.writable : f.preselected)).map((f) => f.id);
+      const changes = layerMoveChanges(roh, [...ids, ...mit], layer).map((c) => ({
+        ...c,
+        summary: describeChange(c.before, c.after),
+      }));
+      const auftrag: BulkRequest = {
+        select: { ids: [...ids, ...mit] },
+        ops: [],
+        dryRun: b.dryRun === true,
+        limit: 200,
+        note: `Move ${ids.length === 1 ? entityName(roh.get(ids[0]!)) : `${ids.length} articles`}${mit.length ? ` with ${mit.length} more` : ''} to ${target?.name ?? 'no layer'}`,
+      };
+      const r = await fuehreLaufAus(request, echt, registry, roh, auftrag, [...ids, ...mit], 'move-layer', {
+        selected: ids.length + mit.length,
+        changes,
+        skipped: [],
+      });
+      return reply.code(r.code).send({ ...r.body, ...plan, target, layerNames, moving: mit });
+    },
+  );
+
   /** Die letzten Massenänderungen, ohne ihre alten Fassungen. */
   app.get<{ Querystring: { limit?: string } }>('/api/bulk', async (request, reply) => {
     const wer = await werkbankFuer(request);
@@ -5075,6 +5176,11 @@ export function buildApp({
       if (typeof wer === 'string') return reply.code(403).send({ error: wer });
       if ((await repo.listEvents({ name: 'bulk.undone', subject: ereignis.id, limit: 1, light: true })).length) {
         return reply.code(409).send({ error: 'Schon rückgängig gemacht.' });
+      }
+      /* Aus dem Papierkorb geleert oder abgelaufen (T-400): die Bilddateien
+         sind dann weg, ein Zurück brächte ein Bild ohne Datei. */
+      if (await endgueltig(ereignis)) {
+        return reply.code(410).send({ error: 'Endgültig gelöscht — der Papierkorb wurde geleert oder die 30 Tage sind um.', code: 'purged' });
       }
       const payload = ereignis.payload as { changes?: { id: string; before: Entity | null; after: Entity | null }[] };
       const alle = await repo.listEntities();
@@ -5121,6 +5227,233 @@ export function buildApp({
     },
   );
 
+
+  /* ------------------------------------------------------------ Papierkorb */
+
+  /**
+   * **Der Papierkorb** (T-400, E-160 a) ist eine Seite auf den Löschläufen
+   * aus der eigenen Ebene (T-381, `bulk` mit `kind: 'delete-own'`) — keine
+   * zweite Ablage. Was er dazuschreibt, steht im Protokoll unter demselben
+   * Lauf: `trash.restored` (welche Artikel einzeln zurückkamen) und
+   * `trash.emptied` (endgültig: „Empty trash" oder nach `TRASH_DAYS`). Erst
+   * mit dem zweiten gehen Bilddateien — vorher brächte ein Zurück ein Bild
+   * ohne Datei. Keine Migration: das event_log trägt alles.
+   */
+  interface KorbLauf {
+    ereignis: StoredEvent;
+    by: { id?: string; name?: string };
+    /** Die ausgewählten Artikel des Laufs; mitgegangene Teile gehören zu ihnen. */
+    haupt: string[];
+    zurueck: Set<string>;
+  }
+
+  const istLoeschlauf = (e: StoredEvent | undefined): e is StoredEvent =>
+    !!e && e.name === 'bulk' && (e.payload as { kind?: unknown } | null)?.kind === 'delete-own';
+
+  /** Geleert oder abgelaufen? Für jeden `bulk`-Lauf; nur Löschläufe können es sein. */
+  async function endgueltig(e: StoredEvent): Promise<boolean> {
+    if (!istLoeschlauf(e)) return false;
+    if (trashExpired(e.at)) return true;
+    return (await repo.listEvents({ name: 'trash.emptied', subject: e.id, limit: 1, light: true })).length > 0;
+  }
+
+  /** Die offenen Löschläufe, die neusten zuerst: weder geleert noch ganz zurück. Ohne alte Fassungen. */
+  async function offeneLaeufe(): Promise<KorbLauf[]> {
+    const laeufe = await repo.listEvents({ name: 'bulk', subjects: [], orPayload: { key: 'kind', value: 'delete-own' }, limit: 1000, light: true });
+    if (!laeufe.length) return [];
+    const geleert = new Set((await repo.listEvents({ name: 'trash.emptied', limit: 5000, light: true })).map((e) => e.subject));
+    const rueck = new Set((await repo.listEvents({ name: 'bulk.undone', limit: 1000, light: true })).map((e) => e.subject));
+    const einzeln = new Map<string, Set<string>>();
+    for (const e of await repo.listEvents({ name: 'trash.restored', limit: 5000, light: true })) {
+      const ids = (e.payload as { ids?: unknown }).ids;
+      const s = einzeln.get(e.subject ?? '') ?? einzeln.set(e.subject ?? '', new Set()).get(e.subject ?? '')!;
+      if (Array.isArray(ids)) for (const id of ids) if (typeof id === 'string') s.add(id);
+    }
+    const out: KorbLauf[] = [];
+    for (const e of laeufe) {
+      if (!istLoeschlauf(e) || geleert.has(e.id) || rueck.has(e.id)) continue;
+      const p = e.payload as { by?: { id?: string; name?: string }; request?: { select?: { ids?: unknown } } };
+      const haupt = Array.isArray(p.request?.select?.ids) ? p.request.select.ids.filter((x): x is string => typeof x === 'string') : [];
+      const zurueck = einzeln.get(e.id) ?? new Set<string>();
+      if (haupt.length && haupt.every((id) => zurueck.has(id))) continue;
+      out.push({ ereignis: e, by: p.by ?? {}, haupt, zurueck });
+    }
+    return out;
+  }
+
+  const aenderungen = async (lauf: KorbLauf): Promise<TrashChange[]> =>
+    ((await repo.getEvent(lauf.ereignis.id))?.payload as { changes?: TrashChange[] } | undefined)?.changes ?? [];
+
+  /** Die Datei eines gelöschten Bildes, wenn es eines ist. */
+  const bildRef = (e: Entity | null): string | null => {
+    const a = e?.components?.['Asset'] as { ref?: unknown; backend?: unknown } | undefined;
+    return a && typeof a.ref === 'string' && (a.backend ?? 'app') === 'app' ? a.ref : null;
+  };
+
+  /**
+   * Läufe endgültig machen: im Protokoll vermerken, dann die Dateien der
+   * gelöschten Bilder freigeben — nur, wenn kein Artikel sie nennt
+   * (`bilder.aufraeumen`) **und** kein anderer offener Lauf ein Bild mit
+   * derselben Datei noch zurückbringen könnte.
+   */
+  async function leeren(laeufe: KorbLauf[], by: { id: string | null; name: string }, reason: 'empty' | 'expired'): Promise<number> {
+    if (!laeufe.length) return 0;
+    const weg = new Set(laeufe.map((l) => l.ereignis.id));
+    const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const behalten = new Set<string>();
+    for (const l of await offeneLaeufe()) {
+      if (weg.has(l.ereignis.id) || trashExpired(l.ereignis.at)) continue;
+      for (const c of await aenderungen(l)) {
+        const ref = !c.after && !bestand.has(c.id) ? bildRef(c.before) : null;
+        if (ref) behalten.add(ref);
+      }
+    }
+    for (const l of laeufe) {
+      await repo.appendEvent('trash.emptied', l.ereignis.id, { by, reason });
+      for (const c of await aenderungen(l)) {
+        if (c.after || !c.before || bestand.has(c.id)) continue;
+        const ref = bildRef(c.before);
+        if (ref && !behalten.has(ref)) await bilder.aufraeumen(c.before);
+      }
+    }
+    return laeufe.length;
+  }
+
+  /** Der Aufräumlauf: was älter ist als `TRASH_DAYS`, wird endgültig. Beim Start, täglich und vor jedem Blick in den Korb. */
+  async function korbAufraeumen(): Promise<number> {
+    const alt = (await offeneLaeufe()).filter((l) => trashExpired(l.ereignis.at));
+    return leeren(alt, { id: null, name: 'system' }, 'expired');
+  }
+  let korbUhr: ReturnType<typeof setInterval> | null = null;
+  app.addHook('onReady', async () => {
+    await korbAufraeumen().catch((error) => app.log.error(error));
+    korbUhr = setInterval(() => void korbAufraeumen().catch((error) => app.log.error(error)), 24 * 60 * 60 * 1000);
+    korbUhr.unref?.();
+  });
+  app.addHook('onClose', async () => {
+    if (korbUhr) clearInterval(korbUhr);
+  });
+
+  /**
+   * Was ein Konto im Korb sieht: seine eigenen Läufe ganz, und als Leitung
+   * oder Verwaltung die der anderen — gesiebt wie jede Liste, an den alten
+   * Fassungen. Ein fremder Lauf ohne sichtbaren Artikel steht nicht da.
+   */
+  async function korbFuer(request: FastifyRequest, user: User) {
+    const leitung = isLeitung(user);
+    const laeufe = (await offeneLaeufe()).filter((l) => !trashExpired(l.ereignis.at) && (l.by.id === user.id || leitung));
+    if (!laeufe.length) return [];
+    const registry = await repo.getRegistry();
+    const alle = await repo.listEntities();
+    const out: { lauf: KorbLauf; eigen: boolean; changes: TrashChange[]; items: ReturnType<typeof trashItems> }[] = [];
+    for (const lauf of laeufe) {
+      const changes = await aenderungen(lauf);
+      let items = trashItems(registry, changes, lauf.haupt, (id) => lauf.zurueck.has(id));
+      const eigen = lauf.by.id === user.id;
+      if (!eigen) {
+        const vorher = changes.filter((c) => c.before && !c.after).map((c) => c.before!);
+        const bestand = new Map([...alle, ...vorher].map((e) => [e.id, e]));
+        const sichtbar = new Set(
+          [
+            ...(await sieve(request, vorher, bestand)),
+            ...(await sieve(request, vorher.filter(isSupplement), bestand, undefined, 'versions')),
+          ].map((e) => e.id),
+        );
+        items = items.filter((i) => sichtbar.has(i.id));
+        if (!items.length) continue;
+      }
+      out.push({ lauf, eigen, changes, items });
+    }
+    return out;
+  }
+
+  /** `GET /api/trash` — die offenen Löschläufe mit ihren Artikeln (T-400). */
+  app.get('/api/trash', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    await korbAufraeumen();
+    const namen = new Map((await repo.listEntities()).filter(isLayer).map((e) => [e.id, entityName(e)]));
+    const runs = (await korbFuer(request, user)).map(({ lauf, eigen, items }) => ({
+      id: lauf.ereignis.id,
+      at: lauf.ereignis.at,
+      expires: trashExpires(lauf.ereignis.at),
+      by: { id: lauf.by.id ?? null, name: lauf.by.name ?? '?' },
+      own: eigen,
+      items: items.map((i) => ({ ...i, layers: i.layers.map((id) => ({ id, name: namen.get(id) ?? id })) })),
+    }));
+    return { days: TRASH_DAYS, runs };
+  });
+
+  /**
+   * `POST /api/trash/:id/restore` — einzelne Artikel (`ids`) oder alles
+   * Übrige eines Laufs zurück (T-400). Wer ihn tat, holt selbst zurück;
+   * die Leitung auch fremde Läufe, soweit sie die Artikel sieht. Zurück
+   * kommen sie samt Teilen und nur mit ihren Kanten (`planRestore`), und
+   * auch das geht durch `validateEntity`. Ist danach alles zurück, gilt
+   * der Lauf als zurückgenommen — für die Werkbank wie für den Korb.
+   */
+  app.post<{ Params: { id: string }; Body: { ids?: unknown } | null }>('/api/trash/:id/restore', async (request, reply) => {
+    const echt = await werIst(request);
+    if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nichts zurückgeholt.' });
+    const user = echt.user;
+    const ereignis = await repo.getEvent(request.params.id);
+    if (!istLoeschlauf(ereignis)) return reply.code(404).send({ error: 'Diesen Lauf gibt es im Papierkorb nicht.' });
+    if (await endgueltig(ereignis)) {
+      return reply.code(410).send({ error: 'Endgültig gelöscht — der Papierkorb wurde geleert oder die 30 Tage sind um.', code: 'purged' });
+    }
+    const lauf = (await offeneLaeufe()).find((l) => l.ereignis.id === ereignis.id);
+    if (!lauf) return reply.code(409).send({ error: 'Schon zurückgeholt.' });
+    if (lauf.by.id !== user.id && !isLeitung(user)) {
+      return reply.code(403).send({ error: 'Einen fremden Löschlauf holt die Leitung zurück.' });
+    }
+    const gesehen = (await korbFuer(request, user)).find((k) => k.lauf.ereignis.id === lauf.ereignis.id);
+    if (!gesehen) return reply.code(404).send({ error: 'Diesen Lauf gibt es im Papierkorb nicht.' });
+    const b = request.body ?? {};
+    const sichtbar = new Set(gesehen.items.map((i) => i.id));
+    const offen = gesehen.items.filter((i) => !i.restored).map((i) => i.id);
+    const pick = Array.isArray(b.ids) ? b.ids.filter((x): x is string => typeof x === 'string' && sichtbar.has(x)) : offen;
+    const wahl = pick.filter((id) => !lauf.zurueck.has(id));
+    if (!wahl.length) return reply.code(409).send({ error: 'Schon zurückgeholt.' });
+    const alle = await repo.listEntities();
+    const roh = new Map(alle.map((e) => [e.id, e]));
+    const registry = await repo.getRegistry();
+    const plan = planRestore(registry, gesehen.changes, lauf.haupt, wahl, roh);
+    if (!plan.restored.length) {
+      return reply.code(409).send({ error: 'Diese Artikel stehen schon wieder da.' });
+    }
+    const { geprueft, abgelehnt } = await pruefeLauf(user, registry, roh, plan.changes.map((c) => ({ ...c, summary: [] })), true);
+    if (abgelehnt.length) {
+      return reply.code(422).send({ error: 'Die alten Fassungen bestehen die Prüfung nicht — nichts geschrieben.', rejected: abgelehnt });
+    }
+    await repo.appendEvent('trash.restored', lauf.ereignis.id, {
+      by: { id: user.id, name: user.name },
+      token: echt.token?.name ?? null,
+      ids: plan.restored,
+      changes: geprueft.map((c) => ({ id: c.id, before: c.before, after: c.after })),
+    });
+    for (const c of geprueft) if (c.after) await repo.putEntity(c.after);
+    const fertig = lauf.haupt.every((id) => lauf.zurueck.has(id) || plan.restored.includes(id));
+    if (fertig) {
+      await repo.appendEvent('bulk.undone', lauf.ereignis.id, { by: { id: user.id, name: user.name }, token: echt.token?.name ?? null, via: 'trash', changes: [] });
+    }
+    return { restored: plan.restored, done: fertig };
+  });
+
+  /**
+   * `POST /api/trash/empty` — „Empty trash" (T-400): die eigenen Läufe
+   * endgültig, als Leitung alle, die sie im Korb sieht; mit `runs` nur
+   * diese. Danach gibt es kein Zurück mehr, auch nicht in der Werkbank.
+   */
+  app.post<{ Body: { runs?: unknown } | null }>('/api/trash/empty', async (request, reply) => {
+    const echt = await werIst(request);
+    if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nichts geleert.' });
+    const nur = Array.isArray(request.body?.runs) ? new Set(request.body.runs.filter((x): x is string => typeof x === 'string')) : null;
+    const laeufe = (await korbFuer(request, echt.user)).map((k) => k.lauf).filter((l) => !nur || nur.has(l.ereignis.id));
+    const emptied = await leeren(laeufe, { id: echt.user.id, name: echt.user.name }, 'empty');
+    return { emptied };
+  });
 
   /** Die Übernahme ist Sache der Verwaltung der Installation (T-130) — nie in einer Sicht. */
   async function verwaltungFuer(request: FastifyRequest): Promise<Wer | string> {

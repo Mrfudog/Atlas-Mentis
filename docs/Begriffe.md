@@ -1073,6 +1073,19 @@ das drei Runden aufschalten, bliebe sonst für alle drei umsortiert. Er
 ordnet nur — was keine Ebene ins Spiel bringt, bringt auch kein Vorrang.
 Artikel vor Art vor Reihenfolge, weil das Genauere das bewusstere ist.
 
+### Was an einem Artikel hängt, zieht mit — wenn man es lässt (T-402, E-161)
+
+Ein Kapitel ohne seine Teile, eine Kreatur ohne ihren Statblock, eine
+Figur ohne ihr Inventar sind nach einem Ebenenwechsel zerrissen: die neue
+Ebene zeigt den Kopf, die alte den Rest. Darum gehen beim Verschieben die
+**Mitläufer** mit — dieselben Kanten, die auch beim Löschen mitnehmen
+(`partOf`, die Kanten mit `asField`, `holds` auf ein Stück). Aber nicht
+blind: ein Teil, das ein anderes Kapitel einbettet, oder ein Statblock, den
+eine zweite Kreatur liest, ist mehr als ein Anhängsel. Also eine Liste mit
+Häkchen, vorgewählt nur, was in derselben alten Ebene lag, und je Zeile,
+wo es sonst noch hängt. Was abgewählt ist, bleibt; Kanten bleiben ohnehin,
+denn sie zeigen auf eine Id und nicht auf eine Ebene.
+
 ### Eine Stufe ist ein Zustand, eine Wirkung ist eine Kante
 
 „Exhaustion 3" ist ein Artikel der Art `Condition` mit `stage` 3 und einer

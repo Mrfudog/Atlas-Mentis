@@ -94,6 +94,7 @@ export * from './groupvisibility.js';
 export * from './articlevisibility.js';
 export * from './rest.js';
 export * from './deletion.js';
+export * from './trash.js';
 export * from './timefilter.js';
 export * from './relationfilter.js';
 export * from './layermove.js';

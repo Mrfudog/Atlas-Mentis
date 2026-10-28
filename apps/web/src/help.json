@@ -151,7 +151,7 @@
             "All images you can see. Filter by kind, tag, layer, or “unused” for images nothing refers to yet.",
             "Each image names its resolution, aspect ratio, size and layer. Tags stand as badges: × removes one, “+ tag” adds one; select several images to tag them together.",
             "“Use as…” turns an image into a map (with a grid suggested from its resolution), a creature's token or a prop, and links to the result.",
-            "Delete removes the selected images — or one image with 🗑 — but only those in your write layer; images from other layers are deselected, and the message says how many. Undo right after brings them back; to delete the others, switch your write layer in the header.",
+            "Delete removes the selected images — or one image with 🗑 — but only those in your write layer; images from other layers are deselected, and the message says how many. Undo right after brings them back, and for 30 days they wait in Deleted; to delete the others, switch your write layer in the header.",
             "Upload images opens your device's file menu: on a phone Files, OneDrive and other storage as well as photos and the camera. Any file can be chosen; it is checked afterwards — JPEG, PNG, WebP, GIF and AVIF go up, anything else (HEIC, SVG, PDF …) says what to do instead. Animated GIF and WebP are kept as they are."
           ]
         }
@@ -197,7 +197,7 @@
             "The token of a statblock — on a creature, of its statblock — stands as it does on the map. “Adjust token” drags and zooms the image in its circle, picks its border, or marks it as a ready-made round token that is shown as it is; frame and border are saved on the image, so every statblock with that token looks the same. “Change image” sets another image as the token of the statblock.",
             "GMs see a Knowledge box at the side: which pieces of information exist about this article — on it, for it, or for a whole group — the fields each covers and the knowledge it belongs to. “+ Information” picks fields by group and ticks or names a knowledge; who knows it is set on the knowledge.",
             "A knowledge’s page writes out everything it brings together: each information with the articles it is about and exactly the fields it covers — read as you may read them. Players find what their character knows in one place.",
-            "Delete removes the article if it lies in your write layer and you may write it; otherwise the message names the layer to switch to. Undo right after the deletion brings it back with its links."
+            "Delete removes the article if it lies in your write layer and you may write it; otherwise the message names the layer to switch to. Undo right after the deletion brings it back with its links; for 30 days it can also be restored from Deleted."
           ]
         },
         {
@@ -232,7 +232,7 @@
             "Gear starts with your hands. Tap an item — in the grid, in the list or under “Not stowed” — then tap Main hand or Off hand; with a mouse you can also drag it there. A two-handed weapon takes both hands, a shield only the off hand; One hand / Two hands switches the grip of a versatile weapon.",
             "If a hand is full, a warning asks whether to stow what is there, drop it (free) or cancel. Stow puts a held item back into the grid, or under “Not stowed” when there is no room.",
             "Beside the hands, the picked item lists every place it can go: ✓ fits, ⚠ moves something else out, ✗ not there, with the reason. Under the hands, ✓ and ✗ say what your hands allow right now — spellcasting, a shield without training, a free hand for a potion — and Your turn in Combat locks the same actions with the same reason.",
-            "Log, at the bottom, lists the rolls made on the character and on its statblock, newest first; filter by who rolled or by session.",
+            "Log, at the bottom, lists the rolls made on the character and on its statblock, newest first; filter by who rolled or by session. On the statblock, click a skill or saving throw bonus (Stealth +6, Dex +4) or an ability modifier to roll it — Shift for advantage, Alt for disadvantage; the log says what was rolled.",
             "Below the statblock on Overview, “Proficiencies and where they come from” lists saving throws, proficiencies and expertise, each with its source — class, background, origin, feature, feat, a choice you made, an item, or added by hand on the statblock — linked to that article. Crafting, the sheet and “usable by” count exactly these.",
             "Below that, “How the numbers come about” opens each value — abilities as base plus origin, background, choices and items; proficiency bonus, hit points, AC, initiative, speed, senses — each part linked to its article.",
             "Header, statblock and quick view show these final numbers. The statblock keeps the base scores, and editing writes there.",
@@ -255,7 +255,7 @@
           "heading": "Crafting (recipes)",
           "text": [
             "On a recipe, “Start crafting” makes a crafting order. Its material stays reserved in the inventory of the character and the party until the order ends.",
-            "“Work a day” advances an order; enter the roll where the recipe asks for a check. The GM accepts or rejects the result. How long crafting takes and what it costs are the campaign's rules."
+            "“Work a day” advances an order. Where the recipe asks for a check, “Roll check” rolls a d20 plus the crafter's bonus from their statblock (ability, tool proficiency) on the server, into the order's log; or enter a total you rolled at the table. The GM accepts or rejects the result. How long crafting takes and what it costs are the campaign's rules."
           ]
         },
         {
@@ -465,6 +465,7 @@
             "Pick an audience for a group, click a player's cell to show or hide the group for that player only, ↺ goes back to the layer's default. Articles with their own setting win over the group; “own” lists them, and “Follow the group” removes their setting.",
             "Below the groups, under Layers and under Visibility, “Articles and their layers” lists every article in play with its layer, the layer's publisher, its visibility and where that comes from (own setting, campaign rule, layer default). Filter by name, layer, type and visibility, sort by name, layer, type or visibility.",
             "An article with more than one version says so in its row: which one lists and links show, and Prefer this version for the others. Under Layers › Order in play, First for some types puts one layer first for a type only.",
+            "To move articles to another layer, tick them, choose Move to layer… and press Move…. A list shows what goes along — parts, own statblock, inventory and pieces, ticked when they lie in the same old layer — and where else each one is linked. Untick what should stay; Undo move takes the whole move back.",
             "Set one article's visibility right in its row (Public, Table, Players, GM; ↺ follows the group again), or click a player to show or hide it for that player only. Tick several, or “all shown”, and set it for all at once. Articles in a layer you do not write stay as they are and say so: set them for their group above instead. To move an article to another layer, open it and use Edit › Layer."
           ]
         }
@@ -477,6 +478,22 @@
         {
           "text": [
             "Your layers (“Make default” chooses where new articles go) and API tokens for scripts."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["trash"],
+      "title": "Deleted — the trash",
+      "sections": [
+        {
+          "heading": "What stays here",
+          "text": [
+            "Everything you deleted from your write layer stays here for 30 days, grouped by when it was deleted. Each group says until when it can come back.",
+            "Players see what they deleted themselves; the GM also sees what others deleted, as far as the GM may see those articles.",
+            "Restore brings one article back — with the parts that went with it (an inventory, a statblock instance) and its links to articles that are here. Restore all brings back the rest of a group. A restored article is linked from its row.",
+            "Empty trash deletes everything you see here for good: images then lose their file too, unless another image uses the same file, and the Workbench cannot undo it any more. After 30 days this happens on its own.",
+            "You reach this page from Account › Deleted articles, and from the message after deleting."
           ]
         }
       ]

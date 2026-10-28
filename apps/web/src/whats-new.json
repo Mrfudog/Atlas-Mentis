@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-deleted-trash",
+      "date": "2026-10-28",
+      "title": "Deleted: restore within 30 days",
+      "text": "What you delete now waits 30 days in Deleted (Account › Deleted articles). Restore one article or everything from one deletion; the GM sees what others deleted too. Empty trash deletes it for good — only then do images lose their files.",
+      "area": "Articles",
+      "link": "/trash"
+    },
+    {
+      "id": "2026-10-28-statblock-rolls",
+      "date": "2026-10-28",
+      "title": "Roll skills, saves and crafting checks",
+      "text": "On a statblock, skill and saving throw bonuses and ability modifiers are now dice to click; the log says “Stealth check” or “DEX save”. Crafting has “Roll check”, which rolls with the crafter's own bonus on the server. A long rolls log now pages past the first thousand rolls.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-tracker-damage-types",
       "date": "2026-10-28",
       "title": "Damage types in the tracker, effects on saves and spells",
@@ -15,6 +31,14 @@
       "text": "In Plan turn a path may now pass through allies (but not stop on them), and zones of difficult terrain cost double, shown brown. The server counts the feet itself, so a path that is too long is refused.",
       "area": "Play",
       "link": "/play"
+    },
+    {
+      "id": "2026-10-28-move-layer-followers",
+      "date": "2026-10-28",
+      "title": "Moving an article takes its parts along",
+      "text": "When you move an article to another layer, a list now asks what goes along: its parts, its own statblock, its inventory and the pieces in it — ticked when they lie in the same old layer — with where else each is linked. On the campaign page you can move a whole selection the same way, and undo it.",
+      "area": "Campaign",
+      "link": "/handbook"
     },
     {
       "id": "2026-10-28-first-damage",
