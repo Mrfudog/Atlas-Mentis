@@ -35,7 +35,7 @@ export function zeitraumTeile(wert: string | undefined): { von: string; bis: str
 @Component({
   selector: 'nw-zeitfilter',
   template: `
-    <details class="facette" [open]="offen()" (toggle)="offen.set($any($event.target).open)">
+    <details class="facette" data-bereich [open]="offen()" (toggle)="offen.set($any($event.target).open)">
       <summary class="leg">
         When &amp; who
         @if (gewaehlt()) {

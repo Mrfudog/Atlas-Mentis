@@ -71,6 +71,7 @@ import { ansichtWeg } from '../klassen/ansicht-weg';
 import { EbenenMarke } from '../artikel/ebenen-marke';
 import { Stapel } from '../kern/stapel';
 import { mitnahmeLesen } from './mitnahme';
+import { Klappleiste } from '../muster/klappleiste';
 
 interface Moeglichkeit {
   /** Was in die Antwort kommt: Artikel-Id, Name oder Schlüssel. */
@@ -164,7 +165,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
  */
 @Component({
   selector: 'nw-assistent',
-  imports: [RouterLink, KurzLink, Text, NgTemplateOutlet, EbenenMarke],
+  imports: [RouterLink, KurzLink, Text, NgTemplateOutlet, EbenenMarke, Klappleiste],
   template: `
     <div class="buch">
       <nav aria-label="Breadcrumb" class="brot">
@@ -229,6 +230,12 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
         @if (schritt(); as s) {
           <section class="blatt" [attr.aria-label]="titel(s)">
             <h2>{{ titel(s) }}</h2>
+            <!-- Die Klappleiste (T-359), wo ein Schritt lang wird: eine Wahl mit
+                 Unterwahlen (Klasse › Fertigkeiten), die Ausrüstung. Nur
+                 springen — geklappt wird hier nichts. -->
+            @if ((s.kind === 'pick' && s.nested?.length) || s.kind === 'equipment') {
+              <nw-klappleiste beschriftung="Step sections" [klappbar]="false" />
+            }
 
             @switch (s.kind) {
               @case ('pick') {
@@ -237,7 +244,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                     <input class="suche" type="search" placeholder="Filter…" [value]="filterVon(s.id)" (input)="filtere(s.id, $any($event.target).value)" />
                   }
                   <!-- Spielarten unter ihrer Grundart (T-193), wie D&D Beyond: zugeklappt, bis man sie braucht. -->
-                  <ul class="karten" role="radiogroup" [attr.aria-label]="titel(s)">
+                  <ul class="karten" data-bereich role="radiogroup" [attr.aria-label]="titel(s)">
                     @for (g of gruppiert(s, liste); track g.m.wert) {
                       <li [class.gruppe]="g.varianten.length">
                         <ng-container *ngTemplateOutlet="karte; context: { $implicit: g.m, s: s }" />
@@ -264,7 +271,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                     }
                   </ul>
                   @if (vergleichVon(s.id); as ids) {
-                    <section class="vergleich" aria-label="Compare">
+                    <section class="vergleich" data-bereich aria-label="Compare">
                       <h3>
                         Compare
                         <button type="button" class="leise" (click)="leereVergleich(s.id)">Clear</button>
@@ -309,7 +316,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                        weiteren Klasse nach den Mehrklassen-Regeln; was eine Stufe fragt,
                        steht darunter als Wahl — kein eigener Level-up. -->
                   @if (s.type === 'Class' && gewaehlt(s)) {
-                    <section class="stufen" aria-label="Class levels">
+                    <section class="stufen" data-bereich aria-label="Class levels">
                       <h3>Levels <span class="dim">· character level {{ gesamtStufe() }}</span></h3>
                       <ul class="stufenliste">
                         @for (z of klassenStufen(); track z.id) {
@@ -328,7 +335,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                           </li>
                         }
                       </ul>
-                      <details class="weitere" (toggle)="$any($event.target).open && ladeKlassenVoll()">
+                      <details class="weitere" data-bereich (toggle)="$any($event.target).open && ladeKlassenVoll()">
                         <summary>Add a class (multiclass)</summary>
                         <p class="dim">By the rules you need the minimum scores of every class you have and of the new one.</p>
                         <ul class="weitere-liste">
@@ -350,7 +357,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                   @if (s.nested?.length) {
                     <div class="verschachtelt" id="wahl-verschachtelt">
                       @for (w of wahlSchritte(s.nested!); track w.id) {
-                        <section class="unterwahl" [attr.data-offen]="fertigSchritt(w) ? null : ''" [attr.aria-label]="titel(w)">
+                        <section class="unterwahl" data-bereich [attr.data-offen]="fertigSchritt(w) ? null : ''" [attr.aria-label]="titel(w)">
                           <h3>{{ titel(w) }}</h3>
                           <ng-container *ngTemplateOutlet="wahlKoerper; context: { $implicit: w }" />
                         </section>
@@ -528,7 +535,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                 @if (ausrMethode(); as m) {
                   @if (m.method === 'rules') {
                     @for (c of s.choices; track c.source.entity.id + '#' + c.choice.id) {
-                      <h3 class="wahlkopf">{{ wahlTitel(c) }}</h3>
+                      <h3 class="wahlkopf" data-bereich>{{ wahlTitel(c) }}</h3>
                       <ul class="karten varianten" role="radiogroup" [attr.aria-label]="wahlTitel(c)">
                         @for (o of c.choice.from?.options ?? []; track o.key) {
                           <li>
@@ -635,7 +642,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                         }
                       </ul>
                       @if (korb().length) {
-                        <h3>Your equipment</h3>
+                        <h3 data-bereich>Your equipment</h3>
                         <ul class="laden korb">
                           @for (k of korb(); track k.id) {
                             <li>

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-section-bar",
+      "date": "2026-10-28",
+      "title": "Expand all, collapse all, next section — on more pages",
+      "text": "The bar from the Layers tab now also stands above the filters of the Compendium and the areas, above the chapters of an article (Expand all opens Admin and Log, and the article page keeps them so for your account), on a type in the Registry (all inherited types at once) and in long steps of the character assistant. Alt+↑/↓ jumps, with Shift it collapses or expands all.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-28-open-choices",
       "date": "2026-10-28",
       "title": "Open choices keep a character an idea",
