@@ -271,7 +271,10 @@
           "text": [
             "Characters, parties and containers carry items in a grid: drag to move, rotate a piece, move it between character, party and container. Zones of a container say how long it takes to draw what lies there.",
             "A piece whose shape is not symmetric can also be mirrored. Its picture lies in its cells, turned and mirrored with it.",
-            "Tap a piece on the cell you want to hold it by — that cell is marked — then tap a free cell: the piece lands with that cell there. Tap another of its cells to hold it there instead. A piece from Not stowed is held by the first cell of its top row."
+            "Tap a piece on the cell you want to hold it by — that cell is marked — then tap a free cell: the piece lands with that cell there. Tap another of its cells to hold it there instead. A piece from Not stowed is held by the first cell of its top row.",
+            "Discard takes a piece out of the game: say how many of a stack, confirm, and the piece is deleted with the last one. Undo right after puts it back where it was — as long as nothing else changed in that inventory.",
+            "Sell offers the shops you can see with what each pays for one piece; the shops where the scene or map in play is come first, under Here. Pick a shop and a quantity: the coins go into the purse of the inventory you sell from. From the party’s chest, every member sells for the party.",
+            "A piece reserved for a crafting order can’t be discarded or sold — the message says so; release it first."
           ]
         },
         {

@@ -76,6 +76,49 @@ Zweite Etappe (T-244): Gürtel als Gegenstand mit Raster und Verbund,
 Köcher mit Filter, Verstaukosten aus dem Modul, Stapel teilen, Anker,
 schwebende Werkzeugleiste, Telefon-Muster.
 
+## Wegwerfen und Verkaufen am Stück (T-407, REQ-404)
+
+Am gewählten Stück stehen **Discard** und **Sell** statt „Remove". Remove
+nahm nur die `holds`-Kante weg und liess die Instanz liegen: ein Stück, das
+niemand hält und keine Liste zeigt. Jetzt rechnet `discardPiece`
+(`packages/model/src/discard.ts`) den Stapel; ist er ganz weg und war das
+Stück eine Instanz, die sonst niemand hält, **geht sie mit**. Ein
+Grundartikel geht nie mit. Der Server (`apps/server/src/wegwerfen.ts`)
+schreibt gegen die gelesene Revision, prüft die Sperre für Reserviertes
+(T-134) und protokolliert `inventory.discarded` samt alter Kante und
+gelöschter Instanz. **Undo** legt beides zurück, einmal und nur, solange das
+Inventar unverändert ist.
+
+**Sell** fragt `GET /api/inventories/:id/sell-offers`: die sichtbaren Läden
+mit ihrem Ankaufspreis (`buybackFor`, E-045 b, E-175), die am Ort der Szene
+oder Karte im Spiel zuerst (`shopsHere`). Verkauft wird über die Route des
+Ladens (T-133), damit Preis, Sperre und Protokoll an einer Stelle stehen.
+Aus der Truhe der Gruppe verkauft jedes Mitglied für die Gruppe; das Geld
+geht in den Beutel des Inventars, aus dem verkauft wird. Gerechnet wird in
+der Grundwährung (Kupfer), gezeigt über `formatMoney`; Münzsorten folgen
+nach E-129/E-130.
+
+```mermaid
+flowchart TD
+  A[Stück gewählt] --> B{Reserviert?}
+  B -- ja --> R[Meldung: erst freigeben]
+  B -- nein --> C{Discard oder Sell}
+  C -- Discard --> D[Rückfrage + Anzahl]
+  D --> E[discardPiece: Stapel kleiner oder weg]
+  E --> F{Instanz, die niemand hält?}
+  F -- ja --> G[Instanz löschen, im Protokoll festhalten]
+  F -- nein --> H[nur die Kante]
+  G --> U[Undo: Kante und Instanz zurück, solange unverändert]
+  H --> U
+  C -- Sell --> S[sell-offers: Läden mit Ankaufspreis, Here zuerst]
+  S --> T[Laden + Anzahl wählen]
+  T --> V[POST /api/shops/:id/sell — Münzen in den Beutel]
+```
+
+Wo eine Figur ist, kennt das Modell nicht; „Here" heisst darum: der Laden
+teilt eine Kante mit Szene oder Karte im Spiel, oder liegt (`partOf`) in
+einem Ort, den sie nennen oder der sie nennt.
+
 ## Gegenstandsmerkmale (T-324, E-163)
 
 Was an einen Gegenstand kommt, ohne selbst einer zu sein, ist ein

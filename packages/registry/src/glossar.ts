@@ -266,6 +266,22 @@ const APP: AppTerm[] = [
     translations: { de: 'Verdrängen' },
   },
   {
+    term: 'Discard',
+    aliases: ['Throw away'],
+    sort: 'app',
+    definition: 'Taking pieces out of an inventory and out of the game. For a stack you say how many; the last one takes its own piece record with it.',
+    effect: 'Undo right after puts the piece back where it was, as long as nothing else changed in that inventory. A piece reserved for a crafting order can’t be discarded.',
+    translations: { de: 'Wegwerfen' },
+  },
+  {
+    term: 'Sell (from the inventory)',
+    aliases: ['Sell offer'],
+    sort: 'app',
+    definition: 'Selling a piece right where it lies in the inventory: the shops you can see are offered with what each pays for one piece, those where the scene or map in play is first.',
+    effect: 'The price is the shop’s buy rate (half the list price unless the shop or its buys edges say otherwise); the coins go into the purse of the inventory sold from.',
+    translations: { de: 'Verkaufen' },
+  },
+  {
     term: 'Draw zone',
     aliases: ['Zone (inventory)'],
     sort: 'app',

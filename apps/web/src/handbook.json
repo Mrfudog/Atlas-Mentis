@@ -162,6 +162,16 @@
           ]
         },
         {
+          "heading": "Getting rid of gear",
+          "text": [
+            "Open the character (or the party) and the Gear tab. Tap the piece in the list or under “Not stowed”.",
+            "Discard asks first and, for a stack, how many. Confirm: the pieces are gone, and the last one takes its own piece record with it. “Discarded … — Undo” stays below the inventory; Undo puts everything back where it was, as long as nothing else changed in that inventory meanwhile.",
+            "Sell lists the shops you can see and what each pays for one piece. Under Here are the shops where the scene or map in play is; the others follow under Elsewhere. A shop that only buys certain wares says “doesn’t buy this”.",
+            "Pick the shop and the quantity and press “Sell for …”: the coins go into the purse of this inventory, and the shop keeps the piece if it counts that ware. Selling from the party’s chest pays into the chest.",
+            "A piece reserved for a crafting order says why it can’t go; the GM releases it first."
+          ]
+        },
+        {
           "heading": "Giving a character a +1 dagger",
           "text": [
             "Give the character a dagger as usual — bought, looted or handed over, it arrives as their own piece. Open the piece (from the inventory) and, under Enhancements, choose Add enhancement: +1 Weapon. Add Silvered too if you like; only enhancements whose “Variant applies to” fits are offered first, and one that does not fit is refused.",
