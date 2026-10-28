@@ -24,3 +24,23 @@ Epic: [[EP-08 Live-Spiel]]
 | [[REQ-120]] Spielprotokoll | Spielleitung | 3 | teils |
 | [[REQ-121]] Statistik | Spieler | 4 | offen |
 <!-- stories:ende -->
+
+## Live-Abgleich (T-399, REQ-398)
+
+Was die Leitung auf der Karte oder an einem geteilten Artikel ändert, geht
+über den Live-Kanal an jedes offene Gerät der Runde — je Empfänger gesiebt.
+Bestand, Lücken und Schnitte: `docs/vorschlaege/Live-Abgleich.md`.
+
+```mermaid
+flowchart LR
+  L[Leitung schreibt] --> Q[mitKanal meldet]
+  Q --> B[Bündel je 50 ms]
+  B --> S{gesiebt je Empfänger:\nsieht er es anders?}
+  S -- ja --> E[entity / gone / session]
+  S -- nein --> X[schweigt]
+  E --> G[Gerät holt den Artikel gesiebt neu]
+```
+
+- **Nur was er anders sieht:** zieht ein verborgener Gegner oder ein Token
+  unter dem Nebel, erfährt es die Leitung, die Spielerin nicht — auch nicht
+  über den Takt der Meldungen.
