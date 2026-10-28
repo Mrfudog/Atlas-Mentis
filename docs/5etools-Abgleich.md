@@ -246,7 +246,7 @@ geraten:
 | **Official** | jedes Buch aus `data/books.json` / `data/adventures.json`, das nicht Partnered ist | `SourceUtil.isSiteSource`: was die Seite selbst führt, ist kein Homebrew |
 | **Partnered** | RMBRE, RMR, EGW, ToR, DD, FS, US, CRCotN, HftT, LRDT, TD | `Parser.SOURCES_PARTNERED_WOTC` in `js/parser.js` — seit Dez. 2025 leer und auskommentiert, weil D&D Beyond diese Bücher als „Official" führt; die alte Liste gilt hier, damit Partner-Inhalte erkennbar bleiben |
 | **Third party** | legt der Importer nie an | `5etools-src` enthält kein Buch eines fremden Verlags; Drittanbieter kämen über Homebrew (`partnered`-Kennzeichen an der Quelle in `homebrew/`), das wir nicht einlesen |
-| **Homebrew** | jede hier angelegte Ebene ohne Herausgeber-Gruppe — die Kampagnenebenen, eigene Ebenen; eine eingelesene ohne Gruppe heisst **Unassigned** (T-109) | `BrewUtil2.hasSourceJson`: Homebrew liegt nicht in `5etools-src` |
+| **Homebrew** | jede hier angelegte Ebene ohne Herausgeber-Gruppe — die Kampagnenebenen, eigene Ebenen; eine eingelesene ohne Gruppe heisst **Unknown** (T-109; bis 28.10. „Unassigned“, das Wort trägt seither die Parkplatz-Ebene) | `BrewUtil2.hasSourceJson`: Homebrew liegt nicht in `5etools-src` |
 | Non-standard | `SOURCES_NON_STANDARD_WOTC` und Kürzel mit `PS…` (Plane Shift) oder `MCV…` | „UA/Etc. Sources" der Blocklist, `SourceUtil.isNonstandardSourceWotc` ohne UA (UA kommt nicht herein) |
 | Comedy | `SOURCES_COMEDY` | „Comedy Sources" |
 | Outside the Forgotten Realms | `SOURCES_NON_FR` | „Non-*Forgotten Realms*" |

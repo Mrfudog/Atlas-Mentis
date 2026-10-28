@@ -680,7 +680,7 @@ export interface KampagnenEbene {
   id: string;
   name: string;
   kind: string;
-  /** Wer sie herausgibt (T-094): der Name ihrer Herausgeber-Gruppe, sonst „Homebrew" oder „Unassigned" (T-109); bei einer Gruppe leer. */
+  /** Wer sie herausgibt (T-094): der Name ihrer Herausgeber-Gruppe, sonst „Homebrew" oder „Unknown" (T-109); bei einer Gruppe leer. */
   publisher: string;
   /** Warum (T-109): der Satz, der an der Marke steht. */
   publisherWhy?: string;

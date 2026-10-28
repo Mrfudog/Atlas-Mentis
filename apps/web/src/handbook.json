@@ -158,6 +158,14 @@
           ]
         },
         {
+          "heading": "Sorting what waits in Unassigned",
+          "text": [
+            "Every article has a layer. What has no other one waits in the layer Unassigned — for example an image uploaded without an article, or something the administration took out of every layer.",
+            "Open the workbench and run the check Unassigned. It lists those articles; open one and move it under Admin › Layer, or select them all and move them with a bulk change.",
+            "To see them in a campaign meanwhile, switch the layer Unassigned on like any other layer."
+          ]
+        },
+        {
           "heading": "Requiring a field for a state",
           "text": [
             "Open the field under Registry › the type that declares it, and set Required to “to be prepared” or “to be ready”. For an edge kind, set Required on the edge.",

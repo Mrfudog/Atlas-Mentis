@@ -197,7 +197,7 @@ describe("chosen write layer (T-176)", () => {
     });
   });
 
-  it("the administration creates without a layer as before, and in its chosen one once it has picked", async () => {
+  it("the administration creates in the campaign layer without a choice (E-182), and in its chosen one once it has picked", async () => {
     const { als, testebene } = await aufbau();
     const vorher = (
       await als("Basil", "POST", "/api/entities", {
@@ -205,7 +205,8 @@ describe("chosen write layer (T-176)", () => {
         name: "Ohne",
       })
     ).json() as Entity;
-    expect(inLayer(vorher)).toEqual([]);
+    /* Jeder Artikel hat eine Ebene (E-182): ohne Wahl die der laufenden Kampagne. */
+    expect(inLayer(vorher)).toEqual(["ly_nebel"]);
     const ly = await testebene("Basil");
     expect(
       (await als("Basil", "PUT", `/api/layers/${ly}/default`, {})).statusCode,

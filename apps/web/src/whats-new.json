@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-unassigned",
+      "date": "2026-10-28",
+      "title": "Every article has a layer: Unassigned",
+      "text": "Articles that fit no other layer now wait in the layer Unassigned, and the workbench lists them under Unassigned so you can move each where it belongs. A layer without a publisher group now reads “Unknown” as its publisher.",
+      "area": "Workbench",
+      "link": "/werkbank"
+    },
+    {
       "id": "2026-10-27-required-for-a-state",
       "date": "2026-10-27",
       "title": "Fields required only for prepared or ready",

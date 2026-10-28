@@ -25,6 +25,8 @@ import { stageBases, validateEntity } from './validate.js';
 import { viewConflicts } from './viewScope.js';
 import { MIN_CONTRAST, tokenContrast } from './tokens.js';
 import { stateGaps, stateOf } from './readiness.js';
+import { LAYER_TYPES, UNASSIGNED_LAYER } from './stack.js';
+import { LAYER_RELATION } from './visibility.js';
 
 export interface CheckHit {
   /** Peg-Id — der Weg zum Artikel (`/artikel/:id`). */
@@ -382,6 +384,24 @@ export const CHECKS: Check[] = [
             : `“${k.element}” shares position ${k.position} with ${k.sources.join(', ')}`,
         registry: registerOrt('views', k.winner ?? k.sources.find((s) => !s.startsWith('type ') && !s.startsWith('view ')) ?? k.group),
       }));
+    },
+  },
+  {
+    /* T-425, E-182, E-186: was in der Parkplatz-Ebene liegt oder noch gar
+       keine Ebene hat — offene Arbeit, bis es in seine Ebene verschoben ist. */
+    key: 'unassigned',
+    label: 'Unassigned',
+    description: 'Articles in the layer Unassigned, or with no layer at all. Move each into the layer it belongs to (Admin › Layer on the article, or a bulk change “move to layer”).',
+    run({ registry, entities }) {
+      const raus: CheckHit[] = [];
+      for (const e of entities) {
+        const typ = e.interfaces?.[0] ?? '';
+        if (LAYER_TYPES.has(typ) || typeChain(registry, typ).includes('Layer') || isInstance(e)) continue;
+        const ebenen = (e.relations ?? []).filter((r) => r.type === LAYER_RELATION);
+        if (!ebenen.length) raus.push(hit(e, 'no layer'));
+        else if (ebenen.some((r) => r.to === UNASSIGNED_LAYER)) raus.push(hit(e, 'in Unassigned'));
+      }
+      return raus;
     },
   },
   {

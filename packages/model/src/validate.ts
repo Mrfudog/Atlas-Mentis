@@ -329,6 +329,10 @@ export interface ValidationIssue {
     /* Ein Stand wird gesetzt, dessen Pflicht fehlt (T-425, E-178,
        `stateRefusal`) — gemeldet vom Server, der den Stand davor kennt. */
     | 'state_gaps'
+    /* Die letzte Ebene oder der Stand eines Artikels wird entfernt (T-425,
+       E-179, E-182): jeder Artikel hat beides — gemeldet vom Server. */
+    | 'layer_required'
+    | 'status_required'
     /* Eine Wahl der Figur nimmt, was sie schon hat (T-299,
        `newChoiceDuplicates`) — gemeldet vom Server, nicht von hier. */
     | 'choice_duplicate';

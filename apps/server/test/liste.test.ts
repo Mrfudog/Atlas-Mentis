@@ -280,7 +280,7 @@ describe('POST /api/entities', () => {
   it('hands out the id and the number, and fills in the defaults', async () => {
     const { app, gm, get } = await makeApp();
     const res = await app.inject({ method: 'POST', url: '/api/entities', headers: gm, payload: { type: 'Spell', name: 'Nebelpfeil' } });
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode, res.body).toBe(201);
     const e = res.json() as Entity;
     expect(e.id).toMatch(/^e_[0-9a-f]{12}$/);
     expect(e.components['Identity']).toEqual({ name: 'Nebelpfeil', id: 'spell-0005' });

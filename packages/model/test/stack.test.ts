@@ -24,7 +24,7 @@ import {
   groupingOf,
   publisherOf,
   HOMEBREW,
-  UNASSIGNED,
+  UNKNOWN_PUBLISHER,
   publisherInfo,
   publisherGroups,
   withFilter,
@@ -387,7 +387,7 @@ describe('publisher groups (T-094)', () => {
 
   it('calls a layer in no publisher group homebrew only when it was made here (T-109)', () => {
     expect(publisherOf(w, w.get('eigen'), new Set(['eigen']))).toBe(HOMEBREW);
-    expect(publisherOf(w, w.get('eigen'))).toBe(UNASSIGNED);
+    expect(publisherOf(w, w.get('eigen'))).toBe(UNKNOWN_PUBLISHER);
     expect(publisherOf(w, w.get('g_off'))).toBe('');
   });
 
@@ -397,7 +397,7 @@ describe('publisher groups (T-094)', () => {
       groups: ['g_off'],
       why: 'Because this layer is part of the publisher group Official.',
     });
-    expect(publisherInfo(w, w.get('eigen')).why).toBe('Not part of any publisher group.');
+    expect(publisherInfo(w, w.get('eigen')).why).toBe('Not part of any publisher group, and imported — who published it is not recorded.');
     expect(publisherGroups(w).map((g) => g.id)).toEqual(['g_off', 'g_part']);
   });
 
@@ -516,5 +516,19 @@ describe('turning on part of a layer (T-105)', () => {
     expect(passesFilter({ areas: ['rules'] }, basis.find((e) => e.id === 'schwert')!, registry)).toBe(true);
     expect(passesFilter({ areas: ['rules'] }, basis.find((e) => e.id === 'ort')!, registry)).toBe(false);
     expect(passesFilter(null, basis.find((e) => e.id === 'ort')!, registry)).toBe(true);
+  });
+});
+
+describe('Kampagne und Parkplatz-Ebene (T-425, E-182, E-183)', () => {
+  it('eine Kampagne in ihrer eigenen Ebene steht im Stapel, auch wenn eine andere läuft', async () => {
+    const { inStack } = await import('../src/stack.js');
+    const ebeneB = { id: 'ly_b', interfaces: ['Layer'], name: 'B', components: { Layer: { kind: 'campaign', order: 100 } }, relations: [] };
+    const kampB = { id: 'camp_b', interfaces: ['Campaign'], name: 'B', components: {}, relations: [{ id: 'x', type: 'inLayer', to: 'ly_b' }, { id: 'y', type: 'activates', to: 'ly_b' }] };
+    const kampA = { id: 'camp_a', interfaces: ['Campaign'], name: 'A', components: {}, relations: [] };
+    const artikel = { id: 'n', interfaces: ['Creature'], name: 'Npc', components: {}, relations: [{ id: 'z', type: 'inLayer', to: 'ly_b' }] };
+    const m = new Map([ebeneB, kampB, kampA, artikel].map((e) => [e.id, e as never]));
+    expect(inStack(m, kampB as never, kampA as never)).toBe(true);
+    /* Ein gewöhnlicher Artikel derselben Ebene nicht. */
+    expect(inStack(m, artikel as never, kampA as never)).toBe(false);
   });
 });

@@ -115,11 +115,11 @@ describe('moving an article to another layer (T-383)', () => {
     expect((await verschieben('Sela', 'n_ort', ly)).statusCode).toBe(403);
   });
 
-  it('lets the administration move anywhere and out of every layer, and leaves ordinary saves alone', async () => {
+  it('lets the administration move anywhere — out of every layer means Unassigned (E-182) —, and leaves ordinary saves alone', async () => {
     const { als, verschieben, ebenenVon } = await aufbau();
     expect((await verschieben('Vera', 'r_regel', 'ly_nebel')).statusCode).toBe(200);
     expect((await verschieben('Vera', 'r_regel', null)).statusCode).toBe(200);
-    expect(await ebenenVon('r_regel')).toEqual([]);
+    expect(await ebenenVon('r_regel')).toEqual(['ly_unassigned']);
 
     /* Ein Feld ändern, ohne die Ebene anzufassen, prüft nichts davon. */
     const e = (await als('Mira', 'GET', '/api/entities/n_ort')).json() as Entity;
