@@ -79,6 +79,7 @@ import {
   cellKey,
   feetBetweenTokens,
   planGrid,
+  type PlanTerrain,
   planPath,
   planReach,
   tokenCell,
@@ -205,6 +206,10 @@ export interface Planung {
   steps: readonly PlanStep[];
   /** Wer bedroht: das Token (`rel`) und seine Reichweite in Fuss. */
   threats: readonly { id: string; name: string; rel: string; reach: number }[];
+  /** Durch wessen Token der Weg geht, ohne dort zu enden (Verbündete, T-349). */
+  passable?: readonly string[];
+  /** Was Gelände kostet (Zonen der Karte, T-349). */
+  terrain?: readonly PlanTerrain[];
 }
 
 /** Was ein Antippen im Plan ergibt: ein Weg (mit der Bildgrösse, für den Server) oder ein Ziel. */
@@ -1331,7 +1336,7 @@ interface Zeiger {
                 @if (planBild(); as pb) {
                   <svg class="plan" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
                     @for (c of pb.reach; track c.k) {
-                      <rect class="reich" [attr.x]="c.x" [attr.y]="c.y" [attr.width]="c.w" [attr.height]="c.h" />
+                      <rect class="reich" [style.fill]="c.zaeh ? ZAEH : null" [attr.x]="c.x" [attr.y]="c.y" [attr.width]="c.w" [attr.height]="c.h" />
                     }
                     @if (pb.ring; as r) {
                       <ellipse class="ring" [attr.cx]="r.cx" [attr.cy]="r.cy" [attr.rx]="r.rx" [attr.ry]="r.ry" vector-effect="non-scaling-stroke" />
@@ -3823,7 +3828,7 @@ export class Karte {
     const geo = gridGeometry(s, this.nat());
     if (!geo) return null;
     const ms = markersOf(e);
-    const grid = planGrid(geo, ms, plan.rel ?? '', blockingWalls(e, this.nat()));
+    const grid = planGrid(geo, ms, plan.rel ?? '', blockingWalls(e, this.nat()), { passable: plan.passable ?? [], terrain: plan.terrain ?? [] });
     if (!grid) return null;
     const ich = ms.find((m) => m.rel.id === plan.rel);
     const token = ich ? tokenCell(geo, grid, ich) : null;
@@ -3855,6 +3860,9 @@ export class Karte {
     return planReach(pr.grid, pr.start, plan.budget);
   });
 
+  /** Die Farbe schwierigen Geländes im Bereich (T-349); am Element, weil das Stylesheet der Karte am Budget steht. */
+  protected readonly ZAEH = 'rgba(150, 110, 60, 0.32)';
+
   private readonly planZeiger = signal<Pt | null>(null);
 
   /** Der Weg zu einem Punkt, wenn er ins übrige Tempo passt. */
@@ -3876,9 +3884,11 @@ export class Karte {
     const { geo } = pr;
     const fw = geo.size / geo.w;
     const fh = geo.size / geo.h;
+    /* Schwieriges Gelände ist im Bereich erdfarben gezeichnet (T-349). */
+    const zaeh = pr.grid.cost ?? {};
     const reach = Object.keys(this.planReich()).map((k) => {
       const [x, y] = k.split(',').map(Number) as [number, number];
-      return { k, x: (geo.ox + x * geo.size) / geo.w, y: (geo.oy + y * geo.size) / geo.h, w: fw, h: fh };
+      return { k, x: (geo.ox + x * geo.size) / geo.w, y: (geo.oy + y * geo.size) / geo.h, w: fw, h: fh, zaeh: (zaeh[k] ?? 1) > 1 };
     });
     const linie = (cells: readonly Cell[]) =>
       cells

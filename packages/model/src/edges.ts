@@ -534,8 +534,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'turnplan',
     label: 'Turn planner',
     area: 'play',
-    does: 'builds the action bar of a creature on the map from the actions of its statblock, moves its token when the GM confirms a planned turn, and asks for an opportunity attack when the path leaves the reach of a creature on the other side (party members and allies of the encounter against the rest) (T-198)',
+    does: 'builds the action bar of a creature on the map from the actions of its statblock, moves its token when the GM confirms a planned turn, and asks for an opportunity attack when the path leaves the reach of a creature on the other side (party members and allies of the encounter against the rest) (T-198); a path may pass through allies but not end on them, and difficult terrain from the zones of the map costs double — the server counts the feet again (T-349)',
     uses: {
+      [M + 'zugplan.ts']: ['zone'],
       [S + 'zugplan.ts']: ['belongsTo', 'composedOf', 'memberOfParty', 'participates'],
     },
   },

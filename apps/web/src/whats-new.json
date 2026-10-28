@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-plan-allies-terrain",
+      "date": "2026-10-28",
+      "title": "Moving through allies and difficult terrain",
+      "text": "In Plan turn a path may now pass through allies (but not stop on them), and zones of difficult terrain cost double, shown brown. The server counts the feet itself, so a path that is too long is refused.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-28-first-damage",
       "date": "2026-10-28",
       "title": "First damage shows at once",
