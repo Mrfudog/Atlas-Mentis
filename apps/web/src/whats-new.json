@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-28-first-damage",
+      "date": "2026-10-28",
+      "title": "First damage shows at once",
+      "text": "Damage, healing or temporary hit points applied right after opening a character sheet now show straight away; before, the first change was saved but the sheet kept the old number.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-target-big-token",
       "date": "2026-10-28",
       "title": "Attacks reach big tokens",
