@@ -40,6 +40,13 @@ export interface User {
    *  Person: was die eine erfahren hat, weiss er auch, wenn er auf die
    *  andere schaut, und die Freigabeliste zeigt einen Absender. */
   actorIds: string[];
+  /** **In welcher Kampagne eine Figur dem Konto gehört** (T-412,
+   *  Entscheid der Leitung 23.10.: „pro Kampagne zuweisen") — Figur →
+   *  Kampagne. Fehlt eine Figur hier, ist die Kampagne unbekannt (Bestand
+   *  vor Migration 156, den sie nicht zuordnen konnte); dann gilt sie wie
+   *  bisher überall. `actorIds` einer Anfrage nennt nur die Figuren der
+   *  laufenden Kampagne (`inKampagne`). */
+  actorCampaigns?: Record<string, string>;
   /** **Die Rolle je Kampagne** — Kampagnen-Id → `gm ǀ co-gm ǀ player ǀ
    *  spectator`. Sie steht am Konto und in keinem Artikel: eine Figur sagt
    *  nicht, in welcher Runde ihr Konto was ist, und eine Kontoangabe in

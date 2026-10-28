@@ -383,6 +383,23 @@ steht davon nichts — nur beim Nutzer steht die Id der Figur, die er spielt.
 Darum steht auch in der eigenen Ausfuhr (`/api/export`) keins davon: sie
 liest nur Register und Artikel.
 
+**Figuren je Kampagne** (T-412, Entscheid der Leitung 23.10.):
+`app_user_actor` trägt `campaign_id`. Eine Figur ist die eines Kontos nur
+in ihrer Kampagne — jede Anfrage fragt in der laufenden, die
+Mitgliederliste in ihrer (`figurenzuteilung.ts`). Zugeteilt wird auf der
+Kampagnenseite (Members, dort gilt die Zuteilung für diese Kampagne und
+lässt die anderer Runden stehen), mit der Einladung (ihre Kampagne), beim
+Anlegen einer Spielerfigur (die laufende) oder von der Kommandozeile:
+
+```bash
+pnpm --filter @nw/server user actor sela --actor pc_sela --campaign camp_nebel
+```
+
+Ohne `--campaign` gilt die laufende Kampagne. Leer ist `campaign_id` nur
+bei Zuteilungen, die Migration 156 nicht eindeutig zuordnen konnte (sie
+zählt sie beim Start auf); die gelten wie früher überall, bis sie jemand
+auf der Kampagnenseite zuteilt.
+
 `actor_id` hat bewusst keinen Fremdschlüssel: die Figur kann gelöscht und neu
 eingelesen werden, und ein Zugang, der daran zerbricht, sperrt jemanden mitten
 in der Sitzung aus.

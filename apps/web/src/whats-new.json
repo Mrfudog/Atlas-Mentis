@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-characters-per-campaign",
+      "date": "2026-10-28",
+      "title": "Characters per campaign",
+      "text": "A character given to an account now belongs to it in that campaign only. In a new campaign you no longer find the characters of your other tables as yours; under Campaign › Members each campaign lists and gives its own.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-28-open-choices",
       "date": "2026-10-28",
       "title": "Open choices keep a character an idea",

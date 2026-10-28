@@ -186,6 +186,7 @@ import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
 import { spielerEbenen, spielerEbeneVon, sorgeSpielerEbene } from './spielerebene.js';
+import { figurDazu, inKampagne } from './figurenzuteilung.js';
 import { gewaehlteEbene } from './schreibebene.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { kartenbildAdressen, registerKartenbild, traegtBeschnitt } from './kartenbild.js';
@@ -512,15 +513,31 @@ export function buildApp({
       const treffer = await repo.useToken(hashToken(roh));
       if (!treffer || treffer.user.disabledAt) return null;
       const { passwordHash: _hash, ...user } = treffer.user;
-      return { user, token: treffer.token };
+      return { user: inKampagne(user, await laufendeKampagne()), token: treffer.token };
     }
     const token = request.cookies?.[COOKIE];
     if (!token) return null;
     const user = await repo.touchSession(hashToken(token), sessionExpiry().toISOString());
     if (!user || user.disabledAt) return null;
     const { passwordHash: _hash, ...rest } = user;
-    return { user: rest };
+    return { user: inKampagne(rest, await laufendeKampagne()) };
   }
+  /** Die laufende Kampagne, für `inKampagne` (T-412): eine Anfrage fragt
+   *  in ihr, also sind „meine Figuren" die Figuren dieser Kampagne. */
+  async function laufendeKampagne(): Promise<string | null> {
+    const settings = (await repo.getRegistry()).settings ?? null;
+    /* Der gewöhnliche Fall ohne den ganzen Bestand: die Einstellung nennt
+       eine Kampagne, die es gibt. Sonst rechnet `currentCampaign` wie überall. */
+    const gesetzt = settings?.[CAMPAIGN_SETTING];
+    if (gesetzt && (await repo.getEntity(gesetzt))?.interfaces?.[0] === CAMPAIGN_TYPE) return gesetzt;
+    const stempel = `${await repo.version()}|${gesetzt ?? ''}`;
+    if (ohneEinstellung?.stempel !== stempel) {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      ohneEinstellung = { stempel, id: currentCampaign(alle, settings)?.id ?? null };
+    }
+    return ohneEinstellung.id;
+  }
+  let ohneEinstellung: { stempel: string; id: string | null } | null = null;
   async function viewerOf(request: FastifyRequest): Promise<User | null> {
     const sicht = await sichtVon(request);
     if (sicht === 'nein') return null;
@@ -566,7 +583,7 @@ export function buildApp({
     const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
     if (!ziel || !kampagne || !mayViewAs(wer.user, ziel, kampagne)) return 'nein';
     await merkeBeginn(wer.user, ziel, kampagne);
-    return { als: viewedAs(wer.user, ziel, kampagne), von: wer.user, kampagne };
+    return { als: viewedAs(wer.user, inKampagne(ziel, kampagne), kampagne), von: wer.user, kampagne };
   }
 
   /**
@@ -1113,6 +1130,8 @@ export function buildApp({
         passwordHash: await hashPassword(password),
         isAdmin: invite.isAdmin,
         actorIds: invite.actorId ? [invite.actorId] : [],
+        /* Die Figur gehört in die Kampagne der Einladung (T-412). */
+        ...(invite.actorId && invite.campaignId ? { actorCampaigns: { [invite.actorId]: invite.campaignId } } : {}),
         /* Eine Einladung führt in eine Kampagne, mit der Rolle darin (W3).
            Danach steht die Rolle am Konto und nicht mehr an der Einladung —
            die ist mit dem letzten Gebrauch weg. */
@@ -2874,7 +2893,9 @@ export function buildApp({
     if (!kampagne) return { campaign: null, players: [] };
     const campaign = { id: kampagne.id, name: entityName(kampagne) };
     if (!user.isAdmin && !user.roles?.[kampagne.id]) return { campaign, players: [] };
-    const konten = (await repo.listUsers()).filter((u) => !u.disabledAt && u.roles?.[kampagne.id] === 'player');
+    const konten = (await repo.listUsers())
+      .filter((u) => !u.disabledAt && u.roles?.[kampagne.id] === 'player')
+      .map((u) => inKampagne(u, kampagne.id));
     const figuren = konten.flatMap((u) => u.actorIds ?? []).map((id) => stand.map.get(id)).filter((e): e is Entity => !!e);
     const sichtbar = new Map((await sieve(request, figuren, stand.map)).map((e) => [e.id, e]));
     const players = konten
@@ -3878,7 +3899,8 @@ export function buildApp({
         if (kette.includes(PLAYER_CHARACTER)) {
           const konto = await repo.getUser(user.id);
           if (konto && !konto.actorIds.includes(id)) {
-            await repo.putUser({ ...konto, actorIds: [...konto.actorIds, id] });
+            /* In der Kampagne, in der sie angelegt wird — der laufenden (T-412). */
+            await repo.putUser(figurDazu(konto, currentCampaign(stand.map, registry.settings ?? null)?.id ?? null, id));
           }
         }
       }
