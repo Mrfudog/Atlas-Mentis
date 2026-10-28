@@ -158,6 +158,8 @@ import {
   characterProfile,
   type CharacterProfile,
   newChoiceDuplicates,
+  newMissingProficiencies,
+  missingText,
   duplicateText,
 } from '@nw/model';
 import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
@@ -250,7 +252,8 @@ const STATBLOCK_RELATION = 'belongsTo';
 const FIGUR_KANTEN = new Set(['carries']);
 
 /**
- * **Keine Wahl nimmt, was die Figur schon hat** (T-299): dieselbe Rechnung
+ * **Keine Wahl nimmt, was die Figur schon hat** (T-299), und keine
+ * Expertise geht auf etwas ohne Übung (T-303): dieselbe Rechnung
  * wie im Assistenten (`newChoiceDuplicates`). Abgewiesen wird nur, was
  * dieses Speichern neu doppelt macht — eine ältere Figur bleibt
  * speicherbar.
@@ -259,7 +262,11 @@ function doppelteWahlen(vorher: Entity | undefined, nachher: Entity, bestand: re
   if (!(nachher.relations ?? []).some((r) => r.type === 'chose')) return [];
   const byId = new Map(bestand.map((e) => [e.id, e]));
   byId.set(nachher.id, nachher);
-  return newChoiceDuplicates(vorher, nachher, byId).map((d) => ({ code: 'choice_duplicate', relation: 'chose', message: duplicateText(d, byId) }));
+  return [
+    ...newChoiceDuplicates(vorher, nachher, byId).map((d): ValidationIssue => ({ code: 'choice_duplicate', relation: 'chose', message: duplicateText(d, byId) })),
+    /* Expertise nur mit Übung (T-303), ebenso nur neu Hinzugekommenes. */
+    ...newMissingProficiencies(vorher, nachher, byId).map((m): ValidationIssue => ({ code: 'choice_unproficient', relation: 'chose', message: missingText(m, byId) })),
+  ];
 }
 
 /**
@@ -348,6 +355,8 @@ export interface AppOptions {
   assetMaxBytes?: number;
   /** Die Quelle des Live-Kanals (T-116); ungesetzt eine im Speicher. */
   live?: ChangeFeed;
+  /** Wie oft der Live-Kanal ein Lebenszeichen schickt (ms); ungesetzt 25 s — kürzer in Tests (T-399). */
+  liveHeartbeatMs?: number;
   /** Die andere Installation für die Übernahme (T-130); ungesetzt keine. */
   transferPeer?: Gegenstelle | null;
   /** Nimmt diese Installation Übernahmen an (`ATLAS_TRANSFER_ACCEPT`)? */
@@ -373,6 +382,7 @@ export function buildApp({
   assets = new InMemoryAssetStore(),
   assetMaxBytes = 40 * 1024 * 1024,
   live = new LocalChangeFeed(),
+  liveHeartbeatMs,
   transferPeer = null,
   transferAccept = false,
   sicherung = null,
@@ -3378,6 +3388,7 @@ export function buildApp({
     viewerOf,
     sieveFuer: (user, entities, bestand) => sieveFuer(user, entities, bestand),
     roh,
+    ...(liveHeartbeatMs ? { heartbeatMs: liveHeartbeatMs } : {}),
   });
   app.addHook('onClose', async () => kanal.close());
 

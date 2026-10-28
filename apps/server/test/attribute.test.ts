@@ -211,3 +211,54 @@ describe('a choice may not take what the character already has (T-299)', () => {
     expect((await anlegen('Athletics')).statusCode).toBe(201);
   });
 });
+
+describe('expertise needs proficiency first (T-303)', () => {
+  it('refuses expertise on a skill the character is not proficient in, unless the choice frees it', async () => {
+    const regel = (id: string, typ: string, extra: Entity['components'] = {}): Entity => ({
+      id,
+      interfaces: [typ],
+      name: id,
+      components: { Identity: ident(id, id, typ), Status: { status: 'ready' }, ...extra },
+      relations: [],
+    });
+    const klasse = regel('cl_1', 'Class', {
+      Choices: { choices: [
+        { id: 'skills', kind: 'proficiency', count: 1, from: { values: ['Athletics', 'Survival', 'History'] } },
+        { id: 'expertise', kind: 'proficiency', count: 1, from: { values: ['Athletics', 'Survival', 'History'] } },
+      ] },
+    });
+    const frei = regel('cl_2', 'Class', {
+      Choices: { choices: [{ id: 'expertise', kind: 'proficiency', count: 1, needsProficiency: false, from: { values: ['Athletics', 'History'] } }] },
+    });
+    const repo = new InMemoryRepository(
+      { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_nebel' } },
+      [runde([]), gruppe, klasse, frei, regel('bg_1', 'Background')],
+    );
+    const app = buildApp({ repo });
+    await repo.putUser({ id: 'u_sela', name: 'Sela', passwordHash: await hashPassword(PASSWORT), isAdmin: false, actorIds: [], roles: { camp_nebel: 'player' } });
+    const login = await app.inject({ method: 'POST', url: '/api/login', payload: { name: 'Sela', password: PASSWORT } });
+    const cookie = `nw_session=${login.cookies.find((x) => x.name === 'nw_session')!.value}`;
+    const anlegen = (klasseId: string, chose: { choice: string; picks: string[] }[]) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/entities',
+        headers: { cookie },
+        payload: {
+          type: 'PlayerCharacter',
+          name: 'Ilka',
+          relations: [
+            { type: 'hasBackground', to: 'bg_1' },
+            { type: 'hasClass', to: klasseId, props: { level: 1 } },
+            ...chose.map((props) => ({ type: 'chose', to: klasseId, props })),
+          ],
+        },
+      });
+    const ohne = await anlegen('cl_1', [{ choice: 'skills', picks: ['Athletics'] }, { choice: 'expertise', picks: ['History'] }]);
+    expect(ohne.statusCode).toBe(422);
+    expect((ohne.json() as { issues: { code: string; message: string }[] }).issues).toEqual([
+      expect.objectContaining({ code: 'choice_unproficient', message: expect.stringMatching(/History: expertise needs proficiency/) }),
+    ]);
+    expect((await anlegen('cl_1', [{ choice: 'skills', picks: ['Athletics'] }, { choice: 'expertise', picks: ['Athletics'] }])).statusCode).toBe(201);
+    expect((await anlegen('cl_2', [{ choice: 'expertise', picks: ['History'] }])).statusCode).toBe(201);
+  });
+});

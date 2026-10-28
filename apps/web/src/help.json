@@ -164,6 +164,7 @@
             "“Edit” on a character opens the same assistant with every step. To level up, raise a class in the class step with + — or add another class (multiclass), which by the rules needs the minimum scores of every class you have and of the new one. What the new level asks for, and its hit points, follow as steps “Full edit” on the article is the plain field form.",
             "A spellcaster chooses its cantrips and spells as steps — from the spell list of its class, up to the highest level it casts; level up adds the new ones. A spell you already have from another source is locked.",
             "What an earlier step already gives — a skill, tool or language from your ancestry, background or class, or a feat that cannot be taken twice — is locked in later choices and says where it comes from. Change an earlier choice and a later one that now doubles it is marked, not cleared: pick another. If a source gives something you already chose, the rules let you choose another one instead.",
+            "Expertise only goes on a skill or tool the character is already proficient in — from a fixed source or an earlier choice, including one made just before in the same step. The others are locked and say “not proficient yet”. A choice whose data says it needs no proficiency (Needs proficiency switched off) offers everything.",
             "Under the title stands the layer: of the character when you edit it or level it up, and the layer a new character goes into — change that under “Writes to” in the header."
           ]
         }
