@@ -1,9 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { BOARD_TYPE, entityName, isInstance, PART_OF_RELATION, primaryInterface } from '@nw/model';
 import type { Entity } from '@nw/model';
 import { Bestand, schmal } from '../kern/bestand';
 import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
 import { Brett, isBoard, isStoryRung, storyOf, type Mangel } from './brett';
 
 interface Sprosse {
@@ -229,6 +230,16 @@ export class Boards {
   constructor() {
     void this.bestand.load();
     void this.holen();
+    /* Wechselt die laufende Kampagne oder ihr Stapel (T-411), stehen
+       andere Boards da — dieselbe Frage noch einmal, wie im Kompendium. */
+    const stapel = inject(Stapel);
+    let gesehen = stapel.stand();
+    effect(() => {
+      const n = stapel.stand();
+      if (n === gesehen) return;
+      gesehen = n;
+      untracked(() => void this.holen());
+    });
   }
 
   protected readonly fehler = signal<Mangel | null>(null);
