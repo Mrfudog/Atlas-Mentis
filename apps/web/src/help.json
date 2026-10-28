@@ -84,7 +84,8 @@
             "Fine-tune with the arrows (Shift: ten times as far) and the size slider, which moves within ±10 % of the size; type a number for big jumps. Show grid, Colour and Opacity change how it looks — hidden, it still measures and snaps.",
             "Scale: 1 square (or 1 hex) = 5 ft, 10 ft, 1,5 m, 1 mi or 6 mi from the list, or type your own. Movement, reach, light and measuring use it; on a floor it applies to that floor. The bar under the map shows it.",
             "Tokens snap to the grid (on by default): a dropped token lands so that it covers whole squares — large creatures 2×2, huge 3×3.",
-            "Tokens › Token size gives a token its own size — how many squares it covers, half squares included; “by size” follows its statblock and effects such as Enlarge or Reduce, and a dashed square with a label shows the choice and where the size comes from. Rules & options › Token sizes says whether a tiny creature takes half a square."
+            "Tokens › Token size gives a token its own size — how many squares it covers, half squares included; “by size” follows its statblock and effects such as Enlarge or Reduce, and a dashed square with a label shows the choice and where the size comes from. Rules & options › Token sizes says whether a tiny creature takes half a square.",
+            "When several size effects overlap (Enlarged and Reduced), they do not add up: the latest applies and the token says “2 size effects — choose”; tap the token and pick under “Size effect that applies” which one counts. When an effect's duration runs out in the initiative, the size falls back."
           ]
         },
         {

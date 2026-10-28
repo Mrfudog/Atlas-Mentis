@@ -489,6 +489,15 @@ Statblock auch. Gespeichert wird nur, was die Leitung bewusst anders will
 (`props.size`) — und weil die Seite sagt, woher die Grösse kommt, sieht man,
 welche der drei Stufen gerade gilt.
 
+**Warum überlappende Grössen-Zustände nicht summiert werden** (T-428,
+E-164): Enlarge und ein Trank der Riesengrösse sind zwei Zauber, die
+dasselbe beschreiben, und die Regeln stapeln sie nicht; Enlarge und Reduce
+zusammen sind ein Streitfall, den der Tisch entscheidet. Eine Summe hätte
+beides falsch beantwortet, und still. Darum gilt eine Quelle, und welche,
+sagt die Leitung — am Token, weil es eine Entscheidung über dieses Token in
+dieser Szene ist. Ohne Wahl gilt der zuletzt hinzugekommene: so verhält
+sich ein neuer Zauber am Tisch, bis jemand widerspricht.
+
 Woher die Maske weiss, welche Klasse ein Feld will, steht am Feld
 (`target.where`) — und an der Karte, die `Image.image` erbt, steht es am
 Typ (`targets`, wie `titles` für die Beschriftung). Eine Liste im Code
