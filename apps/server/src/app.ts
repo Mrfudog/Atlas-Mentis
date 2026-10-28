@@ -158,6 +158,8 @@ import {
   characterProfile,
   type CharacterProfile,
   newChoiceDuplicates,
+  newMissingProficiencies,
+  missingText,
   duplicateText,
 } from '@nw/model';
 import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
@@ -249,7 +251,8 @@ const STATBLOCK_RELATION = 'belongsTo';
 const FIGUR_KANTEN = new Set(['carries']);
 
 /**
- * **Keine Wahl nimmt, was die Figur schon hat** (T-299): dieselbe Rechnung
+ * **Keine Wahl nimmt, was die Figur schon hat** (T-299), und keine
+ * Expertise geht auf etwas ohne Übung (T-303): dieselbe Rechnung
  * wie im Assistenten (`newChoiceDuplicates`). Abgewiesen wird nur, was
  * dieses Speichern neu doppelt macht — eine ältere Figur bleibt
  * speicherbar.
@@ -258,7 +261,11 @@ function doppelteWahlen(vorher: Entity | undefined, nachher: Entity, bestand: re
   if (!(nachher.relations ?? []).some((r) => r.type === 'chose')) return [];
   const byId = new Map(bestand.map((e) => [e.id, e]));
   byId.set(nachher.id, nachher);
-  return newChoiceDuplicates(vorher, nachher, byId).map((d) => ({ code: 'choice_duplicate', relation: 'chose', message: duplicateText(d, byId) }));
+  return [
+    ...newChoiceDuplicates(vorher, nachher, byId).map((d): ValidationIssue => ({ code: 'choice_duplicate', relation: 'chose', message: duplicateText(d, byId) })),
+    /* Expertise nur mit Übung (T-303), ebenso nur neu Hinzugekommenes. */
+    ...newMissingProficiencies(vorher, nachher, byId).map((m): ValidationIssue => ({ code: 'choice_unproficient', relation: 'chose', message: missingText(m, byId) })),
+  ];
 }
 
 /**

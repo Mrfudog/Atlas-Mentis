@@ -1065,6 +1065,9 @@ export const fieldGroups = {
                  wirkt (sonst das der Quelle) und wie er gilt. */
               ability: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
               mode: { type: 'string', title: 'How it is cast', enum: ['prepared', 'known', 'innate'] },
+              /* Bei Expertise (T-303): `false` hebt auf, dass nur Geübtes
+                 gewählt werden darf. Ohne Angabe verlangt sie die Übung. */
+              needsProficiency: { type: 'boolean', title: 'Needs proficiency' },
               note: { type: 'string', title: 'Note' },
             },
           },
