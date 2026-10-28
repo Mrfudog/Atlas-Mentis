@@ -998,6 +998,28 @@ laufenden Kampagne, dann die Vorgabe seiner Ebene, dann `public`.
 | Kampagne | `VisibilityRules.visibilityRules` | je Gruppe eine Regel `{id, audience?, show?, hide?}` — `id` ist der Schlüssel der Gruppe aus den Transformationen (`layer:dnd\|type:Spell`, T-253), `show`/`hide` nennen Träger |
 | Ebene | `Layer.defaultAudience` | die Vorgabe für ihre Artikel (nicht die Sichtbarkeit der Ebene selbst); liegt ein Artikel in mehreren Ebenen, gilt die engste |
 
+**Ein Eintrag je Artikel** (T-401, E-162 a, REQ-401): `article:<id>` im
+selben Regelwerk. So entscheidet die Leitung über einen einzelnen Artikel
+aus einer Ebene, die sie nicht schreibt — ein Grundregelwerk, das mehrere
+Runden aufschalten —, ohne das Buch zu beschreiben und ohne Fassung. Er
+gilt **vor jeder Gruppe**, gleich wie genau, aber nach dem eigenen Feld am
+Artikel (`regelFuer`): **Feld › Eintrag › Merkmal (genaueste zuerst) ›
+Vorgabe der Ebene › `public`**. Dazu das Merkmal **Beziehung**
+(`relation:memberOf>f_kult`, eine Kante und ihr Ziel) neben Art, Bereich,
+Marke und den übrigen. „Articles and their layers" schreibt, was die
+Leitung nicht schreibt, als Eintrag (`withArticleRule`), und zeigt die
+Herkunft „campaign (this article)"; ↺ nimmt Feld und Eintrag. Beide
+Dimensionen stehen nur in `visibilityDimensions`, nicht in den
+Gruppierungen der Übersicht: nach einzelnen Artikeln gruppiert man nicht.
+
+```mermaid
+flowchart LR
+  F["Feld am Artikel<br/>Visibility"] -->|sagt nichts| E["Eintrag der Kampagne<br/>article:&lt;id&gt;"]
+  E -->|sagt nichts| M["Merkmal, genaueste zuerst<br/>layer|type, relation, tag …"]
+  M -->|sagt nichts| L["Vorgabe der Ebene<br/>Layer.defaultAudience"]
+  L -->|sagt nichts| P["public"]
+```
+
 Von mehreren Regeln gilt **die genaueste, die für diesen Betrachter etwas
 sagt** (`mostSpecific`, die meisten Glieder): ein Verbot oder eine Freigabe
 für einen seiner Träger, sonst ihre Stufe — gefragt wird dann die Rolle in

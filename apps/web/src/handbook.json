@@ -100,7 +100,7 @@
             "Narrow the list: type part of a name, or pick a layer, a type or a visibility. Sort by layer to see each book's articles together.",
             "For one article, pick Public, Table, Players or GM in its row. Click a player's name in the row to show it to that player only; click again to hide it from them, a third time to follow the visibility again.",
             "For several, tick them (or “all shown”) and use the bar above the list: the same levels, Follow the group, and Show to / Hide from each player. The selection stays, so you can set a level and then show the same articles to one player.",
-            "The message says how many changed. Articles in a layer you do not write — a rulebook several campaigns share — stay as they are; set their group above instead.",
+            "The message says how many changed. Articles in a layer you do not write — a rulebook several campaigns share — can be set too: the choice becomes a rule of this campaign for that one article (“campaign (this article)”), and the book stays as it is. It wins over every group; the article’s own setting still wins over it.",
             "↺ in a row, or Follow the group, removes the article's own setting: the campaign's rule for its group or the layer's default applies again."
           ]
         },

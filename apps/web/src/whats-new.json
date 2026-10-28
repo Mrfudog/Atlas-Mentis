@@ -41,6 +41,17 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-28-visibility-per-article-rule",
+      "date": "2026-10-28",
+      "title": "Hide one article of a shared rulebook",
+      "text": "In Articles and their layers the GM can now set the visibility of an article even when it comes from a rulebook other campaigns share: it becomes a rule of this campaign for that one article, shown as “campaign (this article)”. The book itself stays unchanged.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "visibility"
+      }
+    },
+    {
       "id": "2026-10-28-plan-allies-terrain",
       "date": "2026-10-28",
       "title": "Moving through allies and difficult terrain",
