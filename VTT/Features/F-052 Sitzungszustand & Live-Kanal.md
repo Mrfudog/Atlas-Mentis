@@ -49,3 +49,7 @@ flowchart LR
   selbst neu und holt nach, was sie verpasste; der Punkt in der Kopfleiste
   ist solange hohl. War zu viel weg (`reset`), fragen Karte, Play,
   Initiative und Zugplaner neu.
+- **Gleichzeitig auf der Karte:** zieht die Leitung ein Token, während
+  jemand anders ein anderes zieht oder den Nebel ändert, gelten beide
+  Änderungen. Wer dasselbe Token zur selben Zeit zieht, verliert gegen den,
+  der zuerst speicherte, und sieht „Someone else changed this meanwhile“.

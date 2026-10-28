@@ -5082,14 +5082,18 @@ export class Karte {
     this.mangel.set(null);
     this.speichert.set(true);
     let naechstes: Entity | null = e;
+    let basis = untracked(() => this.gespeichert());
     while (naechstes) {
-      const fehler = await this.brett.schreiben(naechstes);
+      /* Wovon die Änderung ausging (T-399): weist der Server ab, führt
+         `Brett.schreiben` zusammen, statt sie wegzuwerfen. */
+      const fehler = await this.brett.schreiben(naechstes, basis);
       this.mangel.set(fehler);
       naechstes = this.wartet;
       this.wartet = null;
       if (naechstes && fehler) naechstes = null;
       const rev = this.gespeichert()?.revision;
       if (naechstes && rev !== undefined) naechstes = { ...naechstes, revision: rev };
+      basis = untracked(() => this.gespeichert());
     }
     this.entwurf.set(null);
     this.speichert.set(false);
