@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { LAYER_RELATION, areaOf, typeChain } from '@nw/model';
+import { LAYER_RELATION, areaOf, createLayout, typeChain } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
@@ -268,7 +268,11 @@ export class Anlegen {
          erst ein neues `/api/me`. Ohne es öffnete der Artikel schreibgeschützt. */
       if (!this.session.isAdmin()) await this.session.load(true);
       this.zu.emit();
-      await this.router.navigate(['/artikel', e.id], { queryParams: { edit: 1 } });
+      /* Gestaltet die Art ihre ausführliche Maske (`createFull`, REQ-432),
+         öffnet die Seite in ihr; sonst wie bisher die Seite `full`. */
+      const r = this.bestand.registry();
+      const voll = !!r && createLayout(r, 'createFull', e.interfaces?.[0] ?? '').designed;
+      await this.router.navigate(['/artikel', e.id], { queryParams: { edit: voll ? 'create' : 1 } });
     } catch (error) {
       if (error instanceof ApiError) {
         const issues = Array.isArray(error.issues)

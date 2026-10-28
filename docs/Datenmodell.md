@@ -1613,7 +1613,7 @@ flowchart LR
 
 ## 10. Ansichten und Anordnung
 
-Vier Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
+Sechs Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
 E-030 b). Das „+" der Suche hatte von T-138 bis T-346 eine fünfte,
 `search`; sie zeigte, was `quick` zeigte, und ist in ihr aufgegangen
 (Migration 127). Wer `search` noch nennt, bekommt `quick`
@@ -1625,11 +1625,13 @@ E-030 b). Das „+" der Suche hatte von T-138 bis T-346 eine fünfte,
 | `quick` | eine Kachel auf dem Board, die Vorschau, das Popup (auch am Marker der Karte), das „+" der Suche, die Schnellanlage | **das Relevanteste oben** (T-346): die Kennwerte der Art (Kreatur: ihre Kennzahlen; Zauber: Grad, Schule, Zeit, Reichweite …), dann Beschreibung, Prosa — **das Bild zuletzt**; im Kartenrahmen (Popup, Kachel) wird es bei Platzmangel unten abgeschnitten, nicht verkleinert |
 | `full` | die Artikelseite | alles |
 | `print` | „Print" an der Artikelseite: ein Blatt A4 (`/artikel/:id/print`) | Beschreibung, alle Felder ausser dem Vorbereitungsstand, Prosa, Teile, Abschnitte — ohne Seitenspalte; Statblock, Zauber, Gegenstand wie im Buch |
+| `create` | der schnelle Dialog „Create … as …“ aus einer Auswahl (T-425, REQ-432, E-169) | die Felder, die die Maske der Art nennt, in ihrer Reihenfolge und ohne Obergrenze; Pflichtfelder fragt der Dialog immer. **Ohne Gestaltung** (keine Art die Kette hoch sagt etwas, die Ansicht nennt keine Felder; `createLayout().designed`): wie bisher Pflichtfelder und die einfachen Felder von `quick`, höchstens acht |
+| `createFull` | die Artikelseite im Bearbeiten gleich nach „New article“ (`?edit=create`) | die Seite in dieser Anordnung, und die Maske zeigt ihre Felder vorn, auch leer; die übrigen hinter „+ Add field“. Ohne Gestaltung öffnet „New article“ wie bisher `full` (`?edit=1`). Der Designer warnt, wenn eine Maske Pflichtfelder auslässt (`createMissingRequired`); die Leiste „Views“ bietet beide Masken nicht an — gestaltet werden sie unter Registry › Views. Migration 153 bringt die Zeilen |
 | eigene, z. B. `handout` | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt — der Handzettel: Bild, Beschreibung, die Werte, die die Art dafür wählt (T-234), Absatz, Vorlesetext |
 
 **Ansichten sind Zeilen und werden im Register bearbeitet** (Register ›
 Views, T-110): anlegen (als Abschrift einer anderen), umbenennen, ordnen,
-löschen — die vier, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
+löschen — die sechs, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
 Ansicht eine **globale Anordnung**: Elemente in ihrer Reihenfolge, ein
 `fields`- oder `prose`-Element mit Einträgen „ganzer Typ" (`Spell` — ein
 neues Feld erscheint von selbst) oder „Typ.Feld" (`Spell.level` — bleibt
@@ -2535,7 +2537,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-27: 65 Artikelarten, 27 Grundtypen, 73 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-28: 65 Artikelarten, 27 Grundtypen, 73 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 

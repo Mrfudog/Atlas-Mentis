@@ -1,6 +1,8 @@
 import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  CREATE_VIEWS,
+  createMissingRequired,
   PLACE_VIEWS,
   TAB_NODE,
   adjustFrom,
@@ -369,6 +371,19 @@ export class Ansichtsdesigner {
       .join(' ');
   }
   protected readonly konflikte = computed(() => this.schichtStand()?.conflicts ?? []);
+
+  /**
+   * **Eine Erfassungsmaske ohne Pflichtfeld** (T-425, REQ-432): welche
+   * Pflichtfelder der Art die Maske `create`/`createFull` nicht nennt. Der
+   * Dialog fragt sie trotzdem — die Warnung sagt nur, dass sie fehlen.
+   */
+  protected readonly maskeOhnePflicht = computed<string[]>(() => {
+    const ort = this.gruppe() || this.schluessel() || '';
+    const r = this.reg();
+    const typ = this.zielTyp() || this.typ() || this.geltung().types?.[0] || '';
+    if (!r || !typ || !(CREATE_VIEWS as readonly string[]).includes(ort)) return [];
+    return createMissingRequired(r, typ, this.baum());
+  });
 
   // ------------------------------------------------------------ Baum
 

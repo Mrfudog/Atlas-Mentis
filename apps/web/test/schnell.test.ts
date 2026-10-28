@@ -154,4 +154,27 @@ describe('nw-schnell', () => {
     await fixture.whenStable();
     expect(api.createEntity).toHaveBeenCalledWith('Creature', 'Gobbo', { 'Visibility.audience': 'gm' }, [{ type: 'inLayer', to: 'L2' }]);
   });
+
+  it('asks what the designed create form of the type names, in its order (REQ-432, E-169)', async () => {
+    const mitMaske = structuredClone(reg) as Registry;
+    mitMaske.interfaces['Location'] = {
+      ...mitMaske.interfaces['Location']!,
+      schema: { properties: { size: { type: 'string', title: 'Size' }, climate: { type: 'string', title: 'Climate' } } },
+      views: { create: [{ id: 'cr', el: 'fields', fields: ['Location.climate', 'Location.size'] }] },
+    } as Registry['interfaces'][string];
+    mitMaske.views = { create: { label: 'Create', layout: [{ id: 'cr-f', el: 'fields', fields: [] }] } } as unknown as Registry['views'];
+    aufbauen();
+    TestBed.overrideProvider(Bestand, { useValue: { registry: signal(mitMaske), name: signal(() => undefined) } });
+    const fixture = TestBed.createComponent(Schnell);
+    Object.assign(fixture.componentInstance, { vorschlag: signal('Harbour'), ziele: signal(['Location']), vorgabe: signal('Location') });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const namen = [...el.querySelectorAll('label > span')].map((s) => s.textContent?.trim() ?? '');
+    const climate = namen.findIndex((n) => n.includes('Climate'));
+    const size = namen.findIndex((n) => n.includes('Size'));
+    expect(climate).toBeGreaterThanOrEqual(0);
+    expect(size).toBeGreaterThan(climate);
+  });
 });
