@@ -1469,6 +1469,20 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'e-puzzle', el: 'fields', fields: ['Encounter.solution'], when: { field: 'Encounter.kind', has: ['puzzle'] } },
         { id: 'e-hints', el: 'prose', fields: ['Encounter.hint'], when: { field: 'Encounter.kind', has: ['puzzle'] } },
         { id: 'e-social', el: 'fields', fields: ['Encounter.goal'], when: { field: 'Encounter.kind', has: ['social'] } },
+        /* Begegnungen Teil 3 (T-215): im Gespräch die Haltung der
+           Beteiligten zur Gruppe (`refs.encounter`, gerechnet am Server);
+           bei Falle und Gefahr die beteiligten `Hazard` in Kurzansicht. */
+        { id: 'e-stand', el: 'standing', text: 'Who stands where', when: { field: 'Encounter.kind', has: ['social'] } },
+        {
+          id: 'e-hazards',
+          el: 'collection',
+          text: 'Hazards',
+          path: [{ relation: 'features' }],
+          types: ['Hazard'],
+          show: 'tiles',
+          view: 'quick',
+          when: { field: 'Encounter.kind', has: ['trap', 'hazard'] },
+        },
         { id: 'e-yield', el: 'fields', fields: ['Encounter.check'], when: { field: 'Encounter.kind', has: ['resource', 'exploration', 'hazard', 'trap'] } },
         { id: 'e-f', el: 'fields', fields: 'all' },
         { id: 'e-b', el: 'prose', fields: 'all' },
