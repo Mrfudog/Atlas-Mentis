@@ -585,7 +585,7 @@ describe('what a player gets to read', () => {
 
   it('shows players the cover name until they are told the name, and the GM always the name (REQ-178)', async () => {
     /* Ohne jede Information: der Deckname allein verdeckt schon. */
-    const ohne: Entity = { ...geheimnis, id: 'n_gestalt', components: { Identity: { name: 'Aurinax', id: 'npc-0002', aliases: ['Der Goldschmied'], cover: 'die Gestalt im Mantel' }, Status: { status: 'ready' } }, relations: [] };
+    const ohne: Entity = { ...geheimnis, id: 'n_gestalt', name: 'Aurinax', components: { Identity: { name: 'Aurinax', id: 'npc-0002', aliases: ['Der Goldschmied'], cover: 'die Gestalt im Mantel' }, Status: { status: 'ready' } }, relations: [] };
     const repo = new InMemoryRepository(
       { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_t' } },
       [rook, inv, ohne, { id: 'camp_t', interfaces: ['Campaign'], name: 'T', components: { Identity: { name: 'T', id: 'campaign-0001', aliases: [] } }, relations: [] }],

@@ -238,7 +238,18 @@ export function seesUnfinished(entities: Map<EntityId, Entity>, article: Entity,
   if (viewerId === undefined) return true;
   const v = alsViewer(viewerId);
   if (enthaelt(v.own, article.id)) return true;
-  const rolle = tableRole(v, campaignOf(entities, article));
+  return leadsArticle(entities, article, v);
+}
+
+/**
+ * **Leitet der Betrachter die Kampagne dieses Artikels?** (`gm`, `co-gm`;
+ * die Ebene sagt, wessen er ist — `campaignOf`). Dann gehen auch die
+ * Felder der Leitung (`gmFields`) an ihn: sie gehen „nie an einen
+ * Spieler", und er ist hier keiner (T-215). Ohne Betrachter: ja.
+ */
+export function leadsArticle(entities: Map<EntityId, Entity>, article: Entity, viewerId?: ViewerRef): boolean {
+  if (viewerId === undefined) return true;
+  const rolle = tableRole(alsViewer(viewerId), campaignOf(entities, article));
   return rolle === 'gm' || rolle === 'co-gm';
 }
 

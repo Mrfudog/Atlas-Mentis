@@ -60,6 +60,7 @@ import {
   stateRefusal,
   primaryInterface,
   seesUnfinished,
+  leadsArticle,
   tableRole,
   partiesOf,
   inventoryRulesOf,
@@ -1678,7 +1679,13 @@ export function buildApp({
     return entities
       .filter((e) => articleVisible(alle, e, auge))
       /* Ein Deckname verdeckt für alle ausser der Leitung (REQ-178). */
-      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge)))
+      /* Die Leitung der Kampagne des Artikels bekommt auch die Felder der
+         Leitung (T-447, E-204): ohne eigene Figur hiess `augen` `[]`, und das Sieb
+         nahm ihr Geheimnisse, Taktik, Lösung und Hinweise ihrer eigenen
+         Runde weg. Für sie gilt nur, was ein Spieler nicht sieht, nicht. */
+      .map((e) =>
+        redactEntity(registry, alle, schmal ? schmal(e) : e, leadsArticle(alle, e, auge) ? undefined : augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge)),
+      )
       .map((e) =>
         isMap(e) && !seesUnfinished(alle, e, auge)
           ? /* Das Kartenbild nur, soweit aufgedeckt (T-312, E-041): die

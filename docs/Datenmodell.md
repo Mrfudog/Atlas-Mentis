@@ -1111,10 +1111,14 @@ und `knownBy.props.rank` an einer Zuteilung an die Fraktion ein Mindestrang
 
 Zurückgehalten wird **am Server**: Felder, die eine ungewusste Information
 beansprucht; die Felder aus der Einstellung `gmFields`
-(`Secrets.secret`, `Tactics.tactics`), es sei denn, eine gewusste
+(`Secrets.secret`, `Tactics.tactics`, `Encounter.solution`, `Encounter.hint`), es sei denn, eine gewusste
 Information gibt einen Eintrag frei; der Name, wenn beansprucht — dann steht
 der Deckname (`Identity.cover`). Kanten bleiben. Eine zweite Prüfung in der
-Maske gibt es nicht.
+Maske gibt es nicht. **Wer die Kampagne des Artikels leitet** (`gm`,
+`co-gm` in `campaignOf`, `leadsArticle`), bekommt ihn ungekürzt — auch
+ohne eigene Figur (T-447, E-204). Bis dahin galt ein solches Konto als
+„Betrachter ohne Figur" und verlor die `gmFields` seiner eigenen Runde;
+die Leitung einer anderen Kampagne bleibt ein Betrachter wie jeder.
 
 ### 9.4 Schreiben
 
