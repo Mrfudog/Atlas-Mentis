@@ -60,6 +60,7 @@ import {
   type GoldRoll,
   type Purchase,
   type RolledScores,
+  openDecisions,
 } from '@nw/model';
 import { Api, ApiError, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -703,7 +704,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                 }
                 <p class="dim">Image, backstory and the rest follow on the character's page — or under Full edit.</p>
                 @if (offenGelassen().length) {
-                  <p class="dim">Left for later: {{ offenGelassen().join('; ') }}</p>
+                  <p class="dim">Left for later: {{ offenGelassen().join('; ') }}@if (bleibtIdee()) {<span>. Until every choice is made, the character stays an idea.</span>}</p>
                 }
               }
             }
@@ -1619,6 +1620,9 @@ export class Assistent {
     if (!m) return 'Choose a method.';
     return assignmentProblem(this.werte(), this.attribute(), m, this.vorrat()?.values);
   });
+
+  /** Ein offener Entscheid hält die neue Figur auf idea (T-436, E-176). */
+  protected readonly bleibtIdee = computed(() => openDecisions(this.entwurf(), this.quellen()).length > 0);
 
   /** Was beim Speichern noch offen bleibt — es bleibt an der Figur offen (`pendingChoices`). */
   protected readonly offenGelassen = computed(() => [
@@ -2732,12 +2736,15 @@ export class Assistent {
         if (this.gruppe()) kanten.push({ type: 'memberOfParty', to: this.gruppe(), props: {} });
         /* Die Ebene aus „New article" (T-095); sonst nimmt der Server die Schreibebene. */
         if (this.mitgebrachteEbene()) kanten.push({ type: LAYER_RELATION, to: this.mitgebracht.layer, props: {} });
-        /* Die Figur gehört dem Spieler (E-014 d): gleich fertig. */
+        /* Die Figur gehört dem Spieler (E-014 d): gleich fertig — ausser ein
+           Entscheid ist noch offen, dann eine Idee, bis er gewählt ist
+           (T-436, E-176; der Server verweigerte sonst ready). */
+        const stand = this.bleibtIdee() ? 'idea' : 'ready';
         /* Das Maximum steht am Statblock, der Stand gleich voll an der Figur (T-194). */
         const figur = await this.api.createEntity(
           'PlayerCharacter',
           name,
-          { ...this.mitgebracht.felder, 'Status.status': 'ready', ...this.figurFelder(), ...(max !== null ? { 'Vitals.hp': max } : {}) },
+          { ...this.mitgebracht.felder, 'Status.status': stand, ...this.figurFelder(), ...(max !== null ? { 'Vitals.hp': max } : {}) },
           kanten,
         );
         /* Auf später gelegte Werte bleiben leer (T-193). */

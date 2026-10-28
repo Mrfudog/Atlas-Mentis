@@ -4164,7 +4164,7 @@ export function buildApp({
           /* Auf den höchsten Stand bis `prepared`, den er erreicht (E-178). */
           entity.components = {
             ...(entity.components ?? {}),
-            [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: reachableState(registry, entity, 'prepared') },
+            [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: reachableState(registry, entity, 'prepared', { byId: bestand }) },
           };
           zurueck = { entity: vorher, at: typeof vorher.updatedAt === 'string' ? vorher.updatedAt : new Date().toISOString() };
         } else if (!warFertig && isReady(entity)) {
@@ -4275,7 +4275,9 @@ export function buildApp({
     /* **Pflicht je Stand** (T-425, E-178): wer den Stand hebt, erfüllt die
        Pflicht des neuen; wer ihn hält, behält ihn (die Werkbank sagt, was
        fehlt). Geprüft am aufgelösten Artikel, wie alles andere. */
-    const luecken = stateRefusal(registry, davor && isInstance(davor) ? resolveInstance(new Map(liste.map((e) => [e.id, e])), davor) : davor, zuPruefen);
+    const alleNachId = new Map(liste.map((e) => [e.id, e]));
+    /* Offene Entscheide einer Figur halten sie auf idea (T-436, E-176). */
+    const luecken = stateRefusal(registry, davor && isInstance(davor) ? resolveInstance(alleNachId, davor) : davor, zuPruefen, { byId: alleNachId });
     /* **Ebene und Stand sind immer da** (E-179, E-182): wer sie einem
        Artikel nimmt, der sie hatte, wird abgewiesen — verschoben wird in
        eine andere Ebene, nicht ins Nichts. Ebenen selbst liegen in keiner. */

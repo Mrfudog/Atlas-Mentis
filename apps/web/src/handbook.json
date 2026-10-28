@@ -180,6 +180,7 @@
           "text": [
             "Open the field under Registry › the type that declares it, and set Required to “to be prepared” or “to be ready”. For an edge kind, set Required on the edge.",
             "An idea may stay without it. Setting the article to that state — in the edit form or with Mark ready — is refused until it is filled, and the message says what is missing.",
+            "A character counts its open choices the same way: while one from its ancestry, background, class or a granted feature is undecided, it stays an idea, and the message names the choice. Equipment may wait.",
             "An article that already has the state keeps it. The workbench check Ready with gaps lists those that miss something; fill it in or set a lower state. When a player changes a ready article, it falls back to the highest state it still meets."
           ]
         },
