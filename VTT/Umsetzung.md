@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view, umsetzung]
 status: derived
-updated: 2026-10-27
+updated: 2026-10-28
 source: ../docs/Anforderungen.md
 ---
 
@@ -11,7 +11,7 @@ source: ../docs/Anforderungen.md
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-27. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-28. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -23,7 +23,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 186 steht · 65 teils · 127 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
+Zusammen: 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -37,7 +37,7 @@ Zusammen: 186 steht · 65 teils · 127 offen · 10 ersetzt · 6 verworfen — 39
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 33 | 14 steht · 6 teils · 12 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 29 | 18 steht · 6 teils · 5 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 23 | 4 steht · 3 teils · 16 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 38 | 20 steht · 7 teils · 10 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 38 | 21 steht · 6 teils · 10 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 11 | 5 steht · 2 teils · 2 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -244,7 +244,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-088]] | Massenänderungen an Wissen und Rechten | 3 | **teils** | Massenbearbeitung ohne Wissen |
-| [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68); seit T-381 löscht jedes Konto aus seiner Schreibebene (`POST /api/entities/delete`, Galerie und Artikelseite, D84). Offen: Papierkorb-Seite (E-160) |
+| [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68); seit T-381 löscht jedes Konto aus seiner Schreibebene (`POST /api/entities/delete`, Galerie und Artikelseite, D84); gelöschte Artikel stehen 30 Tage unter „Deleted“ (`/trash`, T-400, E-160 a), danach oder mit „Empty trash“ endgültig — erst dann sperrt auch Werkbank › Undo (410). |
 | [[REQ-381]] | Ein Rahmen für alle Werkbank-Seiten | 2 | **offen** |  |
 
 ### F-017 Ausrollen & Sicherung
@@ -910,7 +910,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 **Erklärt in:** [Architektur.md](../docs/Architektur.md), [UI-Arbeitsplan.md](../docs/UI-Arbeitsplan.md), [Web-Arbeitsplan.md](../docs/Web-Arbeitsplan.md), [design](../docs/design)
 
-**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils) · REQ-345 Schwebende Werkzeugleiste für eine Auswahl (teils) · REQ-361 Lange Seiten: Bereiche klappen und springen (teils) · REQ-373 Widgets als Ansichtselement und als eigene Ansicht (offen) · REQ-374 Viewpoints statt nur Breakpoints (offen) · REQ-384 Widget-Katalog (offen) · REQ-386 Suche und Filter in den Modulen (offen) · REQ-387 Kachel-Vorlagen anpassen (offen) · REQ-394 Artikel löschen, einzeln und mehrere, mit Rückgängig (teils)
+**Offen mit Prio 1–3:** REQ-028 Volltextsuche (teils) · REQ-119 Boards der Spielenden (offen) · REQ-160 Zwischen Ankern springen (teils) · REQ-166 Auf dem Board anlegen (teils) · REQ-291 Leseansicht auf dem Board (offen) · REQ-300 Gestaltung wie die Bücher (teils) · REQ-345 Schwebende Werkzeugleiste für eine Auswahl (teils) · REQ-361 Lange Seiten: Bereiche klappen und springen (teils) · REQ-373 Widgets als Ansichtselement und als eigene Ansicht (offen) · REQ-374 Viewpoints statt nur Breakpoints (offen) · REQ-384 Widget-Katalog (offen) · REQ-386 Suche und Filter in den Modulen (offen) · REQ-387 Kachel-Vorlagen anpassen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -958,7 +958,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | [[REQ-317]] | Zurück an dieselbe Stelle | 1 | **steht** | T-185: `Rueckweg` merkt den Scrollstand je Verlaufseintrag und stellt ihn bei „Zurück“ wieder her, sobald die Liste hoch genug ist; die Ebenenliste zeichnet den letzten Stand sofort |
 | [[REQ-342]] | Handbuch: alle Erklärungen an einer Stelle | 1 | **steht** | `/handbook`, `help.json`, `RULE_OPTIONS.does`, `APP_TERMS`, Tests erzwingen das Nachziehen (T-242, T-225, T-205) |
 | [[REQ-345]] | Schwebende Werkzeugleiste für eine Auswahl | 2 | **teils** | Muster `nw-werkzeugleiste` mit Blatt von unten, in „Your turn“ im Einsatz (T-247); Karte folgt |
-| [[REQ-361]] | Lange Seiten: Bereiche klappen und springen | 1 | **teils** | Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); Assistent, Facetten, Register, Artikel-, Figur- und Ebenenseite folgen |
+| [[REQ-361]] | Lange Seiten: Bereiche klappen und springen | 1 | **teils** | Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); seit T-359 auch Filter in Kompendium/Bereichen, Artikelseite (Admin/Log gemerkt), Register-Typseite und Assistent; offen: Klappstand von Facetten und Registergruppen am Konto |
 
 ### F-071 Bearbeiten in der Ansicht
 
@@ -966,7 +966,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 |---|---|---|---|---|
 | [[REQ-299]] | Optionale Felder verdeckt | 3 | **steht** | Lesen: `empty` an der Ansicht; Bearbeiten: Pflicht- und befüllte Felder, „+ Add field“ mit Beschreibung (T-195) |
 | [[REQ-307]] | Löschen mit Rückfrage in der Seite | 3 | **steht** |  |
-| [[REQ-394]] | Artikel löschen, einzeln und mehrere, mit Rückgängig | 2 | **teils** |  |
+| [[REQ-394]] | Artikel löschen, einzeln und mehrere, mit Rückgängig | 2 | **steht** | T-381: `POST /api/entities/delete` aus der Schreibebene, Undo als Massenänderung (D84). T-400: Seite „Deleted“ (`/trash`, `GET /api/trash`), Restore je Artikel und je Lauf, endgültig nach 30 Tagen oder „Empty trash“, erst dann gehen Bilddateien (E-160 a). |
 
 ### F-072 Design & Stilkonzept
 
@@ -1058,7 +1058,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-145]]** (1, teils, Medien & Assets) — Ablage in der Seite — *Assets als Artikel; Ablage im Artefakt*
 - **[[REQ-344]]** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
 - **[[REQ-346]]** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
-- **[[REQ-361]]** (1, teils, Oberfläche & Navigation) — Lange Seiten: Bereiche klappen und springen — *Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); Assistent, Facetten, Register, Artikel-, Figur- und Ebenenseite folgen*
+- **[[REQ-361]]** (1, teils, Oberfläche & Navigation) — Lange Seiten: Bereiche klappen und springen — *Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); seit T-359 auch Filter in Kompendium/Bereichen, Artikelseite (Admin/Log gemerkt), Register-Typseite und Assistent; offen: Klappstand von Facetten und Registergruppen am Konto*
 - **[[REQ-041]]** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **[[REQ-072]]** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **[[REQ-079]]** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
@@ -1122,7 +1122,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-385]]** (2, offen, Karten) — Karten-Widget mit Werkzeugen, Ebenen und Grössen
 - **[[REQ-386]]** (2, offen, Oberfläche & Navigation) — Suche und Filter in den Modulen
 - **[[REQ-392]]** (2, offen, Zugang & Betrieb) — Featureseiten im Projektbrett
-- **[[REQ-394]]** (2, teils, Oberfläche & Navigation) — Artikel löschen, einzeln und mehrere, mit Rückgängig
 - **[[REQ-007]]** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **[[REQ-022]]** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **[[REQ-025]]** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*

@@ -15,11 +15,11 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-3 Stories · 6 Punkte · 2 steht · 1 teils
+3 Stories · 6 Punkte · 3 steht
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-299]] Optionale Felder verdeckt | Spielleitung | 3 | steht |
 | [[REQ-307]] Löschen mit Rückfrage in der Seite | Spielleitung | 3 | steht |
-| [[REQ-394]] Artikel löschen, einzeln und mehrere, mit Rückgängig | Spielleitung | 2 | teils |
+| [[REQ-394]] Artikel löschen, einzeln und mehrere, mit Rückgängig | Spielleitung | 2 | steht |
 <!-- stories:ende -->
