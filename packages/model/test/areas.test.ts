@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areaCells, areaColor, cellCorners, mapAreas, zoneHidden, zoneRuleSummary, zoneRuleText } from '../src/areas.js';
+import { addArea, areaAt, areaCells, areaColor, cellCorners, mapAreas, removeArea, setAreaFound, zoneHidden, zoneRuleSummary, zoneRuleText } from '../src/areas.js';
 import { addFloor, floorView, withFloorView } from '../src/floors.js';
 import { gridGeometry, mapSettings, redactMap } from '../src/map.js';
 import { mapTerrain, terrainCosts } from '../src/zugplan.js';
@@ -105,5 +105,29 @@ describe('Flächen zurückhalten (T-219)', () => {
     expect(e.relations?.find((r) => r.id === 't1')?.props?.['floor']).toBe('up');
     expect(mapAreas(floorView(e, 'up')).map((a) => a.id)).toEqual(['t1']);
     expect(mapAreas(floorView(e, null)).map((a) => a.id)).toEqual(['z1']);
+  });
+});
+
+describe('Flächen auf der Karte ziehen (T-219)', () => {
+  it('legt eine Fläche als Kante an, als Rechteck oder Vieleck', () => {
+    let e = karte([]);
+    e = addArea(e, { id: 'z9', type: 'zone', to: 'zk-ice', shape: { kind: 'rect', x: 0.4, y: 0.2, w: -0.2, h: 0.1 } });
+    e = addArea(e, { id: 't9', type: 'territory', to: 'fac-1', shape: { kind: 'poly', pts: [[0, 0], [0.5, 0], [0.25, 0.5]] }, color: '#123456' });
+    expect(e.relations).toEqual([
+      { id: 'z9', type: 'zone', to: 'zk-ice', props: { kind: 'rect', x: 0.2, y: 0.2, w: 0.2, h: 0.1 } },
+      { id: 't9', type: 'territory', to: 'fac-1', props: { kind: 'poly', pts: [[0, 0], [0.5, 0], [0.25, 0.5]], color: '#123456' } },
+    ]);
+  });
+
+  it('trifft die oberste Fläche an einem Punkt, nimmt sie weg und markiert eine Zone als gefunden', () => {
+    const e = karte([eis, { ...eis, id: 'z2', props: { kind: 'rect', x: 0, y: 0, w: 1, h: 1 } }, reich]);
+    expect(areaAt(e, { x: 0.15, y: 0.15 })?.id).toBe('z2');
+    expect(areaAt(e, { x: 0.5, y: 0.5 })?.id).toBe('t1');
+    expect(mapAreas(removeArea(e, 'z2')).map((a) => a.id)).toEqual(['z1', 't1']);
+    const g = setAreaFound(e, 'z1', true);
+    expect(g.relations?.find((r) => r.id === 'z1')?.props?.['found']).toBe(true);
+    expect(setAreaFound(g, 'z1', false).relations?.find((r) => r.id === 'z1')?.props).not.toHaveProperty('found');
+    /* Ein Gebiet wird nicht gefunden — es ist nicht versteckt. */
+    expect(setAreaFound(e, 't1', true)).toBe(e);
   });
 });

@@ -122,7 +122,7 @@
           "heading": "Zones and territories",
           "text": [
             "A zone (a rule such as difficult terrain or magical darkness, an article of the kind Zone kind) and a territory (who holds the ground: a faction, a realm) lie on the map as coloured squares — every square whose centre lies in the shape. Without a grid the shape itself is drawn. Each belongs to one floor.",
-            "Areas above the map hides and shows them, just for you. Players see only areas on articles they may see, and on a fogged map only what is revealed; a zone whose kind is hidden until noticed stays with the GM, dashed, until its link is marked Found — then players see it at once. Add zones and territories under the map's links (zone, territory) while editing it."
+            "Areas above the map hides and shows them, just for you. Players see only areas on articles they may see, and on a fogged map only what is revealed; a zone whose kind is hidden until noticed stays with the GM, dashed, until its link is marked Found — then players see it at once. To draw one, open Zones (Z) in the tool bar, pick a zone kind or a faction under For, then drag a Rectangle or Ellipse or tap the corners of a Polygon. Found, then tapping a hidden zone, shows it to players at that spot; Remove takes an area away — the zone kind or faction stays."
           ]
         },
         {

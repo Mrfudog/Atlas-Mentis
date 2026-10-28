@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-draw-zones",
+      "date": "2026-10-29",
+      "title": "Draw zones and territories on the map",
+      "text": "The new tool group Zones (Z) draws a zone kind or a faction’s territory on the map as a rectangle, ellipse or polygon, on the floor you are on. Found reveals a hidden trap to the players at that spot; Remove takes an area off the map.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-map-level-lock",
       "date": "2026-10-29",
       "title": "Lock the map level while zooming",
