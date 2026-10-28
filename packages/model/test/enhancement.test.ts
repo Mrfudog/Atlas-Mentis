@@ -172,7 +172,7 @@ describe('Gegenstandsmerkmale (T-324, E-163)', () => {
 
   it('erkennt ein Enhancement an seiner Art, auch ohne eigene Enhancement-Karte', () => {
     expect(isEnhancement(versilbertNeu)).toBe(true);
-    expect(isEnhancement(plus1)).toBe(true); // noch als Gegenstand (vor Migration 161)
+    expect(isEnhancement(plus1)).toBe(true); // noch als Gegenstand (vor Migration 162)
     expect(isEnhancement(dolch)).toBe(false);
     const s = stueck();
     expect(enhancementRefusal(bestand(s, versilbertNeu), s, 'silv2')).toBeNull();

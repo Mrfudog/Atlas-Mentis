@@ -13,7 +13,7 @@
  * Namensregel (`namePrefix`, `nameSuffix`) und der **Aufpreis**
  * (`priceAdd` in Kupfer, `priceMult` als Faktor auf den Grundpreis), am
  * Enhancement Seltenheit und Boni. Bis T-324 war es ein Gegenstand mit
- * `appliesTo`; Migration 161 hat die eingelesenen umgezogen, und was
+ * `appliesTo`; Migration 162 hat die eingelesenen umgezogen, und was
  * davon noch als Gegenstand steht, liest sich wie vorher.
  *
  * **Gerechnet, nie gespeichert** (D8): Name, Preis, Seltenheit und Boni des
@@ -88,7 +88,7 @@ export function enhancementsByOf(campaign: Entity | null | undefined): Enhanceme
 
 /**
  * **Ist das ein Enhancement?** Ein Artikel der Art `Enhancement` (T-324);
- * oder, vor Migration 161, ein Gegenstand mit `appliesTo`.
+ * oder, vor Migration 162, ein Gegenstand mit `appliesTo`.
  */
 export function isEnhancement(e: Entity | undefined): boolean {
   if (!e) return false;
@@ -215,7 +215,7 @@ export function surchargeOf(property: Entity): { add: number; mult: number } | u
   const add = zahl(it['priceAdd']);
   const mult = zahl(it['priceMult']);
   if (add !== undefined || mult !== undefined) return { add: add ?? 0, mult: mult ?? 1 };
-  /* Vor Migration 161 (T-324): ein Gegenstand ohne eigene Angabe nimmt
+  /* Vor Migration 162 (T-324): ein Gegenstand ohne eigene Angabe nimmt
      seinen Preis als Aufpreis. Ein `Enhancement` hat keinen Preis — die
      Migration hat ihn nach `priceAdd` gelegt. */
   const preis = zahl(card(property)['copperPrice']);
