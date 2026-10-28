@@ -469,6 +469,15 @@ const APP: AppTerm[] = [
     see: '/campaign',
   },
   {
+    term: 'Version, variant, copy',
+    aliases: ['Version', 'Variant', 'Copy'],
+    sort: 'app',
+    definition: 'Three ways to make an article of your own from one you cannot change: a version takes its place in this campaign, a variant stands beside it and names where it comes from, a copy is a new article of its own.',
+    effect: 'Copy… on an article asks which one, into which of your layers, and which of its parts, statblock and inventory go along; the original stays as it is.',
+    translations: { de: 'Fassung, Variante, Kopie' },
+    see: '/handbook',
+  },
+  {
     term: 'View as',
     aliases: ['Viewing as'],
     sort: 'app',
