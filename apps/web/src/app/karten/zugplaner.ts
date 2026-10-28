@@ -158,6 +158,10 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
               } @else if (gewaehlt(); as t) {
                 Pick a target for <b>{{ t.name }}</b> (range {{ t.range }} ft{{ t.longRange ? ', long ' + t.longRange : '' }}).
                 <button type="button" class="klein" (click)="abwaehlen()">Cancel</button>
+                <!-- T-391: warum ein Ziel nicht ging, steht auch im Zielmodus — vorher verschluckte die Zeile es. -->
+                @if (fehler(); as f) {
+                  <span class="fehler" role="alert">{{ f }}</span>
+                }
               } @else if (budget().problems.length) {
                 <span class="fehler">{{ budget().problems.join(' ') }}</span>
               } @else if (warnungen().length) {
@@ -770,6 +774,7 @@ export class Zugplaner {
     if (!this.leistbar(t)) return;
     if (t.targeted) {
       const schon = this.gewaehlt()?.id === t.id;
+      this.fehler.set(null);
       this.gewaehlt.set(schon ? null : t);
       this.modus.set(schon ? 'idle' : 'target');
       return;

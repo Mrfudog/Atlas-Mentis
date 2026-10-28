@@ -9,6 +9,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-28-target-big-token",
+      "date": "2026-10-28",
+      "title": "Attacks reach big tokens",
+      "text": "In Plan turn, range now counts to the nearest square a target takes up, from where your planned move ends: a huge dragon you stand next to can be hit with a 5 ft attack. If a target is out of range, the planner says so instead of ignoring the tap.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-28-characters-per-campaign",
       "date": "2026-10-28",
       "title": "Characters per campaign",

@@ -50,6 +50,9 @@ import {
   gridGeometry,
   initiativeOrder,
   feetBetween,
+  feetBetweenTokens,
+  statblockSize,
+  tokenSpan,
   mapRulesOf,
   mapSettings,
   movedTokens,
@@ -153,6 +156,7 @@ import {
   type TurnPlan,
   type validateEntity,
 } from '@nw/model';
+import type { MapMarker } from '@nw/model';
 import type { User } from './auth.js';
 import type { ChangeFeed } from './live.js';
 import type { Repository } from './repo.js';
@@ -402,9 +406,21 @@ function bedrohteFelder(karte: Entity, geo: GridGeometry, b: ReturnType<typeof b
  * Stelle, an der die Figur angreift, zum Token des Ziels auf ihrer Ebene —
  * `null` ohne Gitter oder ohne beide Tokens (dann prüft niemand). `davor`
  * sind die Schritte vor dem Angriff: angegriffen wird vom Ende des letzten
- * Wegs. Dieselbe Rechnung wie die Maske (`feetBetween`, 5-10-5).
+ * Wegs. Dieselbe Rechnung wie die Maske (`feetBetweenTokens`, 5-10-5).
+ *
+ * **Bis zum nächsten belegten Feld** (T-391): `platz` sagt, wie viele
+ * Felder ein Token breit ist; gemessen wird zwischen den nächsten Feldern
+ * beider Plätze — ein 3 × 3-Drache, den Kira berührt, ist 5 ft weit. Nach
+ * einer geplanten Bewegung zählt für die Figur das Feld am Ende des Wegs.
  */
-export function abstandImPlan(karte: Entity, geo: GridGeometry | null, figur: string, ziel: string, davor: readonly PlanStep[] = []): number | null {
+export function abstandImPlan(
+  karte: Entity,
+  geo: GridGeometry | null,
+  figur: string,
+  ziel: string,
+  davor: readonly PlanStep[] = [],
+  platz: (m: MapMarker) => number = (m) => m.ownSize ?? 1,
+): number | null {
   if (!geo) return null;
   const ich = markersOf(karte).find((m) => m.to === figur);
   if (!ich) return null;
@@ -412,7 +428,15 @@ export function abstandImPlan(karte: Entity, geo: GridGeometry | null, figur: st
   if (!dort) return null;
   const letzter = [...davor].reverse().find((x) => x.kind === 'move' && (x.to || x.path.length));
   const wo = letzter?.kind === 'move' ? (letzter.to ?? cellPoint(geo, letzter.path[letzter.path.length - 1]!)) : ich;
-  return feetBetween(geo, wo, dort);
+  return feetBetweenTokens(geo, wo, letzter ? 1 : platz(ich), dort, platz(dort));
+}
+
+/** Wie viele Felder ein Token breit ist (T-391): am Token gesetzt, sonst nach seinem Statblock. */
+export function platzVon(stand: { map: Map<string, Entity>; alle: readonly Entity[] }): (m: MapMarker) => number {
+  return (m) => {
+    const e = stand.map.get(m.to);
+    return tokenSpan(m.ownSize, e ? statblockSize(stand.map, statblockVon(stand.alle, e)) : null);
+  };
 }
 
 /** Wo eine Begegnung steht und welchen Platz `id` in ihrer Reihe hat. */
@@ -676,7 +700,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const long: Record<string, number> = {};
       const modes: Record<string, 'adv' | 'dis'> = {};
       const er = ich ? werteAmTisch(folgenJetzt, stand, roh).totals.grants : {};
-      const feet = figur ? abstandImPlan(karte, geoJetzt, figur.id, z.id) : null;
+      const feet = figur ? abstandImPlan(karte, geoJetzt, figur.id, z.id, [], platzVon(stand)) : null;
       for (const t of angriffe) {
         /* `chances` ohne lange Reichweite — ob sie gilt, weiss erst die
            Maske am Ende des Wegs; dafür steht `long` daneben. */
@@ -816,7 +840,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if (s.kind !== 'act' || !s.target) continue;
       const t = kacheln.get(s.tile);
       if (!t) continue;
-      const feet = abstandImPlan(karte, geo, figur.id, s.target, steps.slice(0, i));
+      const feet = abstandImPlan(karte, geo, figur.id, s.target, steps.slice(0, i), platzVon(stand));
       if (rangeBand(t, feet) !== 'out') continue;
       const reicht = `${t.range} ft${t.longRange ? `, long ${t.longRange} ft` : ''}`;
       return `${s.targetName ?? 'The target'} is ${feet} ft away — out of range for ${t.name} (${reicht}). Move closer first or pick another target.`;
@@ -1510,7 +1534,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       /* **Reichweite beim Ausführen** (T-351): gemessen, wo die Tokens jetzt
          stehen — das Ziel kann seit dem Einreichen gegangen sein. Ausser
          Reichweite wird nicht gewürfelt; lang würfelt mit Nachteil. */
-      const feet = abstandImPlan(karte, geoWeite, figur.id, ziel.id);
+      const feet = abstandImPlan(karte, geoWeite, figur.id, ziel.id, [], platzVon(stand));
       const band = rangeBand(t, feet);
       if (band === 'out') {
         results.push({ step: s.id, text: `${t.name} → ${entityName(ziel)}: out of range (${feet} ft), no roll.` });
