@@ -220,6 +220,37 @@ describe('live channel (T-116)', () => {
     await sela.warte((e) => e.some((x) => x.event === 'gone' && x.data['id'] === 'm_gang'));
   });
 
+  it('keeps quiet when a player would see the same map as before (T-399)', async () => {
+    const { geraet, aendere, ruhe } = await aufbau();
+    const marker = (id: string, x: number, hidden = false) => ({
+      id,
+      type: 'marker',
+      to: 'p_markt',
+      props: { x, y: 0.5, kind: 'token', ...(hidden ? { hidden: true } : {}) },
+    });
+    await aendere('Mira', 'm_gang', (e) => ({ ...e, relations: [...e.relations, marker('mk_offen', 0.2), marker('mk_versteckt', 0.3, true)] }));
+    await ruhe();
+    const mira = await geraet('Mira');
+    const sela = await geraet('Sela');
+    const zieh = (id: string, x: number) => (e: Entity): Entity => ({
+      ...e,
+      relations: e.relations.map((r) => (r.id === id ? { ...r, props: { ...r.props, x } } : r)),
+    });
+    const karte = (x: Ereignis) => x.event === 'entity' && x.data['id'] === 'm_gang';
+
+    /* Ein verborgener Gegner zieht: die Leitung erfährt es, die Spielerin nicht — auch nicht, dass sich etwas tat. */
+    await aendere('Mira', 'm_gang', zieh('mk_versteckt', 0.6));
+    await mira.warte((e) => e.some(karte));
+    await ruhe();
+    expect(sela.ereignisse.filter(karte)).toHaveLength(0);
+
+    /* Ein sichtbares Token zieht: beide. */
+    const bisher = mira.ereignisse.filter(karte).length;
+    await aendere('Mira', 'm_gang', zieh('mk_offen', 0.4));
+    await sela.warte((e) => e.some(karte));
+    await mira.warte((e) => e.filter(karte).length > bisher);
+  });
+
   it('carries the session state, so play follows the map on the table', async () => {
     const { geraet, aendere } = await aufbau();
     const sela = await geraet('Sela');
