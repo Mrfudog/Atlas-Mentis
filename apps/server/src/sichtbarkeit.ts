@@ -60,6 +60,7 @@ import {
 } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
+import { aufFrischemStand } from './kampagnenrevision.js';
 import { rechtAn } from './verwaltung.js';
 
 export interface SichtbarkeitDeps {
@@ -288,32 +289,38 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
       if (b.audience !== undefined && b.audience !== null && !STUFEN.includes(b.audience as Audience)) {
         return nein(reply, 400, `audience: eine von ${STUFEN.join(', ')} oder null.`);
       }
-      const regeln = visibilityRulesOf(z.kampagne);
-      const alt = regeln.find((r) => r.id === b.id);
-      const neu: VisibilityRule = { ...(alt ?? { id: b.id }) };
-      if (b.audience === null) delete neu.audience;
-      else if (b.audience !== undefined) neu.audience = b.audience as Audience;
-      const show = liste(b.show);
-      const hide = liste(b.hide);
-      if (show !== undefined) {
-        if (show.length) neu.show = show;
-        else delete neu.show;
-      }
-      if (hide !== undefined) {
-        if (hide.length) neu.hide = hide;
-        else delete neu.hide;
-      }
-      const sagt = !!(neu.audience || neu.show?.length || neu.hide?.length);
-      const danach = [...regeln.filter((r) => r.id !== b.id), ...(sagt ? [neu] : [])];
-      const geschrieben: Entity = {
-        ...z.kampagne,
-        components: { ...(z.kampagne.components ?? {}), [VISIBILITY_RULES_COMPONENT]: { visibilityRules: danach } },
-      };
-      const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
-      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-      await repo.putEntity(geschrieben);
-      await repo.appendEvent('campaign.visibility', z.kampagne.id, { rule: b.id, ...(sagt ? { set: neu } : { removed: true }), by: z.user.id });
-      return { ok: true, rules: danach };
+      /* T-449: auf den frischen Stand gerechnet und gegen seine Revision
+         geschrieben; kommt eine zweite Regel dazwischen, einmal neu. */
+      const regelId = b.id;
+      return aufFrischemStand(request, async (gegen) => {
+        const kampagne = (await repo.getEntity(z.kampagne.id)) ?? z.kampagne;
+        const regeln = visibilityRulesOf(kampagne);
+        const alt = regeln.find((r) => r.id === regelId);
+        const neu: VisibilityRule = { ...(alt ?? { id: regelId }) };
+        if (b.audience === null) delete neu.audience;
+        else if (b.audience !== undefined) neu.audience = b.audience as Audience;
+        const show = liste(b.show);
+        const hide = liste(b.hide);
+        if (show !== undefined) {
+          if (show.length) neu.show = show;
+          else delete neu.show;
+        }
+        if (hide !== undefined) {
+          if (hide.length) neu.hide = hide;
+          else delete neu.hide;
+        }
+        const sagt = !!(neu.audience || neu.show?.length || neu.hide?.length);
+        const danach = [...regeln.filter((r) => r.id !== b.id), ...(sagt ? [neu] : [])];
+        const geschrieben: Entity = {
+          ...kampagne,
+          components: { ...(kampagne.components ?? {}), [VISIBILITY_RULES_COMPONENT]: { visibilityRules: danach } },
+        };
+        const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        await repo.putEntity(geschrieben, gegen(kampagne));
+        await repo.appendEvent('campaign.visibility', z.kampagne.id, { rule: regelId, ...(sagt ? { set: neu } : { removed: true }), by: z.user.id });
+        return { ok: true, rules: danach };
+      });
     },
   );
 
@@ -597,17 +604,22 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
       if (JSON.stringify(regeln) !== regelnVorher) {
         /* Auf den frischen Stand der Kampagne gerechnet, nicht auf den vom
            Anfang: eine zweite Leitung, die gerade eine andere Zeile setzt,
-           verlöre sonst ihren Eintrag. */
-        const k = (await repo.getEntity(z.kampagne.id)) ?? z.kampagne;
-        let frisch = visibilityRulesOf(k);
-        for (const id of eintragIds) frisch = withArticleRule(frisch, id, aenderung);
-        const geschrieben: Entity = {
-          ...k,
-          components: { ...(k.components ?? {}), [VISIBILITY_RULES_COMPONENT]: { visibilityRules: frisch } },
-        };
-        const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
-        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-        await repo.putEntity(geschrieben);
+           verlöre sonst ihren Eintrag. Und gegen dessen Revision
+           geschrieben (T-449): auch zwischen Lesen und Schreiben. */
+        const fertig = await aufFrischemStand(request, async (gegen) => {
+          const k = (await repo.getEntity(z.kampagne.id)) ?? z.kampagne;
+          let frisch = visibilityRulesOf(k);
+          for (const id of eintragIds) frisch = withArticleRule(frisch, id, aenderung);
+          const geschrieben: Entity = {
+            ...k,
+            components: { ...(k.components ?? {}), [VISIBILITY_RULES_COMPONENT]: { visibilityRules: frisch } },
+          };
+          const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+          if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+          await repo.putEntity(geschrieben, gegen(k));
+          return null;
+        });
+        if (fertig) return fertig;
         await repo.appendEvent('campaign.visibility', z.kampagne.id, { articles: ids, by: z.user.id });
       }
       return { ok: true, done, unchanged, refused };

@@ -39,6 +39,7 @@ import {
   isLayer,
 } from '@nw/model';
 import type { Repository } from './repo.js';
+import { frischAendern } from './kampagnenrevision.js';
 import { foldName, type User } from './auth.js';
 import { spielerEbenen } from './spielerebene.js';
 import { mitWahl } from './schreibebene.js';
@@ -396,8 +397,12 @@ export function registerEbenenrechte(
       /* Die leere Ebene geht, mit ihrer Kante an jeder Kampagne. */
       for (const k of map.values()) {
         if (primaryInterface(k) !== CAMPAIGN_TYPE) continue;
-        const rest = (k.relations ?? []).filter((r) => !(r.type === ACTIVATES_RELATION && r.to === l.id));
-        if (rest.length !== (k.relations ?? []).length) await repo.putEntity({ ...k, relations: rest });
+        if (!(k.relations ?? []).some((r) => r.type === ACTIVATES_RELATION && r.to === l.id)) continue;
+        /* Auf den frischen Stand, gegen seine Revision (T-449). */
+        await frischAendern(repo, k.id, (frisch) => {
+          const rest = (frisch.relations ?? []).filter((r) => !(r.type === ACTIVATES_RELATION && r.to === l.id));
+          return rest.length !== (frisch.relations ?? []).length ? { ...frisch, relations: rest } : null;
+        });
       }
       await repo.deleteEntity(l.id);
       for (const g of await repo.layerGrants()) if (g.layerId === l.id) await repo.revokeLayer(g.userId, g.layerId);

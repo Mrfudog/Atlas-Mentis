@@ -417,6 +417,15 @@ export function buildApp({
         entity: error.entity,
       });
     }
+    /* **Gleichzeitig geändert** (T-449, REQ-192): was nach dem einen
+       Neurechnen noch kollidiert — oder gegen ein `If-Match` geschrieben
+       war, das nicht mehr gilt —, ist ein 409 mit Ausweg, keine 500. */
+    if (error instanceof RevisionConflict) {
+      return reply.code(409).send({
+        error: `Someone else changed ${error.id} at the same moment. Reload and try again.`,
+        conflict: { id: error.id, expected: error.expected, current: error.current },
+      });
+    }
     return reply.send(error);
   });
 
