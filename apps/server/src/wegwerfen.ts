@@ -164,10 +164,10 @@ export function registerWegwerfen(app: FastifyInstance, deps: WegwerfenDeps): vo
       /* Zurücklegen darf, wer weggeworfen hat — und die Leitung. */
       if (!leitet && p.by !== user.id) return reply.code(403).send({ error: 'Das hast nicht du weggeworfen.' });
       const schon = await repo.listEvents({ name: 'inventory.discard-undone', subject: roherInv.id, limit: 50 });
-      if (schon.some((x) => (x.payload as { of?: string }).of === ev.id)) return reply.code(409).send({ error: 'Schon zurückgelegt.' });
+      if (schon.some((x) => (x.payload as { of?: string }).of === ev.id)) return reply.code(409).send({ error: 'Schon zurückgelegt.', refused: 'undone' });
       const inventar = (await repo.getEntity(roherInv.id)) ?? roherInv;
       if ((inventar.revision ?? null) !== p.revision) {
-        return reply.code(409).send({ error: 'Das Inventar hat sich seither geändert — von Hand zurücklegen.' });
+        return reply.code(409).send({ error: 'Das Inventar hat sich seither geändert — von Hand zurücklegen.', refused: 'changed' });
       }
       if (p.instance && !(await repo.getEntity(p.instance.id))) {
         const { revision: _r, ...rein } = p.instance;
