@@ -130,6 +130,7 @@ import {
   articleId,
   entityName,
   layerChange,
+  preferencesOf,
   describeChange,
   layerMoveChanges,
   layerMovePlan,
@@ -2604,12 +2605,28 @@ export function buildApp({
        es hier nicht. */
     const genannt = shownLayers(stand.map, kampagne, siehtVergleich(user, kampagne));
     const ebenenIds = new Set(layersOf(basis));
+    /* **Welche Fassung Listen und Verweise zeigen** (T-403): die mit dem
+       höchsten Rang unter denen im Spiel — mit dem Vorrang der Kampagne
+       (`prefers`), nicht nur nach der Ebenenreihenfolge. */
+    const bevorzugt = new Set(preferencesOf(kampagne).map((p) => p.to));
+    let gezeigt: string | null = null;
+    let bester = 0;
+    for (const e of [basis, ...gesiebt.map((v) => stand.map.get(v.id) ?? v)]) {
+      if (!sicht.inPlay(e)) continue;
+      const r = sicht.rank(e);
+      if (r > bester) {
+        bester = r;
+        gezeigt = e.id;
+      }
+    }
     const versions = gesiebt.map((v) => {
       const r = stand.map.get(v.id) ?? v;
       for (const l of layersOf(r)) ebenenIds.add(l);
       const compare = !sicht.inStack(r) && sicht.inCompare(r);
       const adoptedAs = kopieVon.get(v.id);
       return {
+        shown: gezeigt === v.id,
+        ...(bevorzugt.has(v.id) ? { preferred: true } : {}),
         entity: v,
         layers: layersOf(r).filter((id) => !genannt || genannt.has(id)),
         play: sicht.inPlay(r),
@@ -2638,6 +2655,9 @@ export function buildApp({
         ...(imSpiel.has(l.id) ? { rank: imSpiel.get(l.id) } : {}),
       })),
       versions,
+      shown: gezeigt === basis.id,
+      ...(bevorzugt.has(basis.id) ? { preferred: true } : {}),
+      mayPrefer: !!kampagne && rechtAn(user, kampagne.id) === 'manage',
       ...(kampagne ? { campaign: { id: kampagne.id, name: entityName(kampagne) } } : {}),
     };
   });

@@ -87,10 +87,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'stack',
     label: 'Layers in play',
     area: 'stack',
-    does: 'decides whether an article is in play at all — what the campaign’s layers bring, what a group layer brings with its members, what a type rule lets every layer of a group bring, which single articles the campaign enables, which publisher a layer counts under, which version replaces another',
+    does: 'decides whether an article is in play at all — what the campaign’s layers bring, what a group layer brings with its members, what a type rule lets every layer of a group bring, which single articles the campaign enables, which publisher a layer counts under, which version replaces another, and which version of the same thing a campaign prefers (T-403)',
     uses: {
       [M + 'visibility.ts']: ['activates', 'inLayer'],
-      [M + 'stack.ts']: ['activates', 'enables', 'inLayer', 'layerRule', 'overrides', 'partOf'],
+      [M + 'stack.ts']: ['activates', 'enables', 'inLayer', 'layerRule', 'overrides', 'partOf', 'prefers'],
       /* Die Ebene eines Artikels wechseln (T-383), mit Teilen, Statblock und Stücken (T-402). */
       [M + 'layermove.ts']: ['holds', 'inLayer', 'partOf'],
       [S + 'verwaltung.ts']: ['activates', 'inLayer'],

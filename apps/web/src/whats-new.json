@@ -65,6 +65,14 @@
       "link": "/handbook"
     },
     {
+      "id": "2026-10-28-prefer-version",
+      "date": "2026-10-28",
+      "title": "Choose which version shows",
+      "text": "Where two books bring the same thing, the GM can now prefer one version — on the article under Versions or in Articles and their layers — or put a layer first for some types under Order in play (“Weapons: PHB 2024 first”). Lists and links follow; no book is changed.",
+      "area": "Campaign",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-target-big-token",
       "date": "2026-10-28",
       "title": "Attacks reach big tokens",

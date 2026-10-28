@@ -172,6 +172,24 @@ const SEITE = 50;
               <span class="name">
                 <a [routerLink]="['/artikel', a.id]">{{ a.name }}</a>
                 <small class="dim">{{ a.typeLabel }}</small>
+                <!-- Mehrere Fassungen (T-403): welche Listen zeigen, und „Prefer this version". -->
+                @if (a.versions; as v) {
+                  <small class="fassung">
+                    {{ v.n }} versions ·
+                    @if (v.preferred) {
+                      preferred
+                      @if (darf()) {
+                        <button type="button" class="leise" [disabled]="laeuft()" (click)="vorrang(a.id, false)">Stop preferring</button>
+                      }
+                    } @else if (v.shown) {
+                      shown in lists
+                    } @else if (darf()) {
+                      <button type="button" class="klein" [disabled]="laeuft()" (click)="vorrang(a.id, true)">Prefer this version</button>
+                    } @else {
+                      not shown
+                    }
+                  </small>
+                }
               </span>
               <span class="ebene">
                 @for (l of a.layers; track l.id) {
@@ -325,6 +343,14 @@ const SEITE = 50;
     .spielerknoepfe {
       display: inline-flex;
       gap: 0.25rem;
+    }
+    .fassung {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--dim);
     }
     .kopf {
       display: flex;
@@ -674,6 +700,22 @@ export class KampagnenArtikel {
       await this.laden(this.kampagne());
     } catch (e) {
       this.fehler.set(e instanceof ApiError ? e.message : 'Could not undo the move.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  /** Vorrang (T-403): diese Fassung vor den anderen — an der Kampagne, kein Buch wird beschrieben. */
+  protected async vorrang(id: string, an: boolean): Promise<void> {
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      if (an) await this.api.prefer(this.kampagne(), id);
+      else await this.api.unprefer(this.kampagne(), id);
+      this.meldung.set(an ? 'Preferred: lists and links now show this version.' : 'No longer preferred: the layer order decides again.');
+      await this.laden(this.kampagne());
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'That did not work.');
     } finally {
       this.laeuft.set(false);
     }

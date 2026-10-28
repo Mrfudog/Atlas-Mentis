@@ -556,12 +556,21 @@ export interface Fassung {
   adoptable: boolean;
   /** Schon übernommen: die Kopie in der Kampagnenebene. */
   adoptedAs?: string;
+  /** Diese Fassung zeigen Listen und Verweise (T-403: Rang mit Vorrang). */
+  shown?: boolean;
+  /** Die Kampagne bevorzugt sie (`prefers`, T-403). */
+  preferred?: boolean;
 }
 
 export interface Fassungen {
   layers: FassungsEbene[];
   versions: Fassung[];
   campaign?: { id: string; name: string };
+  /** Der Artikel selbst: gezeigt, bevorzugt (T-403). */
+  shown?: boolean;
+  preferred?: boolean;
+  /** Darf dieses Konto den Vorrang setzen (Leitung der Kampagne)? */
+  mayPrefer?: boolean;
 }
 
 /** Wohin „im Buch lesen" führt (`refs.reading`, T-091). */
@@ -804,6 +813,18 @@ export interface KampagnenEbenen {
   compareFor?: 'gm' | 'players';
   /** Einzeln freigegebene Artikel (T-187). */
   extra?: ExtraInhalt[];
+  /** Vorrang (T-403): je Artikel, oder je Ebene für Arten. */
+  preferences?: Vorrang[];
+}
+/** Ein Vorrang an der Kampagne (`prefers`, T-403). */
+export interface Vorrang {
+  to: string;
+  name: string;
+  kind: 'layer' | 'article';
+  type?: string;
+  types: string[];
+  over?: string;
+  overName?: string;
 }
 /** Ein einzeln freigegebener Artikel (T-187): im Spiel, sein Buch nicht. */
 export interface ExtraInhalt {
@@ -1217,6 +1238,8 @@ export interface SichtArtikel {
   /** Welche Spalten ihn sehen. */
   seenBy: string[];
   writable: boolean;
+  /** Fassungen derselben Sache (T-403): wie viele, ob diese gezeigt wird, ob bevorzugt. */
+  versions?: { n: number; shown: boolean; preferred?: boolean };
 }
 export interface SichtArtikelListe {
   may: Recht;
@@ -1996,6 +2019,17 @@ export class Api {
   /** „Empty trash" (T-400): endgültig, auch für die Werkbank. */
   emptyTrash(): Promise<{ emptied: number }> {
     return this.call('/api/trash/empty', { method: 'POST', body: '{}' });
+  }
+  /**
+   * **Vorrang an der Kampagne** (T-403): ein Artikel vor seinen anderen
+   * Fassungen, oder eine Ebene für Arten (`types`) vor den anderen Ebenen.
+   */
+  prefer(campaign: string, to: string, opts: { over?: string; types?: string[] } = {}): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/prefers`, { method: 'PUT', body: JSON.stringify({ to, ...opts }) });
+  }
+  unprefer(campaign: string, to: string, type?: string): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
+    const q = type ? `?type=${encodeURIComponent(type)}` : '';
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/prefers/${encodeURIComponent(to)}${q}`, { method: 'DELETE' });
   }
   /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
   deleteEntity(id: string): Promise<{ ok: true }> {
