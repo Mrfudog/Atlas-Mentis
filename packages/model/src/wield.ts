@@ -385,9 +385,17 @@ export function heldDetail(item: HeldItem, both: boolean): string {
   return [item.damage, ...item.properties.filter((p) => p === 'light' || p === 'finesse')].filter(Boolean).join(' · ');
 }
 
-/** Was der Griff an einem Platz kostet — ein Schild an- oder ablegen ist eine Aktion (PHB). */
-export function handCost(item: HeldItem | null): string {
-  return item?.shield ? 'shield: an action to don or doff' : 'draw or stow: object interaction';
+/**
+ * Was der Griff an einem Platz kostet — ein Schild an- oder ablegen ist eine
+ * Aktion (PHB). Sonst sagt es die Kampagne (T-350, Einstellung
+ * `handActions`, gelesen mit `handActions()`): verstauen und fallen lassen
+ * je mit ihrer Stufe der Leiter `DrawTime`. Sagt sie nichts, gilt die Regel
+ * des Buchs.
+ */
+export function handCost(item: HeldItem | null, costs?: { drop: string | null; stow: string | null } | null): string {
+  if (item?.shield) return 'shield: an action to don or doff';
+  const teile = [costs?.stow ? `stow: ${costs.stow}` : '', costs?.drop ? `drop: ${costs.drop}` : ''].filter(Boolean);
+  return teile.length ? teile.join(' · ') : 'draw or stow: object interaction';
 }
 
 /** Die Zeile über den Händen. */

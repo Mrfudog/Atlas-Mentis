@@ -37,6 +37,9 @@ import {
   dropProps,
   handChecks,
   handCost,
+  handActions,
+  drawStage,
+  parsePairs,
   handSummary,
   heldDetail,
   heldPlaceOf,
@@ -220,7 +223,7 @@ interface Ziel {
                     </div>
                   }
                   @if (h.stueck && darf()) {
-                    <button type="button" class="klein" (click)="wegstecken(h.stueck)">Stow</button>
+                    <button type="button" class="klein" (click)="wegstecken(h.stueck)" [attr.title]="handKosten().stow ? 'Costs ' + handKosten().stow : null">Stow</button>
                   }
                 </div>
               }
@@ -314,7 +317,7 @@ interface Ziel {
       @if (regel() === 'grid') {
         <div class="raster" role="grid" [attr.aria-label]="'Grid of ' + name()" [attr.data-inv]="inventar().id"
              [style.grid-template-columns]="'repeat(' + kiste().w + ', var(--zelle))'"
-             [style.--zelle]="'min(2.1rem, calc((100vw - 5rem) / ' + kiste().w + '))'">
+             [style.--zelle]="'min(2.1rem, calc((100vw - ' + (5 + tiefe() * 2) + 'rem) / ' + kiste().w + '))'">
           @for (z of zellen(); track z.key) {
             <button type="button" class="zelle" [attr.data-x]="z.x" [attr.data-y]="z.y"
                     [class.zu]="!z.offen && !formModus()" [class.aus]="!z.offen && formModus()"
@@ -378,9 +381,9 @@ interface Ziel {
               @if (p.qty !== 1) { <span class="qty">×{{ p.qty }}</span> }
               <span class="tier">{{ p.slot || p.tier }}</span>
               @if (regel() === 'grid') {
-                @if (zoneVon(p); as zo) { <span class="tier">· {{ zo }}</span> }
-                @else if (!liegtIm(p)) { <span class="tier">· not in the grid</span> }
+                @if (!liegtIm(p) && !ziehstufe(p)) { <span class="tier">· not in the grid</span> }
               }
+              @if (ziehstufe(p); as st) { <span class="tier" [attr.title]="'Drawing it costs: ' + st">· {{ st }} to draw</span> }
               @if (regel() === 'weight' && p.weight) { <span class="tier">· {{ p.weight * p.qty }} lb</span> }
               @if (p.reserviert) {
                 <span class="res">reserved for
@@ -431,7 +434,7 @@ interface Ziel {
             @if (p.behaelter && offen().has(p.behaelter)) {
               <li class="innen">
                 @if (bestand.voll().get(p.behaelter); as inner) {
-                  <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="tiefe() + 1" />
+                  <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="tiefe() + 1" [aussen]="ziehstufe(p)" />
                 } @else {
                   <p class="leer">Loading…</p>
                 }
@@ -622,6 +625,8 @@ export class Inventar {
   /** Das Inventar eine Stufe höher, wenn dieses in einem Behälter liegt. */
   readonly oben = input<Entity | null>(null);
   readonly tiefe = input(0);
+  /** Die Ziehstufe des Behälters im Inventar darüber (T-350): was darin liegt, ist eine Stufe weiter weg. */
+  readonly aussen = input<string | null>(null);
 
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
@@ -657,6 +662,13 @@ export class Inventar {
   private readonly settings = computed(() => this.bestand.registry()?.settings ?? {});
 
   protected readonly leiter = computed<string[]>(() => this.bestand.registry()?.enums?.['DrawTime']?.values ?? []);
+  /** Was Verstauen und Fallenlassen kosten (T-350, Einstellung `handActions`). */
+  protected readonly handKosten = computed(() => handActions(this.settings()['handActions'] as string | undefined, this.leiter()));
+  /** Die Ziehstufe je Körperplatz (Einstellung `slotDraw`). */
+  private readonly platzStufen = computed(() => {
+    const roh = parsePairs(this.settings()['slotDraw'] as string | undefined);
+    return Object.fromEntries(Object.entries(roh).filter(([, v]) => v && v !== '-'));
+  });
 
   /**
    * Das Tragraster nach dem Blatt, nur unter einer Kreatur mit Statblock
@@ -933,9 +945,9 @@ export class Inventar {
     const off = h.both ? null : h.off;
     return [
       { place: 'mainHand' as HandPlace, label: 'Main hand', held: main, stueck: stueckVon(main), griff: null as string | null,
-        kosten: handCost(main), detail: main ? heldDetail(main, h.both) : '', vielseitig: !!main && main.properties.includes('versatile') && !main.shield, ...zielVon('mainHand') },
+        kosten: handCost(main, this.handKosten()), detail: main ? heldDetail(main, h.both) : '', vielseitig: !!main && main.properties.includes('versatile') && !main.shield, ...zielVon('mainHand') },
       { place: 'offHand' as HandPlace, label: 'Off hand', held: off, stueck: stueckVon(off), griff: h.both ? h.main?.name ?? null : null,
-        kosten: handCost(off), detail: off ? heldDetail(off, false) : '', vielseitig: false, ...zielVon('offHand') },
+        kosten: handCost(off, this.handKosten()), detail: off ? heldDetail(off, false) : '', vielseitig: false, ...zielVon('offHand') },
     ];
   });
 
@@ -951,7 +963,7 @@ export class Inventar {
     if (hand) return wieldTargetLabel(hand).toLowerCase();
     if (p.offen) return 'not stowed';
     if (p.tier === 'ground') return 'on the ground';
-    if (this.regel() === 'grid') return this.liegtIm(p) ? `in the grid${this.zoneVon(p) ? ` · ${this.zoneVon(p)} to draw` : ''}` : 'not in the grid';
+    if (this.regel() === 'grid') return this.liegtIm(p) ? `in the grid${this.ziehstufe(p) ? ` · ${this.ziehstufe(p)} to draw` : ''}` : 'not in the grid';
     return p.slot || p.tier;
   }
 
@@ -1101,6 +1113,21 @@ export class Inventar {
 
   protected zoneVon(p: Stueck): string | null {
     return this.liegtIm(p) ? pieceZone(this.zonen(), p, this.leiter()) : null;
+  }
+
+  /**
+   * **Die Ziehstufe die Kette hinauf** (T-350, REQ-216, `drawStage`):
+   * aussen der Platz (`slotDraw`) oder die Zone; in einem Behälter das
+   * Langsamere aus der eigenen Zone und der Stufe des Behälters + 1.
+   * `null`, wenn ein Schritt keine Stufe kennt.
+   */
+  protected ziehstufe(p: Stueck): string | null {
+    const zone = this.regel() === 'grid' ? this.zoneVon(p) : null;
+    const kette =
+      this.tiefe() === 0
+        ? [{ via: this.inventar().id, zone, slot: p.slot || null }]
+        : [{ via: 'outer', zone: this.aussen() }, { via: this.inventar().id, zone }];
+    return drawStage(kette, this.leiter(), this.platzStufen()).stage;
   }
 
   protected waehle(key: string): void {
