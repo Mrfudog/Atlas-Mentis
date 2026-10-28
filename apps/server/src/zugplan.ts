@@ -209,8 +209,10 @@ export function tempoVon(stats: Card): number {
  * ändern), dazu waffenloser Schlag und die allgemeinen Aktionen. Nur
  * Aktionen, die `sichtbar` sagt.
  */
-export function kachelnVon(map: Map<string, Entity>, sb: Entity | null, sichtbar: (id: string) => boolean): PlanTile[] {
+export function kachelnVon(map: Map<string, Entity>, sb: Entity | null, sichtbar: (id: string) => boolean, figur?: Entity): PlanTile[] {
   const stats = werte(map, sb);
+  /* Die Wirkungen der Figur (T-355): `spellAttack`, `weapon.attack` … an ihren Kacheln. */
+  const add = figur ? creatureStats(figur, map).totals.add : {};
   const aktionen = sb
     ? (resolveInstance(map, sb).relations ?? [])
         .filter((r) => r.type === 'composedOf' && sichtbar(r.to))
@@ -222,7 +224,7 @@ export function kachelnVon(map: Map<string, Entity>, sb: Entity | null, sichtbar
           return [{ id: a.id, name: entityName(a), actionTypeName: art ? entityName(art) : null, action, edge: (r.props ?? {}) as Card }];
         })
     : [];
-  return tilesFor(stats, aktionen);
+  return tilesFor(stats, aktionen, add);
 }
 
 /**
@@ -297,7 +299,7 @@ export function darfZiehen(leitet: boolean, regeln: MapRules, ziel: string, wer:
 
 /** Die Nahkampfreichweite einer Kreatur aus ihren Kacheln; ohne Angriff 5 ft. */
 function reichweiteVon(stand: Stand, e: Entity): number {
-  const nah = kachelnVon(stand.map, statblockVon(stand.alle, e), () => true).filter((t) => t.group === 'attack' && t.longRange === null && t.range !== null);
+  const nah = kachelnVon(stand.map, statblockVon(stand.alle, e), () => true, e).filter((t) => t.group === 'attack' && t.longRange === null && t.range !== null);
   return Math.max(5, ...nah.map((t) => t.range!));
 }
 
@@ -581,7 +583,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const aktionsIds = sb ? (resolveInstance(stand.map, sb).relations ?? []).filter((r) => r.type === 'composedOf').map((r) => r.to) : [];
       const da = aktionsIds.flatMap((i) => stand.map.get(i) ?? []);
       const sicht = new Set((da.length ? await sieve(request, da, stand.map) : []).map((e) => e.id));
-      tiles = plannerTiles(kachelnVon(stand.map, sb, (i) => sicht.has(i)), stufe);
+      tiles = plannerTiles(kachelnVon(stand.map, sb, (i) => sicht.has(i), figur), stufe);
       speed = tempoVon(werte(stand.map, sb));
     }
 
@@ -743,7 +745,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     if (!m) return null;
     const geo = geoDerEbene(stand, roheKarte, floorOfMarker(roheKarte, m.rel.id), nat);
     if (!geo) return null;
-    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true).map((t) => [t.id, t]));
+    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true, figur).map((t) => [t.id, t]));
     for (const [i, s] of steps.entries()) {
       if (s.kind !== 'act' || !s.target) continue;
       const t = kacheln.get(s.tile);
@@ -1167,7 +1169,9 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         { proficient: c['Proficiencies']?.['proficient'], expertise: c['Proficiencies']?.['expertise'], prof: c['Statblock']?.['prof'], bonuses: c['Statblock']?.['bonuses'], score: st.abilities[a.check.ability as keyof CharacterStats['abilities']]?.value },
         a.check.skill,
       );
-      const r = await wurf(figur, von, `1d20${bonus === null ? '' : bonus < 0 ? bonus : `+${bonus}`}`, `${a.name}: ${a.check.skill} check`, kampagne, hidden, stand);
+      /* `check` wirkt auf jede Probe (T-355): Guidance, ein Ring, ein Merkmal. */
+      const mit = bonus === null ? null : bonus + (st.totals.add['check'] ?? 0);
+      const r = await wurf(figur, von, `1d20${mit === null ? '' : mit < 0 ? mit : `+${mit}`}`, `${a.name}: ${a.check.skill} check`, kampagne, hidden, stand);
       if (r) teile.push(`${a.check.skill} ${r.total}`);
     }
     const regel = a.rule;
@@ -1271,7 +1275,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   ): Promise<{ plan: TurnPlan } | { fehler: number; error: string; issues?: unknown }> {
     const figur = stand.map.get(plan.actor);
     if (!figur) return { fehler: 409, error: 'Die Figur gibt es nicht mehr.' };
-    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true).map((t) => [t.id, t]));
+    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true, figur).map((t) => [t.id, t]));
     const hidden =
       (kampagne?.components?.['Campaign'] as { playerRolls?: unknown } | undefined)?.playerRolls === 'gm' && plan.by.id !== von.id;
     const kampf = encounterOnMap(stand.alle, roheKarte.id);
@@ -1517,7 +1521,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if (request.body?.attack === true) {
         if (!p.rule || p.strike) {
           /* Der beste Nahkampfangriff: die höchste Trefferzahl, die nicht weit trägt. */
-          const nah = kachelnVon(stand.map, statblockVon(stand.alle, reagiert), () => true)
+          const nah = kachelnVon(stand.map, statblockVon(stand.alle, reagiert), () => true, reagiert)
             .filter((t) => t.group === 'attack' && t.toHit !== null && t.longRange === null)
             .sort((a, b) => b.toHit! - a.toHit! || (b.average ?? 0) - (a.average ?? 0));
           const t = nah[0];

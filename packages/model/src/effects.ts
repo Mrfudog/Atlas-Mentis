@@ -53,6 +53,10 @@ export const EFFECT_TARGETS: Record<string, string> = {
   'ability.wis': 'Wisdom',
   'ability.cha': 'Charisma',
   ac: 'AC',
+  /* Eine Grundlage der RK ohne Rüstung als Formel (T-355): Unarmored
+     Defense `10 + mod(dex) + mod(con)`; `.noShield` nur ohne Schild. */
+  'ac.base': 'armor class without armor (formula)',
+  'ac.base.noShield': 'armor class without armor or shield (formula)',
   'speed.*': 'all speeds',
   'speed.walk': 'walking speed',
   'speed.fly': 'flying speed',

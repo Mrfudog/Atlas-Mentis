@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-tracker-damage-types",
+      "date": "2026-10-28",
+      "title": "Damage types in the tracker, effects on saves and spells",
+      "text": "Damage in the initiative tracker asks for its type and counts resistances, immunities and vulnerabilities, like a confirmed turn; a concentrating combatant rolls the save at once. Effects on saving throws, spell save DC, spell attacks, checks and weapon attacks now change the sheet and the turn plan's tiles, and Unarmored Defense works as an effect.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
       "id": "2026-10-28-open-choices",
       "date": "2026-10-28",
       "title": "Open choices keep a character an idea",

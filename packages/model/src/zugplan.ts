@@ -17,7 +17,7 @@
 
 import { COMMON_ACTION_CATALOGUE, turnTypeOf } from './actions.js';
 import { abilityMod } from './calc.js';
-import { averageOf, attackNumbers, type AttackNumbers } from './attack.js';
+import { averageOf, attackNumbers, withEffectBonuses, type AttackNumbers } from './attack.js';
 import { cellAt, cellCentre, type GridGeometry, type MapMarker } from './map.js';
 import { cellKey, cheapestPath, reachable, type Cell, type MoveGrid } from './movement.js';
 import type { Pt } from './sight.js';
@@ -321,8 +321,13 @@ export function unarmedTile(stats: Record<string, unknown>): PlanTile {
 export function tilesFor(
   stats: Record<string, unknown>,
   actions: readonly { id: string; name: string; actionTypeName?: string | null; action?: Record<string, unknown>; edge?: Record<string, unknown> }[],
+  /** Die Wirkungen an der Figur (`effectTotals(…).add`): `spellAttack`, `weapon.attack` … (T-355). */
+  add: Readonly<Record<string, number>> = {},
 ): PlanTile[] {
-  const eigene = actions.map((a) => tileFromAction(a.id, a.name, a.actionTypeName, attackNumbers(a.action, stats, a.edge ?? {})));
+  const eigene = actions.map((a) => {
+    const n = attackNumbers(a.action, stats, a.edge ?? {});
+    return tileFromAction(a.id, a.name, a.actionTypeName, n ? withEffectBonuses(n, add) : n);
+  });
   return [...eigene, unarmedTile(stats), ...COMMON_ACTIONS];
 }
 

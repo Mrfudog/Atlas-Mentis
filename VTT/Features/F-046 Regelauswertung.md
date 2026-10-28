@@ -64,3 +64,32 @@ flowchart LR
   `feet`.
 - Die Zustandsartikel auf dev: Protokoll
   `docs/Nachtarbeit/2026-10-21-T-351.md`.
+
+## Schaden im Tracker, Wirkungen an Bogen und Kacheln (T-355)
+
+Stand 28.10.2026. **Ein Treffer, eine Rechnung:** `damageAtTable` zieht
+für Zugplan und Tracker nach der Abwehr ab (immun 0, resistent halb,
+verwundbar doppelt), eine Spielerfigur an `Vitals` (zeitweilige zuerst),
+die Teilnehmerkante spiegelt den Stand. Konzentriert sich das Ziel,
+würfelt der Server die Probe ins Log (E-128, Variante A). Im Tracker
+fragt „Damage" nach der Art.
+
+```mermaid
+flowchart LR
+  Z[Zugplan: Treffer bestätigt] --> D[damageAtTable]
+  T[Tracker: Damage + Art] --> D
+  D -->|Abwehr| A[Betrag]
+  A --> V[Vitals der Spielerfigur]
+  A --> K[Teilnehmerkante]
+  V -.spiegelt.-> K
+  D -->|konzentriert| P[Probe 1d20 + KON-Rettung ins Log]
+  P -->|misslungen| C[Vitals.concentration leer]
+```
+
+**Gesammelte Wirkungen wirken:** `save`/`save.<attr>` an den
+Rettungswürfen, `spellSaveDc` und `spellAttack` am Bogen, `check` in der
+passiven Wahrnehmung und den Proben, `spellAttack`/`spellDamage` und
+`weapon.*` in den Kacheln. **Unarmored Defense** ist eine Wirkung
+`ac.base` (Formel `10 + mod(dex) + mod(con)`), für den Mönch
+`ac.base.noShield`. Offen: `carry` (Bedeutung des Werts) und Boni, die an
+der Waffe selbst stehen.

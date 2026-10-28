@@ -20,8 +20,8 @@ zu entstehen.
 
 | # | Lücke aus dem Katalog | Stand | Wo | Test „wirkt am Tisch" |
 |---|---|---|---|---|
-| 1 | Wirkungen gesammelt, nicht angewandt; RK nur gespeichert | **wirkt** | `characterStats`, `creatureStats` (`stats.ts`), `effectsAt`/`itemsAt` (`effects.ts`); Initiative `participantStats`, Zugplan `rkVon` | `packages/model/test/regelwirkung.test.ts` › Punkt 1 |
-| 2 | Schaden nicht von den TP abgezogen, Konzentration nur angezeigt | **wirkt** (Zugplan; der Tracker zieht weiter von Hand ab) | `damageAfterDefenses`, `concentrationCheck` (`damage.ts`); Server `schadenAnwenden` (`zugplan.ts`) | `apps/server/test/regelwirkung.test.ts` › Punkt 2, `regelwirkung.test.ts` › Punkt 2 |
+| 1 | Wirkungen gesammelt, nicht angewandt; RK nur gespeichert | **wirkt** | `characterStats`, `creatureStats` (`stats.ts`), `effectsAt`/`itemsAt` (`effects.ts`); Initiative `participantStats`, Zugplan `rkVon` | `packages/model/test/regelwirkung.test.ts` › Punkt 1, `wirkungen-anwenden.test.ts` (Rettungswürfe, Zauber-SG, Kacheln, Unarmored Defense, T-355), Server `wirkungen-am-tisch.test.ts` |
+| 2 | Schaden nicht von den TP abgezogen, Konzentration nur angezeigt | **wirkt** (Zugplan und Tracker, eine Rechnung `damageAtTable`, T-355) | `damageAtTable`, `damageAfterDefenses`, `concentrationCheck` (`damage.ts`), `trackerDamage` (`tracker.ts`); Server `schadenAnwenden` (`zugplan.ts`), `schadenImTracker` (`initiative.ts`) | `apps/server/test/regelwirkung.test.ts` › Punkt 2, `regelwirkung.test.ts` › Punkt 2, `tracker-schaden.test.ts`, `schaden-am-tisch.test.ts`, E2E `tracker-schaden.spec.ts` |
 | 3 | Zwei Aktionskataloge, zwei Kostenleser; nur Dash/Disengage wirken | **eine Quelle**; Dodge, Help, Hide wirken (Vorteil/Nachteil), Ready als Eintrag | `COMMON_ACTION_CATALOGUE`, `turnTypeOf`/`costOf` (`actions.ts`); Server `aktionWirkt`, `trefferWurf` | `apps/server/test/regelwirkung.test.ts` › Punkt 3, `regelwirkung.test.ts` › Punkt 3 |
 | 4 | Zwei Übungsbonus-Formeln | **eine Quelle** | `proficiencyBonus` (`calc.ts`), Register `profBonus(hasClass.level)` | `regelwirkung.test.ts` › Punkt 4 |
 | 5 | Passive Wahrnehmung ohne Übung/Expertise | **wirkt** | `checkBonus` (`calc.ts`), Register `10+check(wis.Perception)`, Bogen `passivePerception` | `regelwirkung.test.ts` › Punkt 5 |
@@ -60,10 +60,20 @@ Rechnung** (`creatureStats`: Statblock finden, aufgelöst, `characterStats`).
   die Quelle (item, equipped, condition, feature …), dazu Abwehr und
   kritischen Treffer.
 
-Noch nicht angewandt (Ziele, die gesammelt und gezeigt werden): `save`,
-`save.<attr>`, `spellSaveDc`, `spellAttack`, `check`, `weapon.*`,
-`spellDamage`, `carry`. Unarmored Defense (Barbar, Mönch) rechnet erst, wenn
-das Merkmal eine Wirkung trägt.
+**Seit T-355 angewandt:** `save` und `save.<attr>` an den Rettungswürfen
+des Bogens (und der Konzentration), `spellSaveDc` und `spellAttack` am
+Bogen, `check` in der passiven Wahrnehmung und den Proben von Hide und
+Search, `spellAttack`/`spellDamage` und `weapon.attack`/`weapon.damage`/
+`weapon` in den Kacheln des Zugplans (`withEffectBonuses`). **Unarmored
+Defense** ist eine Wirkung am Merkmal: `ac.base` mit einer Formel
+(`10 + mod(dex) + mod(con)`, Barbar) oder `ac.base.noShield` (Mönch:
+`10 + mod(dex) + mod(wis)`, nur ohne Schild); ohne Rüstung gilt die beste
+Grundlage.
+
+Noch nicht angewandt: `carry` (was der Wert heisst, ist offen — Faktor
+oder Grössenstufe, siehe Entscheid auf dem Brett) und, was an der Waffe
+selbst steht (`when: self`, +1-Waffe): die Kachel hängt an einer Aktion,
+nicht an einem Gegenstand.
 
 ## Punkte 2 und 3 — was jetzt wirkt
 
@@ -100,8 +110,13 @@ das Merkmal eine Wirkung trägt.
   `attacked.near` (bis 5 ft) und `attacked.far` — Prone. Die Vorschau im
   Zugplan zeigt die Chance mit dem Modus (`modes`, `long`).
 
-Noch nicht: der Tracker (Damage/Heal) kennt keine Schadensart und zieht
-den Betrag weiter ohne Abwehr ab; Wirkungen, die nur unter einer
+- **Der Tracker rechnet wie der Zugplan** (T-355): „Damage" nimmt eine
+  Schadensart (Zeile `DamageType`), `damageAtTable` zieht nach der Abwehr
+  ab, die Konzentrationsprobe würfelt der Server ins Log. Eine
+  Spielerfigur führt ihren Stand an `Vitals`, die Kante spiegelt ihn —
+  auch bei Heal (E-128, zweite Frage: so schreiben beide Wege gleich).
+
+Noch nicht: Wirkungen, die nur unter einer
 Bedingung gelten (Restrained: Nachteil auf DEX-Rettungswürfe, Paralyzed:
 Krit in 5 ft), brauchen noch eigene Ziele.
 
@@ -116,4 +131,8 @@ Krit in 5 ft), brauchen noch eigene Ziele.
    Einen Bogenschuss über die lange Reichweite planen → „with
    disadvantage"; einen Schlag auf ein entferntes Ziel einreichen → 422
    „out of range"; Zustand „Prone" am Ziel → aus 5 ft Vorteil.
+   Im Tracker „− Damage" mit Art „fire" an einer Kreatur mit
+   Feuerresistenz → die Zeile über der Reihe sagt „resistant (fire) → …";
+   an der Testfigur sinken Tracker und Bogen gleich. Barbar ohne Rüstung
+   mit Unarmored Defense (`ac.base`) → RK 10 + GE + KO (T-355).
 3. Diese Tabelle nachziehen, wenn eine Lücke geschlossen ist.
