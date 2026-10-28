@@ -475,13 +475,15 @@ export class PgRepository implements Repository {
 
   async listEvents(filter: EventFilter): Promise<StoredEvent[]> {
     /* `payload - 'changes'` am Server: die alten Fassungen einer
-       Massenänderung sind Megabytes, und eine Liste braucht sie nicht. */
+       Massenänderung sind Megabytes, und eine Liste braucht sie nicht.
+       `id` hinter `at`: gleichzeitige Einträge stehen auf jeder Seite
+       gleich, sonst fiele beim Blättern einer heraus (T-181). */
     const { rows } = await this.pool.query<Row>(
       `select id, name, subject, at, ${filter.light ? "payload - 'changes' as payload" : 'payload'}
          from event_log
         where ($1::text is null or name = $1) and ($2::text is null or subject = $2)
           and ($4::text[] is null or subject = any($4) or ($5::text is not null and payload->>$5 = $6))
-        order by at desc limit $3 offset $7`,
+        order by at desc, id desc limit $3 offset $7`,
       [
         filter.name ?? null,
         filter.subject ?? null,
