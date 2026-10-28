@@ -18,9 +18,16 @@
  * Was sich ändert, geht über das Repository und damit über den Live-Kanal
  * (T-116) an jeden, der es sehen darf.
  */
-import { randomUUID } from 'node:crypto';
+import { getRandomValues, randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  checkBonus,
+  creatureStats,
+  d20Expr,
+  diceModifier,
+  naturalD20,
+  rollDice,
+  type DiceRoll,
   baseArticle,
   applySettlement,
   coverage,
@@ -109,6 +116,28 @@ export interface HandwerkDeps {
 const carriesOf = (e: Entity | undefined): string | null => (e?.relations ?? []).find((r) => r.type === 'carries')?.to ?? null;
 const partiesOf = (e: Entity): string[] => (e.relations ?? []).filter((r) => r.type === PARTY_RELATION).map((r) => r.to);
 const neueKante = (inv: string, art: string) => `${inv}~${art}-${randomUUID().slice(0, 8)}`;
+
+/** Zufall aus `crypto`, wie `Math.random` in [0, 1). */
+function zufall(): number {
+  return getRandomValues(new Uint32Array(1))[0]! / 2 ** 32;
+}
+
+/**
+ * **Der Bonus der Figur auf die Handwerksprobe** (T-181): Attribut aus
+ * ihrem Statblock (aufgelöst, mit Wirkungen — `creatureStats`), dazu der
+ * Übungsbonus, wenn sie mit dem Werkzeug geübt ist, doppelt mit
+ * Expertise; eine feste Buchzahl geht vor (`checkBonus`). `null` ohne
+ * Statblock oder ohne Wert für das Attribut.
+ */
+export function handwerksBonus(actor: Entity, map: ReadonlyMap<string, Entity>, ability: string, tool: string): number | null {
+  const st = creatureStats(actor, map);
+  if (!st.statblock) return null;
+  const score = (st.abilities as Record<string, { value: number | null } | undefined>)[ability.toLowerCase()]?.value ?? null;
+  if (score === null) return null;
+  const pr = (st.statblock.components?.['Proficiencies'] ?? {}) as Record<string, unknown>;
+  const sb = (st.statblock.components?.['Statblock'] ?? {}) as Record<string, unknown>;
+  return checkBonus({ proficient: pr['proficient'], expertise: pr['expertise'], prof: st.prof.value, bonuses: sb['bonuses'], score }, tool);
+}
 
 export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void {
   const { repo, viewerOf, roh, sieve, schreibeGeprueft, kampagnenEbene } = deps;
@@ -924,37 +953,54 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
    * setzt den ersten freien Kreis, mit Summe und SG daran. Wartet unter
    * `craftConfirm: 'gm'` auf die Leitung wie ein Klick.
    */
-  app.post<{ Params: { id: string }; Body: { total?: unknown; nat?: unknown } | null }>('/api/crafting/:id/roll', async (request, reply) => {
+  app.post<{ Params: { id: string }; Body: { total?: unknown; nat?: unknown; roll?: unknown } | null }>('/api/crafting/:id/roll', async (request, reply) => {
     const v = await vorbereiten(request);
     if (!v.ok) return reply.code(v.code).send({ error: v.error });
-    const total = Number(request.body?.total);
-    if (!Number.isFinite(total)) return reply.code(400).send({ error: 'Das Ergebnis der Probe fehlt.' });
-    const natRoh = Number(request.body?.nat);
-    const nat = natRoh === 1 || natRoh === 20 ? natRoh : undefined;
+    const amServer = request.body?.roll === true;
+    if (!amServer && !Number.isFinite(Number(request.body?.total))) return reply.code(400).send({ error: 'Das Ergebnis der Probe fehlt.' });
     const { tally } = zaehlen(v.a, v.rules);
     if (tally.outcome !== 'open') return reply.code(409).send({ error: 'Der Auftrag ist entschieden — abschliessen.' });
     const frei = tally.circles.find((c) => !c.mark && c.open);
     if (!frei) return reply.code(409).send({ error: need0(tally) });
-    const dc = craftCheck(v.a.aufgeloest, { get: (id) => v.stand.map.get(id), campaign: v.kampagne, actor: v.a.actor }).dc;
+    const check = craftCheck(v.a.aufgeloest, { get: (id) => v.stand.map.get(id), campaign: v.kampagne, actor: v.a.actor });
+    const dc = check.dc;
+
+    /* **Am Server würfeln** (T-181): ein W20 plus der Bonus der Figur aus
+       ihrem Statblock — Attribut, Übung mit dem Werkzeug, feste Buchzahl
+       (`checkBonus`, dieselbe Rechnung wie die Probe am Bogen). Ohne
+       Statblock keine Zahl: dann bleibt das Eintragen. */
+    let gewuerfelt: DiceRoll | null = null;
+    if (amServer) {
+      const bonus = v.a.actor ? handwerksBonus(v.a.actor, v.stand.map, check.ability, check.tool) : null;
+      if (bonus === null) return reply.code(422).send({ error: 'Die Figur hat keinen Statblock mit diesem Attribut — die Probe eintragen.' });
+      gewuerfelt = rollDice(`1d20${d20Expr(bonus)}`, zufall);
+      if (!gewuerfelt) return reply.code(500).send({ error: 'Würfeln ging nicht.' });
+    }
+    const total = gewuerfelt ? gewuerfelt.total : Number(request.body?.total);
+    const natRoh = gewuerfelt ? (naturalD20(gewuerfelt)?.nat ?? NaN) : Number(request.body?.nat);
+    const nat = natRoh === 1 || natRoh === 20 ? natRoh : undefined;
     const result = rollResult(total, dc, nat);
     const r = await setzeKreis(v, frei.index, { mark: result, total, ...(nat ? { nat } : {}), dc });
     if ('error' in r) return reply.code(r.code).send({ error: r.error });
-    /* Die Probe steht auch im Log des Auftrags (T-172) — am Tisch
-       gewürfelt und eingetragen (`entered`), nicht hier. */
-    await deps.wurf?.(v.order, {
-      expr: String(total),
+    /* Die Probe steht auch im Log des Auftrags (T-172) — eingetragen
+       (`entered`), wenn am Tisch gewürfelt, sonst mit ihren Würfeln. */
+    const label = gewuerfelt
+      ? `Crafting check (${check.ability.toUpperCase()}${check.tool ? `, ${check.tool}` : ''}) vs DC ${dc}`
+      : `Crafting check${dc !== undefined ? ` vs DC ${dc}` : ''}`;
+    const roll = await deps.wurf?.(v.order, {
+      expr: gewuerfelt ? gewuerfelt.expr : String(total),
       total,
-      rolls: [{ flat: total }],
-      modifier: 0,
+      rolls: gewuerfelt ? gewuerfelt.rolls : [{ flat: total }],
+      modifier: gewuerfelt ? diceModifier(gewuerfelt) : 0,
       ...(nat ? { nat, crit: nat === 20 ? 'crit' : 'fumble' } : {}),
-      label: `Crafting check${dc !== undefined ? ` vs DC ${dc}` : ''}`,
+      label,
       by: { id: v.user.id, name: v.user.name },
       ...(v.a.actor ? { actor: { id: v.a.actor.id, name: entityName(v.a.actor) } } : {}),
       campaign: v.kampagne?.id ?? null,
       session: null,
-      entered: true,
+      ...(gewuerfelt ? {} : { entered: true as const }),
     });
-    return { pending: !v.leitung && v.rules.confirm === 'gm', result };
+    return { pending: !v.leitung && v.rules.confirm === 'gm', result, ...(gewuerfelt && roll ? { roll } : {}) };
   });
 
   /** Warum kein Kreis frei ist. */
