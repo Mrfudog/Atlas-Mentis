@@ -29,6 +29,7 @@ import type { Zuordnung } from './zuordnung.js';
 import type { Bildplan } from './bilder.js';
 import { bildplan } from './bilder.js';
 import { zauberlisten, zauberlistenPlan, type ZauberlistenPlan } from './arten/zauberlisten.js';
+import { fraktionen } from './fraktionen.js';
 import { wohnorte } from './wohnorte.js';
 
 /** Die Reihenfolge aus Abgleich §4.2 — jede spätere Art zeigt auf frühere. */
@@ -481,6 +482,8 @@ function bauen(
   /* Die Wohnorte benannter Kreaturen (T-182): nach allen Büchern und
      Abenteuern, denn genannt wird eine Kreatur auch ausserhalb ihres. */
   wohnorte(wb);
+  /* Ebenso ihre Fraktionen (T-183): Mitglied nur, wo genau eine genannt ist. */
+  fraktionen(wb);
 
   /* Eine aufgelöste Kopie zeigt auf ihr Original, wenn es hereinkam und
      sie nicht schon auf einen Grundgegenstand zeigt (`variantOf` ist eine

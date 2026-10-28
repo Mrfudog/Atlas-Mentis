@@ -551,9 +551,14 @@ export class Zugplaner {
     const ab2 = live.onArtikel((ev) => {
       if (ev.id === this.karte()) void this.holen(this.karte(), this.gewaehlteFigur());
     });
+    /* Etwas verpasst (`reset`, T-399): den Plan neu fragen. */
+    const ab3 = live.onNeu((was) => {
+      if (was === 'reset') void this.holen(this.karte(), this.gewaehlteFigur());
+    });
     inject(DestroyRef).onDestroy(() => {
       ab();
       ab2();
+      ab3();
     });
   }
 

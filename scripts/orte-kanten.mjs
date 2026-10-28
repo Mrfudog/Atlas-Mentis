@@ -18,7 +18,9 @@
  *  - `2-mapOf.json` — die Karten: der Ort ihrer Szene (`->mapOf->happensAt`)
  *    und die Orte, die die Datei ihnen gibt (Bereichskarten);
  *  - `3-partOf.json` — Orte in Orten, aus der Datei, nur wo noch keiner steht;
- *  - `4-livesIn.json` — Wohnorte benannter Kreaturen, aus der Datei, ebenso.
+ *  - `4-livesIn.json` — Wohnorte benannter Kreaturen, aus der Datei, ebenso;
+ *  - `5-memberOf.json` — Fraktionen benannter Kreaturen (T-183,
+ *    `fraktionen.ts`), aus der Datei, nur wo noch keine steht.
  *
  * Geschrieben wird jede wie sonst:
  *
@@ -96,6 +98,15 @@ const auftraege = {
       select: { ids: Object.keys(targets) },
       ops: [{ op: 'addRelation', type: 'livesIn', targets, ifNone: true }],
       note: 'T-182: Wohnort einer benannten Kreatur, aus dem Importlauf',
+      allLayers: true,
+    };
+  })(),
+  '5-memberOf.json': (() => {
+    const targets = ziele(['Creature'], 'memberOf', 'Faction');
+    return {
+      select: { ids: Object.keys(targets) },
+      ops: [{ op: 'addRelation', type: 'memberOf', targets, ifNone: true }],
+      note: 'T-183: Fraktion einer benannten Kreatur, aus dem Importlauf',
       allLayers: true,
     };
   })(),
