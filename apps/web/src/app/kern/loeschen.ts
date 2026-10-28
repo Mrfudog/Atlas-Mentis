@@ -63,5 +63,5 @@ export class Loeschen {
 function standardFrage(n: number, abgewaehlt: number): boolean {
   if (typeof confirm !== 'function') return true;
   const rest = abgewaehlt ? `\n${abgewaehlt} selected ${abgewaehlt === 1 ? 'article is' : 'articles are'} not in your write layer and will be deselected.` : '';
-  return confirm(`Delete ${n} ${n === 1 ? 'article' : 'articles'}? You can undo it right after.${rest}`);
+  return confirm(`Delete ${n} ${n === 1 ? 'article' : 'articles'}? You can undo it right after, or restore it from Deleted within 30 days.${rest}`);
 }
