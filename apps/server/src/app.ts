@@ -347,6 +347,8 @@ export interface AppOptions {
   assetMaxBytes?: number;
   /** Die Quelle des Live-Kanals (T-116); ungesetzt eine im Speicher. */
   live?: ChangeFeed;
+  /** Wie oft der Live-Kanal ein Lebenszeichen schickt (ms); ungesetzt 25 s — kürzer in Tests (T-399). */
+  liveHeartbeatMs?: number;
   /** Die andere Installation für die Übernahme (T-130); ungesetzt keine. */
   transferPeer?: Gegenstelle | null;
   /** Nimmt diese Installation Übernahmen an (`ATLAS_TRANSFER_ACCEPT`)? */
@@ -372,6 +374,7 @@ export function buildApp({
   assets = new InMemoryAssetStore(),
   assetMaxBytes = 40 * 1024 * 1024,
   live = new LocalChangeFeed(),
+  liveHeartbeatMs,
   transferPeer = null,
   transferAccept = false,
   sicherung = null,
@@ -3357,6 +3360,7 @@ export function buildApp({
     viewerOf,
     sieveFuer: (user, entities, bestand) => sieveFuer(user, entities, bestand),
     roh,
+    ...(liveHeartbeatMs ? { heartbeatMs: liveHeartbeatMs } : {}),
   });
   app.addHook('onClose', async () => kanal.close());
 

@@ -63,6 +63,14 @@ nw-reiterleiste {
 .eingerueckt {
   margin: 0 1.5rem 1rem;
 }
+.nicht-laufend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  color: var(--dim);
+}
 .kennzahlen {
   margin: 0;
   padding-left: 1.1rem;
