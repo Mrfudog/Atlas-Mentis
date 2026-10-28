@@ -160,6 +160,13 @@ export function hasFloors(map: Entity): boolean {
 }
 
 /** Die Ebene eines Markers: `props.floor`, ohne Angabe die erste. */
+/**
+ * **Was einer Ebene gehört** (`props.floor`): Marker und, seit T-219, die
+ * Flächen — Zonen und Gebiete. Schlamm im Keller ist nicht auf dem Dach.
+ * Als Wörter und nicht aus `areas.ts`, das von `map.ts` liest.
+ */
+const JE_EBENE: ReadonlySet<string> = new Set([MARKER, 'zone', 'territory']);
+
 export function floorOfRelation(r: Pick<Relation, 'props'>): string {
   const f = (r.props as Roh | undefined)?.['floor'];
   return typeof f === 'string' && f ? f : GROUND_FLOOR;
@@ -218,7 +225,7 @@ export function floorView(map: Entity, floor: string | null | undefined): Entity
   const id = floor && floor !== GROUND_FLOOR && rohEbenen(map).some((r) => r['id'] === floor) ? floor : GROUND_FLOOR;
   const mehrere = hasFloors(map);
   const relations = mehrere
-    ? (map.relations ?? []).filter((r) => r.type !== MARKER || floorOfRelation(r) === id)
+    ? (map.relations ?? []).filter((r) => !JE_EBENE.has(r.type) || floorOfRelation(r) === id)
     : map.relations;
   /* Eine Ebene ist eine Karte ohne weitere Ebenen: was die anderen
      betrifft, steht nicht in ihr — sonst rechnete `redactMap` an ihr noch
@@ -244,9 +251,9 @@ export function floorView(map: Entity, floor: string | null | undefined): Entity
 export function withFloorView(map: Entity, floor: string | null | undefined, view: Entity): Entity {
   const id = floor && floor !== GROUND_FLOOR && rohEbenen(map).some((r) => r['id'] === floor) ? floor : GROUND_FLOOR;
   if (!hasFloors(map)) return view;
-  const andere = (map.relations ?? []).filter((r) => r.type === MARKER && floorOfRelation(r) !== id);
+  const andere = (map.relations ?? []).filter((r) => JE_EBENE.has(r.type) && floorOfRelation(r) !== id);
   const eigene = (view.relations ?? []).map((r) => {
-    if (r.type !== MARKER) return r;
+    if (!JE_EBENE.has(r.type)) return r;
     const props = { ...((r.props ?? {}) as Roh) };
     if (id === GROUND_FLOOR) delete props['floor'];
     else props['floor'] = id;
@@ -384,7 +391,7 @@ export function removeFloor(map: Entity, id: string): Entity {
   return {
     ...e,
     relations: (map.relations ?? []).filter((r) => {
-      if (r.type !== MARKER) return true;
+      if (!JE_EBENE.has(r.type)) return true;
       if (floorOfRelation(r) === id) return false;
       const p = (r.props ?? {}) as Roh;
       return !(p['kind'] === 'passage' && r.to === map.id && (p['toFloor'] ?? GROUND_FLOOR) === id);

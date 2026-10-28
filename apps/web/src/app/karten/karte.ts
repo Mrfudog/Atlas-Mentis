@@ -163,6 +163,11 @@ import {
   confirmPlacement,
   keepOnMap,
   type PlacementSuggestion,
+  areaCells,
+  areaColor,
+  cellCorners,
+  mapAreas,
+  zoneRuleText,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
@@ -225,6 +230,39 @@ const rundText = (n: number): string => (Math.round(n * 100) / 100).toLocaleStri
 const RAD_PAUSE = 90;
 /** Ein Finger ist breiter als ein Mauszeiger: kleiner wird ein Marker nicht. */
 const MARKER_MIN = 26;
+
+/** Ob Zonen und Gebiete gezeigt werden (T-219) — eine Bequemlichkeit je Browser, kein Stand der Karte. */
+const FLAECHEN_SCHLUESSEL = 'nw.karte.flaechen';
+function lies(k: string): string | null {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+}
+function schreib(k: string, v: string): void {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* Ohne Speicher gilt es bis zum Neuladen. */
+  }
+}
+/** Ein geschlossener Pfad durch Punkte in Anteilen. */
+const punktePfad = (pts: readonly Pt[]): string => `M${pts.map((p) => `${r5(p.x)} ${r5(p.y)}`).join(' L')} Z`;
+const r5 = (v: number): number => Math.round(v * 100000) / 100000;
+/** Eine Form ohne Gitter als Pfad (T-219): Rechteck, Ellipse, Vieleck, Strich als Linie. */
+function formPfad(s: RevealShape): string {
+  if (s.kind === 'rect') return punktePfad([{ x: s.x, y: s.y }, { x: s.x + s.w, y: s.y }, { x: s.x + s.w, y: s.y + s.h }, { x: s.x, y: s.y + s.h }]);
+  if (s.kind === 'circle') {
+    const pts: Pt[] = [];
+    for (let i = 0; i < 32; i++) {
+      const w = (i / 32) * 2 * Math.PI;
+      pts.push({ x: s.x + s.r * Math.cos(w), y: s.y + (s.r / s.ar) * Math.sin(w) });
+    }
+    return punktePfad(pts);
+  }
+  return punktePfad(s.pts.map(([x, y]) => ({ x, y })));
+}
 
 type Werkzeug =
   | 'keins'
@@ -365,6 +403,10 @@ interface Zeiger {
           </span>
           @if (blaetter().length > 1) {
             <button type="button" [attr.aria-expanded]="blaetterOffen()" (click)="blaetterOffen.set(!blaetterOffen())">Layers</button>
+          }
+          @if (flaechen().length) {
+            <!-- Zonen und Gebiete ein- und ausblenden (T-219) — eine Sache der Sicht, gemerkt im Browser. -->
+            <button type="button" class="flaechen-knopf" [class.an]="flaechenAn()" [attr.aria-pressed]="flaechenAn()" (click)="flaechenUm()" [title]="flaechenAn() ? 'Hide zones and territories: ' + flaechenText() : 'Show zones and territories: ' + flaechenText()">Areas</button>
           }
           <!-- Am Telefon stehen Sicht und Freigabe in einem Menü (T-320): die Karte braucht den Platz. -->
           <!-- Ohne Schreibrecht steht darin nichts (seit T-325 ist Party ein Panel der Leiste). -->
@@ -1162,6 +1204,14 @@ interface Zeiger {
                 @if (gitter(); as g) {
                   <div class="gitter" aria-hidden="true" [style.background-image]="g.bild" [style.background-size]="g.groesse" [style.background-position]="g.lage"></div>
                 }
+                @if (flaechenAn() && flaechen().length) {
+                  <!-- **Zonen und Gebiete** (T-219, REQ-193): aufs Gitter gerastert, über dem Bild und unter den Markern. -->
+                  <svg class="flaechen" viewBox="0 0 1 1" preserveAspectRatio="none" role="img" [attr.aria-label]="flaechenText()">
+                    @for (f of flaechen(); track f.id) {
+                      <path class="flaeche" [class.gebiet]="f.type === 'territory'" [class.versteckt]="f.versteckt" [attr.data-name]="f.name" [attr.d]="f.d" [style.fill]="f.farbe" [style.fill-opacity]="f.deckkraft" [style.stroke]="f.farbe" vector-effect="non-scaling-stroke" />
+                    }
+                  </svg>
+                }
                 @for (k of rahmen(); track k.id) {
                   @if (k.raster; as r) {
                     <!-- **Beide Raster** (T-329): das Gitter der ausgerichteten Unterkarte in ihrem Bereich. -->
@@ -1801,7 +1851,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss', './notizen.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss', './notizen.scss', './flaechen.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -2145,6 +2195,49 @@ export class Karte {
     const s = this.einst();
     return s ? gridGeometry(s, this.nat()) : null;
   });
+  /**
+   * **Zonen und Gebiete** (T-219, REQ-193) dieser Ebene, wie sie gezeichnet
+   * werden: mit Gitter die Felder, deren Mitte in der Form liegt
+   * (`areaCells`, dieselbe Regel wie das Gelände im Zugplan), ohne Gitter
+   * die Form selbst. Was hier ankommt, hat der Server gesiebt (`redactMap`);
+   * in „View as“ rechnet `angezeigt` dasselbe als Vorschau. Name und Regel
+   * kommen aus dem Kontext (`areas`) — neu, wenn die Karte über den
+   * Live-Kanal neu kommt (T-399).
+   */
+  protected readonly flaechen = computed(() => {
+    const e = this.angezeigt();
+    if (!e) return [];
+    const geo = this.geoJetzt();
+    const info = this.kontext()?.areas ?? {};
+    const leitung = !this.spielersicht() && this.darfSchreiben();
+    return mapAreas(e).map((a) => {
+      const i = info[a.to];
+      const rule = i?.rule ?? {};
+      const zellen = geo ? areaCells(geo, a.shape) : null;
+      const d = zellen ? zellen.map((c) => punktePfad(cellCorners(geo!, c))).join(' ') : formPfad(a.shape);
+      const regel = a.type === 'zone' ? zoneRuleText(rule) : '';
+      const name = i?.name ?? (a.type === 'zone' ? 'Zone' : 'Territory');
+      return {
+        id: a.id,
+        type: a.type,
+        name: regel ? `${name} (${regel})` : name,
+        d,
+        farbe: areaColor(a, rule),
+        deckkraft: a.opacity,
+        /* Eine versteckte Zone, die noch niemand fand — nur die Leitung hat sie. */
+        versteckt: leitung && !!rule.hidden && !a.found,
+      };
+    });
+  });
+  protected readonly flaechenText = computed(() => this.flaechen().map((f) => f.name).join(', '));
+  private readonly flaechenWahl = signal<boolean>(lies(FLAECHEN_SCHLUESSEL) !== 'off');
+  protected readonly flaechenAn = computed(() => this.flaechenWahl());
+  protected flaechenUm(): void {
+    const an = !this.flaechenWahl();
+    this.flaechenWahl.set(an);
+    schreib(FLAECHEN_SCHLUESSEL, an ? 'on' : 'off');
+  }
+
   /** Die Flächen der Übergänge auf dieser Ebene, als Punkte für das SVG. Ohne eigene Fläche nur, solange die Karte offen ist. */
   protected readonly uebergangFlaechen = computed(() => {
     const geo = this.geoJetzt();

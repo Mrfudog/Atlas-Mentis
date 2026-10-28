@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-map-areas",
+      "date": "2026-10-29",
+      "title": "Zones and territories on the map",
+      "text": "Zones such as difficult terrain or magical darkness and the territories of factions now lie on the map as coloured squares on the grid, on their own floor. Players see them as far as they may and as far as the fog is lifted; a hidden trap appears for them once the GM marks it found. Areas above the map hides them.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-discard-sell",
       "date": "2026-10-29",
       "title": "Discard and sell right at the piece",
