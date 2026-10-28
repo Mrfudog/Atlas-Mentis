@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-travel-and-noticing",
+      "date": "2026-10-29",
+      "title": "Noticing on the way, draw times and travel",
+      "text": "A character moving on the map now notices hidden creatures and hidden traps its passive Perception beats, and entering a zone that does something says so. Items in a container draw one step slower than the container, and the hands name what stowing and dropping cost. A party shows day, watch and when rations and light are due, with “Wait a watch” and “Next node”.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-dark-tokens",
       "date": "2026-10-29",
       "title": "What waits in the dark stays hidden",

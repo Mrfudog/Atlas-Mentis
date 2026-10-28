@@ -26,7 +26,7 @@ zu entstehen.
 | 4 | Zwei Übungsbonus-Formeln | **eine Quelle** | `proficiencyBonus` (`calc.ts`), Register `profBonus(hasClass.level)` | `regelwirkung.test.ts` › Punkt 4 |
 | 5 | Passive Wahrnehmung ohne Übung/Expertise | **wirkt** | `checkBonus` (`calc.ts`), Register `10+check(wis.Perception)`, Bogen `passivePerception` | `regelwirkung.test.ts` › Punkt 5 |
 | 6 | Zugraster sperrt Verbündete, kein schwieriges Gelände | **wirkt** (T-349): durch Verbündete ja, auf ihnen enden nein; Zonen mit `moveCost` kosten je Feld mehr; der Server rechnet die Fuss nach | `planGrid`, `mapTerrain`, `terrainCosts` (`zugplan.ts`), `pathFeet` (`movement.ts`); Server `planDurchlass`, `wegeNachrechnen` | `packages/model/test/zugplan-raster.test.ts`, `apps/server/test/zugplan-raster.test.ts`, E2E `zugplan-raster.spec.ts` |
-| 7 | drawStage, handActions, Sicht, Reise, tickEntries nur im Prototyp | Folgeaufgabe | — | — |
+| 7 | drawStage, handActions, Sicht, Reise, tickEntries nur im Prototyp | **wirkt** (T-350): Ziehstufe über Behälter am Inventar, Kosten der Hände aus `handActions`, Bemerken und Zonen betreten beim Ziehen, Reise an der Gruppe; `tickEntries` seit T-334 | `drawStage` (Inventar `ziehstufe`), `handCost` + `handActions`, `spotsAlong`/`zonesEntered` (`spotting.ts`, Server `bemerkenUnterwegs`), `travelStep` (`travel.ts`, Element `travel`) | `packages/model/test/spotting.test.ts`, `travel.test.ts`, `wield.test.ts`; `apps/server/test/bemerken-unterwegs.test.ts`; E2E `ziehstufe.spec.ts`, `reise.spec.ts` |
 | 8 | Reichweite nur in der Maske, lange Reichweite ohne Nachteil | Folgeaufgabe | — | — |
 | 9 | Kein Auslöser für Rasten | **wirkt** (T-352): kurze Rast (Trefferwürfel), lange Rast (TP, Trefferwürfel, Plätze, Erschöpfung, Todesrettungen) am Bogen; offen: Pakt-Plätze bei kurzer Rast, Merkmale mit Nutzungen, Rast für die ganze Gruppe | `longRest`, `spendHitDie`, `stageDown` (`rest.ts`); Bogen `kopf.ts` | `packages/model/test/rest.test.ts` |
 | 10 | Tragestufen ohne Folge, ZoneInfo unausgewertet | Folgeaufgabe | — | — |
@@ -119,6 +119,35 @@ nicht an einem Gegenstand.
 Noch nicht: Wirkungen, die nur unter einer
 Bedingung gelten (Restrained: Nachteil auf DEX-Rettungswürfe, Paralyzed:
 Krit in 5 ft), brauchen noch eigene Ziele.
+
+## Punkt 7 — was jetzt wirkt (T-350)
+
+Je Funktion zuerst geprüft, ob die Seite sie schon anders hat:
+
+- **Sicht und Licht** (`lightAt`, `figureView`) hatte die Seite schon
+  (T-216: laufende Sicht, Aufdecken im Dunkeln). Gefehlt hat das
+  **Bemerken unterwegs**: Versteckte und versteckte Zonen, an denen eine
+  Figur vorbeigeht, und die Zeile beim Betreten einer Zone mit Wirkung —
+  jetzt `spotsAlong`/`zonesEntered`, am Server beim freien Ziehen und im
+  bestätigten Zugplan (docs/Karten.md › Unterwegs bemerken).
+- **Ziehstufe** (`drawStage`): die Seite zeigte je Stück nur seine Zone.
+  Jetzt die Kette hinauf — Platz (`slotDraw`) oder Zone aussen, je
+  Behälter eine Stufe dazu; das eingebettete Inventar bekommt die Stufe
+  seines Behälters mit (`aussen`).
+- **Handaktionen** (`handActions`): die Hände nannten einen festen Text.
+  Jetzt sagen sie, was die Kampagne für Verstauen und Fallenlassen
+  einstellt; ein Schild bleibt eine Aktion (PHB).
+- **Reise**: die Zähler standen nur als Felder an der Gruppe. Jetzt das
+  Element `travel` (Tag, Wache, „rations in …", „light in …", „Wait a
+  watch", „Next node"), gerechnet in `travelStep`. Vom Inventar geht
+  nichts ab — die Zeile sagt, dass etwas fällig ist. Die Punktreise selbst
+  (Knoten wählen, Token umsetzen) steht in der Seite noch nicht.
+- **Dodge/Help/Ready** laufen mit `tickEntries` (T-334) ab: Einträge mit
+  `rounds` zählen in der Initiative herunter, Help und Hide sind beim
+  nächsten Angriff verbraucht (Punkt 3).
+
+Offen: die Punktreise in der Seite (`crawl`), das Element `travel` im
+Ansichtsdesigner (Palette, T-425), Rationen vom Inventar abziehen.
 
 ## Punkt 6 — was jetzt wirkt (T-349)
 

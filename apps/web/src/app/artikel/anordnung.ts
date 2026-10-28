@@ -106,6 +106,8 @@ export interface Stueck {
     | 'zauberliste'
     /** Was die Kampagne einer Figur gezeigt hat (T-247). */
     | 'kampagne'
+    /** Die Reise einer Gruppe (T-350): Tag, Wache, Zehrung. */
+    | 'reise'
     /** Was nur der Baum zeichnet (T-310): Behälter, Tabellenzeilen, Werte des Designers. */
     | 'baum';
   text?: string;
@@ -397,6 +399,11 @@ export function anordnen(
          Seite es noch nicht — dort kommt nichts vom Server mit. */
       case 'standing':
         out.push({ id: el.id, art: 'haltung', ...(el.text ? { text: el.text } : {}) });
+        break;
+      /* Die Reise einer Gruppe (T-350, REQ-170): die Zähler stehen weiter in
+         der Feldtabelle; hier stehen, was sie heissen, und die zwei Schritte. */
+      case 'travel':
+        out.push({ id: el.id, art: 'reise' });
         break;
       /* Was ein Wissen vereint (T-287): die Komponente fragt selbst. */
       case 'knowledgeContents':

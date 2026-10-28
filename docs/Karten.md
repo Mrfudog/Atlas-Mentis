@@ -1233,6 +1233,51 @@ flowchart LR
 - **Stockwerke** (T-307, E-108) kommen als Ebenen derselben Karte: eine
   Instanz je Gebäude, Formen und Marker tragen dann ihre Ebene.
 
+## Unterwegs bemerken (T-350, REQ-209)
+
+`packages/model/src/spotting.ts`, am Server `bemerkenUnterwegs`
+(`apps/server/src/zugplan.ts`). Aus dem Prototyp (`confirmMove`).
+
+Geht eine Figur der Spielenden einen Weg — frei gezogen
+(`POST /api/maps/:id/move`) oder im bestätigten Zugplan —, fragt jedes
+Feld des Wegs ab dem ersten Schritt, was sie von dort bemerkt:
+
+- **Versteckte Tokens** (`marker.props.hidden`): gegen ihre Heimlichkeit —
+  `props.stealth` am Token, sonst 10 + Heimlichkeit aus dem Statblock der
+  Kreatur (`senseNumbers`). Ohne beides bemerkt sie niemand; dann deckt die
+  Leitung von Hand auf.
+- **Versteckte Zonen** (`ZoneKind.hiddenUntil`, noch nicht `found`): gegen
+  diese Zahl, von einem Feld der Zone aus.
+
+Gerechnet mit derselben Prüfung wie überall (`notices`): Sichtlinie gegen
+die Sperren, die den Blick halten; Licht aus Karte, Lichtern und Zonen; im
+Dunkeln nur mit Dunkelsicht, die dann als Dämmerlicht zählt; −5 im
+Dämmerlicht und in leicht verdeckten Feldern; schwer verdeckt sieht
+niemand. Die Gruppe sieht mit den Augen ihres besten Mitglieds. Was
+bemerkt wird, steht danach da (`hidden` weg) bzw. ist gefunden
+(`found: true`), und eine Zeile sagt es: im Ergebnis des Zugplans, beim
+freien Ziehen als Hinweis über der Karte.
+
+**Zonen betreten** (REQ-208, `zonesEntered`): wer eine Zone betritt, deren
+Art Schaden, einen Rettungswurf, einen Zustand oder Bewegungskosten nennt,
+bekommt eine Zeile („Rook enters Thorns: difficult terrain."). Gewürfelt
+wird nicht — ob die Falle diesmal greift, entscheidet die Leitung. Eine
+versteckte, ungefundene Zone nennt die Zeile nicht.
+
+Ohne Gitter wird nichts geprüft (es gibt keine Feldmitten). Schickt die
+Seite beim freien Ziehen keine Felder, gilt der Schritt vom Feld des
+Tokens zum Zielfeld.
+
+```mermaid
+flowchart LR
+  W[Weg: Felder ab dem 1. Schritt] --> K[hiddenOnMap<br/>Verstecke + Heimlichkeit]
+  K --> S[spotsAlong<br/>Sichtlinie · Licht · PP]
+  S -->|bemerkt| A[hidden weg / found: true]
+  W --> Z[zonesEntered<br/>Zonen mit Wirkung]
+  A --> L[Zeilen im Ergebnis]
+  Z --> L
+```
+
 ## Der Zugplan (T-198, Prototyp)
 
 Unter Play steht unter der Karte eine **Aktionsleiste** wie in Baldur's

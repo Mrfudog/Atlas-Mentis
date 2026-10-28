@@ -589,7 +589,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
 
-**Gezeichnet** (aus `Party`): `image`, `description`, `fields`, `inventory`, `crafting`, `relations`
+**Gezeichnet** (aus `Party`): `image`, `description`, `travel`, `fields`, `inventory`, `crafting`, `relations`
 
 ### Place
 

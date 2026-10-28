@@ -106,6 +106,7 @@ import { EbenenMarke } from './ebenen-marke';
 import { Wissenskasten } from './wissenskasten';
 import { Wissensseite } from './wissensseite';
 import { Initiative } from '../karten/initiative';
+import { Reise } from './reise';
 import { Klasse } from '../klassen/klasse';
 import { Herkunft } from '../klassen/herkunft';
 import { Regeloptionen } from './regeloptionen';
@@ -225,6 +226,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Wissenskasten,
     Wissensseite,
     Initiative,
+    Reise,
     Regeloptionen,
     Wuerfe,
     Ansichtsbaum,
@@ -990,6 +992,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   }
                   @case ('wissen') {
                     <nw-wissensseite [id]="e.id" />
+                  }
+                  @case ('reise') {
+                    <nw-reise [gruppe]="e" />
                   }
                   @case ('initiative') {
                     <nw-initiative [begegnung]="e.id" />

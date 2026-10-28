@@ -42,6 +42,7 @@ Stelle, um Code zu schreiben.
 | Regeln | `Rule.autolink` | — (eigener Einstieg) |
 | Decknamen | `Identity.cover` | — (im Namen selbst) |
 | Punktreise | `Place.state`, `route`, das Gruppen-Token | `crawl` |
+| Reise (Tag, Wache, Zehrung) | `Party.day/watch/sinceRation/sinceLight`, Einstellungen `travel*` | `travel` (T-350) |
 
 ---
 
