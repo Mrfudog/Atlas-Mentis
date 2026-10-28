@@ -116,6 +116,15 @@
           ]
         },
         {
+          "heading": "A version, a variant or a copy",
+          "text": [
+            "When you cannot save an article — it comes from a rulebook several campaigns share — or want your own take on one, open it and press Copy….",
+            "Choose what to make: a Version takes its place in this campaign, a Variant stands beside it and names where it comes from, a Copy is a new article of its own with “(copy)” in its name.",
+            "Choose the layer it goes into — your write layer is chosen first; a version never goes into a player layer. If parts, a statblock or an inventory hang on the article, tick what goes along; it hangs on the new article afterwards.",
+            "The page opens the new article and says where it lies. The original stays as it is."
+          ]
+        },
+        {
           "heading": "Choosing which version shows",
           "text": [
             "When two layers in play bring a version of the same thing — the Dagger of 2014 and of 2024 — lists and links show the one from the higher layer in Order in play.",
