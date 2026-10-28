@@ -184,6 +184,7 @@ import { registerLesen } from './lesen.js';
 import { registerQuelleninhalt } from './quelleninhalt.js';
 import { registerHandwerk } from './handwerk.js';
 import { leitetTisch, registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
+import { freigegebeneHinweise, haltungen, istBegegnung, type BegegnungsBezug } from './begegnung.js';
 import { registerAufwertung } from './aufwertung.js';
 import { registerFiltergruppen } from './filtergruppen.js';
 import { registerSpaltenwahl } from './spaltenwahl.js';
@@ -2303,6 +2304,27 @@ export function buildApp({
    * die sichtbaren Gegenstände; ein Geber, den er nicht sieht, bleibt ohne
    * Namen.
    */
+  /** Was die Begegnung über ihre Beteiligten weiss (T-215, `begegnung.ts`). */
+  async function begegnungsBezug(
+    request: FastifyRequest,
+    e: Entity,
+    map: Map<string, Entity>,
+    registry: Registry,
+  ): Promise<BegegnungsBezug | null> {
+    if (!istBegegnung(registry, e)) return null;
+    const ziele = [...new Set((e.relations ?? []).filter((r) => r.type === 'features').map((r) => r.to))]
+      .map((id) => map.get(id))
+      .filter((x): x is Entity => !!x);
+    const sichtbar = ziele.length ? await sieve(request, ziele, map) : [];
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const user = await viewerOf(request);
+    const leitet = !!user && leitetTisch(user, kampagne?.id ?? null);
+    return {
+      stances: haltungen(registry, map, sichtbar, kampagne),
+      ...(leitet ? { revealed: freigegebeneHinweise(registry, map, e) } : {}),
+    };
+  }
+
   async function ladenwaren(
     request: FastifyRequest,
     e: Entity,
@@ -3486,6 +3508,10 @@ export function buildApp({
     const audience = effectiveAudience(stand.map, einer, campaignVisibility(stand.map, registry, currentCampaign(stand.map, registry.settings ?? null)));
     /* Was aus einer Ergänzung kommt (T-142): das Element Shape schreibt die Form dorthin. */
     const supplied = await ergaenzungen(einer);
+    /* An einer Begegnung (T-215): die Haltung der Beteiligten zur Gruppe,
+       gesiebt wie jeder Artikel, und für die Leitung die schon
+       freigegebenen Hinweise. */
+    const encounter = await begegnungsBezug(request, einer, stand.map, registry);
     const refs = {
       audience,
       ...(Object.keys(supplied).length ? { supplied } : {}),
@@ -3497,6 +3523,7 @@ export function buildApp({
       ...(reading ? { reading } : {}),
       ...(craft ? { craft } : {}),
       ...(shop ? { shop } : {}),
+      ...(encounter ? { encounter } : {}),
     };
     /* Ob „Adapt" angeboten wird (E-018, T-082) und in welche Ebenen
        (`adaptTo`, T-098): dieselbe Frage wie die Route, damit die Seite

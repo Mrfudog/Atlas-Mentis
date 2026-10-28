@@ -5,6 +5,7 @@ import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api
 import { Stapel } from '../kern/stapel';
 import { QuelleText } from '../kern/quellen';
 import { Bestand } from '../kern/bestand';
+import { Klappstand } from '../kern/klappstand';
 import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { ListenFilter, feldfilterAlsF, feldfilterAusF } from '../kern/filter';
@@ -119,7 +120,7 @@ const OFFEN = 8;
         <!-- Facetten aus dem Register (T-174): jedes Feld und jede Kante der
              Art, die etwas unterscheidet — aufklappbar, gewählte offen. -->
         @for (f of liste()?.facets?.fields ?? []; track f.ref; let i = $index) {
-          <details class="facette" data-bereich [open]="facetteOffen(f.ref, i)" (toggle)="facetteUmschalten(f.ref, $any($event.target).open)">
+          <details class="facette" data-bereich [open]="facetteOffen(f.ref, i)" (toggle)="facetteUmschalten(f.ref, $any($event.target).open, i)">
             <summary class="leg">
               {{ f.label }}
               @if (filter.felder()[f.ref]; as w) {
@@ -181,6 +182,8 @@ const OFFEN = 8;
           [sortierung]="filter.sortierung()"
           (setzen)="metaSetzen($event.ref, $event.values)"
           (sortieren)="filter.sortierung.set($event); filter.blatt.set(0)"
+          [gemerkt]="facettenStand()['@when']"
+          (geklappt)="facetteUmschalten('@when', $event)"
         />
 
         <!-- Nach Beziehungen (T-389): als Facette @has in f=. -->
@@ -189,6 +192,8 @@ const OFFEN = 8;
           [wahlen]="liste()?.facets?.has?.choices ?? []"
           [ziele]="liste()?.facets?.has?.targets ?? {}"
           (setzen)="metaSetzen($event.ref, $event.values)"
+          [gemerkt]="facettenStand()['@has']"
+          (geklappt)="facetteUmschalten('@has', $event)"
         />
 
         <!-- „Usable by <Figur>" (T-180): neben einer Voraussetzung. Was der
@@ -565,8 +570,11 @@ export class Kompendium {
   private letzteSuche = '';
   /** Was diese Seite zuletzt als `f` in die Adresse schrieb — das liest sie nicht als neue Wahl. */
   private geschrieben = '';
+  private readonly klapp = inject(Klappstand);
+  /** Unter welchem Namen das Konto sich die Facetten dieser Seite und Art merkt (T-441, REQ-361). */
+  private readonly facettenName = computed(() => `facets.${this.seite()}${this.type() ? `.${this.type()}` : ''}`);
   /** Welche Facetten jemand auf- oder zugeklappt hat; sonst sind die ersten und die gewählten offen. */
-  private readonly facettenStand = signal<ReadonlyMap<string, boolean>>(new Map());
+  protected readonly facettenStand = computed<Readonly<Record<string, boolean>>>(() => this.klapp.stand(this.facettenName()));
 
   constructor() {
     /* Das Register braucht die Seite nur für Beschriftungen und den
@@ -953,11 +961,12 @@ export class Kompendium {
 
   /** Offen ist eine Facette, die jemand aufklappte, eine gewählte und die ersten vier. */
   protected facetteOffen(ref: string, i: number): boolean {
-    return this.facettenStand().get(ref) ?? (!!this.filter.felder()[ref] || i < 4);
+    return this.facettenStand()[ref] ?? (!!this.filter.felder()[ref] || i < 4);
   }
-  protected facetteUmschalten(ref: string, offen: boolean): void {
-    if (this.facettenStand().get(ref) === offen) return;
-    this.facettenStand.update((m) => new Map(m).set(ref, offen));
+  protected facetteUmschalten(ref: string, offen: boolean, i = -1): void {
+    /* Das Öffnen beim Zeichnen meldet sich auch als „toggle" — nur was vom Stand abweicht, wird gemerkt. */
+    if ((this.facettenStand()[ref] ?? (i >= 0 ? this.facetteOffen(ref, i) : undefined)) === offen) return;
+    this.klapp.setze(this.facettenName(), ref, offen);
   }
   protected offeneWerte<T>(ref: string, werte: T[]): T[] {
     return this.aufgeklappt().has(ref) ? werte : werte.slice(0, OFFEN);

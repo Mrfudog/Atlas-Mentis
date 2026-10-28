@@ -301,6 +301,8 @@ export interface Bezuege {
   craft?: Fertigungswerte;
   /** Was ein Laden führt, und zu welchem Preis (T-129). */
   shop?: Ladenwaren;
+  /** An einer Begegnung (T-215): Haltungen der Beteiligten, freigegebene Hinweise. */
+  encounter?: Begegnungsbezug;
   /** Das Bild des Artikels, wie der Server es rechnet (`articleImage`, T-211): an einer Kreatur ohne eigenes das ihres Statblocks (`from`). */
   image?: { id: string; version?: string; from?: string };
   /** Die Version jeder Bilddatei, die der Artikel nennt (T-211) — mit ihr darf der Browser das Bild behalten. */
@@ -1925,7 +1927,7 @@ export class Api {
     return this.call(`/api/knowledge/of/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(body) });
   }
   /** Aufdecken (REQ-178): Felder eines Artikels den Gruppen zuteilen — als Vorgabe den Namen. */
-  revealKnowledge(id: string, body: { fields?: string[]; party?: string } = {}): Promise<{ info: string; fields: string[]; parties: { id: string; name: string }[] }> {
+  revealKnowledge(id: string, body: { fields?: string[]; party?: string; name?: string } = {}): Promise<{ info: string; fields: string[]; parties: { id: string; name: string }[] }> {
     return this.call(`/api/knowledge/of/${encodeURIComponent(id)}/reveal`, { method: 'POST', body: JSON.stringify(body) });
   }
   updateInformation(info: string, body: { name?: string; fields?: string[]; bundles?: string[]; newBundle?: string; article: string }): Promise<Wissensreiter> {
@@ -2606,6 +2608,13 @@ export interface RollAnfrage {
   hidden?: boolean | undefined;
   actor?: string | undefined;
   session?: string | undefined;
+}
+
+/** Was eine Begegnung über ihre Beteiligten weiss (T-215, `refs.encounter`). */
+export interface Begegnungsbezug {
+  stances: { id: string; name: string; type: string; toward: { id: string; name: string; tags: string[]; note?: string }[] }[];
+  /** `Encounter.hint#id`, die eine Gruppe schon kennt — nur für die Leitung. */
+  revealed?: string[];
 }
 
 /** Das Log eines Artikels (`GET /api/rolls`). */

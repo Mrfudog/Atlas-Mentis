@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-folds-remembered",
+      "date": "2026-10-28",
+      "title": "Folded filters and registry groups are remembered",
+      "text": "Filters you open or close in the compendium and the areas, and the inherited groups you open on a type in the registry, now stand the same after reloading — kept for your account, for each page and type.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-28-encounter-stances",
+      "date": "2026-10-28",
+      "title": "Who stands where, and hints with one click",
+      "text": "A conversation encounter lists who takes part and what each thinks of the party. Under each puzzle hint the GM can press “Reveal to the party” to share just that hint. Trap and hazard encounters show their hazards as cards.",
+      "area": "Story",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-deleted-trash",
       "date": "2026-10-28",
       "title": "Deleted: restore within 30 days",

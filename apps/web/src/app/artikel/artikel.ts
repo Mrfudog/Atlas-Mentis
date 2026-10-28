@@ -71,6 +71,7 @@ import { Form } from './form';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Laden } from './laden';
+import { Haltung } from './haltung';
 import { Liegengelassen } from './liegen';
 import { Werkstatt } from './werkstatt';
 import { Abschnitte } from './abschnitte';
@@ -200,7 +201,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Kennzahlen, TokenBild, Form,
     Zauber,
     Gegenstand,
-    Laden, Liegengelassen, Werkstatt,
+    Laden, Liegengelassen, Werkstatt, Haltung,
     Abschnitte,
     Fluss,
     FassungsKasten,
@@ -993,6 +994,11 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   @case ('initiative') {
                     <nw-initiative [begegnung]="e.id" />
                   }
+                  @case ('haltung') {
+                    @if (begegnung(); as bz) {
+                      <nw-haltung [bezug]="bz" [titel]="st.text ?? ''" />
+                    }
+                  }
                   @case ('liegen') {
                     <nw-liegengelassen [sitzung]="e" />
                   }
@@ -1080,6 +1086,17 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                           }
                         } @else {
                           <nw-text [text]="b.wert" [scopes]="scopes()" />
+                        }
+                        <!-- Ein Hinweis mit einem Klick an die Gruppe (T-215): dieselbe
+                             Freigabe wie im Wissen, eine Information je Hinweis. -->
+                        @if (b.type === 'Encounter' && b.key === 'hint' && session.leitung() && !bearbeitet() && begegnung(); as bz) {
+                          <p class="hinweis-freigabe">
+                            @if (bz.revealed?.includes(b.ref) || freigegeben().has(b.ref)) {
+                              <span class="frei">✓ The party knows this hint</span>
+                            } @else {
+                              <button type="button" (click)="hinweisFreigeben(e, b.ref)" [disabled]="hinweisLaeuft()">Reveal to the party</button>
+                            }
+                          </p>
                         }
                       </section>
                     }
@@ -2153,6 +2170,33 @@ export class Artikel implements SchnellKontext {
   );
   protected leseParams(z: LeseZiel): Record<string, string> {
     return z.at ? { at: z.at } : z.page ? { page: z.page } : {};
+  }
+
+  /** Was die Begegnung über ihre Beteiligten weiss (`refs.encounter`, T-215). */
+  protected readonly begegnung = computed(() => this.bestand.begegnung().get(this.id()));
+  /** Hinweise, die gerade freigegeben wurden — bis der Artikel neu kommt. */
+  protected readonly freigegeben = signal<ReadonlySet<string>>(new Set());
+  protected readonly hinweisLaeuft = signal(false);
+  /**
+   * **Einen Hinweis freigeben** (T-215): eine Information über diese
+   * Begegnung, die genau diesen Eintrag nennt (`Encounter.hint#id`), allen
+   * Gruppen der Kampagne zugeteilt — `POST /api/knowledge/of/:id/reveal`,
+   * derselbe Weg wie „Reveal" an Karte und Wissen.
+   */
+  protected async hinweisFreigeben(e: Entity, ref: string): Promise<void> {
+    this.hinweisLaeuft.set(true);
+    /* „Hint 2“ nach der Stelle im Feld — so heisst die Information im Wissen. */
+    const hinweise = entriesOf((e.components?.['Encounter'] as { hint?: unknown } | undefined)?.hint);
+    const nr = hinweise.findIndex((h) => ref.endsWith(`#${h.id}`)) + 1;
+    try {
+      await this.api.revealKnowledge(e.id, { fields: [ref], name: `${entityName(e)}: hint ${nr || ref.split('#')[1]}` });
+      this.freigegeben.update((s) => new Set([...s, ref]));
+    } catch (err) {
+      const body = err instanceof ApiError ? (err.body as { error?: string } | undefined) : undefined;
+      this.problem.set(body?.error ?? String((err as Error).message ?? err));
+    } finally {
+      this.hinweisLaeuft.set(false);
+    }
   }
 
   /** Was dieser Laden führt (`refs.shop`, T-129). */

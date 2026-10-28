@@ -252,6 +252,13 @@
           ]
         },
         {
+          "heading": "Encounters",
+          "text": [
+            "An encounter shows what its kind needs: a conversation (social) lists who takes part — the creatures and factions it features — with what each thinks of the party; change that on the creature, under its relationships. A trap or hazard shows its hazards as cards.",
+            "GM: under each hint of a puzzle, “Reveal to the party” tells the party that one hint and nothing else; a revealed hint says “The party knows this hint”."
+          ]
+        },
+        {
           "heading": "Crafting (recipes)",
           "text": [
             "On a recipe, “Start crafting” makes a crafting order. Its material stays reserved in the inventory of the character and the party until the order ends.",
@@ -312,7 +319,7 @@
         {
           "text": [
             "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview — a place shows its type and environment, a quest its progress and reward, a faction its kind.",
-            "Above the filters, Expand all and Collapse all open and close every filter; ‹ and › go from one to the next.",
+            "Above the filters, Expand all and Collapse all open and close every filter; ‹ and › go from one to the next. Which filters stand open is kept for your account, for each page and type.",
             "“Columns” picks what the table shows: any field of the type (also calculated ones), its edges, and what every row has — type, source, layers, tags, status, ID. Drag or use ↑↓ to order them.",
             "The choice is kept per page and type for your account and in the address, so a shared link shows the same table. “Reset to default” drops your choice: the campaign default shows, else the type's columns. The GM can make a choice the campaign default for everyone without their own.",
             "Filter groups are saved filters of a page — reach them as tabs or from ▾ in the header. The layers shown follow the running campaign; change them in the popup under the brand. There, “Show comparison articles in lists” adds what only a comparison layer brings, below the list and marked “not in play”; the GM brings one into play with “Enable”.",
@@ -413,7 +420,7 @@
           "text": [
             "The types of articles, their fields, edges, lists and views. A new type is a new row — create it here. Before something is removed, the registry counts what uses it.",
             "A type’s page has chapters — This type, Own fields, Inherited, Edges from here and Views. On a phone they are tabs; on a wider screen the fields stand on the left, the short settings and the edges on the right.",
-            "Expand all opens every inherited type and Edges from here; Collapse all closes them; ‹ and › go from section to section (Alt+↑/↓). On a phone the bar sits at the bottom and works in the chosen tab.",
+            "Expand all opens every inherited type and Edges from here; Collapse all closes them; ‹ and › go from section to section (Alt+↑/↓). On a phone the bar sits at the bottom and works in the chosen tab. Which groups stand open is kept for your account.",
             "“How it works” explains the model with a worked example.",
             "Every article lies in a layer and has a state. One that fits no other layer waits in Unassigned — an ordinary layer you can switch on in a campaign; the workbench lists its articles under Unassigned.",
             "Two views are forms for creating: Create (what the quick dialog asks when you create from a picker) and Create (full) (the article page right after New article, with its fields first, even empty). Design them per type under Views; without a design, creating works as before.",

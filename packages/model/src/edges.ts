@@ -552,6 +552,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'encounterStances',
+    label: 'Stances at an encounter',
+    area: 'play',
+    does: 'shows, at an encounter, what each creature or faction it features thinks of the campaign’s party, and which hints the party already knows (T-215)',
+    uses: {
+      [S + 'begegnung.ts']: ['knownBy', 'regards'],
+      [S + 'app.ts']: ['features'],
+    },
+  },
+  {
     key: 'reading',
     label: 'Reading view',
     area: 'reading',
