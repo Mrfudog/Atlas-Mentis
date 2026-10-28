@@ -456,11 +456,40 @@ export function cellPoint(geo: GridGeometry, c: Cell): Pt {
  * je Feld so viele Fuss, wie der Massstab sagt (`cellFeet`, T-321).
  */
 export function feetBetween(geo: GridGeometry, a: Pt, b: Pt): number {
-  const ca = cellAt(geo, a);
-  const cb = cellAt(geo, b);
+  return feetBetweenCells(geo, cellAt(geo, a), cellAt(geo, b));
+}
+
+function feetBetweenCells(geo: GridGeometry, ca: Cell, cb: Cell): number {
   const dx = Math.abs(ca.x - cb.x);
   const dy = Math.abs(ca.y - cb.y);
   return (Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2)) * geo.cellFeet;
+}
+
+/**
+ * **Die Felder, die ein Token belegt** (T-391): `p` ist seine Mitte (D58),
+ * `span` seine Breite in Feldern. Auf Hex und für ein Feld oder weniger nur
+ * das Feld unter der Mitte.
+ */
+export function tokenCells(geo: GridGeometry, p: Pt, span = 1): Cell[] {
+  const n = Math.round(span);
+  if (geo.shape !== 'square' || n <= 1) return [cellAt(geo, p)];
+  const mitte = { x: (p.x * geo.w - geo.ox) / geo.size, y: (p.y * geo.h - geo.oy) / geo.size };
+  const anker = { x: Math.round(mitte.x - n / 2), y: Math.round(mitte.y - n / 2) };
+  const out: Cell[] = [];
+  for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) out.push({ x: anker.x + dx, y: anker.y + dy });
+  return out;
+}
+
+/**
+ * **Wie weit ein Angriff reicht, von Platz zu Platz** (T-391): der kürzeste
+ * Abstand zwischen einem Feld des Angreifers und einem Feld des Ziels —
+ * ein Drache auf 3 × 3, dessen Rand Kira berührt, steht 5 ft weit, nicht
+ * 10 ft bis zu seiner Mitte. Gleiche Rasterregel wie `feetBetween`.
+ */
+export function feetBetweenTokens(geo: GridGeometry, a: Pt, aSpan: number, b: Pt, bSpan: number): number {
+  let best = Infinity;
+  for (const ca of tokenCells(geo, a, aSpan)) for (const cb of tokenCells(geo, b, bSpan)) best = Math.min(best, feetBetweenCells(geo, ca, cb));
+  return best;
 }
 
 /** Wo der Plan das Token zuletzt hinstellt — das Ende der letzten Bewegung. */
