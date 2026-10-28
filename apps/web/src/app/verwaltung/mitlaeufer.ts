@@ -25,12 +25,16 @@ const VIA: Record<string, string> = {
   template: `
     <section class="mitlaeufer" role="dialog" aria-labelledby="mitlaeufer-titel">
       <h3 id="mitlaeufer-titel">
-        Move to {{ plan().target?.name ?? 'no layer' }}: what goes along?
+        {{ verb() }} to {{ plan().target?.name ?? 'no layer' }}: what goes along?
       </h3>
-      <p class="dim">
-        Ticked articles move with {{ wurzeln() }}. Unticked ones stay where they are. Versions and links stay.
-        You can undo the whole move right after.
-      </p>
+      @if (verb() === 'Move') {
+        <p class="dim">
+          Ticked articles move with {{ wurzeln() }}. Unticked ones stay where they are. Versions and links stay.
+          You can undo the whole move right after.
+        </p>
+      } @else {
+        <p class="dim">Ticked articles are copied with {{ wurzeln() }} and hang on the copy. The originals stay as they are.</p>
+      }
       <ul class="liste">
         @for (f of plan().followers; track f.id) {
           <li [class.aus]="!waehlbar(f)" [attr.data-id]="f.id">
@@ -70,7 +74,9 @@ const VIA: Record<string, string> = {
         <button type="button" class="haupt" [disabled]="laeuft()" (click)="los.emit(gewaehlt())">
           {{ knopf() }}
         </button>
-        <button type="button" class="leise" [disabled]="laeuft()" (click)="abbrechen.emit()">Cancel</button>
+        @if (abbrechbar()) {
+          <button type="button" class="leise" [disabled]="laeuft()" (click)="abbrechen.emit()">Cancel</button>
+        }
       </div>
     </section>
   `,
@@ -140,6 +146,9 @@ const VIA: Record<string, string> = {
 export class Mitlaeufer {
   readonly plan = input.required<EbenenWechsel>();
   readonly laeuft = input(false);
+  /** Verschieben (T-402) oder Kopieren (T-405) — dieselbe Liste. */
+  readonly verb = input<'Move' | 'Copy'>('Move');
+  readonly abbrechbar = input(true);
   /** Was mitgeht; beim neuen Plan die vorgewählten. */
   readonly gewaehlt = model<string[]>([]);
   readonly los = output<string[]>();
@@ -158,7 +167,7 @@ export class Mitlaeufer {
   });
   protected readonly knopf = computed(() => {
     const n = this.gewaehlt().length;
-    return n ? `Move with ${n} more` : 'Move only the article';
+    return n ? `${this.verb()} with ${n} more` : `${this.verb()} only the article`;
   });
 
   protected waehlbar(f: EbenenMitlaeufer): boolean {

@@ -1063,6 +1063,18 @@ Verspricht eine Kante mehr, als heute jemand liest — `affects` mit `effect`,
 evaluated yet". Sobald ein Auswerter sie liest, muss `intended` weg: der
 Test lässt beides nicht zugleich stehen.
 
+### Fassung, Variante, Kopie — drei Antworten auf „das will ich anders" (T-405, E-162)
+
+Einen Artikel aus einem geteilten Regelwerk darf die Leitung nicht
+speichern, denn er gehört drei Runden. Was sie will, ist eines von dreien:
+**an seiner Stelle** etwas anderes (eine *Fassung*, `overrides` — in dieser
+Kampagne gilt sie statt des Originals), **daneben** eine Spielart mit
+Herkunft (eine *Variante*, `variantOf`), oder **etwas Eigenes**, das nur so
+anfängt (eine *Kopie*, ohne Kante zurück). Drei Wörter, weil es drei
+Beziehungen sind; eine einzige „Kopie" mit Schaltern hätte die Frage nur
+in den Dialog verschoben. Was am Artikel hängt, geht auf demselben Weg mit
+wie beim Ebenenwechsel, und hängt danach an der Kopie, nicht am Original.
+
 ### Vorrang steht an der Kampagne, nicht im Buch (T-403, E-111)
 
 Wer den Dolch aus 2024 über den aus 2014 zieht, während das Buch von 2014

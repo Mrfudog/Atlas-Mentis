@@ -134,6 +134,8 @@ import {
   describeChange,
   layerMoveChanges,
   layerMovePlan,
+  copyArticles,
+  COPY_MODES,
   idLinks,
   linkCandidates,
   nextId,
@@ -172,7 +174,7 @@ import {
   missingText,
   duplicateText,
 } from '@nw/model';
-import type { BulkChange, BulkPlan, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
+import type { BulkChange, BulkPlan, BulkRequest, CopyMode, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
 import { seedRegistry, UNASSIGNED_LAYER_ROW } from '@nw/registry';
 import { RelationIdTaken, RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository, StoredEvent } from './repo.js';
@@ -1246,7 +1248,8 @@ export function buildApp({
       /* Die Übernahme (T-130): lesen und vorschauen schreibt nichts. */
       url === '/api/transfer/peer/read' ||
       url === '/api/transfer/preview' ||
-      ((url === '/api/bulk' || url === '/api/entities/delete' || url === '/api/entities/move-layer') && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
+      ((url === '/api/bulk' || url === '/api/entities/delete' || url === '/api/entities/move-layer' || /^\/api\/entities\/[^/]+\/copy$/.test(url)) &&
+        (request.body as { dryRun?: unknown } | null)?.dryRun === true);
     const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && !liestNur;
 
     if (!user) {
@@ -1315,6 +1318,8 @@ export function buildApp({
     /* „Edit" an einem fremden Artikel legt eine Fassung an (T-098): die
        Route prüft die Zielebene selbst. */
     if (/^\/api\/entities\/[^/]+\/adapt$/.test(url) && request.method === 'POST') return;
+    /* Fassung, Variante oder Kopie (T-405): die Route prüft Zielebene und Sichtbarkeit selbst. */
+    if (/^\/api\/entities\/[^/]+\/copy$/.test(url) && request.method === 'POST') return;
     /* In die Geschichte holen (E-026): die Route prüft die Ebene der Kampagne selbst (`uebernahmeZiele`). */
     if (/^\/api\/entities\/[^/]+\/take$/.test(url) && request.method === 'POST') return;
     /* Würfeln für die Attribute (E-016 a): die Route prüft die Rolle in
@@ -4649,6 +4654,104 @@ export function buildApp({
     await repo.appendEvent('entity.created', id, { interfaces: fassung.interfaces, adapts: original.id, layer: ebene.id, by: user.id });
     return reply.code(201).send({ id, created: true });
   });
+
+  /**
+   * **Fassung, Variante oder Kopie in einer anderen Ebene** (T-405,
+   * REQ-400, E-162): `{ mode: 'version' | 'variant' | 'copy', layer?,
+   * include?, dryRun? }`. Wo Speichern nicht erlaubt ist — ein Artikel aus
+   * einem Regelwerk, das man nicht schreibt —, und als Aktion an jedem
+   * Artikel. Die Fassung tritt in der Kampagne an die Stelle des Originals
+   * (in eine Ebene wie bei „Edit", `anpassZiele`: nie eine Spielerebene);
+   * Variante und Kopie gehen in jede eigene Schreibebene (`schreibZiele`).
+   * `dryRun` nennt die Zielebenen und die Mitläufer (Teile, Statblock,
+   * Inventar, wie beim Ebenenwechsel, `layerMovePlan`); ohne `include`
+   * gehen die vorgewählten mit. Kopiert wird, was man sieht — schreiben
+   * muss man das Original nicht.
+   */
+  app.post<{ Params: { id: string }; Body: { mode?: unknown; layer?: unknown; include?: unknown; dryRun?: unknown } | null }>(
+    '/api/entities/:id/copy',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+      if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nicht kopiert.' });
+      const b = request.body ?? {};
+      const mode = typeof b.mode === 'string' && (COPY_MODES as readonly string[]).includes(b.mode) ? (b.mode as CopyMode) : null;
+      if (!mode) return reply.code(400).send({ error: 'mode: version, variant oder copy.' });
+      const registry = await repo.getRegistry();
+      const stand = await roh();
+      const original = stand.map.get(request.params.id);
+      const gesehen = original ? (await sieve(request, [original], stand.map, undefined, 'versions')).length > 0 : false;
+      if (!original || !gesehen || isLayer(original)) return reply.code(404).send({ error: 'Nicht gefunden' });
+      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      const ziele: { id: string; name: string }[] = (
+        mode === 'version'
+          ? await anpassZiele(request, original, stand.map)
+          : (await schreibZiele(user, stand.map, kampagne)).map((x) => x.layer)
+      ).map((l) => ({ id: l.id, name: entityName(l) }));
+      const gewuenscht = typeof b.layer === 'string' && b.layer ? b.layer : null;
+      const vorgabe = gewuenscht ? null : (await gewaehlteSchreibEbene(user, stand.map, kampagne))?.id;
+      const ziel = ziele.find((l) => l.id === (gewuenscht ?? vorgabe)) ?? (gewuenscht ? undefined : ziele[0]);
+      const sichtbar = new Set((await sieve(request, stand.alle, stand.map, undefined, 'versions')).map((e) => e.id));
+      const plan = layerMovePlan(registry, stand.map, [original.id], { layer: ziel?.id ?? null });
+      const followers = plan.followers
+        .filter((f) => sichtbar.has(f.id))
+        .map((f) => ({ ...f, writable: true, preselected: f.sameLayer, linkedFrom: f.linkedFrom.filter((x) => sichtbar.has(x.id)) }));
+      if (b.dryRun === true) {
+        return { mode, layers: ziele, layer: ziel ?? null, roots: plan.roots, followers, layerNames: Object.fromEntries(ziele.map((l) => [l.id, l.name])) };
+      }
+      if (!ziel) {
+        return reply.code(403).send({
+          error: gewuenscht
+            ? `You cannot put a ${mode === 'version' ? 'version' : mode} into that layer. Choose one of your write layers.`
+            : 'You have no layer to put it into.',
+          layers: ziele,
+        });
+      }
+      if (mode === 'version') {
+        const schon = stand.alle.find(
+          (e) => layersOf(e).includes(ziel.id) && (e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION && r.to === original.id),
+        );
+        if (schon) return reply.code(200).send({ id: schon.id, created: [], layer: ziel, mode, existed: true });
+      }
+      const gewaehlt = Array.isArray(b.include) ? b.include.filter((x): x is string => typeof x === 'string') : null;
+      const mit = followers.filter((f) => (gewaehlt ? gewaehlt.includes(f.id) : f.preselected)).map((f) => f.id);
+      const alle = [...stand.alle];
+      const vergeben = new Set(stand.map.keys());
+      const neueId = (): string => {
+        let id = `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+        while (vergeben.has(id)) id = `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+        vergeben.add(id);
+        return id;
+      };
+      const nummer = (typ: string): string => {
+        const n = nextId(alle, typ);
+        /* Die nächste Nummer zählt, was schon vergeben ist — auch in diesem Lauf. */
+        alle.push({ id: `nr~${n}`, name: n, interfaces: [typ], components: { Identity: { id: n } }, relations: [] });
+        return n;
+      };
+      const neu = copyArticles(stand.map, [original.id, ...mit], { mode, layer: ziel.id, newId: neueId, number: nummer });
+      const danach = new Map(stand.map);
+      for (const x of neu) danach.set(x.entity.id, x.entity);
+      const known = new Map([...danach.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+      const stufen = stageBases(danach.values());
+      for (const x of neu) {
+        const pruefling = isInstance(x.entity) ? resolveInstance(danach, x.entity) : x.entity;
+        const issues = validateEntity(registry, pruefling, { knownTypes: known, stageOf: stufen });
+        if (issues.length) return reply.code(422).send({ error: `${entityName(x.entity)}: Validierung fehlgeschlagen`, issues });
+      }
+      for (const x of neu) {
+        await repo.putEntity(x.entity);
+        await repo.addCreator(user.id, x.entity.id);
+        await repo.appendEvent('entity.created', x.entity.id, { interfaces: x.entity.interfaces, [mode === 'version' ? 'adapts' : mode === 'variant' ? 'variantOf' : 'copyOf']: x.from, layer: ziel.id, by: user.id });
+      }
+      return reply.code(201).send({
+        id: neu[0]!.entity.id,
+        created: neu.map((x) => ({ id: x.entity.id, from: x.from, name: entityName(x.entity) })),
+        layer: ziel,
+        mode,
+      });
+    },
+  );
 
   /**
    * Dry-run validation, so the editor can warn before anything is written.

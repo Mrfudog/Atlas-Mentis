@@ -119,6 +119,23 @@ export interface KorbLauf {
   own: boolean;
   items: KorbArtikel[];
 }
+/** Fassung, Variante oder Kopie (T-405): der Plan (`dryRun`) und das Ergebnis. */
+export type KopierArt = 'version' | 'variant' | 'copy';
+export interface KopierPlan {
+  mode: KopierArt;
+  layers: { id: string; name: string }[];
+  layer: { id: string; name: string } | null;
+  roots: EbenenWechsel['roots'];
+  followers: EbenenMitlaeufer[];
+  layerNames: Record<string, string>;
+}
+export interface KopierErgebnis {
+  id: string;
+  created: { id: string; from: string; name: string }[];
+  layer: { id: string; name: string };
+  mode: KopierArt;
+  existed?: boolean;
+}
 export interface BulkLauf {
   id: string;
   at: string;
@@ -2019,6 +2036,13 @@ export class Api {
   /** „Empty trash" (T-400): endgültig, auch für die Werkbank. */
   emptyTrash(): Promise<{ emptied: number }> {
     return this.call('/api/trash/empty', { method: 'POST', body: '{}' });
+  }
+  /** Fassung, Variante oder Kopie in einer anderen Ebene (T-405). */
+  copyPlan(id: string, mode: KopierArt, layer?: string): Promise<KopierPlan> {
+    return this.call<KopierPlan>(`/api/entities/${encodeURIComponent(id)}/copy`, { method: 'POST', body: JSON.stringify({ mode, ...(layer ? { layer } : {}), dryRun: true }) });
+  }
+  copy(id: string, mode: KopierArt, layer: string, include: string[]): Promise<KopierErgebnis> {
+    return this.call<KopierErgebnis>(`/api/entities/${encodeURIComponent(id)}/copy`, { method: 'POST', body: JSON.stringify({ mode, layer, include }) });
   }
   /**
    * **Vorrang an der Kampagne** (T-403): ein Artikel vor seinen anderen

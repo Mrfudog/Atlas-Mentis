@@ -33,8 +33,9 @@ import {
 } from '@nw/model';
 import type { CreateStep, ElementStyle, Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { bringsIntoLayer, homeLayers, pickView, spellcastingOf, withCastRelations, withHomeLayer } from '@nw/model';
-import { Api, ApiError, type EbenenWechsel, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
+import { Api, ApiError, type EbenenWechsel, type KopierErgebnis, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
 import { Mitlaeufer } from '../verwaltung/mitlaeufer';
+import { Kopieren } from './kopieren';
 import { Stil } from '../muster/stil';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
@@ -184,6 +185,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
   imports: [
     RouterLink,
     Mitlaeufer,
+    Kopieren,
     Klappleiste,
     FormsModule,
     Stil,
@@ -300,6 +302,13 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 {{ passtAn() ? 'Adapting…' : 'Adapt for this campaign' }}
               </button>
             }
+            <!-- Fassung, Variante oder Kopie in einer anderen Ebene (T-405, REQ-400). -->
+            @if (!bearbeitet() && !istEbene(e) && session.user()) {
+              <button type="button" [attr.aria-expanded]="kopierOffen()" (click)="kopierOffen.set(!kopierOffen())"
+                      title="Make a version, a variant or a copy of this article in another layer.">
+                Copy…
+              </button>
+            }
             <!-- In die Geschichte holen (E-026): ein Kapitel oder eine Szene samt allem
                  darunter in die eigene Kampagne, an sie oder einen ihrer Arcs. -->
             @if (uebernahmeZiele().length && !bearbeitet()) {
@@ -402,6 +411,15 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
               <button type="button" class="klein" (click)="verschiebenZurueck(l)">Undo move</button>
             }
             <button type="button" class="klein" (click)="verschoben.set(null)">OK</button>
+          </p>
+        }
+        @if (kopierOffen()) {
+          <nw-kopieren [artikel]="id()" (fertig)="kopiert($event)" (zu)="kopierOffen.set(false)" />
+        }
+        @if (kopierMeldung(); as m) {
+          <p class="hinweis" role="status">
+            {{ m }}
+            <button type="button" class="klein" (click)="kopierMeldung.set(null)">OK</button>
           </p>
         }
         <!-- Was mitgeht (T-402, E-161): vor dem Speichern gefragt, wenn etwas dranhängt. -->
@@ -2840,6 +2858,18 @@ export class Artikel implements SchnellKontext {
         }
       }
     }
+  }
+
+  /** „Copy…" (T-405): der Dialog, und wo das Neue danach liegt. */
+  protected readonly kopierOffen = signal(false);
+  protected readonly kopierMeldung = signal<string | null>(null);
+  protected async kopiert(r: KopierErgebnis): Promise<void> {
+    this.kopierOffen.set(false);
+    const was = r.mode === 'version' ? 'Version' : r.mode === 'variant' ? 'Variant' : 'Copy';
+    const mehr = r.created.length > 1 ? ` with ${r.created.length - 1} more` : '';
+    await this.bestand.oeffnen(r.id, true);
+    await this.router.navigate(['/artikel', r.id]);
+    this.kopierMeldung.set(r.existed ? `This campaign already has a version in ${r.layer.name} — here it is.` : `${was}${mehr} created in ${r.layer.name}.`);
   }
 
   /** Die Mitläufer, die im Dialog gewählt wurden (T-402); `null`: noch nicht gefragt. */

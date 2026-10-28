@@ -49,6 +49,14 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-28-version-variant-copy",
+      "date": "2026-10-28",
+      "title": "Version, variant or copy in another layer",
+      "text": "Copy… on an article makes a version for this campaign, a variant beside it or an independent copy, in one of your layers — with its parts, statblock and inventory if you tick them. Handy for articles from a shared rulebook you cannot save.",
+      "area": "Articles",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-move-layer-followers",
       "date": "2026-10-28",
       "title": "Moving an article takes its parts along",
