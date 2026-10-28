@@ -1,9 +1,7 @@
 {
   "pages": [
     {
-      "routes": [
-        "play"
-      ],
+      "routes": ["play"],
       "title": "Play — the table map",
       "sections": [
         {
@@ -132,9 +130,7 @@
       ]
     },
     {
-      "routes": [
-        "maps"
-      ],
+      "routes": ["maps"],
       "title": "Maps",
       "sections": [
         {
@@ -147,9 +143,7 @@
       ]
     },
     {
-      "routes": [
-        "images"
-      ],
+      "routes": ["images"],
       "title": "Images",
       "sections": [
         {
@@ -157,17 +151,14 @@
             "All images you can see. Filter by kind, tag, layer, or “unused” for images nothing refers to yet.",
             "Each image names its resolution, aspect ratio, size and layer. Tags stand as badges: × removes one, “+ tag” adds one; select several images to tag them together.",
             "“Use as…” turns an image into a map (with a grid suggested from its resolution), a creature's token or a prop, and links to the result.",
-            "Delete removes the selected images — or one image with 🗑 — but only those in your write layer; images from other layers are deselected, and the message says how many. Undo right after brings them back; to delete the others, switch your write layer in the header.",
+            "Delete removes the selected images — or one image with 🗑 — but only those in your write layer; images from other layers are deselected, and the message says how many. Undo right after brings them back, and for 30 days they wait in Deleted; to delete the others, switch your write layer in the header.",
             "Upload images opens your device's file menu: on a phone Files, OneDrive and other storage as well as photos and the camera. Any file can be chosen; it is checked afterwards — JPEG, PNG, WebP, GIF and AVIF go up, anything else (HEIC, SVG, PDF …) says what to do instead. Animated GIF and WebP are kept as they are."
           ]
         }
       ]
     },
     {
-      "routes": [
-        "characters/new",
-        "characters/:id/edit"
-      ],
+      "routes": ["characters/new", "characters/:id/edit"],
       "title": "Character assistant",
       "sections": [
         {
@@ -185,9 +176,7 @@
       ]
     },
     {
-      "routes": [
-        "artikel/:id"
-      ],
+      "routes": ["artikel/:id"],
       "title": "Article",
       "sections": [
         {
@@ -208,7 +197,7 @@
             "The token of a statblock — on a creature, of its statblock — stands as it does on the map. “Adjust token” drags and zooms the image in its circle, picks its border, or marks it as a ready-made round token that is shown as it is; frame and border are saved on the image, so every statblock with that token looks the same. “Change image” sets another image as the token of the statblock.",
             "GMs see a Knowledge box at the side: which pieces of information exist about this article — on it, for it, or for a whole group — the fields each covers and the knowledge it belongs to. “+ Information” picks fields by group and ticks or names a knowledge; who knows it is set on the knowledge.",
             "A knowledge’s page writes out everything it brings together: each information with the articles it is about and exactly the fields it covers — read as you may read them. Players find what their character knows in one place.",
-            "Delete removes the article if it lies in your write layer and you may write it; otherwise the message names the layer to switch to. Undo right after the deletion brings it back with its links."
+            "Delete removes the article if it lies in your write layer and you may write it; otherwise the message names the layer to switch to. Undo right after the deletion brings it back with its links; for 30 days it can also be restored from Deleted."
           ]
         },
         {
@@ -295,9 +284,7 @@
       ]
     },
     {
-      "routes": [
-        "artikel/:id/print"
-      ],
+      "routes": ["artikel/:id/print"],
       "title": "Print",
       "sections": [
         {
@@ -308,9 +295,7 @@
       ]
     },
     {
-      "routes": [
-        "artikel/:id/compare/:other"
-      ],
+      "routes": ["artikel/:id/compare/:other"],
       "title": "Compare versions",
       "sections": [
         {
@@ -321,12 +306,7 @@
       ]
     },
     {
-      "routes": [
-        "compendium",
-        "world",
-        "story",
-        "rules"
-      ],
+      "routes": ["compendium", "world", "story", "rules"],
       "title": "Lists of articles",
       "sections": [
         {
@@ -346,10 +326,7 @@
       ]
     },
     {
-      "routes": [
-        "boards",
-        "boards/:id"
-      ],
+      "routes": ["boards", "boards/:id"],
       "title": "Boards",
       "sections": [
         {
@@ -406,11 +383,7 @@
       ]
     },
     {
-      "routes": [
-        "classes",
-        "ancestries",
-        "backgrounds"
-      ],
+      "routes": ["classes", "ancestries", "backgrounds"],
       "title": "Classes, ancestries and backgrounds",
       "sections": [
         {
@@ -421,9 +394,7 @@
       ]
     },
     {
-      "routes": [
-        "werkbank"
-      ],
+      "routes": ["werkbank"],
       "title": "Workbench",
       "sections": [
         {
@@ -435,9 +406,7 @@
       ]
     },
     {
-      "routes": [
-        "registry"
-      ],
+      "routes": ["registry"],
       "title": "Registry",
       "sections": [
         {
@@ -477,9 +446,7 @@
       ]
     },
     {
-      "routes": [
-        "campaign"
-      ],
+      "routes": ["campaign"],
       "title": "Campaign",
       "sections": [
         {
@@ -504,9 +471,7 @@
       ]
     },
     {
-      "routes": [
-        "account"
-      ],
+      "routes": ["account"],
       "title": "Account",
       "sections": [
         {
@@ -517,9 +482,23 @@
       ]
     },
     {
-      "routes": [
-        "whats-new"
-      ],
+      "routes": ["trash"],
+      "title": "Deleted — the trash",
+      "sections": [
+        {
+          "heading": "What stays here",
+          "text": [
+            "Everything you deleted from your write layer stays here for 30 days, grouped by when it was deleted. Each group says until when it can come back.",
+            "Players see what they deleted themselves; the GM also sees what others deleted, as far as the GM may see those articles.",
+            "Restore brings one article back — with the parts that went with it (an inventory, a statblock instance) and its links to articles that are here. Restore all brings back the rest of a group. A restored article is linked from its row.",
+            "Empty trash deletes everything you see here for good: images then lose their file too, unless another image uses the same file, and the Workbench cannot undo it any more. After 30 days this happens on its own.",
+            "You reach this page from Account › Deleted articles, and from the message after deleting."
+          ]
+        }
+      ]
+    },
+    {
+      "routes": ["whats-new"],
       "title": "What's new",
       "sections": [
         {
@@ -530,9 +509,7 @@
       ]
     },
     {
-      "routes": [
-        "handbook"
-      ],
+      "routes": ["handbook"],
       "title": "Handbook",
       "sections": [
         {
@@ -551,9 +528,7 @@
       ]
     },
     {
-      "routes": [
-        "lab/rules"
-      ],
+      "routes": ["lab/rules"],
       "title": "Rule builder (experiment)",
       "sections": [
         {
@@ -590,9 +565,7 @@
       ]
     },
     {
-      "routes": [
-        "inventory/shapes"
-      ],
+      "routes": ["inventory/shapes"],
       "title": "Item shapes",
       "sections": [
         {

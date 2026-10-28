@@ -2,7 +2,7 @@
 tags: [vtt, epics, view]
 aliases: [Epics]
 status: derived
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 # Epics
@@ -25,5 +25,5 @@ Die Funktionsbereiche von früher sind die **Epics** (E-049): je Epic ein Bereic
 | [[EP-08 Live-Spiel]] | Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, Würfel, Werkzeuge am Tisch. | 5 | 33 | 119 | 14 steht · 6 teils · 12 offen · 1 ersetzt |
 | [[EP-09 Karten]] | Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und Zonen, Gebiete, Reisen, Karteneditor. | 7 | 29 | 132 | 18 steht · 6 teils · 5 offen |
 | [[EP-10 Medien & Assets]] | Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Druck und Ausfuhr, PDF. | 5 | 23 | 89 | 4 steht · 3 teils · 16 offen |
-| [[EP-11 Oberfläche & Navigation]] | Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten in der Ansicht, Design und Stilkonzept. | 8 | 38 | 157 | 20 steht · 7 teils · 10 offen · 1 ersetzt |
+| [[EP-11 Oberfläche & Navigation]] | Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten in der Ansicht, Design und Stilkonzept. | 8 | 38 | 157 | 21 steht · 6 teils · 10 offen · 1 ersetzt |
 | [[EP-12 Import & Inhalte]] | 5e.tools, Regelwerke anderer Verlage, Obsidian-Vault, Artikelprüfung und KI-erzeugte Inhalte — wie Inhalte hereinkommen und vollständig werden. | 5 | 11 | 47 | 5 steht · 2 teils · 2 offen · 2 verworfen |

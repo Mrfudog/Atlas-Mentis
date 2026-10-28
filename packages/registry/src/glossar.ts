@@ -531,6 +531,13 @@ const APP: AppTerm[] = [
     translations: { de: 'Löschen aus der eigenen Ebene' },
   },
   {
+    term: 'Deleted',
+    aliases: ['Trash', 'Restore', 'Empty trash'],
+    sort: 'app',
+    definition: 'What you deleted from your layer waits 30 days in Deleted. Restore brings an article back with its parts and links; Empty trash, or the end of the 30 days, deletes it for good — only then does an image lose its file.',
+    translations: { de: 'Papierkorb' },
+  },
+  {
     term: 'Roll log',
     sort: 'app',
     definition: 'The block “Log” on an article: every roll made on it, newest first — on a creature with the rolls on its statblock, on a session every roll made during it.',
