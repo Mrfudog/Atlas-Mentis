@@ -378,6 +378,16 @@ export interface Ladenwaren {
   mine: { id: string; name: string; wares: Ware[]; inventory?: string; purse?: number; sellable?: Verkaeuflich[] }[];
 }
 /** Was ein Handel ergab (T-133): gerechnet am Server. */
+/** Die Läden, die ein Stück ankaufen (T-407): Preis je Stück in Kupfer, oder warum nicht. */
+export interface VerkaufsAngebote {
+  /** Für wen verkauft wird: die Figur oder Gruppe, die das Inventar trägt. */
+  actor: string;
+  qty: number;
+  refused?: 'reserved';
+  error?: string;
+  offers: { shop: string; name: string; here: boolean; unit?: number; rate?: number; from?: string; refused?: 'noPrice' | 'notBought' }[];
+}
+
 export interface Handel {
   item: { id: string; name: string };
   qty: number;
@@ -1730,6 +1740,18 @@ export class Api {
   /** Dem Laden verkaufen (T-133): ein Stapel aus dem Inventar der Figur. */
   sell(shop: string, actor: string, inventory: string, edge: string, qty: number): Promise<Handel> {
     return this.call(`/api/shops/${encodeURIComponent(shop)}/sell`, { method: 'POST', body: JSON.stringify({ actor, inventory, edge, qty }) });
+  }
+  /** **Wegwerfen** (T-407): Stück vom Stapel; die Instanz geht mit. `undo` ist die Id zum Zurücklegen. */
+  discard(inventory: string, edge: string, qty: number): Promise<{ item: { id: string; name: string }; qty: number; removed: boolean; undo: string }> {
+    return this.call(`/api/inventories/${encodeURIComponent(inventory)}/discard`, { method: 'POST', body: JSON.stringify({ edge, qty }) });
+  }
+  /** Das Wegwerfen zurücknehmen (T-407) — nur, solange das Inventar unverändert ist. */
+  undoDiscard(inventory: string, undo: string): Promise<{ ok: true }> {
+    return this.call(`/api/inventories/${encodeURIComponent(inventory)}/discard/${encodeURIComponent(undo)}/undo`, { method: 'POST', body: '{}' });
+  }
+  /** Wer dieses Stück ankauft und zu welchem Preis (T-407), die Läden am Ort der Szene zuerst. */
+  sellOffers(inventory: string, edge: string): Promise<VerkaufsAngebote> {
+    return this.call(`/api/inventories/${encodeURIComponent(inventory)}/sell-offers?edge=${encodeURIComponent(edge)}`);
   }
   /** Die Spieler der laufenden Kampagne mit ihren Figuren (T-100, E-007) — ohne Konto-Id. */
   players(): Promise<{ campaign: { id: string; name: string } | null; players: Spieler[] }> {

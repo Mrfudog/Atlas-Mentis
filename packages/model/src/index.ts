@@ -70,6 +70,7 @@ export * from './kartenseite.js';
 export * from './crafting.js';
 export * from './substitutes.js';
 export * from './shop.js';
+export * from './discard.js';
 export * from './enhancement.js';
 export * from './assets.js';
 export * from './maplist.js';
