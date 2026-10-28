@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-expertise-proficient",
+      "date": "2026-10-28",
+      "title": "Expertise only where you are proficient",
+      "text": "In the character assistant an expertise choice offers only skills and tools the character is already proficient in, earlier picks of the same step included; the others are locked and say “not proficient yet”. A choice can switch this off in its data.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-open-choices",
       "date": "2026-10-28",
       "title": "Open choices keep a character an idea",
