@@ -282,6 +282,13 @@
           ]
         },
         {
+          "heading": "Enhancements and item properties",
+          "text": [
+            "+1 Weapon, Silvered or Adamantine Armor are enhancements: rules articles of their own (Rules › Enhancement), not items. On a piece in an inventory, add one under Enhancements; the piece’s name, price, rarity and bonuses are worked out from the base item and what is on it.",
+            "Item properties such as Finesse or Versatile are rules articles too. What one does on the sheet is its field “On the sheet” (two-handed, versatile, light, finesse), not its name — a house property can take both hands under any name. What it means for one item, such as Versatile 1d10 or Thrown 20/60, stands on that item’s edge “has property”."
+          ]
+        },
+        {
           "title": "Views of an article",
           "text": [
             "A row “View” above every article — on its page and when opened from World, Story, Rules or Play — lists every view that applies to it, the most specific first. Full is the page as always; pick another to see the article in it. The choice stays in the address (?view=) and is not saved; in Full edit the row stands for whoever may change the registry.",

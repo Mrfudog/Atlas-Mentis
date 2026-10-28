@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-item-features",
+      "date": "2026-10-28",
+      "title": "Enhancements and item properties are rules articles",
+      "text": "+1 Weapon, Silvered and the other magic variants are now enhancements under Rules, not items; you add them to a piece as before. Item properties such as Versatile say in a field what they do on the sheet, and a weapon’s versatile die stands on its link to the property. Item fields an enhancement has no place for are kept in its notes.",
+      "area": "Rules",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-folds-remembered",
       "date": "2026-10-28",
       "title": "Folded filters and registry groups are remembered",
