@@ -216,7 +216,7 @@ const STATBLOCK_PLACED = new Set([
   'Statblock.acNote', 'Statblock.hp', 'Statblock.hpFormula', 'Statblock.speed', 'Statblock.cr',
   'Statblock.prof', 'Statblock.senses', 'Statblock.languageNote', 'Statblock.resistances',
   'Statblock.vulnerabilities', 'Statblock.immunities', 'Statblock.conditionImmunities',
-  'Statblock.bonuses', 'Statblock.legendaryActions',
+  'Statblock.bonuses', 'Statblock.legendaryActions', 'Statblock.legendaryActionsLair',
   'Abilities', 'Proficiencies.proficient', 'Proficiencies.expertise', 'Proficiencies.saves',
 ]);
 
@@ -618,13 +618,17 @@ export function bookSections(
 
   /* Der Satz über den Legendären Aktionen steht im Buch vor ihnen; die Zahl
      ist ein Feld des Statblocks, der Satz ist Regeltext. */
-  const anzahl = num((owner.components?.['Statblock'] as Card | undefined)?.['legendaryActions']);
+  const sbKarte = owner.components?.['Statblock'] as Card | undefined;
+  const anzahl = num(sbKarte?.['legendaryActions']);
   if (anzahl !== null) {
     const wer = capitalize(creatureRef(bindung, entityName(owner)));
+    /* Im Lair mehr (T-437) — nur genannt, wenn es abweicht. */
+    const lair = num(sbKarte?.['legendaryActionsLair']);
+    const imLair = lair !== null && lair !== anzahl ? ` (${lair} in its lair)` : '';
     for (const s of sections.values()) {
       if (!/legendary/i.test(s.title)) continue;
       s.intro =
-        `${wer} can take ${anzahl} legendary action${anzahl === 1 ? '' : 's'}, choosing from the options below. ` +
+        `${wer} can take ${anzahl} legendary action${anzahl === 1 ? '' : 's'}${imLair}, choosing from the options below. ` +
         `Only one legendary action option can be used at a time and only at the end of another creature's turn. ` +
         `${wer} regains spent legendary actions at the start of its turn.`;
     }

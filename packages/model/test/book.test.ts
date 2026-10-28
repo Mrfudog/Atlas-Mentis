@@ -180,6 +180,21 @@ describe('Die Abschnitte aus composedOf', () => {
     expect(s[1]!.intro).toMatch(/^The dragon can take 3 legendary actions/);
   });
 
+  it('nennt die Zahl im Lair, wenn der Statblock sie trägt (T-437)', () => {
+    const drache: Entity = {
+      id: 'drache2',
+      interfaces: ['Statblock'],
+      name: 'Adult Fog Dragon',
+      components: { Statblock: { legendaryActions: 3, legendaryActionsLair: 4, prof: 6 } },
+      relations: [{ id: 'd1', type: 'composedOf', to: 'schwanz', props: { vars: { CREATURE: 'dragon' } } }],
+    };
+    const t: Record<string, Entity> = {
+      schwanz: { id: 'schwanz', interfaces: ['Action'], name: 'Tail Attack', components: { Action: { actionType: 'at-legendary' } } },
+    };
+    const s = bookSections(imperial, drache, { part: (id) => t[id], nameOf: (id) => namen[id] });
+    expect(s[0]!.intro).toMatch(/^The dragon can take 3 legendary actions \(4 in its lair\), choosing/);
+  });
+
   it('kennt beide Fassungen der Bindung (W1: „the dragon" mit Artikel)', () => {
     expect(creatureRef('dragon', 'Adult Red Dragon')).toBe('the dragon');
     expect(creatureRef('the dragon', 'Adult Red Dragon')).toBe('the dragon');
