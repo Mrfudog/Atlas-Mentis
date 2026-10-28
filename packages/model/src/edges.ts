@@ -310,6 +310,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'discardAndSellHere',
+    label: 'Discard and sell from the inventory',
+    area: 'character',
+    does: 'discards pieces from a stack — the instance goes with the last one, a reserved piece or a container holding something stays, and undo puts both back while the inventory is unchanged — and lists the visible shops with their buy price for a piece, those where the scene or map in play is first; the party’s members sell from its chest (T-407)',
+    uses: {
+      [M + 'discard.ts']: ['carries', 'holds', 'partOf'],
+      [S + 'wegwerfen.ts']: ['carries', 'holds', 'memberOfParty'],
+    },
+  },
+  {
     key: 'builder',
     label: 'Character builder and sheet',
     area: 'character',
