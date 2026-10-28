@@ -6,9 +6,14 @@ Auftrag der Leitung (28.10.): Fenster statt Bereiche, Elemente dürfen sich
 überlappen, Desktop-Verhalten (– minimiert auf die Titelleiste, X schliesst),
 je Element einstellbar, ob es geschlossen werden darf.
 
-Dieses Dokument hat zwei Teile: die **Bestandsaufnahme** (Schritt 1 und 2,
-unten) und danach das **Konzept** (Schritt 3, folgt), das die Leitung
-entscheidet, bevor gebaut wird.
+**Ein Experiment** (Leitung 28.10.): gebaut auf `experiment/T-435-board-fenster`,
+nie direkt gemerged. Übernimmt die Leitung es, wird es auf einem
+`task/`-Zweig sauber umgesetzt; verwirft sie es, bekommt die Karte den
+Grund, damit es nicht wieder auftaucht.
+
+Zwei Teile: die **Bestandsaufnahme** (1) und das **Konzept** (2) mit einem
+bedienbaren Mockup: [board-fenster-mockup.html](board-fenster-mockup.html),
+veröffentlicht unter https://claude.ai/artifact/LYmRrVUcALgji9eCTtjLPT.
 
 ---
 
@@ -103,3 +108,56 @@ Nebenbefunde auf dev, nicht Teil dieser Karte:
   (Widget-Katalog) wollen dasselbe Fenster — es soll darum ein Muster
   werden und nicht Teil der Board-Seite.
 - T-413 (fremde Boards in der Liste) ist offen; nicht hier.
+
+---
+
+## 2. Konzept
+
+Die ausführliche Fassung mit Mockup (Desktop und Telefon, Leitung und
+Spielerin, derselbe Zustand je Person) steht in
+[board-fenster-mockup.html](board-fenster-mockup.html). Kurz:
+
+```mermaid
+flowchart LR
+  E[Element: Kachel, Abfrage, Struktur, Text/Bild mit Rahmen] -- win --> F[Fenster in Board.windows]
+  E -- Einstellungen --> S[closable · minimizable · locked · start]
+  P[Konto: /api/me/prefs boards.&lt;board&gt;] -- min / closed / open --> E
+  P -- min / closed / open --> F
+  A[Board.anchors mit w/h] -. Migration .-> F
+```
+
+- **Titelleiste** mit – (auf die Titelleiste) und × (für mich schliessen) an
+  Kacheln und Fenstern; Text und Bild auf Wunsch, Zeichnungen nie (E-196).
+  × nimmt nichts vom Board.
+- **Überlappen**, ein Klick holt nach vorn; die Leitung speichert `z` am
+  Board, Spielende nur für sich bis zum Neuladen. Einrasten als Schalter je
+  Person.
+- **Einstellungen je Element** am Element (⚙): `closable`, `minimizable`,
+  `locked` (gibt es), `start: 'min'`, `frame` für Text und Bild.
+- **Stand je Person** (E-197): minimiert, geschlossen, entgegen der Vorgabe
+  geöffnet — nur Abweichungen, im Konto unter `boards.<board>`; der
+  Schlüssel muss dafür `_` erlauben.
+- **Fenster als Behälter** in `Board.windows`, Zugehörigkeit gespeichert
+  (`win`, E-195), Lage bleibt absolut.
+- **Liste „Fenster ▾“** ersetzt die Reiter: Stand je Element, öffnet,
+  stellt her, springt hin; „Mein Layout zurücksetzen“.
+- **Telefon** (E-198): Stapel in Leserichtung, Dock der minimierten, Blatt
+  von unten, Leinwand per Schalter.
+- **Umzug:** Anker mit Rechteck → Fenster (gleiche Id, Name als Titel),
+  Elemente mit der Mitte darin → `win`; Sprungpunkte bleiben; Eingeklapptes
+  wird einmal zu „minimiert“.
+
+**Schnitte** (je zuerst ein roter Test, E2E 1360/390 px): 1 Titelleiste und
+persönlicher Stand · 2 Einstellungen je Element · 3 Fenster als Behälter
+und Umzug · 4 Telefon · 5 Bericht für die Entscheidung Übernahme oder
+Verwerfen.
+
+**Offene Entscheide:** E-195 Zugehörigkeit (Empfehlung: gespeichert),
+E-196 Titelleiste (Kacheln und Fenster, Text/Bild auf Wunsch), E-197
+persönlich minimieren/schliessen, E-198 Telefon (Stapel, Dock, Blatt),
+E-199 wie ausprobieren (Bilder und Video aus lokalem Lauf).
+
+**Nicht hier:** die allgemeine Werkzeugleiste (T-425, REQ-436); das Board
+tauscht nur „Area“ gegen „Window“. Rahmen und Stand werden ein Muster unter
+`muster/`, damit Spielleiter-Schirm (T-024) und Widget-Katalog (REQ-384)
+sie übernehmen.

@@ -1,0 +1,467 @@
+<title>Board-Fenster T-435</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,700;1,400&family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: eine Lesespalte mit dem Konzept; die beiden Mockups (Desktop, Telefon) stehen breit und teilen sich einen Zustand je Person. */
+:root {
+  --bg: #efe4cc; --surface: #fbf6ec; --bar: #f8f1e1; --paper: #fdf1dc;
+  --line: #cdbb98; --line2: #e6d3b0; --chip: #eadcc0; --ink: #2b1d12; --dim: #6a5642;
+  --accent: #8c1c13; --accent-ink: #fbf6ec; --heading: #7a200d; --gold: #c8822e; --hover: #f6e2bf;
+  --good: #4c6b2a; --blue: #2f5d7c; --dot: #d9c7a3; --shade: rgba(43, 29, 18, .16);
+  --serif: 'Alegreya', Georgia, serif; --caps: 'Alegreya SC', Georgia, serif;
+  --sans: 'Alegreya Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1c1712; --surface: #251e17; --bar: #211a14; --paper: #2a2119; --line: #4a3d2e; --line2: #382d22;
+  --chip: #3a2e22; --ink: #eadfca; --dim: #b09c80; --accent: #d0675a; --accent-ink: #1c1712; --heading: #e08a74;
+  --gold: #b77a33; --hover: #3a2c1c; --good: #8cc084; --blue: #7fa9c9; --dot: #3d3227; --shade: rgba(0, 0, 0, .45); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #1c1712; --surface: #251e17; --bar: #211a14; --paper: #2a2119; --line: #4a3d2e; --line2: #382d22;
+  --chip: #3a2e22; --ink: #eadfca; --dim: #b09c80; --accent: #d0675a; --accent-ink: #1c1712; --heading: #e08a74;
+  --gold: #b77a33; --hover: #3a2c1c; --good: #8cc084; --blue: #7fa9c9; --dot: #3d3227; --shade: rgba(0, 0, 0, .45); color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--ink); font: 17px/1.5 var(--sans); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px }
+.spalte { max-width: 1120px; margin: 0 auto; display: grid; gap: 30px }
+.lesen { max-width: 72ch; display: grid; gap: 12px; min-width: 0 }
+h1, h2, h3 { font-family: var(--caps); color: var(--accent); margin: 0; text-wrap: balance; font-weight: 700 }
+h1 { font-size: 2.1rem; line-height: 1.1 }
+h2 { font-size: 1.45rem; border-bottom: 2px solid var(--accent); padding-bottom: 4px }
+h3 { font-size: 1.1rem; color: var(--heading) }
+p { margin: 0 }
+.unter { color: var(--dim); font-size: .95rem }
+code { font: .86em ui-monospace, Menlo, monospace; background: var(--chip); border-radius: 3px; padding: 0 4px }
+a { color: var(--accent) }
+ul, ol { margin: 0; padding-left: 1.3em; display: grid; gap: 4px }
+.kasten { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0 }
+.tab { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: .95rem }
+th { text-align: left; font-family: var(--caps); color: var(--heading); padding: 7px 10px; border-bottom: 2px solid var(--gold); white-space: nowrap }
+td { padding: 7px 10px; border-top: 1px solid var(--line2); vertical-align: top }
+.marke { display: inline-block; font: 500 .78rem var(--sans); letter-spacing: .04em; text-transform: uppercase; padding: 1px 8px; border-radius: 10px; background: var(--chip); color: var(--dim) }
+.marke.empf { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good) }
+
+/* Mockup-Leiste */
+.mbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden }
+.seg button { border: 0; border-radius: 0 }
+button { font: inherit; color: inherit; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer }
+button:hover { background: var(--hover) }
+button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+.menue { position: relative }
+.liste { position: absolute; z-index: 50; top: calc(100% + 4px); left: 0; min-width: 270px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px var(--shade); padding: 6px; display: grid; gap: 2px }
+.liste button { border: 0; display: flex; justify-content: space-between; gap: 12px; text-align: left; width: 100%; min-height: 34px }
+.liste .st { color: var(--dim); font-size: .85rem }
+.liste .st.zu { color: var(--accent) }
+.mstand { color: var(--dim); font-size: .9rem }
+
+/* Desktop-Mock */
+.buehne-rahmen { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--bar) }
+.buehne { position: relative; width: 980px; height: 560px; background-color: var(--paper); background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px); background-size: 20px 20px; overflow: hidden; touch-action: none }
+.fenster { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 2px 10px var(--shade); display: flex; flex-direction: column; min-width: 120px }
+.fenster.vorn { box-shadow: 0 6px 22px var(--shade); border-color: var(--accent) }
+.fenster.behaelter { background: color-mix(in srgb, var(--surface) 55%, transparent); border-style: solid; border-width: 1.5px }
+.fenster.min { height: auto !important }
+.fenster.min .inhalt, .fenster.min .griff { display: none }
+.tkopf { display: flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; background: var(--bar); border-bottom: 1px solid var(--line2); border-radius: 6px 6px 0 0; cursor: grab; user-select: none; min-height: 32px }
+.fenster.fix .tkopf { cursor: default }
+.fenster.min .tkopf { border-bottom: 0; border-radius: 6px }
+.ttitel { font-family: var(--serif); font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.tart { font-size: .75rem; color: var(--dim); white-space: nowrap }
+.tk { min-height: 26px; min-width: 26px; padding: 0; border: 0; background: none; color: var(--dim); font-size: 1rem; line-height: 1 }
+.tk:hover { background: var(--hover); color: var(--ink) }
+.tk.x:hover { background: var(--accent); color: var(--accent-ink) }
+.tk.zier { cursor: default; opacity: .7 }
+.inhalt { flex: 1; overflow: auto; padding: 8px 10px; font-size: .92rem; position: relative }
+.inhalt b { font-family: var(--serif) }
+.behaelter > .inhalt { padding: 0 }
+.griff { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--line) 50%); border-radius: 0 0 6px 0 }
+.notiz { position: absolute; font-family: var(--serif); padding: 4px 6px; color: var(--ink) }
+.notiz h4 { margin: 0 0 4px; font-family: var(--caps); color: var(--heading); font-size: 1.15rem }
+.einst { position: absolute; z-index: 60; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px var(--shade); padding: 10px 12px; display: grid; gap: 6px; font-size: .92rem; width: 230px }
+.einst label { display: flex; gap: 8px; align-items: center; cursor: pointer }
+.einst b { font-family: var(--caps); color: var(--heading) }
+.alt { font-size: .72rem; color: var(--gold); border: 1px solid var(--gold); border-radius: 8px; padding: 0 6px; white-space: nowrap }
+
+/* Telefon-Mock */
+.zwei { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start }
+.telefon { width: 100%; max-width: 390px; height: 720px; border: 10px solid var(--ink); border-radius: 28px; background: var(--bg); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-self: center }
+.tkopfzeile { padding: 10px 14px; background: var(--bar); border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: baseline }
+.tkopfzeile b { font-family: var(--caps); color: var(--accent); font-size: 1.15rem }
+.stapel { flex: 1; overflow-y: auto; padding: 10px; display: grid; gap: 10px; align-content: start }
+.stapel .fenster { position: relative; min-width: 0 }
+.stapel .behaelter .inhalt { display: grid; gap: 8px; padding: 8px }
+.stapel .behaelter .fenster { box-shadow: none }
+.dock { display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px; background: var(--bar); border-top: 1px solid var(--line); scrollbar-width: none; min-height: 52px; align-items: center }
+.dock button { white-space: nowrap; border-radius: 16px; min-height: 34px; font-size: .9rem }
+.dock .leer { color: var(--dim); font-size: .85rem }
+.blatt { position: absolute; left: 0; right: 0; bottom: 0; max-height: 72%; background: var(--surface); border-top: 2px solid var(--accent); border-radius: 14px 14px 0 0; box-shadow: 0 -10px 30px var(--shade); display: flex; flex-direction: column; z-index: 20 }
+.blatt .tkopf { border-radius: 14px 14px 0 0; cursor: default }
+.blatt .inhalt { padding: 12px 14px }
+.blatt .knoepfe { display: flex; gap: 8px; padding: 0 14px 14px }
+.schleier { position: absolute; inset: 0; background: var(--shade); z-index: 19 }
+@media (prefers-reduced-motion: no-preference) { .blatt { animation: hoch .18s ease-out } @keyframes hoch { from { transform: translateY(40px); opacity: .4 } } }
+</style>
+
+<div class="spalte">
+  <header class="lesen">
+    <p class="unter">Atlas Mentis · Experiment T-435 · REQ-458 · 28.10.2026 · Zweig <code>experiment/T-435-board-fenster</code></p>
+    <h1>Boards als Fenster-Desktop</h1>
+    <p>Fenster statt Bereiche, Elemente dürfen sich überlappen, jedes trägt eine Titelleiste mit <b>–</b> und <b>×</b>. Was minimiert oder geschlossen ist, gilt <b>für dich</b> und nicht für den Tisch; was der Tisch zuerst sieht und was er schliessen darf, stellt die Leitung am Element ein.</p>
+    <p>Das läuft als <b>Experiment</b>: gebaut auf dem eigenen Zweig, nie direkt gemerged. Am Ende entscheidest du: übernehmen (dann sauber auf einem <code>task/</code>-Zweig) oder verwerfen (dann mit Grund, damit es nicht wieder auftaucht).</p>
+  </header>
+
+  <section class="spalte" aria-labelledby="h-mock">
+    <div class="lesen">
+      <h2 id="h-mock">Zum Anfassen</h2>
+      <p>Ein Board der Sitzung 12 mit einem ehemaligen Bereich („Conditions“), zwei Artikeln, einer Abfrage und einer Notiz ohne Rahmen. Ziehen an der Titelleiste, Grösse an der Ecke, Klick holt nach vorn. Mit <b>Spielerin</b> siehst du dasselbe Board mit ihrem eigenen Layout; das Telefon daneben zeigt denselben Zustand.</p>
+    </div>
+    <div class="mbar">
+      <span class="seg" role="group" aria-label="Sicht">
+        <button type="button" id="rolle-gm" aria-pressed="true">Leitung</button>
+        <button type="button" id="rolle-sp" aria-pressed="false">Spielerin</button>
+      </span>
+      <button type="button" id="snap" aria-pressed="true" title="Am 20-px-Raster einrasten">Einrasten</button>
+      <span class="menue">
+        <button type="button" id="fensterknopf" aria-expanded="false" aria-haspopup="true">Fenster ▾</button>
+        <span class="liste" id="fensterliste" hidden></span>
+      </span>
+      <button type="button" id="zurueck">Mein Layout zurücksetzen</button>
+      <span class="mstand" id="mstand" aria-live="polite"></span>
+    </div>
+    <div class="zwei">
+      <div class="buehne-rahmen"><div class="buehne" id="buehne" aria-label="Board, Desktop"></div></div>
+      <div class="telefon" aria-label="Board, Telefon 390 px">
+        <div class="tkopfzeile"><b>Sitzung 12</b><span class="mstand" id="tstand"></span></div>
+        <div class="stapel" id="stapel"></div>
+        <div class="dock" id="dock" aria-label="Minimiert"></div>
+        <div id="blattort"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-fenster">
+    <h2 id="h-fenster">Fenster und Titelleiste</h2>
+    <ul>
+      <li><b>Eine Titelleiste haben</b> die Kacheln mit Artikel, Abfrage und Struktur und die Fenster (Behälter). Text und Bild bekommen sie auf Wunsch, Zeichnungen nie (<b>E-196</b>).</li>
+      <li><b>–</b> minimiert auf die Titelleiste, an derselben Stelle; noch einmal stellt es wieder her. <b>×</b> schliesst: das Element ist für dich weg, bis du es über „Fenster“ wieder öffnest. Vom Board <i>genommen</i> wird es weiterhin nur über die Auswahl (Löschen), nicht über ×.</li>
+      <li><b>Verschieben</b> an der Titelleiste, <b>Grösse</b> an Rand und Ecke. Ein fixiertes Element bewegt sich nicht (das bestehende <code>locked</code>).</li>
+      <li><b>Ein Fenster als Behälter</b> ist der Nachfolger des Bereichs: es hält Elemente, die mit ihm wandern, minimieren und schliessen. Was hineingehört, ist <b>gespeichert</b> (<code>win</code> am Element), nicht aus der Lage erraten — sonst schluckte jedes Fenster, was man darüberzieht (<b>E-195</b>). Hineinziehen nimmt auf (das Fenster leuchtet), Herausziehen gibt frei.</li>
+      <li>Muster wie bei Ansichten und Kacheln (E-139 a): ein Fenster hält entweder Elemente oder ein einzelnes Ding (Artikel in einer Ansicht, Abfrage, Struktur, Widget).</li>
+    </ul>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-stapel">
+    <h2 id="h-stapel">Stapel und Überlappen</h2>
+    <ul>
+      <li>Elemente und Fenster überlappen frei. <b>Ein Klick</b> irgendwo auf ein Element holt es nach vorn (heute nur Ziehen).</li>
+      <li>Die Leitung speichert damit die Reihenfolge am Board (<code>z</code>, gibt es schon). Spielende holen nur <b>für sich und bis zum Neuladen</b> nach vorn — eine gespeicherte Reihenfolge je Person wäre ein zweites Board.</li>
+      <li>Ein Behälter bringt seine Elemente mit nach vorn; in ihm gilt ihre eigene Reihenfolge.</li>
+      <li><b>Einrasten</b> ist ein Schalter in der Werkzeugleiste, je Person gemerkt; das Raster (<code>snap</code>, 10 px) bleibt am Board.</li>
+    </ul>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-einst">
+    <h2 id="h-einst">Einstellungen je Element</h2>
+    <p>Am Element, über ⚙ in der Titelleiste (Leitung), wie die Einstellungen im Ansichtsdesigner (E-171 a).</p>
+    <div class="tab"><table>
+      <thead><tr><th>Einstellung</th><th>Vorgabe</th><th>Wirkung</th><th>Gespeichert</th></tr></thead>
+      <tbody>
+        <tr><td>Schliessbar</td><td>ja</td><td>ohne: kein ×, auch nicht für die Leitung (die stellt es um)</td><td><code>closable</code></td></tr>
+        <tr><td>Minimierbar</td><td>ja</td><td>ohne: kein –</td><td><code>minimizable</code></td></tr>
+        <tr><td>Fixiert</td><td>nein</td><td>nicht verschieben, keine Grösse ändern</td><td><code>locked</code> (gibt es)</td></tr>
+        <tr><td>Startet minimiert</td><td>nein</td><td>wie es jemand sieht, der noch nichts daran getan hat</td><td><code>start: 'min'</code></td></tr>
+        <tr><td>Titelleiste (nur Text, Bild)</td><td>aus</td><td>Text oder Bild bekommt Rahmen, – und ×</td><td><code>frame</code></td></tr>
+        <tr><td>Nur für die Leitung</td><td>nein</td><td>wie heute: geht an Spielende gar nicht hinaus</td><td><code>hidden</code> (gibt es)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="unter">Kacheln tragen die Werte an ihrer Kante <code>placed</code>, Text und Bild in <code>Board.shapes</code>, Fenster in <code>Board.windows</code> (neu). Alles Daten am Board, keine neue Artikelart.</p>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-person">
+    <h2 id="h-person">Layout der Spielenden</h2>
+    <ul>
+      <li>Minimiert und geschlossen ist <b>persönlich</b>, für alle, auch die Leitung (<b>E-197</b>). Wer nichts getan hat, sieht die Vorgabe am Element.</li>
+      <li>Gespeichert am Konto, gilt auf jedem Gerät: <code>PUT /api/me/prefs/boards.&lt;board&gt;</code> mit <code>{ min: [...], closed: [...], open: [...] }</code> — nur Abweichungen von der Vorgabe. Der Schlüssel muss dafür <code>_</code> erlauben (Board-Ids wie <code>e_4ddcfaa46c84</code>); eine Zeile am Server.</li>
+      <li>Die Leitung legt fest, was Spielende schliessen und minimieren dürfen (Einstellungen oben). Das ist eine Frage der Sicht, keine der Daten — gesiebt wird weiter nur, was <code>hidden</code> trägt.</li>
+      <li>Löscht die Leitung ein Element, fällt es aus jedem persönlichen Stand von selbst heraus (unbekannte Ids werden übergangen).</li>
+    </ul>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-liste">
+    <h2 id="h-liste">Liste der geschlossenen</h2>
+    <ul>
+      <li>„Fenster ▾“ oben am Board ersetzt die Reiter der Bereiche: alle Fenster und Kacheln mit Titel, ihr Stand (offen, minimiert, geschlossen) und die Zahl der geschlossenen am Knopf.</li>
+      <li>Ein Klick öffnet ein geschlossenes, stellt ein minimiertes her und springt hin (wie heute der Reiter). „Mein Layout zurücksetzen“ nimmt alle Abweichungen weg.</li>
+      <li>Am Telefon steht dieselbe Liste hinter einem Knopf in der Leiste unten.</li>
+    </ul>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-tel">
+    <h2 id="h-tel">Telefon</h2>
+    <ul>
+      <li>Unter 640 px: offene Fenster <b>gestapelt</b> in einer Spalte, in Leserichtung (oben nach unten, links nach rechts); ein Behälter zeigt seine Elemente darin gestapelt.</li>
+      <li>Minimierte stehen im <b>Dock</b> unten; antippen öffnet sie als <b>Blatt von unten</b> (das bestehende <code>nw-unterblatt</code>).</li>
+      <li>Die Leinwand bleibt über einen Schalter erreichbar, für die Leitung zum Anordnen (<b>E-198</b>). Gebaut als eigenes Verhalten, damit es später ein Viewpoint wird (E-140 ist offen).</li>
+    </ul>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-umzug">
+    <h2 id="h-umzug">Umzug der Bereiche</h2>
+    <p>Ohne Datenverlust; auf dev betrifft es <b>einen</b> Bereich („Maps“ auf „Testkampagne“). Die Migration zählt auf, was sie umzieht.</p>
+    <div class="tab"><table>
+      <thead><tr><th>Heute</th><th>Danach</th></tr></thead>
+      <tbody>
+        <tr><td>Anker mit <code>w</code>/<code>h</code> in <code>Board.anchors</code></td><td>Fenster in <code>Board.windows</code>, gleiche Id, Name als Titel, gleiche Lage</td></tr>
+        <tr><td>Kachel oder Form, deren Mitte im Bereich liegt (der kleinste gewinnt)</td><td>dieselbe Kachel mit <code>win: &lt;Id&gt;</code>; die Lage bleibt absolut</td></tr>
+        <tr><td>Anker ohne Rechteck (Sprungpunkt)</td><td>bleibt, wie er ist</td></tr>
+        <tr><td>Eingeklappt (nur im Browser)</td><td>beim ersten Öffnen einmal als „minimiert“ in den persönlichen Stand übernommen</td></tr>
+        <tr><td>Reiter oben</td><td>„Fenster ▾“</td></tr>
+        <tr><td>Werkzeug „Area“</td><td>Werkzeug „Window“</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-schnitte">
+    <h2 id="h-schnitte">Reihenfolge der Schnitte</h2>
+    <p>Alle auf dem Experiment-Zweig, je Schnitt zuerst ein roter Test, E2E bei 1360 und 390 px.</p>
+    <ol>
+      <li><b>Titelleiste und persönlicher Stand:</b> – und × an Kacheln, Liste „Fenster“, Klick nach vorn, Schalter Einrasten, Stand im Konto.</li>
+      <li><b>Einstellungen je Element:</b> ⚙ mit schliessbar, minimierbar, fixiert, startet minimiert; Spielende halten sich daran.</li>
+      <li><b>Fenster als Behälter und Umzug:</b> <code>Board.windows</code>, <code>win</code>, Werkzeug „Window“, Migration der Bereiche mit Durchstich.</li>
+      <li><b>Telefon:</b> Stapel, Dock, Blatt, Schalter zur Leinwand.</li>
+      <li><b>Bericht:</b> Bilder und kurzes Video, Hilfe und Doku-Entwurf — dann entscheidest du über Übernahme oder Verwerfen.</li>
+    </ol>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-entsch">
+    <h2 id="h-entsch">Offene Entscheide</h2>
+    <div class="kasten"><h3>E-195 · Was gehört in ein Fenster?</h3><p><span class="marke empf">Empfehlung a</span> a) gespeichert am Element (<code>win</code>), Hineinziehen nimmt auf · b) die Lage entscheidet wie bei den Bereichen (T-073). Mit Überlappen schluckte b jedes darübergezogene Element.</p></div>
+    <div class="kasten"><h3>E-196 · Wer bekommt eine Titelleiste?</h3><p><span class="marke empf">Empfehlung a</span> a) Kacheln (Artikel, Abfrage, Struktur) und Fenster immer, Text und Bild auf Wunsch, Zeichnungen nie · b) alles · c) nur Fenster, Kacheln bleiben wie heute.</p></div>
+    <div class="kasten"><h3>E-197 · Wessen ist Minimieren und Schliessen?</h3><p><span class="marke empf">Empfehlung a</span> a) persönlich für alle, auch die Leitung; die Vorgabe am Element sagt, wie man es zuerst sieht · b) die Leitung minimiert und schliesst für alle, Spielende nur für sich. Für „vor allen verbergen“ gibt es „Nur für die Leitung“.</p></div>
+    <div class="kasten"><h3>E-198 · Board am Telefon?</h3><p><span class="marke empf">Empfehlung a</span> a) Stapel, Dock, Blatt; Leinwand per Schalter · b) Leinwand verkleinert wie heute, nur das Dock dazu · c) alles als Blätter.</p></div>
+    <div class="kasten"><h3>E-199 · Wie probierst du das Experiment aus?</h3><p><span class="marke empf">Empfehlung a</span> a) Bilder und Video aus einem Lauf hier, mit Testboard; dev bleibt unberührt · b) ausnahmsweise hinter dem Schalter <code>experiments.boardWindows</code> nach preprod (wie beim Regel-Builder) · c) eigene Vorschau-Umgebung.</p></div>
+  </section>
+
+  <section class="lesen" aria-labelledby="h-nachbar">
+    <h2 id="h-nachbar">Was nicht hier gebaut wird</h2>
+    <ul>
+      <li>Die allgemeine Werkzeugleiste mit drei Zonen gehört T-425 (REQ-436, E-171 a). Hier wird im Board nur „Area“ zu „Window“; das Board wechselt auf die gemeinsame Leiste, wenn T-425 sie freigibt.</li>
+      <li>Spielleiter-Schirm (T-024) und Widget-Katalog (REQ-384) nutzen später dasselbe Fenster; darum liegen Rahmen und Stand als Muster unter <code>muster/</code>, nicht in der Board-Seite.</li>
+      <li>T-413 (fremde Boards in der Liste) und die Langsamkeit auf dev sind eigene Karten.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const RASTER = 20;
+  /* Das Board: ein Behälter (vormals Bereich) mit zwei Elementen, zwei Artikel, eine Abfrage, eine Notiz ohne Rahmen. */
+  const EL = [
+    { id: 'w-cond', art: 'Window', titel: 'Conditions', behaelter: true, alt: true, x: 20, y: 20, w: 320, h: 290, z: 1, closable: true, minimizable: true, locked: false, start: 'open' },
+    { id: 'k-pois', art: 'Rule · quick', titel: 'Poisoned', win: 'w-cond', x: 10, y: 10, w: 296, h: 112, z: 1, closable: false, minimizable: true, locked: false, start: 'open',
+      text: 'Disadvantage on attack rolls and ability checks.' },
+    { id: 'k-fear', art: 'Rule · quick', titel: 'Frightened', win: 'w-cond', x: 10, y: 132, w: 296, h: 112, z: 2, closable: false, minimizable: true, locked: false, start: 'open',
+      text: 'Disadvantage while the source of fear is in sight; cannot move closer.' },
+    { id: 'k-volo', art: 'NPC · quick', titel: 'Volothamp Geddarm', x: 300, y: 60, w: 250, h: 190, z: 3, closable: true, minimizable: true, locked: false, start: 'open',
+      text: '<b>Volo</b> — writer, braggart, worried sick about Floon. Offers 10 dragons per head to find him.' },
+    { id: 'k-rum', art: 'Query · draw', titel: 'Rumours', x: 520, y: 220, w: 260, h: 180, z: 4, closable: false, minimizable: true, locked: false, start: 'open',
+      text: '<b>Drawn 2 of 7.</b> “The Zhentarim are buying up warehouses near the docks.”' },
+    { id: 'k-port', art: 'Location · quick', titel: 'The Yawning Portal', x: 120, y: 360, w: 300, h: 170, z: 5, closable: true, minimizable: true, locked: false, start: 'min',
+      text: 'Tavern over the well into Undermountain. Durnan behind the bar.' },
+    { id: 'n-1', notiz: true, x: 620, y: 30, w: 320, h: 140, z: 0,
+      text: '<h4>Session 12 · Trollskull Alley</h4>Open with Volo at the bar. Floon was last seen at the Skewered Dragon.' },
+  ];
+  const ROLLE_SCHLUESSEL = { gm: 'Leitung', sp: 'Spielerin' };
+  /* Persönlicher Stand je Rolle: nur Abweichungen von der Vorgabe (so wie im Konto gespeichert). */
+  const STAND = { gm: { min: new Set(), closed: new Set(), open: new Set() }, sp: { min: new Set(), closed: new Set(), open: new Set() } };
+  const ZSP = new Map(); // Spielende holen nur bis zum Neuladen nach vorn
+  let rolle = 'gm', einrasten = true, einstOffen = null, blatt = null;
+  const $ = (s) => document.querySelector(s);
+  const buehne = $('#buehne');
+
+  const byId = (id) => EL.find((e) => e.id === id);
+  const st = () => STAND[rolle];
+  function zustand(e) {
+    const s = st();
+    if (s.closed.has(e.id)) return 'zu';
+    if (s.min.has(e.id)) return 'min';
+    if (s.open.has(e.id)) return 'offen';
+    return e.start === 'min' ? 'min' : 'offen';
+  }
+  function setze(e, wie) {
+    const s = st();
+    s.closed.delete(e.id); s.min.delete(e.id); s.open.delete(e.id);
+    const vorgabe = e.start === 'min' ? 'min' : 'offen';
+    if (wie === 'zu') s.closed.add(e.id);
+    else if (wie !== vorgabe) (wie === 'min' ? s.min : s.open).add(e.id);
+    zeichne();
+  }
+  const zVon = (e) => (rolle === 'sp' && ZSP.has(e.id) ? ZSP.get(e.id) : e.z);
+  function nachVorn(e) {
+    const geschwister = EL.filter((x) => (x.win || null) === (e.win || null));
+    const oben = Math.max(...geschwister.map(zVon)) + 1;
+    if (zVon(e) === oben - 1 && geschwister.filter((x) => zVon(x) === zVon(e)).length === 1) return;
+    if (rolle === 'gm') e.z = oben; else ZSP.set(e.id, oben);
+    zeichne();
+  }
+  const raste = (v) => (einrasten ? Math.round(v / RASTER) * RASTER : Math.round(v));
+
+  function knopf(cls, txt, label, fn) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tk ' + cls; b.textContent = txt; b.setAttribute('aria-label', label); b.title = label;
+    b.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); fn(); });
+    return b;
+  }
+
+  function fenster(e, telefon) {
+    const z = zustand(e);
+    const f = document.createElement('div');
+    f.className = 'fenster' + (e.behaelter ? ' behaelter' : '') + (z === 'min' ? ' min' : '') + (e.locked ? ' fix' : '');
+    f.dataset.id = e.id;
+    f.setAttribute('role', 'group'); f.setAttribute('aria-label', e.titel);
+    if (!telefon) {
+      Object.assign(f.style, { left: e.x + 'px', top: e.y + 'px', width: e.w + 'px', height: e.h + 'px', zIndex: zVon(e) });
+      f.addEventListener('pointerdown', () => nachVorn(e));
+    }
+    const kopf = document.createElement('div');
+    kopf.className = 'tkopf';
+    const t = document.createElement('span'); t.className = 'ttitel'; t.textContent = e.titel; kopf.append(t);
+    if (e.alt) { const a = document.createElement('span'); a.className = 'alt'; a.textContent = 'was an area'; a.title = 'Aus einem Bereich umgezogen'; kopf.append(a); }
+    const art = document.createElement('span'); art.className = 'tart'; art.textContent = e.art; kopf.append(art);
+    if (rolle === 'gm' && !telefon) kopf.append(knopf('', '⚙', 'Einstellungen von ' + e.titel, () => { einstOffen = einstOffen === e.id ? null : e.id; zeichne(); }));
+    if (e.minimizable) kopf.append(knopf('', z === 'min' ? '▢' : '–', (z === 'min' ? 'Wiederherstellen: ' : 'Minimieren: ') + e.titel, () => setze(e, z === 'min' ? 'offen' : 'min')));
+    if (e.closable) kopf.append(knopf('x', '×', 'Schliessen: ' + e.titel, () => setze(e, 'zu')));
+    if (!telefon && !e.locked) kopf.addEventListener('pointerdown', (ev) => ziehen(ev, e, 'lage'));
+    f.append(kopf);
+    const inh = document.createElement('div'); inh.className = 'inhalt';
+    if (e.behaelter) {
+      for (const k of EL.filter((x) => x.win === e.id && zustand(x) !== 'zu').sort((a, b) => (telefon ? a.y - b.y : zVon(a) - zVon(b)))) inh.append(fenster(k, telefon));
+    } else inh.innerHTML = e.text;
+    f.append(inh);
+    if (!telefon && !e.locked) {
+      const g = document.createElement('span'); g.className = 'griff'; g.setAttribute('aria-hidden', 'true');
+      g.addEventListener('pointerdown', (ev) => ziehen(ev, e, 'groesse'));
+      f.append(g);
+    }
+    if (!telefon && einstOffen === e.id) f.append(einstellungen(e));
+    return f;
+  }
+
+  function einstellungen(e) {
+    const d = document.createElement('div');
+    d.className = 'einst'; d.style.left = '8px'; d.style.top = '36px';
+    d.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    d.innerHTML = '<b>' + e.titel + '</b>';
+    const reihe = (schl, wort, umgekehrt) => {
+      const l = document.createElement('label'); const c = document.createElement('input');
+      c.type = 'checkbox'; c.id = 'e-' + e.id + '-' + schl;
+      c.checked = schl === 'start' ? e.start === 'min' : !!e[schl];
+      c.addEventListener('change', () => { if (schl === 'start') e.start = c.checked ? 'min' : 'open'; else e[schl] = c.checked; zeichne(); });
+      l.append(c, document.createTextNode(' ' + wort)); d.append(l);
+    };
+    reihe('closable', 'Schliessbar'); reihe('minimizable', 'Minimierbar'); reihe('locked', 'Fixiert'); reihe('start', 'Startet minimiert');
+    return d;
+  }
+
+  function ziehen(ev, e, wie) {
+    if (rolle === 'sp' && wie) { /* Spielende ordnen nicht an — sie schreiben das Board nicht. */ nachVorn(e); return; }
+    ev.preventDefault(); ev.stopPropagation(); nachVorn(e);
+    const sx = ev.clientX, sy = ev.clientY, ax = e.x, ay = e.y, aw = e.w, ah = e.h;
+    /* Am Fenster des Browsers horchen: nachVorn() zeichnet neu, das gegriffene Element gibt es danach nicht mehr. */
+    const el = window;
+    const bew = (m) => {
+      const dx = m.clientX - sx, dy = m.clientY - sy;
+      if (wie === 'lage') { e.x = Math.max(0, raste(ax + dx)); e.y = Math.max(0, raste(ay + dy)); }
+      else { e.w = Math.max(140, raste(aw + dx)); e.h = Math.max(70, raste(ah + dy)); }
+      zeichneBuehne();
+    };
+    const los = () => { el.removeEventListener('pointermove', bew); el.removeEventListener('pointerup', los); el.removeEventListener('pointercancel', los); zeichne(); };
+    el.addEventListener('pointermove', bew); el.addEventListener('pointerup', los); el.addEventListener('pointercancel', los);
+  }
+
+  function zeichneBuehne() {
+    buehne.replaceChildren();
+    for (const e of EL.filter((x) => !x.win).sort((a, b) => zVon(a) - zVon(b))) {
+      if (e.notiz) {
+        const n = document.createElement('div'); n.className = 'notiz';
+        Object.assign(n.style, { left: e.x + 'px', top: e.y + 'px', width: e.w + 'px', zIndex: e.z }); n.innerHTML = e.text; buehne.append(n); continue;
+      }
+      if (zustand(e) === 'zu') continue;
+      const f = fenster(e, false);
+      if (zVon(e) === Math.max(...EL.filter((x) => !x.win && zustand(x) !== 'zu').map(zVon))) f.classList.add('vorn');
+      buehne.append(f);
+    }
+  }
+
+  function zeichneTelefon() {
+    const stapel = $('#stapel'), dock = $('#dock');
+    stapel.replaceChildren(); dock.replaceChildren();
+    const oben = EL.filter((x) => !x.win && !x.notiz);
+    /* Leserichtung: oben nach unten, links nach rechts (Zeilen von 120 px). */
+    const lese = (a, b) => Math.floor(a.y / 120) - Math.floor(b.y / 120) || a.x - b.x;
+    const notiz = byId('n-1');
+    const nz = document.createElement('div'); nz.className = 'kasten'; nz.innerHTML = notiz.text; stapel.append(nz);
+    for (const e of oben.filter((x) => zustand(x) === 'offen').sort(lese)) stapel.append(fenster(e, true));
+    const minimiert = EL.filter((x) => !x.notiz && zustand(x) === 'min');
+    if (!minimiert.length) { const l = document.createElement('span'); l.className = 'leer'; l.textContent = 'Nichts minimiert'; dock.append(l); }
+    for (const e of minimiert) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = e.titel;
+      b.addEventListener('click', () => { blatt = e.id; zeichne(); }); dock.append(b);
+    }
+    const ort = $('#blattort'); ort.replaceChildren();
+    const e = blatt && byId(blatt);
+    if (e && zustand(e) === 'min') {
+      const s = document.createElement('div'); s.className = 'schleier'; s.addEventListener('click', () => { blatt = null; zeichne(); });
+      const b = document.createElement('div'); b.className = 'blatt'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-label', e.titel);
+      const k = document.createElement('div'); k.className = 'tkopf';
+      const t = document.createElement('span'); t.className = 'ttitel'; t.textContent = e.titel; k.append(t);
+      k.append(knopf('', '⌄', 'Blatt schliessen', () => { blatt = null; zeichne(); }));
+      const inh = document.createElement('div'); inh.className = 'inhalt';
+      if (e.behaelter) inh.textContent = EL.filter((x) => x.win === e.id).map((x) => x.titel).join(' · '); else inh.innerHTML = e.text;
+      const kn = document.createElement('div'); kn.className = 'knoepfe';
+      const auf = document.createElement('button'); auf.type = 'button'; auf.textContent = 'Im Stapel zeigen';
+      auf.addEventListener('click', () => { blatt = null; setze(e, 'offen'); }); kn.append(auf);
+      b.append(k, inh, kn); ort.append(s, b);
+    } else blatt = null;
+  }
+
+  function zeichneListe() {
+    const zu = EL.filter((x) => !x.notiz && zustand(x) === 'zu').length;
+    $('#fensterknopf').textContent = 'Fenster ▾' + (zu ? ' (' + zu + ' geschlossen)' : '');
+    const l = $('#fensterliste'); l.replaceChildren();
+    for (const e of EL.filter((x) => !x.notiz)) {
+      const z = zustand(e);
+      const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem');
+      const n = document.createElement('span'); n.textContent = (e.win ? '  ↳ ' : '') + e.titel;
+      const s = document.createElement('span'); s.className = 'st' + (z === 'zu' ? ' zu' : ''); s.textContent = { offen: 'offen', min: 'minimiert', zu: 'geschlossen' }[z];
+      b.append(n, s);
+      b.addEventListener('click', () => { setze(e, 'offen'); if (e.win) setze(byId(e.win), 'offen'); nachVorn(e.win ? byId(e.win) : e); });
+      l.append(b);
+    }
+  }
+
+  function zeichne() {
+    zeichneBuehne(); zeichneTelefon(); zeichneListe();
+    const s = st();
+    const txt = ROLLE_SCHLUESSEL[rolle] + ': ' + s.min.size + ' minimiert, ' + s.closed.size + ' geschlossen, ' + s.open.size + ' geöffnet entgegen der Vorgabe';
+    $('#mstand').textContent = txt; $('#tstand').textContent = ROLLE_SCHLUESSEL[rolle];
+  }
+
+  const rollen = (r) => { rolle = r; einstOffen = null; blatt = null; $('#rolle-gm').setAttribute('aria-pressed', r === 'gm'); $('#rolle-sp').setAttribute('aria-pressed', r === 'sp'); zeichne(); };
+  $('#rolle-gm').addEventListener('click', () => rollen('gm'));
+  $('#rolle-sp').addEventListener('click', () => rollen('sp'));
+  $('#snap').addEventListener('click', () => { einrasten = !einrasten; $('#snap').setAttribute('aria-pressed', einrasten); });
+  $('#zurueck').addEventListener('click', () => { const s = st(); s.min.clear(); s.closed.clear(); s.open.clear(); if (rolle === 'sp') ZSP.clear(); zeichne(); });
+  const knopfL = $('#fensterknopf'), liste = $('#fensterliste');
+  knopfL.addEventListener('click', (ev) => { ev.stopPropagation(); liste.hidden = !liste.hidden; knopfL.setAttribute('aria-expanded', !liste.hidden); });
+  document.addEventListener('click', (ev) => { if (!liste.hidden && !liste.contains(ev.target)) { liste.hidden = true; knopfL.setAttribute('aria-expanded', 'false'); } });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { liste.hidden = true; einstOffen = null; blatt = null; zeichne(); } });
+  buehne.addEventListener('pointerdown', (ev) => { if (ev.target === buehne && einstOffen) { einstOffen = null; zeichne(); } });
+  zeichne();
+})();
+</script>
