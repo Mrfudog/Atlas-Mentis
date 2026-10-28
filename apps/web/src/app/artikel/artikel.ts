@@ -113,6 +113,7 @@ import { Ansichtsbaum } from '../ansichten/baum';
 import { Ansichtswahl } from '../ansichten/wahl';
 import { Ansichtsdesigner, type AnsichtsEntwurf } from '../ansichten/designer';
 import { Kapitel, Kapitelteil } from '../muster/kapitel';
+import { Klappleiste } from '../muster/klappleiste';
 
 /** So viele Rückbezüge stehen, bevor „Show all" kommt. */
 const RUECK_KURZ = 12;
@@ -180,6 +181,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
   providers: [{ provide: SCHNELL_KONTEXT, useExisting: forwardRef(() => Artikel) }, WurfZiel],
   imports: [
     RouterLink,
+    Klappleiste,
     FormsModule,
     Stil,
     Bogen,
@@ -472,7 +474,12 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         <!-- Die Kapitel der Seite (T-277): am Telefon Reiter, am Desktop
              gerahmte Bereiche — Felder links breit, Kanten rechts schmal,
              Admin und Log darunter zugeklappt. -->
-        <nw-kapitel class="spalten" [vorgabe]="tab() === 'read' ? 'read' : null">
+        <!-- Die Klappleiste (T-359): Admin und Log auf und zu, von Kapitel zu
+             Kapitel springen, auch in die Bereiche darin (der Inhalt einer
+             Ebene nach Art). Nur am Desktop — am Telefon sind die Kapitel
+             Reiter, und dort wählt man, statt zu springen. -->
+        <nw-klappleiste class="nur-breit" beschriftung="Article sections" [fest]="false" />
+        <nw-kapitel class="spalten" merke="article" [vorgabe]="tab() === 'read' ? 'read' : null">
           <nw-kapitelteil key="fields" titel="Fields" lage="haupt" class="kahl">
           <main class="hauptspalte">
             <article class="blatt">

@@ -65,7 +65,7 @@ const SUCHE_AB = 40;
           <ul class="baum">
             @for (a of gefiltert(); track a.type) {
               <li>
-                <details [open]="offen().has(a.type) || !!suche()" (toggle)="umschalten(a.type, $any($event.target).open)">
+                <details data-bereich [open]="offen().has(a.type) || !!suche()" (toggle)="umschalten(a.type, $any($event.target).open)">
                   <summary>
                     <input type="checkbox" [checked]="a.on" [disabled]="!artSchaltbar()" [title]="artTitel()"
                            (click)="$event.stopPropagation()" (change)="artSchalten(a)" />
