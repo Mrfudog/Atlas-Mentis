@@ -177,7 +177,8 @@
           "text": [
             "An article as a page of a book. “Edit” changes it; on an article you cannot write, Edit makes your own version in a layer of yours. Click a named article for its quick view; “Open article” goes there.",
             "The page has chapters: Fields (the article itself), Relations, Linked here, Admin and Log. On a phone they are tabs at the top; the chosen one stays in the address (?k=admin), so Back and a shared link keep it. A chapter with nothing in it does not show.",
-            "On a wider screen the chapters are framed areas: the fields on the left, relations and what links here on the right, Admin and Log below, collapsed until you open them. The row above them jumps to each. Expand all and Collapse all open and close Admin and Log (and the groups inside, such as a layer’s contents by type); ‹ and › go from section to section (Alt+↑/↓, with Shift: collapse/expand all). Whether Admin and Log stand open is kept for your account.",
+            "On a wider screen the chapters are framed areas: the fields on the left, relations and what links here on the right, Admin and Log below, collapsed until you open them. The row above them jumps to each.",
+            "Expand all and Collapse all open and close Admin and Log (and the groups inside, such as a layer’s contents by type); ‹ and › go from section to section (Alt+↑/↓, with Shift: collapse/expand all). Whether Admin and Log stand open is kept for your account.",
             "Fields that suggest (an encounter’s kind, a place type) offer their list and the values already in use as you type — pick one or type your own. A colour field opens a colour picker.",
             "Edit starts with the Layer field: the layer this article belongs to. Choose another layer you write in (the same list as Writes to in the header, also layers this campaign does not turn on, marked “not in this campaign”) and Save moves it there; the page then says where it is now. Its links, versions and parts stay where they are. Only the administration can take an article out of every layer.",
             "Under the title stands only the layer of this version. Admin, on every kind of article, names all its layers and those of its other versions — click one to open that version — and why you see it: in play, from a compare layer, enabled as extra content, or in no layer.",
@@ -303,7 +304,8 @@
       "sections": [
         {
           "text": [
-            "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview. Above the filters, Expand all and Collapse all open and close every filter; ‹ and › go from one to the next.",
+            "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview.",
+            "Above the filters, Expand all and Collapse all open and close every filter; ‹ and › go from one to the next.",
             "“Columns” picks what the table shows: any field of the type (also calculated ones), its edges, and what every row has — type, source, layers, tags, status, ID. Drag or use ↑↓ to order them.",
             "The choice is kept per page and type for your account and in the address, so a shared link shows the same table. “Reset to default” drops your choice: the campaign default shows, else the type's columns. The GM can make a choice the campaign default for everyone without their own.",
             "Filter groups are saved filters of a page — reach them as tabs or from ▾ in the header. The layers shown follow the running campaign; change them in the popup under the brand. There, “Show comparison articles in lists” adds what only a comparison layer brings, below the list and marked “not in play”; the GM brings one into play with “Enable”.",
@@ -403,7 +405,8 @@
         {
           "text": [
             "The types of articles, their fields, edges, lists and views. A new type is a new row — create it here. Before something is removed, the registry counts what uses it.",
-            "A type’s page has chapters — This type, Own fields, Inherited, Edges from here and Views. On a phone they are tabs; on a wider screen the fields stand on the left, the short settings and the edges on the right. Expand all opens every inherited type and Edges from here; Collapse all closes them; ‹ and › go from section to section (Alt+↑/↓). On a phone the bar sits at the bottom and works in the chosen tab.",
+            "A type’s page has chapters — This type, Own fields, Inherited, Edges from here and Views. On a phone they are tabs; on a wider screen the fields stand on the left, the short settings and the edges on the right.",
+            "Expand all opens every inherited type and Edges from here; Collapse all closes them; ‹ and › go from section to section (Alt+↑/↓). On a phone the bar sits at the bottom and works in the chosen tab.",
             "“How it works” explains the model with a worked example.",
             "Every article lies in a layer and has a state. One that fits no other layer waits in Unassigned — an ordinary layer you can switch on in a campaign; the workbench lists its articles under Unassigned.",
             "Two views are forms for creating: Create (what the quick dialog asks when you create from a picker) and Create (full) (the article page right after New article, with its fields first, even empty). Design them per type under Views; without a design, creating works as before.",
