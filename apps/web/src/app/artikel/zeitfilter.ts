@@ -35,7 +35,7 @@ export function zeitraumTeile(wert: string | undefined): { von: string; bis: str
 @Component({
   selector: 'nw-zeitfilter',
   template: `
-    <details class="facette" data-bereich [open]="offen()" (toggle)="offen.set($any($event.target).open)">
+    <details class="facette" data-bereich [open]="gemerkt() ?? offen()" (toggle)="klappe($any($event.target).open)">
       <summary class="leg">
         When &amp; who
         @if (gewaehlt()) {
@@ -111,6 +111,10 @@ export class Zeitfilter {
   /** „Between dates…" gewählt, aber noch kein Datum — dann stehen die Felder schon. */
   private readonly offeneSpanne = signal<ReadonlySet<string>>(new Set());
   protected readonly offen = signal(false);
+  /** Der am Konto gemerkte Stand dieser Facette (T-441); ohne ihn gilt `offen`. */
+  readonly gemerkt = input<boolean | undefined>(undefined);
+  /** Jemand hat sie auf- oder zugeklappt — die Seite merkt es sich. */
+  readonly geklappt = output<boolean>();
 
   protected readonly gewaehlt = computed(() => Object.values(ZEIT_REFS).filter((r) => this.felder()[r]?.values?.length).length);
   protected readonly fremdeSortierung = computed(() => {
@@ -124,6 +128,12 @@ export class Zeitfilter {
       if (this.gewaehlt()) this.offen.set(true);
     });
   }
+  protected klappe(auf: boolean): void {
+    if (auf === (this.gemerkt() ?? this.offen())) return;
+    this.offen.set(auf);
+    this.geklappt.emit(auf);
+  }
+
 
   protected wert(ref: string): string {
     return this.felder()[ref]?.values?.[0] ?? '';

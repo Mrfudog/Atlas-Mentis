@@ -40,7 +40,7 @@ export function bedingungText(t: HasTerm, label: string, ziel?: string): string 
 @Component({
   selector: 'nw-beziehungsfilter',
   template: `
-    <details class="facette" data-bereich [open]="offen()" (toggle)="offen.set($any($event.target).open)">
+    <details class="facette" data-bereich [open]="gemerkt() ?? offen()" (toggle)="klappe($any($event.target).open)">
       <summary class="leg">
         Relations
         @if (bedingungen().length) {
@@ -120,6 +120,10 @@ export class Beziehungsfilter {
   readonly setzen = output<{ ref: string; values: string[] | null }>();
 
   protected readonly offen = signal(false);
+  /** Der am Konto gemerkte Stand dieser Facette (T-441); ohne ihn gilt `offen`. */
+  readonly gemerkt = input<boolean | undefined>(undefined);
+  /** Jemand hat sie auf- oder zugeklappt — die Seite merkt es sich. */
+  readonly geklappt = output<boolean>();
   protected readonly ref = signal('');
   protected readonly art = signal<HasArt>('has');
   protected readonly anzahl = signal(1);
@@ -149,6 +153,12 @@ export class Beziehungsfilter {
       if (this.werte().length) this.offen.set(true);
     });
   }
+  protected klappe(auf: boolean): void {
+    if (auf === (this.gemerkt() ?? this.offen())) return;
+    this.offen.set(auf);
+    this.geklappt.emit(auf);
+  }
+
 
   protected zieleVon(ref: string): { id: string; name: string; count: number }[] {
     return this.ziele()[ref] ?? [];
