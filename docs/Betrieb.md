@@ -721,7 +721,8 @@ einer Ebene geändert hat, bleibt.
 **Herausgeber und Blocklist-Kategorien** (T-094, Migration
 `037_ebenen_herausgeber.sql`): beim Start legt der Server die
 Herausgeber-Gruppen „Official" und „Partnered" (`e5_publisher_*`,
-`groupBy: 'publisher'`) und die Kategorien „Non-standard", „Comedy" und
+`groupBy: 'publisher'`; „Partnered" ist seit Migration 155 eine Kategorie
+und seine Bücher stehen unter Official, E-193) und die Kategorien „Non-standard", „Comedy" und
 „Outside the Forgotten Realms" an — wieder nur, wo ein Buch hineingehört —
 und hängt jede Buchebene ein. Welches Buch wohin, steht in
 [5etools-Abgleich › Herausgeber](5etools-Abgleich.md#herausgeber-und-blocklist-kategorien-t-094).

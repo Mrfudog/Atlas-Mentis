@@ -111,23 +111,27 @@ export function blocklistGruppen(q: string): string[] {
  * liegt dort gar nicht — was in keiner Herausgeber-Gruppe steht, ist
  * Homebrew (`publisherOf`).
  */
-export const HERAUSGEBER: [string, string, string][] = [
-  ['official', 'Official', 'Published by Wizards of the Coast.'],
-  ['partnered', 'Partnered', 'Made with a partner of Wizards of the Coast (Critical Role, Rick and Morty, LEGO …) and sold as official D&D.'],
-];
+export const HERAUSGEBER: [string, string, string][] = [['official', 'Official', 'Published by Wizards of the Coast.']];
 
-/*
- * Die Partner-Quellen: `SOURCES_PARTNERED_WOTC` in `5etools-src/js/parser.js`
- * ist seit Dez. 2025 leer — D&D Beyond führt diese Bücher jetzt als
- * „Official" —, die Liste steht dort auskommentiert. Die Leitung will
- * Partner-Inhalte trotzdem erkennen, also gilt die alte Liste. Unklare
- * Fälle zählt docs/5etools-Abgleich.md auf.
+/**
+ * **Partner-Bücher sind Official** (E-193, 28.10.2026): `SOURCES_PARTNERED_WOTC`
+ * in `5etools-src/js/parser.js` ist seit Dez. 2025 leer — D&D Beyond führt
+ * diese Bücher als „Official", und die Leitung will es ebenso. Erkennen will
+ * sie Partner-Inhalte trotzdem: „Partnered" bleibt als **Kategorie** (ohne
+ * `groupBy`, unter seiner alten Id `e5_publisher_partnered`), und die alte
+ * Liste sagt, wer hineinkommt. Unklare Fälle zählt docs/5etools-Abgleich.md auf.
  */
 const PARTNER = new Set(['RMBRE', 'RMR', 'EGW', 'ToR', 'DD', 'FS', 'US', 'CRCotN', 'HftT', 'LRDT', 'TD'].map((x) => x.toLowerCase()));
+const PARTNER_TEXT = 'Made with a partner of Wizards of the Coast (Critical Role, Rick and Morty, LEGO …); published as official D&D.';
 
-/** Wer ein Buch aus 5e.tools herausgibt (T-094). */
-export function herausgeberVon(q: string): string {
-  return PARTNER.has(q.toLowerCase()) ? 'partnered' : 'official';
+/** Ob ein Buch mit einem Partner entstand (E-193) — die Kategorie „Partnered". */
+export function istPartner(q: string): boolean {
+  return PARTNER.has(q.toLowerCase());
+}
+
+/** Wer ein Buch aus 5e.tools herausgibt (T-094): seit E-193 immer Wizards. */
+export function herausgeberVon(_q: string): string {
+  return 'official';
 }
 
 /** In welche Gruppe ein Buch gehört — aus der Gruppe in 5e.tools, dem Erscheinen und dem Kürzel. */
@@ -561,12 +565,14 @@ function bauen(
     for (const b of blocklistGruppen(q)) gruppeAn(l, gruppeEbeneId(b), kategorie(b));
     const h = herausgeberVon(q);
     gruppeAn(l, herausgeberEbeneId(h), verlag(h));
+    /* Partner-Bücher: zusätzlich die Kategorie, unter der alten Id (E-193). */
+    if (istPartner(q)) gruppeAn(l, herausgeberEbeneId('partnered'), () => neueGruppe('publisher|partnered', herausgeberEbeneId('partnered'), 'Partnered', PARTNER_TEXT, false));
     /* Die Gruppe der 2014-Regeln (T-109): jedes offizielle Buch darauf —
        das schon vor T-087 hereinkam. Eine Ebene, die erst jetzt dazukommt
        (nur Fahrzeuge oder Kartendecks), ist nicht aufgeschaltet: über die
        Gruppe käme sie in jede Kampagne, die sie aufschaltet. Die Leitung
        hängt sie auf der Ebenenseite dazu, wenn sie will. */
-    if (h === 'official' && (l.components['Layer'] as { version?: string } | undefined)?.version === '2014' && grundEbenen.has(l.id)) {
+    if (h === 'official' && !istPartner(q) && (l.components['Layer'] as { version?: string } | undefined)?.version === '2014' && grundEbenen.has(l.id)) {
       wb.kante(l, 'partOf', ebene.id);
     }
   }
