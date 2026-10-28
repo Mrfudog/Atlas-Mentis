@@ -595,3 +595,7 @@ nw-klappleiste.nur-breit {
     display: none;
   }
 }
+
+/* Hinweis freigeben (T-215). */
+.hinweis-freigabe { margin: 0.25rem 0 0; font-size: 0.9em; }
+.hinweis-freigabe .frei { color: var(--good); }

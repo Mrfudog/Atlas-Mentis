@@ -23,7 +23,7 @@ import { entityName } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import { Live, type ArtikelEreignis } from './live';
 import { BildStand } from '../artikel/bild';
-import { Api, ApiError, type Bezuege, type Fertigungswerte, type Ladenwaren, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
+import { Api, ApiError, type Begegnungsbezug, type Bezuege, type Fertigungswerte, type Ladenwaren, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
@@ -61,6 +61,9 @@ export class Bestand {
   /** Was ein Laden führt, und zu welchem Preis (`refs.shop`, T-129). */
   private readonly _laden = signal<ReadonlyMap<string, Ladenwaren>>(new Map());
   readonly laden = this._laden.asReadonly();
+  /** Was eine Begegnung über ihre Beteiligten weiss (`refs.encounter`, T-215). */
+  private readonly _begegnung = signal<ReadonlyMap<string, Begegnungsbezug>>(new Map());
+  readonly begegnung = this._begegnung.asReadonly();
   /** Die geltende Sichtbarkeitsstufe je geöffnetem Artikel (`refs.audience`, T-277). */
   private readonly _stufe = signal<ReadonlyMap<string, NonNullable<Bezuege['audience']>>>(new Map());
   readonly stufe = this._stufe.asReadonly();
@@ -236,6 +239,13 @@ export class Bestand {
         this._laden.update((m) => {
           const n = new Map(m);
           if (refs?.shop) n.set(id, refs.shop);
+          else n.delete(id);
+          return n;
+        });
+        this._begegnung.update((m) => {
+          if (!refs?.encounter && !m.has(id)) return m;
+          const n = new Map(m);
+          if (refs?.encounter) n.set(id, refs.encounter);
           else n.delete(id);
           return n;
         });

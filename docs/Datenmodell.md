@@ -592,6 +592,32 @@ Probe stehen oben nur bei ihrer Art. Was ein ausgelassenes Element
 gezeichnet hätte, nimmt die Feldtabelle (`fields: 'all'`) — ein befülltes
 Feld verschwindet nie. Die Karten-Seitenleiste zeigt die Art je Begegnung.
 
+**Wer wo steht, und ein Hinweis mit einem Klick** (T-215): im Gespräch
+(`social`) zeichnet das Element `standing` die Beteiligten — die Ziele von
+`features`, die ein Gegenüber sein können (`Creature`, `Faction`) — mit
+ihrer `regards`-Kante auf die Gruppen der laufenden Kampagne (Marken und
+Grund). Das ist eine **Abfrage beim Lesen** (D8): der Server rechnet sie
+beim Ausliefern als `refs.encounter.stances`, gesiebt wie jeder Artikel —
+wen der Betrachter nicht sieht, der steht nicht da; eine Haltung zu einer
+anderen Gruppe auch nicht. Geändert wird sie am Urteilenden, nicht an der
+Begegnung. Bei `trap` und `hazard` zeigt eine Collection die beteiligten
+`Hazard` in Kurzansicht. An jedem Hinweis steht für die Leitung
+„Reveal to the party“: eine Information über diese Begegnung mit genau
+`Encounter.hint#id`, den Gruppen zugeteilt (`/api/knowledge/of/:id/reveal`,
+derselbe Weg wie „Reveal“ an der Karte); welche schon eine Gruppe kennt,
+sagt `refs.encounter.revealed` (nur der Leitung). Migration 162 ergänzt
+die Anordnung, wo sie `e-social` trägt.
+
+```mermaid
+flowchart LR
+  E["Encounter<br/>kind: social, puzzle"] -- features --> V["Creature: Reeve"]
+  E -- features --> G["Faction: Salt guild"]
+  V -- "regards<br/>distrusts · why" --> P["Party der Kampagne"]
+  G -- "regards<br/>curious" --> P
+  I["Information<br/>fields: Encounter.hint#h-seal"] -- knownBy --> P
+  E -. "refs.encounter<br/>stances + revealed" .-> S["Seite: Who stands where<br/>✓ The party knows this hint"]
+```
+
 ### 5.9 Zeitleisten und Spuren (D57, REQ-220)
 
 ```mermaid
@@ -1111,7 +1137,7 @@ und `knownBy.props.rank` an einer Zuteilung an die Fraktion ein Mindestrang
 
 Zurückgehalten wird **am Server**: Felder, die eine ungewusste Information
 beansprucht; die Felder aus der Einstellung `gmFields`
-(`Secrets.secret`, `Tactics.tactics`), es sei denn, eine gewusste
+(`Secrets.secret`, `Tactics.tactics`, `Encounter.solution`, `Encounter.hint`), es sei denn, eine gewusste
 Information gibt einen Eintrag frei; der Name, wenn beansprucht — dann steht
 der Deckname (`Identity.cover`). Kanten bleiben. Eine zweite Prüfung in der
 Maske gibt es nicht.
