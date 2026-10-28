@@ -508,8 +508,13 @@ export function creatureStats(creature: Entity, byId: ReadonlyMap<EntityId, Enti
  * `creatureStats` — Gegenstände, Merkmale, Zustände an `Vitals` und aus der
  * Initiative —, nur das Ziel `size`. Für die Karte: Enlarge macht das Token
  * eine Stufe grösser, solange der Zustand an der Kreatur steht.
+ * `sizeSource`: welcher von mehreren gilt (T-428, `props.sizeSource` am Token).
  */
-export function creatureSizeEffects(creature: Entity, byId: ReadonlyMap<EntityId, Entity>, options: CharacterStatsOptions = {}): SizeEffects {
+export function creatureSizeEffects(
+  creature: Entity,
+  byId: ReadonlyMap<EntityId, Entity>,
+  options: CharacterStatsOptions & { sizeSource?: string | null } = {},
+): SizeEffects {
   const alle = resolvedLookup(byId);
   const sb = statblockOfCreature(creature, byId);
   const statblock = sb ? alle.get(sb.id) : undefined;
@@ -519,6 +524,8 @@ export function creatureSizeEffects(creature: Entity, byId: ReadonlyMap<EntityId
       ...(options.conditions ? { conditions: options.conditions } : {}),
       ...(options.actions ? { actions: options.actions } : {}),
     }),
+    /* Überlappen sich Grössen-Zustände, wählt die Leitung am Token (T-428). */
+    options.sizeSource,
   );
 }
 

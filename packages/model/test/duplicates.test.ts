@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { choiceDuplicates, choicesAtCharacter, duplicateText, heldBefore, heldValue, newChoiceDuplicates, type Entity } from '../src/index.js';
+import { choiceDuplicates, choicesAtCharacter, duplicateText, heldBefore, heldValue, missingProficiencies, missingText, newChoiceDuplicates, newMissingProficiencies, proficientBefore, type Entity } from '../src/index.js';
 
 const art = (id: string, typ: string, components: Entity['components'] = {}, relations: Entity['relations'] = []): Entity => ({
   id, interfaces: [typ], name: id, components, relations,
@@ -135,5 +135,79 @@ describe('spells are locked too (T-309)', () => {
     expect(heldValue(h, 'sp-light', b)).toMatchObject({ fixed: false });
     expect(heldValue(h, 'sp-bolt', b)).toBeUndefined();
     expect(choiceDuplicates(c(['sp-light', 'sp-bolt']), b).map((d) => d.pick)).toEqual(['sp-light']);
+  });
+});
+
+/* T-303 (Leitung 19.10.): Expertise nur auf das, worin die Figur bis zu
+   dieser Wahl geübt ist — ausser die Wahl sagt in ihren Daten anderes. */
+describe('expertise needs proficiency (T-303)', () => {
+  const bard = art('class-bard', 'Class', {
+    Choices: { choices: [
+      { id: 'skills', kind: 'proficiency', when: 'start', count: 2, from: { values: ['Perception', 'Insight', 'Stealth', 'Arcana', 'History'] } },
+      { id: 'expertise', kind: 'proficiency', count: 2, level: 1, from: { values: ['Perception', 'Insight', 'Stealth', 'Arcana', 'History'] } },
+    ] },
+  });
+  /* Skill Expert: Übung und Expertise in einem Schritt — die Übung davor zählt. */
+  const expert = art('feat-expert', 'Feat', {
+    Choices: { choices: [
+      { id: 'skill', kind: 'proficiency', from: { values: ['Athletics', 'History'] } },
+      { id: 'expertise', kind: 'proficiency', from: { values: ['Athletics', 'History', 'Insight'] } },
+    ] },
+  });
+  /* Eine Option, deren Daten keine Übung verlangen. */
+  const prodigy = art('feat-free', 'Feat', {
+    Choices: { choices: [{ id: 'expertise', kind: 'proficiency', needsProficiency: false, from: { values: ['Athletics', 'History'] } }] },
+  });
+  const b = new Map([sage, bard, expert, prodigy, alert].map((e) => [e.id, e]));
+  const pc = (rel: Entity['relations']): Entity =>
+    art('pc-b', 'PlayerCharacter', {}, [
+      { id: 'b1', type: 'hasBackground', to: 'bg-sage' },
+      { id: 'c1', type: 'hasClass', to: 'class-bard', props: { level: 1 } },
+      ...rel,
+    ]);
+  const bei = (c: Entity, to: string, id: string) => choicesAtCharacter(c, b).find((a) => a.source.entity.id === to && a.choice.id === id)!;
+
+  it('offers expertise only on what is proficient so far — fixed or chosen before', () => {
+    const c = pc([wahl('class-bard', 'skills', ['Perception', 'Stealth'])]);
+    const ok = proficientBefore(c, b, bei(c, 'class-bard', 'expertise'))!;
+    expect(ok).not.toBeNull();
+    expect(heldValue(ok, 'Perception', b)).toMatchObject({ fixed: false });
+    expect(heldValue(ok, 'Insight', b)).toMatchObject({ fixed: true, from: 'Background (bg-sage)' });
+    expect(heldValue(ok, 'History', b)).toBeUndefined();
+  });
+
+  it('reports expertise on something not proficient, and the server text says why', () => {
+    const c = pc([wahl('class-bard', 'skills', ['Perception', 'Stealth']), wahl('class-bard', 'expertise', ['Stealth', 'History'])]);
+    const m = missingProficiencies(c, b);
+    expect(m).toEqual([{ choice: 'class-bard#expertise', pick: 'History' }]);
+    expect(missingText(m[0]!, b)).toMatch(/History.*not proficient/);
+  });
+
+  it('counts a proficiency chosen earlier in the same step (Skill Expert)', () => {
+    const c = pc([
+      { id: 'ft', type: 'chose', to: 'bg-sage', props: { choice: 'feat', picks: ['feat-expert'] } },
+      wahl('feat-expert', 'skill', ['Athletics']),
+      wahl('feat-expert', 'expertise', ['Athletics']),
+    ]);
+    expect(heldValue(proficientBefore(c, b, bei(c, 'feat-expert', 'expertise'))!, 'Athletics', b)).toMatchObject({ fixed: false });
+    expect(missingProficiencies(c, b)).toEqual([]);
+  });
+
+  it('does not restrict an option whose data says so', () => {
+    const c: Entity = pc([{ id: 'ft', type: 'chose', to: 'bg-sage', props: { choice: 'feat', picks: ['feat-free'] } }, wahl('feat-free', 'expertise', ['History'])]);
+    expect(proficientBefore(c, b, bei(c, 'feat-free', 'expertise'))).toBeNull();
+    expect(missingProficiencies(c, b)).toEqual([]);
+  });
+
+  it('rejects only new expertise without proficiency on save', () => {
+    const alt = pc([wahl('class-bard', 'expertise', ['History'])]);
+    expect(newMissingProficiencies(alt, alt, b)).toEqual([]);
+    const neu = pc([wahl('class-bard', 'expertise', ['History', 'Stealth'])]);
+    expect(newMissingProficiencies(alt, neu, b).map((m) => m.pick)).toEqual(['Stealth']);
+  });
+
+  it('does not restrict an ordinary proficiency choice', () => {
+    const c = pc([]);
+    expect(proficientBefore(c, b, bei(c, 'class-bard', 'skills'))).toBeNull();
   });
 });

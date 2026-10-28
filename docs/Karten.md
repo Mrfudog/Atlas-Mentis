@@ -205,7 +205,7 @@ Server liest die Grösse dann an ihm (vorher nur über `belongsTo`, der
 Drache stand auf einem Feld). Danach die **Wirkungen** mit Ziel `size`
 (`add` verschiebt um Stufen — Enlarge +1, Reduce −1 —, `set` setzt ein
 Grössenwort, die grösste gilt; zuerst `set`, dann die Stufen, begrenzt auf
-tiny … gargantuan; ein Quellartikel zählt einmal, E-164): aus allem, was an
+tiny … gargantuan; ein Quellartikel zählt einmal): aus allem, was an
 der Kreatur wirkt (`creatureSizeEffects`, dieselben Quellen wie
 `creatureStats`), samt ihren Zuständen in der Begegnung auf der Karte.
 Zuletzt die Überschreibung der Leitung am Token. Der Kontext sagt
@@ -214,6 +214,31 @@ Zuletzt die Überschreibung der Leitung am Token. Der Kontext sagt
 der Quellen); `tokenSizeOf` rechnet daraus Platz und Herkunft
 (`token` · `effects` · `statblock` · `default`). Gespeichert wird nur die
 Überschreibung — bestehende Tokens folgen ohne Migration (D8).
+
+**Überlappende Grössen-Zustände** (T-428, E-164): jede Quelle ist ein
+eigener Zustand mit Dauer. In der Initiative zählt sie der Tracker herunter
+(`tickEntries` beim Zugwechsel), und abgelaufen fällt der Eintrag weg — die
+Grösse fällt mit. Die Einträge stehen dort als `{rule, rounds}`; der
+Kartenkontext liest sie über `entryConditions` (vorher nahm er nur blosse
+Ids, und ein Zustand mit Dauer änderte das Token nie). Überlappen sich
+Quellen, wird **nicht summiert**: `sizeEffects(wirkungen, wahl)` nimmt je
+Quelle ihre eigenen Stufen und lässt **eine** gelten — die am Token
+gewählte (`marker.props.sizeSource`), sonst die zuletzt hinzugekommene
+(die letzte in der Reihenfolge von `effectsAt`). Ist die gewählte
+abgelaufen, gilt wieder die zuletzt hinzugekommene. Der Kontext gibt der
+Leitung dazu `sizePassed` (übergangene, Namen) und `sizeChoice`
+(`options`, `chosen` — `null` heisst „ohne Wahl"); Spielende bekommen nur
+die Grösse.
+
+```mermaid
+flowchart LR
+  Q1[Enlarged · 3 Runden] --> W{mehr als eine Quelle?}
+  Q2[Reduced · 1 Runde] --> W
+  W -->|nein| G[gilt]
+  W -->|ja| S{props.sizeSource am Token?}
+  S -->|ja, noch aktiv| G
+  S -->|nein oder abgelaufen| L[zuletzt hinzugekommen] --> G
+```
 
 ```mermaid
 flowchart LR

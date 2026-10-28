@@ -7,6 +7,7 @@ import { Injectable, inject } from '@angular/core';
 import {
   BOARD_TYPE,
   entityName,
+  mergeEntity,
   PART_OF_RELATION,
   primaryInterface,
   typeChain,
@@ -86,7 +87,15 @@ export class Brett {
    * Artikel neu geholt: was die Seite zeigt, ist gesiebt, und das
    * Gespeicherte ist es nicht.
    */
-  async schreiben(e: Entity): Promise<Mangel | null> {
+  /**
+   * `basis` ist der Stand, von dem die Änderung ausging. Ist er gegeben und
+   * weist der Server ab, weil jemand anders gespeichert hat, wird
+   * zusammengeführt (`mergeEntity`, REQ-192): **berühren sich die beiden
+   * Änderungen nicht** — zwei Tokens, Nebel hier und ein Zug dort —, geht
+   * das Ergebnis gleich nochmals hinaus (T-399, REQ-398 Akzeptanz 4).
+   * Berühren sie sich, gilt, wer zuerst speicherte.
+   */
+  async schreiben(e: Entity, basis?: Entity): Promise<Mangel | null> {
     const r = this.bestand.registry();
     if (!r) return { text: 'The registry is not loaded.', einzeln: [] };
     /* Ohne `knownTypes`: welche Arten die Ziele haben, weiss nur der
@@ -105,6 +114,10 @@ export class Brett {
          Das Board holt den Stand, der gilt — der nächste Zug geht von dort
          aus, statt den der anderen still zu überschreiben. */
       if (error instanceof ApiError && error.status === 409) {
+        if (basis) {
+          const zusammen = await this.zusammenfuehren(basis, e).catch(() => null);
+          if (zusammen) return this.schreiben(zusammen);
+        }
         await this.bestand.oeffnen(e.id, true, false);
         return { text: 'Someone else changed this meanwhile — reloaded. Please try again.', einzeln: [] };
       }
@@ -116,6 +129,17 @@ export class Brett {
       }
       return { text: 'Could not reach the server.', einzeln: [] };
     }
+  }
+
+  /** Drei Fassungen zusammen — oder `null`, wenn sich die Änderungen berühren. */
+  private async zusammenfuehren(basis: Entity, mine: Entity): Promise<Entity | null> {
+    const { refs: _r, fromTemplate: _f, ...theirs } = (await this.api.entity(mine.id)) as Entity & { refs?: unknown; fromTemplate?: unknown };
+    const ohne = (x: Entity): Entity => {
+      const { refs: _x, fromTemplate: _y, ...rest } = x as Entity & { refs?: unknown; fromTemplate?: unknown };
+      return rest as Entity;
+    };
+    const r = mergeEntity(ohne(basis), ohne(mine), theirs as Entity);
+    return r.conflicts.length ? null : r.merged;
   }
 
   /**

@@ -342,6 +342,11 @@ sequenceDiagram
   geht nur an wen den alten Stand sah. `session` trägt `activeMap`,
   `activeEncounter`, `activeScene`, `nowPlaying` aus dem **gesiebten**
   Artikel.
+- **Gemeldet wird nur, was er anders sieht** (T-399, REQ-398): die Route
+  siebt den Artikel vor und nach dem Schreiben je Empfänger und schweigt,
+  wenn beides gleich ist (Revision und Zeitstempel zählen nicht). Zieht ein
+  verborgener Gegner oder ein Token unter dem Nebel, erfährt es die
+  Leitung — die Spielerin nicht, auch nicht über den Takt der Meldungen.
 - **Ein Token auf der Karte ist eine Kante der Karte** (`marker`): es
   bewegt sich, und die Karte meldet `entity`. Eine eigene Meldung mit
   Koordinaten käme erst, wenn die Karte im Web versteckte Tokens selbst
@@ -350,8 +355,13 @@ sequenceDiagram
   Massenänderung) und **zu lange weg** (die Nummer liegt nicht mehr im
   Ring, oder der Server wurde neu gestartet) heissen `reset`: das Gerät
   holt neu, was es offen hat.
-- Ein Lebenszeichen alle 25 s; nach 15 min schliesst der Server und das
-  Gerät kommt wieder — dabei prüft die Wache die Anmeldung neu. „Überall
+- Ein Lebenszeichen alle 25 s, als Ereignis `ping` (ein Kommentar sähe
+  der Browser nicht); bleibt 60 s lang alles aus, oder kommt das Telefon
+  nach 30 s Stille wieder in den Blick oder ins Netz, verbindet die Seite
+  selbst neu, mit `?since=` (T-399). Nach 15 min schliesst der Server und
+  das Gerät kommt wieder — dabei prüft die Wache die Anmeldung neu.
+  Bei `reset` fragen auch Play, Initiative, Kartenkontext, Zugplaner und
+  Seitenleiste neu, nicht nur der Bestand. „Überall
   abmelden" schliesst die Ströme des Kontos sofort.
 - **Die Sicht eines Mitglieds** (`X-View-As`) gilt für den Strom nicht —
   `EventSource` kann keinen Kopf setzen. Er läuft als die Leitung; was die

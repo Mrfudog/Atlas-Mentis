@@ -102,6 +102,13 @@ export interface Choice {
   /** Bei `spell` (T-309): das Attribut des gewählten Zaubers (sonst das der Quelle) und wie er gilt. */
   ability?: string;
   mode?: 'prepared' | 'known' | 'innate';
+  /**
+   * Bei einer Expertise-Wahl (T-303): `false` heisst, sie verlangt keine
+   * Übung davor. Ohne Angabe geht Expertise nur auf das, worin die Figur
+   * bis zu dieser Wahl geübt ist — die Ausnahme steht in den Daten der
+   * Wahl, nicht in einer Liste im Code.
+   */
+  needsProficiency?: boolean;
   note?: string;
 }
 

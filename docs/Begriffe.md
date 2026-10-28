@@ -489,6 +489,15 @@ Statblock auch. Gespeichert wird nur, was die Leitung bewusst anders will
 (`props.size`) — und weil die Seite sagt, woher die Grösse kommt, sieht man,
 welche der drei Stufen gerade gilt.
 
+**Warum überlappende Grössen-Zustände nicht summiert werden** (T-428,
+E-164): Enlarge und ein Trank der Riesengrösse sind zwei Zauber, die
+dasselbe beschreiben, und die Regeln stapeln sie nicht; Enlarge und Reduce
+zusammen sind ein Streitfall, den der Tisch entscheidet. Eine Summe hätte
+beides falsch beantwortet, und still. Darum gilt eine Quelle, und welche,
+sagt die Leitung — am Token, weil es eine Entscheidung über dieses Token in
+dieser Szene ist. Ohne Wahl gilt der zuletzt hinzugekommene: so verhält
+sich ein neuer Zauber am Tisch, bis jemand widerspricht.
+
 Woher die Maske weiss, welche Klasse ein Feld will, steht am Feld
 (`target.where`) — und an der Karte, die `Image.image` erbt, steht es am
 Typ (`targets`, wie `titles` für die Beschriftung). Eine Liste im Code
@@ -1800,6 +1809,15 @@ Doppelung, die erst durch eine spätere Änderung entsteht, wird gemeldet
 und nicht still gelöscht: welche der beiden Wahlen weichen soll, weiss nur,
 wer sie getroffen hat.
 
+**Expertise setzt die Übung voraus** (T-303). Die Leitung (19.10.): die
+Expertise-Wahl bot jede Fertigkeit an, auch eine, in der die Figur gar
+nicht geübt war. Gesperrt wird mit derselben Reihenfolge wie bei den
+Doppelungen, nur umgekehrt: dort ist gesperrt, was schon da ist, hier,
+was noch fehlt. Die Ausnahme — eine Option, die Übung und Expertise
+zugleich gibt oder ausdrücklich keine verlangt — steht als
+`needsProficiency: false` an der Wahl selbst: eine Liste solcher
+Optionen im Code wäre am Tag des nächsten Buchs unvollständig.
+
 **Ein Zauber kommt von irgendwoher** (T-309). Bis dahin zauberte eine
 Figur, was von Hand an ihr stand — der Magier aus dem Assistenten zauberte
 also nicht, obwohl seine Klasse sagte, dass und womit er es tut. Jetzt ist
@@ -1827,6 +1845,18 @@ Statblock gehört ihr direkt über `belongsTo`: eine benannte Kreatur gibt es
 einmal, also keine Instanz. Eine Spielart (`_versions`) bekommt keine
 eigene. Was der Text sonst über sie sagt (Wohnort, Fraktion), kommt nicht
 geraten dazu.
+
+**Mitglied einer Fraktion ist sie nur, wo der Text sie verknüpft** (T-183,
+`fraktionen.ts`): ihr eigener Text (Kreatur und Statblock) verweist auf
+genau eine Fraktion, oder der Text der Fraktion verweist auf sie. Dass
+beide im selben Absatz eines Abenteuers stehen, reicht nicht: wer eine
+Gruppe jagt, gehört nicht zu ihr. **Ein Schutzherr ist kein Mitglied:**
+trägt eine Fraktion den Namen der Kreatur („Cult of X"), betet sie sie an.
+Eine solche Kreatur bekommt aus dem Text gar keine Fraktion, denn ihr Text
+nennt auch die Kulte ihrer Rivalen. 5e.tools liefert als Fraktionen nur
+Kulte, und ein Kult nennt seine Anhänger als allgemeine Statblöcke. Darum
+ergibt die Regel heute keine einzige Mitgliedschaft, sondern zehn
+Schutzherren.
 
 `Vitals` bleibt bei der Figur: das ist, was sich **während** der Sitzung
 ändert — Trefferpunkte jetzt, Zustände, Todesretter, verbrauchte

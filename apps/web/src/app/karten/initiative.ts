@@ -682,6 +682,10 @@ export class Initiative {
     const ab = inject(Live).onArtikel((ev) => {
       if (ev.id === this.begegnung() || ev.type === 'Campaign') void this.holen(this.begegnung());
     });
+    /* Etwas verpasst (`reset`, T-399): die Reihe neu fragen. */
+    const abNeu = inject(Live).onNeu((was) => {
+      if (was === 'reset') void this.holen(this.begegnung());
+    });
     /* Wessen Zug begann? Beim ersten Laden keiner — sonst blinkte jede geöffnete Seite. */
     effect(() => {
       const v = this.sicht();
@@ -702,6 +706,7 @@ export class Initiative {
       .catch(() => undefined);
     inject(DestroyRef).onDestroy(() => {
       ab();
+      abNeu();
       this.lauf += 1;
       clearTimeout(this.wechselUhr);
     });
