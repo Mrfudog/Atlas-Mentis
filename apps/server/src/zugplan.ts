@@ -385,9 +385,13 @@ export function wegeNachrechnen(
     if (s.kind !== 'move' || !s.path.length) continue;
     const da = planEnd(steps.slice(0, i), start);
     const [erster] = s.path;
-    const w = erster && erster.x === da.x && erster.y === da.y ? pathFeet(grid, s.path) : null;
+    /* Die Maske schickt das Startfeld mit; ein Aufrufer, der beim Nachbarfeld
+       anfängt, meint denselben Weg — der Start kommt davor. Weiter weg ist
+       ein Sprung. */
+    const weg = erster && (erster.x !== da.x || erster.y !== da.y) && Math.max(Math.abs(erster.x - da.x), Math.abs(erster.y - da.y)) === 1 ? [da, ...s.path] : s.path;
+    const w = weg[0] && weg[0].x === da.x && weg[0].y === da.y ? pathFeet(grid, weg) : null;
     if (!w) return 'That path is blocked — it starts away from the token, goes through a wall or someone who stops it, or ends on an ally. Plan it again on the map.';
-    steps[i] = { ...s, feet: w.feet };
+    steps[i] = { ...s, path: weg, feet: w.feet };
   }
   return null;
 }

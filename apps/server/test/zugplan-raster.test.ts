@@ -109,6 +109,15 @@ describe('T-349: Verbündete sind passierbar', () => {
     expect(r.statusCode).toBe(422);
   });
 
+  it('fängt er beim Nachbarfeld an, kommt der Start davor', async () => {
+    const { einreichen } = await aufbau();
+    /* (1)–(4) ohne das Startfeld 0: derselbe Weg wie 0–4. */
+    const ohneStart = { ...weg(0, 4, 20), path: weg(0, 4).path.slice(1) };
+    const r = await einreichen('Pia', [ohneStart]);
+    expect(r.statusCode, r.body).toBe(200);
+    expect(r.json().steps[0]).toMatchObject({ feet: 30, path: weg(0, 4).path });
+  });
+
   it('ohne Gitter rechnet niemand nach, statt falsch abzulehnen', async () => {
     const { t } = await aufbau();
     const r = await t.als('Pia', 'POST', '/api/maps/map_1/turn-plan', { payload: { actor: 'pc_rook', steps: [weg(0, 4, 20)] } });
