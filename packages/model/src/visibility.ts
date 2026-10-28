@@ -35,7 +35,8 @@
 
 import type { Entity, EntityId } from './types.js';
 import { knowledgeHolders } from './knowledge.js';
-import { mostSpecific, type Dimension } from './transformkeys.js';
+import { glied, mostSpecific, type Dimension } from './transformkeys.js';
+import { applyVisibilityChange, type VisibilityChange } from './articlevisibility.js';
 import { heldBackMap } from './playinstance.js';
 
 /** Die Art, deren Karte die Sichtbarkeit trägt. */
@@ -120,6 +121,67 @@ export interface VisibilityRule {
   hide?: readonly EntityId[];
 }
 
+/**
+ * **Ein Eintrag je Artikel** (T-401, E-162 a): der Schlüssel `article:<id>`
+ * im Regelwerk der Kampagne. So entscheidet die Leitung über einen
+ * einzelnen Artikel aus einer Ebene, die sie nicht schreibt — ein
+ * Grundregelwerk, das drei Runden teilen —, ohne das Buch zu beschreiben
+ * oder eine Fassung anzulegen. Er gilt **vor jeder Gruppe**, gleich wie
+ * genau (gesonderte Artikel > Merkmal > Ebene), aber nach dem eigenen Feld
+ * am Artikel.
+ */
+export const ARTICLE_DIMENSION = 'article';
+export const articleRuleKey = (id: EntityId): string => glied(ARTICLE_DIMENSION, id);
+
+/** Das Merkmal Beziehung (T-401): eine Kante und ihr Ziel, `memberOf>f_kult`. */
+export const RELATION_DIMENSION = 'relation';
+export const relationValue = (type: string, to: EntityId): string => `${type}>${to}`;
+
+/**
+ * **Die Regel, die für diesen Artikel spricht**: zuerst sein eigener
+ * Eintrag, dann die genaueste Gruppe. `spricht` sagt, welche Regeln für
+ * die Frage etwas sagen — eine Stufe, oder eine Freigabe für diesen
+ * Betrachter.
+ */
+function regelFuer(ctx: CampaignVisibility, article: Entity, spricht: (r: VisibilityRule) => boolean): VisibilityRule | undefined {
+  const sprechend = ctx.rules.filter(spricht);
+  const eigen = articleRuleKey(article.id);
+  const direkt = sprechend.find((r) => r.id === eigen);
+  if (direkt) return direkt;
+  const k = mostSpecific(
+    sprechend.filter((r) => !r.id.startsWith(ARTICLE_DIMENSION + ':')).map((r) => r.id),
+    article,
+    ctx.dims,
+  );
+  return k ? sprechend.find((x) => x.id === k) : undefined;
+}
+
+/**
+ * **Den Eintrag eines Artikels ändern** (T-401): dieselbe Änderung wie am
+ * Feld (`applyVisibilityChange` — Stufe, je Träger zeigen oder verbergen,
+ * folgen), nur im Regelwerk der Kampagne. Sagt er danach nichts mehr,
+ * fällt er weg.
+ */
+export function withArticleRule(rules: readonly VisibilityRule[], id: EntityId, change: VisibilityChange): VisibilityRule[] {
+  const key = articleRuleKey(id);
+  const alt = rules.find((r) => r.id === key);
+  const neu = applyVisibilityChange(
+    alt ? { ...(alt.audience ? { audience: alt.audience } : {}), ...(alt.show ? { revealedTo: [...alt.show] } : {}), ...(alt.hide ? { hiddenFrom: [...alt.hide] } : {}) } : undefined,
+    change,
+  );
+  const rest = rules.filter((r) => r.id !== key);
+  if (!neu) return rest;
+  return [
+    ...rest,
+    {
+      id: key,
+      ...(istStufe(neu.audience) ? { audience: neu.audience } : {}),
+      ...(neu.revealedTo?.length ? { show: neu.revealedTo } : {}),
+      ...(neu.hiddenFrom?.length ? { hide: neu.hiddenFrom } : {}),
+    },
+  ];
+}
+
 /** Die Regeln einer Kampagne samt den Dimensionen, gegen die ihre Schlüssel prüfen. */
 export interface CampaignVisibility {
   campaign: EntityId;
@@ -186,9 +248,7 @@ export function effectiveAudience(
   const eigen = (article.components?.[VISIBILITY_COMPONENT] as { audience?: unknown } | undefined)?.audience;
   if (istStufe(eigen)) return { audience: eigen, source: 'article' };
   if (ctx) {
-    const mitStufe = ctx.rules.filter((r) => r.audience);
-    const k = mostSpecific(mitStufe.map((r) => r.id), article, ctx.dims);
-    const r = k ? mitStufe.find((x) => x.id === k) : undefined;
+    const r = regelFuer(ctx, article, (x) => !!x.audience);
     if (r?.audience) return { audience: r.audience, source: 'campaign', rule: r.id };
   }
   const ebene = layerDefaultAudience(entities, article);
@@ -436,9 +496,8 @@ export function articleVisible(
      gilt die nächst gröbere. */
   const ctx = v.campaignRules;
   if (!istStufe(vis.audience) && ctx) {
-    const sprechend = ctx.rules.filter((r) => r.audience || nennt(r.show) || nennt(r.hide));
-    const k = mostSpecific(sprechend.map((r) => r.id), article, ctx.dims);
-    const r = k ? sprechend.find((x) => x.id === k) : undefined;
+    /* Zuerst der Eintrag dieses Artikels (T-401), dann die genaueste Gruppe. */
+    const r = regelFuer(ctx, article, (x) => !!x.audience || nennt(x.show) || nennt(x.hide));
     if (r) {
       if (nennt(r.hide)) return false;
       if (nennt(r.show)) return true;
