@@ -278,8 +278,13 @@ export class KartenSeitenleiste {
         ev.type === 'Encounter' || ev.type === 'Party' || !!s?.figures.some((f) => f.id === ev.id) || ev.id === s?.session?.id;
       if (betrifft) void this.holen(this.karte(), this.sitzung());
     });
+    /* Etwas verpasst (`reset`, T-399): neu fragen. */
+    const abNeu = inject(Live).onNeu((was) => {
+      if (was === 'reset') void this.holen(this.karte(), this.sitzung());
+    });
     inject(DestroyRef).onDestroy(() => {
       ab();
+      abNeu();
       this.lauf += 1;
     });
   }

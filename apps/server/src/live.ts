@@ -273,7 +273,9 @@ interface Strom {
  * - `gone` `{id}` — er war für ihn da und ist jetzt verborgen oder gelöscht;
  * - `registry` `{part}` — eine Registerzeile; `reset` — alles neu laden;
  * - `roll` — ein Wurf (T-172), der Eintrag, wenn dieser Empfänger ihn
- *   sieht (`rollVisible`, mit dem Artikel des Wurfs gesiebt).
+ *   sieht (`rollVisible`, mit dem Artikel des Wurfs gesiebt);
+ * - `ping` `{}` — das Lebenszeichen, alle `heartbeatMs`; bleibt es aus,
+ *   verbindet das Gerät neu (T-399).
  *
  * Was ein Empfänger nicht sieht, bekommt er nicht — auch nicht als Id.
  */
@@ -394,7 +396,10 @@ export function registerLive(
     /* Ein Lebenszeichen hält Proxy und Mobilfunk-NAT offen; nach
        `maxAgeMs` endet die Verbindung, und der Browser kommt mit
        `Last-Event-ID` wieder — dabei wird die Anmeldung neu geprüft. */
-    const puls = setInterval(() => schreib(': ping\n\n'), heartbeatMs);
+    /* Ein benanntes Ereignis und kein Kommentar (T-399): einen Kommentar
+       sieht der Browser nicht, und ohne ihn merkt das Telefon nicht, dass
+       seine Verbindung still gestorben ist. */
+    const puls = setInterval(() => schreib(sseNachricht('ping', {})), heartbeatMs);
     const alter = setTimeout(() => ende(), maxAgeMs);
     const strom: Strom = { userId, ende: () => ende() };
     stroeme.add(strom);

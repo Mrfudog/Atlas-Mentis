@@ -1957,6 +1957,10 @@ export class Karte {
     const abPlan = inject(Live).onPlan((karte) => {
       if (karte === this.id()) void this.kontextHolen(karte);
     });
+    /* Etwas verpasst (`reset`, T-399): die Karte selbst holt der Bestand, den Kontext diese Seite. */
+    const abNeu = inject(Live).onNeu((was) => {
+      if (was === 'reset') void this.kontextHolen(this.id());
+    });
     /* Das Vollbild verlässt man auch mit Esc des Browsers — gefragt wird darum das Dokument. */
     const vollbildWechsel = () => this.echtesVollbild.set(!!document.fullscreenElement?.contains(this.host.nativeElement));
     document.addEventListener('fullscreenchange', vollbildWechsel);
@@ -1964,6 +1968,7 @@ export class Karte {
       document.removeEventListener('fullscreenchange', vollbildWechsel);
       ab();
       abPlan();
+      abNeu();
       this.kontextLauf += 1;
     });
   }

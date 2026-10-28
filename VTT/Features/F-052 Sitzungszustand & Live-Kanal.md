@@ -44,3 +44,8 @@ flowchart LR
 - **Nur was er anders sieht:** zieht ein verborgener Gegner oder ein Token
   unter dem Nebel, erfährt es die Leitung, die Spielerin nicht — auch nicht
   über den Takt der Meldungen.
+- **Wiederverbinden:** der Server schickt alle 25 s ein `ping`. Bleibt es
+  aus — das Telefon schlief, das Netz wechselte —, verbindet die Seite
+  selbst neu und holt nach, was sie verpasste; der Punkt in der Kopfleiste
+  ist solange hohl. War zu viel weg (`reset`), fragen Karte, Play,
+  Initiative und Zugplaner neu.
