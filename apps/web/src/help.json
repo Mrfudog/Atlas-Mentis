@@ -306,7 +306,7 @@
       "sections": [
         {
           "text": [
-            "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview.",
+            "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview — a place shows its type and environment, a quest its progress and reward, a faction its kind.",
             "Above the filters, Expand all and Collapse all open and close every filter; ‹ and › go from one to the next.",
             "“Columns” picks what the table shows: any field of the type (also calculated ones), its edges, and what every row has — type, source, layers, tags, status, ID. Drag or use ↑↓ to order them.",
             "The choice is kept per page and type for your account and in the address, so a shared link shows the same table. “Reset to default” drops your choice: the campaign default shows, else the type's columns. The GM can make a choice the campaign default for everyone without their own.",
