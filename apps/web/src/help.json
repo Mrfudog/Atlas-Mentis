@@ -231,7 +231,7 @@
             "Gear starts with your hands. Tap an item — in the grid, in the list or under “Not stowed” — then tap Main hand or Off hand; with a mouse you can also drag it there. A two-handed weapon takes both hands, a shield only the off hand; One hand / Two hands switches the grip of a versatile weapon.",
             "If a hand is full, a warning asks whether to stow what is there, drop it (free) or cancel. Stow puts a held item back into the grid, or under “Not stowed” when there is no room.",
             "Beside the hands, the picked item lists every place it can go: ✓ fits, ⚠ moves something else out, ✗ not there, with the reason. Under the hands, ✓ and ✗ say what your hands allow right now — spellcasting, a shield without training, a free hand for a potion — and Your turn in Combat locks the same actions with the same reason.",
-            "Log, at the bottom, lists the rolls made on the character and on its statblock, newest first; filter by who rolled or by session.",
+            "Log, at the bottom, lists the rolls made on the character and on its statblock, newest first; filter by who rolled or by session. On the statblock, click a skill or saving throw bonus (Stealth +6, Dex +4) or an ability modifier to roll it — Shift for advantage, Alt for disadvantage; the log says what was rolled.",
             "Below the statblock on Overview, “Proficiencies and where they come from” lists saving throws, proficiencies and expertise, each with its source — class, background, origin, feature, feat, a choice you made, an item, or added by hand on the statblock — linked to that article. Crafting, the sheet and “usable by” count exactly these.",
             "Below that, “How the numbers come about” opens each value — abilities as base plus origin, background, choices and items; proficiency bonus, hit points, AC, initiative, speed, senses — each part linked to its article.",
             "Header, statblock and quick view show these final numbers. The statblock keeps the base scores, and editing writes there.",
@@ -254,7 +254,7 @@
           "heading": "Crafting (recipes)",
           "text": [
             "On a recipe, “Start crafting” makes a crafting order. Its material stays reserved in the inventory of the character and the party until the order ends.",
-            "“Work a day” advances an order; enter the roll where the recipe asks for a check. The GM accepts or rejects the result. How long crafting takes and what it costs are the campaign's rules."
+            "“Work a day” advances an order. Where the recipe asks for a check, “Roll check” rolls a d20 plus the crafter's bonus from their statblock (ability, tool proficiency) on the server, into the order's log; or enter a total you rolled at the table. The GM accepts or rejects the result. How long crafting takes and what it costs are the campaign's rules."
           ]
         },
         {
