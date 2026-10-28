@@ -453,7 +453,7 @@ export function aufpreis(i: Knoten): { add?: number; mult?: number } {
  * **Was `felder` in die Karte `Item` schrieb, kommt ins Merkmal** (T-324,
  * E-163): Seltenheit, Einstimmung und Boni ans Enhancement, der Preis ist
  * ohne eigene Angabe der Aufpreis. Was ein Merkmal nicht trägt (Ladungen,
- * Stufe, Gewicht), steht als Satz in den Notizen — wie Migration 162 es
+ * Stufe, Gewicht), steht als Satz in den Notizen — wie Migration 163 es
  * mit den schon eingelesenen macht — und im Bericht.
  */
 const ZUM_ENHANCEMENT = ['rarity', 'attunement', 'attunementNote', 'bonusWeapon', 'bonusAc', 'bonusSpellAttack', 'bonusSave'];

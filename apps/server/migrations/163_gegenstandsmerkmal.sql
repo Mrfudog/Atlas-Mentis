@@ -152,7 +152,7 @@ begin
     update entity set updated_at = now(), revision = revision + 1 where id = r.id;
     n := n + 1;
   end loop;
-  raise notice '162: % Varianten zu Enhancements, % davon mit Feldern in den Notizen', n, notiz;
+  raise notice '163: % Varianten zu Enhancements, % davon mit Feldern in den Notizen', n, notiz;
 end $$;
 
 -- 3. Die Wirkung der Eigenschaften als Daten.

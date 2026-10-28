@@ -2328,7 +2328,7 @@ Abweichung, und eine Korrektur am Dolch erreichte das Stück nie mehr. Der
 **Aufpreis** (Surcharge) sagt, wie ein Enhancement den Grundpreis ändert: ein
 Betrag (`priceAdd`), ein Faktor (`priceMult`); ohne beides gibt es keinen
 Preis statt eines falschen. (Als Gegenstand galt sein eigener Preis als
-Aufpreis; Migration 162 hat ihn nach `priceAdd` gelegt.)
+Aufpreis; Migration 163 hat ihn nach `priceAdd` gelegt.)
 Welche Rechnung gilt, sagt die Kampagne (`itemPricing`: kombiniert,
 Grundpreis, nicht gerechnet) — manche Tische handeln magische Gegenstände
 nicht nach Liste.

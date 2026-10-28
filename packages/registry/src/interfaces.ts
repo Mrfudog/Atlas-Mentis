@@ -649,7 +649,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Item feature',
     abstract: true,
     /* Bild, Begleittext, Geheimnisse und Fakten, weil eine Variante wie
-       Flame Tongue sie als Gegenstand trug — Migration 162 zieht sie mit. */
+       Flame Tongue sie als Gegenstand trug — Migration 163 zieht sie mit. */
     extends: ['Rule', 'Effects', 'Image', 'Lore', 'Secrets', 'Facts'],
     schema: merge(g.ItemFeatureInfo),
   },
