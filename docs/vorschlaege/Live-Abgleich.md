@@ -104,3 +104,16 @@ Leitung schreibt (PUT / POST move / door / tracker)
 - **Board mit neu passenden Artikeln:** braucht eine Frage „passt der neue
   Artikel zur Abfrage?“ — gehört zum Laden von Listen (T-398) und bleibt
   dort.
+
+## Stand (28.10.2026, Nachtlauf)
+
+| Schnitt | PR | Prüfung |
+|---|---|---|
+| 1 Nur melden, was der Empfänger anders sieht | #404 (gemergt) | `apps/server/test/live.test.ts` „keeps quiet …“, zwei Konten am echten Strom |
+| 2 Wiederverbinden und Nachholen | #407 | `apps/web/test/live.test.ts` (EventSource aus Speicher, gefälschte Uhr); Server: `ping` ohne Id |
+| 3 Zusammenführen auf der Karte | folgt | `apps/web/test/karte-gleichzeitig.test.ts`: zwei Tokens → beide gelten; dasselbe Token → der Erste gilt |
+| 4 E2E zwei Sitzungen | folgt | `apps/web/e2e/live-abgleich.spec.ts`, Desktop und Telefon: Zug ohne Neuladen, verborgener Marker kommt nicht an, nach `setOffline` wird nachgeholt |
+
+Nicht angefasst, weil es zum Laden von Listen gehört (T-398): das Board
+fragt nach `reset` noch nicht neu, und ein neu passender Artikel
+erscheint dort erst beim Neuladen.
