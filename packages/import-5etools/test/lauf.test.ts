@@ -4,7 +4,7 @@ import { stageBases, validateEntity } from '@nw/model';
 import { seedRegistry } from '@nw/registry';
 import type { Knoten } from '../src/copy.js';
 import type { Datenstand } from '../src/lesen.js';
-import { ausschnitt, blocklistGruppen, gruppeVon, herausgeberVon, lauf, OHNE_BUCH } from '../src/lauf.js';
+import { ausschnitt, blocklistGruppen, gruppeVon, herausgeberVon, istPartner, lauf, OHNE_BUCH } from '../src/lauf.js';
 import { berichtMarkdown } from '../src/bericht.js';
 import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, ohneBuchEbeneId } from '../src/werkbank.js';
 
@@ -81,6 +81,8 @@ function datenstand(): Datenstand {
   add('deck', { name: 'Deck of Many Things', source: 'DMG', cards: ['Vizier|Deck of Many Things', { uid: 'Fool|Deck of Many Things', count: 2 }], entries: ['A deck of cards.'] });
   add('facility', { name: 'Armory', source: 'XDMG', facilityType: 'special', level: 5, space: ['roomy'], hirelings: [{ exact: 1 }], orders: ['trade'], entries: ['Weapons.'] });
   add('monster', { name: 'Chef', source: 'HFLotT', cr: '0' });
+  /* Ein Partner-Buch (E-193): steht unter Official und in der Kategorie Partnered. */
+  add('monster', { name: 'Frost Giant Zombie', source: 'EGW', cr: '9' });
   return {
     arten,
     quellen: new Map([
@@ -91,6 +93,7 @@ function datenstand(): Datenstand {
       ['dmg', { id: 'DMG', name: "Dungeon Master's Guide", published: '2014-12-09', art: 'book' }],
       ['xdmg', { id: 'XDMG', name: "Dungeon Master's Guide (2024)", published: '2024-11-12', art: 'book' }],
       ['gos', { id: 'GoS', name: 'Ghosts of Saltmarsh', published: '2019-05-21', art: 'adventure' }],
+      ['egw', { id: 'EGW', name: "Explorer's Guide to Wildemount", published: '2020-03-17', art: 'book' }],
     ]),
   };
 }
@@ -158,7 +161,7 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     /* Was kein Buch nennt, ist offiziell und in der Gruppe. */
     const ohne = finde(es, 'Layer', OHNE_BUCH);
     expect((ohne.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to).sort()).toEqual([gruppe.id, herausgeberEbeneId('official')].sort());
-    /* Kein Partner-Buch darin. */
+    /* Kein Partner-Buch darin — auch seit es unter Official steht (E-193). */
     for (const b of es.filter((e) => e.relations?.some((r) => r.type === 'partOf' && r.to === herausgeberEbeneId('partnered')))) {
       expect(b.relations?.some((r) => r.type === 'partOf' && r.to === gruppe.id), b.name).toBe(false);
     }
@@ -174,14 +177,30 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     const buecher = es.filter((e) => e.interfaces[0] === 'Layer' && ['book', 'adventure'].includes(String((e.components['Layer'] as { kind?: string }).kind)));
     expect(buecher.length).toBeGreaterThan(0);
     for (const b of buecher) {
-      expect((b.relations ?? []).filter((r) => r.type === 'partOf' && r.to.startsWith('e5_publisher_')), b.name).toHaveLength(1);
+      /* Herausgeber ist, was nach Herausgeber ordnet — „Partnered" trägt seit E-193 die alte Id, ist aber Kategorie. */
+      const verlage = new Set(es.filter((e) => (e.components['Layer'] as { groupBy?: string } | undefined)?.groupBy === 'publisher').map((e) => e.id));
+      expect((b.relations ?? []).filter((r) => r.type === 'partOf' && verlage.has(r.to)), b.name).toHaveLength(1);
+    }
+  });
+
+  it('führt Partner-Bücher unter Official und Partnered als Kategorie, nicht als Herausgeber (E-193)', () => {
+    const partner = es.find((e) => e.id === herausgeberEbeneId('partnered'))!;
+    expect(partner, 'Partnered').toBeDefined();
+    expect(es.filter((e) => e.relations?.some((r) => r.type === 'partOf' && r.to === partner.id)).map((e) => e.name)).toContain("Explorer's Guide to Wildemount");
+    expect(partner.name).toBe('Partnered');
+    expect(partner.components['Layer']).not.toHaveProperty('groupBy');
+    for (const b of es.filter((e) => e.relations?.some((r) => r.type === 'partOf' && r.to === partner.id))) {
+      expect((b.relations ?? []).some((r) => r.type === 'partOf' && r.to === herausgeberEbeneId('official')), b.name).toBe(true);
     }
   });
 
   it('ordnet Herausgeber und Blocklist-Kategorien nach den Listen von 5e.tools (T-094)', () => {
     expect(herausgeberVon('PHB')).toBe('official');
-    expect(herausgeberVon('EGW')).toBe('partnered');
-    expect(herausgeberVon('crcotn')).toBe('partnered');
+    /* Seit 28.10. (E-193, wie D&D Beyond seit Dez. 2025): Partner-Bücher gibt Wizards heraus. */
+    expect(herausgeberVon('EGW')).toBe('official');
+    expect(herausgeberVon('crcotn')).toBe('official');
+    expect(istPartner('EGW')).toBe(true);
+    expect(istPartner('PHB')).toBe(false);
     expect(herausgeberVon('XGE')).toBe('official');
     expect(blocklistGruppen('EGW')).toEqual(['non-fr']);
     expect(blocklistGruppen('LK')).toEqual(['nonstandard', 'comedy', 'non-fr']);
@@ -403,7 +422,7 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
 
   it('schreibt einen Bericht mit Zahlen und Auslassungen', () => {
     const md = berichtMarkdown(bericht, { artikel: es.length });
-    expect(md).toContain('| `monster` | 7 | 6 Statblock | 1 |');
+    expect(md).toContain('| `monster` | 8 | 7 Statblock | 1 |');
     expect(md).toContain('## Artikel je Ebene');
     expect(md).toContain('| Monster Manual (2025) | `XMM` | book | 2024 |');
     expect(md).toContain('**monster:** `sizeNote` 2');
