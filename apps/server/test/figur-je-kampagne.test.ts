@@ -3,7 +3,7 @@
  * die einem Konto in Runde A zugeteilt ist, ist in Runde B nicht „seine" —
  * weder in `/api/me` noch in der Mitgliederliste von B —, und eine
  * Zuteilung in B nimmt ihm die aus A nicht weg. Eine Zuteilung ohne
- * bekannte Kampagne (Bestand, den Migration 158 nicht zuordnen konnte)
+ * bekannte Kampagne (Bestand, den Migration 159 nicht zuordnen konnte)
  * gilt wie bisher überall.
  */
 

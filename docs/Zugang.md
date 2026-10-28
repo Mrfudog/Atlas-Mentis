@@ -396,7 +396,7 @@ pnpm --filter @nw/server user actor sela --actor pc_sela --campaign camp_nebel
 ```
 
 Ohne `--campaign` gilt die laufende Kampagne. Leer ist `campaign_id` nur
-bei Zuteilungen, die Migration 158 nicht eindeutig zuordnen konnte (sie
+bei Zuteilungen, die Migration 159 nicht eindeutig zuordnen konnte (sie
 zählt sie beim Start auf); die gelten wie früher überall, bis sie jemand
 auf der Kampagnenseite zuteilt.
 
