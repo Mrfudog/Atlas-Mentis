@@ -410,13 +410,15 @@ export const CHECKS: Check[] = [
        behält den Stand; hier steht, was fehlt. */
     key: 'readyWithGaps',
     label: 'Ready with gaps',
-    description: 'Articles at prepared or ready that miss a field or edge their type requires for that state (requiredFor). They keep their state; fill in what is missing, or set a lower state.',
+    description: 'Articles at prepared or ready that miss a field or edge their type requires for that state (requiredFor), or characters with an open choice. They keep their state; fill in or decide what is missing, or set a lower state.',
     run({ registry, entities }) {
       const raus: CheckHit[] = [];
+      /* Mit dem Bestand: offene Entscheide einer Figur zählen mit (T-436). */
+      const byId = new Map(entities.map((e) => [e.id, e]));
       for (const e of entities) {
         const stand = stateOf(e);
         if (!stand || isInstance(e)) continue;
-        const luecken = stateGaps(registry, e, stand);
+        const luecken = stateGaps(registry, e, stand, { byId });
         if (luecken.length) raus.push(hit(e, `${stand}, missing: ${luecken.map((g) => g.label).join(', ')}`));
       }
       return raus;

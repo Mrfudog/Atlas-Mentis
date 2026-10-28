@@ -1274,6 +1274,14 @@ Heben des Stands, nicht bei jedem Speichern** (E-178): ein fertiger Artikel,
 dem jemand später ein Feld leert, verschwände sonst beim nächsten Tippfehler
 aus der Runde. Er bleibt fertig, und die Werkbank sagt, was fehlt.
 
+**Ein offener Entscheid ist eine Lücke wie ein leeres Feld** (T-436, E-176).
+Die Figur entsteht im Assistenten, sobald man anfängt, und trägt, was schon
+gewählt ist — ein Fortschritt daneben wäre die zweite Stelle, die beim
+Bearbeiten falsch steht. Was noch offen ist, liest die Prüfung aus den
+Wahlen ihrer Abstammung, ihres Hintergrunds, ihrer Klasse und der gewährten
+Merkmale; solange eine offen ist, bleibt die Figur `idea`. Die Ausrüstung
+zählt nicht: sie folgt dem Verfahren der Kampagne und darf warten.
+
 **Ändert eine Spielerin etwas Fertiges, gilt für die anderen der fertige
 Stand weiter** (E-012, D74). Er fällt auf `prepared`, und der Stand davor
 bleibt als Kopie am Server (`entity_ready`) — nicht als zweite Karte im

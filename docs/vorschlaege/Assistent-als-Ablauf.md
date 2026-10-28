@@ -1,9 +1,27 @@
 # Der Charakter-Assistent als Ablauf (T-436) — Kurzkonzept
 
-Stand 28.10.2026, **wartet auf Basil**. Zu REQ-433, REQ-440, E-169, E-176
+Stand 28.10.2026, **entschieden** (Basil, 28.10., unten „Entscheid“). Zu REQ-433, REQ-440, E-169, E-176
 (E-177/E-178 für die Pflicht je Stand). Grundlage: Schnitt 8a von T-425
 (PR #399): `create`/`createFull`, Element `steps`, `currentStep`, Element
 `builder`, Migration 154.
+
+## Entscheid (28.10.)
+
+- **Die Schritte bleiben die heutigen**, sinnvoll gruppiert und nicht eine
+  Seite je Wahl: Abstammung, Hintergrund, Klasse (je mit ihren Wahlen),
+  Attribute, die übrigen Wahlen, Trefferpunkte, Ausrüstung, Details. Sie
+  werden die Ansicht `create`/`edit` der Spielerfigur. Kein Element, das
+  sich in Seiten auffächert.
+- **Die Figur wird gleich angelegt** und trägt, was gewählt ist; die
+  offenen Entscheide stehen an ihr. **Höher als `idea` geht erst, wenn
+  alle vorgegebenen Entscheide gewählt sind** — der Server verweigert es
+  (`state_gaps`, „decide: …“). Damit sind die Fragen 1, 3 und 4 unten
+  beantwortet; die Pflicht sind die Entscheide, nicht eine Feldliste.
+- Frage 2 (`levelUp` neben `edit`) gilt wie empfohlen, bis Basil anders
+  sagt.
+
+Der Rest dieser Notiz ist der Vorschlag davor; wo er „eine Seite je Wahl“
+oder `choices` als auffächerndes Element sagt, gilt der Entscheid.
 
 ## Was heute steht
 

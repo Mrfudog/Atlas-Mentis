@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-open-choices",
+      "date": "2026-10-28",
+      "title": "Open choices keep a character an idea",
+      "text": "A character can only be set to prepared or ready once every choice of its ancestry, background, class and granted features is made; the message names what is left to decide. Equipment may still wait.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-steps",
       "date": "2026-10-28",
       "title": "Guided creation in steps",
