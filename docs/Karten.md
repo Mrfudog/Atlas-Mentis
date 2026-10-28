@@ -821,6 +821,16 @@ sieht. Und zurück geht es genauso: wer auf einer Unterkarte ganz
 hinauszoomt, landet auf der Karte darüber. Ohne das wäre das Hineinzoomen
 eine Einbahnstrasse.
 
+**Festhalten** (REQ-132, T-219): das Schloss in der Zoomgruppe hält die
+Kartenebene. Rad, `+`/`-` und Kneifen zoomen dann nur näher und weiter —
+kein Rahmen sagt „zoom in to enter“ an, keiner wird betreten, und ganz
+draussen geht es nicht zur Karte darüber. Wer auf der Stadtkarte eine
+Strasse lesen will, landet sonst im Hafenviertel. Brotkrumen und
+angeklickte Rahmen führen weiter dorthin, wohin sie zeigen: das Schloss
+hält das Zoomen, nicht die Navigation. Es steht nur da, wenn es etwas zu
+halten gibt (Unterkarten oder eine Karte darüber), und gilt je Browser
+(`nw.karte.fest`), nicht für die Karte.
+
 **In Play nur, wenn die Sitzung es erlaubt** (T-308). Auf einer Karte im
 Spiel bleiben Spielende, wo der Tisch ist: der Schalter
 `Session.mapNavigation` (Vorgabe aus, in der Kartenleiste der Leitung

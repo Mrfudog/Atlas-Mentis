@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-map-level-lock",
+      "date": "2026-10-29",
+      "title": "Lock the map level while zooming",
+      "text": "A lock next to Fit keeps zooming on the map you are on: no more slipping into a sub-map or out to the map above while you look closer. Breadcrumbs and frames still take you there when you click them.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-map-areas",
       "date": "2026-10-29",
       "title": "Zones and territories on the map",
