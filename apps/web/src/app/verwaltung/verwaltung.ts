@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -377,6 +377,19 @@ const ROLLEN: { role: TableRole; text: string }[] = [
       @default {
         <section class="kasten uebersicht" aria-label="Overview">
           <h2>{{ m.campaign.name }}</h2>
+          @if (nichtLaufend()) {
+            <!-- T-411: die Seite kann eine andere Kampagne zeigen als die
+                 Kopfleiste; dann sagt sie es, und die Verwaltung schaltet
+                 hier um wie dort. -->
+            <p class="nicht-laufend">
+              Not the running campaign — the bar shows <b>{{ stapel.laufend()?.name }}</b>.
+              @if (kampagnen()?.isAdmin && m.campaign.exists) {
+                <button type="button" class="laufend-machen" [disabled]="laeuft()" (click)="laufendMachen(m.campaign.id)">
+                  Make this the running campaign
+                </button>
+              }
+            </p>
+          }
           <ul class="kennzahlen">
             <li><b>{{ m.members.length }}</b> at the table</li>
             <li><b>{{ einladungenHier().length }}</b> open invitation{{ einladungenHier().length === 1 ? '' : 's' }}</li>
@@ -552,6 +565,12 @@ export class Verwaltung {
 
   protected readonly mehrere = computed(() => (this.kampagnen()?.campaigns.length ?? 0) > 1);
 
+  /** Ob die gezeigte Kampagne eine andere ist als die laufende in der Kopfleiste (T-411). */
+  protected readonly nichtLaufend = computed(() => {
+    const l = this.stapel.laufend()?.id;
+    return !!l && !!this.gewaehlt() && this.gewaehlt() !== l;
+  });
+
   /** Eine Methode und kein `computed`: `neu` ist ein gewöhnliches Objekt
    *  hinter `ngModel`, ein Signal sähe seine Änderungen nicht. */
   protected einladungsText(): string {
@@ -565,6 +584,26 @@ export class Verwaltung {
   constructor() {
     void this.laden(this.route.snapshot.queryParamMap.get('c'));
     this.route.queryParamMap.subscribe((q) => this.tabParam.set(q.get('tab')));
+    /* **Dem Wechsel in der Kopfleiste folgen** (T-411): zeigte die Seite
+       die bisher laufende Kampagne, zeigt sie danach die neue. Wer hier
+       bewusst eine andere gewählt hat, bleibt bei ihr — dann sagt die
+       Übersicht, dass sie nicht läuft. */
+    let vorher = this.stapel.laufend()?.id ?? null;
+    effect(() => {
+      const jetzt = this.stapel.laufend()?.id ?? null;
+      untracked(() => {
+        const war = vorher;
+        vorher = jetzt;
+        if (!jetzt || !war || jetzt === war || this.gewaehlt() !== war) return;
+        if (!this.kampagnen()?.campaigns.some((c) => c.id === jetzt)) return;
+        void this.waehlen(jetzt);
+      });
+    });
+  }
+
+  /** Die gezeigte Kampagne laufen lassen — dasselbe wie die Wahl in der Kopfleiste (T-143, T-411). */
+  protected async laufendMachen(id: string): Promise<void> {
+    await this.tun(() => this.stapel.wechseln(id));
   }
 
   /** Die Sicht dieses Mitglieds einnehmen (REQ-241) und dorthin, wo man
@@ -643,7 +682,10 @@ export class Verwaltung {
       const k = await this.api.campaigns();
       this.kampagnen.set(k);
       const ids = k.campaigns.map((c) => c.id);
-      const c = wunsch && ids.includes(wunsch) ? wunsch : (ids[0] ?? null);
+      /* Ohne Wunsch die laufende Kampagne (T-411) — die alphabetisch
+         erste war oft eine andere als die in der Kopfleiste. */
+      const lauft = k.current?.id;
+      const c = wunsch && ids.includes(wunsch) ? wunsch : lauft && ids.includes(lauft) ? lauft : (ids[0] ?? null);
       this.gewaehlt.set(c);
       await Promise.all([this.ladeKampagne(), k.isAdmin ? this.ladeKonten() : Promise.resolve()]);
     });
@@ -806,6 +848,8 @@ export class Verwaltung {
     if (!ok) return;
     this.kampagneName = '';
     if (this.selbstLeiten) await this.session.load(true);
+    /* Die Kopfleiste bietet sie gleich zum Wechseln an (T-411), nicht erst nach dem Neuladen. */
+    void this.stapel.laden();
     if (id) void this.router.navigate([], { queryParams: { c: id }, queryParamsHandling: 'merge', replaceUrl: true });
     await this.laden(id);
   }
