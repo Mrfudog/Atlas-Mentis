@@ -1828,6 +1828,18 @@ einmal, also keine Instanz. Eine Spielart (`_versions`) bekommt keine
 eigene. Was der Text sonst über sie sagt (Wohnort, Fraktion), kommt nicht
 geraten dazu.
 
+**Mitglied einer Fraktion ist sie nur, wo der Text sie verknüpft** (T-183,
+`fraktionen.ts`): ihr eigener Text (Kreatur und Statblock) verweist auf
+genau eine Fraktion, oder der Text der Fraktion verweist auf sie. Dass
+beide im selben Absatz eines Abenteuers stehen, reicht nicht: wer eine
+Gruppe jagt, gehört nicht zu ihr. **Ein Schutzherr ist kein Mitglied:**
+trägt eine Fraktion den Namen der Kreatur („Cult of X"), betet sie sie an.
+Eine solche Kreatur bekommt aus dem Text gar keine Fraktion, denn ihr Text
+nennt auch die Kulte ihrer Rivalen. 5e.tools liefert als Fraktionen nur
+Kulte, und ein Kult nennt seine Anhänger als allgemeine Statblöcke. Darum
+ergibt die Regel heute keine einzige Mitgliedschaft, sondern zehn
+Schutzherren.
+
 `Vitals` bleibt bei der Figur: das ist, was sich **während** der Sitzung
 ändert — Trefferpunkte jetzt, Zustände, Todesretter, verbrauchte
 Zauberplätze. Es gehört ihr und nicht ihrem Bogen.
