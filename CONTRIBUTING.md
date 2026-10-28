@@ -33,6 +33,7 @@ Dokumentation wird im selben Commit nachgezogen wie die Änderung.
 pnpm lint
 pnpm test
 pnpm --filter @nw/model build && pnpm --filter @nw/registry build
+pnpm typecheck   # alle Pakete und die E2E-Dateien; läuft in der CI mit
 pnpm --filter @nw/server build && pnpm --filter web build
 # Wer eine Migration anfasst, zusätzlich gegen eine leere Postgres:
 DATABASE_URL=postgres://… node apps/server/scripts/durchstich.mjs
