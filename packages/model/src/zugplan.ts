@@ -18,9 +18,10 @@
 import { COMMON_ACTION_CATALOGUE, turnTypeOf } from './actions.js';
 import { abilityMod } from './calc.js';
 import { averageOf, attackNumbers, withEffectBonuses, type AttackNumbers } from './attack.js';
-import { cellAt, cellCentre, type GridGeometry, type MapMarker } from './map.js';
+import { cellAt, cellCentre, inShape, shapeOf, type GridGeometry, type MapMarker, type RevealShape } from './map.js';
 import { cellKey, cheapestPath, reachable, type Cell, type MoveGrid } from './movement.js';
 import type { Pt } from './sight.js';
+import type { Entity, EntityId } from './types.js';
 import { wallBlocks, type MapWall } from './walls.js';
 
 /** Was ein Schritt kostet. `free` kostet nichts (ein Wort, eine Tür öffnen). */
@@ -413,23 +414,94 @@ export function planText(steps: readonly PlanStep[]): string {
 // ------------------------------------------------------------ Das Raster
 
 /**
+ * **Ein Stück Gelände für den Plan** (T-349): die Form einer Zone und was
+ * ein Schritt hinein kostet (`ZoneKind.moveCost`, 2 ist schwieriges
+ * Gelände). Formen in Anteilen der Karte, wie an der Kante `zone` — so
+ * rastert jede Seite mit ihrer Bildgrösse, und der Server mit seiner.
+ */
+export interface PlanTerrain {
+  shape: RevealShape;
+  cost: number;
+}
+
+/**
+ * Das Gelände einer Karte (T-349): je Kante `zone` ihre Form, wenn die
+ * Zonenart mehr als 1 kostet. Eine Zone mit `hiddenUntil` zählt erst, wenn
+ * sie gefunden ist (`props.found`) — oder für die Leitung (`hidden`): ein
+ * Weg, der um eine Falle herumführt, die die Spielenden nicht kennen,
+ * hätte sie verraten.
+ */
+export function mapTerrain(map: Entity, kinds: ReadonlyMap<EntityId, Entity>, opts: { hidden?: boolean } = {}): PlanTerrain[] {
+  const out: PlanTerrain[] = [];
+  for (const r of map.relations ?? []) {
+    if (r.type !== 'zone') continue;
+    const k = (kinds.get(r.to)?.components?.['ZoneKind'] ?? {}) as Record<string, unknown>;
+    const cost = Number(k['moveCost']);
+    if (!Number.isFinite(cost) || cost <= 1) continue;
+    const p = (r.props ?? {}) as Record<string, unknown>;
+    if (!opts.hidden && Number(k['hiddenUntil']) > 0 && p['found'] !== true) continue;
+    const shape = shapeOf({ ...p, id: r.id });
+    if (shape) out.push({ shape, cost: Math.min(10, cost) });
+  }
+  return out;
+}
+
+/**
+ * Das Gelände aufs Gitter gerastert (T-349): ein Feld gehört zur Zone,
+ * wenn seine Mitte in der Form liegt, wie im Prototyp; liegen zwei
+ * übereinander, gilt die teurere — Schlamm unter Dornen ist nicht dreimal
+ * so langsam, sondern so langsam wie das Schlimmere.
+ */
+export function terrainCosts(geo: GridGeometry, cols: number, rows: number, terrain: readonly PlanTerrain[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!terrain.length) return out;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const m = cellCentre(geo, { x, y });
+      for (const t of terrain) {
+        if (t.cost > (out[`${x},${y}`] ?? 1) && inShape(t.shape, m)) out[`${x},${y}`] = t.cost;
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Das Bewegungsraster einer Karte für den Plan (nur Quadrate): so viele
  * Spalten und Zeilen, wie das Bild trägt; die Felder der **anderen**
  * Tokens sind besetzt, und was den Schritt hält (`Map.walls`, T-118),
  * steht als Wand im Raster.
+ *
+ * **Verbündete hält man nicht auf** (T-349): wessen Markerkante in
+ * `passable` steht, durch dessen Feld geht der Weg, aber er endet nicht
+ * dort (`noStop`, 5e: man darf durch den Platz einer freundlichen Kreatur
+ * ziehen). Wer verbündet ist, sagt der Server (`seiteVon`) — die Seite hat
+ * kein Feld am Token. `terrain` gibt die Kosten je Feld (`mapTerrain`).
  */
-export function planGrid(geo: GridGeometry, markers: readonly MapMarker[], selfRel: string, walls: readonly MapWall[] = []): MoveGrid | null {
+export function planGrid(
+  geo: GridGeometry,
+  markers: readonly MapMarker[],
+  selfRel: string,
+  walls: readonly MapWall[] = [],
+  opts: { passable?: Iterable<string>; terrain?: readonly PlanTerrain[] } = {},
+): MoveGrid | null {
   if (geo.shape !== 'square') return null;
   const cols = Math.max(1, Math.floor((geo.w - geo.ox) / geo.size));
   const rows = Math.max(1, Math.floor((geo.h - geo.oy) / geo.size));
-  const blocked = markers
-    .filter((m) => m.rel.id !== selfRel && m.kind !== 'scenery' && !m.hidden)
-    .map((m) => cellKey(cellAt(geo, m)));
+  const frei = new Set(opts.passable ?? []);
+  const andere = markers.filter((m) => m.rel.id !== selfRel && m.kind !== 'scenery' && !m.hidden);
+  const blocked = andere.filter((m) => !frei.has(m.rel.id)).map((m) => cellKey(cellAt(geo, m)));
+  const noStop = andere.filter((m) => frei.has(m.rel.id)).map((m) => cellKey(cellAt(geo, m)));
   /* Die Sperren, die den Schritt halten (T-118), in Feldeinheiten. */
   const fx = (x: number) => (x * geo.w - geo.ox) / geo.size;
   const fy = (y: number) => (y * geo.h - geo.oy) / geo.size;
   const segs = walls.filter((w) => wallBlocks(w).move).map((w) => ({ x1: fx(w.x1), y1: fy(w.y1), x2: fx(w.x2), y2: fy(w.y2) }));
-  return { cols, rows, walls: segs, blocked, square: geo.cellFeet };
+  const cost = terrainCosts(geo, cols, rows, opts.terrain ?? []);
+  return {
+    cols, rows, walls: segs, blocked, square: geo.cellFeet,
+    ...(noStop.length ? { noStop } : {}),
+    ...(Object.keys(cost).length ? { cost } : {}),
+  };
 }
 
 /** Das Feld eines Tokens, ins Raster geklemmt. */

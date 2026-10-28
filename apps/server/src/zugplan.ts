@@ -94,7 +94,13 @@ import {
   partiesOf,
   resolvePlay,
   planBudget,
+  planEnd,
+  planGrid,
   planText,
+  mapTerrain,
+  pathFeet,
+  tokenCell,
+  type PlanTerrain,
   primaryInterface,
   resolveInstance,
   creatureStats,
@@ -326,6 +332,69 @@ export function bedrohungen(stand: Stand, karte: Entity, figur: string, kampf: E
     out.push({ id: m.to, name: entityName(e), rel: m.rel.id, reach: reichweiteVon(stand, e) });
   }
   return out;
+}
+
+/**
+ * **Was der Plan auf der Ebene der Figur durchlässt** (T-349): die
+ * Markerkanten der Verbündeten (`seiteVon` wie die Figur) und das Gelände
+ * der Zonen — versteckte nur für die Leitung (`mapTerrain`). Gelesen von
+ * **der** Karte, die man hineingibt; für Spielende die gesiebte, wie das
+ * Raster der Maske.
+ */
+export function planDurchlass(stand: Stand, karte: Entity, figur: string, kampf: Entity | null, leitet: boolean): { passable: string[]; terrain: PlanTerrain[] } {
+  const ich = markersOf(karte).find((m) => m.to === figur);
+  if (!ich) return { passable: [], terrain: [] };
+  const ebene = floorView(karte, floorOfMarker(karte, ich.rel.id));
+  const meine = seiteVon(stand, kampf, figur);
+  const passable = markersOf(ebene)
+    .filter((m) => m.kind !== 'scenery' && m.to !== figur && seiteVon(stand, kampf, m.to) === meine)
+    .map((m) => m.rel.id);
+  return { passable, terrain: mapTerrain(ebene, stand.map, { hidden: leitet }) };
+}
+
+/**
+ * **Die Wege eines Plans am Server nachgerechnet** (T-349): je Bewegung
+ * das Raster, wie die Maske es baut (Wände, Tokens, Verbündete, Gelände),
+ * und die Fuss daraus — nicht die, die mitkommen. Ein Weg fängt dort an,
+ * wo der letzte aufhörte (am Anfang beim Token), und geht Schritt für
+ * Schritt; durch einen Gegner, durch eine Wand oder bis auf einen
+ * Verbündeten geht er nicht. Ohne Gitter, Token oder Quadrate rechnet
+ * niemand nach, statt falsch abzulehnen. Die Diagonalen zählt jeder Weg
+ * von vorn, wie die Maske (`planPath`).
+ */
+export function wegeNachrechnen(
+  stand: Stand,
+  roheKarte: Entity,
+  karte: Entity,
+  figur: string,
+  steps: PlanStep[],
+  nat: { w: number; h: number } | null,
+  kampf: Entity | null,
+  leitet: boolean,
+): string | null {
+  if (!steps.some((s) => s.kind === 'move')) return null;
+  const m = markersOf(karte).find((x) => x.to === figur);
+  if (!m) return null;
+  const floor = floorOfMarker(roheKarte, m.rel.id);
+  const geo = geoDerEbene(stand, roheKarte, floor, nat);
+  if (!geo) return null;
+  const ebene = floorView(karte, floor);
+  const grid = planGrid(geo, markersOf(ebene), m.rel.id, blockingWalls(ebene, { w: geo.w, h: geo.h }), planDurchlass(stand, karte, figur, kampf, leitet));
+  if (!grid) return null;
+  const start = tokenCell(geo, grid, m);
+  for (const [i, s] of steps.entries()) {
+    if (s.kind !== 'move' || !s.path.length) continue;
+    const da = planEnd(steps.slice(0, i), start);
+    const [erster] = s.path;
+    /* Die Maske schickt das Startfeld mit; ein Aufrufer, der beim Nachbarfeld
+       anfängt, meint denselben Weg — der Start kommt davor. Weiter weg ist
+       ein Sprung. */
+    const weg = erster && (erster.x !== da.x || erster.y !== da.y) && Math.max(Math.abs(erster.x - da.x), Math.abs(erster.y - da.y)) === 1 ? [da, ...s.path] : s.path;
+    const w = weg[0] && weg[0].x === da.x && weg[0].y === da.y ? pathFeet(grid, weg) : null;
+    if (!w) return 'That path is blocked — it starts away from the token, goes through a wall or someone who stops it, or ends on an ally. Plan it again on the map.';
+    steps[i] = { ...s, path: weg, feet: w.feet };
+  }
+  return null;
 }
 
 /** Die Bedrohungen mit ihren Feldern, für `opportunityAttacks`. */
@@ -696,6 +765,8 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       threats,
       plans,
       passages: figur ? uebergaengeFuer(stand, roheKarte, karte, kampagne, figur.id, leitet, speed) : [],
+      /* Wen der Weg durchlässt und was Gelände kostet (T-349). */
+      ...(figur ? planDurchlass(stand, karte, figur.id, kampf, leitet) : { passable: [], terrain: [] }),
     };
   });
 
@@ -815,6 +886,10 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         steps.splice(i + 1);
         break;
       }
+      /* **Die Fuss zählt der Server** (T-349): Gelände, Verbündete, Wände —
+         ein zu langer Weg fällt unten durch, was die Maske auch sagte. */
+      const blockiert = wegeNachrechnen(stand, roheKarte, karte, figur.id, steps, cleanNat(b.nat), kampf, leitet);
+      if (blockiert) return reply.code(422).send({ error: blockiert });
       const { problems } = planBudget(steps, tempo, { reactionSpent });
       if (problems.length) return reply.code(422).send({ error: problems.join(' ') });
       /* **Reichweite am Server** (T-351): ausser Reichweite nimmt der Plan

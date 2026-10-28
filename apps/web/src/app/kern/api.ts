@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, DefaultShape, ShapeGroup, ShapeItem, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, DefaultShape, ShapeGroup, ShapeItem, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTerrain, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -2346,6 +2346,10 @@ export interface ZugLage {
   plans: (TurnPlan & { at: string; canAnswer?: boolean })[];
   /** Die Übergänge auf der Ebene der Figur (T-326): Fläche, Kosten, und warum nicht, wenn nicht. */
   passages?: { via: string; name: string; at: { x: number; y: number }; area: Array<[number, number]> | null; feet: number; cost: 'action' | 'bonus' | 'reaction' | 'free'; blocked: string | null; from: { x: number; y: number } }[];
+  /** Die Markerkanten der Verbündeten: der Weg geht hindurch, endet dort nicht (T-349). */
+  passable?: string[];
+  /** Das Gelände der Zonen mit Kosten über 1, versteckte nur für die Leitung (T-349). */
+  terrain?: PlanTerrain[];
 }
 
 /** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */

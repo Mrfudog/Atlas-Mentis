@@ -472,6 +472,37 @@ export function cheapestPath(
 }
 
 /**
+ * **Was ein gegebener Weg kostet** (T-349) — für den, der ihn nicht selbst
+ * gesucht hat: der Server rechnet so den Weg eines Plans nach, statt die
+ * Fuss zu glauben, die mitkommen. `null`, wenn der Weg nicht geht: ein
+ * Sprung statt eines Schritts, ein Feld, das nicht passt, eine Wand, oder
+ * das Ende auf einem Feld, auf dem man nicht stehen bleibt. Gemiedene
+ * Felder zählt er mit, wie `cheapestPath`.
+ */
+export function pathFeet(g: MoveGrid, cells: readonly Cell[], parity: Parity = 0): PathResult | null {
+  const t = terrain(g);
+  const square = g.square ?? 5;
+  const avoid = asSet(g.avoid);
+  const [erster] = cells;
+  if (!erster || !t.inside(erster.x, erster.y)) return null;
+  let feet = 0, par = parity, avoided = 0;
+  for (let i = 1; i < cells.length; i++) {
+    const a = cells[i - 1]!, b = cells[i]!;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) !== 1) return null;
+    if (!t.fits(b.x, b.y) || t.stepWall(a.x, a.y, dx, dy)) return null;
+    const neu = t.entered(a.x, a.y, dx, dy);
+    const st = stepFeet(dx !== 0 && dy !== 0, par, t.factor(neu), square);
+    feet += st.feet;
+    par = st.parity;
+    for (const k of neu) if (avoid.has(k)) avoided++;
+  }
+  const ende = cells[cells.length - 1]!;
+  if (cells.length > 1 && !g.share && t.touches(ende.x, ende.y, asSet(g.noStop))) return null;
+  return { cells: cells.map((c) => ({ ...c })), feet, parity: par, avoided };
+}
+
+/**
  * Ein Weg über Wegpunkte (REQ-207): zwischen je zwei Punkten der
  * günstigste, und die Diagonalenzählung läuft über die Punkte weiter.
  * `null`, wenn ein Stück nicht geht — `failedLeg` sagt dann, welches.
