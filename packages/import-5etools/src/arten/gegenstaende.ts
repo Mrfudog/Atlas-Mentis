@@ -4,7 +4,7 @@
  * Eigenschaften aus Schritt 5, `casts` auf die Zauber aus Schritt 7,
  * `variantOf` auf den Grundgegenstand.
  *
- * Eine magische Variante („+1 Weapon") ist **ein** Artikel mit `appliesTo`;
+ * Eine magische Variante („+1 Weapon") ist **ein** Enhancement (T-324);
  * das „+1 Longsword" entsteht am Tisch als Instanz des Grundgegenstands
  * (D82) und nicht hier — 5e.tools rechnet es beim Lesen aus, und wir
  * würden sonst zweitausend Schwerter speichern.
@@ -139,7 +139,14 @@ function felder(wb: Werkbank, ent: Entity, e: Knoten): void {
     const roh = typeof p === 'string' ? p : String((p as Knoten)['uid'] ?? '');
     const [abk = '', quelle = ''] = roh.split('|');
     const ziel = wb.hole('itemProperty', abk, quelle || 'PHB') ?? wb.finde('itemProperty', [abk]);
-    if (ziel) wb.kante(ent, 'hasProperty', ziel.id);
+    /* **Was bei diesem Gegenstand gilt, an die Kante** (T-324, E-163):
+       Versatile 1d10 ist die Sache des Langschwerts, Thrown 20/60 die des
+       Dolchs. `Weapon.damage2` und `Weapon.range` bleiben daneben stehen,
+       bis die Anzeige nur noch die Kante liest. */
+    const werte: Record<string, string> = {};
+    if (abk === 'V' && typeof e['dmg2'] === 'string') werte['damage'] = e['dmg2'];
+    if ((abk === 'T' || abk === 'A') && e['range'] !== undefined) werte['range'] = String(e['range']);
+    if (ziel) wb.kante(ent, 'hasProperty', ziel.id, Object.keys(werte).length ? werte : undefined);
     else wb.ctx.insLeere('itemProperty', roh);
   }
   /* Die Waffenmeisterschaft (2024, T-087) ist eine Eigenschaft mit der
@@ -442,14 +449,44 @@ export function aufpreis(i: Knoten): { add?: number; mult?: number } {
   return i['valueMult'] !== undefined && Number.isFinite(m) ? { mult: m } : {};
 }
 
+/**
+ * **Was `felder` in die Karte `Item` schrieb, kommt ins Merkmal** (T-324,
+ * E-163): Seltenheit, Einstimmung und Boni ans Enhancement, der Preis ist
+ * ohne eigene Angabe der Aufpreis. Was ein Merkmal nicht trägt (Ladungen,
+ * Stufe, Gewicht), steht als Satz in den Notizen — wie Migration 161 es
+ * mit den schon eingelesenen macht — und im Bericht.
+ */
+const ZUM_ENHANCEMENT = ['rarity', 'attunement', 'attunementNote', 'bonusWeapon', 'bonusAc', 'bonusSpellAttack', 'bonusSave'];
+function alsMerkmal(wb: Werkbank, ent: Entity): void {
+  const it = (ent.components['Item'] ?? {}) as Record<string, unknown>;
+  delete ent.components['Item'];
+  const merkmal = wb.karte(ent, 'ItemFeature');
+  const rest: string[] = [];
+  for (const [k, w] of Object.entries(it)) {
+    if (ZUM_ENHANCEMENT.includes(k)) wb.feld(ent, 'Enhancement', k, w);
+    else if (k === 'copperPrice' && merkmal['priceAdd'] === undefined && merkmal['priceMult'] === undefined) wb.feld(ent, 'ItemFeature', 'priceAdd', w);
+    else {
+      rest.push(`${k}: ${Array.isArray(w) ? w.join(', ') : String(w)}`);
+      wb.notiz(`Enhancement: ${k} nicht übernommen`);
+    }
+  }
+  if (!Object.keys(merkmal).length) delete ent.components['ItemFeature'];
+  if (rest.length) {
+    const notes = wb.karte(ent, 'Notes');
+    notes['note'] = [...((notes['note'] as unknown[] | undefined) ?? []), { id: 'item-fields', value: `As an item: ${rest.join('; ')}` }];
+  }
+}
+
 export const GEGENSTAENDE: Zuordnung[] = [
   gegenstand('baseitem'),
   gegenstand('item'),
   {
     art: 'magicvariant',
     tag: 'item',
-    /* Eine Beschreibung, die auf Waffen passt, ist keine Waffe. */
-    typ: () => 'Item',
+    /* Eine Beschreibung, die auf Waffen passt, ist keine Waffe — und seit
+       T-324 (E-163) überhaupt kein Gegenstand, sondern ein Merkmal, das an
+       einen kommt. */
+    typ: () => 'Enhancement',
     name: (e) => String(e['name']),
     genutzt: ['name', 'type', 'requires', 'excludes', 'inherits', 'entries', 'ammo'],
     fuellen(wb, ent, e) {
@@ -463,17 +500,18 @@ export const GEGENSTAENDE: Zuordnung[] = [
           else gilt.push(`${k}:${String(v)}`);
         }
       }
-      wb.feld(ent, 'Item', 'appliesTo', [...new Set(gilt)]);
+      wb.feld(ent, 'ItemFeature', 'appliesTo', [...new Set(gilt)]);
       /* **Als Enhancement** (T-300, E-107): Namensteile und Aufpreis, damit
          die Leitung sie an ein Stück hängen kann und Name und Preis
          gerechnet werden. Der Aufpreis aus derselben Rechnung wie bei den
          ausgeschriebenen Paaren: `[[baseItem.value]] + 10000` ist ein
          Betrag, `* 2` oder `valueMult` ein Faktor. */
-      if (typeof i['namePrefix'] === 'string' && i['namePrefix']) wb.feld(ent, 'Item', 'namePrefix', i['namePrefix']);
-      if (typeof i['nameSuffix'] === 'string' && i['nameSuffix']) wb.feld(ent, 'Item', 'nameSuffix', i['nameSuffix']);
+      if (typeof i['namePrefix'] === 'string' && i['namePrefix']) wb.feld(ent, 'ItemFeature', 'namePrefix', i['namePrefix']);
+      if (typeof i['nameSuffix'] === 'string' && i['nameSuffix']) wb.feld(ent, 'ItemFeature', 'nameSuffix', i['nameSuffix']);
       const a = aufpreis(i);
-      if (a.add !== undefined) wb.feld(ent, 'Item', 'priceAdd', a.add);
-      if (a.mult !== undefined) wb.feld(ent, 'Item', 'priceMult', a.mult);
+      if (a.add !== undefined) wb.feld(ent, 'ItemFeature', 'priceAdd', a.add);
+      if (a.mult !== undefined) wb.feld(ent, 'ItemFeature', 'priceMult', a.mult);
+      alsMerkmal(wb, ent);
       /* `{=bonusWeapon}` ist ein Platzhalter, den 5e.tools beim Lesen füllt;
          die Werte stehen am selben Eintrag. */
       /* `{=baseName}` ist der Grundgegenstand, den es hier nicht gibt — die

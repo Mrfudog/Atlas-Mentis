@@ -24,6 +24,9 @@ function datenstand(): Datenstand {
   add('language', { name: 'Common', source: 'PHB', type: 'standard', entries: ['Common.'] }, { name: 'Goblin', source: 'PHB', type: 'standard', script: 'Dwarvish', entries: [] });
   add('action', { name: 'Disengage', source: 'PHB', time: [{ number: 1, unit: 'action' }], entries: ['Move away.'] });
   add('itemProperty', { abbreviation: 'L', source: 'PHB', entries: [{ type: 'entries', name: 'Light', entries: ['Small and easy.'] }] });
+  add('itemProperty', { abbreviation: 'V', source: 'PHB', entries: [{ type: 'entries', name: 'Versatile', entries: ['One or two hands.'] }] });
+  add('itemProperty', { abbreviation: 'T', source: 'PHB', entries: [{ type: 'entries', name: 'Thrown', entries: ['Throw it.'] }] });
+  add('baseitem', { name: 'Spear', source: 'PHB', type: 'M', weaponCategory: 'simple', dmg1: '1d6', dmg2: '1d8', dmgType: 'P', range: '20/60', property: ['T', 'V'], weapon: true, value: 100, weight: 3 });
   add('baseitem', { name: 'Scimitar', source: 'PHB', type: 'M', weaponCategory: 'martial', dmg1: '1d6', dmgType: 'S', property: ['F', 'L'], weapon: true, value: 2500, weight: 3 });
   add('spell', {
     name: 'Fireball', source: 'PHB', page: 241, srd: true, level: 3, school: 'V', time: [{ number: 1, unit: 'action' }],
@@ -315,6 +318,21 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     expect(nick.components['Tags']).toEqual({ tags: ['mastery'] });
     expect(finde(es, 'Weapon', 'Scimitar (XPHB)').relations?.some((r) => r.type === 'hasProperty' && r.to === nick.id)).toBe(true);
     expect(finde(es, 'Weapon', 'Scimitar').relations?.some((r) => r.to === nick.id)).toBe(false);
+  });
+
+  /* T-324, E-163: was eine Eigenschaft bewirkt, steht in ihren Daten; was
+     sie bei diesem Gegenstand heisst, an der Kante. */
+  it('gibt Eigenschaften ihre Wirkung und der Kante die Werte des Gegenstands', () => {
+    const leicht = finde(es, 'ItemProperty', 'Light');
+    expect(leicht.components['ItemFeature']).toEqual({ mechanics: ['light'] });
+    const vielseitig = finde(es, 'ItemProperty', 'Versatile');
+    expect(vielseitig.components['ItemFeature']).toEqual({ mechanics: ['versatile'] });
+    const wurf = finde(es, 'ItemProperty', 'Thrown');
+    expect(wurf.components['ItemFeature']).toBeUndefined();
+    const speer = finde(es, 'Weapon', 'Spear');
+    const kante = (z: string) => speer.relations?.find((r) => r.type === 'hasProperty' && r.to === z);
+    expect(kante(vielseitig.id)?.props).toEqual({ damage: '1d8' });
+    expect(kante(wurf.id)?.props).toEqual({ range: '20/60' });
   });
 
   it('lässt Kochbücher weg (T-087)', () => {
