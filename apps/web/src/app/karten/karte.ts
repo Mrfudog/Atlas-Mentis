@@ -1962,6 +1962,10 @@ export class Karte {
     const abPlan = inject(Live).onPlan((karte) => {
       if (karte === this.id()) void this.kontextHolen(karte);
     });
+    /* Etwas verpasst (`reset`, T-399): die Karte selbst holt der Bestand, den Kontext diese Seite. */
+    const abNeu = inject(Live).onNeu((was) => {
+      if (was === 'reset') void this.kontextHolen(this.id());
+    });
     /* Das Vollbild verlässt man auch mit Esc des Browsers — gefragt wird darum das Dokument. */
     const vollbildWechsel = () => this.echtesVollbild.set(!!document.fullscreenElement?.contains(this.host.nativeElement));
     document.addEventListener('fullscreenchange', vollbildWechsel);
@@ -1969,6 +1973,7 @@ export class Karte {
       document.removeEventListener('fullscreenchange', vollbildWechsel);
       ab();
       abPlan();
+      abNeu();
       this.kontextLauf += 1;
     });
   }
@@ -5087,14 +5092,18 @@ export class Karte {
     this.mangel.set(null);
     this.speichert.set(true);
     let naechstes: Entity | null = e;
+    let basis = untracked(() => this.gespeichert());
     while (naechstes) {
-      const fehler = await this.brett.schreiben(naechstes);
+      /* Wovon die Änderung ausging (T-399): weist der Server ab, führt
+         `Brett.schreiben` zusammen, statt sie wegzuwerfen. */
+      const fehler = await this.brett.schreiben(naechstes, basis);
       this.mangel.set(fehler);
       naechstes = this.wartet;
       this.wartet = null;
       if (naechstes && fehler) naechstes = null;
       const rev = this.gespeichert()?.revision;
       if (naechstes && rev !== undefined) naechstes = { ...naechstes, revision: rev };
+      basis = untracked(() => this.gespeichert());
     }
     this.entwurf.set(null);
     this.speichert.set(false);
