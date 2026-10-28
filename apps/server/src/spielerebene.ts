@@ -36,6 +36,7 @@ import {
   type Entity,
 } from '@nw/model';
 import type { LayerGrant, Repository } from './repo.js';
+import { frischAendern } from './kampagnenrevision.js';
 
 /** Das Wort an `Layer.kind` — Beschreibung, nicht Regel. */
 export const PLAYER_LAYER_KIND = 'player';
@@ -115,7 +116,12 @@ export async function sorgeSpielerEbene(repo: Repository, userId: string, campai
     return null;
   }
   await repo.putEntity(ebene);
-  await repo.putEntity(neu);
+  /* Die Kante auf den frischen Stand der Kampagne, gegen seine Revision
+     (T-449) — wer gerade den Stapel schaltet, verlöre sonst seine Wahl. */
+  const kante = neu.relations!.at(-1)!;
+  await frischAendern(repo, kampagne.id, (k) =>
+    (k.relations ?? []).some((r) => r.id === kante.id) ? null : { ...k, relations: [...(k.relations ?? []), kante] },
+  );
   await repo.grantLayer(userId, id, true, campaignId);
   await repo.appendEvent('layer.player', id, { user: userId, campaign: campaignId, ...(by ? { by } : {}) });
   return id;

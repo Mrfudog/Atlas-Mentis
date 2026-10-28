@@ -1508,6 +1508,28 @@ try {
   pruefe('Ausfuhr: wer mitspielt, bekommt sie nicht', (await ausfuhr(await anmelden('probe-spiel'))).r.status === 403);
   pruefe('Ausfuhr: `layers=all` nur die Verwaltung', (await get(leitung, '/api/export?campaign=camp_probe_a&layers=all')).status === 403);
 
+  /* T-449: zwei Schreiber an derselben Kampagne, wirklich gleichzeitig und
+     gegen Postgres — je eine Sichtbarkeitsregel. Ohne Revision gewann der
+     zweite und nahm die Regel des ersten mit; jetzt stehen beide. */
+  {
+    const regel = (id, audience) =>
+      fetch(`${BASE}/api/campaigns/camp_probe_a/visibility/rules`, {
+        method: 'PUT',
+        headers: { cookie: leitung, ...json },
+        body: JSON.stringify({ id, audience }),
+      });
+    const rs = await Promise.all([regel('t449:a', 'gm'), regel('t449:b', 'gm')]);
+    const k = await (await get(admin, '/api/entities/camp_probe_a')).json();
+    const da = (k.components?.VisibilityRules?.visibilityRules ?? []).map((r) => r.id);
+    pruefe(
+      'Gleichzeitig an der Kampagne: beide Regeln stehen (T-449)',
+      rs.every((r) => r.ok) && da.includes('t449:a') && da.includes('t449:b'),
+      `${rs.map((r) => r.status).join(',')} ${JSON.stringify(da)}`,
+    );
+    await regel('t449:a', null);
+    await regel('t449:b', null);
+  }
+
   const loeschen = async (wann, nur = null) => {
     for (const e of [...ARTIKEL].reverse().filter((x) => !nur || nur.has(x.id))) {
       const r = await fetch(`${BASE}/api/entities/${e.id}`, {

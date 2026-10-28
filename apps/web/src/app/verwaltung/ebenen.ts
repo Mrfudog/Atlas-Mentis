@@ -1,13 +1,14 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
 import { Stapelfolge } from './stapelfolge';
 import { Klappleiste } from '../muster/klappleiste';
 import { areaOf } from '@nw/model';
-import { Api, type Ebenenauswahl, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
+import { Api, ApiError, type Ebenenauswahl, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
+import { Live } from '../kern/live';
 
 /** Ebenen, die Bücher sind — ohne Gruppe stehen sie unter „Other books". */
 const BUCHARTEN = new Set(['book', 'adventure']);
@@ -353,7 +354,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
                     type="checkbox"
                     [checked]="!!l.compare"
                     [disabled]="!aenderbar(l) || laeuft()"
-                    (change)="vergleichen(l)"
+                    (change)="vergleichen(l, $event)"
                   />
                   compare
                 </label>
@@ -421,7 +422,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
                     [checked]="!!g.ebene.compare"
                     [disabled]="!aenderbar(g.ebene) || laeuft()"
                     [attr.aria-label]="'Compare the whole group ' + g.ebene.name"
-                    (change)="vergleichen(g.ebene)"
+                    (change)="vergleichen(g.ebene, $event)"
                   />
                   compare
                 </label>
@@ -470,7 +471,7 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
                     type="checkbox"
                     [checked]="!!l.compare"
                     [disabled]="!aenderbar(l) || laeuft()"
-                    (change)="vergleichen(l)"
+                    (change)="vergleichen(l, $event)"
                   />
                   compare
                 </label>
@@ -1017,6 +1018,16 @@ export class KampagnenEbenenListe {
       void this.laden(c);
     });
     void this.setsLaden();
+    /* Schreibt jemand anders die Kampagne (ein zweites Gerät, ein anderer
+       Reiter), kommt der Stand neu — die Revision, gegen die der Stapel
+       geschickt wird (`If-Match`, T-449), bleibt so die frische. */
+    const ab = inject(Live).onArtikel((ev) => {
+      const c = this.kampagne();
+      if (ev.id !== c || this.laeuft()) return;
+      if (ev.kind === 'changed' && ev.revision != null && ev.revision === this.daten()?.campaign.revision) return;
+      void this.laden(c);
+    });
+    inject(DestroyRef).onDestroy(ab);
   }
 
   /**
@@ -1462,24 +1473,30 @@ export class KampagnenEbenenListe {
   });
 
   /** Eine Ebene zum Vergleich dazu oder weg (T-092) — nur eine, die nicht im Spiel ist; auch eine ganze Gruppe (T-143). */
-  protected vergleichen(l: KampagnenEbene): void {
+  protected vergleichen(l: KampagnenEbene, ev?: Event): void {
     const jetzt = (this.daten()?.layers ?? []).filter((x) => x.compare).map((x) => x.id);
     const neu = l.compare ? jetzt.filter((id) => id !== l.id) : [...jetzt, l.id];
-    void this.vergleichSchreiben({ layers: neu });
+    /* Geht es nicht durch (409, T-449), zeigt das Häkchen den Stand, der
+       gilt — die Bindung allein setzt es nicht zurück, ihr Wert blieb gleich. */
+    const haken = ev?.target as HTMLInputElement | undefined;
+    void this.vergleichSchreiben({ layers: neu }, () => {
+      if (haken) haken.checked = !!this.daten()?.layers.find((x) => x.id === l.id)?.compare;
+    });
   }
 
   protected spielerSehen(ev: Event): void {
     void this.vergleichSchreiben({ players: (ev.target as HTMLInputElement).checked });
   }
 
-  private async vergleichSchreiben(neu: { layers?: string[]; players?: boolean }): Promise<void> {
+  private async vergleichSchreiben(neu: { layers?: string[]; players?: boolean }, zurueck?: () => void): Promise<void> {
     const c = this.kampagne();
     this.laeuft.set(true);
     try {
-      await this.uebernehmen(c, await this.api.setCampaignCompare(c, neu));
+      await this.uebernehmen(c, await this.api.setCampaignCompare(c, neu, this.daten()?.campaign.revision));
       this.geschaltet.emit();
     } catch (error) {
-      this.fehler.set(error instanceof Error ? error.message : String(error));
+      await this.gescheitert(c, error);
+      zurueck?.();
     } finally {
       this.laeuft.set(false);
     }
@@ -1578,13 +1595,24 @@ export class KampagnenEbenenListe {
     const c = this.kampagne();
     this.laeuft.set(true);
     try {
-      const r = stapel ? await this.api.setCampaignLayers(c, stapel, off) : dazu ? await this.api.activateLayer(c, dazu) : null;
+      const r = stapel ? await this.api.setCampaignLayers(c, stapel, off, this.daten()?.campaign.revision) : dazu ? await this.api.activateLayer(c, dazu) : null;
       await this.uebernehmen(c, r);
       this.geschaltet.emit();
     } catch (error) {
-      this.fehler.set(error instanceof Error ? error.message : String(error));
+      await this.gescheitert(c, error);
     } finally {
       this.laeuft.set(false);
     }
+  }
+
+  /** Hat inzwischen jemand anders geschaltet (409, T-449), steht danach der
+   *  frische Stand da — sonst wäre der nächste Klick wieder gegen den alten. */
+  private async gescheitert(c: string, error: unknown): Promise<void> {
+    if (error instanceof ApiError && error.status === 409 && (error.body as { conflict?: unknown } | undefined)?.conflict) {
+      await this.laden(c);
+      this.fehler.set('Someone else changed this campaign at the same moment. This is the latest state — do it again if you still want to.');
+      return;
+    }
+    this.fehler.set(error instanceof Error ? error.message : String(error));
   }
 }

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-campaign-two-devices",
+      "date": "2026-10-29",
+      "title": "Two devices on one campaign keep both changes",
+      "text": "When you change the campaign on a laptop and a phone at the same time — a layer, a rule, a release, a priority or a visibility rule — both changes now stay. If you send a whole order that someone changed in the meantime, the Layers tab says so and shows the latest state instead of overwriting it.",
+      "area": "Campaign",
+      "link": "/campaign?tab=layers"
+    },
+    {
       "id": "2026-10-28-item-features",
       "date": "2026-10-28",
       "title": "Enhancements and item properties are rules articles",

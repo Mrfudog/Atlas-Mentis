@@ -77,6 +77,7 @@ import {
   withPreference,
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
+import { aufFrischemStand } from './kampagnenrevision.js';
 import { sorgeSpielerEbene } from './spielerebene.js';
 import { figurenIn, mitFiguren } from './figurenzuteilung.js';
 import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
@@ -556,7 +557,8 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
     return {
-      campaign: { id: c, name: entityName(kampagne) },
+      /* T-449: gegen diesen Stand rechnet die Oberfläche (`If-Match`). */
+      campaign: { id: c, name: entityName(kampagne), revision: kampagne.revision ?? null },
       may: recht,
       layers: [...an, ...aus],
       extra,
@@ -590,35 +592,38 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const recht = rechtAn(user, c);
     if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
     if (recht !== 'manage') return nein(reply, 403, 'Die Ebenen schaltet die Leitung auf; ein Mitleiter sieht sie nur.');
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-    const kampagne = alle.get(c);
-    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
-      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
-    }
-    const roh = neu(alle, kampagne);
-    if (typeof roh === 'string') return nein(reply, 400, roh);
-    const ids = Array.isArray(roh) ? roh : roh.layers;
-    const abgeschaltet = Array.isArray(roh) ? abgeschaltetVorgabe : roh.off;
-    const vorher = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
-    const mitglieder = groupMembers(alle);
-    const aktiv = activatingIndex(alle);
-    for (const id of ids) {
-      if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
-      if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
-        return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; aufschalten kann sie die Verwaltung.`);
+    /* T-449: gegen die gelesene Revision, bei Konflikt einmal neu. */
+    return aufFrischemStand(request, async (gegen) => {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
       }
-    }
-    /* Abschalten (T-088) darf die Leitung jede Ebene: aus nimmt nur weg. */
-    for (const id of abgeschaltet ?? []) {
-      if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
-    }
-    let geschrieben = withStack(kampagne, ids);
-    if (abgeschaltet) geschrieben = withOff(geschrieben, abgeschaltet);
-    const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
-    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-    await repo.putEntity(geschrieben);
-    await repo.appendEvent('campaign.layers', c, { layers: ids, ...(abgeschaltet ? { off: abgeschaltet } : {}), by: user.id });
-    return { ok: true, layers: ids, ...(abgeschaltet ? { off: [...offLayers(geschrieben)] } : {}), state: await ebenenSicht(user, c, recht) };
+      const roh = neu(alle, kampagne);
+      if (typeof roh === 'string') return nein(reply, 400, roh);
+      const ids = Array.isArray(roh) ? roh : roh.layers;
+      const abgeschaltet = Array.isArray(roh) ? abgeschaltetVorgabe : roh.off;
+      const vorher = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
+      const mitglieder = groupMembers(alle);
+      const aktiv = activatingIndex(alle);
+      for (const id of ids) {
+        if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
+        if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
+          return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; aufschalten kann sie die Verwaltung.`);
+        }
+      }
+      /* Abschalten (T-088) darf die Leitung jede Ebene: aus nimmt nur weg. */
+      for (const id of abgeschaltet ?? []) {
+        if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
+      }
+      let geschrieben = withStack(kampagne, ids);
+      if (abgeschaltet) geschrieben = withOff(geschrieben, abgeschaltet);
+      const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben, gegen(kampagne));
+      await repo.appendEvent('campaign.layers', c, { layers: ids, ...(abgeschaltet ? { off: abgeschaltet } : {}), by: user.id });
+      return { ok: true, layers: ids, ...(abgeschaltet ? { off: [...offLayers(geschrieben)] } : {}), state: await ebenenSicht(user, c, recht) };
+    });
   }
 
   /** `{ layers, off? }` — `off` (T-088): die Ebenen, die aus sind, obwohl
@@ -692,34 +697,36 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const recht = rechtAn(user, c);
       if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
       if (recht !== 'manage') return nein(reply, 403, 'Was eine Ebene bringt, wählt die Leitung; ein Mitleiter sieht es nur.');
-      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-      const kampagne = alle.get(c);
-      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
-        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
-      }
-      const registry = await repo.getRegistry();
-      const filter = auswahlLesen(request.body, registry);
-      if (typeof filter === 'string') return nein(reply, 400, filter);
-      let geschrieben = withFilter(kampagne, request.params.layer, filter);
-      if (!geschrieben) {
-        return nein(reply, 409, 'Diese Ebene schaltet die Kampagne nicht selbst auf; sie bringt, was ihre Gruppe bringt.');
-      }
-      /* Von den Typ-Regeln ausnehmen (T-187): „alles, trotz Regel". */
-      const exempt = request.body?.exempt;
-      if (exempt !== undefined) {
-        if (typeof exempt !== 'boolean') return nein(reply, 400, 'exempt: ja oder nein.');
-        geschrieben = withExempt(geschrieben, request.params.layer, exempt) ?? geschrieben;
-      }
-      const issues = validateEntity(registry, geschrieben, {});
-      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-      await repo.putEntity(geschrieben);
-      await repo.appendEvent('campaign.layers', c, {
-        layer: request.params.layer,
-        only: filter,
-        ...(exempt !== undefined ? { exempt } : {}),
-        by: user.id,
+      return aufFrischemStand(request, async (gegen) => {
+        const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+        const kampagne = alle.get(c);
+        if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+          return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+        }
+        const registry = await repo.getRegistry();
+        const filter = auswahlLesen(request.body, registry);
+        if (typeof filter === 'string') return nein(reply, 400, filter);
+        let geschrieben = withFilter(kampagne, request.params.layer, filter);
+        if (!geschrieben) {
+          return nein(reply, 409, 'Diese Ebene schaltet die Kampagne nicht selbst auf; sie bringt, was ihre Gruppe bringt.');
+        }
+        /* Von den Typ-Regeln ausnehmen (T-187): „alles, trotz Regel". */
+        const exempt = request.body?.exempt;
+        if (exempt !== undefined) {
+          if (typeof exempt !== 'boolean') return nein(reply, 400, 'exempt: ja oder nein.');
+          geschrieben = withExempt(geschrieben, request.params.layer, exempt) ?? geschrieben;
+        }
+        const issues = validateEntity(registry, geschrieben, {});
+        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        await repo.putEntity(geschrieben, gegen(kampagne));
+        await repo.appendEvent('campaign.layers', c, {
+          layer: request.params.layer,
+          only: filter,
+          ...(exempt !== undefined ? { exempt } : {}),
+          by: user.id,
       });
       return { ok: true, only: filter, state: await ebenenSicht(user, c, recht) };
+      });
     },
   );
 
@@ -736,22 +743,24 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const recht = rechtAn(user, c);
       if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
       if (recht !== 'manage') return nein(reply, 403, 'Typ-Regeln setzt die Leitung; ein Mitleiter sieht sie nur.');
-      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-      const kampagne = alle.get(c);
-      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
-        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
-      }
-      if (!istGruppe(alle.get(request.params.group))) return nein(reply, 400, 'Eine Typ-Regel gilt für eine Gruppe von Ebenen.');
-      const registry = await repo.getRegistry();
-      const filter = auswahlLesen(request.body, registry);
-      if (typeof filter === 'string') return nein(reply, 400, filter);
-      const geschrieben = withRule(kampagne, request.params.group, filter);
-      const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
-      const issues = validateEntity(registry, geschrieben, { knownTypes: known });
-      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-      await repo.putEntity(geschrieben);
-      await repo.appendEvent('campaign.rules', c, { group: request.params.group, only: filter, by: user.id });
-      return { ok: true, rule: filter, state: await ebenenSicht(user, c, recht) };
+      return aufFrischemStand(request, async (gegen) => {
+        const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+        const kampagne = alle.get(c);
+        if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+          return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+        }
+        if (!istGruppe(alle.get(request.params.group))) return nein(reply, 400, 'Eine Typ-Regel gilt für eine Gruppe von Ebenen.');
+        const registry = await repo.getRegistry();
+        const filter = auswahlLesen(request.body, registry);
+        if (typeof filter === 'string') return nein(reply, 400, filter);
+        const geschrieben = withRule(kampagne, request.params.group, filter);
+        const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+        const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        await repo.putEntity(geschrieben, gegen(kampagne));
+        await repo.appendEvent('campaign.rules', c, { group: request.params.group, only: filter, by: user.id });
+        return { ok: true, rule: filter, state: await ebenenSicht(user, c, recht) };
+      });
     },
   );
 
@@ -768,30 +777,32 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const recht = rechtAn(user, c);
     if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
     if (recht !== 'manage') return nein(reply, 403, 'Freigeben darf die Leitung; ein Mitleiter sieht es nur.');
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-    const kampagne = alle.get(c);
-    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
-      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
-    }
-    const ziel = alle.get(request.params.id);
-    if (!ziel) return nein(reply, 404, 'Nicht gefunden');
-    const registry = await repo.getRegistry();
-    if (on) {
-      if (!(ziel.relations ?? []).some((r) => r.type === LAYER_RELATION)) {
-        return nein(reply, 409, 'Ein Artikel ohne Ebene ist ohnehin im Spiel.');
+    return aufFrischemStand(request, async (gegen) => {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
       }
-      if (enabledArticles(kampagne).has(ziel.id)) return { ok: true, state: await ebenenSicht(user, c, recht) };
-      if (playStack(alle, kampagne, registry).inStack(ziel)) return nein(reply, 409, 'Dieser Artikel ist schon im Spiel.');
-    } else if (!enabledArticles(kampagne).has(ziel.id)) {
-      return nein(reply, 404, 'Dieser Artikel ist in dieser Kampagne nicht freigegeben.');
-    }
-    const geschrieben = withEnabled(kampagne, ziel.id, on);
-    const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
-    const issues = validateEntity(registry, geschrieben, { knownTypes: known });
-    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-    await repo.putEntity(geschrieben);
-    await repo.appendEvent(on ? 'campaign.enabled' : 'campaign.disabled', c, { article: ziel.id, by: user.id });
-    return { ok: true, enabled: on, state: await ebenenSicht(user, c, recht) };
+      const ziel = alle.get(request.params.id);
+      if (!ziel) return nein(reply, 404, 'Nicht gefunden');
+      const registry = await repo.getRegistry();
+      if (on) {
+        if (!(ziel.relations ?? []).some((r) => r.type === LAYER_RELATION)) {
+          return nein(reply, 409, 'Ein Artikel ohne Ebene ist ohnehin im Spiel.');
+        }
+        if (enabledArticles(kampagne).has(ziel.id)) return { ok: true, state: await ebenenSicht(user, c, recht) };
+        if (playStack(alle, kampagne, registry).inStack(ziel)) return nein(reply, 409, 'Dieser Artikel ist schon im Spiel.');
+      } else if (!enabledArticles(kampagne).has(ziel.id)) {
+        return nein(reply, 404, 'Dieser Artikel ist in dieser Kampagne nicht freigegeben.');
+      }
+      const geschrieben = withEnabled(kampagne, ziel.id, on);
+      const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+      const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben, gegen(kampagne));
+      await repo.appendEvent(on ? 'campaign.enabled' : 'campaign.disabled', c, { article: ziel.id, by: user.id });
+      return { ok: true, enabled: on, state: await ebenenSicht(user, c, recht) };
+    });
   };
   /**
    * **Vorrang setzen** (T-403, E-111 a): `PUT { to, over?, types? }` — ein
@@ -808,32 +819,34 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const recht = rechtAn(user, c);
       if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
       if (recht !== 'manage') return nein(reply, 403, 'Den Vorrang setzt die Leitung; ein Mitleiter sieht ihn nur.');
-      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-      const kampagne = alle.get(c);
-      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
-      const b = request.body ?? {};
-      const ziel = typeof b.to === 'string' ? alle.get(b.to) : undefined;
-      if (!ziel) return nein(reply, 404, 'Nicht gefunden');
-      const registry = await repo.getRegistry();
-      const types = Array.isArray(b.types) ? b.types.filter((t): t is string => typeof t === 'string' && !!t) : [];
-      const fremd = types.filter((t) => !registry.interfaces[t]);
-      if (fremd.length) return nein(reply, 400, `Diese Art gibt es nicht: ${fremd.join(', ')}`);
-      const over = typeof b.over === 'string' && b.over ? b.over : null;
-      if (over && !alle.has(over)) return nein(reply, 404, 'Worüber der Vorrang gelten soll, gibt es nicht.');
-      if (isLayer(ziel)) {
-        if (!types.length) return nein(reply, 400, 'Eine ganze Ebene stellt die Reihenfolge in Order in play nach vorn; hier nennt der Vorrang Arten.');
-        if (!resolvedStack(alle, kampagne).some((l) => l.id === ziel.id)) return nein(reply, 409, 'Diese Ebene ist in dieser Kampagne nicht im Spiel.');
-      } else {
-        if (types.length) return nein(reply, 400, 'Arten nennt nur der Vorrang einer Ebene.');
-        if (!playStack(alle, kampagne, registry).inPlay(ziel)) return nein(reply, 409, 'Dieser Artikel ist in dieser Kampagne nicht im Spiel.');
-      }
-      const geschrieben = withPreference(kampagne, ziel.id, { over, types });
-      const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
-      const issues = validateEntity(registry, geschrieben, { knownTypes: known });
-      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-      await repo.putEntity(geschrieben);
-      await repo.appendEvent('campaign.prefers', c, { to: ziel.id, over, types, by: user.id });
-      return { ok: true, state: await ebenenSicht(user, c, recht) };
+      return aufFrischemStand(request, async (gegen) => {
+        const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+        const kampagne = alle.get(c);
+        if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+        const b = request.body ?? {};
+        const ziel = typeof b.to === 'string' ? alle.get(b.to) : undefined;
+        if (!ziel) return nein(reply, 404, 'Nicht gefunden');
+        const registry = await repo.getRegistry();
+        const types = Array.isArray(b.types) ? b.types.filter((t): t is string => typeof t === 'string' && !!t) : [];
+        const fremd = types.filter((t) => !registry.interfaces[t]);
+        if (fremd.length) return nein(reply, 400, `Diese Art gibt es nicht: ${fremd.join(', ')}`);
+        const over = typeof b.over === 'string' && b.over ? b.over : null;
+        if (over && !alle.has(over)) return nein(reply, 404, 'Worüber der Vorrang gelten soll, gibt es nicht.');
+        if (isLayer(ziel)) {
+          if (!types.length) return nein(reply, 400, 'Eine ganze Ebene stellt die Reihenfolge in Order in play nach vorn; hier nennt der Vorrang Arten.');
+          if (!resolvedStack(alle, kampagne).some((l) => l.id === ziel.id)) return nein(reply, 409, 'Diese Ebene ist in dieser Kampagne nicht im Spiel.');
+        } else {
+          if (types.length) return nein(reply, 400, 'Arten nennt nur der Vorrang einer Ebene.');
+          if (!playStack(alle, kampagne, registry).inPlay(ziel)) return nein(reply, 409, 'Dieser Artikel ist in dieser Kampagne nicht im Spiel.');
+        }
+        const geschrieben = withPreference(kampagne, ziel.id, { over, types });
+        const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+        const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        await repo.putEntity(geschrieben, gegen(kampagne));
+        await repo.appendEvent('campaign.prefers', c, { to: ziel.id, over, types, by: user.id });
+        return { ok: true, state: await ebenenSicht(user, c, recht) };
+      });
     },
   );
   app.delete<{ Params: { c: string; to: string }; Querystring: { type?: string } }>(
@@ -844,13 +857,15 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const recht = rechtAn(user, c);
       if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
       if (recht !== 'manage') return nein(reply, 403, 'Den Vorrang setzt die Leitung; ein Mitleiter sieht ihn nur.');
-      const kampagne = await repo.getEntity(c);
-      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
-      if (!preferencesOf(kampagne).some((p) => p.to === request.params.to)) return nein(reply, 404, 'Diesen Vorrang gibt es hier nicht.');
-      const geschrieben = withPreference(kampagne, request.params.to, null, request.query.type || undefined);
-      await repo.putEntity(geschrieben);
-      await repo.appendEvent('campaign.prefers', c, { to: request.params.to, removed: request.query.type || true, by: user.id });
-      return { ok: true, state: await ebenenSicht(user, c, recht) };
+      return aufFrischemStand(request, async (gegen) => {
+        const kampagne = await repo.getEntity(c);
+        if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+        if (!preferencesOf(kampagne).some((p) => p.to === request.params.to)) return nein(reply, 404, 'Diesen Vorrang gibt es hier nicht.');
+        const geschrieben = withPreference(kampagne, request.params.to, null, request.query.type || undefined);
+        await repo.putEntity(geschrieben, gegen(kampagne));
+        await repo.appendEvent('campaign.prefers', c, { to: request.params.to, removed: request.query.type || true, by: user.id });
+        return { ok: true, state: await ebenenSicht(user, c, recht) };
+      });
     },
   );
   app.put<{ Params: { c: string; id: string } }>('/api/campaigns/:c/enabled/:id', freigabe(true));
@@ -873,43 +888,45 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const recht = rechtAn(user, c);
       if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
       if (recht !== 'manage') return nein(reply, 403, 'Die Vergleichsebenen wählt die Leitung; ein Mitleiter sieht sie nur.');
-      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-      const kampagne = alle.get(c);
-      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
-        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
-      }
-      const l = request.body?.layers;
-      if (l !== undefined && (!Array.isArray(l) || !l.every((x) => typeof x === 'string'))) {
-        return nein(reply, 400, 'layers: eine Liste von Ebenen-Ids.');
-      }
-      const ids = (l as string[] | undefined) ?? compareLayers(alle, kampagne).map((x) => x.id);
-      const vorher = new Set(compareLayers(alle, kampagne).map((x) => x.id));
-      const mitglieder = groupMembers(alle);
-      const aktiv = activatingIndex(alle);
-      for (const id of ids) {
-        if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
-        if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
-          return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; vergleichen kann damit die Verwaltung.`);
+      return aufFrischemStand(request, async (gegen) => {
+        const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+        const kampagne = alle.get(c);
+        if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+          return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
         }
-      }
-      let geschrieben = withCompare(kampagne, ids);
-      const players = request.body?.players;
-      if (players !== undefined) {
-        if (typeof players !== 'boolean') return nein(reply, 400, 'players: ja oder nein.');
-        const karte = { ...((geschrieben.components?.[CAMPAIGN_TYPE] ?? {}) as Record<string, unknown>) };
-        karte['compareFor'] = players ? 'players' : 'gm';
-        geschrieben = { ...geschrieben, components: { ...geschrieben.components, [CAMPAIGN_TYPE]: karte } };
-      }
-      const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
-      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-      await repo.putEntity(geschrieben);
-      await repo.appendEvent('campaign.compare', c, { layers: ids, ...(players !== undefined ? { players } : {}), by: user.id });
-      alle.set(c, geschrieben);
-      return {
-        ok: true,
-        layers: compareLayers(alle, geschrieben).map((x) => x.id),
-        state: await ebenenSicht(user, c, recht),
-      };
+        const l = request.body?.layers;
+        if (l !== undefined && (!Array.isArray(l) || !l.every((x) => typeof x === 'string'))) {
+          return nein(reply, 400, 'layers: eine Liste von Ebenen-Ids.');
+        }
+        const ids = (l as string[] | undefined) ?? compareLayers(alle, kampagne).map((x) => x.id);
+        const vorher = new Set(compareLayers(alle, kampagne).map((x) => x.id));
+        const mitglieder = groupMembers(alle);
+        const aktiv = activatingIndex(alle);
+        for (const id of ids) {
+          if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
+          if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
+            return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; vergleichen kann damit die Verwaltung.`);
+          }
+        }
+        let geschrieben = withCompare(kampagne, ids);
+        const players = request.body?.players;
+        if (players !== undefined) {
+          if (typeof players !== 'boolean') return nein(reply, 400, 'players: ja oder nein.');
+          const karte = { ...((geschrieben.components?.[CAMPAIGN_TYPE] ?? {}) as Record<string, unknown>) };
+          karte['compareFor'] = players ? 'players' : 'gm';
+          geschrieben = { ...geschrieben, components: { ...geschrieben.components, [CAMPAIGN_TYPE]: karte } };
+        }
+        const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        await repo.putEntity(geschrieben, gegen(kampagne));
+        await repo.appendEvent('campaign.compare', c, { layers: ids, ...(players !== undefined ? { players } : {}), by: user.id });
+        alle.set(c, geschrieben);
+        return {
+          ok: true,
+          layers: compareLayers(alle, geschrieben).map((x) => x.id),
+          state: await ebenenSicht(user, c, recht),
+        };
+      });
     },
   );
 

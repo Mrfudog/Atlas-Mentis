@@ -376,6 +376,30 @@ holt geöffnete Artikel neu (eine Maske beim Bearbeiten hält ihre
 Ausgangslage selbst, REQ-192). Der Punkt in der Kopfleiste zeigt, ob das
 Gerät mithört.
 
+**Die Kampagne schreiben zwei zugleich** (T-449, REQ-192): die Routen an
+der Kampagne — Stapel, Auswahl je Ebene, Typ-Regeln, Freigaben, Vorrang,
+Vergleich, Sichtbarkeitsregeln — ändern eine Kante oder Karte und
+schreiben die Kampagne ganz zurück. Sie schreiben gegen die gelesene
+Revision (`aufFrischemStand` in `apps/server/src/kampagnenrevision.ts`);
+kommt etwas dazwischen, lesen sie frisch und wenden **dieselbe Änderung**
+noch einmal an — so stehen beide. Wer einen ganzen Stand schickt (den
+Stapel als Liste, die Vergleichsebenen), nennt ihn mit `If-Match`; dann
+wird nicht neu gerechnet, sondern 409 geantwortet, und die Seite lädt.
+
+```mermaid
+sequenceDiagram
+  participant L as Laptop
+  participant S as Server
+  participant T as Telefon
+  L->>S: PUT …/prefers (liest Kampagne, Rev. 7)
+  T->>S: PUT …/enabled/x1
+  S-->>T: 200 (Rev. 8)
+  S->>S: Laptop schreibt gegen 7 → Konflikt
+  S->>S: frisch lesen (Rev. 8), Vorrang erneut setzen
+  S-->>L: 200 (Rev. 9: Freigabe und Vorrang)
+  Note over S: Zweiter Konflikt oder If-Match veraltet → 409 „Reload"
+```
+
 ### 5.3 Die Tabellen
 
 Drei generische Tabellen tragen jeden Artikel, das Register steht als
