@@ -307,7 +307,7 @@
       "sections": [
         {
           "text": [
-            "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview.",
+            "World, Story and Rules are areas; the Compendium holds everything. Narrow the list in the sidebar by type, tag and status; the columns come from each type's overview — a place shows its type and environment, a quest its progress and reward, a faction its kind.",
             "Above the filters, Expand all and Collapse all open and close every filter; ‹ and › go from one to the next.",
             "“Columns” picks what the table shows: any field of the type (also calculated ones), its edges, and what every row has — type, source, layers, tags, status, ID. Drag or use ↑↓ to order them.",
             "The choice is kept per page and type for your account and in the address, so a shared link shows the same table. “Reset to default” drops your choice: the campaign default shows, else the type's columns. The GM can make a choice the campaign default for everyone without their own.",
@@ -449,6 +449,7 @@
           "text": [
             "In the Layers tab every part is a section that folds: Order in play, Saved selections, each group of books, Compare layers and Extra content, each with its count in the header. Expand all and Collapse all fold them all; ‹ and › jump to the previous or next one (Alt+↑/↓, with Shift: collapse/expand all). What is folded is kept for your account.",
             "The campaign page has tabs: Overview (the story and what hangs on the campaign), Members (who sits at the table, roles, invitations), Layers (what is switched on and in which order), Rules & options and Visibility. The tab stands in the address, so a link opens it. GMs change the members; co-GMs see them.",
+            "Characters are given per campaign: a character given under Members is that member’s only in this campaign.",
             "The page opens on the running campaign — the one in the header — and follows when it is switched there. If you pick another campaign here, the Overview says it is not the running one; the admin can make it running with “Make this the running campaign”. A new campaign can be picked in the header at once.",
             "Rules & options shows the campaign’s choices by system. Every system, rule and option is a rule article — its name opens it. Whoever may change the campaign picks “Use this” beside an option to switch it right there. GMs see how many rules of the app still lack an article; those are not listed.",
             "Where several may be allowed — ability score methods, starting equipment, substitutions — each has a tick: tick or untick it right there. With none ticked, the defaults apply.",

@@ -9,6 +9,22 @@
       "link": "/play"
     },
     {
+      "id": "2026-10-28-characters-per-campaign",
+      "date": "2026-10-28",
+      "title": "Characters per campaign",
+      "text": "A character given to an account now belongs to it in that campaign only. In a new campaign you no longer find the characters of your other tables as yours; under Campaign › Members each campaign lists and gives its own.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-28-default-columns",
+      "date": "2026-10-28",
+      "title": "Lists show what a thing is",
+      "text": "Places, factions, quests, scenes, events, stories, arcs, parties, maps, recipes and crafting orders now bring their own columns to the Compendium and the areas: a quest shows progress and reward, a place its type and environment, an event its kind and date. Your own column choice stays; “Reset to default” goes back to these.",
+      "area": "Compendium",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-28-section-bar",
       "date": "2026-10-28",
       "title": "Expand all, collapse all, next section — on more pages",
