@@ -275,7 +275,8 @@ function bauen(
     let l = buecher.get(k);
     if (l) return l;
     const meta = stand.quellen.get(k);
-    const name = meta?.name ?? q;
+    /* Ohne Kopf in books/adventures der Titel aus `js/parser.js` (T-420), erst dann das Kürzel. */
+    const name = meta?.name ?? stand.quellenNamen?.get(k) ?? q;
     l = wb.anlegen('Layer', name, `book|${k}`);
     l.id = buchEbeneId(q);
     /* Ein Abenteuer ist eine eigene Art Ebene (T-082): es bringt seine
