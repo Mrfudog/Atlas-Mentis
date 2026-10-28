@@ -7,13 +7,13 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { applyAdjust, isAdjust, layoutFor, RegistrySchema } from '@nw/model';
+import { applyAdjust, isAdjust, layoutFor, listColumns, RegistrySchema } from '@nw/model';
 import { seedRegistry, typeViews } from '../src/index.js';
 
 const migration = (n: string) => readFileSync(new URL(`../../../apps/server/migrations/${n}.sql`, import.meta.url), 'utf8');
 const sql = migration('052_ansichten_je_art');
 /* Migrationen, die eine Zeile aus 052 später nachziehen — die letzte gilt. */
-const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '094_quelleninhalt', '123_ansichten_je_art_und_stufe', '137_struktur'].map(migration);
+const spaeter = ['083_kennzahlen', '084_ansichten_als_elemente', '094_quelleninhalt', '123_ansichten_je_art_und_stufe', '137_struktur', '158_vorgabespalten'].map(migration);
 /* Die Suche liest quick, quick neu geordnet (T-346): andere Form, eigene Prüfung. */
 const zusammen = migration('127_quick_statt_search');
 
@@ -62,6 +62,38 @@ describe('Ansichten je Art (T-110)', () => {
           if (feld) expect(seedRegistry.interfaces[typ!]?.schema?.properties[feld], e).toBeDefined();
         }
         expect(applyAdjust(seedRegistry.views[v]?.layout ?? [], w.adjust).length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  /* T-344: Arten, deren Übersicht nichts sagte, zeigten in Kompendium und
+     Bereichen nur Name und Beschreibung. Die Vorgabespalten sind die Werte
+     der Karte, soweit sie als Spalte taugen — Rohwerte, keine Masse, kein
+     langer Text. Untertypen erben sie (Shop von Place, Arc von Story). */
+  it('die Übersicht nennt Vorgabespalten für die Arten aus T-344', () => {
+    const erwartet: Record<string, string[]> = {
+      Place: ['Place.kind', 'Place.environment'],
+      Shop: ['Place.kind', 'Place.environment'],
+      Faction: ['Faction.kind'],
+      Quest: ['Quest.progress', 'Quest.reward'],
+      Event: ['Event.kind', 'Time.display'],
+      Story: ['Story.kind', 'Story.played'],
+      Session: ['Story.kind', 'Story.played'],
+      Arc: ['Story.kind', 'Story.played', 'Arc.levelFrom', 'Arc.levelTo'],
+      Scene: ['Story.kind', 'Story.played', 'Scene.mode', 'Difficulty.difficulty'],
+      Party: ['Party.level'],
+      Map: ['Map.kind'],
+      Recipe: ['Recipe.trade'],
+      CraftingOrder: ['Recipe.trade', 'CraftingOrder.outcome'],
+    };
+    for (const [art, spalten] of Object.entries(erwartet)) {
+      expect(listColumns(seedRegistry, art).map((c) => c.ref), art).toEqual(spalten);
+    }
+    /* Keine Spalte ist ein Mass oder ein langer Text: die Liste rechnet
+       nicht um, und ein Absatz ist keine Zelle. */
+    for (const art of Object.keys(erwartet)) {
+      for (const c of listColumns(seedRegistry, art)) {
+        expect(c.prop.format ?? '', `${art}: ${c.ref}`).not.toMatch(/^(measure|long)$/);
       }
     }
   });

@@ -26,6 +26,17 @@ import type { LayoutElement, TypeLayout } from '@nw/model';
  * nicht: er steht in Kupfer, und eine Währung als Einheit gibt es nicht.
  */
 
+/**
+ * **Die Spalten einer Liste** (T-344): Felder, die die Übersicht
+ * (`overview`, Element `ov-f`) einer Art dazunimmt — dieselben wie auf der
+ * Karte, soweit sie als Spalte taugen: Rohwerte, kein Mass (die Liste
+ * rechnet nicht um) und kein langer Text (ein Absatz ist keine Zelle).
+ * Ohne sie standen in Kompendium und Bereichen nur Name und Beschreibung.
+ * Das ist die Vorgabe, auf die „Reset to default“ der Spaltenwahl (T-343)
+ * zurückgeht; Untertypen erben sie wie jede Anpassung.
+ */
+const spalten = (...felder: string[]): TypeLayout => ({ adjust: { add: { 'ov-f': felder } } });
+
 /** Felder, die die Karte (`quick`, Element `q-f`) für eine Art dazunimmt. */
 const karte = (...felder: string[]): TypeLayout => ({ adjust: { add: { 'q-f': felder } } });
 
@@ -100,11 +111,16 @@ const grund: Record<string, Record<string, TypeLayout>> = {
        Sache der Leitung. */
     handout: zettel('Creature.species'),
   },
-  Place: { quick: karte('Place.kind', 'Place.environment', 'Place.state'), handout: zettel('Place.kind', 'Place.environment') },
+  Place: {
+    overview: spalten('Place.kind', 'Place.environment'),
+    quick: karte('Place.kind', 'Place.environment', 'Place.state'),
+    handout: zettel('Place.kind', 'Place.environment'),
+  },
   /* Das Ziel einer Fraktion ist oft ihr Geheimnis — auf dem Zettel nur, was sie ist. */
   /* Die Seite einer Fraktion zeigt ihre Struktur (T-341): Mitglieder mit
      Rang, Unterfraktionen, was sie beherrscht, wen sie wie sieht. */
   Faction: {
+    overview: spalten('Faction.kind'),
     quick: karte('Faction.kind', 'Faction.goal'),
     handout: zettel('Faction.kind'),
     full: { adjust: { extra: [{ id: 'fac-structure', el: 'structure' }] } },
@@ -115,16 +131,23 @@ const grund: Record<string, Record<string, TypeLayout>> = {
      Karte erkennt man an Art und Stand, ein Rezept am Beruf, eine Gruppe an
      Stufe und Motto, ein Ereignis an Art und Datum. */
   Encounter: { quick: karte('Encounter.kind', 'Encounter.phase', 'Difficulty') },
-  Map: { quick: karte('Map.kind') },
-  Recipe: { quick: karte('Recipe.trade', 'Recipe.tool', 'Recipe.dc', 'Recipe.time') },
-  Party: { quick: karte('Party.level', 'Party.motto') },
-  Event: { quick: karte('Event.kind', 'Time.display') },
+  Map: { overview: spalten('Map.kind'), quick: karte('Map.kind') },
+  Recipe: { overview: spalten('Recipe.trade'), quick: karte('Recipe.trade', 'Recipe.tool', 'Recipe.dc', 'Recipe.time') },
+  /* Ein Fertigungsauftrag erbt den Beruf vom Rezept; in der Liste sucht man
+     dazu, wie er ausging. */
+  CraftingOrder: { overview: spalten('CraftingOrder.outcome') },
+  Party: { overview: spalten('Party.level'), quick: karte('Party.level', 'Party.motto') },
+  Event: { overview: spalten('Event.kind', 'Time.display'), quick: karte('Event.kind', 'Time.display') },
   /* Geschichte */
   /* Eine Geschichte (und damit Arc und Sitzung) zeigt, was für eine und wann. */
-  Story: { quick: karte('Story.kind', 'Story.played') },
-  Arc: { quick: karte('Arc.levelFrom', 'Arc.levelTo') },
-  Scene: { quick: karte('Scene.mode', 'Difficulty') },
-  Quest: { quick: karte('Quest.progress', 'Quest.reward', 'Quest.deadline'), handout: zettel('Quest.progress', 'Quest.reward') },
+  Story: { overview: spalten('Story.kind', 'Story.played'), quick: karte('Story.kind', 'Story.played') },
+  Arc: { overview: spalten('Arc.levelFrom', 'Arc.levelTo'), quick: karte('Arc.levelFrom', 'Arc.levelTo') },
+  Scene: { overview: spalten('Scene.mode', 'Difficulty'), quick: karte('Scene.mode', 'Difficulty') },
+  Quest: {
+    overview: spalten('Quest.progress', 'Quest.reward'),
+    quick: karte('Quest.progress', 'Quest.reward', 'Quest.deadline'),
+    handout: zettel('Quest.progress', 'Quest.reward'),
+  },
   /* Eine Ebene liest sich an ihr selbst als Buch (T-191): die Leseansicht
      ist ein Element ihrer Seite und keine eigene. Darüber steht, was sie
      bringt, als Baum mit der Wahl der Kampagne (T-189). */

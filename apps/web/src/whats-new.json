@@ -9,6 +9,14 @@
       "link": "/handbook"
     },
     {
+      "id": "2026-10-28-default-columns",
+      "date": "2026-10-28",
+      "title": "Lists show what a thing is",
+      "text": "Places, factions, quests, scenes, events, stories, arcs, parties, maps, recipes and crafting orders now bring their own columns to the Compendium and the areas: a quest shows progress and reward, a place its type and environment, an event its kind and date. Your own column choice stays; “Reset to default” goes back to these.",
+      "area": "Compendium",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-28-section-bar",
       "date": "2026-10-28",
       "title": "Expand all, collapse all, next section — on more pages",
