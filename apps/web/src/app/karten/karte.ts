@@ -77,7 +77,7 @@ import {
   cellAt,
   cellPoint,
   cellKey,
-  feetBetween,
+  feetBetweenTokens,
   planGrid,
   planPath,
   planReach,
@@ -165,7 +165,7 @@ import {
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
-import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
+import type { Cell, DoorState, Entity, Frame, GridGeometry, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
 import { Api, type GespieltZeile, type KartenKontext, type SizeChoice } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Vorschau } from '../artikel/vorschau';
@@ -2990,7 +2990,7 @@ export class Karte {
         /* In der Zielwahl: in Reichweite (true), ausser Reichweite (false). */
         ziel:
           plan?.mode === 'target' && plan.rel !== m.rel.id && pr && plan.range !== null && m.kind !== 'scenery'
-            ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) <= plan.range
+            ? this.planWeite(pr, m) <= plan.range
             : null,
         etikett: plan && plan.rel !== m.rel.id ? (plan.labels[m.to] ?? '') : '',
         /* Wer leuchtet, sieht die Leitung am Marker (T-320) — auch auf einer hellen Karte. */
@@ -3095,7 +3095,7 @@ export class Karte {
       if (!m) return;
       const pr = this.planRaster();
       const nat = this.nat();
-      this.planTipp.emit({ kind: 'target', id, name: m.name, feet: pr ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) : null, ...(nat ? { nat } : {}) });
+      this.planTipp.emit({ kind: 'target', id, name: m.name, feet: pr ? this.planWeite(pr, m) : null, ...(nat ? { nat } : {}) });
       return;
     }
     /* Ein freies Licht hat keinen Artikel (T-320): antippen wählt es nur. */
@@ -3830,6 +3830,22 @@ export class Karte {
     const start = plan.from ?? token;
     return start ? { geo, grid, start, token } : null;
   });
+
+  /**
+   * **Wie weit ein Ziel steht** (T-391): vom Ende der geplanten Bewegung
+   * (`pr.start`) bis zum nächsten Feld, das sein Token belegt — ein 3 × 3-
+   * Drache, den die Figur berührt, steht 5 ft weit, nicht 10 ft bis zur
+   * Mitte. Steht die Figur noch, zählt auch ihr eigener Platz. Dieselbe
+   * Rechnung wie der Server (`abstandImPlan`).
+   */
+  private planWeite(pr: { geo: GridGeometry; start: Cell; token: Cell | null }, m: MapMarker): number {
+    const plan = this.planJetzt();
+    /* Roh aus der Karte, nicht `marker()`: das ruft diese Rechnung selbst auf. */
+    const ich = plan ? markersOf(this.angezeigt() ?? ({} as Entity)).find((x) => x.rel.id === plan.rel) : undefined;
+    const steht = !!ich && !!pr.token && pr.token.x === pr.start.x && pr.token.y === pr.start.y;
+    const von = steht ? ich! : cellPoint(pr.geo, pr.start);
+    return feetBetweenTokens(pr.geo, von, steht ? this.tokenPlatz(ich!.to, ich!.ownSize) : 1, m, this.tokenPlatz(m.to, m.ownSize));
+  }
 
   /** Wohin das Tempo reicht, als Felder — einmal je Plan, nicht je Zeichnen. */
   private readonly planReich = computed(() => {
