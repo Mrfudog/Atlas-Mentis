@@ -1800,6 +1800,15 @@ Doppelung, die erst durch eine spätere Änderung entsteht, wird gemeldet
 und nicht still gelöscht: welche der beiden Wahlen weichen soll, weiss nur,
 wer sie getroffen hat.
 
+**Expertise setzt die Übung voraus** (T-303). Die Leitung (19.10.): die
+Expertise-Wahl bot jede Fertigkeit an, auch eine, in der die Figur gar
+nicht geübt war. Gesperrt wird mit derselben Reihenfolge wie bei den
+Doppelungen, nur umgekehrt: dort ist gesperrt, was schon da ist, hier,
+was noch fehlt. Die Ausnahme — eine Option, die Übung und Expertise
+zugleich gibt oder ausdrücklich keine verlangt — steht als
+`needsProficiency: false` an der Wahl selbst: eine Liste solcher
+Optionen im Code wäre am Tag des nächsten Buchs unvollständig.
+
 **Ein Zauber kommt von irgendwoher** (T-309). Bis dahin zauberte eine
 Figur, was von Hand an ihr stand — der Magier aus dem Assistenten zauberte
 also nicht, obwohl seine Klasse sagte, dass und womit er es tut. Jetzt ist

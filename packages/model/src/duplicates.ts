@@ -24,6 +24,12 @@
  * Die Regel (2024, „choose another"): gibt eine Quelle fest, was schon
  * gewählt ist, darf die Wahl ersetzt werden — darum heisst die Meldung
  * dann nicht „schon gewählt", sondern „wähle eine andere" (`fixed`).
+ *
+ * **Expertise verlangt die Übung** (T-303): eine Wahl der Expertise bietet
+ * nur an, worin die Figur bis zu diesem Schritt geübt ist — fest gegeben
+ * (auch am Statblock oder durch eine Wirkung) oder in einer Wahl davor,
+ * derselbe Schritt eingeschlossen (Skill Expert: erst die Übung, dann die
+ * Expertise). Sagt die Wahl `needsProficiency: false`, ist sie frei.
  */
 
 import { CHOICE_SOURCE_ORDER as RANG, choiceKey } from './builder.js';
@@ -210,4 +216,78 @@ export function duplicateText(d: ChoiceDuplicate, byId: ReadonlyMap<EntityId, En
   return d.held.fixed
     ? `${name} already comes from ${d.held.from} — by the rules, choose another one instead.`
     : `${name} is already chosen at ${d.held.from}.`;
+}
+
+/** Eine Expertise auf etwas, worin die Figur nicht geübt ist (T-303). */
+export interface MissingProficiency {
+  /** Die Wahl (`choiceKey`). */
+  choice: string;
+  pick: string;
+}
+
+/** Verlangt diese Wahl die Übung? Nur Expertise, und nur ohne `needsProficiency: false`. */
+const verlangtUebung = (at: ChoiceAtCharacter) => sorteVon(at) === 'expertise' && at.choice.needsProficiency !== false;
+
+/**
+ * **Worin die Figur vor dieser Wahl geübt ist** (T-303) — `null`, wenn die
+ * Wahl keine Übung verlangt. Fest Gegebenes zählt mit jeder Herkunft (auch
+ * Statblock und Wirkung); dazu die Antworten der Wahlen davor, Übung wie
+ * Expertise, derselbe Schritt eingeschlossen.
+ */
+export function proficientBefore(character: Entity, byId: ReadonlyMap<EntityId, Entity>, at: ChoiceAtCharacter): Map<string, HeldValue> | null {
+  if (!verlangtUebung(at)) return null;
+  const raus = new Map<string, HeldValue>();
+  for (const e of proficienciesOf(character, undefined, byId).entries) {
+    if (e.kind === 'saves') continue;
+    const s = e.sources.find((q) => q.via !== 'choice');
+    if (!s || raus.has(norm(e.name))) continue;
+    raus.set(norm(e.name), { value: e.name, from: `${WEG[s.via] ?? (s.via === 'statblock' ? 'Statblock' : 'Feature')} (${entityName(byId.get(s.id)) || s.id})`, source: s.id, fixed: true });
+  }
+  const eigen = choiceKey(at);
+  for (const vor of geordnet(character, byId)) {
+    const k = choiceKey(vor);
+    if (k === eigen) break;
+    if (!vor.picks?.length) continue;
+    const s = sorteVon(vor);
+    if (s !== 'proficient' && s !== 'expertise') continue;
+    for (const p of vor.picks.slice(0, vor.choice.count ?? 1)) {
+      const wert = wertVon(p, s, byId);
+      if (raus.has(norm(wert))) continue;
+      raus.set(norm(wert), {
+        value: wert,
+        from: `${WEG[vor.source.via] ?? 'Feature'} (${entityName(vor.source.entity) || vor.source.entity.id})`,
+        source: vor.source.entity.id,
+        fixed: false,
+        choice: k,
+      });
+    }
+  }
+  return raus;
+}
+
+/** **Jede Expertise ohne Übung an der Figur** (T-303). */
+export function missingProficiencies(character: Entity, byId: ReadonlyMap<EntityId, Entity>): MissingProficiency[] {
+  const raus: MissingProficiency[] = [];
+  for (const at of geordnet(character, byId)) {
+    if (!at.picks?.length || at.fixed || at.assumed) continue;
+    const geuebt = proficientBefore(character, byId, at);
+    if (!geuebt) continue;
+    for (const p of at.picks.slice(0, at.choice.count ?? 1)) {
+      if (!heldValue(geuebt, p, byId)) raus.push({ choice: choiceKey(at), pick: p });
+    }
+  }
+  return raus;
+}
+
+/** **Die neuen** — was der Server abweist; was vorher schon so stand, bleibt (wie `newChoiceDuplicates`). */
+export function newMissingProficiencies(before: Entity | undefined, after: Entity, byId: ReadonlyMap<EntityId, Entity>): MissingProficiency[] {
+  if (!(after.relations ?? []).some((r) => r.type === 'chose')) return [];
+  const alt = new Set(before ? missingProficiencies(before, byId).map((m) => `${m.choice}|${norm(m.pick)}`) : []);
+  return missingProficiencies(after, byId).filter((m) => !alt.has(`${m.choice}|${norm(m.pick)}`));
+}
+
+/** Für Meldungen: „History — expertise needs proficiency, and the character is not proficient in it yet." */
+export function missingText(m: MissingProficiency, byId: ReadonlyMap<EntityId, Entity>): string {
+  const name = byId.has(m.pick) ? entityName(byId.get(m.pick)) : m.pick;
+  return `${name}: expertise needs proficiency, and the character is not proficient in it yet — choose a skill or tool they are proficient in.`;
 }
