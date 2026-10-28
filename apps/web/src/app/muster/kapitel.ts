@@ -1,8 +1,9 @@
-import { Component, DestroyRef, computed, contentChildren, effect, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, computed, contentChildren, effect, inject, input, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { Reiterleiste } from '../bogen/reiterleiste';
+import { Api } from '../kern/api';
 
 /** Unter dieser Breite steht ein Kapitel auf einmal da (T-277). */
 export const SCHMAL = '(max-width: 719.98px)';
@@ -48,12 +49,19 @@ export function kapitelWahl(ids: readonly string[], wuensche: readonly (string |
     '[class.zu]': '!offen()',
     '[attr.role]': "rahmen.schmal() ? 'tabpanel' : 'region'",
     '[attr.aria-label]': 'titel()',
+    /* Ein Bereich der Klappleiste (T-359) — klappbar, wo es am Desktop
+       zugeklappt anfängt (Admin, Log); „Expand all" öffnet es dann mit. */
+    'data-bereich': '',
+    '[attr.hidden]': "zeigen() ? null : ''",
+    '[attr.data-klappbar]': "klappbar() ? '' : null",
+    '[attr.data-offen]': 'klappbar() ? offen() : null',
+    '(klappen)': 'klappen($event)',
   },
   template: `
     <header class="kkopf">
       <h2>
         @if (klappbar()) {
-          <button type="button" class="klapp" [attr.aria-expanded]="offen()" (click)="offen.set(!offen())">
+          <button type="button" class="klapp" [attr.aria-expanded]="offen()" (click)="setze(!offen())">
             <span class="pfeil" aria-hidden="true">▸</span>{{ titel() }}
           </button>
         } @else {
@@ -205,11 +213,29 @@ export class Kapitelteil {
         this.offen.set(!z);
       }
     });
+    /* Wie das Konto es verlassen hat (T-359) — sobald die Seite es weiss. */
+    effect(() => {
+      const g = this.rahmen.gemerkt()?.[this.key()];
+      if (typeof g === 'boolean' && untracked(() => this.zu())) this.offen.set(g);
+    });
+  }
+
+  /** Auf- oder zuklappen wie ein Klick — die Seite merkt es sich. */
+  setze(auf: boolean): void {
+    if (this.offen() === auf) return;
+    this.offen.set(auf);
+    if (this.zu()) this.rahmen.merken(this.key(), auf);
+  }
+
+  /** Die Klappleiste bittet darum (T-359). */
+  protected klappen(e: Event): void {
+    const auf = (e as CustomEvent<unknown>).detail;
+    if (typeof auf === 'boolean' && this.klappbar()) this.setze(auf);
   }
 
   /** Aufklappen, wenn die Sprungleiste hierher führt. */
   oeffnen(): void {
-    this.offen.set(true);
+    this.setze(true);
   }
 }
 
@@ -331,6 +357,17 @@ export class Kapitel {
 
   /** Welches Kapitel ohne `?k=` gewählt ist — sonst das erste. */
   readonly vorgabe = input<string | null>(null);
+  /**
+   * Unter welchem Namen das Konto sich merkt, welche zugeklappten Kapitel
+   * offen stehen (T-359, Einstellung `kapitel.<merke>`, z. B. Admin und
+   * Log der Artikelseite). Ohne Namen merkt sich die Seite nichts.
+   */
+  readonly merke = input<string | null>(null);
+  /** Was das Konto gemerkt hat, `null`, solange es nicht geladen ist. */
+  readonly gemerkt = signal<Record<string, boolean> | null>(null);
+
+  private readonly api = inject(Api, { optional: true });
+  private merkTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Am Telefon? — ein Signal, weil die Reiter auch in TS zählen (was geladen wird). */
   readonly schmal = signal(false);
@@ -359,10 +396,50 @@ export class Kapitel {
       mq.addEventListener?.('change', hoer);
       inject(DestroyRef).onDestroy(() => mq.removeEventListener?.('change', hoer));
     }
+    /* Den gemerkten Klappstand einmal holen, sobald die Seite ihn nennt. */
+    let geholt = false;
+    effect(() => {
+      const m = this.merke();
+      if (!m || geholt || !this.api) return;
+      geholt = true;
+      void this.api
+        .prefs()
+        .then((alle) => {
+          const p = alle[`kapitel.${m}`];
+          const stand: Record<string, boolean> = {};
+          if (p && typeof p === 'object') {
+            for (const [k, v] of Object.entries(p as Record<string, unknown>)) if (typeof v === 'boolean') stand[k] = v;
+          }
+          this.gemerkt.set({ ...stand, ...(untracked(() => this.gemerkt()) ?? {}) });
+        })
+        .catch(() => this.gemerkt.set(untracked(() => this.gemerkt()) ?? {}));
+    });
+    inject(DestroyRef).onDestroy(() => {
+      if (this.merkTimer) clearTimeout(this.merkTimer);
+    });
     /* Die URL gilt wieder, sobald sie den gewählten Reiter trägt. */
     effect(() => {
       if (this.k() === this.gewaehlt()) this.gewaehlt.set(null);
     });
+  }
+
+  /**
+   * Ein zugeklapptes Kapitel wurde auf- oder zugeklappt (T-359). Gespeichert
+   * wird einmal nach dem letzten Klappen — „Expand all" klappt mehrere auf
+   * einmal, wie bei den Ebenengruppen.
+   */
+  merken(key: string, auf: boolean): void {
+    const m = this.merke();
+    if (!m || !this.api) return;
+    const stand = { ...(this.gemerkt() ?? {}), [key]: auf };
+    this.gemerkt.set(stand);
+    if (this.merkTimer) clearTimeout(this.merkTimer);
+    this.merkTimer = setTimeout(() => {
+      this.merkTimer = null;
+      void this.api?.setPref(`kapitel.${m}`, stand).catch(() => {
+        /* Nicht gemerkt ist nicht schlimm: das Kapitel steht trotzdem so. */
+      });
+    }, 300);
   }
 
   /** Einen Reiter wählen (auch von aussen, z. B. „?tab=read“ an der Ebene). */

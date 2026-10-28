@@ -9,6 +9,22 @@
       "link": "/campaign"
     },
     {
+      "id": "2026-10-28-section-bar",
+      "date": "2026-10-28",
+      "title": "Expand all, collapse all, next section — on more pages",
+      "text": "The bar from the Layers tab now also stands above the filters of the Compendium and the areas, above the chapters of an article (Expand all opens Admin and Log, and the article page keeps them so for your account), on a type in the Registry (all inherited types at once) and in long steps of the character assistant. Alt+↑/↓ jumps, with Shift it collapses or expands all.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-28-size-effects-choose",
+      "date": "2026-10-28",
+      "title": "Overlapping size effects: you choose",
+      "text": "When Enlarged and Reduced (or any two size effects) are on a creature at once, they no longer add up: the latest applies, and the GM picks at the token which one counts. Size conditions in the initiative with a duration now change the token too, and its size falls back when they run out.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-28-running-campaign",
       "date": "2026-10-28",
       "title": "Campaign page and header agree",

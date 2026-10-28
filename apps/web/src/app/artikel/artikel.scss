@@ -583,3 +583,15 @@ p.leer {
   gap: 0.6rem;
   margin: 0.8rem 0;
 }
+
+/* Die Klappleiste der Artikelseite (T-359): über den Kapiteln, rechts —
+   am Telefon nicht, dort sind die Kapitel Reiter. */
+nw-klappleiste.nur-breit {
+  justify-content: flex-end;
+  margin: 0.25rem 0 -0.25rem;
+}
+@media (max-width: 719.98px) {
+  nw-klappleiste.nur-breit {
+    display: none;
+  }
+}
