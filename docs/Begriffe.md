@@ -1063,6 +1063,16 @@ Verspricht eine Kante mehr, als heute jemand liest — `affects` mit `effect`,
 evaluated yet". Sobald ein Auswerter sie liest, muss `intended` weg: der
 Test lässt beides nicht zugleich stehen.
 
+### Ein Artikel darf im Regelwerk stehen, nicht nur eine Gruppe (T-401, E-162)
+
+Die Leitung will den einen Drachen aus dem Grundregelwerk verbergen. Das
+Feld am Drachen darf sie nicht schreiben — das Buch gehört allen Runden,
+die es aufschalten —, und eine Gruppe, die genau ihn trifft, wäre ein
+Umweg. Also steht er **als Eintrag** im Regelwerk ihrer Kampagne, neben den
+Gruppen, und gilt vor ihnen: wer einen Artikel einzeln nennt, meint ihn.
+Das eigene Feld am Artikel schlägt den Eintrag trotzdem — wer den Artikel
+schreibt, hat das letzte Wort über ihn, auch in dieser Runde.
+
 ### Fassung, Variante, Kopie — drei Antworten auf „das will ich anders" (T-405, E-162)
 
 Einen Artikel aus einem geteilten Regelwerk darf die Leitung nicht

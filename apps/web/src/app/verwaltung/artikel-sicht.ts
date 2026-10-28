@@ -40,7 +40,8 @@ const SEITE = 50;
  * **Gesetzt wird ins eigene Feld des Artikels** — je Zeile oder für eine
  * Auswahl (wie in der Galerie): eine Stufe, ↺ zurück zur Gruppe, je
  * Spielende/r zeigen oder verbergen. Was die Leitung nicht schreibt (eine
- * geteilte Ebene), bleibt und sagt warum; wohin das gehört, ist E-162.
+ * geteilte Ebene), wird ein Eintrag im Regelwerk der Kampagne (T-401,
+ * E-162 a): kein Buch wird beschrieben, „campaign (this article)".
  * **Die Ebene wechseln** (T-402, E-161 a+c) geht für eine Auswahl: in eine
  * der eigenen Schreibebenen, mit der Liste dessen, was mitgeht (Teile,
  * Statblock, Inventar), als ein Lauf mit Undo.
@@ -214,8 +215,8 @@ const SEITE = 50;
                       <button
                         type="button"
                         [attr.aria-pressed]="a.own.audience === st.key"
-                        [disabled]="laeuft() || !a.writable"
-                        [title]="a.writable ? 'Only this article: ' + st.label : warumNicht(a)"
+                        [disabled]="laeuft() || !setzbar(a)"
+                        [title]="setzbar(a) ? 'Only this article: ' + st.label + (a.writable ? '' : ' (a rule of this campaign; the book stays as it is)') : warumNicht(a)"
                         (click)="setzen([a.id], { audience: st.key })"
                       >
                         {{ st.label }}
@@ -226,7 +227,7 @@ const SEITE = 50;
                     <button
                       type="button"
                       class="klein leise"
-                      [disabled]="laeuft() || !a.writable"
+                      [disabled]="laeuft() || !setzbar(a)"
                       title="Follow the group again"
                       [attr.aria-label]="a.name + ': follow the group'"
                       (click)="setzen([a.id], { follow: true })"
@@ -244,7 +245,7 @@ const SEITE = 50;
                       class="zelle"
                       [class.ja]="a.seenBy.includes(s.key)"
                       [class.eigen]="!!a.players[s.key]"
-                      [disabled]="laeuft() || !a.writable || !s.bearers?.length"
+                      [disabled]="laeuft() || !setzbar(a) || !s.bearers?.length"
                       [title]="spielerTitel(a, s)"
                       [attr.aria-label]="a.name + ', ' + s.label + ': ' + (a.seenBy.includes(s.key) ? 'sees it' : 'does not see it') + '. ' + spielerTitel(a, s)"
                       (click)="spielerUmschalten(a, s)"
@@ -258,8 +259,10 @@ const SEITE = 50;
                   }
                 }
               </span>
-              @if (darf() && !a.writable) {
+              @if (darf() && !setzbar(a)) {
                 <small class="dim hinweis">{{ warumNicht(a) }}</small>
+              } @else if (darf() && !a.writable) {
+                <small class="dim hinweis">{{ eintragHinweis }}</small>
               }
             </li>
           } @empty {
@@ -590,6 +593,16 @@ export class KampagnenArtikel {
     else this.auswahl.set([...new Set([...this.auswahl(), ...ids])]);
   }
 
+  /**
+   * **Setzbar ist jede Zeile der Leitung** (T-401, E-162 a): wo sie den
+   * Artikel schreibt, ins Feld; sonst als Eintrag im Regelwerk dieser
+   * Kampagne — das geteilte Buch bleibt, wie es ist.
+   */
+  protected setzbar(a: SichtArtikel): boolean {
+    return a.writable || !!a.settable;
+  }
+  protected readonly eintragHinweis = 'In a layer you do not write: what you set here is a rule of this campaign for this article; the book stays as it is.';
+
   /** Warum eine Zeile gesperrt ist: eine fremde Ebene, oder gar keine — die gehört der Verwaltung. */
   protected warumNicht(a: SichtArtikel): string {
     return a.layers.length ? this.nichtSchreibbar : 'Outside every layer — only the administration changes it, or set it for its group above.';
@@ -600,7 +613,8 @@ export class KampagnenArtikel {
   }
 
   protected herkunft(a: SichtArtikel): string {
-    const teile = [HERKUNFT[a.source]];
+    /* Der Eintrag je Artikel (T-401) ist eine Regel der Kampagne, nur eben für diesen. */
+    const teile = [a.source === 'campaign' && a.rule?.startsWith('article:') ? 'campaign (this article)' : HERKUNFT[a.source]];
     if (a.own.revealedTo) teile.push(`revealed to ${a.own.revealedTo}`);
     if (a.own.hiddenFrom) teile.push(`hidden from ${a.own.hiddenFrom}`);
     return teile.join(' · ');
@@ -613,7 +627,7 @@ export class KampagnenArtikel {
 
   protected spielerTitel(a: SichtArtikel, s: SichtSpalte): string {
     if (!s.bearers?.length) return `${s.label} plays no character yet`;
-    if (!a.writable) return this.warumNicht(a);
+    if (!this.setzbar(a)) return this.warumNicht(a);
     const p = a.players[s.key];
     return `click: ${p === 'hide' ? `${s.label} follows the visibility again` : p === 'show' ? `hide from ${s.label}` : `show to ${s.label}`}`;
   }

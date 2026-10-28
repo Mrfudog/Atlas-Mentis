@@ -204,7 +204,7 @@ describe('Sichtbarkeit je Artikel (T-387)', () => {
     expect(ws.statusCode).toBe(403);
   });
 
-  it('setzt die Stufe für eine Auswahl; was die Leitung nicht schreibt, bleibt und sagt, warum', async () => {
+  it('setzt die Stufe für eine Auswahl; was die Leitung nicht schreibt, kommt ins Regelwerk der Kampagne (T-401)', async () => {
     const { app, keks, sieht, repo } = await mitGeteilterEbene();
     const mira = await keks('Mira');
     expect(await sieht('Sela')).toEqual(['p_markt', 'p_regel', 'p_tor']);
@@ -216,12 +216,13 @@ describe('Sichtbarkeit je Artikel (T-387)', () => {
     });
     expect(r.statusCode).toBe(200);
     const b = r.json();
-    expect(b.done).toEqual(['p_werk']);
-    expect(b.refused.map((x: { id: string }) => x.id)).toEqual(['p_regel', 'gibts_nicht']);
-    expect(b.refused[0].error).toMatch(/layer you do not write/);
+    expect(b.done).toEqual(['p_werk', 'p_regel']);
+    expect(b.refused.map((x: { id: string }) => x.id)).toEqual(['gibts_nicht']);
     expect(await sieht('Sela')).toEqual(['p_markt', 'p_regel', 'p_tor', 'p_werk']);
     expect((await repo.getEntity('p_werk'))?.components?.['Visibility']).toEqual({ audience: 'players' });
+    /* Das geteilte Regelwerk bleibt unberührt; der Eintrag steht an der Kampagne. */
     expect((await repo.getEntity('p_regel'))?.components?.['Visibility']).toBeUndefined();
+    expect((await repo.getEntity('camp_nebel'))?.components?.['VisibilityRules']).toEqual({ visibilityRules: [{ id: 'article:p_regel', audience: 'players' }] });
     /* Noch einmal dasselbe: nichts zu tun. */
     const n = await app.inject({ method: 'POST', url: '/api/campaigns/camp_nebel/visibility/articles', headers: { cookie: mira }, payload: { ids: ['p_werk'], audience: 'players' } });
     expect(n.json()).toMatchObject({ done: [], unchanged: ['p_werk'] });
@@ -253,5 +254,51 @@ describe('Sichtbarkeit je Artikel (T-387)', () => {
     expect((await post({ ids: ['p_markt'], player: { key: 'u:niemand', mode: 'show' } })).statusCode).toBe(400);
     expect((await post({ ids: ['p_markt'], audience: 'alle' })).json().error).toMatch(/one of public/);
     expect((await post({ ids: [] , audience: 'gm' })).statusCode).toBe(400);
+  });
+});
+
+describe('Das Regelwerk je Artikel (T-401, E-162 a)', () => {
+  async function geteilt() {
+    const t = await aufbau();
+    await t.repo.putEntity(ebene('ly_srd'));
+    const c = (await t.repo.getEntity('camp_nebel'))!;
+    await t.repo.putEntity({ ...c, relations: [...(c.relations ?? []), { id: 'a3', type: 'activates', to: 'ly_srd', props: { order: 0 } }] });
+    await t.repo.putEntity({
+      id: 'camp_zwei', interfaces: ['Campaign'], name: 'Zwei',
+      components: { Identity: { name: 'Zwei', id: 'campaign-0002', aliases: [] } },
+      relations: [{ id: 'z1', type: 'activates', to: 'ly_srd', props: { order: 1 } }],
+    });
+    await t.repo.putEntity(ort('p_regel', 'ly_srd'));
+    await t.repo.putEntity(ort('p_zwei', 'ly_srd'));
+    return t;
+  }
+  const post = (app: Awaited<ReturnType<typeof aufbau>>['app'], cookie: string, payload: unknown) =>
+    app.inject({ method: 'POST', url: '/api/campaigns/camp_nebel/visibility/articles', headers: { cookie }, payload });
+
+  it('verbirgt einen Artikel einer fremden Ebene nur in dieser Kampagne und sagt die Herkunft', async () => {
+    const { app, keks, sieht, repo } = await geteilt();
+    const mira = await keks('Mira');
+    expect((await post(app, mira, { ids: ['p_regel'], audience: 'gm' })).json().done).toEqual(['p_regel']);
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_tor', 'p_zwei']);
+    const zeile = (await app.inject({ method: 'GET', url: '/api/campaigns/camp_nebel/visibility/articles?q=p_regel', headers: { cookie: mira } })).json().rows[0];
+    expect(zeile).toMatchObject({ audience: 'gm', source: 'campaign', rule: 'article:p_regel', writable: false, settable: true });
+    /* Je Spielerin über den Eintrag. */
+    const spalte = (await app.inject({ method: 'GET', url: '/api/campaigns/camp_nebel/visibility/articles', headers: { cookie: mira } })).json().columns.find((c: { kind: string }) => c.kind === 'player').key;
+    await post(app, mira, { ids: ['p_regel'], player: { key: spalte, mode: 'show' } });
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_regel', 'p_tor', 'p_zwei']);
+    /* ↺ nimmt den Eintrag weg. */
+    await post(app, mira, { ids: ['p_regel'], follow: true });
+    expect((await repo.getEntity('camp_nebel'))?.components?.['VisibilityRules']).toEqual({ visibilityRules: [] });
+    expect((await repo.getEntity('p_regel'))?.components?.['Visibility']).toBeUndefined();
+  });
+
+  it('der Eintrag schlägt die genaueste Gruppe', async () => {
+    const { app, keks, sieht } = await geteilt();
+    const mira = await keks('Mira');
+    const r = await app.inject({ method: 'PUT', url: '/api/campaigns/camp_nebel/visibility/rules', headers: { cookie: mira }, payload: { id: 'layer:ly_srd|type:Place', audience: 'gm' } });
+    expect(r.statusCode).toBe(200);
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_tor']);
+    await post(app, mira, { ids: ['p_zwei'], audience: 'public' });
+    expect(await sieht('Sela')).toEqual(['p_markt', 'p_tor', 'p_zwei']);
   });
 });

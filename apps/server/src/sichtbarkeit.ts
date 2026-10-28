@@ -40,6 +40,8 @@ import {
   validateEntity,
   visibilityDimensions,
   visibilityRulesOf,
+  withArticleRule,
+  articleRuleKey,
   VISIBILITY_COMPONENT,
   VISIBILITY_RULES_COMPONENT,
   type Audience,
@@ -421,6 +423,11 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
         nStufe[r.audience] = (nStufe[r.audience] ?? 0) + 1;
       }
 
+      const eintraege = new Map(
+        visibilityRulesOf(z.kampagne)
+          .filter((x) => x.id.startsWith('article:'))
+          .map((x) => [decodeURIComponent(x.id.slice('article:'.length)), x] as const),
+      );
       const treffer = filterArticleRows(alle, frage);
       const seite = treffer.slice(offset, offset + limit);
       /* **Fassungen derselben Sache** (T-403): wie viele es gibt, welche
@@ -463,7 +470,13 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
         },
         rows: seite.map((r) => {
           const e = r.entity;
-          const v = (e.components?.[VISIBILITY_COMPONENT] ?? {}) as VisibilityFields;
+          /* Sagt der Artikel selbst nichts, steht hier sein Eintrag im Regelwerk (T-401). */
+          const feld = (e.components?.[VISIBILITY_COMPONENT] ?? {}) as VisibilityFields;
+          const eintrag = eintraege.get(e.id);
+          const ausEintrag = !feld.audience && !feld.revealedTo?.length && !feld.hiddenFrom?.length && !!eintrag;
+          const v: VisibilityFields = ausEintrag
+            ? { ...(eintrag!.audience ? { audience: eintrag!.audience } : {}), ...(eintrag!.show ? { revealedTo: [...eintrag!.show] } : {}), ...(eintrag!.hide ? { hiddenFrom: [...eintrag!.hide] } : {}) }
+            : feld;
           const seenBy = spalten.filter((s) => articleVisible(map, e, augen.get(s.key)!)).map((s) => s.key);
           const players: Record<string, 'show' | 'hide'> = {};
           for (const s of spalten) {
@@ -487,6 +500,9 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
             players,
             seenBy,
             writable: user.isAdmin || darf(r.id),
+            /* Setzen lässt sich jede Zeile (T-401): ins Feld, wo die Leitung schreibt, sonst als Eintrag im Regelwerk. */
+            settable: z.recht === 'manage',
+            ...(ausEintrag ? { via: 'rule' as const } : {}),
             ...fassungen(r.id),
           };
         }),
@@ -536,27 +552,38 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
       const done: string[] = [];
       const unchanged: string[] = [];
       const refused: { id: string; name: string; error: string }[] = [];
+      /* **Was die Leitung nicht schreibt, kommt ins Regelwerk** (T-401,
+         E-162 a): ein Eintrag `article:<id>` an der Kampagne — kein Buch
+         wird beschrieben, und er gilt nur in dieser Kampagne. Gesammelt und
+         einmal geschrieben. „Der Gruppe folgen" nimmt Feld **und** Eintrag. */
+      let regeln = visibilityRulesOf(z.kampagne);
+      const regelnVorher = JSON.stringify(regeln);
+      const eintragIds: string[] = [];
+      const folgt = 'follow' in aenderung || ('audience' in aenderung && aenderung.audience === null);
       for (const id of ids) {
         const e = await repo.getEntity(id);
         if (!e) {
           refused.push({ id, name: id, error: 'No such article.' });
           continue;
         }
-        const name = entityName(e) || id;
-        if (!z.user.isAdmin && !darf(id)) {
-          refused.push({
-            id,
-            name,
-            error: layersOf(e).length
-              ? 'In a layer you do not write — set it for its group instead, or edit the article to make your own version.'
-              : 'Outside every layer — only the administration changes it; set it for its group instead.',
-          });
-          continue;
+        const schreibt = z.user.isAdmin || darf(id);
+        const hatEintrag = regeln.some((r) => r.id === articleRuleKey(id));
+        if (!schreibt || (folgt && hatEintrag)) {
+          const davor = JSON.stringify(regeln);
+          regeln = withArticleRule(regeln, id, aenderung);
+          eintragIds.push(id);
+          if (!schreibt) {
+            if (JSON.stringify(regeln) === davor) unchanged.push(id);
+            else done.push(id);
+            continue;
+          }
         }
+        const name = entityName(e) || id;
         const alt = e.components?.[VISIBILITY_COMPONENT] as VisibilityFields | undefined;
         const neu = applyVisibilityChange(alt, aenderung);
         if (JSON.stringify(neu ?? null) === JSON.stringify(alt ?? null)) {
-          unchanged.push(id);
+          if (folgt && hatEintrag) done.push(id);
+          else unchanged.push(id);
           continue;
         }
         const components = { ...(e.components ?? {}) };
@@ -566,6 +593,22 @@ export function registerSichtbarkeit(app: FastifyInstance, deps: SichtbarkeitDep
         if ('konflikt' in r) refused.push({ id, name, error: 'Changed in the meantime — reload and try again.' });
         else if (r.code >= 300) refused.push({ id, name, error: String((r.body as { error?: unknown })?.error ?? r.code) });
         else done.push(id);
+      }
+      if (JSON.stringify(regeln) !== regelnVorher) {
+        /* Auf den frischen Stand der Kampagne gerechnet, nicht auf den vom
+           Anfang: eine zweite Leitung, die gerade eine andere Zeile setzt,
+           verlöre sonst ihren Eintrag. */
+        const k = (await repo.getEntity(z.kampagne.id)) ?? z.kampagne;
+        let frisch = visibilityRulesOf(k);
+        for (const id of eintragIds) frisch = withArticleRule(frisch, id, aenderung);
+        const geschrieben: Entity = {
+          ...k,
+          components: { ...(k.components ?? {}), [VISIBILITY_RULES_COMPONENT]: { visibilityRules: frisch } },
+        };
+        const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        await repo.putEntity(geschrieben);
+        await repo.appendEvent('campaign.visibility', z.kampagne.id, { articles: ids, by: z.user.id });
       }
       return { ok: true, done, unchanged, refused };
     },

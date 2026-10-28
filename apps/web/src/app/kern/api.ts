@@ -1255,6 +1255,10 @@ export interface SichtArtikel {
   /** Welche Spalten ihn sehen. */
   seenBy: string[];
   writable: boolean;
+  /** Setzbar (T-401): ins Feld, wo die Leitung schreibt, sonst als Eintrag im Regelwerk der Kampagne. */
+  settable?: boolean;
+  /** `rule`: was unter `own` steht, ist der Eintrag im Regelwerk, nicht das Feld. */
+  via?: 'rule';
   /** Fassungen derselben Sache (T-403): wie viele, ob diese gezeigt wird, ob bevorzugt. */
   versions?: { n: number; shown: boolean; preferred?: boolean };
 }
