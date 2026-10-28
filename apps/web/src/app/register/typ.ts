@@ -22,6 +22,7 @@ import { BEREICHE } from '../kern/bereiche';
 import { RegisterArbeit, articles, carry, inPlayText } from './arbeit';
 import { RegFeld } from './feld';
 import { Kapitel, Kapitelteil } from '../muster/kapitel';
+import { Klappleiste } from '../muster/klappleiste';
 import {
   ancestorsOf,
   childrenOf,
@@ -59,7 +60,7 @@ interface Gruppe {
  */
 @Component({
   selector: 'nw-reg-typ',
-  imports: [RouterLink, RegFeld, Kapitel, Kapitelteil],
+  imports: [RouterLink, RegFeld, Kapitel, Kapitelteil, Klappleiste],
   template: `
     @if (def(); as d) {
       <div class="typkopf">
@@ -83,8 +84,12 @@ interface Gruppe {
       </div>
 
       <!-- Die Kapitel der Typseite (T-277): am Telefon Reiter, am Desktop
-           Felder links breit, Kurzangaben und Kanten rechts schmal. -->
-      <nw-kapitel>
+           Felder links breit, Kurzangaben und Kanten rechts schmal. Die
+           Klappleiste (T-359) klappt die geerbten Typen und die Kanten auf
+           und zu und springt von Kapitel zu Kapitel; am Telefon steht sie
+           unten fest und kennt nur den gewählten Reiter. -->
+      <nw-klappleiste beschriftung="Type sections" />
+      <nw-kapitel merke="registry">
       <nw-kapitelteil key="type" titel="This type" lage="seite">
         <label class="f">
           <span>Label</span>
@@ -170,7 +175,8 @@ interface Gruppe {
                       [zeigen]="!!(gruppen().length || verlinkt().length || darf())"
                       [hinweis]="geerbteFelder() + (geerbteFelder() === 1 ? ' field' : ' fields')">
           @for (g of gruppen(); track g.typ) {
-            <div class="teil">
+            <div class="teil" data-bereich data-klappbar [attr.data-offen]="offen(name() + '::' + g.typ)"
+              (klappen)="klappenAuf(name() + '::' + g.typ, $event)">
               <div class="fhead" role="button" tabindex="0" [attr.aria-expanded]="offen(name() + '::' + g.typ)"
                 (click)="klappen(name() + '::' + g.typ)" (keydown.enter)="klappen(name() + '::' + g.typ)">
                 <span class="twist">{{ offen(name() + '::' + g.typ) ? '▾' : '▸' }}</span>
@@ -216,7 +222,8 @@ interface Gruppe {
           }
 
           @for (l of verlinkt(); track l.relation) {
-            <div class="teil verlinkt">
+            <div class="teil verlinkt" data-bereich data-klappbar [attr.data-offen]="offen(name() + '::→' + l.type)"
+              (klappen)="klappenAuf(name() + '::→' + l.type, $event)">
               <div class="fhead" role="button" tabindex="0" [attr.aria-expanded]="offen(name() + '::→' + l.type)"
                 (click)="klappen(name() + '::→' + l.type)" (keydown.enter)="klappen(name() + '::→' + l.type)">
                 <span class="twist">{{ offen(name() + '::→' + l.type) ? '▾' : '▸' }}</span>
@@ -472,6 +479,11 @@ export class RegTyp {
   }
   protected klappen(s: string): void {
     this.arbeit.klappen(s);
+  }
+  /** Die Klappleiste bittet um auf oder zu (T-359). */
+  protected klappenAuf(s: string, e: Event): void {
+    const auf = (e as CustomEvent<unknown>).detail;
+    if (typeof auf === 'boolean' && this.offen(s) !== auf) this.arbeit.klappen(s);
   }
   protected feldUmschalten(id: string): void {
     this.feldOffen.update((x) => (x === id ? null : id));
