@@ -162,7 +162,9 @@
           "text": [
             "Open Registry › Views and design Create for a type: the fields it names are what the quick dialog asks when you create such an article from a picker — in that order, as many as you like. Required fields are always asked; the designer warns when the form leaves one out.",
             "Design Create (full) for the type, too: New article then opens the new article in edit with exactly those fields first, even while they are empty. Everything else stays behind + Add field.",
-            "A type without a design keeps the old behaviour: the dialog asks required fields and the simple fields of the card, New article opens the full page."
+            "A type without a design keeps the old behaviour: the dialog asks required fields and the simple fields of the card, New article opens the full page.",
+            "To guide through several pages, add Steps to Create (full) and put a section with its fields inside for each page; its heading is the page’s title. Creating then shows one page at a time with Back and Next. Nothing tracks the progress: reopening starts after the last page that has something filled in, or at the first page that misses a required field.",
+            "Put the element Character builder into Create of a type, and New article opens the character builder with the name you typed. The player character does this by default."
           ]
         },
         {

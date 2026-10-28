@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { LAYER_RELATION, areaOf, createLayout, typeChain } from '@nw/model';
+import { LAYER_RELATION, areaOf, createLayout, hasBuilder, typeChain } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
@@ -89,7 +89,13 @@ import { mitnahmeParams } from '../figur/mitnahme';
           <p class="hinweis ziel">Goes to <b>{{ w.layer?.name ?? 'no layer' }}</b>.</p>
         }
       }
-      @if (typ() === 'PlayerCharacter') {
+      @if (assistent()) {
+        <!-- Die Maske create der Art führt in den Assistenten (T-425, E-169). -->
+        <p class="hinweis">
+          Creating opens the character builder — ancestry, background, class and their choices, step by
+          step{{ name().trim() ? ', with what you entered here' : '' }}.
+        </p>
+      } @else if (typ() === 'PlayerCharacter') {
         <!-- Klasse, Herkunft, Hintergrund und ihre Wahlen (T-080). -->
         <p class="hinweis">
           <a routerLink="/characters/new" [queryParams]="mitnehmen()" (click)="zu.emit()">Use the character builder</a> — ancestry, background,
@@ -102,7 +108,7 @@ import { mitnahmeParams } from '../figur/mitnahme';
       <div class="knoepfe">
         <button type="button" (click)="zu.emit()">Cancel</button>
         <button type="button" class="pri" [disabled]="laeuft() || !name().trim() || !typ()" (click)="anlegen()">
-          {{ laeuft() ? 'Creating…' : 'Create' }}
+          {{ laeuft() ? 'Creating…' : assistent() ? 'Open the builder' : 'Create' }}
         </button>
       </div>
     </div>
@@ -234,6 +240,12 @@ export class Anlegen {
     mitnahmeParams(this.name(), this.ebene(), this.stapel.schreib()?.layer?.id, this.pflicht(), this.werte()),
   );
 
+  /** Ob die Maske `create` der Art in den Assistenten führt (Element `builder`, E-169). */
+  protected readonly assistent = computed(() => {
+    const r = this.bestand.registry();
+    return !!r && !!this.typ() && hasBuilder(r, 'create', this.typ());
+  });
+
   constructor() {
     /* Eine andere Art hat andere Pflichtfelder: was für die alte gewählt
        war, gilt nicht mehr. */
@@ -251,6 +263,12 @@ export class Anlegen {
     const name = this.name().trim();
     const typ = this.typ();
     if (!name || !typ || this.laeuft()) return;
+    if (this.assistent()) {
+      /* Angelegt wird im Assistenten, mit dem, was hier schon steht. */
+      this.zu.emit();
+      await this.router.navigate(['/characters/new'], { queryParams: this.mitnehmen() });
+      return;
+    }
     this.laeuft.set(true);
     this.problem.set(null);
     try {

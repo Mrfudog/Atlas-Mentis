@@ -570,3 +570,24 @@ p.leer {
   border: 1px solid var(--line);
   background: none;
 }
+
+/* Ein geführter Ablauf in der Erfassungsmaske (T-425, REQ-440). */
+.schritte ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0 0 0.8rem;
+  padding: 0;
+}
+.schritte [aria-current='step'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.schrittknoepfe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0.8rem 0;
+}

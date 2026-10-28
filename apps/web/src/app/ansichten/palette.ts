@@ -38,6 +38,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'tabs', name: 'Tabs', icon: '⊟', tip: 'Named tabs, one shown at a time; what stands above them always shows. Each tab holds elements.', seite: true },
       { el: 'carousel', name: 'Carousel', icon: '⇆', tip: 'The elements inside one at a time, with ‹ ›.', neu: true },
       { el: 'collapsible', name: 'Collapsible', icon: '▸', tip: 'Opens and closes; the text is its header.', neu: true },
+      { el: 'steps', name: 'Steps', icon: '①', tip: 'A guided flow: each element inside is one page, with Back and Next when creating. Put it in a create view.', neu: true },
     ],
   },
   {
@@ -81,6 +82,7 @@ export const PALETTE: { cat: string; items: PaletteEintrag[] }[] = [
       { el: 'crafting', name: 'Crafting', icon: '⚒', tip: 'On a recipe the workbench, on a trade its tools and recipes, on a tool or character what it can craft. Draws nothing elsewhere.', seite: true },
       { el: 'initiative', name: 'Initiative tracker', icon: '⚔', tip: 'On an encounter: order, turn and round, hit points and effects with a duration — as much as the viewer may see. Draws nothing elsewhere.', seite: true },
       { el: 'campaign', name: 'Campaign', icon: '⚑', tip: 'What the campaign has shown this character: handouts, sessions, quests, people, maps — only what visibility and knowledge allow.', seite: true },
+      { el: 'builder', name: 'Character builder', icon: '✦', tip: 'In the create view of a type: New article opens the character builder. On a page: a link to it.' },
     ],
   },
   {
@@ -106,10 +108,10 @@ export const LEISTE: { name: string; icon: string; els: readonly string[] }[] = 
   { name: 'Links', icon: '⛓', els: ['collection', 'linked', 'relations', 'composed', 'usedBy', 'standing'] },
   { name: 'Text', icon: '¶', els: ['heading', 'text', 'description', 'prose'] },
   { name: 'Image', icon: '▣', els: ['image', 'token', 'shape'] },
-  { name: 'Layout', icon: '▥', els: ['section', 'columns', 'tabs', 'carousel', 'collapsible'] },
+  { name: 'Layout', icon: '▥', els: ['section', 'columns', 'tabs', 'carousel', 'collapsible', 'steps'] },
   { name: 'Table', icon: '⊞', els: ['table'] },
   { name: 'Graph', icon: '⌥', els: ['structure'] },
-  { name: 'Game', icon: '⚔', els: ['statblock', 'spell', 'item', 'sheet', 'turn', 'spells', 'inventory', 'knowledgeContents', 'crafting', 'initiative', 'campaign'] },
+  { name: 'Game', icon: '⚔', els: ['statblock', 'spell', 'item', 'sheet', 'turn', 'spells', 'inventory', 'knowledgeContents', 'crafting', 'initiative', 'campaign', 'builder'] },
   { name: 'Pages', icon: '☷', els: ['parts', 'reader', 'contents', 'classOverview', 'originOverview', 'rules'] },
 ];
 

@@ -4,7 +4,7 @@
  * sie an einer Art gestalten; jede Rolle liest dieselbe Maske.
  */
 import { describe, expect, it } from 'vitest';
-import { createLayout, type Entity, type Registry } from '@nw/model';
+import { createLayout, createSteps, hasBuilder, type Entity, type Registry } from '@nw/model';
 import { tisch } from './hilfen/tisch.js';
 
 const id = (name: string, nr: string) => ({ Identity: { name, id: nr, aliases: [] }, Status: { status: 'ready' } });
@@ -34,5 +34,18 @@ describe('Erfassungsmasken (T-425, E-169)', () => {
     expect(res.statusCode, res.body).toBe(200);
     const danach = await t.json<Registry>('Sela', 'GET', '/api/registry');
     expect(createLayout(danach, 'createFull', 'Deity')).toEqual({ fields: ['Deity.symbol'], designed: true });
+  });
+
+  it('ein Ablauf mit Steps lässt sich speichern, und die Spielerfigur führt in den Assistenten (REQ-440, E-169, E-176)', async () => {
+    const t = await tisch({ kampagne: 'camp_a', artikel: ARTIKEL(), konten });
+    const r = await t.json<Registry>('Vera', 'GET', '/api/registry');
+    expect(hasBuilder(r, 'create', 'PlayerCharacter')).toBe(true);
+    const deity = r.interfaces['Deity']!;
+    const ablauf = [{ id: 'st', el: 'steps', children: [{ id: 's1', el: 'section', text: 'Basics', children: [{ id: 'f1', el: 'fields', fields: ['Deity.symbol'] }] }] }];
+    const ifs = { ...r.interfaces, Deity: { ...deity, views: { ...(deity.views ?? {}), createFull: ablauf } } };
+    const res = await t.als('Vera', 'PUT', '/api/registry/interfaces', { payload: ifs });
+    expect(res.statusCode, res.body).toBe(200);
+    const danach = await t.json<Registry>('Mira', 'GET', '/api/registry');
+    expect(createSteps(danach, 'createFull', 'Deity')).toEqual([{ id: 's1', title: 'Basics', fields: ['Deity.symbol'] }]);
   });
 });

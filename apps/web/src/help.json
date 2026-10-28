@@ -407,6 +407,7 @@
             "“How it works” explains the model with a worked example.",
             "Every article lies in a layer and has a state. One that fits no other layer waits in Unassigned — an ordinary layer you can switch on in a campaign; the workbench lists its articles under Unassigned.",
             "Two views are forms for creating: Create (what the quick dialog asks when you create from a picker) and Create (full) (the article page right after New article, with its fields first, even empty). Design them per type under Views; without a design, creating works as before.",
+            "Put the element Steps in a create view to guide through pages with Back and Next. The element Character builder makes New article open the builder, as the player character does.",
             "A field or an edge kind can be required always, or only for a state: “to be prepared” or “to be ready”. An idea may go without it, but the article can only be set to that state once it is filled; the workbench lists articles at a state that miss something under Ready with gaps."
           ]
         },

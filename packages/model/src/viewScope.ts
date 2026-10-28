@@ -544,7 +544,7 @@ export function pathIds(entity: Entity, path: readonly ViewPathStep[] | undefine
 // ---------------------------------------------------------------- der Baum
 
 /** Elemente, die Kinder tragen. */
-export const CONTAINER_ELEMENTS: readonly string[] = ['section', 'columns', 'carousel', 'collapsible'];
+export const CONTAINER_ELEMENTS: readonly string[] = ['section', 'columns', 'carousel', 'collapsible', 'steps'];
 
 export function isContainer(el: Pick<LayoutElement, 'el'>): boolean {
   return CONTAINER_ELEMENTS.includes(el.el);

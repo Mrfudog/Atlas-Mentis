@@ -71,9 +71,22 @@ Zwei Ortsansichten sagen, was das Anlegen fragt (E-169 a): `create` den
 schnellen Dialog aus einer Auswahl, `createFull` die Artikelseite gleich
 nach „New article“ (`?edit=create`), mit den Feldern der Maske vorn, auch
 leer. Ohne Gestaltung einer Art gilt das Heutige. Pflichtfelder fragt der
-Dialog immer; der Designer warnt, wenn die Maske eines auslässt. Offen
-für Schnitt 8: das Element `steps` und der Assistent der Spielerfigur als
-Vorgabe ihrer `create`-Maske (E-176).
+Dialog immer; der Designer warnt, wenn die Maske eines auslässt.
+
+**Abläufe (REQ-440, REQ-433, E-176, Schnitt 8a):** das Element `steps`
+macht aus jedem Kind eine Seite mit Back und Next; wo man steht, liest
+`currentStep` aus dem Befüllten. Das Element `builder` in `create` führt
+„New article“ in den Charakter-Assistenten — Vorgabe der Spielerfigur
+(Migration 154). Offen (8b): `levelUp` als Schicht über dem Assistenten.
+
+```mermaid
+flowchart LR
+  M["createFull mit steps"] --> S["createSteps<br/>Seiten · Felder"]
+  S --> C["currentStep<br/>aus dem Befüllten"]
+  C --> E["Bearbeiten<br/>eine Seite, Back/Next"]
+  B["create mit builder"] --> H["hasBuilder"]
+  H --> A["New article → /characters/new"]
+```
 
 ```mermaid
 flowchart LR
