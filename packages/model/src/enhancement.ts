@@ -61,7 +61,7 @@ export const ENHANCEMENT = 'Enhancement';
  * **Die Werte eines Merkmals**, aus seinen Karten: `ItemFeature`
  * (woran, Namensteile, Aufpreis, Wirkung) und `Enhancement` (Seltenheit,
  * Boni). Ein Enhancement, das noch als Gegenstand steht (vor Migration
- * 161, T-324), trägt sie in `Item`; das gilt, bis es umgezogen ist.
+ * 162, T-324), trägt sie in `Item`; das gilt, bis es umgezogen ist.
  */
 function merkmal(e: Entity | undefined): Card {
   const c = e?.components ?? {};
