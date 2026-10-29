@@ -117,6 +117,12 @@
           ]
         },
         {
+          "heading": "Draw on the map",
+          "text": [
+            "Draw (D) puts strokes on a drawing layer of their own: Pen, Line, Rectangle or Ellipse, in a colour and width. Without a layer chosen, the first stroke makes one. Erase takes away the stroke you tap. GM only keeps the chosen layer from the players; Layers above the map shows and hides drawing layers like image layers."
+          ]
+        },
+        {
           "heading": "Lock the map level",
           "text": [
             "The lock next to Fit keeps zooming on this map: + and −, the wheel and two fingers only zoom, no sub-map is entered and zooming out does not lead to the map above. Breadcrumbs and clicking a frame still go there. The lock stays for this browser."

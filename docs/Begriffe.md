@@ -3051,6 +3051,12 @@ man glaubte dem Bild und verlöre die Bewegung. Und eine Fläche gehört
 **einer Ebene** wie ein Marker: der Schlamm im Keller liegt nicht auf dem
 Turmdach, nur weil beide dieselbe Karte sind.
 
+**Eine Zeichnung ist ein Blatt** (T-219). Was die Leitung auf die Karte
+kritzelt — ein Pfeil, ein Kreis um die Falle —, liegt auf einem Blatt wie
+ein Bild, nur ohne Bild. Ein eigenes Feld für Zeichnungen wäre eine zweite
+Sorte Ebene gewesen, die Deckkraft, Ausblenden und „nur die Leitung“ noch
+einmal hätte lernen müssen; als Blatt kann sie das schon.
+
 **Die Dunkelheit verbirgt am Server, nicht auf dem Schirm** (T-219). Was
 im Dunkeln wartet, schwarz zu übermalen, hiesse, es trotzdem zu schicken —
 im Quelltext der Seite stünde der Ghul. Also bekommt eine Spielerin auf
