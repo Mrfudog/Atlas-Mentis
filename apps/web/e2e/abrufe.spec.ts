@@ -7,7 +7,7 @@
  * wieder wächst.
  */
 import type { Page, Request } from '@playwright/test';
-import { test, expect } from './hilfen';
+import { test, expect, type Angelegt } from './hilfen';
 
 /** Die API-Abrufe einer Seite, bis das Netz ruhig ist; der Live-Kanal zählt nicht. */
 async function abrufe(seite: Page, weg: string): Promise<string[]> {
@@ -52,7 +52,7 @@ test('a statblock asks for all its proficiencies in one request', async ({ leitu
 
 test('a board fetches its cards in one request, not one per card', async ({ leitung, spielerin, api, eindeutig }) => {
   const fertig = { Status: { status: 'ready' } };
-  const karten = [];
+  const karten: Angelegt[] = [];
   for (let i = 0; i < 6; i++) {
     const k = await api.anlegen('leitung', 'Scene', eindeutig(`Card ${i}`));
     await api.setzen('leitung', k.id, fertig);
