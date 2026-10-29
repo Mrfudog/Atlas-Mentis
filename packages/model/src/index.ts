@@ -69,6 +69,7 @@ export * from './mapdraw.js';
 export * from './lighting.js';
 export * from './spotting.js';
 export * from './travel.js';
+export * from './weapons.js';
 export * from './kartenseite.js';
 export * from './crafting.js';
 export * from './substitutes.js';

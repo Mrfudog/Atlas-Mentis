@@ -558,11 +558,13 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'turnplan',
     label: 'Turn planner',
     area: 'play',
-    does: 'builds the action bar of a creature on the map from the actions of its statblock, moves its token when the GM confirms a planned turn, and asks for an opportunity attack when the path leaves the reach of a creature on the other side (party members and allies of the encounter against the rest) (T-198); a path may pass through allies but not end on them, and difficult terrain from the zones of the map costs double — the server counts the feet again (T-349); on the way a player character notices hidden markers and hidden zones its passive Perception beats, and entering a zone that does something says so (T-350)',
+    does: 'builds the action bar of a creature on the map from the actions of its statblock, moves its token when the GM confirms a planned turn, and asks for an opportunity attack when the path leaves the reach of a creature on the other side (party members and allies of the encounter against the rest) (T-198); a path may pass through allies but not end on them, and difficult terrain from the zones of the map costs double — the server counts the feet again (T-349); on the way a player character notices hidden markers and hidden zones its passive Perception beats, and entering a zone that does something says so (T-350); a weapon in hand is an attack tile, with to-hit and damage from the statblock, its own +1 and a bonus-action off-hand attack with two light weapons (T-354)',
     uses: {
       [M + 'zugplan.ts']: ['zone'],
       /* Unterwegs bemerken (T-350): versteckte Marker und Zonen, Zonen betreten. */
       [M + 'spotting.ts']: ['marker', 'zone'],
+      /* Waffen in der Hand sind Angriffe (T-354): Inventar, Hand, Eigenschaften der Waffe. */
+      [M + 'weapons.ts']: ['carries', 'hasProperty', 'holds'],
       [S + 'zugplan.ts']: ['belongsTo', 'composedOf', 'memberOfParty', 'participates', 'zone'],
     },
   },

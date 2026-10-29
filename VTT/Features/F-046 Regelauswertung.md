@@ -122,3 +122,29 @@ passiven Wahrnehmung und den Proben, `spellAttack`/`spellDamage` und
 `ac.base` (Formel `10 + mod(dex) + mod(con)`), für den Mönch
 `ac.base.noShield`. Offen: `carry` (Bedeutung des Werts) und Boni, die an
 der Waffe selbst stehen.
+
+## Waffen in der Hand sind Angriffe (T-354)
+
+Stand 29.10.2026. Ein Statblock nennt seine Angriffe als Aktionen; eine
+Spielerfigur hat ihren Angriff **in der Hand**. Jede Waffe in der Hand
+(`carries` → Inventar → `holds` mit Handplatz) ist im Zugplan eine
+Angriffskachel (`heldWeaponTiles`, `weapons.ts`), gerechnet wie jeder
+Angriff: Übung nur geübt (Waffengruppe oder Waffe), Finesse das bessere
+Attribut, vielseitig mit beiden Händen der grössere Würfel, die Wirkungen
+der Figur und **die der Waffe selbst** (`when: self`, die +1-Waffe). Zwei
+leichte Nahkampfwaffen geben den Nebenhand-Angriff als Bonusaktion, ohne
+positiven Mod beim Schaden. Nennt der Statblock schon eine Aktion mit
+demselben Namen, kommt die Waffe nicht doppelt.
+
+```mermaid
+flowchart LR
+  I[Inventar: holds mit Handplatz] --> W[heldWeapons]
+  W --> T[weaponTile<br/>attackNumbers]
+  S[Statblock: Übung, STR/DEX] --> T
+  E[Wirkungen der Figur + when: self] --> T
+  T --> K[Kachel im Zugplan]
+  K -->|bestätigt| D[damageAtTable]
+```
+
+Offen (Entscheid E-206): die Rechnungen als Automationen, Leser für die
+Kanten `affects`, `loot`, `entry`, `route`, `territory`, `inWorld`.

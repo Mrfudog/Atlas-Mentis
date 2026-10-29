@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-weapons-attack",
+      "date": "2026-10-29",
+      "title": "Weapons in hand are attacks in the turn plan",
+      "text": "A character holding a weapon now finds it in the turn plan as an attack, with to-hit and damage worked out from the statblock, the weapon’s own bonus and effects. With two light weapons an off-hand attack is offered as a bonus action.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-travel-and-noticing",
       "date": "2026-10-29",
       "title": "Noticing on the way, draw times and travel",
