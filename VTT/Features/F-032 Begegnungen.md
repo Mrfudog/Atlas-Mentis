@@ -46,5 +46,11 @@ flowchart LR
   T["Tracker: Add ×3"] -. "drei participates-Kanten" .-> E
 ```
 
+**Vorplatzieren von der Begegnung aus:** vor dem Start zeigt der Tracker
+„Prepare on map"; die Karte öffnet mit `?prepare=` und setzt die
+Beteiligten einmal verborgen (wie „Prepare n" in ihrer Seitenleiste).
+Jedes Ziel bekommt dabei einen Marker — mehrere Kanten auf denselben
+Statblock sind ein Token.
+
 Offen: ob Szene („Scene / Encounter") und Begegnung eine Art werden
-(E-118), und „Prepare on map" direkt an der Begegnung.
+(E-118).

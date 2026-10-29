@@ -9,6 +9,14 @@
       "link": "/handbook"
     },
     {
+      "id": "2026-10-29-prepare-on-map",
+      "date": "2026-10-29",
+      "title": "Prepare an encounter on its map from the encounter",
+      "text": "Before an encounter starts, its initiative tracker has Prepare on map: the map opens with the combatants already set, hidden from the players until you press Start.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-dark-tokens",
       "date": "2026-10-29",
       "title": "What waits in the dark stays hidden",

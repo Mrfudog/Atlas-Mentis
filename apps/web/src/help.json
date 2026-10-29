@@ -42,7 +42,7 @@
           "heading": "Initiative tracker",
           "text": [
             "Initiative in the tool bar opens the tracker of the encounter the session runs beside the map — on a computer it starts open, on a phone closed. Without a map it stands on the page. It lists the combatants by initiative, marks whose turn it is and shows the round; ⛶ shows it full screen for a projector.",
-            "GM: ▶ Start rolls initiative and runs the encounter; Next turn ends the current turn, counts effects down and starts the next; ◀ goes back without bringing expired effects back. Tap an initiative to change it.",
+            "GM: before the start, Prepare on map opens the encounter's map and sets its combatants there, hidden from the players. ▶ Start rolls initiative and runs the encounter; Next turn ends the current turn, counts effects down and starts the next; ◀ goes back without bringing expired effects back. Tap an initiative to change it.",
             "Skip passes over the current combatant, ⤒ goes back to the top in the same round, and ▸ on a row makes that combatant current — none of these count effects down. The head shows the round and, for the GM, Turn x/y.",
             "Each row has the quick actions the campaign picked — Damage, Heal, Effect, Reroll, Remove — and 👁 shows or hides a foe from the players. Combatants without recorded hit points are at full.",
             "Add a combatant at the bottom: pick a creature, statblock or party — or Create “…” as … if it does not exist yet — and say how many (×); four goblins become four rows, Goblin 1 to 4, each with its own initiative and hit points.",
