@@ -23,3 +23,10 @@
 .flaechen-knopf.an {
   font-weight: 600;
 }
+
+/* Die Kartenebene festgehalten (REQ-132): der Schalter in der Zoomgruppe sagt es. */
+.fest.an {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}

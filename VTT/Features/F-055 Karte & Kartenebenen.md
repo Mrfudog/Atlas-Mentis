@@ -26,3 +26,10 @@ Epic: [[EP-09 Karten]]
 | [[REQ-293]] Ladeanzeige für Kartenbilder | Spielleitung | 3 | steht |
 | [[REQ-385]] Karten-Widget mit Werkzeugen, Ebenen und Grössen | Spielleitung | 2 | offen |
 <!-- stories:ende -->
+
+## Kartenebene festhalten (T-219)
+
+Seit 29.10.2026 hält ein Schloss neben „Fit“ das Zoomen auf der Karte
+([[REQ-132]]): kein Hineinspringen in eine Unterkarte, kein Hinaus zur
+Karte darüber; Brotkrumen und Rahmen zum Anklicken bleiben. Wie:
+[Karten › Hineinzoomen](../../docs/Karten.md#hineinzoomen-statt-hineinspringen).

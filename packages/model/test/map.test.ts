@@ -34,6 +34,7 @@ import {
   mapRulesOf,
   revealFor,
   zoomStep,
+  MAP_ZOOM_STEP,
   MAP_NEAR,
 } from '../src/map.js';
 import type { Entity, Relation } from '../src/types.js';
@@ -153,6 +154,14 @@ describe('sub-maps (REQ-131)', () => {
   it('leaves for the map above when fully out', () => {
     expect(zoomStep({ zoom: 0.25, direction: -1, children: [], parent: 'p', nat: null, viewport: { w: 1, h: 1 } })).toEqual({ kind: 'leave', id: 'p' });
     expect(zoomStep({ zoom: 0.25, direction: -1, children: [], nat: null, viewport: { w: 1, h: 1 } })).toEqual({ kind: 'zoom', zoom: 0.25 });
+  });
+  it('stays on this map while the level is locked (REQ-132)', () => {
+    const nat = { w: 1000, h: 1000 };
+    const viewport = { w: 800, h: 800 };
+    const kinder = [{ id: 'k', frame: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 } }];
+    expect(zoomStep({ zoom: 2, direction: 1, children: kinder, nat, viewport }).kind).toBe('enter');
+    expect(zoomStep({ zoom: 2, direction: 1, children: kinder, nat, viewport, locked: true })).toEqual({ kind: 'zoom', zoom: 2 * MAP_ZOOM_STEP });
+    expect(zoomStep({ zoom: 0.25, direction: -1, children: [], parent: 'p', nat: null, viewport: { w: 1, h: 1 }, locked: true })).toEqual({ kind: 'zoom', zoom: 0.25 });
   });
   it('walks up to the outermost map and stops at a circle', () => {
     const welt = karte('welt');

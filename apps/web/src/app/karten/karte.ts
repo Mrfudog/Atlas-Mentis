@@ -233,6 +233,8 @@ const MARKER_MIN = 26;
 
 /** Ob Zonen und Gebiete gezeigt werden (T-219) — eine Bequemlichkeit je Browser, kein Stand der Karte. */
 const FLAECHEN_SCHLUESSEL = 'nw.karte.flaechen';
+/** Ob das Zoomen auf der Karte bleibt (REQ-132). */
+const FEST_SCHLUESSEL = 'nw.karte.fest';
 function lies(k: string): string | null {
   try {
     return localStorage.getItem(k);
@@ -400,6 +402,12 @@ interface Zeiger {
             <span aria-live="polite">{{ prozent() }}%</span>
             <button type="button" (click)="stufe(1)" aria-label="Zoom in" title="Zoom in — a sub-map that fills the view is entered">+</button>
             <button type="button" (click)="einpassen()" title="Fit the whole map">Fit</button>
+            <!-- **Kartenebene festhalten** (REQ-132): zoomen ohne in eine Unterkarte oder zur Karte darüber zu wechseln. -->
+            @if (kontext()?.children?.length || kontext()?.parents?.length) {
+              <button type="button" class="fest" [class.an]="ebeneFest()" [attr.aria-pressed]="ebeneFest()" (click)="ebeneFestUm()" aria-label="Lock map level" [title]="ebeneFest() ? 'Map level locked: zooming stays on this map. Click to zoom into sub-maps and out to the map above again.' : 'Lock the map level: zoom without entering a sub-map or leaving for the map above'">
+                <span aria-hidden="true">{{ ebeneFest() ? '🔒' : '🔓' }}</span>
+              </button>
+            }
           </span>
           @if (blaetter().length > 1) {
             <button type="button" [attr.aria-expanded]="blaetterOffen()" (click)="blaetterOffen.set(!blaetterOffen())">Layers</button>
@@ -2786,6 +2794,18 @@ export class Karte {
     this.zoom.set(neu);
   }
 
+  /**
+   * **Die Kartenebene festhalten** (REQ-132, T-219): Rad, Tasten und
+   * Kneifen zoomen nur, Brotkrumen und Rahmen zum Anklicken bleiben. Eine
+   * Bequemlichkeit je Browser wie „Areas“, kein Stand der Karte.
+   */
+  protected readonly ebeneFest = signal<boolean>(lies(FEST_SCHLUESSEL) === 'on');
+  protected ebeneFestUm(): void {
+    const an = !this.ebeneFest();
+    this.ebeneFest.set(an);
+    schreib(FEST_SCHLUESSEL, an ? 'on' : 'off');
+  }
+
   /** Ein Zoomschritt — hinein in eine Unterkarte, hinaus zur Karte darüber, oder näher. */
   protected stufe(richtung: 1 | -1, fx?: number, fy?: number): void {
     const e = this.karte();
@@ -2802,6 +2822,7 @@ export class Karte {
       nat: this.nat(),
       viewport: this.fenster(),
       ...(visible ? { visible } : {}),
+      locked: this.ebeneFest(),
     });
     if (s.kind === 'zoom') this.zoomenAuf(s.zoom, fx, fy);
     else this.gehe(s.id);
@@ -2896,7 +2917,8 @@ export class Karte {
         {
           ...k,
           show,
-          nah: frameNear(k.frame, nat, zoom, f, k.near ?? MAP_NEAR),
+          /* Festgehalten (REQ-132) sagt kein Rahmen „zoom in to enter“ an — er wird nicht betreten. */
+          nah: !this.ebeneFest() && frameNear(k.frame, nat, zoom, f, k.near ?? MAP_NEAR),
           punkte: form ? form.map(([x, y]) => `${x},${y}`).join(' ') : null,
           mitte: linkCentre({ frame: k.frame, area: k.area ?? null }),
           raster: bearbeiten ? this.unterRaster(k) : null,
@@ -3548,7 +3570,8 @@ export class Karte {
     const k = this.kneifen;
     this.kneifen = null;
     this.zeiger.clear();
-    if (!k) return;
+    /* Festgehalten (REQ-132): Kneifen zoomt nur. */
+    if (!k || this.ebeneFest()) return;
     if (this.kneifenZiel > k.z0) {
       const visible = this.sichtbar();
       const focus = this.fokus();

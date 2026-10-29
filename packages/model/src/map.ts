@@ -762,8 +762,18 @@ export function zoomStep(opts: {
    * der Karte führte in eine Stadt in der Mitte.
    */
   focus?: Pt;
+  /**
+   * **Die Kartenebene festhalten** (REQ-132, T-219): nur näher und
+   * weiter, nie hinein in eine Unterkarte und nie hinaus zur Karte
+   * darüber — wer auf der Stadtkarte zoomt, um eine Strasse zu lesen,
+   * will nicht im Hafenviertel landen.
+   */
+  locked?: boolean;
 }): ZoomStep {
   const { zoom, direction } = opts;
+  if (opts.locked) {
+    return { kind: 'zoom', zoom: direction > 0 ? Math.min(MAP_ZOOM_MAX, zoom * MAP_ZOOM_STEP) : Math.max(MAP_ZOOM_MIN, zoom / MAP_ZOOM_STEP) };
+  }
   if (direction > 0) {
     let beste: { id: EntityId; anteil: number } | null = null;
     for (const k of opts.children) {
