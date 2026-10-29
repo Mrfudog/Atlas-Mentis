@@ -264,7 +264,8 @@
         {
           "heading": "Sessions",
           "text": [
-            "A session article holds what is happening at the table: the map on the table, the running encounter and the scene. What the GM sets here reaches every screen at once — Play follows it."
+            "A session article holds what is happening at the table: the map on the table, the running encounter and the scene. What the GM sets here reaches every screen at once — Play follows it.",
+          "Right below that, the session shows what matters tonight: its scenes and encounters, the people in those scenes, who fights in the encounters, the places they happen at and the maps they are fought on. Link a scene or encounter to the session with part of, and its people, place and map appear here; a click opens the article. Players see only what they may see."
           ]
         },
         {

@@ -21,7 +21,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 |---|---|---|---|
 | [[F-029 Kampagne]] — Die Kampagne als Wurzel: Einstellungen, Kampagnenwerte, Anlegen mit Dialog, Bereiche als Seiten. | 5 | 12 | 3 steht · 1 teils · 1 offen |
 | [[F-030 Bereich Story]] — Arcs, Kapitel, Quests, Szenen, Fäden — die Geschichte der Kampagne. | 4 | 11 | 2 steht · 2 offen |
-| [[F-031 Sitzungen & Vorbereitung]] — Sitzungen, Vorbereitungsseite, Unfertiges und Todos, Schnellerfassung, Sitzungsansicht. | 9 | 25 | 6 steht · 1 teils · 2 offen |
+| [[F-031 Sitzungen & Vorbereitung]] — Sitzungen, Vorbereitungsseite, Unfertiges und Todos, Schnellerfassung, Sitzungsansicht. | 9 | 25 | 6 steht · 2 teils · 1 offen |
 | [[F-032 Begegnungen]] — Begegnungen bauen und vorbereiten, Begegnungstabellen, Weltzustand zwischen Sitzungen. | 4 | 12 | 2 steht · 2 offen |
 | [[F-033 Abenteuer übernehmen]] — Vorgefertigte Abenteuer als Ebene, Kapitel und Szenen in die eigene Geschichte holen. | 2 | 18 | 2 steht |
 | [[F-034 Party]] — Die Figurengruppe einer Kampagne mit ihrer Übersicht. | 3 | 7 | 2 steht · 1 teils |
@@ -39,7 +39,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 **Erklärt in:** [Datenmodell.md](../../docs/Datenmodell.md), [Spieltisch.md](../../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** [[REQ-079]] Schnelle Aktionen in der Sitzung (teils) · [[REQ-080]] Vorlesetexte nach der Sitzung freigeben (offen) · [[REQ-086]] Gruppenübersicht (teils) · [[REQ-180]] Gepflanzte Fäden (offen) · [[REQ-221]] Begegnungen bauen (offen) · [[REQ-236]] Kampagne mit Dialog anlegen (offen) · [[REQ-279]] Kampagnenwerte pflegen und in Texten nutzen (teils) · [[REQ-282]] Sitzungsansicht für das Spiel (offen) · [[REQ-283]] Kampagnen-Ladebildschirm (offen) · [[REQ-377]] Quest aus einer Tabelle würfeln (teils)
+**Offen mit Prio 1–3:** [[REQ-079]] Schnelle Aktionen in der Sitzung (teils) · [[REQ-080]] Vorlesetexte nach der Sitzung freigeben (offen) · [[REQ-086]] Gruppenübersicht (teils) · [[REQ-180]] Gepflanzte Fäden (offen) · [[REQ-221]] Begegnungen bauen (offen) · [[REQ-236]] Kampagne mit Dialog anlegen (offen) · [[REQ-279]] Kampagnenwerte pflegen und in Texten nutzen (teils) · [[REQ-282]] Sitzungsansicht für das Spiel (teils) · [[REQ-283]] Kampagnen-Ladebildschirm (offen) · [[REQ-377]] Quest aus einer Tabelle würfeln (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->

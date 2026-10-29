@@ -15,7 +15,7 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-9 Stories · 25 Punkte · 6 steht · 1 teils · 2 offen
+9 Stories · 25 Punkte · 6 steht · 2 teils · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -27,5 +27,5 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 | [[REQ-189]] Gesammelte Todos | Spielleitung | 3 | steht |
 | [[REQ-190]] Schnellerfassung im Spiel | Spielleitung | 3 | steht |
 | [[REQ-280]] Umschalter Vorbereitung und Spiel | Spielleitung | 4 | offen |
-| [[REQ-282]] Sitzungsansicht für das Spiel | Spielleitung | 2 | offen |
+| [[REQ-282]] Sitzungsansicht für das Spiel | Spielleitung | 2 | teils |
 <!-- stories:ende -->

@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, registry]
 status: derived
-updated: 2026-10-28
+updated: 2026-10-29
 ---
 
 # Requirements Registry
@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 141 | 515 | 70 steht · 25 teils · 38 offen · 5 ersetzt · 3 verworfen |
+| 2 | 141 | 515 | 70 steht · 26 teils · 37 offen · 5 ersetzt · 3 verworfen |
 | 3 | 128 | 394 | 61 steht · 27 teils · 39 offen · 1 ersetzt |
 | 4 | 49 | 225 | 13 steht · 2 teils · 31 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **394** | **1470** | 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **394** | **1470** | 187 steht · 65 teils · 126 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -320,7 +320,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-279]] | Kampagnenwerte pflegen und in Texten nutzen | Spielleitung | [[F-029 Kampagne\|Kampagne]] | 2 | 2 | in progress | teils |
 | [[REQ-280]] | Umschalter Vorbereitung und Spiel | Spielleitung | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 4 | 2 | defined | offen |
 | [[REQ-281]] | Eine Party je Kampagne | Spielleitung | [[F-034 Party\|Party]] | 1 | 2 | done | steht |
-| [[REQ-282]] | Sitzungsansicht für das Spiel | Spielleitung | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 2 | 3 | defined | offen |
+| [[REQ-282]] | Sitzungsansicht für das Spiel | Spielleitung | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 2 | 3 | defined | teils |
 | [[REQ-283]] | Kampagnen-Ladebildschirm | Spieler | [[F-035 Ladebildschirm-Board\|Ladebildschirm-Board]] | 3 | 3 | defined | offen |
 | [[REQ-284]] | Läden mit Waren und Preisen | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 2 | 3 | done | steht |
 | [[REQ-285]] | Fraktionspreise | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 3 | 2 | in progress | teils |

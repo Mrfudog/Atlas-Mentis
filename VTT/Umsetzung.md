@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view, umsetzung]
 status: derived
-updated: 2026-10-28
+updated: 2026-10-29
 source: ../docs/Anforderungen.md
 ---
 
@@ -11,7 +11,7 @@ source: ../docs/Anforderungen.md
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-28. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-29. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -23,7 +23,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
+Zusammen: 187 steht · 65 teils · 126 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -31,7 +31,7 @@ Zusammen: 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen — 39
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 51 | 28 steht · 8 teils · 12 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 19 steht · 2 teils · 8 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 13 teils · 24 offen |
-| [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 33 | 17 steht · 4 teils · 12 offen |
+| [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 33 | 17 steht · 5 teils · 11 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 29 | 13 steht · 3 teils · 13 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 33 | 14 steht · 6 teils · 12 offen · 1 ersetzt |
@@ -457,7 +457,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 **Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-079 Schnelle Aktionen in der Sitzung (teils) · REQ-080 Vorlesetexte nach der Sitzung freigeben (offen) · REQ-086 Gruppenübersicht (teils) · REQ-180 Gepflanzte Fäden (offen) · REQ-221 Begegnungen bauen (offen) · REQ-236 Kampagne mit Dialog anlegen (offen) · REQ-279 Kampagnenwerte pflegen und in Texten nutzen (teils) · REQ-282 Sitzungsansicht für das Spiel (offen) · REQ-283 Kampagnen-Ladebildschirm (offen) · REQ-377 Quest aus einer Tabelle würfeln (teils)
+**Offen mit Prio 1–3:** REQ-079 Schnelle Aktionen in der Sitzung (teils) · REQ-080 Vorlesetexte nach der Sitzung freigeben (offen) · REQ-086 Gruppenübersicht (teils) · REQ-180 Gepflanzte Fäden (offen) · REQ-221 Begegnungen bauen (offen) · REQ-236 Kampagne mit Dialog anlegen (offen) · REQ-279 Kampagnenwerte pflegen und in Texten nutzen (teils) · REQ-282 Sitzungsansicht für das Spiel (teils) · REQ-283 Kampagnen-Ladebildschirm (offen) · REQ-377 Quest aus einer Tabelle würfeln (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -492,7 +492,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 | [[REQ-189]] | Gesammelte Todos | 3 | **steht** | `Todos`, gesammelt |
 | [[REQ-190]] | Schnellerfassung im Spiel | 3 | **steht** | Schnellerfassung an der Sitzung |
 | [[REQ-280]] | Umschalter Vorbereitung und Spiel | 4 | **offen** | ob nötig, ist offen |
-| [[REQ-282]] | Sitzungsansicht für das Spiel | 2 | **offen** | Vorbereitungsseite steht (REQ-078), Spielansicht nicht |
+| [[REQ-282]] | Sitzungsansicht für das Spiel | 2 | **teils** | Die Session zeigt auf einen Blick Szenen, Begegnungen, NSC, Orte und Karten (T-151); NSC aus Szene und Kampf noch getrennt (T-454), Gegner sieht eine Leitung ohne Verwaltungsrecht erst nach E-208 |
 
 ### F-032 Begegnungen
 
@@ -1078,7 +1078,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-270]]** (2, teils, Zugang & Betrieb) — Artikel von dev nach prod übernehmen — *Übernahme (T-130)*
 - **[[REQ-275]]** (2, teils, Spielererlebnis) — Erhaltene Gegenstände als Instanz — *`instanceOf` am Item vorhanden (T-150 läuft)*
 - **[[REQ-279]]** (2, teils, Kampagne & Sitzungen) — Kampagnenwerte pflegen und in Texten nutzen — *Auflösung steht; Maske fehlt*
-- **[[REQ-282]]** (2, offen, Kampagne & Sitzungen) — Sitzungsansicht für das Spiel — *Vorbereitungsseite steht (REQ-078), Spielansicht nicht*
+- **[[REQ-282]]** (2, teils, Kampagne & Sitzungen) — Sitzungsansicht für das Spiel — *Die Session zeigt auf einen Blick Szenen, Begegnungen, NSC, Orte und Karten (T-151); NSC aus Szene und Kampf noch getrennt (T-454), Gegner sieht eine Leitung ohne Verwaltungsrecht erst nach E-208*
 - **[[REQ-287]]** (2, teils, Regeln & Nachschlagen) — Regelsysteme und Module als Ebenen — *E-044, T-132; entschieden als Ebenen: E-078, E-090–E-094, E-166. T-394 Schritt 1: Arten RuleSystem und RuleMechanic, Kante compatibleWith, Inventory mit Weight, Slots, Grid und Default shapes beim Start angelegt; die Wahl am Tisch liest weiter Campaign.inventory. Handwerk und die übrigen Teilsysteme folgen (T-132).*
 - **[[REQ-292]]** (2, teils, Live-Spiel) — Neuen Artikel aus einer Auswahl anlegen
 - **[[REQ-311]]** (2, teils, Spielererlebnis) — Spieleransicht mit der eigenen Figur im Fokus — *Entwurf Player/PlayerPhone*

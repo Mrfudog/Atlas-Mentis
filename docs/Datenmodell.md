@@ -1982,7 +1982,13 @@ jeder sichtbare Artikel, der passt — `types` (mit Untertypen),
 `filter.tags`, `filter.fields` (`Typ.feld:Wert|Wert`), `filter.q`,
 höchstens `limit` (Vorgabe 24); gefragt wird `GET /api/list` wie im
 Kompendium (`collectionQuery`), gesiebt am Server. **Vorgaben:** die
-Session trägt `se-contains` (Migration 144), jede andere Geschichte
+Session trägt `se-contains` (Migration 144) und darunter, zwei Schritte
+vom Abend weg, **die Sitzung auf einen Blick** (T-151, REQ-282, Migration
+166): `se-people` (`← partOf › features`, Kreaturen, Kacheln), `se-fight`
+(`← partOf › participates`, Kreaturen), `se-places` (`› happensAt`) und
+`se-maps` (`› onMap`), alle nach Name — gleich unter `live`, vor der
+Vorbereitung. Ein Schritt nennt eine Kante, darum sind Szene und Kampf zwei
+Sammlungen (T-454); jede andere Geschichte
 `st-contains` an `Story` (Arc, Szene, Kampagne; Position 65, nach den
 Teilen), ein Ort `o-within` (Unterorte, Liste) und `o-residents` (wer dort
 lebt, Kacheln; Migration 145); die Szene stellt `st-contains` als Liste
@@ -2724,7 +2730,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-28: 66 Artikelarten, 28 Grundtypen, 74 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-29: 66 Artikelarten, 28 Grundtypen, 74 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 

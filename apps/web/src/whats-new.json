@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-session-at-a-glance",
+      "date": "2026-10-29",
+      "title": "A session shows its people, places and maps at a glance",
+      "text": "Under what is running, a session now lists its scenes and encounters and, through them, the people in the scenes, who fights in the encounters, the places and the maps — each opens with a click. Nothing to set up: link scenes and encounters to the session with part of, and people, places and maps with features, happens at and fought on.",
+      "area": "Story",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-dark-tokens",
       "date": "2026-10-29",
       "title": "What waits in the dark stays hidden",

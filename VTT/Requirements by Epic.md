@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-28
+updated: 2026-10-29
 ---
 
 # Requirements by Epic
@@ -435,7 +435,7 @@ Körperplan des Inventarmoduls, tragende Ausrüstung als Behälter mit eigenem k
 
 ## EP-05 Kampagne & Sitzungen
 
-33 Stories · 119 Punkte · 17 steht · 4 teils · 12 offen — [[EP-05 Kampagne & Sitzungen]]
+33 Stories · 119 Punkte · 17 steht · 5 teils · 11 offen — [[EP-05 Kampagne & Sitzungen]]
 
 ### F-029 Kampagne
 
@@ -469,7 +469,7 @@ Sitzungen, Vorbereitungsseite, Unfertiges und Todos, Schnellerfassung, Sitzungsa
 | [[REQ-077]] | Sitzungen mit Geplantem und Geschehenem | Spielleitung | 2 | 3 | steht |
 | [[REQ-078]] | Vorbereitungsseite | Spielleitung | 2 | 5 | steht |
 | [[REQ-079]] | Schnelle Aktionen in der Sitzung | Spielleitung | 2 | 3 | teils |
-| [[REQ-282]] | Sitzungsansicht für das Spiel | Spielleitung | 2 | 3 | offen |
+| [[REQ-282]] | Sitzungsansicht für das Spiel | Spielleitung | 2 | 3 | teils |
 | [[REQ-084]] | Ideen und Unfertiges | Spielleitung | 3 | 3 | steht |
 | [[REQ-188]] | Übersicht über alles Unfertige | Spielleitung | 3 | 2 | steht |
 | [[REQ-189]] | Gesammelte Todos | Spielleitung | 3 | 2 | steht |
