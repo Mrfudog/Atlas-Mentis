@@ -5,6 +5,25 @@ import { Api, ApiError, type KampagnenEbenen, type Mitglied } from '../kern/api'
 /** Wohin „Change" führt: ein Reiter der Kampagnenseite, bei Regeln die Stelle darin. */
 export type Aenderungsort = CampaignDecision['change'];
 
+/** Wie lange auf das Ziel gewartet wird: Rules & options lädt auf dev gut zweieinhalb Sekunden. */
+const SPRUNG_WARTEN_MS = 15_000;
+const SPRUNG_TAKT_MS = 100;
+
+/**
+ * **An die Stelle springen** (T-141): das Ziel steht erst da, wenn der
+ * Reiter geladen hat — also nachsehen, bis es da ist, und nach einer Weile
+ * aufgeben, statt viel später unvermittelt zu springen.
+ */
+export function springeZu(id: string): void {
+  let versuche = Math.ceil(SPRUNG_WARTEN_MS / SPRUNG_TAKT_MS);
+  const suchen = () => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ block: 'start' });
+    else if (--versuche > 0) setTimeout(suchen, SPRUNG_TAKT_MS);
+  };
+  setTimeout(suchen, 0);
+}
+
 /**
  * **Der Kampagnenmanager** (T-141): die Entscheidungen der Kampagne als
  * Liste — Ebenen, Vergleichsebenen, Mitglieder und jede Regel —, je Zeile

@@ -2472,6 +2472,7 @@ die Seite zeichnet sie (`verwaltung/entscheidungen.ts`).
 
 | Feld | Bedeutung |
 |---|---|
+| `value` | der Stand in Worten; Ebenen über sechs als Zahl und die ersten fünf (`157 layers: … and 152 more`) |
 | `state` | `set` gewählt; `default` es gilt die Vorgabe (keine Vergleichsebene, nur eingebaute Verfahren); `open` nichts gewählt (keine Ebene im Spiel, niemand leitet, keine Variante) |
 | `change` | der Reiter (`layers`, `members`, `rules`), bei Regeln die Stelle `regel-<System>` |
 | `consequence` | Anlegen (`abilities`, `equipment`, `character`): nur für neue und aufsteigende Figuren; sonst: beim Lesen, nichts wird umgeschrieben; Installation: gilt für jede Kampagne, ändert die Verwaltung |
