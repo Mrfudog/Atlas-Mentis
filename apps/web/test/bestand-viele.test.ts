@@ -22,6 +22,7 @@ function aufbauen() {
       backlinks: Object.fromEntries(ids.filter((id) => id !== 'weg').map((id) => [id, []])),
     })),
     entity: vi.fn(async (id: string) => ({ ...art(id, `N ${id}`), refs: { names: {}, links: {} } })),
+    entitiesById: vi.fn(async (ids: string[]) => ids.filter((id) => id !== 'weg').map((id) => art(id, `N ${id}`))),
     backlinks: vi.fn(async () => []),
   };
   TestBed.resetTestingModule();
@@ -73,3 +74,37 @@ describe('Bestand.oeffnenViele (T-398)', () => {
     expect(api.entitiesBatch.mock.calls.map((c) => (c[0] as string[]).length)).toEqual([200, 200, 50]);
   });
 });
+
+describe('Bestand.holen collects what one pass asks for (T-398, P1)', () => {
+  it('asks once for ids several parts ask for in the same pass', async () => {
+    const { api, bestand } = aufbauen();
+    /* Bogen, Kopf, Abschnitte und Kennzahlen fragen je für sich — auf dev achtmal entities?ids. */
+    await Promise.all([bestand.holen(['a', 'b']), bestand.holen(['b', 'c']), bestand.holen(['weg']), bestand.holen([])]);
+    expect(api.entitiesById).toHaveBeenCalledTimes(1);
+    expect([...api.entitiesById.mock.calls[0]![0]].sort()).toEqual(['a', 'b', 'c', 'weg']);
+    expect([...bestand.voll().keys()].sort()).toEqual(['a', 'b', 'c']);
+    expect(bestand.fehlt().has('weg')).toBe(true);
+  });
+
+  it('resolves each caller only once its articles are there', async () => {
+    const { bestand } = aufbauen();
+    const p = bestand.holen(['a']);
+    expect(bestand.voll().has('a')).toBe(false);
+    await p;
+    expect(bestand.voll().has('a')).toBe(true);
+  });
+
+  it('asks in pages of at most 200', async () => {
+    const { api, bestand } = aufbauen();
+    await bestand.holen(Array.from({ length: 450 }, (_, i) => `x${i}`));
+    expect(api.entitiesById.mock.calls.map((c) => c[0].length)).toEqual([200, 200, 50]);
+  });
+
+  it('asks again in the next pass, for what is not there yet', async () => {
+    const { api, bestand } = aufbauen();
+    await bestand.holen(['a']);
+    await bestand.holen(['a', 'd']);
+    expect(api.entitiesById.mock.calls.map((c) => c[0])).toEqual([['a'], ['d']]);
+  });
+});
+

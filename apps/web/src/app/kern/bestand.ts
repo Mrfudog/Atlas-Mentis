@@ -328,8 +328,31 @@ export class Bestand {
     );
     if (!offen.length) return;
     offen.forEach((id) => this.holt.add(id));
+    /* **Gesammelt je Durchgang** (T-398, P1): Bogen, Kopf, Abschnitte und
+       Kennzahlen fragen je für sich, in derselben Runde der Effekte — auf dev
+       achtmal `entities?ids` für eine Artikelseite. Was bis zum nächsten
+       Takt gefragt wird, geht in einen Abruf. */
+    offen.forEach((id) => this.sammel.add(id));
+    this.sammelLauf ??= new Promise<void>((fertig) =>
+      setTimeout(() => {
+        const alle = [...this.sammel];
+        this.sammel.clear();
+        this.sammelLauf = null;
+        void this.holenJetzt(alle).finally(fertig);
+      }, 0),
+    );
+    return this.sammelLauf;
+  }
+  private readonly sammel = new Set<string>();
+  private sammelLauf: Promise<void> | null = null;
+
+  /** Der Abruf selbst, in Seiten zu 200 (P3 — der Server nimmt höchstens 500). */
+  private async holenJetzt(offen: string[]): Promise<void> {
+    if (!offen.length) return;
     try {
-      const da = await this.api.entitiesById(offen);
+      const seiten: string[][] = [];
+      for (let i = 0; i < offen.length; i += 200) seiten.push(offen.slice(i, i + 200));
+      const da = (await Promise.all(seiten.map((s) => this.api.entitiesById(s)))).flat();
       const gekommen = new Set(da.map((e) => e.id));
       const namen = new Map(this._namen());
       for (const e of da) namen.set(e.id, entityName(e));
