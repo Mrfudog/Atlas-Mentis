@@ -17,9 +17,6 @@ import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
 
 const PASSWORT = 'nebel-wacht-am-tor';
-const id = (name: string, nr: string) => ({ Identity: { name, id: nr, aliases: [] }, Status: { status: 'ready' } });
-const in_ = (x: string) => ({ id: `${x}~in`, type: 'inLayer', to: 'ly_a', props: {} });
-const teil = (x: string, to: string) => ({ id: `${x}~p-${to}`, type: 'partOf', to, props: {} });
 
 const fertig = { Status: { status: 'ready' } };
 const art = (eid: string, typ: string, name: string, nr: string, rel: { type: string; to: string; props?: Record<string, unknown> }[] = [], mehr: Record<string, unknown> = {}): Entity => ({
