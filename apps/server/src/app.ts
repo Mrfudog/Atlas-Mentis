@@ -357,6 +357,9 @@ const DUMMY_HASH =
   '$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHRzb21lc2FsdA$' +
   'PH0Zz8rUqZ9y1c0jzJtQ0dLxYQhL0ZBoVQ1sT0nQ0kM';
 
+/** Ein gebauter Teil der Oberfläche mit Hash im Namen: `chunk-23EWE3K5.js`, `styles-WXYZ5678.css`. */
+const GEHASHT = /-[A-Z0-9]{8,}\.(?:js|mjs|css)$/;
+
 export interface AppOptions {
   repo: Repository;
   logger?: boolean;
@@ -478,7 +481,18 @@ export function buildApp({
 
   if (staticRoot) {
     // The Angular app, plus a catch-all so client-side routes survive a reload.
-    void app.register(fastifyStatic, { root: staticRoot });
+    /* **Was gehasht ist, ändert sich nie** (T-398, P7): `main-ABCD1234.js`
+       heisst nach jedem Bau anders, also darf der Browser es ein Jahr halten
+       und nicht mehr nachfragen — auf dev kam jeder Teil mit `max-age=0`.
+       Die Seite selbst fragt immer nach, sonst erreicht ein Deploy niemanden. */
+    void app.register(fastifyStatic, {
+      root: staticRoot,
+      /* Sonst setzt @fastify/static selbst `public, max-age=0` darüber. */
+      cacheControl: false,
+      setHeaders: (res, pfad) => {
+        res.setHeader('Cache-Control', GEHASHT.test(pfad) ? 'public, max-age=31536000, immutable' : 'no-cache');
+      },
+    });
     /* **Welche Oberfläche dieser Server ausliefert** (T-086): ein Hash von
        `index.html`, die die gehashten Teile nennt. Steht an jeder Antwort
        der Schnittstelle; ändert er sich unter einer offenen Seite, sagt
@@ -499,7 +513,7 @@ export function buildApp({
       if (request.url.startsWith('/api/')) {
         return reply.code(404).send({ error: 'Nicht gefunden' });
       }
-      return reply.sendFile('index.html');
+      return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
     });
   }
 
