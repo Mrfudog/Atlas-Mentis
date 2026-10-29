@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-free-action",
+      "date": "2026-10-29",
+      "title": "A free action with a note in the turn plan",
+      "text": "When the rules here have no tile for what you want to do, “Other action” (and bonus action, reaction, free action) takes a note of what happens. It uses its slot and shows up in the result as manual — a missing rule no longer blocks the turn.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-draw-on-maps",
       "date": "2026-10-29",
       "title": "Draw on the map",

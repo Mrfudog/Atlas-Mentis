@@ -59,6 +59,7 @@ import {
   carriedLights,
   darkvisionFor,
   revealSeenAlong,
+  isManualTile,
   hiddenOnMap,
   senseNumbers,
   spotsAlong,
@@ -947,6 +948,10 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const b = request.body ?? {};
       const figur = figuren(stand, karte, user, leitet, kampagne).find((e) => e.id === b.actor);
       if (!figur) return reply.code(403).send({ error: 'Planen darf, wer die Figur führt oder am Tisch leitet — und sie braucht ein Token auf dieser Karte.' });
+      /* Eine freie Aktion ohne Notiz (REQ-403) sagt nicht, was geschieht — das sagt der Fehler, statt sie still zu verlieren. */
+      if ((Array.isArray(b.steps) ? b.steps : []).some((x) => isManualTile((x as { tile?: string } | null)?.tile) && !String((x as { note?: unknown }).note ?? '').trim())) {
+        return reply.code(422).send({ error: 'Say in a note what the free action does.' });
+      }
       const steps = (Array.isArray(b.steps) ? b.steps : []).slice(0, 30).map(cleanStep).filter((s): s is PlanStep => !!s);
       if (!steps.length) return reply.code(422).send({ error: 'Ein Plan braucht mindestens einen Schritt.' });
       /* Die Stufe der Kampagne (T-325): was sie nicht anbietet, nimmt sie auch nicht an. */
@@ -1602,6 +1607,11 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         if ('fehler' in d) return { fehler: d.fehler, error: d.error, ...(d.issues ? { issues: d.issues } : {}) };
         results.push({ step: s.id, text: `Went through the ${s.name}${s.feet ? ` (${s.feet} ft)` : ''}.` });
         return { plan: { ...rest, state: 'confirmed', asked: [...gefragt], results } };
+      }
+      /* **Eine freie Aktion** (REQ-403): sie tut, was die Notiz sagt — keine Regel, kein Wurf, aber im Ergebnis als „manual“. */
+      if (isManualTile(s.tile)) {
+        results.push({ step: s.id, text: `${entityName(figur)}: ${s.note ?? s.name}${s.targetName ? ` → ${s.targetName}` : ''} (manual, ${s.name.toLowerCase()})`, manual: true });
+        continue;
       }
       const t = kacheln.get(s.tile);
       const ziel = s.target ? stand.map.get(s.target) : undefined;
