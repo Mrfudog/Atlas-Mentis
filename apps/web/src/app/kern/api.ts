@@ -995,6 +995,8 @@ export interface ListenFrage {
   status?: string[] | undefined;
   /** Nur diese Artikel. */
   ids?: string[] | undefined;
+  /** **Genau diese Namen** (T-398): Name, Alias oder Nummer, ganz — eine Frage für viele, statt einer Suche je Name. */
+  name?: string[] | undefined;
   /** Diese Kantenarten je Zeile mitschicken. */
   rel?: string[] | undefined;
   q?: string | undefined;
@@ -1609,7 +1611,8 @@ export class Api {
         continue;
       }
       if (v === undefined || v === '' || v === false || (Array.isArray(v) && !v.length)) continue;
-      if (k === 'f') for (const f of v as string[]) p.append('f', f);
+      /* `f` und `name` je Wert einzeln: ein Name darf ein Komma tragen. */
+      if (k === 'f' || k === 'name') for (const f of v as string[]) p.append(k, f);
       else p.set(k, Array.isArray(v) ? v.join(',') : v === true ? '1' : String(v));
     }
     return this.call<Liste>(`/api/list?${p.toString()}`, init);
@@ -1901,6 +1904,15 @@ export class Api {
   mapUses(id: string): Promise<{ uses: KartenVerwendung[] }> {
     return this.call(`/api/maps/${encodeURIComponent(id)}/uses`);
   }
+  /** Viele Artikel ganz, je gefragter Id, auf Wunsch mit ihren Rückbezügen (T-398). Höchstens 200. */
+  entitiesBatch(
+    ids: readonly string[],
+    backlinks = false,
+  ): Promise<{ entities: Record<string, Entity & { refs?: Bezuege }>; missing: string[]; backlinks?: Record<string, Rueckbezug[]> }> {
+    const p = new URLSearchParams({ ids: ids.join(',') });
+    if (backlinks) p.set('backlinks', '1');
+    return this.call(`/api/entities/batch?${p.toString()}`);
+  }
   backlinks(id: string): Promise<Rueckbezug[]> {
     return this.call<Rueckbezug[]>(`/api/entities/${encodeURIComponent(id)}/backlinks`);
   }
@@ -2113,9 +2125,16 @@ export class Api {
   }
   /** Was sich das Konto merkt (T-092). */
   prefs(): Promise<Record<string, unknown>> {
-    return this.call<Record<string, unknown>>('/api/me/prefs', {}, false);
+    /* Wer gleichzeitig fragt, bekommt dieselbe Antwort (T-398): beim Start
+       fragten Klappstand, Neues, Spalten und Kapitel je für sich. Gehalten
+       wird nur, solange die Frage läuft — kein Zwischenspeicher. */
+    this.prefsLauf ??= this.call<Record<string, unknown>>('/api/me/prefs', {}, false).finally(() => (this.prefsLauf = null));
+    return this.prefsLauf;
   }
+  private prefsLauf: Promise<Record<string, unknown>> | null = null;
   setPref(key: string, value: unknown): Promise<{ ok: true }> {
+    /* Was danach gefragt wird, soll den neuen Wert sehen. */
+    this.prefsLauf = null;
     return this.call(`/api/me/prefs/${encodeURIComponent(key)}`, {
       method: 'PUT',
       body: JSON.stringify({ value }),

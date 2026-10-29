@@ -196,6 +196,13 @@ export class Bestand {
     const schluessel = rueck ? `${id} +rueck` : id;
     const schon = this.oeffnet.get(schluessel) ?? this.oeffnet.get(`${id} +rueck`);
     if (schon && !neu) return schon;
+    /* Holt ihn gerade ein Sammelabruf (T-398) — die Kachel auf dem Board
+       wartet auf ihn, statt ihn ein zweites Mal einzeln zu fragen. */
+    const viele = this.holtViele.get(id);
+    if (viele && !neu && (viele.rueck || !rueck)) {
+      await viele.lauf;
+      if (this._fehlt().has(id) || (this._voll().has(id) && (!rueck || this._rueck().has(id)))) return;
+    }
     const nr = ++this.zaehler;
     const ueberholt = () => this.juengstes.get(id)?.nr !== nr;
     const lauf: Promise<void> = Promise.all([
@@ -204,110 +211,7 @@ export class Bestand {
     ])
       .then(([mitBezug, zeigt]) => {
         if (ueberholt()) return;
-        const { refs, ...e } = mitBezug;
-        this.merke(refs, zeigt ?? [], e as Entity);
-        this._anpassbar.update((m) => {
-          const n = new Set(m);
-          if (refs?.adaptable) n.add(id);
-          else n.delete(id);
-          return n;
-        });
-        this._anpassZiele.update((m) => {
-          const n = new Map(m);
-          if (refs?.adaptTo?.length) n.set(id, refs.adaptTo);
-          else n.delete(id);
-          return n;
-        });
-        this._uebernahmeZiele.update((m) => {
-          const n = new Map(m);
-          if (refs?.takeInto?.length) n.set(id, refs.takeInto);
-          else n.delete(id);
-          return n;
-        });
-        this._lesen.update((m) => {
-          const n = new Map(m);
-          if (refs?.reading) n.set(id, refs.reading);
-          else n.delete(id);
-          return n;
-        });
-        this._fertigung.update((m) => {
-          const n = new Map(m);
-          if (refs?.craft) n.set(id, refs.craft);
-          else n.delete(id);
-          return n;
-        });
-        this._laden.update((m) => {
-          const n = new Map(m);
-          if (refs?.shop) n.set(id, refs.shop);
-          else n.delete(id);
-          return n;
-        });
-        this._begegnung.update((m) => {
-          if (!refs?.encounter && !m.has(id)) return m;
-          const n = new Map(m);
-          if (refs?.encounter) n.set(id, refs.encounter);
-          else n.delete(id);
-          return n;
-        });
-        this._form.update((m) => {
-          if (!refs?.shape && !m.has(id)) return m;
-          const n = new Map(m);
-          if (refs?.shape) n.set(id, refs.shape);
-          else n.delete(id);
-          return n;
-        });
-        this._stufe.update((m) => {
-          if (!refs?.audience && !m.has(id)) return m;
-          const n = new Map(m);
-          if (refs?.audience) n.set(id, refs.audience);
-          else n.delete(id);
-          return n;
-        });
-        this._token.update((m) => {
-          if (!refs?.token && !m.has(id)) return m;
-          const n = new Map(m);
-          if (refs?.token) n.set(id, refs.token);
-          else n.delete(id);
-          return n;
-        });
-        this._bild.update((m) => {
-          if (!refs?.image && !m.has(id)) return m;
-          const n = new Map(m);
-          if (refs?.image) n.set(id, refs.image);
-          else n.delete(id);
-          return n;
-        });
-        /* Die Versionen der Bilder, die er nennt (T-211): jedes `nw-bild`
-           mit dieser Id fragt dann mit `?v=`, und der Browser behält es. */
-        for (const [a, v] of Object.entries(refs?.assets ?? {})) if (this.bildStand.version()(a) !== v) this.bildStand.merke(a, v);
-        this._fertig.update((m) => {
-          const n = new Map(m);
-          if (refs?.ready) n.set(id, refs.ready.at);
-          else n.delete(id);
-          return n;
-        });
-        this._freigabe.update((m) => {
-          const f = refs?.enabled ? { campaign: refs.enabled.campaign, enabled: true } : refs?.enable ? { campaign: refs.enable.campaign, enabled: false } : null;
-          if (!f && !m.has(id)) return m;
-          const n = new Map(m);
-          if (f) n.set(id, f);
-          else n.delete(id);
-          return n;
-        });
-        this._vergleich.update((v) => {
-          if (!!refs?.compare === v.has(id)) return v;
-          const n = new Set(v);
-          if (refs?.compare) n.add(id);
-          else n.delete(id);
-          return n;
-        });
-        this._voll.update((m) => new Map(m).set(id, e as Entity));
-        if (zeigt) this._rueck.update((m) => new Map(m).set(id, zeigt));
-        this._fehlt.update((s) => {
-          const n = new Set(s);
-          n.delete(id);
-          return n;
-        });
+        this.uebernimm(id, mitBezug, zeigt);
       })
       .catch((error: unknown) => {
         if (ueberholt()) return;
@@ -447,6 +351,160 @@ export class Bestand {
     }
   }
   private readonly holt = new Set<string>();
+
+  /** Was ein Abruf eines ganzen Artikels brachte, an seinen Platz — für `oeffnen` und `oeffnenViele`. */
+  private uebernimm(id: string, mitBezug: Entity & { refs?: Bezuege }, zeigt: Rueckbezug[] | null): void {
+    const { refs, ...e } = mitBezug;
+    this.merke(refs, zeigt ?? [], e as Entity);
+    this._anpassbar.update((m) => {
+      const n = new Set(m);
+      if (refs?.adaptable) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+    this._anpassZiele.update((m) => {
+      const n = new Map(m);
+      if (refs?.adaptTo?.length) n.set(id, refs.adaptTo);
+      else n.delete(id);
+      return n;
+    });
+    this._uebernahmeZiele.update((m) => {
+      const n = new Map(m);
+      if (refs?.takeInto?.length) n.set(id, refs.takeInto);
+      else n.delete(id);
+      return n;
+    });
+    this._lesen.update((m) => {
+      const n = new Map(m);
+      if (refs?.reading) n.set(id, refs.reading);
+      else n.delete(id);
+      return n;
+    });
+    this._fertigung.update((m) => {
+      const n = new Map(m);
+      if (refs?.craft) n.set(id, refs.craft);
+      else n.delete(id);
+      return n;
+    });
+    this._laden.update((m) => {
+      const n = new Map(m);
+      if (refs?.shop) n.set(id, refs.shop);
+      else n.delete(id);
+      return n;
+    });
+    this._begegnung.update((m) => {
+      if (!refs?.encounter && !m.has(id)) return m;
+      const n = new Map(m);
+      if (refs?.encounter) n.set(id, refs.encounter);
+      else n.delete(id);
+      return n;
+    });
+    this._form.update((m) => {
+      if (!refs?.shape && !m.has(id)) return m;
+      const n = new Map(m);
+      if (refs?.shape) n.set(id, refs.shape);
+      else n.delete(id);
+      return n;
+    });
+    this._stufe.update((m) => {
+      if (!refs?.audience && !m.has(id)) return m;
+      const n = new Map(m);
+      if (refs?.audience) n.set(id, refs.audience);
+      else n.delete(id);
+      return n;
+    });
+    this._token.update((m) => {
+      if (!refs?.token && !m.has(id)) return m;
+      const n = new Map(m);
+      if (refs?.token) n.set(id, refs.token);
+      else n.delete(id);
+      return n;
+    });
+    this._bild.update((m) => {
+      if (!refs?.image && !m.has(id)) return m;
+      const n = new Map(m);
+      if (refs?.image) n.set(id, refs.image);
+      else n.delete(id);
+      return n;
+    });
+    /* Die Versionen der Bilder, die er nennt (T-211): jedes `nw-bild`
+       mit dieser Id fragt dann mit `?v=`, und der Browser behält es. */
+    for (const [a, v] of Object.entries(refs?.assets ?? {})) if (this.bildStand.version()(a) !== v) this.bildStand.merke(a, v);
+    this._fertig.update((m) => {
+      const n = new Map(m);
+      if (refs?.ready) n.set(id, refs.ready.at);
+      else n.delete(id);
+      return n;
+    });
+    this._freigabe.update((m) => {
+      const f = refs?.enabled ? { campaign: refs.enabled.campaign, enabled: true } : refs?.enable ? { campaign: refs.enable.campaign, enabled: false } : null;
+      if (!f && !m.has(id)) return m;
+      const n = new Map(m);
+      if (f) n.set(id, f);
+      else n.delete(id);
+      return n;
+    });
+    this._vergleich.update((v) => {
+      if (!!refs?.compare === v.has(id)) return v;
+      const n = new Set(v);
+      if (refs?.compare) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+    this._voll.update((m) => new Map(m).set(id, e as Entity));
+    if (zeigt) this._rueck.update((m) => new Map(m).set(id, zeigt));
+    this._fehlt.update((s) => {
+      const n = new Set(s);
+      n.delete(id);
+      return n;
+    });
+  }
+
+  /**
+   * **Viele Artikel auf einmal öffnen** (T-398): eine Anfrage
+   * (`/api/entities/batch`) statt einer — oder mit Rückbezügen zweier — je
+   * Artikel. Für das Board mit seinen Karten: zwanzig Karten waren vierzig
+   * Anfragen, und jede las am Server den ganzen Bestand. Was schon da ist,
+   * wird nicht noch einmal gefragt; ein Einzelabruf, der gerade läuft,
+   * auch nicht.
+   */
+  async oeffnenViele(ids: readonly string[], rueck = true): Promise<void> {
+    const offen = [...new Set(ids)].filter((id) => {
+      if (!id || this._fehlt().has(id) || this.holtViele.has(id)) return false;
+      if (this.oeffnet.has(`${id} +rueck`) || (!rueck && this.oeffnet.has(id))) return false;
+      return !(this._voll().has(id) && (!rueck || this._rueck().has(id)));
+    });
+    if (!offen.length) return;
+    /* Ein Einzelabruf, der danach beginnt (Live, Speichern), ist jünger und gewinnt. */
+    const start = this.zaehler;
+    let fertig!: () => void;
+    const lauf = new Promise<void>((r) => (fertig = r));
+    offen.forEach((id) => this.holtViele.set(id, { rueck, lauf }));
+    try {
+      for (let i = 0; i < offen.length; i += 200) {
+        const teil = offen.slice(i, i + 200);
+        const r = await this.api.entitiesBatch(teil, rueck);
+        for (const id of teil) {
+          const e = r.entities[id];
+          if (e && (this.juengstes.get(id)?.nr ?? 0) <= start) this.uebernimm(id, e, rueck ? (r.backlinks?.[id] ?? []) : null);
+        }
+        if (r.missing.length) {
+          this._fehlt.update((s) => {
+            const n = new Set(s);
+            for (const id of r.missing) n.add(id);
+            return n;
+          });
+        }
+      }
+    } catch (error: unknown) {
+      this._fehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      offen.forEach((id) => this.holtViele.delete(id));
+      fertig();
+    }
+  }
+  private readonly holtViele = new Map<string, { rueck: boolean; lauf: Promise<void> }>();
+
 
   /**
    * **Einen Registerteil schreiben** und, wenn der Server ihn nimmt, hier
