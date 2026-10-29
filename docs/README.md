@@ -72,6 +72,7 @@ von Hand ändern.
 | [vorschlaege/Regel-Builder.md](vorschlaege/Regel-Builder.md) | Versuch: Regeln als Knoten (Auslöser → Bedingung → Folge), hinter einem Schalter (T-270, E-102) | Versuch, Bericht | Hand |
 | [vorschlaege/Verknuepfte-Ansichten.md](vorschlaege/Verknuepfte-Ansichten.md) | Verknüpfte Artikel in Ansichten (Collection), Schichten, Werkzeugleiste als Muster, Design-Tokens, Erfassungsmasken: Bestand, Entscheide E-168–E-172, was sich am Bestand ändert, Schnitte (T-425) | Vorschlag, Bestand | Hand |
 | [vorschlaege/Regeln-Uebersicht.md](vorschlaege/Regeln-Uebersicht.md) | Alle Regeln in Gruppen: was Einstellung oder Rechenwerk bleibt, was Graph wird, welche Bausteine fehlen (T-270, E-102) | Vorschlag | Hand |
+| [vorschlaege/Abgleich-2026-10-28.md](vorschlaege/Abgleich-2026-10-28.md) | Abgleich vom 28./29.10.: altes Brett ins neue nachgezogen, jede offene Aufgabe, jeder offene Entscheid und jeder Chat eingeordnet (erledigt, überholt, zusammenlegen, bleibt), mit Belegen und dem Stand der Umsetzung (T-434) | Vorschlag, Bestand | Hand, Tabellen aus dem Brett |
 | [Regelsysteme.md](Regelsysteme.md) | Regelsysteme als Behälter (T-132) | Entscheidungsvorlage, E-044 | Hand |
 | [Regelwirkung.md](Regelwirkung.md) | Wirken die Regeln am Tisch? Grundlinie für die Prüfung nach jedem Release (T-322, T-275) | gilt | Hand |
 | [Spieltisch.md](Spieltisch.md) | Wie der Spieltisch im Prototyp entstand | Herkunft (Prototyp, eingefroren D59) | Hand |
