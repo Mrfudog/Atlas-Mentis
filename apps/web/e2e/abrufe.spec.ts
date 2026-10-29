@@ -46,7 +46,37 @@ test('a statblock asks for all its proficiencies in one request', async ({ leitu
     /* Früher je Name eine Suche (`of=…&q=…`). */
     expect(l.filter((x) => x.startsWith('GET /api/list?') && /[?&]q=/.test(x))).toHaveLength(0);
     expect(doppelt(l.filter((x) => x.startsWith('GET /api/list') || x.startsWith('GET /api/entities'))), l.join('\n')).toEqual([]);
+    /* Bogen, Kopf und Abschnitte fragen gesammelt (`Bestand.holen`), nicht je für sich. */
+    expect(l.filter((x) => x.startsWith('GET /api/entities?ids=')).length, l.join('\n')).toBeLessThanOrEqual(1);
     expect(l.length, l.join('\n')).toBeLessThanOrEqual(25);
+  }
+});
+
+test('a character page collects the articles its parts need into one request', async ({ leitung, spielerin, api, eindeutig }) => {
+  /* Auf dev stellte die Artikelseite einer Figur acht `entities?ids` (29.10.):
+     Bogen, Kopf, Abschnitte und Kennzahlen fragten je für sich. */
+  const fertig = { 'Status.status': 'ready' };
+  const klasse = await api.anlegen('leitung', 'Class', eindeutig('Warden'), { fields: { ...fertig, 'Class.hitDie': 10 } });
+  const herkunft = await api.anlegen('leitung', 'Ancestry', eindeutig('Marshfolk'), { fields: fertig });
+  const hintergrund = await api.anlegen('leitung', 'Background', eindeutig('Lamplighter'), { fields: fertig });
+  const figur = await api.anlegen('spielerin', 'PlayerCharacter', eindeutig('Isolde'), {
+    fields: fertig,
+    relations: [
+      { type: 'hasAncestry', to: herkunft.id },
+      { type: 'hasBackground', to: hintergrund.id },
+      { type: 'hasClass', to: klasse.id, props: { level: 2 } },
+    ],
+  });
+  await api.anlegen('spielerin', 'Statblock', eindeutig('Isolde stats'), {
+    fields: { ...fertig, 'Statblock.hp': 18, 'Statblock.ac': 15 },
+    relations: [{ type: 'belongsTo', to: figur.id }],
+  });
+
+  for (const seite of [leitung, spielerin]) {
+    const l = await abrufe(seite, `/artikel/${figur.id}`);
+    await expect(seite.getByRole('heading', { name: figur.name }).first()).toBeVisible();
+    expect(l.filter((x) => x.startsWith('GET /api/entities?ids=')).length, l.join('\n')).toBeLessThanOrEqual(2);
+    expect(doppelt(l.filter((x) => x.startsWith('GET /api/entities'))), l.join('\n')).toEqual([]);
   }
 });
 
