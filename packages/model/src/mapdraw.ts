@@ -197,7 +197,7 @@ export function doorRect(w: Pick<MapWall, 'x1' | 'y1' | 'x2' | 'y2' | 'width'>, 
 
 /** Woran ein Punkt einrastet. */
 export interface SnapTargets {
-  /** Das Gitter in Bildpunkten (wie `gridGeometry`); nur Quadrate haben Ecken, an denen Wände stehen. */
+  /** Das Gitter in Bildpunkten (wie `gridGeometry`): Quadrate rasten an Gitterecken, Hexfelder an die Ecken ihres Feldes (T-219). */
   grid?: {
     shape: 'square' | 'hex';
     size: number;
@@ -252,6 +252,31 @@ export function snapPoint(p: Pt, t: SnapTargets, radius: number, ar: number): Sn
       y: Math.min(1, Math.max(0, gy / g.h)),
     };
     if (abstand(p, q, a) <= radius) return { pt: q, to: 'grid' };
+  }
+  /* **Hexfelder** (T-219): an die nächste Ecke des Feldes unter dem Punkt —
+     die nächste Ecke eines Hexgitters ist immer eine des eigenen Feldes. */
+  if (g && g.shape === 'hex' && g.w > 0 && g.h > 0 && g.size > 0) {
+    const geo = { shape: 'hex' as const, size: g.size, rowHeight: (g.size * 2) / Math.sqrt(3), ox: g.ox, oy: g.oy, w: g.w, h: g.h, cellFeet: 5 };
+    const m = cellCentre(geo, cellAt(geo, p));
+    const hw = g.size / 2 / g.w;
+    const s = geo.rowHeight / 2 / g.h;
+    let ecke: Pt | null = null;
+    let e = radius;
+    for (const q of [
+      { x: m.x, y: m.y - s },
+      { x: m.x + hw, y: m.y - s / 2 },
+      { x: m.x + hw, y: m.y + s / 2 },
+      { x: m.x, y: m.y + s },
+      { x: m.x - hw, y: m.y + s / 2 },
+      { x: m.x - hw, y: m.y - s / 2 },
+    ]) {
+      const x = abstand(p, q, a);
+      if (x <= e) {
+        e = x;
+        ecke = q;
+      }
+    }
+    if (ecke) return { pt: { x: Math.min(1, Math.max(0, ecke.x)), y: Math.min(1, Math.max(0, ecke.y)) }, to: 'grid' };
   }
   let linie: Pt | null = null;
   d = radius;
