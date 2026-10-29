@@ -34,14 +34,14 @@ export class Heim {
     effect(() => {
       const wer = this.session.user()?.id ?? null;
       const sicht = this.session.viewAs()?.id ?? null;
-      this.stapel.stand();
+      const stand = this.stapel.stand();
       untracked(() => {
         if (!wer) {
           this._heim.set(null);
           this.fuer = null;
           return;
         }
-        void this.laden(true, `${wer}|${sicht ?? ''}`);
+        void this.laden(true, `${wer}|${sicht ?? ''}|${stand}`);
       });
     });
   }
@@ -49,6 +49,9 @@ export class Heim {
   /** Einmal fragen; `neu` fragt trotzdem. */
   laden(neu = false, fuer = this.fuer): Promise<HeimAntwort | null> {
     if (!neu && this._heim() && fuer === this.fuer) return Promise.resolve(this._heim());
+    /* Dieselbe Frage läuft schon (T-398): beim Start fragten Wache und
+       Kopfleiste gleichzeitig, und `/api/home` kam zweimal. */
+    if (this.laeuft && fuer === this.fuer) return this.laeuft;
     this.fuer = fuer;
     this.laeuft = this.api
       .home()
