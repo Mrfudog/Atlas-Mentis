@@ -17,18 +17,18 @@
       "link": "/handbook"
     },
     {
-      "id": "2026-10-29-reveal-sight",
-      "date": "2026-10-29",
-      "title": "Reveal what a token sees",
-      "text": "Under Fog, Reveal sight lifts the fog from what a token sees where it stands — up to the walls, and in the dark only as far as its darkvision and the lights it sees.",
-      "area": "Maps",
-      "link": "/handbook"
-    },
-    {
       "id": "2026-10-29-zone-light",
       "date": "2026-10-29",
       "title": "Magical darkness and lit halls",
       "text": "A zone kind that sets its light now counts where it lies: who stands in magical darkness stays hidden from players even on a bright map, and a lit hall in a dark map shows who stands in it.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-reveal-sight",
+      "date": "2026-10-29",
+      "title": "Reveal what a token sees",
+      "text": "Under Fog, Reveal sight lifts the fog from what a token sees where it stands — up to the walls, and in the dark only as far as its darkvision and the lights it sees.",
       "area": "Maps",
       "link": "/handbook"
     },
