@@ -165,6 +165,30 @@ describe('Fertigungsauftrag (T-128)', () => {
     expect((await put('l', `/api/crafting/${id}/checks/0`, { mark: null })).statusCode).toBe(409);
   });
 
+  it('am Server würfeln (T-181): W20 plus Attribut aus dem Statblock der Figur, der Wurf steht im Log', async () => {
+    const id = await starten();
+    // Ohne Statblock keine Zahl: dann bleibt das Eintragen.
+    const ohne = await post('s', `/api/crafting/${id}/roll`, { roll: true });
+    expect(ohne.statusCode).toBe(422);
+    await repo.putEntity(art('sb-f', 'Statblock', 'Ash stats', 'statblock-0001', {
+      components: { Statblock: { prof: 2 }, Abilities: { int: 16 } },
+      relations: [{ id: 'sbf~1', type: 'belongsTo', to: 'f', props: {} }],
+    }));
+    const p = await post('s', `/api/crafting/${id}/roll`, { roll: true });
+    expect(p.statusCode, p.body).toBe(200);
+    const { roll, result } = p.json() as { roll: { expr: string; total: number; entered?: boolean; label: string }; result: string };
+    expect(roll.expr).toBe('1d20+3');
+    expect(roll.entered).toBeUndefined();
+    expect(roll.total).toBeGreaterThanOrEqual(4);
+    expect(roll.total).toBeLessThanOrEqual(23);
+    expect(result).toBe(roll.total >= 12 ? (roll.total - 3 === 20 ? 'critSuccess' : 'success') : roll.total - 3 === 1 ? 'critFailure' : 'failure');
+    const kreis = (await get('s', `/api/crafting/${id}`)).json().order.circles[0];
+    expect(kreis.total).toBe(roll.total);
+    const log = await repo.listEvents({ name: 'roll', subject: id });
+    expect(log).toHaveLength(1);
+    expect((log[0]!.payload as { label: string }).label).toBe('Crafting check (INT) vs DC 12');
+  });
+
   it('ein gekauftes Stück (Instanz) zählt als Material seines Grundartikels (T-150)', async () => {
     await repo.putEntity(art('kraut-1', 'Item', 'Moonleaf', 'item-0004', { relations: [{ id: 'k1~i', type: 'instanceOf', to: 'kraut', props: {} }] }));
     const inv = (await repo.getEntity('inv-f'))!;

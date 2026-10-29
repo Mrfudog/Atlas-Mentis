@@ -10,6 +10,9 @@ import {
   type SichtArtikelListe,
   type SichtSpalte,
 } from '../kern/api';
+import type { EbenenWechsel } from '../kern/api';
+import { Stapel } from '../kern/stapel';
+import { Mitlaeufer } from './mitlaeufer';
 
 /** Die Stufen, wie die Übersicht sie nennt — `campaign` heisst am Tisch „Table". */
 const STUFEN: { key: Audience; label: string }[] = [
@@ -37,13 +40,15 @@ const SEITE = 50;
  * **Gesetzt wird ins eigene Feld des Artikels** — je Zeile oder für eine
  * Auswahl (wie in der Galerie): eine Stufe, ↺ zurück zur Gruppe, je
  * Spielende/r zeigen oder verbergen. Was die Leitung nicht schreibt (eine
- * geteilte Ebene), bleibt und sagt warum; wohin das gehört, ist E-162.
- * Die Ebene wechseln geht hier noch nicht (E-161) — am Artikel unter
- * Edit › Layer (T-383).
+ * geteilte Ebene), wird ein Eintrag im Regelwerk der Kampagne (T-401,
+ * E-162 a): kein Buch wird beschrieben, „campaign (this article)".
+ * **Die Ebene wechseln** (T-402, E-161 a+c) geht für eine Auswahl: in eine
+ * der eigenen Schreibebenen, mit der Liste dessen, was mitgeht (Teile,
+ * Statblock, Inventar), als ein Lauf mit Undo.
  */
 @Component({
   selector: 'nw-kampagnen-artikel',
-  imports: [RouterLink],
+  imports: [RouterLink, Mitlaeufer],
   template: `
     <section class="artikel" aria-labelledby="artikel-titel">
       <h2 id="artikel-titel">Articles and their layers</h2>
@@ -122,8 +127,27 @@ const SEITE = 50;
                 </button>
               </span>
             }
+            @if (ziele().length) {
+              <span class="umzug">
+                <select aria-label="Move the selection to layer" [value]="umzugZiel()" (change)="umzugZiel.set($any($event.target).value)">
+                  <option value="">Move to layer…</option>
+                  @for (z of ziele(); track z.id) {
+                    <option [value]="z.id">{{ z.name }}</option>
+                  }
+                </select>
+                <button type="button" class="klein" [disabled]="laeuft() || !umzugZiel()" (click)="umzugPlanen()">Move…</button>
+              </span>
+            }
             <button type="button" class="leise" (click)="auswahl.set([])">Clear selection</button>
           </div>
+          @if (umzugPlan(); as p) {
+            <nw-mitlaeufer [plan]="p" [laeuft]="laeuft()" (los)="umziehen($event)" (abbrechen)="umzugPlan.set(null)" />
+          }
+        }
+        @if (umzugLauf(); as l) {
+          <p class="meldung" role="status">
+            <button type="button" class="klein" [disabled]="laeuft()" (click)="umzugZurueck(l)">Undo move</button>
+          </p>
         }
         <div class="kopf">
           @if (darf()) {
@@ -149,6 +173,24 @@ const SEITE = 50;
               <span class="name">
                 <a [routerLink]="['/artikel', a.id]">{{ a.name }}</a>
                 <small class="dim">{{ a.typeLabel }}</small>
+                <!-- Mehrere Fassungen (T-403): welche Listen zeigen, und „Prefer this version". -->
+                @if (a.versions; as v) {
+                  <small class="fassung">
+                    {{ v.n }} versions ·
+                    @if (v.preferred) {
+                      preferred
+                      @if (darf()) {
+                        <button type="button" class="leise" [disabled]="laeuft()" (click)="vorrang(a.id, false)">Stop preferring</button>
+                      }
+                    } @else if (v.shown) {
+                      shown in lists
+                    } @else if (darf()) {
+                      <button type="button" class="klein" [disabled]="laeuft()" (click)="vorrang(a.id, true)">Prefer this version</button>
+                    } @else {
+                      not shown
+                    }
+                  </small>
+                }
               </span>
               <span class="ebene">
                 @for (l of a.layers; track l.id) {
@@ -173,8 +215,8 @@ const SEITE = 50;
                       <button
                         type="button"
                         [attr.aria-pressed]="a.own.audience === st.key"
-                        [disabled]="laeuft() || !a.writable"
-                        [title]="a.writable ? 'Only this article: ' + st.label : warumNicht(a)"
+                        [disabled]="laeuft() || !setzbar(a)"
+                        [title]="setzbar(a) ? 'Only this article: ' + st.label + (a.writable ? '' : ' (a rule of this campaign; the book stays as it is)') : warumNicht(a)"
                         (click)="setzen([a.id], { audience: st.key })"
                       >
                         {{ st.label }}
@@ -185,7 +227,7 @@ const SEITE = 50;
                     <button
                       type="button"
                       class="klein leise"
-                      [disabled]="laeuft() || !a.writable"
+                      [disabled]="laeuft() || !setzbar(a)"
                       title="Follow the group again"
                       [attr.aria-label]="a.name + ': follow the group'"
                       (click)="setzen([a.id], { follow: true })"
@@ -203,7 +245,7 @@ const SEITE = 50;
                       class="zelle"
                       [class.ja]="a.seenBy.includes(s.key)"
                       [class.eigen]="!!a.players[s.key]"
-                      [disabled]="laeuft() || !a.writable || !s.bearers?.length"
+                      [disabled]="laeuft() || !setzbar(a) || !s.bearers?.length"
                       [title]="spielerTitel(a, s)"
                       [attr.aria-label]="a.name + ', ' + s.label + ': ' + (a.seenBy.includes(s.key) ? 'sees it' : 'does not see it') + '. ' + spielerTitel(a, s)"
                       (click)="spielerUmschalten(a, s)"
@@ -217,8 +259,10 @@ const SEITE = 50;
                   }
                 }
               </span>
-              @if (darf() && !a.writable) {
+              @if (darf() && !setzbar(a)) {
                 <small class="dim hinweis">{{ warumNicht(a) }}</small>
+              } @else if (darf() && !a.writable) {
+                <small class="dim hinweis">{{ eintragHinweis }}</small>
               }
             </li>
           } @empty {
@@ -290,9 +334,26 @@ const SEITE = 50;
       border-radius: 6px;
       background: color-mix(in srgb, var(--accent) 6%, transparent);
     }
+    .umzug {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+    .umzug select {
+      min-height: 32px;
+      max-width: 100%;
+    }
     .spielerknoepfe {
       display: inline-flex;
       gap: 0.25rem;
+    }
+    .fassung {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--dim);
     }
     .kopf {
       display: flex;
@@ -455,6 +516,7 @@ export class KampagnenArtikel {
   readonly sortierung = input<'name' | 'layer'>('name');
 
   private readonly api = inject(Api);
+  private readonly stapel = inject(Stapel);
 
   protected readonly stufen = STUFEN;
   protected readonly nichtSchreibbar =
@@ -480,6 +542,11 @@ export class KampagnenArtikel {
   }
 
   protected readonly darf = computed(() => this.liste()?.may === 'manage');
+  /** Wohin eine Auswahl gehen kann: die Schreibebenen dieses Kontos (T-161), geprüft am Server. */
+  protected readonly ziele = computed(() => (this.stapel.schreib()?.options ?? []).filter((o) => o.selectable).map((o) => ({ id: o.id, name: o.name })));
+  protected readonly umzugZiel = signal('');
+  protected readonly umzugPlan = signal<EbenenWechsel | null>(null);
+  protected readonly umzugLauf = signal<string | null>(null);
   protected readonly spieler = computed(() => (this.liste()?.columns ?? []).filter((s) => s.kind === 'player'));
   protected readonly alleGewaehlt = computed(() => {
     const rows = this.liste()?.rows ?? [];
@@ -526,6 +593,16 @@ export class KampagnenArtikel {
     else this.auswahl.set([...new Set([...this.auswahl(), ...ids])]);
   }
 
+  /**
+   * **Setzbar ist jede Zeile der Leitung** (T-401, E-162 a): wo sie den
+   * Artikel schreibt, ins Feld; sonst als Eintrag im Regelwerk dieser
+   * Kampagne — das geteilte Buch bleibt, wie es ist.
+   */
+  protected setzbar(a: SichtArtikel): boolean {
+    return a.writable || !!a.settable;
+  }
+  protected readonly eintragHinweis = 'In a layer you do not write: what you set here is a rule of this campaign for this article; the book stays as it is.';
+
   /** Warum eine Zeile gesperrt ist: eine fremde Ebene, oder gar keine — die gehört der Verwaltung. */
   protected warumNicht(a: SichtArtikel): string {
     return a.layers.length ? this.nichtSchreibbar : 'Outside every layer — only the administration changes it, or set it for its group above.';
@@ -536,7 +613,8 @@ export class KampagnenArtikel {
   }
 
   protected herkunft(a: SichtArtikel): string {
-    const teile = [HERKUNFT[a.source]];
+    /* Der Eintrag je Artikel (T-401) ist eine Regel der Kampagne, nur eben für diesen. */
+    const teile = [a.source === 'campaign' && a.rule?.startsWith('article:') ? 'campaign (this article)' : HERKUNFT[a.source]];
     if (a.own.revealedTo) teile.push(`revealed to ${a.own.revealedTo}`);
     if (a.own.hiddenFrom) teile.push(`hidden from ${a.own.hiddenFrom}`);
     return teile.join(' · ');
@@ -549,7 +627,7 @@ export class KampagnenArtikel {
 
   protected spielerTitel(a: SichtArtikel, s: SichtSpalte): string {
     if (!s.bearers?.length) return `${s.label} plays no character yet`;
-    if (!a.writable) return this.warumNicht(a);
+    if (!this.setzbar(a)) return this.warumNicht(a);
     const p = a.players[s.key];
     return `click: ${p === 'hide' ? `${s.label} follows the visibility again` : p === 'show' ? `hide from ${s.label}` : `show to ${s.label}`}`;
   }
@@ -579,6 +657,77 @@ export class KampagnenArtikel {
       const n = this.liste()?.rows.length ?? SEITE;
       const d = await this.api.campaignVisibilityArticles(this.kampagne(), { ...this.frage(), offset: 0, limit: Math.max(SEITE, Math.min(200, n)) });
       this.liste.set(d);
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'That did not work.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  /** Zuerst der Plan (T-402): ohne Mitläufer wird gleich verschoben. */
+  protected async umzugPlanen(): Promise<void> {
+    const ids = this.auswahl();
+    const ziel = this.umzugZiel();
+    if (!ids.length || !ziel) return;
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      const p = await this.api.moveLayer(ids, ziel, { dryRun: true });
+      if (p.followers.length) this.umzugPlan.set(p);
+      else {
+        this.laeuft.set(false);
+        await this.umziehen([]);
+      }
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'That did not work.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  protected async umziehen(mit: string[]): Promise<void> {
+    const ids = this.auswahl();
+    const ziel = this.umzugZiel();
+    this.umzugPlan.set(null);
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      const r = await this.api.moveLayer(ids, ziel, { include: mit });
+      const teile = [`${r.changed} moved to ${r.target?.name ?? 'no layer'}`];
+      if (r.rejectedCount) teile.push(`${r.rejectedCount} not moved (${r.rejected[0]?.name}: ${r.rejected[0]?.issues[0]})`);
+      this.meldung.set(teile.join(', ') + '.');
+      this.umzugLauf.set(r.id ?? null);
+      await this.laden(this.kampagne());
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'That did not work.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  protected async umzugZurueck(lauf: string): Promise<void> {
+    this.laeuft.set(true);
+    try {
+      await this.api.undo(lauf);
+      this.umzugLauf.set(null);
+      this.meldung.set('Move undone.');
+      await this.laden(this.kampagne());
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'Could not undo the move.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  /** Vorrang (T-403): diese Fassung vor den anderen — an der Kampagne, kein Buch wird beschrieben. */
+  protected async vorrang(id: string, an: boolean): Promise<void> {
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      if (an) await this.api.prefer(this.kampagne(), id);
+      else await this.api.unprefer(this.kampagne(), id);
+      this.meldung.set(an ? 'Preferred: lists and links now show this version.' : 'No longer preferred: the layer order decides again.');
+      await this.laden(this.kampagne());
     } catch (e) {
       this.fehler.set(e instanceof ApiError ? e.message : 'That did not work.');
     } finally {

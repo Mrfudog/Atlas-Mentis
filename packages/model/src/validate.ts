@@ -108,7 +108,7 @@ const LayoutWhenSchema = z.object({
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'knowledgeContents', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'shape', 'stats', 'token', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs', 'section', 'columns', 'tileGroup', 'carousel', 'collapsible', 'quote', 'badges', 'edgeTable', 'structure', 'collection', 'steps', 'builder']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'turn', 'spells', 'campaign', 'inventory', 'crafting', 'wares', 'knowledgeContents', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'travel', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'shape', 'stats', 'token', 'parts', 'rules', 'reader', 'contents', 'classOverview', 'originOverview', 'tabs', 'section', 'columns', 'tileGroup', 'carousel', 'collapsible', 'quote', 'badges', 'edgeTable', 'structure', 'collection', 'steps', 'builder']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),
@@ -335,7 +335,9 @@ export interface ValidationIssue {
     | 'status_required'
     /* Eine Wahl der Figur nimmt, was sie schon hat (T-299,
        `newChoiceDuplicates`) — gemeldet vom Server, nicht von hier. */
-    | 'choice_duplicate';
+    | 'choice_duplicate'
+    /* T-303: Expertise auf etwas ohne Übung. */
+    | 'choice_unproficient';
   message: string;
   /** Die Art, deren Karte es betrifft. */
   component?: string;

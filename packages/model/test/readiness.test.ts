@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reachableState, requiredForOf, stateGapMessage, stateGaps, stateOrder, stateRefusal } from '../src/readiness.js';
+import { openDecisions, reachableState, requiredForOf, stateGapMessage, stateGaps, stateOrder, stateRefusal } from '../src/readiness.js';
 import type { Entity, Registry } from '../src/types.js';
 
 /* T-425, REQ-441, E-177, E-178, E-180: Pflicht erst für einen Stand. */
@@ -109,5 +109,55 @@ describe('Werkbank: Ready with gaps (E-178)', () => {
     const ohne = { ...art('Scene'), id: 'c' };
     const treffer = c.run({ registry: registry as Registry, entities: [fertig, idee, ohne], exists: new Map() } as never);
     expect(treffer.map((t) => [t.id, t.reason])).toEqual([['a', 'ready, missing: Read-aloud summary, played in']]);
+  });
+});
+
+/* T-436, E-176: offene Entscheide einer Figur halten sie auf idea. Die
+   Figur entsteht gleich; was offen ist, steht an ihr, und erst ohne
+   offenen Entscheid darf sie höher. */
+describe('offene Entscheide als Lücke (T-436, E-176)', async () => {
+  const { answerChoice } = await import('../src/builder.js');
+  const { choicesAtCharacter } = await import('../src/choices.js');
+  const klasse: Entity = {
+    id: 'class-1', interfaces: ['Class'], name: 'Fighter', relations: [],
+    components: {
+      Choices: {
+        choices: [
+          { id: 'skills', kind: 'proficiency', count: 2, from: { values: ['Athletics', 'Perception', 'Survival'] } },
+          { id: 'fixed', kind: 'ability', from: { values: ['str'] } },
+          { id: 'kit', kind: 'equipment', from: { options: [{ key: 'a', label: 'Mail' }, { key: 'b', label: 'Leather' }] } },
+        ],
+      },
+    },
+  };
+  const byId = new Map([[klasse.id, klasse]]);
+  const figur = (status: string, components: Entity['components'] = {}): Entity => ({
+    id: 'pc', interfaces: ['Rule'], name: 'Thorin',
+    components: { Status: { status }, ...components },
+    relations: [{ id: 'k', type: 'hasClass', to: 'class-1', props: { level: 1 } }],
+  });
+
+  it('eine offene Wahl fehlt ab prepared; feste Wahlen und Ausrüstung nicht', () => {
+    const g = stateGaps(registry, figur('idea'), 'prepared', { byId });
+    expect(g.map((x) => [x.kind, x.ref, x.label, x.state])).toEqual([['choice', 'choice:class-1#skills', 'Fighter · Skill proficiencies (choose 2)', 'prepared']]);
+    expect(stateGaps(registry, figur('idea'), 'idea', { byId })).toEqual([]);
+    expect(openDecisions(figur('idea'), byId).map((g) => g.ref)).toEqual(['choice:class-1#skills']);
+  });
+  it('beantwortet ist sie keine Lücke mehr', () => {
+    const offen = choicesAtCharacter(figur('idea'), byId).find((c) => c.choice.id === 'skills')!;
+    const fertig = answerChoice(figur('idea'), offen, ['Athletics', 'Survival']);
+    expect(stateGaps(registry, fertig, 'ready', { byId })).toEqual([]);
+  });
+  it('ohne Bestand fragt niemand nach Entscheiden (wie bisher)', () => {
+    expect(stateGaps(registry, figur('idea'), 'ready')).toEqual([]);
+  });
+  it('stateRefusal verwehrt den Aufstieg, reachableState bleibt bei idea', () => {
+    expect(stateRefusal(registry, figur('idea'), figur('ready'), { byId })?.map((g) => g.ref)).toEqual(['choice:class-1#skills']);
+    expect(stateRefusal(registry, figur('ready'), figur('ready'), { byId })).toBeNull();
+    expect(reachableState(registry, figur('ready'), 'ready', { byId })).toBe('idea');
+  });
+  it('die Meldung sagt, was zu entscheiden ist', () => {
+    const g = [...stateGaps(registry, art('Scene'), 'prepared'), ...stateGaps(registry, figur('idea'), 'prepared', { byId })];
+    expect(stateGapMessage('prepared', g)).toBe('To set prepared, fill in: hook; decide: Fighter · Skill proficiencies (choose 2). Keep a lower state until then.');
   });
 });

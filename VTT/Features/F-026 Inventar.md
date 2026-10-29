@@ -76,6 +76,72 @@ Zweite Etappe (T-244): Gürtel als Gegenstand mit Raster und Verbund,
 Köcher mit Filter, Verstaukosten aus dem Modul, Stapel teilen, Anker,
 schwebende Werkzeugleiste, Telefon-Muster.
 
+## Wegwerfen und Verkaufen am Stück (T-407, REQ-404)
+
+Am gewählten Stück stehen **Discard** und **Sell** statt „Remove". Remove
+nahm nur die `holds`-Kante weg und liess die Instanz liegen: ein Stück, das
+niemand hält und keine Liste zeigt. Jetzt rechnet `discardPiece`
+(`packages/model/src/discard.ts`) den Stapel; ist er ganz weg und war das
+Stück eine Instanz, die sonst niemand hält, **geht sie mit**. Ein
+Grundartikel geht nie mit. Der Server (`apps/server/src/wegwerfen.ts`)
+schreibt gegen die gelesene Revision, prüft die Sperre für Reserviertes
+(T-134) und protokolliert `inventory.discarded` samt alter Kante und
+gelöschter Instanz. **Undo** legt beides zurück, einmal und nur, solange das
+Inventar unverändert ist.
+
+**Sell** fragt `GET /api/inventories/:id/sell-offers`: die sichtbaren Läden
+mit ihrem Ankaufspreis (`buybackFor`, E-045 b, E-175), die am Ort der Szene
+oder Karte im Spiel zuerst (`shopsHere`). Verkauft wird über die Route des
+Ladens (T-133), damit Preis, Sperre und Protokoll an einer Stelle stehen.
+Aus der Truhe der Gruppe verkauft jedes Mitglied für die Gruppe; das Geld
+geht in den Beutel des Inventars, aus dem verkauft wird. Gerechnet wird in
+der Grundwährung (Kupfer), gezeigt über `formatMoney`; Münzsorten folgen
+nach E-129/E-130.
+
+```mermaid
+flowchart TD
+  A[Stück gewählt] --> B{Reserviert?}
+  B -- ja --> R[Meldung: erst freigeben]
+  B -- nein --> C{Discard oder Sell}
+  C -- Discard --> D[Rückfrage + Anzahl]
+  D --> E[discardPiece: Stapel kleiner oder weg]
+  E --> F{Instanz, die niemand hält?}
+  F -- ja --> G[Instanz löschen, im Protokoll festhalten]
+  F -- nein --> H[nur die Kante]
+  G --> U[Undo: Kante und Instanz zurück, solange unverändert]
+  H --> U
+  C -- Sell --> S[sell-offers: Läden mit Ankaufspreis, Here zuerst]
+  S --> T[Laden + Anzahl wählen]
+  T --> V[POST /api/shops/:id/sell — Münzen in den Beutel]
+```
+
+Wo eine Figur ist, kennt das Modell nicht; „Here" heisst darum: der Laden
+teilt eine Kante mit Szene oder Karte im Spiel, oder liegt (`partOf`) in
+einem Ort, den sie nennen oder der sie nennt.
+
+## Gegenstandsmerkmale (T-324, E-163)
+
+Was an einen Gegenstand kommt, ohne selbst einer zu sein, ist ein
+**Regelartikel** der Art `ItemFeature` — wie ein Monstermerkmal am
+Statblock. Zwei Sorten: die **Eigenschaft** (`ItemProperty`: Finesse,
+Versatile, Two-Handed) hängt mit `hasProperty` am Gegenstand, das
+**Enhancement** (+1 Weapon, Silvered) mit `enchantedWith` an einem Stück.
+Was ein Merkmal am Bogen bewirkt, steht in seinem Feld `mechanics`, nicht
+in seinem Namen; was es bei diesem Gegenstand heisst (Versatile 1d10,
+Thrown 20/60), an der Kante. Name, Preis und Boni des Stücks rechnet das
+Lesen (D8). Migration 163 hat die eingelesenen Varianten zu Enhancements
+gemacht; Felder, die ein Merkmal nicht trägt, stehen in ihren Notizen.
+
+```mermaid
+flowchart LR
+  W[Longsword<br>Weapon] -- hasProperty<br>damage 1d10 --> V[Versatile<br>ItemProperty<br>mechanics: versatile]
+  S[Stück von Longsword] -- instanceOf --> W
+  S -- enchantedWith --> P[+1 Weapon<br>Enhancement<br>Präfix, Aufpreis, Bonus]
+  S -- enchantedWith --> Si[Silvered<br>Enhancement]
+  V -. mechanics .-> B[Bogen: Griff mit beiden Händen<br>nimmt den Würfel der Kante]
+  P -. enhanceItem .-> N[„+1 Silvered Longsword“<br>Preis gerechnet]
+```
+
 ## Vorgabeformen (T-394, E-165)
 
 Form und Stapel eines Gegenstands werden beim Lesen gerechnet (D8): aus
@@ -116,3 +182,6 @@ dass genau diese Zelle dort liegt (`grabAnchor`, `placeByAnchor`). Aus
 „Not stowed“ hält man es am ersten belegten Feld der obersten Zeile
 (`defaultAnchor`). Die Ankerzelle ist markiert.
 
+## Ziehstufe und Kosten der Hände in der Seite (T-350)
+
+Stand 29.10.2026. Jedes Stück nennt seine Ziehstufe die Kette hinauf (`drawStage`); ein eingebettetes Inventar bekommt die Stufe seines Behälters mit. Die Hände nennen die Kosten aus `handActions`.

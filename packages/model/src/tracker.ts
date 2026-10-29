@@ -12,6 +12,8 @@
  * Schaden), steht nicht hier.
  */
 import { commonAction } from './actions.js';
+import { damageAtTable, type TableDamage } from './damage.js';
+import { creatureStats } from './stats.js';
 import { bookSections, type BookSection } from './book.js';
 import { entityName, primaryInterface } from './entity.js';
 import {
@@ -29,6 +31,8 @@ import {
   expiresAt,
   isNote,
   hpWord,
+  entryActions,
+  entryConditions,
 } from './initiative.js';
 import { resolveInstance } from './instance.js';
 import type { Entity, EntityId, Registry, Relation } from './types.js';
@@ -276,11 +280,18 @@ export type TrackerOp =
   | { op: 'end' }
   | { op: 'init'; edge: string; value?: number; reroll?: boolean }
   | { op: 'hp'; edge: string; delta?: number; value?: number }
+  /* Schaden mit Art (T-355): nach der Abwehr, wie im Zugplan (`trackerDamage`). */
+  | { op: 'damage'; edge: string; amount: number; type?: string }
   | { op: 'effect'; edge: string; entry: TimedEntry }
   | { op: 'removeEffect'; edge: string; index: number }
   | { op: 'flags'; edge: string; revealed?: boolean; identified?: boolean; ally?: boolean }
-  | { op: 'add'; to: EntityId; init?: number; ally?: boolean; label?: string }
+  /* `count` (T-333): so viele Kämpfer auf einmal — je einer eine eigene
+     Kante, denn Trefferpunkte und Zustände stehen an der Kante. */
+  | { op: 'add'; to: EntityId; init?: number; ally?: boolean; label?: string; count?: number }
   | { op: 'remove'; edge: string };
+
+/** Wie viele Kämpfer „Add" höchstens auf einmal anlegt (T-333). */
+export const MAX_ADD = 20;
 
 export interface TrackerDeps {
   /** 1 bis 20. */
@@ -303,6 +314,36 @@ function sauberEintrag(e: TimedEntry): TimedEntry | null {
   if (typeof e.source === 'string' && e.source.trim()) raus.source = e.source.trim();
   if (e.hidden) raus.hidden = true;
   return raus;
+}
+
+/**
+ * **Schaden im Tracker** (T-355): derselbe Abzug wie im Zugplan
+ * (`damageAtTable`) — nach der Abwehr des Teilnehmers, mit den Zuständen
+ * und Aktionen seiner Einträge gelesen. Gibt die Begegnung mit dem neuen
+ * Stand an der Kante zurück, die Figur mit neuen `Vitals` (eine
+ * Spielerfigur, E-128), die Rechnung und den Tischnamen. Die fällige
+ * Konzentrationsprobe würfelt der Aufrufer (`damage.concentration`).
+ */
+export function trackerDamage(
+  entities: Lookup,
+  encounter: Entity,
+  op: { edge: string; amount: unknown; type?: unknown },
+): { encounter: Entity; creature: Entity | null; damage: TableDamage; name: string } | { error: string } {
+  const rel = encounter.relations ?? [];
+  const kante = rel.find((r) => r.id === op.edge && r.type === PARTICIPATES);
+  if (!kante) return { error: 'No such combatant in this encounter.' };
+  const betrag = Number(op.amount);
+  if (op.amount === null || op.amount === '' || !Number.isFinite(betrag) || betrag < 0) return { error: 'Damage must be a number.' };
+  const ziel = entities.get(kante.to);
+  if (!ziel) return { error: 'No such creature.' };
+  const p = propsVon(kante);
+  const stats = creatureStats(ziel, entities, { conditions: entryConditions(p.conditions), actions: entryActions(p.conditions) });
+  const vitals = (ziel.components?.['Vitals'] ?? {}) as Record<string, unknown>;
+  const art = typeof op.type === 'string' ? op.type.trim().slice(0, 40) : '';
+  const damage = damageAtTable({ stats, vitals, edge: p, pc: primaryInterface(ziel) === 'PlayerCharacter', rolled: Math.trunc(betrag), type: art });
+  const relations = damage.edgeHp === null ? rel : rel.map((r) => (r === kante ? { ...r, props: { ...p, hp: damage.edgeHp! } as Relation['props'] } : r));
+  const creature = damage.vitals ? { ...ziel, components: { ...ziel.components, Vitals: damage.vitals } } : null;
+  return { encounter: mitKampf(encounter, relations, {}), creature, damage, name: p.label || entityName(ziel) };
 }
 
 /**
@@ -350,6 +391,10 @@ export function applyTrackerOp(
       if (op.value == null && Number(op.delta) > 0 && max != null) hp = Math.min(hp, Math.max(max, basis));
       return { encounter: mitKampf(encounter, setze((x) => ({ ...x, hp })), {}) };
     }
+    case 'damage': {
+      const r = trackerDamage(entities, encounter, op);
+      return 'error' in r ? r : { encounter: r.encounter };
+    }
     case 'effect': {
       const e = sauberEintrag(op.entry ?? {});
       if (!e) return { error: 'An effect is a condition or a note.' };
@@ -368,13 +413,24 @@ export function applyTrackerOp(
     }
     case 'add': {
       if (!entities.get(op.to)) return { error: 'No such creature.' };
-      const props: ParticipantProps = {};
+      const anzahl = op.count == null ? 1 : Number(op.count);
+      if (!Number.isInteger(anzahl) || anzahl < 1 || anzahl > MAX_ADD) return { error: `Add between 1 and ${MAX_ADD} at once.` };
       const init = Number(op.init);
-      props.init = op.init != null && Number.isFinite(init) ? init : deps.d20() + initiativeMod(entities, op.to);
-      if (op.ally) props.ally = true;
-      if (op.label?.trim()) props.label = op.label.trim();
-      const neu = { id: deps.newId(), type: PARTICIPATES, to: op.to, props } as Relation;
-      return { encounter: behalteZug(entities, encounter, [...rel, neu]) };
+      const name = op.label?.trim() || entityName(entities.get(op.to));
+      /* Durchgezählt wird nach dem höchsten „Name n“, der schon dasteht —
+         zwei Wölfe und noch zwei sind Wolf 1 bis 4, nicht zweimal Wolf 1. */
+      const muster = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} (\\d+)$`);
+      const schon = Math.max(0, ...rel.filter((r) => r.type === PARTICIPATES).map((r) => Number(muster.exec(String(propsVon(r).label ?? ''))?.[1] ?? 0)));
+      const neu: Relation[] = [];
+      for (let i = 1; i <= anzahl; i++) {
+        const props: ParticipantProps = {};
+        props.init = op.init != null && Number.isFinite(init) ? init : deps.d20() + initiativeMod(entities, op.to);
+        if (op.ally) props.ally = true;
+        if (anzahl > 1) props.label = `${name} ${schon + i}`;
+        else if (op.label?.trim()) props.label = op.label.trim();
+        neu.push({ id: deps.newId(), type: PARTICIPATES, to: op.to, props } as Relation);
+      }
+      return { encounter: behalteZug(entities, encounter, [...rel, ...neu]) };
     }
     case 'remove': {
       /* Einträge, die an seinem Zug zählten, verlieren ihren Anker: sie zählen dann am eigenen Zug. */
@@ -456,6 +512,8 @@ export interface TrackerView {
   gm: boolean;
   rules: InitiativeRules;
   rows: TrackerRow[];
+  /** Die Karte, auf der gekämpft wird (`onMap`) — nur für die Leitung, für „Prepare on map“ (T-333). */
+  map?: EntityId;
 }
 
 /** Die Namen der Regeln am Statblock eines Teilnehmers — gelesen aus dem, was der Betrachter sieht. */
@@ -560,6 +618,7 @@ export function trackerView(
     }
     return row;
   });
+  const karte = (encounter.relations ?? []).find((r) => r.type === 'onMap')?.to;
   return {
     id: encounter.id,
     name: entityName(encounter),
@@ -569,6 +628,7 @@ export function trackerView(
     gm,
     rules,
     rows,
+    ...(gm && karte ? { map: karte } : {}),
   };
 }
 

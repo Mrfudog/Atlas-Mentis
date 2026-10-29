@@ -28,7 +28,7 @@
  * ein Statblock über `equips` führt.
  */
 
-import { abilityMod, proficiencyBonus } from './calc.js';
+import { abilityMod, derivedValue, proficiencyBonus } from './calc.js';
 import { characterLevel, choicesAtCharacter, choiceSources } from './choices.js';
 import { spellcastingOf } from './spellcasting.js';
 import { effectsAt, effectTotals, itemsAt, type ActiveEffect, type EffectTotals } from './effects.js';
@@ -273,6 +273,24 @@ export function characterStats(
   } else if (dexMod !== null) {
     acTeile.push({ kind: 'base', value: 10, note: 'unarmored' }, { kind: 'dex', value: dexMod, note: 'DEX' });
   }
+  /* **Unarmored Defense** (T-355, Punkt 4): eine Wirkung `ac.base` mit
+     einer Formel (`10 + mod(dex) + mod(con)`) ist eine weitere Grundlage
+     ohne Rüstung; `ac.base.noShield` gilt nur ohne Schild (Mönch). Von
+     mehreren Grundlagen gilt die beste (PHB) — der Statblock, 10 + GE, oder
+     eine Formel. Gerechnet wird mit den gelesenen Werten, nicht dem
+     gespeicherten Statblock; eine Formel, die nicht aufgeht, zählt nicht. */
+  if (!ruestung) {
+    const werteKarte = Object.fromEntries(STAT_ABILITIES.map((k) => [k, abilities[k].value]));
+    const basis = acTeile.reduce((n, t) => n + (t.kind === 'base' || t.kind === 'dex' ? Number(t.value) : 0), 0);
+    let beste: StatPart | null = null;
+    for (const { effect, source, via } of effekte) {
+      if (effect.op !== 'set' || !(effect.target === 'ac.base' || (effect.target === 'ac.base.noShield' && !schild))) continue;
+      const n = typeof effect.value === 'number' ? effect.value : derivedValue({ type: 'number', derived: String(effect.value ?? '') }, werteKarte);
+      if (n === undefined || !Number.isFinite(n)) continue;
+      if (n > (beste ? Number(beste.value) : acTeile.length ? basis : -Infinity)) beste = { kind: 'base', value: n, source, via: wegVon(via), note: 'unarmored defense' };
+    }
+    if (beste) acTeile.splice(0, acTeile.length, beste);
+  }
   if (schild && acTeile.length) acTeile.push({ kind: 'bonus', value: zahl(schild.item.components!['Armor']!['ac']) ?? 2, source: schild.item.id, via: 'holds', note: 'shield' });
   const acW = wirkungen(effekte, ['ac']);
   acTeile.push(...acW.add);
@@ -490,8 +508,13 @@ export function creatureStats(creature: Entity, byId: ReadonlyMap<EntityId, Enti
  * `creatureStats` — Gegenstände, Merkmale, Zustände an `Vitals` und aus der
  * Initiative —, nur das Ziel `size`. Für die Karte: Enlarge macht das Token
  * eine Stufe grösser, solange der Zustand an der Kreatur steht.
+ * `sizeSource`: welcher von mehreren gilt (T-428, `props.sizeSource` am Token).
  */
-export function creatureSizeEffects(creature: Entity, byId: ReadonlyMap<EntityId, Entity>, options: CharacterStatsOptions = {}): SizeEffects {
+export function creatureSizeEffects(
+  creature: Entity,
+  byId: ReadonlyMap<EntityId, Entity>,
+  options: CharacterStatsOptions & { sizeSource?: string | null } = {},
+): SizeEffects {
   const alle = resolvedLookup(byId);
   const sb = statblockOfCreature(creature, byId);
   const statblock = sb ? alle.get(sb.id) : undefined;
@@ -501,6 +524,8 @@ export function creatureSizeEffects(creature: Entity, byId: ReadonlyMap<EntityId
       ...(options.conditions ? { conditions: options.conditions } : {}),
       ...(options.actions ? { actions: options.actions } : {}),
     }),
+    /* Überlappen sich Grössen-Zustände, wählt die Leitung am Token (T-428). */
+    options.sizeSource,
   );
 }
 

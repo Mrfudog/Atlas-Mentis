@@ -216,16 +216,22 @@ describe('wieldItemOf', () => {
   const art = (components: Record<string, unknown>) => ({ id: 'x', components }) as never;
   it('reads shield, focus, armour and ranged from the item', () => {
     const p = () => false;
-    expect(wieldItemOf(art({ Item: { itemType: 'shield' } }), { id: 'x', name: 'S', propertyNames: [], proficient: p })).toMatchObject({ shield: true, proficient: false });
-    expect(wieldItemOf(art({ Item: { itemType: 'wand' } }), { id: 'x', name: 'W', propertyNames: [], proficient: p }).focus).toBe(true);
-    expect(wieldItemOf(art({ Item: { itemType: 'heavy armor' } }), { id: 'x', name: 'A', propertyNames: [], proficient: p }).worn).toBe(true);
+    expect(wieldItemOf(art({ Item: { itemType: 'shield' } }), { id: 'x', name: 'S', mechanics: [], proficient: p })).toMatchObject({ shield: true, proficient: false });
+    expect(wieldItemOf(art({ Item: { itemType: 'wand' } }), { id: 'x', name: 'W', mechanics: [], proficient: p }).focus).toBe(true);
+    expect(wieldItemOf(art({ Item: { itemType: 'heavy armor' } }), { id: 'x', name: 'A', mechanics: [], proficient: p }).worn).toBe(true);
     const bogen = wieldItemOf(art({ Item: { itemType: 'ranged weapon' }, Weapon: { category: 'simple', damage: '1d6' } }), {
-      id: 'x', name: 'Shortbow', propertyNames: ['Two-Handed'], proficient: (w) => w === 'simple',
+      id: 'x', name: 'Shortbow', mechanics: ['two-handed'], proficient: (w) => w === 'simple',
     });
     expect(bogen).toMatchObject({ ranged: true, proficient: true, damage: '1d6', properties: ['two-handed'] });
   });
+  it('takes the versatile die from the edge before the weapon card (T-324)', () => {
+    const p = () => true;
+    const stab = art({ Weapon: { damage: '1d6', damage2: '1d8' } });
+    expect(wieldItemOf(stab, { id: 'x', name: 'Q', mechanics: ['versatile'], proficient: p }).damage2).toBe('1d8');
+    expect(wieldItemOf(stab, { id: 'x', name: 'Q', mechanics: ['versatile'], versatileDamage: '1d10', proficient: p }).damage2).toBe('1d10');
+  });
   it('is not proficient without the group or the weapon', () => {
-    const w = wieldItemOf(art({ Weapon: { category: 'martial' } }), { id: 'x', name: 'Battleaxe', propertyNames: [], proficient: () => false });
+    const w = wieldItemOf(art({ Weapon: { category: 'martial' } }), { id: 'x', name: 'Battleaxe', mechanics: [], proficient: () => false });
     expect(w.proficient).toBe(false);
   });
 });
@@ -250,6 +256,10 @@ describe('heldDetail, handCost, handSummary', () => {
     expect(heldDetail(in_(pouch, 'offHand'), false)).toMatch(/focus/);
     expect(handCost(in_(shield, 'offHand'))).toMatch(/action/);
     expect(handCost(null)).toMatch(/object interaction/);
+    /* T-350: die Kampagne sagt, was Verstauen und Fallenlassen kosten (`handActions`). */
+    expect(handCost(null, { drop: 'free action', stow: 'bonus action' })).toBe('stow: bonus action · drop: free action');
+    expect(handCost(null, { drop: null, stow: null })).toMatch(/object interaction/);
+    expect(handCost(in_(shield, 'offHand'), { drop: 'free action', stow: 'bonus action' })).toMatch(/action to don/);
   });
   it('sums up the hands', () => {
     expect(handSummary(handState([]))).toBe('Both hands free');

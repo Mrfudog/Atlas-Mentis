@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-28. 92 Schnittstellen, 73 Kantenarten.
+Stand 2026-10-29. 94 Schnittstellen, 76 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -26,7 +26,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -45,7 +45,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
-- `enchantedWith` → Item — „enhanced with"
+- `enchantedWith` → Enhancement — „enhanced with"
 - `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
@@ -59,7 +59,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `equips` → „equipped by"
 - GlossaryTerm — `explains` → „explained by"
-- Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
 - Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
@@ -75,6 +74,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -119,6 +119,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -187,6 +188,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
@@ -242,6 +244,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -291,6 +294,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -348,6 +352,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
@@ -395,6 +400,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -406,7 +412,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
+- `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
 
 **Geerbte Felder**
 
@@ -428,7 +434,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
-- `enchantedWith` → Item — „enhanced with"
+- `enchantedWith` → Enhancement — „enhanced with"
 - `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
@@ -442,7 +448,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `equips` → „equipped by"
 - GlossaryTerm — `explains` → „explained by"
-- Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
 - Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
@@ -458,6 +463,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -474,7 +480,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -493,7 +499,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
-- `enchantedWith` → Item — „enhanced with"
+- `enchantedWith` → Enhancement — „enhanced with"
 - `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
@@ -507,7 +513,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `equips` → „equipped by"
 - GlossaryTerm — `explains` → „explained by"
-- Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
 - Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
@@ -523,6 +528,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -578,11 +584,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
 
-**Gezeichnet** (aus `Party`): `image`, `description`, `fields`, `inventory`, `crafting`, `relations`
+**Gezeichnet** (aus `Party`): `image`, `description`, `travel`, `fields`, `inventory`, `crafting`, `relations`
 
 ### Place
 
@@ -626,7 +633,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
-- Story — `happensAt` → „scenes here"
+- Story | Encounter — `happensAt` → „scenes and encounters here"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -635,6 +642,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - Place — `route` → „reached from"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -709,6 +717,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
@@ -769,7 +778,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
-- Story — `happensAt` → „scenes here"
+- Story | Encounter — `happensAt` → „scenes and encounters here"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -778,6 +787,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - Place — `route` → „reached from"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -793,7 +803,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -812,7 +822,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
-- `enchantedWith` → Item — „enhanced with"
+- `enchantedWith` → Enhancement — „enhanced with"
 - `inCollection` → Collection — „in collection"
 - `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
@@ -826,7 +836,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `equips` → „equipped by"
 - GlossaryTerm — `explains` → „explained by"
-- Item — `enchantedWith` → „enhances"
 - Shop — `sells` → „sold at"
 - Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
@@ -842,6 +851,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -887,6 +897,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - Campaign — `inWorld` → „campaigns"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -951,6 +962,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1001,6 +1013,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `activates` → Layer — „Layers in play"
 - `layerRule` → Layer — „Type rule for"
 - `enables` → * — „Extra content"
+- `prefers` → * — „Prefers"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
@@ -1019,6 +1032,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1069,6 +1083,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1129,6 +1144,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1188,6 +1204,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1245,6 +1262,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1254,7 +1272,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Rules
 
-*Woran man sich hält.* — 29 Arten.
+*Woran man sich hält.* — 31 Arten.
 
 ### Ability score method
 
@@ -1305,6 +1323,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1357,6 +1376,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1409,6 +1429,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1472,6 +1493,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1533,6 +1555,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1596,6 +1619,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1651,6 +1675,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1706,6 +1731,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1762,6 +1788,67 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Enhancement
+
+`Enhancement` · erbt von `ItemFeature` ← `Rule` ← `Effects` ← `Image` ← `Lore` ← `Secrets` ← `Facts` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `rarity` *Item.rarity*, `attunement` *boolean*, `attunementNote` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*
+
+**Geerbte Felder**
+
+- *`ItemFeature`* — `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `mechanics` *two-handed | versatile | light | finesse*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Item — `enchantedWith` → „enhances"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1815,6 +1902,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1873,6 +1961,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1928,6 +2017,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1981,6 +2071,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2029,6 +2120,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2073,14 +2165,73 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Inventory`): `inventory`, `description`, `fields` (ohne Inventory.copper), `relations`
 
+### Item feature — *abstrakt*
+
+`ItemFeature` · erbt von `Rule` ← `Effects` ← `Image` ← `Lore` ← `Secrets` ← `Facts` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `mechanics` *two-handed | versatile | light | finesse*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
 ### Item property
 
-`ItemProperty` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`ItemProperty` · erbt von `ItemFeature` ← `Rule` ← `Effects` ← `Image` ← `Lore` ← `Secrets` ← `Facts` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -2088,7 +2239,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
+- *`ItemFeature`* — `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `mechanics` *two-handed | versatile | light | finesse*
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -2126,6 +2283,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2166,6 +2324,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2218,6 +2377,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2275,6 +2435,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2323,6 +2484,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | PlayerCharacter | Party — `crafting` → „worked on by"
@@ -2375,6 +2537,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2428,6 +2591,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2482,6 +2646,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2493,7 +2658,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *link → Condition*, `legendaryActions` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
+- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *link → Condition*, `legendaryActions` *1…∞*, `legendaryActionsLair` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
 
 **Geerbte Felder**
 
@@ -2538,6 +2703,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -2601,6 +2767,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2654,6 +2821,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2700,6 +2868,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - Place | Story | Encounter | Class | Subclass | Ancestry | Background — `tableFor` → „used at"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2752,6 +2921,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2805,6 +2975,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2855,6 +3026,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2905,6 +3077,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -2941,6 +3114,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `inCollection` → Collection — „in collection"
 - `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `describedIn` → Article | Story | BookPart — „described in"
+- `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `participates` → Creature | Statblock | Party — „in the fight"
@@ -2962,11 +3136,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `prose`, `fields`, `prose`, `fields`, `fields`, `fields`, `prose`
+**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `prose`, `fields`, `prose`, `fields`, `standing`, `collection`, `fields`, `collection`, `collection`, `collection`, `fields`, `prose`
 
 ### Map
 
@@ -3017,6 +3192,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
@@ -3054,6 +3230,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3092,6 +3269,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3136,6 +3314,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3174,6 +3353,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3219,6 +3399,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3252,6 +3433,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3284,6 +3466,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3316,6 +3499,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3348,6 +3532,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3390,6 +3575,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3422,6 +3608,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3464,6 +3651,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3496,6 +3684,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3535,6 +3724,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3567,6 +3757,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3614,6 +3805,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Campaign — `activates` → „In play in"
 - Campaign — `layerRule` → „Type rule in"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3646,6 +3838,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3678,6 +3871,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3721,6 +3915,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3753,6 +3948,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3785,6 +3981,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3817,6 +4014,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3849,6 +4047,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3888,6 +4087,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3920,6 +4120,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `compatibleWith` → RuleMechanic — „compatible with"
+- `extendsMechanic` → RuleMechanic — „extends"
+- `excludesMechanic` → RuleMechanic — „excludes"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -3935,10 +4137,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - RuleMechanic — `compatibleWith` → „also works with"
+- RuleMechanic — `extendsMechanic` → „extended by"
+- RuleMechanic — `excludesMechanic` → „excluded by"
 - * — `inLayer` → „brings"
 - Campaign — `activates` → „In play in"
 - Campaign — `layerRule` → „Type rule in"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -3950,7 +4155,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `sort` *inventory | items | crafting | abilities | equipment | character | travel | units | map | combat | table*
+- `sort` *inventory | partyInventory | items | crafting | abilities | equipment | character | magic | creatures | travel | units | map | combat | table*
 
 **Geerbte Felder**
 
@@ -3987,6 +4192,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Campaign — `activates` → „In play in"
 - Campaign — `layerRule` → „Type rule in"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4019,6 +4225,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4051,6 +4258,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4083,6 +4291,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4115,6 +4324,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4147,6 +4357,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4179,6 +4390,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4211,6 +4423,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4243,6 +4456,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4275,6 +4489,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4307,6 +4522,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4339,6 +4555,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -4371,6 +4588,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 

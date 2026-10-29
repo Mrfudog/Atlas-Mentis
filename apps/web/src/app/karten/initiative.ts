@@ -1,7 +1,8 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import type { QuickAction, TrackerOp, TrackerRow, TrackerView } from '@nw/model';
+import { MAX_ADD, enumOptions, type QuickAction, type TrackerOp, type TrackerRow, type TrackerView } from '@nw/model';
 import { Api } from '../kern/api';
+import { Bestand } from '../kern/bestand';
 import { BegriffLink, Glossar } from '../kern/glossar';
 import { KurzLink } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
@@ -55,6 +56,10 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
           @if (!v.off) {
             @if (v.gm) {
               @if (v.round < 1) {
+                <!-- Vorplatzieren von der Begegnung aus (T-333, T-203): die Karte öffnet und setzt die Beteiligten verborgen. -->
+                @if (v.map) {
+                  <a class="knopf" [routerLink]="['/artikel', v.map]" [queryParams]="{ prepare: v.id }" title="Open the map and set the combatants there, hidden from the players until the encounter starts">Prepare on map</a>
+                }
                 <button type="button" class="haupt" (click)="starten()" [disabled]="laeuft()" title="Roll initiative for who has none and run this encounter">▶ Start</button>
               } @else {
                 <button type="button" (click)="tue({ op: 'previous' })" [disabled]="laeuft()" aria-label="Previous turn" title="Previous turn — expired effects do not come back">◀</button>
@@ -76,6 +81,9 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
 
       @if (fehler(); as f) {
         <p class="fehler" role="alert">{{ f }}</p>
+      }
+      @if (ergebnis(); as e) {
+        <p class="dim" role="status">{{ e }}</p>
       }
       @if (!sicht()) {
         <p class="dim">Loading…</p>
@@ -198,6 +206,18 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
                 @if (o.edge === r.edge && (o.was === 'damage' || o.was === 'heal')) {
                   <form class="eingabe" (submit)="$event.preventDefault(); tpAendern(r, o.was, betrag.value)">
                     <label>{{ o.was === 'damage' ? 'Damage' : 'Healing' }} <input #betrag type="number" min="0" step="1" inputmode="numeric" autofocus /></label>
+                    @if (o.was === 'damage') {
+                      <!-- Die Art entscheidet über Resistenz, Immunität, Verwundbarkeit (T-355). -->
+                      <label>
+                        Type
+                        <select aria-label="Damage type" (change)="schadensArt.set($any($event.target).value)">
+                          <option value="" [selected]="!schadensArt()">untyped</option>
+                          @for (a of schadensArten(); track a) {
+                            <option [value]="a" [selected]="a === schadensArt()">{{ a }}</option>
+                          }
+                        </select>
+                      </label>
+                    }
                     <button type="submit" class="klein">Apply</button>
                     <button type="button" class="klein" (click)="offen.set(null)">Cancel</button>
                   </form>
@@ -237,7 +257,9 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
 
         @if (sicht()!.gm) {
           <form class="dazu" (submit)="$event.preventDefault(); dazu()">
-            <nw-wahl label="Add a combatant" [arten]="['Creature', 'Statblock', 'Party']" [anlegbar]="false" [wert]="neu()" (wertChange)="neu.set($event)" />
+            <!-- Anlegen aus der Auswahl (T-333, T-131): „Create … as …" für eine Kreatur oder einen Statblock, der noch fehlt. -->
+            <nw-wahl label="Add a combatant" [arten]="['Creature', 'Statblock', 'Party']" [wert]="neu()" (wertChange)="neu.set($event)" />
+            <label class="haken" title="How many — each gets its own row, numbered">×<input type="number" class="anzahl" min="1" [max]="maxDazu" step="1" aria-label="How many" [value]="neuAnzahl()" (input)="neuAnzahl.set($any($event.target).value)" /></label>
             <input type="number" step="1" aria-label="Initiative of the new combatant" placeholder="Init (roll)" [value]="neuInit()" (input)="neuInit.set($any($event.target).value)" />
             <label class="haken"><input type="checkbox" [checked]="neuVerbuendet()" (change)="neuVerbuendet.set($any($event.target).checked)" /> ally</label>
             <button type="submit" class="klein" [disabled]="!neu() || laeuft()">Add</button>
@@ -574,6 +596,9 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
       align-items: center;
       gap: 0.3rem;
     }
+    .dazu input.anzahl {
+      width: 4rem;
+    }
     .dazu {
       border-top: 1px solid var(--line);
       padding-top: 0.5rem;
@@ -610,6 +635,12 @@ export class Initiative {
 
   protected readonly sicht = signal<(TrackerView & { off?: boolean }) | null>(null);
   protected readonly fehler = signal<string | null>(null);
+  /** Was der letzte Schaden ergab — Abwehr, Stand, Konzentrationsprobe (T-355). */
+  protected readonly ergebnis = signal<string | null>(null);
+  private readonly bestand = inject(Bestand);
+  /** Die Schadensarten aus der Zeile `DamageType`; die letzte gewählte bleibt für den nächsten Treffer. */
+  protected readonly schadensArten = computed(() => enumOptions(this.bestand.registry() ?? { enums: {}, interfaces: {} }, { enumRef: 'DamageType' }) ?? []);
+  protected readonly schadensArt = signal('');
   protected readonly laeuft = signal(false);
   protected readonly offen = signal<Offen>(null);
   protected readonly initEdit = signal<string | null>(null);
@@ -622,6 +653,9 @@ export class Initiative {
   protected readonly verborgen = signal(false);
   /* Ein neuer Teilnehmer. */
   protected readonly neu = signal('');
+  /** Wie viele auf einmal (T-333) — je einer eine Zeile, durchgezählt. */
+  protected readonly neuAnzahl = signal('1');
+  protected readonly maxDazu = MAX_ADD;
   protected readonly neuInit = signal('');
   protected readonly neuVerbuendet = signal(false);
 
@@ -660,6 +694,10 @@ export class Initiative {
     const ab = inject(Live).onArtikel((ev) => {
       if (ev.id === this.begegnung() || ev.type === 'Campaign') void this.holen(this.begegnung());
     });
+    /* Etwas verpasst (`reset`, T-399): die Reihe neu fragen. */
+    const abNeu = inject(Live).onNeu((was) => {
+      if (was === 'reset') void this.holen(this.begegnung());
+    });
     /* Wessen Zug begann? Beim ersten Laden keiner — sonst blinkte jede geöffnete Seite. */
     effect(() => {
       const v = this.sicht();
@@ -680,6 +718,7 @@ export class Initiative {
       .catch(() => undefined);
     inject(DestroyRef).onDestroy(() => {
       ab();
+      abNeu();
       this.lauf += 1;
       clearTimeout(this.wechselUhr);
     });
@@ -731,7 +770,8 @@ export class Initiative {
     this.laeuft.set(true);
     this.fehler.set(null);
     try {
-      await this.api.trackerOp(this.begegnung(), op);
+      const r = await this.api.trackerOp(this.begegnung(), op);
+      this.ergebnis.set(r.text ?? null);
       await this.holen(this.begegnung());
       return true;
     } catch (e) {
@@ -780,6 +820,8 @@ export class Initiative {
         this.anker.set('');
         this.verborgen.set(false);
       }
+      /* Die Schadensarten stehen im Register — einmal laden, dann liegt es da. */
+      if (q === 'damage') void this.bestand.load();
       this.offen.set({ edge: r.edge, was: q });
       return;
     }
@@ -791,7 +833,9 @@ export class Initiative {
   protected async tpAendern(r: TrackerRow, was: 'damage' | 'heal', roh: string): Promise<void> {
     const n = Math.abs(Number(roh));
     if (!roh.trim() || !Number.isFinite(n)) return;
-    if (await this.tue({ op: 'hp', edge: r.edge, delta: was === 'damage' ? -n : n })) this.offen.set(null);
+    /* Schaden geht mit seiner Art an den Server, der nach der Abwehr abzieht (T-355). */
+    const op: TrackerOp = was === 'damage' ? { op: 'damage', edge: r.edge, amount: n, ...(this.schadensArt() ? { type: this.schadensArt() } : {}) } : { op: 'hp', edge: r.edge, delta: n };
+    if (await this.tue(op)) this.offen.set(null);
   }
 
   protected async effektSetzen(r: TrackerRow): Promise<void> {
@@ -824,9 +868,11 @@ export class Initiative {
       to: this.neu(),
       ...(this.neuInit().trim() && Number.isFinite(init) ? { init } : {}),
       ...(this.neuVerbuendet() ? { ally: true } : {}),
+      ...(Number(this.neuAnzahl()) > 1 ? { count: Number(this.neuAnzahl()) } : {}),
     });
     if (ok) {
       this.neu.set('');
+      this.neuAnzahl.set('1');
       this.neuInit.set('');
       this.neuVerbuendet.set(false);
     }

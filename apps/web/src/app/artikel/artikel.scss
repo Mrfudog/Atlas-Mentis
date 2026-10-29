@@ -544,18 +544,10 @@ p.leer {
   color: var(--dim);
   font-size: 0.95rem;
 }
-/* „Design this view" (T-276): am Telefon ein Blatt von unten, die Seite darüber bleibt die Vorschau. */
-@media (max-width: 760px) {
-  .gestalten {
-    position: fixed;
-    inset: auto 0 0;
-    max-height: 62vh;
-    overflow-y: auto;
-    z-index: 40;
-    border-radius: 12px 12px 0 0;
-    box-shadow: 0 -4px 18px rgb(0 0 0 / 0.25);
-  }
-}
+/* „Design this view" (T-276) war am Telefon ein festes Blatt von unten.
+   Seit den Kapiteln (T-277) steht der Designer dort in seinem eigenen
+   Reiter „Design" — das Blatt lag ohne eigenen Grund über Edit, Delete und
+   der Leiste „Views" (T-433). Er steht jetzt im Fluss seines Reiters. */
 
 /* Farbwähler mit dem Wert daneben (T-423). */
 .farbwahl {
@@ -591,3 +583,19 @@ p.leer {
   gap: 0.6rem;
   margin: 0.8rem 0;
 }
+
+/* Die Klappleiste der Artikelseite (T-359): über den Kapiteln, rechts —
+   am Telefon nicht, dort sind die Kapitel Reiter. */
+nw-klappleiste.nur-breit {
+  justify-content: flex-end;
+  margin: 0.25rem 0 -0.25rem;
+}
+@media (max-width: 719.98px) {
+  nw-klappleiste.nur-breit {
+    display: none;
+  }
+}
+
+/* Hinweis freigeben (T-215). */
+.hinweis-freigabe { margin: 0.25rem 0 0; font-size: 0.9em; }
+.hinweis-freigabe .frei { color: var(--good); }

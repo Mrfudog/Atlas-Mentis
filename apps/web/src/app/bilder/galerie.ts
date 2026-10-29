@@ -155,6 +155,10 @@ const BLATT = 60;
             @if (r.lauf) {
               <button type="button" class="leise" (click)="zurueck(r.lauf)">Undo</button>
             }
+            <!-- Gelöschtes liegt 30 Tage im Papierkorb (T-400). -->
+            @if (r.korb) {
+              <a routerLink="/trash" class="korb">In Deleted for 30 days</a>
+            }
           </p>
         }
         @if (problem(); as p) {
@@ -242,7 +246,7 @@ export class Galerie {
   protected readonly laedt = signal(false);
   protected readonly arbeitet = signal(false);
   protected readonly problem = signal<string | null>(null);
-  protected readonly ergebnis = signal<{ text: string; lauf: string | null; open?: { id: string; name: string }[]; hinweis?: string } | null>(null);
+  protected readonly ergebnis = signal<{ text: string; lauf: string | null; korb?: boolean; open?: { id: string; name: string }[]; hinweis?: string } | null>(null);
   private readonly loescher = inject(Loeschen);
   /** An welcher Kachel gerade eine Marke getippt wird. */
   protected readonly markeAnKachel = signal<string | null>(null);
@@ -415,7 +419,7 @@ export class Galerie {
       if (!r) return;
       const weg = new Set([...r.geloescht, ...r.abgewaehlt]);
       this.auswahl.set(this.auswahl().filter((id) => !weg.has(id)));
-      this.ergebnis.set({ text: `${r.text}.`, lauf: r.lauf, ...(r.hinweis ? { hinweis: r.hinweis } : {}) });
+      this.ergebnis.set({ text: `${r.text}.`, lauf: r.lauf, korb: !!r.lauf, ...(r.hinweis ? { hinweis: r.hinweis } : {}) });
       if (r.geloescht.length) await this.hole(this.frage(), 0);
     } catch (e) {
       this.problem.set(e instanceof ApiError ? e.message : 'Deleting failed — reload and try again.');

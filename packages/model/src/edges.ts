@@ -87,12 +87,12 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'stack',
     label: 'Layers in play',
     area: 'stack',
-    does: 'decides whether an article is in play at all — what the campaign’s layers bring, what a group layer brings with its members, what a type rule lets every layer of a group bring, which single articles the campaign enables, which publisher a layer counts under, which version replaces another',
+    does: 'decides whether an article is in play at all — what the campaign’s layers bring, what a group layer brings with its members, what a type rule lets every layer of a group bring, which single articles the campaign enables, which publisher a layer counts under, which version replaces another, and which version of the same thing a campaign prefers (T-403)',
     uses: {
       [M + 'visibility.ts']: ['activates', 'inLayer'],
-      [M + 'stack.ts']: ['activates', 'enables', 'inLayer', 'layerRule', 'overrides', 'partOf'],
-      /* Die Ebene eines Artikels wechseln (T-383). */
-      [M + 'layermove.ts']: ['inLayer'],
+      [M + 'stack.ts']: ['activates', 'enables', 'inLayer', 'layerRule', 'overrides', 'partOf', 'prefers'],
+      /* Die Ebene eines Artikels wechseln (T-383), mit Teilen, Statblock und Stücken (T-402). */
+      [M + 'layermove.ts']: ['holds', 'inLayer', 'partOf'],
       [S + 'verwaltung.ts']: ['activates', 'inLayer'],
       [S + 'ebenenrechte.ts']: ['activates', 'inLayer', 'partOf'],
       /* Die Spielerebene: von ihrer Kampagne aufgeschaltet (T-164). */
@@ -121,6 +121,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'mechanicSelection',
+    label: 'Modules: which system applies',
+    area: 'stack',
+    does: 'works out, per module (rule system), which rule mechanics apply in the campaign: an extension only with its base, an excluded or unconnected one gives way to the higher one in the stack (E-100, E-091, E-094)',
+    uses: {
+      [M + 'mechanics.ts']: ['compatibleWith', 'extendsMechanic', 'excludesMechanic', 'partOf'],
+    },
+  },
+  {
     key: 'itemShapes',
     label: 'Item shapes overview',
     area: 'stack',
@@ -133,9 +142,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'visibilityByGroup',
     label: 'Visibility by group',
     area: 'visibility',
-    does: 'groups articles by their layer and the layer’s group, so a campaign’s visibility rule for a group (T-252) and the default of a layer reach the articles in it',
+    does: 'groups articles by their layer and the layer’s group, so a campaign’s visibility rule for a group (T-252) and the default of a layer reach the articles in it — and names a single article or a relation as a rule of its own (T-401)',
     uses: {
-      [M + 'groupvisibility.ts']: ['partOf'],
+      [M + 'groupvisibility.ts']: ['inLayer', 'partOf'],
       /* Die Gruppe der Ebene an jedem Artikel der Liste (T-387). */
       [S + 'sichtbarkeit.ts']: ['partOf'],
     },
@@ -155,10 +164,12 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'versions',
     label: 'Versions and templates',
     area: 'versions',
-    does: 'finds the versions of the same thing and reads an instance through its template, field by field',
+    does: 'finds the versions of the same thing, reads an instance through its template, field by field, and makes a version, variant or copy in another layer (T-405)',
     uses: {
       [M + 'instance.ts']: ['belongsTo', 'carries', 'inLayer', 'instanceOf', 'overrides', 'variantOf'],
       [M + 'versions.ts']: ['inLayer', 'instanceOf', 'overrides', 'variantOf'],
+      /* Fassung, Variante oder Kopie in einer anderen Ebene (T-405). */
+      [M + 'kopie.ts']: ['inLayer', 'overrides', 'variantOf'],
       /* Anlegen aus einer Vorlage prüft die Vorlage und dünnt aus (T-125). */
       [S + 'app.ts']: ['inLayer', 'instanceOf', 'overrides', 'variantOf'],
       [W + 'artikel/artikel.ts']: ['overrides'],
@@ -288,9 +299,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'enhancements',
     label: 'Enhancements',
     area: 'character',
-    does: 'works out the name, price, rarity and bonuses of a piece from its base item and the enhancements on it (+1, silvered …), checks each against what it applies to, and lets the GM add or remove them (T-300)',
+    does: 'works out the name, price, rarity and bonuses of a piece from its base item and the enhancements on it (+1, silvered …), checks each against what it applies to, and lets the GM add or remove them (T-300); reads what an item’s properties do on the sheet from their data, with the versatile die from the edge (T-324)',
     uses: {
-      [M + 'enhancement.ts']: ['enchantedWith'],
+      [M + 'enhancement.ts']: ['enchantedWith', 'hasProperty'],
       /* Lesen mit gerechnetem Namen und Preis, und das Schreiben prüft, wer anhängt. */
       [S + 'app.ts']: ['enchantedWith'],
       /* Anhängen und abnehmen; Spielende an Stücken in einem Inventar, das sie schreiben. */
@@ -305,6 +316,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     uses: {
       [M + 'shop.ts']: ['buys', 'carries', 'holds', 'sells'],
       [S + 'laden.ts']: ['carries', 'holds'],
+    },
+  },
+  {
+    key: 'discardAndSellHere',
+    label: 'Discard and sell from the inventory',
+    area: 'character',
+    does: 'discards pieces from a stack — the instance goes with the last one, a reserved piece or a container holding something stays, and undo puts both back while the inventory is unchanged — and lists the visible shops with their buy price for a piece, those where the scene or map in play is first; the party’s members sell from its chest (T-407)',
+    uses: {
+      [M + 'discard.ts']: ['carries', 'holds', 'partOf'],
+      [S + 'wegwerfen.ts']: ['carries', 'holds', 'memberOfParty'],
     },
   },
   {
@@ -454,13 +475,13 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'initiative',
     label: 'Initiative',
     area: 'play',
-    does: 'orders the combatants of an encounter, with the party’s members and each creature’s statblock; the tracker moves turns, counts effects down and lists the statblock’s actions and spells (T-022, T-334)',
+    does: 'orders the combatants of an encounter, with the party’s members and each creature’s statblock; the tracker moves turns, counts effects down, takes damage with its type after resistances and mirrors a player character’s hit points to the character, and lists the statblock’s actions and spells (T-022, T-334, T-355)',
     uses: {
       [M + 'initiative.ts']: ['belongsTo', 'memberOfParty', 'participates'],
-      /* Der Tracker (T-022): Züge und Effekte an den Teilnehmern, die Aktionen vom Statblock, aufgeklappt auch die Zauber (T-334). */
-      [M + 'tracker.ts']: ['casts', 'composedOf', 'participates'],
-      /* Die Route siebt die Zauber eines Teilnehmers für Spielende (T-334). */
-      [S + 'initiative.ts']: ['casts'],
+      /* Der Tracker (T-022): Züge und Effekte an den Teilnehmern, die Aktionen vom Statblock, aufgeklappt auch die Zauber (T-334); für die Leitung die Karte, auf der vorplatziert wird (T-333). */
+      [M + 'tracker.ts']: ['casts', 'composedOf', 'onMap', 'participates'],
+      /* Die Route siebt die Zauber eines Teilnehmers für Spielende (T-334) und spiegelt den Stand einer Spielerfigur (T-355). */
+      [S + 'initiative.ts']: ['casts', 'participates'],
     },
   },
   {
@@ -531,12 +552,29 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'mapAreas',
+    label: 'Zones and territories',
+    area: 'play',
+    does: 'draws zones and territories on the map as squares on the grid, on their own floor, coloured by the rule of the zone or the territory’s own colour — and keeps from players those on unseen articles, hidden zones not yet found and what lies under the fog (T-219, REQ-193)',
+    uses: {
+      [M + 'areas.ts']: ['territory', 'zone'],
+      [M + 'map.ts']: ['territory', 'zone'],
+      [M + 'floors.ts']: ['territory', 'zone'],
+      [W + 'karten/karte.ts']: ['territory', 'zone'],
+    },
+  },
+  {
     key: 'turnplan',
     label: 'Turn planner',
     area: 'play',
-    does: 'builds the action bar of a creature on the map from the actions of its statblock, moves its token when the GM confirms a planned turn, and asks for an opportunity attack when the path leaves the reach of a creature on the other side (party members and allies of the encounter against the rest) (T-198)',
+    does: 'builds the action bar of a creature on the map from the actions of its statblock, moves its token when the GM confirms a planned turn, and asks for an opportunity attack when the path leaves the reach of a creature on the other side (party members and allies of the encounter against the rest) (T-198); a path may pass through allies but not end on them, and difficult terrain from the zones of the map costs double — the server counts the feet again (T-349); on the way a player character notices hidden markers and hidden zones its passive Perception beats, and entering a zone that does something says so (T-350); a weapon in hand is an attack tile, with to-hit and damage from the statblock, its own +1 and a bonus-action off-hand attack with two light weapons (T-354)',
     uses: {
-      [S + 'zugplan.ts']: ['belongsTo', 'composedOf', 'memberOfParty', 'participates'],
+      [M + 'zugplan.ts']: ['zone'],
+      /* Unterwegs bemerken (T-350): versteckte Marker und Zonen, Zonen betreten. */
+      [M + 'spotting.ts']: ['marker', 'zone'],
+      /* Waffen in der Hand sind Angriffe (T-354): Inventar, Hand, Eigenschaften der Waffe. */
+      [M + 'weapons.ts']: ['carries', 'hasProperty', 'holds'],
+      [S + 'zugplan.ts']: ['belongsTo', 'composedOf', 'memberOfParty', 'participates', 'zone'],
     },
   },
   {
@@ -546,6 +584,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     does: 'opens a door on the map when a player stands next to it, and reveals what the party members who see the door can now see through it (T-118)',
     uses: {
       [S + 'tueren.ts']: ['memberOfParty'],
+    },
+  },
+  {
+    key: 'encounterStances',
+    label: 'Stances at an encounter',
+    area: 'play',
+    does: 'shows, at an encounter, what each creature or faction it features thinks of the campaign’s party, and which hints the party already knows (T-215)',
+    uses: {
+      [S + 'begegnung.ts']: ['knownBy', 'regards'],
+      [S + 'app.ts']: ['features'],
     },
   },
   {
@@ -574,11 +622,12 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'checks',
     label: 'Validation and workbench',
     area: 'checks',
-    does: 'checks it when saving and on the workbench — stages of a condition, conditions in a fight, a replacement of the same type, templates and copies, and what goes along when a bulk change deletes',
+    does: 'checks it when saving and on the workbench — stages of a condition, conditions in a fight, a replacement of the same type, templates and copies, and what goes along when a bulk change deletes — or comes back from Deleted',
     uses: {
       [M + 'validate.ts']: ['overrides', 'participates', 'stageOf'],
       [M + 'checks.ts']: ['inLayer', 'instanceOf', 'variantOf'],
       [M + 'bulk.ts']: ['holds', 'inLayer', 'instanceOf', 'variantOf'],
+      [M + 'trash.ts']: ['holds'],
     },
   },
   {
@@ -660,6 +709,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
  */
 export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [M + 'types.ts']: ['crafting', 'knowledge'],
+  /* `extendsMechanic.props.mode: 'overrides'` — ein Modus, nicht die Kante `overrides` (E-100). */
+  [M + 'mechanics.ts']: ['overrides'],
   [M + 'validate.ts']: ['crafting', 'knowledge'],
   [W + 'register/typ.ts']: ['carries', 'holds'],
   [W + 'register/arbeit.ts']: ['carries'],

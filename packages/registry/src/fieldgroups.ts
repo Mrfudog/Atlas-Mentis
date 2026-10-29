@@ -578,6 +578,9 @@ export const fieldGroups = {
            `Action`-Artikel mit der Aktionsart „Legendary Action" über
            `composedOf`. */
         legendaryActions: { type: 'number', min: 1, title: 'Legendary actions per round' },
+        /* Neuere Statblöcke haben im Lair mehr („3 (4 in Lair)", T-437).
+           Leer heisst: im Lair gleich viele. */
+        legendaryActionsLair: { type: 'number', min: 1, title: 'Legendary actions in lair' },
         /* **Boni, die nicht aus Übung und Übungsbonus folgen** — bei Monstern
            häufig: der Goblin hat Heimlichkeit +6, wo DEX und Übung +4 ergäben.
            `{ "Stealth": 6, "dex": 4 }`: Fertigkeit oder Attribut (für den
@@ -777,6 +780,87 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         featureType: { type: 'string', suggest: true, title: 'Feature type' },
+      },
+    },
+  },
+
+  /**
+   * **Gegenstandsmerkmal** (T-324, E-163): was an einen Gegenstand kommt,
+   * ohne selbst einer zu sein — eine Waffeneigenschaft (Finesse,
+   * Versatile) wie eine Variante (+1 Weapon, Silvered). Gemeinsam ist
+   * ihnen, **woran** sie passen, **wie** sie den Namen ändern, **was** sie
+   * am Preis tun und was sie am Bogen bewirken; die Werte des Einzelfalls
+   * (Versatile 1d10, Thrown 20/60) stehen an der Kante, nicht hier.
+   */
+  ItemFeatureInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* **Woran es passt** („+1 Weapon" an jede Waffe): Wörter wie
+           `weapon`, `armor`, `sword` oder Paare wie `weaponCategory:martial`
+           (`enhancementFits`). Leer: an jeden Gegenstand. */
+        appliesTo: {
+          type: 'array',
+          title: 'Applies to',
+          items: { type: 'string' },
+          description: 'Words (weapon, armor, sword) or pairs (weaponCategory:martial) an item must match; one is enough. Empty: any item.',
+        },
+        /* Wie das Stück dann heisst und was es kostet, wird beim Lesen
+           gerechnet (`enhanceItem`, D8) — hier steht nur die Regel. */
+        namePrefix: {
+          type: 'string',
+          title: 'Name prefix',
+          description: 'Put in front of the base item\'s name on a piece with this feature, such as "+1 " or "Silvered ".',
+        },
+        nameSuffix: {
+          type: 'string',
+          title: 'Name suffix',
+          description: 'Put after the base item\'s name on a piece with this feature, such as " of Warning".',
+        },
+        priceAdd: {
+          type: 'number',
+          min: 0,
+          title: 'Surcharge in copper',
+          description: 'What this feature adds to the base item\'s price, in copper.',
+        },
+        priceMult: {
+          type: 'number',
+          min: 0,
+          title: 'Price factor',
+          description: 'Multiplies the base item\'s price, before surcharges are added (2 doubles it).',
+        },
+        /* **Was es am Bogen bewirkt** (E-163): der Bogen fragte „heisst die
+           Eigenschaft two-handed?" (T-244, PR #359). Jetzt sagt es das
+           Merkmal selbst, und eine Hausregel-Eigenschaft „Long Grip" darf
+           zweihändig sein, ohne so zu heissen. */
+        mechanics: {
+          type: 'array',
+          title: 'On the sheet',
+          items: { type: 'string' },
+          enum: ['two-handed', 'versatile', 'light', 'finesse'],
+          description: 'What the sheet does with it: two-handed takes both hands, versatile uses the two-handed damage when gripped in both, light allows a second weapon in the off hand, finesse lets Dexterity attack (and Sneak Attack).',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Ein Enhancement** (T-300, T-324): +1 Weapon, Silvered, Adamantine —
+   * ein Merkmal, das am Stück Seltenheit und Boni dazugibt. Die Felder
+   * heissen wie am Gegenstand, stehen aber in der eigenen Karte: am Dolch
+   * ist `bonusWeapon` seiner, am Enhancement das, was es jedem Stück gibt.
+   */
+  EnhancementInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        rarity: { type: 'string', title: 'Rarity', enumRef: 'Item.rarity' },
+        attunement: { type: 'boolean', title: 'Requires attunement', glossary: 'Attunement' },
+        attunementNote: { type: 'string', title: 'Attunement by' },
+        bonusWeapon: { type: 'number', title: 'Attack and damage bonus', format: 'signed' },
+        bonusAc: { type: 'number', title: 'AC bonus', format: 'signed' },
+        bonusSpellAttack: { type: 'number', title: 'Spell attack bonus', format: 'signed' },
+        bonusSave: { type: 'number', title: 'Saving throw bonus', format: 'signed' },
       },
     },
   },
@@ -1065,6 +1149,9 @@ export const fieldGroups = {
                  wirkt (sonst das der Quelle) und wie er gilt. */
               ability: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
               mode: { type: 'string', title: 'How it is cast', enum: ['prepared', 'known', 'innate'] },
+              /* Bei Expertise (T-303): `false` hebt auf, dass nur Geübtes
+                 gewählt werden darf. Ohne Angabe verlangt sie die Übung. */
+              needsProficiency: { type: 'boolean', title: 'Needs proficiency' },
               note: { type: 'string', title: 'Note' },
             },
           },
@@ -1113,7 +1200,7 @@ export const fieldGroups = {
             required: ['id', 'target', 'op'],
             properties: {
               id: { type: 'string', title: 'Id' },
-              /* `ability.str`, `ac`, `speed.walk`, `speed.*`, `spellSaveDc`,
+              /* `ability.str`, `ac`, `ac.base` (Formel, T-355), `speed.walk`, `speed.*`, `spellSaveDc`,
                  `spellAttack`, `save`, `save.dex`, `resist`, `immune`,
                  `vulnerable`, `conditionImmune`, `critThreshold`, `carry`,
                  `capacity`, `weapon`, `weapon.attack`, `weapon.damage`, `spellDamage`,
@@ -1498,37 +1585,10 @@ export const fieldGroups = {
         bonusAc: { type: 'number', title: 'AC bonus', format: 'signed' },
         bonusSpellAttack: { type: 'number', title: 'Spell attack bonus', format: 'signed' },
         bonusSave: { type: 'number', title: 'Saving throw bonus', format: 'signed' },
-        /* **Woran eine Variante passt** („+1 Weapon" an jede Waffe): Marken
-           wie `weapon`, `armor`, `ammunition`, `sword`. Das konkrete
-           +1-Langschwert entsteht am Tisch als Instanz des Grundgegenstands. */
-        appliesTo: { type: 'array', title: 'Variant applies to', items: { type: 'string' } },
-        /* **Ein Gegenstand mit `appliesTo` ist ein Enhancement** (T-300,
-           E-107): er kommt mit der Kante `enchantedWith` an ein Stück eines
-           Grundgegenstands. Wie das Stück dann heisst und was es kostet,
-           wird beim Lesen gerechnet (`enhanceItem`, D8) — hier steht nur
-           die Regel: Namensteile und Aufpreis. */
-        namePrefix: {
-          type: 'string',
-          title: 'Name prefix',
-          description: 'Put in front of the base item\'s name on a piece with this enhancement, such as "+1 " or "Silvered ".',
-        },
-        nameSuffix: {
-          type: 'string',
-          title: 'Name suffix',
-          description: 'Put after the base item\'s name on a piece with this enhancement, such as " of Warning".',
-        },
-        priceAdd: {
-          type: 'number',
-          min: 0,
-          title: 'Surcharge in copper',
-          description: 'What this enhancement adds to the base item\'s price, in copper. Without a surcharge or factor, its own price is the surcharge.',
-        },
-        priceMult: {
-          type: 'number',
-          min: 0,
-          title: 'Price factor',
-          description: 'Multiplies the base item\'s price, before surcharges are added (2 doubles it).',
-        },
+        /* Woran eine Variante passt, ihre Namensteile und ihr Aufpreis
+           stehen seit T-324 (E-163) am Gegenstandsmerkmal
+           (`ItemFeatureInfo`), nicht mehr hier: „+1 Weapon" ist eine Regel,
+           die an einen Gegenstand kommt, und kein Gegenstand. */
         /* **Nicht dasselbe wie `rarity`.** Die ist die Seltenheit des
            magischen Gegenstands („selten", „legendär"); das hier ist, wie
            schwer er zu *kaufen* ist — im Vault die Hausregel-Leiter
@@ -3387,8 +3447,8 @@ export const fieldGroups = {
         sort: {
           type: 'string',
           title: 'Rule area',
-          enum: ['inventory', 'items', 'crafting', 'abilities', 'equipment', 'character', 'travel', 'units', 'map', 'combat', 'table'],
-          description: 'Which area of Rules & options this rule system covers, such as inventory.',
+          enum: ['inventory', 'partyInventory', 'items', 'crafting', 'abilities', 'equipment', 'character', 'magic', 'creatures', 'travel', 'units', 'map', 'combat', 'table'],
+          description: 'Which area of Rules & options this rule system covers, such as inventory. A rule system is a module; its rule mechanics are the systems a campaign picks from.',
         },
       },
     },
@@ -3397,7 +3457,9 @@ export const fieldGroups = {
   /**
    * **Eine Regelmechanik ist eine Ebene** (E-166): Grid, Weight, Slots,
    * Default shapes — eine Option eines Regelsystems (`partOf`), die sagt,
-   * mit welchen anderen sie zusammen gilt (Kante `compatibleWith`).
+   * mit welchen anderen sie zusammen gilt (Kante `compatibleWith`), welche
+   * sie erweitert (`extendsMechanic`) und welche sie ausschliesst
+   * (`excludesMechanic`, E-100). Was gilt, rechnet `mechanicSelection`.
    * `method` ist das Wort, das die Laufzeit ausführt; was am Tisch zählt,
    * wählt vorerst `Campaign.inventory`.
    */

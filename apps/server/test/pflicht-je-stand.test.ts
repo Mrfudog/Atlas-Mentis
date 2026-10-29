@@ -72,4 +72,34 @@ describe('Pflicht je Stand am Server (T-425, E-178)', () => {
     /* prepared verlangt die Beschreibung: also idea, nicht prepared. */
     expect((await t.repo.getEntity('sc_alt'))?.components?.['Status']).toEqual({ status: 'idea' });
   });
+
+  /* T-436, E-176: die Figur entsteht im Assistenten gleich; ein offener
+     Entscheid hält sie auf idea, auch für die Spielerin, die sie sonst
+     selbst fertig setzt (D74). */
+  it('ein offener Entscheid der Figur verwehrt den Aufstieg, beantwortet geht es', async () => {
+    const klasse: Entity = {
+      id: 'cl_f', name: 'Fighter', interfaces: ['Class'],
+      components: { ...id('Fighter', 'class-0001', 'ready'), Choices: { choices: [{ id: 'skills', kind: 'proficiency', count: 1, from: { values: ['Athletics', 'Survival'] } }] } },
+      relations: [in_('cl_f')],
+    };
+    const figur: Entity = {
+      id: 'pc_t', name: 'Thorin', interfaces: ['PlayerCharacter'],
+      components: id('Thorin', 'pc-0001', 'idea'),
+      relations: [in_('pc_t'), { id: 'pc_t~k', type: 'hasClass', to: 'cl_f', props: { level: 1 } }],
+    };
+    const t = await tisch({
+      kampagne: 'camp_a', artikel: [...ARTIKEL(), klasse, figur], registry: register(),
+      konten: { ...konten, Sela: { ...konten.Sela, actorIds: ['pc_t'] } },
+    });
+    const e = await t.json<Entity>('Sela', 'GET', '/api/entities/pc_t');
+    const ready = { ...e, components: { ...e.components, Status: { status: 'ready' } } };
+    const nein = await t.als('Sela', 'PUT', '/api/entities/pc_t', { payload: ready });
+    expect(nein.statusCode).toBe(422);
+    const issue = (nein.json() as { issues: { code: string; message: string }[] }).issues.find((i) => i.code === 'state_gaps');
+    expect(issue?.message).toBe('To set ready, decide: Fighter · Skill proficiencies. Keep a lower state until then.');
+
+    const gewaehlt = { ...ready, relations: [...(ready.relations ?? []), { id: 'pc_t~w', type: 'chose', to: 'cl_f', props: { choice: 'skills', picks: ['Survival'] } }] };
+    const ja = await t.als('Sela', 'PUT', '/api/entities/pc_t', { payload: gewaehlt });
+    expect(ja.statusCode).toBe(200);
+  });
 });

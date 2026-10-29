@@ -20,7 +20,7 @@ test('a new character up to level 2', async ({ leitung, spielerin, api, eindeuti
   const klasse = await api.anlegen('leitung', 'Class', eindeutig('Warden'), {
     fields: { 'Status.status': 'ready', 'Class.hitDie': 10 },
   });
-  const weiter = seite.getByRole('button', { name: 'Next' });
+  const weiter = seite.getByRole('button', { name: 'Next', exact: true });
 
   await seite.goto('/characters/new');
   await expect(seite.getByRole('heading', { name: 'New character' })).toBeVisible();

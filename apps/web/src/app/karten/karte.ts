@@ -13,7 +13,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   addMarker,
   noteName,
@@ -77,8 +77,9 @@ import {
   cellAt,
   cellPoint,
   cellKey,
-  feetBetween,
+  feetBetweenTokens,
   planGrid,
+  type PlanTerrain,
   planPath,
   planReach,
   tokenCell,
@@ -117,6 +118,7 @@ import {
   setGrid,
   gridStroke,
   setMarkerSize,
+  setMarkerSizeSource,
   snapTokenCentre,
   tokenSpan,
   tokenSizeOf,
@@ -161,11 +163,30 @@ import {
   confirmPlacement,
   keepOnMap,
   type PlacementSuggestion,
+  areaCells,
+  areaColor,
+  cellCorners,
+  mapAreas,
+  zoneRuleText,
+  addArea,
+  areaAt,
+  removeArea,
+  setAreaFound,
+  type NewAreaShape,
+  addDrawingSheet,
+  addStroke,
+  mapSheets,
+  removeStroke,
+  setSheetGmOnly,
+  strokeAt,
+  strokePath,
+  type MapStroke,
+  revealView,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
-import type { Cell, DoorState, Entity, Frame, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
-import { Api, type GespieltZeile, type KartenKontext } from '../kern/api';
+import type { Cell, DoorState, Entity, Frame, GridGeometry, GridPatch, GridShape, LightLevel, MapMarker, MapRules, MapWall, PlanStep, Pt, RevealShape, Size, WallKind } from '@nw/model';
+import { Api, type GespieltZeile, type KartenKontext, type SizeChoice } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Vorschau } from '../artikel/vorschau';
 import { Kurzansicht } from '../kern/kurzansicht';
@@ -204,6 +225,10 @@ export interface Planung {
   steps: readonly PlanStep[];
   /** Wer bedroht: das Token (`rel`) und seine Reichweite in Fuss. */
   threats: readonly { id: string; name: string; rel: string; reach: number }[];
+  /** Durch wessen Token der Weg geht, ohne dort zu enden (Verbündete, T-349). */
+  passable?: readonly string[];
+  /** Was Gelände kostet (Zonen der Karte, T-349). */
+  terrain?: readonly PlanTerrain[];
 }
 
 /** Was ein Antippen im Plan ergibt: ein Weg (mit der Bildgrösse, für den Server) oder ein Ziel. */
@@ -219,6 +244,41 @@ const rundText = (n: number): string => (Math.round(n * 100) / 100).toLocaleStri
 const RAD_PAUSE = 90;
 /** Ein Finger ist breiter als ein Mauszeiger: kleiner wird ein Marker nicht. */
 const MARKER_MIN = 26;
+
+/** Ob Zonen und Gebiete gezeigt werden (T-219) — eine Bequemlichkeit je Browser, kein Stand der Karte. */
+const FLAECHEN_SCHLUESSEL = 'nw.karte.flaechen';
+/** Ob das Zoomen auf der Karte bleibt (REQ-132). */
+const FEST_SCHLUESSEL = 'nw.karte.fest';
+function lies(k: string): string | null {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+}
+function schreib(k: string, v: string): void {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* Ohne Speicher gilt es bis zum Neuladen. */
+  }
+}
+/** Ein geschlossener Pfad durch Punkte in Anteilen. */
+const punktePfad = (pts: readonly Pt[]): string => `M${pts.map((p) => `${r5(p.x)} ${r5(p.y)}`).join(' L')} Z`;
+const r5 = (v: number): number => Math.round(v * 100000) / 100000;
+/** Eine Form ohne Gitter als Pfad (T-219): Rechteck, Ellipse, Vieleck, Strich als Linie. */
+function formPfad(s: RevealShape): string {
+  if (s.kind === 'rect') return punktePfad([{ x: s.x, y: s.y }, { x: s.x + s.w, y: s.y }, { x: s.x + s.w, y: s.y + s.h }, { x: s.x, y: s.y + s.h }]);
+  if (s.kind === 'circle') {
+    const pts: Pt[] = [];
+    for (let i = 0; i < 32; i++) {
+      const w = (i / 32) * 2 * Math.PI;
+      pts.push({ x: s.x + s.r * Math.cos(w), y: s.y + (s.r / s.ar) * Math.sin(w) });
+    }
+    return punktePfad(pts);
+  }
+  return punktePfad(s.pts.map(([x, y]) => ({ x, y })));
+}
 
 type Werkzeug =
   | 'keins'
@@ -244,10 +304,20 @@ type Werkzeug =
   | 'rahmen'
   | 'rahmenWeg'
   | 'vieleck'
+  | 'flaecheRechteck'
+  | 'flaecheEllipse'
+  | 'flaecheWeg'
+  | 'flaecheGefunden'
+  | 'stift'
+  | 'stiftLinie'
+  | 'stiftRechteck'
+  | 'stiftEllipse'
+  | 'radierer'
+  | 'sichtAufdecken'
   | 'platzieren'
   | 'notiz';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
-const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen']);
+const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen', 'flaecheRechteck', 'flaecheEllipse', 'stift', 'stiftLinie', 'stiftRechteck', 'stiftEllipse']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
 const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
@@ -265,7 +335,7 @@ const r4 = (v: number): number => Math.round(Math.min(1, Math.max(0, v)) * 10000
 const PINSEL = [1, 2, 4, 8] as const;
 
 /** Die Gruppen der Werkzeugleiste (T-203). */
-type Gruppe = 'auswahl' | 'zug' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'unterkarten' | 'notizen' | 'zeichnen';
+type Gruppe = 'auswahl' | 'zug' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'unterkarten' | 'flaechen' | 'notizen' | 'zeichnen';
 interface GruppenDef {
   key: Gruppe;
   label: string;
@@ -305,9 +375,12 @@ const GRUPPEN: readonly GruppenDef[] = [
   { key: 'gitter', label: 'Grid', title: 'Set the grid on the map: origin, square size, shape', sym: '#', taste: 'G', leitung: true, braucht: ['grid'] },
   /* **Unterkarten** (T-320): einen Rahmen ziehen, die Karte wählen, in die man dort hineinzoomt. */
   { key: 'unterkarten', label: 'Sub-maps', title: 'Link a map to a frame on this one, to zoom into it', sym: '⊡', taste: 'K', leitung: true, braucht: ['frames'] },
+  /* **Zonen und Gebiete ziehen** (T-219, REQ-193): Rechteck, Ellipse oder Vieleck, auf eine Zonenart oder eine Fraktion. Da, wo Wände, Unterkarten oder Marker sind — auf Kampf- wie auf Landkarten. */
+  { key: 'flaechen', label: 'Zones', title: 'Zones (difficult terrain, darkness, traps) and territories of factions: draw them on the map', sym: '▦', taste: 'Z', leitung: true, braucht: ['walls', 'frames', 'markers'] },
   /* **Notizen** (T-214, E-070 a): eine Notiz ist ein Artikel `Note`, auf der Karte ein Marker auf sie. */
   { key: 'notizen', label: 'Notes', title: 'Notes on the map: tap where one goes, for the GM or the players', sym: '✎', taste: 'N', leitung: true, braucht: ['markers'] },
-  { key: 'zeichnen', label: 'Draw', title: 'Draw on the map', sym: '✐', taste: 'D', leitung: true, spaeter: '—' },
+  /* **Zeichnen** (T-219, REQ-142): Striche auf einer eigenen Zeichenebene (ein Blatt ohne Bild). */
+  { key: 'zeichnen', label: 'Draw', title: 'Draw on the map: pen, line, rectangle, ellipse — on a drawing layer of its own', sym: '✐', taste: 'D', leitung: true, braucht: ['walls', 'frames', 'markers'] },
 ];
 
 interface Zeiger {
@@ -356,9 +429,19 @@ interface Zeiger {
             <span aria-live="polite">{{ prozent() }}%</span>
             <button type="button" (click)="stufe(1)" aria-label="Zoom in" title="Zoom in — a sub-map that fills the view is entered">+</button>
             <button type="button" (click)="einpassen()" title="Fit the whole map">Fit</button>
+            <!-- **Kartenebene festhalten** (REQ-132): zoomen ohne in eine Unterkarte oder zur Karte darüber zu wechseln. -->
+            @if (kontext()?.children?.length || kontext()?.parents?.length) {
+              <button type="button" class="fest" [class.an]="ebeneFest()" [attr.aria-pressed]="ebeneFest()" (click)="ebeneFestUm()" aria-label="Lock map level" [title]="ebeneFest() ? 'Map level locked: zooming stays on this map. Click to zoom into sub-maps and out to the map above again.' : 'Lock the map level: zoom without entering a sub-map or leaving for the map above'">
+                <span aria-hidden="true">{{ ebeneFest() ? '🔒' : '🔓' }}</span>
+              </button>
+            }
           </span>
           @if (blaetter().length > 1) {
             <button type="button" [attr.aria-expanded]="blaetterOffen()" (click)="blaetterOffen.set(!blaetterOffen())">Layers</button>
+          }
+          @if (flaechen().length) {
+            <!-- Zonen und Gebiete ein- und ausblenden (T-219) — eine Sache der Sicht, gemerkt im Browser. -->
+            <button type="button" class="flaechen-knopf" [class.an]="flaechenAn()" [attr.aria-pressed]="flaechenAn()" (click)="flaechenUm()" [title]="flaechenAn() ? 'Hide zones and territories: ' + flaechenText() : 'Show zones and territories: ' + flaechenText()">Areas</button>
           }
           <!-- Am Telefon stehen Sicht und Freigabe in einem Menü (T-320): die Karte braucht den Platz. -->
           <!-- Ohne Schreibrecht steht darin nichts (seit T-325 ist Party ein Panel der Leiste). -->
@@ -522,6 +605,74 @@ interface Zeiger {
                 <p class="fehler" role="alert">{{ f }}</p>
               }
               <p class="hint">For every {{ kartenArt() }} map of this campaign; the map's kind is set in its fields. Fog that is on and a map that is not bright keep their tools. All kinds at once under <a [routerLink]="['/artikel', kontext()!.campaign]">Rules &amp; options</a> › Map tools.</p>
+            </div>
+          }
+          @if (aktiv() === 'zeichnen' && darfSchreiben()) {
+            <!-- **Zeichnen** (T-219, REQ-142): auf eine Zeichenebene — ohne Wahl legt der erste Strich eine an. -->
+            <div class="unterleiste" role="toolbar" aria-label="Draw">
+              <label>
+                Layer
+                <select (change)="zeichenBlatt.set($any($event.target).value || null)" aria-label="Drawing layer">
+                  <option value="" [selected]="!zeichenBlattJetzt()">new drawing layer</option>
+                  @for (b of zeichenBlaetter(); track b.id) {
+                    <option [value]="b.id" [selected]="zeichenBlattJetzt() === b.id">{{ b.name }}{{ b.gmOnly ? ' (GM)' : '' }}</option>
+                  }
+                </select>
+              </label>
+              @for (z of STIFTE; track z.key) {
+                <button type="button" [class.an]="werkzeug() === z.key" [attr.aria-pressed]="werkzeug() === z.key" (click)="waehle(z.key)" [title]="z.title">{{ z.label }}</button>
+              }
+              <label title="Colour of the next stroke">
+                <input type="color" [value]="stiftFarbe()" (input)="stiftFarbe.set($any($event.target).value)" aria-label="Pen colour" />
+              </label>
+              <label>
+                Width
+                <select (change)="stiftBreite.set(+$any($event.target).value)" aria-label="Pen width">
+                  @for (b of STIFT_BREITEN; track b.wert) {
+                    <option [value]="b.wert" [selected]="stiftBreite() === b.wert">{{ b.label }}</option>
+                  }
+                </select>
+              </label>
+              <button type="button" [class.an]="werkzeug() === 'radierer'" [attr.aria-pressed]="werkzeug() === 'radierer'" (click)="waehle('radierer')" title="Tap a stroke to erase it">Erase</button>
+              @if (zeichenBlattJetzt(); as bid) {
+                <label title="Only the GM sees this layer; players never get it">
+                  <input type="checkbox" [checked]="zeichenBlattLeitung()" (change)="zeichenBlattLeitungSetzen(bid, $any($event.target).checked)" />
+                  GM only
+                </label>
+              }
+            </div>
+          }
+          @if (aktiv() === 'flaechen' && darfSchreiben()) {
+            <!-- **Zonen und Gebiete ziehen** (T-219): erst wählen, wofür die Fläche steht, dann die Form. -->
+            <div class="unterleiste" role="toolbar" aria-label="Zones">
+              <label>
+                For
+                <select (change)="flaecheZiel.set($any($event.target).value || null)" aria-label="What the area stands for">
+                  <option value="" [selected]="!flaecheZiel()">choose a zone kind or faction…</option>
+                  @if (flaecheWahl().zonen.length) {
+                    <optgroup label="Zone kinds">
+                      @for (z of flaecheWahl().zonen; track z.id) {
+                        <option [value]="'zone:' + z.id" [selected]="flaecheZiel() === 'zone:' + z.id">{{ z.name }}</option>
+                      }
+                    </optgroup>
+                  }
+                  @if (flaecheWahl().gebiete.length) {
+                    <optgroup label="Territory of">
+                      @for (z of flaecheWahl().gebiete; track z.id) {
+                        <option [value]="'territory:' + z.id" [selected]="flaecheZiel() === 'territory:' + z.id">{{ z.name }}</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+              </label>
+              <button type="button" [disabled]="!flaecheZiel()" [class.an]="werkzeug() === 'flaecheRechteck'" [attr.aria-pressed]="werkzeug() === 'flaecheRechteck'" (click)="waehle('flaecheRechteck')" title="Drag a rectangle">Rectangle</button>
+              <button type="button" [disabled]="!flaecheZiel()" [class.an]="werkzeug() === 'flaecheEllipse'" [attr.aria-pressed]="werkzeug() === 'flaecheEllipse'" (click)="waehle('flaecheEllipse')" title="Drag the box of an ellipse or circle">Ellipse</button>
+              <button type="button" [disabled]="!flaecheZiel()" [class.an]="werkzeug() === 'vieleck' && vieleckFuer()?.art === 'flaeche'" [attr.aria-pressed]="werkzeug() === 'vieleck' && vieleckFuer()?.art === 'flaeche'" (click)="vieleckBeginnen({ art: 'flaeche' })" title="Tap the corners of the area">Polygon</button>
+              <button type="button" [class.an]="werkzeug() === 'flaecheGefunden'" [attr.aria-pressed]="werkzeug() === 'flaecheGefunden'" (click)="waehle('flaecheGefunden')" title="Tap a hidden zone to mark it found — players see it there from then on; tap again to hide it">Found</button>
+              <button type="button" [class.an]="werkzeug() === 'flaecheWeg'" [attr.aria-pressed]="werkzeug() === 'flaecheWeg'" (click)="waehle('flaecheWeg')" title="Tap a zone or territory to remove it; the zone kind or faction stays">Remove</button>
+              @if (flaecheFehler(); as f) {
+                <span class="fehler" role="alert">{{ f }}</span>
+              }
             </div>
           }
           @if (aktiv() === 'unterkarten' && darfSchreiben()) {
@@ -750,6 +901,8 @@ interface Zeiger {
                 </select>
               </label>
               <button type="button" [class.an]="werkzeug() === 'zudecken'" [attr.aria-pressed]="werkzeug() === 'zudecken'" (click)="waehle('zudecken')" title="Drag a rectangle: what lies in it is covered again">Hide</button>
+              <!-- **Sicht aufdecken** (T-219): was ein Token von seinem Platz aus sieht — Wände, Licht und Dunkelsicht gerechnet wie beim Zug. -->
+              <button type="button" [class.an]="werkzeug() === 'sichtAufdecken'" [attr.aria-pressed]="werkzeug() === 'sichtAufdecken'" (click)="waehle('sichtAufdecken')" title="Tap a token: reveal what it sees from where it stands — up to walls, in the dark only its darkvision and the lights it sees">Reveal sight</button>
               <label title="Moving a token on a fogged map reveals the way it went. The campaign sets the default (Rules &amp; options); this map may say otherwise.">
                 Reveal along moves
                 <select (change)="pfadAufdeckenSetzen($any($event.target).value)" aria-label="Reveal along moves on this map">
@@ -1143,18 +1296,36 @@ interface Zeiger {
                       (error)="bildFehlt.set(true)"
                     />
                   } @else {
-                    <img
-                      class="blatt"
-                      [src]="adresse(s.image)"
-                      alt=""
-                      [style.opacity]="s.opacity"
-                      draggable="false"
-                      (load)="ohneGrund() && geladen($event)"
-                    />
+                    @if (s.image) {
+                      <img
+                        class="blatt"
+                        [src]="adresse(s.image)"
+                        alt=""
+                        [style.opacity]="s.opacity"
+                        draggable="false"
+                        (load)="ohneGrund() && geladen($event)"
+                      />
+                    }
+                    @if (s.strokes.length) {
+                      <!-- **Die Zeichenebene** (T-219, REQ-142): gleiche Achsen, damit ein Strich rund bleibt. -->
+                      <svg class="striche" [attr.viewBox]="'0 0 1 ' + seitenverhaeltnis()" preserveAspectRatio="none" aria-hidden="true" [style.opacity]="s.opacity" [attr.data-sheet]="s.id">
+                        @for (st of s.strokes; track st.id) {
+                          <path class="strich" [attr.d]="strichPfad(st)" [style.stroke]="st.color" [style.stroke-width]="st.width" />
+                        }
+                      </svg>
+                    }
                   }
                 }
                 @if (gitter(); as g) {
                   <div class="gitter" aria-hidden="true" [style.background-image]="g.bild" [style.background-size]="g.groesse" [style.background-position]="g.lage"></div>
+                }
+                @if (flaechenAn() && flaechen().length) {
+                  <!-- **Zonen und Gebiete** (T-219, REQ-193): aufs Gitter gerastert, über dem Bild und unter den Markern. -->
+                  <svg class="flaechen" viewBox="0 0 1 1" preserveAspectRatio="none" role="img" [attr.aria-label]="flaechenText()">
+                    @for (f of flaechen(); track f.id) {
+                      <path class="flaeche" [class.gebiet]="f.type === 'territory'" [class.versteckt]="f.versteckt" [attr.data-name]="f.name" [attr.d]="f.d" [style.fill]="f.farbe" [style.fill-opacity]="f.deckkraft" [style.stroke]="f.farbe" vector-effect="non-scaling-stroke" />
+                    }
+                  </svg>
                 }
                 @for (k of rahmen(); track k.id) {
                   @if (k.raster; as r) {
@@ -1316,6 +1487,11 @@ interface Zeiger {
                     (click)="tuerKlick(t)"
                   ></button>
                 }
+                @if (stiftVorschau(); as sv) {
+                  <svg class="striche vorschau-strich" [attr.viewBox]="'0 0 1 ' + seitenverhaeltnis()" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="strich" [attr.d]="sv.d" [style.stroke]="sv.color" [style.stroke-width]="sv.width" />
+                  </svg>
+                }
                 @if (vorschau(); as v) {
                   <div class="vorschau" [class.zu]="v.zu" [style.left.%]="v.x * 100" [style.top.%]="v.y * 100" [style.width.%]="v.w * 100" [style.height.%]="v.h * 100"></div>
                 }
@@ -1330,7 +1506,7 @@ interface Zeiger {
                 @if (planBild(); as pb) {
                   <svg class="plan" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
                     @for (c of pb.reach; track c.k) {
-                      <rect class="reich" [attr.x]="c.x" [attr.y]="c.y" [attr.width]="c.w" [attr.height]="c.h" />
+                      <rect class="reich" [style.fill]="c.zaeh ? ZAEH : null" [attr.x]="c.x" [attr.y]="c.y" [attr.width]="c.w" [attr.height]="c.h" />
                     }
                     @if (pb.ring; as r) {
                       <ellipse class="ring" [attr.cx]="r.cx" [attr.cy]="r.cy" [attr.rx]="r.rx" [attr.ry]="r.ry" vector-effect="non-scaling-stroke" />
@@ -1566,7 +1742,7 @@ interface Zeiger {
                     [title]="m.groesse ? m.titel + ' — ' + m.groesse : m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
-                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : werkzeug() === 'asset' ? assetWaehlen(m) : kurzansicht($event, m.to, m.rel.id)"
+                    (click)="werkzeug() === 'sichtAufdecken' ? sichtAufdecken(m.rel.id) : werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : werkzeug() === 'asset' ? assetWaehlen(m) : kurzansicht($event, m.to, m.rel.id)"
                   >
                     @if (m.kind === 'light') {
                       <span aria-hidden="true">☀</span>
@@ -1603,6 +1779,15 @@ interface Zeiger {
                         <option value="" [selected]="!w.view">as the map ({{ ansichtLabel(w.geerbt) }})</option>
                         @for (v of MARKER_VIEWS; track v.key) {
                           <option [value]="v.key" [selected]="w.view === v.key">{{ v.label }}</option>
+                        }
+                      </select>
+                    }
+                    @if (groessenWahl(w.to); as gw) {
+                      <!-- **Überlappende Grössen-Zustände** (T-428, E-164): die Leitung wählt, welcher gilt. -->
+                      <select class="klein" (change)="groessenQuelleSetzen(w.rel.id, $any($event.target).value)" aria-label="Size effect that applies" title="Several size effects overlap — choose which one sets the token's size">
+                        <option value="" [selected]="!gw.chosen">latest ({{ gw.options[gw.options.length - 1]?.name }})</option>
+                        @for (o of gw.options; track o.id) {
+                          <option [value]="o.id" [selected]="gw.chosen === o.id">{{ o.name }}</option>
                         }
                       </select>
                     }
@@ -1649,6 +1834,8 @@ interface Zeiger {
             (setzen)="einenSetzen($event)"
             (alleSetzen)="blockSetzen($event)"
             (vorbereiten)="blockSetzen($event.ids, $event.encounter)"
+            [vorbereitenFuer]="karte() && nat() ? vorbereitenFuer() : null"
+            (vorbereitet)="vorbereitetFertig()"
           />
         }
       </div>
@@ -1747,6 +1934,18 @@ interface Zeiger {
           Token size — tap a token: it covers {{ groesseWahl() === null ? 'the squares its statblock size needs' : groesseWahl() + ' × ' + groesseWahl() + ' squares' }}.
         } @else if (werkzeug() === 'asset') {
           {{ gewaehltesAsset() ? 'Set the asset above; tap another to switch.' : 'Tap an asset to set it up. Drag one to move it.' }}
+        } @else if (werkzeug() === 'flaecheRechteck' || werkzeug() === 'flaecheEllipse') {
+          {{ werkzeug() === 'flaecheRechteck' ? 'Rectangle' : 'Ellipse' }} — drag over the map; the squares whose centre lies inside belong to {{ flaecheZielName() }}.
+        } @else if (werkzeug() === 'stift' || werkzeug() === 'stiftLinie' || werkzeug() === 'stiftRechteck' || werkzeug() === 'stiftEllipse') {
+          {{ werkzeug() === 'stift' ? 'Pen — draw with the mouse or a finger.' : 'Drag from one corner to the other.' }} Strokes go on {{ zeichenBlattName() }}.
+        } @else if (werkzeug() === 'radierer') {
+          Tap a stroke to erase it.
+        } @else if (werkzeug() === 'sichtAufdecken') {
+          Reveal sight — tap a token: what it sees from where it stands is revealed{{ jeFigur() ? ' for that character' : '' }}.
+        } @else if (werkzeug() === 'flaecheWeg') {
+          Tap a zone or territory to remove it.
+        } @else if (werkzeug() === 'flaecheGefunden') {
+          Tap a hidden zone (dashed) to mark it found — or found again to hide it.
         } @else if (werkzeug() === 'rahmen') {
           Link map — drag a frame over the part of this map, then pick the map you zoom into there.
         } @else if (werkzeug() === 'rahmenWeg') {
@@ -1786,7 +1985,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss', './notizen.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss', './notizen.scss', './flaechen.scss', './zeichnen.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -1957,6 +2156,10 @@ export class Karte {
     const abPlan = inject(Live).onPlan((karte) => {
       if (karte === this.id()) void this.kontextHolen(karte);
     });
+    /* Etwas verpasst (`reset`, T-399): die Karte selbst holt der Bestand, den Kontext diese Seite. */
+    const abNeu = inject(Live).onNeu((was) => {
+      if (was === 'reset') void this.kontextHolen(this.id());
+    });
     /* Das Vollbild verlässt man auch mit Esc des Browsers — gefragt wird darum das Dokument. */
     const vollbildWechsel = () => this.echtesVollbild.set(!!document.fullscreenElement?.contains(this.host.nativeElement));
     document.addEventListener('fullscreenchange', vollbildWechsel);
@@ -1964,6 +2167,7 @@ export class Karte {
       document.removeEventListener('fullscreenchange', vollbildWechsel);
       ab();
       abPlan();
+      abNeu();
       this.kontextLauf += 1;
     });
   }
@@ -2125,6 +2329,50 @@ export class Karte {
     const s = this.einst();
     return s ? gridGeometry(s, this.nat()) : null;
   });
+  /**
+   * **Zonen und Gebiete** (T-219, REQ-193) dieser Ebene, wie sie gezeichnet
+   * werden: mit Gitter die Felder, deren Mitte in der Form liegt
+   * (`areaCells`, dieselbe Regel wie das Gelände im Zugplan), ohne Gitter
+   * die Form selbst. Was hier ankommt, hat der Server gesiebt (`redactMap`);
+   * in „View as“ rechnet `angezeigt` dasselbe als Vorschau. Name und Regel
+   * kommen aus dem Kontext (`areas`) — neu, wenn die Karte über den
+   * Live-Kanal neu kommt (T-399).
+   */
+  protected readonly flaechen = computed(() => {
+    const e = this.angezeigt();
+    if (!e) return [];
+    const geo = this.geoJetzt();
+    const info = this.kontext()?.areas ?? {};
+    const leitung = !this.spielersicht() && this.darfSchreiben();
+    return mapAreas(e).map((a) => {
+      const i = info[a.to];
+      const rule = i?.rule ?? {};
+      const zellen = geo ? areaCells(geo, a.shape) : null;
+      const d = zellen ? zellen.map((c) => punktePfad(cellCorners(geo!, c))).join(' ') : formPfad(a.shape);
+      const regel = a.type === 'zone' ? zoneRuleText(rule) : '';
+      const name = i?.name ?? (a.type === 'zone' ? 'Zone' : 'Territory');
+      return {
+        id: a.id,
+        type: a.type,
+        name: regel ? `${name} (${regel})` : name,
+        d,
+        farbe: areaColor(a, rule),
+        deckkraft: a.opacity,
+        /* Eine versteckte Zone, die noch niemand fand — nur die Leitung hat sie. */
+        versteckt: leitung && !!rule.hidden && !a.found,
+      };
+    });
+  });
+  protected readonly flaechenText = computed(() => this.flaechen().map((f) => f.name).join(', '));
+  private readonly flaechenWahl = signal<boolean>(lies(FLAECHEN_SCHLUESSEL) !== 'off');
+  /* Beim Ziehen stehen sie immer da — sonst zöge man ins Leere. */
+  protected readonly flaechenAn = computed(() => this.flaechenWahl() || this.aktiv() === 'flaechen');
+  protected flaechenUm(): void {
+    const an = !this.flaechenWahl();
+    this.flaechenWahl.set(an);
+    schreib(FLAECHEN_SCHLUESSEL, an ? 'on' : 'off');
+  }
+
   /** Die Flächen der Übergänge auf dieser Ebene, als Punkte für das SVG. Ohne eigene Fläche nur, solange die Karte offen ist. */
   protected readonly uebergangFlaechen = computed(() => {
     const geo = this.geoJetzt();
@@ -2673,6 +2921,18 @@ export class Karte {
     this.zoom.set(neu);
   }
 
+  /**
+   * **Die Kartenebene festhalten** (REQ-132, T-219): Rad, Tasten und
+   * Kneifen zoomen nur, Brotkrumen und Rahmen zum Anklicken bleiben. Eine
+   * Bequemlichkeit je Browser wie „Areas“, kein Stand der Karte.
+   */
+  protected readonly ebeneFest = signal<boolean>(lies(FEST_SCHLUESSEL) === 'on');
+  protected ebeneFestUm(): void {
+    const an = !this.ebeneFest();
+    this.ebeneFest.set(an);
+    schreib(FEST_SCHLUESSEL, an ? 'on' : 'off');
+  }
+
   /** Ein Zoomschritt — hinein in eine Unterkarte, hinaus zur Karte darüber, oder näher. */
   protected stufe(richtung: 1 | -1, fx?: number, fy?: number): void {
     const e = this.karte();
@@ -2689,6 +2949,7 @@ export class Karte {
       nat: this.nat(),
       viewport: this.fenster(),
       ...(visible ? { visible } : {}),
+      locked: this.ebeneFest(),
     });
     if (s.kind === 'zoom') this.zoomenAuf(s.zoom, fx, fy);
     else this.gehe(s.id);
@@ -2783,7 +3044,8 @@ export class Karte {
         {
           ...k,
           show,
-          nah: frameNear(k.frame, nat, zoom, f, k.near ?? MAP_NEAR),
+          /* Festgehalten (REQ-132) sagt kein Rahmen „zoom in to enter“ an — er wird nicht betreten. */
+          nah: !this.ebeneFest() && frameNear(k.frame, nat, zoom, f, k.near ?? MAP_NEAR),
           punkte: form ? form.map(([x, y]) => `${x},${y}`).join(' ') : null,
           mitte: linkCentre({ frame: k.frame, area: k.area ?? null }),
           raster: bearbeiten ? this.unterRaster(k) : null,
@@ -2975,7 +3237,7 @@ export class Karte {
         /* In der Zielwahl: in Reichweite (true), ausser Reichweite (false). */
         ziel:
           plan?.mode === 'target' && plan.rel !== m.rel.id && pr && plan.range !== null && m.kind !== 'scenery'
-            ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) <= plan.range
+            ? this.planWeite(pr, m) <= plan.range
             : null,
         etikett: plan && plan.rel !== m.rel.id ? (plan.labels[m.to] ?? '') : '',
         /* Wer leuchtet, sieht die Leitung am Marker (T-320) — auch auf einer hellen Karte. */
@@ -3080,7 +3342,7 @@ export class Karte {
       if (!m) return;
       const pr = this.planRaster();
       const nat = this.nat();
-      this.planTipp.emit({ kind: 'target', id, name: m.name, feet: pr ? feetBetween(pr.geo, cellPoint(pr.geo, pr.start), m) : null, ...(nat ? { nat } : {}) });
+      this.planTipp.emit({ kind: 'target', id, name: m.name, feet: pr ? this.planWeite(pr, m) : null, ...(nat ? { nat } : {}) });
       return;
     }
     /* Ein freies Licht hat keinen Artikel (T-320): antippen wählt es nur. */
@@ -3123,6 +3385,19 @@ export class Karte {
   protected markerAnsichtSetzen(relId: string, v: string): void {
     const e = this.karte();
     if (e) void this.schreiben(withMarkerView(e, relId, isMarkerView(v) ? v : null));
+  }
+
+  /**
+   * **Welcher Grössen-Zustand gilt** (T-428, E-164): überlappen sich
+   * mehrere, wählt die Leitung am Token (`props.sizeSource`); leer heisst
+   * „der zuletzt hinzugekommene".
+   */
+  protected groessenWahl(to: string): SizeChoice | null {
+    return this.kontext()?.targets[to]?.sizeChoice ?? null;
+  }
+  protected groessenQuelleSetzen(relId: string, v: string): void {
+    const e = this.karte();
+    if (e) void this.schreiben(setMarkerSizeSource(e, relId, v || null));
   }
 
   private nachZug = false;
@@ -3272,14 +3547,15 @@ export class Karte {
     if (st && st.pointer === ev.pointerId) {
       const pt = this.punkt(ev);
       if (!pt) return;
-      if (this.werkzeug() !== 'pinsel') {
+      if (this.werkzeug() !== 'pinsel' && this.werkzeug() !== 'stift') {
         this.strich.set({ ...st, pts: [st.pts[0]!, pt] });
         return;
       }
       /* Ein Punkt je halbem Halbmesser: genug für eine runde Spur, und
-         ein langer Strich bleibt eine kurze Liste. */
+         ein langer Strich bleibt eine kurze Liste. Der Stift (T-219) nimmt
+         dichter auf — eine Schrift ist feiner als ein Nebelpinsel. */
       const letzter = st.pts.at(-1)!;
-      const r = this.pinselRadius();
+      const r = this.werkzeug() === 'stift' ? Math.max(this.stiftBreite(), 0.003) : this.pinselRadius();
       if (Math.hypot(pt.x - letzter.x, (pt.y - letzter.y) * this.seitenverhaeltnis()) >= r / 2) {
         this.strich.set({ ...st, pts: [...st.pts, pt] });
       }
@@ -3422,7 +3698,8 @@ export class Karte {
     const k = this.kneifen;
     this.kneifen = null;
     this.zeiger.clear();
-    if (!k) return;
+    /* Festgehalten (REQ-132): Kneifen zoomt nur. */
+    if (!k || this.ebeneFest()) return;
     if (this.kneifenZiel > k.z0) {
       const visible = this.sichtbar();
       const focus = this.fokus();
@@ -3608,6 +3885,7 @@ export class Karte {
     this.aktiv.set(neu);
     this.waehle('keins');
     this.werkzeug.set(neu === 'messen' ? 'messen' : neu === 'notizen' ? 'notiz' : 'keins');
+    if (neu === 'flaechen') void this.flaecheLaden();
   }
 
   protected readonly werkzeug = signal<Werkzeug>('keins');
@@ -3711,6 +3989,17 @@ export class Karte {
     } else if (this.werkzeug() === 'vieleck') {
       /* Einrasten wie an den Wänden, dazu an die Ecken der übrigen Formen. */
       this.vieleckTippen(this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse', undefined, this.vieleckFang()).pt);
+    } else if (this.werkzeug() === 'radierer') {
+      const e = this.karte();
+      const tol = SPERRE_TREFFER / Math.max(1, this.breite());
+      const s = e ? strokeAt(e, pt, this.seitenverhaeltnis(), tol) : null;
+      if (e && s) void this.schreiben(removeStroke(e, s.sheet, s.stroke));
+    } else if (this.werkzeug() === 'flaecheWeg' || this.werkzeug() === 'flaecheGefunden') {
+      const e = this.karte();
+      const a = e ? areaAt(e, pt) : null;
+      if (!e || !a) return;
+      if (this.werkzeug() === 'flaecheWeg') void this.schreiben(removeArea(e, a.id));
+      else if (a.type === 'zone') void this.schreiben(setAreaFound(e, a.id, !a.found));
     } else if (this.werkzeug() === 'schloss') {
       const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
       if (t) void this.tuerKlick(t);
@@ -3795,13 +4084,29 @@ export class Karte {
     const geo = gridGeometry(s, this.nat());
     if (!geo) return null;
     const ms = markersOf(e);
-    const grid = planGrid(geo, ms, plan.rel ?? '', blockingWalls(e, this.nat()));
+    const grid = planGrid(geo, ms, plan.rel ?? '', blockingWalls(e, this.nat()), { passable: plan.passable ?? [], terrain: plan.terrain ?? [] });
     if (!grid) return null;
     const ich = ms.find((m) => m.rel.id === plan.rel);
     const token = ich ? tokenCell(geo, grid, ich) : null;
     const start = plan.from ?? token;
     return start ? { geo, grid, start, token } : null;
   });
+
+  /**
+   * **Wie weit ein Ziel steht** (T-391): vom Ende der geplanten Bewegung
+   * (`pr.start`) bis zum nächsten Feld, das sein Token belegt — ein 3 × 3-
+   * Drache, den die Figur berührt, steht 5 ft weit, nicht 10 ft bis zur
+   * Mitte. Steht die Figur noch, zählt auch ihr eigener Platz. Dieselbe
+   * Rechnung wie der Server (`abstandImPlan`).
+   */
+  private planWeite(pr: { geo: GridGeometry; start: Cell; token: Cell | null }, m: MapMarker): number {
+    const plan = this.planJetzt();
+    /* Roh aus der Karte, nicht `marker()`: das ruft diese Rechnung selbst auf. */
+    const ich = plan ? markersOf(this.angezeigt() ?? ({} as Entity)).find((x) => x.rel.id === plan.rel) : undefined;
+    const steht = !!ich && !!pr.token && pr.token.x === pr.start.x && pr.token.y === pr.start.y;
+    const von = steht ? ich! : cellPoint(pr.geo, pr.start);
+    return feetBetweenTokens(pr.geo, von, steht ? this.tokenPlatz(ich!.to, ich!.ownSize) : 1, m, this.tokenPlatz(m.to, m.ownSize));
+  }
 
   /** Wohin das Tempo reicht, als Felder — einmal je Plan, nicht je Zeichnen. */
   private readonly planReich = computed(() => {
@@ -3810,6 +4115,9 @@ export class Karte {
     if (!plan || plan.mode !== 'move' || !pr || plan.budget <= 0) return {} as Record<string, number>;
     return planReach(pr.grid, pr.start, plan.budget);
   });
+
+  /** Die Farbe schwierigen Geländes im Bereich (T-349); am Element, weil das Stylesheet der Karte am Budget steht. */
+  protected readonly ZAEH = 'rgba(150, 110, 60, 0.32)';
 
   private readonly planZeiger = signal<Pt | null>(null);
 
@@ -3832,9 +4140,11 @@ export class Karte {
     const { geo } = pr;
     const fw = geo.size / geo.w;
     const fh = geo.size / geo.h;
+    /* Schwieriges Gelände ist im Bereich erdfarben gezeichnet (T-349). */
+    const zaeh = pr.grid.cost ?? {};
     const reach = Object.keys(this.planReich()).map((k) => {
       const [x, y] = k.split(',').map(Number) as [number, number];
-      return { k, x: (geo.ox + x * geo.size) / geo.w, y: (geo.oy + y * geo.size) / geo.h, w: fw, h: fh };
+      return { k, x: (geo.ox + x * geo.size) / geo.w, y: (geo.oy + y * geo.size) / geo.h, w: fw, h: fh, zaeh: (zaeh[k] ?? 1) > 1 };
     });
     const linie = (cells: readonly Cell[]) =>
       cells
@@ -3991,11 +4301,17 @@ export class Karte {
     const gross = (w: string | null | undefined) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : '');
     const felder = `${g.span} × ${g.span}`;
     if (g.from === 'token') return `${felder} · set on token`;
+    /* Überlappen sich Grössen-Zustände (T-428): welche übergangen sind, und ohne Wahl der Hinweis. */
+    const wahl = z?.sizeChoice;
+    const dazu = [
+      z?.sizePassed?.length ? `over ${z.sizePassed.join(', ')}` : '',
+      wahl && !wahl.chosen ? `${wahl.options.length} size effects — choose` : '',
+    ].filter(Boolean).map((t) => ` · ${t}`).join('');
     if (z?.sizeFrom === 'effects') {
       const via = z.sizeVia?.length ? z.sizeVia.join(', ') : 'an effect';
-      return `${gross(z.size)} ${felder} · ${via}${z.baseSize ? ` (statblock ${gross(z.baseSize)})` : ''}`;
+      return `${gross(z.size)} ${felder} · ${via}${z.baseSize ? ` (statblock ${gross(z.baseSize)})` : ''}${dazu}`;
     }
-    if (g.from === 'statblock') return `${gross(g.size)} ${felder} · statblock`;
+    if (g.from === 'statblock') return `${gross(g.size)} ${felder} · statblock${dazu}`;
     return `${felder} · no size on the statblock`;
   }
 
@@ -4075,7 +4391,21 @@ export class Karte {
    * Panel klappt aus der Leiste auf.
    */
   private readonly seiteWahl = signal<boolean | null>(null);
-  protected readonly seiteOffen = computed(() => this.seiteWahl() ?? false);
+  /**
+   * **„Prepare on map“ vom Tracker** (T-333): `?prepare=<Begegnung>` öffnet
+   * die Seitenleiste, und die setzt die Beteiligten einmal verborgen
+   * (`blockSetzen` mit Begegnung, wie „Prepare n“). Danach fällt der
+   * Parameter weg — ein Neuladen setzt nicht ein zweites Mal.
+   */
+  protected readonly vorbereitenFuer = signal<string | null>(inject(ActivatedRoute).snapshot.queryParamMap.get('prepare'));
+  protected vorbereitetFertig(): void {
+    if (!this.vorbereitenFuer()) return;
+    /* Die Leiste bleibt offen: dort steht jetzt „n of n on this map“. */
+    if (this.seiteWahl() === null) this.seiteWahl.set(true);
+    this.vorbereitenFuer.set(null);
+    void this.router.navigate([], { queryParams: { prepare: null }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+  protected readonly seiteOffen = computed(() => this.seiteWahl() ?? !!this.vorbereitenFuer());
   protected seiteUm(): void {
     this.seiteWahl.set(!this.seiteOffen());
   }
@@ -4478,7 +4808,7 @@ export class Karte {
   private readonly strich = signal<{ pointer: number; pts: Pt[] } | null>(null);
 
   /** Höhe durch Breite des Kartenbildes; ohne Mass 1. */
-  private readonly seitenverhaeltnis = computed(() => {
+  protected readonly seitenverhaeltnis = computed(() => {
     const n = this.nat();
     return n && n.w > 0 ? n.h / n.w : 1;
   });
@@ -4513,7 +4843,7 @@ export class Karte {
   protected readonly vorschau = computed(() => {
     const st = this.strich();
     const w = this.werkzeug();
-    if (!st || st.pts.length < 2 || w === 'pinsel') return null;
+    if (!st || st.pts.length < 2 || w === 'pinsel' || w.startsWith('stift')) return null;
     return { ...this.kasten(st.pts[0]!, st.pts[1]!), zu: w === 'zudecken' };
   });
 
@@ -4525,11 +4855,24 @@ export class Karte {
       void this.schreiben(revealArea(e, this.strichForm(pts, this.fuerWen())));
       return;
     }
+    if (w === 'stift' || w === 'stiftLinie' || w === 'stiftRechteck' || w === 'stiftEllipse') {
+      this.strichAnlegen(w, pts);
+      return;
+    }
     if (pts.length < 2) return;
     const k = this.kasten(pts[0]!, pts[1]!);
     /* Ein Antippen ist kein Rechteck. */
     if (k.w < 0.005 && k.h < 0.005) return;
     const fuer = this.fuerWen();
+    if (w === 'flaecheRechteck') {
+      this.flaecheAnlegen({ kind: 'rect', ...k });
+      return;
+    }
+    if (w === 'flaecheEllipse') {
+      const umriss = shapeOutline('ellipse', [pts[0]!, pts[1]!]).pts;
+      this.flaecheAnlegen({ kind: 'poly', pts: umriss.map((p) => [p.x, p.y] as [number, number]) });
+      return;
+    }
     if (w === 'rahmen') {
       this.rahmenNeu.set(k);
       this.rahmenZiel.set(null);
@@ -4538,6 +4881,114 @@ export class Karte {
     }
     if (w === 'aufdecken') void this.schreiben(revealArea(e, { id: `s-${crypto.randomUUID()}`, kind: 'rect', ...k, ...(fuer ? { for: fuer } : {}) }));
     else if (w === 'zudecken') void this.schreiben(coverArea(e, k));
+  }
+
+  // ---------------------------------------------------- Zeichnen (T-219)
+
+  protected readonly STIFTE: readonly { key: Werkzeug; label: string; title: string }[] = [
+    { key: 'stift', label: 'Pen', title: 'Draw freehand' },
+    { key: 'stiftLinie', label: 'Line', title: 'Drag a straight line' },
+    { key: 'stiftRechteck', label: 'Rectangle', title: 'Drag a rectangle' },
+    { key: 'stiftEllipse', label: 'Ellipse', title: 'Drag the box of an ellipse or circle' },
+  ];
+  /** Breiten in Anteilen der Kartenbreite — sie wachsen beim Zoomen mit wie das Bild. */
+  protected readonly STIFT_BREITEN = [
+    { label: 'Thin', wert: 0.002 },
+    { label: 'Medium', wert: 0.004 },
+    { label: 'Thick', wert: 0.009 },
+  ];
+  protected readonly stiftFarbe = signal('#8b1a1a');
+  protected readonly stiftBreite = signal(0.004);
+  /** Die gewählte Zeichenebene; `null` heisst: der nächste Strich legt eine an. */
+  protected readonly zeichenBlatt = signal<string | null>(null);
+  /** Die Blätter ohne Bild — darauf wird gezeichnet. Eines mit Bild ist ein Bild und keine Zeichnung. */
+  protected readonly zeichenBlaetter = computed(() => {
+    const e = this.karte();
+    return e ? mapSheets(e).filter((s) => !s.base && !s.image) : [];
+  });
+  protected readonly zeichenBlattJetzt = computed(() => {
+    const w = this.zeichenBlatt();
+    const alle = this.zeichenBlaetter();
+    return alle.some((b) => b.id === w) ? w : (alle.at(-1)?.id ?? null);
+  });
+  protected readonly zeichenBlattName = computed(() => this.zeichenBlaetter().find((b) => b.id === this.zeichenBlattJetzt())?.name ?? 'a new drawing layer');
+  protected readonly zeichenBlattLeitung = computed(() => this.zeichenBlaetter().find((b) => b.id === this.zeichenBlattJetzt())?.gmOnly ?? false);
+  protected zeichenBlattLeitungSetzen(id: string, an: boolean): void {
+    const e = this.karte();
+    if (e) void this.schreiben(setSheetGmOnly(e, id, an));
+  }
+  protected strichPfad(s: MapStroke): string {
+    return strokePath(s, this.seitenverhaeltnis());
+  }
+  /** Was der Stift gerade zieht. */
+  protected readonly stiftVorschau = computed(() => {
+    const st = this.strich();
+    const w = this.werkzeug();
+    if (!st || st.pts.length < 2 || !(w === 'stift' || w === 'stiftLinie' || w === 'stiftRechteck' || w === 'stiftEllipse')) return null;
+    const kind = w === 'stift' ? 'path' : w === 'stiftLinie' ? 'line' : w === 'stiftRechteck' ? 'rect' : 'ellipse';
+    const pts = st.pts.map((p) => [p.x, p.y] as [number, number]);
+    return { d: strokePath({ id: '', kind, pts, color: '', width: 0 }, this.seitenverhaeltnis()), color: this.stiftFarbe(), width: this.stiftBreite() };
+  });
+  private strichAnlegen(w: Werkzeug, pts: Pt[]): void {
+    let e = this.karte();
+    if (!e || !pts.length) return;
+    const kind = w === 'stift' ? 'path' : w === 'stiftLinie' ? 'line' : w === 'stiftRechteck' ? 'rect' : 'ellipse';
+    if (kind !== 'path') {
+      if (pts.length < 2) return;
+      const [a, b] = pts as [Pt, Pt];
+      /* Ein Antippen ist keine Form. */
+      if (Math.abs(a.x - b.x) < 0.003 && Math.abs(a.y - b.y) < 0.003) return;
+    }
+    let blatt = this.zeichenBlattJetzt();
+    if (!blatt) {
+      const neu = addDrawingSheet(e, `Drawing ${this.zeichenBlaetter().length + 1}`, `sheet-${crypto.randomUUID().slice(0, 8)}`);
+      e = neu.map;
+      blatt = neu.id;
+      this.zeichenBlatt.set(blatt);
+    }
+    const roh = kind === 'path' ? pts : [pts[0]!, pts.at(-1)!];
+    void this.schreiben(
+      addStroke(e, blatt, { id: `st-${crypto.randomUUID().slice(0, 8)}`, kind, pts: roh.map((p) => [p.x, p.y] as [number, number]), color: this.stiftFarbe(), width: this.stiftBreite() }),
+    );
+  }
+
+  // ------------------------------------------------- Zonen und Gebiete (T-219)
+
+  /** Wofür die nächste Fläche steht: `zone:<id>` oder `territory:<id>`. */
+  protected readonly flaecheZiel = signal<string | null>(null);
+  protected readonly flaecheFehler = signal<string | null>(null);
+  /** Die Zonenarten und Fraktionen, die die Leitung sieht — geholt, sobald die Gruppe aufgeht. */
+  protected readonly flaecheWahl = signal<{ zonen: { id: string; name: string }[]; gebiete: { id: string; name: string }[] }>({ zonen: [], gebiete: [] });
+  private flaecheGeladen = false;
+  protected readonly flaecheZielName = computed(() => {
+    const z = this.flaecheZiel();
+    if (!z) return '';
+    const id = z.slice(z.indexOf(':') + 1);
+    const w = this.flaecheWahl();
+    return [...w.zonen, ...w.gebiete].find((x) => x.id === id)?.name ?? '';
+  });
+  private async flaecheLaden(): Promise<void> {
+    if (this.flaecheGeladen) return;
+    this.flaecheGeladen = true;
+    try {
+      const [z, g] = await Promise.all([
+        this.api.list({ type: 'ZoneKind', limit: 500, sort: 'name' }),
+        this.api.list({ type: 'Faction', limit: 500, sort: 'name' }),
+      ]);
+      this.flaecheWahl.set({ zonen: z.rows.map((r) => ({ id: r.id, name: r.name })), gebiete: g.rows.map((r) => ({ id: r.id, name: r.name })) });
+    } catch {
+      this.flaecheGeladen = false;
+      this.flaecheFehler.set('The zone kinds and factions could not be loaded.');
+    }
+  }
+  /** Eine Fläche an die gezeigte Ebene — `schreiben` gibt ihr die Ebene (`withFloorView`). */
+  private flaecheAnlegen(shape: NewAreaShape): void {
+    const e = this.karte();
+    const z = this.flaecheZiel();
+    if (!e || !z) return;
+    const i = z.indexOf(':');
+    const type = z.slice(0, i) as 'zone' | 'territory';
+    void this.schreiben(addArea(e, { id: `${this.id()}~${type}-${Date.now().toString(36)}`, type, to: z.slice(i + 1), shape }));
   }
 
   // ------------------------------------------------------- Unterkarten (T-320)
@@ -4657,7 +5108,7 @@ export class Karte {
    */
   protected readonly vieleckPunkte = signal<Pt[]>([]);
   protected readonly vieleckFuer = signal<
-    { art: 'neu' } | { art: 'link'; id: string } | { art: 'uebergang'; relId: string; seite: 'area' | 'toArea' } | null
+    { art: 'neu' } | { art: 'link'; id: string } | { art: 'uebergang'; relId: string; seite: 'area' | 'toArea' } | { art: 'flaeche' } | null
   >(null);
   protected vieleckBeginnen(f: NonNullable<ReturnType<typeof this.vieleckFuer>>): void {
     if (this.werkzeug() === 'vieleck') this.werkzeug.set('keins');
@@ -4715,6 +5166,9 @@ export class Karte {
       this.rahmenNeu.set({ ...b, area: poly });
       this.rahmenZiel.set(null);
       void this.kartenLaden();
+    } else if (f.art === 'flaeche') {
+      this.aktiv.set('flaechen');
+      this.flaecheAnlegen({ kind: 'poly', pts: poly });
     } else if (f.art === 'link') {
       const l = this.verknuepfungen().find((k) => k.id === f.id);
       if (l) void this.linkSetzen({ vorlage: l.template ?? l.id }, { area: poly });
@@ -4834,6 +5288,28 @@ export class Karte {
    * Token tippt, setzt eine Lichtquelle ohne Artikel (`addLight`) — vorher
    * tat das nichts, und ein Licht gab es nur an einem Marker.
    */
+  /**
+   * **Sicht aufdecken** (T-219, Rest von T-216): die Leitung tippt ein
+   * Token und deckt auf, was es von seinem Platz aus sieht (`revealView`,
+   * dieselbe Rechnung wie ein Zug mit „Reveal along moves“). Gilt der
+   * Nebel je Figur, für diese Figur.
+   */
+  protected sichtAufdecken(relId: string): void {
+    const e = this.karte();
+    const n = this.nat();
+    const m = e ? markersOf(e).find((x) => x.rel.id === relId) : undefined;
+    if (!e || !n || !m) {
+      this.hinweis.set(!n ? 'The map image has no size yet — try again when it has loaded.' : 'That token is not on this floor.');
+      return;
+    }
+    const dv = this.kontext()?.darkvision?.[m.to] ?? 0;
+    const neu = revealView(e, m, n, () => `s-${crypto.randomUUID()}`, this.jeFigur() ? m.to : null, dv, this.getragen());
+    if (neu === e) {
+      this.hinweis.set('It sees nothing new from there.');
+      return;
+    }
+    void this.schreiben(neu);
+  }
   private lichtSetzen(pt: Pt): void {
     const e = this.karte();
     const hell = Math.max(0, this.lichtHell());
@@ -5011,6 +5487,8 @@ export class Karte {
     try {
       const r = await this.api.moveToken(this.id(), { rel, to, ...(nat ? { nat } : {}) });
       if (r.proposal) this.hinweis.set(VORSCHLAG_GESENDET);
+      /* Was die Figur unterwegs bemerkt und betritt (T-350). */
+      else if (r.seen?.length) this.hinweis.set(r.seen.join(' '));
       await this.bestand.oeffnen(this.id(), true, false);
       await this.kontextHolen(this.id());
     } catch (err) {
@@ -5077,14 +5555,18 @@ export class Karte {
     this.mangel.set(null);
     this.speichert.set(true);
     let naechstes: Entity | null = e;
+    let basis = untracked(() => this.gespeichert());
     while (naechstes) {
-      const fehler = await this.brett.schreiben(naechstes);
+      /* Wovon die Änderung ausging (T-399): weist der Server ab, führt
+         `Brett.schreiben` zusammen, statt sie wegzuwerfen. */
+      const fehler = await this.brett.schreiben(naechstes, basis);
       this.mangel.set(fehler);
       naechstes = this.wartet;
       this.wartet = null;
       if (naechstes && fehler) naechstes = null;
       const rev = this.gespeichert()?.revision;
       if (naechstes && rev !== undefined) naechstes = { ...naechstes, revision: rev };
+      basis = untracked(() => this.gespeichert());
     }
     this.entwurf.set(null);
     this.speichert.set(false);

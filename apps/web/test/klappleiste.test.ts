@@ -189,3 +189,91 @@ describe('Klappleiste', () => {
     expect(Array.from(el.querySelectorAll('details')).some((d) => d.open)).toBe(false);
   });
 });
+
+/* T-359: Was kein `<details>` ist, aber klappt (ein Kapitel, eine Gruppe im
+   Register), sagt es mit `data-klappbar` und seinem Stand in `data-offen`;
+   die Leiste bittet es mit dem Ereignis `klappen`, und es klappt selbst. */
+describe('klappbare Bereiche ohne <details> (T-359)', () => {
+  function teil(offen: boolean): { el: HTMLElement; bitten: boolean[] } {
+    const el = document.createElement('section');
+    el.setAttribute('data-bereich', '');
+    el.setAttribute('data-klappbar', '');
+    el.setAttribute('data-offen', String(offen));
+    const bitten: boolean[] = [];
+    el.addEventListener('klappen', (e) => {
+      const auf = (e as CustomEvent<boolean>).detail;
+      bitten.push(auf);
+      el.setAttribute('data-offen', String(auf));
+    });
+    return { el, bitten };
+  }
+
+  it('asks a closed one to open and leaves an open one alone', () => {
+    const w = document.createElement('div');
+    const zu = teil(false);
+    const auf = teil(true);
+    w.append(zu.el, auf.el);
+    expect(alleKlappen(w, true)).toBe(1);
+    expect(zu.bitten).toEqual([true]);
+    expect(auf.bitten).toEqual([]);
+    expect(alleKlappen(w, false)).toBe(2);
+  });
+
+  it('skips the sections inside a closed one', () => {
+    const w = document.createElement('div');
+    const zu = teil(false);
+    const innen = document.createElement('h3');
+    innen.setAttribute('data-bereich', '');
+    zu.el.append(innen);
+    w.append(zu.el);
+    expect(bereicheIn(w)).toEqual([zu.el]);
+    zu.el.setAttribute('data-offen', 'true');
+    expect(bereicheIn(w)).toEqual([zu.el, innen]);
+  });
+});
+
+/* T-359: Eine Leiste in einer Leiste — die Leseansicht steht in der
+   Ebenenseite, und beide haben eine. Die Tasten gehören der innersten, in
+   deren Bereich der Fokus steht; sonst sprängen beide. */
+@Component({
+  imports: [Klappleiste],
+  template: `
+    <div class="aussen">
+      <nw-klappleiste id="la" />
+      <details data-bereich id="p"><summary>P</summary></details>
+      <div class="innen">
+        <nw-klappleiste id="li" />
+        <details data-bereich id="q"><summary>Q</summary></details>
+        <details data-bereich id="r"><summary>R</summary></details>
+        <details data-bereich id="s"><summary>S</summary></details>
+      </div>
+    </div>
+  `,
+})
+class Verschachtelt {}
+
+describe('Klappleiste in einer Klappleiste (T-359)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('leaves the keys to the innermost bar around the focus', () => {
+    const f = TestBed.createComponent(Verschachtelt);
+    f.detectChanges();
+    document.body.appendChild(f.nativeElement);
+    const el = f.nativeElement as HTMLElement;
+    for (const l of Array.from(el.querySelectorAll('nw-klappleiste'))) {
+      vi.spyOn(l, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+    }
+    const q = el.querySelector<HTMLDetailsElement>('#q')!;
+    q.querySelector('summary')!.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true }));
+    /* Nur die innere ist gesprungen: von Q nach R, nicht weiter. */
+    expect(document.activeElement).toBe(el.querySelector('#r summary'));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true }));
+    expect(document.activeElement).toBe(q.querySelector('summary'));
+    /* Steht der Fokus ausserhalb der inneren, antwortet die äussere. */
+    el.querySelector<HTMLElement>('#p summary')!.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true }));
+    expect(document.activeElement).toBe(q.querySelector('summary'));
+    f.destroy();
+  });
+});

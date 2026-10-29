@@ -15,13 +15,18 @@
  *
  * Der Klappstand (`offen`) lebt hier und nicht im Baustein: er hält über
  * ein späteres Zeichnen und über einen Seitenwechsel (im Prototyp
- * `UI.regOpen`).
+ * `UI.regOpen`) — und seit T-441 am Konto (`registerGroups`, REQ-361),
+ * also auch über das Neuladen.
  */
 
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import type { Registry, RegistryUsage } from '@nw/model';
 import { Api, ApiError, type RegisterTeil } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Klappstand } from '../kern/klappstand';
+
+/** Unter diesem Namen merkt sich das Konto die offenen Registergruppen (T-441). */
+export const REGISTER_KLAPP = 'registerGroups';
 
 export interface Rueckfrage {
   titel: string;
@@ -40,8 +45,11 @@ export class RegisterArbeit {
   readonly speichert = signal(false);
   readonly usage = signal<RegistryUsage | null>(null);
   readonly frage = signal<Rueckfrage | null>(null);
-  /** Aufgeklappte Gruppen, `Typ::Gruppe`. */
-  readonly offen = signal<ReadonlySet<string>>(new Set());
+  private readonly klapp = inject(Klappstand);
+  /** Aufgeklappte Gruppen, `Typ::Gruppe` — gemerkt am Konto (T-441). */
+  readonly offen = computed<ReadonlySet<string>>(
+    () => new Set(Object.entries(this.klapp.stand(REGISTER_KLAPP)).filter(([, auf]) => auf).map(([k]) => k)),
+  );
 
   /** Einmal je Besuch der Seite zählen; der Bestand ändert sich nicht durchs Register. */
   async zaehlen(): Promise<void> {
@@ -92,12 +100,7 @@ export class RegisterArbeit {
     return this.offen().has(schluessel);
   }
   klappen(schluessel: string): void {
-    this.offen.update((s) => {
-      const n = new Set(s);
-      if (n.has(schluessel)) n.delete(schluessel);
-      else n.add(schluessel);
-      return n;
-    });
+    this.klapp.setze(REGISTER_KLAPP, schluessel, !this.istOffen(schluessel));
   }
 }
 

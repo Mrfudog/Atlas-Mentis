@@ -200,6 +200,50 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
           } @placeholder {
             <p class="dim">Loading the order…</p>
           }
+          <!-- Vorrang je Art und je Artikel (T-403, E-111 a): an der Kampagne, kein Buch wird beschrieben. -->
+          <div class="vorrang" aria-label="First for some types">
+            <h4>First for some types</h4>
+            <p class="fuss">
+              Where two layers bring a version of the same thing, the higher one shows in lists and links. Pull one layer
+              to the front for some types only — the rest keeps the order above.
+            </p>
+            <ul class="extra">
+              @for (p of artVorrang(); track p.to + p.type) {
+                <li>
+                  <b>{{ artName(p.type) }}:</b> {{ p.name }} first
+                  @if (d.may === 'manage') {
+                    <button type="button" class="klein" [disabled]="laeuft()" [attr.aria-label]="'Remove ' + p.name + ' first for ' + artName(p.type)" (click)="vorrangWeg(p.to, p.type)">×</button>
+                  }
+                </li>
+              }
+              @for (p of artikelVorrang(); track p.to) {
+                <li>
+                  <a [routerLink]="['/artikel', p.to]">{{ p.name }}</a>
+                  <span class="dim">· this version preferred</span>
+                  @if (d.may === 'manage') {
+                    <button type="button" class="klein" [disabled]="laeuft()" [attr.aria-label]="'Stop preferring ' + p.name" (click)="vorrangWeg(p.to)">×</button>
+                  }
+                </li>
+              }
+            </ul>
+            @if (d.may === 'manage' && stapel().length > 1) {
+              <span class="vorrangwahl">
+                <select aria-label="Type" [value]="vorrangArt()" (change)="vorrangArt.set($any($event.target).value)">
+                  <option value="">Type…</option>
+                  @for (t of vorrangArten(); track t) {
+                    <option [value]="t">{{ artName(t) }}</option>
+                  }
+                </select>
+                <select aria-label="Layer first for that type" [value]="vorrangEbene()" (change)="vorrangEbene.set($any($event.target).value)">
+                  <option value="">Layer…</option>
+                  @for (id of stapel(); track id) {
+                    <option [value]="id">{{ nachId().get(id)?.name ?? id }}</option>
+                  }
+                </select>
+                <button type="button" class="klein" [disabled]="laeuft() || !vorrangArt() || !vorrangEbene()" (click)="vorrangSetzen()">Put first</button>
+              </span>
+            }
+          </div>
         </details>
         <!-- Gespeicherte Auswahlen (T-186): der Stapel unter einem Namen, je Konto. -->
         <details class="sets" data-bereich [open]="offen().has('sets')" (toggle)="merke('sets', $event)">
@@ -882,6 +926,20 @@ export function auswahlGilt(set: Pick<Ebenenauswahl, 'layers' | 'off'>, layers: 
       gap: 0.5rem;
       margin: 0.3rem 0;
     }
+    .vorrang h4 {
+      margin: 0.8rem 0 0.2rem;
+      font-size: 0.9rem;
+    }
+    .vorrangwahl {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.3rem;
+    }
+    .vorrangwahl select {
+      min-height: 32px;
+      max-width: 100%;
+    }
     .extra {
       list-style: none;
       margin: 0;
@@ -1017,7 +1075,7 @@ export class KampagnenEbenenListe {
     return [...l.filter((x) => x.active).reverse(), ...l.filter((x) => !x.active)];
   });
 
-  private readonly nachId = computed(() => new Map((this.daten()?.layers ?? []).map((x) => [x.id, x])));
+  protected readonly nachId = computed(() => new Map((this.daten()?.layers ?? []).map((x) => [x.id, x])));
 
   /**
    * **Die Gruppen als Baum** (T-088): oben die Gruppen, die in keiner
@@ -1273,6 +1331,36 @@ export class KampagnenEbenenListe {
   }
 
   /** Einen freigegebenen Artikel zurücknehmen (T-187). */
+  /** Vorrang je Art (T-403): eine Zeile je Ebene und Art. */
+  protected readonly artVorrang = computed(() =>
+    (this.daten()?.preferences ?? []).filter((p) => p.kind === 'layer').flatMap((p) => p.types.map((type) => ({ ...p, type }))),
+  );
+  protected readonly artikelVorrang = computed(() => (this.daten()?.preferences ?? []).filter((p) => p.kind === 'article'));
+  /** Die Arten, die die Ebenen im Spiel bringen. */
+  protected readonly vorrangArten = computed(() => {
+    const arten = new Set<string>();
+    for (const l of this.daten()?.layers ?? []) if (l.active) for (const t of Object.keys(l.content ?? {})) arten.add(t);
+    return [...arten].sort((a, b) => this.artName(a).localeCompare(this.artName(b), 'en'));
+  });
+  protected readonly vorrangArt = signal('');
+  protected readonly vorrangEbene = signal('');
+  protected vorrangSetzen(): void {
+    const t = this.vorrangArt();
+    const l = this.vorrangEbene();
+    if (!t || !l) return;
+    void this.aendern(async () => {
+      const r = await this.api.prefer(this.kampagne(), l, { types: [t] });
+      this.vorrangArt.set('');
+      this.vorrangEbene.set('');
+      return r;
+    });
+  }
+  protected vorrangWeg(to: string, type?: string): void {
+    void this.aendern(async () => {
+      return this.api.unprefer(this.kampagne(), to, type);
+    });
+  }
+
   protected zuruecknehmen(id: string): void {
     void this.aendern(() => this.api.setEnabled(this.kampagne(), id, false));
   }

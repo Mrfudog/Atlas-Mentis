@@ -25,6 +25,12 @@ import {
   RegistrySchema,
   conditionProblem,
   planBulk,
+  planRestore,
+  TRASH_DAYS,
+  trashExpired,
+  trashExpires,
+  trashItems,
+  type TrashChange,
   runChecks,
   selectEntities,
   storedKey,
@@ -105,6 +111,8 @@ import {
   redactEntity,
   initiativeRulesOf,
   redactMap,
+  zoneHidden,
+  redactDark,
   redactBoard,
   redactQueryTiles,
   keepDrawState,
@@ -113,6 +121,9 @@ import {
   PARTY_RELATION,
   type FogMode,
   inParty,
+  mapNatOf,
+  darkvisionFor,
+  carriedLights,
   isMap,
   resolveInstance,
   resolvePlay,
@@ -124,6 +135,12 @@ import {
   articleId,
   entityName,
   layerChange,
+  preferencesOf,
+  describeChange,
+  layerMoveChanges,
+  layerMovePlan,
+  copyArticles,
+  COPY_MODES,
   idLinks,
   linkCandidates,
   nextId,
@@ -158,12 +175,14 @@ import {
   characterProfile,
   type CharacterProfile,
   newChoiceDuplicates,
+  newMissingProficiencies,
+  missingText,
   duplicateText,
 } from '@nw/model';
-import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
+import type { BulkChange, BulkPlan, BulkRequest, CopyMode, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
 import { seedRegistry, UNASSIGNED_LAYER_ROW } from '@nw/registry';
 import { RelationIdTaken, RevisionConflict } from './repo.js';
-import type { ReadyStand, Repository } from './repo.js';
+import type { ReadyStand, Repository, StoredEvent } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
 import { rechtAn, registerVerwaltung, siehtVergleich } from './verwaltung.js';
@@ -171,6 +190,7 @@ import { registerLesen } from './lesen.js';
 import { registerQuelleninhalt } from './quelleninhalt.js';
 import { registerHandwerk } from './handwerk.js';
 import { leitetTisch, registerWuerfe, tischSitzung, wurfEintragen } from './wuerfe.js';
+import { freigegebeneHinweise, haltungen, istBegegnung, type BegegnungsBezug } from './begegnung.js';
 import { registerAufwertung } from './aufwertung.js';
 import { registerFiltergruppen } from './filtergruppen.js';
 import { registerSpaltenwahl } from './spaltenwahl.js';
@@ -181,11 +201,13 @@ import { registerAbfrage } from './abfrage.js';
 import { registerStruktur } from './struktur.js';
 import { registerKampagnenboard } from './kampagnenboard.js';
 import { registerGeben, stueckWerkstatt } from './stueck.js';
+import { registerWegwerfen } from './wegwerfen.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
 import { spielerEbenen, spielerEbeneVon, sorgeSpielerEbene } from './spielerebene.js';
+import { figurDazu, inKampagne } from './figurenzuteilung.js';
 import { gewaehlteEbene } from './schreibebene.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { kartenbildAdressen, registerKartenbild, traegtBeschnitt } from './kartenbild.js';
@@ -249,7 +271,8 @@ const STATBLOCK_RELATION = 'belongsTo';
 const FIGUR_KANTEN = new Set(['carries']);
 
 /**
- * **Keine Wahl nimmt, was die Figur schon hat** (T-299): dieselbe Rechnung
+ * **Keine Wahl nimmt, was die Figur schon hat** (T-299), und keine
+ * Expertise geht auf etwas ohne Übung (T-303): dieselbe Rechnung
  * wie im Assistenten (`newChoiceDuplicates`). Abgewiesen wird nur, was
  * dieses Speichern neu doppelt macht — eine ältere Figur bleibt
  * speicherbar.
@@ -258,7 +281,11 @@ function doppelteWahlen(vorher: Entity | undefined, nachher: Entity, bestand: re
   if (!(nachher.relations ?? []).some((r) => r.type === 'chose')) return [];
   const byId = new Map(bestand.map((e) => [e.id, e]));
   byId.set(nachher.id, nachher);
-  return newChoiceDuplicates(vorher, nachher, byId).map((d) => ({ code: 'choice_duplicate', relation: 'chose', message: duplicateText(d, byId) }));
+  return [
+    ...newChoiceDuplicates(vorher, nachher, byId).map((d): ValidationIssue => ({ code: 'choice_duplicate', relation: 'chose', message: duplicateText(d, byId) })),
+    /* Expertise nur mit Übung (T-303), ebenso nur neu Hinzugekommenes. */
+    ...newMissingProficiencies(vorher, nachher, byId).map((m): ValidationIssue => ({ code: 'choice_unproficient', relation: 'chose', message: missingText(m, byId) })),
+  ];
 }
 
 /**
@@ -347,6 +374,8 @@ export interface AppOptions {
   assetMaxBytes?: number;
   /** Die Quelle des Live-Kanals (T-116); ungesetzt eine im Speicher. */
   live?: ChangeFeed;
+  /** Wie oft der Live-Kanal ein Lebenszeichen schickt (ms); ungesetzt 25 s — kürzer in Tests (T-399). */
+  liveHeartbeatMs?: number;
   /** Die andere Installation für die Übernahme (T-130); ungesetzt keine. */
   transferPeer?: Gegenstelle | null;
   /** Nimmt diese Installation Übernahmen an (`ATLAS_TRANSFER_ACCEPT`)? */
@@ -372,6 +401,7 @@ export function buildApp({
   assets = new InMemoryAssetStore(),
   assetMaxBytes = 40 * 1024 * 1024,
   live = new LocalChangeFeed(),
+  liveHeartbeatMs,
   transferPeer = null,
   transferAccept = false,
   sicherung = null,
@@ -512,15 +542,31 @@ export function buildApp({
       const treffer = await repo.useToken(hashToken(roh));
       if (!treffer || treffer.user.disabledAt) return null;
       const { passwordHash: _hash, ...user } = treffer.user;
-      return { user, token: treffer.token };
+      return { user: inKampagne(user, await laufendeKampagne()), token: treffer.token };
     }
     const token = request.cookies?.[COOKIE];
     if (!token) return null;
     const user = await repo.touchSession(hashToken(token), sessionExpiry().toISOString());
     if (!user || user.disabledAt) return null;
     const { passwordHash: _hash, ...rest } = user;
-    return { user: rest };
+    return { user: inKampagne(rest, await laufendeKampagne()) };
   }
+  /** Die laufende Kampagne, für `inKampagne` (T-412): eine Anfrage fragt
+   *  in ihr, also sind „meine Figuren" die Figuren dieser Kampagne. */
+  async function laufendeKampagne(): Promise<string | null> {
+    const settings = (await repo.getRegistry()).settings ?? null;
+    /* Der gewöhnliche Fall ohne den ganzen Bestand: die Einstellung nennt
+       eine Kampagne, die es gibt. Sonst rechnet `currentCampaign` wie überall. */
+    const gesetzt = settings?.[CAMPAIGN_SETTING];
+    if (gesetzt && (await repo.getEntity(gesetzt))?.interfaces?.[0] === CAMPAIGN_TYPE) return gesetzt;
+    const stempel = `${await repo.version()}|${gesetzt ?? ''}`;
+    if (ohneEinstellung?.stempel !== stempel) {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      ohneEinstellung = { stempel, id: currentCampaign(alle, settings)?.id ?? null };
+    }
+    return ohneEinstellung.id;
+  }
+  let ohneEinstellung: { stempel: string; id: string | null } | null = null;
   async function viewerOf(request: FastifyRequest): Promise<User | null> {
     const sicht = await sichtVon(request);
     if (sicht === 'nein') return null;
@@ -566,7 +612,7 @@ export function buildApp({
     const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
     if (!ziel || !kampagne || !mayViewAs(wer.user, ziel, kampagne)) return 'nein';
     await merkeBeginn(wer.user, ziel, kampagne);
-    return { als: viewedAs(wer.user, ziel, kampagne), von: wer.user, kampagne };
+    return { als: viewedAs(wer.user, inKampagne(ziel, kampagne), kampagne), von: wer.user, kampagne };
   }
 
   /**
@@ -1113,6 +1159,8 @@ export function buildApp({
         passwordHash: await hashPassword(password),
         isAdmin: invite.isAdmin,
         actorIds: invite.actorId ? [invite.actorId] : [],
+        /* Die Figur gehört in die Kampagne der Einladung (T-412). */
+        ...(invite.actorId && invite.campaignId ? { actorCampaigns: { [invite.actorId]: invite.campaignId } } : {}),
         /* Eine Einladung führt in eine Kampagne, mit der Rolle darin (W3).
            Danach steht die Rolle am Konto und nicht mehr an der Einladung —
            die ist mit dem letzten Gebrauch weg. */
@@ -1206,7 +1254,8 @@ export function buildApp({
       /* Die Übernahme (T-130): lesen und vorschauen schreibt nichts. */
       url === '/api/transfer/peer/read' ||
       url === '/api/transfer/preview' ||
-      ((url === '/api/bulk' || url === '/api/entities/delete') && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
+      ((url === '/api/bulk' || url === '/api/entities/delete' || url === '/api/entities/move-layer' || /^\/api\/entities\/[^/]+\/copy$/.test(url)) &&
+        (request.body as { dryRun?: unknown } | null)?.dryRun === true);
     const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && !liestNur;
 
     if (!user) {
@@ -1259,6 +1308,8 @@ export function buildApp({
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Das eigene Leeren einer Ebene zurücknehmen (T-176): die Route prüft, wer es war. */
     if (/^\/api\/bulk\/[^/]+\/undo$/.test(url)) return;
+    /* Der Papierkorb (T-400): die Routen prüfen je Lauf, wessen er ist. */
+    if (url === '/api/trash/empty' || /^\/api\/trash\/[^/]+\/restore$/.test(url)) return;
     /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
@@ -1268,9 +1319,13 @@ export function buildApp({
     if (url === '/api/layers' || url.startsWith('/api/layers/')) return;
     /* Löschen aus der eigenen Ebene (T-381): die Route prüft je Artikel selbst (`pickDeletable`). */
     if (url === '/api/entities/delete' && request.method === 'POST') return;
+    /* Ebene wechseln mit Mitläufern (T-402): die Route prüft Zielebene und Artikel selbst. */
+    if (url === '/api/entities/move-layer' && request.method === 'POST') return;
     /* „Edit" an einem fremden Artikel legt eine Fassung an (T-098): die
        Route prüft die Zielebene selbst. */
     if (/^\/api\/entities\/[^/]+\/adapt$/.test(url) && request.method === 'POST') return;
+    /* Fassung, Variante oder Kopie (T-405): die Route prüft Zielebene und Sichtbarkeit selbst. */
+    if (/^\/api\/entities\/[^/]+\/copy$/.test(url) && request.method === 'POST') return;
     /* In die Geschichte holen (E-026): die Route prüft die Ebene der Kampagne selbst (`uebernahmeZiele`). */
     if (/^\/api\/entities\/[^/]+\/take$/.test(url) && request.method === 'POST') return;
     /* Würfeln für die Attribute (E-016 a): die Route prüft die Rolle in
@@ -1296,6 +1351,8 @@ export function buildApp({
     if (/^\/api\/sessions\/[^/]+\/(end|pick-up)$/.test(url) && request.method === 'POST') return;
     /* Geben (T-150): die Route fragt `mayWrite` am Inventar selbst (`stueck.ts`). */
     if (/^\/api\/inventories\/[^/]+\/give$/.test(url) && request.method === 'POST') return;
+    /* Wegwerfen und Zurücklegen (T-407): die Routen fragen Leitung und `mayWrite` selbst (`wegwerfen.ts`). */
+    if (/^\/api\/inventories\/[^/]+\/discard(\/[^/]+\/undo)?$/.test(url) && request.method === 'POST') return;
     /* Die Abfrage-Kachel (T-340): ziehen und zurücksetzen prüft die Route am Board selbst (`abfrage.ts`). */
     if (/^\/api\/boards\/[^/]+\/query\/[^/]+\/(draw|reset)$/.test(url) && request.method === 'POST') return;
     /* Der Zugplan (T-198): die Routen prüfen Figur und Leitung selbst (`zugplan.ts`). */
@@ -1636,6 +1693,14 @@ export function buildApp({
       }
       return nebel;
     };
+    const imDunkeln = (k: Entity): Entity =>
+      redactDark(k, {
+        nat: (v) => mapNatOf(alle, v),
+        eyes: (id) => nebelFuer().own(id),
+        darkvision: (id) => darkvisionFor(alle, id),
+        carried: () => carriedLights(alle, k),
+        keep: (id) => inParty(alle, id),
+      });
     /* Was die Kampagne Spielenden von der Initiative zeigt (T-022). */
     const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
     return entities
@@ -1647,14 +1712,17 @@ export function buildApp({
           ? /* Das Kartenbild nur, soweit aufgedeckt (T-312, E-041): die
                Blätter zeigen auf eine beschnittene Adresse (`kartenbild.ts`). */
             kartenbildAdressen(
-              redactMap(e, {
+              /* **Tokens im Dunkeln** (T-219): was keine eigene Figur sieht, geht nicht hinaus. */
+              imDunkeln(redactMap(e, {
                 gm: false,
                 sees: siehtZiel,
                 /* Unter dem Nebel (REQ-139) bleiben die eigenen stehen: die
                    Figuren der Gruppe und wer zu ihr gehört. */
                 keep: (id) => inParty(alle, id),
+                /* Eine versteckte Zone (T-219): die Regel steht an ihrer Art. */
+                hideZone: (r) => zoneHidden(r, alle.get(r.to)),
                 ...nebelFuer(),
-              }),
+              })),
               (id) => assetVersion(alle.get(id)),
             )
           : /* Ein Board ohne das, was die Leitung zurückhält (T-339): Formen
@@ -2256,6 +2324,27 @@ export function buildApp({
    * die sichtbaren Gegenstände; ein Geber, den er nicht sieht, bleibt ohne
    * Namen.
    */
+  /** Was die Begegnung über ihre Beteiligten weiss (T-215, `begegnung.ts`). */
+  async function begegnungsBezug(
+    request: FastifyRequest,
+    e: Entity,
+    map: Map<string, Entity>,
+    registry: Registry,
+  ): Promise<BegegnungsBezug | null> {
+    if (!istBegegnung(registry, e)) return null;
+    const ziele = [...new Set((e.relations ?? []).filter((r) => r.type === 'features').map((r) => r.to))]
+      .map((id) => map.get(id))
+      .filter((x): x is Entity => !!x);
+    const sichtbar = ziele.length ? await sieve(request, ziele, map) : [];
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const user = await viewerOf(request);
+    const leitet = !!user && leitetTisch(user, kampagne?.id ?? null);
+    return {
+      stances: haltungen(registry, map, sichtbar, kampagne),
+      ...(leitet ? { revealed: freigegebeneHinweise(registry, map, e) } : {}),
+    };
+  }
+
   async function ladenwaren(
     request: FastifyRequest,
     e: Entity,
@@ -2540,12 +2629,28 @@ export function buildApp({
        es hier nicht. */
     const genannt = shownLayers(stand.map, kampagne, siehtVergleich(user, kampagne));
     const ebenenIds = new Set(layersOf(basis));
+    /* **Welche Fassung Listen und Verweise zeigen** (T-403): die mit dem
+       höchsten Rang unter denen im Spiel — mit dem Vorrang der Kampagne
+       (`prefers`), nicht nur nach der Ebenenreihenfolge. */
+    const bevorzugt = new Set(preferencesOf(kampagne).map((p) => p.to));
+    let gezeigt: string | null = null;
+    let bester = 0;
+    for (const e of [basis, ...gesiebt.map((v) => stand.map.get(v.id) ?? v)]) {
+      if (!sicht.inPlay(e)) continue;
+      const r = sicht.rank(e);
+      if (r > bester) {
+        bester = r;
+        gezeigt = e.id;
+      }
+    }
     const versions = gesiebt.map((v) => {
       const r = stand.map.get(v.id) ?? v;
       for (const l of layersOf(r)) ebenenIds.add(l);
       const compare = !sicht.inStack(r) && sicht.inCompare(r);
       const adoptedAs = kopieVon.get(v.id);
       return {
+        shown: gezeigt === v.id,
+        ...(bevorzugt.has(v.id) ? { preferred: true } : {}),
         entity: v,
         layers: layersOf(r).filter((id) => !genannt || genannt.has(id)),
         play: sicht.inPlay(r),
@@ -2574,6 +2679,9 @@ export function buildApp({
         ...(imSpiel.has(l.id) ? { rank: imSpiel.get(l.id) } : {}),
       })),
       versions,
+      shown: gezeigt === basis.id,
+      ...(bevorzugt.has(basis.id) ? { preferred: true } : {}),
+      mayPrefer: !!kampagne && rechtAn(user, kampagne.id) === 'manage',
       ...(kampagne ? { campaign: { id: kampagne.id, name: entityName(kampagne) } } : {}),
     };
   });
@@ -2874,7 +2982,9 @@ export function buildApp({
     if (!kampagne) return { campaign: null, players: [] };
     const campaign = { id: kampagne.id, name: entityName(kampagne) };
     if (!user.isAdmin && !user.roles?.[kampagne.id]) return { campaign, players: [] };
-    const konten = (await repo.listUsers()).filter((u) => !u.disabledAt && u.roles?.[kampagne.id] === 'player');
+    const konten = (await repo.listUsers())
+      .filter((u) => !u.disabledAt && u.roles?.[kampagne.id] === 'player')
+      .map((u) => inKampagne(u, kampagne.id));
     const figuren = konten.flatMap((u) => u.actorIds ?? []).map((id) => stand.map.get(id)).filter((e): e is Entity => !!e);
     const sichtbar = new Map((await sieve(request, figuren, stand.map)).map((e) => [e.id, e]));
     const players = konten
@@ -3330,6 +3440,16 @@ export function buildApp({
     },
   });
   /* Geben (T-150): Beute, Geschenke, was die Leitung austeilt — als Instanz. */
+  /* Wie am `PUT`: was das Konto schreibt, und als Leitung, was Spielende ihr vorlegen (D72). */
+  const darfInventarSchreiben = async (request: FastifyRequest, id: string): Promise<boolean> => {
+    const user = await viewerOf(request);
+    if (!user) return false;
+    if (mayWrite(user, await ownedBy(user), id)) return true;
+    if (!(await repo.authorsOf(id)).length) return false;
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const da = alle.get(id);
+    return !!da && maySetReady(user, alle, da);
+  };
   registerGeben(app, {
     repo,
     viewerOf,
@@ -3337,16 +3457,16 @@ export function buildApp({
     sieve,
     schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet),
     kampagnenEbene,
-    /* Wie am `PUT`: was das Konto schreibt, und als Leitung, was Spielende ihr vorlegen (D72). */
-    darfSchreiben: async (request, id) => {
-      const user = await viewerOf(request);
-      if (!user) return false;
-      if (mayWrite(user, await ownedBy(user), id)) return true;
-      if (!(await repo.authorsOf(id)).length) return false;
-      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-      const da = alle.get(id);
-      return !!da && maySetReady(user, alle, da);
-    },
+    darfSchreiben: darfInventarSchreiben,
+  });
+  /* Wegwerfen mit Rückgängig und Verkaufen am Stück (T-407, REQ-404): `wegwerfen.ts`. */
+  registerWegwerfen(app, {
+    repo,
+    viewerOf,
+    roh,
+    sieve,
+    schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet),
+    darfSchreiben: darfInventarSchreiben,
   });
 
   /* **Der Live-Kanal** (T-116, REQ-116): `GET /api/live`, je Empfänger
@@ -3357,6 +3477,7 @@ export function buildApp({
     viewerOf,
     sieveFuer: (user, entities, bestand) => sieveFuer(user, entities, bestand),
     roh,
+    ...(liveHeartbeatMs ? { heartbeatMs: liveHeartbeatMs } : {}),
   });
   app.addHook('onClose', async () => kanal.close());
 
@@ -3436,6 +3557,10 @@ export function buildApp({
     const audience = effectiveAudience(stand.map, einer, campaignVisibility(stand.map, registry, currentCampaign(stand.map, registry.settings ?? null)));
     /* Was aus einer Ergänzung kommt (T-142): das Element Shape schreibt die Form dorthin. */
     const supplied = await ergaenzungen(einer);
+    /* An einer Begegnung (T-215): die Haltung der Beteiligten zur Gruppe,
+       gesiebt wie jeder Artikel, und für die Leitung die schon
+       freigegebenen Hinweise. */
+    const encounter = await begegnungsBezug(request, einer, stand.map, registry);
     const refs = {
       audience,
       ...(Object.keys(supplied).length ? { supplied } : {}),
@@ -3447,6 +3572,7 @@ export function buildApp({
       ...(reading ? { reading } : {}),
       ...(craft ? { craft } : {}),
       ...(shop ? { shop } : {}),
+      ...(encounter ? { encounter } : {}),
     };
     /* Ob „Adapt" angeboten wird (E-018, T-082) und in welche Ebenen
        (`adaptTo`, T-098): dieselbe Frage wie die Route, damit die Seite
@@ -3878,7 +4004,8 @@ export function buildApp({
         if (kette.includes(PLAYER_CHARACTER)) {
           const konto = await repo.getUser(user.id);
           if (konto && !konto.actorIds.includes(id)) {
-            await repo.putUser({ ...konto, actorIds: [...konto.actorIds, id] });
+            /* In der Kampagne, in der sie angelegt wird — der laufenden (T-412). */
+            await repo.putUser(figurDazu(konto, currentCampaign(stand.map, registry.settings ?? null)?.id ?? null, id));
           }
         }
       }
@@ -3937,7 +4064,7 @@ export function buildApp({
   });
   registerKampfstart(app, { repo, feed: live, viewerOf, roh, geltend, schreibeGeprueft: (e) => schreibeGeprueft(e), insSpiel: insSpiel(spielDeps) });
   /* Der Initiative-Tracker (T-022): die Reihe gesiebt, Züge und Effekte durch die Leitung. */
-  registerTracker(app, { repo, viewerOf, roh, geltend, sieve: (request, entities, bestand) => sieve(request, entities, bestand), schreibeGeprueft: (e) => schreibeGeprueft(e) });
+  registerTracker(app, { repo, feed: live, viewerOf, roh, geltend, sieve: (request, entities, bestand) => sieve(request, entities, bestand), schreibeGeprueft: (e) => schreibeGeprueft(e) });
   /* Karten finden (T-202): die Liste unter Play › Maps und wo eine Karte vorkommt. */
   registerKartenliste(app, { roh, sieve, registry: () => repo.getRegistry() });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
@@ -4164,7 +4291,7 @@ export function buildApp({
           /* Auf den höchsten Stand bis `prepared`, den er erreicht (E-178). */
           entity.components = {
             ...(entity.components ?? {}),
-            [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: reachableState(registry, entity, 'prepared') },
+            [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: reachableState(registry, entity, 'prepared', { byId: bestand }) },
           };
           zurueck = { entity: vorher, at: typeof vorher.updatedAt === 'string' ? vorher.updatedAt : new Date().toISOString() };
         } else if (!warFertig && isReady(entity)) {
@@ -4275,7 +4402,9 @@ export function buildApp({
     /* **Pflicht je Stand** (T-425, E-178): wer den Stand hebt, erfüllt die
        Pflicht des neuen; wer ihn hält, behält ihn (die Werkbank sagt, was
        fehlt). Geprüft am aufgelösten Artikel, wie alles andere. */
-    const luecken = stateRefusal(registry, davor && isInstance(davor) ? resolveInstance(new Map(liste.map((e) => [e.id, e])), davor) : davor, zuPruefen);
+    const alleNachId = new Map(liste.map((e) => [e.id, e]));
+    /* Offene Entscheide einer Figur halten sie auf idea (T-436, E-176). */
+    const luecken = stateRefusal(registry, davor && isInstance(davor) ? resolveInstance(alleNachId, davor) : davor, zuPruefen, { byId: alleNachId });
     /* **Ebene und Stand sind immer da** (E-179, E-182): wer sie einem
        Artikel nimmt, der sie hatte, wird abgewiesen — verschoben wird in
        eine andere Ebene, nicht ins Nichts. Ebenen selbst liegen in keiner. */
@@ -4556,6 +4685,104 @@ export function buildApp({
   });
 
   /**
+   * **Fassung, Variante oder Kopie in einer anderen Ebene** (T-405,
+   * REQ-400, E-162): `{ mode: 'version' | 'variant' | 'copy', layer?,
+   * include?, dryRun? }`. Wo Speichern nicht erlaubt ist — ein Artikel aus
+   * einem Regelwerk, das man nicht schreibt —, und als Aktion an jedem
+   * Artikel. Die Fassung tritt in der Kampagne an die Stelle des Originals
+   * (in eine Ebene wie bei „Edit", `anpassZiele`: nie eine Spielerebene);
+   * Variante und Kopie gehen in jede eigene Schreibebene (`schreibZiele`).
+   * `dryRun` nennt die Zielebenen und die Mitläufer (Teile, Statblock,
+   * Inventar, wie beim Ebenenwechsel, `layerMovePlan`); ohne `include`
+   * gehen die vorgewählten mit. Kopiert wird, was man sieht — schreiben
+   * muss man das Original nicht.
+   */
+  app.post<{ Params: { id: string }; Body: { mode?: unknown; layer?: unknown; include?: unknown; dryRun?: unknown } | null }>(
+    '/api/entities/:id/copy',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+      if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nicht kopiert.' });
+      const b = request.body ?? {};
+      const mode = typeof b.mode === 'string' && (COPY_MODES as readonly string[]).includes(b.mode) ? (b.mode as CopyMode) : null;
+      if (!mode) return reply.code(400).send({ error: 'mode: version, variant oder copy.' });
+      const registry = await repo.getRegistry();
+      const stand = await roh();
+      const original = stand.map.get(request.params.id);
+      const gesehen = original ? (await sieve(request, [original], stand.map, undefined, 'versions')).length > 0 : false;
+      if (!original || !gesehen || isLayer(original)) return reply.code(404).send({ error: 'Nicht gefunden' });
+      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      const ziele: { id: string; name: string }[] = (
+        mode === 'version'
+          ? await anpassZiele(request, original, stand.map)
+          : (await schreibZiele(user, stand.map, kampagne)).map((x) => x.layer)
+      ).map((l) => ({ id: l.id, name: entityName(l) }));
+      const gewuenscht = typeof b.layer === 'string' && b.layer ? b.layer : null;
+      const vorgabe = gewuenscht ? null : (await gewaehlteSchreibEbene(user, stand.map, kampagne))?.id;
+      const ziel = ziele.find((l) => l.id === (gewuenscht ?? vorgabe)) ?? (gewuenscht ? undefined : ziele[0]);
+      const sichtbar = new Set((await sieve(request, stand.alle, stand.map, undefined, 'versions')).map((e) => e.id));
+      const plan = layerMovePlan(registry, stand.map, [original.id], { layer: ziel?.id ?? null });
+      const followers = plan.followers
+        .filter((f) => sichtbar.has(f.id))
+        .map((f) => ({ ...f, writable: true, preselected: f.sameLayer, linkedFrom: f.linkedFrom.filter((x) => sichtbar.has(x.id)) }));
+      if (b.dryRun === true) {
+        return { mode, layers: ziele, layer: ziel ?? null, roots: plan.roots, followers, layerNames: Object.fromEntries(ziele.map((l) => [l.id, l.name])) };
+      }
+      if (!ziel) {
+        return reply.code(403).send({
+          error: gewuenscht
+            ? `You cannot put a ${mode === 'version' ? 'version' : mode} into that layer. Choose one of your write layers.`
+            : 'You have no layer to put it into.',
+          layers: ziele,
+        });
+      }
+      if (mode === 'version') {
+        const schon = stand.alle.find(
+          (e) => layersOf(e).includes(ziel.id) && (e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION && r.to === original.id),
+        );
+        if (schon) return reply.code(200).send({ id: schon.id, created: [], layer: ziel, mode, existed: true });
+      }
+      const gewaehlt = Array.isArray(b.include) ? b.include.filter((x): x is string => typeof x === 'string') : null;
+      const mit = followers.filter((f) => (gewaehlt ? gewaehlt.includes(f.id) : f.preselected)).map((f) => f.id);
+      const alle = [...stand.alle];
+      const vergeben = new Set(stand.map.keys());
+      const neueId = (): string => {
+        let id = `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+        while (vergeben.has(id)) id = `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+        vergeben.add(id);
+        return id;
+      };
+      const nummer = (typ: string): string => {
+        const n = nextId(alle, typ);
+        /* Die nächste Nummer zählt, was schon vergeben ist — auch in diesem Lauf. */
+        alle.push({ id: `nr~${n}`, name: n, interfaces: [typ], components: { Identity: { id: n } }, relations: [] });
+        return n;
+      };
+      const neu = copyArticles(stand.map, [original.id, ...mit], { mode, layer: ziel.id, newId: neueId, number: nummer });
+      const danach = new Map(stand.map);
+      for (const x of neu) danach.set(x.entity.id, x.entity);
+      const known = new Map([...danach.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+      const stufen = stageBases(danach.values());
+      for (const x of neu) {
+        const pruefling = isInstance(x.entity) ? resolveInstance(danach, x.entity) : x.entity;
+        const issues = validateEntity(registry, pruefling, { knownTypes: known, stageOf: stufen });
+        if (issues.length) return reply.code(422).send({ error: `${entityName(x.entity)}: Validierung fehlgeschlagen`, issues });
+      }
+      for (const x of neu) {
+        await repo.putEntity(x.entity);
+        await repo.addCreator(user.id, x.entity.id);
+        await repo.appendEvent('entity.created', x.entity.id, { interfaces: x.entity.interfaces, [mode === 'version' ? 'adapts' : mode === 'variant' ? 'variantOf' : 'copyOf']: x.from, layer: ziel.id, by: user.id });
+      }
+      return reply.code(201).send({
+        id: neu[0]!.entity.id,
+        created: neu.map((x) => ({ id: x.entity.id, from: x.from, name: entityName(x.entity) })),
+        layer: ziel,
+        mode,
+      });
+    },
+  );
+
+  /**
    * Dry-run validation, so the editor can warn before anything is written.
    * Same code path as the write — there is deliberately no second implementation.
    */
@@ -4814,9 +5041,10 @@ export function buildApp({
     roh: Map<string, Entity>,
     auftrag: BulkRequest,
     ausgewaehlt: string[],
-    art?: 'delete-own',
+    art?: 'delete-own' | 'move-layer',
+    vorgeplant?: BulkPlan,
   ): Promise<{ code: number; body: Record<string, unknown> }> {
-    const plan = planBulk(registry, roh, ausgewaehlt, auftrag.ops);
+    const plan = vorgeplant ?? planBulk(registry, roh, ausgewaehlt, auftrag.ops);
     const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, plan.changes, art === 'delete-own');
     const loescht = geprueft.filter((c) => !c.after).length;
     const limit = auftrag.limit ?? 50;
@@ -4990,6 +5218,93 @@ export function buildApp({
     },
   );
 
+  /**
+   * **Eine Ebene wechseln, mit dem, was dazugehört** (T-402, E-161 a+c).
+   * `dryRun` gibt den Plan (`layerMovePlan`): die Mitläufer — Teile,
+   * eigener Statblock, Inventar und Stücke — mit Häkchen vorgewählt, wenn
+   * sie in derselben alten Ebene liegen und das Konto sie schreibt, und je
+   * Mitläufer, wo er sonst noch verknüpft ist. Ohne `dryRun` wird
+   * verschoben, was genannt ist (`ids`) und was `include` nennt (sonst die
+   * vorgewählten); abgewählte bleiben. Geschrieben als **eine**
+   * Massenänderung, also zurück über `POST /api/bulk/:id/undo`, auch für
+   * Spielende. Hinein nur in eine Schreibebene (dieselbe Regel wie `PUT`,
+   * T-383); Fassungen und Kanten bleiben. `from` nennt die alte Ebene, wenn
+   * der Artikel selbst schon verschoben ist (im Bearbeiten: erst `PUT`).
+   */
+  app.post<{ Body: { ids?: unknown; layer?: unknown; from?: unknown; include?: unknown; dryRun?: unknown } | null }>(
+    '/api/entities/move-layer',
+    async (request, reply) => {
+      const echt = await werIst(request);
+      if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+      if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nicht verschoben.' });
+      const b = request.body ?? {};
+      const strings = (x: unknown) => (Array.isArray(x) ? [...new Set(x.filter((y): y is string => typeof y === 'string' && !!y))] : null);
+      const ids = strings(b.ids) ?? [];
+      if (!ids.length) return reply.code(400).send({ error: 'Sag, welche Artikel: { "ids": [...], "layer": "…" }.' });
+      if (ids.length > 1000) return reply.code(400).send({ error: 'Höchstens 1000 Artikel auf einmal — teile die Auswahl.' });
+      const user = echt.user;
+      const alle = await repo.listEntities();
+      const roh = new Map(alle.map((e) => [e.id, e]));
+      const registry = await repo.getRegistry();
+      const layer = typeof b.layer === 'string' && b.layer ? b.layer : null;
+      const ziel = layer ? roh.get(layer) : null;
+      if (layer && (!ziel || !isLayer(ziel))) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
+      if (!layer && !user.isAdmin) {
+        return reply.code(403).send({ error: 'Only the administration keeps articles outside every layer. Choose one of your write layers.' });
+      }
+      if (layer && !user.isAdmin) {
+        const kampagne = currentCampaign(roh, registry.settings ?? null);
+        const ziele = new Set((await schreibZiele(user, roh, kampagne)).map((x) => x.layer.id));
+        if (!ziele.has(layer)) {
+          return reply.code(403).send({
+            error: `You do not write in ${entityName(ziel!)} in this campaign. Choose one of your write layers (see “Writes to” in the header).`,
+          });
+        }
+      }
+      const sichtbar = new Set(
+        [...(await sieve(request, alle, alle)), ...(await sieve(request, alle, alle, undefined, 'unactivated'))].map((e) => e.id),
+      );
+      const fehlt = ids.filter((id) => !sichtbar.has(id) || !roh.has(id));
+      if (fehlt.length) return reply.code(404).send({ error: `Nicht gefunden: ${fehlt.join(', ')}` });
+      /* Eine Ebene hängt in Gruppen, nicht in einer Ebene. */
+      if (ids.some((id) => isLayer(roh.get(id)))) return reply.code(400).send({ error: 'A layer is not moved into another layer — put it into a group on its page.' });
+      const eigen = user.isAdmin ? null : await ownedBy(user);
+      const darf = (id: string) => !eigen || mayWrite(user, eigen, id);
+      const voll = layerMovePlan(registry, roh, ids, { layer, from: strings(b.from) ?? undefined, mayWrite: darf });
+      /* Was das Konto nicht sieht, steht nicht im Plan — auch nicht als Name. */
+      const plan = {
+        roots: voll.roots,
+        followers: voll.followers
+          .filter((f) => sichtbar.has(f.id))
+          .map((f) => ({ ...f, linkedFrom: f.linkedFrom.filter((x) => sichtbar.has(x.id)) })),
+      };
+      const target = ziel ? { id: ziel.id, name: entityName(ziel) } : null;
+      const layerNames: Record<string, string> = {};
+      for (const l of [...plan.roots.flatMap((x) => x.layers), ...plan.followers.flatMap((x) => x.layers)]) {
+        if (roh.get(l)) layerNames[l] = entityName(roh.get(l)!);
+      }
+      const gewaehlt = strings(b.include);
+      const mit = plan.followers.filter((f) => (gewaehlt ? gewaehlt.includes(f.id) && f.writable : f.preselected)).map((f) => f.id);
+      const changes = layerMoveChanges(roh, [...ids, ...mit], layer).map((c) => ({
+        ...c,
+        summary: describeChange(c.before, c.after),
+      }));
+      const auftrag: BulkRequest = {
+        select: { ids: [...ids, ...mit] },
+        ops: [],
+        dryRun: b.dryRun === true,
+        limit: 200,
+        note: `Move ${ids.length === 1 ? entityName(roh.get(ids[0]!)) : `${ids.length} articles`}${mit.length ? ` with ${mit.length} more` : ''} to ${target?.name ?? 'no layer'}`,
+      };
+      const r = await fuehreLaufAus(request, echt, registry, roh, auftrag, [...ids, ...mit], 'move-layer', {
+        selected: ids.length + mit.length,
+        changes,
+        skipped: [],
+      });
+      return reply.code(r.code).send({ ...r.body, ...plan, target, layerNames, moving: mit });
+    },
+  );
+
   /** Die letzten Massenänderungen, ohne ihre alten Fassungen. */
   app.get<{ Querystring: { limit?: string } }>('/api/bulk', async (request, reply) => {
     const wer = await werkbankFuer(request);
@@ -5020,6 +5335,11 @@ export function buildApp({
       if (typeof wer === 'string') return reply.code(403).send({ error: wer });
       if ((await repo.listEvents({ name: 'bulk.undone', subject: ereignis.id, limit: 1, light: true })).length) {
         return reply.code(409).send({ error: 'Schon rückgängig gemacht.' });
+      }
+      /* Aus dem Papierkorb geleert oder abgelaufen (T-400): die Bilddateien
+         sind dann weg, ein Zurück brächte ein Bild ohne Datei. */
+      if (await endgueltig(ereignis)) {
+        return reply.code(410).send({ error: 'Endgültig gelöscht — der Papierkorb wurde geleert oder die 30 Tage sind um.', code: 'purged' });
       }
       const payload = ereignis.payload as { changes?: { id: string; before: Entity | null; after: Entity | null }[] };
       const alle = await repo.listEntities();
@@ -5066,6 +5386,233 @@ export function buildApp({
     },
   );
 
+
+  /* ------------------------------------------------------------ Papierkorb */
+
+  /**
+   * **Der Papierkorb** (T-400, E-160 a) ist eine Seite auf den Löschläufen
+   * aus der eigenen Ebene (T-381, `bulk` mit `kind: 'delete-own'`) — keine
+   * zweite Ablage. Was er dazuschreibt, steht im Protokoll unter demselben
+   * Lauf: `trash.restored` (welche Artikel einzeln zurückkamen) und
+   * `trash.emptied` (endgültig: „Empty trash" oder nach `TRASH_DAYS`). Erst
+   * mit dem zweiten gehen Bilddateien — vorher brächte ein Zurück ein Bild
+   * ohne Datei. Keine Migration: das event_log trägt alles.
+   */
+  interface KorbLauf {
+    ereignis: StoredEvent;
+    by: { id?: string; name?: string };
+    /** Die ausgewählten Artikel des Laufs; mitgegangene Teile gehören zu ihnen. */
+    haupt: string[];
+    zurueck: Set<string>;
+  }
+
+  const istLoeschlauf = (e: StoredEvent | undefined): e is StoredEvent =>
+    !!e && e.name === 'bulk' && (e.payload as { kind?: unknown } | null)?.kind === 'delete-own';
+
+  /** Geleert oder abgelaufen? Für jeden `bulk`-Lauf; nur Löschläufe können es sein. */
+  async function endgueltig(e: StoredEvent): Promise<boolean> {
+    if (!istLoeschlauf(e)) return false;
+    if (trashExpired(e.at)) return true;
+    return (await repo.listEvents({ name: 'trash.emptied', subject: e.id, limit: 1, light: true })).length > 0;
+  }
+
+  /** Die offenen Löschläufe, die neusten zuerst: weder geleert noch ganz zurück. Ohne alte Fassungen. */
+  async function offeneLaeufe(): Promise<KorbLauf[]> {
+    const laeufe = await repo.listEvents({ name: 'bulk', subjects: [], orPayload: { key: 'kind', value: 'delete-own' }, limit: 1000, light: true });
+    if (!laeufe.length) return [];
+    const geleert = new Set((await repo.listEvents({ name: 'trash.emptied', limit: 5000, light: true })).map((e) => e.subject));
+    const rueck = new Set((await repo.listEvents({ name: 'bulk.undone', limit: 1000, light: true })).map((e) => e.subject));
+    const einzeln = new Map<string, Set<string>>();
+    for (const e of await repo.listEvents({ name: 'trash.restored', limit: 5000, light: true })) {
+      const ids = (e.payload as { ids?: unknown }).ids;
+      const s = einzeln.get(e.subject ?? '') ?? einzeln.set(e.subject ?? '', new Set()).get(e.subject ?? '')!;
+      if (Array.isArray(ids)) for (const id of ids) if (typeof id === 'string') s.add(id);
+    }
+    const out: KorbLauf[] = [];
+    for (const e of laeufe) {
+      if (!istLoeschlauf(e) || geleert.has(e.id) || rueck.has(e.id)) continue;
+      const p = e.payload as { by?: { id?: string; name?: string }; request?: { select?: { ids?: unknown } } };
+      const haupt = Array.isArray(p.request?.select?.ids) ? p.request.select.ids.filter((x): x is string => typeof x === 'string') : [];
+      const zurueck = einzeln.get(e.id) ?? new Set<string>();
+      if (haupt.length && haupt.every((id) => zurueck.has(id))) continue;
+      out.push({ ereignis: e, by: p.by ?? {}, haupt, zurueck });
+    }
+    return out;
+  }
+
+  const aenderungen = async (lauf: KorbLauf): Promise<TrashChange[]> =>
+    ((await repo.getEvent(lauf.ereignis.id))?.payload as { changes?: TrashChange[] } | undefined)?.changes ?? [];
+
+  /** Die Datei eines gelöschten Bildes, wenn es eines ist. */
+  const bildRef = (e: Entity | null): string | null => {
+    const a = e?.components?.['Asset'] as { ref?: unknown; backend?: unknown } | undefined;
+    return a && typeof a.ref === 'string' && (a.backend ?? 'app') === 'app' ? a.ref : null;
+  };
+
+  /**
+   * Läufe endgültig machen: im Protokoll vermerken, dann die Dateien der
+   * gelöschten Bilder freigeben — nur, wenn kein Artikel sie nennt
+   * (`bilder.aufraeumen`) **und** kein anderer offener Lauf ein Bild mit
+   * derselben Datei noch zurückbringen könnte.
+   */
+  async function leeren(laeufe: KorbLauf[], by: { id: string | null; name: string }, reason: 'empty' | 'expired'): Promise<number> {
+    if (!laeufe.length) return 0;
+    const weg = new Set(laeufe.map((l) => l.ereignis.id));
+    const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const behalten = new Set<string>();
+    for (const l of await offeneLaeufe()) {
+      if (weg.has(l.ereignis.id) || trashExpired(l.ereignis.at)) continue;
+      for (const c of await aenderungen(l)) {
+        const ref = !c.after && !bestand.has(c.id) ? bildRef(c.before) : null;
+        if (ref) behalten.add(ref);
+      }
+    }
+    for (const l of laeufe) {
+      await repo.appendEvent('trash.emptied', l.ereignis.id, { by, reason });
+      for (const c of await aenderungen(l)) {
+        if (c.after || !c.before || bestand.has(c.id)) continue;
+        const ref = bildRef(c.before);
+        if (ref && !behalten.has(ref)) await bilder.aufraeumen(c.before);
+      }
+    }
+    return laeufe.length;
+  }
+
+  /** Der Aufräumlauf: was älter ist als `TRASH_DAYS`, wird endgültig. Beim Start, täglich und vor jedem Blick in den Korb. */
+  async function korbAufraeumen(): Promise<number> {
+    const alt = (await offeneLaeufe()).filter((l) => trashExpired(l.ereignis.at));
+    return leeren(alt, { id: null, name: 'system' }, 'expired');
+  }
+  let korbUhr: ReturnType<typeof setInterval> | null = null;
+  app.addHook('onReady', async () => {
+    await korbAufraeumen().catch((error) => app.log.error(error));
+    korbUhr = setInterval(() => void korbAufraeumen().catch((error) => app.log.error(error)), 24 * 60 * 60 * 1000);
+    korbUhr.unref?.();
+  });
+  app.addHook('onClose', async () => {
+    if (korbUhr) clearInterval(korbUhr);
+  });
+
+  /**
+   * Was ein Konto im Korb sieht: seine eigenen Läufe ganz, und als Leitung
+   * oder Verwaltung die der anderen — gesiebt wie jede Liste, an den alten
+   * Fassungen. Ein fremder Lauf ohne sichtbaren Artikel steht nicht da.
+   */
+  async function korbFuer(request: FastifyRequest, user: User) {
+    const leitung = isLeitung(user);
+    const laeufe = (await offeneLaeufe()).filter((l) => !trashExpired(l.ereignis.at) && (l.by.id === user.id || leitung));
+    if (!laeufe.length) return [];
+    const registry = await repo.getRegistry();
+    const alle = await repo.listEntities();
+    const out: { lauf: KorbLauf; eigen: boolean; changes: TrashChange[]; items: ReturnType<typeof trashItems> }[] = [];
+    for (const lauf of laeufe) {
+      const changes = await aenderungen(lauf);
+      let items = trashItems(registry, changes, lauf.haupt, (id) => lauf.zurueck.has(id));
+      const eigen = lauf.by.id === user.id;
+      if (!eigen) {
+        const vorher = changes.filter((c) => c.before && !c.after).map((c) => c.before!);
+        const bestand = new Map([...alle, ...vorher].map((e) => [e.id, e]));
+        const sichtbar = new Set(
+          [
+            ...(await sieve(request, vorher, bestand)),
+            ...(await sieve(request, vorher.filter(isSupplement), bestand, undefined, 'versions')),
+          ].map((e) => e.id),
+        );
+        items = items.filter((i) => sichtbar.has(i.id));
+        if (!items.length) continue;
+      }
+      out.push({ lauf, eigen, changes, items });
+    }
+    return out;
+  }
+
+  /** `GET /api/trash` — die offenen Löschläufe mit ihren Artikeln (T-400). */
+  app.get('/api/trash', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    await korbAufraeumen();
+    const namen = new Map((await repo.listEntities()).filter(isLayer).map((e) => [e.id, entityName(e)]));
+    const runs = (await korbFuer(request, user)).map(({ lauf, eigen, items }) => ({
+      id: lauf.ereignis.id,
+      at: lauf.ereignis.at,
+      expires: trashExpires(lauf.ereignis.at),
+      by: { id: lauf.by.id ?? null, name: lauf.by.name ?? '?' },
+      own: eigen,
+      items: items.map((i) => ({ ...i, layers: i.layers.map((id) => ({ id, name: namen.get(id) ?? id })) })),
+    }));
+    return { days: TRASH_DAYS, runs };
+  });
+
+  /**
+   * `POST /api/trash/:id/restore` — einzelne Artikel (`ids`) oder alles
+   * Übrige eines Laufs zurück (T-400). Wer ihn tat, holt selbst zurück;
+   * die Leitung auch fremde Läufe, soweit sie die Artikel sieht. Zurück
+   * kommen sie samt Teilen und nur mit ihren Kanten (`planRestore`), und
+   * auch das geht durch `validateEntity`. Ist danach alles zurück, gilt
+   * der Lauf als zurückgenommen — für die Werkbank wie für den Korb.
+   */
+  app.post<{ Params: { id: string }; Body: { ids?: unknown } | null }>('/api/trash/:id/restore', async (request, reply) => {
+    const echt = await werIst(request);
+    if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nichts zurückgeholt.' });
+    const user = echt.user;
+    const ereignis = await repo.getEvent(request.params.id);
+    if (!istLoeschlauf(ereignis)) return reply.code(404).send({ error: 'Diesen Lauf gibt es im Papierkorb nicht.' });
+    if (await endgueltig(ereignis)) {
+      return reply.code(410).send({ error: 'Endgültig gelöscht — der Papierkorb wurde geleert oder die 30 Tage sind um.', code: 'purged' });
+    }
+    const lauf = (await offeneLaeufe()).find((l) => l.ereignis.id === ereignis.id);
+    if (!lauf) return reply.code(409).send({ error: 'Schon zurückgeholt.' });
+    if (lauf.by.id !== user.id && !isLeitung(user)) {
+      return reply.code(403).send({ error: 'Einen fremden Löschlauf holt die Leitung zurück.' });
+    }
+    const gesehen = (await korbFuer(request, user)).find((k) => k.lauf.ereignis.id === lauf.ereignis.id);
+    if (!gesehen) return reply.code(404).send({ error: 'Diesen Lauf gibt es im Papierkorb nicht.' });
+    const b = request.body ?? {};
+    const sichtbar = new Set(gesehen.items.map((i) => i.id));
+    const offen = gesehen.items.filter((i) => !i.restored).map((i) => i.id);
+    const pick = Array.isArray(b.ids) ? b.ids.filter((x): x is string => typeof x === 'string' && sichtbar.has(x)) : offen;
+    const wahl = pick.filter((id) => !lauf.zurueck.has(id));
+    if (!wahl.length) return reply.code(409).send({ error: 'Schon zurückgeholt.' });
+    const alle = await repo.listEntities();
+    const roh = new Map(alle.map((e) => [e.id, e]));
+    const registry = await repo.getRegistry();
+    const plan = planRestore(registry, gesehen.changes, lauf.haupt, wahl, roh);
+    if (!plan.restored.length) {
+      return reply.code(409).send({ error: 'Diese Artikel stehen schon wieder da.' });
+    }
+    const { geprueft, abgelehnt } = await pruefeLauf(user, registry, roh, plan.changes.map((c) => ({ ...c, summary: [] })), true);
+    if (abgelehnt.length) {
+      return reply.code(422).send({ error: 'Die alten Fassungen bestehen die Prüfung nicht — nichts geschrieben.', rejected: abgelehnt });
+    }
+    await repo.appendEvent('trash.restored', lauf.ereignis.id, {
+      by: { id: user.id, name: user.name },
+      token: echt.token?.name ?? null,
+      ids: plan.restored,
+      changes: geprueft.map((c) => ({ id: c.id, before: c.before, after: c.after })),
+    });
+    for (const c of geprueft) if (c.after) await repo.putEntity(c.after);
+    const fertig = lauf.haupt.every((id) => lauf.zurueck.has(id) || plan.restored.includes(id));
+    if (fertig) {
+      await repo.appendEvent('bulk.undone', lauf.ereignis.id, { by: { id: user.id, name: user.name }, token: echt.token?.name ?? null, via: 'trash', changes: [] });
+    }
+    return { restored: plan.restored, done: fertig };
+  });
+
+  /**
+   * `POST /api/trash/empty` — „Empty trash" (T-400): die eigenen Läufe
+   * endgültig, als Leitung alle, die sie im Korb sieht; mit `runs` nur
+   * diese. Danach gibt es kein Zurück mehr, auch nicht in der Werkbank.
+   */
+  app.post<{ Body: { runs?: unknown } | null }>('/api/trash/empty', async (request, reply) => {
+    const echt = await werIst(request);
+    if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nichts geleert.' });
+    const nur = Array.isArray(request.body?.runs) ? new Set(request.body.runs.filter((x): x is string => typeof x === 'string')) : null;
+    const laeufe = (await korbFuer(request, echt.user)).map((k) => k.lauf).filter((l) => !nur || nur.has(l.ereignis.id));
+    const emptied = await leeren(laeufe, { id: echt.user.id, name: echt.user.name }, 'empty');
+    return { emptied };
+  });
 
   /** Die Übernahme ist Sache der Verwaltung der Installation (T-130) — nie in einer Sicht. */
   async function verwaltungFuer(request: FastifyRequest): Promise<Wer | string> {

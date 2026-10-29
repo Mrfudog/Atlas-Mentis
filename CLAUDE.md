@@ -285,7 +285,8 @@ wiederkommen, werden sie neu geschrieben.
 - **Die Rolle am Tisch steht am Konto, je Kampagne** — in keinem Artikel.
   Am Server `campaign_member (campaign, user, role)` mit `gm`, `co-gm`,
   `player`, `spectator`; welche Figuren ein Konto führt, steht daneben in
-  `app_user_actor`; im Prototyp die Sammlung `members`. Es gab dafür eine
+  `app_user_actor`, **je Kampagne** (`campaign_id`, T-412) — „meine Figur"
+  heisst „meine Figur in dieser Runde"; im Prototyp die Sammlung `members`. Es gab dafür eine
   `Access`-Karte an der Figur (und für einen Tag an der Kampagne): der
   Server las sie nie, `userIds` war in keinem Artikel gefüllt, eine Figur
   sagt nicht, in welcher Runde ihr Konto was ist, und eine Konto-Id in

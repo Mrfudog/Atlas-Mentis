@@ -107,7 +107,7 @@ async function rollenSeite(browser: Browser, rolle: Rolle, use: (p: Page) => Pro
   await ctx.close();
 }
 
-export const test = basis.extend<{ lauf: Lauf; leitung: Page; spielerin: Page; api: Api; eindeutig: (name: string) => string }>({
+export const test = basis.extend<{ lauf: Lauf; leitung: Page; spielerin: Page; verwaltung: Page; api: Api; eindeutig: (name: string) => string }>({
   // eslint-disable-next-line no-empty-pattern
   lauf: async ({}, use) => use(leseLauf()),
 
@@ -117,6 +117,7 @@ export const test = basis.extend<{ lauf: Lauf; leitung: Page; spielerin: Page; a
 
   leitung: async ({ browser }, use, info) => rollenSeite(browser, 'leitung', use, info),
   spielerin: async ({ browser }, use, info) => rollenSeite(browser, 'spielerin', use, info),
+  verwaltung: async ({ browser }, use, info) => rollenSeite(browser, 'verwaltung', use, info),
 
   api: async ({ playwright, baseURL }, use) => {
     const offen: APIRequestContext[] = [];

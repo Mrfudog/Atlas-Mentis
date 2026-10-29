@@ -959,7 +959,7 @@ describe('the rule family', () => {
   const i = seedRegistry.interfaces;
 
   it('puts every rule kind below Rule, and Disease below Condition', () => {
-    for (const n of ['Condition', 'ActionType', 'Action', 'Feature', 'ItemProperty']) {
+    for (const n of ['Condition', 'ActionType', 'Action', 'Feature', 'ItemFeature']) {
       expect(i[n]?.extends).toContain('Rule');
     }
     expect(i['Disease']?.extends).toEqual(['Condition']);
@@ -987,6 +987,22 @@ describe('the rule family', () => {
     expect(seedRegistry.relations['worships']?.to).toEqual(['Deity']);
   });
 
+  /* T-324, E-163: was an einen Gegenstand kommt, ist ein Regelartikel. */
+  it('makes item properties and enhancements two sorts of one item feature', () => {
+    expect(i['ItemFeature']).toMatchObject({ area: 'rules', abstract: true });
+    expect(i['ItemProperty']?.extends).toEqual(['ItemFeature']);
+    expect(i['Enhancement']?.extends).toEqual(['ItemFeature']);
+    expect(Object.keys(i['ItemFeature'].schema.properties)).toEqual(
+      expect.arrayContaining(['appliesTo', 'namePrefix', 'nameSuffix', 'priceAdd', 'priceMult', 'mechanics']),
+    );
+    expect(Object.keys(i['Enhancement'].schema.properties)).toEqual(expect.arrayContaining(['rarity', 'bonusWeapon', 'bonusAc']));
+    /* Am Grundgegenstand steht nichts mehr davon. */
+    for (const f of ['appliesTo', 'namePrefix', 'nameSuffix', 'priceAdd', 'priceMult']) expect(i['Item'].schema.properties[f]).toBeUndefined();
+    expect(seedRegistry.relations['enchantedWith']?.to).toEqual(['Enhancement']);
+    /* Die Werte des Einzelfalls stehen an der Kante. */
+    expect(Object.keys(seedRegistry.relations['hasProperty']?.props?.properties ?? {})).toEqual(['damage', 'range', 'note']);
+  });
+
   it('carries the licence flag, the faction goal and the table columns', () => {
     expect(i['Source'].schema.properties['srd']?.type).toBe('boolean');
     expect(i['Faction'].schema.properties['goal']).toBeTruthy();
@@ -999,5 +1015,22 @@ describe('Ebenen-Arten (E-166)', () => {
     const { LAYER_TYPES, typeChain } = await import('@nw/model');
     const ebenen = Object.keys(seedRegistry.interfaces).filter((n) => !seedRegistry.interfaces[n]?.abstract && typeChain(seedRegistry, n).includes('Layer'));
     expect(ebenen.sort()).toEqual([...LAYER_TYPES].sort());
+  });
+});
+
+/* Ein Encounter trägt, was die Leitung vorbereitet (T-333): wo er
+   stattfindet, was zu holen ist, auf welcher Karte — als Gruppen in der
+   Ansicht, damit der Ansichtsdesigner sie verschieben kann. */
+describe('an encounter as a prepared article (T-333)', () => {
+  it('happens at a place, like a scene', () => {
+    expect(seedRegistry.relations['happensAt']?.from).toEqual(expect.arrayContaining(['Story', 'Encounter']));
+    expect(relationsFrom(seedRegistry, 'Encounter').map((d) => d.type)).toContain('happensAt');
+  });
+  it('shows place, loot and map as groups in its full view', () => {
+    const full = seedRegistry.interfaces['Encounter']!.views!['full']!;
+    const gruppe = (rel: string) => full.find((el) => el.el === 'collection' && el.path?.[0]?.relation === rel);
+    expect(gruppe('happensAt')).toMatchObject({ text: 'Place' });
+    expect(gruppe('loot')).toMatchObject({ text: 'Loot', show: 'table', props: ['qty', 'chance'] });
+    expect(gruppe('onMap')).toMatchObject({ text: 'Map' });
   });
 });

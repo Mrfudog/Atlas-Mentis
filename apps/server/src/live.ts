@@ -20,7 +20,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { primaryInterface, rollVisible } from '@nw/model';
+import { primaryInterface, rollVisible, stableJson } from '@nw/model';
 import type { Entity, Registry, RollEntry } from '@nw/model';
 import type { PutOptions, Repository } from './repo.js';
 import type { User } from './auth.js';
@@ -210,6 +210,16 @@ export function mitKanal(repo: Repository, feed: ChangeFeed): Repository {
   });
 }
 
+/**
+ * Sieht er vorher und nachher dasselbe? Revision und Zeitstempel zählen
+ * nicht: sie ändern sich bei jedem Schreiben, auch einem, das nur
+ * Verborgenes trifft (T-399).
+ */
+export function gleichGesehen(a: Entity, b: Entity): boolean {
+  const ohne = ({ revision: _r, updatedAt: _u, ...rest }: Entity) => rest;
+  return stableJson(ohne(a)) === stableJson(ohne(b));
+}
+
 /** Eine Nachricht im Format von Server-Sent Events. */
 export function sseNachricht(event: string, data: unknown, id?: string): string {
   return `${id ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -255,14 +265,17 @@ interface Strom {
  * `GET /api/entities/:id`):
  * - `hello` `{boot, seq}` beim Verbinden;
  * - `entity` `{id, type, revision}` — ein Artikel, den dieser Empfänger
- *   sieht, hat sich geändert (Kanten gehören dazu: ein Token auf der
- *   Karte ist eine `marker`-Kante der Karte);
+ *   sieht, hat sich **für ihn** geändert (Kanten gehören dazu: ein Token
+ *   auf der Karte ist eine `marker`-Kante der Karte; was er vorher und
+ *   nachher gleich sieht, meldet sich nicht, T-399);
  * - `session` `{id, activeMap, activeEncounter, activeScene, nowPlaying}` —
  *   eine Sitzung, aus dem gesiebten Artikel;
  * - `gone` `{id}` — er war für ihn da und ist jetzt verborgen oder gelöscht;
  * - `registry` `{part}` — eine Registerzeile; `reset` — alles neu laden;
  * - `roll` — ein Wurf (T-172), der Eintrag, wenn dieser Empfänger ihn
- *   sieht (`rollVisible`, mit dem Artikel des Wurfs gesiebt).
+ *   sieht (`rollVisible`, mit dem Artikel des Wurfs gesiebt);
+ * - `ping` `{}` — das Lebenszeichen, alle `heartbeatMs`; bleibt es aus,
+ *   verbindet das Gerät neu (T-399).
  *
  * Was ein Empfänger nicht sieht, bekommt er nicht — auch nicht als Id.
  */
@@ -317,15 +330,26 @@ export function registerLive(
       const artikel = buendel.filter((e): e is Extract<LiveEintrag, { kind: 'entity' }> => e.kind === 'entity');
       const jetzt = artikel.filter((e) => !e.deleted).flatMap((e) => map.get(e.id) ?? []);
       const sichtbar = new Map((jetzt.length ? await deps.sieveFuer(user, jetzt, map) : []).map((e) => [e.id, e]));
-      /* War er vorher für ihn da? Gesiebt gegen den Bestand mit dem alten
-         Stand darin — die Frage ist, was er gesehen hat. */
-      const vorher = artikel.flatMap((e) => (e.before && !sichtbar.has(e.id) ? [e.before] : []));
-      let sah = new Set<string>();
+      /* War er vorher für ihn da, und wie? Gesiebt gegen den Bestand mit
+         dem alten Stand darin — die Frage ist, was er gesehen hat. */
+      const vorher = artikel.flatMap((e) => (e.before ? [e.before] : []));
+      const sah = new Map<string, Entity>();
       if (vorher.length) {
         const alt = new Map(map);
         for (const b of vorher) alt.set(b.id, b);
-        sah = new Set((await deps.sieveFuer(user, vorher, alt)).map((e) => e.id));
+        for (const e of await deps.sieveFuer(user, vorher, alt)) sah.set(e.id, e);
       }
+      /* **Nur melden, was er anders sieht** (T-399, REQ-398 Akzeptanz 3):
+         zieht ein verborgener Gegner oder ein Token unter dem Nebel, bleibt
+         die gesiebte Karte der Spielerin gleich — und dann schweigt der
+         Kanal, sonst sagte schon der Takt der Meldungen „da tat sich
+         etwas". Die Leitung sieht alles und erfährt weiter jede Änderung. */
+      const unveraendert = new Set<string>();
+      for (const [id, jetzt] of sichtbar) {
+        const war = sah.get(id);
+        if (war && gleichGesehen(war, jetzt)) unveraendert.add(id);
+      }
+      for (const id of unveraendert) sichtbar.delete(id);
       /* Würfe: wer den Artikel des Wurfs nicht sieht, sieht ihn nicht. */
       const wurfArtikel = buendel.flatMap((e) => (e.kind === 'roll' && e.entry.subject ? (map.get(e.entry.subject) ?? []) : []));
       const wurfSicht = new Set((wurfArtikel.length ? await deps.sieveFuer(user, wurfArtikel, map) : []).map((e) => e.id));
@@ -350,7 +374,7 @@ export function registerLive(
             for (const f of SITZUNG_FELDER) zustand[f] = karte?.[f] ?? null;
             schreib(sseNachricht('session', zustand, id));
           }
-        } else if (sah.has(e.id)) schreib(sseNachricht('gone', { id: e.id }, id));
+        } else if (sah.has(e.id) && !unveraendert.has(e.id)) schreib(sseNachricht('gone', { id: e.id }, id));
       }
     };
     const weiter = (buendel: LiveEintrag[]): void => {
@@ -372,7 +396,10 @@ export function registerLive(
     /* Ein Lebenszeichen hält Proxy und Mobilfunk-NAT offen; nach
        `maxAgeMs` endet die Verbindung, und der Browser kommt mit
        `Last-Event-ID` wieder — dabei wird die Anmeldung neu geprüft. */
-    const puls = setInterval(() => schreib(': ping\n\n'), heartbeatMs);
+    /* Ein benanntes Ereignis und kein Kommentar (T-399): einen Kommentar
+       sieht der Browser nicht, und ohne ihn merkt das Telefon nicht, dass
+       seine Verbindung still gestorben ist. */
+    const puls = setInterval(() => schreib(sseNachricht('ping', {})), heartbeatMs);
     const alter = setTimeout(() => ende(), maxAgeMs);
     const strom: Strom = { userId, ende: () => ende() };
     stroeme.add(strom);

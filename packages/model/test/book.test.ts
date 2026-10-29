@@ -119,6 +119,20 @@ describe('Der Statblock wie im Buch (W2)', () => {
     expect(zeile('Proficiency Bonus')).toBe('+2');
   });
 
+  it('sagt je Fertigkeit, Rettungswurf und Attribut, was gewürfelt wird (T-181)', () => {
+    expect(book.details.find((d) => d.label === 'Skills')?.rolls).toEqual([{ name: 'Stealth', expr: '+6', label: 'Stealth check' }]);
+    const dex = book.abilities.find((a) => a.key === 'dex');
+    expect(dex?.check).toEqual({ name: 'DEX', expr: '+2', label: 'DEX check' });
+    const mitSaves = statblockBook(imperial, {
+      ...goblin,
+      components: { ...goblin.components, Proficiencies: { ...goblin.components!['Proficiencies'], saves: ['dex', 'str'] } },
+    }, { kindOf: () => 'Skill', skillAbility: () => 'dex' });
+    expect(mitSaves.details.find((d) => d.label === 'Saving Throws')?.rolls).toEqual([
+      { name: 'Dex', expr: '+4', label: 'DEX save' },
+      { name: 'Str', expr: '+1', label: 'STR save' },
+    ]);
+  });
+
   it('nimmt eine feste Buchzahl vor der Rechnung', () => {
     const fest = statblockBook(imperial, {
       ...goblin,
@@ -180,6 +194,21 @@ describe('Die Abschnitte aus composedOf', () => {
     expect(s[1]!.intro).toMatch(/^The dragon can take 3 legendary actions/);
   });
 
+  it('nennt die Zahl im Lair, wenn der Statblock sie trägt (T-437)', () => {
+    const drache: Entity = {
+      id: 'drache2',
+      interfaces: ['Statblock'],
+      name: 'Adult Fog Dragon',
+      components: { Statblock: { legendaryActions: 3, legendaryActionsLair: 4, prof: 6 } },
+      relations: [{ id: 'd1', type: 'composedOf', to: 'schwanz', props: { vars: { CREATURE: 'dragon' } } }],
+    };
+    const t: Record<string, Entity> = {
+      schwanz: { id: 'schwanz', interfaces: ['Action'], name: 'Tail Attack', components: { Action: { actionType: 'at-legendary' } } },
+    };
+    const s = bookSections(imperial, drache, { part: (id) => t[id], nameOf: (id) => namen[id] });
+    expect(s[0]!.intro).toMatch(/^The dragon can take 3 legendary actions \(4 in its lair\), choosing/);
+  });
+
   it('kennt beide Fassungen der Bindung (W1: „the dragon" mit Artikel)', () => {
     expect(creatureRef('dragon', 'Adult Red Dragon')).toBe('the dragon');
     expect(creatureRef('the dragon', 'Adult Red Dragon')).toBe('the dragon');
@@ -237,9 +266,9 @@ describe('Der Gegenstand wie im Buch', () => {
   it('setzt Art, Seltenheit und Einstimmung kursiv unter den Namen', () => {
     const b = itemBook(imperial, {
       id: 'ft', interfaces: ['Item'], name: 'Flame Tongue',
-      components: { Item: { rarity: 'rare', attunement: true, appliesTo: ['sword'] } },
+      components: { Item: { rarity: 'rare', attunement: true } },
     }, 'Item');
-    expect(b.byline).toBe('Item (any sword), rare (requires attunement)');
+    expect(b.byline).toBe('Item, rare (requires attunement)');
   });
 
   it('schreibt Rüstung, Preis und Gewicht als Zeilen', () => {

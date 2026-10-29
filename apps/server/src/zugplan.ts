@@ -50,12 +50,23 @@ import {
   gridGeometry,
   initiativeOrder,
   feetBetween,
+  feetBetweenTokens,
+  statblockSize,
+  tokenSpan,
   mapRulesOf,
   mapSettings,
   movedTokens,
   carriedLights,
   darkvisionFor,
   revealSeenAlong,
+  isManualTile,
+  hiddenOnMap,
+  senseNumbers,
+  spotsAlong,
+  zonesEntered,
+  partyMembers,
+  heldWeaponTiles,
+  proficienciesOf,
   wallsClear,
   fogOn,
   opportunityAttacks,
@@ -91,7 +102,13 @@ import {
   partiesOf,
   resolvePlay,
   planBudget,
+  planEnd,
+  planGrid,
   planText,
+  mapTerrain,
+  pathFeet,
+  tokenCell,
+  type PlanTerrain,
   primaryInterface,
   resolveInstance,
   creatureStats,
@@ -100,9 +117,8 @@ import {
   commonAction,
   attackRollMode,
   rangeBand,
-  damageAfterDefenses,
-  concentrationCheck,
-  applyDamage,
+  damageAtTable,
+  damageLines,
   checkBonus,
   type CharacterStats,
   type CommonAction,
@@ -147,6 +163,7 @@ import {
   type TurnPlan,
   type validateEntity,
 } from '@nw/model';
+import type { MapMarker } from '@nw/model';
 import type { User } from './auth.js';
 import type { ChangeFeed } from './live.js';
 import type { Repository } from './repo.js';
@@ -210,8 +227,10 @@ export function tempoVon(stats: Card): number {
  * ändern), dazu waffenloser Schlag und die allgemeinen Aktionen. Nur
  * Aktionen, die `sichtbar` sagt.
  */
-export function kachelnVon(map: Map<string, Entity>, sb: Entity | null, sichtbar: (id: string) => boolean): PlanTile[] {
+export function kachelnVon(map: Map<string, Entity>, sb: Entity | null, sichtbar: (id: string) => boolean, figur?: Entity): PlanTile[] {
   const stats = werte(map, sb);
+  /* Die Wirkungen der Figur (T-355): `spellAttack`, `weapon.attack` … an ihren Kacheln. */
+  const add = figur ? creatureStats(figur, map).totals.add : {};
   const aktionen = sb
     ? (resolveInstance(map, sb).relations ?? [])
         .filter((r) => r.type === 'composedOf' && sichtbar(r.to))
@@ -223,7 +242,18 @@ export function kachelnVon(map: Map<string, Entity>, sb: Entity | null, sichtbar
           return [{ id: a.id, name: entityName(a), actionTypeName: art ? entityName(art) : null, action, edge: (r.props ?? {}) as Card }];
         })
     : [];
-  return tilesFor(stats, aktionen);
+  const kacheln = tilesFor(stats, aktionen, add);
+  /* Waffen in der Hand sind Angriffe (T-354): eine Spielerfigur führt ihr
+     Langschwert im Inventar, nicht als Aktion am Statblock. Was der
+     Statblock schon unter demselben Namen nennt, kommt nicht doppelt. */
+  if (!figur) return kacheln;
+  const schon = new Set(kacheln.map((k) => k.name.toLowerCase()));
+  const waffen = heldWeaponTiles(figur, map, { stats, proficiencies: proficienciesOf(figur, sb ?? undefined, map), add }).filter(
+    (k) => !schon.has(k.name.toLowerCase()),
+  );
+  /* Vor dem waffenlosen Schlag, wie am Bogen: erst, was die Hände halten. */
+  const i = kacheln.findIndex((k) => k.id === 'std:unarmed');
+  return i < 0 ? [...kacheln, ...waffen] : [...kacheln.slice(0, i), ...waffen, ...kacheln.slice(i)];
 }
 
 /**
@@ -298,7 +328,7 @@ export function darfZiehen(leitet: boolean, regeln: MapRules, ziel: string, wer:
 
 /** Die Nahkampfreichweite einer Kreatur aus ihren Kacheln; ohne Angriff 5 ft. */
 function reichweiteVon(stand: Stand, e: Entity): number {
-  const nah = kachelnVon(stand.map, statblockVon(stand.alle, e), () => true).filter((t) => t.group === 'attack' && t.longRange === null && t.range !== null);
+  const nah = kachelnVon(stand.map, statblockVon(stand.alle, e), () => true, e).filter((t) => t.group === 'attack' && t.longRange === null && t.range !== null);
   return Math.max(5, ...nah.map((t) => t.range!));
 }
 
@@ -323,6 +353,69 @@ export function bedrohungen(stand: Stand, karte: Entity, figur: string, kampf: E
   return out;
 }
 
+/**
+ * **Was der Plan auf der Ebene der Figur durchlässt** (T-349): die
+ * Markerkanten der Verbündeten (`seiteVon` wie die Figur) und das Gelände
+ * der Zonen — versteckte nur für die Leitung (`mapTerrain`). Gelesen von
+ * **der** Karte, die man hineingibt; für Spielende die gesiebte, wie das
+ * Raster der Maske.
+ */
+export function planDurchlass(stand: Stand, karte: Entity, figur: string, kampf: Entity | null, leitet: boolean): { passable: string[]; terrain: PlanTerrain[] } {
+  const ich = markersOf(karte).find((m) => m.to === figur);
+  if (!ich) return { passable: [], terrain: [] };
+  const ebene = floorView(karte, floorOfMarker(karte, ich.rel.id));
+  const meine = seiteVon(stand, kampf, figur);
+  const passable = markersOf(ebene)
+    .filter((m) => m.kind !== 'scenery' && m.to !== figur && seiteVon(stand, kampf, m.to) === meine)
+    .map((m) => m.rel.id);
+  return { passable, terrain: mapTerrain(ebene, stand.map, { hidden: leitet }) };
+}
+
+/**
+ * **Die Wege eines Plans am Server nachgerechnet** (T-349): je Bewegung
+ * das Raster, wie die Maske es baut (Wände, Tokens, Verbündete, Gelände),
+ * und die Fuss daraus — nicht die, die mitkommen. Ein Weg fängt dort an,
+ * wo der letzte aufhörte (am Anfang beim Token), und geht Schritt für
+ * Schritt; durch einen Gegner, durch eine Wand oder bis auf einen
+ * Verbündeten geht er nicht. Ohne Gitter, Token oder Quadrate rechnet
+ * niemand nach, statt falsch abzulehnen. Die Diagonalen zählt jeder Weg
+ * von vorn, wie die Maske (`planPath`).
+ */
+export function wegeNachrechnen(
+  stand: Stand,
+  roheKarte: Entity,
+  karte: Entity,
+  figur: string,
+  steps: PlanStep[],
+  nat: { w: number; h: number } | null,
+  kampf: Entity | null,
+  leitet: boolean,
+): string | null {
+  if (!steps.some((s) => s.kind === 'move')) return null;
+  const m = markersOf(karte).find((x) => x.to === figur);
+  if (!m) return null;
+  const floor = floorOfMarker(roheKarte, m.rel.id);
+  const geo = geoDerEbene(stand, roheKarte, floor, nat);
+  if (!geo) return null;
+  const ebene = floorView(karte, floor);
+  const grid = planGrid(geo, markersOf(ebene), m.rel.id, blockingWalls(ebene, { w: geo.w, h: geo.h }), planDurchlass(stand, karte, figur, kampf, leitet));
+  if (!grid) return null;
+  const start = tokenCell(geo, grid, m);
+  for (const [i, s] of steps.entries()) {
+    if (s.kind !== 'move' || !s.path.length) continue;
+    const da = planEnd(steps.slice(0, i), start);
+    const [erster] = s.path;
+    /* Die Maske schickt das Startfeld mit; ein Aufrufer, der beim Nachbarfeld
+       anfängt, meint denselben Weg — der Start kommt davor. Weiter weg ist
+       ein Sprung. */
+    const weg = erster && (erster.x !== da.x || erster.y !== da.y) && Math.max(Math.abs(erster.x - da.x), Math.abs(erster.y - da.y)) === 1 ? [da, ...s.path] : s.path;
+    const w = weg[0] && weg[0].x === da.x && weg[0].y === da.y ? pathFeet(grid, weg) : null;
+    if (!w) return 'That path is blocked — it starts away from the token, goes through a wall or someone who stops it, or ends on an ally. Plan it again on the map.';
+    steps[i] = { ...s, path: weg, feet: w.feet };
+  }
+  return null;
+}
+
 /** Die Bedrohungen mit ihren Feldern, für `opportunityAttacks`. */
 function bedrohteFelder(karte: Entity, geo: GridGeometry, b: ReturnType<typeof bedrohungen>): PlanThreat[] {
   const marker = new Map(markersOf(karte).map((m) => [m.rel.id, m]));
@@ -337,9 +430,21 @@ function bedrohteFelder(karte: Entity, geo: GridGeometry, b: ReturnType<typeof b
  * Stelle, an der die Figur angreift, zum Token des Ziels auf ihrer Ebene —
  * `null` ohne Gitter oder ohne beide Tokens (dann prüft niemand). `davor`
  * sind die Schritte vor dem Angriff: angegriffen wird vom Ende des letzten
- * Wegs. Dieselbe Rechnung wie die Maske (`feetBetween`, 5-10-5).
+ * Wegs. Dieselbe Rechnung wie die Maske (`feetBetweenTokens`, 5-10-5).
+ *
+ * **Bis zum nächsten belegten Feld** (T-391): `platz` sagt, wie viele
+ * Felder ein Token breit ist; gemessen wird zwischen den nächsten Feldern
+ * beider Plätze — ein 3 × 3-Drache, den Kira berührt, ist 5 ft weit. Nach
+ * einer geplanten Bewegung zählt für die Figur das Feld am Ende des Wegs.
  */
-export function abstandImPlan(karte: Entity, geo: GridGeometry | null, figur: string, ziel: string, davor: readonly PlanStep[] = []): number | null {
+export function abstandImPlan(
+  karte: Entity,
+  geo: GridGeometry | null,
+  figur: string,
+  ziel: string,
+  davor: readonly PlanStep[] = [],
+  platz: (m: MapMarker) => number = (m) => m.ownSize ?? 1,
+): number | null {
   if (!geo) return null;
   const ich = markersOf(karte).find((m) => m.to === figur);
   if (!ich) return null;
@@ -347,7 +452,15 @@ export function abstandImPlan(karte: Entity, geo: GridGeometry | null, figur: st
   if (!dort) return null;
   const letzter = [...davor].reverse().find((x) => x.kind === 'move' && (x.to || x.path.length));
   const wo = letzter?.kind === 'move' ? (letzter.to ?? cellPoint(geo, letzter.path[letzter.path.length - 1]!)) : ich;
-  return feetBetween(geo, wo, dort);
+  return feetBetweenTokens(geo, wo, letzter ? 1 : platz(ich), dort, platz(dort));
+}
+
+/** Wie viele Felder ein Token breit ist (T-391): am Token gesetzt, sonst nach seinem Statblock. */
+export function platzVon(stand: { map: Map<string, Entity>; alle: readonly Entity[] }): (m: MapMarker) => number {
+  return (m) => {
+    const e = stand.map.get(m.to);
+    return tokenSpan(m.ownSize, e ? statblockSize(stand.map, statblockVon(stand.alle, e)) : null);
+  };
 }
 
 /** Wo eine Begegnung steht und welchen Platz `id` in ihrer Reihe hat. */
@@ -468,6 +581,68 @@ export function wegAufdecken(
   return revealSeenAlong(karte, pts, nat, () => `s-${randomUUID()}`, figur, darkvisionFor(bestand, figur), carriedLights(bestand, karte));
 }
 
+/**
+ * **Was eine Figur unterwegs bemerkt und betritt** (T-350, REQ-209,
+ * REQ-208): auf dem Weg eines Zuges fragt jedes Feld, ob die Figur von dort
+ * einen Versteckten (Heimlichkeit) oder eine versteckte Zone
+ * (`hiddenUntil`) bemerkt — dann steht er da (`hidden` weg, `found`). Nur
+ * die Seite der Spielenden bemerkt; was die Leitung zieht, sieht sie
+ * ohnehin. Wer eine Zone mit Wirkung betritt, bekommt eine Zeile, gewürfelt
+ * wird nicht. Ohne Gitter oder ohne Felder im Weg: nichts.
+ */
+export function bemerkenUnterwegs(
+  karte: Entity,
+  stand: Stand,
+  kampf: Entity | null,
+  figur: string,
+  rel: string,
+  path: readonly { x: number; y: number }[],
+  nat: { w: number; h: number } | null,
+): { karte: Entity; zeilen: string[] } {
+  const geo = nat ? gridGeometry(mapSettings(karte), nat) : null;
+  if (!geo || !nat || path.length < 2) return { karte, zeilen: [] };
+  const pts = path.map((c) => cellPoint(geo, c));
+  const zeilen: string[] = [];
+  const wer = entityName(stand.map.get(figur) ?? { id: figur, name: figur, interfaces: [], components: {}, relations: [] });
+  const sinne = (id: string) => {
+    const e = stand.map.get(id);
+    return e ? senseNumbers(creatureStats(resolveInstance(stand.map, e), stand.map)) : null;
+  };
+  let neu = karte;
+  if (seiteVon(stand, kampf, figur) === 'party') {
+    /* Die Gruppe sieht mit den Augen ihres besten Mitglieds — das Gruppen-Token steht für alle. */
+    const eigen = stand.map.get(figur);
+    const augen = eigen && primaryInterface(eigen) === 'Party' ? partyMembers(stand.map, figur).map((m) => sinne(m.id)) : [sinne(figur)];
+    const pp = Math.max(10, ...augen.map((x) => x?.pp ?? 10));
+    const darkvision = Math.max(0, ...augen.map((x) => x?.darkvision ?? 0), darkvisionFor(stand.map, figur));
+    const kandidaten = hiddenOnMap(karte, stand.map, geo, rel, (to) => sinne(to)?.stealth ?? null);
+    const gesehen = spotsAlong(karte, nat, stand.map, pts, { pp, darkvision }, kandidaten, carriedLights(stand.map, karte));
+    if (gesehen.length) {
+      const weg = new Map(gesehen.map((g) => [g.rel, g]));
+      neu = {
+        ...karte,
+        relations: (karte.relations ?? []).map((r) => {
+          const g = weg.get(r.id);
+          if (!g) return r;
+          const props = (r.props ?? {}) as Record<string, unknown>;
+          if (g.kind === 'zone') return { ...r, props: { ...props, found: true } as Relation['props'] };
+          const { hidden: _weg, ...rest } = props;
+          return { ...r, props: rest as Relation['props'] };
+        }),
+      };
+      for (const g of gesehen) {
+        const name = entityName(stand.map.get(g.to) ?? { id: g.to, name: g.kind === 'zone' ? 'a hidden zone' : 'someone', interfaces: [], components: {}, relations: [] });
+        zeilen.push(g.kind === 'zone' ? `${wer} notices ${name} (PP ${g.pp} vs ${g.dc}).` : `${wer} spots ${name} (PP ${g.pp} vs ${g.dc}).`);
+      }
+    }
+  }
+  for (const z of zonesEntered(neu, stand.map, pts)) {
+    const name = entityName(stand.map.get(z.to) ?? { id: z.to, name: 'a zone', interfaces: [], components: {}, relations: [] });
+    zeilen.push(`${wer} enters ${name}: ${z.line}.`);
+  }
+  return { karte: neu, zeilen };
+}
+
 export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   const { repo, feed, viewerOf, roh, sieve, geltend, schreibeGeprueft } = deps;
 
@@ -582,7 +757,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const aktionsIds = sb ? (resolveInstance(stand.map, sb).relations ?? []).filter((r) => r.type === 'composedOf').map((r) => r.to) : [];
       const da = aktionsIds.flatMap((i) => stand.map.get(i) ?? []);
       const sicht = new Set((da.length ? await sieve(request, da, stand.map) : []).map((e) => e.id));
-      tiles = plannerTiles(kachelnVon(stand.map, sb, (i) => sicht.has(i)), stufe);
+      tiles = plannerTiles(kachelnVon(stand.map, sb, (i) => sicht.has(i), figur), stufe);
       speed = tempoVon(werte(stand.map, sb));
     }
 
@@ -611,7 +786,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const long: Record<string, number> = {};
       const modes: Record<string, 'adv' | 'dis'> = {};
       const er = ich ? werteAmTisch(folgenJetzt, stand, roh).totals.grants : {};
-      const feet = figur ? abstandImPlan(karte, geoJetzt, figur.id, z.id) : null;
+      const feet = figur ? abstandImPlan(karte, geoJetzt, figur.id, z.id, [], platzVon(stand)) : null;
       for (const t of angriffe) {
         /* `chances` ohne lange Reichweite — ob sie gilt, weiss erst die
            Maske am Ende des Wegs; dafür steht `long` daneben. */
@@ -671,6 +846,8 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       threats,
       plans,
       passages: figur ? uebergaengeFuer(stand, roheKarte, karte, kampagne, figur.id, leitet, speed) : [],
+      /* Wen der Weg durchlässt und was Gelände kostet (T-349). */
+      ...(figur ? planDurchlass(stand, karte, figur.id, kampf, leitet) : { passable: [], terrain: [] }),
     };
   });
 
@@ -744,12 +921,12 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     if (!m) return null;
     const geo = geoDerEbene(stand, roheKarte, floorOfMarker(roheKarte, m.rel.id), nat);
     if (!geo) return null;
-    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true).map((t) => [t.id, t]));
+    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true, figur).map((t) => [t.id, t]));
     for (const [i, s] of steps.entries()) {
       if (s.kind !== 'act' || !s.target) continue;
       const t = kacheln.get(s.tile);
       if (!t) continue;
-      const feet = abstandImPlan(karte, geo, figur.id, s.target, steps.slice(0, i));
+      const feet = abstandImPlan(karte, geo, figur.id, s.target, steps.slice(0, i), platzVon(stand));
       if (rangeBand(t, feet) !== 'out') continue;
       const reicht = `${t.range} ft${t.longRange ? `, long ${t.longRange} ft` : ''}`;
       return `${s.targetName ?? 'The target'} is ${feet} ft away — out of range for ${t.name} (${reicht}). Move closer first or pick another target.`;
@@ -771,6 +948,10 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       const b = request.body ?? {};
       const figur = figuren(stand, karte, user, leitet, kampagne).find((e) => e.id === b.actor);
       if (!figur) return reply.code(403).send({ error: 'Planen darf, wer die Figur führt oder am Tisch leitet — und sie braucht ein Token auf dieser Karte.' });
+      /* Eine freie Aktion ohne Notiz (REQ-403) sagt nicht, was geschieht — das sagt der Fehler, statt sie still zu verlieren. */
+      if ((Array.isArray(b.steps) ? b.steps : []).some((x) => isManualTile((x as { tile?: string } | null)?.tile) && !String((x as { note?: unknown }).note ?? '').trim())) {
+        return reply.code(422).send({ error: 'Say in a note what the free action does.' });
+      }
       const steps = (Array.isArray(b.steps) ? b.steps : []).slice(0, 30).map(cleanStep).filter((s): s is PlanStep => !!s);
       if (!steps.length) return reply.code(422).send({ error: 'Ein Plan braucht mindestens einen Schritt.' });
       /* Die Stufe der Kampagne (T-325): was sie nicht anbietet, nimmt sie auch nicht an. */
@@ -790,6 +971,10 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         steps.splice(i + 1);
         break;
       }
+      /* **Die Fuss zählt der Server** (T-349): Gelände, Verbündete, Wände —
+         ein zu langer Weg fällt unten durch, was die Maske auch sagte. */
+      const blockiert = wegeNachrechnen(stand, roheKarte, karte, figur.id, steps, cleanNat(b.nat), kampf, leitet);
+      if (blockiert) return reply.code(422).send({ error: blockiert });
       const { problems } = planBudget(steps, tempo, { reactionSpent });
       if (problems.length) return reply.code(422).send({ error: problems.join(' ') });
       /* **Reichweite am Server** (T-351): ausser Reichweite nimmt der Plan
@@ -954,9 +1139,21 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
 
       let neu = moveMarker(roheKarte, marker.rel.id, to);
       if (!asset && regeln.revealOnMove && fogOn(roheKarte) && nat) neu = onFloor(neu, ebene, (v) => wegAufdecken(v, marker.to, schritt, marker, nat, stand.map));
+      /* Unterwegs bemerken und betreten (T-350): dieselbe Rechnung wie im Zugplan. */
+      let seen: string[] = [];
+      if (!asset) {
+        neu = onFloor(neu, ebene, (v) => {
+          /* Ohne Felder vom Browser: von dort, wo das Token stand, bis wohin es kam. */
+          const g = nat ? gridGeometry(mapSettings(v), nat) : null;
+          const weg = schritt.path.length > 1 || !g ? schritt.path : [cellAt(g, marker), cellAt(g, to)];
+          const b = bemerkenUnterwegs(v, stand, encounterOnMap(stand.alle, roheKarte.id), marker.to, marker.rel.id, weg, nat);
+          seen = b.zeilen;
+          return b.karte;
+        });
+      }
       const r = await schreibeGeprueft(neu);
       if ('issues' in r) return reply.code(422).send({ error: 'Die Karte liess sich nicht schreiben.', issues: r.issues });
-      return { moved: marker.rel.id, to };
+      return { moved: marker.rel.id, to, ...(seen.length ? { seen } : {}) };
     },
   );
 
@@ -1099,9 +1296,9 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
 
   /**
    * **Schaden abziehen** (T-275, Punkt 2): nach der Abwehr des Ziels
-   * (`damageAfterDefenses`), von der Teilnehmerkante in der Begegnung und
-   * — bei einer Spielerfigur oder ausserhalb einer Begegnung — von
-   * `Vitals` (zeitweilige zuerst, `applyDamage`). Konzentriert sich das
+   * (`damageAtTable`, dieselbe Rechnung wie der Tracker, T-355), von der
+   * Teilnehmerkante in der Begegnung und — bei einer Spielerfigur oder
+   * ausserhalb einer Begegnung — von `Vitals`. Konzentriert sich das
    * Ziel, würfelt der Server den KON-Rettungswurf gegen den SG ins Log
    * (E-128); misslingt er, endet die Konzentration.
    */
@@ -1116,40 +1313,17 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
     hidden: boolean,
   ): Promise<string> {
     const st = werteAmTisch(f, stand, ziel);
-    const d = damageAfterDefenses(gewuerfelt, art, st.defenses);
-    const teile: string[] = [];
-    if (d.why) teile.push(`${d.why === 'immune' ? 'immune' : d.why === 'resistant' ? 'resistant' : 'vulnerable'} (${d.word}) → ${d.amount}`);
     const jetzt = aktuell(f, stand, ziel.id) ?? ziel;
     const v = (jetzt.components?.['Vitals'] ?? {}) as Record<string, unknown>;
-    const max = st.hp.value;
     const k = teilnahme(f, ziel.id);
-    const kp = ((k?.props ?? {}) as ParticipantProps);
-    const pc = primaryInterface(ziel) === 'PlayerCharacter';
-    let neu: number | null = null;
-    if (!k || pc) {
-      const hp = Number.isFinite(Number(v['hp'])) && v['hp'] !== undefined && v['hp'] !== null && v['hp'] !== '' ? Number(v['hp']) : (max ?? null);
-      if (hp !== null) {
-        const r = applyDamage({ hp, temp: Number(v['hpTemp']) || 0 }, d.amount);
-        neu = r.hp;
-        const vitals: Record<string, unknown> = { ...v, hp: r.hp };
-        if (r.temp) vitals['hpTemp'] = r.temp;
-        else delete vitals['hpTemp'];
-        f.geaendert.set(ziel.id, { ...jetzt, components: { ...jetzt.components, Vitals: vitals } });
-      }
-    }
-    if (k) {
-      const basis = kp.hp != null && Number.isFinite(Number(kp.hp)) ? Number(kp.hp) : (max ?? null);
-      const hp = neu ?? (basis === null ? null : Math.max(0, basis - d.amount));
-      if (hp !== null) {
-        teilnehmerAendern(f, ziel.id, (p) => ({ ...p, hp, involved: true }));
-        neu = hp;
-      }
-    }
-    if (neu !== null) teile.push(`${entityName(ziel)} at ${neu}${max !== null ? `/${max}` : ''} HP`);
+    const d = damageAtTable({ stats: st, vitals: v, edge: k ? ((k.props ?? {}) as ParticipantProps) : null, pc: primaryInterface(ziel) === 'PlayerCharacter', rolled: gewuerfelt, type: art });
+    if (d.vitals) f.geaendert.set(ziel.id, { ...jetzt, components: { ...jetzt.components, Vitals: d.vitals } });
+    if (d.edgeHp !== null) teilnehmerAendern(f, ziel.id, (p) => ({ ...p, hp: d.edgeHp!, involved: true }));
+    const teile = damageLines(entityName(ziel), d);
     /* Die Konzentrationsprobe (PHB): SG 10 oder der halbe Schaden. */
-    const auf = typeof v['concentration'] === 'string' && v['concentration'] ? (v['concentration'] as string) : null;
-    if (auf && d.amount > 0) {
-      const probe = concentrationCheck(st, d.amount);
+    if (d.concentration) {
+      const probe = d.concentration;
+      const auf = probe.spell;
       const zauber = stand.map.get(auf);
       const r = await wurf(ziel, von, `1d20${probe.bonus === null ? '' : probe.bonus < 0 ? probe.bonus : `+${probe.bonus}`}`, `${entityName(ziel)}: concentration save, DC ${probe.dc}`, kampagne, hidden, stand);
       if (r) {
@@ -1191,7 +1365,9 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         { proficient: c['Proficiencies']?.['proficient'], expertise: c['Proficiencies']?.['expertise'], prof: c['Statblock']?.['prof'], bonuses: c['Statblock']?.['bonuses'], score: st.abilities[a.check.ability as keyof CharacterStats['abilities']]?.value },
         a.check.skill,
       );
-      const r = await wurf(figur, von, `1d20${bonus === null ? '' : bonus < 0 ? bonus : `+${bonus}`}`, `${a.name}: ${a.check.skill} check`, kampagne, hidden, stand);
+      /* `check` wirkt auf jede Probe (T-355): Guidance, ein Ring, ein Merkmal. */
+      const mit = bonus === null ? null : bonus + (st.totals.add['check'] ?? 0);
+      const r = await wurf(figur, von, `1d20${mit === null ? '' : mit < 0 ? mit : `+${mit}`}`, `${a.name}: ${a.check.skill} check`, kampagne, hidden, stand);
       if (r) teile.push(`${a.check.skill} ${r.total}`);
     }
     const regel = a.rule;
@@ -1295,7 +1471,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
   ): Promise<{ plan: TurnPlan } | { fehler: number; error: string; issues?: unknown }> {
     const figur = stand.map.get(plan.actor);
     if (!figur) return { fehler: 409, error: 'Die Figur gibt es nicht mehr.' };
-    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true).map((t) => [t.id, t]));
+    const kacheln = new Map(kachelnVon(stand.map, statblockVon(stand.alle, figur), () => true, figur).map((t) => [t.id, t]));
     const hidden =
       (kampagne?.components?.['Campaign'] as { playerRolls?: unknown } | undefined)?.playerRolls === 'gm' && plan.by.id !== von.id;
     const kampf = encounterOnMap(stand.alle, roheKarte.id);
@@ -1404,7 +1580,16 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
              Felder, sonst die Gerade —, für die Figur, die ihn ging. */
           if (aufdecken && plan.nat && von) karte = onFloor(karte, ebene, (v) => wegAufdecken(v, figur.id, s, von, plan.nat!, stand.map));
         }
-        results.push({ step: s.id, text: `Moved ${s.feet} ft.` });
+        /* Unterwegs bemerken und betreten (T-350): Versteckte, versteckte Zonen, Zonen mit Wirkung. */
+        let unterwegs: string[] = [];
+        if (rel) {
+          karte = onFloor(karte, ebene, (v) => {
+            const b = bemerkenUnterwegs(v, stand, kampf, figur.id, rel, s.path, plan.nat ?? null);
+            unterwegs = b.zeilen;
+            return b.karte;
+          });
+        }
+        results.push({ step: s.id, text: [`Moved ${s.feet} ft.`, ...unterwegs].join(' ') });
         continue;
       }
       if (s.kind === 'passage') {
@@ -1423,6 +1608,11 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
         results.push({ step: s.id, text: `Went through the ${s.name}${s.feet ? ` (${s.feet} ft)` : ''}.` });
         return { plan: { ...rest, state: 'confirmed', asked: [...gefragt], results } };
       }
+      /* **Eine freie Aktion** (REQ-403): sie tut, was die Notiz sagt — keine Regel, kein Wurf, aber im Ergebnis als „manual“. */
+      if (isManualTile(s.tile)) {
+        results.push({ step: s.id, text: `${entityName(figur)}: ${s.note ?? s.name}${s.targetName ? ` → ${s.targetName}` : ''} (manual, ${s.name.toLowerCase()})`, manual: true });
+        continue;
+      }
       const t = kacheln.get(s.tile);
       const ziel = s.target ? stand.map.get(s.target) : undefined;
       /* Eine allgemeine Aktion, die eine Zahl ändert (T-275): Dodge, Help, Hide, Ready. */
@@ -1439,7 +1629,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       /* **Reichweite beim Ausführen** (T-351): gemessen, wo die Tokens jetzt
          stehen — das Ziel kann seit dem Einreichen gegangen sein. Ausser
          Reichweite wird nicht gewürfelt; lang würfelt mit Nachteil. */
-      const feet = abstandImPlan(karte, geoWeite, figur.id, ziel.id);
+      const feet = abstandImPlan(karte, geoWeite, figur.id, ziel.id, [], platzVon(stand));
       const band = rangeBand(t, feet);
       if (band === 'out') {
         results.push({ step: s.id, text: `${t.name} → ${entityName(ziel)}: out of range (${feet} ft), no roll.` });
@@ -1541,7 +1731,7 @@ export function registerZugplan(app: FastifyInstance, deps: ZugplanDeps): void {
       if (request.body?.attack === true) {
         if (!p.rule || p.strike) {
           /* Der beste Nahkampfangriff: die höchste Trefferzahl, die nicht weit trägt. */
-          const nah = kachelnVon(stand.map, statblockVon(stand.alle, reagiert), () => true)
+          const nah = kachelnVon(stand.map, statblockVon(stand.alle, reagiert), () => true, reagiert)
             .filter((t) => t.group === 'attack' && t.toHit !== null && t.longRange === null)
             .sort((a, b) => b.toHit! - a.toHit! || (b.average ?? 0) - (a.average ?? 0));
           const t = nah[0];

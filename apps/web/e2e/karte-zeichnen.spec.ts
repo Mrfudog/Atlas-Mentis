@@ -22,7 +22,8 @@ test('walls: pan after a pause, undo a point and the last wall', async ({
   /* Hineinzoomen, damit es etwas zu verschieben gibt. */
   for (let i = 0; i < 3; i++) await leitung.getByRole('button', { name: 'Zoom in' }).click();
   await leitung.getByRole('button', { name: 'Walls', exact: true }).click();
-  await leitung.getByRole('button', { name: 'Draw', exact: true }).click();
+  /* „Draw“ heisst auch die Gruppe zum Zeichnen (T-219): das Werkzeug der Wände steht in ihrer Leiste. */
+  await leitung.getByRole('toolbar', { name: 'Walls' }).getByRole('button', { name: 'Draw', exact: true }).click();
   /* Die Bühne ganz ins Fenster, sonst gehen Klicks ins Leere. */
   await buehne.scrollIntoViewIfNeeded();
   const box = (await buehne.boundingBox())!;

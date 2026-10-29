@@ -11,7 +11,7 @@
  */
 
 import { abilityMod } from './calc.js';
-import { concentrationDc } from './sheet.js';
+import { applyDamage, concentrationDc } from './sheet.js';
 import type { CharacterStats, DefenseWord } from './stats.js';
 
 /** Was die Abwehr aus einem Betrag macht. */
@@ -76,4 +76,76 @@ export function saveBonus(stats: CharacterStats, ability: string, extraTargets: 
 /** Die Konzentrationsprobe nach Schaden: SG und Bonus (KON-Rettungswurf, `save.concentration`). */
 export function concentrationCheck(stats: CharacterStats, damageTaken: number): { dc: number; bonus: number | null } {
   return { dc: concentrationDc(damageTaken), bonus: saveBonus(stats, 'con', ['save.concentration']) };
+}
+
+/**
+ * **Schaden am Tisch, als eine Rechnung** (T-355): was der Zugplan beim
+ * Bestätigen und der Tracker bei „Damage" mit einem Betrag tun — dieselbe
+ * Rechnung, nicht zwei. Nach der Abwehr (`damageAfterDefenses`) zieht sie
+ * ab: an `Vitals` (zeitweilige zuerst, `applyDamage`), wenn das Ziel keine
+ * Teilnehmerkante hat oder eine Spielerfigur ist, und an der
+ * Teilnehmerkante, wenn es eine gibt. **Eine Spielerfigur führt ihren Stand
+ * an `Vitals`**; die Kante spiegelt ihn, damit der Tracker dasselbe zeigt
+ * wie der Bogen (E-128, zweite Frage: so schreiben beide, Zugplan und
+ * Tracker, bis sie entschieden ist). Ohne bekanntes Maximum und ohne Stand
+ * bleibt der Stand leer. Konzentriert sich das Ziel und nimmt es Schaden,
+ * sagt `concentration`, welche Probe fällig ist — gewürfelt wird beim
+ * Aufrufer, der das Log führt (E-128: der Server würfelt).
+ */
+export interface TableDamage {
+  defense: DamageAfterDefenses;
+  /** Die neue `Vitals`-Karte; `null`: sie ändert sich nicht. */
+  vitals: Record<string, unknown> | null;
+  /** Der neue Stand an der Teilnehmerkante; `null`: keine Kante oder kein Stand. */
+  edgeHp: number | null;
+  /** Der Stand danach und das Maximum, für die Zeile im Ergebnis. */
+  hp: number | null;
+  max: number | null;
+  /** Die fällige Konzentrationsprobe: SG, Bonus und der Zauber, der endet, wenn sie misslingt. */
+  concentration: { dc: number; bonus: number | null; spell: string } | null;
+}
+
+/** Die Rechnung zu `TableDamage`: Abwehr, Abzug an `Vitals` und Kante, fällige Konzentrationsprobe. */
+export function damageAtTable(input: {
+  stats: CharacterStats;
+  vitals: Readonly<Record<string, unknown>>;
+  /** Die Teilnehmerkante, wenn das Ziel in einer Begegnung steht. */
+  edge?: { hp?: unknown } | null;
+  pc: boolean;
+  rolled: number;
+  type: string;
+}): TableDamage {
+  const { stats, vitals: v, edge, pc } = input;
+  const defense = damageAfterDefenses(input.rolled, input.type, stats.defenses);
+  const max = stats.hp.value;
+  let vitals: Record<string, unknown> | null = null;
+  let hp: number | null = null;
+  if (!edge || pc) {
+    const da = v['hp'] !== undefined && v['hp'] !== null && v['hp'] !== '' && Number.isFinite(Number(v['hp'])) ? Number(v['hp']) : max;
+    if (da !== null) {
+      const r = applyDamage({ hp: da, temp: Number(v['hpTemp']) || 0 }, defense.amount);
+      hp = r.hp;
+      vitals = { ...v, hp: r.hp };
+      if (r.temp) vitals['hpTemp'] = r.temp;
+      else delete vitals['hpTemp'];
+    }
+  }
+  let edgeHp: number | null = null;
+  if (edge) {
+    const basis = edge.hp != null && Number.isFinite(Number(edge.hp)) ? Number(edge.hp) : max;
+    edgeHp = hp ?? (basis === null ? null : Math.max(0, basis - defense.amount));
+    if (edgeHp !== null) hp = edgeHp;
+  }
+  const auf = typeof v['concentration'] === 'string' && v['concentration'] ? (v['concentration'] as string) : null;
+  const concentration = auf && defense.amount > 0 ? { ...concentrationCheck(stats, defense.amount), spell: auf } : null;
+  return { defense, vitals, edgeHp, hp, max, concentration };
+}
+
+/** Die Zeilen, die ein Schaden im Ergebnis und im Tracker hinterlässt: Abwehr und Stand. */
+export function damageLines(name: string, d: TableDamage): string[] {
+  const teile: string[] = [];
+  const { why, word, amount } = d.defense;
+  if (why) teile.push(`${why} (${word}) → ${amount}`);
+  if (d.hp !== null) teile.push(`${name} at ${d.hp}${d.max !== null ? `/${d.max}` : ''} HP`);
+  return teile;
 }

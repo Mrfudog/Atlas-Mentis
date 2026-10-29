@@ -110,6 +110,13 @@ export const routes: Routes = [
     loadComponent: () => import('./konto/konto').then((m) => m.Konto),
     title: 'Account · Atlas Mentis',
   },
+  /* Der Papierkorb (T-400): was jemand gelöscht hat, 30 Tage lang. */
+  {
+    path: 'trash',
+    canActivate: [wache],
+    loadComponent: () => import('./papierkorb/papierkorb').then((m) => m.Papierkorb),
+    title: 'Deleted · Atlas Mentis',
+  },
   /* Was neu ist (T-157): erreichbar über die Kopfleiste, mit Punkt bei Neuem. */
   /* Die Vorgabeformen des Inventars im Überblick (T-394, REQ-333): Rules & options › Inventory › Shapes. */
   {

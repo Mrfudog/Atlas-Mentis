@@ -458,6 +458,13 @@ und nicht am Statblock: dreissig Wachen aus einer Vorlage haben ein Token,
 und wer es einmal zurechtrückt, rückt es für alle zurecht. Auch der
 **Rand** steht dort (`frame.ring`), als Id aus einer Liste (`TOKEN_RINGS`):
 eigene Ränder sind dann weitere Einträge, keine neue Fallunterscheidung.
+Ein **eigener Rand** (T-302) ist eine Farbkombination oder ein Rahmenbild
+mit einer Breite (`customRing`): eine Farbe ist die Farbe, mehrere ein
+Verlauf (`ringPaint`), ein Bild liegt im Ring über den Farben. Die Farben
+nur als Hex und das Bild nur als Id, weil der Rand als CSS in die Seite
+geht — wer Daten bearbeiten kann, soll damit nichts nachladen. Eine Id,
+die keine feste ist, bleibt am Bild stehen und zeigt Plain, bis die Liste
+sie bringt; woher die eigenen kommen, entscheidet E-205.
 
 **Beim Platzieren zählt das Wesen, nicht seine Fassungen** (T-301): wer
 „Demogorgon“ sucht, meint die Kreatur. Gleich Benanntes steht als eine
@@ -488,6 +495,15 @@ wäre nach dem Ende von Enlarge falsch, und nach einer Korrektur am
 Statblock auch. Gespeichert wird nur, was die Leitung bewusst anders will
 (`props.size`) — und weil die Seite sagt, woher die Grösse kommt, sieht man,
 welche der drei Stufen gerade gilt.
+
+**Warum überlappende Grössen-Zustände nicht summiert werden** (T-428,
+E-164): Enlarge und ein Trank der Riesengrösse sind zwei Zauber, die
+dasselbe beschreiben, und die Regeln stapeln sie nicht; Enlarge und Reduce
+zusammen sind ein Streitfall, den der Tisch entscheidet. Eine Summe hätte
+beides falsch beantwortet, und still. Darum gilt eine Quelle, und welche,
+sagt die Leitung — am Token, weil es eine Entscheidung über dieses Token in
+dieser Szene ist. Ohne Wahl gilt der zuletzt hinzugekommene: so verhält
+sich ein neuer Zauber am Tisch, bis jemand widerspricht.
 
 Woher die Maske weiss, welche Klasse ein Feld will, steht am Feld
 (`target.where`) — und an der Karte, die `Image.image` erbt, steht es am
@@ -1054,6 +1070,51 @@ Verspricht eine Kante mehr, als heute jemand liest — `affects` mit `effect`,
 evaluated yet". Sobald ein Auswerter sie liest, muss `intended` weg: der
 Test lässt beides nicht zugleich stehen.
 
+### Ein Artikel darf im Regelwerk stehen, nicht nur eine Gruppe (T-401, E-162)
+
+Die Leitung will den einen Drachen aus dem Grundregelwerk verbergen. Das
+Feld am Drachen darf sie nicht schreiben — das Buch gehört allen Runden,
+die es aufschalten —, und eine Gruppe, die genau ihn trifft, wäre ein
+Umweg. Also steht er **als Eintrag** im Regelwerk ihrer Kampagne, neben den
+Gruppen, und gilt vor ihnen: wer einen Artikel einzeln nennt, meint ihn.
+Das eigene Feld am Artikel schlägt den Eintrag trotzdem — wer den Artikel
+schreibt, hat das letzte Wort über ihn, auch in dieser Runde.
+
+### Fassung, Variante, Kopie — drei Antworten auf „das will ich anders" (T-405, E-162)
+
+Einen Artikel aus einem geteilten Regelwerk darf die Leitung nicht
+speichern, denn er gehört drei Runden. Was sie will, ist eines von dreien:
+**an seiner Stelle** etwas anderes (eine *Fassung*, `overrides` — in dieser
+Kampagne gilt sie statt des Originals), **daneben** eine Spielart mit
+Herkunft (eine *Variante*, `variantOf`), oder **etwas Eigenes**, das nur so
+anfängt (eine *Kopie*, ohne Kante zurück). Drei Wörter, weil es drei
+Beziehungen sind; eine einzige „Kopie" mit Schaltern hätte die Frage nur
+in den Dialog verschoben. Was am Artikel hängt, geht auf demselben Weg mit
+wie beim Ebenenwechsel, und hängt danach an der Kopie, nicht am Original.
+
+### Vorrang steht an der Kampagne, nicht im Buch (T-403, E-111)
+
+Wer den Dolch aus 2024 über den aus 2014 zieht, während das Buch von 2014
+sonst vorne bleibt, sagt etwas über **seine Runde** und nichts über die
+Bücher. Darum ist der Vorrang eine Kante von der Kampagne (`prefers`) wie
+`enables` und `layerRule`, und kein Feld an einer Ebene: ein Grundregelwerk,
+das drei Runden aufschalten, bliebe sonst für alle drei umsortiert. Er
+ordnet nur — was keine Ebene ins Spiel bringt, bringt auch kein Vorrang.
+Artikel vor Art vor Reihenfolge, weil das Genauere das bewusstere ist.
+
+### Was an einem Artikel hängt, zieht mit — wenn man es lässt (T-402, E-161)
+
+Ein Kapitel ohne seine Teile, eine Kreatur ohne ihren Statblock, eine
+Figur ohne ihr Inventar sind nach einem Ebenenwechsel zerrissen: die neue
+Ebene zeigt den Kopf, die alte den Rest. Darum gehen beim Verschieben die
+**Mitläufer** mit — dieselben Kanten, die auch beim Löschen mitnehmen
+(`partOf`, die Kanten mit `asField`, `holds` auf ein Stück). Aber nicht
+blind: ein Teil, das ein anderes Kapitel einbettet, oder ein Statblock, den
+eine zweite Kreatur liest, ist mehr als ein Anhängsel. Also eine Liste mit
+Häkchen, vorgewählt nur, was in derselben alten Ebene lag, und je Zeile,
+wo es sonst noch hängt. Was abgewählt ist, bleibt; Kanten bleiben ohnehin,
+denn sie zeigen auf eine Id und nicht auf eine Ebene.
+
 ### Eine Stufe ist ein Zustand, eine Wirkung ist eine Kante
 
 „Exhaustion 3" ist ein Artikel der Art `Condition` mit `stage` 3 und einer
@@ -1273,6 +1334,14 @@ Feld, das morgen dazukommt, bringt seine Pflicht mit. **Geprüft wird beim
 Heben des Stands, nicht bei jedem Speichern** (E-178): ein fertiger Artikel,
 dem jemand später ein Feld leert, verschwände sonst beim nächsten Tippfehler
 aus der Runde. Er bleibt fertig, und die Werkbank sagt, was fehlt.
+
+**Ein offener Entscheid ist eine Lücke wie ein leeres Feld** (T-436, E-176).
+Die Figur entsteht im Assistenten, sobald man anfängt, und trägt, was schon
+gewählt ist — ein Fortschritt daneben wäre die zweite Stelle, die beim
+Bearbeiten falsch steht. Was noch offen ist, liest die Prüfung aus den
+Wahlen ihrer Abstammung, ihres Hintergrunds, ihrer Klasse und der gewährten
+Merkmale; solange eine offen ist, bleibt die Figur `idea`. Die Ausrüstung
+zählt nicht: sie folgt dem Verfahren der Kampagne und darf warten.
 
 **Ändert eine Spielerin etwas Fertiges, gilt für die anderen der fertige
 Stand weiter** (E-012, D74). Er fällt auf `prepared`, und der Stand davor
@@ -1792,6 +1861,15 @@ Doppelung, die erst durch eine spätere Änderung entsteht, wird gemeldet
 und nicht still gelöscht: welche der beiden Wahlen weichen soll, weiss nur,
 wer sie getroffen hat.
 
+**Expertise setzt die Übung voraus** (T-303). Die Leitung (19.10.): die
+Expertise-Wahl bot jede Fertigkeit an, auch eine, in der die Figur gar
+nicht geübt war. Gesperrt wird mit derselben Reihenfolge wie bei den
+Doppelungen, nur umgekehrt: dort ist gesperrt, was schon da ist, hier,
+was noch fehlt. Die Ausnahme — eine Option, die Übung und Expertise
+zugleich gibt oder ausdrücklich keine verlangt — steht als
+`needsProficiency: false` an der Wahl selbst: eine Liste solcher
+Optionen im Code wäre am Tag des nächsten Buchs unvollständig.
+
 **Ein Zauber kommt von irgendwoher** (T-309). Bis dahin zauberte eine
 Figur, was von Hand an ihr stand — der Magier aus dem Assistenten zauberte
 also nicht, obwohl seine Klasse sagte, dass und womit er es tut. Jetzt ist
@@ -1819,6 +1897,18 @@ Statblock gehört ihr direkt über `belongsTo`: eine benannte Kreatur gibt es
 einmal, also keine Instanz. Eine Spielart (`_versions`) bekommt keine
 eigene. Was der Text sonst über sie sagt (Wohnort, Fraktion), kommt nicht
 geraten dazu.
+
+**Mitglied einer Fraktion ist sie nur, wo der Text sie verknüpft** (T-183,
+`fraktionen.ts`): ihr eigener Text (Kreatur und Statblock) verweist auf
+genau eine Fraktion, oder der Text der Fraktion verweist auf sie. Dass
+beide im selben Absatz eines Abenteuers stehen, reicht nicht: wer eine
+Gruppe jagt, gehört nicht zu ihr. **Ein Schutzherr ist kein Mitglied:**
+trägt eine Fraktion den Namen der Kreatur („Cult of X"), betet sie sie an.
+Eine solche Kreatur bekommt aus dem Text gar keine Fraktion, denn ihr Text
+nennt auch die Kulte ihrer Rivalen. 5e.tools liefert als Fraktionen nur
+Kulte, und ein Kult nennt seine Anhänger als allgemeine Statblöcke. Darum
+ergibt die Regel heute keine einzige Mitgliedschaft, sondern zehn
+Schutzherren.
 
 `Vitals` bleibt bei der Figur: das ist, was sich **während** der Sitzung
 ändert — Trefferpunkte jetzt, Zustände, Todesretter, verbrauchte
@@ -2237,15 +2327,37 @@ dieses Stück kommt die Regel mit der Kante `enchantedWith`.
 
 Das Wort ist **Enhancement** und nicht „Item property": so heisst seit D48
 schon die Art `ItemProperty` (Finesse, Heavy), und ein Wort für zwei Sachen
-ist so schlecht wie zwei Wörter für eine. Eine eigene Art ist es nicht: ein
-Gegenstand mit `appliesTo` *ist* eines, so wie der Importer die Varianten
-immer schon angelegt hat.
+ist so schlecht wie zwei Wörter für eine. Bis T-324 war ein Enhancement ein
+Gegenstand mit `appliesTo`, so wie der Importer die Varianten angelegt
+hatte. Das hiess: „+1 Weapon" stand in jeder Gegenstandsliste, im Laden und
+unter den Inventarformen, und hatte Felder für Gewicht und Form, die nichts
+bedeuten — eine Regel, die sich als Ding ausgab.
+
+**Gegenstandsmerkmal — eine Regel, die an einen Gegenstand kommt** (T-324,
+E-163). Ein Monster bekommt „Pack Tactics" nicht als Kopie in seinen
+Statblock, sondern als Kante auf einen Regelartikel, den Wolf und Kobold
+teilen. Genauso jetzt der Gegenstand: Finesse, Versatile und +1 Weapon sind
+Regelartikel der Art `ItemFeature`, in zwei Sorten — die **Eigenschaft**
+(`ItemProperty`, Kante `hasProperty` vom Gegenstand) und das
+**Enhancement** (Kante `enchantedWith` vom Stück). Zwei Sorten und nicht
+eine, weil eine Kante Arten nennt: an den Dolch selbst gehört Finesse,
+an *ein* Stück davon +1.
+
+Was ein Merkmal **bewirkt**, steht in seinen Daten (`mechanics`), nicht in
+seinem Namen. Der Bogen fragte vorher „heisst eine Eigenschaft
+two-handed?" — dann hätte eine Hausregel „Long Grip" nicht zweihändig sein
+können, und eine umbenannte Eigenschaft hätte still aufgehört zu wirken.
+Was das Merkmal **bei diesem Gegenstand** heisst, steht an der Kante:
+Versatile ist eine Regel, 1d10 ist die des Langschwerts — wie der Biss am
+Statblock, dessen Würfel die Kante `composedOf` trägt.
 
 Was das Stück heisst und kostet, wird **gerechnet** und nie gespeichert —
 stünde der Preis in seiner Karte, hielte das Ausdünnen ihn für eine
 Abweichung, und eine Korrektur am Dolch erreichte das Stück nie mehr. Der
 **Aufpreis** (Surcharge) sagt, wie ein Enhancement den Grundpreis ändert: ein
-Betrag (`priceAdd`), ein Faktor (`priceMult`), sonst sein eigener Preis.
+Betrag (`priceAdd`), ein Faktor (`priceMult`); ohne beides gibt es keinen
+Preis statt eines falschen. (Als Gegenstand galt sein eigener Preis als
+Aufpreis; Migration 163 hat ihn nach `priceAdd` gelegt.)
 Welche Rechnung gilt, sagt die Kampagne (`itemPricing`: kombiniert,
 Grundpreis, nicht gerechnet) — manche Tische handeln magische Gegenstände
 nicht nach Liste.
@@ -2447,6 +2559,19 @@ Inventar“ nicht im Code, sondern als fehlende Kante in den Daten. Eigene
 Arten und kein Wort in `Layer.kind`: ein Feld, das Regel ist, leckt beim
 ersten Tippfehler.
 
+**Modul und System** (E-100, T-132). Am Tisch sagt man „wir spielen
+Inventar nach Raster, Handwerk nach Kibbles mit Basils Ergänzungen“. Das
+**Modul** ist der Bereich (Inventory, Crafting — im Register ein
+Regelsystem), das **System** die Variante darin (Grid, Kibbles — eine
+Regelmechanik). Je Modul gilt eines, samt dem, was es erweitert; was
+sich ausschliesst, sagt eine Kante und nicht ein Absatz. Darum gibt es
+drei Kanten: verträglich, **erweitert** (gilt nur mit der Grundlage —
+Formen ohne Raster sind sinnlos), **schliesst aus**. Was gilt, wird beim
+Lesen gerechnet und von oben im Stapel: wer die Hausregel höher legt,
+lässt sie gewinnen (E-091), und was verdrängt ist, wird nicht angezeigt
+(E-094) — es bleibt aber eine Ebene, die man wieder nach oben schieben
+kann.
+
 **Vorgabeformen kommen aus Gruppen, nicht aus 1900 Ergänzungen** (T-394,
 E-165). Eine Ergänzung je Gegenstand hätte jede Form hundertfach
 gespeichert: wer die Hausregel ändert (Pfeile 32 statt 20 je Stapel),
@@ -2522,6 +2647,23 @@ dürfen verschieden spielen. Darum ist es ein Wort an der Kampagne
 an genau einer Stelle (`inventoryRulesOf`): wenn die Regelsysteme Behälter
 werden (T-132), wandert das Wort in ein Modul, und nur diese Funktion sieht
 woanders nach.
+
+**Eine Entscheidung trifft man einzeln neu** (T-141). Eine Kampagne hat
+viele Entscheidungen — Ebenen, Vergleich, Mitglieder, jede Regel —, und
+sie standen auf vier Reitern verteilt; wer eine ändern wollte, musste
+wissen, wo. Die Übersicht der Kampagnenseite listet sie jetzt als
+**Entscheidungen**: je Zeile der Stand (`decided`, `default`, `open`),
+„Change" an den Ort, an dem genau diese fällt, und **was eine Änderung
+bewirkt**. Gerechnet aus dem, was die Reiter schon holen
+(`campaignDecisions`), nicht gespeichert: eine zweite Liste der
+Entscheidungen wäre die, die nach der ersten Änderung falsch steht. Und
+geändert wird weiter am alten Ort — eine zweite Maske für dieselbe Wahl
+liefe auseinander. Die Folgen sind ehrlich klein: was beim Anlegen einer
+Figur gilt (Attribute, Ausrüstung, Charakteroptionen), wirkt aufs nächste
+Anlegen, die bestehenden Figuren behalten ihre Wahl; alles andere wird
+beim Lesen gerechnet (D8), also schreibt eine Änderung nichts um, und
+zurückschalten bringt das alte Bild zurück. Dasselbe Muster für die Wahlen
+einer Figur kommt mit dem Assistenten als Ansicht (T-436, dann T-451).
 
 **Eine Regeloption sucht man an der Kampagne, nicht im Feld** (T-190).
 Wie gezählt, gehandwerkt und gewürfelt wird, stand als Felder ohne
@@ -2794,6 +2936,23 @@ lauernde Wache auf, die versteckt bleiben soll (REQ-209). Der Vermerk
 steht an der Kante und nicht an der Kreatur, weil dieselbe Kreatur auf
 einer anderen Karte für eine andere Begegnung bereitstehen kann.
 
+**Vier Goblins sind vier Kanten, nicht eine mit einer Vier** (T-333).
+Eine Anzahl an `participates` sähe aufgeräumter aus — eine Zeile
+„Goblin ×4“ —, aber im Kampf hat jeder Goblin seine eigenen
+Trefferpunkte, seine eigene Initiative und seine eigenen Zustände, und die
+stehen an der Kante. Eine Kante mit `count: 4` müsste vier Stände in einem
+Feld führen oder beim Start in vier zerfallen, und dann gäbe es zwei
+Wahrheiten über dieselbe Begegnung. Die Anzahl ist darum eine Frage beim
+**Hinzufügen** („Add a combatant“ · 4) und kein Feld: der Tracker legt so
+viele Kanten an und zählt sie am Tisch durch.
+
+**„Prepare on map“ ist eine Adresse, kein Zustand** (T-333). Die Leitung
+will von der Begegnung aus vorplatzieren, aber setzen kann man nur dort, wo
+die Karte gezeichnet wird — sie kennt Bildgrösse und Gitter. Ein Feld
+„bitte vorplatzieren“ an der Begegnung wäre ein Auftrag, der liegen bleibt,
+wenn niemand die Karte öffnet. Also trägt der Link den Wunsch
+(`?prepare=`), die Karte erfüllt ihn einmal und streicht ihn.
+
 **Ein Licht an der Wand ist ein Marker, kein Artikel** (T-320). Eine
 Fackel in einer Halterung hat keinen Namen, den jemand nachschlägt, und
 keine Werte; ein Artikel „Fackel 3" für jede wäre Bestand ohne Inhalt. Ein
@@ -2902,6 +3061,29 @@ Geschicklichkeitswurf), und jede Stelle, an der Eis liegt, zeigt darauf —
 wie ein Token auf seinen Artikel. Was die Karte selbst rechnen kann (Kosten,
 Licht, Sicht, wer es bemerkt), rechnet sie; was der Tisch würfelt, zeigt sie
 und schreibt es ins Protokoll, wenn jemand hineinläuft.
+
+**Gezeichnet wird, was gerechnet wird** (T-219). Eine Zone und ein Gebiet
+stehen als Felder auf der Karte, nicht als die Linie, die jemand gezogen
+hat: ein Feld gehört dazu, wenn seine Mitte darin liegt, und genau so
+zählt der Zugplan das Gelände. Zeichnete die Karte die feine Linie, sähe
+ein Feld halb im Eis aus wie Eis, und der Plan rechnete es als trocken —
+man glaubte dem Bild und verlöre die Bewegung. Und eine Fläche gehört
+**einer Ebene** wie ein Marker: der Schlamm im Keller liegt nicht auf dem
+Turmdach, nur weil beide dieselbe Karte sind.
+
+**Eine Zeichnung ist ein Blatt** (T-219). Was die Leitung auf die Karte
+kritzelt — ein Pfeil, ein Kreis um die Falle —, liegt auf einem Blatt wie
+ein Bild, nur ohne Bild. Ein eigenes Feld für Zeichnungen wäre eine zweite
+Sorte Ebene gewesen, die Deckkraft, Ausblenden und „nur die Leitung“ noch
+einmal hätte lernen müssen; als Blatt kann sie das schon.
+
+**Die Dunkelheit verbirgt am Server, nicht auf dem Schirm** (T-219). Was
+im Dunkeln wartet, schwarz zu übermalen, hiesse, es trotzdem zu schicken —
+im Quelltext der Seite stünde der Ghul. Also bekommt eine Spielerin auf
+einer dunklen Karte nur die Tokens, die ihre Figur sieht; die Seite malt
+die Dunkelheit weiter, aber sie verbirgt nichts mehr, was sie gar nicht
+erst hat. Dieselbe Regel wie beim Nebel und bei den Feldern: zurückgehalten
+wird am Server.
 
 **Ein Oger ist vier Felder und nicht ein grosses** (D58). Ein Token nimmt
 nach der Grösse seines Statblocks einen Platz ein — large 2 × 2, huge 3 × 3,

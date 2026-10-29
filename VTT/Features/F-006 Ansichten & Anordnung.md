@@ -79,6 +79,22 @@ macht aus jedem Kind eine Seite mit Back und Next; wo man steht, liest
 „New article“ in den Charakter-Assistenten — Vorgabe der Spielerfigur
 (Migration 154). Offen (8b): `levelUp` als Schicht über dem Assistenten.
 
+**T-436 (Assistent als Ablauf):** die Figur entsteht gleich und trägt,
+was gewählt ist; **offene Entscheide halten sie auf `idea`** — eine Lücke
+wie ein Pflichtfeld (`stateGaps` mit Bestand, `kind: 'choice'`, Schnitt 1).
+Die Schritte bleiben die heutigen des Assistenten, als Ansicht
+`create`/`edit` der Spielerfigur. Konzept:
+[[docs/vorschlaege/Assistent-als-Ablauf.md]].
+
+```mermaid
+flowchart LR
+  F["Figur<br/>Kanten hasClass · chose"] --> O["openDecisions<br/>pendingChoices ohne Ausrüstung"]
+  O --> G["stateGaps / stateRefusal<br/>kind: choice ab prepared"]
+  G --> S["Server: 422 state_gaps<br/>„decide: …“"]
+  G --> W["Werkbank: Ready with gaps"]
+  O --> A["Assistent: legt als idea an,<br/>solange offen"]
+```
+
 ```mermaid
 flowchart LR
   M["createFull mit steps"] --> S["createSteps<br/>Seiten · Felder"]
