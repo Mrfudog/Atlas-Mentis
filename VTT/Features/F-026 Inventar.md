@@ -182,3 +182,6 @@ dass genau diese Zelle dort liegt (`grabAnchor`, `placeByAnchor`). Aus
 „Not stowed“ hält man es am ersten belegten Feld der obersten Zeile
 (`defaultAnchor`). Die Ankerzelle ist markiert.
 
+## Ziehstufe und Kosten der Hände in der Seite (T-350)
+
+Stand 29.10.2026. Jedes Stück nennt seine Ziehstufe die Kette hinauf (`drawStage`); ein eingebettetes Inventar bekommt die Stufe seines Behälters mit. Die Hände nennen die Kosten aus `handActions`.
