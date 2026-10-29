@@ -2488,12 +2488,43 @@ flowchart LR
 
 ### 10.1a Regelsysteme und Regelmechaniken sind Ebenen (E-166, T-394)
 
-Ein **Regelsystem** ist eine Ebene der Art `RuleSystem` (Karte `RuleSystem.sort`: welcher Bereich der Regeloptionen, z. B. `inventory`), als Gruppe (`Layer.kind: 'group'`): aufgeschaltet bringt es seine Mechaniken, und jede lässt sich wie jedes Gruppenmitglied ausnehmen und umsortieren (E-091). Eine **Regelmechanik** ist eine Ebene der Art `RuleMechanic` (`RuleMechanic.method`: das Wort, das die Laufzeit ausführt — `weight`, `slots`, `grid`, `shapes`), Mitglied ihres Regelsystems über `partOf`. **Wer mit wem gilt, sagt die Kante `compatibleWith`** zwischen Mechaniken — einmal gespeichert, in beide Richtungen gelesen (`compatibleMechanics`); Grid gilt mit Weight, Default shapes mit Grid und Slots. Was nicht so verbunden ist, schliesst sich innerhalb eines Regelsystems aus.
+Ein **Regelsystem** ist eine Ebene der Art `RuleSystem` (Karte `RuleSystem.sort`: welcher Bereich der Regeloptionen, z. B. `inventory`), als Gruppe (`Layer.kind: 'group'`): aufgeschaltet bringt es seine Mechaniken, und jede lässt sich wie jedes Gruppenmitglied ausnehmen und umsortieren (E-091). Eine **Regelmechanik** ist eine Ebene der Art `RuleMechanic` (`RuleMechanic.method`: das Wort, das die Laufzeit ausführt — `weight`, `slots`, `grid`, `shapes`), Mitglied ihres Regelsystems über `partOf`. **Wer mit wem gilt, sagt die Kante `compatibleWith`** zwischen Mechaniken — einmal gespeichert, in beide Richtungen gelesen (`compatibleMechanics`); Grid gilt mit Weight. Was nicht so verbunden ist, schliesst sich innerhalb eines Regelsystems aus.
 
 - **Beide sind Ebenen**, und „ist eine Ebene“ fragt `isLayer` (`LAYER_TYPES` in `stack.ts`) statt `interfaces[0] === 'Layer'` — Stapel, Schreibrechte, Listen, Löschschutz und Ausfuhr behandeln sie wie jede Ebene. Ein Registertest hält `LAYER_TYPES` mit den Arten zusammen, die von `Layer` erben.
 - **Startzeilen, keine Migration**: `RULE_SYSTEM_LAYERS` (`packages/registry/src/regelsysteme.ts`) beschreibt Inventory, Weight, Slots, Grid und Default shapes; der Start legt an, was fehlt (`regelsystemeNachziehen`), mit Nummer (`rulesystem-0001`, `rulemechanic-0001` …) und durch `validateEntity`, und ändert nichts, was da ist. Migration 140 bringt nur die Registerzeilen.
 - **Was am Tisch zählt, wählt vorerst `Campaign.inventory`** (`inventoryRulesOf`, unverändert). Wie zwei kompatible Mechaniken zusammen zählen (Raster und Gewicht), ist eine eigene Aufgabe.
 - **Grid** trägt die Vorgabeformen (Karte `ShapeDefaults`, G15, D90): ist das Raster in der Kampagne aufgeschaltet, gelten ihre Gruppen und Werte je Gegenstand. Default shapes kann sie ebenso tragen und steht im Stapel darunter.
+
+#### 10.1b Modulrahmen: Modul, System, Erweiterung, Ausschluss (E-100, T-132 Schritt 2)
+
+In der Sprache von E-100 ist ein **Regelsystem das Modul** (Inventory, Crafting, Party inventory, Travel, Map, Combat, Character, Magic, Creatures — `RuleSystem.sort`) und eine **Regelmechanik ein System darin** (Weight, Grid; Kibbles, „Basil"). Gewählt wird durch Aufschalten, wie jede Ebene. Wie Systeme zueinander stehen, sagen drei Kanten zwischen Mechaniken:
+
+| Kante | heisst | gelesen |
+|---|---|---|
+| `compatibleWith` | gelten zusammen (Grid mit Weight) | beide Richtungen |
+| `extendsMechanic` | erweitert und gilt **nur mit** der Grundlage; eine von mehreren genügt (Default shapes auf Grid oder Slots). `props.mode: 'overrides'`: gewinnt bei Gleichstand. Eine Erweiterung verträgt sich mit allem, womit ihre Grundlage sich verträgt | vorwärts |
+| `excludesMechanic` | nie zusammen, auch über Modulgrenzen (Kibbles und D&D-Handwerk) | beide Richtungen |
+
+**Was gilt, rechnet `mechanicSelection(entities, campaign)`** (`packages/model/src/mechanics.ts`, D8, nichts gespeichert): der aufgelöste Stapel von oben gelesen (E-091); eine Mechanik gilt, wenn keine geltende sie ausschliesst und im selben Modul jede geltende mit ihr verträglich ist — sonst ist sie **verdrängt** (`displaced`, mit `reason` `excluded` oder `incompatible` und `by`) und wird nicht angezeigt (E-094, `heldMechanics`). Danach fällt jede Erweiterung, von deren Grundlagen keine gilt (`missingBase`), und weil sie dann nichts mehr verdrängt, wird neu gerechnet, bis nichts mehr fällt. Ergebnis je Modul: `applies` (von oben) und `held`; je geltender Überschreibung `overrides` (welche Grundlagen sie bei Gleichstand ersetzt).
+
+```mermaid
+flowchart BT
+  W[Weight] -->|partOf| INV((Inventory · Modul))
+  G[Grid] -->|partOf| INV
+  S[Slots] -->|partOf| INV
+  D[Default shapes] -->|partOf| INV
+  G -.-|compatibleWith| W
+  D ==>|extendsMechanic| G
+  D ==>|extendsMechanic| S
+  K[Kibbles] -->|partOf| CR((Crafting · Modul))
+  DND[D&D 5e] -->|partOf| CR
+  B[Basil] -->|partOf| CR
+  K -.-x|excludesMechanic| DND
+  B ==>|extendsMechanic · overrides| K
+```
+
+- **Default shapes erweitert Grid und Slots** (Startzeilen; Migration 166 macht aus den Kanten `compatibleWith` einer Mechanik `shapes` an `grid`/`slots` Kanten `extendsMechanic`). Als blosse Verträglichkeit hätte sie im Modul Weight verdrängt.
+- **Noch nicht** (Schritt 3/4): die Teilsysteme lesen `mechanicSelection` noch nicht — das Inventar zählt weiter nach `Campaign.inventory`, das Handwerk nach den Kampagnenfeldern; die Kampagnenseite zeigt die Auswahl noch nicht; die Laufzeit kennt nur die Mechaniken des Inventars (`method`). Eine Ebene, die zu einem System beiträgt (Basils Handwerksregeln zu Kibbles), hängt mit `partOf` an der Mechanik; damit sie mitkommt, muss die Mechanik eine Gruppe sein (`Layer.kind: 'group'`).
 
 ### 10.2 Glossar und Handbuch (T-242, T-225)
 
@@ -2726,7 +2757,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-29: 66 Artikelarten, 28 Grundtypen, 74 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-29: 66 Artikelarten, 28 Grundtypen, 76 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2855,7 +2886,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Layer` | — | `kind` `order` `abbreviation` `published` `author` `version` `levels` `storyline` `groupBy` `defaultAudience` | `partOf` | `partOf` `inLayer` `activates` `layerRule` | full |
 | `Paragraph` | `BookPart` | `kind` | `partOf` | `describedIn` | — |
 | `ReadAloudText` | `BookPart` `ReadAloud` | — | `partOf` | `describedIn` | — |
-| `RuleMechanic` | `Layer` `ShapeDefaults` | `method` | `partOf` `compatibleWith` | `partOf` `compatibleWith` `inLayer` `activates` `layerRule` | — |
+| `RuleMechanic` | `Layer` `ShapeDefaults` | `method` | `partOf` `compatibleWith` `extendsMechanic` `excludesMechanic` | `partOf` `compatibleWith` `extendsMechanic` `excludesMechanic` `inLayer` `activates` `layerRule` | — |
 | `RuleSystem` | `Layer` | `sort` | `partOf` | `partOf` `inLayer` `activates` `layerRule` | — |
 
 ### Kanten
@@ -2885,7 +2916,9 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `enchantedWith` | Item → Enhancement |  | — | — |
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
 | `equips` | Statblock → Item |  | — | — |
+| `excludesMechanic` | RuleMechanic → RuleMechanic |  | — | — |
 | `explains` | GlossaryTerm → * |  | — | — |
+| `extendsMechanic` | RuleMechanic → RuleMechanic |  | — | `mode` |
 | `features` | Story \| Encounter → Creature \| Statblock \| Faction \| Hazard |  | — | — |
 | `grants` | Class \| Subclass \| Ancestry \| Background \| Feat → Rule |  | — | `level` |
 | `happensAt` | Story \| Encounter → Place |  | — | — |

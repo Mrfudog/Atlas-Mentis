@@ -20,6 +20,7 @@ export * from './validate.js';
 export * from './instance.js';
 export * from './playinstance.js';
 export * from './stack.js';
+export * from './mechanics.js';
 export * from './attack.js';
 export * from './book.js';
 export * from './initiative.js';
