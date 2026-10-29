@@ -181,6 +181,7 @@ import {
   strokeAt,
   strokePath,
   type MapStroke,
+  revealView,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
@@ -312,6 +313,7 @@ type Werkzeug =
   | 'stiftRechteck'
   | 'stiftEllipse'
   | 'radierer'
+  | 'sichtAufdecken'
   | 'platzieren'
   | 'notiz';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
@@ -899,6 +901,8 @@ interface Zeiger {
                 </select>
               </label>
               <button type="button" [class.an]="werkzeug() === 'zudecken'" [attr.aria-pressed]="werkzeug() === 'zudecken'" (click)="waehle('zudecken')" title="Drag a rectangle: what lies in it is covered again">Hide</button>
+              <!-- **Sicht aufdecken** (T-219): was ein Token von seinem Platz aus sieht — Wände, Licht und Dunkelsicht gerechnet wie beim Zug. -->
+              <button type="button" [class.an]="werkzeug() === 'sichtAufdecken'" [attr.aria-pressed]="werkzeug() === 'sichtAufdecken'" (click)="waehle('sichtAufdecken')" title="Tap a token: reveal what it sees from where it stands — up to walls, in the dark only its darkvision and the lights it sees">Reveal sight</button>
               <label title="Moving a token on a fogged map reveals the way it went. The campaign sets the default (Rules &amp; options); this map may say otherwise.">
                 Reveal along moves
                 <select (change)="pfadAufdeckenSetzen($any($event.target).value)" aria-label="Reveal along moves on this map">
@@ -1738,7 +1742,7 @@ interface Zeiger {
                     [title]="m.groesse ? m.titel + ' — ' + m.groesse : m.titel"
                     [attr.aria-label]="m.titel"
                     (pointerdown)="greifen($event, m)"
-                    (click)="werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : werkzeug() === 'asset' ? assetWaehlen(m) : kurzansicht($event, m.to, m.rel.id)"
+                    (click)="werkzeug() === 'sichtAufdecken' ? sichtAufdecken(m.rel.id) : werkzeug() === 'licht' ? lichtGeben(m.rel.id) : werkzeug() === 'lichtSchalter' ? lichtSchalten(m.rel.id) : werkzeug() === 'tokenWeg' ? tokenWeg(m.rel.id) : werkzeug() === 'tokenGroesse' ? groesseGeben(m.rel.id) : werkzeug() === 'asset' ? assetWaehlen(m) : kurzansicht($event, m.to, m.rel.id)"
                   >
                     @if (m.kind === 'light') {
                       <span aria-hidden="true">☀</span>
@@ -1936,6 +1940,8 @@ interface Zeiger {
           {{ werkzeug() === 'stift' ? 'Pen — draw with the mouse or a finger.' : 'Drag from one corner to the other.' }} Strokes go on {{ zeichenBlattName() }}.
         } @else if (werkzeug() === 'radierer') {
           Tap a stroke to erase it.
+        } @else if (werkzeug() === 'sichtAufdecken') {
+          Reveal sight — tap a token: what it sees from where it stands is revealed{{ jeFigur() ? ' for that character' : '' }}.
         } @else if (werkzeug() === 'flaecheWeg') {
           Tap a zone or territory to remove it.
         } @else if (werkzeug() === 'flaecheGefunden') {
@@ -5282,6 +5288,28 @@ export class Karte {
    * Token tippt, setzt eine Lichtquelle ohne Artikel (`addLight`) — vorher
    * tat das nichts, und ein Licht gab es nur an einem Marker.
    */
+  /**
+   * **Sicht aufdecken** (T-219, Rest von T-216): die Leitung tippt ein
+   * Token und deckt auf, was es von seinem Platz aus sieht (`revealView`,
+   * dieselbe Rechnung wie ein Zug mit „Reveal along moves“). Gilt der
+   * Nebel je Figur, für diese Figur.
+   */
+  protected sichtAufdecken(relId: string): void {
+    const e = this.karte();
+    const n = this.nat();
+    const m = e ? markersOf(e).find((x) => x.rel.id === relId) : undefined;
+    if (!e || !n || !m) {
+      this.hinweis.set(!n ? 'The map image has no size yet — try again when it has loaded.' : 'That token is not on this floor.');
+      return;
+    }
+    const dv = this.kontext()?.darkvision?.[m.to] ?? 0;
+    const neu = revealView(e, m, n, () => `s-${crypto.randomUUID()}`, this.jeFigur() ? m.to : null, dv, this.getragen());
+    if (neu === e) {
+      this.hinweis.set('It sees nothing new from there.');
+      return;
+    }
+    void this.schreiben(neu);
+  }
   private lichtSetzen(pt: Pt): void {
     const e = this.karte();
     const hell = Math.max(0, this.lichtHell());
