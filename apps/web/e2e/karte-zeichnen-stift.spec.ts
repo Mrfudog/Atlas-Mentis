@@ -20,10 +20,15 @@ test('the GM draws on a drawing layer; players see it unless it is GM only', asy
 
   await leitung.getByRole('button', { name: 'Draw', exact: true }).click();
   await leitung.getByRole('button', { name: 'Pen', exact: true }).click();
-  await leitung.locator('.buehne').first().scrollIntoViewIfNeeded();
-  const box = (await leitung.locator('.innen').first().boundingBox())!;
+  /* Vor jedem Zug neu messen: nach dem ersten Strich kommt „Layers“ dazu, und die Bühne rutscht. */
+  let box = (await leitung.locator('.innen').first().boundingBox())!;
+  const messen = async () => {
+    await leitung.locator('.buehne').first().scrollIntoViewIfNeeded();
+    box = (await leitung.locator('.innen').first().boundingBox())!;
+  };
   const p = (fx: number, fy: number) => ({ x: box.x + box.width * fx, y: box.y + box.height * fy });
   const zieh = async (punkte: Array<[number, number]>) => {
+    await messen();
     const a = p(...punkte[0]!);
     await leitung.mouse.move(a.x, a.y);
     await leitung.mouse.down();
@@ -52,6 +57,7 @@ test('the GM draws on a drawing layer; players see it unless it is GM only', asy
 
   /* Radieren: den Rand des Rechtecks antippen. */
   await leitung.getByRole('button', { name: 'Erase', exact: true }).click();
+  await messen();
   const rand = p(0.8, 0.65);
   await leitung.mouse.click(rand.x, rand.y);
   await expect(striche).toHaveCount(1);
