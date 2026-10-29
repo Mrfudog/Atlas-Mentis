@@ -116,7 +116,8 @@
         {
           "heading": "Draw on the map",
           "text": [
-            "Draw (D) puts strokes on a drawing layer of their own: Pen, Line, Rectangle or Ellipse, in a colour and width. Without a layer chosen, the first stroke makes one. Erase takes away the stroke you tap. GM only keeps the chosen layer from the players; Layers above the map shows and hides drawing layers like image layers."
+            "Draw (D) puts strokes on a drawing layer of their own: Pen, Line, Rectangle or Ellipse, in a colour and width. Without a layer chosen, the first stroke makes one. Erase takes away the stroke you tap. GM only keeps the chosen layer from the players; Layers above the map shows and hides drawing layers like image layers.",
+            "Text places a label you type, Stamp a symbol (danger, warning, flag …), both where you tap and in the size you choose; Erase takes them away like strokes."
           ]
         },
         {

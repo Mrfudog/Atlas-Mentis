@@ -80,7 +80,13 @@ ein freies Objekt ist, braucht es dafür keine Migration.
 - Je Ebene (Stockwerk) eigene Blätter, also eigene Zeichnungen.
 - Live: eine Zeichnung ist eine Änderung der Karte und kommt über den
   Live-Kanal (T-399) zu den Spielenden.
-- Noch nicht: Stempel (Symbole) und Text; Striche verschieben.
+- **Text und Stempel**: ein Strich `kind: 'text'` mit einem Punkt (der
+  Mitte), dem Wortlaut `text` (höchstens 200 Zeichen) und der
+  Schriftgrösse in `width`. *Text* nimmt ein getipptes Wort, *Stamp* ein
+  Zeichen aus einer kleinen Auswahl (☠ ⚠ ✕ ★ ⚑ ⚔ ⌂ ?). Gezeichnet als
+  Textknoten im SVG, nie als HTML (M10); radiert, wer in seinen Kasten
+  tippt.
+- Noch nicht: Striche verschieben; eigene Stempelbilder.
 
 ---
 

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-map-labels-stamps",
+      "date": "2026-10-29",
+      "title": "Labels and stamps on the map",
+      "text": "Draw now also places text labels and stamps such as a skull, a warning sign or a flag on a drawing layer, in three sizes.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-draw-on-maps",
       "date": "2026-10-29",
       "title": "Draw on the map",
