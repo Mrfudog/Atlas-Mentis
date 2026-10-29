@@ -113,7 +113,8 @@
             "In the dark, a character sees only what its darkvision reaches (from Senses on its statblock) and the lights it can see; moves and opened doors reveal just that. Players see darkness over the map with lights and their darkvision cut out.",
             "On a fogged map, players see brightly what their character sees right now, and what was revealed before dimmed. Sight comes from the player characters' tokens; the party token counts only while none of them is on the map.",
             "With walls, players see only up to the next wall or closed door, fog or not. In the dark, what only darkvision reaches is shown in greyscale; lit areas keep their colour. An item with Bright light (a torch, a lantern) lights the token of the character holding it in hand, and lights itself when placed as a marker. Light on/off switches a light off and on again without losing its radius.",
-            "On a dark map, players get only the tokens their characters see — with darkvision or in a light they can see into. A creature waiting in the dark is not on their map at all until a light or a character's darkvision reaches it."
+            "On a dark map, players get only the tokens their characters see — with darkvision or in a light they can see into. A creature waiting in the dark is not on their map at all until a light or a character's darkvision reaches it.",
+            "A zone whose kind sets its light changes the light where it lies: magical darkness hides who stands in it even on a bright map and is drawn dark for players; a lit hall in a dark map shows who stands in it in sight."
           ]
         },
         {

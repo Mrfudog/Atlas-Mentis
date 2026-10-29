@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-zone-light",
+      "date": "2026-10-29",
+      "title": "Magical darkness and lit halls",
+      "text": "A zone kind that sets its light now counts where it lies: who stands in magical darkness stays hidden from players even on a bright map, and a lit hall in a dark map shows who stands in it.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-travel-and-noticing",
       "date": "2026-10-29",
       "title": "Noticing on the way, draw times and travel",

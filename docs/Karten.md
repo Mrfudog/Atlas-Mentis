@@ -422,6 +422,17 @@ Spielerin — bloss schwarz übermalt.
 - Die Vorschau „View as“ der Leitung hält im Dunkeln noch nichts zurück;
   sie zeigt dort die Dunkelheit, nicht das Sieb.
 
+**Das Licht der Zonen** (`ZoneKind.light`): wo eine Zone liegt, gilt ihr
+Licht statt das der Karte (`lightAt`, die zuletzt gezeichnete oben).
+**Magische Dunkelheit** auf einer hellen Karte: wer darin steht, geht nur
+an Spielende, die ihn mit Dunkelsicht oder in einem Licht sehen; die Seite
+malt die Zone für sie deckend dunkel, auch wenn sie „Areas“ ausblenden —
+Dunkelheit ist Sicht, keine Beschriftung. Ein **erleuchteter Saal** in
+einer dunklen Karte: wer darin in Sichtlinie steht, ist zu sehen, und die
+Dunkelheit ist dort ausgeschnitten wie bei einem Licht. Dass Dunkelsicht
+magische Dunkelheit nicht durchdringt, kennt die Zonenart noch nicht —
+dafür bräuchte sie eine eigene Angabe.
+
 ### Lichter an Gegenständen, an und aus (T-305)
 
 **Licht ist ein eigenes Werkzeug** (Light, Taste L): Helligkeit der Karte,

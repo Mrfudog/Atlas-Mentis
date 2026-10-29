@@ -113,6 +113,7 @@ import {
   redactMap,
   zoneHidden,
   redactDark,
+  zoneLightShapes,
   redactBoard,
   redactQueryTiles,
   keepDrawState,
@@ -1700,6 +1701,8 @@ export function buildApp({
         darkvision: (id) => darkvisionFor(alle, id),
         carried: () => carriedLights(alle, k),
         keep: (id) => inParty(alle, id),
+        /* Magische Dunkelheit, ein erleuchteter Saal (T-219): das Licht der Zonen. */
+        zones: (v) => zoneLightShapes(v, (id) => alle.get(id)),
       });
     /* Was die Kampagne Spielenden von der Initiative zeigt (T-022). */
     const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
