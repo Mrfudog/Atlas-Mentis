@@ -205,7 +205,7 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     sort: 'inventory',
     label: "Basil's sheet: grid, zones and body slots",
     does: 'The carry blocks — grids with zones for a size, a strength or any other statblock field, joined into one grid —, the draw time per body slot, what dropping and stowing cost, and the container templates.',
-    source: { settings: ['carrySheet', 'carrySquares', 'carryZones', 'slotDraw', 'handActions', 'inventoryCols', 'inventoryRows', 'container:*'] },
+    source: { settings: ['carrySheet', 'carrySquares', 'carryZones', 'slotDraw', 'handActions', 'attunementLimit', 'inventoryCols', 'inventoryRows', 'container:*'] },
     rules: ['Grid Inventory'],
     when: { field: 'inventory', is: ['grid'] },
   },

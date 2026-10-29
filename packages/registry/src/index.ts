@@ -55,10 +55,14 @@ export const settings: Record<string, string> = {
   /* Wie schnell etwas von einem Körperplatz kommt — und ein Behälter an
      diesem Platz gibt seinem Inhalt eine Stufe dazu. Ein Platz, der hier
      fehlt, hat keine Stufe. */
-  /* Der Gurt ist eine freie Aktion (REQ-225, D58), wie die Holster. */
+  /* Der Gurt ist eine freie Aktion (REQ-225, D58), wie die Holster.
+     **Ein Rüstungsplatz** statt Kopf, Torso, Handschuhen und Stiefeln
+     (T-365, E-153 V5): die Kleidung einzeln kommt mit T-388; `-` heisst,
+     von dort wird nichts gezogen. Die Schultern bleiben, bis T-367 den
+     Rücken bringt — ein Rucksack dort gibt seinem Inhalt eine Stufe. */
   slotDraw: 'mainHand:free action, offHand:free action, holster1:free action, holster2:free action, '
-    + 'belt:free action, shoulders:bonus action, head:action, torso:action, hands:action, '
-    + 'legs:action, feet:action, ringR1:action, ringR2:action, ringR3:action, ringR4:action, '
+    + 'belt:free action, shoulders:bonus action, armor:-, '
+    + 'legs:action, ringR1:action, ringR2:action, ringR3:action, ringR4:action, '
     + 'ringL1:action, ringL2:action, ringL3:action, ringL4:action, '
     + 'neck1:action, neck2:action, neck3:action, neck4:action',
   /* Was die Gegenrichtung kostet (REQ-225, D58): **Fallenlassen** (was in
@@ -67,6 +71,9 @@ export const settings: Record<string, string> = {
      wie `slotDraw` und keine Zeile: sie ist das Blatt der Kampagne und
      rechnet nichts; die Werte kommen aus `DrawTime`. */
   handActions: 'drop:free action, stow:bonus action',
+  /* Wie viele Stücke eine Figur zugleich eingestimmt haben darf
+     (T-365, E-153 V5) — 3 in 5e; eine Hausregel ist eine andere Zahl. */
+  attunementLimit: '3',
   /* Vorlagen beim Anlegen eines Behälters, `container:<Name>`: Zeilen mit
      `/`, nach dem Strich die Zonen nach Spalten. Eine neue Vorlage ist
      eine neue Einstellung. */
