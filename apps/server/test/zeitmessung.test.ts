@@ -30,6 +30,13 @@ describe('Server-Timing per section (T-398)', () => {
     for (const v of Object.values(z)) expect(v.dur).toBeGreaterThanOrEqual(0);
   });
 
+  it('splits the sieve into its parts for a player', async () => {
+    const t = await tisch({ kampagne: 'camp', artikel: [art('camp', 'Campaign', 'Nebel'), art('o1', 'Place', 'Ort')], konten: { Sela: { roles: { camp: 'player' } } } });
+    const res = await t.als('Sela', 'GET', '/api/entities/o1');
+    const z = zeitenAus(String(res.headers['server-timing'] ?? ''));
+    expect(Object.keys(z)).toEqual(expect.arrayContaining(['s.stapel', 's.auge', 's.sichtbar', 's.wissen']));
+  });
+
   it('keeps requests apart: one request does not count the other’s sections', async () => {
     const t = await tisch({ artikel: [art('o1', 'Place', 'Ort')], konten: { Admin: { admin: true } } });
     const [a, b] = await Promise.all([t.als('Admin', 'GET', '/api/health'), t.als('Admin', 'GET', '/api/entities/o1')]);

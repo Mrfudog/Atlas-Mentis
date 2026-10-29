@@ -226,7 +226,7 @@ import { registerTracker } from './initiative.js';
 import { insSpiel, registerSpielinstanz } from './spielinstanz.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
-import { messe, mitZeiten, mitZeitmessung, zeitenKopf } from './zeitmessung.js';
+import { messe, messeSync, mitZeiten, mitZeitmessung, zeitenKopf } from './zeitmessung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -1598,13 +1598,13 @@ export function buildApp({
        überschreibt, ist nicht da — für jeden, auch für die Verwaltung.
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
-    const kampagne = kampagneIn(roh, registry.settings ?? null);
+    const kampagne = messeSync('s.kampagne', () => kampagneIn(roh, registry.settings ?? null));
     /* Einmal je Bestand und Register gerechnet, nicht je Aufruf (T-086,
        T-108): mit hunderttausend Teilen kostet der Stapel eine Sekunde,
        und die Leseansicht siebt je Anfrage zwei- oder dreimal. */
-    const sicht = stapelFuer(roh, kampagne, registry);
+    const sicht = messeSync('s.stapel', () => stapelFuer(roh, kampagne, registry));
     const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
-    entities = entities
+    entities = messeSync('s.imspiel', () => entities
       .filter((e) =>
         typeof stapel === 'object'
           ? sicht.inPlay(e) ||
@@ -1623,7 +1623,7 @@ export function buildApp({
       )
       /* Ein Stück mit Enhancements bekommt Name, Preis und Boni gerechnet
          dazu (T-300, D8), nach der Preisregel der Kampagne. */
-      .map((e) => withEnhancement(roh, readInstance(roh, e), e, itemPricingOf(kampagne)));
+      .map((e) => withEnhancement(roh, readInstance(roh, e), e, itemPricingOf(kampagne))));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
        Artikel gesiebt wird: welche Information ein Feld beansprucht und
@@ -1660,13 +1660,13 @@ export function buildApp({
        was jemand erfahren hat, hat eine Figur erfahren. Eigenes geht in
        jedem Stand an ihn (REQ-237), und die Figuren der Mitspielenden sind
        vom Stand ausgenommen (E-014 d). */
-    const auge = await augeVon(user, roh, registry);
+    const auge = await messe('s.auge', () => augeVon(user, roh, registry));
     /* **Der letzte fertige Stand gilt für alle anderen** (REQ-237, E-012):
        fiel ein Artikel nach einer Änderung einer Spielerin auf `prepared`,
        bekommt, wer den Arbeitsstand nicht sieht (`seesUnfinished`), die
        Kopie von vorher — in der Liste, als Artikel und als Zusammenhang
        des Siebs. Nennt die Leitung ihn wieder fertig, gilt der neue. */
-    const fertig = await fertigeStaende();
+    const fertig = await messe('s.fertig', () => fertigeStaende());
     if (fertig.size) {
       const statt = new Map<string, Entity>();
       for (const [id, st] of fertig) {
@@ -1717,10 +1717,12 @@ export function buildApp({
       });
     /* Was die Kampagne Spielenden von der Initiative zeigt (T-022). */
     const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
-    return entities
-      .filter((e) => articleVisible(alle, e, auge))
-      /* Ein Deckname verdeckt für alle ausser der Leitung (REQ-178). */
-      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge)))
+    const sichtbar = messeSync('s.sichtbar', () => entities.filter((e) => articleVisible(alle, e, auge)));
+    /* Ein Deckname verdeckt für alle ausser der Leitung (REQ-178). */
+    const gewusst = messeSync('s.wissen', () =>
+      sichtbar.map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge))),
+    );
+    return gewusst
       .map((e) =>
         isMap(e) && !seesUnfinished(alle, e, auge)
           ? /* Das Kartenbild nur, soweit aufgedeckt (T-312, E-041): die
@@ -1847,6 +1849,9 @@ export function buildApp({
 
   /** Ein kleiner Hash des Registers: ändert es sich, gilt kein Index mehr. */
   function registerStempel(registry: Registry): string {
+    return messeSync('regstempel', () => registerStempelRechnen(registry));
+  }
+  function registerStempelRechnen(registry: Registry): string {
     const s = JSON.stringify(registry);
     let h = 2166136261;
     for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
