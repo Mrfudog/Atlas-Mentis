@@ -173,6 +173,14 @@ import {
   removeArea,
   setAreaFound,
   type NewAreaShape,
+  addDrawingSheet,
+  addStroke,
+  mapSheets,
+  removeStroke,
+  setSheetGmOnly,
+  strokeAt,
+  strokePath,
+  type MapStroke,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
@@ -299,10 +307,15 @@ type Werkzeug =
   | 'flaecheEllipse'
   | 'flaecheWeg'
   | 'flaecheGefunden'
+  | 'stift'
+  | 'stiftLinie'
+  | 'stiftRechteck'
+  | 'stiftEllipse'
+  | 'radierer'
   | 'platzieren'
   | 'notiz';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
-const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen', 'flaecheRechteck', 'flaecheEllipse']);
+const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen', 'flaecheRechteck', 'flaecheEllipse', 'stift', 'stiftLinie', 'stiftRechteck', 'stiftEllipse']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
 const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
@@ -364,7 +377,8 @@ const GRUPPEN: readonly GruppenDef[] = [
   { key: 'flaechen', label: 'Zones', title: 'Zones (difficult terrain, darkness, traps) and territories of factions: draw them on the map', sym: '▦', taste: 'Z', leitung: true, braucht: ['walls', 'frames', 'markers'] },
   /* **Notizen** (T-214, E-070 a): eine Notiz ist ein Artikel `Note`, auf der Karte ein Marker auf sie. */
   { key: 'notizen', label: 'Notes', title: 'Notes on the map: tap where one goes, for the GM or the players', sym: '✎', taste: 'N', leitung: true, braucht: ['markers'] },
-  { key: 'zeichnen', label: 'Draw', title: 'Draw on the map', sym: '✐', taste: 'D', leitung: true, spaeter: '—' },
+  /* **Zeichnen** (T-219, REQ-142): Striche auf einer eigenen Zeichenebene (ein Blatt ohne Bild). */
+  { key: 'zeichnen', label: 'Draw', title: 'Draw on the map: pen, line, rectangle, ellipse — on a drawing layer of its own', sym: '✐', taste: 'D', leitung: true, braucht: ['walls', 'frames', 'markers'] },
 ];
 
 interface Zeiger {
@@ -589,6 +603,41 @@ interface Zeiger {
                 <p class="fehler" role="alert">{{ f }}</p>
               }
               <p class="hint">For every {{ kartenArt() }} map of this campaign; the map's kind is set in its fields. Fog that is on and a map that is not bright keep their tools. All kinds at once under <a [routerLink]="['/artikel', kontext()!.campaign]">Rules &amp; options</a> › Map tools.</p>
+            </div>
+          }
+          @if (aktiv() === 'zeichnen' && darfSchreiben()) {
+            <!-- **Zeichnen** (T-219, REQ-142): auf eine Zeichenebene — ohne Wahl legt der erste Strich eine an. -->
+            <div class="unterleiste" role="toolbar" aria-label="Draw">
+              <label>
+                Layer
+                <select (change)="zeichenBlatt.set($any($event.target).value || null)" aria-label="Drawing layer">
+                  <option value="" [selected]="!zeichenBlattJetzt()">new drawing layer</option>
+                  @for (b of zeichenBlaetter(); track b.id) {
+                    <option [value]="b.id" [selected]="zeichenBlattJetzt() === b.id">{{ b.name }}{{ b.gmOnly ? ' (GM)' : '' }}</option>
+                  }
+                </select>
+              </label>
+              @for (z of STIFTE; track z.key) {
+                <button type="button" [class.an]="werkzeug() === z.key" [attr.aria-pressed]="werkzeug() === z.key" (click)="waehle(z.key)" [title]="z.title">{{ z.label }}</button>
+              }
+              <label title="Colour of the next stroke">
+                <input type="color" [value]="stiftFarbe()" (input)="stiftFarbe.set($any($event.target).value)" aria-label="Pen colour" />
+              </label>
+              <label>
+                Width
+                <select (change)="stiftBreite.set(+$any($event.target).value)" aria-label="Pen width">
+                  @for (b of STIFT_BREITEN; track b.wert) {
+                    <option [value]="b.wert" [selected]="stiftBreite() === b.wert">{{ b.label }}</option>
+                  }
+                </select>
+              </label>
+              <button type="button" [class.an]="werkzeug() === 'radierer'" [attr.aria-pressed]="werkzeug() === 'radierer'" (click)="waehle('radierer')" title="Tap a stroke to erase it">Erase</button>
+              @if (zeichenBlattJetzt(); as bid) {
+                <label title="Only the GM sees this layer; players never get it">
+                  <input type="checkbox" [checked]="zeichenBlattLeitung()" (change)="zeichenBlattLeitungSetzen(bid, $any($event.target).checked)" />
+                  GM only
+                </label>
+              }
             </div>
           }
           @if (aktiv() === 'flaechen' && darfSchreiben()) {
@@ -1243,14 +1292,24 @@ interface Zeiger {
                       (error)="bildFehlt.set(true)"
                     />
                   } @else {
-                    <img
-                      class="blatt"
-                      [src]="adresse(s.image)"
-                      alt=""
-                      [style.opacity]="s.opacity"
-                      draggable="false"
-                      (load)="ohneGrund() && geladen($event)"
-                    />
+                    @if (s.image) {
+                      <img
+                        class="blatt"
+                        [src]="adresse(s.image)"
+                        alt=""
+                        [style.opacity]="s.opacity"
+                        draggable="false"
+                        (load)="ohneGrund() && geladen($event)"
+                      />
+                    }
+                    @if (s.strokes.length) {
+                      <!-- **Die Zeichenebene** (T-219, REQ-142): gleiche Achsen, damit ein Strich rund bleibt. -->
+                      <svg class="striche" [attr.viewBox]="'0 0 1 ' + seitenverhaeltnis()" preserveAspectRatio="none" aria-hidden="true" [style.opacity]="s.opacity" [attr.data-sheet]="s.id">
+                        @for (st of s.strokes; track st.id) {
+                          <path class="strich" [attr.d]="strichPfad(st)" [style.stroke]="st.color" [style.stroke-width]="st.width" />
+                        }
+                      </svg>
+                    }
                   }
                 }
                 @if (gitter(); as g) {
@@ -1423,6 +1482,11 @@ interface Zeiger {
                     (pointerdown)="$event.stopPropagation()"
                     (click)="tuerKlick(t)"
                   ></button>
+                }
+                @if (stiftVorschau(); as sv) {
+                  <svg class="striche vorschau-strich" [attr.viewBox]="'0 0 1 ' + seitenverhaeltnis()" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="strich" [attr.d]="sv.d" [style.stroke]="sv.color" [style.stroke-width]="sv.width" />
+                  </svg>
                 }
                 @if (vorschau(); as v) {
                   <div class="vorschau" [class.zu]="v.zu" [style.left.%]="v.x * 100" [style.top.%]="v.y * 100" [style.width.%]="v.w * 100" [style.height.%]="v.h * 100"></div>
@@ -1868,6 +1932,10 @@ interface Zeiger {
           {{ gewaehltesAsset() ? 'Set the asset above; tap another to switch.' : 'Tap an asset to set it up. Drag one to move it.' }}
         } @else if (werkzeug() === 'flaecheRechteck' || werkzeug() === 'flaecheEllipse') {
           {{ werkzeug() === 'flaecheRechteck' ? 'Rectangle' : 'Ellipse' }} — drag over the map; the squares whose centre lies inside belong to {{ flaecheZielName() }}.
+        } @else if (werkzeug() === 'stift' || werkzeug() === 'stiftLinie' || werkzeug() === 'stiftRechteck' || werkzeug() === 'stiftEllipse') {
+          {{ werkzeug() === 'stift' ? 'Pen — draw with the mouse or a finger.' : 'Drag from one corner to the other.' }} Strokes go on {{ zeichenBlattName() }}.
+        } @else if (werkzeug() === 'radierer') {
+          Tap a stroke to erase it.
         } @else if (werkzeug() === 'flaecheWeg') {
           Tap a zone or territory to remove it.
         } @else if (werkzeug() === 'flaecheGefunden') {
@@ -1911,7 +1979,7 @@ interface Zeiger {
       </p>
     </div>
   `,
-  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss', './notizen.scss', './flaechen.scss'],
+  styleUrls: ['./karte.scss', './sperren.scss', './editor.scss', './spiel.scss', './ebenen.scss', './werkzeuge.scss', './verknuepfung.scss', './markeransicht.scss', './notizen.scss', './flaechen.scss', './zeichnen.scss'],
 })
 export class Karte {
   readonly id = input.required<string>();
@@ -3473,14 +3541,15 @@ export class Karte {
     if (st && st.pointer === ev.pointerId) {
       const pt = this.punkt(ev);
       if (!pt) return;
-      if (this.werkzeug() !== 'pinsel') {
+      if (this.werkzeug() !== 'pinsel' && this.werkzeug() !== 'stift') {
         this.strich.set({ ...st, pts: [st.pts[0]!, pt] });
         return;
       }
       /* Ein Punkt je halbem Halbmesser: genug für eine runde Spur, und
-         ein langer Strich bleibt eine kurze Liste. */
+         ein langer Strich bleibt eine kurze Liste. Der Stift (T-219) nimmt
+         dichter auf — eine Schrift ist feiner als ein Nebelpinsel. */
       const letzter = st.pts.at(-1)!;
-      const r = this.pinselRadius();
+      const r = this.werkzeug() === 'stift' ? Math.max(this.stiftBreite(), 0.003) : this.pinselRadius();
       if (Math.hypot(pt.x - letzter.x, (pt.y - letzter.y) * this.seitenverhaeltnis()) >= r / 2) {
         this.strich.set({ ...st, pts: [...st.pts, pt] });
       }
@@ -3914,6 +3983,11 @@ export class Karte {
     } else if (this.werkzeug() === 'vieleck') {
       /* Einrasten wie an den Wänden, dazu an die Ecken der übrigen Formen. */
       this.vieleckTippen(this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse', undefined, this.vieleckFang()).pt);
+    } else if (this.werkzeug() === 'radierer') {
+      const e = this.karte();
+      const tol = SPERRE_TREFFER / Math.max(1, this.breite());
+      const s = e ? strokeAt(e, pt, this.seitenverhaeltnis(), tol) : null;
+      if (e && s) void this.schreiben(removeStroke(e, s.sheet, s.stroke));
     } else if (this.werkzeug() === 'flaecheWeg' || this.werkzeug() === 'flaecheGefunden') {
       const e = this.karte();
       const a = e ? areaAt(e, pt) : null;
@@ -4728,7 +4802,7 @@ export class Karte {
   private readonly strich = signal<{ pointer: number; pts: Pt[] } | null>(null);
 
   /** Höhe durch Breite des Kartenbildes; ohne Mass 1. */
-  private readonly seitenverhaeltnis = computed(() => {
+  protected readonly seitenverhaeltnis = computed(() => {
     const n = this.nat();
     return n && n.w > 0 ? n.h / n.w : 1;
   });
@@ -4763,7 +4837,7 @@ export class Karte {
   protected readonly vorschau = computed(() => {
     const st = this.strich();
     const w = this.werkzeug();
-    if (!st || st.pts.length < 2 || w === 'pinsel') return null;
+    if (!st || st.pts.length < 2 || w === 'pinsel' || w.startsWith('stift')) return null;
     return { ...this.kasten(st.pts[0]!, st.pts[1]!), zu: w === 'zudecken' };
   });
 
@@ -4773,6 +4847,10 @@ export class Karte {
     const w = this.werkzeug();
     if (w === 'pinsel') {
       void this.schreiben(revealArea(e, this.strichForm(pts, this.fuerWen())));
+      return;
+    }
+    if (w === 'stift' || w === 'stiftLinie' || w === 'stiftRechteck' || w === 'stiftEllipse') {
+      this.strichAnlegen(w, pts);
       return;
     }
     if (pts.length < 2) return;
@@ -4797,6 +4875,75 @@ export class Karte {
     }
     if (w === 'aufdecken') void this.schreiben(revealArea(e, { id: `s-${crypto.randomUUID()}`, kind: 'rect', ...k, ...(fuer ? { for: fuer } : {}) }));
     else if (w === 'zudecken') void this.schreiben(coverArea(e, k));
+  }
+
+  // ---------------------------------------------------- Zeichnen (T-219)
+
+  protected readonly STIFTE: readonly { key: Werkzeug; label: string; title: string }[] = [
+    { key: 'stift', label: 'Pen', title: 'Draw freehand' },
+    { key: 'stiftLinie', label: 'Line', title: 'Drag a straight line' },
+    { key: 'stiftRechteck', label: 'Rectangle', title: 'Drag a rectangle' },
+    { key: 'stiftEllipse', label: 'Ellipse', title: 'Drag the box of an ellipse or circle' },
+  ];
+  /** Breiten in Anteilen der Kartenbreite — sie wachsen beim Zoomen mit wie das Bild. */
+  protected readonly STIFT_BREITEN = [
+    { label: 'Thin', wert: 0.002 },
+    { label: 'Medium', wert: 0.004 },
+    { label: 'Thick', wert: 0.009 },
+  ];
+  protected readonly stiftFarbe = signal('#8b1a1a');
+  protected readonly stiftBreite = signal(0.004);
+  /** Die gewählte Zeichenebene; `null` heisst: der nächste Strich legt eine an. */
+  protected readonly zeichenBlatt = signal<string | null>(null);
+  /** Die Blätter ohne Bild — darauf wird gezeichnet. Eines mit Bild ist ein Bild und keine Zeichnung. */
+  protected readonly zeichenBlaetter = computed(() => {
+    const e = this.karte();
+    return e ? mapSheets(e).filter((s) => !s.base && !s.image) : [];
+  });
+  protected readonly zeichenBlattJetzt = computed(() => {
+    const w = this.zeichenBlatt();
+    const alle = this.zeichenBlaetter();
+    return alle.some((b) => b.id === w) ? w : (alle.at(-1)?.id ?? null);
+  });
+  protected readonly zeichenBlattName = computed(() => this.zeichenBlaetter().find((b) => b.id === this.zeichenBlattJetzt())?.name ?? 'a new drawing layer');
+  protected readonly zeichenBlattLeitung = computed(() => this.zeichenBlaetter().find((b) => b.id === this.zeichenBlattJetzt())?.gmOnly ?? false);
+  protected zeichenBlattLeitungSetzen(id: string, an: boolean): void {
+    const e = this.karte();
+    if (e) void this.schreiben(setSheetGmOnly(e, id, an));
+  }
+  protected strichPfad(s: MapStroke): string {
+    return strokePath(s, this.seitenverhaeltnis());
+  }
+  /** Was der Stift gerade zieht. */
+  protected readonly stiftVorschau = computed(() => {
+    const st = this.strich();
+    const w = this.werkzeug();
+    if (!st || st.pts.length < 2 || !(w === 'stift' || w === 'stiftLinie' || w === 'stiftRechteck' || w === 'stiftEllipse')) return null;
+    const kind = w === 'stift' ? 'path' : w === 'stiftLinie' ? 'line' : w === 'stiftRechteck' ? 'rect' : 'ellipse';
+    const pts = st.pts.map((p) => [p.x, p.y] as [number, number]);
+    return { d: strokePath({ id: '', kind, pts, color: '', width: 0 }, this.seitenverhaeltnis()), color: this.stiftFarbe(), width: this.stiftBreite() };
+  });
+  private strichAnlegen(w: Werkzeug, pts: Pt[]): void {
+    let e = this.karte();
+    if (!e || !pts.length) return;
+    const kind = w === 'stift' ? 'path' : w === 'stiftLinie' ? 'line' : w === 'stiftRechteck' ? 'rect' : 'ellipse';
+    if (kind !== 'path') {
+      if (pts.length < 2) return;
+      const [a, b] = pts as [Pt, Pt];
+      /* Ein Antippen ist keine Form. */
+      if (Math.abs(a.x - b.x) < 0.003 && Math.abs(a.y - b.y) < 0.003) return;
+    }
+    let blatt = this.zeichenBlattJetzt();
+    if (!blatt) {
+      const neu = addDrawingSheet(e, `Drawing ${this.zeichenBlaetter().length + 1}`, `sheet-${crypto.randomUUID().slice(0, 8)}`);
+      e = neu.map;
+      blatt = neu.id;
+      this.zeichenBlatt.set(blatt);
+    }
+    const roh = kind === 'path' ? pts : [pts[0]!, pts.at(-1)!];
+    void this.schreiben(
+      addStroke(e, blatt, { id: `st-${crypto.randomUUID().slice(0, 8)}`, kind, pts: roh.map((p) => [p.x, p.y] as [number, number]), color: this.stiftFarbe(), width: this.stiftBreite() }),
+    );
   }
 
   // ------------------------------------------------- Zonen und Gebiete (T-219)

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-draw-on-maps",
+      "date": "2026-10-29",
+      "title": "Draw on the map",
+      "text": "The tool group Draw (D) sketches on the map with pen, line, rectangle and ellipse, on drawing layers of their own. A layer can be kept for the GM only; players see the others at once.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-weapons-attack",
       "date": "2026-10-29",
       "title": "Weapons in hand are attacks in the turn plan",
