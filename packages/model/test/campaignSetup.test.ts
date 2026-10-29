@@ -90,4 +90,12 @@ describe('campaign decisions (T-141)', () => {
       ['members', 'open', '0 leads · 2 players · 1 spectator'],
     ]);
   });
+
+  it('names a long stack by its count and its first layers, not all 150 of them (dev, 29.10.)', () => {
+    const viele = Array.from({ length: 12 }, (_, i) => `Book ${i + 1}`);
+    const [ebenen] = campaignDecisions({ sorts: [], layers: { inPlay: viele, compare: [] } });
+    expect(ebenen!.value).toBe('12 layers: Book 1, Book 2, Book 3, Book 4, Book 5 and 7 more');
+    const [wenige] = campaignDecisions({ sorts: [], layers: { inPlay: viele.slice(0, 6), compare: [] } });
+    expect(wenige!.value).toBe('Book 1, Book 2, Book 3, Book 4, Book 5, Book 6');
+  });
 });

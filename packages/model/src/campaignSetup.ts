@@ -67,6 +67,14 @@ function regelStand(o: RuleOptionState): Pick<CampaignDecision, 'value' | 'state
 
 const zahl = (n: number, eins: string, mehr: string) => `${n} ${n === 1 ? eins : mehr}`;
 
+/** Wie viele Ebenen ausgeschrieben werden; darüber Zahl und Anfang (auf dev stehen 150 im Spiel). */
+const EBENEN_AUSGESCHRIEBEN = 6;
+function ebenenText(namen: readonly string[]): string {
+  if (namen.length <= EBENEN_AUSGESCHRIEBEN) return namen.join(', ');
+  const vorn = EBENEN_AUSGESCHRIEBEN - 1;
+  return `${namen.length} layers: ${namen.slice(0, vorn).join(', ')} and ${namen.length - vorn} more`;
+}
+
 export function campaignDecisions(input: CampaignSetupInput): CampaignDecision[] {
   const raus: CampaignDecision[] = [];
   if (input.layers) {
@@ -75,7 +83,7 @@ export function campaignDecisions(input: CampaignSetupInput): CampaignDecision[]
       key: 'layers',
       group: TABLE_GROUP,
       label: 'Layers in play',
-      value: inPlay.join(', '),
+      value: ebenenText(inPlay),
       state: inPlay.length ? 'set' : 'open',
       change: { tab: 'layers' },
       consequence: FOLGEN.layers,
@@ -84,7 +92,7 @@ export function campaignDecisions(input: CampaignSetupInput): CampaignDecision[]
       key: 'compare',
       group: TABLE_GROUP,
       label: 'Compare layers',
-      value: compare.join(', '),
+      value: ebenenText(compare),
       /* Keine Vergleichsebene ist eine gültige Wahl und die Vorgabe. */
       state: compare.length ? 'set' : 'default',
       change: { tab: 'layers' },
