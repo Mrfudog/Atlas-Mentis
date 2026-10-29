@@ -35,8 +35,33 @@ describe('shared requests (T-398)', () => {
     expect(a).toBe(b);
     expect(b).toBe(c);
     expect(gefragt.filter((g) => g === 'GET /api/me/prefs')).toHaveLength(1);
+  });
+
+  it('keeps the answer for a short while: one page load asks once, not three times (dev, 29.10.)', async () => {
+    const api = TestBed.inject(Api);
+    let jetzt = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => jetzt);
+    await api.prefs();
+    jetzt += 3000;
+    await api.prefs();
+    expect(gefragt.filter((g) => g === 'GET /api/me/prefs')).toHaveLength(1);
+    /* Danach wieder frisch: ein anderes Gerät kann geschrieben haben. */
+    jetzt += 20_000;
     await api.prefs();
     expect(gefragt.filter((g) => g === 'GET /api/me/prefs')).toHaveLength(2);
+  });
+
+  it('asks again after any write, and after switching whose view it is', async () => {
+    const api = TestBed.inject(Api);
+    await api.prefs();
+    /* Auch Schreiben, das nicht setPref heisst, ändert Prefs am Server (Schreibebene, Ebenenauswahlen). */
+    await api.setListColumnDefault('x', null);
+    await api.prefs();
+    expect(gefragt.filter((g) => g === 'GET /api/me/prefs')).toHaveLength(2);
+    api.setViewAs('u_andere');
+    await api.prefs();
+    expect(gefragt.filter((g) => g === 'GET /api/me/prefs')).toHaveLength(3);
+    api.setViewAs(null);
   });
 
   it('does not hand out a running answer after a write', async () => {

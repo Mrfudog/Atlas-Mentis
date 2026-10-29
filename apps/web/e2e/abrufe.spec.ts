@@ -48,6 +48,8 @@ test('a statblock asks for all its proficiencies in one request', async ({ leitu
     expect(doppelt(l.filter((x) => x.startsWith('GET /api/list') || x.startsWith('GET /api/entities'))), l.join('\n')).toEqual([]);
     /* Bogen, Kopf und Abschnitte fragen gesammelt (`Bestand.holen`), nicht je für sich. */
     expect(l.filter((x) => x.startsWith('GET /api/entities?ids=')).length, l.join('\n')).toBeLessThanOrEqual(1);
+    /* Auf dev dreimal nacheinander (29.10.): die Antwort gilt jetzt einen Seitenaufbau lang. */
+    expect(l.filter((x) => x === 'GET /api/me/prefs'), l.join('\n')).toHaveLength(1);
     expect(l.length, l.join('\n')).toBeLessThanOrEqual(25);
   }
 });
