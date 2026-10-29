@@ -1962,6 +1962,18 @@ bevor ein Stück aus der Hand muss, fragt die Seite — verstauen, fallen
 lassen, abbrechen —, denn ein fallen gelassener Schild liegt am Boden und
 nicht im Rucksack, und das macht am Tisch einen Unterschied.
 
+**Das Gear erklärt, statt nur zu zeigen** (T-365, E-153). Eine Zahl ohne
+Grund lädt zum Streit ein: warum dauert die Kerze eine Runde? Darum sagt
+jede Ziehzeit, woher sie kommt — die Zone, der Platz, jeder Behälter, der
+eine Stufe dazugibt —, und das Raster, warum es so gross ist. Die Worte
+kommen aus derselben Rechnung wie die Stufe (`drawReason` liest die
+Schritte von `drawStage`); eine zweite Rechnung für die Begründung wäre
+die Stelle, an der Text und Wert auseinanderlaufen. **Die Plätze am Körper
+sind die des Moduls** (`slotDraw`) und keine Liste im Code: ein Platz mehr
+ist ein Eintrag in Rules & options. **Zonen malt die Leitung, nicht die
+Figur** — im Gear stünde sonst ein Werkzeug, mit dem Spielende ihre
+Ziehzeiten selbst günstiger machen.
+
 ### Der Initiative-Tracker ist ein eigenes System
 
 **Die Kampagne stellt ihn ein, nicht der Schirm** (T-022): was Spielende

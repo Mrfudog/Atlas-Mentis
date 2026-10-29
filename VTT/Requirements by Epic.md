@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-28
+updated: 2026-10-29
 ---
 
 # Requirements by Epic
@@ -345,7 +345,7 @@ Figur geführt erstellen und steigern: Klasse, Herkunft, Hintergrund, Wahlen, At
 
 ## EP-04 Spielererlebnis
 
-44 Stories · 120 Punkte · 7 steht · 13 teils · 24 offen — [[EP-04 Spielererlebnis]]
+44 Stories · 120 Punkte · 7 steht · 14 teils · 23 offen — [[EP-04 Spielererlebnis]]
 
 ### F-025 Spieleransicht & Telefon
 
@@ -369,7 +369,7 @@ Liste und Raster, Behälter und Zonen, Ausrüstungsfigur, Ziehen und Verstauen, 
 | [[REQ-275]] | Erhaltene Gegenstände als Instanz | Spieler | 2 | 3 | teils |
 | [[REQ-320]] | Formen frei malen, auch nicht rechteckig | Spielleitung | 2 | 2 | offen |
 | [[REQ-321]] | Stapel im Raster | Spieler | 2 | 3 | offen |
-| [[REQ-322]] | Besondere Zonen mit eigenen Regeln | Spieler | 2 | 3 | offen |
+| [[REQ-322]] | Besondere Zonen mit eigenen Regeln | Spieler | 2 | 3 | teils |
 | [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | 2 | 3 | teils |
 | [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | 2 | 3 | teils |
 | [[REQ-325]] | Gegenstandsartikel im Detailbereich | Spieler | 2 | 1 | offen |

@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-28. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-10-29. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -12,14 +12,14 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
+Zusammen: 187 steht · 65 teils · 126 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 56 | 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 51 | 28 steht · 8 teils · 12 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 19 steht · 2 teils · 8 offen · 1 ersetzt |
-| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 13 teils · 24 offen |
+| [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 14 teils · 23 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 33 | 17 steht · 4 teils · 12 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 29 | 13 steht · 3 teils · 13 offen |
@@ -356,7 +356,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Spieltisch.md](../docs/Spieltisch.md)
 
-**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (offen) · REQ-323 Alle möglichen Plätze eines Gegenstands (teils) · REQ-324 Hände als Plätze mit Regeln (teils) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (teils) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (teils) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils) · REQ-391 Tragestufen mit Folgen (offen)
+**Offen mit Prio 1–3:** REQ-069 Am Telefon spielen (teils) · REQ-072 Eigene Notizen (offen) · REQ-074 Schnellzugriffe (teils) · REQ-083 Eigene Quests und Ziele (offen) · REQ-109 Lore-Texte von Spielenden (teils) · REQ-200 Chat mit der Leitung und unter Spielenden (offen) · REQ-201 Aus dem Chat wird Inhalt (offen) · REQ-202 Chats bleiben privat (offen) · REQ-215 Tragraster aus Grösse und Stärke (teils) · REQ-216 Behälter in Behältern (teils) · REQ-225 Fallenlassen und Verstauen (teils) · REQ-275 Erhaltene Gegenstände als Instanz (teils) · REQ-311 Spieleransicht mit der eigenen Figur im Fokus (teils) · REQ-320 Formen frei malen, auch nicht rechteckig (offen) · REQ-321 Stapel im Raster (offen) · REQ-322 Besondere Zonen mit eigenen Regeln (teils) · REQ-323 Alle möglichen Plätze eines Gegenstands (teils) · REQ-324 Hände als Plätze mit Regeln (teils) · REQ-325 Gegenstandsartikel im Detailbereich (offen) · REQ-326 Ziehen und Ablegen im Raster (offen) · REQ-327 Packen am Telefon (offen) · REQ-328 Ablage für nicht Verstautes (offen) · REQ-332 Beute öffnen und nehmen (offen) · REQ-333 Vorgaben für Formen und Stapel (teils) · REQ-334 Tragende Ausrüstung als Behälter mit eigenem Raster (offen) · REQ-335 Verbund: Zellen, die gemeinsam ein Stück tragen (offen) · REQ-336 Festlegen, wo ein Gegenstand getragen werden darf (offen) · REQ-337 Sehen, was weichen muss (teils) · REQ-338 Körperplätze als Plan des Moduls (offen) · REQ-339 Tragende Ausrüstung an der Figur (offen) · REQ-340 Raster und Zonen eines Trägers in der Maske (offen) · REQ-346 Was die Kampagne meiner Figur gezeigt hat (teils) · REQ-391 Tragestufen mit Folgen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -379,7 +379,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | REQ-183 | Gruppeninventar | 3 | **steht** | `carries` von `Party` |
 | REQ-214 | Ausrüstungsfigur | 4 | **steht** | `Creature.figure`, Plätze des Blatts an `holds.props.slot`, Reiter „Worn“ mit Figur (Prototyp, D54) |
 | REQ-215 | Tragraster aus Grösse und Stärke | 3 | **teils** | `Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54). Zonen je Zelle setzbar („Shape & zones“); die Vorgabe nach Spalten kommt noch aus der globalen Einstellung `carryZones`, nicht aus dem Inventarmodul (E-096) |
-| REQ-216 | Behälter in Behältern | 3 | **teils** | Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54). Offen nach E-096: innere Zonen zählen heute absolut (das Langsamere aus Zone und Behälter + 1), nicht vom Platz des Behälters aus |
+| REQ-216 | Behälter in Behältern | 3 | **teils** | Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54). Offen nach E-096: innere Zonen zählen heute absolut (das Langsamere aus Zone und Behälter + 1), nicht vom Platz des Behälters aus. Seit T-365 sagt das Gear je Stück die Stufe mit Begründung (`drawReason`) |
 | REQ-217 | Ziehen am Bogen | 3 | **steht** | Abschnitt „Actions“ am Bogen, je `DrawTime`-Stufe „Draw“ mit Weg (Prototyp, D54); die Kosten rechnet `drawStage` (relativ nach E-096 mit REQ-216) |
 | REQ-225 | Fallenlassen und Verstauen | 3 | **teils** | „Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58). Offen nach E-080 a: Kosten aus dem Modul (`fixed`/`drawPlusOne`), am Platz und im Verdrängen-Dialog |
 | REQ-275 | Erhaltene Gegenstände als Instanz | 2 | **teils** | `instanceOf` am Item vorhanden (T-150 läuft) |
@@ -387,7 +387,7 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 | REQ-277 | Gegenstände mit Form spiegeln | 4 | **offen** |  |
 | REQ-320 | Formen frei malen, auch nicht rechteckig | 2 | **offen** |  |
 | REQ-321 | Stapel im Raster | 2 | **offen** |  |
-| REQ-322 | Besondere Zonen mit eigenen Regeln | 2 | **offen** |  |
+| REQ-322 | Besondere Zonen mit eigenen Regeln | 2 | **teils** | T-365: Körperplätze aus dem Plan des Inventarmoduls (slotDraw), Ringe nur an Ringplätze, Rüstung an den Rüstungsplatz; besondere Zonen mit Regeln und Rücken/Gurt offen (T-367). |
 | REQ-323 | Alle möglichen Plätze eines Gegenstands | 2 | **teils** | Ziele Hände, Raster, Not stowed, Boden mit ✓/⚠/✗ und Grund (`wieldOptions`, T-244); Körperplätze, Behälter und Telefonblatt mit der zweiten Etappe |
 | REQ-324 | Hände als Plätze mit Regeln | 2 | **teils** | Hände als Plätze, zweihändig, vielseitig (Griff an `holds.props.grip`), Schild nur Nebenhand mit Folgen ohne Übung, Fokus — `wield.ts`, Gear (T-244 Demo-Etappe); Ziehkosten aus dem Modul offen |
 | REQ-325 | Gegenstandsartikel im Detailbereich | 2 | **offen** |  |
@@ -1076,7 +1076,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-319** (2, offen, Regeln & Nachschlagen) — Inventarregeln als wählbares Modul
 - **REQ-320** (2, offen, Spielererlebnis) — Formen frei malen, auch nicht rechteckig
 - **REQ-321** (2, offen, Spielererlebnis) — Stapel im Raster
-- **REQ-322** (2, offen, Spielererlebnis) — Besondere Zonen mit eigenen Regeln
+- **REQ-322** (2, teils, Spielererlebnis) — Besondere Zonen mit eigenen Regeln — *T-365: Körperplätze aus dem Plan des Inventarmoduls (slotDraw), Ringe nur an Ringplätze, Rüstung an den Rüstungsplatz; besondere Zonen mit Regeln und Rücken/Gurt offen (T-367).*
 - **REQ-323** (2, teils, Spielererlebnis) — Alle möglichen Plätze eines Gegenstands — *Ziele Hände, Raster, Not stowed, Boden mit ✓/⚠/✗ und Grund (`wieldOptions`, T-244); Körperplätze, Behälter und Telefonblatt mit der zweiten Etappe*
 - **REQ-324** (2, teils, Spielererlebnis) — Hände als Plätze mit Regeln — *Hände als Plätze, zweihändig, vielseitig (Griff an `holds.props.grip`), Schild nur Nebenhand mit Folgen ohne Übung, Fokus — `wield.ts`, Gear (T-244 Demo-Etappe); Ziehkosten aus dem Modul offen*
 - **REQ-325** (2, offen, Spielererlebnis) — Gegenstandsartikel im Detailbereich
@@ -1142,7 +1142,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-208** (3, teils, Karten) — Zonen mit eigenen Regeln — *`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)*
 - **REQ-210** (3, teils, Karten) — Karte und Initiative im Vollbild — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
 - **REQ-215** (3, teils, Spielererlebnis) — Tragraster aus Grösse und Stärke — *`Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54). Zonen je Zelle setzbar („Shape & zones“); die Vorgabe nach Spalten kommt noch aus der globalen Einstellung `carryZones`, nicht aus dem Inventarmodul (E-096)*
-- **REQ-216** (3, teils, Spielererlebnis) — Behälter in Behältern — *Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54). Offen nach E-096: innere Zonen zählen heute absolut (das Langsamere aus Zone und Behälter + 1), nicht vom Platz des Behälters aus*
+- **REQ-216** (3, teils, Spielererlebnis) — Behälter in Behältern — *Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54). Offen nach E-096: innere Zonen zählen heute absolut (das Langsamere aus Zone und Behälter + 1), nicht vom Platz des Behälters aus. Seit T-365 sagt das Gear je Stück die Stufe mit Begründung (`drawReason`)*
 - **REQ-221** (3, offen, Kampagne & Sitzungen) — Begegnungen bauen
 - **REQ-225** (3, teils, Spielererlebnis) — Fallenlassen und Verstauen — *„Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58). Offen nach E-080 a: Kosten aus dem Modul (`fixed`/`drawPlusOne`), am Platz und im Verdrängen-Dialog*
 - **REQ-227** (3, offen, Regeln & Nachschlagen) — Masse im Fliesstext umrechnen — *umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2)*

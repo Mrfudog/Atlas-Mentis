@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, registry]
 status: derived
-updated: 2026-10-28
+updated: 2026-10-29
 ---
 
 # Requirements Registry
@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 141 | 515 | 70 steht · 25 teils · 38 offen · 5 ersetzt · 3 verworfen |
+| 2 | 141 | 515 | 70 steht · 26 teils · 37 offen · 5 ersetzt · 3 verworfen |
 | 3 | 128 | 394 | 61 steht · 27 teils · 39 offen · 1 ersetzt |
 | 4 | 49 | 225 | 13 steht · 2 teils · 31 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **394** | **1470** | 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **394** | **1470** | 187 steht · 65 teils · 126 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -360,7 +360,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-319]] | Inventarregeln als wählbares Modul | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 5 | defined | offen |
 | [[REQ-320]] | Formen frei malen, auch nicht rechteckig | Spielleitung | [[F-026 Inventar\|Inventar]] | 2 | 2 | defined | offen |
 | [[REQ-321]] | Stapel im Raster | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
-| [[REQ-322]] | Besondere Zonen mit eigenen Regeln | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | offen |
+| [[REQ-322]] | Besondere Zonen mit eigenen Regeln | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | teils |
 | [[REQ-323]] | Alle möglichen Plätze eines Gegenstands | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | teils |
 | [[REQ-324]] | Hände als Plätze mit Regeln | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | defined | teils |
 | [[REQ-325]] | Gegenstandsartikel im Detailbereich | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 1 | defined | offen |
