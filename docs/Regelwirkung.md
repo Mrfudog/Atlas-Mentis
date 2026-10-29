@@ -173,6 +173,22 @@ Waffe nicht doppelt. Was T-354 sonst verlangt (Rechnungen als
 Automationen, Leser für `affects`, `loot`, `entry`, `route`) liegt als
 Entscheid E-206 bei der Leitung.
 
+## Von Hand: die freie Aktion (REQ-403, T-453)
+
+Eine Regel, die es hier (noch) nicht gibt, darf den Zug nicht
+blockieren. Darum hat die Aktionsleiste je Platz eine Kachel „Other
+action“, „Other bonus action“, „Other reaction“, „Other free action“
+(`MANUAL_TILES`, `zugplan.ts`): angetippt fragt sie, was geschieht, und
+kommt mit dieser Notiz in den Zug. Sie verbraucht ihren Platz wie jede
+Aktion (`planBudget`) und prüft nichts; was sie kostet, sagt die Kachel,
+nicht die Maske (`cleanStep`). Ohne Notiz nimmt der Server sie nicht an
+(422, „Say in a note what the free action does.“). Bestätigt steht sie im
+Ergebnis als „<Figur>: <Notiz> (manual, …)“ mit `manual: true` — so lassen
+sich fehlende Regeln später auswerten.
+
+Teil 2 (eigene Karte): Wirkungen von Hand (Schaden, Zustand, Würfel),
+berechnete Ergebnisse überschreiben, Filter „manual“ im Protokoll.
+
 ## Punkt 6 — was jetzt wirkt (T-349)
 
 Das Raster des Zugplans (`planGrid`) kennt drei Sorten Feld: frei,

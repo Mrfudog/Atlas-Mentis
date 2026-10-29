@@ -3447,8 +3447,8 @@ export const fieldGroups = {
         sort: {
           type: 'string',
           title: 'Rule area',
-          enum: ['inventory', 'items', 'crafting', 'abilities', 'equipment', 'character', 'travel', 'units', 'map', 'combat', 'table'],
-          description: 'Which area of Rules & options this rule system covers, such as inventory.',
+          enum: ['inventory', 'partyInventory', 'items', 'crafting', 'abilities', 'equipment', 'character', 'magic', 'creatures', 'travel', 'units', 'map', 'combat', 'table'],
+          description: 'Which area of Rules & options this rule system covers, such as inventory. A rule system is a module; its rule mechanics are the systems a campaign picks from.',
         },
       },
     },
@@ -3457,7 +3457,9 @@ export const fieldGroups = {
   /**
    * **Eine Regelmechanik ist eine Ebene** (E-166): Grid, Weight, Slots,
    * Default shapes — eine Option eines Regelsystems (`partOf`), die sagt,
-   * mit welchen anderen sie zusammen gilt (Kante `compatibleWith`).
+   * mit welchen anderen sie zusammen gilt (Kante `compatibleWith`), welche
+   * sie erweitert (`extendsMechanic`) und welche sie ausschliesst
+   * (`excludesMechanic`, E-100). Was gilt, rechnet `mechanicSelection`.
    * `method` ist das Wort, das die Laufzeit ausführt; was am Tisch zählt,
    * wählt vorerst `Campaign.inventory`.
    */
