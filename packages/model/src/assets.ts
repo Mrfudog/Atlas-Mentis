@@ -178,7 +178,7 @@ export interface TokenFrame {
   x: number;
   y: number;
   zoom: number;
-  /** Der Rand um ein ausgeschnittenes Bild (T-301): eine Id aus `TOKEN_RINGS`; ohne gilt `plain`. */
+  /** Der Rand um ein ausgeschnittenes Bild (T-301): eine Id aus `TOKEN_RINGS` oder eines eigenen Randes (T-302); ohne oder unbekannt gilt `plain`. */
   ring?: string;
 }
 
@@ -195,6 +195,10 @@ export interface TokenRing {
   label: string;
   width: number;
   paint: string;
+  /** Eigene Ränder (T-302): die Farbkombination, aus der `paint` gerechnet ist. */
+  colors?: string[];
+  /** Eigene Ränder (T-302): ein Rahmenbild — die Id eines Assets, gezeigt im Ring über `paint`. */
+  image?: string;
 }
 export const TOKEN_RINGS: readonly TokenRing[] = [
   { id: 'plain', label: 'Plain', width: 0.035, paint: '#f7f1e3' },
@@ -207,9 +211,61 @@ export const TOKEN_RINGS: readonly TokenRing[] = [
   { id: 'shadow', label: 'Shadow', width: 0.06, paint: 'linear-gradient(135deg, #5a5a5a, #111 50%, #3a3a3a)' },
 ];
 
-/** Der Rand nach Id; unbekannt oder ohne heisst `plain`. */
-export function tokenRing(id: string | undefined): TokenRing {
-  return TOKEN_RINGS.find((r) => r.id === id) ?? TOKEN_RINGS[0]!;
+/** Wie die Id eines Randes aussieht — eine feste oder eine Artikel-Id. Mehr geht nicht in eine CSS-Adresse. */
+const RING_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
+/** Nur Hex-Farben: der Wert geht als CSS in die Seite, und ein Wort wie `url(…)` holte etwas nach. */
+const HEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+/** Die Grenzen eines eigenen Randes: höchstens ein Fünftel des Durchmessers, höchstens acht Farben. */
+export const TOKEN_RING_WIDTH_MAX = 0.2;
+const RING_COLORS_MAX = 8;
+
+/**
+ * **Eine Farbkombination als Rand** (T-302): eine Farbe ist die Farbe,
+ * mehrere ein Verlauf schräg über den Ring, gleichmässig verteilt — wie die
+ * festen Metallränder, nur ohne deren Glanzstufen.
+ */
+export function ringPaint(colors: readonly string[]): string {
+  if (colors.length === 0) return 'transparent';
+  if (colors.length === 1) return colors[0]!;
+  const stufe = (i: number) => `${Math.round((i / (colors.length - 1)) * 100)}%`;
+  return `linear-gradient(135deg, ${colors.map((c, i) => `${c} ${stufe(i)}`).join(', ')})`;
+}
+
+/**
+ * **Ein eigener Rand** (T-302) aus Daten, die jemand bearbeiten kann:
+ * Farben nur als Hex, das Rahmenbild nur als Id, die Breite gekappt. Ohne
+ * Farbe und ohne Bild ist es kein Rand; eine feste Id (`gold`) bleibt fest.
+ * Woher die Liste kommt, entscheidet E-205 — die Form gilt so oder so.
+ */
+export function customRing(v: unknown): TokenRing | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  const id = typeof o['id'] === 'string' ? o['id'] : '';
+  if (!RING_ID.test(id) || TOKEN_RINGS.some((r) => r.id === id)) return null;
+  const colors = (Array.isArray(o['colors']) ? o['colors'] : []).filter((c): c is string => typeof c === 'string' && HEX.test(c)).slice(0, RING_COLORS_MAX);
+  const image = typeof o['image'] === 'string' && RING_ID.test(o['image']) ? o['image'] : undefined;
+  if (colors.length === 0 && !image) return null;
+  const label = typeof o['label'] === 'string' && o['label'].trim() ? o['label'].trim() : id;
+  return {
+    id,
+    label,
+    width: zwischen(o['width'], 0, TOKEN_RING_WIDTH_MAX, 0.06),
+    ...(colors.length ? { colors } : {}),
+    ...(image ? { image } : {}),
+    paint: ringPaint(colors),
+  };
+}
+
+/** Alle Ränder zur Wahl: die festen zuerst, dann die eigenen; eine Id zählt einmal. */
+export function tokenRings(custom: readonly TokenRing[] = []): TokenRing[] {
+  const alle = [...TOKEN_RINGS];
+  for (const r of custom) if (!alle.some((a) => a.id === r.id)) alle.push(r);
+  return alle;
+}
+
+/** Der Rand nach Id, auch unter den eigenen (T-302); unbekannt oder ohne heisst `plain`. */
+export function tokenRing(id: string | undefined, custom: readonly TokenRing[] = []): TokenRing {
+  return TOKEN_RINGS.find((r) => r.id === id) ?? custom.find((r) => r.id === id) ?? TOKEN_RINGS[0]!;
 }
 
 /** Wie ein Bild als Token gezeigt wird (T-297). */
@@ -230,7 +286,8 @@ export const TOKEN_ZOOM_MAX = 4;
 /** Ausschnitt mit Vorgaben und Grenzen: Mitte 50/50, Zoom 1. Unsinn fällt auf die Vorgabe. */
 export function tokenFrame(v: unknown): TokenFrame {
   const f = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
-  const ring = typeof f['ring'] === 'string' && TOKEN_RINGS.some((r) => r.id === f['ring']) ? (f['ring'] as string) : undefined;
+  /* Eine Id, die nicht in der festen Liste steht, bleibt (T-302): sie nennt einen eigenen Rand. */
+  const ring = typeof f['ring'] === 'string' && RING_ID.test(f['ring']) ? f['ring'] : undefined;
   return { x: zwischen(f['x'], 0, 100, 50), y: zwischen(f['y'], 0, 100, 50), zoom: zwischen(f['zoom'], 1, TOKEN_ZOOM_MAX, 1), ...(ring ? { ring } : {}) };
 }
 

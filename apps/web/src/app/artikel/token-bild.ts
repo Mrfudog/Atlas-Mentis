@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { TOKEN_RINGS, TOKEN_ZOOM_MAX, tokenFrame, tokenPlacement, tokenRing, type Entity, type TokenFrame, type TokenLook } from '@nw/model';
+import { TOKEN_ZOOM_MAX, tokenFrame, tokenPlacement, tokenRing, tokenRings, type Entity, type TokenFrame, type TokenLook, type TokenRing } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { BildWahl, bildAdresse } from './bild';
@@ -29,14 +29,26 @@ export function tokenStil(look: TokenLook | undefined): Record<string, string> {
 }
 
 /**
- * **Der Rand eines Tokens** (T-301) als CSS-Variablen für die Klasse
- * `beringt`: Breite in Pixeln aus dem Bruchteil des Durchmessers, Farbe oder
- * Verlauf aus `TOKEN_RINGS`. Ein fertiges Rundtoken bekommt keinen.
+ * **Was im Ring liegt** (T-301, T-302): Farbe oder Verlauf, bei einem
+ * eigenen Rand mit Rahmenbild das Bild darüber — die Maske der Klasse
+ * `beringt` schneidet aus beidem den Ring. Die Id des Bildes ist im Modell
+ * geprüft (`customRing`), die Adresse baut `bildAdresse`.
  */
-export function ringStil(look: TokenLook | undefined, px: number): Record<string, string> | null {
+export function ringMuster(r: TokenRing): string {
+  const bild = r.image ? bildAdresse(r.image, 'full') : null;
+  return bild ? `url("${bild}") center / cover no-repeat, ${r.paint}` : r.paint;
+}
+
+/**
+ * **Der Rand eines Tokens** (T-301) als CSS-Variablen für die Klasse
+ * `beringt`: Breite in Pixeln aus dem Bruchteil des Durchmessers, Farbe,
+ * Verlauf oder Rahmenbild aus `TOKEN_RINGS` und den eigenen Rändern
+ * (`custom`, T-302). Ein fertiges Rundtoken bekommt keinen.
+ */
+export function ringStil(look: TokenLook | undefined, px: number, custom: readonly TokenRing[] = []): Record<string, string> | null {
   if (!look || look.round) return null;
-  const r = tokenRing(look.frame.ring);
-  return { '--ring-w': `${Math.max(r.width ? 1 : 0, Math.round(r.width * px))}px`, '--ring-bg': r.paint };
+  const r = tokenRing(look.frame.ring, custom);
+  return { '--ring-w': `${Math.max(r.width ? 1 : 0, Math.round(r.width * px))}px`, '--ring-bg': ringMuster(r) };
 }
 
 /**
@@ -99,10 +111,10 @@ export function ringStil(look: TokenLook | undefined, px: number): Record<string
                 <p class="hinweis">Drag the image to put the face in the middle.</p>
                 <fieldset class="raender">
                   <legend>Border</legend>
-                  @for (r of RINGE; track r.id) {
+                  @for (r of RINGE(); track r.id) {
                     <label class="rand" [class.an]="(d.frame.ring ?? 'plain') === r.id" [title]="r.label">
                       <input type="radio" name="rand" [value]="r.id" [checked]="(d.frame.ring ?? 'plain') === r.id" (change)="setzeRing(r.id)" />
-                      <span class="huelle"><span class="muster" [style.background]="r.paint" [class.ohne]="!r.width"></span></span>
+                      <span class="huelle"><span class="muster" [style.background]="muster(r)" [class.ohne]="!r.width"></span></span>
                       <span class="name">{{ r.label }}</span>
                     </label>
                   }
@@ -295,13 +307,15 @@ export function ringStil(look: TokenLook | undefined, px: number): Record<string
 })
 export class TokenBild {
   readonly artikel = input.required<Entity>();
+  /** Die eigenen Ränder zur Wahl (T-302); woher sie kommen, entscheidet E-205. */
+  readonly raender = input<readonly TokenRing[]>([]);
   private readonly bestand = inject(Bestand);
   private readonly api = inject(Api);
 
   protected readonly KLEIN = 96;
   protected readonly GROSS = 220;
   protected readonly ZOOM_MAX = TOKEN_ZOOM_MAX;
-  protected readonly RINGE = TOKEN_RINGS;
+  protected readonly RINGE = computed(() => tokenRings(this.raender()));
   protected readonly token = computed(() => this.bestand.token().get(this.artikel().id) ?? null);
   protected readonly offen = signal(false);
   protected readonly entwurf = signal<TokenLook | null>(null);
@@ -325,7 +339,10 @@ export class TokenBild {
     return tokenStil(look);
   }
   protected kreisStil(look: TokenLook, px: number): Record<string, string> {
-    return { width: `${px}px`, height: `${px}px`, ...(ringStil(look, px) ?? {}) };
+    return { width: `${px}px`, height: `${px}px`, ...(ringStil(look, px, this.raender()) ?? {}) };
+  }
+  protected muster(r: TokenRing): string {
+    return ringMuster(r);
   }
 
   protected oeffnen(t: { look?: TokenLook }): void {
