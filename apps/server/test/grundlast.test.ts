@@ -46,4 +46,32 @@ describe('base requests do not rebuild the whole stock (T-398, P4)', () => {
       expect(je).toEqual(Object.fromEntries(WEGE.map((w) => [w, 0])));
     });
   }
+
+  /* Am Postgres sind das je getRegistry acht Abfragen; auf dev fragte ein
+     Artikel das Register elfmal, den Stempel und die Zuteilungen achtmal. */
+  for (const wer of ['Mira', 'Sela'] as const) {
+    it(`asks registry, stamp, grants and users once per request — ${wer}`, async () => {
+      const t = await tisch({
+        kampagne: 'camp',
+        artikel: [ebene, kampagne, ...orte],
+        konten: { Mira: { roles: { camp: 'gm' } }, Sela: { roles: { camp: 'player' } } },
+      });
+      const spione = Object.fromEntries((['getRegistry', 'version', 'layerGrants', 'listUsers'] as const).map((m) => [m, vi.spyOn(t.repo, m)]));
+      for (const w of WEGE) await t.als(wer, 'GET', w);
+      for (const w of [...WEGE, '/api/glossary', '/api/entities?ids=o1,o2']) {
+        const vorher = Object.fromEntries(Object.entries(spione).map(([m, s]) => [m, s.mock.calls.length]));
+        await t.als(wer, 'GET', w);
+        const mehr = Object.entries(spione).filter(([m, s]) => s.mock.calls.length - vorher[m]! > 1).map(([m, s]) => `${m} ${s.mock.calls.length - vorher[m]!}×`);
+        expect(mehr, w).toEqual([]);
+      }
+    });
+  }
+
+  it('reads again after a write within the same request', async () => {
+    const t = await tisch({ kampagne: 'camp', artikel: [ebene, kampagne, ...orte], konten: { Mira: { roles: { camp: 'gm' } } } });
+    const res = await t.als('Mira', 'POST', '/api/entities', { payload: { type: 'Place', name: 'Neuer Ort', layer: 'ly_k' } });
+    expect(res.statusCode, res.body.slice(0, 300)).toBeLessThan(300);
+    const neu = JSON.parse(res.body) as { id: string };
+    expect((await t.als('Mira', 'GET', `/api/entities/${neu.id}`)).statusCode).toBe(200);
+  });
 });

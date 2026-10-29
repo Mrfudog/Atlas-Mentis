@@ -226,7 +226,7 @@ import { registerTracker } from './initiative.js';
 import { insSpiel, registerSpielinstanz } from './spielinstanz.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
-import { messe, messeSync, mitZeiten, mitZeitmessung, zeitenKopf } from './zeitmessung.js';
+import { messe, messeSync, mitAnfrageSpeicher, mitZeiten, mitZeitmessung, zeitenKopf } from './zeitmessung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -411,8 +411,10 @@ export function buildApp({
   /* **Jedes Schreiben meldet sich beim Live-Kanal** (T-116): die Hülle
      liegt um das Repository, bevor irgendeine Route oder ein Modul es
      bekommt — so vergisst es keine. */
-  /* Die Stoppuhr aussen (T-398): jede Methode zählt unter `db` im Server-Timing. */
-  repo = mitZeitmessung(mitKanal(repo, live));
+  /* Die Stoppuhr darum (T-398): jede Methode zählt unter `db` im Server-Timing.
+     Ganz aussen, was je Anfrage einmal gefragt wird — so zählt `db` nur, was
+     wirklich an die Datenbank ging. */
+  repo = mitAnfrageSpeicher(mitZeitmessung(mitKanal(repo, live)));
 
   /* **Eine vergebene Kanten-Id ist kein Serverfehler** (T-410): sie kommt
      aus dem, was geschrieben werden sollte, und die Meldung sagt, was zu
