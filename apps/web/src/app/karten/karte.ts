@@ -181,6 +181,7 @@ import {
   strokeAt,
   strokePath,
   type MapStroke,
+  zoneLightShapes,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
@@ -265,6 +266,12 @@ function schreib(k: string, v: string): void {
 /** Ein geschlossener Pfad durch Punkte in Anteilen. */
 const punktePfad = (pts: readonly Pt[]): string => `M${pts.map((p) => `${r5(p.x)} ${r5(p.y)}`).join(' L')} Z`;
 const r5 = (v: number): number => Math.round(v * 100000) / 100000;
+/** Die Ecken einer Form (T-219), ein Kreis als Vieleck — für die Ausschnitte der Dunkelheit. */
+function formPunkte(s: RevealShape): Array<[number, number]> {
+  if (s.kind === 'rect') return [[s.x, s.y], [s.x + s.w, s.y], [s.x + s.w, s.y + s.h], [s.x, s.y + s.h]];
+  if (s.kind === 'circle') return Array.from({ length: 32 }, (_, i) => [s.x + s.r * Math.cos((i / 32) * 2 * Math.PI), s.y + (s.r / s.ar) * Math.sin((i / 32) * 2 * Math.PI)] as [number, number]);
+  return s.pts;
+}
 /** Eine Form ohne Gitter als Pfad (T-219): Rechteck, Ellipse, Vieleck, Strich als Linie. */
 function formPfad(s: RevealShape): string {
   if (s.kind === 'rect') return punktePfad([{ x: s.x, y: s.y }, { x: s.x + s.w, y: s.y }, { x: s.x + s.w, y: s.y + s.h }, { x: s.x, y: s.y + s.h }]);
@@ -1315,11 +1322,11 @@ interface Zeiger {
                 @if (gitter(); as g) {
                   <div class="gitter" aria-hidden="true" [style.background-image]="g.bild" [style.background-size]="g.groesse" [style.background-position]="g.lage"></div>
                 }
-                @if (flaechenAn() && flaechen().length) {
+                @if (flaechenGezeigt().length) {
                   <!-- **Zonen und Gebiete** (T-219, REQ-193): aufs Gitter gerastert, über dem Bild und unter den Markern. -->
                   <svg class="flaechen" viewBox="0 0 1 1" preserveAspectRatio="none" role="img" [attr.aria-label]="flaechenText()">
-                    @for (f of flaechen(); track f.id) {
-                      <path class="flaeche" [class.gebiet]="f.type === 'territory'" [class.versteckt]="f.versteckt" [attr.data-name]="f.name" [attr.d]="f.d" [style.fill]="f.farbe" [style.fill-opacity]="f.deckkraft" [style.stroke]="f.farbe" vector-effect="non-scaling-stroke" />
+                    @for (f of flaechenGezeigt(); track f.id) {
+                      <path class="flaeche" [class.gebiet]="f.type === 'territory'" [class.versteckt]="f.versteckt" [class.finster]="f.finster" [attr.data-name]="f.name" [attr.d]="f.d" [style.fill]="f.farbe" [style.fill-opacity]="f.deckkraft" [style.stroke]="f.farbe" vector-effect="non-scaling-stroke" />
                     }
                   </svg>
                 }
@@ -2345,19 +2352,30 @@ export class Karte {
       const d = zellen ? zellen.map((c) => punktePfad(cellCorners(geo!, c))).join(' ') : formPfad(a.shape);
       const regel = a.type === 'zone' ? zoneRuleText(rule) : '';
       const name = i?.name ?? (a.type === 'zone' ? 'Zone' : 'Territory');
+      /* **Magische Dunkelheit** (T-219): Spielende sehen hinein so wenig wie in die dunkle Karte — die Leitung sieht durch. */
+      const finster = rule.light === 'dark' && !this.alsLeitung();
       return {
         id: a.id,
         type: a.type,
         name: regel ? `${name} (${regel})` : name,
         d,
-        farbe: areaColor(a, rule),
-        deckkraft: a.opacity,
+        farbe: finster ? DUNKEL_FARBE : areaColor(a, rule),
+        deckkraft: finster ? 0.94 : a.opacity,
+        finster,
         /* Eine versteckte Zone, die noch niemand fand — nur die Leitung hat sie. */
         versteckt: leitung && !!rule.hidden && !a.found,
       };
     });
   });
   protected readonly flaechenText = computed(() => this.flaechen().map((f) => f.name).join(', '));
+  /** Was gezeichnet wird: ausgeblendet bleibt die Dunkelheit stehen — sie ist Sicht, keine Beschriftung. */
+  protected readonly flaechenGezeigt = computed(() => (this.flaechenAn() ? this.flaechen() : this.flaechen().filter((f) => f.finster)));
+  /** Das Licht der Zonen dieser Ebene (T-219), aus der Regel ihrer Art im Kontext. */
+  private readonly zonenLicht = computed(() => {
+    const e = this.angezeigt();
+    const info = this.kontext()?.areas ?? {};
+    return e ? zoneLightShapes(e, (id) => (info[id]?.rule?.light ? ({ id, name: '', interfaces: ['ZoneKind'], components: { ZoneKind: { light: info[id]!.rule!.light } } } as Entity) : undefined)) : [];
+  });
   private readonly flaechenWahl = signal<boolean>(lies(FLAECHEN_SCHLUESSEL) !== 'off');
   /* Beim Ziehen stehen sie immer da — sonst zöge man ins Leere. */
   protected readonly flaechenAn = computed(() => this.flaechenWahl() || this.aktiv() === 'flaechen');
@@ -5369,9 +5387,10 @@ export class Karte {
       ar,
       farbe: DUNKEL_FARBE,
       deckt: stufe === 'dark' ? (lt ? 0.42 : 0.94) : lt ? 0.2 : 0.5,
+      /* Ein erleuchteter Saal (T-219, `ZoneKind.light`) schneidet die Dunkelheit aus wie ein Licht. */
       schnitte: [
-        { formen: [...licht.map((l) => auf(l.dim)), ...dunkelsicht.map(auf)], staerke: 0.5 },
-        { formen: licht.map((l) => auf(l.bright)), staerke: 1 },
+        { formen: [...licht.map((l) => auf(l.dim)), ...dunkelsicht.map(auf), ...this.zonenLicht().filter((z) => z.light === 'dim').map((z) => auf(formPunkte(z.shape)))], staerke: 0.5 },
+        { formen: [...licht.map((l) => auf(l.bright)), ...this.zonenLicht().filter((z) => z.light === 'bright').map((z) => auf(formPunkte(z.shape)))], staerke: 1 },
       ],
     };
   });

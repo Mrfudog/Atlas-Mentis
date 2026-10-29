@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addArea, areaAt, areaCells, areaColor, cellCorners, mapAreas, removeArea, setAreaFound, zoneHidden, zoneRuleSummary, zoneRuleText } from '../src/areas.js';
+import { addArea, areaAt, areaCells, areaColor, cellCorners, mapAreas, removeArea, setAreaFound, zoneHidden, zoneLightShapes, zoneRuleSummary, zoneRuleText } from '../src/areas.js';
 import { addFloor, floorView, withFloorView } from '../src/floors.js';
 import { gridGeometry, mapSettings, redactMap } from '../src/map.js';
 import { mapTerrain, terrainCosts } from '../src/zugplan.js';
@@ -129,5 +129,16 @@ describe('Flächen auf der Karte ziehen (T-219)', () => {
     expect(setAreaFound(g, 'z1', false).relations?.find((r) => r.id === 'z1')?.props).not.toHaveProperty('found');
     /* Ein Gebiet wird nicht gefunden — es ist nicht versteckt. */
     expect(setAreaFound(e, 't1', true)).toBe(e);
+  });
+});
+
+describe('Licht der Zonen (T-219)', () => {
+  it('nennt je Zone mit Licht ihre Form, in der Reihenfolge der Kanten', () => {
+    const arten = new Map<string, Entity>([
+      ['zk-ice', { id: 'zk-ice', interfaces: ['ZoneKind'], components: { ZoneKind: { moveCost: 2 } } }],
+      ['zk-dark', { id: 'zk-dark', interfaces: ['ZoneKind'], components: { ZoneKind: { light: 'dark' } } }],
+    ]);
+    const e = karte([eis, { ...eis, id: 'z2', to: 'zk-dark' }, reich]);
+    expect(zoneLightShapes(e, (id) => arten.get(id)).map((z) => [z.shape.id, z.light])).toEqual([['z2', 'dark']]);
   });
 });

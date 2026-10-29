@@ -44,3 +44,29 @@ test('a player sees in the dark only what her character sees', async ({ leitung,
   expect(res.ok(), await res.text()).toBe(true);
   await expect(spielerin.getByRole('button', { name: ghul.name, exact: true })).toBeVisible({ timeout: 10_000 });
 });
+
+test('magical darkness hides who stands in it, also on a bright map', async ({ leitung, spielerin, api, lauf, eindeutig }) => {
+  const fertig = { 'Status.status': 'ready' };
+  const finster = await api.anlegen('leitung', 'ZoneKind', eindeutig('Magical darkness'), { fields: { ...fertig, 'ZoneKind.light': 'dark' } });
+  const schatten = await api.anlegen('leitung', 'Creature', eindeutig('Shadow'), { fields: fertig });
+  const bild = await api.bild('leitung', eindeutig('hall'));
+  const karte = await api.anlegen('leitung', 'Map', eindeutig('Bright hall'), {
+    fields: { ...fertig, 'Image.image': bild, 'Map.gridShape': 'square', 'Map.gridSize': 20, 'Map.scale': '5 ft' },
+    relations: [
+      { type: 'marker', to: lauf.figur.id, props: { kind: 'play', x: 30 / 320, y: 30 / 240 } },
+      { type: 'marker', to: schatten.id, props: { kind: 'play', x: 270 / 320, y: 190 / 240 } },
+      { type: 'zone', to: finster.id, props: { kind: 'rect', x: 0.75, y: 0.7, w: 0.25, h: 0.3 } },
+    ],
+  });
+  await leitung.goto(`/artikel/${karte.id}`);
+  await expect(leitung.getByRole('button', { name: schatten.name, exact: true })).toBeVisible();
+  await expect(leitung.locator('svg.flaechen path.finster')).toHaveCount(0);
+
+  await spielerin.goto(`/artikel/${karte.id}`);
+  await expect(spielerin.getByRole('button', { name: lauf.figur.name, exact: true })).toBeVisible();
+  await expect(spielerin.getByRole('button', { name: schatten.name, exact: true })).toHaveCount(0);
+  /* Die Dunkelheit ist für sie gemalt — auch wenn sie „Areas“ ausblendet. */
+  await expect(spielerin.locator('svg.flaechen path.finster')).toHaveCount(1);
+  await spielerin.getByRole('button', { name: 'Areas', exact: true }).click();
+  await expect(spielerin.locator('svg.flaechen path.finster')).toHaveCount(1);
+});

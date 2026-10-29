@@ -1,11 +1,21 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-zone-light",
+      "date": "2026-10-29",
+      "title": "Magical darkness and lit halls",
+      "text": "A zone kind that sets its light now counts where it lies: who stands in magical darkness stays hidden from players even on a bright map, and a lit hall in a dark map shows who stands in it.",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-draw-on-maps",
       "date": "2026-10-29",
       "title": "Draw on the map",
       "text": "The tool group Draw (D) sketches on the map with pen, line, rectangle and ellipse, on drawing layers of their own. A layer can be kept for the GM only; players see the others at once.",
       "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "link": "/handbook"
     },
     {
