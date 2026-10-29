@@ -144,7 +144,8 @@ Gerechnet in `packages/model/src/mapdraw.ts`, gezeichnet in
   `DOOR_WIDTH`. Geklickt wird das Viereck (`doorRect`), gerechnet die
   Mittellinie: die Dicke ist Griff und Bild, keine zweite Sperre.
 - **Einrasten mit Stärke** (`snapPoint`): an einen vorhandenen Punkt, eine
-  Gitterecke (Quadrate) oder eine Linie, so weit, wie der Regler sagt —
+  Gitterecke (Quadrate; auf Hexkarten die nächste Ecke des Hexfelds,
+  T-219) oder eine Linie, so weit, wie der Regler sagt —
   in **Bildschirmpunkten**, also beim Zoomen gleich, am Telefon um 1,6
   weiter. Der Punkt geht vor der Ecke, die Ecke vor der Linie. Alt setzt
   ohne Einrasten.

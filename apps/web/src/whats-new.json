@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-hex-walls",
+      "date": "2026-10-29",
+      "title": "Walls snap to hex corners",
+      "text": "On hex maps, wall points now snap to the corners of the hexes, as they snap to grid corners on square maps.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-reveal-sight",
       "date": "2026-10-29",
       "title": "Reveal what a token sees",
