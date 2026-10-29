@@ -111,6 +111,7 @@ import {
   redactEntity,
   initiativeRulesOf,
   redactMap,
+  zoneHidden,
   redactBoard,
   redactQueryTiles,
   keepDrawState,
@@ -1705,6 +1706,8 @@ export function buildApp({
                 /* Unter dem Nebel (REQ-139) bleiben die eigenen stehen: die
                    Figuren der Gruppe und wer zu ihr gehört. */
                 keep: (id) => inParty(alle, id),
+                /* Eine versteckte Zone (T-219): die Regel steht an ihrer Art. */
+                hideZone: (r) => zoneHidden(r, alle.get(r.to)),
                 ...nebelFuer(),
               }),
               (id) => assetVersion(alle.get(id)),

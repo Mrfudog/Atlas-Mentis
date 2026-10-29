@@ -434,6 +434,61 @@ als Wände (`planGrid`). Die Leitung zieht weiter durch alles.
 
 ---
 
+## Zonen und Gebiete (T-219)
+
+Zwei Kanten legen eine Fläche auf die Karte, und beide zeigen auf einen
+Artikel, der sagt, was sie bedeutet:
+
+- **`zone`** auf eine Zonenart (`ZoneKind`, eine Regel: schwieriges
+  Gelände, magische Dunkelheit, eine Falle mit `hiddenUntil`).
+- **`territory`** auf irgendetwas, das dort Boden hält — eine Fraktion,
+  ein Reich, eine Bande.
+
+Die Form steht an der Kante (`rect`, `circle` mit `r`, `poly` mit `pts`,
+in Anteilen der Karte), die Bedeutung am Artikel: dieselbe Zonenart „Eis“
+liegt auf zehn Karten, und eine Korrektur an ihr gilt überall.
+
+**Gezeichnet wird aufs Gitter gerastert** (REQ-193): ein Feld gehört zur
+Fläche, wenn seine Mitte darin liegt. Am Tisch zählt, welche Felder Eis
+sind, nicht wo die Linie genau verläuft — und es ist dieselbe Regel, mit
+der der Zugplan schwieriges Gelände zählt (T-349). Zeigte die Karte das
+Eis anders, als der Plan rechnet, glaubte man dem Bild und verlöre die
+Bewegung. Ohne Gitter steht die Form selbst da; ebenso, wenn sie mehr als
+`AREA_CELL_LIMIT` Felder hätte (eine Weltkarte mit feinem Raster).
+
+```mermaid
+flowchart LR
+  K["Kante zone / territory<br/>Form, floor"] --> R["areaCells<br/>Mitte in der Form?"]
+  G["Gitter der Ebene<br/>gridGeometry"] --> R
+  R --> S["SVG über Bild und Gitter,<br/>unter Markern und Nebel"]
+  A["Artikel am Ende<br/>(ZoneKind, Fraktion)"] -->|Kontext areas, gesiebt| F["Name, Regel, Farbe"]
+  F --> S
+```
+
+- **Farbe:** `territory.color`, sonst die Regel der Zone — Dunkelheit
+  schiefergrau, Schaden rot, schwieriges Gelände erdfarben wie im
+  Zugplan, Licht gelb; ein Gebiet ohne Farbe bekommt einen Farbton aus
+  der Id seines Herrn (dieselbe Fraktion ist auf jeder Karte dieselbe
+  Farbe).
+- **Je Ebene:** eine Fläche gehört wie ein Marker einer Ebene
+  (`props.floor`, leer: das Erdgeschoss) — Schlamm im Keller ist nicht
+  auf dem Dach. Vor T-219 lag eine Zone auf jeder Ebene.
+- **Zurückgehalten** wird am Server (`redactMap`): eine Fläche auf einen
+  Artikel, den die Spielerin nicht sieht, eine versteckte Zone, die noch
+  niemand fand (`found` an der Kante), und unter dem Nebel, was nicht
+  aufgedeckt ist. Die Leitung sieht die versteckte gestrichelt.
+- **Live:** eine Fläche ist eine Kante an der Karte; ändert die Leitung
+  sie (oder setzt `found`), kommt die Karte über den Live-Kanal neu
+  (T-399) und die Spielerin sieht es ohne Neuladen.
+- **„Areas“** über der Karte blendet die Flächen aus und ein — eine Sache
+  der Sicht, gemerkt im Browser.
+
+Angelegt werden Flächen heute über die Kanten im Bearbeiten der Karte;
+ein Werkzeug, sie auf der Karte zu ziehen, ist der nächste Schritt von
+T-219. Biome (E-122) und Abfrage-Overlays (T-332) sind eigene Karten.
+
+---
+
 ## Unterkarten
 
 `insideMap` ist die Kante vom Kind zum Elternteil — gespeichert wird nur
@@ -765,6 +820,16 @@ Zwei Stufen, weil eine Schwelle allein ein Sprung wäre, den niemand kommen
 sieht. Und zurück geht es genauso: wer auf einer Unterkarte ganz
 hinauszoomt, landet auf der Karte darüber. Ohne das wäre das Hineinzoomen
 eine Einbahnstrasse.
+
+**Festhalten** (REQ-132, T-219): das Schloss in der Zoomgruppe hält die
+Kartenebene. Rad, `+`/`-` und Kneifen zoomen dann nur näher und weiter —
+kein Rahmen sagt „zoom in to enter“ an, keiner wird betreten, und ganz
+draussen geht es nicht zur Karte darüber. Wer auf der Stadtkarte eine
+Strasse lesen will, landet sonst im Hafenviertel. Brotkrumen und
+angeklickte Rahmen führen weiter dorthin, wohin sie zeigen: das Schloss
+hält das Zoomen, nicht die Navigation. Es steht nur da, wenn es etwas zu
+halten gibt (Unterkarten oder eine Karte darüber), und gilt je Browser
+(`nw.karte.fest`), nicht für die Karte.
 
 **In Play nur, wenn die Sitzung es erlaubt** (T-308). Auf einer Karte im
 Spiel bleiben Spielende, wo der Tisch ist: der Schalter
@@ -1206,8 +1271,9 @@ abziehen, Initiative und „wer ist dran" als Bedingung, Hex-Raster, Wände
 
 ## Was noch fehlt
 
-- **Zonen** in der Seite (REQ-193, 208) — der Prototyp kann sie, die
-  Seite zeichnet sie noch nicht. Sperren und Sichtlinie stehen seit
+- **Zonen auf der Karte ziehen** und ihre Regeln auf Licht und Sicht
+  (`zoneLight`/`obscured`) — gezeichnet werden sie seit T-219 (oben),
+  angelegt noch über die Kanten. Sperren und Sichtlinie stehen seit
   T-118, Licht, Dunkelsicht und laufende Sicht seit T-216.
 - **Rahmen aufziehen** und Marker einstellen (Art, versteckt) mit der
   Maus; heute über die Kanten im Bearbeiten. Assets stellt Tokens › Asset

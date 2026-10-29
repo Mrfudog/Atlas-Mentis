@@ -59,6 +59,7 @@ export * from './parts.js';
 export * from './edges.js';
 export * from './map.js';
 export * from './floors.js';
+export * from './areas.js';
 export * from './passages.js';
 export * from './maplinks.js';
 export * from './mapscale.js';

@@ -762,8 +762,18 @@ export function zoomStep(opts: {
    * der Karte führte in eine Stadt in der Mitte.
    */
   focus?: Pt;
+  /**
+   * **Die Kartenebene festhalten** (REQ-132, T-219): nur näher und
+   * weiter, nie hinein in eine Unterkarte und nie hinaus zur Karte
+   * darüber — wer auf der Stadtkarte zoomt, um eine Strasse zu lesen,
+   * will nicht im Hafenviertel landen.
+   */
+  locked?: boolean;
 }): ZoomStep {
   const { zoom, direction } = opts;
+  if (opts.locked) {
+    return { kind: 'zoom', zoom: direction > 0 ? Math.min(MAP_ZOOM_MAX, zoom * MAP_ZOOM_STEP) : Math.max(MAP_ZOOM_MIN, zoom / MAP_ZOOM_STEP) };
+  }
   if (direction > 0) {
     let beste: { id: EntityId; anteil: number } | null = null;
     for (const k of opts.children) {
@@ -1220,6 +1230,36 @@ export function inShape(s: RevealShape, p: Pt): boolean {
   return inPolygon(s.pts, p) && (!s.within || inPolygon(s.within, p));
 }
 
+/** Der umschliessende Kasten einer Form, in Anteilen. */
+export function shapeBox(s: RevealShape): { x: number; y: number; w: number; h: number } {
+  if (s.kind === 'rect') return { x: s.x, y: s.y, w: s.w, h: s.h };
+  if (s.kind === 'circle') return { x: s.x - s.r, y: s.y - s.r / s.ar, w: 2 * s.r, h: (2 * s.r) / s.ar };
+  const xs = s.pts.map((p) => p[0]);
+  const ys = s.pts.map((p) => p[1]);
+  const rand = s.kind === 'path' ? s.r : 0;
+  const ar = s.kind === 'path' ? s.ar : 1;
+  const x = Math.min(...xs) - rand;
+  const y = Math.min(...ys) - rand / ar;
+  return { x, y, w: Math.max(...xs) + rand - x, h: Math.max(...ys) + rand / ar - y };
+}
+
+/**
+ * **Liegt etwas von der Form im Aufgedeckten?** (T-219) Geprüft an einem
+ * Raster von Proben im Kasten, die in der Form liegen — die Ecken des
+ * Kastens allein lägen bei einem Kreis daneben und verrieten ihn.
+ */
+export function shapeRevealed(e: Entity, s: RevealShape): boolean {
+  if (!fogOn(e)) return true;
+  const b = shapeBox(s);
+  for (let i = 0; i <= 4; i++) {
+    for (let j = 0; j <= 4; j++) {
+      const p = { x: b.x + (b.w * i) / 4, y: b.y + (b.h * j) / 4 };
+      if (inShape(s, p) && isRevealed(e, p)) return true;
+    }
+  }
+  return isRevealed(e, { x: b.x + b.w / 2, y: b.y + b.h / 2 }) && inShape(s, { x: b.x + b.w / 2, y: b.y + b.h / 2 });
+}
+
 /** Liegt der Punkt im Polygon (gerade/ungerade)? */
 export function inPolygon(q: ReadonlyArray<readonly [number, number]>, p: Pt): boolean {
   let drin = false;
@@ -1603,6 +1643,10 @@ export function revealFor(map: Entity, fog: FogMode, own: (id: EntityId) => bool
  * - **Die Sperren** (T-118): nur, was am Aufgedeckten liegt; eine
  *   geschlossene Geheimtür ist eine Wand (`redactWalls`).
  *
+ * - **Zonen und Gebiete** (T-219): nur auf sichtbare Artikel, eine
+ *   versteckte Zone (`hideZone`) gar nicht, unter dem Nebel nur, was
+ *   davon aufgedeckt ist (`shapeRevealed`).
+ *
  * - **Die Ebenen** (T-307, E-108): `gmOnly` und zurückgehaltene gehen
  *   samt Markern weg (`redactFloors`); jede übrige wird für sich gesiebt —
  *   mit ihrem Nebel und ihren Sperren.
@@ -1616,6 +1660,8 @@ export interface RedactMapOptions {
   /** Nebel je Figur (T-204): dann zählen nur Formen ohne `for` und die, für die `own` ja sagt. */
   fog?: FogMode;
   own?: (id: EntityId) => boolean;
+  /** Eine Zone, die Spielende nicht bekommen (T-219, `zoneHidden`): die Regel steht an der Zonenart, die die Karte nicht kennt. */
+  hideZone?: (r: Relation) => boolean;
 }
 
 export function redactMap(map: Entity, opts: RedactMapOptions): Entity {
@@ -1638,6 +1684,16 @@ function redactFloorView(map: Entity, opts: RedactMapOptions): Entity {
       return isRevealed(map, m);
     }
     if (r.type === INSIDE_MAP_RELATION) return opts.sees(r.to);
+    /* **Zonen und Gebiete** (T-219): nur auf Artikel, die er sieht; eine
+       versteckte Zone (`hiddenUntil`, noch nicht gefunden) gar nicht — die
+       Falle wäre sonst auf der Karte eingezeichnet; und unter dem Nebel
+       nur, was davon im Aufgedeckten liegt. */
+    if (r.type === 'zone' || r.type === 'territory') {
+      if (!opts.sees(r.to) || opts.hideZone?.(r)) return false;
+      if (!nebel) return true;
+      const s = shapeOf({ ...((r.props ?? {}) as Record<string, unknown>), id: r.id });
+      return !!s && shapeRevealed(map, s);
+    }
     return true;
   });
   /* Die Sperren (T-118): nur, was am Aufgedeckten liegt — `redactWalls`. */

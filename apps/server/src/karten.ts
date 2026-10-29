@@ -96,6 +96,9 @@ import {
   mapToolsOf,
   type MapToolGroup,
   type TimedEntry,
+  isAreaRelation,
+  zoneRuleSummary,
+  type ZoneRuleSummary,
 } from '@nw/model';
 import type { Repository } from './repo.js';
 import { darfZiehen, plaeneDerKarte, zieher } from './zugplan.js';
@@ -221,6 +224,13 @@ export interface KartenKontext {
   /** Die Sitzung einer Karte im Spiel, deren Schalter gilt; sonst `null`. */
   session: string | null;
   targets: Record<string, MarkerZiel>;
+  /**
+   * **Wem die Flächen gelten** (T-219): je Ziel einer Kante `zone` oder
+   * `territory` der Name und bei einer Zonenart, was ihre Regel sagt
+   * (`zoneRuleSummary`) — genug zum Färben und Beschriften. Nur, was der
+   * Betrachter sieht; die Kanten selbst hat `redactMap` schon gesiebt.
+   */
+  areas: Record<string, { name: string; type: string; rule?: ZoneRuleSummary }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /**
    * Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist
@@ -600,12 +610,19 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
+    /* Die Ziele der Flächen (T-219), einmal gesiebt. */
+    const flaechenZiele = [...new Set((karte.relations ?? []).filter(isAreaRelation).map((r) => r.to))].flatMap((id) => stand.map.get(id) ?? []);
+    const areas: KartenKontext['areas'] = {};
+    for (const z of await sieve(request, flaechenZiele, stand.map)) {
+      const type = primaryInterface(z);
+      areas[z.id] = { name: entityName(z), type, ...(type === 'ZoneKind' ? { rule: zoneRuleSummary(z) } : {}) };
+    }
     /* Ein gehobener Marker, dessen Ziel der Betrachter nicht sieht, steht nicht da — das Sieb der Ziele sagt es. */
     const liftedGesehen = lifted.flatMap((g) => {
       const k = keepLifted(g, (m) => !!targets[m.to]);
       return k ? [{ ...k, name: g.name }] : [];
     });
-    return { parents, children: kinder, lifted: liftedGesehen, ...(toPlace ? { toPlace } : {}), up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], kindMarkerView: kindMarkerViewOf(kampagne, mapKindOf(roheKarte)), own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
+    return { parents, children: kinder, lifted: liftedGesehen, ...(toPlace ? { toPlace } : {}), up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, areas, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], kindMarkerView: kindMarkerViewOf(kampagne, mapKindOf(roheKarte)), own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
   });
 
   /**

@@ -543,6 +543,18 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'mapAreas',
+    label: 'Zones and territories',
+    area: 'play',
+    does: 'draws zones and territories on the map as squares on the grid, on their own floor, coloured by the rule of the zone or the territory’s own colour — and keeps from players those on unseen articles, hidden zones not yet found and what lies under the fog (T-219, REQ-193)',
+    uses: {
+      [M + 'areas.ts']: ['territory', 'zone'],
+      [M + 'map.ts']: ['territory', 'zone'],
+      [M + 'floors.ts']: ['territory', 'zone'],
+      [W + 'karten/karte.ts']: ['territory', 'zone'],
+    },
+  },
+  {
     key: 'turnplan',
     label: 'Turn planner',
     area: 'play',

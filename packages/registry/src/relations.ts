@@ -1177,10 +1177,16 @@ export const relations: Record<string, RelationDef> = {
         y: { type: 'number', title: 'Y (0–1)' },
         w: { type: 'number', title: 'Width (0–1)' },
         h: { type: 'number', title: 'Height (0–1)' },
+        /* Kreis und Vieleck wie an `territory` (T-219): `shapeOf` las sie
+           schon, das Schema nannte sie nicht. */
+        r: { type: 'number', title: 'Radius (0–1)' },
+        pts: { type: 'array', title: 'Points' },
         /* Eine Zone mit `hiddenUntil` ist versteckt, bis jemand sie
            bemerkt; dann steht hier, dass sie es nicht mehr ist. */
         found: { type: 'boolean', title: 'Found' },
         note: { type: 'string', title: 'Note' },
+        /* Die Ebene, auf der sie liegt (T-219, wie am Marker); leer: das Erdgeschoss. */
+        floor: { type: 'string', title: 'Floor' },
       },
     },
   },
@@ -1196,7 +1202,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'territory',
     inverseLabel: 'holds ground on',
     means: 'A map shows an article’s territory as a shape; the article lists where it holds ground.',
-    intended: 'Draw on the map screen: the shape in its colour over the map.',
     from: ['Map'],
     to: ['*'],
     props: {
@@ -1216,6 +1221,8 @@ export const relations: Record<string, RelationDef> = {
         pts: { type: 'array', title: 'Points' },
         color: { type: 'string', format: 'color', title: 'Colour' },
         opacity: { type: 'number', title: 'Opacity', default: 0.18 },
+        /* Die Ebene, auf der es liegt (T-219, wie am Marker); leer: das Erdgeschoss. */
+        floor: { type: 'string', title: 'Floor' },
       },
     },
   },

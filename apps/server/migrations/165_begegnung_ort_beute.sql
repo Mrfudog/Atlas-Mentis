@@ -10,7 +10,7 @@
 -- Nur, wo die Anordnung ein Array mit `e-yield` ist und `e-place` noch
 -- fehlt — eine eigene Anordnung ohne `e-yield` bleibt, wie sie ist.
 -- Kein Artikel und keine Kante wird geändert.
--- Nummer beim Anlegen nachgesehen: 164.
+-- Nummer beim Anlegen nachgesehen: 165 (164 hat T-219 inzwischen vergeben).
 
 update relation_def
    set from_ifaces = array_append(from_ifaces, 'Encounter'),

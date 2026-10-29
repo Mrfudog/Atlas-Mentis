@@ -637,7 +637,7 @@ Tracker `count` (1 bis `MAX_ADD` = 20) nur beim **Hinzufügen** (`op:
 'add'`) und legt so viele Kanten an, jede mit eigenem Initiativewurf und
 durchgezählt am Tisch (`label` „Goblin 1“ … — weitergezählt nach der
 höchsten Nummer, die schon dasteht). „Add a combatant“ bietet dabei
-„Create … as …“ an. Migration 164 ergänzt `happensAt` und die Anordnung,
+„Create … as …“ an. Migration 165 ergänzt `happensAt` und die Anordnung,
 wo sie `e-yield` trägt.
 
 Ob Szene und Begegnung **eine Art** werden, entscheidet E-118 — das hier
@@ -820,7 +820,7 @@ der Artikelseite und Play › Map):
 | K1 | **Alles in Anteilen, das Gitter in Bildpunkten.** Marker (`x`, `y`), Rahmen (`x`, `y`, `w`, `h`) und Messpunkte stehen in 0–1 des Kartenbildes; das Gitter (`gridSize`, `gridOffsetX/Y`) in Bildpunkten des Bildes, weil man es dort misst. Gezoomt wird der Kasten, der genau so gross ist wie das Bild; bei Zoom 1 ist er so breit wie das Fenster. | `mapSettings`, `gridGeometry` |
 | K2 | **Blätter:** das Kartenbild (`Image.image`) ist das unterste und bleibt auch ausgeblendet (`baseHidden`) im Fluss — durchsichtig, nicht weg; die Blätter aus `Map.sheets` liegen darüber. Ein- und ausschalten in der Leiste gilt nur für den Betrachter und wird nicht gespeichert. | `mapSheets`, `drawnSheets` |
 | K3 | **Messen:** auf Quadraten jede zweite Diagonale doppelt (wie Z1), auf Hexfeldern die Hexdistanz, ohne Gitter gerade über die Feldgrösse; mal dem Massstab (`scale`, „1,5 m"). | `measure`, `cellAt`, `cellDistance` |
-| K4 | **Hinein und hinaus zoomen:** füllt ein Rahmen den Blick zu `MAP_NEAR` (55 %) in beiden Richtungen, sagt er an; der nächste Schritt hinein betritt ihn. Ganz draussen führt der Schritt hinaus zur Karte darüber. Mit zwei Fingern dieselben Fragen am Ende der Geste. | `zoomStep`, `frameShare` |
+| K4 | **Hinein und hinaus zoomen:** füllt ein Rahmen den Blick zu `MAP_NEAR` (55 %) in beiden Richtungen, sagt er an; der nächste Schritt hinein betritt ihn. Ganz draussen führt der Schritt hinaus zur Karte darüber. Mit zwei Fingern dieselben Fragen am Ende der Geste. Mit dem Schloss (`locked`, REQ-132) nur näher und weiter. | `zoomStep`, `frameShare` |
 | K5 | **Was neben einer Karte steht, ist eine Abfrage** (`GET /api/maps/:id/context`): die Karten darüber (Brotkrumen), die Unterkarten mit Rahmen (Gegenrichtung von `insideMap`), die Ziele der Marker (Name, Art, Bild) und die Gruppe (`partyPosition`). Gesiebt wie jede Liste. | `apps/server/src/karten.ts` |
 | K6 | **Was auf dem Tisch liegt, sagt die Sitzung** (`SessionState.activeMap`): Play nimmt die gewählte Sitzung, sonst die jüngste mit Karte (`Time.sort`, dann Nummer). Hineinzoomen unter Play ändert die Sitzung nicht (`?map=`). Gelesen wird die Karte `Session`, die die Maske schreibt, und das ältere `SessionState` darunter (`sessionState`, T-202 — vorher nur `SessionState`, und die gesetzte Karte lag nie auf dem Tisch). | `GET /api/play`, `sessionState` |
 | K7 | **Marker setzen und verschieben schreibt die Kante** (`marker`), nichts sonst — durch `validateEntity` und `PUT`, wie ein Board. | `addMarker`, `moveMarker` |
@@ -852,6 +852,7 @@ der Artikelseite und Play › Map):
 | K32 | **Marker zwischen Kartenstufen** (T-328, docs/Karten.md › Marker und Tokens zwischen Kartenstufen): die Marker einer Unterkarte (`static`, `quest`, `play`; erste Ebene) erscheinen auf der Karte darüber an ihrer umgerechneten Lage (`liftMarkers`, über die geltende Verknüpfung), bei mehr als sechs als Bündel mit Zahl — gerechnet beim Lesen (D8), gesiebt wie beide Karten. Ein Marker der Karte darüber im Bereich einer Unterkarte ist dort ein Vorschlag „To place" (`placementSuggestions`, nur Leitung); bestätigt wandert er hinunter (`confirmPlacement`: unten neu, oben weg), mit `stay` an der Kante `marker` bleibt er oben gemeint. Keine zweite Kopie. |
 | K33 | **Markeransicht wählbar** (T-214, docs/Karten.md › Markeransicht): ein Marker steht als `symbol` (Anfangsbuchstaben), `name` (Symbol mit Namen), `image` (Token oder Bild, sonst Symbol) oder `card` (die Ansicht `quick` des Ziels als kleine Karte). Die genaueste Angabe gilt: `marker.props.view`, `Map.markerView`, `Campaign.markerViews[Map.kind]`, `InterfaceDef.markerView` der Art des Ziels (die `extends`-Kette hoch geerbt), sonst `image` — so standen Marker vorher, bestehende Karten ändern sich nicht. Assets (`scenery`) und freie Lichter fragen nicht. Die Vorgabe der Art liefert der Kartenkontext je Ziel (`targets[id].view`), die der Kartenart als `kindMarkerView`; die Karte zeichnet daraus, zurückgehalten wird wie bei jedem Marker am Server. | `map.ts` (`markerViewOf`, `markerViewForType`, `mapMarkerViewOf`, `kindMarkerViewOf`, `withMarkerView`, `withMapMarkerView`, `withKindMarkerView`), `ruleOptions.ts` (`markerViews`), `karten.ts`, Spalte `interface_def.marker_view`, Migration 133 |
 | K34 | **Notizen auf der Karte sind Artikel** (T-214, E-070 a, docs/Karten.md › Notizen): Art `Note` (Bereich `play`, `Identity`, `Description` als „Text“, `Status`, `Visibility`, `Tags`; `markerView: 'card'`). Notes › Add note legt sie an (Name: die erste Zeile, `noteName`; Sichtbarkeit `gm` oder `players`; Stand `ready`) und setzt einen gewöhnlichen Marker auf sie — verschoben, entfernt und eingestellt wie jeder Marker. Kein Text an der Kante: so hat die Notiz Ebene, Stand, Verweise und Sichtbarkeit wie jeder Artikel, und zurückgehalten wird sie am Server wie jeder (`redactMap` nimmt den Marker, das Sieb den Namen im Kartenkontext). | `Note` in `interfaces.ts`, `noteName` (`map.ts`), `karte.ts` (`notizAnlegen`), Migration 134 |
+| K35 | **Zonen und Gebiete auf der Karte** (T-219, REQ-193, docs/Karten.md › Zonen und Gebiete): die Kanten `zone` (auf eine `ZoneKind`) und `territory` (auf irgendeinen Artikel) tragen eine Form in Anteilen — `rect` (`x`, `y`, `w`, `h`), `circle` (`r`) oder `poly` (`pts`) — und wie ein Marker ihre Ebene (`floor`, leer: das Erdgeschoss). Gezeichnet wird **aufs Gitter gerastert**: ein Feld gehört dazu, wenn seine Mitte in der Form liegt — dieselbe Regel wie das Gelände im Zugplan (Z3); ohne Gitter steht die Form selbst da, über `AREA_CELL_LIMIT` Feldern auch. Die Farbe ist `territory.color`, sonst sagt sie die Regel der Zone (Dunkelheit, Schaden, Gelände, Licht), ein Gebiet ohne Farbe bekommt einen Farbton aus der Id seines Herrn. Spielende bekommen keine Fläche auf einen Artikel, den sie nicht sehen, keine versteckte Zone (`hiddenUntil` an der Art, `found` an der Kante noch nicht) und unter dem Nebel nur, was davon aufgedeckt ist (`redactMap` mit `hideZone`). Name und Regel der Ziele schickt der Kontext (`areas`), gesiebt. | `areas.ts` (`mapAreas`, `areaCells`, `cellCorners`, `areaColor`, `zoneRuleSummary`, `zoneHidden`), `shapeRevealed`, `redactMap`, Migration 164 |
 
 **Der Zug auf der Karte (D56, REQ-206–210; Grössen D58, REQ-224).** Gerechnet wird beim Lesen,
 gespeichert nur, was danach gilt:
@@ -2903,11 +2904,11 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `subclassOf` | Subclass → Class | ja | — | — |
 | `subraceOf` | Ancestry → Ancestry | ja | — | — |
 | `tableFor` | Place \| Story \| Encounter \| Class \| Subclass \| Ancestry \| Background → Table |  | — | — |
-| `territory` | Map → * |  | — | `kind` `x` `y` `w` `h` `r` `pts` `color` `opacity` |
+| `territory` | Map → * |  | — | `kind` `x` `y` `w` `h` `r` `pts` `color` `opacity` `floor` |
 | `variantOf` | * → * | ja | — | — |
 | `worships` | Creature \| Faction → Deity |  | — | — |
 | `yields` | Recipe → Item | ja | — | — |
-| `zone` | Map → ZoneKind |  | — | `kind` `x` `y` `w` `h` `found` `note` |
+| `zone` | Map → ZoneKind |  | — | `kind` `x` `y` `w` `h` `r` `pts` `found` `note` `floor` |
 
 ### Aufzählungszeilen
 

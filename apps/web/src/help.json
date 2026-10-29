@@ -114,6 +114,19 @@
           ]
         },
         {
+          "heading": "Lock the map level",
+          "text": [
+            "The lock next to Fit keeps zooming on this map: + and −, the wheel and two fingers only zoom, no sub-map is entered and zooming out does not lead to the map above. Breadcrumbs and clicking a frame still go there. The lock stays for this browser."
+          ]
+        },
+        {
+          "heading": "Zones and territories",
+          "text": [
+            "A zone (a rule such as difficult terrain or magical darkness, an article of the kind Zone kind) and a territory (who holds the ground: a faction, a realm) lie on the map as coloured squares — every square whose centre lies in the shape. Without a grid the shape itself is drawn. Each belongs to one floor.",
+            "Areas above the map hides and shows them, just for you. Players see only areas on articles they may see, and on a fogged map only what is revealed; a zone whose kind is hidden until noticed stays with the GM, dashed, until its link is marked Found — then players see it at once. Add zones and territories under the map's links (zone, territory) while editing it."
+          ]
+        },
+        {
           "heading": "Turn planner and reactions",
           "text": [
             "During an encounter, players plan their turn with the tool Plan turn (P) in the tool bar: pick actions, tap squares to move, then “Send turn to GM”. Player tokens move only through the plan. Plan turn appears only for your own characters — a player without one does not see it; the GM plans for every creature and sees a number for turns waiting.",
