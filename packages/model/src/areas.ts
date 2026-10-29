@@ -216,3 +216,52 @@ export function zoneRuleText(rule: ZoneRuleSummary): string {
   if (rule.damage) teile.push(`damage ${rule.damage}`);
   return teile.join(' · ');
 }
+
+// ----------------------------------------------------------- Ziehen (T-219)
+
+/** Eine neue Fläche: Rechteck aus zwei Ecken oder Vieleck (eine Ellipse kommt als Vieleck, `shapeOutline`). */
+export type NewAreaShape = { kind: 'rect'; x: number; y: number; w: number; h: number } | { kind: 'poly'; pts: Array<[number, number]> };
+
+const r4 = (v: number): number => Math.round(v * 10000) / 10000;
+
+/**
+ * **Eine Fläche anlegen** (T-219): eine Kante `zone` oder `territory` an
+ * der Karte (oder der Ebene, `withFloorView` gibt ihr die Ebene). Ein
+ * Rechteck wird gerade gestellt, gezogen von rechts nach links wie von
+ * links nach rechts.
+ */
+export function addArea(map: Entity, a: { id: string; type: MapArea['type']; to: EntityId; shape: NewAreaShape; color?: string }): Entity {
+  const s = a.shape;
+  const form: Record<string, unknown> =
+    s.kind === 'rect'
+      ? { kind: 'rect', x: r4(Math.min(s.x, s.x + s.w)), y: r4(Math.min(s.y, s.y + s.h)), w: r4(Math.abs(s.w)), h: r4(Math.abs(s.h)) }
+      : { kind: 'poly', pts: s.pts.map(([x, y]) => [r4(x), r4(y)]) };
+  const rel: Relation = { id: a.id, type: a.type, to: a.to, props: { ...form, ...(a.color ? { color: a.color } : {}) } };
+  return { ...map, relations: [...(map.relations ?? []), rel] };
+}
+
+/** Die oberste Fläche an einem Punkt — die zuletzt gezeichnete liegt oben. */
+export function areaAt(map: Entity, p: Pt): MapArea | null {
+  const alle = mapAreas(map);
+  for (let i = alle.length - 1; i >= 0; i--) if (inShape(alle[i]!.shape, p)) return alle[i]!;
+  return null;
+}
+
+/** Eine Fläche wegnehmen; der Artikel, auf den sie zeigt, bleibt. */
+export function removeArea(map: Entity, id: string): Entity {
+  return { ...map, relations: (map.relations ?? []).filter((r) => !(r.id === id && isAreaRelation(r))) };
+}
+
+/**
+ * **Eine Zone gefunden** (T-219): `found` an der Kante. Eine Zonenart mit
+ * `hiddenUntil` ist dann an dieser Stelle für Spielende da — an den
+ * anderen Stellen, wo dieselbe Falle liegt, nicht. Ein Gebiet ist nie
+ * versteckt und bleibt, wie es ist.
+ */
+export function setAreaFound(map: Entity, id: string, found: boolean): Entity {
+  const r = (map.relations ?? []).find((x) => x.id === id && x.type === ZONE_RELATION);
+  if (!r) return map;
+  const { found: _alt, ...rest } = (r.props ?? {}) as Record<string, unknown>;
+  const props = found ? { ...rest, found: true } : rest;
+  return { ...map, relations: (map.relations ?? []).map((x) => (x === r ? { ...x, props } : x)) };
+}

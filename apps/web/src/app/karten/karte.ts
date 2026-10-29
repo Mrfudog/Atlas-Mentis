@@ -168,6 +168,11 @@ import {
   cellCorners,
   mapAreas,
   zoneRuleText,
+  addArea,
+  areaAt,
+  removeArea,
+  setAreaFound,
+  type NewAreaShape,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
@@ -290,10 +295,14 @@ type Werkzeug =
   | 'rahmen'
   | 'rahmenWeg'
   | 'vieleck'
+  | 'flaecheRechteck'
+  | 'flaecheEllipse'
+  | 'flaecheWeg'
+  | 'flaecheGefunden'
   | 'platzieren'
   | 'notiz';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
-const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen']);
+const ZIEHT_FORM: ReadonlySet<Werkzeug> = new Set(['aufdecken', 'pinsel', 'zudecken', 'rahmen', 'flaecheRechteck', 'flaecheEllipse']);
 /** Der Hinweis nach einem Zugvorschlag (T-204). */
 const VORSCHLAG_GESENDET = 'Sent — waiting for the GM to confirm the move.';
 /** So nah (Bildschirmpunkte) muss ein Antippen an einer Sperre liegen, um sie zu treffen. */
@@ -311,7 +320,7 @@ const r4 = (v: number): number => Math.round(Math.min(1, Math.max(0, v)) * 10000
 const PINSEL = [1, 2, 4, 8] as const;
 
 /** Die Gruppen der Werkzeugleiste (T-203). */
-type Gruppe = 'auswahl' | 'zug' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'unterkarten' | 'notizen' | 'zeichnen';
+type Gruppe = 'auswahl' | 'zug' | 'tokens' | 'messen' | 'ebenen' | 'nebel' | 'licht' | 'waende' | 'gitter' | 'unterkarten' | 'flaechen' | 'notizen' | 'zeichnen';
 interface GruppenDef {
   key: Gruppe;
   label: string;
@@ -351,6 +360,8 @@ const GRUPPEN: readonly GruppenDef[] = [
   { key: 'gitter', label: 'Grid', title: 'Set the grid on the map: origin, square size, shape', sym: '#', taste: 'G', leitung: true, braucht: ['grid'] },
   /* **Unterkarten** (T-320): einen Rahmen ziehen, die Karte wählen, in die man dort hineinzoomt. */
   { key: 'unterkarten', label: 'Sub-maps', title: 'Link a map to a frame on this one, to zoom into it', sym: '⊡', taste: 'K', leitung: true, braucht: ['frames'] },
+  /* **Zonen und Gebiete ziehen** (T-219, REQ-193): Rechteck, Ellipse oder Vieleck, auf eine Zonenart oder eine Fraktion. Da, wo Wände, Unterkarten oder Marker sind — auf Kampf- wie auf Landkarten. */
+  { key: 'flaechen', label: 'Zones', title: 'Zones (difficult terrain, darkness, traps) and territories of factions: draw them on the map', sym: '▦', taste: 'Z', leitung: true, braucht: ['walls', 'frames', 'markers'] },
   /* **Notizen** (T-214, E-070 a): eine Notiz ist ein Artikel `Note`, auf der Karte ein Marker auf sie. */
   { key: 'notizen', label: 'Notes', title: 'Notes on the map: tap where one goes, for the GM or the players', sym: '✎', taste: 'N', leitung: true, braucht: ['markers'] },
   { key: 'zeichnen', label: 'Draw', title: 'Draw on the map', sym: '✐', taste: 'D', leitung: true, spaeter: '—' },
@@ -578,6 +589,39 @@ interface Zeiger {
                 <p class="fehler" role="alert">{{ f }}</p>
               }
               <p class="hint">For every {{ kartenArt() }} map of this campaign; the map's kind is set in its fields. Fog that is on and a map that is not bright keep their tools. All kinds at once under <a [routerLink]="['/artikel', kontext()!.campaign]">Rules &amp; options</a> › Map tools.</p>
+            </div>
+          }
+          @if (aktiv() === 'flaechen' && darfSchreiben()) {
+            <!-- **Zonen und Gebiete ziehen** (T-219): erst wählen, wofür die Fläche steht, dann die Form. -->
+            <div class="unterleiste" role="toolbar" aria-label="Zones">
+              <label>
+                For
+                <select (change)="flaecheZiel.set($any($event.target).value || null)" aria-label="What the area stands for">
+                  <option value="" [selected]="!flaecheZiel()">choose a zone kind or faction…</option>
+                  @if (flaecheWahl().zonen.length) {
+                    <optgroup label="Zone kinds">
+                      @for (z of flaecheWahl().zonen; track z.id) {
+                        <option [value]="'zone:' + z.id" [selected]="flaecheZiel() === 'zone:' + z.id">{{ z.name }}</option>
+                      }
+                    </optgroup>
+                  }
+                  @if (flaecheWahl().gebiete.length) {
+                    <optgroup label="Territory of">
+                      @for (z of flaecheWahl().gebiete; track z.id) {
+                        <option [value]="'territory:' + z.id" [selected]="flaecheZiel() === 'territory:' + z.id">{{ z.name }}</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+              </label>
+              <button type="button" [disabled]="!flaecheZiel()" [class.an]="werkzeug() === 'flaecheRechteck'" [attr.aria-pressed]="werkzeug() === 'flaecheRechteck'" (click)="waehle('flaecheRechteck')" title="Drag a rectangle">Rectangle</button>
+              <button type="button" [disabled]="!flaecheZiel()" [class.an]="werkzeug() === 'flaecheEllipse'" [attr.aria-pressed]="werkzeug() === 'flaecheEllipse'" (click)="waehle('flaecheEllipse')" title="Drag the box of an ellipse or circle">Ellipse</button>
+              <button type="button" [disabled]="!flaecheZiel()" [class.an]="werkzeug() === 'vieleck' && vieleckFuer()?.art === 'flaeche'" [attr.aria-pressed]="werkzeug() === 'vieleck' && vieleckFuer()?.art === 'flaeche'" (click)="vieleckBeginnen({ art: 'flaeche' })" title="Tap the corners of the area">Polygon</button>
+              <button type="button" [class.an]="werkzeug() === 'flaecheGefunden'" [attr.aria-pressed]="werkzeug() === 'flaecheGefunden'" (click)="waehle('flaecheGefunden')" title="Tap a hidden zone to mark it found — players see it there from then on; tap again to hide it">Found</button>
+              <button type="button" [class.an]="werkzeug() === 'flaecheWeg'" [attr.aria-pressed]="werkzeug() === 'flaecheWeg'" (click)="waehle('flaecheWeg')" title="Tap a zone or territory to remove it; the zone kind or faction stays">Remove</button>
+              @if (flaecheFehler(); as f) {
+                <span class="fehler" role="alert">{{ f }}</span>
+              }
             </div>
           }
           @if (aktiv() === 'unterkarten' && darfSchreiben()) {
@@ -1820,6 +1864,12 @@ interface Zeiger {
           Token size — tap a token: it covers {{ groesseWahl() === null ? 'the squares its statblock size needs' : groesseWahl() + ' × ' + groesseWahl() + ' squares' }}.
         } @else if (werkzeug() === 'asset') {
           {{ gewaehltesAsset() ? 'Set the asset above; tap another to switch.' : 'Tap an asset to set it up. Drag one to move it.' }}
+        } @else if (werkzeug() === 'flaecheRechteck' || werkzeug() === 'flaecheEllipse') {
+          {{ werkzeug() === 'flaecheRechteck' ? 'Rectangle' : 'Ellipse' }} — drag over the map; the squares whose centre lies inside belong to {{ flaecheZielName() }}.
+        } @else if (werkzeug() === 'flaecheWeg') {
+          Tap a zone or territory to remove it.
+        } @else if (werkzeug() === 'flaecheGefunden') {
+          Tap a hidden zone (dashed) to mark it found — or found again to hide it.
         } @else if (werkzeug() === 'rahmen') {
           Link map — drag a frame over the part of this map, then pick the map you zoom into there.
         } @else if (werkzeug() === 'rahmenWeg') {
@@ -2239,7 +2289,8 @@ export class Karte {
   });
   protected readonly flaechenText = computed(() => this.flaechen().map((f) => f.name).join(', '));
   private readonly flaechenWahl = signal<boolean>(lies(FLAECHEN_SCHLUESSEL) !== 'off');
-  protected readonly flaechenAn = computed(() => this.flaechenWahl());
+  /* Beim Ziehen stehen sie immer da — sonst zöge man ins Leere. */
+  protected readonly flaechenAn = computed(() => this.flaechenWahl() || this.aktiv() === 'flaechen');
   protected flaechenUm(): void {
     const an = !this.flaechenWahl();
     this.flaechenWahl.set(an);
@@ -3757,6 +3808,7 @@ export class Karte {
     this.aktiv.set(neu);
     this.waehle('keins');
     this.werkzeug.set(neu === 'messen' ? 'messen' : neu === 'notizen' ? 'notiz' : 'keins');
+    if (neu === 'flaechen') void this.flaecheLaden();
   }
 
   protected readonly werkzeug = signal<Werkzeug>('keins');
@@ -3860,6 +3912,12 @@ export class Karte {
     } else if (this.werkzeug() === 'vieleck') {
       /* Einrasten wie an den Wänden, dazu an die Ecken der übrigen Formen. */
       this.vieleckTippen(this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse', undefined, this.vieleckFang()).pt);
+    } else if (this.werkzeug() === 'flaecheWeg' || this.werkzeug() === 'flaecheGefunden') {
+      const e = this.karte();
+      const a = e ? areaAt(e, pt) : null;
+      if (!e || !a) return;
+      if (this.werkzeug() === 'flaecheWeg') void this.schreiben(removeArea(e, a.id));
+      else if (a.type === 'zone') void this.schreiben(setAreaFound(e, a.id, !a.found));
     } else if (this.werkzeug() === 'schloss') {
       const t = this.tueren().find((x) => x.id === this.sperreBei(pt, isDoor)?.id);
       if (t) void this.tuerKlick(t);
@@ -4706,6 +4764,15 @@ export class Karte {
     /* Ein Antippen ist kein Rechteck. */
     if (k.w < 0.005 && k.h < 0.005) return;
     const fuer = this.fuerWen();
+    if (w === 'flaecheRechteck') {
+      this.flaecheAnlegen({ kind: 'rect', ...k });
+      return;
+    }
+    if (w === 'flaecheEllipse') {
+      const umriss = shapeOutline('ellipse', [pts[0]!, pts[1]!]).pts;
+      this.flaecheAnlegen({ kind: 'poly', pts: umriss.map((p) => [p.x, p.y] as [number, number]) });
+      return;
+    }
     if (w === 'rahmen') {
       this.rahmenNeu.set(k);
       this.rahmenZiel.set(null);
@@ -4714,6 +4781,45 @@ export class Karte {
     }
     if (w === 'aufdecken') void this.schreiben(revealArea(e, { id: `s-${crypto.randomUUID()}`, kind: 'rect', ...k, ...(fuer ? { for: fuer } : {}) }));
     else if (w === 'zudecken') void this.schreiben(coverArea(e, k));
+  }
+
+  // ------------------------------------------------- Zonen und Gebiete (T-219)
+
+  /** Wofür die nächste Fläche steht: `zone:<id>` oder `territory:<id>`. */
+  protected readonly flaecheZiel = signal<string | null>(null);
+  protected readonly flaecheFehler = signal<string | null>(null);
+  /** Die Zonenarten und Fraktionen, die die Leitung sieht — geholt, sobald die Gruppe aufgeht. */
+  protected readonly flaecheWahl = signal<{ zonen: { id: string; name: string }[]; gebiete: { id: string; name: string }[] }>({ zonen: [], gebiete: [] });
+  private flaecheGeladen = false;
+  protected readonly flaecheZielName = computed(() => {
+    const z = this.flaecheZiel();
+    if (!z) return '';
+    const id = z.slice(z.indexOf(':') + 1);
+    const w = this.flaecheWahl();
+    return [...w.zonen, ...w.gebiete].find((x) => x.id === id)?.name ?? '';
+  });
+  private async flaecheLaden(): Promise<void> {
+    if (this.flaecheGeladen) return;
+    this.flaecheGeladen = true;
+    try {
+      const [z, g] = await Promise.all([
+        this.api.list({ type: 'ZoneKind', limit: 500, sort: 'name' }),
+        this.api.list({ type: 'Faction', limit: 500, sort: 'name' }),
+      ]);
+      this.flaecheWahl.set({ zonen: z.rows.map((r) => ({ id: r.id, name: r.name })), gebiete: g.rows.map((r) => ({ id: r.id, name: r.name })) });
+    } catch {
+      this.flaecheGeladen = false;
+      this.flaecheFehler.set('The zone kinds and factions could not be loaded.');
+    }
+  }
+  /** Eine Fläche an die gezeigte Ebene — `schreiben` gibt ihr die Ebene (`withFloorView`). */
+  private flaecheAnlegen(shape: NewAreaShape): void {
+    const e = this.karte();
+    const z = this.flaecheZiel();
+    if (!e || !z) return;
+    const i = z.indexOf(':');
+    const type = z.slice(0, i) as 'zone' | 'territory';
+    void this.schreiben(addArea(e, { id: `${this.id()}~${type}-${Date.now().toString(36)}`, type, to: z.slice(i + 1), shape }));
   }
 
   // ------------------------------------------------------- Unterkarten (T-320)
@@ -4833,7 +4939,7 @@ export class Karte {
    */
   protected readonly vieleckPunkte = signal<Pt[]>([]);
   protected readonly vieleckFuer = signal<
-    { art: 'neu' } | { art: 'link'; id: string } | { art: 'uebergang'; relId: string; seite: 'area' | 'toArea' } | null
+    { art: 'neu' } | { art: 'link'; id: string } | { art: 'uebergang'; relId: string; seite: 'area' | 'toArea' } | { art: 'flaeche' } | null
   >(null);
   protected vieleckBeginnen(f: NonNullable<ReturnType<typeof this.vieleckFuer>>): void {
     if (this.werkzeug() === 'vieleck') this.werkzeug.set('keins');
@@ -4891,6 +4997,9 @@ export class Karte {
       this.rahmenNeu.set({ ...b, area: poly });
       this.rahmenZiel.set(null);
       void this.kartenLaden();
+    } else if (f.art === 'flaeche') {
+      this.aktiv.set('flaechen');
+      this.flaecheAnlegen({ kind: 'poly', pts: poly });
     } else if (f.art === 'link') {
       const l = this.verknuepfungen().find((k) => k.id === f.id);
       if (l) void this.linkSetzen({ vorlage: l.template ?? l.id }, { area: poly });

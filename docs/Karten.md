@@ -483,9 +483,22 @@ flowchart LR
 - **„Areas“** über der Karte blendet die Flächen aus und ein — eine Sache
   der Sicht, gemerkt im Browser.
 
-Angelegt werden Flächen heute über die Kanten im Bearbeiten der Karte;
-ein Werkzeug, sie auf der Karte zu ziehen, ist der nächste Schritt von
-T-219. Biome (E-122) und Abfrage-Overlays (T-332) sind eigene Karten.
+**Ziehen** (Werkzeuggruppe **Zones**, Taste Z, nur wer die Karte
+schreibt): unter *For* wählen, wofür die Fläche steht — eine Zonenart
+oder eine Fraktion (dann ist es ihr Gebiet) —, dann *Rectangle* (ziehen),
+*Ellipse* (den Kasten ziehen; gespeichert als Vieleck aus 24 Ecken, so
+braucht der Kreis kein Seitenverhältnis) oder *Polygon* (Ecken antippen,
+mit Einrasten wie bei den Unterkarten). Die Fläche kommt auf die gezeigte
+Ebene. *Found* tippt eine versteckte Zone an und macht sie an **dieser**
+Stelle für Spielende sichtbar (noch einmal: wieder versteckt) — dieselbe
+Falle an einer anderen Stelle bleibt verborgen. *Remove* nimmt die Fläche
+weg; Zonenart und Fraktion bleiben. Die Gruppe steht da, wo Wände,
+Unterkarten oder Marker eingeschaltet sind (`Campaign.mapTools`) — also
+auf Kampf- wie auf Landkarten, ohne eine neue Einstellung. Ein Gebiet für
+etwas anderes als eine Fraktion (ein Reich als Ort) geht weiter über die
+Kanten im Bearbeiten.
+
+Biome (E-122) und Abfrage-Overlays (T-332) sind eigene Karten.
 
 ---
 
@@ -1271,9 +1284,8 @@ abziehen, Initiative und „wer ist dran" als Bedingung, Hex-Raster, Wände
 
 ## Was noch fehlt
 
-- **Zonen auf der Karte ziehen** und ihre Regeln auf Licht und Sicht
-  (`zoneLight`/`obscured`) — gezeichnet werden sie seit T-219 (oben),
-  angelegt noch über die Kanten. Sperren und Sichtlinie stehen seit
+- **Die Regeln einer Zone auf Licht und Sicht** (`zoneLight`/`obscured`)
+  — gezeichnet und gezogen werden Zonen seit T-219 (oben). Sperren und Sichtlinie stehen seit
   T-118, Licht, Dunkelsicht und laufende Sicht seit T-216.
 - **Rahmen aufziehen** und Marker einstellen (Art, versteckt) mit der
   Maus; heute über die Kanten im Bearbeiten. Assets stellt Tokens › Asset
