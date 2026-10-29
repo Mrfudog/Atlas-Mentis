@@ -89,7 +89,6 @@ test('the gear explains its grid and draw times, and wears rings with attunement
   await klick(koerper.locator('[data-slot="ringR1"]'));
   await expect(koerper.locator('[data-slot="ringR1"]')).toContainText(ring.name);
   await expect(s.getByRole('region', { name: 'Item' })).toContainText('action to draw (Rings · right hand 1)');
-  await s.getByRole('region', { name: 'Item' }).screenshot({ path: '.ergebnis/gear-detail.png' });
   await klick(s.getByRole('button', { name: 'Attune' }));
   await expect(koerper).toContainText('Attuned 1 / 3');
 
