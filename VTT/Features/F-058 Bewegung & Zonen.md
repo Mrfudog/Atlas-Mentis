@@ -25,3 +25,7 @@ Epic: [[EP-09 Karten]]
 | [[REQ-210]] Karte und Initiative im Vollbild | Spielleitung | 3 | teils |
 | [[REQ-312]] Eigenes Token bewegen | Spieler | 2 | teils |
 <!-- stories:ende -->
+
+## Zonen betreten in der Seite (T-350)
+
+Stand 29.10.2026. Wer eine Zone mit Wirkung betritt, bekommt eine Zeile im Ergebnis des Zugs (`zonesEntered`); eine versteckte, ungefundene Zone nennt sie nicht.

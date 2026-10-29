@@ -24,3 +24,16 @@ Epic: [[EP-09 Karten]]
 | [[REQ-170]] Vorräte auf Reisen | Spielleitung | 4 | steht |
 | [[REQ-171]] Aktionen je Knoten | Spieler | 4 | steht |
 <!-- stories:ende -->
+
+## Reise an der Gruppe in der Seite (T-350)
+
+Stand 29.10.2026. Die Gruppe zeigt Tag, Wache und wann Rationen und Licht fällig sind; „Wait a watch" lässt eine Wache vergehen, „Next node" zieht einen Knoten weiter (eine Wache, Zehrung zählt, Handlungen des Knotens geleert). Gerechnet in `travel.ts` aus den Einstellungen `travel*`. Offen: die Punktreise in der Seite, Rationen vom Inventar abziehen, `route.hours` (E-206).
+
+```mermaid
+flowchart LR
+  W[Wait a watch] --> S[travelStep]
+  N[Next node] --> S
+  E[Einstellungen travel*] --> S
+  S --> P[Party: day, watch, sinceRation, sinceLight]
+  P --> Z[Zeile: Day 2, watch 1 · rations in 3 · light in 3]
+```
