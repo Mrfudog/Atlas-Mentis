@@ -64,6 +64,8 @@ import {
   spotsAlong,
   zonesEntered,
   partyMembers,
+  heldWeaponTiles,
+  proficienciesOf,
   wallsClear,
   fogOn,
   opportunityAttacks,
@@ -239,7 +241,18 @@ export function kachelnVon(map: Map<string, Entity>, sb: Entity | null, sichtbar
           return [{ id: a.id, name: entityName(a), actionTypeName: art ? entityName(art) : null, action, edge: (r.props ?? {}) as Card }];
         })
     : [];
-  return tilesFor(stats, aktionen, add);
+  const kacheln = tilesFor(stats, aktionen, add);
+  /* Waffen in der Hand sind Angriffe (T-354): eine Spielerfigur führt ihr
+     Langschwert im Inventar, nicht als Aktion am Statblock. Was der
+     Statblock schon unter demselben Namen nennt, kommt nicht doppelt. */
+  if (!figur) return kacheln;
+  const schon = new Set(kacheln.map((k) => k.name.toLowerCase()));
+  const waffen = heldWeaponTiles(figur, map, { stats, proficiencies: proficienciesOf(figur, sb ?? undefined, map), add }).filter(
+    (k) => !schon.has(k.name.toLowerCase()),
+  );
+  /* Vor dem waffenlosen Schlag, wie am Bogen: erst, was die Hände halten. */
+  const i = kacheln.findIndex((k) => k.id === 'std:unarmed');
+  return i < 0 ? [...kacheln, ...waffen] : [...kacheln.slice(0, i), ...waffen, ...kacheln.slice(i)];
 }
 
 /**

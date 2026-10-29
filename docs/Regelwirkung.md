@@ -31,7 +31,7 @@ zu entstehen.
 | 9 | Kein Auslöser für Rasten | **wirkt** (T-352): kurze Rast (Trefferwürfel), lange Rast (TP, Trefferwürfel, Plätze, Erschöpfung, Todesrettungen) am Bogen; offen: Pakt-Plätze bei kurzer Rast, Merkmale mit Nutzungen, Rast für die ganze Gruppe | `longRest`, `spendHitDie`, `stageDown` (`rest.ts`); Bogen `kopf.ts` | `packages/model/test/rest.test.ts` |
 | 10 | Tragestufen ohne Folge, ZoneInfo unausgewertet | Folgeaufgabe | — | — |
 | 11 | Registerformeln als Brücke zu Automationen | Grundlage: `profBonus`, `check` sind neue Funktionen des Rechenwerks | `calc.ts` (`FUNCTIONS`) | `regelwirkung.test.ts` › Punkt 4, 5 |
-| 12 | Kanten mit `intended` ohne Auswerter | `equips` wird gelesen (Wirkungen), `zone` vom Zugplan (Bewegungskosten, T-349), `intended` dort weg; `affects`, `loot`, `entry`, `route` offen | `itemsAt`, `mapTerrain` | `edges.test.ts` |
+| 12 | Kanten mit `intended` ohne Auswerter | `equips` wird gelesen (Wirkungen), `zone` vom Zugplan (Bewegungskosten, T-349), `intended` dort weg; **Waffen in der Hand sind Angriffe** (T-354); `affects`, `loot`, `entry`, `route`, `territory`, `inWorld` offen (Entscheid E-206) | `itemsAt`, `mapTerrain`, `heldWeaponTiles` (`weapons.ts`), Server `kachelnVon` | `edges.test.ts`, `weapons.test.ts`, `apps/server/test/waffen-am-tisch.test.ts` |
 
 ## Punkt 1 — was jetzt wirkt
 
@@ -148,6 +148,30 @@ Je Funktion zuerst geprüft, ob die Seite sie schon anders hat:
 
 Offen: die Punktreise in der Seite (`crawl`), das Element `travel` im
 Ansichtsdesigner (Palette, T-425), Rationen vom Inventar abziehen.
+
+## Punkt 12 — Waffen in der Hand (T-354)
+
+Ein Statblock nennt seine Angriffe als Aktionen (`composedOf`, D51); eine
+Spielerfigur hat ihren Angriff in der Hand. Bis T-354 hatte sie im
+Zugplan nur den waffenlosen Schlag. Jetzt wird jede Waffe in der Hand
+(`carries` → Inventar → `holds` mit Handplatz) eine Angriffskachel
+(`heldWeaponTiles`), gerechnet wie jeder Angriff (`attackNumbers`):
+
+- Treffer = Übung (nur geübt: Waffengruppe `simple`/`martial` oder die
+  Waffe beim Namen) + Mod (STR; DEX im Fernkampf; Finesse das bessere).
+- Schaden = Würfel + Mod; vielseitig mit beiden Händen der Würfel der
+  Kante `hasProperty` (sonst `Weapon.damage2`).
+- Wirkungen der Figur (`weapon`, `weapon.attack`, `weapon.damage`, T-355)
+  und **die der Waffe selbst** (`when: self`, die +1-Waffe).
+- Zwei leichte Nahkampfwaffen: der Nebenhand-Angriff als Bonusaktion,
+  ohne positiven Mod beim Schaden (PHB, Two-Weapon Fighting).
+- Reichweite und Wurf lesen den Namen der Eigenschaft (Reach, Thrown),
+  solange sie keine `mechanics` haben.
+
+Nennt der Statblock schon eine Aktion mit demselben Namen, kommt die
+Waffe nicht doppelt. Was T-354 sonst verlangt (Rechnungen als
+Automationen, Leser für `affects`, `loot`, `entry`, `route`) liegt als
+Entscheid E-206 bei der Leitung.
 
 ## Punkt 6 — was jetzt wirkt (T-349)
 
