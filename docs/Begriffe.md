@@ -458,6 +458,13 @@ und nicht am Statblock: dreissig Wachen aus einer Vorlage haben ein Token,
 und wer es einmal zurechtrückt, rückt es für alle zurecht. Auch der
 **Rand** steht dort (`frame.ring`), als Id aus einer Liste (`TOKEN_RINGS`):
 eigene Ränder sind dann weitere Einträge, keine neue Fallunterscheidung.
+Ein **eigener Rand** (T-302) ist eine Farbkombination oder ein Rahmenbild
+mit einer Breite (`customRing`): eine Farbe ist die Farbe, mehrere ein
+Verlauf (`ringPaint`), ein Bild liegt im Ring über den Farben. Die Farben
+nur als Hex und das Bild nur als Id, weil der Rand als CSS in die Seite
+geht — wer Daten bearbeiten kann, soll damit nichts nachladen. Eine Id,
+die keine feste ist, bleibt am Bild stehen und zeigt Plain, bis die Liste
+sie bringt; woher die eigenen kommen, entscheidet E-205.
 
 **Beim Platzieren zählt das Wesen, nicht seine Fassungen** (T-301): wer
 „Demogorgon“ sucht, meint die Kreatur. Gleich Benanntes steht als eine

@@ -866,7 +866,7 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-298 | Bilder bearbeiten und Tokens zusammenstellen | 4 | **offen** |  |
+| REQ-298 | Bilder bearbeiten und Tokens zusammenstellen | 4 | **offen** | Zuschneiden und Rand aus der Auswahl stehen (T-297, T-301); eigene Ränder: Form und Darstellung (T-302, PR #434), Quelle offen (E-205); Hintergrund entfernen und Generator offen (T-121). |
 | REQ-330 | Inventory image an einen Gegenstand binden | 3 | **offen** |  |
 | REQ-331 | Hilfe für Gegenstandsbilder | 4 | **offen** |  |
 

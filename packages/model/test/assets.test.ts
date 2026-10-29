@@ -101,6 +101,12 @@ describe('token frame (T-297)', () => {
       height: 560,
     });
   });
+  it('keeps the id of a ring that is not in the fixed list, if it looks like an id (T-302)', async () => {
+    const { tokenFrame } = await import('../src/index.js');
+    /* Eigene Ränder kommen aus einer Liste, die das Modell nicht kennt: die Id bleibt, gezeigt wird Plain, bis die Liste sie bringt. */
+    expect(tokenFrame({ ring: 'ring-0003' })).toEqual({ x: 50, y: 50, zoom: 1, ring: 'ring-0003' });
+    expect(tokenFrame({ ring: 'a b' })).toEqual({ x: 50, y: 50, zoom: 1 });
+  });
   it('places the image so the chosen point sits in the middle, without showing empty edges', async () => {
     const { tokenPlacement } = await import('../src/index.js');
     /* Ein Quadrat ohne Zoom deckt den Kreis genau. */
@@ -122,5 +128,49 @@ describe('token frame (T-297)', () => {
     /* Ein kleines Token mitten in viel Durchsichtigem (ein winziges Wesen). */
     const klein = (x: number, y: number) => ((x - 50) ** 2 + (y - 50) ** 2 <= 30 ** 2 ? 255 : 0);
     expect(looksRound(klein, 100, 100)).toBe(true);
+  });
+});
+
+describe('own token rings (T-302)', () => {
+  it('turns a colour combination into a paint, one colour plain, several as a gradient', async () => {
+    const { ringPaint } = await import('../src/index.js');
+    expect(ringPaint(['#123456'])).toBe('#123456');
+    expect(ringPaint(['#fff', '#000'])).toBe('linear-gradient(135deg, #fff 0%, #000 100%)');
+    expect(ringPaint(['#f00', '#0f0', '#00f'])).toBe('linear-gradient(135deg, #f00 0%, #0f0 50%, #00f 100%)');
+    expect(ringPaint([])).toBe('transparent');
+  });
+  it('reads an own ring: only hex colours, an image id, width within limits', async () => {
+    const { customRing } = await import('../src/index.js');
+    expect(customRing({ id: 'ring-0001', label: 'Nebelwacht', colors: ['#2a3b4c', '#c0ffee'] })).toEqual({
+      id: 'ring-0001',
+      label: 'Nebelwacht',
+      width: 0.06,
+      colors: ['#2a3b4c', '#c0ffee'],
+      paint: 'linear-gradient(135deg, #2a3b4c 0%, #c0ffee 100%)',
+    });
+    /* Ein Rahmenbild (Asset mit durchsichtiger Mitte), breiter als die Vorgabe, gekappt. */
+    expect(customRing({ id: 'ring-0002', image: 'img-0042', width: 0.9 })).toEqual({
+      id: 'ring-0002',
+      label: 'ring-0002',
+      width: 0.2,
+      image: 'img-0042',
+      paint: 'transparent',
+    });
+    /* Was in einen CSS-Wert gehen würde, ist nur eine Farbe: alles andere fällt weg. */
+    expect(customRing({ id: 'x', colors: ['red; background:url(//evil)', '#abc'] })?.colors).toEqual(['#abc']);
+    expect(customRing({ id: 'x', image: 'a")' })).toBeNull();
+    /* Ohne Farbe und ohne Bild ist es kein Rand; eine feste Id lässt sich nicht überschreiben. */
+    expect(customRing({ id: 'x' })).toBeNull();
+    expect(customRing({ id: 'gold', colors: ['#000'] })).toBeNull();
+    expect(customRing(null)).toBeNull();
+  });
+  it('offers the fixed rings first and then the own ones; an unknown id is Plain', async () => {
+    const { tokenRings, tokenRing, customRing } = await import('../src/index.js');
+    const eigene = [customRing({ id: 'ring-0001', colors: ['#000'] })!, customRing({ id: 'ring-0001', colors: ['#fff'] })!];
+    const alle = tokenRings(eigene);
+    expect(alle.map((r) => r.id).slice(-2)).toEqual(['shadow', 'ring-0001']);
+    expect(tokenRing('ring-0001', eigene).paint).toBe('#000');
+    expect(tokenRing('ring-0001').id).toBe('plain');
+    expect(tokenRing('gold', eigene).id).toBe('gold');
   });
 });
