@@ -45,6 +45,17 @@ export async function messe<T>(name: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/** Dasselbe für einen Abschnitt, der nicht wartet (Rechnen über den Bestand). */
+export function messeSync<T>(name: string, fn: () => T): T {
+  if (!speicher.getStore()) return fn();
+  const t0 = performance.now();
+  try {
+    return fn();
+  } finally {
+    buche(name, performance.now() - t0);
+  }
+}
+
 /**
  * Das Repository mit Stoppuhr: jede asynchrone Methode zählt unter `db`.
  * Ein Proxy, damit eine neue Methode ohne Zutun mitgemessen wird.
