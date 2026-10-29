@@ -176,3 +176,12 @@ describe('Mehrere auf einmal (T-333)', () => {
     expect(applyTrackerOp(alle, kampf(0, 0, []), { op: 'add', to: 'wolf', count: 0 }, zaehler)).toHaveProperty('error');
   });
 });
+
+describe('Die Karte der Begegnung im Tracker (T-333)', () => {
+  it('nennt der Leitung die Karte, auf der gekämpft wird, und Spielenden nicht', () => {
+    const e = kampf(0, 0, [teil('a', 'rook', { init: 20 }), { id: 'm', type: 'onMap', to: 'karte' } as Relation]);
+    expect(trackerView(alle, e, DEFAULT_INITIATIVE_RULES, true).map).toBe('karte');
+    expect(trackerView(alle, e, DEFAULT_INITIATIVE_RULES, false).map).toBeUndefined();
+    expect(trackerView(alle, kampf(0, 0), DEFAULT_INITIATIVE_RULES, true).map).toBeUndefined();
+  });
+});

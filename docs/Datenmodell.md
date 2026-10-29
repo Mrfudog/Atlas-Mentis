@@ -640,6 +640,17 @@ höchsten Nummer, die schon dasteht). „Add a combatant“ bietet dabei
 „Create … as …“ an. Migration 165 ergänzt `happensAt` und die Anordnung,
 wo sie `e-yield` trägt.
 
+**Vorplatzieren von der Begegnung aus** (T-333): solange sie nicht läuft,
+zeigt der Tracker der Leitung „Prepare on map“, wenn die Begegnung eine
+Karte hat (`TrackerView.map`, aus `onMap`, nur für die Leitung). Der Link
+öffnet die Karte mit `?prepare=<Begegnung>`; die Seitenleiste tut dort
+einmal, was „Prepare n“ tut (verborgene Tokens mit
+`marker.props.encounter`, T-203), und der Parameter fällt danach weg —
+ein Neuladen setzt nicht ein zweites Mal. Gespeichert wird nichts Neues:
+der Auftrag steht in der Adresse, nicht an der Begegnung. Wie bisher
+bekommt jedes Ziel **einen** Marker — vier Kanten auf denselben Statblock
+sind auf der Karte ein Token.
+
 Ob Szene und Begegnung **eine Art** werden, entscheidet E-118 — das hier
 gilt in beiden Fällen.
 

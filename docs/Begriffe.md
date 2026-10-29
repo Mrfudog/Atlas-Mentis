@@ -2933,6 +2933,13 @@ Wahrheiten über dieselbe Begegnung. Die Anzahl ist darum eine Frage beim
 **Hinzufügen** („Add a combatant“ · 4) und kein Feld: der Tracker legt so
 viele Kanten an und zählt sie am Tisch durch.
 
+**„Prepare on map“ ist eine Adresse, kein Zustand** (T-333). Die Leitung
+will von der Begegnung aus vorplatzieren, aber setzen kann man nur dort, wo
+die Karte gezeichnet wird — sie kennt Bildgrösse und Gitter. Ein Feld
+„bitte vorplatzieren“ an der Begegnung wäre ein Auftrag, der liegen bleibt,
+wenn niemand die Karte öffnet. Also trägt der Link den Wunsch
+(`?prepare=`), die Karte erfüllt ihn einmal und streicht ihn.
+
 **Ein Licht an der Wand ist ein Marker, kein Artikel** (T-320). Eine
 Fackel in einer Halterung hat keinen Namen, den jemand nachschlägt, und
 keine Werte; ein Artikel „Fackel 3" für jede wäre Bestand ohne Inhalt. Ein

@@ -469,8 +469,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     does: 'orders the combatants of an encounter, with the party’s members and each creature’s statblock; the tracker moves turns, counts effects down, takes damage with its type after resistances and mirrors a player character’s hit points to the character, and lists the statblock’s actions and spells (T-022, T-334, T-355)',
     uses: {
       [M + 'initiative.ts']: ['belongsTo', 'memberOfParty', 'participates'],
-      /* Der Tracker (T-022): Züge und Effekte an den Teilnehmern, die Aktionen vom Statblock, aufgeklappt auch die Zauber (T-334). */
-      [M + 'tracker.ts']: ['casts', 'composedOf', 'participates'],
+      /* Der Tracker (T-022): Züge und Effekte an den Teilnehmern, die Aktionen vom Statblock, aufgeklappt auch die Zauber (T-334); für die Leitung die Karte, auf der vorplatziert wird (T-333). */
+      [M + 'tracker.ts']: ['casts', 'composedOf', 'onMap', 'participates'],
       /* Die Route siebt die Zauber eines Teilnehmers für Spielende (T-334) und spiegelt den Stand einer Spielerfigur (T-355). */
       [S + 'initiative.ts']: ['casts', 'participates'],
     },

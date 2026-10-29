@@ -44,3 +44,30 @@ test('an encounter shows its place and loot, and the GM creates a foe and adds t
   const breit = await leitung.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(breit).toBeLessThanOrEqual(1);
 });
+
+test('“Prepare on map” on the encounter opens its map with the combatants set, hidden, once', async ({ leitung, api, eindeutig }) => {
+  const bereit = { 'Status.status': 'ready' };
+  const bild = await api.bild('leitung', eindeutig('yard'));
+  const karte = await api.anlegen('leitung', 'Map', eindeutig('Mill yard'), {
+    fields: { ...bereit, 'Image.image': bild, 'Map.gridSize': 40 },
+  });
+  const wolf = await api.anlegen('leitung', 'Creature', eindeutig('Grey wolf'), { fields: bereit });
+  const hirt = await api.anlegen('leitung', 'Creature', eindeutig('Shepherd'), { fields: bereit });
+  const begegnung = await api.anlegen('leitung', 'Encounter', eindeutig('Wolves in the yard'), {
+    fields: bereit,
+    relations: [
+      { type: 'onMap', to: karte.id },
+      { type: 'participates', to: wolf.id, props: { init: 12, label: 'Wolf 1' } },
+      { type: 'participates', to: hirt.id, props: { init: 8 } },
+    ],
+  });
+
+  await leitung.goto(`/artikel/${begegnung.id}`);
+  await leitung.locator('nw-initiative').getByRole('link', { name: 'Prepare on map' }).click();
+  await expect(leitung).toHaveURL(new RegExp(`/artikel/${karte.id}$`));
+  const leiste = leitung.locator('nw-kartenseite');
+  await expect(leiste).toContainText('2 of 2 on this map');
+  /* Ein Neuladen setzt nicht ein zweites Mal: der Parameter ist weg. */
+  await leitung.reload();
+  await expect(leitung).toHaveURL(new RegExp(`/artikel/${karte.id}$`));
+});

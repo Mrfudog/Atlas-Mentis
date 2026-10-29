@@ -13,7 +13,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   addMarker,
   noteName,
@@ -1766,6 +1766,8 @@ interface Zeiger {
             (setzen)="einenSetzen($event)"
             (alleSetzen)="blockSetzen($event)"
             (vorbereiten)="blockSetzen($event.ids, $event.encounter)"
+            [vorbereitenFuer]="karte() && nat() ? vorbereitenFuer() : null"
+            (vorbereitet)="vorbereitetFertig()"
           />
         }
       </div>
@@ -4309,7 +4311,21 @@ export class Karte {
    * Panel klappt aus der Leiste auf.
    */
   private readonly seiteWahl = signal<boolean | null>(null);
-  protected readonly seiteOffen = computed(() => this.seiteWahl() ?? false);
+  /**
+   * **„Prepare on map“ vom Tracker** (T-333): `?prepare=<Begegnung>` öffnet
+   * die Seitenleiste, und die setzt die Beteiligten einmal verborgen
+   * (`blockSetzen` mit Begegnung, wie „Prepare n“). Danach fällt der
+   * Parameter weg — ein Neuladen setzt nicht ein zweites Mal.
+   */
+  protected readonly vorbereitenFuer = signal<string | null>(inject(ActivatedRoute).snapshot.queryParamMap.get('prepare'));
+  protected vorbereitetFertig(): void {
+    if (!this.vorbereitenFuer()) return;
+    /* Die Leiste bleibt offen: dort steht jetzt „n of n on this map“. */
+    if (this.seiteWahl() === null) this.seiteWahl.set(true);
+    this.vorbereitenFuer.set(null);
+    void this.router.navigate([], { queryParams: { prepare: null }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+  protected readonly seiteOffen = computed(() => this.seiteWahl() ?? !!this.vorbereitenFuer());
   protected seiteUm(): void {
     this.seiteWahl.set(!this.seiteOffen());
   }

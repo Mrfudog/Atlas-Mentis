@@ -56,6 +56,10 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
           @if (!v.off) {
             @if (v.gm) {
               @if (v.round < 1) {
+                <!-- Vorplatzieren von der Begegnung aus (T-333, T-203): die Karte öffnet und setzt die Beteiligten verborgen. -->
+                @if (v.map) {
+                  <a class="knopf" [routerLink]="['/artikel', v.map]" [queryParams]="{ prepare: v.id }" title="Open the map and set the combatants there, hidden from the players until the encounter starts">Prepare on map</a>
+                }
                 <button type="button" class="haupt" (click)="starten()" [disabled]="laeuft()" title="Roll initiative for who has none and run this encounter">▶ Start</button>
               } @else {
                 <button type="button" (click)="tue({ op: 'previous' })" [disabled]="laeuft()" aria-label="Previous turn" title="Previous turn — expired effects do not come back">◀</button>
