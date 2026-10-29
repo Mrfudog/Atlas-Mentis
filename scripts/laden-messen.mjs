@@ -70,6 +70,18 @@ function weg(url) {
   return keys.length ? `${p}?${[...new Set(keys)].sort().join("&")}` : p;
 }
 
+/** `Server-Timing` ohne `app`: `{ db: { ms, n }, sieb: … }`. */
+function abschnitteAus(kopf) {
+  const aus = {};
+  for (const teil of kopf.split(",")) {
+    const [name, ...rest] = teil.trim().split(";");
+    if (!name || name === "app") continue;
+    const r = rest.join(";");
+    aus[name] = { ms: Number(/dur=([\d.]+)/.exec(r)?.[1] ?? NaN), n: Number(/desc="(\d+)x"/.exec(r)?.[1] ?? 1) };
+  }
+  return aus;
+}
+
 async function miss(browser, breite, name, pfad, tun) {
   const context = await browser.newContext({
     viewport: { width: breite, height: breite < 600 ? 844 : 900 },
@@ -107,6 +119,8 @@ async function miss(browser, breite, name, pfad, tun) {
       server:
         Number(/dur=([\d.]+)/.exec(kopf["server-timing"] ?? "")?.[1] ?? NaN) ||
         null,
+      /* Die Abschnitte am Server (T-398, `zeitmessung.ts`): db, stand, sieb, index. */
+      abschnitte: abschnitteAus(kopf["server-timing"] ?? ""),
       cache: kopf["cache-control"] ?? null,
       etag: !!kopf["etag"],
     });
@@ -184,7 +198,10 @@ for (let runde = 1; runde <= Number(opt.runden); runde++)
       );
       for (const a of api.sort((x, y) => y.ms - x.ms).slice(0, 6))
         console.log(
-          `      ${String(a.ms).padStart(6)} ms ${String(a.server ?? "-").padStart(8)} srv ${kb(a.bytes).padStart(5)} kB ${a.status} ${a.methode} ${a.weg}`,
+          `      ${String(a.ms).padStart(6)} ms ${String(a.server ?? "-").padStart(8)} srv ${kb(a.bytes).padStart(5)} kB ${a.status} ${a.methode} ${a.weg}` +
+            Object.entries(a.abschnitte)
+              .map(([k, v]) => ` ${k} ${Math.round(v.ms)}${v.n > 1 ? `/${v.n}` : ""}`)
+              .join(""),
         );
     }
 await browser.close();

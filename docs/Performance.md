@@ -58,6 +58,11 @@ sie nicht still an.
     [--als <konto-id>] [--nur Artikel,Board] [--json messung.json]
   ```
 
+- **Am Server** nennt `Server-Timing` je Antwort die Abschnitte
+  (`apps/server/src/zeitmessung.ts`): `app` gesamt, `db` (alle Aufrufe des
+  Repositorys, mit Zahl), `stand` (Bestand lesen), `sieb`, `index`
+  (Listenindex bauen). Das Messscript schreibt sie hinter jeden Abruf. Ein
+  neuer teurer Abschnitt bekommt sein `messe('name', …)`.
 - **Nach jedem Release** vergleicht der Prüflauf T-322 mit der Grundlinie
   unten. Ein Rückschritt wird eine Aufgabe im Bereich Performance.
 
