@@ -69,7 +69,8 @@
           "text": [
             "Fog is revealed by the GM, not by creatures. You do not need to place a creature: pick Fog in the tool bar, switch “Fog on”, then reveal by hand — Reveal drags a rectangle, Brush paints (choose the width), Hide covers an area again, Reveal all and Cover all do the whole map.",
             "“Reveal along moves” says whether moving a token on a fogged map reveals the way it went: the campaign sets the default under Rules & options › On the map, and each map may say on or off.",
-            "If the campaign keeps fog per character, choose the character under “View as”: you see what it sees, and what you reveal is for it. As GM or all players, what you reveal is for everyone."
+            "If the campaign keeps fog per character, choose the character under “View as”: you see what it sees, and what you reveal is for it. As GM or all players, what you reveal is for everyone.",
+            "Reveal sight: tap a token to reveal what it sees from where it stands — up to the walls, and in the dark only its darkvision and the lights it sees."
           ]
         },
         {
