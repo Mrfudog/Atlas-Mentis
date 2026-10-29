@@ -23,7 +23,7 @@ import { entityName } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import { Live, type ArtikelEreignis } from './live';
 import { BildStand } from '../artikel/bild';
-import { Api, ApiError, type Bezuege, type Fertigungswerte, type Ladenwaren, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
+import { Api, ApiError, type Begegnungsbezug, type Bezuege, type Fertigungswerte, type Ladenwaren, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
@@ -61,6 +61,9 @@ export class Bestand {
   /** Was ein Laden führt, und zu welchem Preis (`refs.shop`, T-129). */
   private readonly _laden = signal<ReadonlyMap<string, Ladenwaren>>(new Map());
   readonly laden = this._laden.asReadonly();
+  /** Was eine Begegnung über ihre Beteiligten weiss (`refs.encounter`, T-215). */
+  private readonly _begegnung = signal<ReadonlyMap<string, Begegnungsbezug>>(new Map());
+  readonly begegnung = this._begegnung.asReadonly();
   /** Die geltende Sichtbarkeitsstufe je geöffnetem Artikel (`refs.audience`, T-277). */
   private readonly _stufe = signal<ReadonlyMap<string, NonNullable<Bezuege['audience']>>>(new Map());
   readonly stufe = this._stufe.asReadonly();
@@ -146,6 +149,9 @@ export class Bestand {
 
   private laeuft: Promise<void> | null = null;
   private readonly oeffnet = new Map<string, Promise<void>>();
+  /** Das jüngste Laden je Artikel (T-371): nur sein Ergebnis zählt. */
+  private readonly juengstes = new Map<string, { nr: number; lauf: Promise<void> }>();
+  private zaehler = 0;
 
   /** Das Register — klein (≈10 KB gepackt) und allein, damit nichts darauf wartet. */
   async load(neu = false): Promise<void> {
@@ -178,18 +184,26 @@ export class Bestand {
    * Kachel auf dem Board zeigt keine Rückbezüge, und eine Anfrage weniger
    * ist eine weniger. Wer ihn danach als Seite öffnet, bekommt sie
    * nachgeholt.
+   *
+   * **`neu` fragt immer neu** (T-371): ein noch laufendes Laden begann
+   * vielleicht vor dem Speichern, das jetzt nachfragt — der erste Schaden
+   * nach dem Öffnen des Bogens blieb so in der Anzeige auf dem alten Stand.
+   * Kommt ein älteres Laden nach einem jüngeren an, zählt es nicht.
    */
   async oeffnen(id: string, neu = false, rueck = true): Promise<void> {
     const da = this._voll().has(id) && (!rueck || this._rueck().has(id));
     if (!neu && (da || this._fehlt().has(id))) return;
     const schluessel = rueck ? `${id} +rueck` : id;
     const schon = this.oeffnet.get(schluessel) ?? this.oeffnet.get(`${id} +rueck`);
-    if (schon) return schon;
-    const lauf = Promise.all([
+    if (schon && !neu) return schon;
+    const nr = ++this.zaehler;
+    const ueberholt = () => this.juengstes.get(id)?.nr !== nr;
+    const lauf: Promise<void> = Promise.all([
       this.api.entity(id),
       rueck ? this.api.backlinks(id) : Promise.resolve(null),
     ])
       .then(([mitBezug, zeigt]) => {
+        if (ueberholt()) return;
         const { refs, ...e } = mitBezug;
         this.merke(refs, zeigt ?? [], e as Entity);
         this._anpassbar.update((m) => {
@@ -225,6 +239,13 @@ export class Bestand {
         this._laden.update((m) => {
           const n = new Map(m);
           if (refs?.shop) n.set(id, refs.shop);
+          else n.delete(id);
+          return n;
+        });
+        this._begegnung.update((m) => {
+          if (!refs?.encounter && !m.has(id)) return m;
+          const n = new Map(m);
+          if (refs?.encounter) n.set(id, refs.encounter);
           else n.delete(id);
           return n;
         });
@@ -289,6 +310,7 @@ export class Bestand {
         });
       })
       .catch((error: unknown) => {
+        if (ueberholt()) return;
         if (error instanceof ApiError && error.status === 404) {
           this._fehlt.update((s) => new Set(s).add(id));
           this._voll.update((m) => {
@@ -300,7 +322,15 @@ export class Bestand {
           this._fehler.set(error instanceof Error ? error.message : String(error));
         }
       })
-      .finally(() => this.oeffnet.delete(schluessel));
+      .finally(() => {
+        if (this.oeffnet.get(schluessel) === lauf) this.oeffnet.delete(schluessel);
+      })
+      /* Wer auf ein überholtes Laden wartet, wartet auf das jüngere mit. */
+      .then(() => (ueberholt() ? this.juengstes.get(id)?.lauf : undefined))
+      .finally(() => {
+        if (!ueberholt()) this.juengstes.delete(id);
+      });
+    this.juengstes.set(id, { nr, lauf });
     this.oeffnet.set(schluessel, lauf);
     return lauf;
   }

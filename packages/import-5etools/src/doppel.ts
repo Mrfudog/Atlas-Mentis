@@ -113,7 +113,7 @@ export function vereineGleiche(entities: Entity[], bericht: Bericht, teilung: (e
 
 /** Was eine Art ist, die Fassungen hat (2). Merkmale und Aktionen nicht — die vereint (1). */
 const MIT_FASSUNGEN = new Set([
-  'Statblock', 'Spell', 'Item', 'Weapon', 'Armor', 'Ancestry', 'Background', 'Feat', 'Language',
+  'Statblock', 'Spell', 'Item', 'Enhancement', 'Weapon', 'Armor', 'Ancestry', 'Background', 'Feat', 'Language',
   'Rule', 'Deity', 'Hazard', 'Disease', 'Class', 'Subclass', 'Table', 'Condition',
 ]);
 

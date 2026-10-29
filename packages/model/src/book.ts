@@ -29,6 +29,7 @@ import { isDice } from './dice.js';
 import { entityName, fieldTitle, primaryInterface, relationDef } from './entity.js';
 import type { VarScopes } from './inline.js';
 import { convertText, formatMeasure, unitsFor, type UnitMode } from './units.js';
+import { DND_COINS, formatMoney } from './money.js';
 import type { Entity, LayoutElementKind, PropertySchema, Registry } from './types.js';
 
 type Card = Record<string, unknown>;
@@ -52,6 +53,26 @@ export interface BookLine {
   text: string;
   /** `Typ.feld`, woher der Wert kommt — wo es genau eines ist. */
   ref?: string;
+  /**
+   * **Was sich in dieser Zeile würfeln lässt** (T-181, REQ-070): je Eintrag
+   * der Name, wie er dasteht („Stealth"), der Ausdruck (`+6`, ein W20 mit
+   * Bonus) und die Beschriftung im Log („Stealth check"). Der Text bleibt
+   * daneben stehen — verglichen und gedruckt wird er, gewürfelt hieraus.
+   */
+  rolls?: BookRoll[];
+}
+
+/** Ein Wurf in einer Buchzeile — Fertigkeit, Rettungswurf, Attributsprobe. */
+export interface BookRoll {
+  name: string;
+  /** `+6`, `-1`: ein W20 mit Bonus (M12). */
+  expr: string;
+  label: string;
+}
+
+/** Der Ausdruck für einen W20 mit Bonus (`+3`, `-1`) — so, wie ihn `{{…}}` liest. */
+export function d20Expr(bonus: number): string {
+  return bonus < 0 ? `${bonus}` : `+${bonus}`;
 }
 
 // ------------------------------------------------------------------ Kleinzeug
@@ -183,6 +204,8 @@ export interface AbilityCell {
   score: number | null;
   /** „(+2)", „(−1)" — leer ohne Wert. */
   mod: string;
+  /** Die Attributsprobe (T-181), ohne Wert keine. */
+  check?: BookRoll;
 }
 
 export interface StatblockBook {
@@ -203,6 +226,12 @@ export interface StatblockContext {
   kindOf?: (name: string) => string | undefined;
   /** Der Name eines Verweisziels (`conditionImmunities`, T-078). */
   nameOf?: (id: string) => string | undefined;
+  /**
+   * Die Wirkungen an der Figur, als Summen je Ziel (`effectTotals(…).add`,
+   * T-355): `check` zählt in die passive Wahrnehmung. Ohne Angabe, wie
+   * am Statblock einer Vorlage: keine.
+   */
+  effects?: Readonly<Record<string, number>>;
 }
 
 const STATBLOCK_PLACED = new Set([
@@ -210,7 +239,7 @@ const STATBLOCK_PLACED = new Set([
   'Statblock.acNote', 'Statblock.hp', 'Statblock.hpFormula', 'Statblock.speed', 'Statblock.cr',
   'Statblock.prof', 'Statblock.senses', 'Statblock.languageNote', 'Statblock.resistances',
   'Statblock.vulnerabilities', 'Statblock.immunities', 'Statblock.conditionImmunities',
-  'Statblock.bonuses', 'Statblock.legendaryActions',
+  'Statblock.bonuses', 'Statblock.legendaryActions', 'Statblock.legendaryActionsLair',
   'Abilities', 'Proficiencies.proficient', 'Proficiencies.expertise', 'Proficiencies.saves',
 ]);
 
@@ -264,6 +293,7 @@ export function statblockBook(
       label: abilityProps[key]?.title ?? key.toUpperCase(),
       score,
       mod: score === null ? '' : `(${signedBook(abilityMod(score))})`,
+      ...(score === null ? {} : { check: { name: key.toUpperCase(), expr: d20Expr(abilityMod(score)), label: `${key.toUpperCase()} check` } }),
     };
   });
 
@@ -286,6 +316,10 @@ export function statblockBook(
         })
         .join(', '),
       ref: 'Proficiencies.saves',
+      rolls: saves.flatMap((s) => {
+        const b = bonusFuer(s, s, 1);
+        return b === null ? [] : [{ name: capitalize(s), expr: d20Expr(b), label: `${s.toUpperCase()} save` }];
+      }),
     });
   }
 
@@ -307,6 +341,10 @@ export function statblockBook(
         })
         .join(', '),
       ref: 'Proficiencies.proficient',
+      rolls: fertigkeiten.flatMap((n) => {
+        const b = fertigkeitBonus(n);
+        return b === null ? [] : [{ name: n, expr: d20Expr(b), label: `${n} check` }];
+      }),
     });
   }
   if (sonst.length) details.push({ label: 'Proficiencies', text: sonst.join(', ') });
@@ -371,7 +409,8 @@ export function passivePerception(entity: Entity, ctx: StatblockContext = {}): n
   const geuebt = [...list(pr['proficient']), ...list(pr['expertise'])].find((n) => n.toLowerCase() === 'perception');
   const grund = (geuebt && ctx.skillAbility?.(geuebt)) || 'wis';
   const b = checkBonus({ proficient: pr['proficient'], expertise: pr['expertise'], prof: sb['prof'], bonuses: sb['bonuses'], score: ab[grund] }, 'Perception');
-  return b === null ? null : 10 + b;
+  /* Passiv heisst: alles, was auf die Probe wirkt (PHB), also auch `check` (T-355). */
+  return b === null ? null : 10 + b + (ctx.effects?.['check'] ?? 0);
 }
 
 // ------------------------------------------------------------ Kennzahlen
@@ -611,13 +650,17 @@ export function bookSections(
 
   /* Der Satz über den Legendären Aktionen steht im Buch vor ihnen; die Zahl
      ist ein Feld des Statblocks, der Satz ist Regeltext. */
-  const anzahl = num((owner.components?.['Statblock'] as Card | undefined)?.['legendaryActions']);
+  const sbKarte = owner.components?.['Statblock'] as Card | undefined;
+  const anzahl = num(sbKarte?.['legendaryActions']);
   if (anzahl !== null) {
     const wer = capitalize(creatureRef(bindung, entityName(owner)));
+    /* Im Lair mehr (T-437) — nur genannt, wenn es abweicht. */
+    const lair = num(sbKarte?.['legendaryActionsLair']);
+    const imLair = lair !== null && lair !== anzahl ? ` (${lair} in its lair)` : '';
     for (const s of sections.values()) {
       if (!/legendary/i.test(s.title)) continue;
       s.intro =
-        `${wer} can take ${anzahl} legendary action${anzahl === 1 ? '' : 's'}, choosing from the options below. ` +
+        `${wer} can take ${anzahl} legendary action${anzahl === 1 ? '' : 's'}${imLair}, choosing from the options below. ` +
         `Only one legendary action option can be used at a time and only at the end of another creature's turn. ` +
         `${wer} regains spent legendary actions at the start of its turn.`;
     }
@@ -730,7 +773,7 @@ export interface ItemBook {
 }
 
 const ITEM_PLACED = new Set([
-  'Item.itemType', 'Item.rarity', 'Item.attunement', 'Item.attunementNote', 'Item.appliesTo',
+  'Item.itemType', 'Item.rarity', 'Item.attunement', 'Item.attunementNote',
   'Item.charges', 'Item.recharge', 'Item.rechargeAmount', 'Item.bonusWeapon', 'Item.bonusAc',
   'Item.bonusSpellAttack', 'Item.bonusSave', 'Item.copperPrice', 'Item.priceNote', 'Item.weight',
   'Weapon.category', 'Weapon.damage', 'Weapon.damage2', 'Weapon.damageType', 'Weapon.range',
@@ -744,12 +787,9 @@ const AUFLADEN: Record<string, string> = {
   shortRest: 'after a short rest', longRest: 'after a long rest', special: 'special',
 };
 
-/** Kupfer als Münzen, wie das Buch den Preis schreibt: 1500 → „15 gp". */
+/** Kupfer als Münzen, wie das Buch den Preis schreibt: 1500 → „15 gp" (T-357: `formatMoney`). */
 export function coinText(copper: number): string {
-  const fmt = (n: number) => n.toLocaleString('en-US');
-  if (copper % 100 === 0) return `${fmt(copper / 100)} gp`;
-  if (copper % 10 === 0) return `${fmt(copper / 10)} sp`;
-  return `${fmt(copper)} cp`;
+  return formatMoney(copper, DND_COINS, { mode: 'book' });
 }
 
 function wuerfel(expr: string): string {
@@ -770,11 +810,11 @@ export function itemBook(
   const props = registry.interfaces['Item']?.schema?.properties ?? {};
 
   const art = str(it['itemType']) || typeLabel.toLowerCase();
-  const passt = list(it['appliesTo']);
+  /* „(any sword)" stand hier, solange eine Variante ein Gegenstand war;
+     seit T-324 ist sie ein Gegenstandsmerkmal und sagt es in `appliesTo`. */
   const worte: string[] = [];
   if (str(wp?.['category'])) worte.push(`${str(wp!['category'])} weapon`);
-  if (art) worte.push(`${art}${passt.length ? ` (any ${passt.join(' or ')})` : ''}`);
-  else if (passt.length) worte.push(`any ${passt.join(' or ')}`);
+  if (art) worte.push(art);
   const seltenheit = str(it['rarity']);
   if (seltenheit && seltenheit !== 'none' && seltenheit !== 'unknown') worte.push(seltenheit);
   let byline = capitalize(worte.join(', '));

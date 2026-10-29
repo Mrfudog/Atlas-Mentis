@@ -33,7 +33,9 @@ import {
 } from '@nw/model';
 import type { CreateStep, ElementStyle, Entity, IncomingEdge, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { bringsIntoLayer, homeLayers, pickView, spellcastingOf, withCastRelations, withHomeLayer } from '@nw/model';
-import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
+import { Api, ApiError, type EbenenWechsel, type KopierErgebnis, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
+import { Mitlaeufer } from '../verwaltung/mitlaeufer';
+import { Kopieren } from './kopieren';
 import { Stil } from '../muster/stil';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
@@ -69,6 +71,7 @@ import { Form } from './form';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Laden } from './laden';
+import { Haltung } from './haltung';
 import { Liegengelassen } from './liegen';
 import { Werkstatt } from './werkstatt';
 import { Abschnitte } from './abschnitte';
@@ -103,6 +106,7 @@ import { EbenenMarke } from './ebenen-marke';
 import { Wissenskasten } from './wissenskasten';
 import { Wissensseite } from './wissensseite';
 import { Initiative } from '../karten/initiative';
+import { Reise } from './reise';
 import { Klasse } from '../klassen/klasse';
 import { Herkunft } from '../klassen/herkunft';
 import { Regeloptionen } from './regeloptionen';
@@ -113,6 +117,7 @@ import { Ansichtsbaum } from '../ansichten/baum';
 import { Ansichtswahl } from '../ansichten/wahl';
 import { Ansichtsdesigner, type AnsichtsEntwurf } from '../ansichten/designer';
 import { Kapitel, Kapitelteil } from '../muster/kapitel';
+import { Klappleiste } from '../muster/klappleiste';
 
 /** So viele Rückbezüge stehen, bevor „Show all" kommt. */
 const RUECK_KURZ = 12;
@@ -180,6 +185,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
   providers: [{ provide: SCHNELL_KONTEXT, useExisting: forwardRef(() => Artikel) }, WurfZiel],
   imports: [
     RouterLink,
+    Mitlaeufer,
+    Kopieren,
+    Klappleiste,
     FormsModule,
     Stil,
     Bogen,
@@ -194,7 +202,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Kennzahlen, TokenBild, Form,
     Zauber,
     Gegenstand,
-    Laden, Liegengelassen, Werkstatt,
+    Laden, Liegengelassen, Werkstatt, Haltung,
     Abschnitte,
     Fluss,
     FassungsKasten,
@@ -218,6 +226,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
     Wissenskasten,
     Wissensseite,
     Initiative,
+    Reise,
     Regeloptionen,
     Wuerfe,
     Ansichtsbaum,
@@ -233,6 +242,10 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         {{ g.text }}
         @if (g.lauf) {
           <button type="button" (click)="loeschenZurueck(g.lauf)">Undo</button>
+        }
+        <!-- … und liegt 30 Tage im Papierkorb (T-400). -->
+        @if (g.lauf) {
+          <a routerLink="/trash" class="korb">In Deleted for 30 days</a>
         }
         <a [routerLink]="'/' + (bereich() || 'compendium')">Back to {{ bereichName() }}</a>
       </p>
@@ -289,6 +302,13 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
               <button type="button" [disabled]="passtAn()" (click)="anpassen()"
                       title="Make a version for this campaign. The original stays as it is.">
                 {{ passtAn() ? 'Adapting…' : 'Adapt for this campaign' }}
+              </button>
+            }
+            <!-- Fassung, Variante oder Kopie in einer anderen Ebene (T-405, REQ-400). -->
+            @if (!bearbeitet() && !istEbene(e) && session.user()) {
+              <button type="button" [attr.aria-expanded]="kopierOffen()" (click)="kopierOffen.set(!kopierOffen())"
+                      title="Make a version, a variant or a copy of this article in another layer.">
+                Copy…
               </button>
             }
             <!-- In die Geschichte holen (E-026): ein Kapitel oder eine Szene samt allem
@@ -389,8 +409,24 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         @if (verschoben(); as v) {
           <p class="hinweis" role="status">
             Moved to <b>{{ v }}</b>.
+            @if (verschobenLauf(); as l) {
+              <button type="button" class="klein" (click)="verschiebenZurueck(l)">Undo move</button>
+            }
             <button type="button" class="klein" (click)="verschoben.set(null)">OK</button>
           </p>
+        }
+        @if (kopierOffen()) {
+          <nw-kopieren [artikel]="id()" (fertig)="kopiert($event)" (zu)="kopierOffen.set(false)" />
+        }
+        @if (kopierMeldung(); as m) {
+          <p class="hinweis" role="status">
+            {{ m }}
+            <button type="button" class="klein" (click)="kopierMeldung.set(null)">OK</button>
+          </p>
+        }
+        <!-- Was mitgeht (T-402, E-161): vor dem Speichern gefragt, wenn etwas dranhängt. -->
+        @if (mitlaeuferPlan(); as p) {
+          <nw-mitlaeufer [plan]="p" [laeuft]="speichert()" (los)="mitlaeuferLos($event)" (abbrechen)="mitlaeuferPlan.set(null)" />
         }
         @if (bearbeitet() && schreibZiel(); as z) {
           <p class="hinweis" [class.fehler]="z.fremd" role="status">
@@ -472,7 +508,12 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         <!-- Die Kapitel der Seite (T-277): am Telefon Reiter, am Desktop
              gerahmte Bereiche — Felder links breit, Kanten rechts schmal,
              Admin und Log darunter zugeklappt. -->
-        <nw-kapitel class="spalten" [vorgabe]="tab() === 'read' ? 'read' : null">
+        <!-- Die Klappleiste (T-359): Admin und Log auf und zu, von Kapitel zu
+             Kapitel springen, auch in die Bereiche darin (der Inhalt einer
+             Ebene nach Art). Nur am Desktop — am Telefon sind die Kapitel
+             Reiter, und dort wählt man, statt zu springen. -->
+        <nw-klappleiste class="nur-breit" beschriftung="Article sections" [fest]="false" />
+        <nw-kapitel class="spalten" merke="article" [vorgabe]="tab() === 'read' ? 'read' : null">
           <nw-kapitelteil key="fields" titel="Fields" lage="haupt" class="kahl">
           <main class="hauptspalte">
             <article class="blatt">
@@ -952,8 +993,16 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                   @case ('wissen') {
                     <nw-wissensseite [id]="e.id" />
                   }
+                  @case ('reise') {
+                    <nw-reise [gruppe]="e" />
+                  }
                   @case ('initiative') {
                     <nw-initiative [begegnung]="e.id" />
+                  }
+                  @case ('haltung') {
+                    @if (begegnung(); as bz) {
+                      <nw-haltung [bezug]="bz" [titel]="st.text ?? ''" />
+                    }
                   }
                   @case ('liegen') {
                     <nw-liegengelassen [sitzung]="e" />
@@ -1042,6 +1091,17 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                           }
                         } @else {
                           <nw-text [text]="b.wert" [scopes]="scopes()" />
+                        }
+                        <!-- Ein Hinweis mit einem Klick an die Gruppe (T-215): dieselbe
+                             Freigabe wie im Wissen, eine Information je Hinweis. -->
+                        @if (b.type === 'Encounter' && b.key === 'hint' && session.leitung() && !bearbeitet() && begegnung(); as bz) {
+                          <p class="hinweis-freigabe">
+                            @if (bz.revealed?.includes(b.ref) || freigegeben().has(b.ref)) {
+                              <span class="frei">✓ The party knows this hint</span>
+                            } @else {
+                              <button type="button" (click)="hinweisFreigeben(e, b.ref)" [disabled]="hinweisLaeuft()">Reveal to the party</button>
+                            }
+                          </p>
                         }
                       </section>
                     }
@@ -2117,6 +2177,33 @@ export class Artikel implements SchnellKontext {
     return z.at ? { at: z.at } : z.page ? { page: z.page } : {};
   }
 
+  /** Was die Begegnung über ihre Beteiligten weiss (`refs.encounter`, T-215). */
+  protected readonly begegnung = computed(() => this.bestand.begegnung().get(this.id()));
+  /** Hinweise, die gerade freigegeben wurden — bis der Artikel neu kommt. */
+  protected readonly freigegeben = signal<ReadonlySet<string>>(new Set());
+  protected readonly hinweisLaeuft = signal(false);
+  /**
+   * **Einen Hinweis freigeben** (T-215): eine Information über diese
+   * Begegnung, die genau diesen Eintrag nennt (`Encounter.hint#id`), allen
+   * Gruppen der Kampagne zugeteilt — `POST /api/knowledge/of/:id/reveal`,
+   * derselbe Weg wie „Reveal" an Karte und Wissen.
+   */
+  protected async hinweisFreigeben(e: Entity, ref: string): Promise<void> {
+    this.hinweisLaeuft.set(true);
+    /* „Hint 2“ nach der Stelle im Feld — so heisst die Information im Wissen. */
+    const hinweise = entriesOf((e.components?.['Encounter'] as { hint?: unknown } | undefined)?.hint);
+    const nr = hinweise.findIndex((h) => ref.endsWith(`#${h.id}`)) + 1;
+    try {
+      await this.api.revealKnowledge(e.id, { fields: [ref], name: `${entityName(e)}: hint ${nr || ref.split('#')[1]}` });
+      this.freigegeben.update((s) => new Set([...s, ref]));
+    } catch (err) {
+      const body = err instanceof ApiError ? (err.body as { error?: string } | undefined) : undefined;
+      this.problem.set(body?.error ?? String((err as Error).message ?? err));
+    } finally {
+      this.hinweisLaeuft.set(false);
+    }
+  }
+
   /** Was dieser Laden führt (`refs.shop`, T-129). */
   protected readonly ladenwaren = computed(() => this.bestand.laden().get(this.id()));
   /** Womit an diesem Rezept gefertigt wird (`refs.craft`, T-122). */
@@ -2314,7 +2401,7 @@ export class Artikel implements SchnellKontext {
     this.anpassFehler.set(null);
     try {
       const r = await this.loescher.loeschen([e.id], () =>
-        typeof confirm !== 'function' || confirm(`Delete “${this.name(e)}”? You can undo it right after.`),
+        typeof confirm !== 'function' || confirm(`Delete “${this.name(e)}”? You can undo it right after, or restore it from Deleted within 30 days.`),
       );
       if (!r) return;
       if (!r.geloescht.length) {
@@ -2684,6 +2771,23 @@ export class Artikel implements SchnellKontext {
   protected async speichern(): Promise<void> {
     const alt = this.artikel();
     if (!alt || this.speichert()) return;
+    /* **Erst fragen, was mitgeht** (T-402, E-161 a+c): hängt etwas am
+       Artikel — Teile, Statblock, Inventar —, steht vor dem Speichern die
+       Liste mit Häkchen. Ohne Mitläufer wird gespeichert wie bisher. */
+    if (this.ebeneGewechselt() && this.mitlaeuferWahl === null) {
+      try {
+        const plan = await this.api.moveLayer([alt.id], this.entwurfEbene() || null, { dryRun: true });
+        if (plan.followers.length) {
+          this.mitlaeuferPlan.set(plan);
+          return;
+        }
+      } catch {
+        /* Ohne Plan bleibt der Ebenenwechsel, wie er war (T-383): nur der Artikel. */
+      }
+    }
+    const mitnehmen = this.mitlaeuferWahl ?? [];
+    this.mitlaeuferWahl = null;
+    const alteEbenen = homeLayers(alt.relations);
     this.speichert.set(true);
     this.problem.set(null);
     this.maengel.set([]);
@@ -2745,7 +2849,52 @@ export class Artikel implements SchnellKontext {
     const nachher = ziel !== null ? this.ebenenName(ziel) : null;
     const neu = { ...basis, components, relations } as Entity;
     await this.schreibe(neu, basis, offen);
-    if (nachher !== null && !this.bearbeitet()) this.verschoben.set(nachher);
+    if (nachher !== null && !this.bearbeitet()) {
+      this.verschoben.set(nachher);
+      this.verschobenLauf.set(null);
+      /* Die gewählten Mitläufer aus der alten Ebene, als ein Lauf mit Undo. */
+      if (mitnehmen.length) {
+        try {
+          const r = await this.api.moveLayer([basis.id], ziel || null, { from: alteEbenen, include: mitnehmen });
+          this.verschoben.set(`${nachher} with ${r.moving.length} more`);
+          this.verschobenLauf.set(r.id ?? null);
+        } catch (e) {
+          this.problem.set(e instanceof ApiError ? e.message : 'The articles that go along could not be moved.');
+        }
+      }
+    }
+  }
+
+  /** „Copy…" (T-405): der Dialog, und wo das Neue danach liegt. */
+  protected readonly kopierOffen = signal(false);
+  protected readonly kopierMeldung = signal<string | null>(null);
+  protected async kopiert(r: KopierErgebnis): Promise<void> {
+    this.kopierOffen.set(false);
+    const was = r.mode === 'version' ? 'Version' : r.mode === 'variant' ? 'Variant' : 'Copy';
+    const mehr = r.created.length > 1 ? ` with ${r.created.length - 1} more` : '';
+    await this.bestand.oeffnen(r.id, true);
+    await this.router.navigate(['/artikel', r.id]);
+    this.kopierMeldung.set(r.existed ? `This campaign already has a version in ${r.layer.name} — here it is.` : `${was}${mehr} created in ${r.layer.name}.`);
+  }
+
+  /** Die Mitläufer, die im Dialog gewählt wurden (T-402); `null`: noch nicht gefragt. */
+  private mitlaeuferWahl: string[] | null = null;
+  protected readonly mitlaeuferPlan = signal<EbenenWechsel | null>(null);
+  /** Der Lauf, der die Mitläufer verschob — „Undo move" nimmt ihn zurück. */
+  protected readonly verschobenLauf = signal<string | null>(null);
+  protected async mitlaeuferLos(ids: string[]): Promise<void> {
+    this.mitlaeuferPlan.set(null);
+    this.mitlaeuferWahl = ids;
+    await this.speichern();
+  }
+  protected async verschiebenZurueck(lauf: string): Promise<void> {
+    try {
+      await this.api.undo(lauf);
+      this.verschobenLauf.set(null);
+      this.verschoben.set('back: the articles that went along are in their old layer again (the article itself: Edit › Layer)');
+    } catch (e) {
+      this.problem.set(e instanceof ApiError ? e.message : 'Could not undo the move.');
+    }
   }
 
   /**

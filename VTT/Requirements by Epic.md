@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 # Requirements by Epic
@@ -896,7 +896,7 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 ## EP-11 Oberfläche & Navigation
 
-38 Stories · 157 Punkte · 20 steht · 7 teils · 10 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+38 Stories · 157 Punkte · 21 steht · 6 teils · 10 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -958,7 +958,7 @@ Felder dort bearbeiten, wo sie stehen; optionale Felder; Löschen mit Rückfrage
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-394]] | Artikel löschen, einzeln und mehrere, mit Rückgängig | Spielleitung | 2 | 3 | teils |
+| [[REQ-394]] | Artikel löschen, einzeln und mehrere, mit Rückgängig | Spielleitung | 2 | 3 | steht |
 | [[REQ-299]] | Optionale Felder verdeckt | Spielleitung | 3 | 2 | steht |
 | [[REQ-307]] | Löschen mit Rückfrage in der Seite | Spielleitung | 3 | 1 | steht |
 

@@ -1,6 +1,289 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-reveal-sight",
+      "date": "2026-10-29",
+      "title": "Reveal what a token sees",
+      "text": "Under Fog, Reveal sight lifts the fog from what a token sees where it stands — up to the walls, and in the dark only as far as its darkvision and the lights it sees.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-free-action",
+      "date": "2026-10-29",
+      "title": "A free action with a note in the turn plan",
+      "text": "When the rules here have no tile for what you want to do, “Other action” (and bonus action, reaction, free action) takes a note of what happens. It uses its slot and shows up in the result as manual — a missing rule no longer blocks the turn.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-draw-on-maps",
+      "date": "2026-10-29",
+      "title": "Draw on the map",
+      "text": "The tool group Draw (D) sketches on the map with pen, line, rectangle and ellipse, on drawing layers of their own. A layer can be kept for the GM only; players see the others at once.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-weapons-attack",
+      "date": "2026-10-29",
+      "title": "Weapons in hand are attacks in the turn plan",
+      "text": "A character holding a weapon now finds it in the turn plan as an attack, with to-hit and damage worked out from the statblock, the weapon’s own bonus and effects. With two light weapons an off-hand attack is offered as a bonus action.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-travel-and-noticing",
+      "date": "2026-10-29",
+      "title": "Noticing on the way, draw times and travel",
+      "text": "A character moving on the map now notices hidden creatures and hidden traps its passive Perception beats, and entering a zone that does something says so. Items in a container draw one step slower than the container, and the hands name what stowing and dropping cost. A party shows day, watch and when rations and light are due, with “Wait a watch” and “Next node”.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-prepare-on-map",
+      "date": "2026-10-29",
+      "title": "Prepare an encounter on its map from the encounter",
+      "text": "Before an encounter starts, its initiative tracker has Prepare on map: the map opens with the combatants already set, hidden from the players until you press Start.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-dark-tokens",
+      "date": "2026-10-29",
+      "title": "What waits in the dark stays hidden",
+      "text": "On a dark map, players now get only the tokens their characters can see, with darkvision or in light. A creature in the dark no longer reaches their browser at all; it appears when a light or darkvision reaches it, without reloading.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-encounter-prepared",
+      "date": "2026-10-29",
+      "title": "An encounter shows its place, map and loot, and adds several foes at once",
+      "text": "An encounter can now happen at a place, like a scene, and its page shows Place, Map and Loot (with quantity and chance) as groups you can move in the view designer. In the initiative tracker, Add a combatant takes a number — four goblins become Goblin 1 to 4, each with its own row — and offers Create “…” as … for a creature or statblock that does not exist yet.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-draw-zones",
+      "date": "2026-10-29",
+      "title": "Draw zones and territories on the map",
+      "text": "The new tool group Zones (Z) draws a zone kind or a faction’s territory on the map as a rectangle, ellipse or polygon, on the floor you are on. Found reveals a hidden trap to the players at that spot; Remove takes an area off the map.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-campaign-decisions",
+      "date": "2026-10-29",
+      "title": "Every campaign decision in one list",
+      "text": "The Overview of the campaign page lists what the campaign has decided — layers, compare layers, members and every rule — each with its state and what a change does. Change opens the place where just that decision is made again.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-29-map-level-lock",
+      "date": "2026-10-29",
+      "title": "Lock the map level while zooming",
+      "text": "A lock next to Fit keeps zooming on the map you are on: no more slipping into a sub-map or out to the map above while you look closer. Breadcrumbs and frames still take you there when you click them.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-map-areas",
+      "date": "2026-10-29",
+      "title": "Zones and territories on the map",
+      "text": "Zones such as difficult terrain or magical darkness and the territories of factions now lie on the map as coloured squares on the grid, on their own floor. Players see them as far as they may and as far as the fog is lifted; a hidden trap appears for them once the GM marks it found. Areas above the map hides them.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-discard-sell",
+      "date": "2026-10-29",
+      "title": "Discard and sell right at the piece",
+      "text": "In an inventory, a picked piece now has Discard and Sell instead of Remove. Discard asks how many and takes the piece out of the game, with Undo right after. Sell lists the shops you can see with what each pays — those where the scene in play is come first — and puts the coins into the purse.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-item-features",
+      "date": "2026-10-28",
+      "title": "Enhancements and item properties are rules articles",
+      "text": "+1 Weapon, Silvered and the other magic variants are now enhancements under Rules, not items; you add them to a piece as before. Item properties such as Versatile say in a field what they do on the sheet, and a weapon’s versatile die stands on its link to the property. Item fields an enhancement has no place for are kept in its notes.",
+      "area": "Rules",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-folds-remembered",
+      "date": "2026-10-28",
+      "title": "Folded filters and registry groups are remembered",
+      "text": "Filters you open or close in the compendium and the areas, and the inherited groups you open on a type in the registry, now stand the same after reloading — kept for your account, for each page and type.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-28-encounter-stances",
+      "date": "2026-10-28",
+      "title": "Who stands where, and hints with one click",
+      "text": "A conversation encounter lists who takes part and what each thinks of the party. Under each puzzle hint the GM can press “Reveal to the party” to share just that hint. Trap and hazard encounters show their hazards as cards.",
+      "area": "Story",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-deleted-trash",
+      "date": "2026-10-28",
+      "title": "Deleted: restore within 30 days",
+      "text": "What you delete now waits 30 days in Deleted (Account › Deleted articles). Restore one article or everything from one deletion; the GM sees what others deleted too. Empty trash deletes it for good — only then do images lose their files.",
+      "area": "Articles",
+      "link": "/trash"
+    },
+    {
+      "id": "2026-10-28-statblock-rolls",
+      "date": "2026-10-28",
+      "title": "Roll skills, saves and crafting checks",
+      "text": "On a statblock, skill and saving throw bonuses and ability modifiers are now dice to click; the log says “Stealth check” or “DEX save”. Crafting has “Roll check”, which rolls with the crafter's own bonus on the server. A long rolls log now pages past the first thousand rolls.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-tracker-damage-types",
+      "date": "2026-10-28",
+      "title": "Damage types in the tracker, effects on saves and spells",
+      "text": "Damage in the initiative tracker asks for its type and counts resistances, immunities and vulnerabilities, like a confirmed turn; a concentrating combatant rolls the save at once. Effects on saving throws, spell save DC, spell attacks, checks and weapon attacks now change the sheet and the turn plan's tiles, and Unarmored Defense works as an effect.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-28-visibility-per-article-rule",
+      "date": "2026-10-28",
+      "title": "Hide one article of a shared rulebook",
+      "text": "In Articles and their layers the GM can now set the visibility of an article even when it comes from a rulebook other campaigns share: it becomes a rule of this campaign for that one article, shown as “campaign (this article)”. The book itself stays unchanged.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "visibility"
+      }
+    },
+    {
+      "id": "2026-10-28-plan-allies-terrain",
+      "date": "2026-10-28",
+      "title": "Moving through allies and difficult terrain",
+      "text": "In Plan turn a path may now pass through allies (but not stop on them), and zones of difficult terrain cost double, shown brown. The server counts the feet itself, so a path that is too long is refused.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-28-version-variant-copy",
+      "date": "2026-10-28",
+      "title": "Version, variant or copy in another layer",
+      "text": "Copy… on an article makes a version for this campaign, a variant beside it or an independent copy, in one of your layers — with its parts, statblock and inventory if you tick them. Handy for articles from a shared rulebook you cannot save.",
+      "area": "Articles",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-move-layer-followers",
+      "date": "2026-10-28",
+      "title": "Moving an article takes its parts along",
+      "text": "When you move an article to another layer, a list now asks what goes along: its parts, its own statblock, its inventory and the pieces in it — ticked when they lie in the same old layer — with where else each is linked. On the campaign page you can move a whole selection the same way, and undo it.",
+      "area": "Campaign",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-first-damage",
+      "date": "2026-10-28",
+      "title": "First damage shows at once",
+      "text": "Damage, healing or temporary hit points applied right after opening a character sheet now show straight away; before, the first change was saved but the sheet kept the old number.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-prefer-version",
+      "date": "2026-10-28",
+      "title": "Choose which version shows",
+      "text": "Where two books bring the same thing, the GM can now prefer one version — on the article under Versions or in Articles and their layers — or put a layer first for some types under Order in play (“Weapons: PHB 2024 first”). Lists and links follow; no book is changed.",
+      "area": "Campaign",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-target-big-token",
+      "date": "2026-10-28",
+      "title": "Attacks reach big tokens",
+      "text": "In Plan turn, range now counts to the nearest square a target takes up, from where your planned move ends: a huge dragon you stand next to can be hit with a 5 ft attack. If a target is out of range, the planner says so instead of ignoring the tap.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-28-characters-per-campaign",
+      "date": "2026-10-28",
+      "title": "Characters per campaign",
+      "text": "A character given to an account now belongs to it in that campaign only. In a new campaign you no longer find the characters of your other tables as yours; under Campaign › Members each campaign lists and gives its own.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-28-default-columns",
+      "date": "2026-10-28",
+      "title": "Lists show what a thing is",
+      "text": "Places, factions, quests, scenes, events, stories, arcs, parties, maps, recipes and crafting orders now bring their own columns to the Compendium and the areas: a quest shows progress and reward, a place its type and environment, an event its kind and date. Your own column choice stays; “Reset to default” goes back to these.",
+      "area": "Compendium",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-28-section-bar",
+      "date": "2026-10-28",
+      "title": "Expand all, collapse all, next section — on more pages",
+      "text": "The bar from the Layers tab now also stands above the filters of the Compendium and the areas, above the chapters of an article (Expand all opens Admin and Log, and the article page keeps them so for your account), on a type in the Registry (all inherited types at once) and in long steps of the character assistant. Alt+↑/↓ jumps, with Shift it collapses or expands all.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-28-size-effects-choose",
+      "date": "2026-10-28",
+      "title": "Overlapping size effects: you choose",
+      "text": "When Enlarged and Reduced (or any two size effects) are on a creature at once, they no longer add up: the latest applies, and the GM picks at the token which one counts. Size conditions in the initiative with a duration now change the token too, and its size falls back when they run out.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-running-campaign",
+      "date": "2026-10-28",
+      "title": "Campaign page and header agree",
+      "text": "The campaign page opens on the running campaign and follows when it is switched in the header; Boards follow too. A new campaign can be picked in the header at once, and the admin can make the shown campaign the running one from its Overview.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-28-expertise-proficient",
+      "date": "2026-10-28",
+      "title": "Expertise only where you are proficient",
+      "text": "In the character assistant an expertise choice offers only skills and tools the character is already proficient in, earlier picks of the same step included; the others are locked and say “not proficient yet”. A choice can switch this off in its data.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-open-choices",
+      "date": "2026-10-28",
+      "title": "Open choices keep a character an idea",
+      "text": "A character can only be set to prepared or ready once every choice of its ancestry, background, class and granted features is made; the message names what is left to decide. Equipment may still wait.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-partner-official",
+      "date": "2026-10-28",
+      "title": "Partner books are Official",
+      "text": "Books made with partners of Wizards of the Coast (Critical Role, Rick and Morty, LEGO …) now show Official as their publisher, as on D&D Beyond. The group Partnered stays as a category, so you can still find them.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-28-designer-phone",
+      "date": "2026-10-28",
+      "title": "Designing a view on a phone",
+      "text": "On a phone, Design this view now opens the designer in its Design tab instead of a sheet that covered Edit and the view bar.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
       "id": "2026-10-28-steps",
       "date": "2026-10-28",
       "title": "Guided creation in steps",

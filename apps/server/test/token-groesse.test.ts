@@ -85,3 +85,41 @@ describe('Token-Grösse im Kartenkontext (T-390)', () => {
     expect(k.targets['sb_drache']).toMatchObject({ size: 'large', baseSize: 'huge', sizeFrom: 'effects', sizeVia: ['Reduced'] });
   });
 });
+
+/* E-164, T-428: überlappende Grössen-Zustände — die Leitung wählt am Token. */
+describe('überlappende Grössen-Zustände (T-428)', () => {
+  /* Brakka: Enlarged an Vitals, dazu Reduced in der Begegnung — als Eintrag
+     mit Dauer, wie ihn der Tracker schreibt ({rule, rounds}). */
+  const mitKampf = (sizeSource?: string): Entity[] => {
+    const alle = bestand(false).map((e) =>
+      e.id !== 'map_1'
+        ? e
+        : { ...e, relations: (e.relations ?? []).map((r) => (r.id === 'mk_zwerg' && sizeSource ? { ...r, props: { ...r.props, sizeSource } } : r)) },
+    );
+    alle.push({ id: 'enc_2', name: 'Im Hort', interfaces: ['Encounter'], components: { ...ident('Im Hort', 'encounter-0002'), Encounter: { round: 1, turn: 0 } },
+      relations: [im('enc_2'), { id: 'enc_2_om', type: 'onMap', to: 'map_1', props: {} },
+        { id: 'enc_2_zwerg', type: 'participates', to: 'cr_zwerg', props: { initiative: 12, conditions: [{ rule: 'cond_klein', rounds: 3 }] } }] });
+    return alle;
+  };
+  const mit = (sizeSource?: string) =>
+    tisch({ artikel: mitKampf(sizeSource), kampagne: 'camp_a', konten: { Gwen: { roles: { camp_a: 'gm' } }, Sela: { roles: { camp_a: 'player' } } } });
+  type Wahl = Ziel & { sizePassed?: string[]; sizeChoice?: { options: { id: string; name: string }[]; chosen: string | null } };
+
+  it('ohne Wahl: keine Summe, der zuletzt hinzugekommene gilt (Reduced aus der Initiative, mit Dauer)', async () => {
+    const t = await mit();
+    const k = await t.json<{ targets: Record<string, Wahl> }>('Gwen', 'GET', '/api/maps/map_1/context');
+    expect(k.targets['cr_zwerg']).toMatchObject({ size: 'small', baseSize: 'medium', sizeFrom: 'effects', sizeVia: ['Reduced'], sizePassed: ['Enlarged'] });
+    expect(k.targets['cr_zwerg']?.sizeChoice).toEqual({ options: [{ id: 'cond_gross', name: 'Enlarged' }, { id: 'cond_klein', name: 'Reduced' }], chosen: null });
+  });
+
+  it('die Wahl am Token gilt, und Spielende sehen die Grösse ohne Namen und ohne Wahl', async () => {
+    const t = await mit('cond_gross');
+    const k = await t.json<{ targets: Record<string, Wahl> }>('Gwen', 'GET', '/api/maps/map_1/context');
+    expect(k.targets['cr_zwerg']).toMatchObject({ size: 'large', sizeVia: ['Enlarged'], sizePassed: ['Reduced'], sizeChoice: { chosen: 'cond_gross' } });
+    const s = await t.json<{ targets: Record<string, Wahl> }>('Sela', 'GET', '/api/maps/map_1/context');
+    expect(s.targets['cr_zwerg']).toMatchObject({ size: 'large', sizeFrom: 'effects' });
+    expect(s.targets['cr_zwerg']?.sizeVia).toBeUndefined();
+    expect(s.targets['cr_zwerg']?.sizePassed).toBeUndefined();
+    expect(s.targets['cr_zwerg']?.sizeChoice).toBeUndefined();
+  });
+});

@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, effect, forwardRef, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { nextMark } from '@nw/model';
+import { nextMark, rollText, type RollEntry } from '@nw/model';
 import { Api, ApiError, type Handwerk, type HandwerkAuftrag, type HandwerkKreis, type HandwerkMaterialwahl, type HandwerkUebersicht } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
@@ -224,7 +224,12 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
               <button type="button" class="abschluss" (click)="tu('finish')" [disabled]="laeuft()">{{ abschluss(o.settle) }}</button>
             }
             @if (o.may.roll) {
-              <label>Check total <input type="number" [value]="summe()" (input)="summe.set($any($event.target).value)" aria-label="Check total" /></label>
+              <!-- Am Server würfeln (T-181): W20 plus der Bonus der Figur aus ihrem Statblock. -->
+              <button type="button" class="wurf" (click)="wirf()" [disabled]="laeuft()" title="Rolls a d20 plus the crafter's bonus on the server; saved in the rolls log">Roll check</button>
+              @if (letzterWurf()) {
+                <output class="ergebnis">{{ letzterWurf() }}</output>
+              }
+              <label>or enter a total <input type="number" [value]="summe()" (input)="summe.set($any($event.target).value)" aria-label="Check total" /></label>
               <label>d20
                 <select [value]="nat()" (change)="nat.set($any($event.target).value)" aria-label="Natural roll">
                   <option value="">—</option>
@@ -321,6 +326,7 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
     .reserviert small { margin-left: .2rem; }
     .ausgang { margin-left: .5rem; font-size: .85em; padding: 0 .4rem; border: 1px solid var(--rule); border-radius: .6rem; }
     .aktionen input { width: 5rem; margin-left: .3rem; }
+    .aktionen .ergebnis { font-weight: 600; font-variant-numeric: tabular-nums; }
     .fehler { color: var(--warn, #a33); }
   `,
 })
@@ -341,6 +347,8 @@ export class Werkstatt {
   protected readonly menge = signal<Record<string, number>>({});
   protected readonly summe = signal('');
   protected readonly nat = signal('');
+  /** Der letzte Wurf am Server (T-181), wie er im Log steht. */
+  protected readonly letzterWurf = signal('');
   protected readonly rueck = signal('none');
   private lauf = 0;
 
@@ -471,6 +479,16 @@ export class Werkstatt {
       const { id } = await this.api.startCrafting(s.recipe.id, w.actor.id, materials);
       this.wahl.set(null);
       await this.router.navigate(['/artikel', id]);
+    });
+  }
+
+  /** **Am Server würfeln** (T-181): der Server nimmt den Bonus der Figur und setzt den Kreis. */
+  protected async wirf(): Promise<void> {
+    this.letzterWurf.set('');
+    await this.schreibe(async () => {
+      const r = (await this.api.craftingAction(this.id(), 'roll', { roll: true })) as { roll?: RollEntry };
+      if (r.roll) this.letzterWurf.set(rollText(r.roll));
+      await this.holen(this.id());
     });
   }
 

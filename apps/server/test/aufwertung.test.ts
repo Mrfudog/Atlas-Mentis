@@ -36,9 +36,10 @@ function bestand(itemPricing?: string, enhancementsBy?: string): Entity[] {
       relations: [{ id: 'a1', type: 'activates', to: 'ly_nebel', props: { order: 5 } }],
     },
     art('dagger', 'Weapon', 'Dagger', { Item: { itemType: 'melee weapon', copperPrice: 200 }, Weapon: { category: 'simple', damage: '1d4' } }),
-    art('plus1', 'Item', '+1 Weapon', { Item: { appliesTo: ['weapon'], namePrefix: '+1 ', rarity: 'uncommon', bonusWeapon: 1, priceAdd: 100000 } }),
-    art('silvered', 'Item', 'Silvered Weapon', { Item: { appliesTo: ['weapon'], namePrefix: 'Silvered ', priceAdd: 10000 } }),
-    art('adamant', 'Item', 'Adamantine Armor', { Item: { appliesTo: ['armor'], nameSuffix: ' (adamantine)' } }),
+    /* Seit T-324 (E-163) Regelartikel der Art Enhancement. */
+    art('plus1', 'Enhancement', '+1 Weapon', { ItemFeature: { appliesTo: ['weapon'], namePrefix: '+1 ', priceAdd: 100000 }, Enhancement: { rarity: 'uncommon', bonusWeapon: 1 } }),
+    art('silvered', 'Enhancement', 'Silvered Weapon', { ItemFeature: { appliesTo: ['weapon'], namePrefix: 'Silvered ', priceAdd: 10000 } }),
+    art('adamant', 'Enhancement', 'Adamantine Armor', { ItemFeature: { appliesTo: ['armor'], nameSuffix: ' (adamantine)' } }),
     art('pc_1', 'PlayerCharacter', 'Rook', {}, [{ id: 'pc_1~c', type: 'carries', to: 'inv_1', props: {} }]),
     art('inv_1', 'Inventory', 'Rooks Gepäck', {}, [{ id: 'inv_1~h', type: 'holds', to: 'st_1', props: { qty: 1 } }]),
     {

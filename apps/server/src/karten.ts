@@ -29,6 +29,7 @@ import {
   statblockSize,
   creatureSize,
   creatureSizeEffects,
+  entryConditions,
   sizeWithEffects,
   type SizeEffects,
   assetVersion,
@@ -94,6 +95,10 @@ import {
   mapKindOf,
   mapToolsOf,
   type MapToolGroup,
+  type TimedEntry,
+  isAreaRelation,
+  zoneRuleSummary,
+  type ZoneRuleSummary,
 } from '@nw/model';
 import type { Repository } from './repo.js';
 import { darfZiehen, plaeneDerKarte, zieher } from './zugplan.js';
@@ -142,6 +147,14 @@ export interface MarkerZiel {
   sizeFrom?: 'statblock' | 'effects';
   /** Die Quellen der Grössen-Wirkungen (Namen), nur für die Leitung. */
   sizeVia?: string[];
+  /** Überlappen sich Grössen-Zustände (T-428): die übergangenen (Namen), nur für die Leitung. */
+  sizePassed?: string[];
+  /**
+   * Überlappen sich Grössen-Zustände (T-428, E-164): zwischen welchen die
+   * Leitung am Token wählt, und welcher gewählt ist (`null`: keiner, dann
+   * gilt der zuletzt hinzugekommene). Nur für die Leitung.
+   */
+  sizeChoice?: { options: { id: string; name: string }[]; chosen: string | null };
   /** Wie Artikel dieser Art als Marker stehen (`InterfaceDef.markerView`, T-214); fehlt: die Art sagt nichts. */
   view?: MarkerView;
 }
@@ -211,6 +224,13 @@ export interface KartenKontext {
   /** Die Sitzung einer Karte im Spiel, deren Schalter gilt; sonst `null`. */
   session: string | null;
   targets: Record<string, MarkerZiel>;
+  /**
+   * **Wem die Flächen gelten** (T-219): je Ziel einer Kante `zone` oder
+   * `territory` der Name und bei einer Zonenart, was ihre Regel sagt
+   * (`zoneRuleSummary`) — genug zum Färben und Beschriften. Nur, was der
+   * Betrachter sieht; die Kanten selbst hat `redactMap` schon gesiebt.
+   */
+  areas: Record<string, { name: string; type: string; rule?: ZoneRuleSummary }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /**
    * Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist
@@ -471,14 +491,21 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const kampfZustaende = new Map<string, string[]>();
     for (const r of (kampfFuerGroesse ? resolvePlay(stand.map, kampfFuerGroesse) : null)?.relations ?? []) {
       const c = (r.props as { conditions?: unknown } | undefined)?.conditions;
-      if (r.type === 'participates' && Array.isArray(c)) kampfZustaende.set(r.to, c.filter((x): x is string => typeof x === 'string'));
+      /* Die Einträge stehen als {rule, rounds} da, wie der Tracker sie
+         schreibt (D53) — mit Dauer, die er herunterzählt; ältere als Id. */
+      if (r.type === 'participates' && Array.isArray(c)) {
+        kampfZustaende.set(r.to, [...c.filter((x): x is string => typeof x === 'string'), ...entryConditions(c.filter((x): x is TimedEntry => !!x && typeof x === 'object'))]);
+      }
     }
     const groessenWirkung = new Map<string, SizeEffects>();
     for (const z of ziele) {
       const roh = stand.map.get(z.id);
       if (!roh) continue;
-      const fx = creatureSizeEffects(roh, stand.map, kampfZustaende.has(z.id) ? { conditions: kampfZustaende.get(z.id)! } : {});
-      if (fx.set || fx.steps) groessenWirkung.set(z.id, fx);
+      /* Welcher von mehreren gilt, steht am Token (T-428); stehen zwei
+         Tokens derselben Kreatur auf der Karte, zählt das erste mit Wahl. */
+      const wahl = markersOf(karte).find((m) => m.to === z.id && typeof m.rel.props?.['sizeSource'] === 'string')?.rel.props?.['sizeSource'] as string | undefined;
+      const fx = creatureSizeEffects(roh, stand.map, { ...(kampfZustaende.has(z.id) ? { conditions: kampfZustaende.get(z.id)! } : {}), ...(wahl ? { sizeSource: wahl } : {}) });
+      if (fx.set || fx.steps || fx.options) groessenWirkung.set(z.id, fx);
     }
     const targets: Record<string, MarkerZiel> = {};
     for (const z of ziele) {
@@ -583,12 +610,19 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       if (dv > 0) darkvision[m.to] = dv;
     }
     const lights = carriedLights(stand.map, karte);
+    /* Die Ziele der Flächen (T-219), einmal gesiebt. */
+    const flaechenZiele = [...new Set((karte.relations ?? []).filter(isAreaRelation).map((r) => r.to))].flatMap((id) => stand.map.get(id) ?? []);
+    const areas: KartenKontext['areas'] = {};
+    for (const z of await sieve(request, flaechenZiele, stand.map)) {
+      const type = primaryInterface(z);
+      areas[z.id] = { name: entityName(z), type, ...(type === 'ZoneKind' ? { rule: zoneRuleSummary(z) } : {}) };
+    }
     /* Ein gehobener Marker, dessen Ziel der Betrachter nicht sieht, steht nicht da — das Sieb der Ziele sagt es. */
     const liftedGesehen = lifted.flatMap((g) => {
       const k = keepLifted(g, (m) => !!targets[m.to]);
       return k ? [{ ...k, name: g.name }] : [];
     });
-    return { parents, children: kinder, lifted: liftedGesehen, ...(toPlace ? { toPlace } : {}), up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], kindMarkerView: kindMarkerViewOf(kampagne, mapKindOf(roheKarte)), own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
+    return { parents, children: kinder, lifted: liftedGesehen, ...(toPlace ? { toPlace } : {}), up, outer, ...(leitetKarte ? { linkDefaults: vorgaben } : {}), navigation, mapNavigation: erlaubt, session: spielSitzung, targets, areas, party, turn, combatants, rules, tools: [...mapToolsOf(kampagne, mapKindOf(roheKarte))], kindMarkerView: kindMarkerViewOf(kampagne, mapKindOf(roheKarte)), own, movable, movableAssets, campaign: kampagne?.id ?? null, proposals, darkvision, lights, passageRules: passageRulesOf(kampagne) } satisfies KartenKontext;
   });
 
   /**
@@ -732,14 +766,25 @@ function groesseFuer(
   fx: SizeEffects | undefined,
   leitung: boolean,
   bestand: ReadonlyMap<string, Entity>,
-): Pick<MarkerZiel, 'size' | 'baseSize' | 'sizeFrom' | 'sizeVia'> {
+): Pick<MarkerZiel, 'size' | 'baseSize' | 'sizeFrom' | 'sizeVia' | 'sizePassed' | 'sizeChoice'> {
+  const name = (id: string) => entityName(bestand.get(id)) || id;
+  /* Die Wahl zwischen überlappenden Zuständen (T-428) bekommt die Leitung
+     auch dann, wenn der gewählte die Grösse gerade nicht ändert. */
+  const wahl =
+    leitung && fx?.options
+      ? {
+          sizePassed: (fx.passed ?? []).map(name),
+          sizeChoice: { options: fx.options.map((id) => ({ id, name: name(id) })), chosen: fx.chosen ? fx.sources[0]! : null },
+        }
+      : {};
   const g = sizeWithEffects(basis, fx);
-  if (!g) return basis ? { size: basis, sizeFrom: 'statblock' } : {};
-  if (!fx || g === creatureSize(basis)) return { size: g, sizeFrom: 'statblock' };
+  if (!g) return basis ? { size: basis, sizeFrom: 'statblock', ...wahl } : { ...wahl };
+  if (!fx || g === creatureSize(basis)) return { size: g, sizeFrom: 'statblock', ...wahl };
   return {
     size: g,
     ...(basis ? { baseSize: basis } : {}),
     sizeFrom: 'effects',
-    ...(leitung ? { sizeVia: fx.sources.map((id) => entityName(bestand.get(id)) || id) } : {}),
+    ...(leitung ? { sizeVia: fx.sources.map(name) } : {}),
+    ...wahl,
   };
 }

@@ -439,6 +439,7 @@ export class InMemoryRepository implements Repository {
     this.users.set(user.id, {
       ...user,
       actorIds: [...(user.actorIds ?? [])],
+      actorCampaigns: Object.fromEntries(Object.entries(user.actorCampaigns ?? {}).filter(([a]) => (user.actorIds ?? []).includes(a))),
       roles: { ...(user.roles ?? {}) },
       /* Wie in Postgres: was jemand angelegt hat, schreibt `putUser` nicht —
          und die Ebenen auch nicht (die stehen in `ebenenRechte`). */
@@ -553,6 +554,7 @@ export class InMemoryRepository implements Repository {
       .map(({ passwordHash: _hash, ...rest }) => ({
         ...rest,
         actorIds: [...rest.actorIds],
+        actorCampaigns: { ...(rest.actorCampaigns ?? {}) },
         roles: { ...(rest.roles ?? {}) },
       }));
   }

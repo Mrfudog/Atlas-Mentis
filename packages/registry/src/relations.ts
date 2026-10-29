@@ -454,7 +454,12 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
-  /** Weapon properties are pooled rules, referenced rather than copied. */
+  /**
+   * Weapon properties are pooled rules, referenced rather than copied.
+   * **Was bei diesem Gegenstand gilt, steht an der Kante** (T-324, E-163):
+   * Versatile ist eine Regel, 1d10 ist die des Langschwerts; Thrown eine,
+   * 20/60 die des Dolchs — wie `composedOf` am Statblock.
+   */
   hasProperty: {
     type: 'hasProperty',
     label: 'has property',
@@ -462,6 +467,14 @@ export const relations: Record<string, RelationDef> = {
     means: 'A weapon, armour or item has a property (finesse, heavy); the property lists the items that have it.',
     from: ['Weapon', 'Item', 'Armor'],
     to: ['ItemProperty'],
+    props: {
+      type: 'object',
+      properties: {
+        damage: { type: 'string', title: 'Damage', description: 'The damage this property gives here, such as 1d10 for versatile.' },
+        range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range', description: 'The range this property gives here, such as 20/60 for thrown.' },
+        note: { type: 'string', title: 'Only here' },
+      },
+    },
   },
 
   /**
@@ -475,7 +488,8 @@ export const relations: Record<string, RelationDef> = {
     inverseLabel: 'enhances',
     means: 'A piece of an item carries an enhancement such as +1 Weapon or Silvered; its name, price and bonuses are worked out from both.',
     from: ['Item'],
-    to: ['Item'],
+    /* Seit T-324 (E-163) ein Regelartikel und kein Gegenstand mehr. */
+    to: ['Enhancement'],
   },
 
   /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
@@ -890,12 +904,14 @@ export const relations: Record<string, RelationDef> = {
     to: ['*'],
   },
 
+  /* Seit T-333 auch die Begegnung: der Ort, an dem sie vorbereitet ist —
+     unabhängig davon, ob Szene und Begegnung eins werden (E-118). */
   happensAt: {
     type: 'happensAt',
     label: 'happens at',
-    inverseLabel: 'scenes here',
-    means: 'A story happens at a place; the place lists the scenes there.',
-    from: ['Story'],
+    inverseLabel: 'scenes and encounters here',
+    means: 'A story or encounter happens at a place; the place lists the scenes and encounters there.',
+    from: ['Story', 'Encounter'],
     to: ['Place'],
   },
 
@@ -1057,6 +1073,11 @@ export const relations: Record<string, RelationDef> = {
           default: 'static',
         },
         size: { type: 'number', title: 'Size in squares', default: 1 },
+        /* Welcher Grössen-Zustand gilt, wenn sich mehrere überlappen
+           (T-428, E-164): die Id der Quelle. An der Kante, weil es eine
+           Wahl der Leitung an diesem Token ist; leer: der zuletzt
+           hinzugekommene. */
+        sizeSource: { type: 'string', title: 'Size effect that applies' },
         /* Gedreht wird an der Kante und nicht am Bild: dasselbe Fass steht
            auf einer Karte quer und auf der nächsten längs, und ein
            gedrehtes Bild als eigenes Asset wäre ein zweites Fass. */
@@ -1141,7 +1162,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'zone',
     inverseLabel: 'lies on',
     means: 'A map has a zone of a kind (difficult terrain, darkness); the zone kind lists where it lies.',
-    intended: 'Draw on the map screen and count it: a zone should change movement and sight where it lies.',
     from: ['Map'],
     to: ['ZoneKind'],
     props: {
@@ -1157,10 +1177,16 @@ export const relations: Record<string, RelationDef> = {
         y: { type: 'number', title: 'Y (0–1)' },
         w: { type: 'number', title: 'Width (0–1)' },
         h: { type: 'number', title: 'Height (0–1)' },
+        /* Kreis und Vieleck wie an `territory` (T-219): `shapeOf` las sie
+           schon, das Schema nannte sie nicht. */
+        r: { type: 'number', title: 'Radius (0–1)' },
+        pts: { type: 'array', title: 'Points' },
         /* Eine Zone mit `hiddenUntil` ist versteckt, bis jemand sie
            bemerkt; dann steht hier, dass sie es nicht mehr ist. */
         found: { type: 'boolean', title: 'Found' },
         note: { type: 'string', title: 'Note' },
+        /* Die Ebene, auf der sie liegt (T-219, wie am Marker); leer: das Erdgeschoss. */
+        floor: { type: 'string', title: 'Floor' },
       },
     },
   },
@@ -1176,7 +1202,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'territory',
     inverseLabel: 'holds ground on',
     means: 'A map shows an article’s territory as a shape; the article lists where it holds ground.',
-    intended: 'Draw on the map screen: the shape in its colour over the map.',
     from: ['Map'],
     to: ['*'],
     props: {
@@ -1196,6 +1221,8 @@ export const relations: Record<string, RelationDef> = {
         pts: { type: 'array', title: 'Points' },
         color: { type: 'string', format: 'color', title: 'Colour' },
         opacity: { type: 'number', title: 'Opacity', default: 0.18 },
+        /* Die Ebene, auf der es liegt (T-219, wie am Marker); leer: das Erdgeschoss. */
+        floor: { type: 'string', title: 'Floor' },
       },
     },
   },
@@ -1527,6 +1554,49 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /**
+   * **Ein System erweitert ein anderes** (E-100, T-132 Schritt 2): es gilt
+   * nur zusammen mit ihm — Default shapes auf Grid oder Slots, Basils
+   * Handwerk auf Kibbles; eine von mehreren Grundlagen genügt
+   * (`mechanicSelection`). `mode: 'overrides'` heisst: bei Gleichstand
+   * gewinnt die Erweiterung. Sie verträgt sich mit allem, womit ihre
+   * Grundlage sich verträgt.
+   */
+  extendsMechanic: {
+    type: 'extendsMechanic',
+    label: 'extends',
+    inverseLabel: 'extended by',
+    means: 'A rule mechanic builds on another and only applies together with it, such as default shapes on the grid inventory; with “overrides” it wins where both say something.',
+    from: ['RuleMechanic'],
+    to: ['RuleMechanic'],
+    cardinality: 'many',
+    props: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', title: 'How', enum: ['extends', 'overrides'], description: 'Extends adds to the base; overrides also wins where both say something.' },
+      },
+    },
+  },
+
+  /**
+   * **Ein System schliesst ein anderes aus** (E-100): Kibbles und das
+   * Handwerk aus D&D 5e. Einmal gespeichert, gilt in beide Richtungen;
+   * von beiden gilt das höhere im Stapel (E-091), das tiefere wird nicht
+   * angezeigt (E-094). Im selben Modul schliesst sich ohnehin aus, was
+   * keine Kante verbindet — die Kante braucht es dort, wo das nicht reicht:
+   * über Modulgrenzen, oder gegen eine Verträglichkeit, die eine
+   * Grundlage mitbrächte.
+   */
+  excludesMechanic: {
+    type: 'excludesMechanic',
+    label: 'excludes',
+    inverseLabel: 'excluded by',
+    means: 'Two rule mechanics never apply together in a campaign; stored once, it reads both ways, and the higher one in the stack wins.',
+    from: ['RuleMechanic'],
+    to: ['RuleMechanic'],
+    cardinality: 'many',
+  },
+
+  /**
    * Wozu ein Artikel gehört (REQ-005). Ohne diese Kante gehört er der
    * Kampagne selbst und ist immer da — das ist der Normalfall und soll
    * keine Zeile kosten.
@@ -1643,6 +1713,29 @@ export const relations: Record<string, RelationDef> = {
     means: 'A campaign puts a single article in play although its layer is not; the article lists the campaigns that enabled it.',
     from: ['Campaign'],
     to: ['*'],
+  },
+
+  /**
+   * **Vorrang an der Kampagne** (T-403, E-111 a): welche Fassung derselben
+   * Sache Listen und Verweise zeigen, wenn mehrere Ebenen sie bringen — ein
+   * Artikel („Prefer this version") oder eine Ebene für einzelne Arten
+   * („Weapons: PHB 2024 first"). `over` nennt, worüber; ohne: über alles.
+   * Kein Buch wird beschrieben; ins Spiel bringt der Vorrang nichts.
+   */
+  prefers: {
+    type: 'prefers',
+    label: 'Prefers',
+    inverseLabel: 'Preferred in',
+    means: 'A campaign shows this version first among the versions of the same thing — a single article, or a layer for some types; the article or layer lists the campaigns that prefer it.',
+    from: ['Campaign'],
+    to: ['*'],
+    props: {
+      type: 'object',
+      properties: {
+        over: { type: 'string', title: 'Over' },
+        types: { type: 'array', items: { type: 'string' }, title: 'Types' },
+      },
+    },
   },
 
   /**

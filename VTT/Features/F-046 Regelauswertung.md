@@ -64,3 +64,91 @@ flowchart LR
   `feet`.
 - Die Zustandsartikel auf dev: Protokoll
   `docs/Nachtarbeit/2026-10-21-T-351.md`.
+
+## Verbündete und schwieriges Gelände im Zugplan (T-349)
+
+Stand 28.10.2026. Der Weg im Zugplan geht **durch Verbündete**, endet aber
+nicht auf ihnen, und **schwieriges Gelände** aus den Zonen der Karte
+(`ZoneKind.moveCost`, 2 = doppelt) kostet je Feld mehr. Die Maske zeigt
+solche Felder im Bereich braun. Der Server zählt die Fuss eines
+eingereichten Wegs selbst und lehnt einen zu langen ab — was die Maske
+behauptet, zählt nicht.
+
+```mermaid
+flowchart LR
+  K[Karte: Marker, Wände, Zonen] --> D[planDurchlass: passable + terrain]
+  D --> G[planGrid: blocked · noStop · cost]
+  G --> M[Maske: Bereich und Weg]
+  M -->|Weg| S[Server: wegeNachrechnen / pathFeet]
+  S --> B{planBudget}
+  B -->|zu weit oder blockiert| X[422]
+  B -->|passt| P[Plan mit den Fuss des Servers]
+```
+
+- Wer verbündet ist: `seiteVon` am Server (Gruppe, Spielerfiguren,
+  `ally` an der Begegnung), mitgeschickt als `passable` (Markerkanten).
+- Gelände: `mapTerrain` und `terrainCosts` (`packages/model/src/zugplan.ts`);
+  eine versteckte Zone (`hiddenUntil`) zählt für Spielende erst, wenn sie
+  gefunden ist.
+- Nachrechnen: `pathFeet` (`packages/model/src/movement.ts`) — Schritt für
+  Schritt, mit Wänden, Gegnern und dem Ende nicht auf einem Verbündeten.
+- Grundlinie und Prüfschritte: [docs/Regelwirkung.md](../../docs/Regelwirkung.md) › Punkt 6.
+
+## Schaden im Tracker, Wirkungen an Bogen und Kacheln (T-355)
+
+Stand 28.10.2026. **Ein Treffer, eine Rechnung:** `damageAtTable` zieht
+für Zugplan und Tracker nach der Abwehr ab (immun 0, resistent halb,
+verwundbar doppelt), eine Spielerfigur an `Vitals` (zeitweilige zuerst),
+die Teilnehmerkante spiegelt den Stand. Konzentriert sich das Ziel,
+würfelt der Server die Probe ins Log (E-128, Variante A). Im Tracker
+fragt „Damage" nach der Art.
+
+```mermaid
+flowchart LR
+  Z[Zugplan: Treffer bestätigt] --> D[damageAtTable]
+  T[Tracker: Damage + Art] --> D
+  D -->|Abwehr| A[Betrag]
+  A --> V[Vitals der Spielerfigur]
+  A --> K[Teilnehmerkante]
+  V -.spiegelt.-> K
+  D -->|konzentriert| P[Probe 1d20 + KON-Rettung ins Log]
+  P -->|misslungen| C[Vitals.concentration leer]
+```
+
+**Gesammelte Wirkungen wirken:** `save`/`save.<attr>` an den
+Rettungswürfen, `spellSaveDc` und `spellAttack` am Bogen, `check` in der
+passiven Wahrnehmung und den Proben, `spellAttack`/`spellDamage` und
+`weapon.*` in den Kacheln. **Unarmored Defense** ist eine Wirkung
+`ac.base` (Formel `10 + mod(dex) + mod(con)`), für den Mönch
+`ac.base.noShield`. Offen: `carry` (Bedeutung des Werts) und Boni, die an
+der Waffe selbst stehen.
+
+## Waffen in der Hand sind Angriffe (T-354)
+
+Stand 29.10.2026. Ein Statblock nennt seine Angriffe als Aktionen; eine
+Spielerfigur hat ihren Angriff **in der Hand**. Jede Waffe in der Hand
+(`carries` → Inventar → `holds` mit Handplatz) ist im Zugplan eine
+Angriffskachel (`heldWeaponTiles`, `weapons.ts`), gerechnet wie jeder
+Angriff: Übung nur geübt (Waffengruppe oder Waffe), Finesse das bessere
+Attribut, vielseitig mit beiden Händen der grössere Würfel, die Wirkungen
+der Figur und **die der Waffe selbst** (`when: self`, die +1-Waffe). Zwei
+leichte Nahkampfwaffen geben den Nebenhand-Angriff als Bonusaktion, ohne
+positiven Mod beim Schaden. Nennt der Statblock schon eine Aktion mit
+demselben Namen, kommt die Waffe nicht doppelt.
+
+```mermaid
+flowchart LR
+  I[Inventar: holds mit Handplatz] --> W[heldWeapons]
+  W --> T[weaponTile<br/>attackNumbers]
+  S[Statblock: Übung, STR/DEX] --> T
+  E[Wirkungen der Figur + when: self] --> T
+  T --> K[Kachel im Zugplan]
+  K -->|bestätigt| D[damageAtTable]
+```
+
+Offen (Entscheid E-206): die Rechnungen als Automationen, Leser für die
+Kanten `affects`, `loot`, `entry`, `route`, `territory`, `inWorld`.
+
+## Freie Aktion mit Notiz (T-453, REQ-403)
+
+Stand 29.10.2026. Die Aktionsleiste hat je Platz eine Kachel „Other …“: sie fragt nach einer Notiz, verbraucht ihren Platz und prüft keine Regel; im Ergebnis steht sie als „manual“ (`manual: true`). So blockiert eine fehlende Regel den Zug nicht. Offen (Teil 2): Wirkungen von Hand, Ergebnisse überschreiben, Filter „manual“.

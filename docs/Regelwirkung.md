@@ -20,18 +20,18 @@ zu entstehen.
 
 | # | Lücke aus dem Katalog | Stand | Wo | Test „wirkt am Tisch" |
 |---|---|---|---|---|
-| 1 | Wirkungen gesammelt, nicht angewandt; RK nur gespeichert | **wirkt** | `characterStats`, `creatureStats` (`stats.ts`), `effectsAt`/`itemsAt` (`effects.ts`); Initiative `participantStats`, Zugplan `rkVon` | `packages/model/test/regelwirkung.test.ts` › Punkt 1 |
-| 2 | Schaden nicht von den TP abgezogen, Konzentration nur angezeigt | **wirkt** (Zugplan; der Tracker zieht weiter von Hand ab) | `damageAfterDefenses`, `concentrationCheck` (`damage.ts`); Server `schadenAnwenden` (`zugplan.ts`) | `apps/server/test/regelwirkung.test.ts` › Punkt 2, `regelwirkung.test.ts` › Punkt 2 |
+| 1 | Wirkungen gesammelt, nicht angewandt; RK nur gespeichert | **wirkt** | `characterStats`, `creatureStats` (`stats.ts`), `effectsAt`/`itemsAt` (`effects.ts`); Initiative `participantStats`, Zugplan `rkVon` | `packages/model/test/regelwirkung.test.ts` › Punkt 1, `wirkungen-anwenden.test.ts` (Rettungswürfe, Zauber-SG, Kacheln, Unarmored Defense, T-355), Server `wirkungen-am-tisch.test.ts` |
+| 2 | Schaden nicht von den TP abgezogen, Konzentration nur angezeigt | **wirkt** (Zugplan und Tracker, eine Rechnung `damageAtTable`, T-355) | `damageAtTable`, `damageAfterDefenses`, `concentrationCheck` (`damage.ts`), `trackerDamage` (`tracker.ts`); Server `schadenAnwenden` (`zugplan.ts`), `schadenImTracker` (`initiative.ts`) | `apps/server/test/regelwirkung.test.ts` › Punkt 2, `regelwirkung.test.ts` › Punkt 2, `tracker-schaden.test.ts`, `schaden-am-tisch.test.ts`, E2E `tracker-schaden.spec.ts` |
 | 3 | Zwei Aktionskataloge, zwei Kostenleser; nur Dash/Disengage wirken | **eine Quelle**; Dodge, Help, Hide wirken (Vorteil/Nachteil), Ready als Eintrag | `COMMON_ACTION_CATALOGUE`, `turnTypeOf`/`costOf` (`actions.ts`); Server `aktionWirkt`, `trefferWurf` | `apps/server/test/regelwirkung.test.ts` › Punkt 3, `regelwirkung.test.ts` › Punkt 3 |
 | 4 | Zwei Übungsbonus-Formeln | **eine Quelle** | `proficiencyBonus` (`calc.ts`), Register `profBonus(hasClass.level)` | `regelwirkung.test.ts` › Punkt 4 |
 | 5 | Passive Wahrnehmung ohne Übung/Expertise | **wirkt** | `checkBonus` (`calc.ts`), Register `10+check(wis.Perception)`, Bogen `passivePerception` | `regelwirkung.test.ts` › Punkt 5 |
-| 6 | Zugraster sperrt Verbündete, kein schwieriges Gelände | Folgeaufgabe | — | — |
-| 7 | drawStage, handActions, Sicht, Reise, tickEntries nur im Prototyp | Folgeaufgabe | — | — |
+| 6 | Zugraster sperrt Verbündete, kein schwieriges Gelände | **wirkt** (T-349): durch Verbündete ja, auf ihnen enden nein; Zonen mit `moveCost` kosten je Feld mehr; der Server rechnet die Fuss nach | `planGrid`, `mapTerrain`, `terrainCosts` (`zugplan.ts`), `pathFeet` (`movement.ts`); Server `planDurchlass`, `wegeNachrechnen` | `packages/model/test/zugplan-raster.test.ts`, `apps/server/test/zugplan-raster.test.ts`, E2E `zugplan-raster.spec.ts` |
+| 7 | drawStage, handActions, Sicht, Reise, tickEntries nur im Prototyp | **wirkt** (T-350): Ziehstufe über Behälter am Inventar, Kosten der Hände aus `handActions`, Bemerken und Zonen betreten beim Ziehen, Reise an der Gruppe; `tickEntries` seit T-334 | `drawStage` (Inventar `ziehstufe`), `handCost` + `handActions`, `spotsAlong`/`zonesEntered` (`spotting.ts`, Server `bemerkenUnterwegs`), `travelStep` (`travel.ts`, Element `travel`) | `packages/model/test/spotting.test.ts`, `travel.test.ts`, `wield.test.ts`; `apps/server/test/bemerken-unterwegs.test.ts`; E2E `ziehstufe.spec.ts`, `reise.spec.ts` |
 | 8 | Reichweite nur in der Maske, lange Reichweite ohne Nachteil | Folgeaufgabe | — | — |
 | 9 | Kein Auslöser für Rasten | **wirkt** (T-352): kurze Rast (Trefferwürfel), lange Rast (TP, Trefferwürfel, Plätze, Erschöpfung, Todesrettungen) am Bogen; offen: Pakt-Plätze bei kurzer Rast, Merkmale mit Nutzungen, Rast für die ganze Gruppe | `longRest`, `spendHitDie`, `stageDown` (`rest.ts`); Bogen `kopf.ts` | `packages/model/test/rest.test.ts` |
 | 10 | Tragestufen ohne Folge, ZoneInfo unausgewertet | Folgeaufgabe | — | — |
 | 11 | Registerformeln als Brücke zu Automationen | Grundlage: `profBonus`, `check` sind neue Funktionen des Rechenwerks | `calc.ts` (`FUNCTIONS`) | `regelwirkung.test.ts` › Punkt 4, 5 |
-| 12 | Kanten mit `intended` ohne Auswerter | `equips` wird gelesen (Wirkungen), `intended` weg; `affects`, `zone`, `loot`, `entry`, `route` offen | `itemsAt` | `edges.test.ts` |
+| 12 | Kanten mit `intended` ohne Auswerter | `equips` wird gelesen (Wirkungen), `zone` vom Zugplan (Bewegungskosten, T-349), `intended` dort weg; **Waffen in der Hand sind Angriffe** (T-354); `affects`, `loot`, `entry`, `route`, `territory`, `inWorld` offen (Entscheid E-206) | `itemsAt`, `mapTerrain`, `heldWeaponTiles` (`weapons.ts`), Server `kachelnVon` | `edges.test.ts`, `weapons.test.ts`, `apps/server/test/waffen-am-tisch.test.ts` |
 
 ## Punkt 1 — was jetzt wirkt
 
@@ -60,10 +60,20 @@ Rechnung** (`creatureStats`: Statblock finden, aufgelöst, `characterStats`).
   die Quelle (item, equipped, condition, feature …), dazu Abwehr und
   kritischen Treffer.
 
-Noch nicht angewandt (Ziele, die gesammelt und gezeigt werden): `save`,
-`save.<attr>`, `spellSaveDc`, `spellAttack`, `check`, `weapon.*`,
-`spellDamage`, `carry`. Unarmored Defense (Barbar, Mönch) rechnet erst, wenn
-das Merkmal eine Wirkung trägt.
+**Seit T-355 angewandt:** `save` und `save.<attr>` an den Rettungswürfen
+des Bogens (und der Konzentration), `spellSaveDc` und `spellAttack` am
+Bogen, `check` in der passiven Wahrnehmung und den Proben von Hide und
+Search, `spellAttack`/`spellDamage` und `weapon.attack`/`weapon.damage`/
+`weapon` in den Kacheln des Zugplans (`withEffectBonuses`). **Unarmored
+Defense** ist eine Wirkung am Merkmal: `ac.base` mit einer Formel
+(`10 + mod(dex) + mod(con)`, Barbar) oder `ac.base.noShield` (Mönch:
+`10 + mod(dex) + mod(wis)`, nur ohne Schild); ohne Rüstung gilt die beste
+Grundlage.
+
+Noch nicht angewandt: `carry` (was der Wert heisst, ist offen — Faktor
+oder Grössenstufe, siehe Entscheid auf dem Brett) und, was an der Waffe
+selbst steht (`when: self`, +1-Waffe): die Kachel hängt an einer Aktion,
+nicht an einem Gegenstand.
 
 ## Punkte 2 und 3 — was jetzt wirkt
 
@@ -100,10 +110,125 @@ das Merkmal eine Wirkung trägt.
   `attacked.near` (bis 5 ft) und `attacked.far` — Prone. Die Vorschau im
   Zugplan zeigt die Chance mit dem Modus (`modes`, `long`).
 
-Noch nicht: der Tracker (Damage/Heal) kennt keine Schadensart und zieht
-den Betrag weiter ohne Abwehr ab; Wirkungen, die nur unter einer
+- **Der Tracker rechnet wie der Zugplan** (T-355): „Damage" nimmt eine
+  Schadensart (Zeile `DamageType`), `damageAtTable` zieht nach der Abwehr
+  ab, die Konzentrationsprobe würfelt der Server ins Log. Eine
+  Spielerfigur führt ihren Stand an `Vitals`, die Kante spiegelt ihn —
+  auch bei Heal (E-128, zweite Frage: so schreiben beide Wege gleich).
+
+Noch nicht: Wirkungen, die nur unter einer
 Bedingung gelten (Restrained: Nachteil auf DEX-Rettungswürfe, Paralyzed:
 Krit in 5 ft), brauchen noch eigene Ziele.
+
+## Punkt 7 — was jetzt wirkt (T-350)
+
+Je Funktion zuerst geprüft, ob die Seite sie schon anders hat:
+
+- **Sicht und Licht** (`lightAt`, `figureView`) hatte die Seite schon
+  (T-216: laufende Sicht, Aufdecken im Dunkeln). Gefehlt hat das
+  **Bemerken unterwegs**: Versteckte und versteckte Zonen, an denen eine
+  Figur vorbeigeht, und die Zeile beim Betreten einer Zone mit Wirkung —
+  jetzt `spotsAlong`/`zonesEntered`, am Server beim freien Ziehen und im
+  bestätigten Zugplan (docs/Karten.md › Unterwegs bemerken).
+- **Ziehstufe** (`drawStage`): die Seite zeigte je Stück nur seine Zone.
+  Jetzt die Kette hinauf — Platz (`slotDraw`) oder Zone aussen, je
+  Behälter eine Stufe dazu; das eingebettete Inventar bekommt die Stufe
+  seines Behälters mit (`aussen`).
+- **Handaktionen** (`handActions`): die Hände nannten einen festen Text.
+  Jetzt sagen sie, was die Kampagne für Verstauen und Fallenlassen
+  einstellt; ein Schild bleibt eine Aktion (PHB).
+- **Reise**: die Zähler standen nur als Felder an der Gruppe. Jetzt das
+  Element `travel` (Tag, Wache, „rations in …", „light in …", „Wait a
+  watch", „Next node"), gerechnet in `travelStep`. Vom Inventar geht
+  nichts ab — die Zeile sagt, dass etwas fällig ist. Die Punktreise selbst
+  (Knoten wählen, Token umsetzen) steht in der Seite noch nicht.
+- **Dodge/Help/Ready** laufen mit `tickEntries` (T-334) ab: Einträge mit
+  `rounds` zählen in der Initiative herunter, Help und Hide sind beim
+  nächsten Angriff verbraucht (Punkt 3).
+
+Offen: die Punktreise in der Seite (`crawl`), das Element `travel` im
+Ansichtsdesigner (Palette, T-425), Rationen vom Inventar abziehen.
+
+## Punkt 12 — Waffen in der Hand (T-354)
+
+Ein Statblock nennt seine Angriffe als Aktionen (`composedOf`, D51); eine
+Spielerfigur hat ihren Angriff in der Hand. Bis T-354 hatte sie im
+Zugplan nur den waffenlosen Schlag. Jetzt wird jede Waffe in der Hand
+(`carries` → Inventar → `holds` mit Handplatz) eine Angriffskachel
+(`heldWeaponTiles`), gerechnet wie jeder Angriff (`attackNumbers`):
+
+- Treffer = Übung (nur geübt: Waffengruppe `simple`/`martial` oder die
+  Waffe beim Namen) + Mod (STR; DEX im Fernkampf; Finesse das bessere).
+- Schaden = Würfel + Mod; vielseitig mit beiden Händen der Würfel der
+  Kante `hasProperty` (sonst `Weapon.damage2`).
+- Wirkungen der Figur (`weapon`, `weapon.attack`, `weapon.damage`, T-355)
+  und **die der Waffe selbst** (`when: self`, die +1-Waffe).
+- Zwei leichte Nahkampfwaffen: der Nebenhand-Angriff als Bonusaktion,
+  ohne positiven Mod beim Schaden (PHB, Two-Weapon Fighting).
+- Reichweite und Wurf lesen den Namen der Eigenschaft (Reach, Thrown),
+  solange sie keine `mechanics` haben.
+
+Nennt der Statblock schon eine Aktion mit demselben Namen, kommt die
+Waffe nicht doppelt. Was T-354 sonst verlangt (Rechnungen als
+Automationen, Leser für `affects`, `loot`, `entry`, `route`) liegt als
+Entscheid E-206 bei der Leitung.
+
+## Von Hand: die freie Aktion (REQ-403, T-453)
+
+Eine Regel, die es hier (noch) nicht gibt, darf den Zug nicht
+blockieren. Darum hat die Aktionsleiste je Platz eine Kachel „Other
+action“, „Other bonus action“, „Other reaction“, „Other free action“
+(`MANUAL_TILES`, `zugplan.ts`): angetippt fragt sie, was geschieht, und
+kommt mit dieser Notiz in den Zug. Sie verbraucht ihren Platz wie jede
+Aktion (`planBudget`) und prüft nichts; was sie kostet, sagt die Kachel,
+nicht die Maske (`cleanStep`). Ohne Notiz nimmt der Server sie nicht an
+(422, „Say in a note what the free action does.“). Bestätigt steht sie im
+Ergebnis als „<Figur>: <Notiz> (manual, …)“ mit `manual: true` — so lassen
+sich fehlende Regeln später auswerten.
+
+Teil 2 (eigene Karte): Wirkungen von Hand (Schaden, Zustand, Würfel),
+berechnete Ergebnisse überschreiben, Filter „manual“ im Protokoll.
+
+## Punkt 6 — was jetzt wirkt (T-349)
+
+Das Raster des Zugplans (`planGrid`) kennt drei Sorten Feld: frei,
+**gesperrt** (Gegner, Wände) und **Durchgang** (Verbündete, `noStop`): man
+darf hindurch, aber nicht darauf stehen bleiben — 5e erlaubt das Ziehen
+durch den Platz einer freundlichen Kreatur. Wer verbündet ist, sagt der
+Server (`seiteVon`: Gruppe, Spielerfiguren, `ally` an der Begegnung; die
+Seite der planenden Figur zählt) und schickt die Markerkanten als
+`passable` mit.
+
+Schwieriges Gelände sind die Zonen der Karte (Kante `zone` auf eine
+`ZoneKind` mit `moveCost` über 1, REQ-208): `mapTerrain` liest sie als
+Formen mit Kosten, `terrainCosts` rastert sie aufs Gitter (die Mitte eines
+Feldes in der Form; das teuerste gilt). Eine Zone mit `hiddenUntil` zählt
+für Spielende erst, wenn sie gefunden ist (`props.found`) — ein Umweg um
+eine unbekannte Falle hätte sie verraten. Die Leitung sieht und zählt sie.
+
+Der Server glaubt die Fuss der Maske nicht: `wegeNachrechnen` baut dasselbe
+Raster aus der gesiebten Karte und zählt je Bewegung mit `pathFeet` nach.
+Ein Weg muss beim Token anfangen (oder wo der letzte endete), Schritt für
+Schritt gehen und darf nicht durch einen Gegner, eine Wand oder bis auf
+einen Verbündeten führen; dann prüft `planBudget` das Tempo mit den
+nachgerechneten Fuss.
+
+```mermaid
+flowchart LR
+  K[Karte: Marker, Wände, Zonen] --> D[planDurchlass<br/>passable + terrain]
+  D --> G[planGrid<br/>blocked · noStop · cost]
+  G --> M[Maske: planReach, planPath]
+  M -->|Weg + behauptete Fuss| S[Server: wegeNachrechnen]
+  G --> S
+  S -->|pathFeet| B[planBudget]
+  B -->|zu weit| X[422]
+  B -->|passt| P[Plan mit den Fuss des Servers]
+```
+
+Noch nicht: die Diagonalen zählen je Bewegung von vorn (wie die Maske), die
+Grösse der planenden Figur (`span`) nimmt das Raster des Plans noch nicht
+mit, und Gelände, das nur für einige gilt (Spinnennetz, Wurzeln einer
+Druidin), bräuchte eine Regel an der Zonenart.
 
 ## Prüfen nach einem Release
 
@@ -116,4 +241,11 @@ Krit in 5 ft), brauchen noch eigene Ziele.
    Einen Bogenschuss über die lange Reichweite planen → „with
    disadvantage"; einen Schlag auf ein entferntes Ziel einreichen → 422
    „out of range"; Zustand „Prone" am Ziel → aus 5 ft Vorteil.
+   Auf einer Karte mit einer Zone „Difficult terrain“ (`moveCost` 2): der
+   Bereich zeigt die Felder braun und reicht dahinter kürzer; ein Weg durch
+   eine verbündete Figur geht, auf ihr enden nicht (T-349).
+   Im Tracker „− Damage" mit Art „fire" an einer Kreatur mit
+   Feuerresistenz → die Zeile über der Reihe sagt „resistant (fire) → …";
+   an der Testfigur sinken Tracker und Bogen gleich. Barbar ohne Rüstung
+   mit Unarmored Defense (`ac.base`) → RK 10 + GE + KO (T-355).
 3. Diese Tabelle nachziehen, wenn eine Lücke geschlossen ist.

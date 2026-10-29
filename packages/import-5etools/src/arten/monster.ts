@@ -432,6 +432,7 @@ export function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
   if (keinZustand.length) wb.anmerkung(sb, 'condition-immunities', `Condition immunities: ${[...new Set(keinZustand)].join(', ')}`);
   if (zustandNoten.length) wb.notiz('Zustandsimmunität mit Bedingung (Bedingung entfällt)');
   wb.feld(sb, S, 'legendaryActions', zahl(e['legendaryActions']) ?? (e['legendary'] ? 3 : undefined));
+  wb.feld(sb, S, 'legendaryActionsLair', zahl(e['legendaryActionsLair']));
 
   /* Werte, Rettungswürfe, Fertigkeiten. Was nicht aus Übung und
      Übungsbonus folgt, steht als fester Bonus (S1). */
@@ -610,6 +611,13 @@ export const MONSTER: Zuordnung[] = [
         const teile = gruppe ? wb.legendaer.get(gruppe.id) : undefined;
         if (teile) for (const t of teile) wb.kante(sb, 'composedOf', t.id);
         else wb.ctx.insLeere('legroup', `${String(lg['name'])}|${String(lg['source'])}`);
+      } else {
+        /* Manche Statblöcke nennen ihre Gruppe nicht, obwohl eine gleichen
+           Namens in derselben Quelle steht (T-438: fünf Erzteufel und
+           Fürsten in MaBJoV) — ihre Lair Actions hingen dann an keinem.
+           Nur dieser genaue Treffer zählt; aus dem Text wird nicht geraten. */
+        const gruppe = wb.hole('legroup', e['name'], e['source']);
+        for (const t of (gruppe ? wb.legendaer.get(gruppe.id) : undefined) ?? []) wb.kante(sb, 'composedOf', t.id);
       }
       const f = wb.fluff('monsterFluff', String(e['name']), String(e['source']));
       if (f) wb.lore(sb, wb.text(f['entries']));

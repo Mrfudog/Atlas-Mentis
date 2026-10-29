@@ -39,8 +39,15 @@ import type { ChangeFeed } from './live.js';
 import type { Repository, StoredEvent } from './repo.js';
 
 const SESSION_TYPE = 'Session';
-/** So viele Einträge liest ein Log höchstens auf einmal — gesiebt wird danach. */
+/** So viele Einträge liest ein Log auf einmal aus der Datenbank — gesiebt wird danach. */
 const FENSTER = 1000;
+/**
+ * **Über das Fenster hinaus** (T-181): ein Log liest Fenster um Fenster,
+ * bis die Datenbank nichts mehr hat — sonst endete es still beim
+ * tausendsten Wurf, und „Total" log. Die Grenze schützt den Server vor
+ * einem Artikel mit Hunderttausenden Würfen; dann sagt `capped` es.
+ */
+const GRENZE = 50 * FENSTER;
 
 interface Stand {
   alle: Entity[];
@@ -218,12 +225,23 @@ export function registerWuerfe(app: FastifyInstance, deps: WuerfeDeps): void {
       const statbloecke = stand.alle.filter((e) => (e.relations ?? []).some((r) => r.type === 'belongsTo' && r.to === id));
       const subjects = [id, ...statbloecke.map((e) => e.id)];
       const istSitzung = primaryInterface(artikel!) === SESSION_TYPE;
-      const roheEintraege = await repo.listEvents({
-        name: 'roll',
-        subjects,
-        ...(istSitzung ? { orPayload: { key: 'session', value: id } } : {}),
-        limit: FENSTER,
-      });
+      const roheEintraege: StoredEvent[] = [];
+      let capped = false;
+      for (let ab = 0; ; ab += FENSTER) {
+        if (ab >= GRENZE) {
+          capped = true;
+          break;
+        }
+        const fenster = await repo.listEvents({
+          name: 'roll',
+          subjects,
+          ...(istSitzung ? { orPayload: { key: 'session', value: id } } : {}),
+          limit: FENSTER,
+          offset: ab,
+        });
+        roheEintraege.push(...fenster);
+        if (fenster.length < FENSTER) break;
+      }
       /* Je Artikel einmal gesiebt: wer ihn nicht sieht, sieht seine Würfe nicht. */
       const ziele = [...new Set(roheEintraege.map((e) => e.subject).filter((s): s is string => !!s))];
       const da = ziele.flatMap((s) => stand.map.get(s) ?? []);
@@ -248,6 +266,7 @@ export function registerWuerfe(app: FastifyInstance, deps: WuerfeDeps): void {
         people: [...people].map(([pid, name]) => ({ id: pid, name })).sort((a, z) => a.name.localeCompare(z.name, 'de')),
         sessions: [...sessions].map(([sid, name]) => ({ id: sid, name })),
         subjects,
+        ...(capped ? { capped: true } : {}),
         leitet: leitetTisch(user, currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null)?.id ?? null),
       };
     },

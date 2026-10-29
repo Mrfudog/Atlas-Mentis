@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, DefaultShape, ShapeGroup, ShapeItem, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner } from '@nw/model';
+import type { AbilityMethod, DefaultShape, ShapeGroup, ShapeItem, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTerrain, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner, ZoneRuleSummary } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -75,6 +75,66 @@ export interface LoeschAntwort extends BulkAntwort {
   deselected: { id: string; name: string; reason: 'other-layer' | 'not-writable' | 'not-found' | 'protected'; layers?: string[] }[];
   /** Die Ebene, aus der gelöscht wurde; `null` für die Verwaltung ohne Schreibebene. */
   layer: { id: string; name: string } | null;
+}
+/** Ein Mitläufer beim Ebenenwechsel (T-402, `layerMovePlan`). */
+export interface EbenenMitlaeufer {
+  id: string;
+  name: string;
+  type: string;
+  via: string;
+  of: string;
+  root: string;
+  layers: string[];
+  sameLayer: boolean;
+  writable: boolean;
+  already: boolean;
+  preselected: boolean;
+  linkedFrom: { id: string; name: string; via: string }[];
+}
+/** Antwort von `POST /api/entities/move-layer` (T-402). */
+export interface EbenenWechsel extends BulkAntwort {
+  roots: { id: string; name: string; type: string; layers: string[] }[];
+  followers: EbenenMitlaeufer[];
+  target: { id: string; name: string } | null;
+  layerNames: Record<string, string>;
+  moving: string[];
+}
+/** Ein gelöschter Artikel im Papierkorb (T-400). */
+export interface KorbArtikel {
+  id: string;
+  name: string;
+  type: string;
+  layers: { id: string; name: string }[];
+  /** Wie viele Teile mit ihm gingen. */
+  parts: number;
+  restored: boolean;
+}
+/** Ein Löschlauf im Papierkorb (T-400), die neusten zuerst. */
+export interface KorbLauf {
+  id: string;
+  at: string;
+  /** Ab dann endgültig (30 Tage nach `at`). */
+  expires: string;
+  by: { id: string | null; name: string };
+  own: boolean;
+  items: KorbArtikel[];
+}
+/** Fassung, Variante oder Kopie (T-405): der Plan (`dryRun`) und das Ergebnis. */
+export type KopierArt = 'version' | 'variant' | 'copy';
+export interface KopierPlan {
+  mode: KopierArt;
+  layers: { id: string; name: string }[];
+  layer: { id: string; name: string } | null;
+  roots: EbenenWechsel['roots'];
+  followers: EbenenMitlaeufer[];
+  layerNames: Record<string, string>;
+}
+export interface KopierErgebnis {
+  id: string;
+  created: { id: string; from: string; name: string }[];
+  layer: { id: string; name: string };
+  mode: KopierArt;
+  existed?: boolean;
 }
 export interface BulkLauf {
   id: string;
@@ -241,6 +301,8 @@ export interface Bezuege {
   craft?: Fertigungswerte;
   /** Was ein Laden führt, und zu welchem Preis (T-129). */
   shop?: Ladenwaren;
+  /** An einer Begegnung (T-215): Haltungen der Beteiligten, freigegebene Hinweise. */
+  encounter?: Begegnungsbezug;
   /** Das Bild des Artikels, wie der Server es rechnet (`articleImage`, T-211): an einer Kreatur ohne eigenes das ihres Statblocks (`from`). */
   image?: { id: string; version?: string; from?: string };
   /** Die Version jeder Bilddatei, die der Artikel nennt (T-211) — mit ihr darf der Browser das Bild behalten. */
@@ -316,6 +378,16 @@ export interface Ladenwaren {
   mine: { id: string; name: string; wares: Ware[]; inventory?: string; purse?: number; sellable?: Verkaeuflich[] }[];
 }
 /** Was ein Handel ergab (T-133): gerechnet am Server. */
+/** Die Läden, die ein Stück ankaufen (T-407): Preis je Stück in Kupfer, oder warum nicht. */
+export interface VerkaufsAngebote {
+  /** Für wen verkauft wird: die Figur oder Gruppe, die das Inventar trägt. */
+  actor: string;
+  qty: number;
+  refused?: 'reserved';
+  error?: string;
+  offers: { shop: string; name: string; here: boolean; unit?: number; rate?: number; from?: string; refused?: 'noPrice' | 'notBought' }[];
+}
+
 export interface Handel {
   item: { id: string; name: string };
   qty: number;
@@ -511,12 +583,21 @@ export interface Fassung {
   adoptable: boolean;
   /** Schon übernommen: die Kopie in der Kampagnenebene. */
   adoptedAs?: string;
+  /** Diese Fassung zeigen Listen und Verweise (T-403: Rang mit Vorrang). */
+  shown?: boolean;
+  /** Die Kampagne bevorzugt sie (`prefers`, T-403). */
+  preferred?: boolean;
 }
 
 export interface Fassungen {
   layers: FassungsEbene[];
   versions: Fassung[];
   campaign?: { id: string; name: string };
+  /** Der Artikel selbst: gezeigt, bevorzugt (T-403). */
+  shown?: boolean;
+  preferred?: boolean;
+  /** Darf dieses Konto den Vorrang setzen (Leitung der Kampagne)? */
+  mayPrefer?: boolean;
 }
 
 /** Wohin „im Buch lesen" führt (`refs.reading`, T-091). */
@@ -759,6 +840,18 @@ export interface KampagnenEbenen {
   compareFor?: 'gm' | 'players';
   /** Einzeln freigegebene Artikel (T-187). */
   extra?: ExtraInhalt[];
+  /** Vorrang (T-403): je Artikel, oder je Ebene für Arten. */
+  preferences?: Vorrang[];
+}
+/** Ein Vorrang an der Kampagne (`prefers`, T-403). */
+export interface Vorrang {
+  to: string;
+  name: string;
+  kind: 'layer' | 'article';
+  type?: string;
+  types: string[];
+  over?: string;
+  overName?: string;
 }
 /** Ein einzeln freigegebener Artikel (T-187): im Spiel, sein Buch nicht. */
 export interface ExtraInhalt {
@@ -1172,6 +1265,12 @@ export interface SichtArtikel {
   /** Welche Spalten ihn sehen. */
   seenBy: string[];
   writable: boolean;
+  /** Setzbar (T-401): ins Feld, wo die Leitung schreibt, sonst als Eintrag im Regelwerk der Kampagne. */
+  settable?: boolean;
+  /** `rule`: was unter `own` steht, ist der Eintrag im Regelwerk, nicht das Feld. */
+  via?: 'rule';
+  /** Fassungen derselben Sache (T-403): wie viele, ob diese gezeigt wird, ob bevorzugt. */
+  versions?: { n: number; shown: boolean; preferred?: boolean };
 }
 export interface SichtArtikelListe {
   may: Recht;
@@ -1327,6 +1426,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/campaigns')) return 'campaign';
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk') || path.startsWith('/api/transfer')) return 'workbench';
   if (path.startsWith('/api/read')) return 'book';
+  if (path.startsWith('/api/trash')) return 'deleted articles';
   if (path.startsWith('/api/layers')) return 'layers';
   if (path.startsWith('/api/filters')) return 'filter groups';
   if (path.startsWith('/api/maps') || path.startsWith('/api/play')) return 'map';
@@ -1635,6 +1735,18 @@ export class Api {
   sell(shop: string, actor: string, inventory: string, edge: string, qty: number): Promise<Handel> {
     return this.call(`/api/shops/${encodeURIComponent(shop)}/sell`, { method: 'POST', body: JSON.stringify({ actor, inventory, edge, qty }) });
   }
+  /** **Wegwerfen** (T-407): Stück vom Stapel; die Instanz geht mit. `undo` ist die Id zum Zurücklegen. */
+  discard(inventory: string, edge: string, qty: number): Promise<{ item: { id: string; name: string }; qty: number; removed: boolean; undo: string }> {
+    return this.call(`/api/inventories/${encodeURIComponent(inventory)}/discard`, { method: 'POST', body: JSON.stringify({ edge, qty }) });
+  }
+  /** Das Wegwerfen zurücknehmen (T-407) — nur, solange das Inventar unverändert ist. */
+  undoDiscard(inventory: string, undo: string): Promise<{ ok: true }> {
+    return this.call(`/api/inventories/${encodeURIComponent(inventory)}/discard/${encodeURIComponent(undo)}/undo`, { method: 'POST', body: '{}' });
+  }
+  /** Wer dieses Stück ankauft und zu welchem Preis (T-407), die Läden am Ort der Szene zuerst. */
+  sellOffers(inventory: string, edge: string): Promise<VerkaufsAngebote> {
+    return this.call(`/api/inventories/${encodeURIComponent(inventory)}/sell-offers?edge=${encodeURIComponent(edge)}`);
+  }
   /** Die Spieler der laufenden Kampagne mit ihren Figuren (T-100, E-007) — ohne Konto-Id. */
   players(): Promise<{ campaign: { id: string; name: string } | null; players: Spieler[] }> {
     return this.call('/api/players');
@@ -1690,7 +1802,8 @@ export class Api {
     return this.call(`/api/encounters/${encodeURIComponent(id)}/tracker`);
   }
   /** Eine Änderung am Tracker: Zug, Initiative, Trefferpunkte, Effekt, Teilnehmer. */
-  trackerOp(id: string, op: TrackerOp): Promise<{ ok: true }> {
+  /** `text`: was ein Schaden ergab (Abwehr, Stand, Konzentrationsprobe, T-355). */
+  trackerOp(id: string, op: TrackerOp): Promise<{ ok: true; text?: string }> {
     return this.call(`/api/encounters/${encodeURIComponent(id)}/tracker`, { method: 'POST', body: JSON.stringify(op) });
   }
   /** Die Seitenleiste der Karte (T-203): Gruppe, und für die Leitung die Begegnungen der Sitzung. */
@@ -1733,7 +1846,7 @@ export class Api {
   moveToken(
     map: string,
     body: { rel: string; to?: { x: number; y: number }; via?: string; nat?: { w: number; h: number }; path?: { x: number; y: number }[]; feet?: number },
-  ): Promise<{ moved?: string; proposal?: TurnPlan; floor?: string; map?: string }> {
+  ): Promise<{ moved?: string; proposal?: TurnPlan; floor?: string; map?: string; seen?: string[] }> {
     return this.call(`/api/maps/${encodeURIComponent(map)}/move`, { method: 'POST', body: JSON.stringify(body) });
   }
   /**
@@ -1863,7 +1976,7 @@ export class Api {
     return this.call(`/api/knowledge/of/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(body) });
   }
   /** Aufdecken (REQ-178): Felder eines Artikels den Gruppen zuteilen — als Vorgabe den Namen. */
-  revealKnowledge(id: string, body: { fields?: string[]; party?: string } = {}): Promise<{ info: string; fields: string[]; parties: { id: string; name: string }[] }> {
+  revealKnowledge(id: string, body: { fields?: string[]; party?: string; name?: string } = {}): Promise<{ info: string; fields: string[]; parties: { id: string; name: string }[] }> {
     return this.call(`/api/knowledge/of/${encodeURIComponent(id)}/reveal`, { method: 'POST', body: JSON.stringify(body) });
   }
   updateInformation(info: string, body: { name?: string; fields?: string[]; bundles?: string[]; newBundle?: string; article: string }): Promise<Wissensreiter> {
@@ -1928,6 +2041,45 @@ export class Api {
    */
   deleteArticles(ids: string[], opts: { dryRun?: boolean; confirmDelete?: number } = {}): Promise<LoeschAntwort> {
     return this.call<LoeschAntwort>('/api/entities/delete', { method: 'POST', body: JSON.stringify({ ids, ...opts }) });
+  }
+  /**
+   * **Ebene wechseln mit Mitläufern** (T-402): `dryRun` gibt den Plan,
+   * sonst wird verschoben — `include` nennt die Mitläufer (ohne: die
+   * vorgewählten), `from` die alte Ebene, wenn der Artikel schon liegt.
+   * Zurück über `undo(id)`.
+   */
+  moveLayer(ids: string[], layer: string | null, opts: { dryRun?: boolean; include?: string[]; from?: string[] } = {}): Promise<EbenenWechsel> {
+    return this.call<EbenenWechsel>('/api/entities/move-layer', { method: 'POST', body: JSON.stringify({ ids, layer, ...opts }) });
+  }
+  /** Der Papierkorb (T-400): die eigenen Löschläufe, als Leitung alle; endgültig nach `days`. */
+  trash(): Promise<{ days: number; runs: KorbLauf[] }> {
+    return this.call('/api/trash');
+  }
+  /** Einzelne Artikel (`ids`) oder alles Übrige eines Laufs zurückholen (T-400). */
+  restoreTrash(lauf: string, ids?: string[]): Promise<{ restored: string[]; done: boolean }> {
+    return this.call(`/api/trash/${encodeURIComponent(lauf)}/restore`, { method: 'POST', body: JSON.stringify(ids ? { ids } : {}) });
+  }
+  /** „Empty trash" (T-400): endgültig, auch für die Werkbank. */
+  emptyTrash(): Promise<{ emptied: number }> {
+    return this.call('/api/trash/empty', { method: 'POST', body: '{}' });
+  }
+  /** Fassung, Variante oder Kopie in einer anderen Ebene (T-405). */
+  copyPlan(id: string, mode: KopierArt, layer?: string): Promise<KopierPlan> {
+    return this.call<KopierPlan>(`/api/entities/${encodeURIComponent(id)}/copy`, { method: 'POST', body: JSON.stringify({ mode, ...(layer ? { layer } : {}), dryRun: true }) });
+  }
+  copy(id: string, mode: KopierArt, layer: string, include: string[]): Promise<KopierErgebnis> {
+    return this.call<KopierErgebnis>(`/api/entities/${encodeURIComponent(id)}/copy`, { method: 'POST', body: JSON.stringify({ mode, layer, include }) });
+  }
+  /**
+   * **Vorrang an der Kampagne** (T-403): ein Artikel vor seinen anderen
+   * Fassungen, oder eine Ebene für Arten (`types`) vor den anderen Ebenen.
+   */
+  prefer(campaign: string, to: string, opts: { over?: string; types?: string[] } = {}): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/prefers`, { method: 'PUT', body: JSON.stringify({ to, ...opts }) });
+  }
+  unprefer(campaign: string, to: string, type?: string): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
+    const q = type ? `?type=${encodeURIComponent(type)}` : '';
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/prefers/${encodeURIComponent(to)}${q}`, { method: 'DELETE' });
   }
   /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
   deleteEntity(id: string): Promise<{ ok: true }> {
@@ -2345,9 +2497,23 @@ export interface ZugLage {
   plans: (TurnPlan & { at: string; canAnswer?: boolean })[];
   /** Die Übergänge auf der Ebene der Figur (T-326): Fläche, Kosten, und warum nicht, wenn nicht. */
   passages?: { via: string; name: string; at: { x: number; y: number }; area: Array<[number, number]> | null; feet: number; cost: 'action' | 'bonus' | 'reaction' | 'free'; blocked: string | null; from: { x: number; y: number } }[];
+  /** Die Markerkanten der Verbündeten: der Weg geht hindurch, endet dort nicht (T-349). */
+  passable?: string[];
+  /** Das Gelände der Zonen mit Kosten über 1, versteckte nur für die Leitung (T-349). */
+  terrain?: PlanTerrain[];
 }
 
 /** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */
+/**
+ * Überlappende Grössen-Zustände eines Tokens (T-428, E-164): zwischen
+ * welchen die Leitung wählt; `chosen: null` heisst, es gilt der zuletzt
+ * hinzugekommene. Nur für die Leitung.
+ */
+export interface SizeChoice {
+  options: { id: string; name: string }[];
+  chosen: string | null;
+}
+
 export interface KartenKontext {
   parents: { id: string; name: string }[];
   /** Die Unterkarten mit ihrer Verknüpfung (T-327); `own` und `template` nur für die Leitung. */
@@ -2386,7 +2552,9 @@ export interface KartenKontext {
   /** `look`: wie das Bild als Token gezeigt wird (T-297); `version`: mit ihr darf der Browser es behalten (T-211). */
   /** `size`: die Grösse des Statblocks (T-317), für den Platz des Tokens. */
   /** `view`: wie Artikel dieser Art als Marker stehen (T-214, `InterfaceDef.markerView`). */
-  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; baseSize?: string; sizeFrom?: 'statblock' | 'effects'; sizeVia?: string[]; view?: MarkerView }>;
+  /** Wem die Zonen und Gebiete gelten (T-219): Name, Art und bei einer Zonenart ihre Regel. Fehlt bei einem älteren Server. */
+  areas?: Record<string, { name: string; type: string; rule?: ZoneRuleSummary }>;
+  targets: Record<string, { name: string; type: string; image?: string; version?: string; look?: TokenLook; size?: string; baseSize?: string; sizeFrom?: 'statblock' | 'effects'; sizeVia?: string[]; sizePassed?: string[]; sizeChoice?: SizeChoice; view?: MarkerView }>;
   party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
   /** Der laufende Kampf auf dieser Karte (REQ-144): wessen Token dran ist und wessen danach. */
   turn: { encounter: string; name: string; round: number; current: string | null; next: string | null } | null;
@@ -2502,6 +2670,13 @@ export interface RollAnfrage {
   hidden?: boolean | undefined;
   actor?: string | undefined;
   session?: string | undefined;
+}
+
+/** Was eine Begegnung über ihre Beteiligten weiss (T-215, `refs.encounter`). */
+export interface Begegnungsbezug {
+  stances: { id: string; name: string; type: string; toward: { id: string; name: string; tags: string[]; note?: string }[] }[];
+  /** `Encounter.hint#id`, die eine Gruppe schon kennt — nur für die Leitung. */
+  revealed?: string[];
 }
 
 /** Das Log eines Artikels (`GET /api/rolls`). */

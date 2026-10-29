@@ -24,6 +24,15 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   applyTrackerOp,
   currentCampaign,
+  diceModifier,
+  entityName,
+  naturalD20,
+  PARTICIPATES,
+  rollDice,
+  trackerDamage,
+  damageLines,
+  type ParticipantProps,
+  type RollPayload,
   fightOf,
   initiativeOrder,
   initiativeRulesOf,
@@ -42,7 +51,8 @@ import {
 } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
-import { leitetTisch } from './wuerfe.js';
+import type { ChangeFeed } from './live.js';
+import { leitetTisch, tischSitzung, wurfEintragen } from './wuerfe.js';
 
 interface Stand {
   alle: Entity[];
@@ -56,21 +66,76 @@ export interface TrackerDeps {
   geltend: (e: Entity, map: Map<string, Entity>) => Promise<Entity>;
   sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>) => Promise<Entity[]>;
   schreibeGeprueft: (entity: Entity) => Promise<{ stored: Entity } | { issues: ReturnType<typeof validateEntity> }>;
+  /** Für das Würfellog (T-172): die Konzentrationsprobe nach Schaden (T-355). */
+  feed?: ChangeFeed;
 }
 
-const OPS = new Set(['next', 'previous', 'skip', 'top', 'turn', 'delay', 'end', 'init', 'hp', 'effect', 'removeEffect', 'flags', 'add', 'remove']);
+const OPS = new Set(['next', 'previous', 'skip', 'top', 'turn', 'delay', 'end', 'init', 'hp', 'damage', 'effect', 'removeEffect', 'flags', 'add', 'remove']);
+
+function zufall(): number {
+  return getRandomValues(new Uint32Array(1))[0]! / 2 ** 32;
+}
 
 function w20(): number {
   return 1 + Math.floor((getRandomValues(new Uint32Array(1))[0]! / 2 ** 32) * 20);
 }
 
 export function registerTracker(app: FastifyInstance, deps: TrackerDeps): void {
-  const { repo, viewerOf, roh, geltend, sieve, schreibeGeprueft } = deps;
+  const { repo, viewerOf, roh, geltend, sieve, schreibeGeprueft, feed } = deps;
+
+  /**
+   * **Schaden mit Art** (T-355): `trackerDamage` rechnet wie der Zugplan;
+   * hier wird geschrieben (Begegnung, bei einer Spielerfigur `Vitals`) und
+   * die Konzentrationsprobe gewürfelt — 1d20 + KON-Rettungswurf ins Log,
+   * bei Misserfolg endet sie (E-128, Variante A). Der Text sagt der
+   * Leitung, was geschah: Abwehr, Stand, Probe.
+   */
+  async function schadenImTracker(
+    stand: Stand,
+    begegnung: Entity,
+    op: { edge: string; amount: unknown; type?: unknown },
+    user: User,
+    kampagne: string | null,
+  ): Promise<{ text: string; schreiben: Entity[] } | { error: string }> {
+    const r = trackerDamage(stand.map, begegnung, op);
+    if ('error' in r) return r;
+    const teile = damageLines(r.name, r.damage);
+    let figur = r.creature;
+    const probe = r.damage.concentration;
+    if (probe) {
+      const ziel = stand.map.get(((begegnung.relations ?? []).find((x) => x.id === op.edge)?.to) ?? '')!;
+      const w = rollDice(`1d20${probe.bonus === null ? '' : probe.bonus < 0 ? probe.bonus : `+${probe.bonus}`}`, zufall);
+      if (w) {
+        const nat = naturalD20(w);
+        const payload: RollPayload = {
+          expr: w.expr, total: w.total, rolls: w.rolls, modifier: diceModifier(w),
+          ...(nat ? { nat: nat.nat } : {}), ...(nat?.crit ? { crit: nat.crit } : {}),
+          label: `${r.name}: concentration save, DC ${probe.dc}`.slice(0, 120),
+          by: { id: user.id, name: user.name },
+          actor: { id: ziel.id, name: entityName(ziel) },
+          campaign: kampagne,
+          session: tischSitzung(stand.alle)?.id ?? null,
+        };
+        if (feed) await wurfEintragen({ repo, feed }, ziel, payload);
+        else await repo.appendEvent('roll', ziel.id, payload);
+        const haelt = w.total >= probe.dc;
+        const zauber = stand.map.get(probe.spell);
+        teile.push(`concentration save ${w.total} vs DC ${probe.dc} — ${haelt ? 'kept' : `lost${zauber ? ` (${entityName(zauber)})` : ''}`}`);
+        if (!haelt) {
+          const basis = figur ?? ziel;
+          const vv = { ...((basis.components?.['Vitals'] ?? {}) as Record<string, unknown>) };
+          delete vv['concentration'];
+          figur = { ...basis, components: { ...basis.components, Vitals: vv } };
+        }
+      }
+    }
+    return { text: teile.join('; '), schreiben: [r.encounter, ...(figur ? [figur] : [])] };
+  }
 
   /** Die Begegnung, die Kampagne, die Regeln, und ob der Betrachter leitet. */
   type Lage =
     | { fehlt: true; code: number; error: string }
-    | { fehlt: false; user: User; stand: Stand; gefunden: Entity; gesiebt: Entity; rules: InitiativeRules; gm: boolean };
+    | { fehlt: false; user: User; stand: Stand; gefunden: Entity; gesiebt: Entity; rules: InitiativeRules; gm: boolean; kampagne: string | null };
   async function lage(request: FastifyRequest, id: string): Promise<Lage> {
     const nicht = (code: number, error: string): Lage => ({ fehlt: true, code, error });
     const user = await viewerOf(request);
@@ -84,7 +149,7 @@ export function registerTracker(app: FastifyInstance, deps: TrackerDeps): void {
     const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
     const rules = initiativeRulesOf(kampagne);
     const gm = leitetTisch(user, kampagne?.id ?? null);
-    return { fehlt: false, user, stand, gefunden, gesiebt, rules, gm };
+    return { fehlt: false, user, stand, gefunden, gesiebt, rules, gm, kampagne: kampagne?.id ?? null };
   }
 
   app.get<{ Params: { id: string } }>('/api/encounters/:id/tracker', async (request, reply) => {
@@ -174,10 +239,34 @@ export function registerTracker(app: FastifyInstance, deps: TrackerDeps): void {
       const eigen = !!dran && (user.actorIds ?? []).includes(dran.to);
       if (!(op.op === 'next' && eigen)) return reply.code(403).send({ error: 'The tracker is run by the GM; a player ends only their own turn.' });
     }
+    if (op.op === 'damage') {
+      const d = await schadenImTracker(stand, begegnung, op, user, l.kampagne);
+      if ('error' in d) return reply.code(422).send({ error: d.error });
+      for (const e of d.schreiben) {
+        const w = await schreibeGeprueft(e);
+        if ('issues' in w) return reply.code(422).send({ error: `${entityName(e)} could not be saved.`, issues: w.issues });
+      }
+      return { ok: true, text: d.text };
+    }
     const r = applyTrackerOp(stand.map, begegnung, op, { d20: w20, newId: randomUUID });
     if ('error' in r) return reply.code(422).send({ error: r.error });
     const w = await schreibeGeprueft(r.encounter);
     if ('issues' in w) return reply.code(422).send({ error: 'The encounter could not be saved.', issues: w.issues });
+    /* **Eine Spielerfigur führt ihren Stand an `Vitals`** (T-355, E-128):
+       der Tracker spiegelt, was er an der Kante setzt, wie der Zugplan —
+       sonst zeigte der Bogen etwas anderes als die Initiative. */
+    if (op.op === 'hp') {
+      const k = (r.encounter.relations ?? []).find((x) => x.id === op.edge && x.type === PARTICIPATES);
+      const figur = k ? stand.map.get(k.to) : undefined;
+      const hp = Number(((k?.props ?? {}) as ParticipantProps).hp);
+      if (figur && primaryInterface(figur) === 'PlayerCharacter' && Number.isFinite(hp)) {
+        const v = (figur.components?.['Vitals'] ?? {}) as Record<string, unknown>;
+        if (v['hp'] !== hp) {
+          const f = await schreibeGeprueft({ ...figur, components: { ...figur.components, Vitals: { ...v, hp } } });
+          if ('issues' in f) return reply.code(422).send({ error: `${entityName(figur)} could not be saved.`, issues: f.issues });
+        }
+      }
+    }
     return { ok: true };
   });
 }

@@ -47,3 +47,19 @@ flowchart LR
   W -. Regel .-> D
   D -- "→ Ware: Kante auf den Dagger gilt" --> S
 ```
+
+## Stand: Geld rechnen (T-357, Teil 1)
+
+Seit 28.10.2026 rechnet das Modell Geld als ganze Zahl in der kleinsten
+Sorte und zeigt es in Sorten: „2 gp 5 sp" eingeben, „2.5 gp" oder „25 sp"
+anzeigen, Bereiche wie „1–10 gp" für Filter, Wechsel zwischen Währungen
+über einen Kurs (`packages/model/src/money.ts`, docs/Datenmodell.md › 9.7).
+Noch ohne Oberfläche: wo eine Währung steht (E-130) und wie die Börse
+zählt (E-129) sind offen.
+
+```mermaid
+flowchart LR
+  W[Währung] --> S["Sorten<br/>cp 1 · sp 10 · gp 100"] --> Z[Betrag in kleinster Sorte]
+  Z --> A["Anzeige: 2 gp 5 sp"]
+  Z -- Kurs --> X[andere Währung]
+```

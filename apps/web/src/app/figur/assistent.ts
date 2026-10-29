@@ -34,6 +34,9 @@ import {
   duplicateText,
   heldBefore,
   heldValue,
+  missingProficiencies,
+  missingText,
+  proficientBefore,
   type HeldValue,
   chosenResult,
   enumOptions,
@@ -60,6 +63,7 @@ import {
   type GoldRoll,
   type Purchase,
   type RolledScores,
+  openDecisions,
 } from '@nw/model';
 import { Api, ApiError, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -70,6 +74,7 @@ import { ansichtWeg } from '../klassen/ansicht-weg';
 import { EbenenMarke } from '../artikel/ebenen-marke';
 import { Stapel } from '../kern/stapel';
 import { mitnahmeLesen } from './mitnahme';
+import { Klappleiste } from '../muster/klappleiste';
 
 interface Moeglichkeit {
   /** Was in die Antwort kommt: Artikel-Id, Name oder Schlüssel. */
@@ -163,7 +168,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
  */
 @Component({
   selector: 'nw-assistent',
-  imports: [RouterLink, KurzLink, Text, NgTemplateOutlet, EbenenMarke],
+  imports: [RouterLink, KurzLink, Text, NgTemplateOutlet, EbenenMarke, Klappleiste],
   template: `
     <div class="buch">
       <nav aria-label="Breadcrumb" class="brot">
@@ -228,6 +233,12 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
         @if (schritt(); as s) {
           <section class="blatt" [attr.aria-label]="titel(s)">
             <h2>{{ titel(s) }}</h2>
+            <!-- Die Klappleiste (T-359), wo ein Schritt lang wird: eine Wahl mit
+                 Unterwahlen (Klasse › Fertigkeiten), die Ausrüstung. Nur
+                 springen — geklappt wird hier nichts. -->
+            @if ((s.kind === 'pick' && s.nested?.length) || s.kind === 'equipment') {
+              <nw-klappleiste beschriftung="Step sections" [klappbar]="false" />
+            }
 
             @switch (s.kind) {
               @case ('pick') {
@@ -236,7 +247,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                     <input class="suche" type="search" placeholder="Filter…" [value]="filterVon(s.id)" (input)="filtere(s.id, $any($event.target).value)" />
                   }
                   <!-- Spielarten unter ihrer Grundart (T-193), wie D&D Beyond: zugeklappt, bis man sie braucht. -->
-                  <ul class="karten" role="radiogroup" [attr.aria-label]="titel(s)">
+                  <ul class="karten" data-bereich role="radiogroup" [attr.aria-label]="titel(s)">
                     @for (g of gruppiert(s, liste); track g.m.wert) {
                       <li [class.gruppe]="g.varianten.length">
                         <ng-container *ngTemplateOutlet="karte; context: { $implicit: g.m, s: s }" />
@@ -263,7 +274,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                     }
                   </ul>
                   @if (vergleichVon(s.id); as ids) {
-                    <section class="vergleich" aria-label="Compare">
+                    <section class="vergleich" data-bereich aria-label="Compare">
                       <h3>
                         Compare
                         <button type="button" class="leise" (click)="leereVergleich(s.id)">Clear</button>
@@ -308,7 +319,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                        weiteren Klasse nach den Mehrklassen-Regeln; was eine Stufe fragt,
                        steht darunter als Wahl — kein eigener Level-up. -->
                   @if (s.type === 'Class' && gewaehlt(s)) {
-                    <section class="stufen" aria-label="Class levels">
+                    <section class="stufen" data-bereich aria-label="Class levels">
                       <h3>Levels <span class="dim">· character level {{ gesamtStufe() }}</span></h3>
                       <ul class="stufenliste">
                         @for (z of klassenStufen(); track z.id) {
@@ -327,7 +338,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                           </li>
                         }
                       </ul>
-                      <details class="weitere" (toggle)="$any($event.target).open && ladeKlassenVoll()">
+                      <details class="weitere" data-bereich (toggle)="$any($event.target).open && ladeKlassenVoll()">
                         <summary>Add a class (multiclass)</summary>
                         <p class="dim">By the rules you need the minimum scores of every class you have and of the new one.</p>
                         <ul class="weitere-liste">
@@ -349,7 +360,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                   @if (s.nested?.length) {
                     <div class="verschachtelt" id="wahl-verschachtelt">
                       @for (w of wahlSchritte(s.nested!); track w.id) {
-                        <section class="unterwahl" [attr.data-offen]="fertigSchritt(w) ? null : ''" [attr.aria-label]="titel(w)">
+                        <section class="unterwahl" data-bereich [attr.data-offen]="fertigSchritt(w) ? null : ''" [attr.aria-label]="titel(w)">
                           <h3>{{ titel(w) }}</h3>
                           <ng-container *ngTemplateOutlet="wahlKoerper; context: { $implicit: w }" />
                         </section>
@@ -527,7 +538,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                 @if (ausrMethode(); as m) {
                   @if (m.method === 'rules') {
                     @for (c of s.choices; track c.source.entity.id + '#' + c.choice.id) {
-                      <h3 class="wahlkopf">{{ wahlTitel(c) }}</h3>
+                      <h3 class="wahlkopf" data-bereich>{{ wahlTitel(c) }}</h3>
                       <ul class="karten varianten" role="radiogroup" [attr.aria-label]="wahlTitel(c)">
                         @for (o of c.choice.from?.options ?? []; track o.key) {
                           <li>
@@ -634,7 +645,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                         }
                       </ul>
                       @if (korb().length) {
-                        <h3>Your equipment</h3>
+                        <h3 data-bereich>Your equipment</h3>
                         <ul class="laden korb">
                           @for (k of korb(); track k.id) {
                             <li>
@@ -703,7 +714,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                 }
                 <p class="dim">Image, backstory and the rest follow on the character's page — or under Full edit.</p>
                 @if (offenGelassen().length) {
-                  <p class="dim">Left for later: {{ offenGelassen().join('; ') }}</p>
+                  <p class="dim">Left for later: {{ offenGelassen().join('; ') }}@if (bleibtIdee()) {<span>. Until every choice is made, the character stays an idea.</span>}</p>
                 }
               }
             }
@@ -841,17 +852,21 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                       @for (m of gefiltert(liste, s.id); track m.wert) {
                         <li>
                           @let da = schonDa(s, m.wert, m.label);
-                          <label [class.an]="antwort(s).includes(m.wert)" [class.gesperrt]="!!da && !antwort(s).includes(m.wert)" [class.doppelt]="!!da && antwort(s).includes(m.wert)">
+                          <!-- Expertise nur auf Geübtes (T-303). -->
+                          @let fehlt = ohneUebung(s, m.wert, m.label);
+                          <label [class.an]="antwort(s).includes(m.wert)" [class.gesperrt]="(!!da || fehlt) && !antwort(s).includes(m.wert)" [class.doppelt]="(!!da || fehlt) && antwort(s).includes(m.wert)">
                             <input
                               [type]="(s.at.choice.count ?? 1) > 1 ? 'checkbox' : 'radio'"
                               [name]="s.id"
                               [checked]="antwort(s).includes(m.wert)"
-                              [disabled]="!antwort(s).includes(m.wert) && (!!da || ((s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)))"
+                              [disabled]="!antwort(s).includes(m.wert) && (!!da || fehlt || ((s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)))"
                               (change)="kreuze(s, m.wert)"
                             />
                             <span class="name"><nw-text [text]="m.label" inline /></span>
                             @if (da) {
                               <span class="dim woher">from {{ da.from }}</span>
+                            } @else if (fehlt) {
+                              <span class="dim woher">not proficient yet</span>
                             } @else if (m.hinweis) {
                               <span class="dim">{{ m.hinweis }}</span>
                             }
@@ -1620,6 +1635,9 @@ export class Assistent {
     return assignmentProblem(this.werte(), this.attribute(), m, this.vorrat()?.values);
   });
 
+  /** Ein offener Entscheid hält die neue Figur auf idea (T-436, E-176). */
+  protected readonly bleibtIdee = computed(() => openDecisions(this.entwurf(), this.quellen()).length > 0);
+
   /** Was beim Speichern noch offen bleibt — es bleibt an der Figur offen (`pendingChoices`). */
   protected readonly offenGelassen = computed(() => [
     ...this.schritte()
@@ -2061,13 +2079,35 @@ export class Assistent {
     const q = this.quellen();
     return new Map(choicesAtCharacter(d, q).map((at) => [choiceKey(at), heldBefore(d, q, at)] as const));
   });
-  /** Die Doppelungen im Entwurf, als Sätze je Wahl. */
+  /**
+   * **Worin die Figur vor jeder Expertise-Wahl geübt ist** (T-303) — nur
+   * für Wahlen, die die Übung verlangen (`proficientBefore`).
+   */
+  private readonly geuebt = computed(() => {
+    const d = this.entwurf();
+    const q = this.quellen();
+    const raus = new Map<string, Map<string, HeldValue>>();
+    for (const at of choicesAtCharacter(d, q)) {
+      const g = proficientBefore(d, q, at);
+      if (g) raus.set(choiceKey(at), g);
+    }
+    return raus;
+  });
+  /** Die Doppelungen im Entwurf und Expertise ohne Übung (T-303), als Sätze je Wahl. */
   private readonly doppelungen = computed(() => {
     const q = this.quellen();
     const raus = new Map<string, string[]>();
     for (const d of choiceDuplicates(this.entwurf(), q)) raus.set(d.choice, [...(raus.get(d.choice) ?? []), duplicateText(d, q)]);
+    for (const m of missingProficiencies(this.entwurf(), q)) raus.set(m.choice, [...(raus.get(m.choice) ?? []), missingText(m, q)]);
     return raus;
   });
+
+  /** Verlangt die Wahl Übung und fehlt sie bei diesem Wert? (T-303) */
+  protected ohneUebung(s: WahlSchritt, wert: string, label?: string): boolean {
+    const g = this.geuebt().get(choiceKey(s.at));
+    if (!g) return false;
+    return !(heldValue(g, wert, this.quellen()) ?? (label ? g.get(label.trim().toLowerCase()) : undefined));
+  }
 
   /** Ist dieser Wert für die Wahl schon da — und woher? */
   protected schonDa(s: WahlSchritt, wert: string, label?: string): HeldValue | undefined {
@@ -2732,12 +2772,15 @@ export class Assistent {
         if (this.gruppe()) kanten.push({ type: 'memberOfParty', to: this.gruppe(), props: {} });
         /* Die Ebene aus „New article" (T-095); sonst nimmt der Server die Schreibebene. */
         if (this.mitgebrachteEbene()) kanten.push({ type: LAYER_RELATION, to: this.mitgebracht.layer, props: {} });
-        /* Die Figur gehört dem Spieler (E-014 d): gleich fertig. */
+        /* Die Figur gehört dem Spieler (E-014 d): gleich fertig — ausser ein
+           Entscheid ist noch offen, dann eine Idee, bis er gewählt ist
+           (T-436, E-176; der Server verweigerte sonst ready). */
+        const stand = this.bleibtIdee() ? 'idea' : 'ready';
         /* Das Maximum steht am Statblock, der Stand gleich voll an der Figur (T-194). */
         const figur = await this.api.createEntity(
           'PlayerCharacter',
           name,
-          { ...this.mitgebracht.felder, 'Status.status': 'ready', ...this.figurFelder(), ...(max !== null ? { 'Vitals.hp': max } : {}) },
+          { ...this.mitgebracht.felder, 'Status.status': stand, ...this.figurFelder(), ...(max !== null ? { 'Vitals.hp': max } : {}) },
           kanten,
         );
         /* Auf später gelegte Werte bleiben leer (T-193). */

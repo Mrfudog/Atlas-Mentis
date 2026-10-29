@@ -247,6 +247,9 @@ export class Text {
   readonly inline = input(false, { transform: booleanAttribute });
   /** Ein Name, fett und kursiv in den ersten Absatz gestellt („Bite."). */
   readonly vorspann = input('');
+  /** Die Beschriftung eines Wurfs im Log, wenn sie nicht der Vorspann ist
+   *  („Stealth check", T-181) — für Würfe, die der Statblock aus einer Zeile baut. */
+  readonly wurfLabel = input('');
   /** Wohin der Name führt — der Artikel des Merkmals. */
   readonly vorspannZiel = input('');
 
@@ -318,7 +321,7 @@ export class Text {
         subject: this.ziel?.id() ?? undefined,
         session: this.ziel?.sitzung() ?? undefined,
         hidden: this.ziel?.verdeckt() || undefined,
-        label: this.vorspann() || undefined,
+        label: this.wurfLabel() || this.vorspann() || undefined,
         mode,
       });
       const titel = [r.mode === 'adv' ? 'Advantage' : r.mode === 'dis' ? 'Disadvantage' : '', r.hidden ? 'Hidden from the table' : '', 'Saved in the rolls log']

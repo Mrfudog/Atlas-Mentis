@@ -66,7 +66,11 @@ describe('Wirkungen beim Einlesen (REQ-238, E-025 a)', () => {
   it('liest die Wirkung einer Variante aus inherits', () => {
     const v = finde('Armor of Frost');
     expect(wirkungen(v)).toEqual([{ id: 'resist-cold', target: 'resist', op: 'grant', value: 'cold' }]);
-    expect(v.components['Item']).toMatchObject({ attunement: true, bonusAc: 1 });
+    /* Seit T-324 ein Enhancement: Seltenheit, Einstimmung und Boni in seiner Karte. */
+    expect(v.interfaces[0]).toBe('Enhancement');
+    expect(v.components['Item']).toBeUndefined();
+    expect(v.components['Enhancement']).toMatchObject({ attunement: true, bonusAc: 1 });
+    expect(v.components['ItemFeature']).toMatchObject({ appliesTo: ['armor'] });
   });
 
   it('nennt, was nicht übernommen wurde', () => {

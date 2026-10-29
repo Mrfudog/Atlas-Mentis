@@ -43,6 +43,7 @@ import { inHand } from './inventory.js';
 import { resolveInstance } from './instance.js';
 import { statblockFor } from './initiative.js';
 import { partyMembers } from './kartenseite.js';
+import { floorView, hasFloors, mapFloors, withFloorView } from './floors.js';
 import {
   assetWalls,
   inPolygon,
@@ -286,6 +287,11 @@ function sperrenVon(map: Entity, nat?: Size): MapWall[] {
   return w;
 }
 
+/** Die Sperren, die gelten (gezeichnet und aus Assets) — für Rechnungen ausserhalb dieser Datei, etwa das Bemerken unterwegs (T-350). */
+export function mapBlockers(map: Entity, nat?: Size): MapWall[] {
+  return sperrenVon(map, nat);
+}
+
 /** Die Sperren ohne die des Assets `relId` — dieselbe Liste, wenn es keine hat. */
 function ohneAsset(walls: MapWall[], relId: string): MapWall[] {
   const p = `asset:${relId}:`;
@@ -488,4 +494,62 @@ export function revealSeenAlong(
     if (i % schritt === 0 || i === pts.length - 1) neu = revealView(neu, p, nat, newId, fuer, darkvisionFeet, carried);
   });
   return neu;
+}
+
+// ---------------------------------------------------- Tokens im Dunkeln (T-219)
+
+export interface RedactDarkOptions {
+  /** Die Bildgrösse einer Ebene (`mapNatOf` an ihrer Projektion — jede Ebene hat ihr Bild); ohne sie rechnet keine Sicht, und nichts fällt weg. */
+  nat: (view: Entity) => Size | null;
+  /** Wessen Augen zählen: die Figuren des Betrachters und ihre Gruppe. */
+  eyes: (id: EntityId) => boolean;
+  darkvision: (id: EntityId) => number;
+  /** Die getragenen Lichter (`carriedLights`) — erst gefragt, wenn eine Ebene dunkel ist. */
+  carried: () => Readonly<Record<EntityId, FeetLight>>;
+  /** Was immer bleibt (die Figuren der Gruppe), wie in `redactMap`. */
+  keep?: (id: EntityId) => boolean;
+}
+
+/** Liegt der Punkt in einer gesehenen Fläche (samt ihrer Klammer)? */
+function gesehen(seen: readonly SeenArea[], p: Pt): boolean {
+  return seen.some((a) => inPolygon(a.pts, p) && (!a.within || inPolygon(a.within, p)));
+}
+
+/** Eine Ebene (oder eine Karte ohne weitere) im Dunkeln sieben. */
+function dunkelSieben(map: Entity, o: RedactDarkOptions): Entity {
+  if (mapLighting(map) !== 'dark') return map;
+  const nat = o.nat(map);
+  if (!nat || !(nat.w > 0) || !(nat.h > 0)) return map;
+  const marker = markersOf(map);
+  const augen = marker.filter((m) => !m.hidden && o.eyes(m.to) && (m.kind === 'play' || m.kind === 'party'));
+  if (!augen.length) return map;
+  const getragen = o.carried();
+  const seen = augen.flatMap((m) => figureView(map, m, nat, o.darkvision(m.to), getragen).seen);
+  const weg = new Set(
+    marker.filter((m) => m.kind === 'play' && !o.eyes(m.to) && !o.keep?.(m.to) && !gesehen(seen, m)).map((m) => m.rel.id),
+  );
+  if (!weg.size) return map;
+  return { ...map, relations: (map.relations ?? []).filter((r) => !weg.has(r.id)) };
+}
+
+/**
+ * **Tokens im Dunkeln zurückhalten** (T-219, Rest von T-216): auf einer
+ * dunklen Karte bekommt eine Spielerin ein Spiel-Token nur, wenn eine ihrer
+ * Figuren (oder ihre Gruppe) es sieht — mit Dunkelsicht oder weil es in
+ * einem Licht steht, in das die Figur hineinsieht (`figureView`, dieselbe
+ * Rechnung wie die laufende Sicht im Browser). Bis dahin hielt nur der
+ * Nebel zurück: wer im Dunkeln wartete, stand für jeden auf der Karte,
+ * und die Seite deckte ihn bloss mit Schwarz zu.
+ *
+ * Gerechnet je Ebene mit den Figuren **auf ihr**. Steht dort keine eigene
+ * Figur, bleibt die Ebene, wie sie ist — ohne Augen gibt es keine Sicht,
+ * und eine leere Karte verriete nur, dass jemand zurückhält; der Nebel
+ * gilt dort weiter. Lichter, Assets, Übergänge und das Gruppen-Token
+ * bleiben stehen: sie sind Karte, keine Wesen.
+ */
+export function redactDark(map: Entity, o: RedactDarkOptions): Entity {
+  if (!hasFloors(map)) return dunkelSieben(map, o);
+  let e = map;
+  for (const f of mapFloors(map)) e = withFloorView(e, f.id, dunkelSieben(floorView(e, f.id), o));
+  return e;
 }

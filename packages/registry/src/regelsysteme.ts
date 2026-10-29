@@ -6,9 +6,11 @@
  * Server), und lässt stehen, was da ist; was die Leitung daran ändert,
  * bleibt. Die Nummer (`Identity.id`) vergibt der Server beim Anlegen.
  *
- * Grid gilt mit Weight (Leitung, 22.10.), Default shapes mit Grid und
- * Slots — die Formen und Stapel braucht nur, wer im Raster oder nach
- * Slots zählt.
+ * Grid gilt mit Weight (Leitung, 22.10.); Default shapes **erweitert**
+ * Grid und Slots (`extendsMechanic`, E-100) — die Formen und Stapel
+ * braucht nur, wer im Raster oder nach Slots zählt, und ohne eines von
+ * beiden gelten sie nicht. Weight und Slots verbindet nichts: im Modul
+ * Inventory gilt von beiden das höhere (`mechanicSelection`).
  */
 
 import type { Entity } from '@nw/model';
@@ -49,5 +51,5 @@ export const RULE_SYSTEM_LAYERS: readonly Entity[] = [
     [{ type: 'partOf', to: INV }, { type: 'compatibleWith', to: 'ly_rm_weight' }]),
   ebene('ly_rm_shapes', 'RuleMechanic', 'Default shapes', { kind: 'pack', order: 6 }, { method: 'shapes' },
     'Shapes and stack sizes for items, from groups and reference items, worked out when an item is read.',
-    [{ type: 'partOf', to: INV }, { type: 'compatibleWith', to: 'ly_rm_grid' }, { type: 'compatibleWith', to: 'ly_rm_slots' }]),
+    [{ type: 'partOf', to: INV }, { type: 'extendsMechanic', to: 'ly_rm_grid' }, { type: 'extendsMechanic', to: 'ly_rm_slots' }]),
 ];

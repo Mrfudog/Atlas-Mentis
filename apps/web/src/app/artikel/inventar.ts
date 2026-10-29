@@ -1,4 +1,5 @@
 import { Component, ElementRef, Injectable, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
   grabAnchor,
@@ -36,6 +37,9 @@ import {
   dropProps,
   handChecks,
   handCost,
+  handActions,
+  drawStage,
+  parsePairs,
   handSummary,
   heldDetail,
   heldPlaceOf,
@@ -51,10 +55,12 @@ import {
   type HeldItem,
   type WieldOption,
   type WieldPlan,
+  DND_COINS,
+  formatMoney,
 } from '@nw/model';
 import type { Entity, Relation } from '@nw/model';
 import { FigurDaten } from '../bogen/daten';
-import { Api, ApiError, type InventarLage } from '../kern/api';
+import { Api, ApiError, type InventarLage, type VerkaufsAngebote } from '../kern/api';
 import { zonenFarbe as farbeDerZone } from '../kern/zonenfarbe';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
@@ -62,6 +68,18 @@ import { Session } from '../kern/session';
 import { Wahl } from './wahl';
 import { bildAdresse } from './bild';
 import { formBildStil, maskenStil } from '../kern/formbild';
+
+/** Warum der Server Wegwerfen, Verkaufen oder Zurücklegen ablehnt (T-407) — englisch, der Code steht in der Antwort. */
+const ABGELEHNT: Record<string, string> = {
+  missing: 'That piece is no longer here — reloaded.',
+  reserved: 'That piece is reserved for a crafting order — release it first.',
+  notEmpty: 'Something is still inside — empty the container first.',
+  tooFew: 'There aren’t that many.',
+  noPrice: 'Nobody trades without a price.',
+  notBought: 'This shop doesn’t buy that — try another shop.',
+  changed: 'The inventory changed since — put it back by hand.',
+  undone: 'Already put back.',
+};
 
 /** Die Griffweiten an `holds.props.tier`, in der Reihenfolge des Registers. */
 const TIERS = ['held', 'worn', 'belt', 'pack', 'ground', 'stored'];
@@ -143,7 +161,7 @@ interface Ziel {
  */
 @Component({
   selector: 'nw-inventar',
-  imports: [RouterLink, KurzLink, Wahl],
+  imports: [RouterLink, KurzLink, Wahl, NgTemplateOutlet],
   template: `
     <div class="inv" [class.tief]="tiefe() > 0">
       <div class="leiste">
@@ -205,7 +223,7 @@ interface Ziel {
                     </div>
                   }
                   @if (h.stueck && darf()) {
-                    <button type="button" class="klein" (click)="wegstecken(h.stueck)">Stow</button>
+                    <button type="button" class="klein" (click)="wegstecken(h.stueck)" [attr.title]="handKosten().stow ? 'Costs ' + handKosten().stow : null">Stow</button>
                   }
                 </div>
               }
@@ -279,9 +297,13 @@ interface Ziel {
                       </select>
                     </label>
                   }
-                  @if (!p.reserviert) { <button type="button" class="klein" (click)="entfernen(p)">Remove</button> }
+                  <button type="button" class="klein" (click)="wegAuf(p, 'discard')">Discard</button>
+                  <button type="button" class="klein" (click)="wegAuf(p, 'sell')">Sell</button>
                 }
               </li>
+              @if (weg()?.p?.key === p.key) {
+                <li class="wegzeile"><ng-container *ngTemplateOutlet="wegbox" /></li>
+              }
             }
           </ul>
         </section>
@@ -295,7 +317,7 @@ interface Ziel {
       @if (regel() === 'grid') {
         <div class="raster" role="grid" [attr.aria-label]="'Grid of ' + name()" [attr.data-inv]="inventar().id"
              [style.grid-template-columns]="'repeat(' + kiste().w + ', var(--zelle))'"
-             [style.--zelle]="'min(2.1rem, calc((100vw - 5rem) / ' + kiste().w + '))'">
+             [style.--zelle]="'min(2.1rem, calc((100vw - ' + (5 + tiefe() * 2) + 'rem) / ' + kiste().w + '))'">
           @for (z of zellen(); track z.key) {
             <button type="button" class="zelle" [attr.data-x]="z.x" [attr.data-y]="z.y"
                     [class.zu]="!z.offen && !formModus()" [class.aus]="!z.offen && formModus()"
@@ -359,9 +381,9 @@ interface Ziel {
               @if (p.qty !== 1) { <span class="qty">×{{ p.qty }}</span> }
               <span class="tier">{{ p.slot || p.tier }}</span>
               @if (regel() === 'grid') {
-                @if (zoneVon(p); as zo) { <span class="tier">· {{ zo }}</span> }
-                @else if (!liegtIm(p)) { <span class="tier">· not in the grid</span> }
+                @if (!liegtIm(p) && !ziehstufe(p)) { <span class="tier">· not in the grid</span> }
               }
+              @if (ziehstufe(p); as st) { <span class="tier" [attr.title]="'Drawing it costs: ' + st">· {{ st }} to draw</span> }
               @if (regel() === 'weight' && p.weight) { <span class="tier">· {{ p.weight * p.qty }} lb</span> }
               @if (p.reserviert) {
                 <span class="res">reserved for
@@ -399,17 +421,20 @@ interface Ziel {
                     </select>
                   </label>
                 }
-                @if (!p.reserviert) {
-                  <button type="button" class="klein" (click)="entfernen(p)">Remove</button>
-                } @else if (session.leitung()) {
+                <button type="button" class="klein" (click)="wegAuf(p, 'discard')">Discard</button>
+                <button type="button" class="klein" (click)="wegAuf(p, 'sell')">Sell</button>
+                @if (p.reserviert && session.leitung()) {
                   <button type="button" class="klein" (click)="freigeben(p)" title="The order no longer counts on it">Release</button>
                 }
               </li>
+              @if (weg()?.p?.key === p.key) {
+                <li class="wegzeile"><ng-container *ngTemplateOutlet="wegbox" /></li>
+              }
             }
             @if (p.behaelter && offen().has(p.behaelter)) {
               <li class="innen">
                 @if (bestand.voll().get(p.behaelter); as inner) {
-                  <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="tiefe() + 1" />
+                  <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="tiefe() + 1" [aussen]="ziehstufe(p)" />
                 } @else {
                   <p class="leer">Loading…</p>
                 }
@@ -426,8 +451,60 @@ interface Ziel {
           <nw-wahl [wert]="''" (wertChange)="hinzu($event)" [arten]="['Item']" [label]="'Add an item'" [anlegbar]="false" />
         </div>
       }
+      @if (zuletzt(); as z) {
+        <p class="zuletzt" role="status">{{ z.text }}
+          @if (z.undo) { <button type="button" class="klein" (click)="zuruecklegen()">Undo</button> }
+        </p>
+      }
       @if (hinweis(); as h) { <p class="fehler" role="alert">{{ h }}</p> }
     </div>
+
+    <!-- Wegwerfen und Verkaufen am Stück (T-407, REQ-404): Rückfrage, Anzahl, beim Verkauf der Laden. -->
+    <ng-template #wegbox>
+      @if (weg(); as w) {
+        <div class="wegbox" role="dialog" [attr.aria-label]="(w.art === 'discard' ? 'Discard ' : 'Sell ') + w.p.name">
+          @if (w.art === 'discard') {
+            <b>Discard {{ w.p.name }}?</b>
+            <p>It leaves the game — the piece is deleted with it. You can undo it right after.</p>
+          } @else {
+            <b>Sell {{ w.p.name }}</b>
+            @if (!w.angebote) {
+              <p class="leer">Asking the shops…</p>
+            } @else if (!w.angebote.offers.length) {
+              <p class="leer">No shop you can see is open to you.</p>
+            } @else {
+              <ul class="laeden" aria-label="Shops">
+                @for (o of w.angebote.offers; track o.shop; let i = $index) {
+                  @if (i === 0 && o.here) { <li class="gruppe">Here</li> }
+                  @if (!o.here && (i === 0 || w.angebote.offers[i - 1]!.here)) { <li class="gruppe">{{ i === 0 ? 'Shops' : 'Elsewhere' }}</li> }
+                  <li>
+                    <label [class.nein]="o.unit === undefined">
+                      <input type="radio" name="laden" [value]="o.shop" [checked]="w.laden === o.shop"
+                             [disabled]="o.unit === undefined" (change)="ladenWahl(o.shop)" />
+                      {{ o.name }}
+                      <small>{{ o.unit !== undefined ? geld(o.unit) + ' each' + (o.rate !== 50 ? ' (' + o.rate + ' %)' : '') : o.refused === 'notBought' ? 'doesn’t buy this' : 'no price' }}</small>
+                    </label>
+                  </li>
+                }
+              </ul>
+            }
+          }
+          <div class="knoepfe">
+            @if (w.p.qty > 1) {
+              <label>Qty <input type="number" min="1" [max]="w.p.qty" [value]="w.qty" (change)="wegMenge($any($event.target).value)" /> of {{ w.p.qty }}</label>
+            }
+            @if (w.art === 'discard') {
+              <button type="button" class="pri" (click)="wegwerfen()">Discard{{ w.qty > 1 ? ' ' + w.qty : '' }}</button>
+            } @else {
+              <button type="button" class="pri" [disabled]="!verkaufsPreis()" (click)="verkaufen()">
+                {{ verkaufsPreis() ? 'Sell for ' + verkaufsPreis() : 'Sell' }}
+              </button>
+            }
+            <button type="button" (click)="weg.set(null)">Cancel</button>
+          </div>
+        </div>
+      }
+    </ng-template>
   `,
   styles: `
     .inv { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -519,6 +596,18 @@ interface Ziel {
     .warnung p { margin: 0.3rem 0; }
     .warnung .knoepfe { display: flex; flex-wrap: wrap; gap: 0.4rem; }
     .warnung button { min-height: 40px; }
+    .wegzeile { display: block !important; list-style: none; }
+    .wegbox { border: 1px solid var(--warn); border-radius: 6px; padding: 0.5rem 0.6rem; margin: 0.2rem 0 0.4rem; background: var(--paper, var(--surface)); max-width: 32rem; }
+    .wegbox p { margin: 0.3rem 0; }
+    .wegbox .knoepfe { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; }
+    .wegbox button { min-height: 40px; }
+    .wegbox input[type='number'] { width: 4rem; min-height: 36px; }
+    .laeden { list-style: none; margin: 0.3rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+    .laeden .gruppe { font-family: var(--caps); color: var(--dim); font-size: 0.85rem; margin-top: 0.2rem; }
+    .laeden label { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.5rem; min-height: 36px; cursor: pointer; }
+    .laeden label.nein { color: var(--dim); cursor: default; }
+    .laeden small { color: var(--dim); }
+    .zuletzt { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; color: var(--heading); }
     .geist {
       position: fixed; z-index: 50; pointer-events: none; transform: translate(-50%, -120%);
       padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
@@ -536,6 +625,8 @@ export class Inventar {
   /** Das Inventar eine Stufe höher, wenn dieses in einem Behälter liegt. */
   readonly oben = input<Entity | null>(null);
   readonly tiefe = input(0);
+  /** Die Ziehstufe des Behälters im Inventar darüber (T-350): was darin liegt, ist eine Stufe weiter weg. */
+  readonly aussen = input<string | null>(null);
 
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
@@ -557,6 +648,10 @@ export class Inventar {
   protected readonly formModus = signal(false);
   protected readonly pinsel = signal('#');
   protected readonly hinweis = signal<string | null>(null);
+  /** Die offene Rückfrage zum Wegwerfen oder Verkaufen (T-407). */
+  protected readonly weg = signal<{ art: 'discard' | 'sell'; p: Stueck; qty: number; laden: string | null; angebote: VerkaufsAngebote | null } | null>(null);
+  /** Was eben geschah, mit der Id zum Zurücklegen (nur beim Wegwerfen). */
+  protected readonly zuletzt = signal<{ text: string; undo: string | null; inv: string } | null>(null);
   private schreibt = false;
 
   protected readonly darf = computed(() => this.session.darfSchreiben()(this.inventar().id));
@@ -567,6 +662,13 @@ export class Inventar {
   private readonly settings = computed(() => this.bestand.registry()?.settings ?? {});
 
   protected readonly leiter = computed<string[]>(() => this.bestand.registry()?.enums?.['DrawTime']?.values ?? []);
+  /** Was Verstauen und Fallenlassen kosten (T-350, Einstellung `handActions`). */
+  protected readonly handKosten = computed(() => handActions(this.settings()['handActions'] as string | undefined, this.leiter()));
+  /** Die Ziehstufe je Körperplatz (Einstellung `slotDraw`). */
+  private readonly platzStufen = computed(() => {
+    const roh = parsePairs(this.settings()['slotDraw'] as string | undefined);
+    return Object.fromEntries(Object.entries(roh).filter(([, v]) => v && v !== '-'));
+  });
 
   /**
    * Das Tragraster nach dem Blatt, nur unter einer Kreatur mit Statblock
@@ -843,9 +945,9 @@ export class Inventar {
     const off = h.both ? null : h.off;
     return [
       { place: 'mainHand' as HandPlace, label: 'Main hand', held: main, stueck: stueckVon(main), griff: null as string | null,
-        kosten: handCost(main), detail: main ? heldDetail(main, h.both) : '', vielseitig: !!main && main.properties.includes('versatile') && !main.shield, ...zielVon('mainHand') },
+        kosten: handCost(main, this.handKosten()), detail: main ? heldDetail(main, h.both) : '', vielseitig: !!main && main.properties.includes('versatile') && !main.shield, ...zielVon('mainHand') },
       { place: 'offHand' as HandPlace, label: 'Off hand', held: off, stueck: stueckVon(off), griff: h.both ? h.main?.name ?? null : null,
-        kosten: handCost(off), detail: off ? heldDetail(off, false) : '', vielseitig: false, ...zielVon('offHand') },
+        kosten: handCost(off, this.handKosten()), detail: off ? heldDetail(off, false) : '', vielseitig: false, ...zielVon('offHand') },
     ];
   });
 
@@ -861,7 +963,7 @@ export class Inventar {
     if (hand) return wieldTargetLabel(hand).toLowerCase();
     if (p.offen) return 'not stowed';
     if (p.tier === 'ground') return 'on the ground';
-    if (this.regel() === 'grid') return this.liegtIm(p) ? `in the grid${this.zoneVon(p) ? ` · ${this.zoneVon(p)} to draw` : ''}` : 'not in the grid';
+    if (this.regel() === 'grid') return this.liegtIm(p) ? `in the grid${this.ziehstufe(p) ? ` · ${this.ziehstufe(p)} to draw` : ''}` : 'not in the grid';
     return p.slot || p.tier;
   }
 
@@ -1011,6 +1113,21 @@ export class Inventar {
 
   protected zoneVon(p: Stueck): string | null {
     return this.liegtIm(p) ? pieceZone(this.zonen(), p, this.leiter()) : null;
+  }
+
+  /**
+   * **Die Ziehstufe die Kette hinauf** (T-350, REQ-216, `drawStage`):
+   * aussen der Platz (`slotDraw`) oder die Zone; in einem Behälter das
+   * Langsamere aus der eigenen Zone und der Stufe des Behälters + 1.
+   * `null`, wenn ein Schritt keine Stufe kennt.
+   */
+  protected ziehstufe(p: Stueck): string | null {
+    const zone = this.regel() === 'grid' ? this.zoneVon(p) : null;
+    const kette =
+      this.tiefe() === 0
+        ? [{ via: this.inventar().id, zone, slot: p.slot || null }]
+        : [{ via: 'outer', zone: this.aussen() }, { via: this.inventar().id, zone }];
+    return drawStage(kette, this.leiter(), this.platzStufen()).stage;
   }
 
   protected waehle(key: string): void {
@@ -1200,10 +1317,97 @@ export class Inventar {
     await this.schreiben([{ ...inv, relations }]);
   }
 
-  protected async entfernen(p: Stueck): Promise<void> {
-    const inv = this.inventar();
-    this.wahl.set(null);
-    await this.schreiben([{ ...inv, relations: (inv.relations ?? []).filter((r) => r.id !== p.key) }]);
+  // ------------------------------------------------- Wegwerfen und Verkaufen
+
+  /**
+   * **Wegwerfen oder verkaufen** (T-407, REQ-404) — ersetzt „Remove", das
+   * nur die Kante nahm und die Instanz liegen liess. Erst die Rückfrage mit
+   * Anzahl; geschrieben wird am Server, der Instanz, Sperre und Protokoll
+   * kennt. Reserviertes sagt gleich, warum nicht.
+   */
+  protected wegAuf(p: Stueck, art: 'discard' | 'sell'): void {
+    this.hinweis.set(null);
+    this.zuletzt.set(null);
+    if (p.reserviert) {
+      return void this.hinweis.set(`${p.name} is reserved for a crafting order — release it first, then ${art === 'discard' ? 'discard' : 'sell'} it.`);
+    }
+    this.weg.set({ art, p, qty: 1, laden: null, angebote: null });
+    if (art === 'sell') {
+      const inv = this.inventar().id;
+      this.api.sellOffers(inv, p.key).then(
+        (a) => this.weg.update((w) => (w && w.p.key === p.key ? { ...w, angebote: a, laden: a.offers.find((o) => o.unit !== undefined)?.shop ?? null } : w)),
+        (error) => {
+          this.weg.set(null);
+          this.hinweis.set(error instanceof Error ? error.message : String(error));
+        },
+      );
+    }
+  }
+
+  protected wegMenge(roh: string): void {
+    this.weg.update((w) => (w ? { ...w, qty: Math.min(w.p.qty, Math.max(1, Math.trunc(Number(roh)) || 1)) } : w));
+  }
+
+  protected ladenWahl(shop: string): void {
+    this.weg.update((w) => (w ? { ...w, laden: shop } : w));
+  }
+
+  protected geld(kupfer: number): string {
+    /* Grundwährung (E-129/E-130 offen): Kupfer, gezeigt in den Münzen von 5e. */
+    return formatMoney(kupfer, DND_COINS);
+  }
+
+  protected readonly verkaufsPreis = computed(() => {
+    const w = this.weg();
+    const o = w?.angebote?.offers.find((x) => x.shop === w.laden);
+    return w && o?.unit !== undefined ? this.geld(o.unit * w.qty) : null;
+  });
+
+  protected async wegwerfen(): Promise<void> {
+    const w = this.weg();
+    if (!w || this.schreibt) return;
+    const inv = this.inventar().id;
+    await this.amServer(async () => {
+      const r = await this.api.discard(inv, w.p.key, w.qty);
+      this.zuletzt.set({ text: `Discarded ${r.qty} × ${r.item.name}.`, undo: r.undo, inv });
+    });
+  }
+
+  protected async verkaufen(): Promise<void> {
+    const w = this.weg();
+    if (!w?.laden || !w.angebote || this.schreibt) return;
+    const inv = this.inventar().id;
+    const laden = w.angebote.offers.find((o) => o.shop === w.laden);
+    await this.amServer(async () => {
+      const r = await this.api.sell(w.laden!, w.angebote!.actor, inv, w.p.key, w.qty);
+      this.zuletzt.set({ text: `Sold ${r.qty} × ${r.item.name} to ${laden?.name ?? 'the shop'} for ${this.geld(r.total)}.`, undo: null, inv });
+    });
+  }
+
+  /** Das eben Weggeworfene zurück — der Server sagt nein, wenn sich das Inventar seither geändert hat. */
+  protected async zuruecklegen(): Promise<void> {
+    const z = this.zuletzt();
+    if (!z?.undo || this.schreibt) return;
+    await this.amServer(async () => {
+      await this.api.undoDiscard(z.inv, z.undo!);
+      this.zuletzt.set(null);
+    });
+  }
+
+  private async amServer(tun: () => Promise<void>): Promise<void> {
+    this.schreibt = true;
+    this.hinweis.set(null);
+    try {
+      await tun();
+      this.weg.set(null);
+      this.wahl.set(null);
+    } catch (error) {
+      const body = error instanceof ApiError ? (error.body as { refused?: string } | undefined) : undefined;
+      this.hinweis.set((body?.refused && ABGELEHNT[body.refused]) || (error instanceof Error ? error.message : String(error)));
+    } finally {
+      this.schreibt = false;
+      await this.bestand.oeffnen(this.inventar().id, true, false);
+    }
   }
 
   /** **Die Leitung gibt frei** (T-134): das Stück verliert die Reservierung; der Server prüft, ob sie darf. */

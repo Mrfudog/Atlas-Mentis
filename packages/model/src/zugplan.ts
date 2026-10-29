@@ -17,10 +17,11 @@
 
 import { COMMON_ACTION_CATALOGUE, turnTypeOf } from './actions.js';
 import { abilityMod } from './calc.js';
-import { averageOf, attackNumbers, type AttackNumbers } from './attack.js';
-import { cellAt, cellCentre, type GridGeometry, type MapMarker } from './map.js';
+import { averageOf, attackNumbers, withEffectBonuses, type AttackNumbers } from './attack.js';
+import { cellAt, cellCentre, inShape, shapeOf, type GridGeometry, type MapMarker, type RevealShape } from './map.js';
 import { cellKey, cheapestPath, reachable, type Cell, type MoveGrid } from './movement.js';
 import type { Pt } from './sight.js';
+import type { Entity, EntityId } from './types.js';
 import { wallBlocks, type MapWall } from './walls.js';
 
 /** Was ein Schritt kostet. `free` kostet nichts (ein Wort, eine Tür öffnen). */
@@ -41,8 +42,8 @@ export interface PlanTile {
   id: string;
   name: string;
   cost: PlanCost;
-  /** Gruppe in der Leiste: `attack`, `action` (eigene ohne Wurf), `common`. */
-  group: 'attack' | 'action' | 'common';
+  /** Gruppe in der Leiste: `attack`, `action` (eigene ohne Wurf), `common`, `manual` (frei mit Notiz, REQ-403). */
+  group: 'attack' | 'action' | 'common' | 'manual';
   /** Braucht ein Ziel (ein Token auf der Karte). */
   targeted: boolean;
   /** Reichweite in Fuss — Nahkampf die Reichweite, Fernkampf die kurze Entfernung. */
@@ -79,6 +80,8 @@ export type PlanStep =
       /** Die Id des Artikels, auf dessen Token gezielt wird. */
       target?: string;
       targetName?: string;
+      /** Was eine freie Aktion tut (REQ-403): Pflicht bei `manual:*`, sonst eine Bemerkung. */
+      note?: string;
     }
   | {
       id: string;
@@ -135,6 +138,8 @@ export interface PlanResult {
   text: string;
   hit?: boolean;
   damage?: number;
+  /** Von Hand, ohne Regelprüfung (REQ-403) — auswertbar als Kandidat für eine fehlende Regel. */
+  manual?: boolean;
 }
 
 /** Ein Plan, wie er im Protokoll steht (`payload` eines `turnplan`-Eintrags). */
@@ -206,6 +211,40 @@ export function freshResources(speed: number): TurnResources {
 export function costOf(actionTypeName: string | null | undefined): PlanCost {
   const t = turnTypeOf(actionTypeName);
   return t === 'bonus' || t === 'reaction' || t === 'free' ? t : 'action';
+}
+
+/**
+ * **Freie Aktionen mit Notiz** (REQ-403, T-453): je Platz eine Kachel
+ * „Other …“, die tut, was in ihrer Notiz steht — ohne Regelprüfung, aber
+ * mit dem Platz, den sie verbraucht. So blockiert eine Regel, die es hier
+ * (noch) nicht gibt, den Zug nicht: man nimmt die freie Aktion und sagt,
+ * was geschieht. Im Ergebnis steht sie als „manual“.
+ */
+export const MANUAL_TILES: readonly PlanTile[] = (
+  [
+    ['action', 'Other action'],
+    ['bonus', 'Other bonus action'],
+    ['reaction', 'Other reaction'],
+    ['free', 'Other free action'],
+  ] as const
+).map(([cost, name]) => ({
+  id: `manual:${cost}`,
+  name,
+  cost,
+  group: 'manual' as const,
+  targeted: false,
+  range: null,
+  longRange: null,
+  toHit: null,
+  damage: '',
+  damageType: '',
+  average: null,
+  hint: 'Anything the rules here do not cover: say in a note what happens. Uses its slot, checks nothing.',
+}));
+
+/** Ist das eine freie Aktion mit Notiz (`manual:<cost>`)? */
+export function isManualTile(id: string | null | undefined): boolean {
+  return typeof id === 'string' && /^manual:(action|bonus|reaction|free)$/.test(id);
 }
 
 /**
@@ -321,9 +360,14 @@ export function unarmedTile(stats: Record<string, unknown>): PlanTile {
 export function tilesFor(
   stats: Record<string, unknown>,
   actions: readonly { id: string; name: string; actionTypeName?: string | null; action?: Record<string, unknown>; edge?: Record<string, unknown> }[],
+  /** Die Wirkungen an der Figur (`effectTotals(…).add`): `spellAttack`, `weapon.attack` … (T-355). */
+  add: Readonly<Record<string, number>> = {},
 ): PlanTile[] {
-  const eigene = actions.map((a) => tileFromAction(a.id, a.name, a.actionTypeName, attackNumbers(a.action, stats, a.edge ?? {})));
-  return [...eigene, unarmedTile(stats), ...COMMON_ACTIONS];
+  const eigene = actions.map((a) => {
+    const n = attackNumbers(a.action, stats, a.edge ?? {});
+    return tileFromAction(a.id, a.name, a.actionTypeName, n ? withEffectBonuses(n, add) : n);
+  });
+  return [...eigene, unarmedTile(stats), ...COMMON_ACTIONS, ...MANUAL_TILES];
 }
 
 /**
@@ -400,7 +444,7 @@ export function planText(steps: readonly PlanStep[]): string {
       if (s.kind === 'move') return `Move ${s.feet} ft`;
       if (s.kind === 'passage') return `Through ${s.name}`;
       const vor = s.cost === 'bonus' ? 'Bonus: ' : s.cost === 'reaction' ? 'Reaction: ' : '';
-      return `${vor}${s.name}${s.targetName ? ` → ${s.targetName}` : ''}`;
+      return `${vor}${s.name}${s.note ? ` (${s.note})` : ''}${s.targetName ? ` → ${s.targetName}` : ''}`;
     })
     .join(' → ');
 }
@@ -408,23 +452,94 @@ export function planText(steps: readonly PlanStep[]): string {
 // ------------------------------------------------------------ Das Raster
 
 /**
+ * **Ein Stück Gelände für den Plan** (T-349): die Form einer Zone und was
+ * ein Schritt hinein kostet (`ZoneKind.moveCost`, 2 ist schwieriges
+ * Gelände). Formen in Anteilen der Karte, wie an der Kante `zone` — so
+ * rastert jede Seite mit ihrer Bildgrösse, und der Server mit seiner.
+ */
+export interface PlanTerrain {
+  shape: RevealShape;
+  cost: number;
+}
+
+/**
+ * Das Gelände einer Karte (T-349): je Kante `zone` ihre Form, wenn die
+ * Zonenart mehr als 1 kostet. Eine Zone mit `hiddenUntil` zählt erst, wenn
+ * sie gefunden ist (`props.found`) — oder für die Leitung (`hidden`): ein
+ * Weg, der um eine Falle herumführt, die die Spielenden nicht kennen,
+ * hätte sie verraten.
+ */
+export function mapTerrain(map: Entity, kinds: ReadonlyMap<EntityId, Entity>, opts: { hidden?: boolean } = {}): PlanTerrain[] {
+  const out: PlanTerrain[] = [];
+  for (const r of map.relations ?? []) {
+    if (r.type !== 'zone') continue;
+    const k = (kinds.get(r.to)?.components?.['ZoneKind'] ?? {}) as Record<string, unknown>;
+    const cost = Number(k['moveCost']);
+    if (!Number.isFinite(cost) || cost <= 1) continue;
+    const p = (r.props ?? {}) as Record<string, unknown>;
+    if (!opts.hidden && Number(k['hiddenUntil']) > 0 && p['found'] !== true) continue;
+    const shape = shapeOf({ ...p, id: r.id });
+    if (shape) out.push({ shape, cost: Math.min(10, cost) });
+  }
+  return out;
+}
+
+/**
+ * Das Gelände aufs Gitter gerastert (T-349): ein Feld gehört zur Zone,
+ * wenn seine Mitte in der Form liegt, wie im Prototyp; liegen zwei
+ * übereinander, gilt die teurere — Schlamm unter Dornen ist nicht dreimal
+ * so langsam, sondern so langsam wie das Schlimmere.
+ */
+export function terrainCosts(geo: GridGeometry, cols: number, rows: number, terrain: readonly PlanTerrain[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!terrain.length) return out;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const m = cellCentre(geo, { x, y });
+      for (const t of terrain) {
+        if (t.cost > (out[`${x},${y}`] ?? 1) && inShape(t.shape, m)) out[`${x},${y}`] = t.cost;
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Das Bewegungsraster einer Karte für den Plan (nur Quadrate): so viele
  * Spalten und Zeilen, wie das Bild trägt; die Felder der **anderen**
  * Tokens sind besetzt, und was den Schritt hält (`Map.walls`, T-118),
  * steht als Wand im Raster.
+ *
+ * **Verbündete hält man nicht auf** (T-349): wessen Markerkante in
+ * `passable` steht, durch dessen Feld geht der Weg, aber er endet nicht
+ * dort (`noStop`, 5e: man darf durch den Platz einer freundlichen Kreatur
+ * ziehen). Wer verbündet ist, sagt der Server (`seiteVon`) — die Seite hat
+ * kein Feld am Token. `terrain` gibt die Kosten je Feld (`mapTerrain`).
  */
-export function planGrid(geo: GridGeometry, markers: readonly MapMarker[], selfRel: string, walls: readonly MapWall[] = []): MoveGrid | null {
+export function planGrid(
+  geo: GridGeometry,
+  markers: readonly MapMarker[],
+  selfRel: string,
+  walls: readonly MapWall[] = [],
+  opts: { passable?: Iterable<string>; terrain?: readonly PlanTerrain[] } = {},
+): MoveGrid | null {
   if (geo.shape !== 'square') return null;
   const cols = Math.max(1, Math.floor((geo.w - geo.ox) / geo.size));
   const rows = Math.max(1, Math.floor((geo.h - geo.oy) / geo.size));
-  const blocked = markers
-    .filter((m) => m.rel.id !== selfRel && m.kind !== 'scenery' && !m.hidden)
-    .map((m) => cellKey(cellAt(geo, m)));
+  const frei = new Set(opts.passable ?? []);
+  const andere = markers.filter((m) => m.rel.id !== selfRel && m.kind !== 'scenery' && !m.hidden);
+  const blocked = andere.filter((m) => !frei.has(m.rel.id)).map((m) => cellKey(cellAt(geo, m)));
+  const noStop = andere.filter((m) => frei.has(m.rel.id)).map((m) => cellKey(cellAt(geo, m)));
   /* Die Sperren, die den Schritt halten (T-118), in Feldeinheiten. */
   const fx = (x: number) => (x * geo.w - geo.ox) / geo.size;
   const fy = (y: number) => (y * geo.h - geo.oy) / geo.size;
   const segs = walls.filter((w) => wallBlocks(w).move).map((w) => ({ x1: fx(w.x1), y1: fy(w.y1), x2: fx(w.x2), y2: fy(w.y2) }));
-  return { cols, rows, walls: segs, blocked, square: geo.cellFeet };
+  const cost = terrainCosts(geo, cols, rows, opts.terrain ?? []);
+  return {
+    cols, rows, walls: segs, blocked, square: geo.cellFeet,
+    ...(noStop.length ? { noStop } : {}),
+    ...(Object.keys(cost).length ? { cost } : {}),
+  };
 }
 
 /** Das Feld eines Tokens, ins Raster geklemmt. */
@@ -456,11 +571,40 @@ export function cellPoint(geo: GridGeometry, c: Cell): Pt {
  * je Feld so viele Fuss, wie der Massstab sagt (`cellFeet`, T-321).
  */
 export function feetBetween(geo: GridGeometry, a: Pt, b: Pt): number {
-  const ca = cellAt(geo, a);
-  const cb = cellAt(geo, b);
+  return feetBetweenCells(geo, cellAt(geo, a), cellAt(geo, b));
+}
+
+function feetBetweenCells(geo: GridGeometry, ca: Cell, cb: Cell): number {
   const dx = Math.abs(ca.x - cb.x);
   const dy = Math.abs(ca.y - cb.y);
   return (Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2)) * geo.cellFeet;
+}
+
+/**
+ * **Die Felder, die ein Token belegt** (T-391): `p` ist seine Mitte (D58),
+ * `span` seine Breite in Feldern. Auf Hex und für ein Feld oder weniger nur
+ * das Feld unter der Mitte.
+ */
+export function tokenCells(geo: GridGeometry, p: Pt, span = 1): Cell[] {
+  const n = Math.round(span);
+  if (geo.shape !== 'square' || n <= 1) return [cellAt(geo, p)];
+  const mitte = { x: (p.x * geo.w - geo.ox) / geo.size, y: (p.y * geo.h - geo.oy) / geo.size };
+  const anker = { x: Math.round(mitte.x - n / 2), y: Math.round(mitte.y - n / 2) };
+  const out: Cell[] = [];
+  for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) out.push({ x: anker.x + dx, y: anker.y + dy });
+  return out;
+}
+
+/**
+ * **Wie weit ein Angriff reicht, von Platz zu Platz** (T-391): der kürzeste
+ * Abstand zwischen einem Feld des Angreifers und einem Feld des Ziels —
+ * ein Drache auf 3 × 3, dessen Rand Kira berührt, steht 5 ft weit, nicht
+ * 10 ft bis zu seiner Mitte. Gleiche Rasterregel wie `feetBetween`.
+ */
+export function feetBetweenTokens(geo: GridGeometry, a: Pt, aSpan: number, b: Pt, bSpan: number): number {
+  let best = Infinity;
+  for (const ca of tokenCells(geo, a, aSpan)) for (const cb of tokenCells(geo, b, bSpan)) best = Math.min(best, feetBetweenCells(geo, ca, cb));
+  return best;
 }
 
 /** Wo der Plan das Token zuletzt hinstellt — das Ende der letzten Bewegung. */
@@ -498,13 +642,18 @@ export function cleanStep(raw: unknown, i: number): PlanStep | null {
     return { id, kind: 'passage', via: s['via'].slice(0, 80), name: String(s['name'] ?? 'passage').slice(0, 120), feet: feet !== null && feet > 0 ? feet : 0, cost };
   }
   if (s['kind'] === 'act' && typeof s['tile'] === 'string' && s['tile']) {
-    const cost = (['action', 'bonus', 'reaction', 'free'] as const).find((c) => c === s['cost']) ?? 'action';
+    const note = typeof s['note'] === 'string' ? s['note'].trim().slice(0, 300) : '';
+    /* Eine freie Aktion (REQ-403) kostet, was ihre Kachel sagt, und sagt, was sie tut. */
+    const frei = isManualTile(s['tile']) ? MANUAL_TILES.find((t) => t.id === s['tile'])! : null;
+    if (frei && !note) return null;
+    const cost = frei ? frei.cost : (['action', 'bonus', 'reaction', 'free'] as const).find((c) => c === s['cost']) ?? 'action';
     return {
       id,
       kind: 'act',
       tile: s['tile'].slice(0, 80),
-      name: String(s['name'] ?? '').slice(0, 120),
+      name: frei ? frei.name : String(s['name'] ?? '').slice(0, 120),
       cost,
+      ...(note ? { note } : {}),
       ...(typeof s['target'] === 'string' && s['target'] ? { target: s['target'].slice(0, 80) } : {}),
       ...(typeof s['targetName'] === 'string' && s['targetName'] ? { targetName: s['targetName'].slice(0, 120) } : {}),
     };

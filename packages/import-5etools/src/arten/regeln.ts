@@ -99,6 +99,9 @@ const ATTR_WORT: Record<string, string> = {
   Strength: 'str', Dexterity: 'dex', Constitution: 'con', Intelligence: 'int', Wisdom: 'wis', Charisma: 'cha',
 };
 
+/** Die Abkürzungen von 5e.tools, die eine Wirkung am Bogen haben (`ItemFeature.mechanics`, T-324). */
+const WIRKUNG: Record<string, string> = { '2H': 'two-handed', V: 'versatile', L: 'light', F: 'finesse' };
+
 export const REGELN: Zuordnung[] = [
   regel('condition', 'condition', 'Condition', {
     fuellen(wb, ent, e) {
@@ -180,6 +183,10 @@ export const REGELN: Zuordnung[] = [
     genutzt: ['name', 'abbreviation', 'entries', 'entriesTemplate', 'template'],
     fuellen(wb, ent, e) {
       wb.feld(ent, 'ItemProperty', 'abbreviation', e['abbreviation']);
+      /* **Was sie am Bogen bewirkt** (T-324, E-163): aus der Abkürzung von
+         5e.tools, damit der Bogen später die Daten fragt und nicht den
+         Namen. Was keine der vier Wirkungen ist, bleibt leer. */
+      wb.feld(ent, 'ItemFeature', 'mechanics', WIRKUNG[String(e['abbreviation'] ?? '').split('|')[0]!] ? [WIRKUNG[String(e['abbreviation']).split('|')[0]!]] : undefined);
       /* Der Eintrag ist ein benannter Block mit dem Namen der Eigenschaft;
          der Name steht schon als Überschrift des Artikels. */
       const erster = liste(e['entries'])[0] as Knoten | undefined;
