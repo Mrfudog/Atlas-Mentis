@@ -70,9 +70,17 @@ sie nicht still an.
 
 | Datum | Stand | Artikelseite (Figur) | Kompendium | Board | Kartenliste | Startpaket |
 |---|---|---:|---:|---:|---:|---:|
+| 29.10.2026 | preprod `e657a45f`, nach #456–#463 (Leitung) | 9,5 s, 27 Abrufe | 5,9 s | 9,1 s | 7,5 s | 1,18 MB |
+| 29.10.2026 | dasselbe, Spieler | 8,9 s, 27 Abrufe | 5,1 s | – | – | 1,18 MB |
 | 28.10.2026 | preprod `407935f5`, vor T-398 | > 60 s, 150 Abrufe | 8,2 s | 18,6 s | 29,9 s | 1,25 MB |
 
-Neue Zeilen kommen oben dazu, mit der Messung aus `laden-messen.mjs`.
+Gemessen bei 1360 px, zweite Runde. Neue Zeilen kommen oben dazu, mit der
+Messung aus `laden-messen.mjs`.
+
+Was am 29.10. noch zählt (`Server-Timing` der Artikelseite): `db` — viele
+kleine Abfragen je Anfrage (Stempel, Register, Zuteilungen) —, die fertigen
+Stände im Sieb (`s.fertig`, 0,3–0,6 s) und doppelte Abrufe
+(`/api/me/prefs` ×3, `entities?ids` ×8).
 
 ## Im Review
 
