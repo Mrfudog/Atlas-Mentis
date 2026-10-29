@@ -251,11 +251,19 @@ export class KartenSeitenleiste {
   readonly aufKarte = input<ReadonlySet<string>>(new Set());
   /** Schreibt der Betrachter die Karte? Dann setzt und zieht er. */
   readonly schreibt = input(false);
+  /**
+   * **Vorplatzieren auf Wunsch** (T-333): „Prepare on map“ am Tracker der
+   * Begegnung öffnet die Karte mit `?prepare=<Begegnung>`. Sobald die Leiste
+   * steht, tut sie einmal, was „Prepare n“ täte — und meldet `vorbereitet`,
+   * auch wenn nichts zu tun war (gestartet, schon gesetzt, nicht hier).
+   */
+  readonly vorbereitenFuer = input<string | null>(null);
 
   readonly zentrieren = output<string>();
   readonly setzen = output<{ id: string; name: string }>();
   readonly alleSetzen = output<string[]>();
   readonly vorbereiten = output<{ encounter: string; ids: string[] }>();
+  readonly vorbereitet = output<void>();
 
   private readonly api = inject(Api);
   private readonly session = inject(Session);
@@ -265,6 +273,17 @@ export class KartenSeitenleiste {
   private lauf = 0;
 
   constructor() {
+    effect(() => {
+      const id = this.vorbereitenFuer();
+      const seite = this.seite();
+      if (!id || !seite) return;
+      untracked(() => {
+        const e = seite.encounters?.find((x) => x.id === id);
+        const ids = e && e.round === 0 && this.schreibt() ? this.offen(e) : [];
+        if (ids.length) this.vorbereiten.emit({ encounter: id, ids });
+        this.vorbereitet.emit();
+      });
+    });
     effect(() => {
       const k = this.karte();
       const s = this.sitzung();

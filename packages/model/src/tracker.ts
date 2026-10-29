@@ -512,6 +512,8 @@ export interface TrackerView {
   gm: boolean;
   rules: InitiativeRules;
   rows: TrackerRow[];
+  /** Die Karte, auf der gekämpft wird (`onMap`) — nur für die Leitung, für „Prepare on map“ (T-333). */
+  map?: EntityId;
 }
 
 /** Die Namen der Regeln am Statblock eines Teilnehmers — gelesen aus dem, was der Betrachter sieht. */
@@ -616,6 +618,7 @@ export function trackerView(
     }
     return row;
   });
+  const karte = (encounter.relations ?? []).find((r) => r.type === 'onMap')?.to;
   return {
     id: encounter.id,
     name: entityName(encounter),
@@ -625,6 +628,7 @@ export function trackerView(
     gm,
     rules,
     rows,
+    ...(gm && karte ? { map: karte } : {}),
   };
 }
 
