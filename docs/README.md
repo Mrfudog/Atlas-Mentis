@@ -61,6 +61,7 @@ von Hand ändern.
 | [Anforderungen.md](Anforderungen.md) | Jede Story mit Stand, nach Epic und Feature | erzeugt | `pnpm --filter @nw/registry anforderungen` |
 | [Architektur.md](Architektur.md) | Container, Frameworks, Repo, Server, Oberfläche | gilt (Stand 12.10.) | Hand |
 | [Betrieb.md](Betrieb.md) | Ausrollen, Sichern, Zurück, Daten laden | gilt | Hand |
+| [Performance.md](Performance.md) | Leistungsregeln P1–P8, Budgets je Seite, wie gemessen wird, Grundlinie (T-398, T-322) | gilt | Hand, Grundlinie aus `scripts/laden-messen.mjs` |
 | [Zugang.md](Zugang.md) | Konten, Rollen, Sieben, API-Tokens | gilt | Hand |
 | [Ebenen.md](Ebenen.md) | Ebenen und Stapelauflösung ausführlich | gilt, Kurzform in Datenmodell §8 | Hand |
 | [Wissen.md](Wissen.md) | Wer weiss was: Information, Knowledge, `knownBy` | gilt, Kurzform in Datenmodell §9 | Hand |

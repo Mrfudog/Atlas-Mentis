@@ -914,7 +914,7 @@ wiederkommen, werden sie neu geschrieben.
 ## Grundanforderungen an jede Änderung
 
 Von der Leitung festgelegt (21.10.2026), für jedes Coding-Projekt und jede
-Sitzung. Eine Änderung ist erst fertig, wenn alle fünf Punkte stehen; wo einer
+Sitzung. Eine Änderung ist erst fertig, wenn alle sechs Punkte stehen; wo einer
 nicht passt (z. B. reine Doku), sagt der Pull Request, warum.
 
 1. **Drei Teststufen, im selben Pull Request.**
@@ -954,6 +954,13 @@ nicht passt (z. B. reine Doku), sagt der Pull Request, warum.
    des Startpakets, Timeout, Limit), legt stattdessen eine Aufgabe im Bereich
    Performance an und nennt sie im Pull Request. Der Prüflauf nach jedem
    Release (T-322) vergleicht mit der Grundlinie.
+6. **Leistung mitdenken** (29.10.2026, T-398). Die Regeln P1–P8 und die
+   Budgets stehen in [docs/Performance.md](docs/Performance.md). Kurz: kein
+   Abruf je Element und keine doppelte Frage; am Server kein Durchlauf über
+   den ganzen Bestand je Artikel und kein Index, der bei jedem Schreiben
+   ganz verfällt; das Startpaket wächst nicht. Wer einen Ladepfad ändert,
+   nimmt ihn in `apps/web/e2e/abrufe.spec.ts` auf und nennt im Pull Request
+   die Zahl der Abrufe vorher und nachher.
 
 Die PR-Vorlage fragt jeden Punkt ab, und die Aufträge an die Sitzungen nennen
 ihn.

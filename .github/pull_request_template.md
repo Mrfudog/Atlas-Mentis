@@ -18,6 +18,16 @@
 - [ ] `pnpm build`
 - [ ] Nach dem Merge: Ausrollen auf dev grün, `/api/health` 200
 
+## Leistung
+
+<!-- docs/Performance.md, Regeln P1–P8. Ändert sich ein Ladepfad (neuer Abruf, neuer Effekt, der fragt, neue Seite), hier die Abrufe vorher → nachher. -->
+
+- [ ] Kein Abruf je Element, keine doppelte Frage (P1, P2)
+- [ ] Am Server kein Durchlauf über den Bestand je Artikel, kein Index, der bei jedem Schreiben verfällt (P4, P5)
+- [ ] Startpaket nicht gewachsen, Budget nicht angehoben (P6)
+- [ ] Neuer Ladepfad in `apps/web/e2e/abrufe.spec.ts` (P8); Abrufe vorher → nachher:
+- [ ] nicht nötig (kein Ladepfad geändert)
+
 ## Vault
 
 - [ ] Feature-Notiz und Story nachgeführt (`VTT/Features/`, `VTT/Stories/`)
