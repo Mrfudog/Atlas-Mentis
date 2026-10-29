@@ -2923,6 +2923,16 @@ lauernde Wache auf, die versteckt bleiben soll (REQ-209). Der Vermerk
 steht an der Kante und nicht an der Kreatur, weil dieselbe Kreatur auf
 einer anderen Karte für eine andere Begegnung bereitstehen kann.
 
+**Vier Goblins sind vier Kanten, nicht eine mit einer Vier** (T-333).
+Eine Anzahl an `participates` sähe aufgeräumter aus — eine Zeile
+„Goblin ×4“ —, aber im Kampf hat jeder Goblin seine eigenen
+Trefferpunkte, seine eigene Initiative und seine eigenen Zustände, und die
+stehen an der Kante. Eine Kante mit `count: 4` müsste vier Stände in einem
+Feld führen oder beim Start in vier zerfallen, und dann gäbe es zwei
+Wahrheiten über dieselbe Begegnung. Die Anzahl ist darum eine Frage beim
+**Hinzufügen** („Add a combatant“ · 4) und kein Feld: der Tracker legt so
+viele Kanten an und zählt sie am Tisch durch.
+
 **Ein Licht an der Wand ist ein Marker, kein Artikel** (T-320). Eine
 Fackel in einer Halterung hat keinen Namen, den jemand nachschlägt, und
 keine Werte; ein Artikel „Fackel 3" für jede wäre Bestand ohne Inhalt. Ein

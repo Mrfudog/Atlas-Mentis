@@ -24,3 +24,27 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 | [[REQ-173]] Weltzustand zwischen Sitzungen | Spielleitung | 4 | offen |
 | [[REQ-221]] Begegnungen bauen | Spielleitung | 3 | offen |
 <!-- stories:ende -->
+
+## Was eine Begegnung trägt (T-333)
+
+Ort (`happensAt` → Ort, wie bei einer Szene), Karte (`onMap`) und Beute
+(`loot` mit Menge und Chance) stehen auf der Seite der Begegnung als
+Gruppen — im Ansichtsdesigner verschieb- und abschaltbar. Angelegt wird
+unter „Edit" › Relations; die Auswahl bietet „Create … as …".
+
+**Vier Goblins sind vier Kanten.** Im Tracker nimmt „Add a combatant"
+eine Anzahl (×, höchstens 20): jeder bekommt seine eigene Zeile mit
+eigener Initiative und eigenen Trefferpunkten, durchgezählt „Goblin 1"
+bis „Goblin 4". Eine Anzahl *an* der Kante hätte vier Stände in einem
+Feld geführt. Auch hier legt die Auswahl einen fehlenden Gegner gleich an.
+
+```mermaid
+flowchart LR
+  E["Encounter"] -- happensAt --> O["Ort"]
+  E -- onMap --> K["Karte"]
+  E -- "loot · Menge, Chance" --> G["Gegenstand"]
+  T["Tracker: Add ×3"] -. "drei participates-Kanten" .-> E
+```
+
+Offen: ob Szene („Scene / Encounter") und Begegnung eine Art werden
+(E-118), und „Prepare on map" direkt an der Begegnung.

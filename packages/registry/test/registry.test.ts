@@ -1017,3 +1017,20 @@ describe('Ebenen-Arten (E-166)', () => {
     expect(ebenen.sort()).toEqual([...LAYER_TYPES].sort());
   });
 });
+
+/* Ein Encounter trägt, was die Leitung vorbereitet (T-333): wo er
+   stattfindet, was zu holen ist, auf welcher Karte — als Gruppen in der
+   Ansicht, damit der Ansichtsdesigner sie verschieben kann. */
+describe('an encounter as a prepared article (T-333)', () => {
+  it('happens at a place, like a scene', () => {
+    expect(seedRegistry.relations['happensAt']?.from).toEqual(expect.arrayContaining(['Story', 'Encounter']));
+    expect(relationsFrom(seedRegistry, 'Encounter').map((d) => d.type)).toContain('happensAt');
+  });
+  it('shows place, loot and map as groups in its full view', () => {
+    const full = seedRegistry.interfaces['Encounter']!.views!['full']!;
+    const gruppe = (rel: string) => full.find((el) => el.el === 'collection' && el.path?.[0]?.relation === rel);
+    expect(gruppe('happensAt')).toMatchObject({ text: 'Place' });
+    expect(gruppe('loot')).toMatchObject({ text: 'Loot', show: 'table', props: ['qty', 'chance'] });
+    expect(gruppe('onMap')).toMatchObject({ text: 'Map' });
+  });
+});

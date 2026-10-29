@@ -144,3 +144,35 @@ describe('Spieleransicht nach Einstellung', () => {
     expect((b({ effects: 'party' }).props as ParticipantProps).conditions).toEqual([]);
   });
 });
+
+describe('Mehrere auf einmal (T-333)', () => {
+  let n = 0;
+  const zaehler = { d20: () => 10, newId: () => `k${++n}` };
+  const teilnehmer = (e: Entity) => (e.relations ?? []).filter((r) => r.type === 'participates');
+  it('legt je Kämpfer eine eigene Kante an und nummeriert die Namen', () => {
+    const r = applyTrackerOp(alle, kampf(0, 0, []), { op: 'add', to: 'wolf', count: 3 }, zaehler);
+    if (!('encounter' in r)) throw new Error(r.error);
+    const t = teilnehmer(r.encounter);
+    expect(t.map((x) => (x.props as ParticipantProps).label)).toEqual(['Wolf 1', 'Wolf 2', 'Wolf 3']);
+    expect(new Set(t.map((x) => x.id)).size).toBe(3);
+  });
+  it('zählt weiter, wo schon welche stehen, und nimmt den Namen am Tisch', () => {
+    const rel = [teil('w1', 'wolf', { init: 5, label: 'Wolf 1' }), teil('w2', 'wolf', { init: 5, label: 'Wolf 2' })];
+    const r = applyTrackerOp(alle, kampf(0, 0, rel), { op: 'add', to: 'wolf', count: 2 }, zaehler);
+    if (!('encounter' in r)) throw new Error(r.error);
+    expect(teilnehmer(r.encounter).map((x) => (x.props as ParticipantProps).label)).toEqual(['Wolf 1', 'Wolf 2', 'Wolf 3', 'Wolf 4']);
+    const g = applyTrackerOp(alle, kampf(0, 0, []), { op: 'add', to: 'ork', count: 2, label: 'Guard', ally: true }, zaehler);
+    if (!('encounter' in g)) throw new Error(g.error);
+    expect(teilnehmer(g.encounter).map((x) => x.props)).toEqual([
+      { init: 12, ally: true, label: 'Guard 1' },
+      { init: 12, ally: true, label: 'Guard 2' },
+    ]);
+  });
+  it('einer bleibt ohne Nummer, mehr als zwanzig oder keiner ist ein Fehler', () => {
+    const r = applyTrackerOp(alle, kampf(0, 0, []), { op: 'add', to: 'wolf', count: 1 }, zaehler);
+    if (!('encounter' in r)) throw new Error(r.error);
+    expect((teilnehmer(r.encounter)[0]!.props as ParticipantProps).label).toBeUndefined();
+    expect(applyTrackerOp(alle, kampf(0, 0, []), { op: 'add', to: 'wolf', count: 21 }, zaehler)).toHaveProperty('error');
+    expect(applyTrackerOp(alle, kampf(0, 0, []), { op: 'add', to: 'wolf', count: 0 }, zaehler)).toHaveProperty('error');
+  });
+});

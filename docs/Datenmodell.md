@@ -619,6 +619,40 @@ flowchart LR
   E -. "refs.encounter<br/>stances + revealed" .-> S["Seite: Who stands where<br/>✓ The party knows this hint"]
 ```
 
+**Was vorbereitet ist: Ort, Karte, Beute und mehrere Kämpfer** (T-333):
+eine Begegnung findet **an einem Ort** statt (`happensAt` → `Place`, wie
+bei einer Szene), wird **auf einer Karte** gekämpft (`onMap`) und hat
+**Beute** (`loot` mit `qty` und `chance`). Die drei stehen in der Anordnung
+`full` als Collections (`e-place` in Kurzansicht, `e-map` als Liste,
+`e-loot` als Tabelle mit Menge und Chance) — Elemente wie jedes andere, im
+Ansichtsdesigner verschieb- und abschaltbar, und leer steht keines da.
+Angelegt werden die Kanten unter „Edit“ › Relations; die Auswahl dort
+bietet „Create … as …“ (T-131) an.
+
+**Eine Anzahl ist so viele Kanten.** Vier Goblins sind vier
+`participates`-Kanten auf denselben Statblock, nicht eine mit `count: 4`:
+Trefferpunkte, Initiative und Zustände stehen an der Kante, und eine
+Anzahl daran hiesse, vier Stände in einem Feld zu führen. Darum nimmt der
+Tracker `count` (1 bis `MAX_ADD` = 20) nur beim **Hinzufügen** (`op:
+'add'`) und legt so viele Kanten an, jede mit eigenem Initiativewurf und
+durchgezählt am Tisch (`label` „Goblin 1“ … — weitergezählt nach der
+höchsten Nummer, die schon dasteht). „Add a combatant“ bietet dabei
+„Create … as …“ an. Migration 165 ergänzt `happensAt` und die Anordnung,
+wo sie `e-yield` trägt.
+
+Ob Szene und Begegnung **eine Art** werden, entscheidet E-118 — das hier
+gilt in beiden Fällen.
+
+```mermaid
+flowchart LR
+  E["Encounter: Ambush"] -- happensAt --> O["Place: Old mill"]
+  E -- onMap --> K["Map: Mill yard"]
+  E -- "loot<br/>qty 30 · chance 100" --> G["Item: Silver piece"]
+  E -- "participates<br/>label Goblin 1 · init 14" --> S["Statblock: Goblin"]
+  E -- "participates<br/>label Goblin 2 · init 9" --> S
+  T["Tracker: Add · count 2"] -. "zwei Kanten" .-> E
+```
+
 ### 5.9 Zeitleisten und Spuren (D57, REQ-220)
 
 ```mermaid
@@ -2803,7 +2837,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `backgroundColor` `backgroundFit` `backgroundMap` `rules` `shapes` `anchors` | `partOf` `placed` | — | full, quick |
 | `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | overview, full |
-| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, overview, full |
+| `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` `Played` | `kind` `xpBudget` `phase` `round` `turn` `surprise` `solution` `hint` `goal` `check` | `partOf` `happensAt` `features` `participates` `onMap` `loot` `tableFor` `instanceOf` | `instanceOf` | quick, overview, full |
 | `Map` | `Image` `Secrets` `ReadAloud` `Played` | `sheets` `floors` `floorReveal` `floorReleased` `baseHidden` `baseGmOnly` `kind` `markerView` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `gridColor` `gridOpacity` `gridHidden` `snapTokens` `scale` `lighting` `fog` `released` `reveal` `revealOnMove` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` `instanceOf` | `insideMap` `onMap` `instanceOf` | overview, quick, full |
 | `Note` | — | — | — | — | — |
 
@@ -2852,7 +2886,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `explains` | GlossaryTerm → * |  | — | — |
 | `features` | Story \| Encounter → Creature \| Statblock \| Faction \| Hazard |  | — | — |
 | `grants` | Class \| Subclass \| Ancestry \| Background \| Feat → Rule |  | — | `level` |
-| `happensAt` | Story → Place |  | — | — |
+| `happensAt` | Story \| Encounter → Place |  | — | — |
 | `hasAncestry` | PlayerCharacter → Ancestry | ja | — | — |
 | `hasBackground` | PlayerCharacter → Background | ja | — | — |
 | `hasClass` | PlayerCharacter → Class |  | — | `level` `subclass` `hp` |

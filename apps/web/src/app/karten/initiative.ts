@@ -1,6 +1,6 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { enumOptions, type QuickAction, type TrackerOp, type TrackerRow, type TrackerView } from '@nw/model';
+import { MAX_ADD, enumOptions, type QuickAction, type TrackerOp, type TrackerRow, type TrackerView } from '@nw/model';
 import { Api } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { BegriffLink, Glossar } from '../kern/glossar';
@@ -253,7 +253,9 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
 
         @if (sicht()!.gm) {
           <form class="dazu" (submit)="$event.preventDefault(); dazu()">
-            <nw-wahl label="Add a combatant" [arten]="['Creature', 'Statblock', 'Party']" [anlegbar]="false" [wert]="neu()" (wertChange)="neu.set($event)" />
+            <!-- Anlegen aus der Auswahl (T-333, T-131): „Create … as …" für eine Kreatur oder einen Statblock, der noch fehlt. -->
+            <nw-wahl label="Add a combatant" [arten]="['Creature', 'Statblock', 'Party']" [wert]="neu()" (wertChange)="neu.set($event)" />
+            <label class="haken" title="How many — each gets its own row, numbered">×<input type="number" class="anzahl" min="1" [max]="maxDazu" step="1" aria-label="How many" [value]="neuAnzahl()" (input)="neuAnzahl.set($any($event.target).value)" /></label>
             <input type="number" step="1" aria-label="Initiative of the new combatant" placeholder="Init (roll)" [value]="neuInit()" (input)="neuInit.set($any($event.target).value)" />
             <label class="haken"><input type="checkbox" [checked]="neuVerbuendet()" (change)="neuVerbuendet.set($any($event.target).checked)" /> ally</label>
             <button type="submit" class="klein" [disabled]="!neu() || laeuft()">Add</button>
@@ -590,6 +592,9 @@ type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
       align-items: center;
       gap: 0.3rem;
     }
+    .dazu input.anzahl {
+      width: 4rem;
+    }
     .dazu {
       border-top: 1px solid var(--line);
       padding-top: 0.5rem;
@@ -644,6 +649,9 @@ export class Initiative {
   protected readonly verborgen = signal(false);
   /* Ein neuer Teilnehmer. */
   protected readonly neu = signal('');
+  /** Wie viele auf einmal (T-333) — je einer eine Zeile, durchgezählt. */
+  protected readonly neuAnzahl = signal('1');
+  protected readonly maxDazu = MAX_ADD;
   protected readonly neuInit = signal('');
   protected readonly neuVerbuendet = signal(false);
 
@@ -856,9 +864,11 @@ export class Initiative {
       to: this.neu(),
       ...(this.neuInit().trim() && Number.isFinite(init) ? { init } : {}),
       ...(this.neuVerbuendet() ? { ally: true } : {}),
+      ...(Number(this.neuAnzahl()) > 1 ? { count: Number(this.neuAnzahl()) } : {}),
     });
     if (ok) {
       this.neu.set('');
+      this.neuAnzahl.set('1');
       this.neuInit.set('');
       this.neuVerbuendet.set(false);
     }

@@ -9,6 +9,14 @@
       "link": "/handbook"
     },
     {
+      "id": "2026-10-29-encounter-prepared",
+      "date": "2026-10-29",
+      "title": "An encounter shows its place, map and loot, and adds several foes at once",
+      "text": "An encounter can now happen at a place, like a scene, and its page shows Place, Map and Loot (with quantity and chance) as groups you can move in the view designer. In the initiative tracker, Add a combatant takes a number — four goblins become Goblin 1 to 4, each with its own row — and offers Create “…” as … for a creature or statblock that does not exist yet.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-draw-zones",
       "date": "2026-10-29",
       "title": "Draw zones and territories on the map",
