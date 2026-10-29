@@ -22,3 +22,15 @@
   border: 1px solid var(--line);
   background: none;
 }
+/* Text und Stempel (T-219): mittig auf ihrem Punkt. */
+.beschriftung {
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-family: inherit;
+  font-weight: 600;
+}
+.stempel-wahl {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}

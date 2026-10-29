@@ -322,6 +322,8 @@ type Werkzeug =
   | 'stiftEllipse'
   | 'radierer'
   | 'sichtAufdecken'
+  | 'beschriften'
+  | 'stempel'
   | 'platzieren'
   | 'notiz';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
@@ -641,7 +643,31 @@ interface Zeiger {
                   }
                 </select>
               </label>
-              <button type="button" [class.an]="werkzeug() === 'radierer'" [attr.aria-pressed]="werkzeug() === 'radierer'" (click)="waehle('radierer')" title="Tap a stroke to erase it">Erase</button>
+              <button type="button" [class.an]="werkzeug() === 'beschriften'" [attr.aria-pressed]="werkzeug() === 'beschriften'" (click)="waehle('beschriften')" title="Type a label, then tap where it goes">Text</button>
+              <button type="button" [class.an]="werkzeug() === 'stempel'" [attr.aria-pressed]="werkzeug() === 'stempel'" (click)="waehle('stempel')" title="Pick a stamp, then tap where it goes">Stamp</button>
+              @if (werkzeug() === 'beschriften') {
+                <label>
+                  <input type="text" maxlength="200" [value]="beschriftung()" (input)="beschriftung.set($any($event.target).value)" aria-label="Label text" placeholder="Label" />
+                </label>
+              }
+              @if (werkzeug() === 'stempel') {
+                <span role="group" aria-label="Stamps" class="stempel-wahl">
+                  @for (z of STEMPEL; track z.zeichen) {
+                    <button type="button" class="klein" [class.an]="stempelZeichen() === z.zeichen" [attr.aria-pressed]="stempelZeichen() === z.zeichen" (click)="stempelZeichen.set(z.zeichen)" [attr.aria-label]="z.name" [title]="z.name">{{ z.zeichen }}</button>
+                  }
+                </span>
+              }
+              @if (werkzeug() === 'beschriften' || werkzeug() === 'stempel') {
+                <label>
+                  Size
+                  <select (change)="textGroesse.set(+$any($event.target).value)" aria-label="Text size">
+                    @for (g of TEXT_GROESSEN; track g.wert) {
+                      <option [value]="g.wert" [selected]="textGroesse() === g.wert">{{ g.label }}</option>
+                    }
+                  </select>
+                </label>
+              }
+              <button type="button" [class.an]="werkzeug() === 'radierer'" [attr.aria-pressed]="werkzeug() === 'radierer'" (click)="waehle('radierer')" title="Tap a stroke, label or stamp to erase it">Erase</button>
               @if (zeichenBlattJetzt(); as bid) {
                 <label title="Only the GM sees this layer; players never get it">
                   <input type="checkbox" [checked]="zeichenBlattLeitung()" (change)="zeichenBlattLeitungSetzen(bid, $any($event.target).checked)" />
@@ -1318,7 +1344,12 @@ interface Zeiger {
                       <!-- **Die Zeichenebene** (T-219, REQ-142): gleiche Achsen, damit ein Strich rund bleibt. -->
                       <svg class="striche" [attr.viewBox]="'0 0 1 ' + seitenverhaeltnis()" preserveAspectRatio="none" aria-hidden="true" [style.opacity]="s.opacity" [attr.data-sheet]="s.id">
                         @for (st of s.strokes; track st.id) {
-                          <path class="strich" [attr.d]="strichPfad(st)" [style.stroke]="st.color" [style.stroke-width]="st.width" />
+                          @if (st.kind === 'text') {
+                            <!-- Text und Stempel (T-219): als Textknoten, nie als HTML. -->
+                            <text class="beschriftung" [attr.x]="st.pts[0]![0]" [attr.y]="st.pts[0]![1] * seitenverhaeltnis()" [attr.font-size]="st.width" [style.fill]="st.color">{{ st.text }}</text>
+                          } @else {
+                            <path class="strich" [attr.d]="strichPfad(st)" [style.stroke]="st.color" [style.stroke-width]="st.width" />
+                          }
                         }
                       </svg>
                     }
@@ -1946,8 +1977,12 @@ interface Zeiger {
           {{ werkzeug() === 'flaecheRechteck' ? 'Rectangle' : 'Ellipse' }} — drag over the map; the squares whose centre lies inside belong to {{ flaecheZielName() }}.
         } @else if (werkzeug() === 'stift' || werkzeug() === 'stiftLinie' || werkzeug() === 'stiftRechteck' || werkzeug() === 'stiftEllipse') {
           {{ werkzeug() === 'stift' ? 'Pen — draw with the mouse or a finger.' : 'Drag from one corner to the other.' }} Strokes go on {{ zeichenBlattName() }}.
+        } @else if (werkzeug() === 'beschriften') {
+          {{ beschriftung().trim() ? 'Tap where “' + beschriftung().trim() + '” goes.' : 'Type the label above, then tap where it goes.' }}
+        } @else if (werkzeug() === 'stempel') {
+          Tap where the stamp {{ stempelZeichen() }} goes.
         } @else if (werkzeug() === 'radierer') {
-          Tap a stroke to erase it.
+          Tap a stroke, label or stamp to erase it.
         } @else if (werkzeug() === 'sichtAufdecken') {
           Reveal sight — tap a token: what it sees from where it stands is revealed{{ jeFigur() ? ' for that character' : '' }}.
         } @else if (werkzeug() === 'flaecheWeg') {
@@ -4025,6 +4060,13 @@ export class Karte {
     } else if (this.werkzeug() === 'vieleck') {
       /* Einrasten wie an den Wänden, dazu an die Ecken der übrigen Formen. */
       this.vieleckTippen(this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse', undefined, this.vieleckFang()).pt);
+    } else if (this.werkzeug() === 'beschriften' || this.werkzeug() === 'stempel') {
+      const text = this.werkzeug() === 'stempel' ? this.stempelZeichen() : this.beschriftung().trim();
+      if (!text) {
+        this.hinweis.set('Type the label first.');
+        return;
+      }
+      this.textAnlegen(pt, text);
     } else if (this.werkzeug() === 'radierer') {
       const e = this.karte();
       const tol = SPERRE_TREFFER / Math.max(1, this.breite());
@@ -4965,6 +5007,37 @@ export class Karte {
     const pts = st.pts.map((p) => [p.x, p.y] as [number, number]);
     return { d: strokePath({ id: '', kind, pts, color: '', width: 0 }, this.seitenverhaeltnis()), color: this.stiftFarbe(), width: this.stiftBreite() };
   });
+  /** Text und Stempel (T-219): ein Wort oder ein Zeichen auf der Zeichenebene, in Anteilen der Breite gross. */
+  protected readonly STEMPEL = [
+    { zeichen: '☠', name: 'Danger' },
+    { zeichen: '⚠', name: 'Warning' },
+    { zeichen: '✕', name: 'Mark' },
+    { zeichen: '★', name: 'Star' },
+    { zeichen: '⚑', name: 'Flag' },
+    { zeichen: '⚔', name: 'Battle' },
+    { zeichen: '⌂', name: 'House' },
+    { zeichen: '?', name: 'Unknown' },
+  ];
+  protected readonly TEXT_GROESSEN = [
+    { label: 'Small', wert: 0.015 },
+    { label: 'Medium', wert: 0.025 },
+    { label: 'Large', wert: 0.045 },
+  ];
+  protected readonly beschriftung = signal('');
+  protected readonly stempelZeichen = signal('☠');
+  protected readonly textGroesse = signal(0.025);
+  private textAnlegen(pt: Pt, text: string): void {
+    let e = this.karte();
+    if (!e) return;
+    let blatt = this.zeichenBlattJetzt();
+    if (!blatt) {
+      const neu = addDrawingSheet(e, `Drawing ${this.zeichenBlaetter().length + 1}`, `sheet-${crypto.randomUUID().slice(0, 8)}`);
+      e = neu.map;
+      blatt = neu.id;
+      this.zeichenBlatt.set(blatt);
+    }
+    void this.schreiben(addStroke(e, blatt, { id: `tx-${crypto.randomUUID().slice(0, 8)}`, kind: 'text', pts: [[pt.x, pt.y]], color: this.stiftFarbe(), width: this.textGroesse(), text }));
+  }
   private strichAnlegen(w: Werkzeug, pts: Pt[]): void {
     let e = this.karte();
     if (!e || !pts.length) return;

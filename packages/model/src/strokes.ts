@@ -1,6 +1,6 @@
 /**
  * **Zeichnen auf der Karte** (T-219, REQ-142, docs/Karten.md › Zeichnen):
- * Striche liegen auf einem eigenen Blatt (`Map.sheets[].strokes`) — die
+ * Striche — und seit dem Stempel auch Text (`kind: 'text'`) — liegen auf einem eigenen Blatt (`Map.sheets[].strokes`) — die
  * Zeichenebene ist ein Blatt wie eines mit Bild: sie hat Deckkraft,
  * lässt sich ausblenden und der Leitung vorbehalten (`gmOnly`, dann hält
  * `redactMap` sie zurück). Ein eigenes Feld `Map.drawings` daneben wäre
@@ -36,7 +36,7 @@ export function addDrawingSheet(e: Entity, name: string, id: string): { map: Ent
 
 /** Einen Strich auf ein Blatt; die Punkte gerundet, damit ein langer Freihandstrich kurz bleibt. */
 export function addStroke(e: Entity, sheet: string, s: MapStroke): Entity {
-  const strich = { id: s.id, kind: s.kind, pts: s.pts.map(([x, y]) => [r5(x), r5(y)]), color: s.color, width: r5(s.width) };
+  const strich = { id: s.id, kind: s.kind, pts: s.pts.map(([x, y]) => [r5(x), r5(y)]), color: s.color, width: r5(s.width), ...(s.kind === 'text' && s.text ? { text: s.text } : {}) };
   return mitBlaettern(
     e,
     rohBlaetter(e).map((b) => (b['id'] === sheet ? { ...b, strokes: [...(Array.isArray(b['strokes']) ? b['strokes'] : []), strich] } : b)),
@@ -100,6 +100,14 @@ export function strokeAt(e: Entity, p: Pt, ar: number, tol: number): { sheet: st
     const b = blaetter[i]!;
     for (let j = b.strokes.length - 1; j >= 0; j--) {
       const s = b.strokes[j]!;
+      if (s.kind === 'text') {
+        /* Ein Text trifft man in seinem Kasten: so breit wie seine Zeichen, so hoch wie die Schrift. */
+        const [m] = s.pts;
+        const breit = (s.width * Math.max(1, [...(s.text ?? '')].length)) / 2 * 0.6 + tol;
+        const hoch = s.width / 2 + tol;
+        if (m && Math.abs(p.x - m[0]) <= breit && Math.abs((p.y - m[1]) * ar) <= hoch) return { sheet: b.id, stroke: s.id };
+        continue;
+      }
       const q = strecken(s);
       const grenze = tol + s.width / 2;
       const treffer =
