@@ -1157,6 +1157,8 @@ export interface Heim {
 /** Wo der Tab sich merkt, wessen Sicht er einnimmt: über Seitenwechsel und
  *  Neuladen, nicht über das Schliessen des Tabs (REQ-241). */
 const SICHT_SCHLUESSEL = 'atlas.viewAs';
+/** Wie lange eine Antwort von `/api/me/prefs` gilt (T-398): ein Seitenaufbau, nicht mehr. */
+const PREFS_GILT = 10_000;
 function leseSicht(): string | null {
   try {
     return globalThis.sessionStorage?.getItem(SICHT_SCHLUESSEL) || null;
@@ -1467,6 +1469,8 @@ export class Api {
   readonly viewAs = signal<string | null>(leseSicht());
   setViewAs(id: string | null): void {
     this.viewAs.set(id);
+    /* Andere Augen, andere Prefs. */
+    this.prefsVergessen();
     try {
       if (id) globalThis.sessionStorage?.setItem(SICHT_SCHLUESSEL, id);
       else globalThis.sessionStorage?.removeItem(SICHT_SCHLUESSEL);
@@ -1483,6 +1487,16 @@ export class Api {
    *  „Retry" zu warten: die Sitzung muss sich auch ohne Server festlegen,
    *  sonst bliebe die Seite ohne Kopfleiste stehen. */
   private async call<T>(path: string, init: RequestInit = {}, halten = true): Promise<T> {
+    /* Jedes Schreiben kann Prefs ändern (T-398) — vorher und nachher vergessen. */
+    const schreibt = (init.method ?? 'GET') !== 'GET';
+    if (schreibt) this.prefsVergessen();
+    try {
+      return await this.callRoh<T>(path, init, halten);
+    } finally {
+      if (schreibt) this.prefsVergessen();
+    }
+  }
+  private async callRoh<T>(path: string, init: RequestInit, halten: boolean): Promise<T> {
     const was = wasLaedt(path);
     this.laufend.update((l) => [...l, was]);
     try {
@@ -2126,15 +2140,40 @@ export class Api {
   /** Was sich das Konto merkt (T-092). */
   prefs(): Promise<Record<string, unknown>> {
     /* Wer gleichzeitig fragt, bekommt dieselbe Antwort (T-398): beim Start
-       fragten Klappstand, Neues, Spalten und Kapitel je für sich. Gehalten
-       wird nur, solange die Frage läuft — kein Zwischenspeicher. */
-    this.prefsLauf ??= this.call<Record<string, unknown>>('/api/me/prefs', {}, false).finally(() => (this.prefsLauf = null));
+       fragten Klappstand, Neues, Spalten und Kapitel je für sich. Und kurz
+       danach noch einmal: auf dev kam `/api/me/prefs` beim Öffnen eines
+       Artikels dreimal nacheinander. Die Antwort gilt darum `PREFS_GILT`
+       lang — nicht länger, denn ein anderes Gerät kann geschrieben haben —
+       und fällt bei jedem Schreiben weg (`call`), auch dem, das nicht
+       `setPref` heisst: die Schreibebene und die Ebenenauswahlen stehen
+       am Server ebenfalls in den Prefs. */
+    const da = this.prefsDa;
+    if (da && Date.now() - da.at < PREFS_GILT) return Promise.resolve(da.wert);
+    if (!this.prefsLauf) {
+      const lauf = this.call<Record<string, unknown>>('/api/me/prefs', {}, false);
+      this.prefsLauf = lauf;
+      void lauf.then(
+        (wert) => {
+          /* Nur, wenn seither nichts geschrieben wurde. */
+          if (this.prefsLauf === lauf) this.prefsDa = { at: Date.now(), wert };
+        },
+        () => undefined,
+      ).finally(() => {
+        if (this.prefsLauf === lauf) this.prefsLauf = null;
+      });
+    }
     return this.prefsLauf;
   }
   private prefsLauf: Promise<Record<string, unknown>> | null = null;
+  private prefsDa: { at: number; wert: Record<string, unknown> } | null = null;
+  /** Gemerkte und laufende Prefs vergessen — nach jedem Schreiben und beim Wechsel der Sicht. */
+  private prefsVergessen(): void {
+    this.prefsLauf = null;
+    this.prefsDa = null;
+  }
   setPref(key: string, value: unknown): Promise<{ ok: true }> {
     /* Was danach gefragt wird, soll den neuen Wert sehen. */
-    this.prefsLauf = null;
+    this.prefsVergessen();
     return this.call(`/api/me/prefs/${encodeURIComponent(key)}`, {
       method: 'PUT',
       body: JSON.stringify({ value }),
