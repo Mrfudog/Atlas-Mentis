@@ -46,6 +46,8 @@ test('a statblock asks for all its proficiencies in one request', async ({ leitu
     /* Früher je Name eine Suche (`of=…&q=…`). */
     expect(l.filter((x) => x.startsWith('GET /api/list?') && /[?&]q=/.test(x))).toHaveLength(0);
     expect(doppelt(l.filter((x) => x.startsWith('GET /api/list') || x.startsWith('GET /api/entities'))), l.join('\n')).toEqual([]);
+    /* Auf dev dreimal nacheinander (29.10.): die Antwort gilt jetzt einen Seitenaufbau lang. */
+    expect(l.filter((x) => x === 'GET /api/me/prefs'), l.join('\n')).toHaveLength(1);
     expect(l.length, l.join('\n')).toBeLessThanOrEqual(25);
   }
 });
