@@ -23,12 +23,12 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 187 steht · 65 teils · 127 offen · 10 ersetzt · 6 verworfen — 395 Stories in 84 Features und 12 Epics.
+Zusammen: 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 56 | 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen |
-| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 52 | 28 steht · 9 teils · 12 offen · 1 ersetzt · 2 verworfen |
+| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 51 | 28 steht · 8 teils · 12 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 19 steht · 2 teils · 8 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 13 teils · 24 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 33 | 17 steht · 4 teils · 12 offen |
@@ -169,7 +169,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 **Erklärt in:** [Zugang.md](../docs/Zugang.md), [Wissen.md](../docs/Wissen.md), [Betrieb.md](../docs/Betrieb.md), [Architektur.md](../docs/Architektur.md)
 
-**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils) · REQ-368 Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden (teils) · REQ-371 Informationen selbst definieren: benannte Auswahl aus Feldern, Textteilen und Beziehungen (offen) · REQ-372 Regeln lernen, wenn sie vorkommen (offen) · REQ-381 Ein Rahmen für alle Werkbank-Seiten (offen) · REQ-392 Featureseiten im Projektbrett (offen) · REQ-393 Demo-Video der Seite (teils) · REQ-397 Artikel laden schnell und stabil (teils)
+**Offen mit Prio 1–3:** REQ-041 Wer was schreiben darf (teils) · REQ-088 Massenänderungen an Wissen und Rechten (teils) · REQ-229 Konten in der Seite verwalten (offen) · REQ-242 Felder der eigenen Figur sperren (offen) · REQ-268 Dev-Token aus der Werkbank erzeugen (teils) · REQ-269 Ankündigen, wann produktiv gearbeitet werden kann (teils) · REQ-270 Artikel von dev nach prod übernehmen (teils) · REQ-271 Konflikte bei der Übernahme nebeneinander lösen (offen) · REQ-354 Wissenspunkte bei eigener Herkunft und eigenem Hintergrund (offen) · REQ-367 Ebene eines Artikels im Bearbeiten ändern, als erstes Feld (teils) · REQ-368 Artikel mit ihrer Ebene in Layers und Visibility der Kampagne, einzeln und mehrfach entscheiden (teils) · REQ-371 Informationen selbst definieren: benannte Auswahl aus Feldern, Textteilen und Beziehungen (offen) · REQ-372 Regeln lernen, wenn sie vorkommen (offen) · REQ-381 Ein Rahmen für alle Werkbank-Seiten (offen) · REQ-392 Featureseiten im Projektbrett (offen) · REQ-393 Demo-Video der Seite (teils)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -270,7 +270,6 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 |---|---|---|---|---|
 | [[REQ-232]] | Listen rechnet der Server | 2 | **steht** | `GET /api/list` mit Spalten aus `overview` und Facetten, 2 KB je Blatt in 15–40 ms; erster Aufruf eines Spielers nach einer Änderung ≈370 ms (W7, D66) |
 | [[REQ-246]] | Navigation ohne Einfrieren | 1 | **steht** | Stapel einmal gerechnet, Ladebanner, Startmeldung (T-086) |
-| [[REQ-397]] | Artikel laden schnell und stabil | 1 | **teils** | Analyse (docs/vorschlaege/Laden-Analyse.md); Hebel 1: Statblock, Board, prefs und home in einem Abruf, Hilfe nachgeladen (T-398) |
 
 ### F-080 Qualität & Tests
 
@@ -1060,7 +1059,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-344]]** (1, teils, Kreaturen & Figuren) — Gesperrte Aktionen bleiben sichtbar, mit Grund — *„Your turn“ und Spells sperren nach den Händen (T-247, T-246); das Ausrüsten selbst wartet auf T-244*
 - **[[REQ-346]]** (1, teils, Spielererlebnis) — Was die Kampagne meiner Figur gezeigt hat — *Reiter Campaign an der Spielerfigur (T-247); „als Spieler sehen“ für die Leitung offen*
 - **[[REQ-361]]** (1, teils, Oberfläche & Navigation) — Lange Seiten: Bereiche klappen und springen — *Klappleiste `nw-klappleiste` auf Kampagnenseite (Layers, auch im Ebenen-Popup) und in der Leseansicht (T-220); seit T-359 auch Filter in Kompendium/Bereichen, Artikelseite (Admin/Log gemerkt), Register-Typseite und Assistent; offen: Klappstand von Facetten und Registergruppen am Konto*
-- **[[REQ-397]]** (1, teils, Zugang & Betrieb) — Artikel laden schnell und stabil — *Analyse (docs/vorschlaege/Laden-Analyse.md); Hebel 1: Statblock, Board, prefs und home in einem Abruf, Hilfe nachgeladen (T-398)*
 - **[[REQ-041]]** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **[[REQ-072]]** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **[[REQ-079]]** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*

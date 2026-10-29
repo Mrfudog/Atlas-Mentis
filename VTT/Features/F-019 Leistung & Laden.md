@@ -15,11 +15,10 @@ Epic: [[EP-02 Zugang & Betrieb]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-3 Stories · 15 Punkte · 2 steht · 1 teils
+2 Stories · 10 Punkte · 2 steht
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
 | [[REQ-232]] Listen rechnet der Server | Spieler | 2 | steht |
 | [[REQ-246]] Navigation ohne Einfrieren | Spieler | 1 | steht |
-| [[REQ-397]] Artikel laden schnell und stabil | Spieler | 1 | teils |
 <!-- stories:ende -->

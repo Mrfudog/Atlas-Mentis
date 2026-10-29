@@ -137,7 +137,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-52 Stories · 170 Punkte · 28 steht · 9 teils · 12 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+51 Stories · 165 Punkte · 28 steht · 8 teils · 12 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -255,7 +255,6 @@ Listen am Server, schnelle Navigation, Ladeanzeige. — [[F-019 Leistung & Laden
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-246]] | Navigation ohne Einfrieren | Spieler | 1 | 5 | steht |
-| [[REQ-397]] | Artikel laden schnell und stabil | Spieler | 1 | 5 | teils |
 | [[REQ-232]] | Listen rechnet der Server | Spieler | 2 | 5 | steht |
 
 ### F-080 Qualität & Tests
