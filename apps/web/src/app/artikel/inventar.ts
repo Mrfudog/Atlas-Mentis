@@ -67,10 +67,8 @@ import {
   bodySlotLabel,
   derivedReason,
   drawReason,
-  drawStage,
   explainCarry,
   HAND_SLOTS,
-  parsePairs,
   type Placement,
 } from '@nw/model';
 import type { Entity, Relation } from '@nw/model';
