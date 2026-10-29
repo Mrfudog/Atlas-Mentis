@@ -112,6 +112,7 @@ import {
   initiativeRulesOf,
   redactMap,
   zoneHidden,
+  redactDark,
   redactBoard,
   redactQueryTiles,
   keepDrawState,
@@ -120,6 +121,9 @@ import {
   PARTY_RELATION,
   type FogMode,
   inParty,
+  mapNatOf,
+  darkvisionFor,
+  carriedLights,
   isMap,
   resolveInstance,
   resolvePlay,
@@ -1689,6 +1693,14 @@ export function buildApp({
       }
       return nebel;
     };
+    const imDunkeln = (k: Entity): Entity =>
+      redactDark(k, {
+        nat: (v) => mapNatOf(alle, v),
+        eyes: (id) => nebelFuer().own(id),
+        darkvision: (id) => darkvisionFor(alle, id),
+        carried: () => carriedLights(alle, k),
+        keep: (id) => inParty(alle, id),
+      });
     /* Was die Kampagne Spielenden von der Initiative zeigt (T-022). */
     const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
     return entities
@@ -1700,7 +1712,8 @@ export function buildApp({
           ? /* Das Kartenbild nur, soweit aufgedeckt (T-312, E-041): die
                Blätter zeigen auf eine beschnittene Adresse (`kartenbild.ts`). */
             kartenbildAdressen(
-              redactMap(e, {
+              /* **Tokens im Dunkeln** (T-219): was keine eigene Figur sieht, geht nicht hinaus. */
+              imDunkeln(redactMap(e, {
                 gm: false,
                 sees: siehtZiel,
                 /* Unter dem Nebel (REQ-139) bleiben die eigenen stehen: die
@@ -1709,7 +1722,7 @@ export function buildApp({
                 /* Eine versteckte Zone (T-219): die Regel steht an ihrer Art. */
                 hideZone: (r) => zoneHidden(r, alle.get(r.to)),
                 ...nebelFuer(),
-              }),
+              })),
               (id) => assetVersion(alle.get(id)),
             )
           : /* Ein Board ohne das, was die Leitung zurückhält (T-339): Formen

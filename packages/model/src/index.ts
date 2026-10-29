@@ -74,6 +74,7 @@ export * from './shop.js';
 export * from './discard.js';
 export * from './enhancement.js';
 export * from './assets.js';
+export * from './campaignSetup.js';
 export * from './maplist.js';
 export * from './location.js';
 export * from './uebernahme.js';

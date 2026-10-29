@@ -401,6 +401,27 @@ nebel.ts):
    erhellt, bleibt farbig. Die Leitung sieht die Karte, wie sie ist; in der
    Spielersicht und mit „View as" (T-269) wie die Spielenden.
 
+### Tokens im Dunkeln (T-219)
+
+Auf einer **dunklen** Karte bekommt eine Spielerin ein Spiel-Token nur,
+wenn eine ihrer Figuren (oder ihre Gruppe) es sieht: mit Dunkelsicht oder
+weil es in einem Licht steht, in das die Figur hineinsieht. Gerechnet
+wird am Server (`redactDark` nach `redactMap`) mit derselben Rechnung wie
+die laufende Sicht im Browser (`figureView`); vorher hielt nur der Nebel
+zurück, und wer im Dunkeln wartete, stand im Kartenartikel jeder
+Spielerin — bloss schwarz übermalt.
+
+- Je **Ebene** mit den Figuren auf ihr; steht dort keine eigene Figur,
+  bleibt die Ebene, wie sie ist (der Nebel gilt weiter) — ohne Augen gibt
+  es keine Sicht.
+- Nur **Spiel-Tokens** (`kind: play`): Lichter, Assets, Übergänge und das
+  Gruppen-Token sind Karte, keine Wesen. Die Figuren der Gruppe bleiben
+  immer.
+- Kommt ein Licht dazu oder zieht jemand, kommt die Karte über den
+  Live-Kanal neu (T-399) — und mit ihr, wer jetzt zu sehen ist.
+- Die Vorschau „View as“ der Leitung hält im Dunkeln noch nichts zurück;
+  sie zeigt dort die Dunkelheit, nicht das Sieb.
+
 ### Lichter an Gegenständen, an und aus (T-305)
 
 **Licht ist ein eigenes Werkzeug** (Light, Taste L): Helligkeit der Karte,

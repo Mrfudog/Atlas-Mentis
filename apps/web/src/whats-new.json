@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-dark-tokens",
+      "date": "2026-10-29",
+      "title": "What waits in the dark stays hidden",
+      "text": "On a dark map, players now get only the tokens their characters can see, with darkvision or in light. A creature in the dark no longer reaches their browser at all; it appears when a light or darkvision reaches it, without reloading.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-encounter-prepared",
       "date": "2026-10-29",
       "title": "An encounter shows its place, map and loot, and adds several foes at once",
@@ -15,6 +23,14 @@
       "text": "The new tool group Zones (Z) draws a zone kind or a faction’s territory on the map as a rectangle, ellipse or polygon, on the floor you are on. Found reveals a hidden trap to the players at that spot; Remove takes an area off the map.",
       "area": "Maps",
       "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-campaign-decisions",
+      "date": "2026-10-29",
+      "title": "Every campaign decision in one list",
+      "text": "The Overview of the campaign page lists what the campaign has decided — layers, compare layers, members and every rule — each with its state and what a change does. Change opens the place where just that decision is made again.",
+      "area": "Campaign",
+      "link": "/campaign"
     },
     {
       "id": "2026-10-29-map-level-lock",
