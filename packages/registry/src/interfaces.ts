@@ -1117,11 +1117,14 @@ export const interfaces: Record<string, InterfaceDef> = {
     views: {
       full: [
         { id: 'se-live', el: 'live' },
-        { id: 'se-prep', el: 'prep' },
-        { id: 'se-desc', el: 'description' },
-        { id: 'se-f', el: 'fields', fields: 'all' },
-        { id: 'se-b', el: 'prose', fields: 'all' },
-        { id: 'se-r', el: 'relations' },
+        /* **Die Sitzung auf einen Blick** (T-151, REQ-282): gleich unter
+           dem, was läuft, was an diesem Abend zählt — damit am Tisch
+           niemand suchen geht. Alles Collections (T-425), zwei Schritte
+           vom Abend weg: `← partOf` zu den Szenen und Begegnungen, dann
+           ihre Kante. Gesiebt hat der Server; was eine verborgene Szene
+           nennt, steht für die Spielenden nicht da. Leere fallen weg.
+           Was laufend auf dem Tisch liegt (`activeScene`, `activeMap`),
+           zeigt `live`. Migration 166 bringt dieselbe Ordnung nach dev. */
         /* Was zur Sitzung gehört (T-422, REQ-427): die Szenen und
            Begegnungen, die `partOf` auf sie zeigen — nur ihre, nicht das
            ganze Kapitel. Seit T-425 (REQ-430) eine Collection: jede in
@@ -1136,6 +1139,51 @@ export const interfaces: Record<string, InterfaceDef> = {
           show: 'tiles',
           groupBy: 'type',
         },
+        /* Wer in den Szenen vorkommt (`features`); Fraktionen und
+           Gefahren nicht — die Leute, mit denen der Tisch redet. */
+        {
+          id: 'se-people',
+          el: 'collection',
+          text: 'People in the scenes',
+          path: [{ relation: 'partOf', dir: 'in' }, { relation: 'features' }],
+          types: ['Creature'],
+          show: 'tiles',
+          sort: { by: 'name' },
+        },
+        /* Wer in den Begegnungen kämpft (`participates`). Eine eigene
+           Sammlung, weil ein Pfadschritt eine Kante nennt (T-454). */
+        {
+          id: 'se-fight',
+          el: 'collection',
+          text: 'In the fights',
+          path: [{ relation: 'partOf', dir: 'in' }, { relation: 'participates' }],
+          types: ['Creature'],
+          show: 'list',
+          sort: { by: 'name' },
+        },
+        {
+          id: 'se-places',
+          el: 'collection',
+          text: 'Places',
+          path: [{ relation: 'partOf', dir: 'in' }, { relation: 'happensAt' }],
+          types: ['Place'],
+          show: 'list',
+          sort: { by: 'name' },
+        },
+        {
+          id: 'se-maps',
+          el: 'collection',
+          text: 'Maps',
+          path: [{ relation: 'partOf', dir: 'in' }, { relation: 'onMap' }],
+          types: ['Map'],
+          show: 'list',
+          sort: { by: 'name' },
+        },
+        { id: 'se-prep', el: 'prep' },
+        { id: 'se-desc', el: 'description' },
+        { id: 'se-f', el: 'fields', fields: 'all' },
+        { id: 'se-b', el: 'prose', fields: 'all' },
+        { id: 'se-r', el: 'relations' },
       ],
     },
   },
