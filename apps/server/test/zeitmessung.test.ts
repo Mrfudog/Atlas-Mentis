@@ -48,6 +48,16 @@ describe('Server-Timing per section (T-398)', () => {
     expect(await neu()).toBeGreaterThan(0);
   });
 
+  it('reuses the eyes for routes that read the whole stock as a list (entities?ids, suggest, checks)', async () => {
+    const t = await tisch({ kampagne: 'camp', artikel: [art('camp', 'Campaign', 'Nebel'), art('o1', 'Place', 'Ort')], konten: { Sela: { roles: { camp: 'player' } } } });
+    const neu = async (weg: string) => zeitenAus(String((await t.als('Sela', 'GET', weg)).headers['server-timing'] ?? ''))['s.auge.neu']?.n ?? 0;
+    expect(await neu('/api/entities/o1')).toBeGreaterThan(0);
+    /* Auf dev rechnete jeder der acht `entities?ids` einer Artikelseite neu (29.10.). */
+    expect(await neu('/api/entities?ids=o1')).toBe(0);
+    expect(await neu('/api/entities?ids=o1,camp')).toBe(0);
+    expect(await neu('/api/suggest?field=Place.kind')).toBe(0);
+  });
+
   it('keeps requests apart: one request does not count the other’s sections', async () => {
     const t = await tisch({ artikel: [art('o1', 'Place', 'Ort')], konten: { Admin: { admin: true } } });
     const [a, b] = await Promise.all([t.als('Admin', 'GET', '/api/health'), t.als('Admin', 'GET', '/api/entities/o1')]);
