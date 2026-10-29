@@ -1626,8 +1626,11 @@ export function buildApp({
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
-    /* Ohne Bestand die Tafel je Stand (T-398, P4), nicht je Aufruf eine neue. */
-    const roh = bestand === undefined ? await repo.entityMap() : Array.isArray(bestand) ? new Map(bestand.map((e) => [e.id, e])) : bestand;
+    /* Ohne Bestand die Tafel je Stand (T-398, P4), nicht je Aufruf eine neue —
+       dieselbe wie `roh().map`, die die meisten Routen mitgeben: die Augen
+       (`augeVon`) und Indizes hängen an ihr, und zwei Tafeln je Stand hiessen
+       zweimal rechnen. */
+    const roh = bestand === undefined ? (await rohStandLesen()).map : Array.isArray(bestand) ? new Map(bestand.map((e) => [e.id, e])) : bestand;
     const registry = await repo.getRegistry();
     /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
        aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
@@ -1792,7 +1795,6 @@ export function buildApp({
        Artikel aus `/api/entities/:id`. Die Kurzfassung `?as=summary` ist
        am 13.10. weggefallen (W7) — sie war genau der Weg, auf dem der
        Browser 7,7 MB lud, bevor er eine Zeile zeigte. */
-    const alle = await repo.listEntities();
     /* `?ids=a,b,c`: **diese Artikel ganz**, in einer Anfrage — die Teile
        eines Statblocks (die Ziele seiner `composedOf`-Kanten), die ein
        geöffneter Artikel zeichnet (W2). Ein Drache hat dreizehn Teile;
@@ -1801,14 +1803,17 @@ export function buildApp({
     if (request.query.ids !== undefined) {
       const ids = new Set(request.query.ids.split(',').map((x) => x.trim()).filter(Boolean));
       if (ids.size > 500) return reply.code(400).send({ error: 'Höchstens 500 Ids je Anfrage' });
-      const gesiebt = await sieve(request, alle.filter((e) => ids.has(e.id)), alle);
+      /* Aus der Tafel je Stand (T-398, P4): ein Nachschlagen je Id statt
+         eines Durchlaufs, und das Sieb findet seine Augen wieder. */
+      const karte = (await roh()).map;
+      const gesiebt = await sieve(request, [...ids].flatMap((id) => karte.get(id) ?? []), karte);
       /* Mit den Feldern aus aufgeschalteten Ergänzungen (T-142): das
          Kachelinventar liest so die Form aus „Item shapes" — ohne die Id
          zu wechseln, denn die Kante zeigt auf diesen Artikel. Darunter die
          Vorgabeform des Inventarmoduls (T-394). */
       return Promise.all(gesiebt.map(async (e) => (await mitVorgabeform(await mitErgaenzungen(e))).entity));
     }
-    return sieve(request, alle, alle);
+    return sieve(request, await repo.listEntities());
   });
 
   /* **Die eigene Kampagne als Datei** (T-077, REQ-199): Register und die
@@ -1854,6 +1859,10 @@ export function buildApp({
   } | null = null;
   function roh(): Promise<NonNullable<typeof rohStand>> {
     return messe('stand', rohLesen);
+  }
+  /** Dasselbe unter anderem Namen — im Sieb heisst die Tafel selbst `roh`. */
+  function rohStandLesen(): Promise<NonNullable<typeof rohStand>> {
+    return roh();
   }
   async function rohLesen(): Promise<NonNullable<typeof rohStand>> {
     const stempel = await repo.version();
@@ -4643,7 +4652,7 @@ export function buildApp({
     if (!prop.suggest || !typ || !feld) return reply.code(400).send({ error: `${typ}.${feld} does not suggest values; it is a fixed list or plain text. Turn on “suggests values in use” in the registry first.` });
     const alle = await repo.listEntities();
     const art = alle.filter((e) => typeChain(registry, primaryInterface(e)).includes(typ));
-    const sichtbar = await sieve(request, art, alle);
+    const sichtbar = await sieve(request, art, (await rohStandLesen()).map);
     const zahl = new Map<string, number>();
     for (const e of sichtbar) {
       const wert = (e.components?.[typ] as Record<string, unknown> | undefined)?.[feld];
@@ -5029,13 +5038,13 @@ export function buildApp({
     if (typeof wer === 'string') return reply.code(403).send({ error: wer });
     const t0 = Date.now();
     const alle = await repo.listEntities();
-    const imSpiel = await sieve(request, alle, alle);
+    const imSpiel = await sieve(request, alle, (await rohStandLesen()).map);
     /* **Der Parkplatz zählt mit** (E-186): was in „Unassigned“ liegt, steht
        in keiner laufenden Kampagne — die Werkbank führt es trotzdem als
        offene Arbeit. Gesiebt nach Sichtbarkeit, nur nicht nach dem Stapel. */
     const geparkt = alle.filter((e) => (e.relations ?? []).some((r) => r.type === LAYER_RELATION && r.to === UNASSIGNED_LAYER_ROW.id));
     const daIds = new Set(imSpiel.map((e) => e.id));
-    const gesiebt = [...imSpiel, ...(await sieve(request, geparkt, alle, undefined, 'unactivated')).filter((e) => !daIds.has(e.id))];
+    const gesiebt = [...imSpiel, ...(await sieve(request, geparkt, (await rohStandLesen()).map, undefined, 'unactivated')).filter((e) => !daIds.has(e.id))];
     const registry = await repo.getRegistry();
     const exists = new Map(alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
     const roh = String(request.query.limit ?? '50');
@@ -5155,9 +5164,9 @@ export function buildApp({
        `allLayers` (T-182): dazu, was nur fehlt, weil seine Ebene nicht
        aufgeschaltet ist — gesiebt, als wäre sie es. */
     const gesiebt = [
-      ...(await sieve(request, alle, alle)),
+      ...(await sieve(request, alle, (await rohStandLesen()).map)),
       ...(await sieve(request, alle.filter(isSupplement), alle, undefined, 'versions')),
-      ...(auftrag.allLayers ? await sieve(request, alle, alle, undefined, 'unactivated') : []),
+      ...(auftrag.allLayers ? await sieve(request, alle, (await rohStandLesen()).map, undefined, 'unactivated') : []),
     ];
     const auswahl = [...new Map(selectEntities(registry, gesiebt, auftrag.select).map((e) => [e.id, e])).values()];
     const r = await fuehreLaufAus(request, wer, registry, roh, auftrag, auswahl.map((e) => e.id));
@@ -5316,7 +5325,7 @@ export function buildApp({
         : await vorgabeEbene(user, roh, kampagne);
       const sichtbar = new Set(
         [
-          ...(await sieve(request, alle, alle)),
+          ...(await sieve(request, alle, (await rohStandLesen()).map)),
           ...(await sieve(request, alle.filter(isSupplement), alle, undefined, 'versions')),
         ].map((e) => e.id),
       );
@@ -5397,7 +5406,7 @@ export function buildApp({
         }
       }
       const sichtbar = new Set(
-        [...(await sieve(request, alle, alle)), ...(await sieve(request, alle, alle, undefined, 'unactivated'))].map((e) => e.id),
+        [...(await sieve(request, alle, (await rohStandLesen()).map)), ...(await sieve(request, alle, (await rohStandLesen()).map, undefined, 'unactivated'))].map((e) => e.id),
       );
       const fehlt = ids.filter((id) => !sichtbar.has(id) || !roh.has(id));
       if (fehlt.length) return reply.code(404).send({ error: `Nicht gefunden: ${fehlt.join(', ')}` });
