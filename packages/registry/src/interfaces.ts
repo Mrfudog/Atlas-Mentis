@@ -878,6 +878,8 @@ export const interfaces: Record<string, InterfaceDef> = {
         /* Die Gruppe nimmt `Image` und zeigte es nirgends (T-211). */
         { id: 'p-img', el: 'image' },
         { id: 'p-desc', el: 'description' },
+        /* Die Reise (T-350, REQ-170): was die Zähler heissen, und die zwei Schritte. */
+        { id: 'p-travel', el: 'travel' },
         { id: 'p-f', el: 'fields', fields: 'all' },
         { id: 'p-inv', el: 'inventory' },
         { id: 'p-craft', el: 'crafting' },

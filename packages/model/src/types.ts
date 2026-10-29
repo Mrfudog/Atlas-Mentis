@@ -533,6 +533,8 @@ export type LayoutElementKind =
   | 'table'
   | 'prep'
   | 'crawl'
+  /** Die Reise einer Gruppe (T-350, REQ-170): Tag, Wache, Zehrung, „Wait a watch" und „Next node". */
+  | 'travel'
   | 'standing'
   | 'stack'
   /**

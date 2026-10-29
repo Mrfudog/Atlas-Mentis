@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { derivedValue, proficiencyBonus } from '../src/calc.js';
-import { participantStats } from '../src/initiative.js';
+import { participantStats, tickEntries } from '../src/initiative.js';
 import { characterStats, creatureStats } from '../src/stats.js';
 import { COMMON_ACTION_CATALOGUE, commonAction, rollMode, turnTypeOf } from '../src/actions.js';
 import { concentrationCheck, damageAfterDefenses } from '../src/damage.js';
@@ -243,5 +243,32 @@ describe('Punkt 3: ein Aktionskatalog', () => {
     expect(creatureStats(pc!, alle, { actions: ['dash'] }).totals.grants).toEqual({});
     expect(rollMode(true, true)).toBeUndefined();
     expect(rollMode(true, false)).toBe('adv');
+  });
+});
+
+describe('Punkt 7 (T-350): Dodge, Help und Ready laufen mit tickEntries ab', () => {
+  /* Der Eintrag, wie der Server ihn anlegt (`aktionWirkt`): auf sich selbst
+     ohne Anker, auf ein anderes Ziel mit dem Anker des Handelnden. */
+  const eintrag = (key: string, anker?: string) => {
+    const r = commonAction(key)!.rule!;
+    return { text: r.label, action: key, rounds: r.rounds, at: r.at, ...(anker ? { anchor: anker } : {}), source: 'Rook' };
+  };
+  const kanten = (rook: object[], gob: object[]) => [
+    { id: 'p_rook', type: 'participates', to: 'pc_rook', props: { conditions: rook } },
+    { id: 'p_gob', type: 'participates', to: 'cr_gob', props: { conditions: gob } },
+  ];
+  const von = (rels: ReturnType<typeof tickEntries>, id: string) => ((rels.find((r) => r.id === id)!.props ?? {}) as { conditions: unknown[] }).conditions;
+
+  it('Dodge und Ready enden zu Beginn des nächsten eigenen Zuges, nicht vorher', () => {
+    const rels = kanten([eintrag('dodge'), eintrag('ready')], []);
+    expect(von(tickEntries(rels, 'p_gob', 'start'), 'p_rook')).toHaveLength(2);
+    expect(von(tickEntries(rels, 'p_rook', 'end'), 'p_rook')).toHaveLength(2);
+    expect(von(tickEntries(rels, 'p_rook', 'start'), 'p_rook')).toEqual([]);
+  });
+
+  it('Help am Ziel endet zu Beginn des Zuges des Helfenden', () => {
+    const rels = kanten([], [eintrag('help', 'p_rook')]);
+    expect(von(tickEntries(rels, 'p_gob', 'start'), 'p_gob')).toHaveLength(1);
+    expect(von(tickEntries(rels, 'p_rook', 'start'), 'p_gob')).toEqual([]);
   });
 });

@@ -256,6 +256,10 @@ describe('heldDetail, handCost, handSummary', () => {
     expect(heldDetail(in_(pouch, 'offHand'), false)).toMatch(/focus/);
     expect(handCost(in_(shield, 'offHand'))).toMatch(/action/);
     expect(handCost(null)).toMatch(/object interaction/);
+    /* T-350: die Kampagne sagt, was Verstauen und Fallenlassen kosten (`handActions`). */
+    expect(handCost(null, { drop: 'free action', stow: 'bonus action' })).toBe('stow: bonus action · drop: free action');
+    expect(handCost(null, { drop: null, stow: null })).toMatch(/object interaction/);
+    expect(handCost(in_(shield, 'offHand'), { drop: 'free action', stow: 'bonus action' })).toMatch(/action to don/);
   });
   it('sums up the hands', () => {
     expect(handSummary(handState([]))).toBe('Both hands free');

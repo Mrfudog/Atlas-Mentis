@@ -59,7 +59,9 @@
           "heading": "Moving your token",
           "text": [
             "Outside an encounter, drag your own character's token. Depending on the campaign it moves at once, or it leaves a dashed proposal that the GM confirms (✓) or rejects (✗); everyone who sees the token sees the proposal. During an encounter, your token moves through the turn plan.",
-            "Which tokens you may drag is the campaign's choice (Rules & options › Who moves tokens): none, your own characters, the whole party, the party and its allies in an encounter, or every token. GMs: Tokens › “Movement: own · confirm” shows the setting and changes it right on the map."
+            "Which tokens you may drag is the campaign's choice (Rules & options › Who moves tokens): none, your own characters, the whole party, the party and its allies in an encounter, or every token. GMs: Tokens › “Movement: own · confirm” shows the setting and changes it right on the map.",
+            "On the way, a player character notices a hidden creature whose Stealth its passive Perception beats and a hidden zone (a trap) whose “Hidden until passive perception” it reaches — if it can see that spot (walls, light, darkvision; −5 in dim light). What it notices then stands on the map, and a line says so after the move.",
+            "Entering a zone that deals damage, asks for a save, sets a condition or costs extra movement adds a line too; the GM rolls."
           ]
         },
         {
@@ -289,7 +291,15 @@
             "Tap a piece on the cell you want to hold it by — that cell is marked — then tap a free cell: the piece lands with that cell there. Tap another of its cells to hold it there instead. A piece from Not stowed is held by the first cell of its top row.",
             "Discard takes a piece out of the game: say how many of a stack, confirm, and the piece is deleted with the last one. Undo right after puts it back where it was — as long as nothing else changed in that inventory.",
             "Sell offers the shops you can see with what each pays for one piece; the shops where the scene or map in play is come first, under Here. Pick a shop and a quantity: the coins go into the purse of the inventory you sell from. From the party’s chest, every member sells for the party.",
-            "A piece reserved for a crafting order can’t be discarded or sold — the message says so; release it first."
+            "A piece reserved for a crafting order can’t be discarded or sold — the message says so; release it first.",
+            "Each piece says how long it takes to draw: from a body place (belt, holster …) or a zone of the grid, and one step slower for every container it sits in — a rope in the pouch on the belt is a bonus action, not a free one. The hands name what stowing and dropping cost; both come from Rules & options › Inventory."
+          ]
+        },
+        {
+          "heading": "Travel (parties)",
+          "text": [
+            "A party shows the day, the watch and when rations and light fall due. “Wait a watch” lets a watch pass; “Next node” moves the party on: a watch passes and rations and light count one node. After the last watch of the day a new day begins.",
+            "How often rations and light are used and how many watches make a day is set under Rules & options › Travel; zero turns a count off. Nothing is taken from the inventory — the line only says it is due."
           ]
         },
         {
