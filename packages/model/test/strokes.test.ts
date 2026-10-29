@@ -43,3 +43,20 @@ describe('Zeichnen auf der Karte (T-219)', () => {
     expect(mapSheets(setSheetGmOnly(e, id, false)).find((s) => s.id === id)!.gmOnly).toBe(false);
   });
 });
+
+describe('Text und Stempel (T-219)', () => {
+  it('legt Text und Stempel als Strich mit Wortlaut an und trifft sie an ihrer Stelle', () => {
+    const { map, id } = addDrawingSheet(karte(), 'Ink', 'sh-1');
+    let e = addStroke(map, id, { id: 'tx-1', kind: 'text', pts: [[0.5, 0.5]], color: '#000', width: 0.03, text: 'Gate' });
+    e = addStroke(e, id, { id: 'tx-2', kind: 'text', pts: [[0.2, 0.2]], color: '#000', width: 0.05, text: '☠' });
+    const s = mapSheets(e).find((b) => b.id === id)!.strokes;
+    expect(s.map((x) => [x.kind, x.text])).toEqual([['text', 'Gate'], ['text', '☠']]);
+    expect(strokeAt(e, { x: 0.51, y: 0.505 }, 1, 0.005)).toEqual({ sheet: id, stroke: 'tx-1' });
+    expect(strokeAt(e, { x: 0.2, y: 0.2 }, 1, 0.005)).toEqual({ sheet: id, stroke: 'tx-2' });
+    expect(strokeAt(e, { x: 0.8, y: 0.8 }, 1, 0.005)).toBeNull();
+  });
+  it('ein Text ohne Wortlaut ist kein Strich', () => {
+    const e = karte({ sheets: [{ id: 's', name: 'x', strokes: [{ id: 't', kind: 'text', pts: [[0.1, 0.1]], text: '  ' }] }] });
+    expect(mapSheets(e).find((b) => b.id === 's')!.strokes).toEqual([]);
+  });
+});

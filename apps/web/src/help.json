@@ -78,7 +78,7 @@
           "text": [
             "Walls (W): pick a kind and a shape — polyline (Closed joins the end to the start), line, rectangle, ellipse or polygon — then Draw: tap point after point, Enter or the last point again finishes. Set kind, Lock and Erase act on the wall you tap. Walls and closed doors block movement and sight; windows and obstacles block movement only. Players see only doors; a closed secret door is a wall to them.",
             "A door is drawn as a line across the opening and becomes a box of the thickness you set; that box is what you click. With “Cut walls” on, a door or window drawn over a wall splits it at its edges; erasing the door offers to join the wall again.",
-            "Snap pulls a point to an existing point, a grid corner or a wall line within the strength set (screen pixels); Alt places it freely. Show points marks every corner; Points lets you drag one, and the walls meeting there move with it.",
+            "Snap pulls a point to an existing point, a grid corner (on hex maps the corner of the hex) or a wall line within the strength set (screen pixels); Alt places it freely. Show points marks every corner; Points lets you drag one, and the walls meeting there move with it.",
             "Hold on the map in Draw, Points, Set origin, Pick a square or Add marker and a loupe opens above your finger: drag to aim the crosshair, let go to place the point there.",
             "Tap a door in Select to open or close it. Players open a door next to their token if the campaign allows (Rules & options › Doors); locked doors stay shut."
           ]
@@ -114,13 +114,15 @@
             "In the dark, a character sees only what its darkvision reaches (from Senses on its statblock) and the lights it can see; moves and opened doors reveal just that. Players see darkness over the map with lights and their darkvision cut out.",
             "On a fogged map, players see brightly what their character sees right now, and what was revealed before dimmed. Sight comes from the player characters' tokens; the party token counts only while none of them is on the map.",
             "With walls, players see only up to the next wall or closed door, fog or not. In the dark, what only darkvision reaches is shown in greyscale; lit areas keep their colour. An item with Bright light (a torch, a lantern) lights the token of the character holding it in hand, and lights itself when placed as a marker. Light on/off switches a light off and on again without losing its radius.",
-            "On a dark map, players get only the tokens their characters see — with darkvision or in a light they can see into. A creature waiting in the dark is not on their map at all until a light or a character's darkvision reaches it."
+            "On a dark map, players get only the tokens their characters see — with darkvision or in a light they can see into. A creature waiting in the dark is not on their map at all until a light or a character's darkvision reaches it.",
+            "A zone kind's light counts where it lies: magical darkness hides who is in it, a lit hall in a dark map shows them."
           ]
         },
         {
           "heading": "Draw on the map",
           "text": [
-            "Draw (D) puts strokes on a drawing layer of their own: Pen, Line, Rectangle or Ellipse, in a colour and width. Without a layer chosen, the first stroke makes one. Erase takes away the stroke you tap. GM only keeps the chosen layer from the players; Layers above the map shows and hides drawing layers like image layers."
+            "Draw (D) puts strokes on a drawing layer of their own: Pen, Line, Rectangle or Ellipse, in a colour and width. Without a layer chosen, the first stroke makes one. Erase takes away the stroke you tap. GM only keeps the chosen layer from the players; Layers above the map shows and hides drawing layers like image layers.",
+            "Text places a label you type, Stamp a symbol, where you tap; Erase takes them away."
           ]
         },
         {

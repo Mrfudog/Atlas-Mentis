@@ -1,6 +1,30 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-map-labels-stamps",
+      "date": "2026-10-29",
+      "title": "Labels and stamps on the map",
+      "text": "Draw now also places text labels and stamps such as a skull, a warning sign or a flag on a drawing layer, in three sizes.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-hex-walls",
+      "date": "2026-10-29",
+      "title": "Walls snap to hex corners",
+      "text": "On hex maps, wall points now snap to the corners of the hexes, as they snap to grid corners on square maps.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-zone-light",
+      "date": "2026-10-29",
+      "title": "Magical darkness and lit halls",
+      "text": "A zone kind that sets its light now counts where it lies: who stands in magical darkness stays hidden from players even on a bright map, and a lit hall in a dark map shows who stands in it.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-reveal-sight",
       "date": "2026-10-29",
       "title": "Reveal what a token sees",

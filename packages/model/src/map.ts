@@ -151,12 +151,15 @@ export interface MapSheet {
  */
 export interface MapStroke {
   id: string;
-  kind: 'path' | 'line' | 'rect' | 'ellipse';
+  kind: 'path' | 'line' | 'rect' | 'ellipse' | 'text';
   pts: Array<[number, number]>;
   color: string;
+  /** Strichbreite — bei Text und Stempel die Schriftgrösse, ebenfalls in Anteilen der Breite. */
   width: number;
+  /** Der Wortlaut eines Textes oder Stempels (`kind: 'text'`, ein Punkt: die Mitte). */
+  text?: string;
 }
-export const STROKE_KINDS: readonly MapStroke['kind'][] = ['path', 'line', 'rect', 'ellipse'];
+export const STROKE_KINDS: readonly MapStroke['kind'][] = ['path', 'line', 'rect', 'ellipse', 'text'];
 
 function strichAus(x: unknown, i: number): MapStroke | null {
   if (!x || typeof x !== 'object') return null;
@@ -165,8 +168,11 @@ function strichAus(x: unknown, i: number): MapStroke | null {
   const pts = (Array.isArray(s['pts']) ? s['pts'] : []).flatMap((p) =>
     Array.isArray(p) && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1])) ? [[Number(p[0]), Number(p[1])] as [number, number]] : [],
   );
-  if (!pts.length || (kind !== 'path' && pts.length < 2)) return null;
+  if (!pts.length || (kind !== 'path' && kind !== 'text' && pts.length < 2)) return null;
+  const text = typeof s['text'] === 'string' ? s['text'].trim().slice(0, 200) : '';
+  if (kind === 'text' && !text) return null;
   return {
+    ...(kind === 'text' ? { text } : {}),
     id: typeof s['id'] === 'string' && s['id'] ? s['id'] : `st-${i + 1}`,
     kind,
     pts,

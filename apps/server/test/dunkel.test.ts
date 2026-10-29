@@ -32,6 +32,14 @@ const bestand: Entity[] = [
   art('pc_1', 'PlayerCharacter', 'Rook'),
   art('ghul_nah', 'Creature', 'Ghul'),
   art('ghul_licht', 'Creature', 'Ghul im Licht'),
+  art('zk_finster', 'ZoneKind', 'Magische Dunkelheit', { ZoneKind: { light: 'dark' } }),
+  /* Eine helle Halle; der Ghul steht in magischer Dunkelheit. */
+  art('halle', 'Map', 'Halle', { Image: { image: 'as_gruft' }, Map: { gridShape: 'square', gridSize: 10, scale: '5 ft' } }, [
+    { id: 'h_ich', type: 'marker', to: 'pc_1', props: { kind: 'play', x: 0.1, y: 0.1 } },
+    { id: 'h_offen', type: 'marker', to: 'ghul_licht', props: { kind: 'play', x: 0.3, y: 0.1 } },
+    { id: 'h_finster', type: 'marker', to: 'ghul_nah', props: { kind: 'play', x: 0.85, y: 0.85 } },
+    { id: 'h_zone', type: 'zone', to: 'zk_finster', props: { kind: 'rect', x: 0.7, y: 0.7, w: 0.3, h: 0.3 } },
+  ]),
   art('as_gruft', 'Asset', 'Gruftbild', { Asset: { width: 100, height: 100 } }),
   /* Felder zu 10 px bei 5 ft; Rook ohne Dunkelsicht. Eine Laterne steht beim zweiten Ghul. */
   art('gruft', 'Map', 'Gruft', { Image: { image: 'as_gruft' }, Map: { gridShape: 'square', gridSize: 10, scale: '5 ft', lighting: 'dark' } }, [
@@ -74,5 +82,10 @@ describe('tokens in the dark (T-219)', () => {
     expect(marker(sela)).toEqual(['m_ich', 'm_licht', 'm_lampe']);
     const mira = (await hole('Mira', '/api/entities/gruft')).json() as Entity;
     expect(marker(mira)).toEqual(['m_ich', 'm_nah', 'm_licht', 'm_lampe']);
+  });
+  it('magical darkness on a bright map hides who stands in it', async () => {
+    const { hole } = await aufbau();
+    expect(marker((await hole('Sela', '/api/entities/halle')).json() as Entity)).toEqual(['h_ich', 'h_offen']);
+    expect(marker((await hole('Mira', '/api/entities/halle')).json() as Entity)).toEqual(['h_ich', 'h_offen', 'h_finster']);
   });
 });

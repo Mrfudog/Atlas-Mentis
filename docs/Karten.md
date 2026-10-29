@@ -80,7 +80,13 @@ ein freies Objekt ist, braucht es dafür keine Migration.
 - Je Ebene (Stockwerk) eigene Blätter, also eigene Zeichnungen.
 - Live: eine Zeichnung ist eine Änderung der Karte und kommt über den
   Live-Kanal (T-399) zu den Spielenden.
-- Noch nicht: Stempel (Symbole) und Text; Striche verschieben.
+- **Text und Stempel**: ein Strich `kind: 'text'` mit einem Punkt (der
+  Mitte), dem Wortlaut `text` (höchstens 200 Zeichen) und der
+  Schriftgrösse in `width`. *Text* nimmt ein getipptes Wort, *Stamp* ein
+  Zeichen aus einer kleinen Auswahl (☠ ⚠ ✕ ★ ⚑ ⚔ ⌂ ?). Gezeichnet als
+  Textknoten im SVG, nie als HTML (M10); radiert, wer in seinen Kasten
+  tippt.
+- Noch nicht: Striche verschieben; eigene Stempelbilder.
 
 ---
 
@@ -144,7 +150,8 @@ Gerechnet in `packages/model/src/mapdraw.ts`, gezeichnet in
   `DOOR_WIDTH`. Geklickt wird das Viereck (`doorRect`), gerechnet die
   Mittellinie: die Dicke ist Griff und Bild, keine zweite Sperre.
 - **Einrasten mit Stärke** (`snapPoint`): an einen vorhandenen Punkt, eine
-  Gitterecke (Quadrate) oder eine Linie, so weit, wie der Regler sagt —
+  Gitterecke (Quadrate; auf Hexkarten die nächste Ecke des Hexfelds,
+  T-219) oder eine Linie, so weit, wie der Regler sagt —
   in **Bildschirmpunkten**, also beim Zoomen gleich, am Telefon um 1,6
   weiter. Der Punkt geht vor der Ecke, die Ecke vor der Linie. Alt setzt
   ohne Einrasten.
@@ -446,8 +453,20 @@ Spielerin — bloss schwarz übermalt.
   immer.
 - Kommt ein Licht dazu oder zieht jemand, kommt die Karte über den
   Live-Kanal neu (T-399) — und mit ihr, wer jetzt zu sehen ist.
-- Die Vorschau „View as“ der Leitung hält im Dunkeln noch nichts zurück;
-  sie zeigt dort die Dunkelheit, nicht das Sieb.
+- Die Vorschau „View as“ der Leitung rechnet dasselbe im Browser: als
+  eine Figur, was sie sieht; als alle Spielenden, was irgendeine
+  Spielerfigur oder die Gruppe sieht.
+
+**Das Licht der Zonen** (`ZoneKind.light`): wo eine Zone liegt, gilt ihr
+Licht statt das der Karte (`lightAt`, die zuletzt gezeichnete oben).
+**Magische Dunkelheit** auf einer hellen Karte: wer darin steht, geht nur
+an Spielende, die ihn mit Dunkelsicht oder in einem Licht sehen; die Seite
+malt die Zone für sie deckend dunkel, auch wenn sie „Areas“ ausblenden —
+Dunkelheit ist Sicht, keine Beschriftung. Ein **erleuchteter Saal** in
+einer dunklen Karte: wer darin in Sichtlinie steht, ist zu sehen, und die
+Dunkelheit ist dort ausgeschnitten wie bei einem Licht. Dass Dunkelsicht
+magische Dunkelheit nicht durchdringt, kennt die Zonenart noch nicht —
+dafür bräuchte sie eine eigene Angabe.
 
 ### Lichter an Gegenständen, an und aus (T-305)
 
