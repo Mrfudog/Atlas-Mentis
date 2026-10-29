@@ -15,7 +15,7 @@ interface Kante {
   props?: Record<string, unknown>;
 }
 
-test('a player sees in the dark only what her character sees', async ({ leitung, spielerin, api, lauf, eindeutig }) => {
+test('a player sees in the dark only what her character sees', async ({ leitung, spielerin, api, lauf, eindeutig }, info) => {
   const fertig = { 'Status.status': 'ready' };
   const ghul = await api.anlegen('leitung', 'Creature', eindeutig('Ghoul'), { fields: fertig });
   const bild = await api.bild('leitung', eindeutig('crypt'));
@@ -28,6 +28,14 @@ test('a player sees in the dark only what her character sees', async ({ leitung,
   });
 
   await leitung.goto(`/artikel/${karte.id}`);
+  await expect(leitung.getByRole('button', { name: ghul.name, exact: true })).toBeVisible();
+  /* Die Vorschau der Leitung rechnet dasselbe wie der Server. */
+  await expect(leitung.locator('.innen.gemessen').first()).toBeVisible();
+  if (info.project.name === 'phone') await leitung.getByRole('button', { name: 'View', exact: true }).click();
+  await leitung.getByRole('combobox', { name: 'View the map as' }).selectOption({ label: 'all players' });
+  await expect(leitung.getByRole('button', { name: ghul.name, exact: true })).toHaveCount(0);
+  await expect(leitung.getByRole('button', { name: lauf.figur.name, exact: true })).toBeVisible();
+  await leitung.getByRole('combobox', { name: 'View the map as' }).selectOption({ label: 'GM' });
   await expect(leitung.getByRole('button', { name: ghul.name, exact: true })).toBeVisible();
 
   await spielerin.goto(`/artikel/${karte.id}`);

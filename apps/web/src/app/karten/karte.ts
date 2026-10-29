@@ -183,6 +183,7 @@ import {
   type MapStroke,
   zoneLightShapes,
   revealView,
+  redactDark,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
@@ -2221,7 +2222,24 @@ export class Karte {
     /* Nebel je Figur (T-204): die Sicht der gewählten Figur, ohne Wahl nur
        das für alle Aufgedeckte. */
     const fuer = this.nebelFuer();
-    return redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
+    const gesiebt = redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
+    /* **Im Dunkeln dasselbe wie der Server** (T-219, `redactDark`): als eine
+       Figur nur, was sie sieht; als alle Spielenden, was irgendeine
+       Spielerfigur (oder die Gruppe) sieht. Gerechnet mit der Bildgrösse
+       der gezeigten Ebene — gezeichnet wird nur sie. */
+    const ziele = this.kontext()?.targets ?? {};
+    const augen = (id: string): boolean => (fuer ? id === fuer : ziele[id]?.type === 'PlayerCharacter' || ziele[id]?.type === 'Party');
+    const info = this.kontext()?.areas ?? {};
+    const art = (id: string): Entity | undefined =>
+      info[id]?.rule?.light ? ({ id, name: '', interfaces: ['ZoneKind'], components: { ZoneKind: { light: info[id]!.rule!.light } } } as Entity) : undefined;
+    return redactDark(gesiebt, {
+      nat: () => this.nat(),
+      eyes: augen,
+      darkvision: (id) => this.kontext()?.darkvision?.[id] ?? 0,
+      carried: () => this.getragen(),
+      keep: augen,
+      zones: (v) => zoneLightShapes(v, art),
+    });
   });
   protected readonly angezeigt = computed(() => {
     const e = this.angezeigtGanz();

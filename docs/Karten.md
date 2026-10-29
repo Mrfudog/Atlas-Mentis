@@ -447,8 +447,9 @@ Spielerin — bloss schwarz übermalt.
   immer.
 - Kommt ein Licht dazu oder zieht jemand, kommt die Karte über den
   Live-Kanal neu (T-399) — und mit ihr, wer jetzt zu sehen ist.
-- Die Vorschau „View as“ der Leitung hält im Dunkeln noch nichts zurück;
-  sie zeigt dort die Dunkelheit, nicht das Sieb.
+- Die Vorschau „View as“ der Leitung rechnet dasselbe im Browser: als
+  eine Figur, was sie sieht; als alle Spielenden, was irgendeine
+  Spielerfigur oder die Gruppe sieht.
 
 **Das Licht der Zonen** (`ZoneKind.light`): wo eine Zone liegt, gilt ihr
 Licht statt das der Karte (`lightAt`, die zuletzt gezeichnete oben).
