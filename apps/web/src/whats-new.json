@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-faster-pages",
+      "date": "2026-10-29",
+      "title": "Character sheets and boards load faster",
+      "text": "A statblock asks for all its proficiencies at once, and a board fetches all its cards in one go — a character page used to wait for a hundred small requests. The help behind “?” now loads when you open it.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-10-29-reveal-sight",
       "date": "2026-10-29",
       "title": "Reveal what a token sees",

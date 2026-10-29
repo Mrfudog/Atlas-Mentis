@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, registry]
 status: derived
-updated: 2026-10-28
+updated: 2026-10-29
 ---
 
 # Requirements Registry
@@ -28,12 +28,12 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
-| 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
+| 1 | 58 | 187 | 42 steht · 11 teils · 1 offen · 2 ersetzt · 2 verworfen |
 | 2 | 141 | 515 | 70 steht · 25 teils · 38 offen · 5 ersetzt · 3 verworfen |
 | 3 | 128 | 394 | 61 steht · 27 teils · 39 offen · 1 ersetzt |
 | 4 | 49 | 225 | 13 steht · 2 teils · 31 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **394** | **1470** | 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **395** | **1475** | 187 steht · 65 teils · 127 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -433,6 +433,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-392]] | Featureseiten im Projektbrett | Spielleitung | [[F-084 Projektsteuerung & Vermittlung\|Projektsteuerung & Vermittlung]] | 2 | 5 | defined | offen |
 | [[REQ-393]] | Demo-Video der Seite | Spielleitung | [[F-084 Projektsteuerung & Vermittlung\|Projektsteuerung & Vermittlung]] | 3 | 3 | in progress | teils |
 | [[REQ-394]] | Artikel löschen, einzeln und mehrere, mit Rückgängig | Spielleitung | [[F-071 Bearbeiten in der Ansicht\|Bearbeiten in der Ansicht]] | 2 | 3 | done | steht |
+| [[REQ-397]] | Artikel laden schnell und stabil | Spieler | [[F-019 Leistung & Laden\|Leistung & Laden]] | 1 | 5 | in progress | teils |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.
