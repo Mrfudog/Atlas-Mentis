@@ -9,6 +9,30 @@
       "link": "/world"
     },
     {
+      "id": "2026-10-29-reveal-sight",
+      "date": "2026-10-29",
+      "title": "Reveal what a token sees",
+      "text": "Under Fog, Reveal sight lifts the fog from what a token sees where it stands — up to the walls, and in the dark only as far as its darkvision and the lights it sees.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-free-action",
+      "date": "2026-10-29",
+      "title": "A free action with a note in the turn plan",
+      "text": "When the rules here have no tile for what you want to do, “Other action” (and bonus action, reaction, free action) takes a note of what happens. It uses its slot and shows up in the result as manual — a missing rule no longer blocks the turn.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-draw-on-maps",
+      "date": "2026-10-29",
+      "title": "Draw on the map",
+      "text": "The tool group Draw (D) sketches on the map with pen, line, rectangle and ellipse, on drawing layers of their own. A layer can be kept for the GM only; players see the others at once.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-weapons-attack",
       "date": "2026-10-29",
       "title": "Weapons in hand are attacks in the turn plan",

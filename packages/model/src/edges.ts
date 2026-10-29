@@ -121,6 +121,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'mechanicSelection',
+    label: 'Modules: which system applies',
+    area: 'stack',
+    does: 'works out, per module (rule system), which rule mechanics apply in the campaign: an extension only with its base, an excluded or unconnected one gives way to the higher one in the stack (E-100, E-091, E-094)',
+    uses: {
+      [M + 'mechanics.ts']: ['compatibleWith', 'extendsMechanic', 'excludesMechanic', 'partOf'],
+    },
+  },
+  {
     key: 'itemShapes',
     label: 'Item shapes overview',
     area: 'stack',
@@ -702,6 +711,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
  */
 export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [M + 'types.ts']: ['crafting', 'knowledge'],
+  /* `extendsMechanic.props.mode: 'overrides'` — ein Modus, nicht die Kante `overrides` (E-100). */
+  [M + 'mechanics.ts']: ['overrides'],
   [M + 'validate.ts']: ['crafting', 'knowledge'],
   [W + 'register/typ.ts']: ['carries', 'holds'],
   [W + 'register/arbeit.ts']: ['carries'],

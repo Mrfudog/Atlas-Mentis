@@ -42,8 +42,8 @@ export interface PlanTile {
   id: string;
   name: string;
   cost: PlanCost;
-  /** Gruppe in der Leiste: `attack`, `action` (eigene ohne Wurf), `common`. */
-  group: 'attack' | 'action' | 'common';
+  /** Gruppe in der Leiste: `attack`, `action` (eigene ohne Wurf), `common`, `manual` (frei mit Notiz, REQ-403). */
+  group: 'attack' | 'action' | 'common' | 'manual';
   /** Braucht ein Ziel (ein Token auf der Karte). */
   targeted: boolean;
   /** Reichweite in Fuss — Nahkampf die Reichweite, Fernkampf die kurze Entfernung. */
@@ -80,6 +80,8 @@ export type PlanStep =
       /** Die Id des Artikels, auf dessen Token gezielt wird. */
       target?: string;
       targetName?: string;
+      /** Was eine freie Aktion tut (REQ-403): Pflicht bei `manual:*`, sonst eine Bemerkung. */
+      note?: string;
     }
   | {
       id: string;
@@ -136,6 +138,8 @@ export interface PlanResult {
   text: string;
   hit?: boolean;
   damage?: number;
+  /** Von Hand, ohne Regelprüfung (REQ-403) — auswertbar als Kandidat für eine fehlende Regel. */
+  manual?: boolean;
 }
 
 /** Ein Plan, wie er im Protokoll steht (`payload` eines `turnplan`-Eintrags). */
@@ -207,6 +211,40 @@ export function freshResources(speed: number): TurnResources {
 export function costOf(actionTypeName: string | null | undefined): PlanCost {
   const t = turnTypeOf(actionTypeName);
   return t === 'bonus' || t === 'reaction' || t === 'free' ? t : 'action';
+}
+
+/**
+ * **Freie Aktionen mit Notiz** (REQ-403, T-453): je Platz eine Kachel
+ * „Other …“, die tut, was in ihrer Notiz steht — ohne Regelprüfung, aber
+ * mit dem Platz, den sie verbraucht. So blockiert eine Regel, die es hier
+ * (noch) nicht gibt, den Zug nicht: man nimmt die freie Aktion und sagt,
+ * was geschieht. Im Ergebnis steht sie als „manual“.
+ */
+export const MANUAL_TILES: readonly PlanTile[] = (
+  [
+    ['action', 'Other action'],
+    ['bonus', 'Other bonus action'],
+    ['reaction', 'Other reaction'],
+    ['free', 'Other free action'],
+  ] as const
+).map(([cost, name]) => ({
+  id: `manual:${cost}`,
+  name,
+  cost,
+  group: 'manual' as const,
+  targeted: false,
+  range: null,
+  longRange: null,
+  toHit: null,
+  damage: '',
+  damageType: '',
+  average: null,
+  hint: 'Anything the rules here do not cover: say in a note what happens. Uses its slot, checks nothing.',
+}));
+
+/** Ist das eine freie Aktion mit Notiz (`manual:<cost>`)? */
+export function isManualTile(id: string | null | undefined): boolean {
+  return typeof id === 'string' && /^manual:(action|bonus|reaction|free)$/.test(id);
 }
 
 /**
@@ -329,7 +367,7 @@ export function tilesFor(
     const n = attackNumbers(a.action, stats, a.edge ?? {});
     return tileFromAction(a.id, a.name, a.actionTypeName, n ? withEffectBonuses(n, add) : n);
   });
-  return [...eigene, unarmedTile(stats), ...COMMON_ACTIONS];
+  return [...eigene, unarmedTile(stats), ...COMMON_ACTIONS, ...MANUAL_TILES];
 }
 
 /**
@@ -406,7 +444,7 @@ export function planText(steps: readonly PlanStep[]): string {
       if (s.kind === 'move') return `Move ${s.feet} ft`;
       if (s.kind === 'passage') return `Through ${s.name}`;
       const vor = s.cost === 'bonus' ? 'Bonus: ' : s.cost === 'reaction' ? 'Reaction: ' : '';
-      return `${vor}${s.name}${s.targetName ? ` → ${s.targetName}` : ''}`;
+      return `${vor}${s.name}${s.note ? ` (${s.note})` : ''}${s.targetName ? ` → ${s.targetName}` : ''}`;
     })
     .join(' → ');
 }
@@ -604,13 +642,18 @@ export function cleanStep(raw: unknown, i: number): PlanStep | null {
     return { id, kind: 'passage', via: s['via'].slice(0, 80), name: String(s['name'] ?? 'passage').slice(0, 120), feet: feet !== null && feet > 0 ? feet : 0, cost };
   }
   if (s['kind'] === 'act' && typeof s['tile'] === 'string' && s['tile']) {
-    const cost = (['action', 'bonus', 'reaction', 'free'] as const).find((c) => c === s['cost']) ?? 'action';
+    const note = typeof s['note'] === 'string' ? s['note'].trim().slice(0, 300) : '';
+    /* Eine freie Aktion (REQ-403) kostet, was ihre Kachel sagt, und sagt, was sie tut. */
+    const frei = isManualTile(s['tile']) ? MANUAL_TILES.find((t) => t.id === s['tile'])! : null;
+    if (frei && !note) return null;
+    const cost = frei ? frei.cost : (['action', 'bonus', 'reaction', 'free'] as const).find((c) => c === s['cost']) ?? 'action';
     return {
       id,
       kind: 'act',
       tile: s['tile'].slice(0, 80),
-      name: String(s['name'] ?? '').slice(0, 120),
+      name: frei ? frei.name : String(s['name'] ?? '').slice(0, 120),
       cost,
+      ...(note ? { note } : {}),
       ...(typeof s['target'] === 'string' && s['target'] ? { target: s['target'].slice(0, 80) } : {}),
       ...(typeof s['targetName'] === 'string' && s['targetName'] ? { targetName: s['targetName'].slice(0, 120) } : {}),
     };

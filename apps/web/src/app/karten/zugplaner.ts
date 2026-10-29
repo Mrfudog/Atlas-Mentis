@@ -1,5 +1,5 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { expectedDamage, inPoly, planBudget, planText, rangeBand, type PlanCost, type PlanStep, type PlanTile, type Size, type TurnPlan } from '@nw/model';
+import { expectedDamage, inPoly, isManualTile, planBudget, planText, rangeBand, type PlanCost, type PlanStep, type PlanTile, type Size, type TurnPlan } from '@nw/model';
 import { Api, type ZugLage } from '../kern/api';
 import { Live } from '../kern/live';
 import type { Planung, PlanTipp } from './karte';
@@ -155,6 +155,17 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
                   You may pass through allies but not stop on them.
                 }
                 <button type="button" class="klein" (click)="modus.set('idle')">Done</button>
+              } @else if (notizFuer(); as t) {
+                <!-- Eine freie Aktion (REQ-403, T-453): sie tut, was hier steht. -->
+                <label class="notiz">What happens? ({{ t.name }})
+                  <input #notiz type="text" maxlength="300" placeholder="e.g. pull the lever by the gate"
+                         (keydown.enter)="notizDazu(notiz.value)" aria-label="Note for the free action" />
+                </label>
+                <button type="button" class="klein" (click)="notizDazu(notiz.value)">Add</button>
+                <button type="button" class="klein" (click)="notizFuer.set(null)">Cancel</button>
+                @if (fehler(); as f) {
+                  <span class="fehler" role="alert">{{ f }}</span>
+                }
               } @else if (gewaehlt(); as t) {
                 Pick a target for <b>{{ t.name }}</b> (range {{ t.range }} ft{{ t.longRange ? ', long ' + t.longRange : '' }}).
                 <button type="button" class="klein" (click)="abwaehlen()">Cancel</button>
@@ -372,6 +383,18 @@ const neueId = () => `s${Date.now().toString(36)}${(zaehler++).toString(36)}`;
     .fehler {
       color: var(--accent);
     }
+    .notiz {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.3rem;
+      max-width: 100%;
+    }
+    .notiz input {
+      flex: 1 1 12rem;
+      min-width: 0;
+      min-height: 32px;
+    }
     .klein {
       min-height: 28px;
       margin-left: 0.4rem;
@@ -544,6 +567,8 @@ export class Zugplaner {
   protected readonly schritte = signal<PlanStep[]>([]);
   protected readonly modus = signal<'idle' | 'move' | 'target'>('idle');
   protected readonly gewaehlt = signal<PlanTile | null>(null);
+  /** Die freie Aktion, deren Notiz gerade gefragt wird (REQ-403, T-453). */
+  protected readonly notizFuer = signal<PlanTile | null>(null);
 
   constructor() {
     effect(() => {
@@ -772,6 +797,13 @@ export class Zugplaner {
 
   protected kachel(t: PlanTile): void {
     if (!this.leistbar(t)) return;
+    if (isManualTile(t.id)) {
+      this.gewaehlt.set(null);
+      this.modus.set('idle');
+      this.notizFuer.set(this.notizFuer()?.id === t.id ? null : t);
+      return;
+    }
+    this.notizFuer.set(null);
     if (t.targeted) {
       const schon = this.gewaehlt()?.id === t.id;
       this.fehler.set(null);
@@ -780,6 +812,19 @@ export class Zugplaner {
       return;
     }
     this.dazu({ id: neueId(), kind: 'act', tile: t.id, name: t.name, cost: t.cost });
+  }
+
+  /** Die freie Aktion mit ihrer Notiz in den Zug; ohne Notiz sagt die Zeile, was fehlt. */
+  protected notizDazu(text: string): void {
+    const t = this.notizFuer();
+    const note = text.trim();
+    if (!t) return;
+    if (!note) {
+      this.fehler.set('Say in a note what the free action does.');
+      return;
+    }
+    this.dazu({ id: neueId(), kind: 'act', tile: t.id, name: t.name, cost: t.cost, note });
+    this.notizFuer.set(null);
   }
 
   protected abwaehlen(): void {

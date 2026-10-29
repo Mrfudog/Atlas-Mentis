@@ -139,6 +139,40 @@ export interface MapSheet {
   visible: boolean;
   gmOnly: boolean;
   base: boolean;
+  /** Was auf dem Blatt gezeichnet ist (T-219, REQ-142, `strokes.ts`); das Kartenbild trägt keine. */
+  strokes: MapStroke[];
+}
+
+/**
+ * **Ein Strich auf einem Blatt** (T-219, REQ-142): Freihand (`path`),
+ * Linie, Rechteck oder Ellipse (die beiden aus zwei Ecken), in Anteilen
+ * der Karte; die Breite in Anteilen der Breite — sie wächst beim Zoomen
+ * mit wie das Bild.
+ */
+export interface MapStroke {
+  id: string;
+  kind: 'path' | 'line' | 'rect' | 'ellipse';
+  pts: Array<[number, number]>;
+  color: string;
+  width: number;
+}
+export const STROKE_KINDS: readonly MapStroke['kind'][] = ['path', 'line', 'rect', 'ellipse'];
+
+function strichAus(x: unknown, i: number): MapStroke | null {
+  if (!x || typeof x !== 'object') return null;
+  const s = x as Record<string, unknown>;
+  const kind = STROKE_KINDS.includes(s['kind'] as MapStroke['kind']) ? (s['kind'] as MapStroke['kind']) : 'path';
+  const pts = (Array.isArray(s['pts']) ? s['pts'] : []).flatMap((p) =>
+    Array.isArray(p) && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1])) ? [[Number(p[0]), Number(p[1])] as [number, number]] : [],
+  );
+  if (!pts.length || (kind !== 'path' && pts.length < 2)) return null;
+  return {
+    id: typeof s['id'] === 'string' && s['id'] ? s['id'] : `st-${i + 1}`,
+    kind,
+    pts,
+    color: typeof s['color'] === 'string' && s['color'] ? s['color'] : '#8b1a1a',
+    width: zwischen(zahl(s['width'], 0.004), 0.0005, 0.1),
+  };
 }
 
 export const BASE_SHEET = '__base';
@@ -150,7 +184,7 @@ export const BASE_SHEET = '__base';
 export function mapSheets(e: Entity): MapSheet[] {
   const s = mapSettings(e);
   const out: MapSheet[] = [
-    { id: BASE_SHEET, name: 'Base map', image: mapImage(e), opacity: 1, visible: !s.baseHidden, gmOnly: s.baseGmOnly, base: true },
+    { id: BASE_SHEET, name: 'Base map', image: mapImage(e), opacity: 1, visible: !s.baseHidden, gmOnly: s.baseGmOnly, base: true, strokes: [] },
   ];
   const roh = (e.components?.[MAP_COMPONENT] as { sheets?: unknown } | undefined)?.sheets;
   (Array.isArray(roh) ? roh : []).forEach((x, i) => {
@@ -164,6 +198,7 @@ export function mapSheets(e: Entity): MapSheet[] {
       visible: b['visible'] !== false,
       gmOnly: b['gmOnly'] === true,
       base: false,
+      strokes: (Array.isArray(b['strokes']) ? b['strokes'] : []).flatMap((x, j) => strichAus(x, j) ?? []),
     });
   });
   return out;
@@ -185,7 +220,8 @@ export function drawnSheets(
   shown?: Readonly<Record<string, boolean>>,
 ): Array<MapSheet & { hidden: boolean }> {
   return mapSheets(e)
-    .filter((s) => s.image && (gm || !s.gmOnly))
+    /* Ein Blatt ohne Bild zählt, wenn darauf gezeichnet ist (T-219). */
+    .filter((s) => (s.image || s.strokes.length) && (gm || !s.gmOnly))
     .map((s) => ({ ...s, hidden: !(shown?.[s.id] ?? s.visible) }))
     .filter((s) => s.base || !s.hidden);
 }

@@ -2571,6 +2571,19 @@ Inventar“ nicht im Code, sondern als fehlende Kante in den Daten. Eigene
 Arten und kein Wort in `Layer.kind`: ein Feld, das Regel ist, leckt beim
 ersten Tippfehler.
 
+**Modul und System** (E-100, T-132). Am Tisch sagt man „wir spielen
+Inventar nach Raster, Handwerk nach Kibbles mit Basils Ergänzungen“. Das
+**Modul** ist der Bereich (Inventory, Crafting — im Register ein
+Regelsystem), das **System** die Variante darin (Grid, Kibbles — eine
+Regelmechanik). Je Modul gilt eines, samt dem, was es erweitert; was
+sich ausschliesst, sagt eine Kante und nicht ein Absatz. Darum gibt es
+drei Kanten: verträglich, **erweitert** (gilt nur mit der Grundlage —
+Formen ohne Raster sind sinnlos), **schliesst aus**. Was gilt, wird beim
+Lesen gerechnet und von oben im Stapel: wer die Hausregel höher legt,
+lässt sie gewinnen (E-091), und was verdrängt ist, wird nicht angezeigt
+(E-094) — es bleibt aber eine Ebene, die man wieder nach oben schieben
+kann.
+
 **Vorgabeformen kommen aus Gruppen, nicht aus 1900 Ergänzungen** (T-394,
 E-165). Eine Ergänzung je Gegenstand hätte jede Form hundertfach
 gespeichert: wer die Hausregel ändert (Pfeile 32 statt 20 je Stapel),
@@ -3069,6 +3082,12 @@ ein Feld halb im Eis aus wie Eis, und der Plan rechnete es als trocken —
 man glaubte dem Bild und verlöre die Bewegung. Und eine Fläche gehört
 **einer Ebene** wie ein Marker: der Schlamm im Keller liegt nicht auf dem
 Turmdach, nur weil beide dieselbe Karte sind.
+
+**Eine Zeichnung ist ein Blatt** (T-219). Was die Leitung auf die Karte
+kritzelt — ein Pfeil, ein Kreis um die Falle —, liegt auf einem Blatt wie
+ein Bild, nur ohne Bild. Ein eigenes Feld für Zeichnungen wäre eine zweite
+Sorte Ebene gewesen, die Deckkraft, Ausblenden und „nur die Leitung“ noch
+einmal hätte lernen müssen; als Blatt kann sie das schon.
 
 **Die Dunkelheit verbirgt am Server, nicht auf dem Schirm** (T-219). Was
 im Dunkeln wartet, schwarz zu übermalen, hiesse, es trotzdem zu schicken —

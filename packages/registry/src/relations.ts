@@ -1557,6 +1557,49 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /**
+   * **Ein System erweitert ein anderes** (E-100, T-132 Schritt 2): es gilt
+   * nur zusammen mit ihm — Default shapes auf Grid oder Slots, Basils
+   * Handwerk auf Kibbles; eine von mehreren Grundlagen genügt
+   * (`mechanicSelection`). `mode: 'overrides'` heisst: bei Gleichstand
+   * gewinnt die Erweiterung. Sie verträgt sich mit allem, womit ihre
+   * Grundlage sich verträgt.
+   */
+  extendsMechanic: {
+    type: 'extendsMechanic',
+    label: 'extends',
+    inverseLabel: 'extended by',
+    means: 'A rule mechanic builds on another and only applies together with it, such as default shapes on the grid inventory; with “overrides” it wins where both say something.',
+    from: ['RuleMechanic'],
+    to: ['RuleMechanic'],
+    cardinality: 'many',
+    props: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', title: 'How', enum: ['extends', 'overrides'], description: 'Extends adds to the base; overrides also wins where both say something.' },
+      },
+    },
+  },
+
+  /**
+   * **Ein System schliesst ein anderes aus** (E-100): Kibbles und das
+   * Handwerk aus D&D 5e. Einmal gespeichert, gilt in beide Richtungen;
+   * von beiden gilt das höhere im Stapel (E-091), das tiefere wird nicht
+   * angezeigt (E-094). Im selben Modul schliesst sich ohnehin aus, was
+   * keine Kante verbindet — die Kante braucht es dort, wo das nicht reicht:
+   * über Modulgrenzen, oder gegen eine Verträglichkeit, die eine
+   * Grundlage mitbrächte.
+   */
+  excludesMechanic: {
+    type: 'excludesMechanic',
+    label: 'excludes',
+    inverseLabel: 'excluded by',
+    means: 'Two rule mechanics never apply together in a campaign; stored once, it reads both ways, and the higher one in the stack wins.',
+    from: ['RuleMechanic'],
+    to: ['RuleMechanic'],
+    cardinality: 'many',
+  },
+
+  /**
    * Wozu ein Artikel gehört (REQ-005). Ohne diese Kante gehört er der
    * Kampagne selbst und ist immer da — das ist der Normalfall und soll
    * keine Zeile kosten.

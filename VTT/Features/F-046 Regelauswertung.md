@@ -148,3 +148,7 @@ flowchart LR
 
 Offen (Entscheid E-206): die Rechnungen als Automationen, Leser für die
 Kanten `affects`, `loot`, `entry`, `route`, `territory`, `inWorld`.
+
+## Freie Aktion mit Notiz (T-453, REQ-403)
+
+Stand 29.10.2026. Die Aktionsleiste hat je Platz eine Kachel „Other …“: sie fragt nach einer Notiz, verbraucht ihren Platz und prüft keine Regel; im Ergebnis steht sie als „manual“ (`manual: true`). So blockiert eine fehlende Regel den Zug nicht. Offen (Teil 2): Wirkungen von Hand, Ergebnisse überschreiben, Filter „manual“.

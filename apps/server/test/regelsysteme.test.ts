@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compatibleMechanics, validateEntity, type Entity } from '@nw/model';
+import { compatibleMechanics, mechanicBases, mechanicSelection, validateEntity, type Entity } from '@nw/model';
 import { regelsystemeNachziehen } from '../src/regelsysteme.js';
 import { tisch } from './hilfen/tisch.js';
 
@@ -54,7 +54,21 @@ describe('Regelsysteme beim Start (E-166)', () => {
     const t = await aufbau();
     const alle = new Map((await t.repo.listEntities()).map((e) => [e.id, e]));
     expect(compatibleMechanics(alle, 'ly_rm_weight')).toEqual(['ly_rm_grid']);
-    expect(compatibleMechanics(alle, 'ly_rm_grid').sort()).toEqual(['ly_rm_shapes', 'ly_rm_weight']);
+    expect(compatibleMechanics(alle, 'ly_rm_grid')).toEqual(['ly_rm_weight']);
+  });
+
+  it('Modulrahmen (E-100): Default shapes erweitert Grid und Slots, je Modul gilt eines', async () => {
+    const t = await aufbau(false);
+    const alle = new Map((await t.repo.listEntities()).map((e) => [e.id, e]));
+    expect(mechanicBases(alle.get('ly_rm_shapes'))).toEqual(['ly_rm_grid', 'ly_rm_slots']);
+    const auf = (...ids: string[]): Entity => ({
+      ...kampagne(false),
+      relations: ids.map((to, i) => ({ id: `a${i}`, type: 'activates', to, props: { order: i + 1 } })),
+    });
+    const gilt = (c: Entity) => mechanicSelection(alle, c).systems[0]?.applies.map((m) => m.id).sort();
+    expect(gilt(auf('ly_rm_weight', 'ly_rm_grid', 'ly_rm_shapes'))).toEqual(['ly_rm_grid', 'ly_rm_shapes', 'ly_rm_weight']);
+    expect(gilt(auf('ly_rm_weight', 'ly_rm_slots'))).toEqual(['ly_rm_slots']);
+    expect(gilt(auf('ly_rm_weight', 'ly_rm_shapes'))).toEqual(['ly_rm_weight']);
   });
 
   it('die Mechaniken sind Ebenen: sichtbar für Leitung und Spielerin', async () => {

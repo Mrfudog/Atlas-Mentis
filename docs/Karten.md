@@ -57,6 +57,33 @@ echten Stapel tut es `redactEntity`, bevor es losgeschickt wird.
 
 ---
 
+### Auf der Karte zeichnen (T-219, REQ-142)
+
+**Eine Zeichnung liegt auf einem Blatt** — einem Blatt ohne Bild, dessen
+Striche in `Map.sheets[].strokes` stehen. So hat sie alles, was ein Blatt
+hat: Deckkraft, Ein- und Ausblenden in der Leiste „Layers“, und `gmOnly`,
+mit dem der Server sie Spielenden gar nicht erst schickt (`redactMap`).
+Ein eigenes Feld `Map.drawings` daneben wäre eine zweite Sorte Ebene, die
+jede dieser Fragen noch einmal stellen müsste. Weil `sheets` im Register
+ein freies Objekt ist, braucht es dafür keine Migration.
+
+- Ein Strich ist `path` (Freihand), `line`, `rect` oder `ellipse` (die
+  beiden aus zwei Ecken), Punkte in Anteilen der Karte, Farbe und Breite
+  (in Anteilen der Breite — er wird beim Zoomen dicker wie das Bild).
+  Gezeichnet in einer `viewBox` 0 0 1 `ar`, damit er rund bleibt.
+- Werkzeuggruppe **Draw** (Taste D, nur wer die Karte schreibt): *Layer*
+  wählt die Zeichenebene (ohne Wahl legt der erste Strich „Drawing n“
+  an), *Pen*, *Line*, *Rectangle*, *Ellipse*, Farbe, Breite, *Erase*
+  (einen Strich antippen — ein Rechteck am Rand), *GM only* für die
+  gewählte Ebene. Sichtbar wo Wände, Unterkarten oder Marker
+  eingeschaltet sind, wie *Zones*.
+- Je Ebene (Stockwerk) eigene Blätter, also eigene Zeichnungen.
+- Live: eine Zeichnung ist eine Änderung der Karte und kommt über den
+  Live-Kanal (T-399) zu den Spielenden.
+- Noch nicht: Stempel (Symbole) und Text; Striche verschieben.
+
+---
+
 ## Sperren: Wand, Tür, Fenster, Abgrund
 
 Eine Liste, drei Fragen. `Map.walls` hiess einmal „Sichtblocker“ und
@@ -1007,8 +1034,8 @@ Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
   (S), Tokens (T, Leitung), Messen (M) und Nebel (F, Leitung); die aktive
   Gruppe zeigt ihre Unterwerkzeuge in einer Zeile über der Karte, noch
   einmal wählen oder Esc führt zurück zur Auswahl. Wände (T-118), Notizen
-  und Zeichnen sind in `GRUPPEN` vorgesehen und stehen erst mit ihrem
-  Werkzeug da. Die Tasten gelten unter Play, im Vollbild oder mit dem
+  und Zeichnen stehen inzwischen mit ihrem Werkzeug da (Zeichnen seit
+  T-219). Die Tasten gelten unter Play, im Vollbild oder mit dem
   Fokus in der Karte, nie beim Tippen. Über der Bühne bleibt, was die
   Sicht einstellt: Zoom, Blätter, „View as“ (GM · all players · eine
   Figur, T-320 — vorher „Player view“ und „For“), Vollbild.
@@ -1087,6 +1114,12 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   / on / off). Die Bewegung zählt in beiden Fällen; ohne Aufdecken deckt
   die Leitung nachher auf. Wände rechnet die Seite dabei noch nicht — der
   Prototyp nimmt das Sichtpolygon.
+- **Sicht aufdecken** (*Reveal sight*, T-219): die Leitung tippt ein Token
+  an und deckt auf, was es von seinem Platz aus sieht — bis zur nächsten
+  Wand, im Dunkeln nur seine Dunkelsicht und die Lichter, in die es
+  hineinsieht (`revealView`, dieselbe Rechnung wie ein Zug des Servers).
+  Gilt der Nebel je Figur, für diese Figur. Sieht es nichts Neues, sagt die
+  Seite das, statt eine leere Form zu speichern.
 - **Je Gruppe oder je Figur** (`Campaign.fog`, T-204): je Gruppe sieht
   jede Spielerin alles Aufgedeckte. Je Figur darf eine Form `for` nennen —
   eine Figur oder eine Gruppe —, und dann sehen sie nur diese, ihre
