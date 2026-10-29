@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assembleCarry, legacyCarrySheet } from '../src/carrySheet.js';
 import { drawStage } from '../src/inventory.js';
 import {
-  attunedCount, attunementCheck, attunementLimit, bodyPlaceCheck, bodyPlaces, drawReason, explainCarry, wearProps,
+  applyWear, attunedCount, attunementCheck, attunementLimit, bodyPlaceCheck, bodyPlaces, drawReason, explainCarry, wearProps,
 } from '../src/gear.js';
 
 const ALT = { carrySquares: 'tiny:3, small:4, medium:5, large:6', carryZones: '0-1:bonus action, 2-4:action, 5-8:turn, 9-10:round' };
@@ -108,5 +108,32 @@ describe('Einstimmung zählen (T-365, E-153 V5)', () => {
     expect(attunementCheck({}, false, 0, 3)).toEqual({ ok: false, why: 'needs no attunement' });
     /* Beenden geht immer. */
     expect(attunementCheck({ attunement: true }, true, 3, 3)).toEqual({ ok: true, why: '' });
+  });
+});
+
+describe('Anlegen an einen Platz (T-365)', () => {
+  const kante = (id: string, props: Record<string, unknown>) => ({ id, type: 'holds', to: `it-${id}`, props });
+
+  it('legt an und schickt, wer den Platz hatte, ins Raster', () => {
+    const r = applyWear([kante('a', { gx: 0, gy: 0 }), kante('b', { slot: 'neck1', tier: 'worn' })], {
+      edgeId: 'a', slot: 'neck1', newId: 'n', spot: { gx: 3, gy: 1, rot: 0 }, grid: true,
+    });
+    expect(r.map((k) => [k.id, k.props])).toEqual([
+      ['a', { slot: 'neck1', tier: 'worn' }],
+      ['b', { tier: 'pack', gx: 3, gy: 1, rot: 0 }],
+    ]);
+  });
+
+  it('aus einem Stapel geht eines an den Platz, der Rest bleibt', () => {
+    const r = applyWear([kante('a', { qty: 3, gx: 1, gy: 1, reservedFor: 'x' })], { edgeId: 'a', slot: 'ringL1', newId: 'n', spot: null, grid: true });
+    expect(r.map((k) => [k.id, k.to, k.props])).toEqual([
+      ['a', 'it-a', { qty: 2, gx: 1, gy: 1, reservedFor: 'x' }],
+      ['n', 'it-a', { qty: 1, slot: 'ringL1', tier: 'worn' }],
+    ]);
+  });
+
+  it('ohne Platz im Raster liegt das Verdrängte unter „Not stowed"', () => {
+    const r = applyWear([kante('a', {}), kante('b', { slot: 'armor', tier: 'worn' })], { edgeId: 'a', slot: 'armor', newId: 'n', spot: null, grid: true });
+    expect(r[1]!.props).toEqual({ tier: 'pack', unstowed: true });
   });
 });

@@ -11,6 +11,7 @@
 import type { AssembledCarry, CarrySheet } from './carrySheet.js';
 import { HAND_SLOTS, type DrawStep } from './inventory.js';
 import type { Relation } from './types.js';
+import { stowProps, type StowSpot } from './wield.js';
 
 // ------------------------------------------------------------ V1 Tragraster
 
@@ -182,6 +183,37 @@ export function wearProps(props: Readonly<Record<string, unknown>>, slot: string
   const p: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(props)) if (!AUS_DEM_RASTER.includes(k)) p[k] = v;
   return { ...p, slot, tier: 'worn' };
+}
+
+/**
+ * **Die Kanten nach dem Anlegen.** Aus einem Stapel geht eines an den
+ * Platz (neue Kante `newId`, ohne Reservierung), der Rest bleibt, wo er
+ * lag — wie beim Griff in die Hand (`applyWield`). Wer den Platz hatte,
+ * wird verstaut (`spot` im Raster, sonst unter „Not stowed").
+ */
+export function applyWear(
+  relations: readonly Relation[],
+  o: { edgeId: string; slot: string; newId: string; spot: StowSpot; grid: boolean },
+): Relation[] {
+  const raus: Relation[] = [];
+  for (const r of relations) {
+    const props = (r.props ?? {}) as Record<string, unknown>;
+    if (r.id === o.edgeId) {
+      const qty = Math.max(1, Number(props['qty']) || 1);
+      if (qty > 1) {
+        raus.push({ ...r, props: { ...props, qty: qty - 1 } });
+        const { reservedFor: _r, forNeed: _f, ...rest } = props;
+        raus.push({ id: o.newId, type: r.type, to: r.to, props: wearProps({ ...rest, qty: 1 }, o.slot) });
+      } else {
+        raus.push({ ...r, props: wearProps(props, o.slot) });
+      }
+    } else if (r.type === 'holds' && props['slot'] === o.slot && props['unstowed'] !== true) {
+      raus.push({ ...r, props: stowProps(props, o.spot, o.grid) });
+    } else {
+      raus.push(r);
+    }
+  }
+  return raus;
 }
 
 // ------------------------------------------------------------ V5 Einstimmung
