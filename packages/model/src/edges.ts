@@ -435,6 +435,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     does: 'draws and changes what a character, a party or a container holds — grid, rotation, zones, weight or slots by the campaign’s rules — and moves stacks between them, except those reserved for something',
     uses: {
       [M + 'inventory.ts']: ['carries', 'holds'],
+      /* Einstimmung zählen und Plätze am Körper (T-365). */
+      [M + 'gear.ts']: ['holds'],
       [W + 'artikel/inventar.ts']: ['carries', 'holds'],
       /* Die Gruppen der Kampagne mit ihren Figuren und Inventaren (T-127),
          und wer das Gruppeninventar schreibt. */

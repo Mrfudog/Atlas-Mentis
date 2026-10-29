@@ -32,9 +32,8 @@ test('a pouch on the belt draws as a free action, what is inside one step slower
   const zeile = s.locator('ul.posten > li').filter({ hasText: beutel.name }).first();
   await expect(zeile).toContainText('free action to draw');
 
-  /* Aufklappen: das Seil im Beutel ist eine Stufe weiter weg. */
-  await zeile.getByRole('button', { name: 'Open' }).click();
-  const seilZeile = s.locator('li.innen ul.posten > li').filter({ hasText: seil.name }).first();
+  /* Der Beutel steht im Gear als eigener Bereich (T-365, E-153 V7): das Seil darin ist eine Stufe weiter weg. */
+  const seilZeile = s.getByRole('region', { name: beutel.name }).locator('ul.posten > li').filter({ hasText: seil.name }).first();
   await expect(seilZeile).toContainText('bonus action to draw');
 
   /* Die Hände: was Verstauen und Fallenlassen kosten, aus `handActions`. */
