@@ -57,6 +57,21 @@ import {
   type WieldPlan,
   DND_COINS,
   formatMoney,
+  applyWear,
+  attunedCount,
+  attunementCheck,
+  attunementLimit,
+  BELT_SLOTS,
+  bodyPlaceCheck,
+  bodyPlaces,
+  bodySlotLabel,
+  derivedReason,
+  drawReason,
+  drawStage,
+  explainCarry,
+  HAND_SLOTS,
+  parsePairs,
+  type Placement,
 } from '@nw/model';
 import type { Entity, Relation } from '@nw/model';
 import { FigurDaten } from '../bogen/daten';
@@ -68,6 +83,8 @@ import { Session } from '../kern/session';
 import { Wahl } from './wahl';
 import { bildAdresse } from './bild';
 import { formBildStil, maskenStil } from '../kern/formbild';
+import { Koerper, type PlatzSicht } from './koerper';
+import { Klappstand } from '../kern/klappstand';
 
 /** Warum der Server Wegwerfen, Verkaufen oder Zurücklegen ablehnt (T-407) — englisch, der Code steht in der Antwort. */
 const ABGELEHNT: Record<string, string> = {
@@ -133,7 +150,14 @@ interface Stueck extends GridPiece {
   bild: { asset: string; frame: InventoryFrame } | null;
   /** Lohnt Spiegeln? Nur bei einer Form, die gespiegelt keine Drehung ihrer selbst ist. */
   chiral: boolean;
+  /** `Item.itemType` — was an welchen Körperplatz darf (T-365). */
+  itemType: string;
+  /** Verlangt der Gegenstand Einstimmung, und ist dieses Stück eingestimmt? */
+  attunement: boolean;
+  attuned: boolean;
 }
+
+
 
 interface Ziel {
   id: string;
@@ -161,9 +185,9 @@ interface Ziel {
  */
 @Component({
   selector: 'nw-inventar',
-  imports: [RouterLink, KurzLink, Wahl, NgTemplateOutlet],
+  imports: [RouterLink, KurzLink, Wahl, NgTemplateOutlet, Koerper],
   template: `
-    <div class="inv" [class.tief]="tiefe() > 0">
+    <div class="inv" [class.tief]="tiefe() > (imGear() ? 1 : 0)">
       <div class="leiste">
         <span class="regel" title="Set on the campaign">{{ regelLabel() }}</span>
         @if (regel() === 'weight') {
@@ -235,6 +259,12 @@ interface Ziel {
             </ul>
           </section>
 
+          <!-- Der Körper (T-365, E-153 V5): die Plätze des Inventarmoduls (slotDraw),
+               keine feste Liste. Ein Stück wählen, dann einen Platz antippen. -->
+          @if (koerper().length) {
+            <nw-koerper [gruppen]="koerper()" [wahl]="wahl()" [einstimmung]="einstimmung()" (platz)="platz($event)" />
+          }
+
           <section class="detail" aria-label="Item">
             @if (ausstehend(); as a) {
               <div class="warnung" role="alertdialog" aria-label="Something has to move">
@@ -252,6 +282,26 @@ interface Ziel {
                 <a class="auf" [routerLink]="['/artikel', p.item]" [nwQuick]="p.item" aria-label="Open article">↗</a>
               </h4>
               <p class="wo">Now: {{ jetzt(p) }}</p>
+              @if (ziehText(p); as zt) { <p class="wo zieh"><b>{{ zt }}</b></p> }
+              @if (darf() && koerperZiele().length) {
+                <p class="wo"><b>Wear</b></p>
+                <div class="tragen">
+                  @for (z of koerperZiele(); track z.slot) {
+                    <button type="button" class="klein" [class.warn]="!!z.stueck" (click)="anlegen(p, z.slot)"
+                            [title]="z.stueck ? 'moves ' + z.stueck.name + ' out' : z.label">{{ z.label }}{{ z.stueck ? ' ⚠' : '' }}</button>
+                  }
+                </div>
+              }
+              @if (p.attunement && (p.slot || p.attuned)) {
+                @if (einstimmenPruefung(p); as e) {
+                  <p class="wo">
+                    @if (darf()) {
+                      <button type="button" class="klein" [disabled]="!e.ok" (click)="einstimmen(p)">{{ p.attuned ? 'End attunement' : 'Attune' }}</button>
+                    }
+                    @if (!e.ok) { <small>{{ e.why }}</small> } @else if (p.attuned) { <small>✦ attuned</small> }
+                  </p>
+                }
+              }
               <p class="wo"><b>Where it can go</b> · {{ zieleOk() }} places</p>
               <ul class="ziele">
                 @for (o of ziele2(); track o.target) {
@@ -314,13 +364,28 @@ interface Ziel {
         }
       }
 
+      <!-- Eigene Bereiche (E-153 V7): getragen und jeder Behälter nebeneinander, am Telefon untereinander, zuklappbar. -->
+      <div class="bereiche" [class.an]="gearOben()">
+      <section class="bereich" [attr.aria-label]="gearOben() ? 'Carried' : null">
+      @if (gearOben()) {
+        <h4 class="bkopf">
+          <button type="button" class="zuklapp" [attr.aria-expanded]="!zu().has(inventar().id)" (click)="zuklappen(inventar().id)">
+            {{ zu().has(inventar().id) ? '▸' : '▾' }} Carried
+          </button>
+        </h4>
+      }
+      @if (!gearOben() || !zu().has(inventar().id)) {
       @if (regel() === 'grid') {
+        @if (tragErklaert(); as t) {
+          <p class="tragzeile" title="Size square and extra square, as on the sheet">{{ t.text }}</p>
+        }
         <div class="raster" role="grid" [attr.aria-label]="'Grid of ' + name()" [attr.data-inv]="inventar().id"
              [style.grid-template-columns]="'repeat(' + kiste().w + ', var(--zelle))'"
              [style.--zelle]="'min(2.1rem, calc((100vw - ' + (5 + tiefe() * 2) + 'rem) / ' + kiste().w + '))'">
           @for (z of zellen(); track z.key) {
             <button type="button" class="zelle" [attr.data-x]="z.x" [attr.data-y]="z.y"
-                    [class.zu]="!z.offen && !formModus()" [class.aus]="!z.offen && formModus()"
+                    [class.zu]="!z.offen && !formModus() && !blattRaster()" [class.gesperrt]="!z.offen && !formModus() && blattRaster()"
+                    [class.naht]="naehte().has(z.x)" [class.aus]="!z.offen && formModus()"
                     [class.belegt]="!!z.stueck" [class.gewaehlt]="!!z.stueck && z.stueck.key === wahl()" [class.halt]="z.halt" [attr.data-halt]="z.halt ? '' : null"
                     [style.background]="z.stueck ? z.stueck.farbe : z.zone ? zonenFarbe(z.zone) : null"
                     [attr.aria-label]="zellLabel(z)" [title]="zellLabel(z)"
@@ -339,7 +404,11 @@ interface Ziel {
             </div>
           }
         </div>
-        @if (darf()) {
+        @if (gear() && tiefe() === 0 && session.leitung()) {
+          <p class="werkzeug"><a class="klein" routerLink="/campaign" [queryParams]="{ tab: 'rules' }">Edit zones</a>
+            <small>Zones and the carry grid belong to the campaign — Rules &amp; options › Basil’s sheet.</small></p>
+        }
+        @if (darf() && !gear()) {
           <div class="werkzeug">
             <button type="button" class="klein" [class.an]="formModus()" (click)="formModus.set(!formModus())">
               {{ formModus() ? 'Done shaping' : 'Shape & zones' }}
@@ -365,9 +434,11 @@ interface Ziel {
             }
           </div>
         }
-        @if (leiter().length && zonenDa()) {
-          <p class="zonen">
-            @for (s of leiter(); track s) { <span><i [style.background]="zonenFarbe(s)"></i>{{ s }}</span> }
+        @if (leiter().length && (zonenDa() || blattRaster())) {
+          <p class="zonen" aria-label="Zones">
+            @for (s of zonenDa() ? leiter() : []; track s) { <span><i [style.background]="zonenFarbe(s)"></i>{{ s }}</span> }
+            @if (blattRaster()) { <span><i class="schraffur"></i>blocked</span> }
+            <small>A piece costs the slowest zone it covers; a container adds one step.</small>
           </p>
         }
       }
@@ -380,10 +451,8 @@ interface Ziel {
               <button type="button" class="nennen" (click)="waehle(p.key)" [attr.aria-pressed]="p.key === wahl()">{{ p.name }}</button>
               @if (p.qty !== 1) { <span class="qty">×{{ p.qty }}</span> }
               <span class="tier">{{ p.slot || p.tier }}</span>
-              @if (regel() === 'grid') {
-                @if (!liegtIm(p) && !ziehstufe(p)) { <span class="tier">· not in the grid</span> }
-              }
-              @if (ziehstufe(p); as st) { <span class="tier" [attr.title]="'Drawing it costs: ' + st">· {{ st }} to draw</span> }
+              @if (ziehText(p); as zt) { <span class="tier zieh" [attr.title]="'Drawing it costs: ' + zt">· {{ zt }}</span> }
+              @else if (regel() === 'grid' && !liegtIm(p) && !p.slot) { <span class="tier">· not in the grid</span> }
               @if (regel() === 'weight' && p.weight) { <span class="tier">· {{ p.weight * p.qty }} lb</span> }
               @if (p.reserviert) {
                 <span class="res">reserved for
@@ -391,7 +460,11 @@ interface Ziel {
               }
               <a class="auf" [routerLink]="['/artikel', p.item]" [nwQuick]="p.item" aria-label="Open article">↗</a>
               @if (p.behaelter) {
-                <button type="button" class="klein" (click)="umschalten(p.behaelter)">{{ offen().has(p.behaelter) ? 'Close' : 'Open' }}</button>
+                @if (gearOben()) {
+                  <button type="button" class="klein" (click)="zuklappen(p.behaelter)">{{ zu().has(p.behaelter) ? 'Show' : 'Hide' }}</button>
+                } @else {
+                  <button type="button" class="klein" (click)="umschalten(p.behaelter)">{{ offen().has(p.behaelter) ? 'Close' : 'Open' }}</button>
+                }
               }
             </li>
             @if (p.key === wahl() && darf()) {
@@ -431,10 +504,10 @@ interface Ziel {
                 <li class="wegzeile"><ng-container *ngTemplateOutlet="wegbox" /></li>
               }
             }
-            @if (p.behaelter && offen().has(p.behaelter)) {
+            @if (p.behaelter && offen().has(p.behaelter) && !gearOben()) {
               <li class="innen">
                 @if (bestand.voll().get(p.behaelter); as inner) {
-                  <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="tiefe() + 1" [aussen]="ziehstufe(p)" />
+                  <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="tiefe() + 1" [imGear]="imGear()" [kette]="ketteFuer(p)" [via]="p.name" />
                 } @else {
                   <p class="leer">Loading…</p>
                 }
@@ -451,6 +524,28 @@ interface Ziel {
           <nw-wahl [wert]="''" (wertChange)="hinzu($event)" [arten]="['Item']" [label]="'Add an item'" [anlegbar]="false" />
         </div>
       }
+      }
+      </section>
+      @if (gearOben()) {
+        @for (b of behaelterOben(); track b.id) {
+          <section class="bereich" [attr.aria-label]="b.name" [attr.data-behaelter]="b.id">
+            <h4 class="bkopf">
+              <button type="button" class="zuklapp" [attr.aria-expanded]="!zu().has(b.id)" (click)="zuklappen(b.id)">
+                {{ zu().has(b.id) ? '▸' : '▾' }} {{ b.name }}
+              </button>
+              @if (b.wo) { <small>{{ b.wo }}</small> }
+            </h4>
+            @if (!zu().has(b.id)) {
+              @if (bestand.voll().get(b.id); as inner) {
+                <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="1" [imGear]="true" [kette]="b.kette" [via]="b.name" />
+              } @else {
+                <p class="leer">Loading…</p>
+              }
+            }
+          </section>
+        }
+      }
+      </div>
       @if (zuletzt(); as z) {
         <p class="zuletzt" role="status">{{ z.text }}
           @if (z.undo) { <button type="button" class="klein" (click)="zuruecklegen()">Undo</button> }
@@ -524,6 +619,27 @@ interface Ziel {
       font-size: 0.65rem; overflow: hidden; cursor: pointer;
     }
     .zelle.zu { visibility: hidden; }
+    /* Sperrfelder des Tragrasters schraffiert (E-153 V1): die Lücke unter einem kleineren Zusatzquadrat ist kein Platz. */
+    .zelle.gesperrt, .zonen i.schraffur {
+      background: repeating-linear-gradient(45deg, var(--line2, var(--line)) 0 3px, transparent 3px 7px) !important;
+      border-style: dotted; cursor: default;
+    }
+    /* Wo ein Baustein des Blatts beginnt — Grundquadrat und Zusatzquadrat getrennt. */
+    .zelle.naht { box-shadow: -3px 0 0 -1px var(--accent); }
+    .tragzeile { margin: 0; font-family: var(--caps); color: var(--heading); }
+    .zonen small { flex-basis: 100%; }
+    .zieh { white-space: normal; }
+    .bereiche { display: contents; }
+    .bereiche.an { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: flex-start; }
+    .bereiche.an > .bereich { flex: 1 1 22rem; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem;
+      border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.6rem; background: var(--paper, var(--surface)); }
+    .bereiche:not(.an) > .bereich { display: contents; }
+    .bkopf { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; font-family: var(--caps); font-weight: normal; }
+    .bkopf small { font-family: inherit; color: var(--dim); font-size: 0.85rem; }
+    .zuklapp { min-height: 40px; border: 0; background: none; padding: 0; font: inherit; font-size: 1.05rem; color: var(--accent); cursor: pointer; text-align: left; }
+    .tragen { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .tragen button { min-height: 36px; }
+    .tragen button.warn { border-color: var(--warn); }
     .zelle.aus { opacity: 0.25; border-style: dashed; }
     .zelle.gewaehlt { outline: 2px solid var(--accent); outline-offset: -2px; }
     /* Die Ankerzelle (REQ-402): hier angefasst, landet sie auf dem Zielfeld. */
@@ -543,7 +659,8 @@ interface Ziel {
     .auf { text-decoration: none; }
     .aktionen { gap: 0.4rem 0.8rem !important; padding: 0.3rem 0 0.5rem 1.1rem !important; }
     .aktionen input { width: 4rem; min-height: 32px; }
-    .aktionen select { min-height: 32px; }
+    .aktionen label, .vor label { display: inline-flex; align-items: center; gap: 0.3rem; max-width: 100%; }
+    .aktionen select, .vor select { min-height: 32px; min-width: 0; max-width: 11rem; }
     .innen { display: block !important; padding-left: 1.1rem !important; }
     .fehler { color: var(--warn); }
     .hinzu { max-width: 28rem; }
@@ -553,7 +670,6 @@ interface Ziel {
     .vor ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
     .vor li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; }
     .vor li.gewaehlt .stueck { outline: 2px solid var(--accent); }
-    .vor select { min-height: 32px; }
     .stueck {
       display: inline-flex; align-items: center; gap: 0.35rem; min-height: 40px; padding: 0.2rem 0.6rem;
       border: 1px solid var(--line); border-radius: 999px; background: var(--paper, var(--surface)); color: var(--heading);
@@ -625,8 +741,12 @@ export class Inventar {
   /** Das Inventar eine Stufe höher, wenn dieses in einem Behälter liegt. */
   readonly oben = input<Entity | null>(null);
   readonly tiefe = input(0);
-  /** Die Ziehstufe des Behälters im Inventar darüber (T-350): was darin liegt, ist eine Stufe weiter weg. */
-  readonly aussen = input<string | null>(null);
+  /** Steht dieses Inventar im Gear einer Figur (auch als Behälter darin)? Dann malt hier niemand Zonen (E-153 V4). */
+  readonly imGear = input(false);
+  /** Der Weg bis zu diesem Behälter, für die Ziehstufe (REQ-216): wo jeder äussere Behälter liegt. */
+  readonly kette = input<Placement[]>([]);
+  /** Wie der Behälter heisst, in dem dieses Inventar liegt — für die Begründung „Bag of Holding +1". */
+  readonly via = input('');
 
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
@@ -634,6 +754,7 @@ export class Inventar {
   private readonly api = inject(Api);
   private readonly lageDienst = inject(InventarLageDienst);
   private readonly figurDaten = inject(FigurDaten);
+  private readonly klapp = inject(Klappstand);
 
   protected readonly tiers = TIERS;
   protected readonly muenzarten = ['pp', 'gp', 'sp', 'cp'] as const;
@@ -674,14 +795,39 @@ export class Inventar {
    * Das Tragraster nach dem Blatt, nur unter einer Kreatur mit Statblock
    * (D54): die Bausteine, die für sie gelten, aneinandergefügt (REQ-356).
    */
-  private readonly tragraster = computed(() => {
+  private readonly tragblatt = computed(() => {
     const sb = this.statblock();
     const r = this.bestand.registry();
     if (!sb || !r) return null;
     const pd = r.interfaces['Statblock']?.schema?.properties?.['carryExtra'];
     const blatt = carrySheetOf(this.settings(), typeof pd?.max === 'number' ? pd.max : 5);
-    return assembleCarry(blatt, carryFieldValue(r, sb.components ?? {}, sb.relations ?? []));
+    const wert = carryFieldValue(r, sb.components ?? {}, sb.relations ?? []);
+    const raster = blatt ? assembleCarry(blatt, wert) : null;
+    return blatt && raster ? { blatt, wert, raster, sb } : null;
   });
+  private readonly tragraster = computed(() => this.tragblatt()?.raster ?? null);
+  /** Kommt das Raster aus dem Blatt (und nicht aus einer eigenen Form)? Dann sind Lücken Sperrfelder. */
+  protected readonly blattRaster = computed(() => {
+    const eigen = this.karte()['grid'];
+    return !!this.tragraster() && !(Array.isArray(eigen) && eigen.length);
+  });
+  /**
+   * **„Small 4×4 + extra 2×2 (STR 14 → +2)"** (E-153 V1) — aus den
+   * Bausteinen, die gelten, und dem gerechneten Feld, nach dem sie fragen.
+   */
+  protected readonly tragErklaert = computed(() => {
+    const t = this.tragblatt();
+    const r = this.bestand.registry();
+    if (!t || !r || !this.blattRaster()) return null;
+    const karten = t.sb.components ?? {};
+    return explainCarry(t.blatt, t.raster, t.wert, (feld) => {
+      const [comp, name] = feld.split('.');
+      const pd = r.interfaces[comp ?? '']?.schema?.properties?.[name ?? ''];
+      return derivedReason(typeof pd?.derived === 'string' ? pd.derived : undefined, karten['Abilities'] as Record<string, unknown> | undefined, t.wert(feld));
+    });
+  });
+  /** Die Spalten, an denen ein weiterer Baustein beginnt. */
+  protected readonly naehte = computed(() => new Set(this.blattRaster() ? (this.tragraster()?.parts ?? []).slice(1).map((p) => p.x) : []));
 
   protected readonly kiste = computed<Shape>(() =>
     containerShape(
@@ -738,6 +884,9 @@ export class Inventar {
           farbe: `hsl(${(i * 67 + 200) % 360} 55% 62%)`,
           bild: inventoryImageOf(it),
           chiral: shapeChiral(item['rows']),
+          itemType: typeof item['itemType'] === 'string' ? item['itemType'] : '',
+          attunement: item['attunement'] === true,
+          attuned: pr['attuned'] === true,
         };
       });
   });
@@ -951,6 +1100,167 @@ export class Inventar {
     ];
   });
 
+  // ------------------------------------------------------------ Gear (T-365, E-153)
+
+  /** Im Gear einer Figur — oben selbst oder als Behälter darin. */
+  protected readonly gear = computed(() => !!this.figur() || this.imGear());
+  /** Oben im Gear: hier stehen die Behälter als eigene Bereiche (V7). */
+  protected readonly gearOben = computed(() => !!this.figur());
+  private readonly slotDraw = computed(() => parsePairs(this.settings()['slotDraw']));
+
+  /** Wo ein Stück in diesem Inventar liegt — der letzte Schritt der Kette (REQ-216). */
+  private platzierung(p: Stueck): Placement {
+    return { via: this.via() || this.name(), zone: this.zoneVon(p), slot: p.slot || null };
+  }
+  /** Der Weg zu einem Behälter, der hier liegt: die eigene Kette und sein Platz. */
+  protected ketteFuer(p: Stueck): Placement[] {
+    return [...this.kette(), this.platzierung(p)];
+  }
+  /** **Die Ziehzeit mit Begründung** (V2): dieselbe Rechnung wie überall, `drawStage`. */
+  private ziehen(p: Stueck) {
+    if (p.offen || p.tier === 'ground') return drawReason({ stage: null, steps: [] });
+    return drawReason(drawStage(this.ketteFuer(p), this.leiter(), this.platzStufen()), bodySlotLabel);
+  }
+  /** „turn to draw (zone action, Bag of Holding +1)" — Stufe und Grund in einem. */
+  protected ziehText(p: Stueck): string {
+    const z = this.ziehen(p);
+    return z.stage ? `${z.stage} to draw (${z.why})` : '';
+  }
+
+  /** Die Behälter, die oben liegen, als eigene Bereiche — mit dem, was ihr Platz kostet. */
+  protected readonly behaelterOben = computed(() => {
+    if (!this.gearOben()) return [];
+    return this.verstaut()
+      .filter((p) => !!p.behaelter)
+      .map((p) => {
+        const z = this.ziehen(p);
+        return {
+          id: p.behaelter!,
+          name: p.name,
+          kette: this.ketteFuer(p),
+          wo: z.stage ? `draws at ${z.text} — what is inside takes one step more` : '',
+        };
+      });
+  });
+
+  /** Zugeklappte Bereiche, gemerkt am Konto (Klappstand, T-441) — je Inventar-Id, Vorgabe offen. */
+  protected readonly zu = computed<ReadonlySet<string>>(() =>
+    new Set(Object.entries(this.klapp.stand('gear')).filter(([, offen]) => !offen).map(([id]) => id)),
+  );
+  protected zuklappen(id: string): void {
+    this.klapp.setze('gear', id, this.zu().has(id));
+  }
+
+  /** **Eingestimmt** (V5): gezählt über dieses Inventar und die Behälter darin, soweit geladen. */
+  protected readonly einstimmung = computed(() => {
+    const voll = this.bestand.voll();
+    const kanten: Relation[] = [];
+    const offen = [this.inventar().id];
+    const gesehen = new Set(offen);
+    while (offen.length) {
+      const inv = offen.pop()!;
+      for (const k of (inv === this.inventar().id ? this.inventar() : voll.get(inv))?.relations ?? []) {
+        if (k.type !== 'holds') continue;
+        kanten.push(k);
+        const innen = (voll.get(k.to)?.relations ?? []).find((r) => r.type === 'carries')?.to;
+        if (innen && !gesehen.has(innen)) {
+          gesehen.add(innen);
+          offen.push(innen);
+        }
+      }
+    }
+    const zahl = attunedCount(kanten);
+    const grenze = attunementLimit(this.settings());
+    return { zahl, grenze, voll: zahl >= grenze };
+  });
+
+  protected einstimmenPruefung(p: Stueck) {
+    const e = this.einstimmung();
+    return attunementCheck({ attunement: p.attunement }, p.attuned, e.zahl, e.grenze);
+  }
+
+  protected einstimmen(p: Stueck): void {
+    if (!this.einstimmenPruefung(p).ok) return;
+    const { attuned: _a, ...rest } = (p.kante.props ?? {}) as Record<string, unknown>;
+    void this.propsSetzen(p, p.attuned ? rest : { ...rest, attuned: true });
+  }
+
+  private platzSicht(slot: string, draw: string | null, stueck: Stueck | null, wahl: Stueck | null): PlatzSicht<Stueck> {
+    const label = bodySlotLabel(slot);
+    let ziel: PlatzSicht<Stueck>['ziel'] = null;
+    let warum = '';
+    if (wahl && wahl !== stueck) {
+      const c = bodyPlaceCheck(slot, { itemType: wahl.itemType });
+      ziel = !c.ok ? 'no' : stueck ? 'warn' : 'ok';
+      warum = !c.ok ? c.why : stueck ? `moves ${stueck.name} out` : '';
+    }
+    const titel = [`${label}: ${stueck ? stueck.name : 'free'}`, draw ? `draw ${draw}` : '', stueck?.attuned ? 'attuned' : '', warum]
+      .filter(Boolean).join(' · ');
+    return { slot, label, draw, stueck, ziel, titel };
+  }
+
+  /** **Die Plätze am Körper** (V5): aus `slotDraw`; was an einem Platz liegt, den das Modul nicht mehr nennt, steht unter „Other". */
+  protected readonly koerper = computed(() => {
+    if (!this.lage()) return [];
+    const wahl = this.wahlStueck();
+    const sd = this.slotDraw();
+    const gruppen = bodyPlaces(sd);
+    const amPlatz = new Map(this.stuecke().filter((s) => s.slot && !s.offen).map((s) => [s.slot, s] as const));
+    const bekannt = new Set(gruppen.flatMap((g) => g.places.map((x) => x.slot)));
+    const raus = gruppen.map((g) => ({
+      key: g.key,
+      label: g.label,
+      places: g.places.map((x) => this.platzSicht(x.slot, x.draw, amPlatz.get(x.slot) ?? null, wahl)),
+    }));
+    const andere = [...amPlatz.values()].filter((s) => !bekannt.has(s.slot) && !HAND_SLOTS.includes(s.slot) && !BELT_SLOTS.includes(s.slot));
+    if (andere.length) {
+      raus.push({ key: 'other', label: 'Other places', places: andere.map((s) => this.platzSicht(s.slot, sd[s.slot] ?? null, s, wahl)) });
+    }
+    return raus;
+  });
+
+  /** Wohin das gewählte Stück passt: je Gruppe der erste freie Platz, sonst der erste, der verdrängt. */
+  protected readonly koerperZiele = computed(() => {
+    const p = this.wahlStueck();
+    if (!p || p.reserviert) return [];
+    const out: { slot: string; label: string; stueck: Stueck | null }[] = [];
+    for (const g of this.koerper()) {
+      if (g.key === 'other') continue;
+      const frei = g.places.filter((x) => x.stueck !== p && bodyPlaceCheck(x.slot, { itemType: p.itemType }).ok);
+      if (g.places.some((x) => x.stueck === p)) continue;
+      const z = frei.find((x) => !x.stueck) ?? frei[0];
+      if (z) out.push({ slot: z.slot, label: g.places.length > 1 ? `${g.label} · ${z.slot.replace(/\D+/g, '')}` : g.label, stueck: z.stueck });
+    }
+    return out;
+  });
+
+  /** Ein Platz angetippt: ein gewähltes Stück kommt hinein, sonst wird gewählt, was dort ist. */
+  protected platz(slot: string): void {
+    const pl = this.koerper().flatMap((g) => g.places).find((x) => x.slot === slot);
+    if (!pl) return;
+    const p = this.wahlStueck();
+    if (p && p !== pl.stueck && this.darf()) {
+      const c = bodyPlaceCheck(pl.slot, { itemType: p.itemType });
+      if (!c.ok) return void this.hinweis.set(`${p.name}: ${c.why}.`);
+      return void this.anlegen(p, pl.slot);
+    }
+    if (pl.stueck) this.waehle(pl.stueck.key);
+  }
+
+  /** **Anlegen** (`applyWear`): wer den Platz hatte, kommt ins Raster oder unter „Not stowed". */
+  protected async anlegen(p: Stueck, slot: string): Promise<void> {
+    if (p.reserviert) return void this.hinweis.set('That piece is reserved for a crafting order — release it first.');
+    const inv = this.inventar();
+    const grid = this.regel() === 'grid';
+    const weg = this.stuecke().find((s) => s.slot === slot && !s.offen && s.key !== p.key) ?? null;
+    const spot = weg && grid
+      ? firstFreeSpot(this.kiste(), this.stuecke().filter((s) => s.key !== weg.key && s.key !== p.key && this.liegtIm(s)), { ...weg, gx: null, gy: null })
+      : null;
+    const relations = applyWear(inv.relations ?? [], { edgeId: p.key, slot, newId: `${inv.id}~holds-${Date.now().toString(36)}`, spot, grid });
+    await this.schreiben([{ ...inv, relations }]);
+    if (weg && grid && !spot) this.hinweis.set(`No room for ${weg.name} in the grid — it is set aside under “Not stowed”.`);
+  }
+
   /** Wartet auf „verstauen / fallen lassen / abbrechen" (Runde 8). */
   protected readonly ausstehend = signal<{ key: string; place: HandPlace; plan: WieldPlan; titel: string; text: string; verstauen: string; fallen: string | null } | null>(null);
 
@@ -963,6 +1273,7 @@ export class Inventar {
     if (hand) return wieldTargetLabel(hand).toLowerCase();
     if (p.offen) return 'not stowed';
     if (p.tier === 'ground') return 'on the ground';
+    if (p.slot) return `worn · ${bodySlotLabel(p.slot).toLowerCase()}`;
     if (this.regel() === 'grid') return this.liegtIm(p) ? `in the grid${this.ziehstufe(p) ? ` · ${this.ziehstufe(p)} to draw` : ''}` : 'not in the grid';
     return p.slot || p.tier;
   }
@@ -1088,7 +1399,7 @@ export class Inventar {
     });
     /* Ein geöffneter Behälter: sein Inventar. */
     effect(() => {
-      const ids = [...this.offen()];
+      const ids = [...new Set([...this.offen(), ...this.behaelterOben().map((b) => b.id)])];
       untracked(() => ids.forEach((id) => void this.bestand.oeffnen(id, false, false)));
     });
   }
@@ -1102,8 +1413,9 @@ export class Inventar {
   protected zellLabel(z: { x: number; y: number; zone: string; stueck: Stueck | null; offen: boolean }): string {
     const teile = [`${z.x + 1},${z.y + 1}`];
     if (z.stueck) teile.push(z.stueck.name);
-    else if (!z.offen) teile.push('no cell');
-    if (z.zone) teile.push(z.zone);
+    else if (!z.offen) teile.push(this.blattRaster() ? 'blocked' : 'no cell');
+    if (z.stueck && this.ziehText(z.stueck)) teile.push(this.ziehText(z.stueck));
+    else if (z.zone) teile.push(z.zone);
     return teile.join(' · ');
   }
 
@@ -1118,16 +1430,12 @@ export class Inventar {
   /**
    * **Die Ziehstufe die Kette hinauf** (T-350, REQ-216, `drawStage`):
    * aussen der Platz (`slotDraw`) oder die Zone; in einem Behälter das
-   * Langsamere aus der eigenen Zone und der Stufe des Behälters + 1.
-   * `null`, wenn ein Schritt keine Stufe kennt.
+   * Langsamere aus der eigenen Zone und der Stufe des Behälters + 1. Die
+   * Kette kommt seit T-365 ganz herunter (`kette`), damit die Begründung
+   * jeden Behälter nennen kann. `null`, wenn ein Schritt keine Stufe kennt.
    */
   protected ziehstufe(p: Stueck): string | null {
-    const zone = this.regel() === 'grid' ? this.zoneVon(p) : null;
-    const kette =
-      this.tiefe() === 0
-        ? [{ via: this.inventar().id, zone, slot: p.slot || null }]
-        : [{ via: 'outer', zone: this.aussen() }, { via: this.inventar().id, zone }];
-    return drawStage(kette, this.leiter(), this.platzStufen()).stage;
+    return this.ziehen(p).stage;
   }
 
   protected waehle(key: string): void {
