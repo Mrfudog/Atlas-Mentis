@@ -1125,6 +1125,12 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   / on / off). Die Bewegung zählt in beiden Fällen; ohne Aufdecken deckt
   die Leitung nachher auf. Wände rechnet die Seite dabei noch nicht — der
   Prototyp nimmt das Sichtpolygon.
+- **Sicht aufdecken** (*Reveal sight*, T-219): die Leitung tippt ein Token
+  an und deckt auf, was es von seinem Platz aus sieht — bis zur nächsten
+  Wand, im Dunkeln nur seine Dunkelsicht und die Lichter, in die es
+  hineinsieht (`revealView`, dieselbe Rechnung wie ein Zug des Servers).
+  Gilt der Nebel je Figur, für diese Figur. Sieht es nichts Neues, sagt die
+  Seite das, statt eine leere Form zu speichern.
 - **Je Gruppe oder je Figur** (`Campaign.fog`, T-204): je Gruppe sieht
   jede Spielerin alles Aufgedeckte. Je Figur darf eine Form `for` nennen —
   eine Figur oder eine Gruppe —, und dann sehen sie nur diese, ihre
