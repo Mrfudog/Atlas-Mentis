@@ -109,6 +109,21 @@ describe('GET /api/list', () => {
     expect(await namen('spell-0002')).toEqual(['Fire Bolt']);
   });
 
+  it('finds many articles by exact name or alias in one request, sieved (T-398)', async () => {
+    const { get, gm, spieler } = await makeApp();
+    const namen = async (url: string, wer = gm) => (await get(url, wer)).json().rows.map((z: { name: string }) => z.name);
+    /* Genau der Name, kein Teilwort: „fire" trifft weder Fireball noch Fire Bolt. */
+    expect(await namen('/api/list?name=fireball&name=Unsichtbarkeit&name=fire&limit=50')).toEqual(['Fireball', 'Invisibility']);
+    /* Ein Komma gehört zum Namen, es trennt nicht. */
+    expect(await namen(`/api/list?name=${encodeURIComponent('Fire Bolt, the')}`)).toEqual([]);
+    expect(await namen('/api/list?of=Rule&name=Fireball&name=Multiattack')).toEqual(['Fireball']);
+    /* Was die Spielerin nicht sieht, findet sie auch nicht beim Namen. */
+    const verboten = `/api/list?name=${encodeURIComponent('Verbotener Spruch')}`;
+    expect(await namen(verboten)).toEqual(['Verbotener Spruch']);
+    expect(await namen(verboten, spieler)).toEqual([]);
+    expect(parseListQuery({ name: ['A, B', ' c '] }).name).toEqual(['a, b', 'c']);
+  });
+
   it('gives the columns of the type from its overview, and filters by them', async () => {
     const { get } = await makeApp();
     const r = (await get('/api/list?type=Spell')).json();
@@ -339,5 +354,36 @@ describe('lists for other pages', () => {
     const e = res.json() as Entity;
     expect(e.relations).toEqual([{ id: `${e.id}~inLayer-1`, type: 'inLayer', to: 'l1', props: {} }]);
     expect((await get('/api/list?layer=l1&q=ebenen')).json().total).toBe(1);
+  });
+});
+
+describe('GET /api/entities/batch (T-398)', () => {
+  it('sends each article as /api/entities/:id does, with its backlinks, in one request', async () => {
+    const { get } = await makeApp();
+    const r = (await get('/api/entities/batch?ids=a2,s1,b1&backlinks=1')).json();
+    expect(r.missing).toEqual([]);
+    for (const id of ['a2', 's1', 'b1']) {
+      const einzeln = (await get(`/api/entities/${id}`)).json();
+      expect(r.entities[id]).toEqual(einzeln);
+      expect(r.backlinks[id]).toEqual((await get(`/api/entities/${id}/backlinks`)).json());
+    }
+    /* Pack Tactics gehört zwei Statblöcken. */
+    expect(r.backlinks.a2.map((b: { from: { id: string } }) => b.from.id).sort()).toEqual(['b1', 'b2']);
+  });
+
+  it('leaves out what the viewer may not see, and says so', async () => {
+    const { get, spieler } = await makeApp();
+    const r = (await get('/api/entities/batch?ids=s1,g1,nichts&backlinks=1', spieler)).json();
+    expect(Object.keys(r.entities)).toEqual(['s1']);
+    expect(r.missing).toEqual(['g1', 'nichts']);
+    expect(Object.keys(r.backlinks)).toEqual(['s1']);
+    const ohne = (await get('/api/entities/batch?ids=s1', spieler)).json();
+    expect(ohne.backlinks).toBeUndefined();
+  });
+
+  it('refuses more than 200 ids', async () => {
+    const { get } = await makeApp();
+    const ids = Array.from({ length: 201 }, (_, i) => `x${i}`).join(',');
+    expect((await get(`/api/entities/batch?ids=${ids}`)).statusCode).toBe(400);
   });
 });

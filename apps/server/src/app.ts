@@ -2837,36 +2837,96 @@ export function buildApp({
    * ihn.
    */
   app.get<{ Params: { id: string } }>('/api/entities/:id/backlinks', async (request, reply) => {
+    const r = (await rueckbezuegeFuer(request, [request.params.id])).get(request.params.id);
+    return r ?? reply.code(404).send({ error: 'Nicht gefunden' });
+  });
+
+  /**
+   * **Was auf diese Artikel zeigt** — je Id die Rückbezüge, gesiebt; fehlt
+   * eine Id in der Antwort, gibt es den Artikel für diesen Betrachter nicht.
+   * Ein Durchlauf über den Bestand für alle Ids (T-398): das Board fragte
+   * je Karte einzeln, und jede Frage las alle Artikel.
+   */
+  async function rueckbezuegeFuer(
+    request: FastifyRequest,
+    ids: readonly string[],
+  ): Promise<Map<string, { from: ReturnType<typeof summaryOf>; relation: ReturnType<typeof backlinks>[number]['relation'] }[]>> {
     const stand = await roh();
-    const gefunden = stand.map.get(request.params.id);
-    const ziel = gefunden ? await geltend(gefunden, stand.map) : undefined;
-    /* Auch eine Fassung aus einer Vergleichsebene hat Rückbezüge (T-092). */
-    const sichtbar =
-      ziel &&
-      ((await sieve(request, [ziel], stand.map)).length ||
-        (await sieve(request, [ziel], stand.map, undefined, 'compare')).length);
-    if (!ziel || !sichtbar) {
-      return reply.code(404).send({ error: 'Nicht gefunden' });
+    /* Je gefragter Id ihr Ziel (die geltende Fassung) und alles, was auf
+       es zeigen darf: eine Fassung (E-018) sammelt auch, was aufs Original
+       zeigt — die Szenen eines angepassten Kapitels hängen weiter dort.
+       Ihre eigene Kante `overrides` zählt nicht. */
+    const ziele = new Map<string, { ziel: Entity; auch: Set<string> }>();
+    for (const id of new Set(ids)) {
+      const gefunden = stand.map.get(id);
+      const ziel = gefunden ? await geltend(gefunden, stand.map) : undefined;
+      if (!ziel) continue;
+      /* Auch eine Fassung aus einer Vergleichsebene hat Rückbezüge (T-092). */
+      const sichtbar =
+        (await sieve(request, [ziel], stand.map)).length || (await sieve(request, [ziel], stand.map, undefined, 'compare')).length;
+      if (sichtbar) ziele.set(id, { ziel, auch: new Set([ziel.id, ...replacedIds(stand.map, ziel)]) });
     }
-    /* Eine Fassung (E-018) sammelt auch, was aufs Original zeigt: die
-       Szenen eines angepassten Kapitels hängen weiter am Original. Ihre
-       eigene Kante `overrides` zählt nicht. */
-    const auch = new Set([ziel.id, ...replacedIds(stand.map, ziel)]);
-    /* Gesiebt wird nur, wer überhaupt auf ihn zeigt — nicht der ganze
-       Bestand (W7: für einen Spieler eine halbe Sekunde je Artikelseite).
-       Das Sieb nimmt Kanten nur weg, nie dazu; die Antwort ist dieselbe. */
-    /* Die Teile eines Kapitels zeigt das Element `parts` (T-108) — in
-       „Linked here" stünden sonst hundert Absätze unter „contains". */
-    const zeigen = stand.alle
-      .filter((e) => e.id !== ziel.id && !isBookPart(e) && (e.relations ?? []).some((r) => auch.has(r.to)))
-      .map((e) => (auch.size > 1 ? { ...e, relations: (e.relations ?? []).map((r) => (auch.has(r.to) ? { ...r, to: ziel.id } : r)) } : e));
-    const gesiebt = zeigen.length ? await sieve(request, zeigen, stand.map) : [];
+    const aus = new Map<string, { from: ReturnType<typeof summaryOf>; relation: ReturnType<typeof backlinks>[number]['relation'] }[]>();
+    if (!ziele.size) return aus;
+    /* Welche gefragte Id eine Kante trifft — ein Nachschlagen statt eines
+       Vergleichs je Ziel. */
+    const trifft = new Map<string, string[]>();
+    for (const [id, { auch }] of ziele) for (const a of auch) (trifft.get(a) ?? trifft.set(a, []).get(a)!).push(id);
+    /* Gesiebt wird nur, wer überhaupt auf sie zeigt — nicht der ganze
+       Bestand (W7). Das Sieb nimmt Kanten nur weg, nie dazu. Die Teile
+       eines Kapitels zeigt das Element `parts` (T-108) — in „Linked here"
+       stünden sonst hundert Absätze unter „contains". */
+    const zeigt = new Map<string, Entity[]>();
+    for (const e of stand.alle) {
+      if (isBookPart(e)) continue;
+      for (const r of e.relations ?? []) {
+        for (const id of trifft.get(r.to) ?? []) {
+          if (e.id === ziele.get(id)!.ziel.id) continue;
+          const l = zeigt.get(id) ?? zeigt.set(id, []).get(id)!;
+          if (!l.includes(e)) l.push(e);
+        }
+      }
+    }
+    const kandidaten = [...new Set([...zeigt.values()].flat())];
+    const gesiebt = new Map((kandidaten.length ? await sieve(request, kandidaten, stand.map) : []).map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
     const felder = summaryFields(registry);
-    return backlinks(registry, gesiebt, ziel.id).map((b) => ({
-      from: summaryOf(b.from, felder),
-      relation: b.relation,
-    }));
+    for (const [id, { ziel, auch }] of ziele) {
+      const von = (zeigt.get(id) ?? [])
+        .map((e) => gesiebt.get(e.id))
+        .filter((e): e is Entity => !!e)
+        .map((e) => (auch.size > 1 ? { ...e, relations: (e.relations ?? []).map((r) => (auch.has(r.to) ? { ...r, to: ziel.id } : r)) } : e));
+      aus.set(
+        id,
+        backlinks(registry, von, ziel.id).map((b) => ({ from: summaryOf(b.from, felder), relation: b.relation })),
+      );
+    }
+    return aus;
+  }
+
+  /**
+   * **Mehrere Artikel auf einmal** (T-398): `GET /api/entities/batch?ids=a,b&backlinks=1`
+   * — je Artikel genau, was `/api/entities/:id` schickt (`artikelAntwort`),
+   * und mit `backlinks=1` auch, was auf ihn zeigt. Für Seiten, die viele
+   * Artikel ganz brauchen: das Board mit seinen Karten. Beides steht nach
+   * der gefragten Id; was fehlt, steht in `missing` — für diesen Betrachter
+   * gibt es es nicht.
+   */
+  app.get<{ Querystring: { ids?: string; backlinks?: string } }>('/api/entities/batch', async (request, reply) => {
+    const ids = [...new Set(String(request.query.ids ?? '').split(',').map((x) => x.trim()).filter(Boolean))];
+    if (ids.length > 200) return reply.code(400).send({ error: 'At most 200 ids per request — ask in pages.' });
+    /* Nach der **gefragten** Id: wer ein Original öffnet, bekommt die
+       geltende Fassung mit ihrer eigenen Id (E-018). */
+    const entities: Record<string, NonNullable<Awaited<ReturnType<typeof artikelAntwort>>>> = {};
+    const missing: string[] = [];
+    for (const id of ids) {
+      const a = await artikelAntwort(request, id);
+      if (a) entities[id] = a;
+      else missing.push(id);
+    }
+    const mitRueck = request.query.backlinks === '1' || request.query.backlinks === 'true';
+    const rueck = mitRueck ? await rueckbezuegeFuer(request, Object.keys(entities)) : null;
+    return { entities, missing, ...(rueck ? { backlinks: Object.fromEntries(rueck) } : {}) };
   });
 
   /**
@@ -3482,9 +3542,25 @@ export function buildApp({
   app.addHook('onClose', async () => kanal.close());
 
   app.get<{ Params: { id: string }; Querystring: { stand?: string; allLayers?: string } }>('/api/entities/:id', async (request, reply) => {
+    const antwort = await artikelAntwort(request, request.params.id, request.query);
+    return antwort ?? reply.code(404).send({ error: 'Nicht gefunden' });
+  });
+
+  /**
+   * **Ein Artikel, wie ihn die Artikelseite bekommt** — gesiebt, mit der
+   * geltenden Fassung und seinen `refs`; `null` heisst: gibt es nicht, oder
+   * nicht für diesen Betrachter. Eine Funktion, damit der gebündelte Abruf
+   * (`/api/entities/batch`, T-398) genau dasselbe ausliefert und kein
+   * zweiter Weg am Sieb vorbei entsteht.
+   */
+  async function artikelAntwort(
+    request: FastifyRequest,
+    id: string,
+    frage: { stand?: string | undefined; allLayers?: string | undefined } = {},
+  ): Promise<(Entity & { refs: Record<string, unknown> }) | null> {
     const stand = await roh();
-    const gefunden = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
-    if (!gefunden) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const gefunden = stand.map.get(id) ?? (await repo.getEntity(id));
+    if (!gefunden) return null;
     /* **Wer das Original öffnet, bekommt die Fassung, die gilt** (E-018,
        T-082): ein Verweis im Abenteuer zeigt aufs Original, und in einer
        Kampagne, die es angepasst hat, ist die Fassung die Sache. Die
@@ -3503,7 +3579,7 @@ export function buildApp({
       const registry = await repo.getRegistry();
       const sieht = !user || user.isAdmin || seesUnfinished(stand.map, entity, await augeVon(user, stand.map, registry));
       if (sieht) {
-        const alt = request.query.stand === 'ready';
+        const alt = frage.stand === 'ready';
         ready = { at: fertig.at, old: alt };
         if (alt) zeige = fertig.entity;
       }
@@ -3521,7 +3597,7 @@ export function buildApp({
        einem Artikel, dessen Ebene nicht aufgeschaltet ist — wie die
        Massenänderung (T-182), gesiebt, als wäre sie es. Ohne den Schalter
        bleibt es beim Stapel (E2). */
-    if (!gesiebt && (request.query.allLayers === '1' || request.query.allLayers === 'true') && (await viewerOf(request))?.isAdmin) {
+    if (!gesiebt && (frage.allLayers === '1' || frage.allLayers === 'true') && (await viewerOf(request))?.isAdmin) {
       [gesiebt] = await sieve(request, [zeige], stand.map, undefined, 'unactivated');
     }
     /* **Form und Stapel aus dem Inventarmodul** (T-394, E-165): gerechnet,
@@ -3544,7 +3620,7 @@ export function buildApp({
        da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
        schickte genau den Artikel, den das Sieb gerade zurückgehalten
        hatte. */
-    if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
+    if (!einer) return null;
     /* Die Namen, die der Artikel braucht, kommen mit (W7) — der Browser
        hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
     /* „Im Buch lesen" (T-091): wohin die Quellenangabe führt, wenn seine Ebene Text hat. */
@@ -3590,7 +3666,7 @@ export function buildApp({
         ? { ...mitNehmen, adaptable: true, adaptTo: ziele.map((l) => ({ id: l.id, name: entityName(l) })) }
         : mitNehmen,
     };
-  });
+  }
 
   /** Was sich in die Geschichte holen lässt (E-026): ein Teil der Geschichte, kein Ganzes einer Runde. */
   const OHNE_UEBERNAHME = new Set([CAMPAIGN_TYPE, 'Session']);
