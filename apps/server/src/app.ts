@@ -226,6 +226,7 @@ import { registerTracker } from './initiative.js';
 import { insSpiel, registerSpielinstanz } from './spielinstanz.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
+import { messe, mitZeiten, mitZeitmessung, zeitenKopf } from './zeitmessung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -410,7 +411,8 @@ export function buildApp({
   /* **Jedes Schreiben meldet sich beim Live-Kanal** (T-116): die Hülle
      liegt um das Repository, bevor irgendeine Route oder ein Modul es
      bekommt — so vergisst es keine. */
-  repo = mitKanal(repo, live);
+  /* Die Stoppuhr aussen (T-398): jede Methode zählt unter `db` im Server-Timing. */
+  repo = mitZeitmessung(mitKanal(repo, live));
 
   /* **Eine vergebene Kanten-Id ist kein Serverfehler** (T-410): sie kommt
      aus dem, was geschrieben werden sollte, und die Meldung sagt, was zu
@@ -437,8 +439,11 @@ export function buildApp({
      Log, damit man auf dem Server sieht, welche Route wartet. Gemessen wird
      von der Ankunft bis zum Absenden, ohne die Übertragung. */
   const beginn = new WeakMap<FastifyRequest, bigint>();
-  app.addHook('onRequest', async (request) => {
+  /* Mit `done` statt `async`: so läuft die ganze Anfrage im Speicher ihrer
+     Zeiten (`mitZeiten`, T-398), und jeder Abschnitt bucht dort. */
+  app.addHook('onRequest', (request, _reply, done) => {
     beginn.set(request, process.hrtime.bigint());
+    mitZeiten(done);
   });
   /* **Der Server sagt, dass er startet** (T-086, REQ-246), statt eine
      Anfrage hängen zu lassen, bis der Bestand gelesen ist: 503 mit der
@@ -458,7 +463,7 @@ export function buildApp({
     const t0 = beginn.get(request);
     if (t0 === undefined) return;
     const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-    void reply.header('Server-Timing', `app;dur=${ms.toFixed(1)}`);
+    void reply.header('Server-Timing', zeitenKopf(ms));
     if (request.url.startsWith('/api/')) {
       request.log.info({ route: request.routeOptions.url ?? request.url, ms: Math.round(ms) }, 'dauer');
     }
@@ -1566,7 +1571,16 @@ export function buildApp({
   /** **Das Sieb für ein Konto statt einer Anfrage** — der Live-Kanal
    *  (T-116) siebt je Empfänger, ohne dass eine Anfrage dasteht. Dieselbe
    *  Rechnung, damit der Kanal kein Umweg an ihr vorbei ist. */
-  async function sieveFuer(
+  function sieveFuer(
+    user: User | null,
+    entities: Entity[],
+    bestand?: Entity[] | ReadonlyMap<string, Entity>,
+    schmal?: (e: Entity) => Entity,
+    stapel: Stapelfrage = 'inPlay',
+  ): Promise<Entity[]> {
+    return messe('sieb', () => sieveRechnen(user, entities, bestand, schmal, stapel));
+  }
+  async function sieveRechnen(
     user: User | null,
     entities: Entity[],
     bestand?: Entity[] | ReadonlyMap<string, Entity>,
@@ -1800,7 +1814,10 @@ export function buildApp({
     ueberschreiber: Map<string, Entity[]>;
     namen: Map<string, Entity[]>;
   } | null = null;
-  async function roh(): Promise<NonNullable<typeof rohStand>> {
+  function roh(): Promise<NonNullable<typeof rohStand>> {
+    return messe('stand', rohLesen);
+  }
+  async function rohLesen(): Promise<NonNullable<typeof rohStand>> {
     const stempel = await repo.version();
     if (rohStand?.stempel === stempel) return rohStand;
     const alle = await repo.listEntities();
@@ -1920,7 +1937,8 @@ export function buildApp({
       if (ja === undefined) istGegenstand.set(typ, (ja = typeChain(registry, typ).includes('Item')));
       return projektion(ja ? withDefaultShape(e, vf.idx, vf).entity : e);
     };
-    lauf = sieve(request, stand.alle, stand.map, mitForm, stapel).then(async (gesiebt) => {
+    /* Den Index zu bauen ist sein eigener Abschnitt (T-398): danach ist er da, und nur der erste zahlt. */
+    lauf = messe('index', () => sieve(request, stand.alle, stand.map, mitForm, stapel)).then(async (gesiebt) => {
       /* Herkunft (T-382): Zeiten aus dem ungesiebten Bestand, wer hinzufügte
          neben dem Konto. Nur für Zeilen, die ohnehin dastehen. */
       const [creators, konten] = await Promise.all([repo.creators(), repo.listUsers()]);
