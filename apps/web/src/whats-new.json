@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-reveal-sight",
+      "date": "2026-10-29",
+      "title": "Reveal what a token sees",
+      "text": "Under Fog, Reveal sight lifts the fog from what a token sees where it stands — up to the walls, and in the dark only as far as its darkvision and the lights it sees.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-free-action",
       "date": "2026-10-29",
       "title": "A free action with a note in the turn plan",
