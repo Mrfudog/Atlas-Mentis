@@ -70,7 +70,7 @@
             "Fog is revealed by the GM, not by creatures. You do not need to place a creature: pick Fog in the tool bar, switch “Fog on”, then reveal by hand — Reveal drags a rectangle, Brush paints (choose the width), Hide covers an area again, Reveal all and Cover all do the whole map.",
             "“Reveal along moves” says whether moving a token on a fogged map reveals the way it went: the campaign sets the default under Rules & options › On the map, and each map may say on or off.",
             "If the campaign keeps fog per character, choose the character under “View as”: you see what it sees, and what you reveal is for it. As GM or all players, what you reveal is for everyone.",
-            "Reveal sight: tap a token to reveal what it sees from where it stands — up to the walls, and in the dark only its darkvision and the lights it sees."
+            "Reveal sight: tap a token to reveal what it sees from where it stands."
           ]
         },
         {
@@ -115,14 +115,14 @@
             "On a fogged map, players see brightly what their character sees right now, and what was revealed before dimmed. Sight comes from the player characters' tokens; the party token counts only while none of them is on the map.",
             "With walls, players see only up to the next wall or closed door, fog or not. In the dark, what only darkvision reaches is shown in greyscale; lit areas keep their colour. An item with Bright light (a torch, a lantern) lights the token of the character holding it in hand, and lights itself when placed as a marker. Light on/off switches a light off and on again without losing its radius.",
             "On a dark map, players get only the tokens their characters see — with darkvision or in a light they can see into. A creature waiting in the dark is not on their map at all until a light or a character's darkvision reaches it.",
-            "A zone whose kind sets its light changes the light where it lies: magical darkness hides who stands in it even on a bright map and is drawn dark for players; a lit hall in a dark map shows who stands in it in sight."
+            "A zone kind's light counts where it lies: magical darkness hides who is in it, a lit hall in a dark map shows them."
           ]
         },
         {
           "heading": "Draw on the map",
           "text": [
             "Draw (D) puts strokes on a drawing layer of their own: Pen, Line, Rectangle or Ellipse, in a colour and width. Without a layer chosen, the first stroke makes one. Erase takes away the stroke you tap. GM only keeps the chosen layer from the players; Layers above the map shows and hides drawing layers like image layers.",
-            "Text places a label you type, Stamp a symbol (danger, warning, flag …), both where you tap and in the size you choose; Erase takes them away like strokes."
+            "Text places a label you type, Stamp a symbol, where you tap; Erase takes them away."
           ]
         },
         {
