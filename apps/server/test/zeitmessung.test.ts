@@ -8,7 +8,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '@nw/model';
 import { tisch } from './hilfen/tisch.js';
-import { zeitenAus } from '../src/zeitmessung.js';
+import { mitAnfrageSpeicher, mitZeiten, zeitenAus } from '../src/zeitmessung.js';
+import type { Repository } from '../src/repo.js';
 
 const art = (id: string, type: string, name: string): Entity => ({
   id,
@@ -65,3 +66,70 @@ describe('Server-Timing per section (T-398)', () => {
     expect(Object.keys(zeitenAus(String(b.headers['server-timing'])))).toContain('sieb');
   });
 });
+
+describe('asked once per request (T-398, mitAnfrageSpeicher)', () => {
+  function attrappe() {
+    let stand = 1;
+    let fehler = false;
+    const n = { version: 0, getEntity: 0 };
+    const roh = {
+      version: async () => {
+        n.version++;
+        if (fehler) throw new Error('weg');
+        return String(stand);
+      },
+      getEntity: async () => {
+        n.getEntity++;
+        return null;
+      },
+      putEntity: async () => {
+        stand++;
+      },
+    };
+    return { repo: mitAnfrageSpeicher(roh as unknown as Repository), n, fehlt: (f: boolean) => (fehler = f) };
+  }
+  const inAnfrage = <T>(fn: () => Promise<T>) => new Promise<T>((ok, nein) => mitZeiten(() => void fn().then(ok, nein)));
+
+  it('asks a listed read once per request, and again in the next', async () => {
+    const { repo, n } = attrappe();
+    await inAnfrage(async () => {
+      expect(await Promise.all([repo.version(), repo.version(), repo.version()])).toEqual(['1', '1', '1']);
+    });
+    expect(n.version).toBe(1);
+    await inAnfrage(() => repo.version());
+    expect(n.version).toBe(2);
+  });
+
+  it('keeps nothing outside a request, and does not keep reads with arguments', async () => {
+    const { repo, n } = attrappe();
+    await repo.version();
+    await repo.version();
+    expect(n.version).toBe(2);
+    await inAnfrage(async () => {
+      await repo.getEntity('a');
+      await repo.getEntity('a');
+    });
+    expect(n.getEntity).toBe(2);
+  });
+
+  it('reads the new stand after a write in the same request', async () => {
+    const { repo } = attrappe();
+    await inAnfrage(async () => {
+      expect(await repo.version()).toBe('1');
+      await repo.putEntity({ id: 'x', interfaces: [], name: 'x', components: {}, relations: [] });
+      expect(await repo.version()).toBe('2');
+    });
+  });
+
+  it('forgets a failed read', async () => {
+    const { repo, n, fehlt } = attrappe();
+    await inAnfrage(async () => {
+      fehlt(true);
+      await expect(repo.version()).rejects.toThrow('weg');
+      fehlt(false);
+      expect(await repo.version()).toBe('1');
+    });
+    expect(n.version).toBe(2);
+  });
+});
+
