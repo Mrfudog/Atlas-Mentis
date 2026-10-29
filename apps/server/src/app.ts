@@ -857,8 +857,44 @@ export function buildApp({
     return mitBehaeltern(teileVon(spielerfiguren(ids, bestand, registry), bestand.values(), FIGUR_KANTEN), bestand.values());
   }
 
-  /** Mit wessen Augen gesiebt wird: Figuren, Rollen, Eigenes, Ausgenommenes. */
+  /**
+   * **Mit wessen Augen gesiebt wird** — je Bestand und Betrachter einmal
+   * (T-398, P4). Gerechnet läuft es mehrmals über den ganzen Bestand
+   * (Eigenes, Ausgenommenes, Schreibebenen); auf dev waren das 450–600 ms
+   * je Sieb-Aufruf und 80–90 % des Siebs, und eine Artikelseite siebt
+   * mehrmals. Der Schlüssel nennt alles, wovon es abhängt: das Konto, die
+   * Ebenenzuteilungen, die Figuren aller Konten, das Register — der
+   * Bestand ist die Tafel selbst (je Stand eine).
+   */
+  const augenJe = new WeakMap<ReadonlyMap<string, Entity>, Map<string, Promise<Awaited<ReturnType<typeof augeRechnen>>>>>();
   async function augeVon(user: User, bestand: ReadonlyMap<string, Entity>, registry: Registry) {
+    const [grants, konten] = await Promise.all([repo.layerGrants(), repo.listUsers()]);
+    const key = JSON.stringify([
+      user.id,
+      user.disabledAt ?? null,
+      user.actorIds ?? [],
+      user.layerIds ?? [],
+      user.ownedLayerIds ?? [],
+      user.authoredIds ?? [],
+      user.roles ?? {},
+      grants,
+      konten.map((u) => [u.id, u.disabledAt ?? null, u.actorIds ?? []]),
+      registerStempel(registry),
+    ]);
+    let je = augenJe.get(bestand);
+    if (!je) augenJe.set(bestand, (je = new Map()));
+    let lauf = je.get(key);
+    if (!lauf) {
+      lauf = messe('s.auge.neu', () => augeRechnen(user, bestand, registry));
+      je.set(key, lauf);
+      lauf.catch(() => je!.delete(key));
+      /* Wenige Betrachter je Stand; mehr als 32 heisst, es läuft etwas aus dem Ruder. */
+      if (je.size > 32) je.delete(je.keys().next().value!);
+    }
+    return lauf;
+  }
+  /** Mit wessen Augen gesiebt wird: Figuren, Rollen, Eigenes, Ausgenommenes. */
+  async function augeRechnen(user: User, bestand: ReadonlyMap<string, Entity>, registry: Registry) {
     /* Die Regeln je Gruppe der laufenden Kampagne (T-252, E-098): sagt ein
        Artikel keine Stufe, sagt es seine Gruppe. */
     const campaignRules = campaignVisibility(bestand, registry, currentCampaign(bestand, registry.settings ?? null));

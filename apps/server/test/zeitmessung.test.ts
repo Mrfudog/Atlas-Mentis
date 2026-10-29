@@ -37,6 +37,17 @@ describe('Server-Timing per section (T-398)', () => {
     expect(Object.keys(z)).toEqual(expect.arrayContaining(['s.stapel', 's.auge', 's.sichtbar', 's.wissen']));
   });
 
+  it('works out whose eyes the sieve uses once per stock and viewer (T-398)', async () => {
+    const t = await tisch({ kampagne: 'camp', artikel: [art('camp', 'Campaign', 'Nebel'), art('o1', 'Place', 'Ort')], konten: { Sela: { roles: { camp: 'player' } } } });
+    const neu = async () => zeitenAus(String((await t.als('Sela', 'GET', '/api/entities/o1')).headers['server-timing'] ?? ''))['s.auge.neu']?.n ?? 0;
+    expect(await neu()).toBeGreaterThan(0);
+    /* Derselbe Stand, dieselbe Spielerin: nichts neu zu rechnen. */
+    expect(await neu()).toBe(0);
+    /* Ändert sich der Bestand, gilt es neu. */
+    await t.repo.putEntity(art('o2', 'Place', 'Anderer Ort'));
+    expect(await neu()).toBeGreaterThan(0);
+  });
+
   it('keeps requests apart: one request does not count the other’s sections', async () => {
     const t = await tisch({ artikel: [art('o1', 'Place', 'Ort')], konten: { Admin: { admin: true } } });
     const [a, b] = await Promise.all([t.als('Admin', 'GET', '/api/health'), t.als('Admin', 'GET', '/api/entities/o1')]);
