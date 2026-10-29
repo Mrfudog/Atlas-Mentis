@@ -23,7 +23,7 @@ test('wall points snap to hex corners', async ({ leitung, api, eindeutig }, info
   await leitung.goto(`/artikel/${karte.id}`);
   await expect(leitung.locator('.innen.gemessen').first()).toBeVisible();
   await leitung.getByRole('button', { name: 'Walls', exact: true }).click();
-  await leitung.getByRole('button', { name: 'Draw', exact: true }).click();
+  await leitung.getByRole('toolbar', { name: 'Walls' }).getByRole('button', { name: 'Draw', exact: true }).click();
   await leitung.locator('.buehne').first().scrollIntoViewIfNeeded();
   const box = (await leitung.locator('.innen').first().boundingBox())!;
   const bei = (px: number, py: number) => ({ x: box.x + (box.width * px) / 320, y: box.y + (box.height * py) / 240 });
