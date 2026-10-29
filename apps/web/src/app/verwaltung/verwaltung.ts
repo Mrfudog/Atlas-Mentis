@@ -21,7 +21,7 @@ import { Regeloptionen } from '../artikel/regeloptionen';
 import { Reiterleiste } from '../bogen/reiterleiste';
 import { KampagnenSichtbarkeit } from './sichtbarkeit';
 import { KampagnenArtikel } from './artikel-sicht';
-import { KampagnenEntscheidungen, type Aenderungsort } from './entscheidungen';
+import { KampagnenEntscheidungen, springeZu, type Aenderungsort } from './entscheidungen';
 
 /** Die Reiter der Kampagnenseite (T-254), in ihrer Reihenfolge. Ebenen und
  *  Regeln brauchen den Kampagnenartikel; ohne ihn stehen sie nicht da. */
@@ -571,18 +571,10 @@ export class Verwaltung {
     void this.router.navigate([], { queryParams: { tab: id }, queryParamsHandling: 'merge', replaceUrl: true });
   }
 
-  /** „Change" an einer Entscheidung (T-141): in ihren Reiter, bei einer Regel an ihr System — das lädt erst, also wird kurz gewartet. */
+  /** „Change" an einer Entscheidung (T-141): in ihren Reiter, bei einer Regel an ihr System, sobald es geladen ist. */
   protected entscheidungAendern(ort: Aenderungsort): void {
     this.zeigeReiter(ort.tab);
-    if (!ort.anchor) return;
-    const ziel = ort.anchor;
-    let versuche = 0;
-    const suchen = () => {
-      const el = document.getElementById(ziel);
-      if (el) el.scrollIntoView({ block: 'start' });
-      else if (++versuche < 30) setTimeout(suchen, 100);
-    };
-    setTimeout(suchen, 0);
+    if (ort.anchor) springeZu(ort.anchor);
   }
 
   protected readonly mehrere = computed(() => (this.kampagnen()?.campaigns.length ?? 0) > 1);
