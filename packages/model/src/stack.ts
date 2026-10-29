@@ -365,7 +365,7 @@ export interface PublisherInfo {
 }
 
 /** Alle Herausgeber-Gruppen (T-109), nach Name — die Auswahl, an die eine Ebene gehängt werden kann. */
-export function publisherGroups(entities: Map<EntityId, Entity>): Entity[] {
+export function publisherGroups(entities: ReadonlyMap<EntityId, Entity>): Entity[] {
   return [...entities.values()]
     .filter((g) => isGroupLayer(g) && groupingOf(g) === PUBLISHER_GROUPING)
     .sort((a, b) => entityName(a).localeCompare(entityName(b)));
@@ -386,7 +386,7 @@ export function publisherGroups(entities: Map<EntityId, Entity>): Entity[] {
  * die Marke kam.
  */
 export function publisherInfo(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   layer: Entity | undefined,
   homebrew?: ReadonlySet<EntityId>,
 ): PublisherInfo {
@@ -406,7 +406,7 @@ export function publisherInfo(
 
 /** Nur der Name aus `publisherInfo` — die Marke in Listen und auf der Kampagnenseite. */
 export function publisherOf(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   layer: Entity | undefined,
   homebrew?: ReadonlySet<EntityId>,
 ): string {
@@ -419,7 +419,7 @@ export function publisherOf(
  * (`Layer.published`, ohne Datum zuletzt), dann nach Name. Gezählt wird
  * nur, was selbst eine Ebene ist und an einer Gruppe hängt.
  */
-export function groupMembers(entities: Map<EntityId, Entity>): Map<EntityId, EntityId[]> {
+export function groupMembers(entities: ReadonlyMap<EntityId, Entity>): Map<EntityId, EntityId[]> {
   const roh = new Map<EntityId, Entity[]>();
   for (const e of entities.values()) {
     if (!isLayer(e)) continue;
@@ -445,7 +445,7 @@ export function groupMembers(entities: Map<EntityId, Entity>): Map<EntityId, Ent
  * stünden.
  */
 export function layersInGroup(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   groupId: EntityId,
   members: Map<EntityId, EntityId[]> = groupMembers(entities),
 ): EntityId[] {
@@ -470,7 +470,7 @@ export function offLayers(campaign: Entity | null): Set<EntityId> {
 
 /** Die laufende Kampagne: die Einstellung, sonst die erste im Bestand, sonst keine. */
 export function currentCampaign(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   settings?: Record<string, string> | null,
 ): Entity | null {
   const gesetzt = settings?.[CAMPAIGN_SETTING];
@@ -497,7 +497,7 @@ export interface StackEntry {
  * Eine Gruppe steht hier als eine Ebene; was sie bringt, sagt
  * `resolvedStack`.
  */
-export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | null): StackEntry[] {
+export function activeStack(entities: ReadonlyMap<EntityId, Entity>, campaign: Entity | null): StackEntry[] {
   if (!campaign) return [];
   const out: StackEntry[] = [];
   for (const r of aufschalten(campaign)) {
@@ -526,7 +526,7 @@ export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | 
  * (`groupMembers`), danach ist jeder Schritt ein Nachschlagen (T-086).
  */
 export function resolvedStack(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   campaign: Entity | null,
   members?: Map<EntityId, EntityId[]>,
 ): Entity[] {
@@ -547,7 +547,7 @@ export interface ResolvedEntry {
  * Typ-Regel seiner nächsten Gruppe (T-187).
  */
 export function resolvedEntries(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   campaign: Entity | null,
   members?: Map<EntityId, EntityId[]>,
 ): ResolvedEntry[] {
@@ -602,7 +602,7 @@ export function resolvedEntries(
  * der Kante. Eine Ebene, die schon im Spiel ist, ist hier nicht noch
  * einmal — sie vergleicht sich ohnehin.
  */
-export function compareLayers(entities: Map<EntityId, Entity>, campaign: Entity | null): Entity[] {
+export function compareLayers(entities: ReadonlyMap<EntityId, Entity>, campaign: Entity | null): Entity[] {
   if (!campaign) return [];
   const imSpiel = new Set(aufschalten(campaign).map((r) => r.to));
   const order = (r: Rel) => Number((r.props as { order?: unknown } | undefined)?.order ?? 0) || 0;
@@ -622,7 +622,7 @@ export function compareLayers(entities: Map<EntityId, Entity>, campaign: Entity 
  * `null` ohne Kampagne: dann gibt es keinen Stapel, und alles steht da.
  */
 export function shownLayers(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   campaign: Entity | null,
   withCompare: boolean,
   members?: Map<EntityId, EntityId[]>,
@@ -639,7 +639,7 @@ function compareFilters(campaign: Entity | null): Map<EntityId, LayerFilter | nu
 }
 
 /** Ebenen-Id → Rang 1..n; höher heisst spezifischer. Gruppen sind aufgelöst (T-088). */
-export function activeLayerRanks(entities: Map<EntityId, Entity>, campaign: Entity | null): Map<EntityId, number> {
+export function activeLayerRanks(entities: ReadonlyMap<EntityId, Entity>, campaign: Entity | null): Map<EntityId, number> {
   const m = new Map<EntityId, number>();
   resolvedStack(entities, campaign).forEach((l, i) => m.set(l.id, i + 1));
   return m;
@@ -651,7 +651,7 @@ export function activeLayerRanks(entities: Map<EntityId, Entity>, campaign: Enti
  * Ebene nicht im Spiel ist oder ihn nach ihrer Auswahl nicht bringt.
  */
 function sicht(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   campaign: Entity | null,
   registry: Pick<Registry, 'interfaces'> | undefined,
 ): {
@@ -712,7 +712,7 @@ function stapelFrage(entity: Entity, zaehlt: (e: Entity, layer: EntityId) => num
  * Mit `registry` gilt die Bereichsauswahl der Ebenen (T-105).
  */
 export function inStack(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   entity: Entity,
   campaign: Entity | null,
   registry?: Pick<Registry, 'interfaces'>,
@@ -739,7 +739,7 @@ export function overridersIndex(entities: Iterable<Entity>): Map<EntityId, Entit
 
 /** Wer diesen Artikel überschreibt: die spezifischste aufgeschaltete Fassung, sonst niemand. */
 export function overriderOf(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   id: EntityId,
   campaign: Entity | null,
   registry?: Pick<Registry, 'interfaces'>,
@@ -775,7 +775,7 @@ export function isOverridden(
 
 /** Was an dieser Stelle wirklich gilt: die Kette der Überschreibungen bis zum Ende, nicht im Kreis. */
 export function resolveArticle(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   entity: Entity,
   campaign: Entity | null,
   registry?: Pick<Registry, 'interfaces'>,
@@ -907,7 +907,7 @@ export interface PlayStack {
  * einer Art wird einmal je Art nachgeschlagen, nicht je Artikel.
  */
 export function playStack(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   campaign: Entity | null,
   registry?: Pick<Registry, 'interfaces'>,
 ): PlayStack {
@@ -1140,7 +1140,7 @@ export function stackOutcomes(
  * als `owned` mit.
  */
 export function campaignLayer(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   campaign: Entity | null,
   owned?: ReadonlySet<EntityId>,
 ): Entity | null {
@@ -1209,7 +1209,7 @@ export function campaignsActivating(
  * Artikel gut eine Sekunde je Abruf. Wer viele Ebenen fragt, rechnet die
  * Tafel einmal und gibt sie mit.
  */
-export function activatingIndex(entities: Map<EntityId, Entity>): Map<EntityId, EntityId[]> {
+export function activatingIndex(entities: ReadonlyMap<EntityId, Entity>): Map<EntityId, EntityId[]> {
   const out = new Map<EntityId, EntityId[]>();
   for (const e of entities.values()) {
     if ((e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
@@ -1432,7 +1432,7 @@ export function groupSwitched(
  * dieser Fassung auf sie; die Rückbezüge der Fassung fragen darum auch
  * nach diesen.
  */
-export function replacedIds(entities: Map<EntityId, Entity>, entity: Entity): EntityId[] {
+export function replacedIds(entities: ReadonlyMap<EntityId, Entity>, entity: Entity): EntityId[] {
   const out: EntityId[] = [];
   const gesehen = new Set<EntityId>([entity.id]);
   let at: Entity | undefined = entity;
@@ -1493,7 +1493,7 @@ export const TAKE_EDGES: readonly string[] = ['partOf', 'mapOf'];
  * gefunden werden.
  */
 export function takenWith(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   root: Entity,
   campaign: Entity | null,
   targetLayer: EntityId,

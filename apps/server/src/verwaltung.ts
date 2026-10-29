@@ -166,7 +166,7 @@ export function mayActivate(
 }
 
 /** Was jede Ebene enthält und wem sie gehört — einmal je Bestand (T-143). */
-function zaehle(alle: Map<string, Entity>) {
+function zaehle(alle: ReadonlyMap<string, Entity>) {
   const ebenen = [...alle.values()].filter((e) => isLayer(e));
   const zahl = new Map<string, number>();
   /* Was eine Ebene enthält, je Art — gerechnet, nie gespeichert (D8, T-088). */
@@ -201,12 +201,9 @@ interface Deps {
 export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Deps): void {
   const nein = (reply: FastifyReply, code: number, error: string) => reply.code(code).send({ error });
 
+  /* Aus der Tafel je Stand (T-398, P4): die Kampagnen sind wenige, der Bestand nicht. */
   const kampagnen = async (): Promise<Map<string, Entity>> =>
-    new Map(
-      (await repo.listEntities())
-        .filter((e) => (e.interfaces ?? [])[0] === CAMPAIGN_TYPE)
-        .map((e) => [e.id, e]),
-    );
+    new Map([...(await repo.entityMap()).values()].filter((e) => (e.interfaces ?? [])[0] === CAMPAIGN_TYPE).map((e) => [e.id, e]));
 
   /**
    * **Darf diese Kampagne diese Figur vergeben?** Ja, wenn der Artikel da

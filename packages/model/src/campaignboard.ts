@@ -49,7 +49,7 @@ const nummer = (e: Entity) => String((e.components?.['Identity'] as { id?: unkno
  * `bd_<kampagne>`, wenn es das gibt, sonst das älteste (nach Nummer).
  * `null`, wenn keines an ihr hängt.
  */
-export function campaignBoardOf(entities: Map<EntityId, Entity>, campaignId: EntityId): Entity | null {
+export function campaignBoardOf(entities: ReadonlyMap<EntityId, Entity>, campaignId: EntityId): Entity | null {
   const eigenes = entities.get(campaignBoardId(campaignId));
   const haengt = (e: Entity) => (e.relations ?? []).some((r) => r.type === PART_OF && r.to === campaignId);
   if (eigenes && primaryInterface(eigenes) === BOARD_TYPE && haengt(eigenes)) return eigenes;

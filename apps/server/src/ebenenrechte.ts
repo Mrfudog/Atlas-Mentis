@@ -54,7 +54,7 @@ import { mitWahl } from './schreibebene.js';
  * Kampagnenebene und trotzdem hier entstanden.
  */
 const IMPORTIERT = /^e5_/;
-export function eigeneEbenen(map: Map<string, Entity>): Set<string> {
+export function eigeneEbenen(map: ReadonlyMap<string, Entity>): Set<string> {
   return new Set(
     [...map.values()].filter((e) => isLayer(e) && !IMPORTIERT.test(e.id)).map((e) => e.id),
   );
@@ -63,22 +63,22 @@ export function eigeneEbenen(map: Map<string, Entity>): Set<string> {
 interface Deps {
   repo: Repository;
   viewerOf(request: FastifyRequest): Promise<User | null>;
-  schreibEbenen(user: User | null, map: Map<string, Entity>): Promise<Set<string>>;
-  zielEbenen(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity[]>;
+  schreibEbenen(user: User | null, map: ReadonlyMap<string, Entity>): Promise<Set<string>>;
+  zielEbenen(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity[]>;
   /** Wohin geschrieben werden darf, auch ausserhalb des Stapels (T-418). */
-  schreibZiele(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Array<{ layer: Entity; inPlay: boolean }>>;
-  kampagnenEbene(map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
-  vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
+  schreibZiele(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Array<{ layer: Entity; inPlay: boolean }>>;
+  kampagnenEbene(map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
+  vorgabeEbene(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
   schreibEbene(
     user: User | null,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     kampagne: Entity | null,
   ): Promise<{ layer: Entity | null; grund: Entity | null; chosen: string | null; dropped: string | null }>;
 }
 
 /** An einer Spielerebene (T-164): für welche Kampagne, und ob es die eigene ist. */
 function spielerVon(
-  map: Map<string, Entity>,
+  map: ReadonlyMap<string, Entity>,
   spieler: Map<string, { userId: string; campaign: string }>,
   id: string,
   userId: string,
@@ -97,7 +97,8 @@ export function registerEbenenrechte(
   { repo, viewerOf, schreibEbenen, zielEbenen, schreibZiele, kampagnenEbene, vorgabeEbene, schreibEbene }: Deps,
 ): void {
   const nein = (reply: FastifyReply, code: number, error: string) => reply.code(code).send({ error });
-  const bestand = async () => new Map((await repo.listEntities()).map((e) => [e.id, e]));
+  /* Die Tafel je Stand (T-398, P4), nicht je Anfrage gebaut. */
+  const bestand = () => repo.entityMap();
   const istEbene = (e: Entity | undefined): e is Entity => !!e && isLayer(e);
 
   /** Darf dieses Konto sagen, wer in dieser Ebene schreibt? */
@@ -550,7 +551,8 @@ export function registerEbenenrechte(
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
     await repo.putEntity(neu);
     await repo.appendEvent('layer.publisher', l.id, { groups: ziel, by: user.id });
-    map.set(l.id, neu);
-    return publisherInfo(map, neu, eigeneEbenen(map));
+    /* Eine Kopie mit dem neuen Stand: die Tafel je Stand ist geteilt (T-398). */
+    const danach = new Map(map).set(l.id, neu);
+    return publisherInfo(danach, neu, eigeneEbenen(danach));
   });
 }
