@@ -3041,6 +3041,14 @@ man glaubte dem Bild und verlöre die Bewegung. Und eine Fläche gehört
 **einer Ebene** wie ein Marker: der Schlamm im Keller liegt nicht auf dem
 Turmdach, nur weil beide dieselbe Karte sind.
 
+**Die Dunkelheit verbirgt am Server, nicht auf dem Schirm** (T-219). Was
+im Dunkeln wartet, schwarz zu übermalen, hiesse, es trotzdem zu schicken —
+im Quelltext der Seite stünde der Ghul. Also bekommt eine Spielerin auf
+einer dunklen Karte nur die Tokens, die ihre Figur sieht; die Seite malt
+die Dunkelheit weiter, aber sie verbirgt nichts mehr, was sie gar nicht
+erst hat. Dieselbe Regel wie beim Nebel und bei den Feldern: zurückgehalten
+wird am Server.
+
 **Ein Oger ist vier Felder und nicht ein grosses** (D58). Ein Token nimmt
 nach der Grösse seines Statblocks einen Platz ein — large 2 × 2, huge 3 × 3,
 gargantuan 4 × 4 —, und alles, was die Karte rechnet, rechnet mit dem

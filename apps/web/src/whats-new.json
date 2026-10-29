@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-29-dark-tokens",
+      "date": "2026-10-29",
+      "title": "What waits in the dark stays hidden",
+      "text": "On a dark map, players now get only the tokens their characters can see, with darkvision or in light. A creature in the dark no longer reaches their browser at all; it appears when a light or darkvision reaches it, without reloading.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-10-29-draw-zones",
       "date": "2026-10-29",
       "title": "Draw zones and territories on the map",
