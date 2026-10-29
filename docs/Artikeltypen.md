@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-29. 94 Schnittstellen, 74 Kantenarten.
+Stand 2026-10-29. 94 Schnittstellen, 76 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -4120,6 +4120,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `compatibleWith` → RuleMechanic — „compatible with"
+- `extendsMechanic` → RuleMechanic — „extends"
+- `excludesMechanic` → RuleMechanic — „excludes"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -4135,6 +4137,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - RuleMechanic — `compatibleWith` → „also works with"
+- RuleMechanic — `extendsMechanic` → „extended by"
+- RuleMechanic — `excludesMechanic` → „excluded by"
 - * — `inLayer` → „brings"
 - Campaign — `activates` → „In play in"
 - Campaign — `layerRule` → „Type rule in"
@@ -4151,7 +4155,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `sort` *inventory | items | crafting | abilities | equipment | character | travel | units | map | combat | table*
+- `sort` *inventory | partyInventory | items | crafting | abilities | equipment | character | magic | creatures | travel | units | map | combat | table*
 
 **Geerbte Felder**
 

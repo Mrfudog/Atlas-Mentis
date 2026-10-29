@@ -238,7 +238,8 @@
           "heading": "Layers: what a source brings",
           "text": [
             "Contents lists the articles of a layer by type, each linked; a group lists its layers. The ticks show what the current campaign has in play.",
-            "The GM turns the layer on or off, picks which types it brings, and enables single articles from a source that is not in play. Articles that come with the layer stay ticked; a layer brought by its group or a type rule is chosen on the campaign page."
+            "The GM turns the layer on or off, picks which types it brings, and enables single articles from a source that is not in play. Articles that come with the layer stay ticked; a layer brought by its group or a type rule is chosen on the campaign page.",
+            "A rule system (such as Inventory) is a module, and its rule mechanics (Weight, Grid, Slots) are the systems in it. A mechanic says which others it works with, which it extends (it only applies together with that one, like Default shapes on Grid or Slots) and which it excludes. Set these as edges on the mechanic; for now the inventory still counts by the campaign’s Inventory setting."
           ]
         },
         {
