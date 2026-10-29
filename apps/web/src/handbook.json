@@ -94,6 +94,14 @@
           ]
         },
         {
+          "heading": "Changing one campaign decision",
+          "text": [
+            "Open the campaign page; the Overview shows Decisions: the layers in play, compare layers, members and roles, and every rule of Rules & options, one row each.",
+            "Each row says what is decided now — decided, default or open — and what a change does. Ability scores and starting equipment apply to characters made from now on; most rules are read at once and nothing stored is rewritten.",
+            "Press Change on the row. The tab where just this decision is made opens — for a rule, at its system. Make the change there; the other decisions stay as they are."
+          ]
+        },
+        {
           "heading": "Deciding who sees single articles",
           "text": [
             "Open the campaign page and the Layers or Visibility tab. Under the layers or the groups stands “Articles and their layers”: every article in play with its layer and who sees it.",

@@ -2425,6 +2425,31 @@ einen Satz, was sie bewirkt, und je Variante, welche gilt.
   Bedingung `sameSide` (Gruppe und Verbündete gegen den Rest, `seiteVon`)
   und `strike` an einer Reaktion (Annehmen ist ein Nahkampfangriff).
 
+
+### 10.1a Die Entscheidungen einer Kampagne (T-141)
+
+Die Übersicht auf `/campaign` listet die Entscheidungen der Kampagne:
+Ebenen im Spiel, Vergleichsebenen, Mitglieder und Rollen, dann je Regel
+aus „Rules & options" eine Zeile, nach System. `campaignDecisions`
+(`packages/model/src/campaignSetup.ts`) rechnet sie aus den Antworten von
+`…/layers`, `…/rules` und der Mitgliederliste (D8, nichts gespeichert);
+die Seite zeichnet sie (`verwaltung/entscheidungen.ts`).
+
+| Feld | Bedeutung |
+|---|---|
+| `state` | `set` gewählt; `default` es gilt die Vorgabe (keine Vergleichsebene, nur eingebaute Verfahren); `open` nichts gewählt (keine Ebene im Spiel, niemand leitet, keine Variante) |
+| `change` | der Reiter (`layers`, `members`, `rules`), bei Regeln die Stelle `regel-<System>` |
+| `consequence` | Anlegen (`abilities`, `equipment`, `character`): nur für neue und aufsteigende Figuren; sonst: beim Lesen, nichts wird umgeschrieben; Installation: gilt für jede Kampagne, ändert die Verwaltung |
+
+```mermaid
+flowchart LR
+  L["GET …/layers"] --> D[campaignDecisions]
+  R["GET …/rules"] --> D
+  M[Mitglieder der Seite] --> D
+  D --> Z["Zeile: Stand · Change · Folgen"]
+  Z -->|Change| T["Reiter Layers / Members / Rules (#regel-…)"]
+```
+
 ### 10.1a Regelsysteme und Regelmechaniken sind Ebenen (E-166, T-394)
 
 Ein **Regelsystem** ist eine Ebene der Art `RuleSystem` (Karte `RuleSystem.sort`: welcher Bereich der Regeloptionen, z. B. `inventory`), als Gruppe (`Layer.kind: 'group'`): aufgeschaltet bringt es seine Mechaniken, und jede lässt sich wie jedes Gruppenmitglied ausnehmen und umsortieren (E-091). Eine **Regelmechanik** ist eine Ebene der Art `RuleMechanic` (`RuleMechanic.method`: das Wort, das die Laufzeit ausführt — `weight`, `slots`, `grid`, `shapes`), Mitglied ihres Regelsystems über `partOf`. **Wer mit wem gilt, sagt die Kante `compatibleWith`** zwischen Mechaniken — einmal gespeichert, in beide Richtungen gelesen (`compatibleMechanics`); Grid gilt mit Weight, Default shapes mit Grid und Slots. Was nicht so verbunden ist, schliesst sich innerhalb eines Regelsystems aus.

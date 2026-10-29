@@ -2635,6 +2635,23 @@ an genau einer Stelle (`inventoryRulesOf`): wenn die Regelsysteme Behälter
 werden (T-132), wandert das Wort in ein Modul, und nur diese Funktion sieht
 woanders nach.
 
+**Eine Entscheidung trifft man einzeln neu** (T-141). Eine Kampagne hat
+viele Entscheidungen — Ebenen, Vergleich, Mitglieder, jede Regel —, und
+sie standen auf vier Reitern verteilt; wer eine ändern wollte, musste
+wissen, wo. Die Übersicht der Kampagnenseite listet sie jetzt als
+**Entscheidungen**: je Zeile der Stand (`decided`, `default`, `open`),
+„Change" an den Ort, an dem genau diese fällt, und **was eine Änderung
+bewirkt**. Gerechnet aus dem, was die Reiter schon holen
+(`campaignDecisions`), nicht gespeichert: eine zweite Liste der
+Entscheidungen wäre die, die nach der ersten Änderung falsch steht. Und
+geändert wird weiter am alten Ort — eine zweite Maske für dieselbe Wahl
+liefe auseinander. Die Folgen sind ehrlich klein: was beim Anlegen einer
+Figur gilt (Attribute, Ausrüstung, Charakteroptionen), wirkt aufs nächste
+Anlegen, die bestehenden Figuren behalten ihre Wahl; alles andere wird
+beim Lesen gerechnet (D8), also schreibt eine Änderung nichts um, und
+zurückschalten bringt das alte Bild zurück. Dasselbe Muster für die Wahlen
+einer Figur kommt mit dem Assistenten als Ansicht (T-436, dann T-451).
+
 **Eine Regeloption sucht man an der Kampagne, nicht im Feld** (T-190).
 Wie gezählt, gehandwerkt und gewürfelt wird, stand als Felder ohne
 Ordnung am Kampagnenartikel und als Einstellungen, die niemand sah — es

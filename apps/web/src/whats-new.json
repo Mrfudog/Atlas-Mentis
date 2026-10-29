@@ -9,6 +9,14 @@
       "link": "/handbook"
     },
     {
+      "id": "2026-10-29-campaign-decisions",
+      "date": "2026-10-29",
+      "title": "Every campaign decision in one list",
+      "text": "The Overview of the campaign page lists what the campaign has decided — layers, compare layers, members and every rule — each with its state and what a change does. Change opens the place where just that decision is made again.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-29-map-level-lock",
       "date": "2026-10-29",
       "title": "Lock the map level while zooming",
