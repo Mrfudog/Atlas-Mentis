@@ -221,7 +221,7 @@ const STUFE_RANG: Record<Audience, number> = { public: 0, campaign: 1, players: 
  * mehrere etwas sagen: wer ihn in einer Ebene für die Leitung hält, soll
  * ihn nicht durch die zweite öffnen. `null`, wenn keine etwas sagt.
  */
-export function layerDefaultAudience(entities: Map<EntityId, Entity>, article: Entity): Audience | null {
+export function layerDefaultAudience(entities: ReadonlyMap<EntityId, Entity>, article: Entity): Audience | null {
   let enge: Audience | null = null;
   for (const r of article.relations ?? []) {
     if (r.type !== LAYER_RELATION || (r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
@@ -241,7 +241,7 @@ export type AudienceSource = 'article' | 'campaign' | 'layer' | 'default';
  * `articleVisible` dazu; hier steht nur die Stufe.
  */
 export function effectiveAudience(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   article: Entity,
   ctx?: CampaignVisibility,
 ): { audience: Audience; source: AudienceSource; rule?: string } {
@@ -294,7 +294,7 @@ export function isReady(article: Entity): boolean {
  * `prepared` zurückfiel, den letzten fertigen Stand (am Server,
  * `entity_ready`). Ohne Betrachter: die Verwaltung, ja.
  */
-export function seesUnfinished(entities: Map<EntityId, Entity>, article: Entity, viewerId?: ViewerRef): boolean {
+export function seesUnfinished(entities: ReadonlyMap<EntityId, Entity>, article: Entity, viewerId?: ViewerRef): boolean {
   if (viewerId === undefined) return true;
   const v = alsViewer(viewerId);
   if (enthaelt(v.own, article.id)) return true;
@@ -319,8 +319,8 @@ export function isTableRole(x: unknown): x is TableRole {
    Ids, gelesen wird der Artikel aus dem Bestand: wer einen Eintrag
    ersetzt (der letzte fertige Stand), bekommt den neuen; kommt einer
    dazu, ändert sich die Grösse und es wird neu gesucht. */
-const kampagnenJe = new WeakMap<Map<EntityId, Entity>, { size: number; ids: EntityId[] }>();
-function kampagnenIn(entities: Map<EntityId, Entity>): EntityId[] {
+const kampagnenJe = new WeakMap<ReadonlyMap<EntityId, Entity>, { size: number; ids: EntityId[] }>();
+function kampagnenIn(entities: ReadonlyMap<EntityId, Entity>): EntityId[] {
   const da = kampagnenJe.get(entities);
   if (da && da.size === entities.size) return da.ids;
   const ids: EntityId[] = [];
@@ -349,7 +349,7 @@ function kampagnenIn(entities: Map<EntityId, Entity>): EntityId[] {
  * bringt ihn nicht mit und besitzt ihn nicht.
  */
 export function campaignsOf(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   article: Entity,
 ): ReadonlySet<EntityId> | null {
   const ebenen = new Set<EntityId>();
@@ -387,7 +387,7 @@ export function campaignsOf(
  * Geheimnis *einer* Runde, und gefragt wird die Rolle in irgendeiner.
  */
 export function campaignOf(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   article: Entity,
 ): EntityId | undefined {
   const besitzer = campaignsOf(entities, article);
@@ -453,7 +453,7 @@ export function audienceAllows(audience: Audience, rolle: TableRole | null): boo
  * nicht zeichnet, hat ihn geschickt.
  */
 export function articleVisible(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   article: Entity,
   viewerId?: ViewerRef,
 ): boolean {

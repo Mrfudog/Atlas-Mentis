@@ -561,7 +561,7 @@ export function buildApp({
     if (gesetzt && (await repo.getEntity(gesetzt))?.interfaces?.[0] === CAMPAIGN_TYPE) return gesetzt;
     const stempel = `${await repo.version()}|${gesetzt ?? ''}`;
     if (ohneEinstellung?.stempel !== stempel) {
-      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const alle = await repo.entityMap();
       ohneEinstellung = { stempel, id: currentCampaign(alle, settings)?.id ?? null };
     }
     return ohneEinstellung.id;
@@ -608,7 +608,7 @@ export function buildApp({
     if (!wer) return 'nein';
     const gespeichert = await repo.getUser(zielId);
     const ziel = gespeichert ? (({ passwordHash: _h, ...r }) => r)(gespeichert) : null;
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const alle = await repo.entityMap();
     const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
     if (!ziel || !kampagne || !mayViewAs(wer.user, ziel, kampagne)) return 'nein';
     await merkeBeginn(wer.user, ziel, kampagne);
@@ -642,7 +642,7 @@ export function buildApp({
   /** **Die Ebene einer Kampagne** (T-098, E-001): die spezifischste
    *  aufgeschaltete, die keine andere Kampagne aufschaltet und keinem Konto
    *  gehört. Dorthin legen Spielende an, darin schreiben `gm` und `co-gm`. */
-  async function kampagnenEbene(map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function kampagnenEbene(map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     return kampagne ? campaignLayer(map, kampagne, await besessen()) : null;
   }
 
@@ -656,7 +656,7 @@ export function buildApp({
    * `co-gm` die Ebene jeder Kampagne, die es leitet. Die Verwaltung schreibt
    * ohnehin alles; hier stehen für sie nur ihre zugeteilten Ebenen.
    */
-  async function schreibEbenen(user: User | null, map: Map<string, Entity>): Promise<Set<string>> {
+  async function schreibEbenen(user: User | null, map: ReadonlyMap<string, Entity>): Promise<Set<string>> {
     if (!user || user.disabledAt) return new Set();
     const grants = await repo.layerGrants();
     const spieler = spielerEbenen(grants);
@@ -697,7 +697,7 @@ export function buildApp({
    * für alle anderen die erste Zielebene (die Leitung: die Ebene der
    * Kampagne). `null`: hier legt dieses Konto nicht an.
    */
-  async function grundEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function grundEbene(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     if (!user || user.disabledAt || !kampagne) return null;
     const ziele = await zielEbenen(user, map, kampagne);
     if (user.roles?.[kampagne.id] === 'player' && !user.isAdmin) {
@@ -715,7 +715,7 @@ export function buildApp({
    */
   async function schreibEbene(
     user: User | null,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     kampagne: Entity | null,
   ): Promise<{ layer: Entity | null; grund: Entity | null; chosen: string | null; dropped: string | null }> {
     const grund = await grundEbene(user, map, kampagne);
@@ -728,12 +728,12 @@ export function buildApp({
   }
 
   /** Die Schreibebene, nur wenn sie gewählt ist und gilt — ohne Wahl `null`. */
-  async function gewaehlteSchreibEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function gewaehlteSchreibEbene(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     const s = await schreibEbene(user, map, kampagne);
     return s.chosen && !s.dropped ? s.layer : null;
   }
 
-  async function vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function vorgabeEbene(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     return (await schreibEbene(user, map, kampagne)).layer;
   }
 
@@ -745,7 +745,7 @@ export function buildApp({
    * Ebene der Kampagne, dann von oben nach unten. Für die Verwaltung die
    * Ebene der Kampagne und ihre zugeteilten.
    */
-  async function zielEbenen(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity[]> {
+  async function zielEbenen(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity[]> {
     if (!user || user.disabledAt || !kampagne) return [];
     const schreibt = await schreibEbenen(user, map);
     const eigene = await kampagnenEbene(map, kampagne);
@@ -768,7 +768,7 @@ export function buildApp({
    */
   async function schreibZiele(
     user: User | null,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     kampagne: Entity | null,
   ): Promise<Array<{ layer: Entity; inPlay: boolean }>> {
     if (!user || user.disabledAt || !kampagne) return [];
@@ -831,7 +831,7 @@ export function buildApp({
 
   /** Die Spielercharaktere unter diesen Ids — nur sie sind ausgenommen
    *  (E-014 d), nicht jede Kreatur, die einem Konto zugeteilt ist. */
-  function spielerfiguren(ids: Iterable<string>, bestand: Map<string, Entity>, registry: Registry): Set<string> {
+  function spielerfiguren(ids: Iterable<string>, bestand: ReadonlyMap<string, Entity>, registry: Registry): Set<string> {
     const raus = new Set<string>();
     for (const id of ids) {
       const e = bestand.get(id);
@@ -841,19 +841,19 @@ export function buildApp({
   }
 
   /** **Die eigene Figur dieses Kontos** samt Statblock und Inventar (E-014 d). */
-  function eigeneFigur(user: User, bestand: Map<string, Entity>, registry: Registry): Set<string> {
+  function eigeneFigur(user: User, bestand: ReadonlyMap<string, Entity>, registry: Registry): Set<string> {
     return teileVon(spielerfiguren(user.actorIds ?? [], bestand, registry), bestand.values(), FIGUR_KANTEN);
   }
 
   /** **Vom Status-Gate ausgenommen** (E-014 d): die eigenen Figuren *aller*
    *  Konten — wer welche führt, steht am Server (`app_user_actor`). */
-  async function ausgenommen(bestand: Map<string, Entity>, registry: Registry): Promise<Set<string>> {
+  async function ausgenommen(bestand: ReadonlyMap<string, Entity>, registry: Registry): Promise<Set<string>> {
     const ids = (await repo.listUsers()).filter((u) => !u.disabledAt).flatMap((u) => u.actorIds ?? []);
     return mitBehaeltern(teileVon(spielerfiguren(ids, bestand, registry), bestand.values(), FIGUR_KANTEN), bestand.values());
   }
 
   /** Mit wessen Augen gesiebt wird: Figuren, Rollen, Eigenes, Ausgenommenes. */
-  async function augeVon(user: User, bestand: Map<string, Entity>, registry: Registry) {
+  async function augeVon(user: User, bestand: ReadonlyMap<string, Entity>, registry: Registry) {
     /* Die Regeln je Gruppe der laufenden Kampagne (T-252, E-098): sagt ein
        Artikel keine Stufe, sagt es seine Gruppe. */
     const campaignRules = campaignVisibility(bestand, registry, currentCampaign(bestand, registry.settings ?? null));
@@ -886,10 +886,10 @@ export function buildApp({
    * (`zielEbenen`; die Leitung in der Ebene ihrer Kampagne, E-001). Eine
    * eigene Ebene legt jedes Konto an (`POST /api/layers`).
    */
-  async function mayCreate(user: User, alle?: Map<string, Entity>): Promise<boolean> {
+  async function mayCreate(user: User, alle?: ReadonlyMap<string, Entity>): Promise<boolean> {
     if (user.disabledAt) return false;
     if (user.isAdmin) return true;
-    const map = alle ?? new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const map = alle ?? await repo.entityMap();
     const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
     if (!kampagne) return false;
     if (user.roles?.[kampagne.id] === 'player') return true;
@@ -902,7 +902,7 @@ export function buildApp({
    * ein Mitleiter. Gehört er keiner einzelnen, zählt `gm` irgendwo, wie bei
    * der Sichtbarkeit (`campaignOf`).
    */
-  function maySetReady(user: User, alle: Map<string, Entity>, article: Entity, figur?: ReadonlySet<string>): boolean {
+  function maySetReady(user: User, alle: ReadonlyMap<string, Entity>, article: Entity, figur?: ReadonlySet<string>): boolean {
     if (user.isAdmin) return true;
     /* Die eigene Figur nennt ihr Spieler selbst fertig (E-014 d). */
     if (figur?.has(article.id)) return true;
@@ -924,7 +924,7 @@ export function buildApp({
     if (user.isAdmin) return true;
     const rollen = user.roles ?? {};
     if (!Object.values(rollen).includes('gm')) return false;
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const alle = await repo.entityMap();
     const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null);
     return !!kampagne && rollen[kampagne.id] === 'gm';
   }
@@ -974,7 +974,7 @@ export function buildApp({
 
        `null` heisst „alles" und nicht „nichts": die Spielleitung bekommt
        keine Liste über den ganzen Bestand geschickt. */
-    const bestand = user ? new Map((await repo.listEntities()).map((e) => [e.id, e])) : null;
+    const bestand = user ? await repo.entityMap() : null;
     let writable: string[] | null = null;
     if (user && !user.isAdmin && bestand) {
       const eigen = await ownedBy(user, bestand.values());
@@ -1435,7 +1435,7 @@ export function buildApp({
     }
     return gezaehlt.lauf;
   });
-  function zaehle(registry: Registry, alle: Entity[], map: Map<string, Entity>) {
+  function zaehle(registry: Registry, alle: Entity[], map: ReadonlyMap<string, Entity>) {
     const usage = registryUsage(registry, alle);
     /* **Gespeichert und sichtbar sind zwei Zahlen** (T-069). Das Register
        zählte den ganzen Bestand und widersprach damit der Liste, die nur
@@ -1511,8 +1511,8 @@ export function buildApp({
    */
   /* Die laufende Kampagne je Bestand: ohne Einstellung sucht
      `currentCampaign` den ganzen Bestand ab, und das Sieb fragt je Aufruf. */
-  const kampagneJe = new WeakMap<Map<string, Entity>, { key: string; kampagne: Entity | null }>();
-  function kampagneIn(map: Map<string, Entity>, settings: Record<string, string> | null): Entity | null {
+  const kampagneJe = new WeakMap<ReadonlyMap<string, Entity>, { key: string; kampagne: Entity | null }>();
+  function kampagneIn(map: ReadonlyMap<string, Entity>, settings: Record<string, string> | null): Entity | null {
     const key = settings?.[CAMPAIGN_SETTING] ?? '';
     const da = kampagneJe.get(map);
     if (da?.key === key) return da.kampagne;
@@ -1521,8 +1521,8 @@ export function buildApp({
     return kampagne;
   }
 
-  const stapelJe = new WeakMap<Map<string, Entity>, { key: string; stapel: ReturnType<typeof playStack> }>();
-  function stapelFuer(roh: Map<string, Entity>, kampagne: Entity | null, registry: Registry): ReturnType<typeof playStack> {
+  const stapelJe = new WeakMap<ReadonlyMap<string, Entity>, { key: string; stapel: ReturnType<typeof playStack> }>();
+  function stapelFuer(roh: ReadonlyMap<string, Entity>, kampagne: Entity | null, registry: Registry): ReturnType<typeof playStack> {
     const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
     const da = stapelJe.get(roh);
     if (da?.key === key) return da.stapel;
@@ -1546,7 +1546,7 @@ export function buildApp({
   async function sieve(
     request: FastifyRequest,
     entities: Entity[],
-    bestand?: Entity[] | Map<string, Entity>,
+    bestand?: Entity[] | ReadonlyMap<string, Entity>,
     /** Vor dem Wissen auf das Nötige kürzen — der Index der Liste braucht
      *  nur die Karten, die eine Zeile zeigt, und das Wissen gilt je Feld:
      *  was gekürzt wird, hätte keinen anderen Wert gesiebt. */
@@ -1569,17 +1569,15 @@ export function buildApp({
   async function sieveFuer(
     user: User | null,
     entities: Entity[],
-    bestand?: Entity[] | Map<string, Entity>,
+    bestand?: Entity[] | ReadonlyMap<string, Entity>,
     schmal?: (e: Entity) => Entity,
     stapel: Stapelfrage = 'inPlay',
   ): Promise<Entity[]> {
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
-    const roh =
-      bestand instanceof Map
-        ? bestand
-        : new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
+    /* Ohne Bestand die Tafel je Stand (T-398, P4), nicht je Aufruf eine neue. */
+    const roh = bestand === undefined ? await repo.entityMap() : Array.isArray(bestand) ? new Map(bestand.map((e) => [e.id, e])) : bestand;
     const registry = await repo.getRegistry();
     /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
        aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
@@ -1662,8 +1660,10 @@ export function buildApp({
         if (jetzt && !isReady(jetzt) && !seesUnfinished(roh, jetzt, auge)) statt.set(id, st.entity);
       }
       if (statt.size) {
-        alle = new Map(roh);
-        for (const [id, e] of statt) alle.set(id, e);
+        /* Eine Kopie: die Tafel je Stand ist geteilt (T-398). */
+        const mitFertigen = new Map(roh);
+        for (const [id, e] of statt) mitFertigen.set(id, e);
+        alle = mitFertigen;
         entities = entities.map((e) => (statt.has(e.id) ? readInstance(alle, statt.get(e.id)!) : e));
       }
     }
@@ -2167,7 +2167,7 @@ export function buildApp({
    * ersetzt eine aufgeschaltete Ebene den Artikel über `overrides`, die
    * Fassung, sonst er selbst. Gesiebt wird danach wie immer.
    */
-  async function geltend(e: Entity, map: Map<string, Entity>): Promise<Entity> {
+  async function geltend(e: Entity, map: ReadonlyMap<string, Entity>): Promise<Entity> {
     /* Ist `map` der Stand, den wir halten, fragt niemand die Datenbank nach
        dem Stempel — eine Kapitelseite fragt hier für jeden Verweis darin,
        und je Frage ein `count(*)` über 150 000 Artikel waren drei Sekunden. */
@@ -2297,7 +2297,7 @@ export function buildApp({
   async function fertigungswert(
     request: FastifyRequest,
     e: Entity,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
   ): Promise<{ table: unknown; mine: unknown[] } | null> {
     const registry = await repo.getRegistry();
     if (!typeChain(registry, primaryInterface(e)).includes(RECIPE_COMPONENT)) return null;
@@ -2328,7 +2328,7 @@ export function buildApp({
   async function begegnungsBezug(
     request: FastifyRequest,
     e: Entity,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     registry: Registry,
   ): Promise<BegegnungsBezug | null> {
     if (!istBegegnung(registry, e)) return null;
@@ -2348,7 +2348,7 @@ export function buildApp({
   async function ladenwaren(
     request: FastifyRequest,
     e: Entity,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
   ): Promise<{ table: unknown[]; mine: unknown[] } | null> {
     const registry = await repo.getRegistry();
     if (!typeChain(registry, primaryInterface(e)).includes(SHOP_TYPE)) return null;
@@ -2696,7 +2696,7 @@ export function buildApp({
   async function freigabeAm(
     request: FastifyRequest,
     entity: Entity,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     vergleich: boolean,
   ): Promise<{ enable?: { campaign: string }; enabled?: { campaign: string } } | null> {
     const registry = await repo.getRegistry();
@@ -3604,7 +3604,7 @@ export function buildApp({
    * der Geschichte ist (ein Kapitel, eine Szene); leer heisst: nicht
    * anbieten.
    */
-  async function uebernahmeZiele(request: FastifyRequest, e: Entity, map: Map<string, Entity>): Promise<Entity[]> {
+  async function uebernahmeZiele(request: FastifyRequest, e: Entity, map: ReadonlyMap<string, Entity>): Promise<Entity[]> {
     const user = await viewerOf(request);
     if (!user || user.disabledAt) return [];
     const registry = await repo.getRegistry();
@@ -3752,7 +3752,7 @@ export function buildApp({
    * schreiben — auch einen Artikel ohne Ebene: der gehört niemandem, und
    * ändern heisst für alle ausser der Verwaltung, eine Fassung anzulegen.
    */
-  async function anpassZiele(request: FastifyRequest, e: Entity, map: Map<string, Entity>): Promise<Entity[]> {
+  async function anpassZiele(request: FastifyRequest, e: Entity, map: ReadonlyMap<string, Entity>): Promise<Entity[]> {
     const user = await viewerOf(request);
     if (!user || user.disabledAt) return [];
     if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
@@ -4935,7 +4935,7 @@ export function buildApp({
    * Die schreibt das Konto nicht selbst; sie zu verweigern hiesse, dass ein
    * fremder Verweis das Löschen des Eigenen sperrt. Geprüft wird weiter.
    */
-  async function pruefeLauf(user: User, registry: Registry, roh: Map<string, Entity>, changes: BulkChange[], folgen = false) {
+  async function pruefeLauf(user: User, registry: Registry, roh: ReadonlyMap<string, Entity>, changes: BulkChange[], folgen = false) {
     const danach = new Map(roh);
     for (const c of changes) {
       if (c.after) danach.set(c.id, c.after);
@@ -5038,7 +5038,7 @@ export function buildApp({
     request: FastifyRequest,
     wer: Wer,
     registry: Registry,
-    roh: Map<string, Entity>,
+    roh: ReadonlyMap<string, Entity>,
     auftrag: BulkRequest,
     ausgewaehlt: string[],
     art?: 'delete-own' | 'move-layer',

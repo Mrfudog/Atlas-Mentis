@@ -1241,6 +1241,27 @@ function hasFakten(idx: ListIndex, z: IndexZeile): HasFacts {
 }
 
 /**
+ * **Welche Kantenarten eine Zeile hat** (`out.x`, `in.x`), einmal je Index
+ * gerechnet (T-398, P4): die Facette zählt sie bei jedem Abruf über alle
+ * Treffer, und das waren bei zweihunderttausend Zeilen je Abruf eine neue
+ * Menge je Zeile. Der Index gilt je Stempel und Betrachter; mit ihm fällt
+ * auch das hier weg.
+ */
+const kantenArtenJe = new WeakMap<ListIndex, WeakMap<IndexZeile, readonly string[]>>();
+function kantenArten(idx: ListIndex, z: IndexZeile): readonly string[] {
+  let je = kantenArtenJe.get(idx);
+  if (!je) kantenArtenJe.set(idx, (je = new WeakMap()));
+  let da = je.get(z);
+  if (!da) {
+    const s = new Set<string>();
+    for (const r of z.relations) if (r.type !== LAYER_RELATION && idx.names.has(r.to)) s.add(`out.${r.type}`);
+    for (const r of idx.ein.get(z.id) ?? []) s.add(`in.${r.type}`);
+    je.set(z, (da = [...s]));
+  }
+  return da;
+}
+
+/**
  * Die Wahl der Seitenleiste (T-389): die Kanten, die für die gewählten
  * Arten gelten (ohne Art: die, die in den Treffern vorkommen), und mit
  * gewählter Art ihre Felder — je mit der Zahl der Treffer, die sie haben.
@@ -1258,10 +1279,8 @@ function hasFacette(
   const zahl = new Map<string, number>();
   const feldRefs = felder.map((f) => [f.ref, ...f.ref.split('.')] as const);
   for (const z of treffer) {
-    const da = new Set<string>();
-    for (const r of z.relations) if (r.type !== LAYER_RELATION && idx.names.has(r.to)) da.add(`out.${r.type}`);
-    for (const r of idx.ein.get(z.id) ?? []) da.add(`in.${r.type}`);
-    for (const ref of da) zahl.set(ref, (zahl.get(ref) ?? 0) + 1);
+    for (const ref of kantenArten(idx, z)) zahl.set(ref, (zahl.get(ref) ?? 0) + 1);
+    if (!feldRefs.length) continue;
     const f = faktenVon(z);
     for (const [ref, typ, feld] of feldRefs) if (f.field(typ!, feld!)) zahl.set(ref, (zahl.get(ref) ?? 0) + 1);
   }

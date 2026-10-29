@@ -47,14 +47,15 @@ export const BOARD_EVENT = 'campaign.board';
  * durchgeht, wird nicht geschrieben und nicht als angelegt vermerkt.
  */
 export async function sorgeKampagnenboard(repo: Repository, campaignId: string): Promise<Entity | null> {
-  const alle = await repo.listEntities();
-  const map = new Map(alle.map((e) => [e.id, e]));
+  /* Aus der Tafel je Stand (T-398, P4); die Liste erst, wenn wirklich angelegt wird. */
+  const map = await repo.entityMap();
   const kampagne = map.get(campaignId);
   if (!kampagne || primaryInterface(kampagne) !== CAMPAIGN_TYPE) return null;
   const da = campaignBoardOf(map, campaignId);
   if (da) return da;
   if ((await repo.listEvents({ name: BOARD_EVENT, subject: campaignId, limit: 1, light: true })).length) return null;
   const ebene = map.get(`ly_${campaignId}`) ? `ly_${campaignId}` : null;
+  const alle = [...map.values()];
   const board = newCampaignBoard(alle, kampagne, ebene);
   const registry = await repo.getRegistry();
   const known = new Map(alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
@@ -68,7 +69,7 @@ export async function sorgeKampagnenboard(repo: Repository, campaignId: string):
 export interface KampagnenboardDeps {
   repo: Repository;
   viewerOf: (request: FastifyRequest) => Promise<User | null>;
-  sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>) => Promise<Entity[]>;
+  sieve: (request: FastifyRequest, entities: Entity[], bestand?: ReadonlyMap<string, Entity>) => Promise<Entity[]>;
 }
 
 /** Was `GET /api/home` sagt. */
@@ -92,8 +93,7 @@ export function registerKampagnenboard(app: FastifyInstance, deps: Kampagnenboar
       void reply.code(401).send({ error: 'Nicht angemeldet.' });
       return undefined;
     }
-    const alle = await repo.listEntities();
-    const map = new Map(alle.map((e) => [e.id, e]));
+    const map = await repo.entityMap();
     const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
     const leer: Heim = { campaign: null, role: null, board: null, playerStart: 'board', land: null, character: null };
     if (!kampagne) return leer;
