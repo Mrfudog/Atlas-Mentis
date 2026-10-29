@@ -459,6 +459,10 @@ export interface ListQuery {
   /** Nur diese Artikel (Peg-Ids) — für eine Seite, die Namen und Arten zu
    *  Ids braucht, die sie schon kennt. Teile stehen dann mit da. */
   ids?: string[] | undefined;
+  /** **Genau diese Namen** (T-398), klein: Name, Alias, Deckname oder
+   *  Nummer, ganz und nicht als Teilwort. Eine Frage für viele Namen statt
+   *  einer Suche je Name — der Statblock fragte so je Übung einzeln. */
+  name?: string[] | undefined;
   /** Diese Kantenarten gehen je Zeile mit (`rels`): wohin ein Board oder
    *  eine Sitzung gehört (`partOf`), ohne den Artikel ganz zu holen. */
   rel?: string[] | undefined;
@@ -653,6 +657,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const ebenen = q.layer?.length ? new Set(q.layer) : null;
   const ohneEbenen = q.nolayer?.length ? new Set(q.nolayer) : null;
   const nurIds = q.ids?.length ? new Set(q.ids) : null;
+  const nurNamen = q.name?.length ? new Set(q.name) : null;
   const marken = q.tag?.length ? q.tag : null;
   const autoren = q.by?.length ? new Set(q.by) : null;
   const autorVon = (z: IndexZeile) => z.addedBy ?? UNKNOWN_CREATOR;
@@ -714,6 +719,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     if (ohneTypen && idx.types.get(z.type)?.chain.some((t) => ohneTypen.has(t))) continue;
     if (staende && !staende.has(z.status || 'ready')) continue;
     if (such && !z.such.includes(such)) continue;
+    if (nurNamen && !z.such.split('\n').some((t) => nurNamen.has(t))) continue;
     if (marken && !marken.every((t) => z.tags.includes(t))) continue;
     if (hatGrund.length && !hatGrund.every((t) => matchesHas(t, faktenVon(z)))) continue;
     if (q.added && !inTimeWindow(z.createdAt, q.added)) continue;
@@ -1156,6 +1162,11 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     const sauber = teile.map((x) => x.trim()).filter(Boolean);
     return sauber.length ? sauber : undefined;
   };
+  const namen = (v: unknown): string[] | undefined => {
+    if (v === undefined || v === null || v === '') return undefined;
+    const sauber = (Array.isArray(v) ? v : [v]).map((x) => String(x).trim().toLowerCase()).filter(Boolean);
+    return sauber.length ? sauber : undefined;
+  };
   const zahl = (v: unknown, vorgabe: number): number => {
     const n = Number(v);
     return Number.isFinite(n) ? Math.floor(n) : vorgabe;
@@ -1200,6 +1211,8 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     layer: liste(raw['layer']),
     nolayer: liste(raw['nolayer']),
     ids: liste(raw['ids']),
+    /* Ein Name darf ein Komma tragen: je Name ein `name=`, nicht getrennt. */
+    name: namen(raw['name']),
     rel: liste(raw['rel']),
     tag: liste(raw['tag']),
     parts: raw['parts'] === '1' || raw['parts'] === 'true',
