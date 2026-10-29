@@ -38,7 +38,10 @@ test('zones and territories lie on the grid; a hidden zone reaches the player on
   /* Das Eis sind zwei Felder, beschriftet mit seiner Regel. */
   const eisPfad = leitung.locator(`svg.flaechen path[data-name^="${eis.name}"]`);
   await expect(eisPfad).toHaveAttribute('data-name', `${eis.name} (difficult terrain)`);
-  expect(((await eisPfad.getAttribute('d')) ?? '').match(/Z/g)).toHaveLength(2);
+  /* Gewartet, nicht einmal gelesen: bis das Bild geladen ist, fehlt das Gitter,
+     und die Fläche ist ein Rechteck mit einem Umriss — der Name kommt vom
+     Server und kann früher dastehen (CI zu #465). */
+  await expect.poll(async () => ((await eisPfad.getAttribute('d')) ?? '').match(/Z/g)?.length ?? 0).toBe(2);
   /* Ausblenden ist eine Sache der Sicht. */
   const knopf = leitung.getByRole('button', { name: 'Areas', exact: true });
   await knopf.click();
