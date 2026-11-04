@@ -265,3 +265,17 @@ export function setAreaFound(map: Entity, id: string, found: boolean): Entity {
   const props = found ? { ...rest, found: true } : rest;
   return { ...map, relations: (map.relations ?? []).map((x) => (x === r ? { ...x, props } : x)) };
 }
+
+/**
+ * **Das Licht der Zonen** einer Karte oder Ebene (T-219): je Zone, deren
+ * Art Licht sagt (`ZoneKind.light`), ihre Form und das Licht — für
+ * `redactDark` und die Dunkelheit im Browser. In der Reihenfolge der
+ * Kanten; die zuletzt gezeichnete liegt oben.
+ */
+export function zoneLightShapes(map: Entity, kind: (id: EntityId) => Entity | undefined): Array<{ shape: RevealShape; light: 'bright' | 'dim' | 'dark' }> {
+  return mapAreas(map).flatMap((a) => {
+    if (a.type !== ZONE_RELATION) return [];
+    const l = zoneRuleSummary(kind(a.to)).light;
+    return l === 'bright' || l === 'dim' || l === 'dark' ? [{ shape: a.shape, light: l }] : [];
+  });
+}
