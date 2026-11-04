@@ -54,6 +54,42 @@ test('a statblock asks for all its proficiencies in one request', async ({ leitu
   }
 });
 
+/**
+ * **Ein Schaden fragt die Übungen nicht neu** (T-443): auf dev folgten nach
+ * „− Damage" Dutzende `GET /api/list?of=Skill…` — je Übung eine, nach jedem
+ * Neuholen des Artikels von vorn —, und der PUT stand hinter ihnen an.
+ */
+test('damage on the sheet does not look the proficiencies up again', async ({ leitung, api, eindeutig }) => {
+  const bereit = { 'Status.status': 'ready' };
+  const namen: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    const s = await api.anlegen('leitung', 'Language', eindeutig(`Speech ${i}`));
+    await api.setzen('leitung', s.id, { Status: { status: 'ready' } });
+    namen.push(s.name);
+  }
+  const figur = await api.anlegen('leitung', 'PlayerCharacter', eindeutig('Brakka'), { fields: { ...bereit, 'Vitals.hp': 31 } });
+  await api.anlegen('leitung', 'Statblock', eindeutig('Brakka stats'), {
+    fields: { ...bereit, 'Statblock.ac': 14, 'Statblock.hp': 31, 'Statblock.speed': '30 ft.', 'Proficiencies.proficient': namen },
+    relations: [{ type: 'belongsTo', to: figur.id }],
+  });
+  await leitung.goto(`/artikel/${figur.id}`);
+  const hp = leitung.locator('nw-bogen').locator('.hpwert b, .khp b').first();
+  await expect(hp).toHaveText('31');
+  await leitung.waitForLoadState('networkidle');
+
+  const danach: string[] = [];
+  leitung.on('request', (r) => {
+    const u = new URL(r.url());
+    if (u.pathname.startsWith('/api/') && u.pathname !== '/api/live') danach.push(`${r.method()} ${u.pathname}${u.search}`);
+  });
+  await leitung.locator('nw-bogen').getByLabel('Amount').first().fill('3');
+  await leitung.locator('nw-bogen button.dmg').first().click();
+  await expect(hp).toHaveText('28');
+  await leitung.waitForLoadState('networkidle');
+  expect(danach.some((x) => x.startsWith('PUT /api/entities/')), danach.join('\n')).toBe(true);
+  expect(danach.filter((x) => x.startsWith('GET /api/list?')), danach.join('\n')).toEqual([]);
+});
+
 test('a character page collects the articles its parts need into one request', async ({ leitung, spielerin, api, eindeutig }) => {
   /* Auf dev stellte die Artikelseite einer Figur acht `entities?ids` (29.10.):
      Bogen, Kopf, Abschnitte und Kennzahlen fragten je für sich. */
