@@ -17,6 +17,14 @@
       "link": "/registry?tab=views"
     },
     {
+      "id": "2026-11-04-inventory-boxes-everywhere",
+      "date": "2026-11-04",
+      "title": "Container boxes on every inventory page",
+      "text": "The party’s inventory and the page of an inventory or container now show each container inside as its own foldable box, as Gear does — side by side on a desktop, stacked on a phone.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
       "id": "2026-11-04-gear-body-draw",
       "date": "2026-11-04",
       "title": "Gear: body places, draw times with reasons, containers side by side",
