@@ -362,13 +362,14 @@ interface Ziel {
         }
       }
 
-      <!-- Eigene Bereiche (E-153 V7): getragen und jeder Behälter nebeneinander, am Telefon untereinander, zuklappbar. -->
+      <!-- Eigene Bereiche (E-153 V7): getragen und jeder Behälter nebeneinander, am Telefon untereinander, zuklappbar —
+           im Gear, an der Gruppe und auf der Seite eines Inventars (Nachtrag 22.10.). -->
       <div class="bereiche" [class.an]="gearOben()">
-      <section class="bereich" [attr.aria-label]="gearOben() ? 'Carried' : null">
+      <section class="bereich" [attr.aria-label]="gearOben() ? bereichTitel() : null">
       @if (gearOben()) {
         <h4 class="bkopf">
           <button type="button" class="zuklapp" [attr.aria-expanded]="!zu().has(inventar().id)" (click)="zuklappen(inventar().id)">
-            {{ zu().has(inventar().id) ? '▸' : '▾' }} Carried
+            {{ zu().has(inventar().id) ? '▸' : '▾' }} {{ bereichTitel() }}
           </button>
         </h4>
       }
@@ -535,7 +536,7 @@ interface Ziel {
             </h4>
             @if (!zu().has(b.id)) {
               @if (bestand.voll().get(b.id); as inner) {
-                <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="1" [imGear]="true" [kette]="b.kette" [via]="b.name" />
+                <nw-inventar [inventar]="inner" [oben]="inventar()" [tiefe]="1" [imGear]="gear()" [kette]="b.kette" [via]="b.name" />
               } @else {
                 <p class="leer">Loading…</p>
               }
@@ -1102,8 +1103,23 @@ export class Inventar {
 
   /** Im Gear einer Figur — oben selbst oder als Behälter darin. */
   protected readonly gear = computed(() => !!this.figur() || this.imGear());
-  /** Oben im Gear: hier stehen die Behälter als eigene Bereiche (V7). */
-  protected readonly gearOben = computed(() => !!this.figur());
+  /**
+   * Oben: hier stehen die Behälter als eigene Bereiche (V7) — im Gear einer
+   * Figur, am Inventar der Gruppe und auf der Seite eines Inventars oder
+   * Behälters (Nachtrag der Leitung 22.10., T-365). Nur ein Inventar, das
+   * selbst in einem Bereich steht, zeigt seine Behälter weiter im Platz.
+   */
+  protected readonly gearOben = computed(() => this.tiefe() === 0 && !this.imGear());
+  /** Die Überschrift des obersten Bereichs: „Carried" an Figur und Gruppe, sonst der Name des Inventars. */
+  protected readonly bereichTitel = computed(() => {
+    const t = this.traeger();
+    const r = this.bestand.registry();
+    if (t && r) {
+      const kette = typeChain(r, primaryInterface(t));
+      if (kette.includes('Creature') || kette.includes('Party')) return 'Carried';
+    }
+    return this.name();
+  });
   private readonly slotDraw = computed(() => parsePairs(this.settings()['slotDraw']));
 
   /** Wo ein Stück in diesem Inventar liegt — der letzte Schritt der Kette (REQ-216). */
