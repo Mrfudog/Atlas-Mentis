@@ -6,7 +6,7 @@
  * one file changes rather than every handler.
  */
 
-import type { Entity, Registry } from '@nw/model';
+import type { Entity, Registry, TableRole } from '@nw/model';
 import type { ApiToken, Invite, User } from './auth.js';
 
 /** Was die Ablage über einen Zugang weiss. Der Hash bleibt hier und geht
@@ -169,7 +169,16 @@ export interface Repository {
   findUserByName(nameFold: string): Promise<StoredUser | undefined>;
   getUser(id: string): Promise<StoredUser | undefined>;
   listUsers(): Promise<User[]>;
+  /** Ein Konto schreiben. **Die Rollen nimmt es nur beim Anlegen mit**
+   *  (T-452): an einem Konto, das es schon gibt, bleibt `campaign_member`
+   *  unberührt — eine Rolle schreibt `setRole`, je (Konto, Kampagne)
+   *  einzeln. Zwei Routen, die das Konto lasen und ganz zurückschrieben,
+   *  löschten sich sonst gegenseitig die Rolle. */
   putUser(user: StoredUser): Promise<void>;
+  /** **Eine Rolle je (Konto, Kampagne)** (T-452): setzen oder mit `null`
+   *  wegnehmen, als eine Zeile in `campaign_member` — ohne die übrigen
+   *  Rollen zu lesen oder zu schreiben. `false`, wenn es das Konto nicht gibt. */
+  setRole(userId: string, campaignId: string, role: TableRole | null): Promise<boolean>;
 
   /** Alle Konten, die diese Figur führen. Die Gegenrichtung von
    *  `User.actorIds` — gefragt wird sie dort, wo etwas freigegeben werden
@@ -449,11 +458,14 @@ export class InMemoryRepository implements Repository {
     return [...this.ebenenRechte.values()].map((g) => ({ ...g }));
   }
   async putUser(user: StoredUser): Promise<void> {
+    const vorher = this.users.get(user.id);
     this.users.set(user.id, {
       ...user,
       actorIds: [...(user.actorIds ?? [])],
       actorCampaigns: Object.fromEntries(Object.entries(user.actorCampaigns ?? {}).filter(([a]) => (user.actorIds ?? []).includes(a))),
-      roles: { ...(user.roles ?? {}) },
+      /* Wie in Postgres (T-452): die Rollen kommen nur beim Anlegen mit;
+         danach schreibt sie `setRole`, eine je Kampagne. */
+      roles: vorher ? { ...(vorher.roles ?? {}) } : { ...(user.roles ?? {}) },
       /* Wie in Postgres: was jemand angelegt hat, schreibt `putUser` nicht —
          und die Ebenen auch nicht (die stehen in `ebenenRechte`). */
       authoredIds: [...(this.users.get(user.id)?.authoredIds ?? [])],
@@ -462,6 +474,15 @@ export class InMemoryRepository implements Repository {
       /* Wie `created_at` in Postgres: beim ersten Schreiben gesetzt, danach fest (T-163). */
       createdAt: this.users.get(user.id)?.createdAt ?? user.createdAt ?? new Date().toISOString(),
     });
+  }
+  async setRole(userId: string, campaignId: string, role: TableRole | null): Promise<boolean> {
+    const u = this.users.get(userId);
+    if (!u) return false;
+    const roles = { ...(u.roles ?? {}) };
+    if (role) roles[campaignId] = role;
+    else delete roles[campaignId];
+    u.roles = roles;
+    return true;
   }
   async addAuthored(userId: string, entityId: string): Promise<void> {
     const u = this.users.get(userId);

@@ -870,13 +870,16 @@ export class PgRepository implements Repository {
     const client = await this.pool.connect();
     try {
       await client.query('begin');
-      await client.query(
+      /* `xmax = 0` heisst: die Zeile ist neu eingefügt, nicht geändert —
+         nur dann kommen die Rollen mit (T-452). */
+      const konto = await client.query<{ neu: boolean }>(
         `insert into app_user(id,name,name_fold,password_hash,is_admin,disabled_at,updated_at)
          values ($1,$2,$3,$4,$5,$6,now())
          on conflict (id) do update set
            name = excluded.name, name_fold = excluded.name_fold,
            password_hash = excluded.password_hash, is_admin = excluded.is_admin,
-           disabled_at = excluded.disabled_at, updated_at = now()`,
+           disabled_at = excluded.disabled_at, updated_at = now()
+         returning (xmax = 0) as neu`,
         [
           user.id,
           user.name,
@@ -906,19 +909,20 @@ export class PgRepository implements Repository {
           [user.id, ids, ids.map((a) => k[a] ?? null)],
         );
       }
-      /* Die Rollen ebenso: was nicht mehr dasteht, geht; was dasteht, wird
-         gesetzt. Eine Rolle, die sich nur ändert, behält ihr `added_at`. */
-      const rollen = Object.entries(user.roles ?? {}).filter(([, r]) => isTableRole(r));
-      await client.query(
-        `delete from campaign_member where user_id = $1 and campaign_id <> all($2::text[])`,
-        [user.id, rollen.map(([k]) => k)],
-      );
-      for (const [kampagne, rolle] of rollen) {
-        await client.query(
-          `insert into campaign_member(campaign_id, user_id, role) values ($1,$2,$3)
-             on conflict (campaign_id, user_id) do update set role = excluded.role`,
-          [kampagne, user.id, rolle],
-        );
+      /* Die Rollen nur beim Anlegen (T-452): ein Konto, das es schon gibt,
+         behält seine Zeilen in `campaign_member` — die schreibt `setRole`,
+         eine je Kampagne. Bis dahin glich `putUser` die Tabelle auf die
+         gelesenen Rollen ab, und zwei Routen zugleich löschten sich
+         gegenseitig die Rolle. */
+      if (konto.rows[0]?.neu) {
+        const rollen = Object.entries(user.roles ?? {}).filter(([, r]) => isTableRole(r));
+        for (const [kampagne, rolle] of rollen) {
+          await client.query(
+            `insert into campaign_member(campaign_id, user_id, role) values ($1,$2,$3)
+               on conflict (campaign_id, user_id) do update set role = excluded.role`,
+            [kampagne, user.id, rolle],
+          );
+        }
       }
       await client.query('commit');
     } catch (err) {
@@ -927,6 +931,23 @@ export class PgRepository implements Repository {
     } finally {
       client.release();
     }
+  }
+
+  /* Eine Zeile je (Konto, Kampagne), ohne die übrigen zu lesen: zwei
+     Kampagnen zugleich treffen zwei Zeilen und nie dieselbe (T-452). */
+  async setRole(userId: string, campaignId: string, role: TableRole | null): Promise<boolean> {
+    const da = await this.pool.query('select 1 from app_user where id = $1', [userId]);
+    if (!da.rowCount) return false;
+    if (role) {
+      await this.pool.query(
+        `insert into campaign_member(campaign_id, user_id, role) values ($1,$2,$3)
+           on conflict (campaign_id, user_id) do update set role = excluded.role`,
+        [campaignId, userId, role],
+      );
+    } else {
+      await this.pool.query('delete from campaign_member where campaign_id = $1 and user_id = $2', [campaignId, userId]);
+    }
+    return true;
   }
 
   // ---------------------------------------------------------- Einladungen

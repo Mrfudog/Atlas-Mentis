@@ -30,6 +30,7 @@ export * from './sight.js';
 export * from './inventory.js';
 export * from './defaultShapes.js';
 export * from './carrySheet.js';
+export * from './gear.js';
 export * from './timeline.js';
 export * from './summary.js';
 export * from './usage.js';
