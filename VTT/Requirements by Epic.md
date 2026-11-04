@@ -752,7 +752,7 @@ Widgets: Notizen, Schnellanlage, Begegnung, Timer, Tabellen, Musik, Fragen. — 
 
 ## EP-09 Karten
 
-29 Stories · 132 Punkte · 18 steht · 6 teils · 5 offen — [[EP-09 Karten]]
+29 Stories · 132 Punkte · 20 steht · 6 teils · 3 offen — [[EP-09 Karten]]
 
 ### F-055 Karte & Kartenebenen
 
@@ -763,7 +763,7 @@ Karte mit Bild, Gitter, Massstab; Unterkarten zum Hineinzoomen. — [[F-055 Kart
 | [[REQ-385]] | Karten-Widget mit Werkzeugen, Ebenen und Grössen | Spielleitung | 2 | 8 | offen |
 | [[REQ-130]] | Karte mit Gitter und Massstab | Spielleitung | 3 | 2 | steht |
 | [[REQ-131]] | Unterkarten zum Hineinzoomen | Spielleitung | 3 | 8 | steht |
-| [[REQ-132]] | Kartenebene festhalten | Spielleitung | 3 | 1 | offen |
+| [[REQ-132]] | Kartenebene festhalten | Spielleitung | 3 | 1 | steht |
 | [[REQ-293]] | Ladeanzeige für Kartenbilder | Spielleitung | 3 | 1 | steht |
 | [[REQ-138]] | Grosse Karten in Kacheln | Spieler | 4 | 5 | steht |
 
@@ -829,7 +829,7 @@ Zeichnen, Assets platzieren, Effekte. — [[F-061 Karteneditor]]
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
 | [[REQ-141]] | Effekte auf der Karte | Spielleitung | 5 | 8 | offen |
-| [[REQ-142]] | Auf Karten zeichnen | Spielleitung | 5 | 8 | offen |
+| [[REQ-142]] | Auf Karten zeichnen | Spielleitung | 5 | 8 | steht |
 | [[REQ-143]] | Karteneditor | Spielleitung | 5 | 13 | offen |
 
 ## EP-10 Medien & Assets

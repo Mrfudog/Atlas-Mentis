@@ -1217,7 +1217,21 @@ beansprucht; die Felder aus der Einstellung `gmFields`
 (`Secrets.secret`, `Tactics.tactics`, `Encounter.solution`, `Encounter.hint`), es sei denn, eine gewusste
 Information gibt einen Eintrag frei; der Name, wenn beansprucht — dann steht
 der Deckname (`Identity.cover`). Kanten bleiben. Eine zweite Prüfung in der
-Maske gibt es nicht.
+Maske gibt es nicht. Von den Teilnehmern einer Begegnung (`participates`)
+gehen an Spielende nur die aufgedeckten, ohne Notiz der Leitung und vor
+ihrem ersten Zug gar nicht (`redactParticipants`, REQ-213, D58).
+
+**Wer die Kampagne des Artikels leitet** (`gm`, `co-gm` in `campaignOf`,
+`leadsArticle`), bekommt ihn **ungesiebt im Wissen** — auch ohne eigene
+Figur (T-447, T-455; E-204 a, E-208 a): die `gmFields`, jedes von einer
+Information beanspruchte Feld und jeden Teilnehmer mit Ziel und Werten.
+Bis dahin galt ein solches Konto als „Betrachter ohne Figur" und verlor
+Geheimnisse, Taktik, Lösung, Hinweise und vor Kampfbeginn alle Gegner
+seiner eigenen Runde; speicherte es die Begegnung aus der Artikelseite,
+schrieb es die gesiebten Kanten zurück. Die Grenze ist die Rolle in der
+Kampagne des Artikels, wie beim Decknamen (`seesUnfinished`) — die
+Leitung einer anderen Kampagne bleibt ein Betrachter wie jeder, und die
+Sichtbarkeit (9.1) fragt nicht danach.
 
 ### 9.4 Schreiben
 

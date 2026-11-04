@@ -6,6 +6,7 @@ import {
   campaignsOf,
   isReady,
   seesUnfinished,
+  leadsArticle,
   tableRole,
   effectiveAudience,
   layerDefaultAudience,
@@ -321,6 +322,20 @@ describe('die eigene Figur ist vom Stand ausgenommen', () => {
     expect(seesUnfinished(entities, a, sela)).toBe(false);
     expect(seesUnfinished(entities, a, { ...sela, own: ['npc_baron'] })).toBe(true);
     expect(seesUnfinished(entities, a)).toBe(true);
+  });
+
+  /* T-447, T-455 (E-204 a, E-208 a): die Leitung der Kampagne des Artikels
+     bekommt ihn ungesiebt — nur über die Rolle, nicht über Eigenes. */
+  it('sagt, wer den Artikel ungesiebt liest: die Leitung seiner Kampagne, auch ohne Figur', () => {
+    const a = figur();
+    expect(leadsArticle(entities, a, basil)).toBe(true);
+    expect(leadsArticle(entities, a, { roles: { camp_nebel: 'co-gm' } })).toBe(true);
+    expect(leadsArticle(entities, a, sela)).toBe(false);
+    /* Eigenes macht nicht zur Leitung: der Verfasser sieht den Arbeitsstand, nicht die Felder der Leitung. */
+    expect(leadsArticle(entities, a, { ...sela, own: ['npc_baron'] })).toBe(false);
+    /* Wer anderswo leitet, ist hier Betrachter. */
+    expect(leadsArticle(entities, a, { roles: { camp_salz: 'gm' } })).toBe(false);
+    expect(leadsArticle(entities, a)).toBe(true);
   });
 });
 

@@ -30,10 +30,10 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 |---|---|---|---|
 | 1 | 57 | 182 | 42 steht · 10 teils · 1 offen · 2 ersetzt · 2 verworfen |
 | 2 | 141 | 515 | 70 steht · 26 teils · 37 offen · 5 ersetzt · 3 verworfen |
-| 3 | 128 | 394 | 61 steht · 27 teils · 39 offen · 1 ersetzt |
+| 3 | 128 | 394 | 62 steht · 27 teils · 38 offen · 1 ersetzt |
 | 4 | 49 | 225 | 13 steht · 2 teils · 31 offen · 2 ersetzt · 1 verworfen |
-| 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **394** | **1470** | 187 steht · 65 teils · 126 offen · 10 ersetzt · 6 verworfen |
+| 5 | 19 | 154 | 2 steht · 17 offen |
+| **Zusammen** | **394** | **1470** | 189 steht · 65 teils · 124 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -170,7 +170,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-129]] | Fragen an einen Assistenten | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 5 | 8 | idea | offen |
 | [[REQ-130]] | Karte mit Gitter und Massstab | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 2 | done | steht |
 | [[REQ-131]] | Unterkarten zum Hineinzoomen | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 8 | done | steht |
-| [[REQ-132]] | Kartenebene festhalten | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 1 | defined | offen |
+| [[REQ-132]] | Kartenebene festhalten | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 1 | defined | steht |
 | [[REQ-133]] | Marker, die zu Artikeln führen | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 3 | done | steht |
 | [[REQ-134]] | Kulisse auf der Karte | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 4 | 3 | done | steht |
 | [[REQ-135]] | Tokens im Spiel | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 5 | in progress | teils |
@@ -180,7 +180,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-139]] | Nebel | Spielleitung | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 4 | 8 | done | steht |
 | [[REQ-140]] | Licht und Sicht mit Wänden | Spielleitung | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 5 | 13 | done | steht |
 | [[REQ-141]] | Effekte auf der Karte | Spielleitung | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | offen |
-| [[REQ-142]] | Auf Karten zeichnen | Spielleitung | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | offen |
+| [[REQ-142]] | Auf Karten zeichnen | Spielleitung | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | steht |
 | [[REQ-143]] | Karteneditor | Spielleitung | [[F-061 Karteneditor\|Karteneditor]] | 5 | 13 | idea | offen |
 | [[REQ-144]] | Initiative auf der Karte | Spieler | [[F-051 Initiative\|Initiative]] | 4 | 2 | done | steht |
 | [[REQ-145]] | Ablage in der Seite | Spielleitung | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 3 | in progress | teils |
