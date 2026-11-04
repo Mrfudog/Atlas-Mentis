@@ -181,7 +181,9 @@ import {
   strokeAt,
   strokePath,
   type MapStroke,
+  zoneLightShapes,
   revealView,
+  redactDark,
 } from '@nw/model';
 import type { Passage, PassageKind } from '@nw/model';
 import type { MarkerView } from '@nw/model';
@@ -266,6 +268,12 @@ function schreib(k: string, v: string): void {
 /** Ein geschlossener Pfad durch Punkte in Anteilen. */
 const punktePfad = (pts: readonly Pt[]): string => `M${pts.map((p) => `${r5(p.x)} ${r5(p.y)}`).join(' L')} Z`;
 const r5 = (v: number): number => Math.round(v * 100000) / 100000;
+/** Die Ecken einer Form (T-219), ein Kreis als Vieleck — für die Ausschnitte der Dunkelheit. */
+function formPunkte(s: RevealShape): Array<[number, number]> {
+  if (s.kind === 'rect') return [[s.x, s.y], [s.x + s.w, s.y], [s.x + s.w, s.y + s.h], [s.x, s.y + s.h]];
+  if (s.kind === 'circle') return Array.from({ length: 32 }, (_, i) => [s.x + s.r * Math.cos((i / 32) * 2 * Math.PI), s.y + (s.r / s.ar) * Math.sin((i / 32) * 2 * Math.PI)] as [number, number]);
+  return s.pts;
+}
 /** Eine Form ohne Gitter als Pfad (T-219): Rechteck, Ellipse, Vieleck, Strich als Linie. */
 function formPfad(s: RevealShape): string {
   if (s.kind === 'rect') return punktePfad([{ x: s.x, y: s.y }, { x: s.x + s.w, y: s.y }, { x: s.x + s.w, y: s.y + s.h }, { x: s.x, y: s.y + s.h }]);
@@ -314,6 +322,8 @@ type Werkzeug =
   | 'stiftEllipse'
   | 'radierer'
   | 'sichtAufdecken'
+  | 'beschriften'
+  | 'stempel'
   | 'platzieren'
   | 'notiz';
 /** Die Werkzeuge, die mit dem Finger eine Form ziehen statt die Karte zu schieben. */
@@ -633,7 +643,31 @@ interface Zeiger {
                   }
                 </select>
               </label>
-              <button type="button" [class.an]="werkzeug() === 'radierer'" [attr.aria-pressed]="werkzeug() === 'radierer'" (click)="waehle('radierer')" title="Tap a stroke to erase it">Erase</button>
+              <button type="button" [class.an]="werkzeug() === 'beschriften'" [attr.aria-pressed]="werkzeug() === 'beschriften'" (click)="waehle('beschriften')" title="Type a label, then tap where it goes">Text</button>
+              <button type="button" [class.an]="werkzeug() === 'stempel'" [attr.aria-pressed]="werkzeug() === 'stempel'" (click)="waehle('stempel')" title="Pick a stamp, then tap where it goes">Stamp</button>
+              @if (werkzeug() === 'beschriften') {
+                <label>
+                  <input type="text" maxlength="200" [value]="beschriftung()" (input)="beschriftung.set($any($event.target).value)" aria-label="Label text" placeholder="Label" />
+                </label>
+              }
+              @if (werkzeug() === 'stempel') {
+                <span role="group" aria-label="Stamps" class="stempel-wahl">
+                  @for (z of STEMPEL; track z.zeichen) {
+                    <button type="button" class="klein" [class.an]="stempelZeichen() === z.zeichen" [attr.aria-pressed]="stempelZeichen() === z.zeichen" (click)="stempelZeichen.set(z.zeichen)" [attr.aria-label]="z.name" [title]="z.name">{{ z.zeichen }}</button>
+                  }
+                </span>
+              }
+              @if (werkzeug() === 'beschriften' || werkzeug() === 'stempel') {
+                <label>
+                  Size
+                  <select (change)="textGroesse.set(+$any($event.target).value)" aria-label="Text size">
+                    @for (g of TEXT_GROESSEN; track g.wert) {
+                      <option [value]="g.wert" [selected]="textGroesse() === g.wert">{{ g.label }}</option>
+                    }
+                  </select>
+                </label>
+              }
+              <button type="button" [class.an]="werkzeug() === 'radierer'" [attr.aria-pressed]="werkzeug() === 'radierer'" (click)="waehle('radierer')" title="Tap a stroke, label or stamp to erase it">Erase</button>
               @if (zeichenBlattJetzt(); as bid) {
                 <label title="Only the GM sees this layer; players never get it">
                   <input type="checkbox" [checked]="zeichenBlattLeitung()" (change)="zeichenBlattLeitungSetzen(bid, $any($event.target).checked)" />
@@ -1310,7 +1344,12 @@ interface Zeiger {
                       <!-- **Die Zeichenebene** (T-219, REQ-142): gleiche Achsen, damit ein Strich rund bleibt. -->
                       <svg class="striche" [attr.viewBox]="'0 0 1 ' + seitenverhaeltnis()" preserveAspectRatio="none" aria-hidden="true" [style.opacity]="s.opacity" [attr.data-sheet]="s.id">
                         @for (st of s.strokes; track st.id) {
-                          <path class="strich" [attr.d]="strichPfad(st)" [style.stroke]="st.color" [style.stroke-width]="st.width" />
+                          @if (st.kind === 'text') {
+                            <!-- Text und Stempel (T-219): als Textknoten, nie als HTML. -->
+                            <text class="beschriftung" [attr.x]="st.pts[0]![0]" [attr.y]="st.pts[0]![1] * seitenverhaeltnis()" [attr.font-size]="st.width" [style.fill]="st.color">{{ st.text }}</text>
+                          } @else {
+                            <path class="strich" [attr.d]="strichPfad(st)" [style.stroke]="st.color" [style.stroke-width]="st.width" />
+                          }
                         }
                       </svg>
                     }
@@ -1319,11 +1358,11 @@ interface Zeiger {
                 @if (gitter(); as g) {
                   <div class="gitter" aria-hidden="true" [style.background-image]="g.bild" [style.background-size]="g.groesse" [style.background-position]="g.lage"></div>
                 }
-                @if (flaechenAn() && flaechen().length) {
+                @if (flaechenGezeigt().length) {
                   <!-- **Zonen und Gebiete** (T-219, REQ-193): aufs Gitter gerastert, über dem Bild und unter den Markern. -->
                   <svg class="flaechen" viewBox="0 0 1 1" preserveAspectRatio="none" role="img" [attr.aria-label]="flaechenText()">
-                    @for (f of flaechen(); track f.id) {
-                      <path class="flaeche" [class.gebiet]="f.type === 'territory'" [class.versteckt]="f.versteckt" [attr.data-name]="f.name" [attr.d]="f.d" [style.fill]="f.farbe" [style.fill-opacity]="f.deckkraft" [style.stroke]="f.farbe" vector-effect="non-scaling-stroke" />
+                    @for (f of flaechenGezeigt(); track f.id) {
+                      <path class="flaeche" [class.gebiet]="f.type === 'territory'" [class.versteckt]="f.versteckt" [class.finster]="f.finster" [attr.data-name]="f.name" [attr.d]="f.d" [style.fill]="f.farbe" [style.fill-opacity]="f.deckkraft" [style.stroke]="f.farbe" vector-effect="non-scaling-stroke" />
                     }
                   </svg>
                 }
@@ -1938,8 +1977,12 @@ interface Zeiger {
           {{ werkzeug() === 'flaecheRechteck' ? 'Rectangle' : 'Ellipse' }} — drag over the map; the squares whose centre lies inside belong to {{ flaecheZielName() }}.
         } @else if (werkzeug() === 'stift' || werkzeug() === 'stiftLinie' || werkzeug() === 'stiftRechteck' || werkzeug() === 'stiftEllipse') {
           {{ werkzeug() === 'stift' ? 'Pen — draw with the mouse or a finger.' : 'Drag from one corner to the other.' }} Strokes go on {{ zeichenBlattName() }}.
+        } @else if (werkzeug() === 'beschriften') {
+          {{ beschriftung().trim() ? 'Tap where “' + beschriftung().trim() + '” goes.' : 'Type the label above, then tap where it goes.' }}
+        } @else if (werkzeug() === 'stempel') {
+          Tap where the stamp {{ stempelZeichen() }} goes.
         } @else if (werkzeug() === 'radierer') {
-          Tap a stroke to erase it.
+          Tap a stroke, label or stamp to erase it.
         } @else if (werkzeug() === 'sichtAufdecken') {
           Reveal sight — tap a token: what it sees from where it stands is revealed{{ jeFigur() ? ' for that character' : '' }}.
         } @else if (werkzeug() === 'flaecheWeg') {
@@ -2214,7 +2257,24 @@ export class Karte {
     /* Nebel je Figur (T-204): die Sicht der gewählten Figur, ohne Wahl nur
        das für alle Aufgedeckte. */
     const fuer = this.nebelFuer();
-    return redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
+    const gesiebt = redactMap(e, { gm: false, sees: () => true, fog: this.regeln().fog, own: (id) => id === fuer });
+    /* **Im Dunkeln dasselbe wie der Server** (T-219, `redactDark`): als eine
+       Figur nur, was sie sieht; als alle Spielenden, was irgendeine
+       Spielerfigur (oder die Gruppe) sieht. Gerechnet mit der Bildgrösse
+       der gezeigten Ebene — gezeichnet wird nur sie. */
+    const ziele = this.kontext()?.targets ?? {};
+    const augen = (id: string): boolean => (fuer ? id === fuer : ziele[id]?.type === 'PlayerCharacter' || ziele[id]?.type === 'Party');
+    const info = this.kontext()?.areas ?? {};
+    const art = (id: string): Entity | undefined =>
+      info[id]?.rule?.light ? ({ id, name: '', interfaces: ['ZoneKind'], components: { ZoneKind: { light: info[id]!.rule!.light } } } as Entity) : undefined;
+    return redactDark(gesiebt, {
+      nat: () => this.nat(),
+      eyes: augen,
+      darkvision: (id) => this.kontext()?.darkvision?.[id] ?? 0,
+      carried: () => this.getragen(),
+      keep: augen,
+      zones: (v) => zoneLightShapes(v, art),
+    });
   });
   protected readonly angezeigt = computed(() => {
     const e = this.angezeigtGanz();
@@ -2351,19 +2411,30 @@ export class Karte {
       const d = zellen ? zellen.map((c) => punktePfad(cellCorners(geo!, c))).join(' ') : formPfad(a.shape);
       const regel = a.type === 'zone' ? zoneRuleText(rule) : '';
       const name = i?.name ?? (a.type === 'zone' ? 'Zone' : 'Territory');
+      /* **Magische Dunkelheit** (T-219): Spielende sehen hinein so wenig wie in die dunkle Karte — die Leitung sieht durch. */
+      const finster = rule.light === 'dark' && !this.alsLeitung();
       return {
         id: a.id,
         type: a.type,
         name: regel ? `${name} (${regel})` : name,
         d,
-        farbe: areaColor(a, rule),
-        deckkraft: a.opacity,
+        farbe: finster ? DUNKEL_FARBE : areaColor(a, rule),
+        deckkraft: finster ? 0.94 : a.opacity,
+        finster,
         /* Eine versteckte Zone, die noch niemand fand — nur die Leitung hat sie. */
         versteckt: leitung && !!rule.hidden && !a.found,
       };
     });
   });
   protected readonly flaechenText = computed(() => this.flaechen().map((f) => f.name).join(', '));
+  /** Was gezeichnet wird: ausgeblendet bleibt die Dunkelheit stehen — sie ist Sicht, keine Beschriftung. */
+  protected readonly flaechenGezeigt = computed(() => (this.flaechenAn() ? this.flaechen() : this.flaechen().filter((f) => f.finster)));
+  /** Das Licht der Zonen dieser Ebene (T-219), aus der Regel ihrer Art im Kontext. */
+  private readonly zonenLicht = computed(() => {
+    const e = this.angezeigt();
+    const info = this.kontext()?.areas ?? {};
+    return e ? zoneLightShapes(e, (id) => (info[id]?.rule?.light ? ({ id, name: '', interfaces: ['ZoneKind'], components: { ZoneKind: { light: info[id]!.rule!.light } } } as Entity) : undefined)) : [];
+  });
   private readonly flaechenWahl = signal<boolean>(lies(FLAECHEN_SCHLUESSEL) !== 'off');
   /* Beim Ziehen stehen sie immer da — sonst zöge man ins Leere. */
   protected readonly flaechenAn = computed(() => this.flaechenWahl() || this.aktiv() === 'flaechen');
@@ -3989,6 +4060,13 @@ export class Karte {
     } else if (this.werkzeug() === 'vieleck') {
       /* Einrasten wie an den Wänden, dazu an die Ecken der übrigen Formen. */
       this.vieleckTippen(this.einrasten(pt, ev.altKey, ev.pointerType !== 'mouse', undefined, this.vieleckFang()).pt);
+    } else if (this.werkzeug() === 'beschriften' || this.werkzeug() === 'stempel') {
+      const text = this.werkzeug() === 'stempel' ? this.stempelZeichen() : this.beschriftung().trim();
+      if (!text) {
+        this.hinweis.set('Type the label first.');
+        return;
+      }
+      this.textAnlegen(pt, text);
     } else if (this.werkzeug() === 'radierer') {
       const e = this.karte();
       const tol = SPERRE_TREFFER / Math.max(1, this.breite());
@@ -4929,6 +5007,37 @@ export class Karte {
     const pts = st.pts.map((p) => [p.x, p.y] as [number, number]);
     return { d: strokePath({ id: '', kind, pts, color: '', width: 0 }, this.seitenverhaeltnis()), color: this.stiftFarbe(), width: this.stiftBreite() };
   });
+  /** Text und Stempel (T-219): ein Wort oder ein Zeichen auf der Zeichenebene, in Anteilen der Breite gross. */
+  protected readonly STEMPEL = [
+    { zeichen: '☠', name: 'Danger' },
+    { zeichen: '⚠', name: 'Warning' },
+    { zeichen: '✕', name: 'Mark' },
+    { zeichen: '★', name: 'Star' },
+    { zeichen: '⚑', name: 'Flag' },
+    { zeichen: '⚔', name: 'Battle' },
+    { zeichen: '⌂', name: 'House' },
+    { zeichen: '?', name: 'Unknown' },
+  ];
+  protected readonly TEXT_GROESSEN = [
+    { label: 'Small', wert: 0.015 },
+    { label: 'Medium', wert: 0.025 },
+    { label: 'Large', wert: 0.045 },
+  ];
+  protected readonly beschriftung = signal('');
+  protected readonly stempelZeichen = signal('☠');
+  protected readonly textGroesse = signal(0.025);
+  private textAnlegen(pt: Pt, text: string): void {
+    let e = this.karte();
+    if (!e) return;
+    let blatt = this.zeichenBlattJetzt();
+    if (!blatt) {
+      const neu = addDrawingSheet(e, `Drawing ${this.zeichenBlaetter().length + 1}`, `sheet-${crypto.randomUUID().slice(0, 8)}`);
+      e = neu.map;
+      blatt = neu.id;
+      this.zeichenBlatt.set(blatt);
+    }
+    void this.schreiben(addStroke(e, blatt, { id: `tx-${crypto.randomUUID().slice(0, 8)}`, kind: 'text', pts: [[pt.x, pt.y]], color: this.stiftFarbe(), width: this.textGroesse(), text }));
+  }
   private strichAnlegen(w: Werkzeug, pts: Pt[]): void {
     let e = this.karte();
     if (!e || !pts.length) return;
@@ -5397,9 +5506,10 @@ export class Karte {
       ar,
       farbe: DUNKEL_FARBE,
       deckt: stufe === 'dark' ? (lt ? 0.42 : 0.94) : lt ? 0.2 : 0.5,
+      /* Ein erleuchteter Saal (T-219, `ZoneKind.light`) schneidet die Dunkelheit aus wie ein Licht. */
       schnitte: [
-        { formen: [...licht.map((l) => auf(l.dim)), ...dunkelsicht.map(auf)], staerke: 0.5 },
-        { formen: licht.map((l) => auf(l.bright)), staerke: 1 },
+        { formen: [...licht.map((l) => auf(l.dim)), ...dunkelsicht.map(auf), ...this.zonenLicht().filter((z) => z.light === 'dim').map((z) => auf(formPunkte(z.shape)))], staerke: 0.5 },
+        { formen: [...licht.map((l) => auf(l.bright)), ...this.zonenLicht().filter((z) => z.light === 'bright').map((z) => auf(formPunkte(z.shape)))], staerke: 1 },
       ],
     };
   });

@@ -337,3 +337,21 @@ describe('Tokens am Gitter (T-317)', () => {
     expect(markersOf(setMarkerSize(g, 'm1', null))[0]!.ownSize).toBeNull();
   });
 });
+
+describe('Einrasten auf Hexfeldern (T-219)', () => {
+  /* Hex 60 px breit, spitze Seite oben: Feld (0,0) hat die Mitte bei (30, 34,64), die obere Ecke bei (30, 0). */
+  const grid = { shape: 'hex' as const, size: 60, ox: 0, oy: 0, w: 600, h: 600 };
+  it('rastet an die nächste Ecke des Hexfelds', () => {
+    const s = snapPoint({ x: 31 / 600, y: 2 / 600 }, { grid }, 0.02, 1);
+    expect(s.to).toBe('grid');
+    expect(s.pt.x * 600).toBeCloseTo(30);
+    expect(s.pt.y * 600).toBeCloseTo(0);
+    /* Die rechte obere Ecke: (60, 17,32). */
+    const r = snapPoint({ x: 58 / 600, y: 18 / 600 }, { grid }, 0.02, 1);
+    expect(r.pt.x * 600).toBeCloseTo(60);
+    expect(r.pt.y * 600).toBeCloseTo(60 / Math.sqrt(3) / 2 * 1, 1);
+  });
+  it('rastet nicht, wenn die Ecke weiter als der Fangradius liegt', () => {
+    expect(snapPoint({ x: 30 / 600, y: 34 / 600 }, { grid }, 0.01, 1).to).toBeNull();
+  });
+});
