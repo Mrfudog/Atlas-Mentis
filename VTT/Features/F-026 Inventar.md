@@ -15,7 +15,7 @@ Epic: [[EP-04 Spielererlebnis]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-24 Stories · 62 Punkte · 7 steht · 7 teils · 10 offen
+24 Stories · 62 Punkte · 7 steht · 8 teils · 9 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -32,7 +32,7 @@ Epic: [[EP-04 Spielererlebnis]]
 | [[REQ-277]] Gegenstände mit Form spiegeln | Spieler | 4 | offen |
 | [[REQ-320]] Formen frei malen, auch nicht rechteckig | Spielleitung | 2 | offen |
 | [[REQ-321]] Stapel im Raster | Spieler | 2 | offen |
-| [[REQ-322]] Besondere Zonen mit eigenen Regeln | Spieler | 2 | offen |
+| [[REQ-322]] Besondere Zonen mit eigenen Regeln | Spieler | 2 | teils |
 | [[REQ-323]] Alle möglichen Plätze eines Gegenstands | Spieler | 2 | teils |
 | [[REQ-324]] Hände als Plätze mit Regeln | Spieler | 2 | teils |
 | [[REQ-325]] Gegenstandsartikel im Detailbereich | Spieler | 2 | offen |
@@ -75,6 +75,33 @@ flowchart TD
 Zweite Etappe (T-244): Gürtel als Gegenstand mit Raster und Verbund,
 Köcher mit Filter, Verstaukosten aus dem Modul, Stapel teilen, Anker,
 schwebende Werkzeugleiste, Telefon-Muster.
+
+## Das Gear erklärt sich (T-365, E-153)
+
+Was das ältere Inventory-Design besser zeigte, steht jetzt im Reiter
+**Gear**: über dem Raster die Herleitung (V1, „Small 4×4 + extra 2×2
+(STR 14 → +2)“, Naht zwischen den Bausteinen, Sperrfelder schraffiert),
+je Stück die **Ziehzeit mit Begründung** (V2) in Liste, Detail und
+Tooltip, die Zonen getönt mit Legende statt Kürzeln (V3), kein Zonenmalen
+im Gear — die Leitung findet „Edit zones“ nach Rules & options (V4), die
+**Körperplätze** des Moduls mit Ringen je Hand, einem Rüstungsplatz und
+dem Zähler der Einstimmung (V5), und jeder Behälter als **eigener
+Bereich** neben „Carried“, am Telefon untereinander und zuklappbar
+(V7, Klappstand am Konto). V6 (Figur wählbar) entfällt. Gerechnet wird in
+`packages/model/src/gear.ts` (Datenmodell G16), die Stufe weiter in
+`drawStage`.
+
+```mermaid
+flowchart LR
+  P[Stück] --> K[Kette: Platz oder Zone<br>in Carried]
+  K --> B1[Behälter +1<br>oder eigene langsamere Zone]
+  B1 --> B2[… jeder weitere Behälter]
+  B2 --> S[drawStage → Stufe]
+  S --> R[drawReason → „turn (zone action, Bag of Holding +1)“]
+```
+
+Offen: Gurt und Rücken als besondere Plätze (T-367), Kleidung einzeln
+mit neuem AC-System (T-388); Ziehzeit in „Your turn“ (Combat) noch nicht.
 
 ## Wegwerfen und Verkaufen am Stück (T-407, REQ-404)
 

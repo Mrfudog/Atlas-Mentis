@@ -812,13 +812,16 @@ export const relations: Record<string, RelationDef> = {
            `ringL1` — Wanderung: `prototype/migration/plaetze-nach-dem-blatt.mjs`.
            Wie schnell etwas von einem Platz kommt, sagt die Einstellung
            `slotDraw`, nicht diese Liste. */
+        /* `armor` (T-365, E-153 V5): der eine Rüstungsplatz, bis T-388 die
+           Kleidung einzeln bringt. `head`, `torso`, `hands`, `feet` bleiben
+           in der Liste — was dort liegt, behält seinen Platz. */
         slot: {
           type: 'string',
           title: 'Body slot',
           enum: ['head', 'shoulders', 'torso', 'hands', 'mainHand', 'offHand',
             'legs', 'feet', 'belt', 'holster1', 'holster2',
             'ringR1', 'ringR2', 'ringR3', 'ringR4', 'ringL1', 'ringL2', 'ringL3', 'ringL4',
-            'neck1', 'neck2', 'neck3', 'neck4'],
+            'neck1', 'neck2', 'neck3', 'neck4', 'armor'],
         },
         /* **Der Griff** (T-244): `two` heisst beide Hände — eine
            vielseitige Waffe mit dem zweiten Würfel, eine zweihändige zum
