@@ -29,7 +29,7 @@ import { LAYER_RELATION } from './visibility.js';
  * Beziehung (T-401). Das Regelmodul kommt mit T-222.
  */
 export function visibilityDimensions(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   registry: Pick<Registry, 'interfaces'>,
 ): Dimension<Entity>[] {
   const gruppen = new Map<EntityId, EntityId[]>();
@@ -67,7 +67,7 @@ export function visibilityDimensions(
 
 /** Die Regeln dieser Kampagne für `Viewer.campaignRules`; ohne Regeln `undefined`. */
 export function campaignVisibility(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   registry: Pick<Registry, 'interfaces'>,
   campaign: Entity | null | undefined,
 ): CampaignVisibility | undefined {

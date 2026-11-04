@@ -1,12 +1,20 @@
 {
   "entries": [
     {
-      "id": "2026-10-29-gear-body-draw",
-      "date": "2026-10-29",
+      "id": "2026-11-04-gear-body-draw",
+      "date": "2026-11-04",
       "title": "Gear: body places, draw times with reasons, containers side by side",
       "text": "Gear lists body places — armor, legs, rings per hand, necklaces — with an attunement counter. Each item says how long it takes to draw and why, also inside containers (Bag of Holding +1). The grid explains its size (Small 4×4 + extra 2×2, STR 14 → +2) with a zone legend. Containers get their own foldable boxes; GMs edit zones under Rules & options.",
       "area": "Characters",
       "link": "/world"
+    },
+    {
+      "id": "2026-10-29-faster-pages",
+      "date": "2026-10-29",
+      "title": "Character sheets and boards load faster",
+      "text": "A statblock asks for all its proficiencies at once, and a board fetches all its cards in one go — a character page used to wait for a hundred small requests. The help behind “?” now loads when you open it.",
+      "area": "Navigation",
+      "link": "/compendium"
     },
     {
       "id": "2026-10-29-reveal-sight",

@@ -124,14 +124,21 @@ export class Statblock {
     return art;
   });
 
+  /** Was zuletzt gefragt wurde — kommt derselbe Artikel neu (Live, Speichern), fragt er nicht noch einmal. */
+  private gefragt = '';
+
   constructor() {
+    /* **Eine Frage für alle Übungen** (T-398): je Name eine Suche waren bei
+       einer Figur mit vierzig Übungen vierzig Abrufe, die sich am Server
+       stauten — und jede Antwort änderte `kurz` und holte erneut. */
     effect(() => {
-      const namen = this.uebungsNamen();
+      const namen = [...new Set(this.uebungsNamen())];
       const of = this.quellen();
       if (!namen.length || !of.length) return;
-      untracked(() => {
-        for (const q of namen) void this.bestand.liste({ of, q, limit: 20 }).catch(() => undefined);
-      });
+      const schluessel = `${of.join(',')}|${namen.join('\n')}`;
+      if (schluessel === this.gefragt) return;
+      this.gefragt = schluessel;
+      untracked(() => void this.bestand.liste({ of, name: namen, limit: 200 }).catch(() => undefined));
     });
     /* Worauf eine Fertigkeit rechnet, steht an ihrem Artikel — den holt,
        wer ihn braucht, mit den Teilen in einer Anfrage. */

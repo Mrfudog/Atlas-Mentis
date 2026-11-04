@@ -17,13 +17,14 @@ async function frei(knopf: Locator): Promise<string> {
   });
 }
 
-test('opening the view designer on an article leaves the page buttons reachable', async ({ leitung, api, eindeutig }) => {
+test('opening the view designer on an article leaves the page buttons reachable', async ({ leitung, api, eindeutig }, info) => {
   const sitzung = await api.anlegen('leitung', 'Session', eindeutig('Harbour night'));
   await leitung.goto(`/artikel/${sitzung.id}`);
   await leitung.getByRole('button', { name: /Design this view/ }).click();
-  /* Am Telefon steht der Designer im Reiter „Design". */
-  const reiter = leitung.getByRole('tab', { name: /^Design/ });
-  if (await reiter.isVisible()) await reiter.click();
+  /* Am Telefon steht der Designer im Reiter „Design". Nicht `isVisible()`
+     fragen — das wartet nicht, und stand der Reiter noch nicht da, blieb der
+     Designer im verborgenen Reiter (CI zu #462). */
+  if (info.project.name === 'phone') await leitung.getByRole('tab', { name: /^Design/ }).click();
   await expect(leitung.getByText('New elements go into the selected container')).toBeVisible();
   await leitung.screenshot({ path: test.info().outputPath('designer.png') });
 

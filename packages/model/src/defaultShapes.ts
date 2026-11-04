@@ -341,7 +341,7 @@ export function withDefaultShape(entity: Entity, idx: ShapeIndex, lookup: ShapeL
  * spezifischere gewinnt Feld für Feld. Was nicht aufgeschaltet ist, sagt
  * nichts (E2): ohne das Untermodul gilt die Form der Bücher (keine).
  */
-export function campaignShapeDefaults(entities: Map<EntityId, Entity>, campaign: Entity | null | undefined): ShapeDefaults {
+export function campaignShapeDefaults(entities: ReadonlyMap<EntityId, Entity>, campaign: Entity | null | undefined): ShapeDefaults {
   if (!campaign) return { groups: [], items: [] };
   const ebenen = resolvedStack(entities, campaign).filter(isShapesLayer);
   return mergeShapeDefaults(ebenen.map(shapeDefaultsOf));

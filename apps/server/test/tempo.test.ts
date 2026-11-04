@@ -293,6 +293,42 @@ describe('the build the server ships (T-086)', () => {
   });
 });
 
+describe('cache headers for the shipped files (T-398, P7, Hebel 5)', () => {
+  /* Auf dev kamen die gehashten Teile mit `max-age=0`: jeder Seitenwechsel
+     fragte jede Datei neu nach, auch wenn sie sich nie ändern kann. */
+  function bau() {
+    const ort = mkdtempSync(join(tmpdir(), 'atlas-cache-'));
+    writeFileSync(join(ort, 'index.html'), '<script src="main-ABCD1234.js"></script>');
+    writeFileSync(join(ort, 'main-ABCD1234.js'), 'void 0;');
+    writeFileSync(join(ort, 'styles-WXYZ5678.css'), 'body{}');
+    writeFileSync(join(ort, 'favicon.ico'), 'x');
+    return buildApp({ repo: new InMemoryRepository(seedRegistry, []), staticRoot: ort });
+  }
+
+  it('keeps hashed scripts and styles for a year, unchanged', async () => {
+    const app = bau();
+    for (const url of ['/main-ABCD1234.js', '/styles-WXYZ5678.css']) {
+      const r = await app.inject({ method: 'GET', url });
+      expect(r.statusCode, url).toBe(200);
+      expect(r.headers['cache-control'], url).toBe('public, max-age=31536000, immutable');
+    }
+  });
+
+  it('asks again for the page itself and for client routes, so a deploy reaches everyone', async () => {
+    const app = bau();
+    for (const url of ['/', '/index.html', '/artikel/e_1']) {
+      const r = await app.inject({ method: 'GET', url });
+      expect(r.statusCode, url).toBe(200);
+      expect(r.headers['cache-control'], url).toBe('no-cache');
+    }
+  });
+
+  it('does not mark files without a hash as unchanging', async () => {
+    const r = await bau().inject({ method: 'GET', url: '/favicon.ico' });
+    expect(r.headers['cache-control']).toBe('no-cache');
+  });
+});
+
 describe('a server that is still reading its articles (T-086)', () => {
   it('says so with 503 and the count, and lets sign-in through', async () => {
     let anlauf: { artikel: number } | null = { artikel: 21576 };

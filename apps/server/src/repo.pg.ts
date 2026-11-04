@@ -225,6 +225,15 @@ export class PgRepository implements Repository {
    * drei Abfragen denselben Stand sehen: ein Artikel, der dazwischen
    * geschrieben wird, stünde sonst ohne seine Karten da.
    */
+  /** Die Nachschlagetafel zum gehaltenen Bestand (T-398, P4) — je Stempel einmal gebaut. */
+  async entityMap(): Promise<ReadonlyMap<string, Entity>> {
+    /* Erst den Bestand zum heutigen Stempel sicherstellen — die Tafel hängt an ihm. */
+    const liste = await this.listEntities();
+    const b = this.bestand;
+    if (!b) return new Map(liste.map((e) => [e.id, e]));
+    return (b.karte ??= new Map(b.liste.map((e) => [e.id, e])));
+  }
+
   async listEntities(): Promise<Entity[]> {
     const stempel = await this.stempel();
     if (this.bestand?.stempel === stempel) return [...this.bestand.liste];
@@ -273,7 +282,7 @@ export class PgRepository implements Repository {
    * `redactEntity`, `detachInstance` tun das schon). Das Feld ist eine
    * Kopie, damit niemand die Liste selbst umstellt.
    */
-  private bestand: { stempel: string; liste: Entity[] } | null = null;
+  private bestand: { stempel: string; liste: Entity[]; karte?: ReadonlyMap<string, Entity> } | null = null;
   /** Ein Lesen, das gerade läuft — zwei gleichzeitige Anfragen lesen einmal. */
   private laedt: { stempel: string; lauf: Promise<Entity[]> } | null = null;
 
