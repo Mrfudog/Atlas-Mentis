@@ -12,11 +12,11 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 188 steht · 65 teils · 127 offen · 10 ersetzt · 6 verworfen — 396 Stories in 84 Features und 12 Epics.
+Zusammen: 187 steht · 65 teils · 126 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
-| [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 58 | 34 steht · 10 teils · 8 offen · 4 ersetzt · 2 verworfen |
+| [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 56 | 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen |
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 51 | 28 steht · 8 teils · 12 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 19 steht · 2 teils · 8 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 14 teils · 23 offen |
@@ -41,7 +41,7 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 **Erklärt in:** [Datenmodell.md](../docs/Datenmodell.md), [Begriffe.md](../docs/Begriffe.md), [Ebenen.md](../docs/Ebenen.md), [Artikeltypen.md](../docs/Artikeltypen.md), [Durchgang.md](../docs/Durchgang.md)
 
-**Offen mit Prio 1–3:** REQ-003 Änderungsverlauf je Artikel (teils) · REQ-006 Stapel: was in der Kampagne gilt (teils) · REQ-007 Stapel für Fortgeschrittene (offen) · REQ-008 Varianten einer Sache (teils) · REQ-013 Verweise nach Nummer, getippt nach Name (teils) · REQ-045 Ebenen-Aktionen am Artikel (offen) · REQ-100 Welt als Ebene (teils) · REQ-102 Artikel je Stapel und Wissen zeichnen (teils) · REQ-176 Ähnliches vor dem Anlegen vorschlagen (teils) · REQ-249 Ebenen nach Herausgeber (teils) · REQ-253 Ebenen und Artikel kopieren (offen) · REQ-258 Verweisfeld nennt, welche Artikel es annimmt (teils) · REQ-264 Vergleichsebenen der Kampagne (teils) · REQ-370 Neuere Fassung zum Vergleich anfragen (offen) · REQ-376 Sammlungsansichten neben Artikelansichten (offen) · REQ-383 Ansicht je Artikeltyp teilen, mit Vorschau als Spieler (offen) · REQ-462 Assets aus einer übergreifenden, modularen Sammlung beziehen (Icons, Symbole, Bilder, Token-Ränder) – nutzbar in Atlas und anderswo (offen)
+**Offen mit Prio 1–3:** REQ-003 Änderungsverlauf je Artikel (teils) · REQ-006 Stapel: was in der Kampagne gilt (teils) · REQ-007 Stapel für Fortgeschrittene (offen) · REQ-008 Varianten einer Sache (teils) · REQ-013 Verweise nach Nummer, getippt nach Name (teils) · REQ-045 Ebenen-Aktionen am Artikel (offen) · REQ-100 Welt als Ebene (teils) · REQ-102 Artikel je Stapel und Wissen zeichnen (teils) · REQ-176 Ähnliches vor dem Anlegen vorschlagen (teils) · REQ-249 Ebenen nach Herausgeber (teils) · REQ-253 Ebenen und Artikel kopieren (offen) · REQ-258 Verweisfeld nennt, welche Artikel es annimmt (teils) · REQ-264 Vergleichsebenen der Kampagne (teils) · REQ-370 Neuere Fassung zum Vergleich anfragen (offen) · REQ-376 Sammlungsansichten neben Artikelansichten (offen) · REQ-383 Ansicht je Artikeltyp teilen, mit Vorschau als Spieler (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -119,8 +119,6 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 | REQ-256 | Ansichten ohne Code definieren | 1 | **steht** | Ansichten im Register, Anpassung je Art (T-110, E-030 b) |
 | REQ-376 | Sammlungsansichten neben Artikelansichten | 2 | **offen** |  |
 | REQ-383 | Ansicht je Artikeltyp teilen, mit Vorschau als Spieler | 2 | **offen** |  |
-| REQ-460 | Icons für Arten, Felder und Artikel: ein Icon-Satz im Register, überall gleich gezeigt | 1 | **steht** | T-461 (Schnitt 1): `icon` an der Art (geerbt, `typeIcon`), am Feld (`PropertySchema.icon`) und am Artikel (`Identity.icon`, `format: 'icon'`, `iconOf`); Migration 168; `nw-icon` mit Text-Alternative; Anzeige in Liste, Kurzansicht, Kopf, Kanten, Kacheln; `nw-icon-wahl` mit Suche nach Name und Tag. Katalog: 36 Lucide-Icons (ISC) als Platzhaltersatz. Offen: Fantasy-Satz (game-icons.net) und Marker auf der Karte — Schnitt 2, REQ-462. |
-| REQ-462 | Assets aus einer übergreifenden, modularen Sammlung beziehen (Icons, Symbole, Bilder, Token-Ränder) – nutzbar in Atlas und anderswo | 2 | **offen** | Der Katalog in `packages/model/src/icons.ts` trägt schon die Schnittstelle (Id, Pfad, Lizenz, Tags); das Modul `packages/assets`, der Fantasy-Satz und das Sprite nur mit genutzten Icons sind offen (T-461, Schnitt 2). |
 
 ### F-007 Verweise & Platzhalter
 
@@ -1113,7 +1111,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-385** (2, offen, Karten) — Karten-Widget mit Werkzeugen, Ebenen und Grössen
 - **REQ-386** (2, offen, Oberfläche & Navigation) — Suche und Filter in den Modulen
 - **REQ-392** (2, offen, Zugang & Betrieb) — Featureseiten im Projektbrett
-- **REQ-462** (2, offen, Inhaltsgerüst) — Assets aus einer übergreifenden, modularen Sammlung beziehen (Icons, Symbole, Bilder, Token-Ränder) – nutzbar in Atlas und anderswo — *Der Katalog in `packages/model/src/icons.ts` trägt schon die Schnittstelle (Id, Pfad, Lizenz, Tags); das Modul `packages/assets`, der Fantasy-Satz und das Sprite nur mit genutzten Icons sind offen (T-461, Schnitt 2).*
 - **REQ-007** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **REQ-022** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **REQ-025** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*

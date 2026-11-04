@@ -195,7 +195,15 @@ Namen Zierde, allein ein Bild mit Beschriftung); der Wähler `nw-icon-wahl`
 sucht nach Name und Tag. Gewählt wird gerechnet, nie gespeichert — nur
 die Namen stehen in Register und Artikel. Entscheid E-210 (a, erweitert):
 Lucide für die Oberfläche, game-icons.net und eigene Symbole als Module
-einer Asset-Sammlung (REQ-462, Schnitt 2).
+einer Asset-Sammlung (REQ-462, Schnitt 2). Die Stories REQ-460 und
+REQ-462 stehen auf dem Brett der Zentrale, nicht als Notiz hier: der
+Vault zählt bis REQ-394, das Brett ab 4xx — wie beide zusammenkommen,
+fragt ein Entscheid der Leitung (E-211).
+
+Stand 5.11.2026: In der Listenzeile steht das Icon der Art; das eigene
+Icon eines Artikels zeigt erst seine Seite und seine Karte — die
+Listen-API bekommt die Spalte mit T-398. Fantasy-Satz, Marker auf der
+Karte und das Modul `packages/assets` sind offen (T-461, Schnitt 2).
 
 ```mermaid
 flowchart LR
@@ -210,7 +218,7 @@ flowchart LR
 ```
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-7 Stories · 29 Punkte · 3 steht · 3 offen · 1 ersetzt
+5 Stories · 24 Punkte · 2 steht · 2 offen · 1 ersetzt
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -219,6 +227,4 @@ flowchart LR
 | [[REQ-256]] Ansichten ohne Code definieren | Spielleitung | 1 | steht |
 | [[REQ-376]] Sammlungsansichten neben Artikelansichten | Spielleitung | 2 | offen |
 | [[REQ-383]] Ansicht je Artikeltyp teilen, mit Vorschau als Spieler | Spielleitung | 2 | offen |
-| [[REQ-460]] Icons für Arten, Felder und Artikel: ein Icon-Satz im Register, überall gleich gezeigt | Spielleitung | 1 | steht |
-| [[REQ-462]] Assets aus einer übergreifenden, modularen Sammlung beziehen (Icons, Symbole, Bilder, Token-Ränder) – nutzbar in Atlas und anderswo | Spielleitung | 2 | offen |
 <!-- stories:ende -->
