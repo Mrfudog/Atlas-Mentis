@@ -17,6 +17,7 @@ import {
   typeChain,
   unitsFor,
   isLayer,
+  iconOf,
 } from '@nw/model';
 import type { BoardSketch, ElementStyle, Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Stil } from '../muster/stil';
@@ -28,6 +29,7 @@ import { ansichtWeg } from '../klassen/ansicht-weg';
 import { Kennzahlen } from './kennzahlen';
 import { TokenBild } from './token-bild';
 import { Ansichtsbaum } from '../ansichten/baum';
+import { Icon } from '../muster/icon';
 
 /** Was die Seitenspalte und die Überschrift schon sagen. */
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source', 'Status', 'Tags'];
@@ -65,7 +67,7 @@ interface Stueck {
 @Component({
   selector: 'nw-vorschau',
   /* Der Baum zeichnet Kurzansichten (Collection, T-425), die Kurzansicht den Baum: `forwardRef` in beiden Richtungen. */
-  imports: [RouterLink, Stil, Text, QuelleText, KurzLink, Bild, Kennzahlen, TokenBild, forwardRef(() => Ansichtsbaum)],
+  imports: [RouterLink, Stil, Text, QuelleText, KurzLink, Bild, Kennzahlen, TokenBild, Icon, forwardRef(() => Ansichtsbaum)],
   template: `
     <aside class="vorschau" [class.eingebettet]="eingebettet()" aria-label="Preview">
       @if (!eingebettet()) {
@@ -76,7 +78,7 @@ interface Stueck {
       }
       @if (artikel(); as e) {
         @if (!eingebettet()) {
-          <h2>{{ name(e) }}</h2>
+          <h2><nw-icon [name]="iconVon(e)" /> {{ name(e) }}</h2>
         }
         @if (eingebettet() ? null : meta(); as m) {
           <p class="meta">
@@ -379,6 +381,12 @@ export class Vorschau {
   /** Eine Ebene, auch ein Regelsystem oder eine Regelmechanik (E-166). */
   protected istEbene(e: Entity): boolean {
     return isLayer(e);
+  }
+
+  /** Das Icon des Artikels (T-461): sein eigenes, sonst das seiner Art. */
+  protected iconVon(e: Entity): string | undefined {
+    const r = this.bestand.registry();
+    return r ? iconOf(r, e) : undefined;
   }
 
   protected name(e: Entity): string {

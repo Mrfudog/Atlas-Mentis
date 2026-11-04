@@ -106,6 +106,7 @@ export function holds(registry: Pick<Registry, 'enums' | 'interfaces'>, p: Prope
   if (p.format === 'long') teile.push('long');
   if (p.format === 'signed') teile.push('signed');
   if (p.format === 'measure') teile.push('measure');
+  if (p.format === 'icon') teile.push('icon');
   if (p.unit) teile.push(p.unit);
   if (p.many) teile.push('many');
   if (p.suggest) teile.push('suggests');

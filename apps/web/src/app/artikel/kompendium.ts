@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { BASE_COLUMNS, columnChoices, plainText, type ColumnChoice } from '@nw/model';
+import { BASE_COLUMNS, columnChoices, plainText, typeIcon, type ColumnChoice } from '@nw/model';
 import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api';
 import { Stapel } from '../kern/stapel';
 import { QuelleText } from '../kern/quellen';
@@ -22,6 +22,7 @@ import { ansichtWeg } from '../klassen/ansicht-weg';
 import { Spalten } from '../kern/spalten';
 import { Spaltenwahl } from './spaltenwahl';
 import { Klappleiste } from '../muster/klappleiste';
+import { Icon } from '../muster/icon';
 import { Zeitfilter } from './zeitfilter';
 import { Beziehungsfilter } from './beziehungsfilter';
 
@@ -61,7 +62,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl, Zeitfilter, Beziehungsfilter, Klappleiste],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl, Zeitfilter, Beziehungsfilter, Klappleiste, Icon],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -362,6 +363,8 @@ const OFFEN = 8;
                       @if (z.image) {
                         <nw-bild class="daumen" [wert]="z.image" [version]="z.imageVersion" groesse="thumb" [oeffnen]="false" alt="" />
                       }
+                      <!-- Das Icon der Art (T-461); das eigene eines Artikels zeigt erst seine Seite. -->
+                      <nw-icon [name]="typIcon(z.type)" />
                       <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
                       <!-- Am Telefon führt die Zeile gleich zum Artikel; die Karte
                            zeigt dieser Knopf (T-093). -->
@@ -444,6 +447,7 @@ const OFFEN = 8;
                     @for (z of v.rows; track z.id) {
                       <tr class="nicht-im-spiel" [class.gewaehlt]="filter.vorschau() === z.id" (click)="zeile(z, $event)">
                         <td class="name">
+                          <nw-icon [name]="typIcon(z.type)" />
                           <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
                           <nw-nicht-im-spiel [id]="z.id" [name]="z.name" [kampagne]="v.canEnable?.campaign" />
                         </td>
@@ -886,6 +890,12 @@ export class Kompendium {
     if (s === 'name') return 'name';
     if (s === 'type') return 'type';
     return this.liste()?.columns.find((c) => c.ref === s)?.label.toLowerCase() ?? s;
+  }
+
+  /** Das Icon der Art (T-461), die `extends`-Kette hoch. */
+  protected typIcon(typ: string): string | undefined {
+    const r = this.bestand.registry();
+    return r ? typeIcon(r, typ) : undefined;
   }
 
   protected typLabel(typ: string): string {

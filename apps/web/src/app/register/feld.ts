@@ -5,6 +5,7 @@ import type { PropertySchema, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit, articles, carry } from './arbeit';
 import { RegFacette } from './facette';
+import { IconWahl } from '../muster/icon-wahl';
 import {
   FIELD_KINDS,
   enumRefs,
@@ -35,7 +36,7 @@ import {
  */
 @Component({
   selector: 'nw-reg-feld',
-  imports: [RouterLink, RegFacette],
+  imports: [RouterLink, RegFacette, IconWahl],
   template: `
     @if (p(); as p) {
       <div class="einst">
@@ -104,6 +105,14 @@ import {
           />
         </label>
         <p class="hint">The name of a glossary entry that explains this field. The field name on an article is then dotted: hover shows the definition, Ctrl/⌘+click opens the entry.</p>
+
+        <!-- T-461: das Icon des Feldes, vor seiner Beschriftung, wo es steht. -->
+        <div class="f">
+          <span>Icon</span>
+          <nw-icon-wahl [wert]="p.icon ?? ''" [disabled]="!darf()" label="Icon of this field"
+            (wertChange)="setzen({ icon: $event || undefined })" />
+        </div>
+        <p class="hint">A symbol before the field’s label wherever the field is shown — on the article, in the form, in the registry.</p>
 
         <label class="f">
           <span>Holds</span>
@@ -214,6 +223,7 @@ import {
               <option value="long" [selected]="p.format === 'long'">long text</option>
               <option value="signed" [selected]="p.format === 'signed'">signed</option>
               <option value="measure" [selected]="p.format === 'measure'">measure (text with units)</option>
+              <option value="icon" [selected]="p.format === 'icon'">icon (a symbol from the icon set)</option>
             </select>
           </label>
           <p class="hint">
