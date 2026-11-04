@@ -229,7 +229,9 @@ export class Board implements SchnellKontext {
     effect(() => {
       /* Mit den Rückbezügen: „hat einen Shop" ist eine Kante, die auf die
          Kreatur zeigt, und gestaltete Ansichten fragen danach (T-268). */
-      for (const k of this.kanten()) void this.bestand.oeffnen(k.to, false, true);
+      /* Alle Karten in einer Anfrage (T-398) — je Karte eine waren zwei. */
+      const ids = this.kanten().map((k) => k.to);
+      untracked(() => void this.bestand.oeffnenViele(ids, true));
     });
     /* Was die Seitenspalte nennt (verbundene Artikel) und der Pfad über dem
        Board (die Geschichte) kommen aus der Liste am Server (W7) — Namen und

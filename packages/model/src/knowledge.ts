@@ -55,7 +55,7 @@ export const PARTY_OF_RELATION = 'partyOf';
  * bekommt beim Anlegen eine, und wer zwei Tische hat, legt die zweite an
  * und teilt von Hand zu.
  */
-export function partiesOf(entities: Map<EntityId, Entity>, campaignId: EntityId): Entity[] {
+export function partiesOf(entities: ReadonlyMap<EntityId, Entity>, campaignId: EntityId): Entity[] {
   const nummer = (e: Entity) => String((e.components?.['Identity'] as { id?: unknown } | undefined)?.id ?? '');
   return [...entities.values()]
     .filter((e) => (e.relations ?? []).some((r) => r.type === PARTY_OF_RELATION && r.to === campaignId))
@@ -132,7 +132,7 @@ export function ruleInformations(entities: ReadonlyMap<EntityId, Entity>): Entit
  * Eine Unterart zählt für ihre Grundart: „Herkunft Orc" trifft auch
  * „Orc (Mountain)" (`ancestryLine`).
  */
-export function informationsOf(entities: Map<EntityId, Entity>, article: Entity, registry?: Pick<Registry, 'interfaces'>): Entity[] {
+export function informationsOf(entities: ReadonlyMap<EntityId, Entity>, article: Entity, registry?: Pick<Registry, 'interfaces'>): Entity[] {
   const out: Entity[] = [];
   for (const id of edges(article, KNOWLEDGE_RELATION)) {
     const info = entities.get(id);
@@ -184,7 +184,7 @@ export function covers(info: Entity, component: string, property: string): boole
  * verlangt.
  */
 export function knowledgeHolders(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   viewerId: EntityId | readonly EntityId[],
 ): Set<EntityId> {
   /* **Ein Konto kann mehrere Figuren führen.** Dann ist „ich" ihre
@@ -234,7 +234,7 @@ export function factionRanks(faction: Entity | undefined): string[] {
  * Tippfehler darf nichts aufschliessen.
  */
 export function rankIndex(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   viewerId: EntityId | readonly EntityId[],
   factionId: EntityId,
 ): number | null {
@@ -267,7 +267,7 @@ export function rankIndex(
  * gemeint hat.
  */
 export function knows(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   info: Entity,
   viewerId?: EntityId | readonly EntityId[],
 ): boolean {
@@ -298,7 +298,7 @@ export function knows(
  * Die Bündel, die diese Information nennen — ein Rückbezug, weil `includes`
  * nur vorwärts gespeichert wird.
  */
-export function bundlesWith(entities: Map<EntityId, Entity>, infoId: EntityId): Entity[] {
+export function bundlesWith(entities: ReadonlyMap<EntityId, Entity>, infoId: EntityId): Entity[] {
   const out: Entity[] = [];
   for (const e of entities.values())
     if (edges(e, INCLUDES_RELATION).includes(infoId)) out.push(e);
@@ -325,7 +325,7 @@ export function informationsIn(entities: Map<EntityId, Entity>, bundle: Entity):
  */
 export function knowledgeGroups(
   registry: Pick<Registry, 'interfaces'>,
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   article: Entity,
   allFields: FieldRef[],
   viewerId?: EntityId | readonly EntityId[],
@@ -401,7 +401,7 @@ export function visibleFields(
  */
 export function redactEntity(
   registry: Pick<Registry, 'interfaces'>,
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   article: Entity,
   viewerId?: EntityId | readonly EntityId[],
   gmFields: string[] = ['Secrets.secret', 'Tactics.tactics', 'Encounter.solution', 'Encounter.hint'],

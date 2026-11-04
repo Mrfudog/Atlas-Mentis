@@ -227,6 +227,7 @@ import { registerTracker } from './initiative.js';
 import { insSpiel, registerSpielinstanz } from './spielinstanz.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
+import { messe, messeSync, mitAnfrageSpeicher, mitZeiten, mitZeitmessung, zeitenKopf } from './zeitmessung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -357,6 +358,9 @@ const DUMMY_HASH =
   '$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHRzb21lc2FsdA$' +
   'PH0Zz8rUqZ9y1c0jzJtQ0dLxYQhL0ZBoVQ1sT0nQ0kM';
 
+/** Ein gebauter Teil der Oberfläche mit Hash im Namen: `chunk-23EWE3K5.js`, `styles-WXYZ5678.css`. */
+const GEHASHT = /-[A-Z0-9]{8,}\.(?:js|mjs|css)$/;
+
 export interface AppOptions {
   repo: Repository;
   logger?: boolean;
@@ -411,7 +415,10 @@ export function buildApp({
   /* **Jedes Schreiben meldet sich beim Live-Kanal** (T-116): die Hülle
      liegt um das Repository, bevor irgendeine Route oder ein Modul es
      bekommt — so vergisst es keine. */
-  repo = mitKanal(repo, live);
+  /* Die Stoppuhr darum (T-398): jede Methode zählt unter `db` im Server-Timing.
+     Ganz aussen, was je Anfrage einmal gefragt wird — so zählt `db` nur, was
+     wirklich an die Datenbank ging. */
+  repo = mitAnfrageSpeicher(mitZeitmessung(mitKanal(repo, live)));
 
   /* **Eine vergebene Kanten-Id ist kein Serverfehler** (T-410): sie kommt
      aus dem, was geschrieben werden sollte, und die Meldung sagt, was zu
@@ -438,8 +445,11 @@ export function buildApp({
      Log, damit man auf dem Server sieht, welche Route wartet. Gemessen wird
      von der Ankunft bis zum Absenden, ohne die Übertragung. */
   const beginn = new WeakMap<FastifyRequest, bigint>();
-  app.addHook('onRequest', async (request) => {
+  /* Mit `done` statt `async`: so läuft die ganze Anfrage im Speicher ihrer
+     Zeiten (`mitZeiten`, T-398), und jeder Abschnitt bucht dort. */
+  app.addHook('onRequest', (request, _reply, done) => {
     beginn.set(request, process.hrtime.bigint());
+    mitZeiten(done);
   });
   /* **Der Server sagt, dass er startet** (T-086, REQ-246), statt eine
      Anfrage hängen zu lassen, bis der Bestand gelesen ist: 503 mit der
@@ -459,7 +469,7 @@ export function buildApp({
     const t0 = beginn.get(request);
     if (t0 === undefined) return;
     const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-    void reply.header('Server-Timing', `app;dur=${ms.toFixed(1)}`);
+    void reply.header('Server-Timing', zeitenKopf(ms));
     if (request.url.startsWith('/api/')) {
       request.log.info({ route: request.routeOptions.url ?? request.url, ms: Math.round(ms) }, 'dauer');
     }
@@ -472,7 +482,18 @@ export function buildApp({
 
   if (staticRoot) {
     // The Angular app, plus a catch-all so client-side routes survive a reload.
-    void app.register(fastifyStatic, { root: staticRoot });
+    /* **Was gehasht ist, ändert sich nie** (T-398, P7): `main-ABCD1234.js`
+       heisst nach jedem Bau anders, also darf der Browser es ein Jahr halten
+       und nicht mehr nachfragen — auf dev kam jeder Teil mit `max-age=0`.
+       Die Seite selbst fragt immer nach, sonst erreicht ein Deploy niemanden. */
+    void app.register(fastifyStatic, {
+      root: staticRoot,
+      /* Sonst setzt @fastify/static selbst `public, max-age=0` darüber. */
+      cacheControl: false,
+      setHeaders: (res, pfad) => {
+        res.setHeader('Cache-Control', GEHASHT.test(pfad) ? 'public, max-age=31536000, immutable' : 'no-cache');
+      },
+    });
     /* **Welche Oberfläche dieser Server ausliefert** (T-086): ein Hash von
        `index.html`, die die gehashten Teile nennt. Steht an jeder Antwort
        der Schnittstelle; ändert er sich unter einer offenen Seite, sagt
@@ -493,7 +514,7 @@ export function buildApp({
       if (request.url.startsWith('/api/')) {
         return reply.code(404).send({ error: 'Nicht gefunden' });
       }
-      return reply.sendFile('index.html');
+      return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
     });
   }
 
@@ -562,7 +583,7 @@ export function buildApp({
     if (gesetzt && (await repo.getEntity(gesetzt))?.interfaces?.[0] === CAMPAIGN_TYPE) return gesetzt;
     const stempel = `${await repo.version()}|${gesetzt ?? ''}`;
     if (ohneEinstellung?.stempel !== stempel) {
-      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const alle = await repo.entityMap();
       ohneEinstellung = { stempel, id: currentCampaign(alle, settings)?.id ?? null };
     }
     return ohneEinstellung.id;
@@ -609,7 +630,7 @@ export function buildApp({
     if (!wer) return 'nein';
     const gespeichert = await repo.getUser(zielId);
     const ziel = gespeichert ? (({ passwordHash: _h, ...r }) => r)(gespeichert) : null;
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const alle = await repo.entityMap();
     const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
     if (!ziel || !kampagne || !mayViewAs(wer.user, ziel, kampagne)) return 'nein';
     await merkeBeginn(wer.user, ziel, kampagne);
@@ -643,7 +664,7 @@ export function buildApp({
   /** **Die Ebene einer Kampagne** (T-098, E-001): die spezifischste
    *  aufgeschaltete, die keine andere Kampagne aufschaltet und keinem Konto
    *  gehört. Dorthin legen Spielende an, darin schreiben `gm` und `co-gm`. */
-  async function kampagnenEbene(map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function kampagnenEbene(map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     return kampagne ? campaignLayer(map, kampagne, await besessen()) : null;
   }
 
@@ -657,7 +678,7 @@ export function buildApp({
    * `co-gm` die Ebene jeder Kampagne, die es leitet. Die Verwaltung schreibt
    * ohnehin alles; hier stehen für sie nur ihre zugeteilten Ebenen.
    */
-  async function schreibEbenen(user: User | null, map: Map<string, Entity>): Promise<Set<string>> {
+  async function schreibEbenen(user: User | null, map: ReadonlyMap<string, Entity>): Promise<Set<string>> {
     if (!user || user.disabledAt) return new Set();
     const grants = await repo.layerGrants();
     const spieler = spielerEbenen(grants);
@@ -698,7 +719,7 @@ export function buildApp({
    * für alle anderen die erste Zielebene (die Leitung: die Ebene der
    * Kampagne). `null`: hier legt dieses Konto nicht an.
    */
-  async function grundEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function grundEbene(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     if (!user || user.disabledAt || !kampagne) return null;
     const ziele = await zielEbenen(user, map, kampagne);
     if (user.roles?.[kampagne.id] === 'player' && !user.isAdmin) {
@@ -716,7 +737,7 @@ export function buildApp({
    */
   async function schreibEbene(
     user: User | null,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     kampagne: Entity | null,
   ): Promise<{ layer: Entity | null; grund: Entity | null; chosen: string | null; dropped: string | null }> {
     const grund = await grundEbene(user, map, kampagne);
@@ -729,12 +750,12 @@ export function buildApp({
   }
 
   /** Die Schreibebene, nur wenn sie gewählt ist und gilt — ohne Wahl `null`. */
-  async function gewaehlteSchreibEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function gewaehlteSchreibEbene(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     const s = await schreibEbene(user, map, kampagne);
     return s.chosen && !s.dropped ? s.layer : null;
   }
 
-  async function vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function vorgabeEbene(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     return (await schreibEbene(user, map, kampagne)).layer;
   }
 
@@ -746,7 +767,7 @@ export function buildApp({
    * Ebene der Kampagne, dann von oben nach unten. Für die Verwaltung die
    * Ebene der Kampagne und ihre zugeteilten.
    */
-  async function zielEbenen(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity[]> {
+  async function zielEbenen(user: User | null, map: ReadonlyMap<string, Entity>, kampagne: Entity | null): Promise<Entity[]> {
     if (!user || user.disabledAt || !kampagne) return [];
     const schreibt = await schreibEbenen(user, map);
     const eigene = await kampagnenEbene(map, kampagne);
@@ -769,7 +790,7 @@ export function buildApp({
    */
   async function schreibZiele(
     user: User | null,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     kampagne: Entity | null,
   ): Promise<Array<{ layer: Entity; inPlay: boolean }>> {
     if (!user || user.disabledAt || !kampagne) return [];
@@ -832,7 +853,7 @@ export function buildApp({
 
   /** Die Spielercharaktere unter diesen Ids — nur sie sind ausgenommen
    *  (E-014 d), nicht jede Kreatur, die einem Konto zugeteilt ist. */
-  function spielerfiguren(ids: Iterable<string>, bestand: Map<string, Entity>, registry: Registry): Set<string> {
+  function spielerfiguren(ids: Iterable<string>, bestand: ReadonlyMap<string, Entity>, registry: Registry): Set<string> {
     const raus = new Set<string>();
     for (const id of ids) {
       const e = bestand.get(id);
@@ -842,19 +863,55 @@ export function buildApp({
   }
 
   /** **Die eigene Figur dieses Kontos** samt Statblock und Inventar (E-014 d). */
-  function eigeneFigur(user: User, bestand: Map<string, Entity>, registry: Registry): Set<string> {
+  function eigeneFigur(user: User, bestand: ReadonlyMap<string, Entity>, registry: Registry): Set<string> {
     return teileVon(spielerfiguren(user.actorIds ?? [], bestand, registry), bestand.values(), FIGUR_KANTEN);
   }
 
   /** **Vom Status-Gate ausgenommen** (E-014 d): die eigenen Figuren *aller*
    *  Konten — wer welche führt, steht am Server (`app_user_actor`). */
-  async function ausgenommen(bestand: Map<string, Entity>, registry: Registry): Promise<Set<string>> {
+  async function ausgenommen(bestand: ReadonlyMap<string, Entity>, registry: Registry): Promise<Set<string>> {
     const ids = (await repo.listUsers()).filter((u) => !u.disabledAt).flatMap((u) => u.actorIds ?? []);
     return mitBehaeltern(teileVon(spielerfiguren(ids, bestand, registry), bestand.values(), FIGUR_KANTEN), bestand.values());
   }
 
+  /**
+   * **Mit wessen Augen gesiebt wird** — je Bestand und Betrachter einmal
+   * (T-398, P4). Gerechnet läuft es mehrmals über den ganzen Bestand
+   * (Eigenes, Ausgenommenes, Schreibebenen); auf dev waren das 450–600 ms
+   * je Sieb-Aufruf und 80–90 % des Siebs, und eine Artikelseite siebt
+   * mehrmals. Der Schlüssel nennt alles, wovon es abhängt: das Konto, die
+   * Ebenenzuteilungen, die Figuren aller Konten, das Register — der
+   * Bestand ist die Tafel selbst (je Stand eine).
+   */
+  const augenJe = new WeakMap<ReadonlyMap<string, Entity>, Map<string, Promise<Awaited<ReturnType<typeof augeRechnen>>>>>();
+  async function augeVon(user: User, bestand: ReadonlyMap<string, Entity>, registry: Registry) {
+    const [grants, konten] = await Promise.all([repo.layerGrants(), repo.listUsers()]);
+    const key = JSON.stringify([
+      user.id,
+      user.disabledAt ?? null,
+      user.actorIds ?? [],
+      user.layerIds ?? [],
+      user.ownedLayerIds ?? [],
+      user.authoredIds ?? [],
+      user.roles ?? {},
+      grants,
+      konten.map((u) => [u.id, u.disabledAt ?? null, u.actorIds ?? []]),
+      registerStempel(registry),
+    ]);
+    let je = augenJe.get(bestand);
+    if (!je) augenJe.set(bestand, (je = new Map()));
+    let lauf = je.get(key);
+    if (!lauf) {
+      lauf = messe('s.auge.neu', () => augeRechnen(user, bestand, registry));
+      je.set(key, lauf);
+      lauf.catch(() => je!.delete(key));
+      /* Wenige Betrachter je Stand; mehr als 32 heisst, es läuft etwas aus dem Ruder. */
+      if (je.size > 32) je.delete(je.keys().next().value!);
+    }
+    return lauf;
+  }
   /** Mit wessen Augen gesiebt wird: Figuren, Rollen, Eigenes, Ausgenommenes. */
-  async function augeVon(user: User, bestand: Map<string, Entity>, registry: Registry) {
+  async function augeRechnen(user: User, bestand: ReadonlyMap<string, Entity>, registry: Registry) {
     /* Die Regeln je Gruppe der laufenden Kampagne (T-252, E-098): sagt ein
        Artikel keine Stufe, sagt es seine Gruppe. */
     const campaignRules = campaignVisibility(bestand, registry, currentCampaign(bestand, registry.settings ?? null));
@@ -887,10 +944,10 @@ export function buildApp({
    * (`zielEbenen`; die Leitung in der Ebene ihrer Kampagne, E-001). Eine
    * eigene Ebene legt jedes Konto an (`POST /api/layers`).
    */
-  async function mayCreate(user: User, alle?: Map<string, Entity>): Promise<boolean> {
+  async function mayCreate(user: User, alle?: ReadonlyMap<string, Entity>): Promise<boolean> {
     if (user.disabledAt) return false;
     if (user.isAdmin) return true;
-    const map = alle ?? new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const map = alle ?? await repo.entityMap();
     const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
     if (!kampagne) return false;
     if (user.roles?.[kampagne.id] === 'player') return true;
@@ -903,7 +960,7 @@ export function buildApp({
    * ein Mitleiter. Gehört er keiner einzelnen, zählt `gm` irgendwo, wie bei
    * der Sichtbarkeit (`campaignOf`).
    */
-  function maySetReady(user: User, alle: Map<string, Entity>, article: Entity, figur?: ReadonlySet<string>): boolean {
+  function maySetReady(user: User, alle: ReadonlyMap<string, Entity>, article: Entity, figur?: ReadonlySet<string>): boolean {
     if (user.isAdmin) return true;
     /* Die eigene Figur nennt ihr Spieler selbst fertig (E-014 d). */
     if (figur?.has(article.id)) return true;
@@ -925,7 +982,7 @@ export function buildApp({
     if (user.isAdmin) return true;
     const rollen = user.roles ?? {};
     if (!Object.values(rollen).includes('gm')) return false;
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const alle = await repo.entityMap();
     const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null);
     return !!kampagne && rollen[kampagne.id] === 'gm';
   }
@@ -975,7 +1032,7 @@ export function buildApp({
 
        `null` heisst „alles" und nicht „nichts": die Spielleitung bekommt
        keine Liste über den ganzen Bestand geschickt. */
-    const bestand = user ? new Map((await repo.listEntities()).map((e) => [e.id, e])) : null;
+    const bestand = user ? await repo.entityMap() : null;
     let writable: string[] | null = null;
     if (user && !user.isAdmin && bestand) {
       const eigen = await ownedBy(user, bestand.values());
@@ -1436,7 +1493,7 @@ export function buildApp({
     }
     return gezaehlt.lauf;
   });
-  function zaehle(registry: Registry, alle: Entity[], map: Map<string, Entity>) {
+  function zaehle(registry: Registry, alle: Entity[], map: ReadonlyMap<string, Entity>) {
     const usage = registryUsage(registry, alle);
     /* **Gespeichert und sichtbar sind zwei Zahlen** (T-069). Das Register
        zählte den ganzen Bestand und widersprach damit der Liste, die nur
@@ -1512,8 +1569,8 @@ export function buildApp({
    */
   /* Die laufende Kampagne je Bestand: ohne Einstellung sucht
      `currentCampaign` den ganzen Bestand ab, und das Sieb fragt je Aufruf. */
-  const kampagneJe = new WeakMap<Map<string, Entity>, { key: string; kampagne: Entity | null }>();
-  function kampagneIn(map: Map<string, Entity>, settings: Record<string, string> | null): Entity | null {
+  const kampagneJe = new WeakMap<ReadonlyMap<string, Entity>, { key: string; kampagne: Entity | null }>();
+  function kampagneIn(map: ReadonlyMap<string, Entity>, settings: Record<string, string> | null): Entity | null {
     const key = settings?.[CAMPAIGN_SETTING] ?? '';
     const da = kampagneJe.get(map);
     if (da?.key === key) return da.kampagne;
@@ -1522,8 +1579,8 @@ export function buildApp({
     return kampagne;
   }
 
-  const stapelJe = new WeakMap<Map<string, Entity>, { key: string; stapel: ReturnType<typeof playStack> }>();
-  function stapelFuer(roh: Map<string, Entity>, kampagne: Entity | null, registry: Registry): ReturnType<typeof playStack> {
+  const stapelJe = new WeakMap<ReadonlyMap<string, Entity>, { key: string; stapel: ReturnType<typeof playStack> }>();
+  function stapelFuer(roh: ReadonlyMap<string, Entity>, kampagne: Entity | null, registry: Registry): ReturnType<typeof playStack> {
     const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
     const da = stapelJe.get(roh);
     if (da?.key === key) return da.stapel;
@@ -1547,7 +1604,7 @@ export function buildApp({
   async function sieve(
     request: FastifyRequest,
     entities: Entity[],
-    bestand?: Entity[] | Map<string, Entity>,
+    bestand?: Entity[] | ReadonlyMap<string, Entity>,
     /** Vor dem Wissen auf das Nötige kürzen — der Index der Liste braucht
      *  nur die Karten, die eine Zeile zeigt, und das Wissen gilt je Feld:
      *  was gekürzt wird, hätte keinen anderen Wert gesiebt. */
@@ -1567,33 +1624,43 @@ export function buildApp({
   /** **Das Sieb für ein Konto statt einer Anfrage** — der Live-Kanal
    *  (T-116) siebt je Empfänger, ohne dass eine Anfrage dasteht. Dieselbe
    *  Rechnung, damit der Kanal kein Umweg an ihr vorbei ist. */
-  async function sieveFuer(
+  function sieveFuer(
     user: User | null,
     entities: Entity[],
-    bestand?: Entity[] | Map<string, Entity>,
+    bestand?: Entity[] | ReadonlyMap<string, Entity>,
+    schmal?: (e: Entity) => Entity,
+    stapel: Stapelfrage = 'inPlay',
+  ): Promise<Entity[]> {
+    return messe('sieb', () => sieveRechnen(user, entities, bestand, schmal, stapel));
+  }
+  async function sieveRechnen(
+    user: User | null,
+    entities: Entity[],
+    bestand?: Entity[] | ReadonlyMap<string, Entity>,
     schmal?: (e: Entity) => Entity,
     stapel: Stapelfrage = 'inPlay',
   ): Promise<Entity[]> {
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
-    const roh =
-      bestand instanceof Map
-        ? bestand
-        : new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
+    /* Ohne Bestand die Tafel je Stand (T-398, P4), nicht je Aufruf eine neue —
+       dieselbe wie `roh().map`, die die meisten Routen mitgeben: die Augen
+       (`augeVon`) und Indizes hängen an ihr, und zwei Tafeln je Stand hiessen
+       zweimal rechnen. */
+    const roh = bestand === undefined ? (await rohStandLesen()).map : Array.isArray(bestand) ? new Map(bestand.map((e) => [e.id, e])) : bestand;
     const registry = await repo.getRegistry();
     /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
        aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
        überschreibt, ist nicht da — für jeden, auch für die Verwaltung.
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
-    const kampagne = kampagneIn(roh, registry.settings ?? null);
+    const kampagne = messeSync('s.kampagne', () => kampagneIn(roh, registry.settings ?? null));
     /* Einmal je Bestand und Register gerechnet, nicht je Aufruf (T-086,
        T-108): mit hunderttausend Teilen kostet der Stapel eine Sekunde,
        und die Leseansicht siebt je Anfrage zwei- oder dreimal. */
-    const sicht = stapelFuer(roh, kampagne, registry);
+    const sicht = messeSync('s.stapel', () => stapelFuer(roh, kampagne, registry));
     const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
-    entities = entities
+    entities = messeSync('s.imspiel', () => entities
       .filter((e) =>
         typeof stapel === 'object'
           ? sicht.inPlay(e) ||
@@ -1612,7 +1679,7 @@ export function buildApp({
       )
       /* Ein Stück mit Enhancements bekommt Name, Preis und Boni gerechnet
          dazu (T-300, D8), nach der Preisregel der Kampagne. */
-      .map((e) => withEnhancement(roh, readInstance(roh, e), e, itemPricingOf(kampagne)));
+      .map((e) => withEnhancement(roh, readInstance(roh, e), e, itemPricingOf(kampagne))));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
        Artikel gesiebt wird: welche Information ein Feld beansprucht und
@@ -1649,13 +1716,13 @@ export function buildApp({
        was jemand erfahren hat, hat eine Figur erfahren. Eigenes geht in
        jedem Stand an ihn (REQ-237), und die Figuren der Mitspielenden sind
        vom Stand ausgenommen (E-014 d). */
-    const auge = await augeVon(user, roh, registry);
+    const auge = await messe('s.auge', () => augeVon(user, roh, registry));
     /* **Der letzte fertige Stand gilt für alle anderen** (REQ-237, E-012):
        fiel ein Artikel nach einer Änderung einer Spielerin auf `prepared`,
        bekommt, wer den Arbeitsstand nicht sieht (`seesUnfinished`), die
        Kopie von vorher — in der Liste, als Artikel und als Zusammenhang
        des Siebs. Nennt die Leitung ihn wieder fertig, gilt der neue. */
-    const fertig = await fertigeStaende();
+    const fertig = await messe('s.fertig', () => fertigeStaende());
     if (fertig.size) {
       const statt = new Map<string, Entity>();
       for (const [id, st] of fertig) {
@@ -1663,8 +1730,10 @@ export function buildApp({
         if (jetzt && !isReady(jetzt) && !seesUnfinished(roh, jetzt, auge)) statt.set(id, st.entity);
       }
       if (statt.size) {
-        alle = new Map(roh);
-        for (const [id, e] of statt) alle.set(id, e);
+        /* Eine Kopie: die Tafel je Stand ist geteilt (T-398). */
+        const mitFertigen = new Map(roh);
+        for (const [id, e] of statt) mitFertigen.set(id, e);
+        alle = mitFertigen;
         entities = entities.map((e) => (statt.has(e.id) ? readInstance(alle, statt.get(e.id)!) : e));
       }
     }
@@ -1706,10 +1775,12 @@ export function buildApp({
       });
     /* Was die Kampagne Spielenden von der Initiative zeigt (T-022). */
     const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
-    return entities
-      .filter((e) => articleVisible(alle, e, auge))
-      /* Ein Deckname verdeckt für alle ausser der Leitung (REQ-178). */
-      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge)))
+    const sichtbar = messeSync('s.sichtbar', () => entities.filter((e) => articleVisible(alle, e, auge)));
+    /* Ein Deckname verdeckt für alle ausser der Leitung (REQ-178). */
+    const gewusst = messeSync('s.wissen', () =>
+      sichtbar.map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields, initRegeln, !seesUnfinished(alle, e, auge))),
+    );
+    return gewusst
       .map((e) =>
         isMap(e) && !seesUnfinished(alle, e, auge)
           ? /* Das Kartenbild nur, soweit aufgedeckt (T-312, E-041): die
@@ -1743,7 +1814,6 @@ export function buildApp({
        Artikel aus `/api/entities/:id`. Die Kurzfassung `?as=summary` ist
        am 13.10. weggefallen (W7) — sie war genau der Weg, auf dem der
        Browser 7,7 MB lud, bevor er eine Zeile zeigte. */
-    const alle = await repo.listEntities();
     /* `?ids=a,b,c`: **diese Artikel ganz**, in einer Anfrage — die Teile
        eines Statblocks (die Ziele seiner `composedOf`-Kanten), die ein
        geöffneter Artikel zeichnet (W2). Ein Drache hat dreizehn Teile;
@@ -1752,14 +1822,17 @@ export function buildApp({
     if (request.query.ids !== undefined) {
       const ids = new Set(request.query.ids.split(',').map((x) => x.trim()).filter(Boolean));
       if (ids.size > 500) return reply.code(400).send({ error: 'Höchstens 500 Ids je Anfrage' });
-      const gesiebt = await sieve(request, alle.filter((e) => ids.has(e.id)), alle);
+      /* Aus der Tafel je Stand (T-398, P4): ein Nachschlagen je Id statt
+         eines Durchlaufs, und das Sieb findet seine Augen wieder. */
+      const karte = (await roh()).map;
+      const gesiebt = await sieve(request, [...ids].flatMap((id) => karte.get(id) ?? []), karte);
       /* Mit den Feldern aus aufgeschalteten Ergänzungen (T-142): das
          Kachelinventar liest so die Form aus „Item shapes" — ohne die Id
          zu wechseln, denn die Kante zeigt auf diesen Artikel. Darunter die
          Vorgabeform des Inventarmoduls (T-394). */
       return Promise.all(gesiebt.map(async (e) => (await mitVorgabeform(await mitErgaenzungen(e))).entity));
     }
-    return sieve(request, alle, alle);
+    return sieve(request, await repo.listEntities());
   });
 
   /* **Die eigene Kampagne als Datei** (T-077, REQ-199): Register und die
@@ -1803,7 +1876,14 @@ export function buildApp({
     ueberschreiber: Map<string, Entity[]>;
     namen: Map<string, Entity[]>;
   } | null = null;
-  async function roh(): Promise<NonNullable<typeof rohStand>> {
+  function roh(): Promise<NonNullable<typeof rohStand>> {
+    return messe('stand', rohLesen);
+  }
+  /** Dasselbe unter anderem Namen — im Sieb heisst die Tafel selbst `roh`. */
+  function rohStandLesen(): Promise<NonNullable<typeof rohStand>> {
+    return roh();
+  }
+  async function rohLesen(): Promise<NonNullable<typeof rohStand>> {
     const stempel = await repo.version();
     if (rohStand?.stempel === stempel) return rohStand;
     const alle = await repo.listEntities();
@@ -1833,6 +1913,9 @@ export function buildApp({
 
   /** Ein kleiner Hash des Registers: ändert es sich, gilt kein Index mehr. */
   function registerStempel(registry: Registry): string {
+    return messeSync('regstempel', () => registerStempelRechnen(registry));
+  }
+  function registerStempelRechnen(registry: Registry): string {
     const s = JSON.stringify(registry);
     let h = 2166136261;
     for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
@@ -1923,7 +2006,8 @@ export function buildApp({
       if (ja === undefined) istGegenstand.set(typ, (ja = typeChain(registry, typ).includes('Item')));
       return projektion(ja ? withDefaultShape(e, vf.idx, vf).entity : e);
     };
-    lauf = sieve(request, stand.alle, stand.map, mitForm, stapel).then(async (gesiebt) => {
+    /* Den Index zu bauen ist sein eigener Abschnitt (T-398): danach ist er da, und nur der erste zahlt. */
+    lauf = messe('index', () => sieve(request, stand.alle, stand.map, mitForm, stapel)).then(async (gesiebt) => {
       /* Herkunft (T-382): Zeiten aus dem ungesiebten Bestand, wer hinzufügte
          neben dem Konto. Nur für Zeilen, die ohnehin dastehen. */
       const [creators, konten] = await Promise.all([repo.creators(), repo.listUsers()]);
@@ -2170,7 +2254,7 @@ export function buildApp({
    * ersetzt eine aufgeschaltete Ebene den Artikel über `overrides`, die
    * Fassung, sonst er selbst. Gesiebt wird danach wie immer.
    */
-  async function geltend(e: Entity, map: Map<string, Entity>): Promise<Entity> {
+  async function geltend(e: Entity, map: ReadonlyMap<string, Entity>): Promise<Entity> {
     /* Ist `map` der Stand, den wir halten, fragt niemand die Datenbank nach
        dem Stempel — eine Kapitelseite fragt hier für jeden Verweis darin,
        und je Frage ein `count(*)` über 150 000 Artikel waren drei Sekunden. */
@@ -2300,7 +2384,7 @@ export function buildApp({
   async function fertigungswert(
     request: FastifyRequest,
     e: Entity,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
   ): Promise<{ table: unknown; mine: unknown[] } | null> {
     const registry = await repo.getRegistry();
     if (!typeChain(registry, primaryInterface(e)).includes(RECIPE_COMPONENT)) return null;
@@ -2331,7 +2415,7 @@ export function buildApp({
   async function begegnungsBezug(
     request: FastifyRequest,
     e: Entity,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     registry: Registry,
   ): Promise<BegegnungsBezug | null> {
     if (!istBegegnung(registry, e)) return null;
@@ -2351,7 +2435,7 @@ export function buildApp({
   async function ladenwaren(
     request: FastifyRequest,
     e: Entity,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
   ): Promise<{ table: unknown[]; mine: unknown[] } | null> {
     const registry = await repo.getRegistry();
     if (!typeChain(registry, primaryInterface(e)).includes(SHOP_TYPE)) return null;
@@ -2699,7 +2783,7 @@ export function buildApp({
   async function freigabeAm(
     request: FastifyRequest,
     entity: Entity,
-    map: Map<string, Entity>,
+    map: ReadonlyMap<string, Entity>,
     vergleich: boolean,
   ): Promise<{ enable?: { campaign: string }; enabled?: { campaign: string } } | null> {
     const registry = await repo.getRegistry();
@@ -2840,36 +2924,96 @@ export function buildApp({
    * ihn.
    */
   app.get<{ Params: { id: string } }>('/api/entities/:id/backlinks', async (request, reply) => {
+    const r = (await rueckbezuegeFuer(request, [request.params.id])).get(request.params.id);
+    return r ?? reply.code(404).send({ error: 'Nicht gefunden' });
+  });
+
+  /**
+   * **Was auf diese Artikel zeigt** — je Id die Rückbezüge, gesiebt; fehlt
+   * eine Id in der Antwort, gibt es den Artikel für diesen Betrachter nicht.
+   * Ein Durchlauf über den Bestand für alle Ids (T-398): das Board fragte
+   * je Karte einzeln, und jede Frage las alle Artikel.
+   */
+  async function rueckbezuegeFuer(
+    request: FastifyRequest,
+    ids: readonly string[],
+  ): Promise<Map<string, { from: ReturnType<typeof summaryOf>; relation: ReturnType<typeof backlinks>[number]['relation'] }[]>> {
     const stand = await roh();
-    const gefunden = stand.map.get(request.params.id);
-    const ziel = gefunden ? await geltend(gefunden, stand.map) : undefined;
-    /* Auch eine Fassung aus einer Vergleichsebene hat Rückbezüge (T-092). */
-    const sichtbar =
-      ziel &&
-      ((await sieve(request, [ziel], stand.map)).length ||
-        (await sieve(request, [ziel], stand.map, undefined, 'compare')).length);
-    if (!ziel || !sichtbar) {
-      return reply.code(404).send({ error: 'Nicht gefunden' });
+    /* Je gefragter Id ihr Ziel (die geltende Fassung) und alles, was auf
+       es zeigen darf: eine Fassung (E-018) sammelt auch, was aufs Original
+       zeigt — die Szenen eines angepassten Kapitels hängen weiter dort.
+       Ihre eigene Kante `overrides` zählt nicht. */
+    const ziele = new Map<string, { ziel: Entity; auch: Set<string> }>();
+    for (const id of new Set(ids)) {
+      const gefunden = stand.map.get(id);
+      const ziel = gefunden ? await geltend(gefunden, stand.map) : undefined;
+      if (!ziel) continue;
+      /* Auch eine Fassung aus einer Vergleichsebene hat Rückbezüge (T-092). */
+      const sichtbar =
+        (await sieve(request, [ziel], stand.map)).length || (await sieve(request, [ziel], stand.map, undefined, 'compare')).length;
+      if (sichtbar) ziele.set(id, { ziel, auch: new Set([ziel.id, ...replacedIds(stand.map, ziel)]) });
     }
-    /* Eine Fassung (E-018) sammelt auch, was aufs Original zeigt: die
-       Szenen eines angepassten Kapitels hängen weiter am Original. Ihre
-       eigene Kante `overrides` zählt nicht. */
-    const auch = new Set([ziel.id, ...replacedIds(stand.map, ziel)]);
-    /* Gesiebt wird nur, wer überhaupt auf ihn zeigt — nicht der ganze
-       Bestand (W7: für einen Spieler eine halbe Sekunde je Artikelseite).
-       Das Sieb nimmt Kanten nur weg, nie dazu; die Antwort ist dieselbe. */
-    /* Die Teile eines Kapitels zeigt das Element `parts` (T-108) — in
-       „Linked here" stünden sonst hundert Absätze unter „contains". */
-    const zeigen = stand.alle
-      .filter((e) => e.id !== ziel.id && !isBookPart(e) && (e.relations ?? []).some((r) => auch.has(r.to)))
-      .map((e) => (auch.size > 1 ? { ...e, relations: (e.relations ?? []).map((r) => (auch.has(r.to) ? { ...r, to: ziel.id } : r)) } : e));
-    const gesiebt = zeigen.length ? await sieve(request, zeigen, stand.map) : [];
+    const aus = new Map<string, { from: ReturnType<typeof summaryOf>; relation: ReturnType<typeof backlinks>[number]['relation'] }[]>();
+    if (!ziele.size) return aus;
+    /* Welche gefragte Id eine Kante trifft — ein Nachschlagen statt eines
+       Vergleichs je Ziel. */
+    const trifft = new Map<string, string[]>();
+    for (const [id, { auch }] of ziele) for (const a of auch) (trifft.get(a) ?? trifft.set(a, []).get(a)!).push(id);
+    /* Gesiebt wird nur, wer überhaupt auf sie zeigt — nicht der ganze
+       Bestand (W7). Das Sieb nimmt Kanten nur weg, nie dazu. Die Teile
+       eines Kapitels zeigt das Element `parts` (T-108) — in „Linked here"
+       stünden sonst hundert Absätze unter „contains". */
+    const zeigt = new Map<string, Entity[]>();
+    for (const e of stand.alle) {
+      if (isBookPart(e)) continue;
+      for (const r of e.relations ?? []) {
+        for (const id of trifft.get(r.to) ?? []) {
+          if (e.id === ziele.get(id)!.ziel.id) continue;
+          const l = zeigt.get(id) ?? zeigt.set(id, []).get(id)!;
+          if (!l.includes(e)) l.push(e);
+        }
+      }
+    }
+    const kandidaten = [...new Set([...zeigt.values()].flat())];
+    const gesiebt = new Map((kandidaten.length ? await sieve(request, kandidaten, stand.map) : []).map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
     const felder = summaryFields(registry);
-    return backlinks(registry, gesiebt, ziel.id).map((b) => ({
-      from: summaryOf(b.from, felder),
-      relation: b.relation,
-    }));
+    for (const [id, { ziel, auch }] of ziele) {
+      const von = (zeigt.get(id) ?? [])
+        .map((e) => gesiebt.get(e.id))
+        .filter((e): e is Entity => !!e)
+        .map((e) => (auch.size > 1 ? { ...e, relations: (e.relations ?? []).map((r) => (auch.has(r.to) ? { ...r, to: ziel.id } : r)) } : e));
+      aus.set(
+        id,
+        backlinks(registry, von, ziel.id).map((b) => ({ from: summaryOf(b.from, felder), relation: b.relation })),
+      );
+    }
+    return aus;
+  }
+
+  /**
+   * **Mehrere Artikel auf einmal** (T-398): `GET /api/entities/batch?ids=a,b&backlinks=1`
+   * — je Artikel genau, was `/api/entities/:id` schickt (`artikelAntwort`),
+   * und mit `backlinks=1` auch, was auf ihn zeigt. Für Seiten, die viele
+   * Artikel ganz brauchen: das Board mit seinen Karten. Beides steht nach
+   * der gefragten Id; was fehlt, steht in `missing` — für diesen Betrachter
+   * gibt es es nicht.
+   */
+  app.get<{ Querystring: { ids?: string; backlinks?: string } }>('/api/entities/batch', async (request, reply) => {
+    const ids = [...new Set(String(request.query.ids ?? '').split(',').map((x) => x.trim()).filter(Boolean))];
+    if (ids.length > 200) return reply.code(400).send({ error: 'At most 200 ids per request — ask in pages.' });
+    /* Nach der **gefragten** Id: wer ein Original öffnet, bekommt die
+       geltende Fassung mit ihrer eigenen Id (E-018). */
+    const entities: Record<string, NonNullable<Awaited<ReturnType<typeof artikelAntwort>>>> = {};
+    const missing: string[] = [];
+    for (const id of ids) {
+      const a = await artikelAntwort(request, id);
+      if (a) entities[id] = a;
+      else missing.push(id);
+    }
+    const mitRueck = request.query.backlinks === '1' || request.query.backlinks === 'true';
+    const rueck = mitRueck ? await rueckbezuegeFuer(request, Object.keys(entities)) : null;
+    return { entities, missing, ...(rueck ? { backlinks: Object.fromEntries(rueck) } : {}) };
   });
 
   /**
@@ -3485,9 +3629,25 @@ export function buildApp({
   app.addHook('onClose', async () => kanal.close());
 
   app.get<{ Params: { id: string }; Querystring: { stand?: string; allLayers?: string } }>('/api/entities/:id', async (request, reply) => {
+    const antwort = await artikelAntwort(request, request.params.id, request.query);
+    return antwort ?? reply.code(404).send({ error: 'Nicht gefunden' });
+  });
+
+  /**
+   * **Ein Artikel, wie ihn die Artikelseite bekommt** — gesiebt, mit der
+   * geltenden Fassung und seinen `refs`; `null` heisst: gibt es nicht, oder
+   * nicht für diesen Betrachter. Eine Funktion, damit der gebündelte Abruf
+   * (`/api/entities/batch`, T-398) genau dasselbe ausliefert und kein
+   * zweiter Weg am Sieb vorbei entsteht.
+   */
+  async function artikelAntwort(
+    request: FastifyRequest,
+    id: string,
+    frage: { stand?: string | undefined; allLayers?: string | undefined } = {},
+  ): Promise<(Entity & { refs: Record<string, unknown> }) | null> {
     const stand = await roh();
-    const gefunden = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
-    if (!gefunden) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const gefunden = stand.map.get(id) ?? (await repo.getEntity(id));
+    if (!gefunden) return null;
     /* **Wer das Original öffnet, bekommt die Fassung, die gilt** (E-018,
        T-082): ein Verweis im Abenteuer zeigt aufs Original, und in einer
        Kampagne, die es angepasst hat, ist die Fassung die Sache. Die
@@ -3506,7 +3666,7 @@ export function buildApp({
       const registry = await repo.getRegistry();
       const sieht = !user || user.isAdmin || seesUnfinished(stand.map, entity, await augeVon(user, stand.map, registry));
       if (sieht) {
-        const alt = request.query.stand === 'ready';
+        const alt = frage.stand === 'ready';
         ready = { at: fertig.at, old: alt };
         if (alt) zeige = fertig.entity;
       }
@@ -3524,7 +3684,7 @@ export function buildApp({
        einem Artikel, dessen Ebene nicht aufgeschaltet ist — wie die
        Massenänderung (T-182), gesiebt, als wäre sie es. Ohne den Schalter
        bleibt es beim Stapel (E2). */
-    if (!gesiebt && (request.query.allLayers === '1' || request.query.allLayers === 'true') && (await viewerOf(request))?.isAdmin) {
+    if (!gesiebt && (frage.allLayers === '1' || frage.allLayers === 'true') && (await viewerOf(request))?.isAdmin) {
       [gesiebt] = await sieve(request, [zeige], stand.map, undefined, 'unactivated');
     }
     /* **Form und Stapel aus dem Inventarmodul** (T-394, E-165): gerechnet,
@@ -3547,7 +3707,7 @@ export function buildApp({
        da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
        schickte genau den Artikel, den das Sieb gerade zurückgehalten
        hatte. */
-    if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
+    if (!einer) return null;
     /* Die Namen, die der Artikel braucht, kommen mit (W7) — der Browser
        hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
     /* „Im Buch lesen" (T-091): wohin die Quellenangabe führt, wenn seine Ebene Text hat. */
@@ -3593,7 +3753,7 @@ export function buildApp({
         ? { ...mitNehmen, adaptable: true, adaptTo: ziele.map((l) => ({ id: l.id, name: entityName(l) })) }
         : mitNehmen,
     };
-  });
+  }
 
   /** Was sich in die Geschichte holen lässt (E-026): ein Teil der Geschichte, kein Ganzes einer Runde. */
   const OHNE_UEBERNAHME = new Set([CAMPAIGN_TYPE, 'Session']);
@@ -3607,7 +3767,7 @@ export function buildApp({
    * der Geschichte ist (ein Kapitel, eine Szene); leer heisst: nicht
    * anbieten.
    */
-  async function uebernahmeZiele(request: FastifyRequest, e: Entity, map: Map<string, Entity>): Promise<Entity[]> {
+  async function uebernahmeZiele(request: FastifyRequest, e: Entity, map: ReadonlyMap<string, Entity>): Promise<Entity[]> {
     const user = await viewerOf(request);
     if (!user || user.disabledAt) return [];
     const registry = await repo.getRegistry();
@@ -3755,7 +3915,7 @@ export function buildApp({
    * schreiben — auch einen Artikel ohne Ebene: der gehört niemandem, und
    * ändern heisst für alle ausser der Verwaltung, eine Fassung anzulegen.
    */
-  async function anpassZiele(request: FastifyRequest, e: Entity, map: Map<string, Entity>): Promise<Entity[]> {
+  async function anpassZiele(request: FastifyRequest, e: Entity, map: ReadonlyMap<string, Entity>): Promise<Entity[]> {
     const user = await viewerOf(request);
     if (!user || user.disabledAt) return [];
     if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
@@ -4511,7 +4671,7 @@ export function buildApp({
     if (!prop.suggest || !typ || !feld) return reply.code(400).send({ error: `${typ}.${feld} does not suggest values; it is a fixed list or plain text. Turn on “suggests values in use” in the registry first.` });
     const alle = await repo.listEntities();
     const art = alle.filter((e) => typeChain(registry, primaryInterface(e)).includes(typ));
-    const sichtbar = await sieve(request, art, alle);
+    const sichtbar = await sieve(request, art, (await rohStandLesen()).map);
     const zahl = new Map<string, number>();
     for (const e of sichtbar) {
       const wert = (e.components?.[typ] as Record<string, unknown> | undefined)?.[feld];
@@ -4897,13 +5057,13 @@ export function buildApp({
     if (typeof wer === 'string') return reply.code(403).send({ error: wer });
     const t0 = Date.now();
     const alle = await repo.listEntities();
-    const imSpiel = await sieve(request, alle, alle);
+    const imSpiel = await sieve(request, alle, (await rohStandLesen()).map);
     /* **Der Parkplatz zählt mit** (E-186): was in „Unassigned“ liegt, steht
        in keiner laufenden Kampagne — die Werkbank führt es trotzdem als
        offene Arbeit. Gesiebt nach Sichtbarkeit, nur nicht nach dem Stapel. */
     const geparkt = alle.filter((e) => (e.relations ?? []).some((r) => r.type === LAYER_RELATION && r.to === UNASSIGNED_LAYER_ROW.id));
     const daIds = new Set(imSpiel.map((e) => e.id));
-    const gesiebt = [...imSpiel, ...(await sieve(request, geparkt, alle, undefined, 'unactivated')).filter((e) => !daIds.has(e.id))];
+    const gesiebt = [...imSpiel, ...(await sieve(request, geparkt, (await rohStandLesen()).map, undefined, 'unactivated')).filter((e) => !daIds.has(e.id))];
     const registry = await repo.getRegistry();
     const exists = new Map(alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
     const roh = String(request.query.limit ?? '50');
@@ -4938,7 +5098,7 @@ export function buildApp({
    * Die schreibt das Konto nicht selbst; sie zu verweigern hiesse, dass ein
    * fremder Verweis das Löschen des Eigenen sperrt. Geprüft wird weiter.
    */
-  async function pruefeLauf(user: User, registry: Registry, roh: Map<string, Entity>, changes: BulkChange[], folgen = false) {
+  async function pruefeLauf(user: User, registry: Registry, roh: ReadonlyMap<string, Entity>, changes: BulkChange[], folgen = false) {
     const danach = new Map(roh);
     for (const c of changes) {
       if (c.after) danach.set(c.id, c.after);
@@ -5023,9 +5183,9 @@ export function buildApp({
        `allLayers` (T-182): dazu, was nur fehlt, weil seine Ebene nicht
        aufgeschaltet ist — gesiebt, als wäre sie es. */
     const gesiebt = [
-      ...(await sieve(request, alle, alle)),
+      ...(await sieve(request, alle, (await rohStandLesen()).map)),
       ...(await sieve(request, alle.filter(isSupplement), alle, undefined, 'versions')),
-      ...(auftrag.allLayers ? await sieve(request, alle, alle, undefined, 'unactivated') : []),
+      ...(auftrag.allLayers ? await sieve(request, alle, (await rohStandLesen()).map, undefined, 'unactivated') : []),
     ];
     const auswahl = [...new Map(selectEntities(registry, gesiebt, auftrag.select).map((e) => [e.id, e])).values()];
     const r = await fuehreLaufAus(request, wer, registry, roh, auftrag, auswahl.map((e) => e.id));
@@ -5041,7 +5201,7 @@ export function buildApp({
     request: FastifyRequest,
     wer: Wer,
     registry: Registry,
-    roh: Map<string, Entity>,
+    roh: ReadonlyMap<string, Entity>,
     auftrag: BulkRequest,
     ausgewaehlt: string[],
     art?: 'delete-own' | 'move-layer',
@@ -5184,7 +5344,7 @@ export function buildApp({
         : await vorgabeEbene(user, roh, kampagne);
       const sichtbar = new Set(
         [
-          ...(await sieve(request, alle, alle)),
+          ...(await sieve(request, alle, (await rohStandLesen()).map)),
           ...(await sieve(request, alle.filter(isSupplement), alle, undefined, 'versions')),
         ].map((e) => e.id),
       );
@@ -5265,7 +5425,7 @@ export function buildApp({
         }
       }
       const sichtbar = new Set(
-        [...(await sieve(request, alle, alle)), ...(await sieve(request, alle, alle, undefined, 'unactivated'))].map((e) => e.id),
+        [...(await sieve(request, alle, (await rohStandLesen()).map)), ...(await sieve(request, alle, (await rohStandLesen()).map, undefined, 'unactivated'))].map((e) => e.id),
       );
       const fehlt = ids.filter((id) => !sichtbar.has(id) || !roh.has(id));
       if (fehlt.length) return reply.code(404).send({ error: `Nicht gefunden: ${fehlt.join(', ')}` });

@@ -112,7 +112,7 @@ export function versionGroups(entities: Iterable<Entity>): Map<EntityId, EntityI
  * Bestand für die Kanten in beide Richtungen, dann die Gruppe von hier aus.
  * Ohne den Artikel selbst; die Reihenfolge ist die des Bestands.
  */
-export function versionsOf(entities: Map<EntityId, Entity>, id: EntityId): Entity[] {
+export function versionsOf(entities: ReadonlyMap<EntityId, Entity>, id: EntityId): Entity[] {
   if (!entities.has(id)) return [];
   const nachbarn = new Map<EntityId, Set<EntityId>>();
   const verbinde = (a: EntityId, b: EntityId) => {

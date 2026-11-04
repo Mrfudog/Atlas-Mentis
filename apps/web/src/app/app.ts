@@ -261,7 +261,12 @@ import { Basisleiste } from './start/basisleiste';
     @if (session.angemeldet()) {
       <nw-suche />
       @if (hilfeOffen()) {
-        <nw-hilfe [url]="adresse()" (zu)="hilfeOffen.set(false)" />
+        <!-- Erst beim „?“ geladen (T-348, T-398): die Texte sind 70 kB, die niemand beim Start braucht. -->
+        @defer (on immediate) {
+          <nw-hilfe [url]="adresse()" (zu)="hilfeOffen.set(false)" />
+        } @loading (minimum 0ms) {
+          <p class="banner" role="status">Loading help …</p>
+        }
       }
       <!-- Der offene Glossareintrag (T-242), eine Leiste für alle Seiten. -->
       @if (glossar.offen()) {

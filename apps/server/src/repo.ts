@@ -127,6 +127,13 @@ export interface Repository {
 
   listEntities(): Promise<Entity[]>;
   /**
+   * **Der Bestand als Nachschlagetafel**, gehalten je Stand (T-398, P4):
+   * dieselben Artikel wie `listEntities`, aber nicht je Aufruf neu gebaut.
+   * Geteilt — wer daraus liest, verändert nichts darin (`ReadonlyMap`); wer
+   * einen Artikel ändern will, baut einen neuen.
+   */
+  entityMap(): Promise<ReadonlyMap<string, Entity>>;
+  /**
    * Woran man sieht, ob sich der Bestand seit dem letzten Mal geändert hat.
    * Gleicher Stempel heisst gleicher Bestand — darauf baut der Index der
    * Liste (`liste.ts`), der je Stempel und Betrachter einmal gerechnet wird.
@@ -311,6 +318,12 @@ export class InMemoryRepository implements Repository {
 
   async listEntities(): Promise<Entity[]> {
     return [...this.entities.values()].map((e) => structuredClone(e));
+  }
+
+  private karte: { rev: number; map: ReadonlyMap<string, Entity> } | null = null;
+  async entityMap(): Promise<ReadonlyMap<string, Entity>> {
+    if (this.karte?.rev !== this.rev) this.karte = { rev: this.rev, map: new Map((await this.listEntities()).map((e) => [e.id, e])) };
+    return this.karte.map;
   }
 
   async version(): Promise<string> {

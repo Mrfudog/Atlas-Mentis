@@ -61,17 +61,20 @@ von Hand ändern.
 | [Anforderungen.md](Anforderungen.md) | Jede Story mit Stand, nach Epic und Feature | erzeugt | `pnpm --filter @nw/registry anforderungen` |
 | [Architektur.md](Architektur.md) | Container, Frameworks, Repo, Server, Oberfläche | gilt (Stand 12.10.) | Hand |
 | [Betrieb.md](Betrieb.md) | Ausrollen, Sichern, Zurück, Daten laden | gilt | Hand |
+| [Performance.md](Performance.md) | Leistungsregeln P1–P8, Budgets je Seite, wie gemessen wird, Grundlinie (T-398, T-322) | gilt | Hand, Grundlinie aus `scripts/laden-messen.mjs` |
 | [Zugang.md](Zugang.md) | Konten, Rollen, Sieben, API-Tokens | gilt | Hand |
 | [Ebenen.md](Ebenen.md) | Ebenen und Stapelauflösung ausführlich | gilt, Kurzform in Datenmodell §8 | Hand |
 | [Wissen.md](Wissen.md) | Wer weiss was: Information, Knowledge, `knownBy` | gilt, Kurzform in Datenmodell §9 | Hand |
 | [Beziehungen.md](Beziehungen.md) | Beziehungen als Kanten mit Marken | gilt | Hand |
 | [Verweisfelder.md](Verweisfelder.md) | Welche Felder Verweise wurden (T-078, T-099) | Protokoll | Hand |
 | [Karten.md](Karten.md) | Zeichenebenen, Sperren, Unterkarten; die Karte in der Seite; der Zugplan (T-198) | gilt | Hand |
+| [vorschlaege/Laden-Analyse.md](vorschlaege/Laden-Analyse.md) | Was eine Seite lädt, auf dev gemessen: Ladepfade, die fünf grössten Hebel, Zielwerte (T-398, REQ-397) | Bericht, Vorschlag | Hand, Messung mit `scripts/laden-messen.mjs` |
 | [vorschlaege/Ansichten-Bedarf.md](vorschlaege/Ansichten-Bedarf.md) | Ansichten: Bestand je Art und Ort, Bedarf je Stufe, was T-234 anlegte und was offen ist (E-124) | Vorschlag, Bestand | Hand, Tabelle aus `scripts/ansichten.mjs` |
 | [vorschlaege/Karten-VTT-Vergleich.md](vorschlaege/Karten-VTT-Vergleich.md) | Was andere VTTs an der Karte können und was wir übernehmen (T-203) | Vorschlag | Hand |
 | [vorschlaege/Regel-Builder.md](vorschlaege/Regel-Builder.md) | Versuch: Regeln als Knoten (Auslöser → Bedingung → Folge), hinter einem Schalter (T-270, E-102) | Versuch, Bericht | Hand |
 | [vorschlaege/Verknuepfte-Ansichten.md](vorschlaege/Verknuepfte-Ansichten.md) | Verknüpfte Artikel in Ansichten (Collection), Schichten, Werkzeugleiste als Muster, Design-Tokens, Erfassungsmasken: Bestand, Entscheide E-168–E-172, was sich am Bestand ändert, Schnitte (T-425) | Vorschlag, Bestand | Hand |
 | [vorschlaege/Regeln-Uebersicht.md](vorschlaege/Regeln-Uebersicht.md) | Alle Regeln in Gruppen: was Einstellung oder Rechenwerk bleibt, was Graph wird, welche Bausteine fehlen (T-270, E-102) | Vorschlag | Hand |
+| [vorschlaege/Abgleich-2026-10-28.md](vorschlaege/Abgleich-2026-10-28.md) | Abgleich vom 28./29.10.: altes Brett ins neue nachgezogen, jede offene Aufgabe, jeder offene Entscheid und jeder Chat eingeordnet (erledigt, überholt, zusammenlegen, bleibt), mit Belegen und dem Stand der Umsetzung (T-434) | Vorschlag, Bestand | Hand, Tabellen aus dem Brett |
 | [Regelsysteme.md](Regelsysteme.md) | Regelsysteme als Behälter (T-132) | Entscheidungsvorlage, E-044 | Hand |
 | [Regelwirkung.md](Regelwirkung.md) | Wirken die Regeln am Tisch? Grundlinie für die Prüfung nach jedem Release (T-322, T-275) | gilt | Hand |
 | [Spieltisch.md](Spieltisch.md) | Wie der Spieltisch im Prototyp entstand | Herkunft (Prototyp, eingefroren D59) | Hand |

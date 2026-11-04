@@ -38,6 +38,11 @@ test('the GM prefers a version in the campaign list, and puts a layer first for 
      Kampagne, und beide schrieben dieselbe Kante — gesetzt wird nur am
      Desktop, das Telefon sieht die Auswahl. */
   /* Dieselbe Liste steht auch im Popup der Kopfleiste — gemeint ist die sichtbare. */
+  /* Ob „Order in play" offen steht, merkt sich das Konto — und klappleiste.spec
+     klappt nebenher bei derselben Leitung alles zu. Also selbst aufklappen. */
+  const folge = leitung.locator('nw-kampagnen-ebenen details[data-bereich]', { hasText: 'Order in play' }).filter({ visible: true }).first();
+  if ((await folge.getAttribute('open')) === null) await folge.locator(':scope > summary').click();
+  await expect(folge).toHaveAttribute('open', '');
   const vorrang = leitung.getByLabel('First for some types').filter({ visible: true });
   await expect(vorrang.getByRole('button', { name: 'Put first' })).toBeVisible();
   if (info.project.name !== 'desktop') return;
