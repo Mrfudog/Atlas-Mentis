@@ -55,3 +55,19 @@ describe('Tokens im Dunkeln (T-219)', () => {
     expect(ids(floorView(r, null))).toEqual(['m-ich', 'm-nah']);
   });
 });
+
+describe('Licht der Zonen (T-219)', () => {
+  const finster = (x: number, y: number, w: number, h: number) => [{ shape: { id: 'z', kind: 'rect' as const, x, y, w, h }, light: 'dark' as const }];
+  it('in magischer Dunkelheit auf einer hellen Karte sieht man nur mit Dunkelsicht', () => {
+    const e = karte([ich, nah, fern], { lighting: 'bright' });
+    /* Der ferne Ghul steht in einer finsteren Zone, der nahe im Hellen. */
+    const zonen = () => finster(0.8, 0.8, 0.2, 0.2);
+    expect(ids(redactDark(e, { ...opts(0), zones: zonen }))).toEqual(['m-ich', 'm-nah']);
+    expect(ids(redactDark(e, { ...opts(200), zones: zonen }))).toEqual(['m-ich', 'm-nah', 'm-fern']);
+  });
+  it('ein erleuchteter Saal auf einer dunklen Karte zeigt, wer darin in Sichtlinie steht', () => {
+    const e = karte([ich, nah, fern]);
+    const saal = () => [{ shape: { id: 'z', kind: 'rect' as const, x: 0.7, y: 0.7, w: 0.3, h: 0.3 }, light: 'bright' as const }];
+    expect(ids(redactDark(e, { ...opts(0), zones: saal }))).toEqual(['m-ich', 'm-fern']);
+  });
+});

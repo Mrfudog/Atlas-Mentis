@@ -56,6 +56,8 @@ import {
   scaleFeet,
   revealArea,
   revealShapes,
+  inShape,
+  type RevealShape,
   type MapSettings,
   type Size,
 } from './map.js';
@@ -508,6 +510,13 @@ export interface RedactDarkOptions {
   carried: () => Readonly<Record<EntityId, FeetLight>>;
   /** Was immer bleibt (die Figuren der Gruppe), wie in `redactMap`. */
   keep?: (id: EntityId) => boolean;
+  /**
+   * **Das Licht der Zonen** auf einer Ebene (`zoneLightShapes`): wo eine
+   * Zonenart Licht sagt, gilt es dort statt der Karte (`lightAt`) —
+   * magische Dunkelheit auf einer hellen Karte, ein erleuchteter Saal in
+   * einer dunklen. Die zuletzt gezeichnete liegt oben.
+   */
+  zones?: (view: Entity) => ReadonlyArray<{ shape: RevealShape; light: LightLevel }>;
 }
 
 /** Liegt der Punkt in einer gesehenen Fläche (samt ihrer Klammer)? */
@@ -517,16 +526,32 @@ function gesehen(seen: readonly SeenArea[], p: Pt): boolean {
 
 /** Eine Ebene (oder eine Karte ohne weitere) im Dunkeln sieben. */
 function dunkelSieben(map: Entity, o: RedactDarkOptions): Entity {
-  if (mapLighting(map) !== 'dark') return map;
+  const zonen = o.zones?.(map) ?? [];
+  const karte = mapLighting(map);
+  if (karte !== 'dark' && !zonen.some((z) => z.light === 'dark')) return map;
   const nat = o.nat(map);
   if (!nat || !(nat.w > 0) || !(nat.h > 0)) return map;
   const marker = markersOf(map);
   const augen = marker.filter((m) => !m.hidden && o.eyes(m.to) && (m.kind === 'play' || m.kind === 'party'));
   if (!augen.length) return map;
+  /* Wie hell es an einem Token ist: die oberste Zone, die es deckt, sonst die Karte (`lightAt`). */
+  const hell = (p: Pt): LightLevel => {
+    for (let i = zonen.length - 1; i >= 0; i--) if (inShape(zonen[i]!.shape, p)) return zonen[i]!.light;
+    return karte;
+  };
   const getragen = o.carried();
-  const seen = augen.flatMap((m) => figureView(map, m, nat, o.darkvision(m.to), getragen).seen);
+  /* Im Dunkeln: was Dunkelsicht und Lichter zeigen — gerechnet, als wäre die Ebene dunkel. */
+  const dunkel = karte === 'dark' ? map : setLighting(map, 'dark');
+  const imDunkeln = augen.flatMap((m) => figureView(dunkel, m, nat, o.darkvision(m.to), getragen).seen);
+  /* Im Hellen: was in der Sichtlinie liegt — nur nötig, wenn die Karte selbst dunkel ist. */
+  const ar = nat.h / nat.w;
+  const imHellen = karte === 'dark' ? augen.map((m) => ({ pts: sightPolygon(sperrenVon(map, nat), m, ar) })).filter((a) => a.pts.length > 2) : null;
+  const sieht = (p: Pt): boolean => {
+    if (hell(p) === 'dark') return gesehen(imDunkeln, p);
+    return !imHellen || gesehen(imHellen, p) || gesehen(imDunkeln, p);
+  };
   const weg = new Set(
-    marker.filter((m) => m.kind === 'play' && !o.eyes(m.to) && !o.keep?.(m.to) && !gesehen(seen, m)).map((m) => m.rel.id),
+    marker.filter((m) => m.kind === 'play' && !o.eyes(m.to) && !o.keep?.(m.to) && !sieht(m)).map((m) => m.rel.id),
   );
   if (!weg.size) return map;
   return { ...map, relations: (map.relations ?? []).filter((r) => !weg.has(r.id)) };
