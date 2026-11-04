@@ -236,6 +236,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Creature: {
     name: 'Creature',
+    icon: 'user',
     area: 'world',
     label: 'Creature',
     /**
@@ -373,6 +374,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Place: {
     name: 'Place',
+    icon: 'map-pin',
     area: 'world',
     label: 'Place',
     /* `Source`: ein Ort aus einem Buch nennt Quelle und Seite (T-175). */
@@ -424,6 +426,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Faction: {
     name: 'Faction',
+    icon: 'flag',
     area: 'world',
     label: 'Faction',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Secrets'],
@@ -432,6 +435,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Article: {
     name: 'Article',
+    icon: 'sticky-note',
     area: 'world',
     label: 'Article',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Todos', 'Lore', 'Secrets'],
@@ -443,6 +447,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** The reuse pool: the shared root of conditions, actions, features, feats … (D48). */
   Rule: {
     name: 'Rule',
+    icon: 'book',
     area: 'rules',
     label: 'Rule Element',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Vars'],
@@ -460,6 +465,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Feat: {
     name: 'Feat',
+    icon: 'star',
     area: 'rules',
     label: 'Feat',
     /* Ein Talent fragt selbst (+1 auf welches Attribut?, REQ-238) und
@@ -473,6 +479,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Skill: {
     name: 'Skill',
+    icon: 'target',
     area: 'rules',
     label: 'Skill',
     extends: ['Rule'],
@@ -482,6 +489,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** Eine Sprache (M6): war ein Wort in einer Aufzählungszeile. */
   Language: {
     name: 'Language',
+    icon: 'languages',
     area: 'rules',
     label: 'Language',
     extends: ['Rule'],
@@ -500,6 +508,7 @@ export const interfaces: Record<string, InterfaceDef> = {
      Figur zeigt über `hasClass`, `hasAncestry`, `hasBackground` darauf. */
   Class: {
     name: 'Class',
+    icon: 'graduation-cap',
     area: 'rules',
     label: 'Class',
     extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
@@ -530,6 +539,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Ancestry: {
     name: 'Ancestry',
+    icon: 'dna',
     area: 'rules',
     label: 'Ancestry',
     extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
@@ -545,6 +555,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Background: {
     name: 'Background',
+    icon: 'id-card',
     area: 'rules',
     label: 'Background',
     extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
@@ -578,6 +589,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** Ein Zustand, den man hat — und die Art, die `Vitals.conditions` verlangt (D48). */
   Condition: {
     name: 'Condition',
+    icon: 'heart',
     area: 'rules',
     label: 'Condition',
     /* Ein Zustand wirkt wie ein Gegenstand (T-275): gepackt deckelt das
@@ -683,6 +695,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Spell: {
     name: 'Spell',
+    icon: 'sparkles',
     area: 'rules',
     label: 'Spell',
     extends: ['Rule'],
@@ -710,6 +723,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** Falle oder Gefahr (M7). Auf der Karte über `marker`. */
   Hazard: {
     name: 'Hazard',
+    icon: 'target',
     area: 'world',
     label: 'Hazard',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Secrets'],
@@ -734,6 +748,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** Gottheit (M7); Anhänger über die Kante `worships`. */
   Deity: {
     name: 'Deity',
+    icon: 'star',
     area: 'world',
     label: 'Deity',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets'],
@@ -746,6 +761,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** An entity of its own (D4), referenced by creatures, never embedded. */
   Statblock: {
     name: 'Statblock',
+    icon: 'heart',
     area: 'rules',
     label: 'Statblock',
     /* M5: `Proficiencies` (von der Kreatur herüber), `Lore` und `Image`
@@ -796,6 +812,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Item: {
     name: 'Item',
+    icon: 'box',
     area: 'world',
     label: 'Item',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets', 'Facts', 'Effects'],
@@ -831,6 +848,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Weapon: {
     name: 'Weapon',
+    icon: 'sword',
     area: 'world',
     label: 'Weapon',
     extends: ['Item'],
@@ -842,6 +860,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Armor: {
     name: 'Armor',
+    icon: 'shield',
     area: 'world',
     label: 'Armor',
     extends: ['Item'],
@@ -865,6 +884,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Party: {
     name: 'Party',
+    icon: 'users',
     area: 'world',
     label: 'Party',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Notes'],
@@ -890,6 +910,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Inventory: {
     name: 'Inventory',
+    icon: 'backpack',
     area: 'rules',
     label: 'Inventory',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
@@ -927,6 +948,7 @@ export const interfaces: Record<string, InterfaceDef> = {
      (`World`, `Event`) steht unter `world`. */
   Story: {
     name: 'Story',
+    icon: 'book-open',
     area: 'story',
     label: 'Story',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
@@ -986,6 +1008,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Chapter: {
     name: 'Chapter',
+    icon: 'book-open',
     label: 'Chapter',
     extends: ['Identity', 'Prose', 'Description', 'Visibility', 'Tags', 'Source', 'Notes'],
     schema: merge(g.ChapterInfo),
@@ -1064,6 +1087,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   World: {
     name: 'World',
+    icon: 'globe',
     area: 'world',
     label: 'World',
     extends: ['Identity', 'Prose', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Notes'],
@@ -1072,6 +1096,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Campaign: {
     name: 'Campaign',
+    icon: 'compass',
     area: 'story',
     label: 'Campaign',
     extends: ['Story', 'VisibilityRules'],
@@ -1106,6 +1131,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Session: {
     name: 'Session',
+    icon: 'calendar',
     area: 'story',
     label: 'Session',
     extends: ['Story'],
@@ -1144,6 +1170,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Scene: {
     name: 'Scene',
+    icon: 'clapperboard',
     area: 'story',
     label: 'Scene / Encounter',
     extends: ['Story', 'Tactics', 'Difficulty'],
@@ -1177,6 +1204,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Quest: {
     name: 'Quest',
+    icon: 'scroll-text',
     area: 'story',
     label: 'Quest',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets'],
@@ -1210,6 +1238,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Information: {
     name: 'Information',
+    icon: 'lock',
     area: 'rules',
     label: 'Information',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Secrets', 'Facts'],
@@ -1232,6 +1261,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Knowledge: {
     name: 'Knowledge',
+    icon: 'brain',
     area: 'rules',
     label: 'Knowledge',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags'],
@@ -1248,6 +1278,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Asset: {
     name: 'Asset',
+    icon: 'image',
     label: 'Asset',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source'],
     schema: merge(g.AssetInfo),
@@ -1265,6 +1296,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Map: {
     name: 'Map',
+    icon: 'map',
     area: 'play',
     label: 'Map',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud', 'Played'],
@@ -1297,6 +1329,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Recipe: {
     name: 'Recipe',
+    icon: 'flask-conical',
     area: 'rules',
     label: 'Recipe',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Notes', 'Secrets', 'Lore'],
@@ -1323,6 +1356,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Trade: {
     name: 'Trade',
+    icon: 'hammer',
     area: 'rules',
     label: 'Trade',
     extends: ['Rule'],
@@ -1352,6 +1386,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Collection: {
     name: 'Collection',
+    icon: 'tags',
     area: 'rules',
     label: 'Collection',
     extends: ['Rule'],
@@ -1408,6 +1443,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Note: {
     name: 'Note',
+    icon: 'sticky-note',
     area: 'play',
     label: 'Note',
     extends: ['Identity', 'Description', 'Status', 'Visibility', 'Tags'],
@@ -1417,6 +1453,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   GlossaryTerm: {
     name: 'GlossaryTerm',
+    icon: 'book',
     area: 'rules',
     label: 'Glossary term',
     extends: ['Rule'],
@@ -1458,6 +1495,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Board: {
     name: 'Board',
+    icon: 'layout-grid',
     area: 'play',
     label: 'Board',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
@@ -1483,6 +1521,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Encounter: {
     name: 'Encounter',
+    icon: 'swords',
     area: 'play',
     label: 'Encounter',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets', 'Difficulty', 'Played'],
@@ -1546,6 +1585,7 @@ export const interfaces: Record<string, InterfaceDef> = {
      `story` ist nur, was die Kampagne betrifft. */
   Event: {
     name: 'Event',
+    icon: 'calendar',
     area: 'world',
     label: 'Event',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Time', 'Lore', 'Secrets', 'ReadAloud'],
@@ -1560,6 +1600,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Table: {
     name: 'Table',
+    icon: 'layout-grid',
     area: 'rules',
     label: 'Table',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Notes', 'Secrets'],
@@ -1586,6 +1627,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Layer: {
     name: 'Layer',
+    icon: 'layers',
     label: 'Layer',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.LayerInfo),

@@ -108,3 +108,4 @@ export * from './timefilter.js';
 export * from './relationfilter.js';
 export * from './layermove.js';
 export * from './kopie.js';
+export * from './icons.js';
