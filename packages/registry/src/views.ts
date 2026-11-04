@@ -206,6 +206,146 @@ export const views: Record<string, ViewDef> = {
   },
 
   /**
+   * **Die Erfassungsansicht „Roleplay“** (T-462, REQ-461): eine Kreatur, wie
+   * man sie spielt — nach dem Universal Roleplaying Template von The
+   * Alexandrian: Erscheinung, zwei bis drei Rollenspielhinweise,
+   * Hintergrund, Schlüsselinformationen; dazu Agenda, Geheimnisse und die
+   * Beziehungen (Kante `regards`). Eine Maske der Gruppe `createFull` mit
+   * Geltung `Creature`: wählbar beim Anlegen und im Bearbeiten
+   * (`createForms`), Vorgabe in World und Story (`defaultIn`). Dieselben
+   * Felder wie „Fight“, anders geordnet — gespeichert wird nichts doppelt.
+   */
+  roleplay: {
+    label: 'Roleplay',
+    order: 8,
+    group: 'createFull',
+    applies: { types: ['Creature'] },
+    defaultIn: ['world', 'story', 'Story', 'Arc', 'Scene', 'Session', 'Place'],
+    fields: 'none',
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: true,
+    layout: [
+      {
+        id: 'rp-who',
+        el: 'section',
+        text: 'Who they are',
+        children: [
+          { id: 'rp-img', el: 'image' },
+          { id: 'rp-desc', el: 'description' },
+          { id: 'rp-f', el: 'fields', fields: ['Creature.kind', 'Creature.role', 'Creature.species', 'Creature.attitude'] },
+        ],
+      },
+      {
+        id: 'rp-play',
+        el: 'section',
+        text: 'At the table',
+        children: [
+          { id: 'rp-p', el: 'prose', fields: ['Creature.appearance', 'Creature.personality', 'Creature.background', 'Creature.keyInfo'] },
+          { id: 'rp-agenda', el: 'fields', fields: ['Creature.agenda'] },
+          { id: 'rp-secrets', el: 'prose', fields: ['Secrets.secret'] },
+        ],
+      },
+      {
+        id: 'rp-ties',
+        el: 'section',
+        text: 'Relationships',
+        children: [
+          { id: 'rp-stand', el: 'standing' },
+          { id: 'rp-r', el: 'relations' },
+        ],
+      },
+    ],
+  },
+
+  /**
+   * **Die Erfassungsansicht „Fight“** (T-462, REQ-461): der Statblock im
+   * Mittelpunkt — an der Kreatur der ihres Statblocks (Element `linked`),
+   * am Statblock selbst wie im Buch —, dazu, was der Kampf braucht: Grösse
+   * und Token, der Stand der Trefferpunkte, die Taktik, die Beute (das
+   * Inventar) und die Begegnungen, in denen sie steht. Gilt für `Creature`
+   * **und** `Statblock`: ein Statblock ohne Kreatur wird so angelegt.
+   * Vorgabe in Play und Rules und von einer Begegnung oder Karte aus.
+   */
+  fight: {
+    label: 'Fight',
+    order: 9,
+    group: 'createFull',
+    applies: { types: ['Creature', 'Statblock'] },
+    defaultIn: ['play', 'rules', 'Encounter', 'Map', 'Statblock'],
+    fields: 'none',
+    description: false,
+    composed: true,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      {
+        id: 'fi-sb',
+        el: 'section',
+        text: 'Statblock',
+        children: [
+          /* An der Kreatur: die Felder ihres Statblocks, mit seinen Eingaben (T-272). */
+          { id: 'fi-linked', el: 'linked', except: ['Inventory'] },
+          /* Am Statblock: wie im Monster Manual (W2). */
+          { id: 'fi-book', el: 'statblock' },
+          {
+            id: 'fi-core',
+            el: 'fields',
+            fields: [
+              'Statblock.size',
+              'Statblock.ac',
+              'Statblock.hp',
+              'Statblock.hpFormula',
+              'Statblock.speed',
+              'Statblock.cr',
+              'Statblock.prof',
+              'Abilities',
+              'Statblock.senses',
+              'Statblock.resistances',
+              'Statblock.vulnerabilities',
+              'Statblock.immunities',
+              'Statblock.conditionImmunities',
+              'Statblock.legendaryActions',
+              'Statblock.legendaryActionsLair',
+              'Statblock.bonuses',
+              'Proficiencies',
+            ],
+          },
+          /* Angriffe, Aktionen, Legendary und Lair aus `composedOf`. */
+          { id: 'fi-actions', el: 'composed' },
+        ],
+      },
+      {
+        id: 'fi-table',
+        el: 'section',
+        text: 'At the table',
+        children: [
+          { id: 'fi-token', el: 'token' },
+          {
+            id: 'fi-state',
+            el: 'fields',
+            fields: ['Statblock.token', 'Statblock.combatRole', 'Vitals.hp', 'Vitals.hpTemp', 'Vitals.hitDiceLeft', 'Vitals.conditions', 'Vitals.hidden', 'Creature.kind', 'Creature.role'],
+          },
+          { id: 'fi-tactics', el: 'prose', fields: ['Tactics.tactics'] },
+        ],
+      },
+      { id: 'fi-loot', el: 'section', text: 'Loot', children: [{ id: 'fi-inv', el: 'inventory' }] },
+      {
+        id: 'fi-fights',
+        el: 'section',
+        text: 'Fights and maps',
+        children: [
+          { id: 'fi-enc', el: 'collection', text: 'In these fights', path: [{ relation: 'participates', dir: 'in' }], types: ['Encounter'], show: 'list', sort: { by: 'name' } },
+          { id: 'fi-r', el: 'relations' },
+        ],
+      },
+    ],
+  },
+
+  /**
    * **Ein Handzettel** (T-110 Schritt 7) — die erste eigene Ansicht: was man
    * den Spielenden über einen Ort, eine Szene, eine Figur in die Hand gibt.
    * Beschreibung, Absatz und Vorlesetext, keine Werte und keine Geheimnisse.
