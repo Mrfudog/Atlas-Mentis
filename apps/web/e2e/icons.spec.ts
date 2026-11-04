@@ -36,9 +36,12 @@ test('a type icon shows in the list, the quick view and the title; an article pi
       const zeile = leitung.locator('tr', { has: leitung.getByRole('link', { name, exact: true }) }).first();
       await expect(zeile.locator('nw-icon[data-icon="star"]')).toBeVisible();
 
-      /* Die Kurzansicht: dasselbe Icon in der Überschrift. */
-      await zeile.getByRole('button', { name: `Quick view of ${name}` }).click();
-      const karte = leitung.locator('nw-kurzpopup nw-vorschau, nw-vorschau').first();
+      /* Die Kurzansicht: dasselbe Icon in der Überschrift. Am Telefon
+         öffnet sie der Knopf der Zeile, am Desktop die Zeile selbst (T-093). */
+      const info = zeile.getByRole('button', { name: `Quick view of ${name}` });
+      if (await info.isVisible()) await info.click();
+      else await zeile.click();
+      const karte = leitung.locator('nw-vorschau').first();
       await expect(karte.locator('h2 nw-icon[data-icon="star"]')).toBeVisible();
 
       /* Der Kopf der Artikelseite. */
