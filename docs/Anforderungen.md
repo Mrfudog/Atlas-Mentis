@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-29. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-11-04. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -487,7 +487,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-085 | Begegnungen | 2 | **steht** | `Encounter`, `participates`, `onMap`, `loot`, `tableFor` |
+| REQ-085 | Begegnungen | 2 | **steht** | `Encounter`, `participates`, `onMap`, `loot`, `tableFor`; die Leitung liest ihre Begegnung ungesiebt — Lösung, Hinweise, Taktik, alle Teilnehmer (T-447, T-455, D97) |
 | REQ-172 | Begegnungstabellen je Gebiet | 3 | **steht** | `entry.weight`, `requiresTag`, `tableFor` |
 | REQ-173 | Weltzustand zwischen Sitzungen | 4 | **offen** |  |
 | REQ-221 | Begegnungen bauen | 3 | **offen** |  |
