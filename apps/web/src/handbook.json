@@ -218,6 +218,17 @@
           ]
         },
         {
+          "heading": "Creating a creature: Roleplay or Fight",
+          "text": [
+            "New article, type Creature: the dialog shows Form with Roleplay and Fight. In World and Story Roleplay is preselected, in Play and Rules Fight; change it if you like, then Create.",
+            "Roleplay opens the new creature with what you need to play them, in this order: Appearance (one or two things the players notice first), Roleplaying (two or three cues — a mannerism, how they speak, what they want), Background, Key info (what the party can learn from or through them, one entry per piece), Agenda, Secrets. Relationships are “regards” relations under Relations. The order follows the Universal Roleplaying Template by The Alexandrian; the help texts are our own words.",
+            "Fight opens with the fight first: at a statblock size, AC, hit points, speed, challenge, the six abilities, senses, resistances, immunities, legendary actions and the token, then combat role and tactics; at a creature the hit points now, hit dice, conditions, and a note that the numbers live on its statblock, with a link to edit it. A creature without a statblock is told so — save, then add one on the sheet.",
+            "Focus any field to see its help below the title; it goes away when you leave the field.",
+            "Switch between Roleplay, Fight and All fields at any time above the fields: both forms write the same fields, nothing is stored twice, and what already has a value stays visible. Save writes everything you entered, whichever form is open.",
+            "Editing later: Edit offers the same Form row with All fields chosen; pick Roleplay to bring its fields forward, even empty ones. The forms are views in Registry › Views (group Create (full), applying to Creature or to Creature and Statblock): change their fields or add a third there."
+          ]
+        },
+        {
           "heading": "Sorting what waits in Unassigned",
           "text": [
             "Every article has a layer. What has no other one waits in the layer Unassigned — for example an image uploaded without an article, or something the administration took out of every layer.",

@@ -1,7 +1,9 @@
 {
   "pages": [
     {
-      "routes": ["play"],
+      "routes": [
+        "play"
+      ],
       "title": "Play — the table map",
       "sections": [
         {
@@ -159,7 +161,9 @@
       ]
     },
     {
-      "routes": ["maps"],
+      "routes": [
+        "maps"
+      ],
       "title": "Maps",
       "sections": [
         {
@@ -172,7 +176,9 @@
       ]
     },
     {
-      "routes": ["images"],
+      "routes": [
+        "images"
+      ],
       "title": "Images",
       "sections": [
         {
@@ -187,7 +193,10 @@
       ]
     },
     {
-      "routes": ["characters/new", "characters/:id/edit"],
+      "routes": [
+        "characters/new",
+        "characters/:id/edit"
+      ],
       "title": "Character assistant",
       "sections": [
         {
@@ -205,7 +214,9 @@
       ]
     },
     {
-      "routes": ["artikel/:id"],
+      "routes": [
+        "artikel/:id"
+      ],
       "title": "Article",
       "sections": [
         {
@@ -226,7 +237,8 @@
             "The token of a statblock — on a creature, of its statblock — stands as it does on the map. “Adjust token” drags and zooms the image in its circle, picks its border, or marks it as a ready-made round token that is shown as it is; frame and border are saved on the image, so every statblock with that token looks the same. “Change image” sets another image as the token of the statblock.",
             "GMs see a Knowledge box at the side: which pieces of information exist about this article — on it, for it, or for a whole group — the fields each covers and the knowledge it belongs to. “+ Information” picks fields by group and ticks or names a knowledge; who knows it is set on the knowledge.",
             "A knowledge’s page writes out everything it brings together: each information with the articles it is about and exactly the fields it covers — read as you may read them. Players find what their character knows in one place.",
-            "Delete removes the article if it lies in your write layer and you may write it; otherwise the message names the layer to switch to. Undo right after the deletion brings it back with its links; for 30 days it can also be restored from Deleted."
+            "Delete removes the article if it lies in your write layer and you may write it; otherwise the message names the layer to switch to. Undo right after the deletion brings it back with its links; for 30 days it can also be restored from Deleted.",
+            "A creature or statblock offers forms while you edit — Form: Roleplay, Fight or All fields. Roleplay asks what you need to play them (appearance, roleplaying cues, background, key info; after The Alexandrian’s Universal Roleplaying Template), Fight puts the statblock and the fight first. Both write the same fields: switching loses nothing. Focus a field to see its help."
           ]
         },
         {
@@ -342,7 +354,9 @@
       ]
     },
     {
-      "routes": ["artikel/:id/print"],
+      "routes": [
+        "artikel/:id/print"
+      ],
       "title": "Print",
       "sections": [
         {
@@ -353,7 +367,9 @@
       ]
     },
     {
-      "routes": ["artikel/:id/compare/:other"],
+      "routes": [
+        "artikel/:id/compare/:other"
+      ],
       "title": "Compare versions",
       "sections": [
         {
@@ -364,7 +380,12 @@
       ]
     },
     {
-      "routes": ["compendium", "world", "story", "rules"],
+      "routes": [
+        "compendium",
+        "world",
+        "story",
+        "rules"
+      ],
       "title": "Lists of articles",
       "sections": [
         {
@@ -384,7 +405,10 @@
       ]
     },
     {
-      "routes": ["boards", "boards/:id"],
+      "routes": [
+        "boards",
+        "boards/:id"
+      ],
       "title": "Boards",
       "sections": [
         {
@@ -441,7 +465,11 @@
       ]
     },
     {
-      "routes": ["classes", "ancestries", "backgrounds"],
+      "routes": [
+        "classes",
+        "ancestries",
+        "backgrounds"
+      ],
       "title": "Classes, ancestries and backgrounds",
       "sections": [
         {
@@ -452,7 +480,9 @@
       ]
     },
     {
-      "routes": ["werkbank"],
+      "routes": [
+        "werkbank"
+      ],
       "title": "Workbench",
       "sections": [
         {
@@ -464,7 +494,9 @@
       ]
     },
     {
-      "routes": ["registry"],
+      "routes": [
+        "registry"
+      ],
       "title": "Registry",
       "sections": [
         {
@@ -504,7 +536,9 @@
       ]
     },
     {
-      "routes": ["campaign"],
+      "routes": [
+        "campaign"
+      ],
       "title": "Campaign",
       "sections": [
         {
@@ -533,7 +567,9 @@
       ]
     },
     {
-      "routes": ["account"],
+      "routes": [
+        "account"
+      ],
       "title": "Account",
       "sections": [
         {
@@ -544,7 +580,9 @@
       ]
     },
     {
-      "routes": ["trash"],
+      "routes": [
+        "trash"
+      ],
       "title": "Deleted — the trash",
       "sections": [
         {
@@ -560,7 +598,9 @@
       ]
     },
     {
-      "routes": ["whats-new"],
+      "routes": [
+        "whats-new"
+      ],
       "title": "What's new",
       "sections": [
         {
@@ -571,7 +611,9 @@
       ]
     },
     {
-      "routes": ["handbook"],
+      "routes": [
+        "handbook"
+      ],
       "title": "Handbook",
       "sections": [
         {
@@ -590,7 +632,9 @@
       ]
     },
     {
-      "routes": ["lab/rules"],
+      "routes": [
+        "lab/rules"
+      ],
       "title": "Rule builder (experiment)",
       "sections": [
         {
@@ -627,7 +671,9 @@
       ]
     },
     {
-      "routes": ["inventory/shapes"],
+      "routes": [
+        "inventory/shapes"
+      ],
       "title": "Item shapes",
       "sections": [
         {

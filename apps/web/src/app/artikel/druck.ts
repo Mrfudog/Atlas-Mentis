@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { entityName, isContribution, primaryInterface, viewKeys, viewsFor } from '@nw/model';
+import { entityName, isContribution, primaryInterface, viewKeys, createPlaceOf, viewsFor } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Blatt } from './blatt';
 
@@ -151,7 +151,8 @@ export class Druck {
     const r = this.bestand.registry();
     const e = this.artikel();
     /* Was für diesen Artikel gilt, genaueste zuerst (T-310) — auch gestaltete. */
-    return r && e ? viewsFor(e, r).map((v) => v.key) : r ? viewKeys(r).filter((k) => !isContribution(r.views[k])) : [];
+    /* Erfassungsmasken (T-462) sagen, was man beim Anlegen fragt — gedruckt wird eine Leseansicht. */
+    return r && e ? viewsFor(e, r).map((v) => v.key).filter((k) => !createPlaceOf(r, k)) : r ? viewKeys(r).filter((k) => !isContribution(r.views[k]) && !createPlaceOf(r, k)) : [];
   });
   protected readonly ansicht = computed(() => {
     const v = this.view();

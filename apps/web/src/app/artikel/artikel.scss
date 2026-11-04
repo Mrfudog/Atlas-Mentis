@@ -599,3 +599,26 @@ nw-klappleiste.nur-breit {
 /* Hinweis freigeben (T-215). */
 .hinweis-freigabe { margin: 0.25rem 0 0; font-size: 0.9em; }
 .hinweis-freigabe .frei { color: var(--good); }
+
+/* Die Wahl der Erfassungsmaske (T-462) sieht aus wie die Schritte eines Ablaufs;
+   der Hilfetext eines Feldes steht da, sobald es den Fokus hat. */
+.masken {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.8rem;
+}
+.masken [aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.hilfe {
+  display: none;
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+label:focus-within > .hilfe,
+.blockmaske:focus-within > .hilfe {
+  display: block;
+}
