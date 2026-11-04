@@ -114,6 +114,36 @@ flowchart LR
   T --> W["createMissingRequired<br/>Warnung im Designer"]
 ```
 
+## Erfassungsansichten „Roleplay“ und „Fight“ (T-462, REQ-461, 5.11.2026)
+
+Eine Kreatur wird als Figur angelegt, die man spielt, oder als Gegner, den
+man bekämpft — dieselben Felder, andere Reihenfolge. Darum sind
+`roleplay` und `fight` Ansichten der Gruppe `createFull` mit Geltung
+(`Creature`; `fight` auch `Statblock`), und wo mehrere gelten, wird
+gewählt: im Dialog „New article“ (vorgewählt nach `defaultIn` — Bereich
+oder Art, von der aus angelegt wird) und über der Maske (`?form=`).
+`roleplay` folgt dem Universal Roleplaying Template von The Alexandrian
+(Appearance, Roleplaying, Background, Key info, Agenda, Secrets,
+Relationships), je Feld ein eigener Hilfetext (`description`), der beim
+Fokus erscheint; neu sind `Creature.background`, `keyInfo`, `agenda`,
+`personality` heisst „Roleplaying“. `fight` stellt den Statblock in die
+Mitte (an der Kreatur `linked`, am Statblock wie im Buch), dazu Grösse und
+Token, den Stand, Taktik, Beute und die Begegnungen. Eine Maske fragt
+jetzt auch Prosafelder; der Wechsel verliert nichts. Migration 167; E2E
+`kreatur-ansichten.spec.ts`; Hilfe, Handbuch („Creating a creature:
+Roleplay or Fight“), Glossar.
+
+```mermaid
+flowchart LR
+  V["view_def roleplay · fight<br/>group createFull · applies · defaultIn"] --> F["createForms(Art)<br/>welche gelten"]
+  F --> D["Dialog New article<br/>Form, vorgewählt createFormFor(Bereich)"]
+  D --> U["?edit=create&form=roleplay"]
+  U --> A["Artikelseite im Bearbeiten<br/>createLayout: fields + prose"]
+  A --> W["Form-Leiste: Roleplay · Fight · All fields<br/>maskeAnwenden — Entwurf bleibt"]
+  A --> H["Hilfetext am Feld<br/>description, beim Fokus"]
+  S["Statblock-Hinweis<br/>Zahlen am Statblock, Link ?form=fight"] --- A
+```
+
 ## Design-Tokens (T-425, REQ-437, 26.10.2026)
 
 Farben sind Registerzeilen mit Rolle und Wert hell/dunkel (E-170 a). Ein

@@ -384,6 +384,16 @@ wiederkommen, werden sie neu geschrieben.
   der Maske vorn, auch leer; ohne Gestaltung einer Art gilt das Heutige
   (`createLayout`), Pflichtfelder fragt der Dialog immer, der Designer
   warnt (`createMissingRequired`). Die Leiste „Views“ bietet sie nicht an.
+  **Mehrere Masken je Art** (T-462, REQ-461): eine Ansicht in der Gruppe
+  `createFull` mit Geltung ist eine Maske zur Wahl (`createForms`) —
+  `roleplay` (nach dem Universal Roleplaying Template von The Alexandrian)
+  und `fight` an der Kreatur, `fight` auch am Statblock; vorgewählt nach
+  `ViewDef.defaultIn` (Bereich oder Art, von der aus angelegt wird,
+  `createFormFor`), gewählt im Dialog „New article“ und über der Maske
+  (`?form=`). Eine Maske fragt auch Prosafelder (Element `prose`: leere
+  Abschnitte stehen da), der Hilfetext am Feld (`description`) erscheint
+  beim Fokus, und der Wechsel verliert nichts — dieselben Felder, anders
+  geordnet; Druck und Kachel bieten Masken nicht an (`createPlaceOf`).
   **Ein Ablauf ist eine Maske mit `steps`** (REQ-440, E-176,
   `packages/model/src/steps.ts`): jedes Kind eine Seite mit Zurück und
   Weiter; wo man steht, liest `currentStep` aus dem Befüllten, gespeichert

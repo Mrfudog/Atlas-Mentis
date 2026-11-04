@@ -678,6 +678,17 @@ schneller machen soll und nicht strenger, fragt der Dialog die
 Pflichtfelder trotzdem: eine Maske, die eines vergisst, verhindert sonst
 das Anlegen — der Designer sagt es stattdessen.
 
+**Eine Art darf mehrere Masken haben** (T-462, REQ-461). Eine Kreatur
+wird einmal als Figur angelegt, die man spielt, und einmal als Gegner,
+den man bekämpft — dieselben Felder, eine andere Reihenfolge. Also sind
+„Roleplay“ und „Fight“ Ansichten in der Gruppe `createFull` mit Geltung
+(`Creature` bzw. `Creature` und `Statblock`), und wo mehrere gelten, wird
+gewählt: im Dialog „New article“ und über der Maske. Wo nichts gewählt
+ist, sagt der Kontext die Vorgabe (`defaultIn`: der Bereich der Seite
+oder die Art, von der aus angelegt wird). Nichts wird doppelt gespeichert,
+darum verliert der Wechsel nichts; und der Hilfetext steht am Feld
+(`description`), nicht in der Maske — er gilt überall, wo das Feld steht.
+
 **Ein Ablauf ist eine Maske mit Seiten** (T-425, REQ-440, E-176). Der
 Charakter-Assistent war eine eigene Seite mit eigenem Code; ein zweiter
 Ablauf hätte eine zweite gebraucht. Jetzt ist ein Ablauf das Element
