@@ -142,6 +142,7 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 | `titles` | `Typ.feld` → eigene Beschriftung eines geerbten Feldes (`Time.until` → „Deadline" am Auftrag) — geerbt |
 | `targets` | `Typ.feld` → eigenes Ziel eines geerbten Feldes (`Image.image` an der Karte: Kartenbilder, T-119); ersetzt `target` des Feldes ganz — geerbt (`fieldTarget`) |
 | `views` | je Ansicht eine eigene Anordnung (Liste) oder eine Anpassung der geerbten (`{ adjust }`, T-110) — geerbt über `layoutFor` |
+| `icon` | das Icon der Art (T-461, REQ-460): ein Name aus dem Katalog (`icons.ts`, `map-pin`, `sword`), vor dem Namen ihrer Artikel in Liste, Kurzansicht, Kopf, Kanten und Kacheln — geerbt (`typeIcon`); ein Artikel überschreibt es mit `Identity.icon` (`iconOf`) |
 
 ### 3.3 Vererbung
 
@@ -152,8 +153,8 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 - die **Kanten**, deren `from` oder `to` einen Typ der Kette nennt — eine
   Spielerfigur *ist* eine Kreatur,
 - die **Zieltypen** von Verweisfeldern (`target.interfaces`) ebenso,
-- `area`, `units`, `titles`, `targets`, `views`: der nächste Typ in der
-  Kette, der etwas sagt, gewinnt.
+- `area`, `units`, `titles`, `targets`, `views`, `icon`: der nächste Typ in
+  der Kette, der etwas sagt, gewinnt.
 
 Ein geerbtes Feld wird nicht einzeln ausgeblendet; wer es nicht will, nimmt
 den Typ nicht. Umbenannt wird es über `titles`.
@@ -213,6 +214,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `prominent` | steht beim Bearbeiten auch leer da (`Description.description`, `Status.status`, T-195) |
 | `description` | ein Satz, was das Feld meint — gezeigt in „+ Add field“ (T-195) |
 | `glossary` | der Glossarbegriff, der das Feld erklärt (Name, `Statblock.hp` → „Hit points“): der Feldname ist gepunktet und trägt seine Definition (T-347) |
+| `icon` | das Icon des Feldes (T-461): ein Name aus dem Katalog, vor der Beschriftung, wo das Feld steht — am Feld und nur dort, ein Icon je Art für dasselbe Feld wäre eine zweite Feldliste |
 | `suggest` | ein freies Wort schlägt vor, was sichtbare Artikel darin tragen (`Creature.kind`) |
 | `readOnly` | ausgegeben, nicht eingetippt (`Identity.id`) |
 | `editOnly` | nur in der Maske, nie beim Lesen: ein Schlüssel zum Ordnen (`Time.sort`, T-126) |
@@ -230,6 +232,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `string` + `suggest` | freies Wort mit Vorschlägen | `"npc"` | Text mit Liste |
 | `string` `date` | Weltdatum als Text; `Time.sort` daneben zum Ordnen (`editOnly`: nur in der Maske) | `"Mirtul 12, 1492 DR"` | Text |
 | `string` `color` | Farbe | `"#8a4b2a"` | Farbwähler |
+| `string` `icon` | ein Icon aus dem Katalog (`Identity.icon`, T-461) | `"map-pin"` | Icon-Wähler: Suche nach Name und Tag, „None“ nimmt die Wahl zurück |
 | `string` `link` + `target` | ein Artikel eines Zieltyps | Artikel-Id | Suche nach Name und Alias, nur im Zieltyp; `target.tags` zuerst; gelesen als Name mit Link |
 | `array` + `link` + `target` | mehrere Artikel eines Zieltyps; jeder Eintrag wird geprüft (`link_wrong_type`) | `[id, …]` | Chips mit × und Suche, nur im Zieltyp; gelesen als Namen mit Link (T-068) |
 | `string` `asset` | ein `Asset`-Artikel oder eine `https`-Adresse (12.1) | Artikel-Id | Bild: hochladen, ziehen, einfügen, Kamera, vorhandenes wählen, Adresse; gezeigt als Bild |
@@ -2770,7 +2773,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-29: 66 Artikelarten, 28 Grundtypen, 76 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-11-04: 66 Artikelarten, 28 Grundtypen, 76 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2783,7 +2786,7 @@ Stand 2026-10-29: 66 Artikelarten, 28 Grundtypen, 76 Kantenarten, 9 Aufzählungs
 | `Difficulty` | `difficulty` | `Scene` `Encounter` |
 | `Effects` | `effects` | 5 |
 | `Facts` | `fact` | 4 |
-| `Identity` | `name` `id` `aliases` `cover` | 27 |
+| `Identity` | `name` `id` `aliases` `cover` `icon` | 27 |
 | `Image` | `image` `caption` `alt` | 17 |
 | `ItemFeature` (rules) | `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `mechanics` | `ItemProperty` `Enhancement` |
 | `Lore` | `lore` | 18 |

@@ -183,8 +183,34 @@ flowchart LR
   S --> W["Werkbank: View conflicts"]
 ```
 
+## Icons (T-461, REQ-460, 5.11.2026)
+
+Ein **Icon** ist ein Name aus einem Katalog (`packages/model/src/icons.ts`,
+36 Lucide-Icons als Platzhaltersatz, ISC). Die Art trägt eines
+(`InterfaceDef.icon`, die `extends`-Kette hoch geerbt, Migration 167),
+ein Feld seines (`PropertySchema.icon`), ein Artikel darf ein anderes
+wählen (`Identity.icon`, `format: 'icon'`). Gezeichnet wird überall
+dieselbe Komponente `nw-icon` (Inline-SVG in Schriftfarbe; neben einem
+Namen Zierde, allein ein Bild mit Beschriftung); der Wähler `nw-icon-wahl`
+sucht nach Name und Tag. Gewählt wird gerechnet, nie gespeichert — nur
+die Namen stehen in Register und Artikel. Entscheid E-210 (a, erweitert):
+Lucide für die Oberfläche, game-icons.net und eigene Symbole als Module
+einer Asset-Sammlung (REQ-462, Schnitt 2).
+
+```mermaid
+flowchart LR
+  A["Artikel: Identity.icon"] -->|gesetzt| I["iconOf"]
+  T["Art: InterfaceDef.icon"] -->|sonst, extends-Kette hoch| I
+  I --> K["Katalog: ICONS (Id, Pfad, Tags, Quelle)"]
+  K -->|bekannt| N["nw-icon: SVG, aria"]
+  K -->|unbekannt| L["nichts"]
+  N --> S["Liste · Kurzansicht · Kopf · Kanten · Kachel"]
+  W["nw-icon-wahl: Suche"] --> A
+  W --> T
+```
+
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-5 Stories · 24 Punkte · 2 steht · 2 offen · 1 ersetzt
+7 Stories · 29 Punkte · 3 steht · 3 offen · 1 ersetzt
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -193,4 +219,6 @@ flowchart LR
 | [[REQ-256]] Ansichten ohne Code definieren | Spielleitung | 1 | steht |
 | [[REQ-376]] Sammlungsansichten neben Artikelansichten | Spielleitung | 2 | offen |
 | [[REQ-383]] Ansicht je Artikeltyp teilen, mit Vorschau als Spieler | Spielleitung | 2 | offen |
+| [[REQ-460]] Icons für Arten, Felder und Artikel: ein Icon-Satz im Register, überall gleich gezeigt | Spielleitung | 1 | steht |
+| [[REQ-462]] Assets aus einer übergreifenden, modularen Sammlung beziehen (Icons, Symbole, Bilder, Token-Ränder) – nutzbar in Atlas und anderswo | Spielleitung | 2 | offen |
 <!-- stories:ende -->

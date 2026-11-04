@@ -215,6 +215,7 @@
             "On a wider screen the chapters are framed areas: the fields on the left, relations and what links here on the right, Admin and Log below, collapsed until you open them. The row above them jumps to each.",
             "Expand all and Collapse all open and close Admin and Log (and the groups inside, such as a layer’s contents by type); ‹ and › go from section to section (Alt+↑/↓, with Shift: collapse/expand all). Whether Admin and Log stand open is kept for your account.",
             "Fields that suggest (an encounter’s kind, a place type) offer their list and the values already in use as you type — pick one or type your own. A colour field opens a colour picker.",
+          "Identity › Icon (under “+ Add field” while editing) gives this article its own icon instead of its type’s; search the set by name or tag and pick one. None returns to the type’s icon.",
             "Edit starts with the Layer field: the layer this article belongs to. Choose another layer you write in (the same list as Writes to in the header, also layers this campaign does not turn on, marked “not in this campaign”) and Save moves it there; the page then says where it is now. Its links, versions and parts stay where they are. Only the administration can take an article out of every layer.",
             "Under the title stands only the layer of this version. Admin, on every kind of article, names all its layers and those of its other versions — click one to open that version — and why you see it: in play, from a compare layer, enabled as extra content, or in no layer.",
             "Admin also says who can see it, with the level that applies and where it comes from (set here, a campaign rule, the layer’s default), what is known about it, its versions and its source.",
@@ -476,7 +477,8 @@
             "Every article lies in a layer and has a state. One that fits no other layer waits in Unassigned — an ordinary layer you can switch on in a campaign; the workbench lists its articles under Unassigned.",
             "Two views are forms for creating: Create (what the quick dialog asks when you create from a picker) and Create (full) (the article page right after New article, with its fields first, even empty). Design them per type under Views; without a design, creating works as before.",
             "Put the element Steps in a create view to guide through pages with Back and Next. The element Character builder makes New article open the builder, as the player character does.",
-            "A field or an edge kind can be required always, or only for a state: “to be prepared” or “to be ready”. An idea may go without it, but the article can only be set to that state once it is filled; the workbench lists articles at a state that miss something under Ready with gaps. A character with an open choice stays an idea the same way."
+            "A field or an edge kind can be required always, or only for a state: “to be prepared” or “to be ready”. An idea may go without it, but the article can only be set to that state once it is filled; the workbench lists articles at a state that miss something under Ready with gaps. A character with an open choice stays an idea the same way.",
+          "Under This type, Icon picks the symbol shown before the name of its articles in lists, quick views, titles, edges and board cards; subtypes inherit it, and None falls back to the supertype’s. A field has its own Icon under its settings. The set is Lucide (ISC); the handbook names the licence."
           ]
         },
         {

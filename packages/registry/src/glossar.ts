@@ -81,6 +81,16 @@ const APP: AppTerm[] = [
     see: '/registry',
   },
   {
+    term: 'Icon',
+    aliases: ['Icon set', 'Icon picker'],
+    sort: 'app',
+    definition: 'A small symbol from the icon set, shown before a name: a type carries one in the registry (its subtypes inherit it), a field may carry one, and an article may choose its own under Identity › Icon.',
+    effect: 'The same icon appears wherever the article or type is named — lists, quick views, the title, edges and board cards — so a place, a creature or a quest is told apart at a glance. The icon picker searches the set by name and tag. Where no name stands beside it, the icon says what it shows for screen readers.',
+    example: 'Place carries map-pin; a harbour town chooses ship, and every list shows the ship before its name.',
+    translations: { de: 'Icon' },
+    see: '/registry',
+  },
+  {
     term: 'Steps',
     aliases: ['Guided flow', 'Step'],
     sort: 'app',

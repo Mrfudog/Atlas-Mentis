@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-29
+updated: 2026-11-04
 ---
 
 # Requirements by Epic
@@ -14,7 +14,7 @@ Sprung: [[#EP-01 Inhaltsgerüst]] · [[#EP-02 Zugang & Betrieb]] · [[#EP-03 Kre
 
 ## EP-01 Inhaltsgerüst
 
-56 Stories · 190 Punkte · 33 steht · 10 teils · 7 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
+58 Stories · 195 Punkte · 34 steht · 10 teils · 8 offen · 4 ersetzt · 2 verworfen — [[EP-01 Inhaltsgerüst]]
 
 ### F-001 Artikelmodell
 
@@ -99,9 +99,11 @@ Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohn
 |---|---|---|---|---|---|
 | [[REQ-026]] | Ansichten festlegen | Spielleitung | 1 | 3 | steht |
 | [[REQ-256]] | Ansichten ohne Code definieren | Spielleitung | 1 | 8 | steht |
+| [[REQ-460]] | Icons für Arten, Felder und Artikel: ein Icon-Satz im Register, überall gleich gezeigt | Spielleitung | 1 | 2 | steht |
 | [[REQ-164]] | Darstellungsstufen als eigenes System | – | 2 | 3 | ersetzt |
 | [[REQ-376]] | Sammlungsansichten neben Artikelansichten | Spielleitung | 2 | 5 | offen |
 | [[REQ-383]] | Ansicht je Artikeltyp teilen, mit Vorschau als Spieler | Spielleitung | 2 | 5 | offen |
+| [[REQ-462]] | Assets aus einer übergreifenden, modularen Sammlung beziehen (Icons, Symbole, Bilder, Token-Ränder) – nutzbar in Atlas und anderswo | Spielleitung | 2 | 3 | offen |
 
 ### F-007 Verweise & Platzhalter
 
