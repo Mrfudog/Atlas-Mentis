@@ -73,6 +73,7 @@ test('a statblock has only the Fight form, with the numbers first', async ({ lei
   await expect(formWahl(leitung)).toHaveCount(0);
   await leitung.getByRole('dialog').getByRole('button', { name: 'Create', exact: true }).click();
   await expect(leitung).toHaveURL(/form=fight/);
+  await expect(leitung.locator('.maske label[data-ref="Statblock.ac"]')).toBeVisible();
   const reihe = await leitung.locator('.maske label[data-ref]').evaluateAll((ls) => ls.map((l) => l.getAttribute('data-ref')));
   expect(reihe.filter((r) => r !== 'layer').slice(0, 3)).toEqual(['Statblock.size', 'Statblock.ac', 'Statblock.hp']);
   await expect(leitung.locator('.blockmaske[data-ref="Tactics.tactics"]')).toBeVisible();
