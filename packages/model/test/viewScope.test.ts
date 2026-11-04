@@ -85,9 +85,12 @@ describe('viewsFor (T-268)', () => {
   });
 
   it('designed: false lässt gestaltete Ansichten weg', () => {
+    /* Seit T-462 bringt das Register selbst gestaltete Ansichten (die
+       Masken „Roleplay“ und „Fight“) — ohne sie sind beide Listen gleich. */
     expect(viewsFor(durnan, mitShop, { incoming: rueck.get(durnan.id) ?? [], designed: false }).map((v) => v.key)).toEqual(
-      viewsFor(durnan, seedRegistry).map((v) => v.key),
+      viewsFor(durnan, seedRegistry, { designed: false }).map((v) => v.key),
     );
+    expect(viewsFor(durnan, seedRegistry).map((v) => v.key)).toEqual(expect.arrayContaining(['roleplay', 'fight']));
     expect(isDesignedView(shop)).toBe(true);
     expect(isDesignedView(seedRegistry.views['full'])).toBe(false);
   });

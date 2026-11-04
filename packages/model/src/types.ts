@@ -934,6 +934,15 @@ export interface ViewDef {
   /** **Wofür sie gilt**; ohne Angabe für jeden Artikel (global). */
   applies?: ViewApplies;
   /**
+   * **Wo diese Erfassungsmaske die Vorgabe ist** (T-462, REQ-461): eine
+   * Ansicht in der Gruppe `createFull` steht zur Wahl, sobald mehrere für
+   * eine Art gelten (`createForms`); welche vorgewählt ist, sagt der
+   * Kontext — der Bereich der Seite (`world`, `play` …) oder die Art des
+   * Artikels, von dem aus angelegt wird (`Encounter`). Ohne Angabe gilt
+   * die erste in der Reihenfolge des Registers.
+   */
+  defaultIn?: string[];
+  /**
    * **Ein Beitrag statt einer Ansicht** (T-425, E-168, REQ-434): legt sich
    * über die Ansicht seiner Gruppe, statt sie zu ersetzen — fügt Elemente
    * hinzu (auch mit Position `pos` und Bedingung `when`), nimmt weg,
