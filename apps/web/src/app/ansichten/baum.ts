@@ -15,6 +15,7 @@ import {
   forArticle,
   isContainer,
   pathIds,
+  stepRelations,
   primaryInterface,
   typeChain,
   isLayer,
@@ -679,7 +680,9 @@ export class Ansichtsbaum {
   /** Die Beschriftung einer Eigenschaft der letzten Kante des Pfads, sonst ihr Schlüssel. */
   protected propTitel(el: LayoutElement, p: string): string {
     const letzte = el.path?.[el.path.length - 1];
-    const titel = letzte ? this.reg()?.relations[letzte.relation]?.props?.properties?.[p]?.title : undefined;
+    const r = this.reg();
+    /* Mehrere Arten im Schritt (T-454): die erste, die die Eigenschaft kennt, beschriftet sie. */
+    const titel = letzte && r ? stepRelations(letzte).map((rel) => r.relations[rel]?.props?.properties?.[p]?.title).find((t) => !!t) : undefined;
     return titel ?? p;
   }
 
