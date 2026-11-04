@@ -89,7 +89,8 @@ const objectSchema: z.ZodType<ObjectSchema> = z.lazy(() =>
 );
 
 const ViewPathStepSchema = z.object({
-  relation: z.string(),
+  /* Eine Art oder mehrere (T-454); eine leere Liste sagt nichts. */
+  relation: z.union([z.string(), z.array(z.string()).min(1)]),
   dir: z.enum(['out', 'in']).optional(),
   type: z.string().optional(),
 });

@@ -815,7 +815,10 @@ export interface LayoutElement {
  * Abfrage. `type` engt die Artikel am Ende ein (die `extends`-Kette hoch).
  */
 export interface ViewPathStep {
-  relation: string;
+  /** Die Kantenart — oder mehrere (T-454): `['features', 'participates']`
+   *  folgt jeder davon, und ein Artikel, der über zwei kommt, steht
+   *  einmal. Gelesen wird über `stepRelations`, nie am Feld selbst. */
+  relation: string | string[];
   dir?: 'out' | 'in';
   type?: string;
 }
