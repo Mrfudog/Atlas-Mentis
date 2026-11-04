@@ -1,5 +1,5 @@
 /**
- * **Der Statblock fragt seine Übungen in einem Abruf** (T-398, REQ-397):
+ * **Der Statblock fragt seine Übungen in einem Abruf** (T-398, REQ-397; T-443):
  * bis zum 29.10. stellte er je Name eine eigene Suche (`list({of, q})`),
  * bei einer Figur mit vierzig Übungen also vierzig — und weil jede Antwort
  * `kurz` änderte, holte er die Artikel danach noch einmal schubweise.
@@ -106,5 +106,33 @@ describe('Statblock: proficiencies in one request (T-398)', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(liste).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * **Ein Schaden ist kein Grund, die Übungen neu zu suchen** (T-443): auf
+   * dev folgten nach „− Damage" Dutzende `GET /api/list?of=Skill…`, weil
+   * der Effekt bei jedem neuen Artikelstand von vorn fragte — und das
+   * Speichern stand hinter ihnen an. Der Stand ändert sich (`Vitals.hp`),
+   * die Übungen nicht: keine neue Frage.
+   */
+  it('does not ask again after damage changes the article (T-443)', async () => {
+    const { fixture, liste, sb, artikel } = aufbauen();
+    await fixture.whenStable();
+    for (const hp of [30, 27, 21]) {
+      artikel.set({ ...sb, components: { ...sb.components, Vitals: { hp } } });
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+    expect(liste).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks once more only when a proficiency is added', async () => {
+    const { fixture, liste, sb, artikel } = aufbauen();
+    await fixture.whenStable();
+    artikel.set({ ...sb, components: { ...sb.components, Proficiencies: { proficient: [...NAMEN, 'Religion'] } } });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(liste).toHaveBeenCalledTimes(2);
+    expect((liste.mock.calls[1]![0] as { name: string[] }).name).toContain('Religion');
   });
 });
