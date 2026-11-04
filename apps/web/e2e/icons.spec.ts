@@ -27,7 +27,7 @@ async function typIconSetzen(api: APIRequestContext, typ: string, icon: string |
 test('a type icon shows in the list, the quick view and the title; an article picks its own', async ({ leitung, spielerin, api, eindeutig }) => {
   const als = await api.als('leitung');
   const name = eindeutig('Tidemother');
-  const gott = await api.anlegen('leitung', 'Deity', name, { fields: { Status: { status: 'ready' } } });
+  const gott = await api.anlegen('leitung', 'Deity', name);
   await mitSperre(async () => {
     const vorher = await typIconSetzen(als, 'Deity', 'star');
     try {
@@ -64,7 +64,9 @@ test('a type icon shows in the list, the quick view and the title; an article pi
       await leitung.getByRole('button', { name: 'Save', exact: true }).click();
       await expect(leitung.locator('h1 nw-icon[data-icon="globe"]')).toBeVisible();
 
-      /* Die Spielerin sieht dasselbe eigene Icon — gesiebt wie jedes Feld. */
+      /* Die Spielerin sieht dasselbe eigene Icon — gesiebt wie jedes Feld,
+         also erst, wenn der Artikel fertig ist (D72). */
+      await api.setzen('leitung', gott.id, { Status: { status: 'ready' } });
       await spielerin.goto(`/artikel/${gott.id}`);
       await expect(spielerin.locator('h1 nw-icon[data-icon="globe"]')).toBeVisible();
     } finally {
