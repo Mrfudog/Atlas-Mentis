@@ -548,6 +548,20 @@ export interface PathHit {
 }
 
 /**
+ * **Die Kantenarten eines Schritts** (T-454): ein Wort oder eine Liste —
+ * die eine Stelle, die das Feld liest. Leer kommt nicht vor (die Prüfung
+ * verlangt mindestens eine), ein leerer String zählt nicht.
+ */
+export function stepRelations(step: Pick<ViewPathStep, 'relation'>): string[] {
+  return (Array.isArray(step.relation) ? step.relation : [step.relation]).filter((r) => !!r);
+}
+
+/** Die erste Kantenart eines Schritts — für Beschriftungen, die genau eine brauchen. */
+export function firstRelation(step: Pick<ViewPathStep, 'relation'> | undefined): string | undefined {
+  return step ? stepRelations(step)[0] : undefined;
+}
+
+/**
  * **Einem Pfad folgen** (T-268): vom Artikel über Kanten zu den Artikeln am
  * Ende. `get` liefert einen Artikel nach Id (was fehlt oder zurückgehalten
  * ist, fällt weg), `incoming` die Kanten, die auf einen zeigen. Ohne Pfad
@@ -563,11 +577,14 @@ export function followPath(
   for (const schritt of path ?? []) {
     const weiter: PathHit[] = [];
     const gesehen = new Set<string>();
+    /* Mehrere Arten in einem Schritt (T-454): jede zählt, ein Ziel einmal —
+       in der Reihenfolge der Kanten am Artikel, nicht der Arten. */
+    const arten = new Set(stepRelations(schritt));
     for (const { entity: e } of stand) {
       const kanten =
         schritt.dir === 'in'
-          ? ctx.incoming(e.id).filter((k) => k.type === schritt.relation).map((k) => ({ id: k.from, props: k.props ?? {} }))
-          : (e.relations ?? []).filter((r) => r.type === schritt.relation).map((r) => ({ id: r.to, props: (r.props ?? {}) as Record<string, unknown> }));
+          ? ctx.incoming(e.id).filter((k) => arten.has(k.type)).map((k) => ({ id: k.from, props: k.props ?? {} }))
+          : (e.relations ?? []).filter((r) => arten.has(r.type)).map((r) => ({ id: r.to, props: (r.props ?? {}) as Record<string, unknown> }));
       for (const k of kanten) {
         const ziel = ctx.get(k.id);
         if (!ziel || gesehen.has(ziel.id)) continue;
@@ -581,10 +598,13 @@ export function followPath(
   return stand;
 }
 
-/** Ein Pfad in Worten: `shopkeeper › Shop › sells › Item`. */
+/** Ein Pfad in Worten: `shopkeeper › Shop › sells › Item`; mehrere Arten mit Strich: `features | participates`. */
 export function pathText(path: readonly ViewPathStep[] | undefined, start = ''): string {
   const teile = start ? [start] : [];
-  for (const s of path ?? []) teile.push(s.dir === 'in' ? `← ${s.relation}` : s.relation, ...(s.type ? [s.type] : []));
+  for (const s of path ?? []) {
+    const arten = stepRelations(s).join(' | ');
+    teile.push(s.dir === 'in' ? `← ${arten}` : arten, ...(s.type ? [s.type] : []));
+  }
   return teile.join(' › ');
 }
 
@@ -592,9 +612,10 @@ export function pathText(path: readonly ViewPathStep[] | undefined, start = ''):
 export function pathIds(entity: Entity, path: readonly ViewPathStep[] | undefined, incoming: (id: string) => readonly IncomingEdge[]): string[] {
   const s = path?.[0];
   if (!s) return [];
+  const arten = new Set(stepRelations(s));
   return s.dir === 'in'
-    ? incoming(entity.id).filter((k) => k.type === s.relation).map((k) => k.from)
-    : (entity.relations ?? []).filter((r) => r.type === s.relation).map((r) => r.to);
+    ? incoming(entity.id).filter((k) => arten.has(k.type)).map((k) => k.from)
+    : (entity.relations ?? []).filter((r) => arten.has(r.type)).map((r) => r.to);
 }
 
 // ---------------------------------------------------------------- der Baum

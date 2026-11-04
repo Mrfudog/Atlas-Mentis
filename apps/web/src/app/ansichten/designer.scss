@@ -325,6 +325,24 @@ select {
   border-color: var(--accent);
   color: var(--accent-ink);
 }
+/* Die Arten des letzten Schritts (T-454): ein Chip je Art, das × darin klein und in der Farbe des Chips. */
+.chipb.art {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-right: 0.4rem;
+}
+.chipb.art .klein {
+  min-height: 1.3rem;
+  min-width: 1.3rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  font-size: 0.8rem;
+  line-height: 1;
+}
 .pill {
   display: inline-flex;
   align-items: center;
