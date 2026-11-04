@@ -129,7 +129,7 @@ Fokus erscheint; neu sind `Creature.background`, `keyInfo`, `agenda`,
 `personality` heisst „Roleplaying“. `fight` stellt den Statblock in die
 Mitte (an der Kreatur `linked`, am Statblock wie im Buch), dazu Grösse und
 Token, den Stand, Taktik, Beute und die Begegnungen. Eine Maske fragt
-jetzt auch Prosafelder; der Wechsel verliert nichts. Migration 167; E2E
+jetzt auch Prosafelder; der Wechsel verliert nichts. Migration 168; E2E
 `kreatur-ansichten.spec.ts`; Hilfe, Handbuch („Creating a creature:
 Roleplay or Fight“), Glossar.
 

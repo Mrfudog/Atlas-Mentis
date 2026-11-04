@@ -3,7 +3,7 @@
  * Kreatur wird über die eine oder die andere Maske angelegt und bearbeitet;
  * beide schreiben dieselben Felder, der Wechsel verliert nichts, und jedes
  * Feld zeigt seinen Hilfetext, sobald es den Fokus hat. Ein Statblock kennt
- * nur „Fight“. Die Masken kommen mit dem Register (Migration 167) — hier
+ * nur „Fight“. Die Masken kommen mit dem Register (Migration 168) — hier
  * wird nichts am Register geändert.
  */
 import type { Page } from '@playwright/test';

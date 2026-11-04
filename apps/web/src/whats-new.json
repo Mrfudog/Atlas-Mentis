@@ -6,7 +6,9 @@
       "title": "Roleplay and Fight forms for creatures",
       "text": "New article for a creature asks which form: Roleplay (appearance, roleplaying cues, background, key info, agenda, secrets — after The Alexandrian’s Universal Roleplaying Template) or Fight (the statblock, hit points now, tactics, loot). A statblock opens in Fight. Both write the same fields; switch at any time above the fields, and focus a field for its help.",
       "area": "Articles",
-      "link": "/compendium?type=Creature",
+      "link": "/compendium?type=Creature"
+    },
+    {
       "id": "2026-11-04-gear-body-draw",
       "date": "2026-11-04",
       "title": "Gear: body places, draw times with reasons, containers side by side",

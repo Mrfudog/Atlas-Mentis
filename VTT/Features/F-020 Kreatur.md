@@ -31,4 +31,4 @@ Die Kreatur bekommt zwei Masken (siehe [[F-006 Ansichten & Anordnung]]):
 „Roleplay“ nach dem Universal Roleplaying Template von The Alexandrian —
 mit den neuen Feldern `background`, `keyInfo`, `agenda` und `personality`
 als „Roleplaying“ — und „Fight“ mit dem Statblock im Mittelpunkt, auch am
-Statblock selbst. Je Feld ein Hilfetext beim Fokus; Migration 167.
+Statblock selbst. Je Feld ein Hilfetext beim Fokus; Migration 168.
