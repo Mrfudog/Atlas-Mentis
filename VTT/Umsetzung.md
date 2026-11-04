@@ -498,7 +498,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-085]] | Begegnungen | 2 | **steht** | `Encounter`, `participates`, `onMap`, `loot`, `tableFor` |
+| [[REQ-085]] | Begegnungen | 2 | **steht** | `Encounter`, `participates`, `onMap`, `loot`, `tableFor`; die Leitung liest ihre Begegnung ungesiebt — Lösung, Hinweise, Taktik, alle Teilnehmer (T-447, T-455, D97) |
 | [[REQ-172]] | Begegnungstabellen je Gebiet | 3 | **steht** | `entry.weight`, `requiresTag`, `tableFor` |
 | [[REQ-173]] | Weltzustand zwischen Sitzungen | 4 | **offen** |  |
 | [[REQ-221]] | Begegnungen bauen | 3 | **offen** |  |

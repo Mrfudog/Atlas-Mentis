@@ -59,16 +59,21 @@ describe('choosable columns (T-343)', () => {
   });
 
   it('answers with the chosen fields, derived values and row facts — and sorts by them', async () => {
-    const r = (await get('leitung', '/api/list?type=Item&cols=Item.width,Item.weight,@tags,@id&sort=-Item.weight')).json();
+    /* Als Spielerin: das Gewicht des Seils hält eine Information zurück, die
+       sie nicht kennt — so gibt es eine leere Zelle (T-447: die Leitung
+       sieht es, unten). */
+    const r = (await get('sela', '/api/list?type=Item&cols=Item.width,Item.weight,@tags,@id&sort=-Item.weight')).json();
     expect(r.columns.map((c: { ref: string }) => c.ref)).toEqual(['Item.width', 'Item.weight', '@tags', '@id']);
     expect(r.columns[0]).toMatchObject({ kind: 'number', label: 'Width' });
     /* Leere Zellen stehen hinten, auch absteigend. */
     expect(r.rows.map((z: { name: string }) => z.name)).toEqual(['Torch', 'Rope']);
-    const breit = (await get('leitung', '/api/list?type=Item&cols=Item.width&sort=Item.width')).json();
+    const breit = (await get('sela', '/api/list?type=Item&cols=Item.width&sort=Item.width')).json();
     expect(breit.rows.map((z: { name: string }) => z.name)).toEqual(['Torch', 'Rope']);
-    /* Das Gewicht des Seils hält eine Information zurück, die niemand kennt — auch vor der Leitung, wie an der Artikelseite. */
     expect(r.rows[1].cols).toEqual({ '@tags': ['gear'], '@id': 'item-0001' });
     expect(r.rows[0].cols).toEqual({ 'Item.width': 1, 'Item.weight': 1, '@id': 'item-0002' });
+    /* Die Leitung der Kampagne liest den Artikel ungekürzt (T-447, E-204). */
+    const gm = (await get('leitung', '/api/list?type=Item&cols=Item.weight&sort=-Item.weight')).json();
+    expect(gm.rows.map((z: { name: string; cols: Record<string, unknown> }) => [z.name, z.cols['Item.weight']])).toEqual([['Rope', 10], ['Torch', 1]]);
   });
 
   it('leaves the overview columns as they were without a choice', async () => {

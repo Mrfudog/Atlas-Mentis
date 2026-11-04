@@ -1246,6 +1246,19 @@ weiss jede Figur, die diese Herkunft hat — heute aus Klasse, Herkunft und
 Hintergrund, später auch aus Wissenspunkten bei einer selbst erstellten
 Herkunft (REQ-354).
 
+**Die Leitung liest ihre Kampagne ungesiebt** (T-447, T-455; E-204 a,
+E-208 a). Das Wissen fragt nach Figuren, und eine Leitung hat keine — also
+galt sie dem Sieb als Konto, das nichts weiss, und verlor Geheimnisse,
+Taktik, Lösung, Hinweise und vor Kampfbeginn jeden Gegner ihrer eigenen
+Begegnung. Das war kein Schutz, sondern ein Loch in der Vorbereitung: was
+sie nicht lesen kann, kann sie weder pflegen noch freigeben, und ein
+Speichern aus der Artikelseite schrieb die gesiebte Begegnung zurück. Wer
+in der Kampagne des Artikels `gm` oder `co-gm` ist (`leadsArticle`),
+bekommt ihn darum ganz; die Grenze ist dieselbe wie beim Decknamen. Wer in
+der einen Runde leitet und in der anderen mitspielt, ist dort Betrachter
+wie jeder — die Rolle steht je Kampagne am Konto, und die Ebene sagt,
+wessen der Artikel ist.
+
 > **Nicht mehr:** es gab einen `KnowledgeLevel` — einen *Stand*, dem Figuren
 > über `atLevel` angehörten. Das war ein zweiter Weg zu „wer weiss das",
 > obwohl `Party` schon Empfänger sein konnte, und in zwei Jahren

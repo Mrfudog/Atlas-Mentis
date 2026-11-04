@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-gm-reads-whole",
+      "date": "2026-11-05",
+      "title": "GMs read their campaign whole",
+      "text": "A GM or co-GM without a character of their own used to miss the secrets, tactics, solutions and hints of their own campaign, and the enemies of an encounter before the fight. Now whoever runs the campaign reads its articles whole, and saving an encounter from its page no longer drops hidden combatants. Players still see what they know; a GM of another campaign reads like a player.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
       "id": "2026-11-05-collection-two-edges",
       "date": "2026-11-05",
       "title": "A collection can follow two edges in one step",

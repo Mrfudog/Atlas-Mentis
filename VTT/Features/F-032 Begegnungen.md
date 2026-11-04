@@ -52,5 +52,26 @@ Beteiligten einmal verborgen (wie „Prepare n" in ihrer Seitenleiste).
 Jedes Ziel bekommt dabei einen Marker — mehrere Kanten auf denselben
 Statblock sind ein Token.
 
+## Die Leitung liest ihre Begegnung ungesiebt (T-447, T-455)
+
+Ein Konto mit Rolle `gm` oder `co-gm` in der Kampagne der Begegnung — ohne
+Verwaltungsrolle und ohne eigene Figur — bekam sie bis zum 4.11.2026
+gesiebt wie eine Spielerin: ohne Lösung, Hinweise, Geheimnisse und Taktik,
+und vor dem ersten Zug ohne jeden Gegner. Der Freigabeknopf unter einem
+Hinweis (T-215) stand deshalb nur der Verwaltung; speicherte die Leitung
+die Begegnung aus der Artikelseite, schrieb sie die gesiebten Kanten
+zurück und verlor die Gegner. Seit D97 (E-204 a, E-208 a) ist die Rolle in
+der Kampagne des Artikels die Grenze des Siebs (`leadsArticle`): die
+Leitung liest ganz, die Spielerin weiter nach Wissen, und wer eine andere
+Runde leitet, liest hier wie eine Spielerin.
+
+```mermaid
+flowchart LR
+  A["GET /api/entities/:id"] --> S["articleVisible<br/>(Sichtbarkeit)"]
+  S --> L{"leadsArticle?<br/>gm / co-gm der Kampagne"}
+  L -- ja --> G["Artikel ganz:<br/>gmFields, Teilnehmer"]
+  L -- nein --> R["redactEntity<br/>(Wissen der Figuren,<br/>redactParticipants)"]
+```
+
 Offen: ob Szene („Scene / Encounter") und Begegnung eine Art werden
 (E-118).
