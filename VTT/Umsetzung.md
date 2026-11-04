@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view, umsetzung]
 status: derived
-updated: 2026-10-29
+updated: 2026-11-04
 source: ../docs/Anforderungen.md
 ---
 
@@ -11,7 +11,7 @@ source: ../docs/Anforderungen.md
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-29. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-11-04. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -23,7 +23,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
+Zusammen: 189 steht · 64 teils · 125 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -35,7 +35,7 @@ Zusammen: 187 steht · 64 teils · 127 offen · 10 ersetzt · 6 verworfen — 39
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 29 | 13 steht · 3 teils · 13 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 33 | 14 steht · 6 teils · 12 offen · 1 ersetzt |
-| [EP-09 Karten](#ep-09-karten) | 29 | 18 steht · 6 teils · 5 offen |
+| [EP-09 Karten](#ep-09-karten) | 29 | 20 steht · 6 teils · 3 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 23 | 4 steht · 3 teils · 16 offen |
 | [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 38 | 21 steht · 6 teils · 10 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 11 | 5 steht · 2 teils · 2 offen · 2 verworfen |
@@ -768,7 +768,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 
 **Erklärt in:** [Karten.md](../docs/Karten.md)
 
-**Offen mit Prio 1–3:** REQ-132 Kartenebene festhalten (offen) · REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils) · REQ-385 Karten-Widget mit Werkzeugen, Ebenen und Grössen (offen)
+**Offen mit Prio 1–3:** REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils) · REQ-385 Karten-Widget mit Werkzeugen, Ebenen und Grössen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -778,7 +778,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 |---|---|---|---|---|
 | [[REQ-130]] | Karte mit Gitter und Massstab | 3 | **steht** | `Map` mit Gitter, Massstab, `mapOf` |
 | [[REQ-131]] | Unterkarten zum Hineinzoomen | 3 | **steht** | `insideMap` mit Rahmen, Hineinzoomen |
-| [[REQ-132]] | Kartenebene festhalten | 3 | **offen** |  |
+| [[REQ-132]] | Kartenebene festhalten | 3 | **steht** | Schloss neben „Fit“ hält die Kartenstufe (#440, T-219) |
 | [[REQ-138]] | Grosse Karten in Kacheln | 4 | **steht** | `Map.tiles` |
 | [[REQ-293]] | Ladeanzeige für Kartenbilder | 3 | **steht** | T-126 |
 | [[REQ-385]] | Karten-Widget mit Werkzeugen, Ebenen und Grössen | 2 | **offen** |  |
@@ -833,7 +833,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-141]] | Effekte auf der Karte | 5 | **offen** |  |
-| [[REQ-142]] | Auf Karten zeichnen | 5 | **offen** | Aufgabe #60 |
+| [[REQ-142]] | Auf Karten zeichnen | 5 | **steht** | Zeichenebene = Blatt ohne Bild (#445), Text und Stempel (#449, T-219); Pinsel und Effekte → REQ-141 |
 | [[REQ-143]] | Karteneditor | 5 | **offen** |  |
 
 ## EP-10 Medien & Assets
@@ -1139,7 +1139,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-120]]** (3, teils, Live-Spiel) — Spielprotokoll — *Würfe im Protokoll; Zustandsereignisse nicht gespeichert*
 - **[[REQ-123]]** (3, offen, Live-Spiel) — Timer
 - **[[REQ-128]]** (3, teils, Live-Spiel) — Kampf aus Sicht der Spielenden — *dieselbe Ansicht, gesiebt*
-- **[[REQ-132]]** (3, offen, Karten) — Kartenebene festhalten
 - **[[REQ-135]]** (3, teils, Karten) — Tokens im Spiel — *Tokens als Kanten; keine getrennte Lebensdauer je Sitzung*
 - **[[REQ-160]]** (3, teils, Oberfläche & Navigation) — Zwischen Ankern springen
 - **[[REQ-167]]** (3, offen, Medien & Assets) — Drucken
