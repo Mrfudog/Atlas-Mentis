@@ -415,7 +415,15 @@ export function redactEntity(
    */
   coverHides = false,
 ): Entity {
-  if (!viewerId) return article;
+  /* **Ohne Betrachter geht der Artikel ganz hinaus** — die Verwaltung und
+     die Leitung seiner Kampagne (`leadsArticle`, T-447, T-455). Nur der
+     bequeme Name oben wird aus der Karte gefüllt: aus Postgres kommt er
+     leer (es gibt keine Karte `Name`), und bis T-447 füllte ihn das Sieb
+     für jeden ausser der Verwaltung — der Durchstich las sonst `''`. */
+  if (!viewerId) {
+    const n = ((article.components ?? {})['Identity'] as { name?: unknown } | undefined)?.name;
+    return typeof n === 'string' && n !== '' && n !== article.name ? { ...article, name: n } : article;
+  }
   const gmSet = new Set(gmFields);
 
   /* Ein Feld mit `many` zählt je **Eintrag**: `Creature.secret#anchor`. Ein
