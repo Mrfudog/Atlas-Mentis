@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-29. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-11-04. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -12,7 +12,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 187 steht · 65 teils · 126 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
+Zusammen: 189 steht · 65 teils · 124 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -24,7 +24,7 @@ Zusammen: 187 steht · 65 teils · 126 offen · 10 ersetzt · 6 verworfen — 39
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 29 | 13 steht · 3 teils · 13 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 33 | 14 steht · 6 teils · 12 offen · 1 ersetzt |
-| [EP-09 Karten](#ep-09-karten) | 29 | 18 steht · 6 teils · 5 offen |
+| [EP-09 Karten](#ep-09-karten) | 29 | 20 steht · 6 teils · 3 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 23 | 4 steht · 3 teils · 16 offen |
 | [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 38 | 21 steht · 6 teils · 10 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 11 | 5 steht · 2 teils · 2 offen · 2 verworfen |
@@ -757,7 +757,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 
 **Erklärt in:** [Karten.md](../docs/Karten.md)
 
-**Offen mit Prio 1–3:** REQ-132 Kartenebene festhalten (offen) · REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils) · REQ-385 Karten-Widget mit Werkzeugen, Ebenen und Grössen (offen)
+**Offen mit Prio 1–3:** REQ-135 Tokens im Spiel (teils) · REQ-208 Zonen mit eigenen Regeln (teils) · REQ-210 Karte und Initiative im Vollbild (teils) · REQ-294 Token ohne Bild zeigt den Anfangsbuchstaben (teils) · REQ-312 Eigenes Token bewegen (teils) · REQ-385 Karten-Widget mit Werkzeugen, Ebenen und Grössen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 
@@ -767,7 +767,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 |---|---|---|---|---|
 | REQ-130 | Karte mit Gitter und Massstab | 3 | **steht** | `Map` mit Gitter, Massstab, `mapOf` |
 | REQ-131 | Unterkarten zum Hineinzoomen | 3 | **steht** | `insideMap` mit Rahmen, Hineinzoomen |
-| REQ-132 | Kartenebene festhalten | 3 | **offen** |  |
+| REQ-132 | Kartenebene festhalten | 3 | **steht** | Schloss neben „Fit“ hält die Kartenstufe (#440, T-219) |
 | REQ-138 | Grosse Karten in Kacheln | 4 | **steht** | `Map.tiles` |
 | REQ-293 | Ladeanzeige für Kartenbilder | 3 | **steht** | T-126 |
 | REQ-385 | Karten-Widget mit Werkzeugen, Ebenen und Grössen | 2 | **offen** |  |
@@ -797,7 +797,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 |---|---|---|---|---|
 | REQ-206 | Bewegungsrechner | 3 | **steht** | Rechner 5-10-5 über Feld × Parität (`movement.ts`, Prototyp `mvSearch`), Modi genau · Reichweite · aus, Tempo als Zahl in `Session.moves` mit Kurzwahl, SL setzt frei und bestätigt über das Tempo hinaus; nur Quadratraster (D56) |
 | REQ-207 | Pfad mit Wegpunkten | 3 | **steht** | Wegpunkte per Klick, günstigster Weg dazwischen, Parität läuft weiter (`pathVia`); Gefahren und Reichweite von Gegnern meidbar (D56) |
-| REQ-208 | Zonen mit eigenen Regeln | 3 | **teils** | `ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56) |
+| REQ-208 | Zonen mit eigenen Regeln | 3 | **teils** | `ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Zonenlicht in der Dunkelheitsmaske seit #449 (T-219): magische Dunkelheit und erleuchteter Saal, am Server und in „View as“. Offen: Auslöser zu Zugbeginn/-ende |
 | REQ-210 | Karte und Initiative im Vollbild | 3 | **teils** | Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56) |
 | REQ-312 | Eigenes Token bewegen | 2 | **teils** | Prototyp ja; in der Seite noch nicht für Spielende |
 
@@ -822,7 +822,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | REQ-141 | Effekte auf der Karte | 5 | **offen** |  |
-| REQ-142 | Auf Karten zeichnen | 5 | **offen** | Aufgabe #60 |
+| REQ-142 | Auf Karten zeichnen | 5 | **steht** | Zeichenebene = Blatt ohne Bild (#445), Text und Stempel (#449, T-219); Pinsel und Effekte → REQ-141 |
 | REQ-143 | Karteneditor | 5 | **offen** |  |
 
 ## EP-10 Medien & Assets
@@ -1128,7 +1128,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-120** (3, teils, Live-Spiel) — Spielprotokoll — *Würfe im Protokoll; Zustandsereignisse nicht gespeichert*
 - **REQ-123** (3, offen, Live-Spiel) — Timer
 - **REQ-128** (3, teils, Live-Spiel) — Kampf aus Sicht der Spielenden — *dieselbe Ansicht, gesiebt*
-- **REQ-132** (3, offen, Karten) — Kartenebene festhalten
 - **REQ-135** (3, teils, Karten) — Tokens im Spiel — *Tokens als Kanten; keine getrennte Lebensdauer je Sitzung*
 - **REQ-160** (3, teils, Oberfläche & Navigation) — Zwischen Ankern springen
 - **REQ-167** (3, offen, Medien & Assets) — Drucken
@@ -1139,7 +1138,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-201** (3, offen, Spielererlebnis) — Aus dem Chat wird Inhalt
 - **REQ-204** (3, offen, Live-Spiel) — Spielleiter-Schirm
 - **REQ-205** (3, teils, Live-Spiel) — Ein Board je Geschichtsartikel — *ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards*
-- **REQ-208** (3, teils, Karten) — Zonen mit eigenen Regeln — *`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)*
+- **REQ-208** (3, teils, Karten) — Zonen mit eigenen Regeln — *`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Zonenlicht in der Dunkelheitsmaske seit #449 (T-219): magische Dunkelheit und erleuchteter Saal, am Server und in „View as“. Offen: Auslöser zu Zugbeginn/-ende*
 - **REQ-210** (3, teils, Karten) — Karte und Initiative im Vollbild — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
 - **REQ-215** (3, teils, Spielererlebnis) — Tragraster aus Grösse und Stärke — *`Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54). Zonen je Zelle setzbar („Shape & zones“); die Vorgabe nach Spalten kommt noch aus der globalen Einstellung `carryZones`, nicht aus dem Inventarmodul (E-096)*
 - **REQ-216** (3, teils, Spielererlebnis) — Behälter in Behältern — *Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54). Offen nach E-096: innere Zonen zählen heute absolut (das Langsamere aus Zone und Behälter + 1), nicht vom Platz des Behälters aus. Seit T-365 sagt das Gear je Stück die Stufe mit Begründung (`drawReason`)*

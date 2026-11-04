@@ -36,5 +36,25 @@ flowchart LR
   K --> V[redactMap: Ziel sichtbar? versteckt? Nebel?] --> S
 ```
 
-Offen: Flächen auf der Karte ziehen (T-219), Abfrage-Overlays (T-332),
-Biome (E-122).
+Seit #442 lassen sich Flächen auf der Karte ziehen (Gruppe „Zones“).
+
+## Licht der Zonen (T-219, #449)
+
+Seit 4.11.2026 zählt, wo eine Zone liegt, das Licht ihrer Zonenart
+(`ZoneKind.light`): in **magischer Dunkelheit** auf einer hellen Karte geht
+ein Token nur an Spielende, die es mit Dunkelsicht oder im Licht sehen; in
+einem **erleuchteten Saal** einer dunklen Karte ist zu sehen, wer in
+Sichtlinie steht. Gerechnet wird einmal (`zoneLightShapes`, `redactDark`
+mit `zones`): am Server fürs Zurückhalten, in der Seite für die Flächen
+und für „View as“ der Leitung. Wie: [Karten › Tokens im
+Dunkeln](../../docs/Karten.md#tokens-im-dunkeln-t-219).
+
+```mermaid
+flowchart LR
+  Z[Zone mit Zonenart light: dark / bright] --> F[zoneLightShapes: Flächen je Licht]
+  F --> S[Server redactDark: Token im Dunkeln weg]
+  F --> K[Seite: Dunkelheit deckend, Saal ausgeschnitten]
+  F --> V[View as: dieselbe Rechnung wie der Server]
+```
+
+Offen: Abfrage-Overlays (T-332), Biome (E-122).

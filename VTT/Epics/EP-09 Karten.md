@@ -19,13 +19,13 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
 | Feature | Stories | Punkte | Stand |
 |---|---|---|---|
-| [[F-055 Karte & Kartenebenen]] — Karte mit Bild, Gitter, Massstab; Unterkarten zum Hineinzoomen. | 6 | 25 | 4 steht · 2 offen |
+| [[F-055 Karte & Kartenebenen]] — Karte mit Bild, Gitter, Massstab; Unterkarten zum Hineinzoomen. | 6 | 25 | 5 steht · 1 offen |
 | [[F-056 Tokens & Marker]] — Marker, Kulisse, Spiel-Tokens, Gruppen-Token, Grösse. | 6 | 17 | 4 steht · 2 teils |
 | [[F-057 Nebel, Licht & Sicht]] — Aufdecken, Licht und Sichtlinien. | 3 | 24 | 3 steht |
 | [[F-058 Bewegung & Zonen]] — Bewegungsrechner, Pfad, Zonen, Vollbild und eigene Tokens bewegen. | 5 | 16 | 2 steht · 3 teils |
 | [[F-059 Gebiete & Overlays]] — Gebiete und Hervorhebungen auf der Karte. | 2 | 8 | 1 steht · 1 teils |
 | [[F-060 Reisen & Erkundung]] — Point-Crawl, Erkundungsstand, Vorräte und Aktionen je Knoten. | 4 | 13 | 4 steht |
-| [[F-061 Karteneditor]] — Zeichnen, Assets platzieren, Effekte. | 3 | 29 | 3 offen |
+| [[F-061 Karteneditor]] — Zeichnen, Assets platzieren, Effekte. | 3 | 29 | 1 steht · 2 offen |
 
 ### Wo es wohnt
 
@@ -37,7 +37,7 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 
 **Erklärt in:** [Karten.md](../../docs/Karten.md)
 
-**Offen mit Prio 1–3:** [[REQ-132]] Kartenebene festhalten (offen) · [[REQ-135]] Tokens im Spiel (teils) · [[REQ-208]] Zonen mit eigenen Regeln (teils) · [[REQ-210]] Karte und Initiative im Vollbild (teils) · [[REQ-294]] Token ohne Bild zeigt den Anfangsbuchstaben (teils) · [[REQ-312]] Eigenes Token bewegen (teils) · [[REQ-385]] Karten-Widget mit Werkzeugen, Ebenen und Grössen (offen)
+**Offen mit Prio 1–3:** [[REQ-135]] Tokens im Spiel (teils) · [[REQ-208]] Zonen mit eigenen Regeln (teils) · [[REQ-210]] Karte und Initiative im Vollbild (teils) · [[REQ-294]] Token ohne Bild zeigt den Anfangsbuchstaben (teils) · [[REQ-312]] Eigenes Token bewegen (teils) · [[REQ-385]] Karten-Widget mit Werkzeugen, Ebenen und Grössen (offen)
 
 **Aufgaben und offene Entscheidungen:** im Projektbrett, je Aufgabe mit ihren Stories.
 <!-- stories:ende -->
