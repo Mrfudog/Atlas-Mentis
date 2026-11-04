@@ -1973,7 +1973,14 @@ Kanten und ihre Ziele, nicht Zeilen.
 
 **Das Element `collection`** (T-425, REQ-430, E-142, E-172) zeigt die
 Artikel am Ende seines Pfads **in der Ansicht ihrer eigenen Art**: die
-Session über `← partOf` ihre Szenen und Begegnungen. `types` engt auf
+Session über `← partOf` ihre Szenen und Begegnungen. **Ein Schritt darf
+mehrere Kantenarten nennen** (T-454, `ViewPathStep.relation: string |
+string[]`, gelesen über `stepRelations`): `← partOf › features |
+participates` bringt die Leute aus Szene und Kampf, und wer über beide
+kommt, steht einmal — `followPath` dedupliziert je Schritt, die Werte der
+Kante (`props`) kommen vom ersten Treffer. Im Designer nimmt „Also via“
+dem letzten Schritt eine Art dazu, × am Chip lässt sie weg; `pathText`
+schreibt `features | participates`. `types` engt auf
 Arten ein (die `extends`-Kette hoch), `show` sagt Kacheln (`tiles`,
 Vorgabe), Liste (`list`) oder Tabelle (`table`: Name, Art, die Werte der
 Kante aus `props` und die Felder aus `fields` als Spalten — was früher
