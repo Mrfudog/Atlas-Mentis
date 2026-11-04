@@ -371,8 +371,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     await repo.appendEvent(BOARD_EVENT, entity.id, { board: board.id, on: 'create' });
     await repo.appendEvent('entity.written', entity.id, { interfaces: entity.interfaces, cards: ['Identity'], layer: ebeneId });
     if (request.body?.lead === true) {
-      const ich = await repo.getUser(user.id);
-      if (ich) await repo.putUser({ ...ich, roles: { ...(ich.roles ?? {}), [entity.id]: 'gm' } });
+      await repo.setRole(user.id, entity.id, 'gm');
       await repo.appendEvent('member.role', user.id, { campaign: entity.id, role: 'gm', by: user.id });
     }
     return reply.code(201).send({ id: entity.id, name });
@@ -1058,7 +1057,8 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         return nein(reply, 403, 'Die eigene Rolle ändert die Verwaltung.');
       }
       const c = request.params.c;
-      await repo.putUser({ ...ziel, roles: { ...(ziel.roles ?? {}), [c]: role } });
+      /* Eine Zeile je Kampagne (T-452), nicht das ganze Konto zurück. */
+      await repo.setRole(ziel.id, c, role);
       await repo.appendEvent('member.role', ziel.id, { campaign: c, role, by: ok.user.id });
       /* Wer mitspielt, bekommt seine Spielerebene (T-164). */
       if (role === 'player') await sorgeSpielerEbene(repo, ziel.id, c, ok.user.id);
@@ -1074,7 +1074,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const role = request.body?.role;
       if (!isTableRole(role)) return nein(reply, 400, 'Rolle: gm, co-gm, player oder spectator.');
       const c = request.params.c;
-      await repo.putUser({ ...ok.ziel, roles: { ...(ok.ziel.roles ?? {}), [c]: role } });
+      await repo.setRole(ok.ziel.id, c, role);
       await repo.appendEvent('member.role', ok.ziel.id, { campaign: c, role, by: ok.user.id });
       if (role === 'player') await sorgeSpielerEbene(repo, ok.ziel.id, c, ok.user.id);
       return { id: ok.ziel.id, role };
@@ -1090,9 +1090,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       if (!ok?.ziel) return reply;
       const c = request.params.c;
       if (!ok.ziel.roles?.[c]) return nein(reply, 404, 'Nicht in dieser Kampagne.');
-      const roles = { ...ok.ziel.roles };
-      delete roles[c];
-      await repo.putUser({ ...ok.ziel, roles });
+      await repo.setRole(ok.ziel.id, c, null);
       await repo.appendEvent('member.role', ok.ziel.id, { campaign: c, role: null, by: ok.user.id });
       return { ok: true };
     },
