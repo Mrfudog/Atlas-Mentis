@@ -78,7 +78,8 @@ test('a statblock has only the Fight form, with the numbers first', async ({ lei
   await expect(leitung.locator('.blockmaske[data-ref="Tactics.tactics"]')).toBeVisible();
   await leitung.locator('.maske label[data-ref="Statblock.ac"] input').fill('15');
   await leitung.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(leitung).not.toHaveURL(/edit=create/);
+  /* Gespeichert: die Seite liest wieder (die Adresse behält ?edit=create, bis man sie verlässt). */
+  await expect(leitung.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
   const id = /\/artikel\/([^/?#]+)/.exec(leitung.url())?.[1] ?? '';
   const als = await api.als('leitung');
   const e = (await (await als.get(`/api/entities/${id}`)).json()) as { components: Record<string, Record<string, unknown>> };
