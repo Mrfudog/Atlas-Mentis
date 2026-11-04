@@ -303,11 +303,16 @@ export function seesUnfinished(entities: ReadonlyMap<EntityId, Entity>, article:
 
 /**
  * **Leitet der Betrachter die Kampagne dieses Artikels?** (`gm`, `co-gm`;
- * die Ebene sagt, wessen er ist — `campaignOf`). Dann gehen auch die
- * Felder der Leitung (`gmFields`) an ihn: sie gehen „nie an einen
- * Spieler", und er ist hier keiner (T-215). Ohne Betrachter: ja.
+ * die Ebene sagt, wessen er ist — `campaignOf`). Dann bekommt er ihn
+ * **ungesiebt im Wissen** (T-447, T-455; E-204 a, E-208 a): die Felder der
+ * Leitung (`gmFields`) gehen „nie an einen Spieler", und er ist hier
+ * keiner (T-215); die Teilnehmer einer Begegnung stehen ihm alle, mit
+ * Ziel und Werten (`redactParticipants` siebt nur Spielende). Die
+ * Grenze ist die Rolle in **dieser** Kampagne: wer anderswo leitet, ist
+ * hier Betrachter. Die Sichtbarkeit (`articleVisible`) fragt es nicht.
+ * Ohne Betrachter: ja.
  */
-export function leadsArticle(entities: Map<EntityId, Entity>, article: Entity, viewerId?: ViewerRef): boolean {
+export function leadsArticle(entities: ReadonlyMap<EntityId, Entity>, article: Entity, viewerId?: ViewerRef): boolean {
   if (viewerId === undefined) return true;
   const rolle = tableRole(alsViewer(viewerId), campaignOf(entities, article));
   return rolle === 'gm' || rolle === 'co-gm';
