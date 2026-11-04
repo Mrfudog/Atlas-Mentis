@@ -192,7 +192,14 @@ campaign_member (campaign_id, user_id, role)   -- gm | co-gm | player | spectato
 ```
 
 Eine Zeile je Konto und Kampagne, neben `app_user_actor` (welche Figuren ein
-Konto führt). Gesetzt wird sie auf der Seite **Campaign** (`/campaign`, W3)
+Konto führt). **Geschrieben wird sie einzeln** (`Repository.setRole`,
+T-452): die Mitgliederrouten und `user role` setzen oder löschen genau die
+eine Zeile und lesen die übrigen nicht — `putUser` nimmt Rollen nur beim
+Anlegen eines Kontos mit. Es war einmal anders: jede Route las das Konto,
+setzte `roles[c]` und schrieb es ganz zurück, und `putUser` glich
+`campaign_member` auf die gelesenen Rollen ab; zwei Runden, die dasselbe
+Konto gleichzeitig aufnahmen, löschten sich so gegenseitig die Rolle.
+Gesetzt wird sie auf der Seite **Campaign** (`/campaign`, W3)
 oder von der Kommandozeile:
 
 ```bash
