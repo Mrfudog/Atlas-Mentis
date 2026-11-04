@@ -13,6 +13,7 @@ import {
   treeAsTabs,
   isDesignedView,
   moveTree,
+  pathIds,
   pathText,
   viewFor,
   viewsFor,
@@ -127,6 +128,65 @@ describe('followPath (T-268)', () => {
   });
   it('schreibt den Pfad in Worten', () => {
     expect(pathText(shop.layout![1]!.path, 'Creature')).toBe('Creature › ← shopkeeper › sells');
+  });
+
+  /**
+   * **Ein Schritt über mehrere Kantenarten** (T-454): die Session zeigte
+   * die Leute aus Szene (`features`) und Kampf (`participates`) in zwei
+   * Sammlungen, und wer in beiden vorkam, stand zweimal. Ein Schritt nennt
+   * jetzt eine Art oder mehrere, und ein Treffer steht einmal.
+   */
+  describe('ein Schritt über mehrere Kantenarten (T-454)', () => {
+    const szene: Entity = {
+      id: 'sc-0001', interfaces: ['Scene'], name: 'The tavern', components: {},
+      relations: [{ type: 'features', to: 'npc-0001' }, { type: 'features', to: 'npc-0002' }],
+    };
+    const kampf: Entity = {
+      id: 'en-0001', interfaces: ['Encounter'], name: 'Brawl', components: {},
+      relations: [{ type: 'participates', to: 'npc-0002', props: { ally: false } }, { type: 'participates', to: 'npc-0003' }],
+    };
+    const rook: Entity = { id: 'npc-0003', interfaces: ['Creature'], name: 'Rook', components: {} };
+    const alle2 = [durnan, varo, rook, szene, kampf];
+    const ctx2 = { get: (id: string) => alle2.find((e) => e.id === id), incoming: (id: string) => incomingIndex(alle2).get(id) ?? [] };
+
+    it('folgt beiden Arten, und wer über beide kommt, steht einmal', () => {
+      const hits = followPath(seedRegistry, szene, [{ relation: ['features', 'participates'] }], ctx2);
+      expect(hits.map((h) => h.entity.id)).toEqual(['npc-0001', 'npc-0002']);
+      const beide = followPath(seedRegistry, { ...szene, relations: [...szene.relations!, ...kampf.relations!] }, [{ relation: ['features', 'participates'] }], ctx2);
+      expect(beide.map((h) => h.entity.id)).toEqual(['npc-0001', 'npc-0002', 'npc-0003']);
+      /* Die Werte der Kante kommen vom ersten Treffer: Varo über `features`, ohne `ally`. */
+      expect(beide[1]!.props).toEqual({});
+    });
+
+    it('auch rückwärts: ← features | participates von der Kreatur aus', () => {
+      const hits = followPath(seedRegistry, varo, [{ relation: ['features', 'participates'], dir: 'in' }], ctx2);
+      expect(hits.map((h) => h.entity.id).sort()).toEqual(['en-0001', 'sc-0001']);
+      expect(followPath(seedRegistry, varo, [{ relation: ['features', 'participates'], dir: 'in', type: 'Encounter' }], ctx2).map((h) => h.entity.id)).toEqual(['en-0001']);
+    });
+
+    it('eine Art als Liste mit einem Eintrag ist dasselbe wie ein Wort', () => {
+      expect(followPath(seedRegistry, szene, [{ relation: ['features'] }], ctx2)).toEqual(followPath(seedRegistry, szene, [{ relation: 'features' }], ctx2));
+    });
+
+    it('nennt die Arten im Text mit einem Strich dazwischen', () => {
+      expect(pathText([{ relation: 'partOf', dir: 'in' }, { relation: ['features', 'participates'] }], 'Session')).toBe('Session › ← partOf › features | participates');
+      expect(pathText([{ relation: ['features', 'participates'], dir: 'in', type: 'Story' }])).toBe('← features | participates › Story');
+    });
+
+    it('die Ids, die ein Schritt braucht, kommen aus allen Arten', () => {
+      expect(pathIds({ ...szene, relations: [...szene.relations!, ...kampf.relations!] }, [{ relation: ['features', 'participates'] }], ctx2.incoming)).toEqual(['npc-0001', 'npc-0002', 'npc-0002', 'npc-0003']);
+      expect(pathIds(varo, [{ relation: ['features', 'participates'], dir: 'in' }], ctx2.incoming).sort()).toEqual(['en-0001', 'sc-0001']);
+    });
+
+    it('das Register nimmt beide Schreibweisen an', () => {
+      const mitListe: Registry = {
+        ...seedRegistry,
+        views: { ...seedRegistry.views, people: { label: 'People', fields: 'all', layout: [{ id: 'p', el: 'collection', path: [{ relation: ['features', 'participates'] }] }] } },
+      };
+      expect(RegistrySchema.safeParse(mitListe).success).toBe(true);
+      const leer: Registry = { ...mitListe, views: { ...mitListe.views, people: { ...mitListe.views['people']!, layout: [{ id: 'p', el: 'collection', path: [{ relation: [] }] }] } } };
+      expect(RegistrySchema.safeParse(leer).success).toBe(false);
+    });
   });
 });
 

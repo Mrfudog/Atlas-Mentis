@@ -32,6 +32,8 @@ import {
   pathOptions,
   pasteElement,
   pathText,
+  stepRelations,
+  firstRelation,
   pickView,
   primaryInterface,
   tabsAsTree,
@@ -749,11 +751,66 @@ export class Ansichtsdesigner {
     const p = el.path.slice(0, -1);
     this.setze({ path: p.length ? p : null, fields: [] });
   }
-  protected kantenProps(): string[] {
+
+  // ------------------------------------------- mehrere Kantenarten je Schritt (T-454)
+
+  /** Der letzte Schritt des Pfads — an ihm wird die Art dazugenommen oder weggelassen. */
+  protected readonly letzterSchritt = computed<ViewPathStep | undefined>(() => {
+    const p = this.auswahl()?.path;
+    return p?.length ? p[p.length - 1] : undefined;
+  });
+  /** Die Kantenarten des letzten Schritts, mit Beschriftung. */
+  protected readonly schrittArten = computed(() => {
+    const s = this.letzterSchritt();
+    const r = this.reg();
+    return s ? stepRelations(s).map((relation) => ({ relation, label: r?.relations[relation]?.label ?? relation })) : [];
+  });
+  /**
+   * Welche Arten der letzte Schritt noch dazunehmen kann: die Kanten, die
+   * von der Art **vor** ihm in dieselbe Richtung gehen und noch nicht
+   * dastehen. Wer über zwei Kanten kommt, steht einmal (`followPath`).
+   */
+  protected readonly auchUeber = computed(() => {
+    const r = this.reg();
     const el = this.auswahl();
-    const letzte: ViewPathStep | undefined = el?.path?.[el.path.length - 1];
-    const def = letzte ? this.reg()?.relations[letzte.relation] : undefined;
-    return Object.keys(def?.props?.properties ?? {});
+    const s = this.letzterSchritt();
+    if (!r || !el?.path?.length || !s) return [];
+    const davor = pathEndType(this.probeTyp(), el.path.slice(0, -1));
+    if (!davor) return [];
+    const da = new Set(stepRelations(s));
+    const dir = s.dir ?? 'out';
+    const raus = new Map<string, string>();
+    for (const o of pathOptions(r, davor)) {
+      const rel = firstRelation(o.step);
+      if (!rel || (o.step.dir ?? 'out') !== dir || da.has(rel) || raus.has(rel)) continue;
+      raus.set(rel, r.relations[rel]?.label ?? rel);
+    }
+    return [...raus].map(([relation, label]) => ({ relation, label }));
+  });
+  protected artDazu(relation: string): void {
+    const el = this.auswahl();
+    const s = this.letzterSchritt();
+    if (!el?.path?.length || !s || !relation) return;
+    const arten = stepRelations(s);
+    if (arten.includes(relation)) return;
+    this.setze({ path: [...el.path.slice(0, -1), { ...s, relation: [...arten, relation] }] });
+  }
+  protected artWeg(relation: string): void {
+    const el = this.auswahl();
+    const s = this.letzterSchritt();
+    if (!el?.path?.length || !s) return;
+    const rest = stepRelations(s).filter((x) => x !== relation);
+    /* Die letzte Art geht nur mit dem Schritt (× am Pfad). */
+    if (!rest.length) return;
+    this.setze({ path: [...el.path.slice(0, -1), { ...s, relation: rest.length === 1 ? rest[0]! : rest }] });
+  }
+
+  /** Die Eigenschaften der Kanten des letzten Schritts — bei mehreren Arten alle zusammen. */
+  protected kantenProps(): string[] {
+    const letzte = this.letzterSchritt();
+    const r = this.reg();
+    if (!letzte || !r) return [];
+    return [...new Set(stepRelations(letzte).flatMap((rel) => Object.keys(r.relations[rel]?.props?.properties ?? {})))];
   }
   protected propUmschalten(p: string): void {
     const el = this.auswahl();

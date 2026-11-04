@@ -266,6 +266,26 @@
                 }
               </select>
             }
+            @if (schrittArten().length && el.el !== 'fields' && el.el !== 'prose' && el.el !== 'rules' && el.source !== 'filter') {
+              <!-- Der letzte Schritt über mehrere Kantenarten (T-454): wer über zwei kommt, steht einmal. -->
+              <div class="lbl">Last step via</div>
+              <div class="chips" role="group" aria-label="Edges of the last step">
+                @for (a of schrittArten(); track a.relation) {
+                  <span class="chipb art" aria-pressed="true">{{ a.label }}@if (schrittArten().length > 1) {
+                    <button type="button" class="klein" [disabled]="!darf()" (click)="artWeg(a.relation)" [attr.aria-label]="'Drop ' + a.label + ' from the last step'">×</button>
+                  }</span>
+                }
+              </div>
+              @if (auchUeber().length) {
+                <select (change)="artDazu(optionWert($event)); $any($event.target).value = ''" aria-label="Also follow an edge in the last step" [disabled]="!darf()">
+                  <option value="">Also via …</option>
+                  @for (o of auchUeber(); track o.relation) {
+                    <option [value]="o.relation">{{ o.label }}</option>
+                  }
+                </select>
+                <p class="sub">An article reached over two edges stands once.</p>
+              }
+            }
             @if (el.el === 'collection') {
               <!-- Eine Sammlung (T-425): Arten, Darstellung, Ansicht je Treffer, Ordnung, Gruppierung. -->
               <div class="lbl">Articles from</div>
