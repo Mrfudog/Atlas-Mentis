@@ -223,15 +223,13 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
           ? `${name}: ${r.map(([k, v]) => `${v} in ${k}`).join(', ')}.`
           : `${name} sitzt an keinem Tisch.`;
       }
-      const roles = { ...(existing.roles ?? {}) };
       if (!rolle || rolle === 'none') {
-        delete roles[kampagne];
-        await repo.putUser({ ...existing, roles });
+        await repo.setRole(existing.id, kampagne, null);
         return `${name} hat in ${kampagne} keine Rolle mehr.`;
       }
       if (!isTableRole(rolle)) throw new Error('Rolle: gm | co-gm | player | spectator | none');
-      roles[kampagne] = rolle;
-      await repo.putUser({ ...existing, roles });
+      /* Eine Zeile je Kampagne (T-452): das Konto wird nicht ganz zurückgeschrieben. */
+      await repo.setRole(existing.id, kampagne, rolle);
       /* Wer mitspielt, bekommt seine Spielerebene (T-164). */
       if (rolle === 'player') await sorgeSpielerEbene(repo, existing.id, kampagne);
       return `${name} ist in ${kampagne} jetzt ${rolle}.`;

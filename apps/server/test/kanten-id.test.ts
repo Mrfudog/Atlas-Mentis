@@ -42,7 +42,7 @@ describe('Ebene aufschalten, die eine andere Kampagne schon hat (T-410)', () => 
   it('eine Spielerin sieht die Ebenen der Kampagne, schaltet aber nicht', async () => {
     const t = await tisch({ artikel: [ebene('ly_buch')], konten: { Basil: { admin: true }, Sela: {} } });
     const k = await t.json<{ id: string }>('Basil', 'POST', '/api/campaigns', { name: 'Neu', lead: true });
-    await t.repo.putUser({ ...(await t.repo.getUser(t.ids.get('Sela')!))!, roles: { [k.id]: 'player' } });
+    await t.repo.setRole(t.ids.get('Sela')!, k.id, 'player');
     expect((await t.als('Sela', 'POST', `/api/campaigns/${k.id}/layers/ly_buch`)).statusCode).toBe(403);
   });
 });

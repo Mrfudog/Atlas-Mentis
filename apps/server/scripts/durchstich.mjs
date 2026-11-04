@@ -512,6 +512,32 @@ try {
   );
   await setze(`/api/campaigns/camp_probe_a/members/${spiel?.id}`, { role: 'player' });
 
+  /* **Zwei Rollen zugleich** (T-452): die Leitung von A und die Verwaltung
+     in B schreiben dasselbe Konto gleichzeitig — jede Route trifft ihre
+     eigene Zeile in `campaign_member`, keine liest und schreibt die andere.
+     Bis zum 4.11. glich `putUser` die Tabelle auf die gelesenen Rollen ab,
+     und die zweite Anfrage löschte die Rolle der ersten. */
+  {
+    const inB = async () => (await (await get(admin, '/api/campaigns/camp_probe_b/members')).json()).members ?? [];
+    const [pa, pb] = await Promise.all([
+      setze(`/api/campaigns/camp_probe_a/members/${spiel?.id}`, { role: 'spectator' }),
+      fetch(`${BASE}/api/campaigns/camp_probe_b/members`, {
+        method: 'POST',
+        headers: { ...json, cookie: admin },
+        body: JSON.stringify({ user: spiel?.id, role: 'spectator' }),
+      }),
+    ]);
+    const a = (await mitglieder()).find((m) => m.name === 'probe-spiel')?.role;
+    const b = (await inB()).find((m) => m.name === 'probe-spiel')?.role;
+    pruefe('zwei Rollenänderungen zugleich: beide stehen', pa.ok && pb.ok && a === 'spectator' && b === 'spectator', `${pa.status}/${pb.status} A=${a} B=${b}`);
+    const weg = await fetch(`${BASE}/api/campaigns/camp_probe_b/members/${spiel?.id}`, { method: 'DELETE', headers: { cookie: admin } });
+    await setze(`/api/campaigns/camp_probe_a/members/${spiel?.id}`, { role: 'player' });
+    pruefe(
+      'aus B genommen, A bleibt player',
+      weg.ok && !(await inB()).some((m) => m.name === 'probe-spiel') && (await mitglieder()).find((m) => m.name === 'probe-spiel')?.role === 'player',
+    );
+  }
+
   /* Filtergruppen (T-137): eine eigene der Spielerin, zwei Vorgaben derselben
      Seite — die zweite nimmt der ersten die Marke, in einer Abfrage auf
      `list_filter`, die der Index `list_filter_default` hält. */
