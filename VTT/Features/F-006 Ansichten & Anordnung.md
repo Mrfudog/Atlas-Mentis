@@ -187,7 +187,7 @@ flowchart LR
 
 Ein **Icon** ist ein Name aus einem Katalog (`packages/model/src/icons.ts`,
 36 Lucide-Icons als Platzhaltersatz, ISC). Die Art trägt eines
-(`InterfaceDef.icon`, die `extends`-Kette hoch geerbt, Migration 167),
+(`InterfaceDef.icon`, die `extends`-Kette hoch geerbt, Migration 168),
 ein Feld seines (`PropertySchema.icon`), ein Artikel darf ein anderes
 wählen (`Identity.icon`, `format: 'icon'`). Gezeichnet wird überall
 dieselbe Komponente `nw-icon` (Inline-SVG in Schriftfarbe; neben einem

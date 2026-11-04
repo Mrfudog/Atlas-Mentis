@@ -11,7 +11,7 @@
 --
 -- Der Seed schreibt nur in eine leere Datenbank, also kommt es hier nach.
 -- Nichts wird entfernt, kein Artikel geändert.
--- Nummer beim Hereinmergen nachgesehen: 167.
+-- Nummer beim Hereinmergen nachgesehen: 168.
 
 alter table interface_def add column if not exists icon text;
 
