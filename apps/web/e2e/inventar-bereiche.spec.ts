@@ -49,11 +49,18 @@ test('the page of a chest shows the pouch inside as its own box, named after the
     const u = await bereich.boundingBox();
     expect(u!.y).toBeGreaterThan(o!.y + o!.height - 1);
   } else {
-    /* Zuklappen nimmt den Inhalt weg und bleibt nach dem Neuladen. */
+    /* Zuklappen nimmt den Inhalt weg und bleibt nach dem Neuladen. Gemerkt wird
+       am Konto erst 300 ms nach dem letzten Klappen (Klappstand, T-441) — vor dem
+       Neuladen also auf das Speichern warten, sonst ist der Stand noch nicht weg. */
+    const gemerkt = s.waitForResponse((r) => r.url().includes('/api/me/prefs/') && r.request().method() === 'PUT');
     await bereich.getByRole('button', { name: new RegExp(beutel.name) }).first().click();
     await expect(bereich).not.toContainText(kerze.name);
+    await gemerkt;
     await s.reload();
-    await expect(s.getByRole('region', { name: beutel.name })).not.toContainText(kerze.name);
+    /* Erst der zugeklappte Kopf, dann der fehlende Inhalt — ein Bereich, der noch lädt, enthält auch nichts. */
+    const nachher = s.getByRole('region', { name: beutel.name });
+    await expect(nachher.getByRole('button', { name: new RegExp(beutel.name) }).first()).toHaveAttribute('aria-expanded', 'false');
+    await expect(nachher).not.toContainText(kerze.name);
   }
   await keinSeitwaertsScroll(s);
 });
