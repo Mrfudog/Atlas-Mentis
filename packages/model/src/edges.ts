@@ -711,6 +711,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
  */
 export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [M + 'types.ts']: ['crafting', 'knowledge'],
+  /* Suchwörter des Icon-Katalogs (T-461): „knowledge" am Hirn, „marker" am Pin — Tags, keine Kanten. */
+  [M + 'icons.ts']: ['knowledge', 'marker'],
   /* `extendsMechanic.props.mode: 'overrides'` — ein Modus, nicht die Kante `overrides` (E-100). */
   [M + 'mechanics.ts']: ['overrides'],
   [M + 'validate.ts']: ['crafting', 'knowledge'],

@@ -55,6 +55,8 @@ const propertySchema = z
     requiredFor: z.enum(['prepared', 'ready']).optional(),
     description: z.string().optional(),
     glossary: z.string().optional(),
+    /* Das Icon des Feldes (T-461). */
+    icon: z.string().optional(),
     editOnly: z.boolean().optional(),
     suggest: z.boolean().optional(),
     many: z.boolean().optional(),
@@ -191,6 +193,8 @@ export const InterfaceDefSchema = z.object({
   targets: z.record(z.string(), linkTargetSchema).optional(),
   /* Wie ein Artikel dieser Art als Marker steht (T-214). */
   markerView: z.enum(['symbol', 'name', 'image', 'card']).optional(),
+  /* Das Icon der Art (T-461): ein Name aus dem Katalog, geerbt. */
+  icon: z.string().optional(),
 });
 
 export const EnumDefSchema = z.object({

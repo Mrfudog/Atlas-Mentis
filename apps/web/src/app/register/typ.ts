@@ -12,6 +12,7 @@ import {
   relationsFrom,
   typeChain,
   typeList,
+  typeIcon,
   viewGroup,
   viewKeys,
   MARKER_VIEWS,
@@ -23,6 +24,8 @@ import { RegisterArbeit, articles, carry, inPlayText } from './arbeit';
 import { RegFeld } from './feld';
 import { Kapitel, Kapitelteil } from '../muster/kapitel';
 import { Klappleiste } from '../muster/klappleiste';
+import { Icon } from '../muster/icon';
+import { IconWahl } from '../muster/icon-wahl';
 import {
   ancestorsOf,
   childrenOf,
@@ -60,11 +63,11 @@ interface Gruppe {
  */
 @Component({
   selector: 'nw-reg-typ',
-  imports: [RouterLink, RegFeld, Kapitel, Kapitelteil, Klappleiste],
+  imports: [RouterLink, RegFeld, Kapitel, Kapitelteil, Klappleiste, Icon, IconWahl],
   template: `
     @if (def(); as d) {
       <div class="typkopf">
-        <h2>{{ d.label ?? name() }}</h2>
+        <h2><nw-icon [name]="typIcon()" /> {{ d.label ?? name() }}</h2>
         <code>{{ name() }}</code>
         <span>{{ d.abstract ? 'shared type — no articles of its own' : 'creatable' }}</span>
         @if (bereich()) {
@@ -142,12 +145,20 @@ interface Gruppe {
           </select>
         </label>
         <p class="hint">How its articles stand as markers: symbol, symbol with name, image or quick card. The campaign can set it per map kind, a map for its markers, and a single marker for itself.</p>
+        <!-- **Das Icon** (T-461, \`InterfaceDef.icon\`): geerbt die \`extends\`-Kette hoch wie der Bereich. -->
+        <div class="f">
+          <span>Icon</span>
+          <nw-icon-wahl [wert]="d.icon ?? ''" [geerbt]="geerbtesIcon()" [disabled]="!darf()" label="Icon of this type"
+            (wertChange)="setzen({ icon: $event || undefined })" />
+        </div>
+        <p class="hint">Shown before the name of its articles in lists, quick views, titles, edges and board cards. Without its own, the nearest supertype’s icon holds; an article can choose another under Identity › Icon.</p>
       </nw-kapitelteil>
 
       <nw-kapitelteil key="fields" titel="Own fields" lage="haupt" [zahl]="eigene().length"
                       [hinweis]="eigene().length ? '' : 'nothing of its own'">
         @for (k of eigene(); track k) {
           <div class="frow">
+            <nw-icon [name]="prop(name(), k)?.icon" />
             <code class="fk">{{ k }}{{ pflicht(name(), k) ? '*' : '' }}</code>
             <input type="text" class="flabel" aria-label="Label" [value]="prop(name(), k)?.title ?? ''" [placeholder]="k"
               [disabled]="!darf()" (change)="titelSetzen(k, wert($event))" />
@@ -333,6 +344,18 @@ export class RegTyp {
     const r = this.reg();
     if (!r) return '';
     for (const t of ancestorsOf(r, this.name())) if (r.interfaces[t]?.area) return r.interfaces[t]!.area!;
+    return '';
+  });
+  /** Das Icon, das für diese Art gilt (T-461): eigenes oder geerbtes. */
+  protected readonly typIcon = computed(() => (this.reg() ? typeIcon(this.reg()!, this.name()) : undefined));
+  /** Was ein Obertyp als Icon sagt (T-461); leer: keiner. */
+  protected readonly geerbtesIcon = computed(() => {
+    const r = this.reg();
+    if (!r) return '';
+    for (const t of ancestorsOf(r, this.name())) {
+      const i = r.interfaces[t]?.icon;
+      if (i) return i;
+    }
     return '';
   });
   /** Was ein Obertyp für die Markeransicht sagt (T-214); leer: keiner. */

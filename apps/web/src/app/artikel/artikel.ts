@@ -26,6 +26,8 @@ import {
   currentStep,
   primaryInterface,
   relationDef,
+  iconOf,
+  typeIcon,
   resolveView,
   isBookPart,
   isMap,
@@ -103,6 +105,8 @@ import { Lesen } from '../lesen/lesen';
 import { Quelleninhalt } from './quelleninhalt';
 import { KampagnenReiter } from './ebenen-reiter';
 import { EbenenMarke } from './ebenen-marke';
+import { Icon } from '../muster/icon';
+import { IconWahl } from '../muster/icon-wahl';
 import { Wissenskasten } from './wissenskasten';
 import { Wissensseite } from './wissensseite';
 import { Initiative } from '../karten/initiative';
@@ -184,6 +188,8 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
      und Sichtbarkeit vor und sichert vor „Open" seinen Entwurf. */
   providers: [{ provide: SCHNELL_KONTEXT, useExisting: forwardRef(() => Artikel) }, WurfZiel],
   imports: [
+    Icon,
+    IconWahl,
     RouterLink,
     Mitlaeufer,
     Kopieren,
@@ -518,7 +524,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
           <main class="hauptspalte">
             <article class="blatt">
               <div>
-                <h1>{{ name(e) }}</h1>
+                <h1><nw-icon [name]="iconVon(e)" /> {{ name(e) }}</h1>
                 @if (untertitel(); as u) {
                   <p class="untertitel">{{ u }}</p>
                 }
@@ -635,8 +641,12 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 }
                 @for (f of sichtbareFelder(); track f.ref) {
                   <label [attr.data-ref]="f.ref">
-                    <span>{{ f.label }}@if (f.pflicht) {<i class="pflicht" title="required">*</i>}</span>
+                    <span><nw-icon [name]="f.schema?.icon" />{{ f.label }}@if (f.pflicht) {<i class="pflicht" title="required">*</i>}</span>
                     @switch (f.art) {
+                      <!-- Ein Icon (T-461): gewählt aus dem Katalog; ohne eigenes gilt das der Art. -->
+                      @case ('icon') {
+                        <nw-icon-wahl [wert]="f.wert" (wertChange)="f.wert = $event" [label]="f.label" [geerbt]="typIcon(art(e))" />
+                      }
                       @case ('jaNein') {
                         <input type="checkbox" [(ngModel)]="f.jaNein" [name]="f.ref" />
                       }
@@ -1042,9 +1052,9 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                         <div class="feld" [class.lang]="z.lang" [class.geerbt]="z.geerbt" [class.leer]="z.leer || z.fehlt"
                              [attr.title]="z.geerbt ? 'From the template' : z.leer ? 'Empty here; another version fills it' : null">
                           @if (feldBegriff(z.ref); as b) {
-                            <dt><span [nwBegriff]="b" [nwQuick]="b">{{ z.label }}</span></dt>
+                            <dt><nw-icon [name]="z.icon" /><span [nwBegriff]="b" [nwQuick]="b">{{ z.label }}</span></dt>
                           } @else {
-                            <dt>{{ z.label }}</dt>
+                            <dt><nw-icon [name]="z.icon" />{{ z.label }}</dt>
                           }
                           <dd>
                             @if (z.links) {
@@ -1178,6 +1188,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 <li>
                   <span class="rl" [attr.title]="kantenWirkung(k.typ)">{{ k.label }}</span>
                   @if (k.ziel) {
+                    <nw-icon [name]="k.icon" />
                     <a [routerLink]="['/artikel', k.ziel]" [nwQuick]="k.ziel" [nwBegriff]="begriff(k.ziel, k.text)">{{ k.text }}</a>
                   } @else {
                     <span class="weg">{{ k.text }}</span>
@@ -1546,6 +1557,30 @@ export class Artikel implements SchnellKontext {
     return this.reg()?.interfaces[typ]?.label ?? typ;
   }
 
+  /** Das Icon des Artikels (T-461): sein eigenes, sonst das seiner Art. */
+  protected iconVon(e: Entity): string | undefined {
+    const r = this.reg();
+    return r ? iconOf(r, e) : undefined;
+  }
+
+  protected typIcon(typ: string): string {
+    const r = this.reg();
+    return (r && typeIcon(r, typ)) ?? '';
+  }
+
+  /**
+   * Das Icon eines Kantenziels: des Artikels, wenn er hier schon liegt
+   * (geöffnet oder aus einer Liste), sonst das der einen Zielart, die die
+   * Kantenart nennt. Nennt sie mehrere oder jede, bleibt es leer — ein
+   * Abruf je Kante wäre genau das, was P1 verbietet.
+   */
+  private zielIcon(r: Registry, typ: string, to: string): string | undefined {
+    const ziel = this.bestand.voll().get(to) ?? this.bestand.kurz().get(to);
+    if (ziel) return iconOf(r, ziel);
+    const arten = relationDef(r, typ).to ?? [];
+    return arten.length === 1 && arten[0] !== '*' ? typeIcon(r, arten[0]) : undefined;
+  }
+
   /** Der Bereich der Art (`area` am Typ) — für den Brotkrumenpfad. */
   protected readonly bereich = computed(() => {
     const e = this.artikel();
@@ -1815,6 +1850,9 @@ export class Artikel implements SchnellKontext {
           id: rel.id,
           typ: rel.type,
           label: relationDef(r, rel.type).label,
+          /* Das Icon des Ziels (T-461): sein eigenes, wenn es geladen ist,
+             sonst das der Zielart, die die Kante nennt — ohne einen Abruf. */
+          icon: this.zielIcon(r, rel.type, rel.to),
           ziel: ziel === undefined ? '' : rel.to,
           /* Ein Ziel, das es nicht gibt, wird gesagt und nicht verschwiegen —
              es kann auch heissen, dass der Betrachter es nicht sehen darf. */

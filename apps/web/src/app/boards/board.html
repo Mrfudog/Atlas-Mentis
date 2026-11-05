@@ -477,7 +477,7 @@
                       [class.ziehbar]="darfSchreiben() && !k.platz.locked"
                       [routerLink]="['/artikel', k.kurz.id]"
                       (pointerdown)="greifen($event, k, 'schieben', true)"
-                      >{{ name(k.kurz) }}</a
+                      ><nw-icon [name]="iconVon(k.ziel ?? k.kurz)" /> {{ name(k.kurz) }}</a
                     >
                   } @else {
                     <p class="kname weg-da">Not here — gone, or not yours to see.</p>

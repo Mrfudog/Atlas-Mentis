@@ -196,6 +196,12 @@ export interface PropertySchema {
    */
   description?: string;
   /**
+   * **Das Icon dieses Feldes** (T-461): ein Name aus dem Katalog, gezeigt vor
+   * der Beschriftung, wo das Feld steht. Am Feld und nur dort — ein Icon
+   * je Art für dasselbe Feld wäre eine zweite Feldliste.
+   */
+  icon?: string;
+  /**
    * **Der Glossarbegriff, der dieses Feld erklärt** (T-347, T-225): sein
    * Name, wie er am Glossarartikel steht („Hit points"). Dann zeigen
    * Feldtitel und Handbuch den Eintrag statt eines eigenen Satzes — eine
@@ -387,6 +393,14 @@ export interface InterfaceDef {
    * (`markerViewOf`). Ohne Angabe: das Bild, sonst das Symbol.
    */
   markerView?: 'symbol' | 'name' | 'image' | 'card';
+  /**
+   * **Das Icon dieser Art** (T-461, REQ-460): ein Name aus dem Katalog
+   * (`icons.ts`), die `extends`-Kette hoch geerbt wie `area` — eine Stadt
+   * ist ein Ort und zeigt den Ort, bis sie etwas Eigenes sagt. Ein Artikel
+   * darf es überschreiben (`Identity.icon`). Gelesen über `typeIcon` und
+   * `iconOf`; ohne Angabe gibt es keines.
+   */
+  icon?: string;
 }
 
 /**

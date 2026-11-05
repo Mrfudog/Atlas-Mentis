@@ -1,6 +1,12 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-icons",
+      "date": "2026-11-05",
+      "title": "Icons for types, fields and articles",
+      "text": "Every type can carry an icon in the registry — a place shows a pin, a creature a figure, a quest a scroll — and subtypes inherit it. A field may carry one too, and an article can choose its own under Identity › Icon. The icon stands before the name in lists, quick views, titles, edges and on board cards; the picker searches the set by name and tag.",
+      "area": "Registry",
+      "link": "/registry",
       "id": "2026-11-05-gm-reads-whole",
       "date": "2026-11-05",
       "title": "GMs read their campaign whole",

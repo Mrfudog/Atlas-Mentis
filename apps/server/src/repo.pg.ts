@@ -50,6 +50,8 @@ export class PgRepository implements Repository {
         targets: (r['targets'] as InterfaceDef['targets']) ?? undefined,
         /* Wie Artikel dieser Art als Marker stehen (T-214, Migration 133). */
         markerView: (r['marker_view'] as InterfaceDef['markerView']) ?? undefined,
+        /* Das Icon der Art (T-461, Migration 168). */
+        ...(r['icon'] ? { icon: r['icon'] as string } : {}),
         /* Pflicht je Stand für diese Art (T-425, E-177, Migration 151). */
         ...(r['required_for'] ? { requiredFor: r['required_for'] as InterfaceDef['requiredFor'] } : {}),
       };
@@ -143,6 +145,10 @@ export class PgRepository implements Repository {
              so schreibt dieselbe Zeile auch in eine Datenbank davor. */
           if (def.markerView) {
             await client.query('update interface_def set marker_view = $2 where name = $1', [name, def.markerView]);
+          }
+          /* `icon` (T-461, Migration 168) ebenso nur, wo die Art eines trägt. */
+          if (def.icon) {
+            await client.query('update interface_def set icon = $2 where name = $1', [name, def.icon]);
           }
           /* `required_for` (T-425, Migration 151) ebenso nur, wo die Art es sagt. */
           if (def.requiredFor && Object.keys(def.requiredFor).length) {

@@ -43,10 +43,12 @@ import {
   withAnchors,
 } from '@nw/model';
 import type { BackgroundFit, BoardAnchor, BoardBackground, BoardPlacement, BoardShape, BoardShapeKind, Entity, IncomingEdge, Relation, VarScopes } from '@nw/model';
+import { iconOf } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { Brett, chainAbove, isBoard, storyOf, type Mangel } from './brett';
 import { Kachel } from './kachel';
+import { Icon } from '../muster/icon';
 import { Abfrage } from './abfrage';
 import { StrukturKachel } from './struktur-kachel';
 import { BoardSuche } from './suche';
@@ -195,7 +197,7 @@ interface Bzug {
  */
 @Component({
   selector: 'nw-board',
-  imports: [RouterLink, Kachel, Abfrage, StrukturKachel, BoardSuche, BildWahl, Text, Blatt, KartenAnsicht],
+  imports: [RouterLink, Kachel, Abfrage, StrukturKachel, BoardSuche, BildWahl, Text, Blatt, KartenAnsicht, Icon],
   templateUrl: './board.html',
   styleUrls: ['./board.scss', './werkzeuge.scss'],
   /* Was aus der Suche neu angelegt wird, folgt der Ebene des Boards (T-131). */
@@ -634,6 +636,12 @@ export class Board implements SchnellKontext {
     const stand = (e.components?.['Status'] as { status?: string } | undefined)?.status;
     return stand ? `${label} · ${stand}` : label;
   }
+  /** Das Icon der Karte (T-461): das eigene des Artikels, sonst das seiner Art. */
+  protected iconVon(e: Entity | undefined): string | undefined {
+    const r = this.bestand.registry();
+    return r && e ? iconOf(r, e) : undefined;
+  }
+
   protected name(e: Entity | undefined): string {
     return e ? entityName(e) : '';
   }
