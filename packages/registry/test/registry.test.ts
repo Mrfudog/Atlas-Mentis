@@ -125,7 +125,7 @@ describe('seed registry', () => {
   it('keeps the views to how much, and the arrangement at the type', () => {
     /* Die, nach denen ein Ort fragt (seit T-110 mit dem Druck, seit T-425
        mit den Erfassungsmasken, E-169), und der Handzettel als erste eigene. */
-    expect(Object.keys(seedRegistry.views).sort()).toEqual(['create', 'createFull', 'full', 'handout', 'overview', 'print', 'quick']);
+    expect(Object.keys(seedRegistry.views).sort()).toEqual(['create', 'createFull', 'fight', 'full', 'handout', 'overview', 'print', 'quick', 'roleplay']);
     for (const v of PLACE_VIEWS) expect(seedRegistry.views[v]).toBeDefined();
     const mitEigener = Object.keys(seedRegistry.interfaces).filter((n) => {
       const v = seedRegistry.interfaces[n]?.views?.['full'];

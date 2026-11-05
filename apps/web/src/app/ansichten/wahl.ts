@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, model, output } from '@angular/core';
-import { CREATE_VIEWS, viewsFor } from '@nw/model';
+import { createPlaceOf, viewsFor } from '@nw/model';
 import type { Entity, IncomingEdge } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 
@@ -74,9 +74,9 @@ export class Ansichtswahl {
 
   protected readonly ansichten = computed(() => {
     const r = this.bestand.registry();
-    /* Die Erfassungsmasken (REQ-432, E-169) sind keine Leseansicht: sie
-       gelten beim Anlegen und werden im Register gestaltet, nicht hier gewählt. */
-    const masken: readonly string[] = CREATE_VIEWS;
-    return r ? viewsFor(this.artikel(), r, { incoming: this.rueck() }).filter((v) => !masken.includes(v.key)) : [];
+    /* Die Erfassungsmasken (REQ-432, E-169; auch die einer Gruppe wie
+       „Roleplay“, T-462) sind keine Leseansicht: sie gelten beim Anlegen und
+       werden im Register gestaltet, nicht hier gewählt. */
+    return r ? viewsFor(this.artikel(), r, { incoming: this.rueck() }).filter((v) => !createPlaceOf(r, v.key)) : [];
   });
 }

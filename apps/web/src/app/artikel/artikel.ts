@@ -21,6 +21,8 @@ import {
   mergeEntity,
   proseFields,
   relationsFrom,
+  createFormFor,
+  createForms,
   createLayout,
   createSteps,
   currentStep,
@@ -148,6 +150,8 @@ interface Feld {
   gruppe: string;
   titel: string;
   beschreibung: string;
+  /** Der Hilfetext des Feldes (`PropertySchema.description`, T-462) — erscheint beim Fokus. */
+  hilfe: string;
   art: Eingabe;
   schema: PropertySchema | undefined;
   /* Die Werte einer Auswahl, schon aufgelöst: das Feld trägt sie selbst
@@ -453,7 +457,7 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
         @if (bearbeitet() && statblockDerFigur(); as sb) {
           <p class="hinweis" role="note">
             Ability scores, hand-added proficiencies and the other numbers stand on its statblock
-            <a [routerLink]="['/artikel', sb.id]" [queryParams]="{ edit: 1 }">{{ sb.name }}</a>.
+            <a [routerLink]="['/artikel', sb.id]" [queryParams]="maske() === 'fight' ? { edit: 1, form: 'fight' } : { edit: 1 }">{{ sb.name }}</a>.
             What class, background, origin and choices add is computed and shown on the overview.
           </p>
         }
@@ -593,6 +597,23 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 </ul>
               }
 
+              <!-- Die Erfassungsmaske (T-462, REQ-461): „Roleplay“, „Fight“ … oder alle
+                   Felder. Dieselben Felder, anders geordnet — der Wechsel verliert nichts. -->
+              @if (masken().length) {
+                <nav class="masken" aria-label="Form">
+                  <span class="dim">Form</span>
+                  @for (m of masken(); track m.key) {
+                    <button type="button" class="chipb" [attr.aria-pressed]="m.key === maske()" (click)="maskeWechseln(m.key)">{{ m.label }}</button>
+                  }
+                  <button type="button" class="chipb" [attr.aria-pressed]="!maske()" (click)="maskeWechseln(null)">All fields</button>
+                </nav>
+                @if (maske() === 'fight' && istKreatur() && !statblockDerFigur()) {
+                  <p class="hinweis" role="note">
+                    No statblock yet — AC, hit points, abilities and attacks live on one. Save, then add it on the sheet:
+                    “Create statblock” or “From a template”.
+                  </p>
+                }
+              }
               <!-- Ein geführter Ablauf (T-425, REQ-440, E-176): eine Seite auf einmal;
                    wo man anfängt, liest currentStep aus dem Befüllten. -->
               @if (schritte(); as st) {
@@ -642,6 +663,10 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
                 @for (f of sichtbareFelder(); track f.ref) {
                   <label [attr.data-ref]="f.ref">
                     <span><nw-icon [name]="f.schema?.icon" />{{ f.label }}@if (f.pflicht) {<i class="pflicht" title="required">*</i>}</span>
+                    <!-- Der Hilfetext des Feldes (T-462): erscheint, sobald das Feld den Fokus hat. -->
+                    @if (f.hilfe) {
+                      <small class="hilfe">{{ f.hilfe }}</small>
+                    }
                     @switch (f.art) {
                       <!-- Ein Icon (T-461): gewählt aus dem Katalog; ohne eigenes gilt das der Art. -->
                       @case ('icon') {
@@ -779,11 +804,14 @@ const NOCH_NICHT = new Set<Stueck['art']>([]);
               <h3 id="textabschnitte">Text sections</h3>
               <p class="texthinweis">{{ TEXT_HINWEIS }}</p>
               @for (b of entwurfProsa(); track b.id) {
-                <div class="blockmaske">
+                <div class="blockmaske" [attr.data-ref]="b.type + '.' + b.key">
                   <div class="bkopf">
                     <span class="bl">{{ b.label }}</span>
                     <button type="button" class="weg" (click)="prosaWeg(b.id)" title="Remove">×</button>
                   </div>
+                  @if (b.hilfe) {
+                    <small class="hilfe">{{ b.hilfe }}</small>
+                  }
                   <textarea rows="3" [(ngModel)]="b.wert" [name]="b.id"></textarea>
                   <nw-abw [liste]="vglProsa(b.id)?.ganz ?? []" [scopes]="scopes()" />
                 </div>
@@ -1342,6 +1370,8 @@ export class Artikel implements SchnellKontext {
   readonly id = input.required<string>();
   /** `?edit=1`: gleich bearbeiten — so öffnet „New article" den frischen Artikel (W7). */
   readonly edit = input<string | undefined>(undefined);
+  /** `?form=roleplay`: die gewählte Erfassungsmaske (T-462, REQ-461) — gilt im Bearbeiten. */
+  readonly form = input<string | undefined>(undefined);
   /** `?from=<id>`: hierher kam man über „Open" aus einer Auswahl (T-131) — der Weg zurück. */
   readonly from = input<string | undefined>(undefined);
   /** `?tab=read`: zur Leseansicht springen (T-167; seit T-191 ein Element), `?tab=rules` an der Kampagne. */
@@ -1546,11 +1576,37 @@ export class Artikel implements SchnellKontext {
    * Erfassungsmaske `createFull`, wenn die Art sie gestaltet (REQ-432,
    * E-169). Nach dem Bearbeiten wieder `full`.
    */
-  protected readonly seitenOrt = computed<'full' | 'createFull'>(() => {
+  protected readonly seitenOrt = computed<string>(() => {
     const e = this.artikel();
     const r = this.entwurfsRegister() ?? this.reg();
-    if (this.edit() !== 'create' || !this.bearbeitet() || !e || !r) return 'full';
+    if (!this.bearbeitet() || !e || !r) return 'full';
+    /* Eine gewählte Maske der Gruppe (T-462: „Roleplay“, „Fight“) geht vor. */
+    const m = this.maske();
+    if (m) return m;
+    if (this.edit() !== 'create') return 'full';
     return createLayout(r, 'createFull', primaryInterface(e)).designed ? 'createFull' : 'full';
+  });
+
+  /**
+   * **Die Erfassungsmasken, zwischen denen diese Art wählt** (T-462,
+   * REQ-461): die Ansichten der Gruppe `createFull`, die für sie gelten —
+   * „Roleplay“ und „Fight“ an der Kreatur, „Fight“ am Statblock. Leer, wenn
+   * keine gilt; dann gibt es keine Wahl.
+   */
+  protected readonly masken = computed(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    return e && r ? createForms(r, primaryInterface(e)) : [];
+  });
+  /** Die gewählte Maske; `null` heisst: alle Felder, wie bisher. */
+  protected readonly maske = signal<string | null>(null);
+  /** Was ohne Maske gezeigt würde (Pflicht und befüllt, T-195) — die Grundlage beim Wechsel. */
+  private grundGezeigt = new Set<string>();
+  /** Ist der Artikel eine Kreatur (auch Spielerfigur)? Für den Hinweis der Maske „Fight“. */
+  protected readonly istKreatur = computed(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    return !!e && !!r && typeChain(r, primaryInterface(e)).includes('Creature');
   });
 
   protected typLabel(typ: string): string {
@@ -2198,7 +2254,7 @@ export class Artikel implements SchnellKontext {
     });
   }
   protected readonly entwurfProsa = signal<
-    { id: string; type: string; key: string; label: string; wert: string }[]
+    { id: string; type: string; key: string; label: string; wert: string; hilfe?: string }[]
   >([]);
 
   private readonly api = inject(Api);
@@ -2549,6 +2605,7 @@ export class Artikel implements SchnellKontext {
           gruppe: def.label ?? comp,
           titel,
           beschreibung: schema.description ?? holds(r, schema),
+          hilfe: schema.description ?? '',
           art,
           schema: ziel === schema.target ? schema : { ...schema, ...(ziel ? { target: ziel } : {}) },
           werte: chips ? suche.feste : werte,
@@ -2561,29 +2618,26 @@ export class Artikel implements SchnellKontext {
         });
       }
     }
-    /* Gleich nach „New article“ (`?edit=create`) stehen die Felder der
-       gestalteten Erfassungsmaske da, auch leer, und vorn in ihrer
-       Reihenfolge (REQ-432, E-169); die übrigen holt „+ Add field“. */
-    const maske = this.edit() === 'create' ? createLayout(r, 'createFull', primaryInterface(e)) : null;
-    const st = maske?.designed ? createSteps(r, 'createFull', primaryInterface(e)) : null;
-    if (maske?.designed) {
-      const felder = [...maske.fields, ...(st ?? []).flatMap((s) => s.fields)];
-      const rang = new Map(felder.map((ref, i) => [ref, i]));
-      for (const ref of felder) if (out.some((f) => f.ref === ref)) da.add(ref);
-      out.sort((a, b) => (rang.get(a.ref) ?? rang.size) - (rang.get(b.ref) ?? rang.size));
-    }
-    this.schritte.set(st);
-    this.schritt.set(st ? currentStep(r, st, e) : 0);
     this.felder.set(out);
     this.gezeigt.set(da);
+    this.grundGezeigt = new Set(da);
     this.feldwahlOffen.set(false);
     this.entwurfProsa.set(
       this.prosa().map((b) => {
         const [typ, rest] = b.ref.split('.');
         const key = (rest ?? '').split('#')[0] ?? '';
-        return { id: b.ref, type: typ ?? '', key, label: b.label, wert: b.wert };
+        return { id: b.ref, type: typ ?? '', key, label: b.label, wert: b.wert, hilfe: this.hilfeFuer(`${typ}.${key}`) };
       }),
     );
+    /* Gleich nach „New article“ (`?edit=create`) stehen die Felder der
+       gestalteten Erfassungsmaske da, auch leer, und vorn in ihrer
+       Reihenfolge (REQ-432, E-169); die übrigen holt „+ Add field“. Welche
+       Maske (T-462): die aus der Adresse (`?form=`), beim Anlegen sonst die
+       Vorgabe der Art; beim Bearbeiten ohne Angabe keine — alle Felder. */
+    const formen = this.masken();
+    const gewuenscht = this.form();
+    const gewaehlt = gewuenscht && formen.some((f) => f.key === gewuenscht) ? gewuenscht : this.edit() === 'create' ? createFormFor(r, primaryInterface(e)) : null;
+    this.maskeAnwenden(gewaehlt);
     this.entwurfKanten.set(
       (e.relations ?? []).map((rel) => ({
         id: rel.id,
@@ -2611,6 +2665,7 @@ export class Artikel implements SchnellKontext {
 
   protected abbrechen(): void {
     this.bearbeitet.set(false);
+    this.maske.set(null);
     this.problem.set(null);
     this.maengel.set([]);
     this.zusammen.set(null);
@@ -2670,8 +2725,65 @@ export class Artikel implements SchnellKontext {
     const label = this.prosaArten().find((a) => a.ref === ref)?.label ?? key;
     this.entwurfProsa.update((bs) => [
       ...bs,
-      { id: `${ref}#neu-${bs.length}-${Date.now()}`, type: typ, key, label, wert: '' },
+      { id: `${ref}#neu-${bs.length}-${Date.now()}`, type: typ, key, label, wert: '', hilfe: this.hilfeFuer(ref) },
     ]);
+  }
+
+  /** Der Hilfetext eines Feldes (`Typ.feld`), wie das Register ihn sagt (T-462). */
+  private hilfeFuer(ref: string): string {
+    const [typ, key] = ref.split('.');
+    return this.reg()?.interfaces[typ ?? '']?.schema?.properties?.[key ?? '']?.description ?? '';
+  }
+
+  /**
+   * **Die Maske anwenden, ohne den Entwurf anzurühren** (REQ-432, T-462):
+   * ihre Felder stehen vorn und auch leer da, je Prosafeld ein leerer
+   * Abschnitt, wenn noch keiner steht; was sie nicht nennt, bleibt, sofern
+   * es Pflicht ist oder einen Wert hat, sonst hinter „+ Add field“. So
+   * verliert der Wechsel von „Roleplay“ zu „Fight“ nichts: dieselben
+   * Felder, anders geordnet. `null` ist „alle Felder“, wie bisher — gleich
+   * nach „New article“ die Maske `createFull` der Art, wenn sie eine hat.
+   */
+  private maskeAnwenden(key: string | null): void {
+    const e = this.artikel();
+    const r = this.reg();
+    if (!e || !r) return;
+    this.maske.set(key);
+    const ort = key ?? (this.edit() === 'create' ? 'createFull' : null);
+    const maske = ort ? createLayout(r, ort, primaryInterface(e)) : null;
+    const st = maske?.designed && ort ? createSteps(r, ort, primaryInterface(e)) : null;
+    this.schritte.set(st);
+    this.schritt.set(st ? currentStep(r, st, e) : 0);
+    /* Was einen Wert im Entwurf hat, bleibt sichtbar — auch, wenn die neue Maske es nicht nennt. */
+    const mitWert = this.felder().filter((f) => (f.art === 'jaNein' ? f.jaNein : f.liste.length > 0 || f.wert !== '')).map((f) => f.ref);
+    const da = new Set([...this.grundGezeigt, ...mitWert]);
+    const felder = maske?.designed ? [...maske.fields, ...(st ?? []).flatMap((s) => s.fields)] : [];
+    const rang = new Map(felder.map((ref, i) => [ref, i]));
+    for (const ref of felder) if (this.felder().some((f) => f.ref === ref)) da.add(ref);
+    this.gezeigt.set(da);
+    this.felder.update((out) => [...out].sort((a, b) => (rang.get(a.ref) ?? rang.size) - (rang.get(b.ref) ?? rang.size)));
+    const prosa = maske?.designed ? maske.prose : [];
+    const prosaRang = new Map(prosa.map((ref, i) => [ref, i]));
+    this.entwurfProsa.update((bs) => {
+      /* Ein leerer Abschnitt, den die alte Maske brachte, geht mit ihr; einer mit Text bleibt. */
+      const bleibt = bs.filter((b) => b.wert.trim() || prosaRang.has(`${b.type}.${b.key}`) || !b.id.includes('#neu-m-'));
+      const schon = new Set(bleibt.map((b) => `${b.type}.${b.key}`));
+      const dazu = prosa
+        .filter((ref) => !schon.has(ref))
+        .map((ref, i) => {
+          const [typ, k] = ref.split('.');
+          const label = this.prosaArten().find((a) => a.ref === ref)?.label ?? k ?? ref;
+          return { id: `${ref}#neu-m-${i}-${Date.now()}`, type: typ ?? '', key: k ?? '', label, wert: '', hilfe: this.hilfeFuer(ref) };
+        });
+      const ordnung = (b: { type: string; key: string }) => prosaRang.get(`${b.type}.${b.key}`) ?? prosaRang.size;
+      return [...bleibt, ...dazu].sort((a, b) => ordnung(a) - ordnung(b));
+    });
+  }
+
+  /** Die Maske wechseln (T-462): in der Adresse (`?form=`) und in der Maske, der Entwurf bleibt. */
+  protected maskeWechseln(key: string | null): void {
+    this.maskeAnwenden(key);
+    void this.router.navigate([], { queryParams: { form: key }, queryParamsHandling: 'merge', replaceUrl: true });
   }
   protected prosaWeg(id: string): void {
     this.entwurfProsa.update((bs) => bs.filter((b) => b.id !== id));

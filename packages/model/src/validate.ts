@@ -253,6 +253,8 @@ export const ViewDefSchema = z.object({
       article: z.string().optional(),
     })
     .optional(),
+  /* Die Vorgabe einer Erfassungsmaske je Kontext (T-462). */
+  defaultIn: z.array(z.string()).optional(),
   /* Ein Beitrag (T-425, E-168): legt sich über die Ansicht seiner Gruppe. */
   adjust: LayoutAdjustSchema.optional(),
   priority: z.number().optional(),

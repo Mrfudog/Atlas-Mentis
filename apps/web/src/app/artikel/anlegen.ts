@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { LAYER_RELATION, areaOf, createLayout, hasBuilder, typeChain } from '@nw/model';
+import { LAYER_RELATION, areaOf, createFormFor, createForms, createLayout, hasBuilder, typeChain } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
@@ -49,6 +49,18 @@ import { mitnahmeParams } from '../figur/mitnahme';
           autofocus
         />
       </label>
+      <!-- Die Erfassungsmaske (T-462, REQ-461): Roleplay oder Fight an einer Kreatur;
+           vorgewählt nach dem Bereich (defaultIn). Mit einer einzigen gibt es nichts zu wählen. -->
+      @if (formen().length > 1) {
+        <label>
+          <span>Form</span>
+          <select [value]="form() ?? ''" (change)="form.set($any($event.target).value || null)">
+            @for (m of formen(); track m.key) {
+              <option [value]="m.key" [selected]="m.key === form()">{{ m.label }}</option>
+            }
+          </select>
+        </label>
+      }
       @for (p of pflicht(); track p.ref) {
         <label>
           <span>{{ p.label }} <i class="pflicht" title="required">*</i></span>
@@ -240,6 +252,17 @@ export class Anlegen {
     mitnahmeParams(this.name(), this.ebene(), this.stapel.schreib()?.layer?.id, this.pflicht(), this.werte()),
   );
 
+  /** Die Erfassungsmasken der Art (T-462): „Roleplay“ und „Fight“ an der Kreatur, „Fight“ am Statblock. */
+  protected readonly formen = computed(() => {
+    const r = this.bestand.registry();
+    return r && this.typ() ? createForms(r, this.typ()) : [];
+  });
+  /** Die gewählte Maske; vorgewählt nach dem Bereich der Seite (`defaultIn`), sonst die erste. */
+  protected readonly form = linkedSignal<string | null>(() => {
+    const r = this.bestand.registry();
+    const b = this.bereich();
+    return r && this.typ() ? createFormFor(r, this.typ(), b ? [b] : []) : null;
+  });
   /** Ob die Maske `create` der Art in den Assistenten führt (Element `builder`, E-169). */
   protected readonly assistent = computed(() => {
     const r = this.bestand.registry();
@@ -290,7 +313,9 @@ export class Anlegen {
          öffnet die Seite in ihr; sonst wie bisher die Seite `full`. */
       const r = this.bestand.registry();
       const voll = !!r && createLayout(r, 'createFull', e.interfaces?.[0] ?? '').designed;
-      await this.router.navigate(['/artikel', e.id], { queryParams: { edit: voll ? 'create' : 1 } });
+      /* Mit gewählter Maske (T-462) öffnet die Seite genau sie (`?form=`). */
+      const form = this.form();
+      await this.router.navigate(['/artikel', e.id], { queryParams: form ? { edit: 'create', form } : { edit: voll ? 'create' : 1 } });
     } catch (error) {
       if (error instanceof ApiError) {
         const issues = Array.isArray(error.issues)

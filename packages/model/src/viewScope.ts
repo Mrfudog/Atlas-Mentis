@@ -16,7 +16,7 @@
 import type { Entity, LayoutAdjust, LayoutElement, LayoutWhen, Registry, ViewApplies, ViewDef, ViewPathStep } from './types.js';
 import { primaryInterface, typeChain } from './entity.js';
 import { withViewStyles } from './tokens.js';
-import { RETIRED_PLACES, applyAdjust, layoutFor, viewKeys, whenHolds } from './views.js';
+import { CREATE_VIEWS, RETIRED_PLACES, applyAdjust, layoutFor, viewKeys, whenHolds, type CreateView } from './views.js';
 
 /** Wie genau eine Ansicht gilt; die Reihenfolge ist die Rangfolge. */
 export const VIEW_SCOPES = ['article', 'condition', 'type', 'global'] as const;
@@ -152,6 +152,62 @@ export function viewsFor(
     });
   });
   return raus.sort((a, b) => a.rang - b.rang || a.i - b.i).map(({ rang: _r, i: _i, ...c }) => c);
+}
+
+/**
+ * **Zu welchem Anlegeort eine Ansicht gehört** (T-462, REQ-461): die Orte
+ * `create` und `createFull` selbst, und jede Ansicht, deren Gruppe einer
+ * davon ist — eine Erfassungsmaske. Sonst `null`. Die Leiste „Views“ lässt
+ * sie weg: eine Maske sagt, was man beim Anlegen fragt, nicht, was man liest.
+ */
+export function createPlaceOf(registry: Pick<Registry, 'views'>, key: string): CreateView | null {
+  const def = registry.views[key];
+  if (!def) return null;
+  const gruppe = viewGroup(key, def);
+  return (CREATE_VIEWS as readonly string[]).includes(gruppe) ? (gruppe as CreateView) : null;
+}
+
+/** Eine Erfassungsmaske zur Wahl (T-462): Schlüssel, Beschriftung, wo sie Vorgabe ist. */
+export interface CreateForm {
+  key: string;
+  label: string;
+  defaultIn: readonly string[];
+}
+
+/**
+ * **Die Masken, zwischen denen eine Art wählt** (T-462, REQ-461): die
+ * gestalteten Ansichten in der Gruppe eines Anlegeorts, die für diese Art
+ * gelten — in der Reihenfolge des Registers. „Roleplay“ und „Fight“ an der
+ * Kreatur, „Fight“ allein am Statblock. Der Ort selbst (`createFull`) zählt
+ * nicht: er ist der Rückfall, keine Wahl. Ein Beitrag (`adjust`) auch nicht.
+ */
+export function createForms(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  type: string,
+  place: CreateView = 'createFull',
+): CreateForm[] {
+  const stub: Gelesen = { id: '', interfaces: [type], components: {}, relations: [] };
+  return viewKeys(registry)
+    .filter((key) => key !== place && createPlaceOf(registry, key) === place)
+    .map((key) => ({ key, def: registry.views[key]! }))
+    .filter(({ def }) => !isContribution(def) && appliesHolds(registry, def.applies, stub))
+    .map(({ key, def }) => ({ key, label: def.label, defaultIn: def.defaultIn ?? [] }));
+}
+
+/**
+ * **Welche Maske vorgewählt ist** (T-462): die erste, deren `defaultIn`
+ * den Kontext nennt — den Bereich der Seite oder die Art, von der aus
+ * angelegt wird —, sonst die erste geltende; `null`, wenn keine gilt.
+ */
+export function createFormFor(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  type: string,
+  context: readonly string[] = [],
+  place: CreateView = 'createFull',
+): string | null {
+  const formen = createForms(registry, type, place);
+  const passend = formen.find((f) => f.defaultIn.some((c) => context.includes(c)));
+  return (passend ?? formen[0])?.key ?? null;
 }
 
 /**

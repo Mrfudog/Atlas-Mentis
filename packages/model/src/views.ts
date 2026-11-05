@@ -300,8 +300,10 @@ export function viewFields(
       alle.push({ comp, key, prose: !!(prop.many && prop.format === 'long') });
     }
   }
+  /* Reiter und Behälter (`section`, `columns` …, T-268) werden durchlaufen:
+     ein Feld in einem Abschnitt steht genauso auf der Seite (T-462). */
   const flach = (els: readonly LayoutElement[]): LayoutElement[] =>
-    els.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]));
+    els.flatMap((el) => [...(el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]), ...flach(el.children ?? [])]);
   const vergeben = new Set<string>();
   const elements: { id: string; el: string; fields: string[] }[] = [];
   for (const el of flach(layout)) {
@@ -373,17 +375,18 @@ export function listColumns(
  */
 export function createLayout(
   registry: Pick<Registry, 'interfaces' | 'views'>,
-  place: CreateView,
+  /** Ein Ort (`create`, `createFull`) oder eine Maske seiner Gruppe (`roleplay`, T-462). */
+  place: CreateView | string,
   type: string,
-): { fields: string[]; designed: boolean } {
-  if (!registry.views[place]) return { fields: [], designed: false };
+): { fields: string[]; prose: string[]; designed: boolean } {
+  if (!registry.views[place]) return { fields: [], prose: [], designed: false };
   const { from, layout } = layoutFor(registry, place, type);
   /* `viewFields` klappt ganze Typen aus, ordnet aber nach dem Typ; gefragt
      wird in der Reihenfolge, in der die Maske die Felder nennt. */
   const genannt: string[] = [];
   const geh = (els: readonly LayoutElement[]): void =>
     els.forEach((el) => {
-      if (el.el === 'fields' && Array.isArray(el.fields)) genannt.push(...el.fields);
+      if ((el.el === 'fields' || el.el === 'prose') && Array.isArray(el.fields)) genannt.push(...el.fields);
       geh(el.children ?? []);
       for (const t of el.tabs ?? []) geh(t.layout);
     });
@@ -392,11 +395,19 @@ export function createLayout(
     const i = genannt.indexOf(ref);
     return i < 0 ? genannt.length : i;
   };
-  const fields = viewFields(registry, place, type)
-    .elements.filter((e) => e.el === 'fields')
+  const elemente = viewFields(registry, place, type).elements;
+  const fields = elemente
+    .filter((e) => e.el === 'fields')
     .flatMap((e) => e.fields)
     .sort((a, b) => rang(a) - rang(b));
-  return { fields, designed: from !== null || fields.length > 0 };
+  /* **Prosafelder fragt die Maske auch** (T-462): ein Element `prose` nennt
+     sie, und beim Bearbeiten steht je Feld ein leerer Abschnitt da — wie
+     Erscheinung und Hintergrund einer Figur, die man beim Anlegen schreibt. */
+  const prose = elemente
+    .filter((e) => e.el === 'prose')
+    .flatMap((e) => e.fields)
+    .sort((a, b) => rang(a) - rang(b));
+  return { fields, prose, designed: from !== null || fields.length > 0 || prose.length > 0 };
 }
 
 /**

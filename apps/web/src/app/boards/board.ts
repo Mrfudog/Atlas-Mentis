@@ -37,7 +37,7 @@ import {
   primaryInterface,
   snapTo,
   isContribution,
-  isDesignedView,
+  createPlaceOf, isDesignedView,
   viewKeys,
   viewsFor,
   withAnchors,
@@ -667,7 +667,8 @@ export class Board implements SchnellKontext {
     if (!r || !e) return this.ansichten();
     const rueck = (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({ type: b.relation.type, from: b.from.id }));
     const gestaltete = viewsFor(e, r, { incoming: rueck })
-      .filter((v) => isDesignedView(r.views[v.key]))
+      /* Ohne die Erfassungsmasken (T-462): eine Kachel liest, sie fragt nicht. */
+      .filter((v) => isDesignedView(r.views[v.key]) && !createPlaceOf(r, v.key))
       .map((v) => v.key);
     return [...gestaltete, ...this.ansichten()];
   }

@@ -198,7 +198,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        secret: { type: 'string', format: 'long', many: true, title: 'Secrets' },
+        secret: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Secrets',
+          description: 'What is true and not yet known at the table. One entry per secret; each is withheld from players until you reveal it on its own.',
+        },
       },
     },
   },
@@ -228,7 +234,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        tactics: { type: 'string', format: 'long', many: true, title: 'Tactics' },
+        tactics: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Tactics',
+          description: 'How this one fights: what it opens with, whom it targets, when it flees. For the GM only.',
+        },
       },
     },
   },
@@ -444,9 +456,47 @@ export const fieldGroups = {
         /* Prosa, die nur eine Kreatur hat. Ein eigener Bestandteil dafür
            wäre einer mit genau einem Nutzer — davon gab es hier schon
            achtunddreissig. */
-        appearance: { type: 'string', format: 'long', many: true, title: 'Appearance' },
-        personality: { type: 'string', format: 'long', many: true, title: 'Personality' },
-        species: { type: 'string', suggest: true, title: 'Species' },
+        /* **Die Felder der Maske „Roleplay“** (T-462, REQ-461), nach dem
+           Universal Roleplaying Template von The Alexandrian: Erscheinung,
+           zwei bis drei Rollenspielhinweise, Hintergrund, Schlüsselinfos —
+           je Feld ein Hilfetext in eigenen Worten, der beim Fokus erscheint.
+           `personality` hiess bis T-462 „Personality“ und heisst jetzt
+           „Roleplaying“: der Schlüssel bleibt, die Einträge auch. */
+        appearance: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Appearance',
+          description: 'What the players notice first: one or two things to see, hear or smell that make this one recognisable at once. (After the Universal Roleplaying Template, The Alexandrian.)',
+        },
+        personality: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Roleplaying',
+          description: 'Two or three cues for playing them at the table — a mannerism, how they speak, what they want from a conversation. One cue per entry. (After the Universal Roleplaying Template, The Alexandrian.)',
+        },
+        background: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Background',
+          description: 'Where they come from and what made them who they are — only as much as the table needs. A player character’s D&D background is an edge, not this field. (After the Universal Roleplaying Template, The Alexandrian.)',
+        },
+        keyInfo: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Key info',
+          description: 'What the party can learn from or through them: the clues, favours and facts this one holds. One entry per piece, so you see what has been handed out. (After the Universal Roleplaying Template, The Alexandrian.)',
+        },
+        agenda: {
+          type: 'string',
+          format: 'long',
+          title: 'Agenda',
+          description: 'What they are after right now, in a sentence — it decides what they do when the party turns up.',
+        },
+        species: { type: 'string', suggest: true, title: 'Species', description: 'What they are — human, goblin, owlbear. The list suggests what other creatures use.' },
         /**
          * **Was für eine Kreatur das ist** — npc, companion, retainer,
          * pet, summon, follower.
@@ -462,12 +512,18 @@ export const fieldGroups = {
          * Eintrag und keine Registeränderung. `role` bleibt daneben und
          * meint etwas anderes — der Wirt, die Wache, die Händlerin.
          */
-        kind: { type: 'string', suggest: true, title: 'Kind' },
-        role: { type: 'string', suggest: true, title: 'Role' },
+        kind: {
+          type: 'string',
+          suggest: true,
+          title: 'Kind',
+          description: 'What sort of creature this is at the table — npc, companion, retainer, pet, summon. Free text; the list suggests what other creatures use.',
+        },
+        role: { type: 'string', suggest: true, title: 'Role', description: 'What they are in the world: the innkeeper, the guard captain, the fence.' },
         attitude: {
           type: 'string',
           title: 'Attitude',
           enum: ['freundlich', 'neutral', 'feindlich', 'unbekannt'],
+          description: 'How they meet the party right now. How they regard particular people is a “regards” relation.',
         },
         /* **Die Figur im Reiter „Worn"** (REQ-214, D54): nach Basils
            Blatt männlich, weiblich oder neutral, an der Kreatur und nicht
@@ -558,7 +614,7 @@ export const fieldGroups = {
            der Bogen zeigt die Zahl. Die Spanne sagt, wie weit das Quadrat
            auf dem Blatt reicht; das Inventar klemmt darauf. */
         carryExtra: { type: 'number', title: 'Extra carry square', derived: 'mod(str)', min: 0, max: 5 },
-        combatRole: { type: 'string', suggest: true, title: 'Combat role' },
+        combatRole: { type: 'string', suggest: true, title: 'Combat role', description: 'Its job in a fight — brute, skirmisher, controller, leader. Free text; the list suggests what other statblocks use.' },
         senses: { type: 'string', title: 'Senses' },
         /* `languages`, `saves` und `skills` standen hier als freier Text
            und zugleich als Listen an `Proficiencies` — dieselbe Sache

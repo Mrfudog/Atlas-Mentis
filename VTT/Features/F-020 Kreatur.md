@@ -24,3 +24,11 @@ Epic: [[EP-03 Kreaturen & Figuren]]
 | [[REQ-060]] Begleiter und Beschwörungen | Spieler | 3 | teils |
 | [[REQ-105]] NSC-Verzeichnis | Spielleitung | 3 | steht |
 <!-- stories:ende -->
+
+## Erfassungsansichten „Roleplay“ und „Fight“ (T-462, REQ-461, 5.11.2026)
+
+Die Kreatur bekommt zwei Masken (siehe [[F-006 Ansichten & Anordnung]]):
+„Roleplay“ nach dem Universal Roleplaying Template von The Alexandrian —
+mit den neuen Feldern `background`, `keyInfo`, `agenda` und `personality`
+als „Roleplaying“ — und „Fight“ mit dem Statblock im Mittelpunkt, auch am
+Statblock selbst. Je Feld ein Hilfetext beim Fokus; Migration 169.
