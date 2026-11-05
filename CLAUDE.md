@@ -246,7 +246,15 @@ wiederkommen, werden sie neu geschrieben.
   **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer
   Frage zu machen hiesse, einen Artikel dadurch zu verbergen, dass man alle
   seine Felder wegnimmt — und er stünde trotzdem in der Liste, mit Namen und
-  Bereich.
+  Bereich. **Die Leitung liest ihre Kampagne ungesiebt** (T-447, T-455;
+  E-204 a, E-208 a): wer in der Kampagne des Artikels `gm` oder `co-gm`
+  ist (`leadsArticle`, die Ebene sagt, wessen er ist), bekommt ihn im
+  Wissen ganz — Geheimnisse, Taktik, Lösung, Hinweise und jeden
+  Kampfteilnehmer mit Ziel und Werten —, auch ohne eigene Figur. Vorher
+  galt sie dem Sieb als „Konto ohne Figur" und verlor die eigene
+  Vorbereitung; ein Speichern aus der Artikelseite schrieb die gesiebte
+  Begegnung zurück. Die Leitung einer anderen Runde ist hier Betrachter,
+  die Spielerin wird weiter gesiebt, und die Sichtbarkeit fragt es nicht.
   Gelesen werden drei Felder, und die Reihenfolge ist die Regel:
   `hiddenFrom` schlägt `revealedTo` schlägt `audience`. **`public` ist die
   Vorgabe und heisst: jeder darf es sehen** — wer etwas verbergen will, sagt

@@ -6,7 +6,7 @@
  */
 import { test, expect } from './hilfen';
 
-test('an encounter shows who stands where, and the GM reveals one hint with a click', async ({ verwaltung, spielerin, api, lauf, eindeutig }) => {
+test('an encounter shows who stands where, and the GM reveals one hint with a click', async ({ leitung, spielerin, api, lauf, eindeutig }) => {
   const gruppe = `pt_${lauf.campaign.id}`;
   const vogt = await api.anlegen('leitung', 'Creature', eindeutig('Reeve Ansel'), {
     fields: { 'Status.status': 'ready' },
@@ -20,7 +20,7 @@ test('an encounter shows who stands where, and the GM reveals one hint with a cl
     relations: [{ type: 'features', to: vogt.id }],
   });
   /* Je Hinweis ein Eintrag mit eigener Id — an ihr hängt die Freigabe. */
-  await api.setzen('verwaltung', begegnung.id, {
+  await api.setzen('leitung', begegnung.id, {
     Encounter: {
       hint: [
         { id: 'h-ledger', value: 'The reeve keeps a ledger.' },
@@ -29,9 +29,8 @@ test('an encounter shows who stands where, and the GM reveals one hint with a cl
     },
   });
 
-  /* Freigegeben wird als Verwaltung: eine Leitung ohne eigene Figur
-     bekommt die Hinweise ihrer Runde heute nicht (T-447, E-204). */
-  const leitung = verwaltung;
+  /* Freigegeben wird als Leitung ohne Verwaltungsrolle und ohne eigene
+     Figur: sie liest die Hinweise ihrer Runde ganz (T-447, E-204 a). */
   await leitung.goto(`/artikel/${begegnung.id}`);
   const stand = leitung.locator('nw-haltung');
   await expect(stand).toContainText('Who stands where');

@@ -41,7 +41,7 @@
             "A campaign plays with layers — books, homebrew, its own layer and one per player. What no switched-on layer brings is not there, for anyone. Under an article’s title you see which layer this version is in. Its chapter Admin — on every article — names the layers of its other versions too and why it shows: in play, from a compare layer, enabled as extra content, or in no layer.",
             "Players see what is ready, what was revealed to their character and what they made themselves. Nothing has a separate “player view”: you see the same page with less in it.",
             "As GM, “View as ▾” under the campaign in the header shows the site as one of your members — players with their characters, spectators, co-GMs. Every page then shows what they would see, read only; the band at the top and Alt+Shift+V lead back. On a phone, View as is in the campaign popup.",
-            "Knowledge decides which fields players read. On any article, the Knowledge box (GMs) sets which information exists and which knowledge it belongs to; give the knowledge to characters, a party, a faction — or to an ancestry, background, class or feat, and everyone who has it knows. An information can also hold for a whole group, like every orc. The page of a knowledge writes out all it brings together, so players read what they know in one place."
+            "Knowledge decides which fields players read. On any article, the Knowledge box (GMs) sets which information exists and which knowledge it belongs to; give the knowledge to characters, a party, a faction — or to an ancestry, background, class or feat, and everyone who has it knows. An information can also hold for a whole group, like every orc. The page of a knowledge writes out all it brings together, so players read what they know in one place. The GM and co-GMs of a campaign read its articles whole — secrets, tactics, solutions, hints and every combatant — even without a character of their own; whoever runs another campaign reads here like any player."
           ]
         },
         {
@@ -55,6 +55,13 @@
           "heading": "Help on every page",
           "text": [
             "The “?” in the header opens the help for the page you are on — the same text as in the chapter Pages below — with what is new there."
+          ]
+        },
+        {
+          "heading": "Icons and where they come from",
+          "text": [
+            "A type carries an icon in the registry (Registry › a type › Icon), its subtypes inherit it, a field may carry one, and an article may choose its own under Identity › Icon. The same icon then stands before the name wherever the article is named: lists, quick views, the title, edges and board cards. Where no name stands beside it, the icon names itself for screen readers.",
+            "The icon set is Lucide (https://lucide.dev), used under the ISC licence — portions of it come from Feather Icons under the MIT licence (© 2013–2023 Cole Bemis; © 2025 Lucide Contributors). Icons for game content (weapons, spells, monsters) and a library of your own symbols are planned as modules of a shared asset collection."
           ]
         }
       ]

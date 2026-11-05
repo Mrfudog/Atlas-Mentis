@@ -220,9 +220,11 @@ Kontoangabe in einem Artikel: der Server las die Karte nie, und sie wäre mit
 jeder Ausfuhr mitgewandert (REQ-199).
 
 Das Sieb bekommt dafür die Rollen des Kontos mit, nicht nur die Figuren:
-eine Leitung hat keine Figur. Das Wissen
-fragt weiter nur nach den Figuren — was jemand erfahren hat, hat eine Figur
-erfahren.
+eine Leitung hat keine Figur. Das Wissen fragt bei Spielenden nur nach den
+Figuren — was jemand erfahren hat, hat eine Figur erfahren. **Die Leitung
+der Kampagne eines Artikels liest ihn ungesiebt** (`leadsArticle`, T-447,
+T-455): ohne Figur galt sie dem Wissen als Konto, das nichts weiss, und
+verlor Geheimnisse, Taktik und die Gegner ihrer eigenen Begegnung.
 
 ---
 

@@ -25,6 +25,8 @@ export type Eingabe =
   | 'bild'
   /** Eine Farbe (`format: 'color'`, T-423): Farbwähler und der Wert daneben. */
   | 'farbe'
+  /** Ein Icon (`format: 'icon'`, T-461): der Wähler aus dem Katalog. */
+  | 'icon'
   /** Frei mit Vorschlag (`suggest`, T-423): ein Wort, die Maske bietet an, was die Liste kennt und was dasteht. */
   | 'vorschlag';
 
@@ -54,6 +56,7 @@ export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   /* Ein Bild wird hochgeladen oder gewählt, nicht als Id getippt (T-114). */
   if (p.format === 'asset') return 'bild';
   if (p.format === 'color') return 'farbe';
+  if (p.format === 'icon') return 'icon';
   /* Frei mit Vorschlag (T-423): auch wenn eine Liste genannt ist — sie
      schlägt dann vor und hält nicht (`enumHolds`). */
   if (p.suggest && p.type === 'string') return 'vorschlag';

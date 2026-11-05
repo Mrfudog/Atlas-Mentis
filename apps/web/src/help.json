@@ -226,6 +226,7 @@
             "On a wider screen the chapters are framed areas: the fields on the left, relations and what links here on the right, Admin and Log below, collapsed until you open them. The row above them jumps to each.",
             "Expand all and Collapse all open and close Admin and Log (and the groups inside, such as a layer’s contents by type); ‹ and › go from section to section (Alt+↑/↓, with Shift: collapse/expand all). Whether Admin and Log stand open is kept for your account.",
             "Fields that suggest (an encounter’s kind, a place type) offer their list and the values already in use as you type — pick one or type your own. A colour field opens a colour picker.",
+          "Identity › Icon (under “+ Add field” while editing) gives this article its own icon instead of its type’s; search the set by name or tag and pick one. None returns to the type’s icon.",
             "Edit starts with the Layer field: the layer this article belongs to. Choose another layer you write in (the same list as Writes to in the header, also layers this campaign does not turn on, marked “not in this campaign”) and Save moves it there; the page then says where it is now. Its links, versions and parts stay where they are. Only the administration can take an article out of every layer.",
             "Under the title stands only the layer of this version. Admin, on every kind of article, names all its layers and those of its other versions — click one to open that version — and why you see it: in play, from a compare layer, enabled as extra content, or in no layer.",
             "Admin also says who can see it, with the level that applies and where it comes from (set here, a campaign rule, the layer’s default), what is known about it, its versions and its source.",
@@ -277,6 +278,7 @@
             "Body lists the places your campaign’s sheet names: armor, legs, four rings on each hand, necklaces. Pick an item, then tap a place (or a button under Wear on the right): rings only go on ring places, armor only on Armor; whatever was there goes back into the grid. Attuned n / 3 counts what you are attuned to; Attune on a worn item that asks for it, End attunement to free the slot.",
             "Above the grid one line says how big it is and why — e.g. Small 4×4 + extra 2×2 (STR 14 → +2); hatched cells are blocked, a thin line marks where the extra square starts. Cells are tinted by zone, explained in the legend below the grid.",
             "Every item says how long it takes to draw and why — in the list, when picked (Draw: …) and in the tooltip of its cells: turn (zone action, Bag of Holding +1) means the bag lies in an action zone and anything inside it takes one step more. Each container you carry gets its own box beside Carried (stacked on a phone); ▾ folds a box away, and it stays folded for your account.",
+            "The party’s inventory and the page of an inventory or container show the same boxes: the first is named after the inventory when no one carries it.",
             "Log, at the bottom, lists the rolls made on the character and on its statblock, newest first; filter by who rolled or by session. On the statblock, click a skill or saving throw bonus (Stealth +6, Dex +4) or an ability modifier to roll it — Shift for advantage, Alt for disadvantage; the log says what was rolled.",
             "Below the statblock on Overview, “Proficiencies and where they come from” lists saving throws, proficiencies and expertise, each with its source — class, background, origin, feature, feat, a choice you made, an item, or added by hand on the statblock — linked to that article. Crafting, the sheet and “usable by” count exactly these.",
             "Below that, “How the numbers come about” opens each value — abilities as base plus origin, background, choices and items; proficiency bonus, hit points, AC, initiative, speed, senses — each part linked to its article.",
@@ -300,7 +302,8 @@
           "heading": "Encounters",
           "text": [
             "An encounter shows what its kind needs: a conversation (social) lists who takes part — the creatures and factions it features — with what each thinks of the party; change that on the creature, under its relationships. A trap or hazard shows its hazards as cards.",
-            "GM: under each hint of a puzzle, “Reveal to the party” tells the party that one hint and nothing else; a revealed hint says “The party knows this hint”."
+            "GM: under each hint of a puzzle, “Reveal to the party” tells the party that one hint and nothing else; a revealed hint says “The party knows this hint”.",
+            "The GM and co-GMs of the campaign read its articles whole — secrets, tactics, solution, hints and every combatant with its target, before the fight too. Players see combatants as they are revealed, and a GM of another campaign reads like any player."
           ]
         },
         {
@@ -508,7 +511,8 @@
             "Every article lies in a layer and has a state. One that fits no other layer waits in Unassigned — an ordinary layer you can switch on in a campaign; the workbench lists its articles under Unassigned.",
             "Two views are forms for creating: Create (what the quick dialog asks when you create from a picker) and Create (full) (the article page right after New article, with its fields first, even empty). Design them per type under Views; without a design, creating works as before.",
             "Put the element Steps in a create view to guide through pages with Back and Next. The element Character builder makes New article open the builder, as the player character does.",
-            "A field or an edge kind can be required always, or only for a state: “to be prepared” or “to be ready”. An idea may go without it, but the article can only be set to that state once it is filled; the workbench lists articles at a state that miss something under Ready with gaps. A character with an open choice stays an idea the same way."
+            "A field or an edge kind can be required always, or only for a state: “to be prepared” or “to be ready”. An idea may go without it, but the article can only be set to that state once it is filled; the workbench lists articles at a state that miss something under Ready with gaps. A character with an open choice stays an idea the same way.",
+          "Under This type, Icon picks the symbol shown before the name of its articles in lists, quick views, titles, edges and board cards; subtypes inherit it, and None falls back to the supertype’s. A field has its own Icon under its settings. The set is Lucide (ISC); the handbook names the licence."
           ]
         },
         {

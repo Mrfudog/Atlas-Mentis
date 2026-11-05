@@ -60,6 +60,16 @@ export const fieldGroups = {
           title: 'Cover name',
           description: 'The name players see while the real name is a secret they have not learned.',
         },
+        /* **Das eigene Icon** (T-461, REQ-460): ein Name aus dem Katalog,
+           schlägt das Icon der Art. Leer heisst: das der Art. Ein Feld, weil
+           es Daten sind, die mit dem Artikel wandern — nicht ein Bild, das
+           hochgeladen wird (das ist `Image`). */
+        icon: {
+          type: 'string',
+          title: 'Icon',
+          format: 'icon',
+          description: 'A symbol from the icon set, shown before the name in lists, cards and the title. Empty: the icon of its type.',
+        },
       },
     },
   },

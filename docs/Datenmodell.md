@@ -142,6 +142,7 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 | `titles` | `Typ.feld` → eigene Beschriftung eines geerbten Feldes (`Time.until` → „Deadline" am Auftrag) — geerbt |
 | `targets` | `Typ.feld` → eigenes Ziel eines geerbten Feldes (`Image.image` an der Karte: Kartenbilder, T-119); ersetzt `target` des Feldes ganz — geerbt (`fieldTarget`) |
 | `views` | je Ansicht eine eigene Anordnung (Liste) oder eine Anpassung der geerbten (`{ adjust }`, T-110) — geerbt über `layoutFor` |
+| `icon` | das Icon der Art (T-461, REQ-460): ein Name aus dem Katalog (`icons.ts`, `map-pin`, `sword`), vor dem Namen ihrer Artikel in Liste, Kurzansicht, Kopf, Kanten und Kacheln — geerbt (`typeIcon`); ein Artikel überschreibt es mit `Identity.icon` (`iconOf`) |
 
 ### 3.3 Vererbung
 
@@ -152,8 +153,8 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 - die **Kanten**, deren `from` oder `to` einen Typ der Kette nennt — eine
   Spielerfigur *ist* eine Kreatur,
 - die **Zieltypen** von Verweisfeldern (`target.interfaces`) ebenso,
-- `area`, `units`, `titles`, `targets`, `views`: der nächste Typ in der
-  Kette, der etwas sagt, gewinnt.
+- `area`, `units`, `titles`, `targets`, `views`, `icon`: der nächste Typ in
+  der Kette, der etwas sagt, gewinnt.
 
 Ein geerbtes Feld wird nicht einzeln ausgeblendet; wer es nicht will, nimmt
 den Typ nicht. Umbenannt wird es über `titles`.
@@ -213,6 +214,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `prominent` | steht beim Bearbeiten auch leer da (`Description.description`, `Status.status`, T-195) |
 | `description` | ein Satz, was das Feld meint — gezeigt in „+ Add field“ (T-195) |
 | `glossary` | der Glossarbegriff, der das Feld erklärt (Name, `Statblock.hp` → „Hit points“): der Feldname ist gepunktet und trägt seine Definition (T-347) |
+| `icon` | das Icon des Feldes (T-461): ein Name aus dem Katalog, vor der Beschriftung, wo das Feld steht — am Feld und nur dort, ein Icon je Art für dasselbe Feld wäre eine zweite Feldliste |
 | `suggest` | ein freies Wort schlägt vor, was sichtbare Artikel darin tragen (`Creature.kind`) |
 | `readOnly` | ausgegeben, nicht eingetippt (`Identity.id`) |
 | `editOnly` | nur in der Maske, nie beim Lesen: ein Schlüssel zum Ordnen (`Time.sort`, T-126) |
@@ -230,6 +232,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `string` + `suggest` | freies Wort mit Vorschlägen | `"npc"` | Text mit Liste |
 | `string` `date` | Weltdatum als Text; `Time.sort` daneben zum Ordnen (`editOnly`: nur in der Maske) | `"Mirtul 12, 1492 DR"` | Text |
 | `string` `color` | Farbe | `"#8a4b2a"` | Farbwähler |
+| `string` `icon` | ein Icon aus dem Katalog (`Identity.icon`, T-461) | `"map-pin"` | Icon-Wähler: Suche nach Name und Tag, „None“ nimmt die Wahl zurück |
 | `string` `link` + `target` | ein Artikel eines Zieltyps | Artikel-Id | Suche nach Name und Alias, nur im Zieltyp; `target.tags` zuerst; gelesen als Name mit Link |
 | `array` + `link` + `target` | mehrere Artikel eines Zieltyps; jeder Eintrag wird geprüft (`link_wrong_type`) | `[id, …]` | Chips mit × und Suche, nur im Zieltyp; gelesen als Namen mit Link (T-068) |
 | `string` `asset` | ein `Asset`-Artikel oder eine `https`-Adresse (12.1) | Artikel-Id | Bild: hochladen, ziehen, einfügen, Kamera, vorhandenes wählen, Adresse; gezeigt als Bild |
@@ -1214,7 +1217,21 @@ beansprucht; die Felder aus der Einstellung `gmFields`
 (`Secrets.secret`, `Tactics.tactics`, `Encounter.solution`, `Encounter.hint`), es sei denn, eine gewusste
 Information gibt einen Eintrag frei; der Name, wenn beansprucht — dann steht
 der Deckname (`Identity.cover`). Kanten bleiben. Eine zweite Prüfung in der
-Maske gibt es nicht.
+Maske gibt es nicht. Von den Teilnehmern einer Begegnung (`participates`)
+gehen an Spielende nur die aufgedeckten, ohne Notiz der Leitung und vor
+ihrem ersten Zug gar nicht (`redactParticipants`, REQ-213, D58).
+
+**Wer die Kampagne des Artikels leitet** (`gm`, `co-gm` in `campaignOf`,
+`leadsArticle`), bekommt ihn **ungesiebt im Wissen** — auch ohne eigene
+Figur (T-447, T-455; E-204 a, E-208 a): die `gmFields`, jedes von einer
+Information beanspruchte Feld und jeden Teilnehmer mit Ziel und Werten.
+Bis dahin galt ein solches Konto als „Betrachter ohne Figur" und verlor
+Geheimnisse, Taktik, Lösung, Hinweise und vor Kampfbeginn alle Gegner
+seiner eigenen Runde; speicherte es die Begegnung aus der Artikelseite,
+schrieb es die gesiebten Kanten zurück. Die Grenze ist die Rolle in der
+Kampagne des Artikels, wie beim Decknamen (`seesUnfinished`) — die
+Leitung einer anderen Kampagne bleibt ein Betrachter wie jeder, und die
+Sichtbarkeit (9.1) fragt nicht danach.
 
 ### 9.4 Schreiben
 
@@ -1791,7 +1808,7 @@ E-030 b). Das „+" der Suche hatte von T-138 bis T-346 eine fünfte,
 | `create` mit `builder` | „New article“ (T-425, REQ-433, E-169) | nichts zum Ausfüllen: das Anlegen führt in den Charakter-Assistenten (`/characters/new`, mit Name, Ebene und den schon gewählten Pflichtfeldern); Vorgabe der Spielerfigur (Migration 154, `hasBuilder`). Auf einer Seite zeichnet `builder` einen Verweis darauf |
 | `create` | der schnelle Dialog „Create … as …“ aus einer Auswahl (T-425, REQ-432, E-169) | die Felder, die die Maske der Art nennt, in ihrer Reihenfolge und ohne Obergrenze; Pflichtfelder fragt der Dialog immer. **Ohne Gestaltung** (keine Art die Kette hoch sagt etwas, die Ansicht nennt keine Felder; `createLayout().designed`): wie bisher Pflichtfelder und die einfachen Felder von `quick`, höchstens acht |
 | `createFull` | die Artikelseite im Bearbeiten gleich nach „New article“ (`?edit=create`) | die Seite in dieser Anordnung, und die Maske zeigt ihre Felder vorn, auch leer; die übrigen hinter „+ Add field“. Ohne Gestaltung öffnet „New article“ wie bisher `full` (`?edit=1`). Der Designer warnt, wenn eine Maske Pflichtfelder auslässt (`createMissingRequired`); die Leiste „Views“ bietet beide Masken nicht an — gestaltet werden sie unter Registry › Views. Migration 153 bringt die Zeilen. **Ein Ablauf** (REQ-440, E-176): ein Element `steps` in der Maske macht aus jedem Kind eine Seite (Titel: sein `text`, sonst „Step n“, `createSteps`); die Bearbeitung zeigt eine auf einmal mit Back und Next, und **wo man steht, wird gelesen, nicht gespeichert** (`currentStep`: nach dem letzten Schritt mit einem Wert der nächste, ausser weiter vorn fehlt ein Pflichtfeld). Gelesen stehen die Seiten untereinander |
-| `roleplay`, `fight` (Masken der Gruppe `createFull`, T-462, REQ-461) | „New article“ und das Bearbeiten einer Kreatur (`roleplay`, `fight`) oder eines Statblocks (`fight`): gewählt im Dialog unter „Form“ und über der Maske, `?form=` | eine Ansicht mit `group: 'createFull'` und Geltung ist eine Maske zur Wahl (`createForms`); vorgewählt ist die, deren `defaultIn` den Kontext nennt — den Bereich der Seite oder die Art, von der aus angelegt wird (`createFormFor`) —, sonst die erste. `roleplay` nach dem Universal Roleplaying Template (The Alexandrian): Erscheinung, Rollenspielhinweise (`Creature.personality`, seit T-462 „Roleplaying“), Hintergrund, Schlüsselinfos, Agenda, Geheimnisse, Beziehungen; `fight`: der Statblock (an der Kreatur `linked`, am Statblock wie im Buch), Grösse und Token, der Stand, Taktik, Beute, Begegnungen. **Eine Maske fragt auch Prosafelder** (Element `prose`: je Feld ein leerer Abschnitt), der Hilfetext am Feld (`PropertySchema.description`) erscheint beim Fokus, und **der Wechsel verliert nichts** — dieselben Karten, anders geordnet; was einen Wert hat, bleibt sichtbar. Druck, Kachel und die Leiste „Views“ bieten Masken nicht an (`createPlaceOf`). Migration 168 bringt Zeilen und Felder |
+| `roleplay`, `fight` (Masken der Gruppe `createFull`, T-462, REQ-461) | „New article“ und das Bearbeiten einer Kreatur (`roleplay`, `fight`) oder eines Statblocks (`fight`): gewählt im Dialog unter „Form“ und über der Maske, `?form=` | eine Ansicht mit `group: 'createFull'` und Geltung ist eine Maske zur Wahl (`createForms`); vorgewählt ist die, deren `defaultIn` den Kontext nennt — den Bereich der Seite oder die Art, von der aus angelegt wird (`createFormFor`) —, sonst die erste. `roleplay` nach dem Universal Roleplaying Template (The Alexandrian): Erscheinung, Rollenspielhinweise (`Creature.personality`, seit T-462 „Roleplaying“), Hintergrund, Schlüsselinfos, Agenda, Geheimnisse, Beziehungen; `fight`: der Statblock (an der Kreatur `linked`, am Statblock wie im Buch), Grösse und Token, der Stand, Taktik, Beute, Begegnungen. **Eine Maske fragt auch Prosafelder** (Element `prose`: je Feld ein leerer Abschnitt), der Hilfetext am Feld (`PropertySchema.description`) erscheint beim Fokus, und **der Wechsel verliert nichts** — dieselben Karten, anders geordnet; was einen Wert hat, bleibt sichtbar. Druck, Kachel und die Leiste „Views“ bieten Masken nicht an (`createPlaceOf`). Migration 169 bringt Zeilen und Felder |
 | eigene, z. B. `handout` | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt — der Handzettel: Bild, Beschreibung, die Werte, die die Art dafür wählt (T-234), Absatz, Vorlesetext |
 
 **Ansichten sind Zeilen und werden im Register bearbeitet** (Register ›
@@ -2778,7 +2795,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-29: 66 Artikelarten, 28 Grundtypen, 76 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-11-04: 66 Artikelarten, 28 Grundtypen, 76 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -2791,7 +2808,7 @@ Stand 2026-10-29: 66 Artikelarten, 28 Grundtypen, 76 Kantenarten, 9 Aufzählungs
 | `Difficulty` | `difficulty` | `Scene` `Encounter` |
 | `Effects` | `effects` | 5 |
 | `Facts` | `fact` | 4 |
-| `Identity` | `name` `id` `aliases` `cover` | 27 |
+| `Identity` | `name` `id` `aliases` `cover` `icon` | 27 |
 | `Image` | `image` `caption` `alt` | 17 |
 | `ItemFeature` (rules) | `appliesTo` `namePrefix` `nameSuffix` `priceAdd` `priceMult` `mechanics` | `ItemProperty` `Enhancement` |
 | `Lore` | `lore` | 18 |

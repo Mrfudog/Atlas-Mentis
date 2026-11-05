@@ -48,6 +48,8 @@ export interface Zelle {
   fehlt?: boolean;
   /** Ein Bildfeld (`format: 'asset'`, T-114): gezeichnet als Vorschau, nicht als Id. */
   bild?: string;
+  /** Das Icon des Feldes (`PropertySchema.icon`, T-461), vor der Beschriftung. */
+  icon?: string;
 }
 
 export interface Prosa {
@@ -211,6 +213,7 @@ export function feldZellen(r: Registry, e: Entity, name: (id: string) => string 
       out.push({
         ...(links?.length ? { links } : {}),
         ...(schema?.format === 'asset' && typeof wert === 'string' ? { bild: wert } : {}),
+        ...(schema?.icon ? { icon: schema.icon } : {}),
         ref: `${comp}.${prop}`,
         comp,
         prop,

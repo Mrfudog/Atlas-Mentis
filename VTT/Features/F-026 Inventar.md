@@ -100,8 +100,16 @@ flowchart LR
   S --> R[drawReason → „turn (zone action, Bag of Holding +1)“]
 ```
 
+Seit 4.11.2026 (Nachtrag der Leitung 22.10.) stehen die Bereiche nicht
+nur im Gear: auch das Inventar der Gruppe und die Seite eines Inventars
+oder Behälters zeigen jeden Behälter darin als eigenen, zuklappbaren
+Bereich; der erste heisst „Carried“, wo eine Figur oder Gruppe trägt,
+sonst wie das Inventar. Ein Behälter in einem Behälter öffnet sich weiter
+in seinem Bereich.
+
 Offen: Gurt und Rücken als besondere Plätze (T-367), Kleidung einzeln
-mit neuem AC-System (T-388); Ziehzeit in „Your turn“ (Combat) noch nicht.
+mit neuem AC-System (T-388); Ziehzeit in „Your turn“ (Combat) noch nicht;
+Behälter in Behältern als eigener Bereich oben.
 
 ## Wegwerfen und Verkaufen am Stück (T-407, REQ-404)
 

@@ -129,7 +129,7 @@ Fokus erscheint; neu sind `Creature.background`, `keyInfo`, `agenda`,
 `personality` heisst „Roleplaying“. `fight` stellt den Statblock in die
 Mitte (an der Kreatur `linked`, am Statblock wie im Buch), dazu Grösse und
 Token, den Stand, Taktik, Beute und die Begegnungen. Eine Maske fragt
-jetzt auch Prosafelder; der Wechsel verliert nichts. Migration 168; E2E
+jetzt auch Prosafelder; der Wechsel verliert nichts. Migration 169; E2E
 `kreatur-ansichten.spec.ts`; Hilfe, Handbuch („Creating a creature:
 Roleplay or Fight“), Glossar.
 
@@ -211,6 +211,40 @@ flowchart LR
   A --> S["nach pos, Priorität, Genauigkeit"]
   S --> D["Designer: Herkunft, ⚠"]
   S --> W["Werkbank: View conflicts"]
+```
+
+## Icons (T-461, REQ-460, 5.11.2026)
+
+Ein **Icon** ist ein Name aus einem Katalog (`packages/model/src/icons.ts`,
+36 Lucide-Icons als Platzhaltersatz, ISC). Die Art trägt eines
+(`InterfaceDef.icon`, die `extends`-Kette hoch geerbt, Migration 168),
+ein Feld seines (`PropertySchema.icon`), ein Artikel darf ein anderes
+wählen (`Identity.icon`, `format: 'icon'`). Gezeichnet wird überall
+dieselbe Komponente `nw-icon` (Inline-SVG in Schriftfarbe; neben einem
+Namen Zierde, allein ein Bild mit Beschriftung); der Wähler `nw-icon-wahl`
+sucht nach Name und Tag. Gewählt wird gerechnet, nie gespeichert — nur
+die Namen stehen in Register und Artikel. Entscheid E-210 (a, erweitert):
+Lucide für die Oberfläche, game-icons.net und eigene Symbole als Module
+einer Asset-Sammlung (REQ-462, Schnitt 2). Die Stories REQ-460 und
+REQ-462 stehen auf dem Brett der Zentrale, nicht als Notiz hier: der
+Vault zählt bis REQ-394, das Brett ab 4xx — wie beide zusammenkommen,
+fragt ein Entscheid der Leitung (E-211).
+
+Stand 5.11.2026: In der Listenzeile steht das Icon der Art; das eigene
+Icon eines Artikels zeigt erst seine Seite und seine Karte — die
+Listen-API bekommt die Spalte mit T-398. Fantasy-Satz, Marker auf der
+Karte und das Modul `packages/assets` sind offen (T-461, Schnitt 2).
+
+```mermaid
+flowchart LR
+  A["Artikel: Identity.icon"] -->|gesetzt| I["iconOf"]
+  T["Art: InterfaceDef.icon"] -->|sonst, extends-Kette hoch| I
+  I --> K["Katalog: ICONS (Id, Pfad, Tags, Quelle)"]
+  K -->|bekannt| N["nw-icon: SVG, aria"]
+  K -->|unbekannt| L["nichts"]
+  N --> S["Liste · Kurzansicht · Kopf · Kanten · Kachel"]
+  W["nw-icon-wahl: Suche"] --> A
+  W --> T
 ```
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->

@@ -89,6 +89,31 @@ gebraucht. (`itemType` ist seit P3 eine Aufzählung am Feld, die
 Gegenstandsarten von 5e.tools; ein Verbrauchsgut ist dort `potion`,
 `scroll` oder `food and drink`.)
 
+### Ein Typ trägt ein Icon, ein Artikel darf ein anderes wählen (T-461, REQ-460)
+
+Ein **Icon** ist ein Name aus einem Katalog (`map-pin`, `sword`,
+`scroll-text`), und drei Stellen dürfen einen tragen: die Art (`icon` an
+der Zeile, die `extends`-Kette hoch geerbt wie der Bereich — eine Stadt
+ist ein Ort und zeigt den Ort, bis sie etwas Eigenes sagt), das Feld
+(`icon` am Feld, vor seiner Beschriftung) und der Artikel (`Identity.icon`,
+das eigene schlägt das der Art). Gezeigt wird überall gleich — Liste,
+Kurzansicht, Kopf, Kanten, Kachel — über eine Komponente, die den Namen
+im Katalog nachschlägt; was er nicht kennt, zeichnet nichts.
+
+Warum ein Name und kein Bild: ein Bild ist ein Artikel (`Asset`) mit
+Datei, Ebene und Sichtbarkeit — richtig für das Porträt eines Ortes, zu
+schwer für das Zeichen, das vor dreihundert Orten steht. Ein Name wiegt
+nichts, wandert mit der Ausfuhr und sieht in hell und dunkel gleich aus,
+weil die Komponente ihn in Schriftfarbe zeichnet. Und warum am Artikel
+nur ein Überschreiben: die Vorgabe der Art ist der Normalfall, und wer
+sie an jedem Artikel wiederholte, hätte dreihundert Stellen, an denen sie
+auseinanderlaufen kann.
+
+Der Katalog (`packages/model/src/icons.ts`) ist heute ein Platzhaltersatz
+aus Lucide (ISC, je Icon ein Pfad, mit Beschriftung, Tags und Quelle);
+nach E-210 kommt er in ein Asset-Modul mit derselben Schnittstelle —
+Id, Pfad, Lizenz, Tags — und bündelt nur, was genutzt wird (REQ-462).
+
 ### Der erste Bestandteil zählt anders
 
 `extends` ist eine Liste, und die Reihenfolge ist keine Zierde. Der **erste**
@@ -144,8 +169,8 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
 
 - einen **Schlüssel** (`hp`) und eine **Beschriftung** (`Hit points`) —
   die ein Typ für sich umbenennen darf, siehe unten,
-- eine **Art** — Text, langer Text, Zahl, Datum, Farbe, Auswahl, Verweis,
-  Ablage —,
+- eine **Art** — Text, langer Text, Zahl, Datum, Farbe, Icon, Auswahl,
+  Verweis, Ablage —,
 - bei einer **Auswahl** entweder eigene Werte oder den Namen einer
   Aufzählungszeile (`enumRef`), nie beides: zwei Listen an einem Feld wären
   zwei Antworten auf dieselbe Frage. **Mehrere Zeilen sind erlaubt** und
@@ -1256,6 +1281,19 @@ es weiss, muss keine Liste von Figuren sein: ein Wissen der Herkunft Orc
 weiss jede Figur, die diese Herkunft hat — heute aus Klasse, Herkunft und
 Hintergrund, später auch aus Wissenspunkten bei einer selbst erstellten
 Herkunft (REQ-354).
+
+**Die Leitung liest ihre Kampagne ungesiebt** (T-447, T-455; E-204 a,
+E-208 a). Das Wissen fragt nach Figuren, und eine Leitung hat keine — also
+galt sie dem Sieb als Konto, das nichts weiss, und verlor Geheimnisse,
+Taktik, Lösung, Hinweise und vor Kampfbeginn jeden Gegner ihrer eigenen
+Begegnung. Das war kein Schutz, sondern ein Loch in der Vorbereitung: was
+sie nicht lesen kann, kann sie weder pflegen noch freigeben, und ein
+Speichern aus der Artikelseite schrieb die gesiebte Begegnung zurück. Wer
+in der Kampagne des Artikels `gm` oder `co-gm` ist (`leadsArticle`),
+bekommt ihn darum ganz; die Grenze ist dieselbe wie beim Decknamen. Wer in
+der einen Runde leitet und in der anderen mitspielt, ist dort Betrachter
+wie jeder — die Rolle steht je Kampagne am Konto, und die Ebene sagt,
+wessen der Artikel ist.
 
 > **Nicht mehr:** es gab einen `KnowledgeLevel` — einen *Stand*, dem Figuren
 > über `atLevel` angehörten. Das war ein zweiter Weg zu „wer weiss das",
